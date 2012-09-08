@@ -6,8 +6,11 @@ import static redelm.schema.Type.Repetition.OPTIONAL;
 import static redelm.schema.Type.Repetition.REPEATED;
 import static redelm.schema.Type.Repetition.REQUIRED;
 
+import java.math.BigInteger;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -257,4 +260,139 @@ public class TestColumnIO {
     System.out.println("----");
   }
 
+  @Test
+  public void testPushParser() {
+    ColumnsStore columns = new MemColumnsStore(1024);
+    MessageColumnIO columnIO = new ColumnIOFactory(new SimpleGroupFactory(schema)).getColumnIO(schema, columns);
+    columnIO.getRecordWriter().write(Arrays.<Group>asList(r1, r2).iterator());
+    RecordReader recordReader = columnIO.getRecordReader();
+
+    String[] expected = {
+    "startMessage()",
+    "startField(DocId, 0)",
+    "addInt(10)",
+    "endField(DocId, 0)",
+    "startField(Links, 1)",
+    "startGroup()",
+    "startField(Forward, 1)",
+    "addInt(20)",
+    "endField(Forward, 1)",
+    "startField(Forward, 1)",
+    "addInt(40)",
+    "endField(Forward, 1)",
+    "startField(Forward, 1)",
+    "addInt(60)",
+    "endField(Forward, 1)",
+    "endGroup()",
+    "endField(Links, 1)",
+    "startField(Name, 2)",
+    "startGroup()",
+    "startField(Language, 0)",
+    "startGroup()",
+    "startField(Code, 0)",
+    "addString(en-us)",
+    "endField(Code, 0)",
+    "startField(Country, 1)",
+    "addString(us)",
+    "endField(Country, 1)",
+    "endGroup()",
+    "endField(Language, 0)",
+    "startField(Language, 0)",
+    "startGroup()",
+    "startField(Code, 0)",
+    "addString(en)",
+    "endField(Code, 0)",
+    "endGroup()",
+    "endField(Language, 0)",
+    "startField(Url, 1)",
+    "addString(http://A)",
+    "endField(Url, 1)",
+    "endGroup()",
+    "endField(Name, 2)",
+    "startField(Name, 2)",
+    "startGroup()",
+    "startField(Url, 1)",
+    "addString(http://B)",
+    "endField(Url, 1)",
+    "endGroup()",
+    "endField(Name, 2)",
+    "startField(Name, 2)",
+    "startGroup()",
+    "startField(Language, 0)",
+    "startGroup()",
+    "startField(Code, 0)",
+    "addString(en-gb)",
+    "endField(Code, 0)",
+    "startField(Country, 1)",
+    "addString(gb)",
+    "endField(Country, 1)",
+    "endGroup()",
+    "endField(Language, 0)",
+    "endGroup()",
+    "endField(Name, 2)",
+    "endMessage()"
+    };
+    final Deque<String> expectations = new ArrayDeque<String>();
+    for (String string : expected) {
+      expectations.add(string);
+    }
+
+    recordReader.read(new RecordConsumer() {
+
+      private void validate(String got) {
+        Assert.assertEquals(expectations.pop(), got);
+      }
+
+      @Override
+      public void startMessage() {
+        validate("startMessage()");
+      }
+
+      @Override
+      public void startGroup() {
+        validate("startGroup()");
+      }
+
+      @Override
+      public void startField(String field, int index) {
+        validate("startField("+field+", "+index+")");
+      }
+
+      @Override
+      public void endMessage() {
+        validate("endMessage()");
+      }
+
+      @Override
+      public void endGroup() {
+        validate("endGroup()");
+      }
+
+      @Override
+      public void endField(String field, int index) {
+        validate("endField("+field+", "+index+")");
+      }
+
+      @Override
+      public void addString(String value) {
+        validate("addString("+value+")");
+      }
+
+      @Override
+      public void addInt(int value) {
+        validate("addInt("+value+")");
+      }
+
+      @Override
+      public void addBoolean(boolean value) {
+        validate("addBoolean("+value+")");
+      }
+
+      @Override
+      public void addBinary(byte[] value) {
+        validate("addBinary("+new BigInteger(value).toString(16)+")");
+      }
+    });
+
+  }
 }
