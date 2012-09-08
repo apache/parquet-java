@@ -7,6 +7,10 @@ public interface ColumnReader {
 
   void consume();
 
+  /**
+   * must return 0 when isFullyConsumed() == true
+   * @return
+   */
   int getCurrentRepetitionLevel();
 
   int getCurrentDefinitionLevel();

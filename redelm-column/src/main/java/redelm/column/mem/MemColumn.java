@@ -111,6 +111,8 @@ public abstract class MemColumn implements ColumnReader, ColumnWriter {
   protected void checkRead() {
     if (consumed && !isFullyConsumed()) {
       read();
+    } else if (isFullyConsumed()) {
+      repetitionLevel = 0;
     }
   }
 

@@ -14,9 +14,9 @@ public class RecordConsumerWrapper extends RecordConsumer {
     }
 
     @Override
-    public void startField(String field) {
+    public void startField(String field, int index) {
       if (DEBUG) logOpen(field);
-      delegate.startField(field);
+      delegate.startField(field, index);
     }
 
     private void logOpen(String field) {
@@ -83,14 +83,26 @@ public class RecordConsumerWrapper extends RecordConsumer {
     }
 
     @Override
-    public void endField(String field) {
+    public void endField(String field, int index) {
       if (DEBUG) logClose(field);
-      delegate.endField(field);
+      delegate.endField(field, index);
     }
 
     private void logClose(String field) {
       indent();
       System.out.println("</"+field+">");
+    }
+
+    @Override
+    public void startMessage() {
+      if (DEBUG) log("<!-- start message -->");
+      delegate.startMessage();
+    }
+
+    @Override
+    public void endMessage() {
+      delegate.endMessage();
+      if (DEBUG) log("<!-- end message -->");
     }
 
 }

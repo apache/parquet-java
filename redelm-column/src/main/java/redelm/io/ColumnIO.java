@@ -19,6 +19,7 @@ abstract public class ColumnIO {
   private int repetitionLevel;
   private int definitionLevel;
   private String[] fieldPath;
+  private int[] indexFieldPath;
 
   ColumnIO(Type type, GroupColumnIO parent) {
     this.type = type;
@@ -27,6 +28,10 @@ abstract public class ColumnIO {
 
   String[] getFieldPath() {
     return fieldPath;
+  }
+
+  public int[] getIndexFieldPath() {
+    return indexFieldPath;
   }
 
   int getRepetitionLevel() {
@@ -45,8 +50,9 @@ abstract public class ColumnIO {
     this.definitionLevel = definitionLevel;
   }
 
-  void setFieldPath(String[] fieldPath) {
+  void setFieldPath(String[] fieldPath, int[] indexFieldPath) {
     this.fieldPath = fieldPath;
+    this.indexFieldPath = indexFieldPath;
   }
 
   abstract void writeValue(GroupValueSource parent, String field, int index, int r, int d);
@@ -73,10 +79,10 @@ abstract public class ColumnIO {
     return type;
   }
 
-  void setLevels(int r, int d, String[] fieldPath, List<ColumnIO> repetition, List<ColumnIO> path, ColumnsStore columns) {
+  void setLevels(int r, int d, String[] fieldPath, int[] indexFieldPath, List<ColumnIO> repetition, List<ColumnIO> path, ColumnsStore columns) {
     setRepetitionLevel(r);
     setDefinitionLevel(d);
-    setFieldPath(fieldPath);
+    setFieldPath(fieldPath, indexFieldPath);
   }
 
   abstract List<String[]> getColumnNames();

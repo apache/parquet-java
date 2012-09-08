@@ -57,80 +57,85 @@ public class SimpleGroup extends Group {
   }
 
   @Override
-  public Group addGroup(String field) {
-    if (DEBUG) logger.fine("add group "+field+" to "+schema.getName());
-    SimpleGroup g = new SimpleGroup(schema.getType(field).asGroupType());
-    data[schema.getFieldIndex(field)].add(g);
+  public Group addGroup(int fieldIndex) {
+    SimpleGroup g = new SimpleGroup(schema.getType(fieldIndex).asGroupType());
+    data[fieldIndex].add(g);
     return g;
   }
 
   @Override
-  public Group getGroup(String field, int index) {
-    return (Group)getValue(field, index);
+  public Group getGroup(int fieldIndex, int index) {
+    return (Group)getValue(fieldIndex, index);
   }
 
-  private Object getValue(String field, int index) {
+  private Object getValue(int fieldIndex, int index) {
+    List<Object> list;
     try {
-      return data[schema.getFieldIndex(field)].get(index);
+      list = data[fieldIndex];
     } catch (IndexOutOfBoundsException e) {
-      throw new RuntimeException("not found " + field + "("+schema.getFieldIndex(field)+") element number "+index+" in group:\n"+this);
+      throw new RuntimeException("not found " + fieldIndex + "(" + schema.getFieldName(fieldIndex) + ") in group:\n" + this);
+    }
+    try {
+      return list.get(index);
+    } catch (IndexOutOfBoundsException e) {
+      throw new RuntimeException("not found " + fieldIndex + "(" + schema.getFieldName(fieldIndex) + ") element number " + index + " in group:\n" + this);
     }
   }
 
-  private void add(String field, Primitive value) {
-    Type type = schema.getType(field);
-    List<Object> list = data[schema.getFieldIndex(field)];
+  private void add(int fieldIndex, Primitive value) {
+    Type type = schema.getType(fieldIndex);
+    List<Object> list = data[fieldIndex];
     if (type.getRepetition() != Type.Repetition.REPEATED
         && !list.isEmpty()) {
-      throw new IllegalStateException("field "+field+" can not have more than one value: " + list);
+      throw new IllegalStateException("field "+fieldIndex+" (" + type.getName() + ") can not have more than one value: " + list);
     }
     list.add(value);
   }
 
   @Override
-  public int getFieldRepetitionCount(String field) {
-    List<Object> list = data[schema.getFieldIndex(field)];
+  public int getFieldRepetitionCount(int fieldIndex) {
+    List<Object> list = data[fieldIndex];
     return list == null ? 0 : list.size();
   }
 
   @Override
-  public String getString(String field, int index) {
-    return ((StringValue)getValue(field, index)).getString();
+  public String getString(int fieldIndex, int index) {
+    return ((StringValue)getValue(fieldIndex, index)).getString();
   }
 
   @Override
-  public int getInt(String field, int index) {
-    return ((IntValue)getValue(field, index)).getInt();
+  public int getInt(int fieldIndex, int index) {
+    return ((IntValue)getValue(fieldIndex, index)).getInt();
   }
 
   @Override
-  public boolean getBool(String field, int index) {
-    return ((BoolValue)getValue(field, index)).getBool();
+  public boolean getBool(int fieldIndex, int index) {
+    return ((BoolValue)getValue(fieldIndex, index)).getBool();
   }
 
   @Override
-  public byte[] getBinary(String field, int index) {
-    return ((BinaryValue)getValue(field, index)).getBinary();
+  public byte[] getBinary(int fieldIndex, int index) {
+    return ((BinaryValue)getValue(fieldIndex, index)).getBinary();
   }
 
   @Override
-  public void add(String field, int value) {
-    add(field, new IntValue(value));
+  public void add(int fieldIndex, int value) {
+    add(fieldIndex, new IntValue(value));
   }
 
   @Override
-  public void add(String field, String value) {
-    add(field, new StringValue(value));
+  public void add(int fieldIndex, String value) {
+    add(fieldIndex, new StringValue(value));
   }
 
   @Override
-  public void add(String field, boolean value) {
-    add(field, new BoolValue(value));
+  public void add(int fieldIndex, boolean value) {
+    add(fieldIndex, new BoolValue(value));
   }
 
   @Override
-  public void add(String field, byte[] value) {
-    add(field, new BinaryValue(value));
+  public void add(int fieldIndex, byte[] value) {
+    add(fieldIndex, new BinaryValue(value));
   }
 
   @Override

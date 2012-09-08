@@ -2,7 +2,6 @@ package redelm.schema;
 
 import redelm.column.ColumnReader;
 import redelm.column.ColumnWriter;
-import redelm.data.Group;
 import redelm.data.GroupValueSource;
 import redelm.io.RecordConsumer;
 
@@ -13,12 +12,6 @@ public class PrimitiveType extends Type {
       public void writeValueToColumn(GroupValueSource parent, String field,
           int index, int r, int d, ColumnWriter columnWriter) {
         columnWriter.write(parent.getString(field, index), r, d);
-      }
-
-      @Override
-      public void addValueToGroup(Group group, String field,
-          ColumnReader value) {
-        group.add(field, value.getString());
       }
 
       @Override
@@ -40,12 +33,6 @@ public class PrimitiveType extends Type {
       }
 
       @Override
-      public void addValueToGroup(Group group, String field,
-          ColumnReader value) {
-        group.add(field, value.getInt());
-      }
-
-      @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getInt());
       }
@@ -61,12 +48,6 @@ public class PrimitiveType extends Type {
       public void writeValueToColumn(GroupValueSource parent, String field,
           int index, int r, int d, ColumnWriter columnWriter) {
         columnWriter.write(parent.getBool(field, index), r, d);
-      }
-
-      @Override
-      public void addValueToGroup(Group group, String field,
-          ColumnReader value) {
-        group.add(field, value.getBool());
       }
 
       @Override
@@ -88,12 +69,6 @@ public class PrimitiveType extends Type {
       }
 
       @Override
-      public void addValueToGroup(Group group, String field,
-          ColumnReader value) {
-        group.add(field, value.getBinary());
-      }
-
-      @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getBinary());
       }
@@ -107,8 +82,6 @@ public class PrimitiveType extends Type {
 
 
     abstract public void writeValueToColumn(GroupValueSource parent, String field, int index, int r, int d, ColumnWriter columnWriter);
-
-    abstract public void addValueToGroup(Group group, String field, ColumnReader value);
 
     abstract public String toString(ColumnReader columnReader);
 

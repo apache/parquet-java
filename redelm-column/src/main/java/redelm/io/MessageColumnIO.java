@@ -33,7 +33,7 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   void setLevels(ColumnsStore columns) {
-    setLevels(0, 0, new String[0], Arrays.<ColumnIO>asList(this), Arrays.<ColumnIO>asList(this), columns);
+    setLevels(0, 0, new String[0], new int[0], Arrays.<ColumnIO>asList(this), Arrays.<ColumnIO>asList(this), columns);
   }
 
   void setLeaves(List<PrimitiveColumnIO> leaves) {

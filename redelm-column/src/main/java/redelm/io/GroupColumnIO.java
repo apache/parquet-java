@@ -30,11 +30,13 @@ public class GroupColumnIO extends ColumnIO {
   }
 
   @Override
-  void setLevels(int r, int d, String[] fieldPath, List<ColumnIO> repetition, List<ColumnIO> path, ColumnsStore columns) {
-    super.setLevels(r, d, fieldPath, repetition, path, columns);
+  void setLevels(int r, int d, String[] fieldPath, int[] indexFieldPath, List<ColumnIO> repetition, List<ColumnIO> path, ColumnsStore columns) {
+    super.setLevels(r, d, fieldPath, indexFieldPath, repetition, path, columns);
     for (ColumnIO child : this.children) {
       String[] newFieldPath = Arrays.copyOf(fieldPath, fieldPath.length + 1);
+      int[] newIndexFieldPath = Arrays.copyOf(indexFieldPath, indexFieldPath.length + 1);
       newFieldPath[fieldPath.length] =  child.getType().getName();
+      newIndexFieldPath[indexFieldPath.length] =  this.getType().asGroupType().getFieldIndex(child.getType().getName());
       List<ColumnIO> newRepetition;
       if (child.getType().getRepetition() == REPEATED) {
         newRepetition = new ArrayList<ColumnIO>(repetition);
@@ -50,6 +52,7 @@ public class GroupColumnIO extends ColumnIO {
           // the type definition level increases whenever a field can be missing (not required)
           child.getType().getRepetition() != REQUIRED ? d + 1 : d,
           newFieldPath,
+          newIndexFieldPath,
           newRepetition,
           newPath,
           columns
@@ -100,6 +103,10 @@ public class GroupColumnIO extends ColumnIO {
 
   public ColumnIO getChild(String name) {
     return childrenByName.get(name);
+  }
+
+  public ColumnIO getChild(int fieldIndex) {
+    return children.get(fieldIndex);
   }
 
 }

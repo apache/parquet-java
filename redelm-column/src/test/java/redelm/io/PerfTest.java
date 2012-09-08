@@ -5,6 +5,7 @@ import java.util.Arrays;
 import redelm.column.mem.MemColumnsStore;
 import redelm.data.Group;
 import redelm.data.simple.SimpleGroupFactory;
+import redelm.schema.MessageType;
 
 
 public class PerfTest {
@@ -12,7 +13,7 @@ public class PerfTest {
   public static void main(String[] args) {
     MemColumnsStore columns = new MemColumnsStore(50*1024*1024);
     {
-      MessageColumnIO columnIO = new ColumnIOFactory(new SimpleGroupFactory(TestColumnIO.schema)).getColumnIO(TestColumnIO.schema, columns);
+      MessageColumnIO columnIO = newColumnFactory(columns, TestColumnIO.schema);
 
       {
         RecordWriter recordWriter = columnIO.getRecordWriter();
@@ -39,7 +40,7 @@ public class PerfTest {
       }
     }
     {
-      MessageColumnIO columnIO = new ColumnIOFactory(new SimpleGroupFactory(TestColumnIO.schema2)).getColumnIO(TestColumnIO.schema2, columns);
+      MessageColumnIO columnIO = newColumnFactory(columns, TestColumnIO.schema2);
 
       System.out.println("read projected");
       {
@@ -55,8 +56,30 @@ public class PerfTest {
         read(recordReader, 1000000);
       }
     }
+    {
+      MessageColumnIO columnIO = newColumnFactory(columns, TestColumnIO.schema3);
+
+      System.out.println("read projected no Strings");
+      {
+        RecordReader recordReader = columnIO.getRecordReader();
+
+        recordReader.read();
+        recordReader.read();
+
+        read(recordReader, 10000);
+        read(recordReader, 10000);
+        read(recordReader, 10000);
+        read(recordReader, 100000);
+        read(recordReader, 1000000);
+      }
+    }
     System.out.println(columns.memSize()+" bytes used total");
     System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
+  }
+
+  private static MessageColumnIO newColumnFactory(MemColumnsStore columns,
+      MessageType schema) {
+    return new ColumnIOFactory(new SimpleGroupFactory(schema)).getColumnIO(schema, columns);
   }
 
   private static void read(RecordReader recordReader, int count) {

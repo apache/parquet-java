@@ -15,6 +15,7 @@ import java.util.logging.SimpleFormatter;
 import java.util.logging.StreamHandler;
 
 import junit.framework.Assert;
+
 import redelm.column.ColumnsStore;
 import redelm.column.mem.MemColumnsStore;
 import redelm.data.Group;
@@ -58,6 +59,13 @@ public class TestColumnIO {
           new GroupType(REPEATED, "Name",
               new GroupType(REPEATED, "Language",
                   new PrimitiveType(OPTIONAL, STRING, "Country"))));
+
+  public static final MessageType schema3 =
+      new MessageType("Document",
+          new PrimitiveType(REQUIRED, INT64, "DocId"),
+          new GroupType(OPTIONAL, "Links",
+              new PrimitiveType(REPEATED, INT64, "Backward")
+              ));
 
   public static final SimpleGroup r1 = new SimpleGroup(schema);
   public static final SimpleGroup r2 = new SimpleGroup(schema);
@@ -209,10 +217,9 @@ public class TestColumnIO {
         System.out.println(record);
       }
 
-      if (!records.get(0).toString().equals(r1.toString())
-          ||!records.get(1).toString().equals(r2.toString())) {
-        throw new IllegalStateException("deserialization does not display the same result");
-      }
+      Assert.assertEquals("deserialization does not display the same result", records.get(0).toString(), r1.toString());
+      Assert.assertEquals("deserialization does not display the same result", records.get(1).toString(), r2.toString());
+
     }
     {
       MessageColumnIO columnIO2 = new ColumnIOFactory(new SimpleGroupFactory(schema2)).getColumnIO(schema2, columns);
@@ -229,10 +236,9 @@ public class TestColumnIO {
         System.out.println("r" + (++i));
         System.out.println(record);
       }
-      if (!records.get(0).toString().equals(pr1.toString())
-          ||!records.get(1).toString().equals(pr2.toString())) {
-        throw new IllegalStateException("deserialization does not display the expected result");
-      }
+      Assert.assertEquals("deserialization does not display the expected result", records.get(0).toString(), pr1.toString());
+      Assert.assertEquals("deserialization does not display the expected result", records.get(1).toString(), pr2.toString());
+
     }
   }
 
@@ -244,7 +250,7 @@ public class TestColumnIO {
       System.out.println(Arrays.toString(primitiveColumnIO.getFieldPath()));
       for (int r = 0; r < expectedFSA[i].length; r++) {
         int next = expectedFSA[i][r];
-        System.out.println(" "+r+" -> "+ (next==leaves.size() ? "end" : Arrays.toString(leaves.get(next).getFieldPath())));
+        System.out.println(" "+r+" -> "+ (next==leaves.size() ? "end" : Arrays.toString(leaves.get(next).getFieldPath()))+": "+recordReader.getNextLevel(i, r));
         Assert.assertEquals(Arrays.toString(primitiveColumnIO.getFieldPath())+": "+r+" -> ", next, recordReader.getNextReader(i, r));
       }
     }
