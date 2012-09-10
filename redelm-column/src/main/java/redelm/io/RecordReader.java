@@ -11,7 +11,6 @@ import redelm.Log;
 import redelm.column.ColumnReader;
 import redelm.data.Group;
 import redelm.data.GroupFactory;
-import redelm.schema.PrimitiveType.Primitive;
 
 public class RecordReader {
 
@@ -129,7 +128,7 @@ public class RecordReader {
 
     @Override
     public void endField(String field, int index) {
-      if (DEBUG) if (!fields.peek().equals(index)) throw new IllegalStateException("opening "+fields.peek()+" but closing "+index);
+      if (DEBUG) if (!fields.peek().equals(index)) throw new IllegalStateException("opening "+fields.peek()+" but closing "+index+" ("+field+")");
       fields.pop();
     }
 
@@ -140,8 +139,8 @@ public class RecordReader {
 
     @Override
     public void endMessage() {
+      if (DEBUG) if (groups.size() != 1) throw new IllegalStateException("end of message in the middle of a record "+fields);
       this.result.add(groups.pop());
-      if (DEBUG) if (!groups.isEmpty()) throw new IllegalStateException("end of message in the middle of a record");
     }
 
   }
@@ -158,81 +157,70 @@ public class RecordReader {
 
   public void read(RecordConsumer recordConsumer) {
     GroupColumnIO[] currentNodePath = new GroupColumnIO[16];
-    int currentLevel = 0;
     currentNodePath[0] = root;
     int currentCol = 0;
+    int lowLevel = 0;
+    int currentLevel = 0;
+    PrimitiveColumnIO primitiveColumnIO = null;
     recordConsumer.startMessage();
-    boolean moved = true;
     do {
+      // closing the levels that need to be closed
+      // except the first time when we start a new record fresh
+      if (primitiveColumnIO != null) {
+        if (DEBUG) log("<=== "+currentLevel+" to "+lowLevel);
+        for (; currentLevel > lowLevel; --currentLevel) {
+          String field = primitiveColumnIO.getFieldPath()[currentLevel-1];
+          int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel-1];
+          recordConsumer.endGroup();
+          recordConsumer.endField(field, fieldIndex);
+        }
+        if (DEBUG) log("<=== done");
+      }
       ColumnReader columnReader = columns[currentCol];
-      PrimitiveColumnIO primitiveColumnIO = leaves[currentCol];
+      primitiveColumnIO = leaves[currentCol];
       int d = columnReader.getCurrentDefinitionLevel();
       if (DEBUG) log(">=== "+currentLevel+" to "+(primitiveColumnIO.getFieldPath().length - 1));
       // creating needed nested groups until the current field (opening tags)
       for (; currentLevel < (primitiveColumnIO.getFieldPath().length - 1)
           && d > currentNodePath[currentLevel].getDefinitionLevel(); ++currentLevel) {
-        startGroup(recordConsumer, currentNodePath, currentLevel, primitiveColumnIO);
-        moved = true;
+        String field1 = primitiveColumnIO.getFieldPath()[currentLevel];
+        int fieldIndex1 = primitiveColumnIO.getIndexFieldPath()[currentLevel];
+        currentNodePath[currentLevel + 1] = (GroupColumnIO)currentNodePath[currentLevel].getChild(fieldIndex1);
+        if (DEBUG) log(field1 + "(" + currentLevel + ") = new Group()");
+        recordConsumer.startField(field1, fieldIndex1);
+        recordConsumer.startGroup();
       }
       if (DEBUG) log(">=== done");
+      String field = primitiveColumnIO.getFieldPath()[currentLevel];
+      int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel];
       // set the current value
-      if (d >= primitiveColumnIO.getDefinitionLevel()) {
+      if (d == primitiveColumnIO.getDefinitionLevel()) {
         // not null
-        String field = primitiveColumnIO.getFieldPath()[currentLevel];
-        int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel];
+        recordConsumer.startField(field, fieldIndex);
         if (DEBUG) log(field+"(" + currentLevel + ") = "+primitiveColumnIO.getType().asPrimitiveType().getPrimitive().toString(columnReader));
-        addPrimitive(recordConsumer, columnReader, primitiveColumnIO.getType().asPrimitiveType().getPrimitive(), field, fieldIndex, moved);
+        primitiveColumnIO.getType().asPrimitiveType().getPrimitive().addValueToRecordConsumer(recordConsumer, columnReader);
       }
       columnReader.consume();
-      moved = false;
       int nextR = columnReader.getCurrentRepetitionLevel();
       int nextCol = nextReader[currentCol][nextR];
-
       // level to go to close current groups
       int next = nextLevel[currentCol][nextR];
-      if (DEBUG) log("<=== "+currentLevel+" to "+next);
-      for (; currentLevel > next; currentLevel--) {
-        String field = primitiveColumnIO.getFieldPath()[currentLevel-1];
-        int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel-1];
-        endGroup(recordConsumer, field, fieldIndex, currentLevel - 1 == next);
-        moved = true;
+      if (d == primitiveColumnIO.getDefinitionLevel()) {
+        recordConsumer.endField(field, fieldIndex);
       }
-      if (DEBUG) log("<=== done");
+      lowLevel = next;
       currentCol = nextCol;
     } while (currentCol < leaves.length);
+    if (DEBUG) log("<=== "+currentLevel+" to "+lowLevel);
+    for (; currentLevel > 0; --currentLevel) {
+      String field = primitiveColumnIO.getFieldPath()[currentLevel-1];
+      int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel-1];
+      recordConsumer.endGroup();
+      recordConsumer.endField(field, fieldIndex);
+    }
+    if (DEBUG) log("<=== done");
+
     recordConsumer.endMessage();
-  }
-
-  private void addPrimitive(RecordConsumer recordConsumer, ColumnReader columnReader, Primitive primitive, String field, int index, boolean moved) {
-//    if (moved) {
-      recordConsumer.startField(field, index);
-//    } else {
-//      System.out.println("not repeating "+field);
-//    }
-    primitive.addValueToRecordConsumer(recordConsumer, columnReader);
-//    if (moved) {
-      recordConsumer.endField(field, index);
-//    }
-  }
-
-  private void endGroup(RecordConsumer recordConsumer, String field, int index, boolean isLast) {
-    recordConsumer.endGroup();
-//    if (!isLast) {
-      recordConsumer.endField(field, index);
-//    } else {
-//      System.out.println("IS LAST ++++++++++");
-//    }
-  }
-
-  private void startGroup(RecordConsumer recordConsumer,
-      GroupColumnIO[] currentNodePath, int currentLevel,
-      PrimitiveColumnIO primitiveColumnIO) {
-    String field = primitiveColumnIO.getFieldPath()[currentLevel];
-    int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel];
-    currentNodePath[currentLevel + 1] = (GroupColumnIO)currentNodePath[currentLevel].getChild(fieldIndex);
-    if (DEBUG) log(field + "(" + currentLevel + ") = new Group()");
-    recordConsumer.startField(field, fieldIndex);
-    recordConsumer.startGroup();
   }
 
   private static void log(String string) {
