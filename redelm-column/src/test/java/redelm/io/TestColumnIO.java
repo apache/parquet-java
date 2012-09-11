@@ -18,14 +18,12 @@ import java.util.logging.SimpleFormatter;
 import java.util.logging.StreamHandler;
 
 import junit.framework.Assert;
-
 import redelm.Log;
 import redelm.column.ColumnsStore;
 import redelm.column.mem.MemColumnsStore;
 import redelm.data.Group;
 import redelm.data.simple.SimpleGroup;
 import redelm.data.simple.SimpleGroupFactory;
-import redelm.data.simple.SimpleGroupRecordConsumer;
 import redelm.data.simple.SimpleGroupRecordConsumer;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
@@ -204,7 +202,7 @@ public class TestColumnIO {
 
     ColumnsStore columns = new MemColumnsStore(1024);
     {
-      MessageColumnIO columnIO = new ColumnIOFactory(new SimpleGroupFactory(schema)).getColumnIO(schema, columns);
+      MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema, columns);
       System.out.println(columnIO);
       columnIO.getRecordWriter().write(Arrays.<Group>asList(r1, r2).iterator());
       System.out.println(columns);
@@ -229,7 +227,7 @@ public class TestColumnIO {
 
     }
     {
-      MessageColumnIO columnIO2 = new ColumnIOFactory(new SimpleGroupFactory(schema2)).getColumnIO(schema2, columns);
+      MessageColumnIO columnIO2 = new ColumnIOFactory().getColumnIO(schema2, columns);
       List<Group> records = new ArrayList<Group>();
       RecordReader recordReader = columnIO2.getRecordReader();
 
@@ -267,7 +265,7 @@ public class TestColumnIO {
   @Test
   public void testPushParser() {
     ColumnsStore columns = new MemColumnsStore(1024);
-    MessageColumnIO columnIO = new ColumnIOFactory(new SimpleGroupFactory(schema)).getColumnIO(schema, columns);
+    MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema, columns);
     columnIO.getRecordWriter().write(Arrays.<Group>asList(r1).iterator());
     RecordReader recordReader = columnIO.getRecordReader();
 

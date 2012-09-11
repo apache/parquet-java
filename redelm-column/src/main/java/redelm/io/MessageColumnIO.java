@@ -12,12 +12,10 @@ import redelm.schema.MessageType;
 public class MessageColumnIO extends GroupColumnIO {
 //  private static final Logger logger = Logger.getLogger(MessageColumnIO.class.getName());
 
-  private final GroupFactory groupFactory;
   private List<PrimitiveColumnIO> leaves;
 
-  MessageColumnIO(MessageType messageType, GroupFactory groupFactory) {
+  MessageColumnIO(MessageType messageType) {
     super(messageType, null);
-    this.groupFactory = groupFactory;
   }
 
   public List<String[]> getColumnNames() {
@@ -25,7 +23,7 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   public RecordReader getRecordReader() {
-    return new RecordReader(this, leaves, groupFactory);
+    return new RecordReader(this, leaves);
   }
 
   public RecordWriter getRecordWriter() {

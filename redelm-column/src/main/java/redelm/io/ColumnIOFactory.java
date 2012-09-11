@@ -14,8 +14,6 @@ import redelm.schema.TypeVisitor;
 
 public class ColumnIOFactory {
 
-  private final GroupFactory groupFactory;
-
   public class ColumnIOCreatorVisitor implements TypeVisitor {
 
     private MessageColumnIO columnIO;
@@ -50,7 +48,7 @@ public class ColumnIOFactory {
 
     @Override
     public void visit(MessageType messageType) {
-      columnIO = new MessageColumnIO(messageType, groupFactory);
+      columnIO = new MessageColumnIO(messageType);
       visitChildren(columnIO, messageType);
       columnIO.setLevels(columnStore);
       columnIO.setLeaves(leaves);
@@ -69,9 +67,8 @@ public class ColumnIOFactory {
 
   }
 
-  public ColumnIOFactory(GroupFactory groupFactory) {
+  public ColumnIOFactory() {
     super();
-    this.groupFactory = groupFactory;
   }
 
   public MessageColumnIO getColumnIO(MessageType schema, ColumnsStore columnStore) {

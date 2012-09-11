@@ -1,14 +1,11 @@
 package redelm.io;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import redelm.Log;
 import redelm.column.ColumnReader;
-import redelm.data.Group;
 import redelm.data.GroupFactory;
-import redelm.data.simple.SimpleGroupRecordConsumer;
 import redelm.schema.PrimitiveType.Primitive;
 
 public class RecordReader {
@@ -18,13 +15,11 @@ public class RecordReader {
   private final PrimitiveColumnIO[] leaves;
   private final ColumnReader[] columns;
   private final int[][] nextReader;
-  private final GroupFactory groupFactory;
   private final MessageColumnIO root;
   private final int[][] nextLevel;
 
-  public RecordReader(MessageColumnIO root, List<PrimitiveColumnIO> leaves, GroupFactory groupFactory) {
+  public RecordReader(MessageColumnIO root, List<PrimitiveColumnIO> leaves) {
     this.root = root;
-    this.groupFactory = groupFactory;
     this.leaves = leaves.toArray(new PrimitiveColumnIO[leaves.size()]);
     this.columns = new ColumnReader[leaves.size()];
     this.nextReader = new int[leaves.size()][];

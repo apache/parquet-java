@@ -1,6 +1,5 @@
 package redelm.io;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
@@ -86,7 +85,7 @@ public class PerfTest {
 
   private static MessageColumnIO newColumnFactory(MemColumnsStore columns,
       MessageType schema) {
-    return new ColumnIOFactory(new SimpleGroupFactory(schema)).getColumnIO(schema, columns);
+    return new ColumnIOFactory().getColumnIO(schema, columns);
   }
 
   private static void read(RecordReader recordReader, int count, MessageType schema) {
