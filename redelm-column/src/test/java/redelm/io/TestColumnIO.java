@@ -19,11 +19,14 @@ import java.util.logging.StreamHandler;
 
 import junit.framework.Assert;
 
+import redelm.Log;
 import redelm.column.ColumnsStore;
 import redelm.column.mem.MemColumnsStore;
 import redelm.data.Group;
 import redelm.data.simple.SimpleGroup;
 import redelm.data.simple.SimpleGroupFactory;
+import redelm.data.simple.SimpleGroupRecordConsumer;
+import redelm.data.simple.SimpleGroupRecordConsumer;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType;
@@ -67,7 +70,8 @@ public class TestColumnIO {
       new MessageType("Document",
           new PrimitiveType(REQUIRED, INT64, "DocId"),
           new GroupType(OPTIONAL, "Links",
-              new PrimitiveType(REPEATED, INT64, "Backward")
+              new PrimitiveType(REPEATED, INT64, "Backward"),
+              new PrimitiveType(REPEATED, INT64, "Forward")
               ));
 
   public static final SimpleGroup r1 = new SimpleGroup(schema);
@@ -211,8 +215,8 @@ public class TestColumnIO {
 
       validateFSA(expectedFSA, columnIO, recordReader);
 
-      records.add(recordReader.read());
-      records.add(recordReader.read());
+      read(recordReader, schema, records);
+      read(recordReader, schema, records);
 
       int i = 0;
       for (Group record : records) {
@@ -231,8 +235,8 @@ public class TestColumnIO {
 
       validateFSA(expectedFSA2, columnIO2, recordReader);
 
-      records.add(recordReader.read());
-      records.add(recordReader.read());
+      read(recordReader, schema2, records);
+      read(recordReader, schema2, records);
 
       int i = 0;
       for (Group record : records) {
@@ -264,7 +268,7 @@ public class TestColumnIO {
   public void testPushParser() {
     ColumnsStore columns = new MemColumnsStore(1024);
     MessageColumnIO columnIO = new ColumnIOFactory(new SimpleGroupFactory(schema)).getColumnIO(schema, columns);
-    columnIO.getRecordWriter().write(Arrays.<Group>asList(r1, r2).iterator());
+    columnIO.getRecordWriter().write(Arrays.<Group>asList(r1).iterator());
     RecordReader recordReader = columnIO.getRecordReader();
 
     String[] expected = {
@@ -276,11 +280,7 @@ public class TestColumnIO {
       "startGroup()",
        "startField(Forward, 1)",
         "addInt(20)",
-       "endField(Forward, 1)",
-       "startField(Forward, 1)",
         "addInt(40)",
-       "endField(Forward, 1)",
-       "startField(Forward, 1)",
         "addInt(60)",
        "endField(Forward, 1)",
       "endGroup()",
@@ -296,8 +296,6 @@ public class TestColumnIO {
           "addString(us)",
          "endField(Country, 1)",
         "endGroup()",
-       "endField(Language, 0)",
-       "startField(Language, 0)",
         "startGroup()",
          "startField(Code, 0)",
           "addString(en)",
@@ -308,29 +306,25 @@ public class TestColumnIO {
         "addString(http://A)",
        "endField(Url, 1)",
       "endGroup()",
-     "endField(Name, 2)",
-     "startField(Name, 2)",
       "startGroup()",
        "startField(Url, 1)",
         "addString(http://B)",
        "endField(Url, 1)",
       "endGroup()",
-     "endField(Name, 2)",
-     "startField(Name, 2)",
       "startGroup()",
        "startField(Language, 0)",
-      "startGroup()",
-       "startField(Code, 0)",
-        "addString(en-gb)",
-       "endField(Code, 0)",
-       "startField(Country, 1)",
-        "addString(gb)",
-       "endField(Country, 1)",
+        "startGroup()",
+         "startField(Code, 0)",
+          "addString(en-gb)",
+         "endField(Code, 0)",
+         "startField(Country, 1)",
+          "addString(gb)",
+         "endField(Country, 1)",
+        "endGroup()",
+       "endField(Language, 0)",
       "endGroup()",
-     "endField(Language, 0)",
-    "endGroup()",
-  "endField(Name, 2)",
- "endMessage()"
+     "endField(Name, 2)",
+    "endMessage()"
     };
     final Deque<String> expectations = new ArrayDeque<String>();
     for (String string : expected) {
@@ -341,8 +335,6 @@ public class TestColumnIO {
 
       int count = 0;
       private void validate(String got) {
-
-        System.out.println(got);
         Assert.assertEquals("event #"+count, expectations.pop(), got);
         ++count;
       }
@@ -398,5 +390,13 @@ public class TestColumnIO {
       }
     });
 
+  }
+
+  public void read(RecordReader recordReader, MessageType schema, List<Group> groups) {
+    RecordConsumer recordConsumer = new SimpleGroupRecordConsumer(new SimpleGroupFactory(schema), groups);
+    if (Log.DEBUG) {
+      recordConsumer = new RecordConsumerWrapper(recordConsumer);
+    }
+    recordReader.read(recordConsumer);
   }
 }
