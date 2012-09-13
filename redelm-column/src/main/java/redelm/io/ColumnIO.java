@@ -6,7 +6,6 @@ import java.util.List;
 
 import redelm.Log;
 import redelm.column.ColumnsStore;
-import redelm.data.GroupValueSource;
 import redelm.schema.Type;
 import redelm.schema.Type.Repetition;
 
@@ -55,25 +54,7 @@ abstract public class ColumnIO {
     this.indexFieldPath = indexFieldPath;
   }
 
-  abstract void writeValue(GroupValueSource parent, String field, int index, int r, int d);
-
   abstract void writeNull(int r, int d);
-
-  void writeValuesForField(GroupValueSource parent, String field, int r, int d) {
-    int fieldRepetitionCount = parent.getFieldRepetitionCount(field);
-    if (fieldRepetitionCount > 0) {
-      // first value: keeps current repetitionLevel r
-      writeValue(parent, field, 0, r, this.getDefinitionLevel());
-      for (int i = 1; i < fieldRepetitionCount; i++) {
-        // other values are repeated: set repetitionLevel for this level
-        writeValue(parent, field, i, this.getRepetitionLevel(), this.getDefinitionLevel());
-      }
-    } else {
-      // first value: keeps current repetitionLevel r
-      // missing value: we pass the last known definition level d
-      writeNull(r, d);
-    }
-  }
 
   Type getType() {
     return type;

@@ -8,7 +8,6 @@ import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnReader;
 import redelm.column.ColumnWriter;
 import redelm.column.ColumnsStore;
-import redelm.data.GroupValueSource;
 import redelm.schema.Type;
 
 
@@ -22,11 +21,6 @@ public class PrimitiveColumnIO extends ColumnIO {
 
   PrimitiveColumnIO(Type type, GroupColumnIO parent) {
     super(type, parent);
-  }
-
-  @Override
-  void writeValue(GroupValueSource parent, String field, int index, int r, int d) {
-    columnDescriptor.getType().writeValueToColumn(parent, field, index, r, d, columnWriter);
   }
 
   @Override
@@ -50,6 +44,10 @@ public class PrimitiveColumnIO extends ColumnIO {
 
   ColumnReader getColumnReader() {
     return columns.getColumnReader(columnDescriptor);
+  }
+
+  public ColumnWriter getColumnWriter() {
+    return columnWriter;
   }
 
   public ColumnIO[] getPath() {

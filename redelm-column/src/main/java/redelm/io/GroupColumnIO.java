@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import redelm.column.ColumnsStore;
-import redelm.data.GroupValueSource;
 import redelm.schema.GroupType;
 
 public class GroupColumnIO extends ColumnIO {
@@ -62,22 +61,6 @@ public class GroupColumnIO extends ColumnIO {
   }
 
   @Override
-  void writeValue(
-      GroupValueSource parent, String field, int index,
-      int r, int d) {
-    if (DEBUG) logger.fine("writeValue "+parent.getType().getName()+"."+field+"["+index+"] r:"+r+", d:"+d);
-    writeGroup(parent.getGroup(field, index), r, d);
-  }
-
-  void writeGroup(GroupValueSource group, int r, int d) {
-    for (ColumnIO child : this.children) {
-      child.writeValuesForField(
-          group, child.getType().getName(),
-          r, d);
-    }
-  }
-
-  @Override
   void writeNull(int r, int d) {
     for (ColumnIO child : this.children) {
       child.writeNull(r, d);
@@ -107,6 +90,11 @@ public class GroupColumnIO extends ColumnIO {
 
   public ColumnIO getChild(int fieldIndex) {
     return children.get(fieldIndex);
+  }
+
+  public int getChildrenCount() {
+    return children.size();
+
   }
 
 }

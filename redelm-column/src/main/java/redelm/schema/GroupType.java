@@ -68,7 +68,7 @@ public class GroupType extends Type {
   String membersDisplayString(String indent) {
     String string = "";
     for (Type field : fields) {
-      string += field.toString(indent+"  ")+";\n";
+      string += field.toString(indent)+";\n";
     }
     return string;
   }

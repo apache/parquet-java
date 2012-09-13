@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import redelm.column.ColumnsStore;
-import redelm.data.GroupFactory;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType;

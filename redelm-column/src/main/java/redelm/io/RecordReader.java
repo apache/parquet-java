@@ -5,7 +5,6 @@ import java.util.List;
 
 import redelm.Log;
 import redelm.column.ColumnReader;
-import redelm.data.GroupFactory;
 import redelm.schema.PrimitiveType.Primitive;
 
 public class RecordReader {

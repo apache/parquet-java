@@ -1,10 +1,138 @@
 package redelm;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.text.MessageFormat;
+import java.util.Date;
+import java.util.logging.Formatter;
+import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
+import java.util.logging.StreamHandler;
 
+/**
+ * Simple wrapper around java.util.logging
+ * Adds compile time log level.
+ * The compiler removes completely if statements that reference to a false constant
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class Log {
 
+  /**
+   * this is the compile time log level
+   */
   private static final Level LEVEL = Level.OFF;
-  public static final boolean DEBUG = false; //(LEVEL.intValue() >= Level.FINER.intValue());
+
+  public static final boolean DEBUG = (LEVEL.intValue() <= Level.FINE.intValue());
+  public static final boolean INFO = (LEVEL.intValue() <= Level.INFO.intValue());
+  public static final boolean WARN = (LEVEL.intValue() <= Level.WARNING.intValue());
+  public static final boolean ERROR = (LEVEL.intValue() <= Level.SEVERE.intValue());
+
+  static {
+    // add a default handler in case there is none
+    Logger logger = Logger.getLogger(Log.class.getPackage().getName());
+    Handler[] handlers = logger.getHandlers();
+    if (handlers == null || handlers.length == 0) {
+      StreamHandler handler = new StreamHandler(System.out, new Formatter() {
+        Date dat = new Date();
+        private final static String format = "{0,date} {0,time}";
+        private MessageFormat formatter = new MessageFormat(format);
+
+        private Object args[] = new Object[1];
+
+        /**
+         * Format the given LogRecord.
+         * @param record the log record to be formatted.
+         * @return a formatted log record
+         */
+        public synchronized String format(LogRecord record) {
+          StringBuffer sb = new StringBuffer();
+          // Minimize memory allocations here.
+          dat.setTime(record.getMillis());
+          args[0] = dat;
+          formatter.format(args, sb, null);
+          sb.append(" ");
+          sb.append(record.getLevel().getLocalizedName());
+          sb.append(": ");
+          if (record.getSourceClassName() != null) {
+            sb.append(record.getSourceClassName());
+          } else {
+            sb.append(record.getLoggerName());
+          }
+          if (record.getSourceMethodName() != null) {
+            sb.append(".");
+            sb.append(record.getSourceMethodName());
+            sb.append("()");
+          }
+          sb.append(": ");
+          sb.append(formatMessage(record));
+          sb.append("\n");
+          if (record.getThrown() != null) {
+            try {
+              StringWriter sw = new StringWriter();
+              PrintWriter pw = new PrintWriter(sw);
+              record.getThrown().printStackTrace(pw);
+              pw.close();
+              sb.append(sw.toString());
+            } catch (Exception ex) {
+            }
+          }
+          return sb.toString();
+        }
+      });
+      handler.setLevel(LEVEL);
+      logger.addHandler(handler);
+    }
+    logger.setLevel(LEVEL);
+  }
+
+  public static Log getLog(Class<?> c) {
+    return new Log(c);
+  }
+
+  private Logger logger;
+
+  public Log(Class<?> c) {
+    this.logger = Logger.getLogger(c.getName());
+  }
+
+  public void debug(Object m) {
+    if (m instanceof Throwable) {
+      logger.log(Level.FINE, "", (Throwable)m);
+    } else {
+      logger.fine(String.valueOf(m));
+    }
+  }
+
+  public void debug(Object m, Throwable t) {
+    logger.log(Level.FINE, String.valueOf(m), t);
+  }
+
+  public void info(Object m) {
+    if (m instanceof Throwable) {
+      logger.log(Level.INFO, "", (Throwable)m);
+    } else {
+      logger.info(String.valueOf(m));
+    }
+  }
+
+  public void info(Object m, Throwable t) {
+    logger.log(Level.INFO, String.valueOf(m), t);
+  }
+
+  public void warn(Object m) {
+    if (m instanceof Throwable) {
+      logger.log(Level.WARNING, "", (Throwable)m);
+    } else {
+      logger.warning(String.valueOf(m));
+    }
+  }
+
+  public void warn(Object m, Throwable t) {
+    logger.log(Level.WARNING, String.valueOf(m), t);
+  }
 
 }

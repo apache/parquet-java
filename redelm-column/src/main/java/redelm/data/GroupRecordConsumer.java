@@ -1,22 +1,20 @@
-package redelm.data.simple;
+package redelm.data;
 
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
 
 import redelm.Log;
-import redelm.data.Group;
-import redelm.data.GroupFactory;
 import redelm.io.RecordConsumer;
 
-public class SimpleGroupRecordConsumer extends RecordConsumer {
+public class GroupRecordConsumer extends RecordConsumer {
 
   private final Deque<Group> groups = new ArrayDeque<Group>();
   private final Deque<Integer> fields = new ArrayDeque<Integer>();
   private final GroupFactory groupFactory;
   private final Collection<Group> result;
 
-  public SimpleGroupRecordConsumer(GroupFactory groupFactory, Collection<Group> result) {
+  public GroupRecordConsumer(GroupFactory groupFactory, Collection<Group> result) {
     this.groupFactory = groupFactory;
     this.result = result;
   }

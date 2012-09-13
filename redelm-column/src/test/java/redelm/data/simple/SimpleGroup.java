@@ -2,17 +2,12 @@ package redelm.data.simple;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
 
-import redelm.Log;
 import redelm.data.Group;
 import redelm.schema.GroupType;
 import redelm.schema.Type;
 
 public class SimpleGroup extends Group {
-  private static final Logger logger = Logger.getLogger(SimpleGroup.class.getName());
-
-  private static final boolean DEBUG = Log.DEBUG;
 
   private final GroupType schema;
   private final List<Object>[] data;
