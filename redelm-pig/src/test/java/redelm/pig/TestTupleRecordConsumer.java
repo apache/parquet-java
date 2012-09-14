@@ -1,10 +1,5 @@
 package redelm.pig;
 
-import redelm.column.mem.MemColumnsStore;
-import redelm.io.ColumnIOFactory;
-import redelm.io.MessageColumnIO;
-import redelm.io.RecordWriter;
-
 import org.junit.Test;
 
 public class TestTupleRecordConsumer {

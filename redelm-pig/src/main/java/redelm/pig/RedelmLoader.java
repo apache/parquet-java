@@ -85,7 +85,7 @@ public class RedelmLoader extends LoadFunc {
       @Override
       public List<InputSplit> getSplits(JobContext jobContext) throws IOException,
           InterruptedException {
-        jobContext.
+//        jobContext.
         return null;
       }
     };
