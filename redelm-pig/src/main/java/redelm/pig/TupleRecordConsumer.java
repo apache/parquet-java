@@ -1,6 +1,7 @@
 package redelm.pig;
 
 import java.util.ArrayDeque;
+import java.util.Collection;
 import java.util.Deque;
 
 import redelm.io.RecordConsumer;
@@ -18,21 +19,22 @@ import org.apache.pig.data.TupleFactory;
 
 public class TupleRecordConsumer extends RecordConsumer {
 
-  TupleFactory tf = TupleFactory.getInstance();
-  BagFactory bf = BagFactory.getInstance();
+  private static final TupleFactory tf = TupleFactory.getInstance();
+  private static final BagFactory bf = BagFactory.getInstance();
 
-  Deque<Type> types = new ArrayDeque<Type>();
-  Deque<Tuple> groups = new ArrayDeque<Tuple>();
-  Deque<String> fields = new ArrayDeque<String>();
-  int indent = 0;
+  private Deque<Type> types = new ArrayDeque<Type>();
+  private Deque<Tuple> groups = new ArrayDeque<Tuple>();
+  private Deque<String> fields = new ArrayDeque<String>();
+  private int indent = 0;
+  private final Collection<Tuple> destination;
 
-  public TupleRecordConsumer(MessageType schema, Tuple root) {
-    types.push(schema);
-    groups.push(root);
+  public TupleRecordConsumer(MessageType schema, Collection<Tuple> destination) {
+    this.destination = destination;
+    this.types.push(schema);
   }
 
   @Override
-  public void startField(String field) {
+  public void startField(String field, int index) {
     types.push(types.peek().asGroupType().getType(field));
     fields.push(field);
   }
@@ -94,9 +96,19 @@ public class TupleRecordConsumer extends RecordConsumer {
   }
 
   @Override
-  public void endField(String field) {
+  public void endField(String field, int index) {
     fields.pop();
     types.pop();
+  }
+
+  @Override
+  public void startMessage() {
+    groups.push(tf.newTuple());
+  }
+
+  @Override
+  public void endMessage() {
+    destination.add(groups.pop());
   }
 
 }

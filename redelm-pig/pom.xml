@@ -29,5 +29,10 @@
       <artifactId>pig</artifactId>
       <version>0.10.0</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-core</artifactId>
+      <version>1.0.0</version>
+    </dependency>
   </dependencies>
 </project>
