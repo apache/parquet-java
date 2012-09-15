@@ -4,6 +4,7 @@ import static redelm.data.simple.example.Paper.*;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.logging.Level;
 
 import redelm.Log;
 import redelm.column.mem.MemColumnsStore;
@@ -13,7 +14,12 @@ import redelm.data.GroupWriter;
 import redelm.data.simple.SimpleGroupFactory;
 import redelm.schema.MessageType;
 
-
+/**
+ * make sure {@link Log#LEVEL} is set to {@link Level#OFF}
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class PerfTest {
 
   public static void main(String[] args) {

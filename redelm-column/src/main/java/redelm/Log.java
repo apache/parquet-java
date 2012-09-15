@@ -24,7 +24,7 @@ public class Log {
   /**
    * this is the compile time log level
    */
-  private static final Level LEVEL = Level.FINEST;
+  public static final Level LEVEL = Level.OFF;
 
   public static final boolean DEBUG = (LEVEL.intValue() <= Level.FINE.intValue());
   public static final boolean INFO = (LEVEL.intValue() <= Level.INFO.intValue());
