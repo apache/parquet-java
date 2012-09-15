@@ -1,5 +1,7 @@
 package redelm.io;
 
+import static redelm.data.simple.example.Paper.*;
+
 import java.util.Collection;
 import java.util.Iterator;
 
@@ -17,13 +19,12 @@ public class PerfTest {
   public static void main(String[] args) {
     MemColumnsStore columns = new MemColumnsStore(50*1024*1024);
     {
-      MessageType schema = TestColumnIO.schema;
       MessageColumnIO columnIO = newColumnFactory(columns, schema);
 
       {
         GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(), schema);
-        groupWriter.write(TestColumnIO.r1);
-        groupWriter.write(TestColumnIO.r2);
+        groupWriter.write(r1);
+        groupWriter.write(r2);
 
         write(groupWriter, 10000);
         write(groupWriter, 10000);
@@ -45,7 +46,6 @@ public class PerfTest {
       }
     }
     {
-      MessageType schema2 = TestColumnIO.schema2;
       MessageColumnIO columnIO = newColumnFactory(columns, schema2);
 
       System.out.println("read projected");
@@ -62,7 +62,6 @@ public class PerfTest {
       }
     }
     {
-      MessageType schema3 = TestColumnIO.schema3;
       MessageColumnIO columnIO = newColumnFactory(columns, schema3);
 
       System.out.println("read projected no Strings");
@@ -143,7 +142,7 @@ public class PerfTest {
   private static void write(GroupWriter groupWriter, int count) {
     long t0 = System.currentTimeMillis();
     for (int i = 0; i < count; i++) {
-      groupWriter.write(TestColumnIO.r1);
+      groupWriter.write(r1);
     }
     long t1 = System.currentTimeMillis();
     System.out.println("written "+count+ " in " +(float)(t1-t0)*1000/count+" µs/rec");

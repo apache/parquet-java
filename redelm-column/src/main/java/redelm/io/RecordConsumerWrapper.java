@@ -3,6 +3,7 @@ package redelm.io;
 import redelm.Log;
 
 public class RecordConsumerWrapper extends RecordConsumer {
+    private static final Log logger = Log.getLog(RecordConsumerWrapper.class);
     private static final boolean DEBUG = Log.DEBUG;
 
     private final RecordConsumer delegate;
@@ -20,26 +21,27 @@ public class RecordConsumerWrapper extends RecordConsumer {
     }
 
     private void logOpen(String field) {
-      indent();
-      System.out.println("<"+field+">");
+      log("<"+field+">");
     }
 
-    private void indent() {
+    private String indent() {
+      StringBuilder result = new StringBuilder();
       for (int i = 0; i < indent; i++) {
-        System.out.print("  ");
+        result.append("  ");
       }
+      return result.toString();
     }
 
     @Override
     public void startGroup() {
       if (DEBUG) ++indent;
+      if (DEBUG) log("<!-- start group -->");
       delegate.startGroup();
     }
 
     @Override
     public void addInt(int value) {
       if (DEBUG) {
-        indent();
         log(value);
       }
       delegate.addInt(value);
@@ -48,7 +50,6 @@ public class RecordConsumerWrapper extends RecordConsumer {
     @Override
     public void addString(String value) {
       if (DEBUG) {
-        indent();
         log(value);
       }
       delegate.addString(value);
@@ -57,20 +58,18 @@ public class RecordConsumerWrapper extends RecordConsumer {
     @Override
     public void addBoolean(boolean value) {
       if (DEBUG) {
-        indent();
         log(value);
       }
       delegate.addBoolean(value);
     }
 
     private void log(Object value) {
-      System.out.println(value);
+      logger.debug(indent() + value);
     }
 
     @Override
     public void addBinary(byte[] value) {
       if (DEBUG) {
-        indent();
         log(value);
       }
       delegate.addBinary(value);
@@ -78,6 +77,7 @@ public class RecordConsumerWrapper extends RecordConsumer {
 
     @Override
     public void endGroup() {
+      if (DEBUG) log("<!-- end group -->");
       if (DEBUG) --indent;
       delegate.endGroup();
     }
@@ -89,8 +89,7 @@ public class RecordConsumerWrapper extends RecordConsumer {
     }
 
     private void logClose(String field) {
-      indent();
-      System.out.println("</"+field+">");
+      log("</"+field+">");
     }
 
     @Override

@@ -8,13 +8,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
+import redelm.Log;
 import redelm.column.ColumnsStore;
 import redelm.schema.GroupType;
 
 public class GroupColumnIO extends ColumnIO {
-  private static final Logger logger = Logger.getLogger(GroupColumnIO.class.getName());
+  private static final Log logger = Log.getLog(GroupColumnIO.class);
 
   private final Map<String, ColumnIO> childrenByName = new HashMap<String, ColumnIO>();
   private final List<ColumnIO> children = new ArrayList<ColumnIO>();

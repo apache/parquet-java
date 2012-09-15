@@ -1,10 +1,6 @@
 package redelm.io;
 
-import static redelm.schema.PrimitiveType.Primitive.INT64;
-import static redelm.schema.PrimitiveType.Primitive.STRING;
-import static redelm.schema.Type.Repetition.OPTIONAL;
-import static redelm.schema.Type.Repetition.REPEATED;
-import static redelm.schema.Type.Repetition.REQUIRED;
+import static redelm.data.simple.example.Paper.*;
 
 import java.math.BigInteger;
 import java.util.ArrayDeque;
@@ -24,11 +20,8 @@ import redelm.column.mem.MemColumnsStore;
 import redelm.data.Group;
 import redelm.data.GroupRecordConsumer;
 import redelm.data.GroupWriter;
-import redelm.data.simple.SimpleGroup;
 import redelm.data.simple.SimpleGroupFactory;
-import redelm.schema.GroupType;
 import redelm.schema.MessageType;
-import redelm.schema.PrimitiveType;
 
 import org.junit.Test;
 
@@ -49,153 +42,24 @@ public class TestColumnIO {
     + "  };\n"
     + "}\n";
 
-  public static final MessageType schema =
-      new MessageType("Document",
-          new PrimitiveType(REQUIRED, INT64, "DocId"),
-          new GroupType(OPTIONAL, "Links",
-              new PrimitiveType(REPEATED, INT64, "Backward"),
-              new PrimitiveType(REPEATED, INT64, "Forward")
-              ),
-          new GroupType(REPEATED, "Name",
-              new GroupType(REPEATED, "Language",
-                  new PrimitiveType(REQUIRED, STRING, "Code"),
-                  new PrimitiveType(OPTIONAL, STRING, "Country")),
-              new PrimitiveType(OPTIONAL, STRING, "Url")));
+  int[][] expectedFSA = new int[][] {
+      { 1 },      // 0: DocId
+      { 2, 1 },   // 1: Links.Backward
+      { 3, 2 },   // 2: Links.Forward
+      { 4, 4, 4 },// 3: Name.Language.Code
+      { 5, 5, 3 },// 4: Name.Language.Country
+      { 6, 3 }    // 5: Name.Url
+  };
 
-  public static final MessageType schema2 =
-      new MessageType("Document",
-          new PrimitiveType(REQUIRED, INT64, "DocId"),
-          new GroupType(REPEATED, "Name",
-              new GroupType(REPEATED, "Language",
-                  new PrimitiveType(OPTIONAL, STRING, "Country"))));
+  int[][] expectedFSA2 = new int[][] {
+      { 1 },      // 0: DocId
+      { 2, 1, 1 },// 1: Name.Language.Country
+  };
 
-  public static final MessageType schema3 =
-      new MessageType("Document",
-          new PrimitiveType(REQUIRED, INT64, "DocId"),
-          new GroupType(OPTIONAL, "Links",
-              new PrimitiveType(REPEATED, INT64, "Backward"),
-              new PrimitiveType(REPEATED, INT64, "Forward")
-              ));
-
-  public static final SimpleGroup r1 = new SimpleGroup(schema);
-  public static final SimpleGroup r2 = new SimpleGroup(schema);
-  ////r1
-  //DocId: 10
-  //Links
-  //  Forward: 20
-  //  Forward: 40
-  //  Forward: 60
-  //Name
-  //  Language
-  //    Code: 'en-us'
-  //    Country: 'us'
-  //  Language
-  //    Code: 'en'
-  //  Url: 'http://A'
-  //Name
-  //  Url: 'http://B'
-  //Name
-  //  Language
-  //    Code: 'en-gb'
-  //    Country: 'gb'
-    static {
-      r1.add("DocId", 10);
-      r1.addGroup("Links")
-        .append("Forward", 20)
-        .append("Forward", 40)
-        .append("Forward", 60);
-      Group name = r1.addGroup("Name");
-      {
-        name.addGroup("Language")
-          .append("Code", "en-us")
-          .append("Country", "us");
-        name.addGroup("Language")
-          .append("Code", "en");
-        name.append("Url", "http://A");
-      }
-      name = r1.addGroup("Name");
-      {
-        name.append("Url", "http://B");
-      }
-      name = r1.addGroup("Name");
-      {
-        name.addGroup("Language")
-          .append("Code", "en-gb")
-          .append("Country", "gb");
-      }
-    }
-////r2
-//DocId: 20
-//Links
-// Backward: 10
-// Backward: 30
-// Forward:  80
-//Name
-// Url: 'http://C'
- static {
-   r2.add("DocId", 20);
-   r2.addGroup("Links")
-     .append("Backward", 10)
-     .append("Backward", 30)
-     .append("Forward", 80);
-   r2.addGroup("Name")
-     .append("Url", "http://C");
- }
-
- int[][] expectedFSA = new int[][] {
-     { 1 },      // 0: DocId
-     { 2, 1 },   // 1: Links.Backward
-     { 3, 2 },   // 2: Links.Forward
-     { 4, 4, 4 },// 3: Name.Language.Code
-     { 5, 5, 3 },// 4: Name.Language.Country
-     { 6, 3 }    // 5: Name.Url
-     };
-
- int[][] expectedFSA2 = new int[][] {
-     { 1 },      // 0: DocId
-     { 2, 1, 1 },// 1: Name.Language.Country
-     };
-
- private static final SimpleGroup pr1 = new SimpleGroup(schema2);
- private static final SimpleGroup pr2 = new SimpleGroup(schema2);
- ////r1
- //DocId: 10
- //Name
- //  Language
- //    Country: 'us'
- //  Language
- //Name
- //Name
- //  Language
- //    Country: 'gb'
-   static {
-     pr1.add("DocId", 10);
-     Group name = pr1.addGroup("Name");
-     {
-       name.addGroup("Language")
-         .append("Country", "us");
-       name.addGroup("Language");
-     }
-     name = pr1.addGroup("Name");
-     name = pr1.addGroup("Name");
-     {
-       name.addGroup("Language")
-         .append("Country", "gb");
-     }
-   }
-
-////r2
-//DocId: 20
-//Name
-   static {
-     pr2.add("DocId", 20);
-     pr2.addGroup("Name");
-   }
-
-   @Test
-   public void testSchema() {
-     Assert.assertEquals(schemaString, schema.toString());
-   }
+  @Test
+  public void testSchema() {
+    Assert.assertEquals(schemaString, schema.toString());
+  }
 
   @Test
   public void testColumnIO() {

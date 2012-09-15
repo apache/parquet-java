@@ -24,7 +24,7 @@ public class Log {
   /**
    * this is the compile time log level
    */
-  private static final Level LEVEL = Level.OFF;
+  private static final Level LEVEL = Level.FINEST;
 
   public static final boolean DEBUG = (LEVEL.intValue() <= Level.FINE.intValue());
   public static final boolean INFO = (LEVEL.intValue() <= Level.INFO.intValue());
@@ -57,16 +57,8 @@ public class Log {
           sb.append(" ");
           sb.append(record.getLevel().getLocalizedName());
           sb.append(": ");
-          if (record.getSourceClassName() != null) {
-            sb.append(record.getSourceClassName());
-          } else {
-            sb.append(record.getLoggerName());
-          }
-          if (record.getSourceMethodName() != null) {
-            sb.append(".");
-            sb.append(record.getSourceMethodName());
-            sb.append("()");
-          }
+          sb.append(record.getLoggerName());
+
           sb.append(": ");
           sb.append(formatMessage(record));
           sb.append("\n");

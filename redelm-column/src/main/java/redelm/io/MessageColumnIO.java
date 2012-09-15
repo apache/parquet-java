@@ -3,7 +3,6 @@ package redelm.io;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.logging.Logger;
 
 import redelm.Log;
 import redelm.column.ColumnsStore;
@@ -11,7 +10,7 @@ import redelm.schema.MessageType;
 
 
 public class MessageColumnIO extends GroupColumnIO {
-  private static final Logger logger = Logger.getLogger(MessageColumnIO.class.getName());
+  private static final Log logger = Log.getLog(MessageColumnIO.class);
 
   private static final boolean DEBUG = Log.DEBUG;
 
@@ -50,7 +49,7 @@ public class MessageColumnIO extends GroupColumnIO {
         for (int i = 0; i<currentLevel; ++i) {
           indent += "  ";
         }
-        logger.fine(indent + m);
+        logger.debug(indent + m);
       }
 
       @Override

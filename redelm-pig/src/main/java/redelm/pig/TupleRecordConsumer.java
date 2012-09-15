@@ -34,16 +34,38 @@ public class TupleRecordConsumer extends RecordConsumer {
   }
 
   @Override
+  public void startMessage() {
+    groups.push(tf.newTuple(types.peek().asGroupType().getFieldCount()));
+  }
+
+  @Override
+  public void endMessage() {
+    destination.add(groups.pop());
+  }
+
+  @Override
   public void startField(String field, int index) {
-    types.push(types.peek().asGroupType().getType(field));
     fields.push(field);
   }
 
   @Override
+  public void endField(String field, int index) {
+    fields.pop();
+  }
+
+  @Override
   public void startGroup() {
-    Tuple newTuple = tf.newTuple();
+    Type fieldType = types.peek().asGroupType().getType(fields.peek());
+    Tuple newTuple = tf.newTuple(fieldType.asGroupType().getFieldCount());
     setCurrentField(newTuple);
+    types.push(fieldType);
     groups.push(newTuple);
+  }
+
+  @Override
+  public void endGroup() {
+    groups.pop();
+    types.pop();
   }
 
   private void setCurrentField(Object value) {
@@ -51,7 +73,7 @@ public class TupleRecordConsumer extends RecordConsumer {
       Tuple parent = groups.peek();
       GroupType type = types.peek().asGroupType();
       int fieldIndex = type.getFieldIndex(fields.peek());
-      if (type.getRepetition() == Repetition.REPEATED) {
+      if (type.getType(fieldIndex).getRepetition() == Repetition.REPEATED) {
         DataBag bag = (DataBag)parent.get(fieldIndex);
         if (bag == null) {
           bag = bf.newDefaultBag();
@@ -88,27 +110,6 @@ public class TupleRecordConsumer extends RecordConsumer {
   @Override
   public void addBinary(byte[] value) {
     setCurrentField(new DataByteArray(value));
-  }
-
-  @Override
-  public void endGroup() {
-    groups.pop();
-  }
-
-  @Override
-  public void endField(String field, int index) {
-    fields.pop();
-    types.pop();
-  }
-
-  @Override
-  public void startMessage() {
-    groups.push(tf.newTuple());
-  }
-
-  @Override
-  public void endMessage() {
-    destination.add(groups.pop());
   }
 
 }

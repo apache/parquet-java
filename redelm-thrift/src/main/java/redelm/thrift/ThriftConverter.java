@@ -7,6 +7,7 @@ import java.util.Set;
 
 import redelm.data.Group;
 import redelm.data.GroupFactory;
+import redelm.io.RecordConsumer;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.Type;
@@ -23,7 +24,7 @@ public class ThriftConverter<T extends TBase<?,TFieldIdEnum>> {
   private MessageType schema;
   private final GroupFactory groupFactory;
 
-  public ThriftConverter(Class<T> c, MessageType schema, GroupFactory groupFactory) {
+  public ThriftConverter(Class<T> c, MessageType schema, RecordConsumer recordConsumer) {
     this.groupFactory = groupFactory;
     this.descriptor = TStructDescriptor.getInstance(c);
   }
@@ -50,8 +51,7 @@ public class ThriftConverter<T extends TBase<?,TFieldIdEnum>> {
       Object fieldValue = from.getFieldValue(fromField.getFieldIdEnum());
       if (fromField.isList()) {
         List<Object> list = (List)fieldValue;
-afl;g'kkdafl;gk;l
-s
+// TODO:
       } else if (fromField.isSet()) {
         Set<Object> set = (Set) fieldValue;
         lsd

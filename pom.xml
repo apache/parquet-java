@@ -15,7 +15,9 @@
 
   <modules>
     <module>redelm-column</module>
+<!--
     <module>redelm-thrift</module>
+-->
     <module>redelm-pig</module>
   </modules>
 

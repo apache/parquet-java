@@ -1,11 +1,9 @@
 package redelm.data;
 
-import java.util.logging.Logger;
-
 import redelm.Log;
 
 abstract public class Group extends GroupValueSource {
-  private static final Logger logger = Logger.getLogger(Group.class.getName());
+  private static final Log logger = Log.getLog(Group.class);
   private static final boolean DEBUG = Log.DEBUG;
 
   public void add(String field, int value) {
@@ -25,7 +23,7 @@ abstract public class Group extends GroupValueSource {
   }
 
   public Group addGroup(String field) {
-    if (DEBUG) logger.fine("add group "+field+" to "+getType().getName());
+    if (DEBUG) logger.debug("add group "+field+" to "+getType().getName());
     return addGroup(getType().getFieldIndex(field));
   }
 

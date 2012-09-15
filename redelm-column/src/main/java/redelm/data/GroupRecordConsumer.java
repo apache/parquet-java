@@ -20,13 +20,35 @@ public class GroupRecordConsumer extends RecordConsumer {
   }
 
   @Override
+  public void startMessage() {
+    groups.push(groupFactory.newGroup());
+  }
+
+  @Override
+  public void endMessage() {
+    if (Log.DEBUG) if (groups.size() != 1) throw new IllegalStateException("end of message in the middle of a record "+fields);
+    this.result.add(groups.pop());
+  }
+
+  @Override
   public void startField(String field, int index) {
     fields.push(index);
   }
 
   @Override
+  public void endField(String field, int index) {
+    if (Log.DEBUG) if (!fields.peek().equals(index)) throw new IllegalStateException("opening "+fields.peek()+" but closing "+index+" ("+field+")");
+    fields.pop();
+  }
+
+  @Override
   public void startGroup() {
     groups.push(groups.peek().addGroup(fields.peek()));
+  }
+
+  @Override
+  public void endGroup() {
+    groups.pop();
   }
 
   @Override
@@ -47,28 +69,6 @@ public class GroupRecordConsumer extends RecordConsumer {
   @Override
   public void addBinary(byte[] value) {
     groups.peek().add(fields.peek(), value);
-  }
-
-  @Override
-  public void endGroup() {
-    groups.pop();
-  }
-
-  @Override
-  public void endField(String field, int index) {
-    if (Log.DEBUG) if (!fields.peek().equals(index)) throw new IllegalStateException("opening "+fields.peek()+" but closing "+index+" ("+field+")");
-    fields.pop();
-  }
-
-  @Override
-  public void startMessage() {
-    groups.push(groupFactory.newGroup());
-  }
-
-  @Override
-  public void endMessage() {
-    if (Log.DEBUG) if (groups.size() != 1) throw new IllegalStateException("end of message in the middle of a record "+fields);
-    this.result.add(groups.pop());
   }
 
 }
