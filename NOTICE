@@ -1,0 +1,12 @@
+Red Elm is an anagram.
+Copyright 2012 Twitter, Inc.
+
+Third Party Dependencies:
+
+Pig 10.0
+Apache Public License 2.0
+http://pig.apache.org
+
+Hadoop 0.20.2
+Apache Public License 2.0
+http://hadoop.apache.org
