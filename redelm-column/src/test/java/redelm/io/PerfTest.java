@@ -157,7 +157,7 @@ public class PerfTest {
       recordReader.read(recordConsumer);
     }
     long t1 = System.currentTimeMillis();
-    System.out.println("read "+count+ " in " +(float)(t1-t0)*1000/count+" µs/rec");
+    System.out.println("read "+count+ " in " +(float)(t1-t0)*1000/count+" Âµs/rec");
   }
 
   private static void write(GroupWriter groupWriter, int count) {
@@ -166,7 +166,7 @@ public class PerfTest {
       groupWriter.write(r1);
     }
     long t1 = System.currentTimeMillis();
-    System.out.println("written "+count+ " in " +(float)(t1-t0)*1000/count+" µs/rec");
+    System.out.println("written "+count+ " in " +(float)(t1-t0)*1000/count+" Âµs/rec");
   }
 
 }
