@@ -200,4 +200,24 @@ public abstract class MemColumn implements ColumnReader, ColumnWriter {
     }
   }
 
+  public byte[] getData() {
+    initiateRead();
+    return data;
+  }
+
+  public ColumnDescriptor getDescriptor() {
+    return path;
+  }
+
+  public void set(byte[] data, int recordCount) {
+    this.data = data;
+    this.out = null;
+    this.in = new ByteArrayInputStream(data);
+    this.readRecords = 0;
+    this.recordCount = recordCount;
+  }
+
+  public int getRecordCount() {
+    return recordCount;
+  }
 }

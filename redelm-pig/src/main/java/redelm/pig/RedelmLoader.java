@@ -16,94 +16,48 @@
 package redelm.pig;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Properties;
 
 
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.mapreduce.InputFormat;
-import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordReader;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.pig.LoadFunc;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigSplit;
 import org.apache.pig.data.Tuple;
+import org.apache.pig.impl.util.UDFContext;
+import org.apache.pig.impl.util.Utils;
 
 public class RedelmLoader extends LoadFunc {
 
+  private static final String SCHEMA = "schema";
+
   private String location;
   private RecordReader reader;
+  private final String schema;
+
+  public RedelmLoader() {
+    this.schema = null;
+  }
+
+  public RedelmLoader(String schema) {
+    this.schema = schema;
+  }
 
   @Override
   public void setLocation(String location, Job job) throws IOException {
     this.location = location;
+    FileInputFormat.setInputPaths(job, location);
   }
 
   @Override
   public InputFormat<Object, Tuple> getInputFormat() throws IOException {
-    return new InputFormat<Object, Tuple>() {
-
-      @Override
-      public RecordReader<Object, Tuple> createRecordReader(
-          InputSplit inputSplit,
-          TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
-        return new RecordReader<Object, Tuple>() {
-          private Tuple currentTuple;
-          private int total;
-          private int current;
-          private boolean dataAvailable;
-
-          private void checkRead() {
-          }
-
-          @Override
-          public void close() throws IOException {
-          }
-
-          @Override
-          public Object getCurrentKey() throws IOException,
-              InterruptedException {
-            return null;
-          }
-
-          @Override
-          public Tuple getCurrentValue() throws IOException,
-              InterruptedException {
-            checkRead();
-            if (!dataAvailable) {
-              throw new IOException("reached end of data");
-            }
-            return currentTuple;
-          }
-
-          @Override
-          public float getProgress() throws IOException, InterruptedException {
-            return (float)current/total;
-          }
-
-          @Override
-          public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
-              throws IOException, InterruptedException {
-          }
-
-          @Override
-          public boolean nextKeyValue() throws IOException,
-              InterruptedException {
-            checkRead();
-            return dataAvailable;
-          }
-        };
-      }
-
-      @Override
-      public List<InputSplit> getSplits(JobContext jobContext) throws IOException,
-          InterruptedException {
-//        jobContext.
-        return null;
-      }
-    };
+    return new RedelmInputFormat(
+        schema == null ? null :
+        new PigSchemaConverter().convert(Utils.getSchemaFromString(schema)).toString());
   }
 
   @Override
@@ -114,8 +68,16 @@ public class RedelmLoader extends LoadFunc {
 
   @Override
   public Tuple getNext() throws IOException {
-    // TODO Auto-generated method stub
-    return null;
+    try {
+      if (reader.nextKeyValue()) {
+        return (Tuple)reader.getCurrentValue();
+      } else {
+        return null;
+      }
+    } catch (InterruptedException e) {
+      Thread.interrupted();
+      throw new RuntimeException("Interrupted", e);
+    }
   }
 
 

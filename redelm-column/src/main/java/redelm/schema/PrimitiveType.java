@@ -122,7 +122,33 @@ public class PrimitiveType extends Type {
           int field, int index) {
         recordConsumer.addBinary(group.getBinary(field, index));
       }
+    },
+    FLOAT {
+      @Override
+      public void writeValueToColumn(GroupValueSource parent, String field,
+          int index, int r, int d, ColumnWriter columnWriter) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public String toString(ColumnReader columnReader) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
+          ColumnReader columnReader) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
+          Group group, int field, int index) {
+        throw new UnsupportedOperationException();
+      }
+
     };
+
 
 
     abstract public void writeValueToColumn(GroupValueSource parent, String field, int index, int r, int d, ColumnWriter columnWriter);
