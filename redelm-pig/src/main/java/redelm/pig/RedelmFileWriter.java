@@ -11,8 +11,8 @@ import redelm.schema.MessageType;
 import org.apache.hadoop.fs.FSDataOutputStream;
 
 public class RedelmFileWriter {
-  private static final byte[] magic = {82, 101, 100, 32, 69, 108, 109, 32}; // "Red Elm "
-  private static final int currentVersion = 1;
+  public static final byte[] MAGIC = {82, 101, 100, 32, 69, 108, 109, 32}; // "Red Elm "
+  public static final int CURRENT_VERSION = 1;
   private final MessageType schema;
   private final FSDataOutputStream out;
   private BlockMetaData currentBlock;
@@ -27,7 +27,7 @@ public class RedelmFileWriter {
   }
 
   public void start() throws IOException {
-    out.write(magic);
+    out.write(MAGIC);
   }
 
   public void startBlock() throws IOException {
@@ -60,14 +60,14 @@ public class RedelmFileWriter {
 
   public void end() throws IOException {
     long footerIndex = out.getPos();
-    out.writeInt(currentVersion);
+    out.writeInt(CURRENT_VERSION);
     Footer footer = new Footer(schema.toString(), blocks);
 //    out.writeUTF(Footer.toJSON(footer));
     // lazy: use serialization
     // TODO: change that
     new ObjectOutputStream(out).writeObject(footer);
     out.writeLong(footerIndex);
-    out.write(magic);
+    out.write(MAGIC);
     out.close();
   }
 

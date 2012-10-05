@@ -16,27 +16,19 @@
 package redelm.pig;
 
 import java.io.IOException;
-import java.util.Properties;
 
-
-import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.pig.LoadFunc;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigSplit;
 import org.apache.pig.data.Tuple;
-import org.apache.pig.impl.util.UDFContext;
 import org.apache.pig.impl.util.Utils;
 
 public class RedelmLoader extends LoadFunc {
 
-  private static final String SCHEMA = "schema";
-
-  private String location;
-  private RecordReader reader;
+  private RecordReader<Object, Tuple> reader;
   private final String schema;
 
   public RedelmLoader() {
@@ -49,7 +41,6 @@ public class RedelmLoader extends LoadFunc {
 
   @Override
   public void setLocation(String location, Job job) throws IOException {
-    this.location = location;
     FileInputFormat.setInputPaths(job, location);
   }
 
@@ -60,8 +51,9 @@ public class RedelmLoader extends LoadFunc {
         new PigSchemaConverter().convert(Utils.getSchemaFromString(schema)).toString());
   }
 
+  @SuppressWarnings("unchecked")
   @Override
-  public void prepareToRead(RecordReader reader, PigSplit split)
+  public void prepareToRead(@SuppressWarnings("rawtypes") RecordReader reader, PigSplit split)
       throws IOException {
     this.reader = reader;
   }
@@ -79,7 +71,5 @@ public class RedelmLoader extends LoadFunc {
       throw new RuntimeException("Interrupted", e);
     }
   }
-
-
 
 }

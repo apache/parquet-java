@@ -8,31 +8,28 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import redelm.column.ColumnDescriptor;
 import redelm.column.mem.MemColumnsStore;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
-import redelm.schema.PrimitiveType.Primitive;
 import redelm.schema.Type;
 
+import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
-import org.apache.hadoop.mapreduce.lib.input.FileSplit;
+import org.apache.log4j.Logger;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigFileInputFormat;
 import org.apache.pig.data.Tuple;
-import org.apache.tools.ant.taskdefs.Available;
 
-public class RedelmInputFormat extends
-PigFileInputFormat<Object, Tuple> {
+public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
+  private static final Logger LOG = Logger.getLogger(RedelmInputFormat.class);
 
   private MessageType requestedSchema;
 
@@ -144,7 +141,6 @@ PigFileInputFormat<Object, Tuple> {
 
       @Override
       public boolean nextKeyValue() throws IOException, InterruptedException {
-        //          System.out.println("nextKeyValue");
         checkRead();
         if (destination.size() == 0 && current<total) {
           recordReader.read(recordConsumer);
@@ -164,24 +160,31 @@ PigFileInputFormat<Object, Tuple> {
   public List<InputSplit> getSplits(JobContext jobContext) throws IOException {
     List<InputSplit> splits = new ArrayList<InputSplit>();
     List<FileStatus> statuses = super.listStatus(jobContext);
+    LOG.info(statuses);
     FileSystem fs = FileSystem.get(jobContext.getConfiguration());
     for (FileStatus fileStatus : statuses) {
+      LOG.info(fileStatus);
       FSDataInputStream f = fs.open(fileStatus.getPath());
       Footer footer = RedelmFileReader.readFooter(f, fileStatus.getLen());
       List<BlockMetaData> blocks = footer.getBlocks();
       for (BlockMetaData block : blocks) {
-        List<ColumnMetaData> columns = block.getColumns();
-        // TODO: allow filtering of columns
-        List<String[]> paths = new ArrayList<String[]>();
-        for (ColumnMetaData column : columns) {
-          paths.add(column.getPath());
+//        List<ColumnMetaData> columns = block.getColumns();
+//        // TODO: allow filtering of columns
+//        List<String[]> paths = new ArrayList<String[]>();
+        long startIndex = block.getStartIndex();
+        long length = block.getEndIndex() - startIndex;
+        BlockLocation[] fileBlockLocations = fs.getFileBlockLocations(fileStatus, startIndex, length);
+        List<String> hosts = new ArrayList<String>();
+        for (BlockLocation blockLocation : fileBlockLocations) {
+          hosts.addAll(Arrays.asList(blockLocation.getHosts()));
         }
+
         splits.add(
             new RedelmInputSplit(
                 fileStatus.getPath(),
-                block.getStartIndex(),
-                block.getEndIndex() - block.getStartIndex(),
-                new String[] {},
+                startIndex,
+                length,
+                hosts.toArray(new String[hosts.size()]),
                 block,
                 footer.getSchema()));
       }

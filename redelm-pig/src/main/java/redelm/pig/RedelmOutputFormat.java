@@ -23,7 +23,7 @@ import org.apache.pig.data.Tuple;
 
 public class RedelmOutputFormat extends FileOutputFormat<Object, Tuple> {
 
-  private static final int THRESHOLD = 1024*1024*15;
+  private static final int THRESHOLD = 1024*1024*50;
 
   private TupleWriter tupleWriter;
   private MemColumnsStore store;

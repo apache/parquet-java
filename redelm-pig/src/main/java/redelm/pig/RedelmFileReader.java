@@ -8,20 +8,29 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import redelm.column.ColumnDescriptor;
-
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.log4j.Logger;
 
 public class RedelmFileReader {
+  private static final Logger LOG = Logger.getLogger(RedelmFileReader.class);
 
   public static final Footer readFooter(FSDataInputStream f, long l) throws IOException {
     long footerIndexIndex = l - 8 - 8;
+    LOG.info("reading footer index at " + footerIndexIndex);
     f.seek(footerIndexIndex);
     long footerIndex = f.readLong();
+    byte[] magic = new byte[8];
+    f.readFully(magic);
+    if (!Arrays.equals(RedelmFileWriter.MAGIC, magic)) {
+      throw new RuntimeException("Not a Red Elm file");
+    }
+    LOG.info("read footer index: " + footerIndex);
     f.seek(footerIndex);
     int version = f.readInt();
-    if (version != 1) {
-      throw new RuntimeException("unsupported version: "+version);
+    if (version != RedelmFileWriter.CURRENT_VERSION) {
+      throw new RuntimeException(
+          "unsupported version: " + version + ". " +
+          "supporting up to " + RedelmFileWriter.CURRENT_VERSION);
     }
 //    Footer footer = Footer.fromJSON(f.readUTF());
     try {
@@ -58,7 +67,6 @@ public class RedelmFileReader {
       }
     }
     ++currentBlock;
-    System.out.println(result);
     return result;
   }
 

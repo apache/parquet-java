@@ -10,10 +10,8 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.List;
+import java.util.Arrays;
 
-import org.apache.hadoop.conf.Configurable;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.InputSplit;
@@ -32,13 +30,13 @@ public class RedelmInputSplit extends InputSplit implements Serializable, Writab
   }
 
   public RedelmInputSplit(Path path, long start, long length, String[] hosts, BlockMetaData block, String schemaString) {
+    System.out.println("RedelmInputSplit("+path+", "+start+", "+length+", "+Arrays.toString(hosts)+", "+block+", "+schemaString+")");
     this.path = path.toUri().toString();
     this.start = start;
     this.length = length;
     this.hosts = hosts;
     this.block = block;
     this.schemaString = schemaString;
-    System.out.println(path+" "+start+" "+length);
   }
 
   public BlockMetaData getBlock() {
@@ -100,4 +98,5 @@ public class RedelmInputSplit extends InputSplit implements Serializable, Writab
   public String getSchema() {
     return schemaString;
   }
+
 }

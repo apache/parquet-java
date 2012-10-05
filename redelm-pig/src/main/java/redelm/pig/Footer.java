@@ -12,8 +12,6 @@ import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.SerializationConfig.Feature;
 
-import redelm.schema.MessageType;
-
 public class Footer implements Serializable {
   private static final long serialVersionUID = 1L;
 
