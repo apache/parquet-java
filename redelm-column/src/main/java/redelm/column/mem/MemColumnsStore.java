@@ -28,6 +28,7 @@ import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnReader;
 import redelm.column.ColumnWriter;
 import redelm.column.ColumnsStore;
+import redelm.schema.PrimitiveType.Primitive;
 
 
 public class MemColumnsStore extends ColumnsStore {
@@ -178,5 +179,27 @@ public class MemColumnsStore extends ColumnsStore {
       max = Math.max(max, memColumn.memSize());
     }
     return max;
+  }
+
+  public Collection<MemColumn> getColumns() {
+    return columns.values();
+  }
+
+  public void setColumn(String[] path, Primitive primitive, byte[] data, int recordCount) {
+    ColumnDescriptor descriptor = new ColumnDescriptor(path, primitive);
+    MemColumn col = getColumn(descriptor);
+    col.set(data, recordCount);
+    columns.put(descriptor, col);
+
+  }
+
+  public boolean isFullyConsumed() {
+    for (MemColumn c : columns.values()) {
+      if (c.isFullyConsumed()) {
+        return true;
+      }
+
+    }
+    return false;
   }
 }

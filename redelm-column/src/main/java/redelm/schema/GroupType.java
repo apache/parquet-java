@@ -38,6 +38,10 @@ public class GroupType extends Type {
     return fields.get(index).getName();
   }
 
+  public boolean containsField(String name) {
+    return indexByName.containsKey(name);
+  }
+
   public int getFieldIndex(String name) {
     if (!indexByName.containsKey(name)) {
       throw new RuntimeException(name + " not found in " + this);

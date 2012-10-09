@@ -15,7 +15,13 @@
  */
 package redelm.io;
 
-import static redelm.data.simple.example.Paper.*;
+import static org.junit.Assert.assertEquals;
+import static redelm.data.simple.example.Paper.pr1;
+import static redelm.data.simple.example.Paper.pr2;
+import static redelm.data.simple.example.Paper.r1;
+import static redelm.data.simple.example.Paper.r2;
+import static redelm.data.simple.example.Paper.schema;
+import static redelm.data.simple.example.Paper.schema2;
 
 import java.math.BigInteger;
 import java.util.ArrayDeque;
@@ -25,7 +31,8 @@ import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
 
-import junit.framework.Assert;
+import org.junit.Test;
+
 import redelm.Log;
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnReader;
@@ -37,8 +44,6 @@ import redelm.data.GroupRecordConsumer;
 import redelm.data.GroupWriter;
 import redelm.data.simple.SimpleGroupFactory;
 import redelm.schema.MessageType;
-
-import org.junit.Test;
 
 public class TestColumnIO {
   private static final String schemaString =
@@ -73,7 +78,7 @@ public class TestColumnIO {
 
   @Test
   public void testSchema() {
-    Assert.assertEquals(schemaString, schema.toString());
+    assertEquals(schemaString, schema.toString());
   }
 
   @Test
@@ -108,8 +113,8 @@ public class TestColumnIO {
         System.out.println(record);
       }
 
-      Assert.assertEquals("deserialization does not display the same result", records.get(0).toString(), r1.toString());
-      Assert.assertEquals("deserialization does not display the same result", records.get(1).toString(), r2.toString());
+      assertEquals("deserialization does not display the same result", records.get(0).toString(), r1.toString());
+      assertEquals("deserialization does not display the same result", records.get(1).toString(), r2.toString());
 
     }
     {
@@ -127,8 +132,8 @@ public class TestColumnIO {
         System.out.println("r" + (++i));
         System.out.println(record);
       }
-      Assert.assertEquals("deserialization does not display the expected result", records.get(0).toString(), pr1.toString());
-      Assert.assertEquals("deserialization does not display the expected result", records.get(1).toString(), pr2.toString());
+      assertEquals("deserialization does not display the expected result", records.get(0).toString(), pr1.toString());
+      assertEquals("deserialization does not display the expected result", records.get(1).toString(), pr2.toString());
 
     }
   }
@@ -142,7 +147,7 @@ public class TestColumnIO {
       for (int r = 0; r < expectedFSA[i].length; r++) {
         int next = expectedFSA[i][r];
         System.out.println(" "+r+" -> "+ (next==leaves.size() ? "end" : Arrays.toString(leaves.get(next).getFieldPath()))+": "+recordReader.getNextLevel(i, r));
-        Assert.assertEquals(Arrays.toString(primitiveColumnIO.getFieldPath())+": "+r+" -> ", next, recordReader.getNextReader(i, r));
+        assertEquals(Arrays.toString(primitiveColumnIO.getFieldPath())+": "+r+" -> ", next, recordReader.getNextReader(i, r));
       }
     }
     System.out.println("----");
@@ -219,7 +224,7 @@ public class TestColumnIO {
 
       int count = 0;
       private void validate(String got) {
-        Assert.assertEquals("event #"+count, expectations.pop(), got);
+        assertEquals("event #"+count, expectations.pop(), got);
         ++count;
       }
 
@@ -290,8 +295,8 @@ public class TestColumnIO {
     GroupWriter groupWriter = new GroupWriter(new RecordConsumerWrapper(new GroupRecordConsumer(new SimpleGroupFactory(schema), result)), schema);
     groupWriter.write(r1);
     groupWriter.write(r2);
-    Assert.assertEquals("deserialization does not display the expected result", result.get(0).toString(), r1.toString());
-    Assert.assertEquals("deserialization does not display the expected result", result.get(1).toString(), r2.toString());
+    assertEquals("deserialization does not display the expected result", result.get(0).toString(), r1.toString());
+    assertEquals("deserialization does not display the expected result", result.get(1).toString(), r2.toString());
   }
 
   @Test
@@ -334,7 +339,7 @@ public class TestColumnIO {
           private void validate(Object value, int repetitionLevel,
               int definitionLevel) {
             String actual = Arrays.toString(path.getPath())+": "+value+", r:"+repetitionLevel+", d:"+definitionLevel;
-            Assert.assertEquals("event #" + counter, expected[counter], actual);
+            assertEquals("event #" + counter, expected[counter], actual);
             ++ counter;
           }
 

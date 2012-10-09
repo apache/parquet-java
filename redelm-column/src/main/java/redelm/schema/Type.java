@@ -29,10 +29,10 @@ abstract public class Type {
   private final Repetition repetition;
   private String[] fieldPath;
 
-  public Type(String name, Repetition repeatition) {
+  public Type(String name, Repetition repetition) {
     super();
     this.name = name;
-    this.repetition = repeatition;
+    this.repetition = repetition;
   }
 
   public String getName() {

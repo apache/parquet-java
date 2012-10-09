@@ -40,14 +40,14 @@
           <header>license.txt</header>
           <strictCheck>true</strictCheck>
         </configuration>
-        <executions>
+        <!--executions>
           <execution>
             <phase>test</phase>
             <goals>
               <goal>check</goal>
             </goals>
           </execution>
-        </executions>
+        </executions-->
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
