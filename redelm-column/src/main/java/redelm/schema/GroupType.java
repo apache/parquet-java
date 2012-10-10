@@ -25,8 +25,8 @@ public class GroupType extends Type {
   private final List<Type> fields;
   private final Map<String, Integer> indexByName;
 
-  public GroupType(Repetition repeatition, String name, List<Type> fields) {
-    super(name, repeatition);
+  public GroupType(Repetition repetition, String name, List<Type> fields) {
+    super(name, repetition);
     this.fields = fields;
     this.indexByName = new HashMap<String, Integer>();
     for (int i = 0; i < fields.size(); i++) {
@@ -84,24 +84,34 @@ public class GroupType extends Type {
     return fields.get(index);
   }
 
-  String membersDisplayString(String indent) {
-    String string = "";
-    for (Type field : fields) {
-      string += field.toString(indent)+";\n";
-    }
-    return string;
+  StringBuilder membersDisplayString(StringBuilder sb, String indent) {
+      for (Type field : fields) {
+          sb.append(field.toString(indent));
+          if (field.isPrimitive()) {
+              sb.append(";");
+          }
+          sb.append("\n");
+      }
+      return sb;
   }
 
   @Override
   public String toString() {
-    return toString("");
+    return toString("").toString();
   }
 
   @Override
-  public String toString(String indent) {
-    return indent+getRepetition().name().toLowerCase()+" group "+getName()+" {\n"
-        +membersDisplayString(indent+"  ")
-        +indent+"}";
+  public StringBuilder toString(String indent) {
+    return membersDisplayString(
+            new StringBuilder(indent)
+                .append(getRepetition()
+                .name()
+                .toLowerCase())
+                .append(" group ")
+                .append(getName())
+                .append(" {\n"), indent+"  ")
+            .append(indent)
+            .append("}");
   }
 
   @Override

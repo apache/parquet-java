@@ -18,7 +18,6 @@ package redelm.column.mem;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 
 import redelm.Log;
 import redelm.column.ColumnDescriptor;
@@ -56,6 +55,7 @@ public abstract class MemColumn implements ColumnReader, ColumnWriter {
     ++recordCount;
   }
 
+  //TODO why is this just a println? We should unify and standardize logging.
   private void log(Object value, int r, int d) {
     System.out.println(path+" "+value+" r:"+r+" d:"+d);
   }

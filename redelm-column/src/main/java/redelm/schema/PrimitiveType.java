@@ -179,12 +179,17 @@ public class PrimitiveType extends Type {
 
   @Override
   public String toString() {
-    return getName() + ": " + primitive;
+    return new StringBuilder(getName()).append(": ").append(primitive).toString();
   }
 
   @Override
-  public String toString(String indent) {
-    return indent+getRepetition().name().toLowerCase()+" "+primitive.name().toLowerCase()+" "+getName();
+  public StringBuilder toString(String indent) {
+    return new StringBuilder(indent)
+                .append(getRepetition().name().toLowerCase())
+                .append(" ")
+                .append(primitive.name().toLowerCase())
+                .append(" ")
+                .append(getName());
   }
 
   @Override

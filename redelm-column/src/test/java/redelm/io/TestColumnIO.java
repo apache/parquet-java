@@ -52,14 +52,14 @@ public class TestColumnIO {
     + "  optional group Links {\n"
     + "    repeated int64 Backward;\n"
     + "    repeated int64 Forward;\n"
-    + "  };\n"
+    + "  }\n"
     + "  repeated group Name {\n"
     + "    repeated group Language {\n"
     + "      required string Code;\n"
     + "      optional string Country;\n"
-    + "    };\n"
+    + "    }\n"
     + "    optional string Url;\n"
-    + "  };\n"
+    + "  }\n"
     + "}\n";
 
   int[][] expectedFSA = new int[][] {
