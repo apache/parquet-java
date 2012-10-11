@@ -17,6 +17,8 @@ package redelm.column.mem;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -26,15 +28,17 @@ import redelm.column.ColumnReader;
 import redelm.column.ColumnWriter;
 
 public abstract class MemColumn implements ColumnReader, ColumnWriter {
-
+  private static final Log LOG = Log.getLog(MemColumn.class);
   private static final boolean DEBUG = Log.DEBUG;
 
   private final ColumnDescriptor path;
 
   private int recordCount;
   private int readRecords;
-  protected ByteArrayOutputStream out;
-  protected ByteArrayInputStream in;
+  private ByteArrayOutputStream outArray;
+  private ByteArrayInputStream inArray;
+  protected DataOutputStream out;
+  protected DataInputStream in;
   private byte[] data;
 
   private int repetitionLevel;
@@ -44,20 +48,29 @@ public abstract class MemColumn implements ColumnReader, ColumnWriter {
 
   public MemColumn(ColumnDescriptor path, int initialSize) {
     this.path = path;
-    this.out = new ByteArrayOutputStream(initialSize);
+    this.outArray = new ByteArrayOutputStream(initialSize);
+    this.out = new DataOutputStream(outArray);
   }
 
   @Override
   public void write(int value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    out.write(repetitionLevel);
-    out.write(definitionLevel);
+    writeByteOut(repetitionLevel);
+    writeByteOut(definitionLevel);
     write(value);
     ++recordCount;
   }
 
+  private void writeByteOut(int repetitionLevel) {
+    try {
+      out.write(repetitionLevel);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   private void log(Object value, int r, int d) {
-    System.out.println(path+" "+value+" r:"+r+" d:"+d);
+    LOG.debug(path+" "+value+" r:"+r+" d:"+d);
   }
 
   void write(int value) {
@@ -67,8 +80,8 @@ public abstract class MemColumn implements ColumnReader, ColumnWriter {
   @Override
   public void write(String value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    out.write(repetitionLevel);
-    out.write(definitionLevel);
+    writeByteOut(repetitionLevel);
+    writeByteOut(definitionLevel);
     write(value);
     ++recordCount;
   }
@@ -80,8 +93,8 @@ public abstract class MemColumn implements ColumnReader, ColumnWriter {
   @Override
   public void write(boolean value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    out.write(repetitionLevel);
-    out.write(definitionLevel);
+    writeByteOut(repetitionLevel);
+    writeByteOut(definitionLevel);
     write(value);
     ++recordCount;
   }
@@ -93,8 +106,8 @@ public abstract class MemColumn implements ColumnReader, ColumnWriter {
   @Override
   public void write(byte[] value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    out.write(repetitionLevel);
-    out.write(definitionLevel);
+    writeByteOut(repetitionLevel);
+    writeByteOut(definitionLevel);
     write(value);
     ++recordCount;
   }
@@ -103,19 +116,52 @@ public abstract class MemColumn implements ColumnReader, ColumnWriter {
     throw new UnsupportedOperationException();
   }
 
+  void write(float value) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void write(float value, int repetitionLevel, int definitionLevel) {
+    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+    writeByteOut(repetitionLevel);
+    writeByteOut(definitionLevel);
+    write(value);
+    ++recordCount;
+  }
+
+  @Override
+  public void write(double value, int repetitionLevel, int definitionLevel) {
+    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+    writeByteOut(repetitionLevel);
+    writeByteOut(definitionLevel);
+    write(value);
+    ++recordCount;
+  }
+
+  void write(double value) {
+    throw new UnsupportedOperationException();
+  }
   @Override
   public void writeNull(int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(null, repetitionLevel, definitionLevel);
-    out.write(repetitionLevel);
-    out.write(definitionLevel);
+    writeByteOut(repetitionLevel);
+    writeByteOut(definitionLevel);
     ++recordCount;
   }
 
   private void read() {
-    repetitionLevel = in.read();
-    definitionLevel = in.read();
+    repetitionLevel = readByteIn();
+    definitionLevel = readByteIn();
     ++readRecords;
     consumed = false;
+  }
+
+  private int readByteIn() {
+    try {
+      return in.read();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public int getCurrentRepetitionLevel() {
@@ -152,10 +198,11 @@ public abstract class MemColumn implements ColumnReader, ColumnWriter {
 
   public void initiateRead() {
     if (data == null) {
-      data = out.toByteArray();
+      data = outArray.toByteArray();
       out = null;
     }
-    in = new ByteArrayInputStream(data);
+    inArray = new ByteArrayInputStream(data);
+    in = new DataInputStream(inArray);
     readRecords = 0;
   }
 
@@ -192,6 +239,16 @@ public abstract class MemColumn implements ColumnReader, ColumnWriter {
     throw new UnsupportedOperationException();
   }
 
+  @Override
+  public float getFloat() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public double getDouble() {
+    throw new UnsupportedOperationException();
+  }
+
   public int memSize() {
     if (out == null) {
       return data.length;
@@ -212,7 +269,8 @@ public abstract class MemColumn implements ColumnReader, ColumnWriter {
   public void set(byte[] data, int recordCount) {
     this.data = data;
     this.out = null;
-    this.in = new ByteArrayInputStream(data);
+    this.inArray = new ByteArrayInputStream(data);
+    this.in = new DataInputStream(inArray);
     this.readRecords = 0;
     this.recordCount = recordCount;
   }

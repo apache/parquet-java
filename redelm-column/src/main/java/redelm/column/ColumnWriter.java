@@ -25,6 +25,10 @@ public interface ColumnWriter {
 
   void write(byte[] value, int repetitionLevel, int definitionLevel);
 
+  void write(float value, int repetitionLevel, int definitionLevel);
+
+  void write(double value, int repetitionLevel, int definitionLevel);
+
   void writeNull(int repetitionLevel, int definitionLevel);
 
 }

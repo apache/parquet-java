@@ -272,6 +272,16 @@ public class TestColumnIO {
       public void addBinary(byte[] value) {
         validate("addBinary("+new BigInteger(value).toString(16)+")");
       }
+
+      @Override
+      public void addFloat(float value) {
+        validate("addFloat("+value+")");
+      }
+
+      @Override
+      public void addDouble(double value) {
+        validate("addDouble("+value+")");
+      }
     });
 
   }
@@ -360,6 +370,16 @@ public class TestColumnIO {
 
           @Override
           public void write(int value, int repetitionLevel, int definitionLevel) {
+            validate(value, repetitionLevel, definitionLevel);
+          }
+
+          @Override
+          public void write(float value, int repetitionLevel, int definitionLevel) {
+            validate(value, repetitionLevel, definitionLevel);
+          }
+
+          @Override
+          public void write(double value, int repetitionLevel, int definitionLevel) {
             validate(value, repetitionLevel, definitionLevel);
           }
         };

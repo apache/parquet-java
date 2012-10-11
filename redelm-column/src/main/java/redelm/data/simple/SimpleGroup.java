@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import redelm.data.Group;
+import redelm.io.RecordConsumer;
 import redelm.schema.GroupType;
 import redelm.schema.Type;
 
@@ -149,8 +150,23 @@ public class SimpleGroup extends Group {
   }
 
   @Override
+  public void add(int fieldIndex, float value) {
+    add(fieldIndex, new FloatValue(value));
+  }
+
+  @Override
+  public void add(int fieldIndex, double value) {
+    add(fieldIndex, new DoubleValue(value));
+  }
+
+  @Override
   public GroupType getType() {
     return schema;
+  }
+
+  @Override
+  public void writeValue(int field, int index, RecordConsumer recordConsumer) {
+    ((Primitive)getValue(field, index)).writeValue(recordConsumer);
   }
 
 }

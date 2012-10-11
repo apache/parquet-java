@@ -11,7 +11,7 @@ import redelm.schema.MessageType;
 import org.apache.hadoop.fs.FSDataOutputStream;
 
 public class RedelmFileWriter {
-  public static final byte[] MAGIC = {82, 101, 100, 32, 69, 108, 109, 32}; // "Red Elm "
+  public static final byte[] MAGIC = {82, 101, 100, 32, 69, 108, 109, 10}; // "Red Elm\n"
   public static final int CURRENT_VERSION = 1;
   private final MessageType schema;
   private final FSDataOutputStream out;

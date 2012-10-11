@@ -30,7 +30,6 @@ import redelm.column.ColumnWriter;
 import redelm.column.ColumnsStore;
 import redelm.schema.PrimitiveType.Primitive;
 
-
 public class MemColumnsStore extends ColumnsStore {
   private static final class INT64MemColumn extends MemColumn {
     private int currentInt;
@@ -47,18 +46,75 @@ public class MemColumnsStore extends ColumnsStore {
 
     @Override
     protected void readCurrentValue() {
-      currentInt = in.read();
+      try {
+        currentInt = in.readInt();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     @Override
     protected void write(int value) {
-       out.write(value);
+       try {
+        out.writeInt(value);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     @Override
     public String getCurrentValueToString() throws IOException {
       checkRead();
       return String.valueOf(currentInt);
+    }
+  }
+
+  private static final class BINARYMemColumn extends MemColumn {
+    private byte[] current;
+
+    public BINARYMemColumn(ColumnDescriptor path, int initialSize) {
+      super(path, initialSize);
+    }
+
+    @Override
+    public byte[] getBinary() {
+      checkValueRead();
+      return current;
+    }
+
+    @Override
+    protected void readCurrentValue() {
+      try {
+        int length = in.readInt();
+        if (length > 0) {
+          byte[] b = new byte[length];
+          int o = 0;
+          do {
+            o = o + in.read(b, o, length - o);
+          } while (o < length);
+          current = b;
+        } else {
+          current = new byte[0];
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    protected void write(byte[] bytes) {
+      try {
+        out.writeInt(bytes.length);
+        out.write(bytes, 0, bytes.length);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    public String getCurrentValueToString() throws IOException {
+      checkRead();
+      return String.valueOf(current);
     }
   }
 
@@ -78,31 +134,139 @@ public class MemColumnsStore extends ColumnsStore {
 
     @Override
     protected void readCurrentValue() {
-      int length = in.read();
-      if (length > 0) {
-        byte[] b = new byte[length];
-        int o = 0;
-        do {
-          o = o + in.read(b, o, length - o);
-        } while (o < length);
-        currentString = new String(b, ENCODING);
-      } else {
-        currentString = "";
+      try {
+        currentString = in.readUTF();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
       }
     }
 
     @Override
     protected void write(String value) {
-
-      byte[] bytes = value.getBytes(ENCODING);
-      out.write(bytes.length);
-      out.write(bytes, 0, bytes.length);
+      try {
+        out.writeUTF(value);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     @Override
     public String getCurrentValueToString() throws IOException {
       checkRead();
       return currentString;
+    }
+  }
+  private static final class BOOLMemColumn extends MemColumn {
+    private boolean current;
+
+    public BOOLMemColumn(ColumnDescriptor path, int initialSize) {
+      super(path, initialSize);
+    }
+
+    @Override
+    public boolean getBool() {
+      checkValueRead();
+      return current;
+    }
+
+    @Override
+    protected void readCurrentValue() {
+      try {
+        current = in.readBoolean();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    protected void write(boolean value) {
+      try {
+        out.writeBoolean(value);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    public String getCurrentValueToString() throws IOException {
+      checkRead();
+      return String.valueOf(current);
+    }
+  }
+
+  private static final class FLOATMemColumn extends MemColumn {
+    private float current;
+
+    public FLOATMemColumn(ColumnDescriptor path, int initialSize) {
+      super(path, initialSize);
+    }
+
+    @Override
+    public float getFloat() {
+      checkValueRead();
+      return current;
+    }
+
+    @Override
+    protected void readCurrentValue() {
+      try {
+        current = in.readFloat();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    protected void write(float value) {
+      try {
+        out.writeFloat(value);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    public String getCurrentValueToString() throws IOException {
+      checkRead();
+      return String.valueOf(current);
+    }
+  }
+
+  private static final class DOUBLEMemColumn extends MemColumn {
+    private double current;
+
+    public DOUBLEMemColumn(ColumnDescriptor path, int initialSize) {
+      super(path, initialSize);
+    }
+
+    @Override
+    public double getDouble() {
+      checkValueRead();
+      return current;
+    }
+
+    @Override
+    protected void readCurrentValue() {
+      try {
+        current = in.readDouble();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    protected void write(double value) {
+      try {
+        out.writeDouble(value);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    public String getCurrentValueToString() throws IOException {
+      checkRead();
+      return String.valueOf(current);
     }
   }
 
@@ -139,6 +303,14 @@ public class MemColumnsStore extends ColumnsStore {
       return new INT64MemColumn(path, initialColumnSize);
     case STRING:
       return new STRINGMemColumn(path, initialColumnSize);
+    case BOOL:
+      return new BOOLMemColumn(path, initialColumnSize);
+    case BINARY:
+      return new BINARYMemColumn(path, initialColumnSize);
+    case FLOAT:
+      return new FLOATMemColumn(path, initialColumnSize);
+    case DOUBLE:
+      return new DOUBLEMemColumn(path, initialColumnSize);
     }
     throw new RuntimeException("type "+path.getType()+" not supported");
   }

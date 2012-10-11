@@ -20,6 +20,7 @@ public class TestRedelmFileWriter {
 
   @Test
   public void test() throws Exception {
+
     Path path = new Path(new File("target/testRedelmFile").getAbsoluteFile().toURI());
     FileSystem fileSystem = path.getFileSystem(new Configuration());
 

@@ -82,7 +82,6 @@ public class MessageType extends GroupType {
 
   public MessageType(String name, Type... fields) {
     super(Repetition.REPEATED, name, fields);
-    setFieldPath(new String[0]);
   }
 
   @Override

@@ -15,7 +15,7 @@
  */
 package redelm.data.simple;
 
-
+import redelm.io.RecordConsumer;
 
 public abstract class Primitive {
 
@@ -34,5 +34,15 @@ public abstract class Primitive {
   public byte[] getBinary() {
     throw new UnsupportedOperationException();
   }
+
+  public float getFloat() {
+    throw new UnsupportedOperationException();
+  }
+
+  public double getDouble() {
+    throw new UnsupportedOperationException();
+  }
+
+  abstract public void writeValue(RecordConsumer recordConsumer);
 
 }

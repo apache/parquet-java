@@ -59,10 +59,19 @@ public class RedelmFileReader {
     }
     List<ColumnData> result = new ArrayList<ColumnData>();
     BlockMetaData block = blocks.get(currentBlock);
+    long previousReadIndex = 0;
     for (ColumnMetaData mc : block.getColumns()) {
-      if (paths.contains(Arrays.toString(mc.getPath()))) {
+      String pathKey = Arrays.toString(mc.getPath());
+      if (paths.contains(pathKey)) {
         byte[] data = new byte[(int)(mc.getEndIndex() - mc.getStartIndex())];
+        if (mc.getStartIndex() != previousReadIndex) {
+          LOG.info("seeking to next column " + (mc.getStartIndex() - previousReadIndex) + " bytes");
+        }
+        long t0 = System.currentTimeMillis();
         f.readFully(mc.getStartIndex(), data);
+        long t1 = System.currentTimeMillis();
+        LOG.info("Read " + data.length + " bytes for column " + pathKey + " in " + (t1 - t0) + " ms: " + (float)(t1 - t0)/data.length + " ms/byte");
+        previousReadIndex = mc.getEndIndex();
         result.add(new ColumnData(mc.getPath(), data));
       }
     }

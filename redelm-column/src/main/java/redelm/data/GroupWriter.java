@@ -46,7 +46,7 @@ public class GroupWriter {
         recordConsumer.startField(fieldName, field);
         for (int index = 0; index < valueCount; ++index) {
           if (fieldType.isPrimitive()) {
-            fieldType.asPrimitiveType().getPrimitive().addValueToRecordConsumer(recordConsumer, group, field, index);
+            group.writeValue(field, index, recordConsumer);
           } else {
             recordConsumer.startGroup();
             writeGroup(group.getGroup(field, index), fieldType.asGroupType());
