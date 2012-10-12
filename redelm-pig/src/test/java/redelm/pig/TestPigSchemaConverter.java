@@ -17,7 +17,7 @@ public class TestPigSchemaConverter {
     String expected =
     "message message {\n" +
     "  optional string a;\n" +
-    "  repeated group bt {\n" +
+    "  repeated group b_t {\n" +
     "    optional string c;\n" +
     "    optional string d;\n" +
     "  };\n" +
