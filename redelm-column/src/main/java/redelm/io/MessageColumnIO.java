@@ -52,7 +52,7 @@ public class MessageColumnIO extends GroupColumnIO {
       int[] r = new int[16];
 
       public void printState() {
-        log(currentLevel+", "+currentIndex[currentLevel]+": "+Arrays.toString(currentColumnIO.getType().getFieldPath())+" r:"+r[currentLevel]);
+        log(currentLevel+", "+currentIndex[currentLevel]+": "+Arrays.toString(currentColumnIO.getFieldPath())+" r:"+r[currentLevel]);
         if (r[currentLevel] > currentColumnIO.getRepetitionLevel()) {
           // sanity check
           throw new RuntimeException(r[currentLevel]+"(r) > "+currentColumnIO.getRepetitionLevel()+" ( schema r)");
@@ -95,7 +95,7 @@ public class MessageColumnIO extends GroupColumnIO {
         for (;currentIndex[currentLevel]<=to; ++currentIndex[currentLevel]) {
           ColumnIO undefinedField = ((GroupColumnIO)currentColumnIO).getChild(currentIndex[currentLevel]);
           int d = currentColumnIO.getDefinitionLevel();
-          if (DEBUG) log(Arrays.toString(undefinedField.getType().getFieldPath())+".writeNull("+r[currentLevel]+","+d+")");
+          if (DEBUG) log(Arrays.toString(undefinedField.getFieldPath())+".writeNull("+r[currentLevel]+","+d+")");
           undefinedField.writeNull(r[currentLevel], d);
         }
       }
@@ -131,7 +131,7 @@ public class MessageColumnIO extends GroupColumnIO {
       @Override
       public void endGroup() {
         if (DEBUG) log("endGroup()");
-        int lastIndex = ((GroupColumnIO)currentColumnIO).getChildrenCount() -1;
+        int lastIndex = ((GroupColumnIO)currentColumnIO).getChildrenCount() - 1;
         writeNullForMissingFields(lastIndex);
 
         -- currentLevel;
@@ -172,6 +172,24 @@ public class MessageColumnIO extends GroupColumnIO {
       @Override
       public void addBinary(byte[] value) {
         if (DEBUG) log("addBinary("+value+")");
+        ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
+
+        setRepetitionLevel();
+        if (DEBUG) printState();
+      }
+
+      @Override
+      public void addFloat(float value) {
+        if (DEBUG) log("addFloat("+value+")");
+        ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
+
+        setRepetitionLevel();
+        if (DEBUG) printState();
+      }
+
+      @Override
+      public void addDouble(double value) {
+        if (DEBUG) log("addDouble("+value+")");
         ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
         setRepetitionLevel();

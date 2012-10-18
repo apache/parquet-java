@@ -1,3 +1,18 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package redelm.pig;
 
 import java.io.IOException;
@@ -44,6 +59,7 @@ public class RedelmFileReader {
   private final FSDataInputStream f;
   private int currentBlock = 0;
   private Set<String> paths = new HashSet<String>();
+  private long previousReadIndex = 0;
 
   public RedelmFileReader(FSDataInputStream f, List<BlockMetaData> blocks, List<String[]> colums) {
     this.f = f;
@@ -53,21 +69,37 @@ public class RedelmFileReader {
     }
   }
 
-  public List<ColumnData> readColumns() throws IOException {
+  public BlockData readColumns() throws IOException {
     if (currentBlock == blocks.size()) {
       return null;
     }
     List<ColumnData> result = new ArrayList<ColumnData>();
     BlockMetaData block = blocks.get(currentBlock);
     for (ColumnMetaData mc : block.getColumns()) {
-      if (paths.contains(Arrays.toString(mc.getPath()))) {
-        byte[] data = new byte[(int)(mc.getEndIndex() - mc.getStartIndex())];
-        f.readFully(mc.getStartIndex(), data);
-        result.add(new ColumnData(mc.getPath(), data));
+      String pathKey = Arrays.toString(mc.getPath());
+      if (paths.contains(pathKey)) {
+        byte[] repetitionLevels = read(pathKey + ".r", mc.getRepetitionStart(), mc.getRepetitionLength());
+        byte[] definitionLevels = read(pathKey + ".d", mc.getDefinitionStart(), mc.getDefinitionLength());
+        byte[] data = read(pathKey + ".data", mc.getDataStart(), mc.getDataLength());
+        result.add(new ColumnData(mc.getPath(), repetitionLevels, definitionLevels, data));
       }
     }
+
     ++currentBlock;
-    return result;
+    return new BlockData(block.getRecordCount(), result);
+  }
+
+  private byte[] read(String name, long start, long length) throws IOException {
+    byte[] data = new byte[(int)length];
+    if (start != previousReadIndex) {
+      LOG.info("seeking to next column " + (start - previousReadIndex) + " bytes");
+    }
+    long t0 = System.currentTimeMillis();
+    f.readFully(start, data);
+    long t1 = System.currentTimeMillis();
+    LOG.info("Read " + length + " bytes for column " + name + " in " + (t1 - t0) + " ms: " + (float)(t1 - t0)/data.length + " ms/byte");
+    previousReadIndex = start + length;
+    return data;
   }
 
 }

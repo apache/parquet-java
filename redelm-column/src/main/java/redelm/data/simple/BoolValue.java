@@ -15,6 +15,8 @@
  */
 package redelm.data.simple;
 
+import redelm.io.RecordConsumer;
+
 public class BoolValue extends Primitive {
 
   private final boolean bool;
@@ -30,5 +32,10 @@ public class BoolValue extends Primitive {
   @Override
   public boolean getBool() {
     return bool;
+  }
+
+  @Override
+  public void writeValue(RecordConsumer recordConsumer) {
+    recordConsumer.addBoolean(bool);
   }
 }

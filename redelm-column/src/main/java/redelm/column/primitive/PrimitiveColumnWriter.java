@@ -13,36 +13,51 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.data.simple;
+package redelm.column.primitive;
 
-import redelm.io.RecordConsumer;
+import java.io.IOException;
+import java.io.OutputStream;
 
-public abstract class Primitive {
+import redelm.column.BytesOutput;
 
-  public String getString() {
+public abstract class PrimitiveColumnWriter {
+
+  public abstract int getMemSize();
+
+  public abstract void writeData(BytesOutput out) throws IOException;
+
+  public abstract void reset();
+
+  public void writeByte(int value) {
     throw new UnsupportedOperationException();
   }
 
-  public int getInt() {
+  public void writeBoolean(boolean v) {
     throw new UnsupportedOperationException();
   }
 
-  public boolean getBool() {
+  public void writeBytes(byte[] v) {
     throw new UnsupportedOperationException();
   }
 
-  public byte[] getBinary() {
+  public void writeInt(int v) {
     throw new UnsupportedOperationException();
   }
 
-  public float getFloat() {
+  public void writeLong(long v) {
     throw new UnsupportedOperationException();
   }
 
-  public double getDouble() {
+  public void writeDouble(double v) {
     throw new UnsupportedOperationException();
   }
 
-  abstract public void writeValue(RecordConsumer recordConsumer);
+  public void writeString(String str) {
+    throw new UnsupportedOperationException();
+  }
+
+  public void writeFloat(float v) {
+    throw new UnsupportedOperationException();
+  }
 
 }

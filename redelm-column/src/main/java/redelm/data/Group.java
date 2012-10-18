@@ -16,6 +16,7 @@
 package redelm.data;
 
 import redelm.Log;
+import redelm.io.RecordConsumer;
 
 abstract public class Group extends GroupValueSource {
   private static final Log logger = Log.getLog(Group.class);
@@ -54,6 +55,10 @@ abstract public class Group extends GroupValueSource {
 
   abstract public void add(int fieldIndex, byte[] value);
 
+  abstract public void add(int fieldIndex, float value);
+
+  abstract public void add(int fieldIndex, double value);
+
   abstract public Group addGroup(int fieldIndex);
 
   abstract public Group getGroup(int fieldIndex, int index);
@@ -81,5 +86,7 @@ abstract public class Group extends GroupValueSource {
     add(fieldName, value);
     return this;
   }
+
+  abstract public void writeValue(int field, int index, RecordConsumer recordConsumer);
 
 }

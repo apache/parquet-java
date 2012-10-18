@@ -13,18 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.schema;
+package redelm.column;
 
-import junit.framework.Assert;
-import redelm.data.simple.example.Paper;
+import java.io.IOException;
 
-import org.junit.Test;
+abstract public class BytesOutput {
 
-public class TestMessageType {
-  @Test
-  public void test() {
-    System.out.println(Paper.schema.toString());
-    MessageType schema = MessageType.parse(Paper.schema.toString());
-    Assert.assertEquals(schema.toString(), Paper.schema.toString());
-  }
+  public abstract void write(byte[] bytes, int index, int length) throws IOException;
+
 }

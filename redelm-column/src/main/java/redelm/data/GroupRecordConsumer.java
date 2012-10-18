@@ -86,4 +86,14 @@ public class GroupRecordConsumer extends RecordConsumer {
     groups.peek().add(fields.peek(), value);
   }
 
+  @Override
+  public void addFloat(float value) {
+    groups.peek().add(fields.peek(), value);
+  }
+
+  @Override
+  public void addDouble(double value) {
+    groups.peek().add(fields.peek(), value);
+  }
+
 }

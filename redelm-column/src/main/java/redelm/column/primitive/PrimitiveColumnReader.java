@@ -13,36 +13,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.data.simple;
+package redelm.column.primitive;
 
-import redelm.io.RecordConsumer;
+public abstract class PrimitiveColumnReader {
 
-public abstract class Primitive {
-
-  public String getString() {
+  public boolean readBoolean() {
     throw new UnsupportedOperationException();
   }
 
-  public int getInt() {
+  public int readByte() {
     throw new UnsupportedOperationException();
   }
 
-  public boolean getBool() {
+  public float readFloat() {
     throw new UnsupportedOperationException();
   }
 
-  public byte[] getBinary() {
+  public byte[] readBytes() {
     throw new UnsupportedOperationException();
   }
 
-  public float getFloat() {
+  public String readString() {
     throw new UnsupportedOperationException();
   }
 
-  public double getDouble() {
+  public double readDouble() {
     throw new UnsupportedOperationException();
   }
 
-  abstract public void writeValue(RecordConsumer recordConsumer);
+  public int readInt() {
+    throw new UnsupportedOperationException();
+  }
 
 }

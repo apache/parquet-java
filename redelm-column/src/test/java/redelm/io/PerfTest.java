@@ -24,9 +24,7 @@ import java.util.logging.Level;
 import redelm.Log;
 import redelm.column.mem.MemColumnsStore;
 import redelm.data.Group;
-import redelm.data.GroupRecordConsumer;
 import redelm.data.GroupWriter;
-import redelm.data.simple.SimpleGroupFactory;
 import redelm.schema.MessageType;
 
 /**
@@ -39,67 +37,49 @@ public class PerfTest {
 
   public static void main(String[] args) {
     MemColumnsStore columns = new MemColumnsStore(50*1024*1024);
-    {
-      MessageColumnIO columnIO = newColumnFactory(columns, schema);
-
-      {
-        GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(), schema);
-        groupWriter.write(r1);
-        groupWriter.write(r2);
-
-        write(groupWriter, 10000);
-        write(groupWriter, 10000);
-        write(groupWriter, 10000);
-        write(groupWriter, 100000);
-        write(groupWriter, 1000000);
-      }
-      System.out.println("read all");
-      {
-        RecordReader recordReader = columnIO.getRecordReader();
-
-        read(recordReader, 2, schema);
-
-        read(recordReader, 10000, schema);
-        read(recordReader, 10000, schema);
-        read(recordReader, 10000, schema);
-        read(recordReader, 100000, schema);
-        read(recordReader, 1000000, schema);
-      }
-    }
-    {
-      MessageColumnIO columnIO = newColumnFactory(columns, schema2);
-
-      System.out.println("read projected");
-      {
-        RecordReader recordReader = columnIO.getRecordReader();
-
-        read(recordReader, 2, schema2);
-
-        read(recordReader, 10000, schema2);
-        read(recordReader, 10000, schema2);
-        read(recordReader, 10000, schema2);
-        read(recordReader, 100000, schema2);
-        read(recordReader, 1000000, schema2);
-      }
-    }
-    {
-      MessageColumnIO columnIO = newColumnFactory(columns, schema3);
-
-      System.out.println("read projected no Strings");
-      {
-        RecordReader recordReader = columnIO.getRecordReader();
-
-        read(recordReader, 2, schema3);
-
-        read(recordReader, 10000, schema3);
-        read(recordReader, 10000, schema3);
-        read(recordReader, 10000, schema3);
-        read(recordReader, 100000, schema3);
-        read(recordReader, 1000000, schema3);
-      }
-    }
+    write(columns);
+    read(columns);
     System.out.println(columns.memSize()+" bytes used total");
     System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
+  }
+
+  private static void read(MemColumnsStore columns) {
+      read(columns, schema, "read all");
+      read(columns, schema2, "read projected");
+      read(columns, schema3, "read projected no Strings");
+  }
+
+  private static void read(MemColumnsStore columns, MessageType myschema,
+      String message) {
+    MessageColumnIO columnIO = newColumnFactory(columns, myschema);
+    System.out.println(message);
+    RecordReader recordReader = columnIO.getRecordReader();
+    read(recordReader, 2, myschema);
+    read(recordReader, 10000, myschema);
+    read(recordReader, 10000, myschema);
+    read(recordReader, 10000, myschema);
+    read(recordReader, 10000, myschema);
+    read(recordReader, 10000, myschema);
+    read(recordReader, 100000, myschema);
+    read(recordReader, 1000000, myschema);
+    System.out.println();
+  }
+
+  private static void write(MemColumnsStore columns) {
+    MessageColumnIO columnIO = newColumnFactory(columns, schema);
+
+    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(), schema);
+    groupWriter.write(r1);
+    groupWriter.write(r2);
+
+    write(groupWriter, 10000);
+    write(groupWriter, 10000);
+    write(groupWriter, 10000);
+    write(groupWriter, 10000);
+    write(groupWriter, 10000);
+    write(groupWriter, 100000);
+    write(groupWriter, 1000000);
+    System.out.println();
   }
 
   private static MessageColumnIO newColumnFactory(MemColumnsStore columns,
@@ -148,7 +128,21 @@ public class PerfTest {
       public void clear() {
       }
     };
-    RecordConsumer recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema), result);
+//    RecordConsumer recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema), result);
+    RecordConsumer recordConsumer = new RecordConsumer() {
+      public void startMessage() {}
+      public void startGroup() {}
+      public void startField(String field, int index) {}
+      public void endMessage() {}
+      public void endGroup() {}
+      public void endField(String field, int index) {}
+      public void addString(String value) {}
+      public void addInt(int value) {}
+      public void addFloat(float value) {}
+      public void addDouble(double value) {}
+      public void addBoolean(boolean value) {}
+      public void addBinary(byte[] value) {}
+    };
     if (Log.DEBUG) {
       recordConsumer = new RecordConsumerWrapper(recordConsumer);
     }
@@ -157,7 +151,8 @@ public class PerfTest {
       recordReader.read(recordConsumer);
     }
     long t1 = System.currentTimeMillis();
-    System.out.println("read "+count+ " in " +(float)(t1-t0)*1000/count+" µs/rec");
+    long t = t1-t0;
+    System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s\n", count , t, t == 0 ? 0 : count * 1000 / t);
   }
 
   private static void write(GroupWriter groupWriter, int count) {
@@ -166,7 +161,8 @@ public class PerfTest {
       groupWriter.write(r1);
     }
     long t1 = System.currentTimeMillis();
-    System.out.println("written "+count+ " in " +(float)(t1-t0)*1000/count+" µs/rec");
+    long t = t1-t0;
+    System.out.printf("written %,9d recs in %,5d ms at %,9d rec/s\n", count, t, t == 0 ? 0 : count * 1000 / t );
   }
 
 }

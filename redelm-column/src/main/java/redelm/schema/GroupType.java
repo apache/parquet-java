@@ -49,16 +49,6 @@ public class GroupType extends Type {
     return indexByName.get(name);
   }
 
-  @Override
-  void setFieldPath(String[] fieldPath) {
-    super.setFieldPath(fieldPath);
-    for (Type type : this.fields) {
-      String[] newFieldPath = Arrays.copyOf(fieldPath, fieldPath.length + 1);
-      newFieldPath[fieldPath.length] =  type.getName();
-      type.setFieldPath(newFieldPath);
-    }
-  }
-
   public GroupType(Repetition required, String name, Type... fields) {
     this(required, name, Arrays.asList(fields));
   }

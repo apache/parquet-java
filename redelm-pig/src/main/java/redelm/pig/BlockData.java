@@ -13,18 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.schema;
+package redelm.pig;
 
-import junit.framework.Assert;
-import redelm.data.simple.example.Paper;
+import java.util.List;
 
-import org.junit.Test;
+public class BlockData {
 
-public class TestMessageType {
-  @Test
-  public void test() {
-    System.out.println(Paper.schema.toString());
-    MessageType schema = MessageType.parse(Paper.schema.toString());
-    Assert.assertEquals(schema.toString(), Paper.schema.toString());
+  private final int recordCount;
+  private final List<ColumnData> columns;
+
+  public BlockData(int recordCount, List<ColumnData> columns) {
+    this.recordCount = recordCount;
+    this.columns = columns;
   }
+
+  public int getRecordCount() {
+    return recordCount;
+  }
+
+  public List<ColumnData> getColumns() {
+    return columns;
+  }
+
 }

@@ -30,5 +30,7 @@ abstract public class RecordConsumer {
   abstract public void addString(String value);
   abstract public void addBoolean(boolean value);
   abstract public void addBinary(byte[] value);
+  abstract public void addFloat(float value);
+  abstract public void addDouble(double value);
 
 }

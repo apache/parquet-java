@@ -33,6 +33,7 @@ public class GroupColumnIO extends ColumnIO {
 
   private final Map<String, ColumnIO> childrenByName = new HashMap<String, ColumnIO>();
   private final List<ColumnIO> children = new ArrayList<ColumnIO>();
+  private int childrenSize = 0;
 
   GroupColumnIO(GroupType groupType, GroupColumnIO parent) {
     super(groupType, parent);
@@ -41,6 +42,7 @@ public class GroupColumnIO extends ColumnIO {
   void add(ColumnIO child) {
     children.add(child);
     childrenByName.put(child.getType().getName(), child);
+    ++ childrenSize;
   }
 
   @Override
@@ -108,7 +110,7 @@ public class GroupColumnIO extends ColumnIO {
   }
 
   public int getChildrenCount() {
-    return children.size();
+    return childrenSize;
 
   }
 

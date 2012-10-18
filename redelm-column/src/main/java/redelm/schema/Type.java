@@ -15,8 +15,6 @@
  */
 package redelm.schema;
 
-import java.util.Arrays;
-
 abstract public class Type {
 
   public static enum Repetition {
@@ -27,7 +25,6 @@ abstract public class Type {
 
   private final String name;
   private final Repetition repetition;
-  private String[] fieldPath;
 
   public Type(String name, Repetition repetition) {
     super();
@@ -59,65 +56,8 @@ abstract public class Type {
     return (PrimitiveType)this;
   }
 
-  void setFieldPath(String[] fieldPath) {
-    this.fieldPath = fieldPath;
-  }
-
-  public String[] getFieldPath() {
-    return fieldPath;
-  }
-
-  abstract public StringBuilder toString(String indent);
+  abstract public String toString(String indent);
 
   abstract public void accept(TypeVisitor visitor);
 
-  @Override
-  public String toString() {
-    return new StringBuilder("Type [name=")
-            .append(name)
-            .append(", repetition=")
-            .append(repetition)
-            .append(", fieldPath=")
-            .append(Arrays.toString(fieldPath))
-            .append("]").toString();
-  }
-
-  @Override
-  public boolean equals(Object other) {
-      if (!(other instanceof Type) || other == null) {
-          return false;
-      }
-      if (this == other) {
-          return true;
-      }
-      Type otherType = (Type) other;
-      if (isPrimitive()) {
-          if (otherType.isPrimitive()) {
-              return repetition == otherType.getRepetition() &&
-                     name.equals(otherType.getName());
-          } else {
-              return false;
-          }
-      } else {
-          if (otherType.isPrimitive()) {
-              return false;
-          } else {
-              return repetition == otherType.getRepetition() &&
-                     name.equals(otherType.getName()) &&
-                     asGroupType().getFields().equals(otherType.asGroupType().getFields());
-          }
-      }
-  }
-
-  @Override
-  public int hashCode() {
-      int c = repetition.hashCode();
-      c = c * 31 + name.hashCode();
-      if (!isPrimitive()) {
-          for (Type type : asGroupType().getFields()) {
-              c = c * 31 + type.hashCode();
-          }
-      }
-      return c;
-  }
 }

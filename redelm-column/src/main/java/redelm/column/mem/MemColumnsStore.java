@@ -15,9 +15,6 @@
  */
 package redelm.column.mem;
 
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
@@ -30,81 +27,7 @@ import redelm.column.ColumnWriter;
 import redelm.column.ColumnsStore;
 import redelm.schema.PrimitiveType.Primitive;
 
-
 public class MemColumnsStore extends ColumnsStore {
-  private static final class INT64MemColumn extends MemColumn {
-    private int currentInt;
-
-    public INT64MemColumn(ColumnDescriptor path, int initialSize) {
-      super(path, initialSize);
-    }
-
-    @Override
-    public int getInt() {
-      checkValueRead();
-      return currentInt;
-    }
-
-    @Override
-    protected void readCurrentValue() {
-      currentInt = in.read();
-    }
-
-    @Override
-    protected void write(int value) {
-       out.write(value);
-    }
-
-    @Override
-    public String getCurrentValueToString() throws IOException {
-      checkRead();
-      return String.valueOf(currentInt);
-    }
-  }
-
-  private static final class STRINGMemColumn extends MemColumn {
-    private static final Charset ENCODING = Charset.forName("UTF-8");
-    private String currentString;
-
-    public STRINGMemColumn(ColumnDescriptor path, int initialSize) {
-      super(path, initialSize);
-    }
-
-    @Override
-    public String getString() {
-      checkValueRead();
-      return currentString;
-    }
-
-    @Override
-    protected void readCurrentValue() {
-      int length = in.read();
-      if (length > 0) {
-        byte[] b = new byte[length];
-        int o = 0;
-        do {
-          o = o + in.read(b, o, length - o);
-        } while (o < length);
-        currentString = new String(b, ENCODING);
-      } else {
-        currentString = "";
-      }
-    }
-
-    @Override
-    protected void write(String value) {
-
-      byte[] bytes = value.getBytes(ENCODING);
-      out.write(bytes.length);
-      out.write(bytes, 0, bytes.length);
-    }
-
-    @Override
-    public String getCurrentValueToString() throws IOException {
-      checkRead();
-      return currentString;
-    }
-  }
 
   Map<ColumnDescriptor, MemColumn> columns = new TreeMap<ColumnDescriptor, MemColumn>();
   private int initialColumnSize;
@@ -115,13 +38,11 @@ public class MemColumnsStore extends ColumnsStore {
   }
 
   public ColumnReader getColumnReader(ColumnDescriptor path) {
-    MemColumn column = getColumn(path);
-    column.initiateRead();
-    return column;
+    return getColumn(path).getColumnReader();
   }
 
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
-    return getColumn(path);
+    return getColumn(path).getColumnWriter();
   }
 
   private MemColumn getColumn(ColumnDescriptor path) {
@@ -134,21 +55,7 @@ public class MemColumnsStore extends ColumnsStore {
   }
 
   private MemColumn newMemColumn(ColumnDescriptor path) {
-    switch (path.getType()) {
-    case INT64:
-      return new INT64MemColumn(path, initialColumnSize);
-    case STRING:
-      return new STRINGMemColumn(path, initialColumnSize);
-    }
-    throw new RuntimeException("type "+path.getType()+" not supported");
-  }
-
-  public Collection<ColumnReader> getColumnReaders() {
-    Collection<ColumnReader> result = new ArrayList<ColumnReader>(columns.size());
-    for (MemColumn c : columns.values()) {
-      result.add(c);
-    }
-    return result;
+    return new MemColumn(path, initialColumnSize);
   }
 
   @Override
@@ -156,7 +63,6 @@ public class MemColumnsStore extends ColumnsStore {
       StringBuffer sb = new StringBuffer();
       for (Entry<ColumnDescriptor, MemColumn> entry : columns.entrySet()) {
         sb.append(Arrays.toString(entry.getKey().getPath())).append(": ");
-        sb.append(entry.getValue().size()).append(" recs ");
         sb.append(entry.getValue().memSize()).append(" bytes");
         sb.append("\n");
       }
@@ -185,21 +91,28 @@ public class MemColumnsStore extends ColumnsStore {
     return columns.values();
   }
 
-  public void setColumn(String[] path, Primitive primitive, byte[] data, int recordCount) {
+  public void setForRead(
+      String[] path, Primitive primitive,
+      int recordCount,
+      byte[] repetitionLevels, byte[] definitionLevel, byte[] data) {
     ColumnDescriptor descriptor = new ColumnDescriptor(path, primitive);
     MemColumn col = getColumn(descriptor);
-    col.set(data, recordCount);
+    col.setForRead(recordCount, repetitionLevels, definitionLevel, data);
     columns.put(descriptor, col);
-
   }
 
   public boolean isFullyConsumed() {
     for (MemColumn c : columns.values()) {
-      if (c.isFullyConsumed()) {
+      if (c.getColumnReader().isFullyConsumed()) {
         return true;
       }
-
     }
     return false;
+  }
+
+  public void flip() {
+    for (MemColumn c : columns.values()) {
+      c.flip();
+    }
   }
 }

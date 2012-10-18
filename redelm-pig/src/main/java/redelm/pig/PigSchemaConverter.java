@@ -1,3 +1,18 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package redelm.pig;
 
 import java.util.List;
@@ -10,14 +25,14 @@ import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType;
-import redelm.schema.PrimitiveType.Primitive;
 import redelm.schema.Type;
+import redelm.schema.PrimitiveType.Primitive;
 import redelm.schema.Type.Repetition;
 
 public class PigSchemaConverter {
 
   public MessageType convert(Schema pigSchema) {
-    return new MessageType("PigSchema", convertTypes(pigSchema));
+    return new MessageType("message", convertTypes(pigSchema));
   }
 
   private Type[] convertTypes(Schema pigSchema) {
@@ -49,8 +64,7 @@ public class PigSchemaConverter {
       case DataType.FLOAT:
         return primitive(Primitive.FLOAT, fieldSchema.alias);
       case DataType.DOUBLE:
-        // TODO: right type
-        return primitive(Primitive.FLOAT, fieldSchema.alias);
+        return primitive(Primitive.DOUBLE, fieldSchema.alias);
       case DataType.DATETIME:
         throw new UnsupportedOperationException();
       case DataType.BYTEARRAY:
@@ -77,7 +91,17 @@ public class PigSchemaConverter {
   }
 
   private Type convertTuple(String alias, FieldSchema field, Repetition repetition) {
-    return new GroupType(repetition, alias+"::"+field.alias, convertTypes(field.schema));
+    String name;
+    if (alias == null) {
+      name = field.alias;
+    } else if (field.alias == null) {
+      name = alias;
+    } else if (alias.equals(field.alias)) {
+      name = alias;
+    } else  {
+      name = alias + "_" + field.alias;
+    }
+    return new GroupType(repetition, name, convertTypes(field.schema));
   }
 
 }

@@ -38,4 +38,8 @@ public interface ColumnReader {
 
   byte[] getBinary();
 
+  float getFloat();
+
+  double getDouble();
+
 }
