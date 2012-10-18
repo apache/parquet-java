@@ -40,7 +40,6 @@ public class TupleRecordConsumer extends RecordConsumer {
   private Deque<Type> types = new ArrayDeque<Type>();
   private Deque<Tuple> groups = new ArrayDeque<Tuple>();
   private Deque<String> fields = new ArrayDeque<String>();
-  private int indent = 0;
   private final Collection<Tuple> destination;
 
   public TupleRecordConsumer(MessageType schema, Collection<Tuple> destination) {
@@ -125,6 +124,16 @@ public class TupleRecordConsumer extends RecordConsumer {
   @Override
   public void addBinary(byte[] value) {
     setCurrentField(new DataByteArray(value));
+  }
+
+  @Override
+  public void addFloat(float value) {
+    setCurrentField(value);
+  }
+
+  @Override
+  public void addDouble(double value) {
+    setCurrentField(value);
   }
 
 }

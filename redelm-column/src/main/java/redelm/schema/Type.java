@@ -15,8 +15,6 @@
  */
 package redelm.schema;
 
-import java.util.Arrays;
-
 abstract public class Type {
 
   public static enum Repetition {
@@ -27,7 +25,6 @@ abstract public class Type {
 
   private final String name;
   private final Repetition repetition;
-  private String[] fieldPath;
 
   public Type(String name, Repetition repeatition) {
     super();
@@ -59,22 +56,8 @@ abstract public class Type {
     return (PrimitiveType)this;
   }
 
-  void setFieldPath(String[] fieldPath) {
-    this.fieldPath = fieldPath;
-  }
-
-  public String[] getFieldPath() {
-    return fieldPath;
-  }
-
   abstract public String toString(String indent);
 
   abstract public void accept(TypeVisitor visitor);
-
-  @Override
-  public String toString() {
-    return "Type [name=" + name + ", repetition=" + repetition + ", fieldPath="
-        + Arrays.toString(fieldPath) + "]";
-  }
 
 }

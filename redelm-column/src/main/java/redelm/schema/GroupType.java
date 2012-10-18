@@ -38,21 +38,15 @@ public class GroupType extends Type {
     return fields.get(index).getName();
   }
 
+  public boolean containsField(String name) {
+    return indexByName.containsKey(name);
+  }
+
   public int getFieldIndex(String name) {
     if (!indexByName.containsKey(name)) {
       throw new RuntimeException(name + " not found in " + this);
     }
     return indexByName.get(name);
-  }
-
-  @Override
-  void setFieldPath(String[] fieldPath) {
-    super.setFieldPath(fieldPath);
-    for (Type type : this.fields) {
-      String[] newFieldPath = Arrays.copyOf(fieldPath, fieldPath.length + 1);
-      newFieldPath[fieldPath.length] =  type.getName();
-      type.setFieldPath(newFieldPath);
-    }
   }
 
   public GroupType(Repetition required, String name, Type... fields) {

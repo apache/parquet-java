@@ -15,6 +15,8 @@
  */
 package redelm.column;
 
+import java.io.IOException;
+
 public interface ColumnWriter {
 
   void write(int value, int repetitionLevel, int definitionLevel);
@@ -25,6 +27,19 @@ public interface ColumnWriter {
 
   void write(byte[] value, int repetitionLevel, int definitionLevel);
 
+  void write(float value, int repetitionLevel, int definitionLevel);
+
+  void write(double value, int repetitionLevel, int definitionLevel);
+
   void writeNull(int repetitionLevel, int definitionLevel);
 
+  void writeRepetitionLevelColumn(BytesOutput out) throws IOException;
+
+  void writeDefinitionLevelColumn(BytesOutput out) throws IOException;
+
+  void writeDataColumn(BytesOutput out) throws IOException ;
+
+  void reset();
+
+  int getValueCount();
 }

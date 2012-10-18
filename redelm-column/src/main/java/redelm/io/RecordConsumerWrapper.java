@@ -47,6 +47,10 @@ public class RecordConsumerWrapper extends RecordConsumer {
       return result.toString();
     }
 
+    private void log(Object value) {
+      logger.debug(indent() + value);
+    }
+
     @Override
     public void startGroup() {
       if (DEBUG) ++indent;
@@ -56,9 +60,7 @@ public class RecordConsumerWrapper extends RecordConsumer {
 
     @Override
     public void addInt(int value) {
-      if (DEBUG) {
-        log(value);
-      }
+      if (DEBUG) log(value);
       delegate.addInt(value);
     }
 
@@ -72,24 +74,27 @@ public class RecordConsumerWrapper extends RecordConsumer {
 
     @Override
     public void addBoolean(boolean value) {
-      if (DEBUG) {
-        log(value);
-      }
+      if (DEBUG) log(value);
       delegate.addBoolean(value);
-    }
-
-    private void log(Object value) {
-      logger.debug(indent() + value);
     }
 
     @Override
     public void addBinary(byte[] value) {
-      if (DEBUG) {
-        log(value);
-      }
+      if (DEBUG) log(value);
       delegate.addBinary(value);
     }
 
+    @Override
+    public void addFloat(float value) {
+      if (DEBUG) log(value);
+      delegate.addFloat(value);
+    }
+
+    @Override
+    public void addDouble(double value) {
+      if (DEBUG) log(value);
+      delegate.addDouble(value);
+    }
     @Override
     public void endGroup() {
       if (DEBUG) log("<!-- end group -->");

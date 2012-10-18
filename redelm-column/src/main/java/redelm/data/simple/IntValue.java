@@ -15,6 +15,8 @@
  */
 package redelm.data.simple;
 
+import redelm.io.RecordConsumer;
+
 
 public class IntValue extends Primitive {
 
@@ -32,5 +34,10 @@ public class IntValue extends Primitive {
   @Override
   public int getInt() {
     return value;
+  }
+
+  @Override
+  public void writeValue(RecordConsumer recordConsumer) {
+    recordConsumer.addInt(value);
   }
 }

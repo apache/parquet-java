@@ -15,6 +15,8 @@
  */
 package redelm.data.simple;
 
+import redelm.io.RecordConsumer;
+
 
 public class BinaryValue extends Primitive {
 
@@ -27,5 +29,10 @@ public class BinaryValue extends Primitive {
   @Override
   public byte[] getBinary() {
     return binary;
+  }
+
+  @Override
+  public void writeValue(RecordConsumer recordConsumer) {
+    recordConsumer.addBinary(binary);
   }
 }

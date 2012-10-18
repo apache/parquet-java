@@ -15,6 +15,8 @@
  */
 package redelm.data.simple;
 
+import redelm.io.RecordConsumer;
+
 
 public class StringValue extends Primitive {
 
@@ -36,5 +38,10 @@ public class StringValue extends Primitive {
   @Override
   public String getString() {
     return get();
+  }
+
+  @Override
+  public void writeValue(RecordConsumer recordConsumer) {
+    recordConsumer.addString(value);
   }
 }
