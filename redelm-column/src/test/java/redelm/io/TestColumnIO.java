@@ -114,8 +114,8 @@ public class TestColumnIO {
         System.out.println(record);
       }
 
-      Assert.assertEquals("deserialization does not display the same result", r1.toString(), records.get(0).toString());
-      Assert.assertEquals("deserialization does not display the same result", r2.toString(), records.get(1).toString());
+      assertEquals("deserialization does not display the same result", r1.toString(), records.get(0).toString());
+      assertEquals("deserialization does not display the same result", r2.toString(), records.get(1).toString());
     }
     {
       columns.flip();
@@ -133,8 +133,8 @@ public class TestColumnIO {
         System.out.println("r" + (++i));
         System.out.println(record);
       }
-      Assert.assertEquals("deserialization does not display the expected result", pr1.toString(), records.get(0).toString());
-      Assert.assertEquals("deserialization does not display the expected result", pr2.toString(), records.get(1).toString());
+      assertEquals("deserialization does not display the expected result", pr1.toString(), records.get(0).toString());
+      assertEquals("deserialization does not display the expected result", pr2.toString(), records.get(1).toString());
     }
   }
 

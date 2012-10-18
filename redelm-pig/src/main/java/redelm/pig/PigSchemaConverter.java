@@ -25,14 +25,14 @@ import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType;
-import redelm.schema.Type;
 import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.Type;
 import redelm.schema.Type.Repetition;
 
 public class PigSchemaConverter {
 
   public MessageType convert(Schema pigSchema) {
-    return new MessageType("message", convertTypes(pigSchema));
+    return new MessageType("pig_schema", convertTypes(pigSchema));
   }
 
   private Type[] convertTypes(Schema pigSchema) {

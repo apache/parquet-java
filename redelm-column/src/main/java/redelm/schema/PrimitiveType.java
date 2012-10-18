@@ -85,31 +85,6 @@ public class PrimitiveType extends Type {
           ColumnReader columnReader) {
         recordConsumer.addDouble(columnReader.getDouble());
       }
-    },
-    FLOAT {
-      @Override
-      public void writeValueToColumn(GroupValueSource parent, String field,
-          int index, int r, int d, ColumnWriter columnWriter) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public String toString(ColumnReader columnReader) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
-          ColumnReader columnReader) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
-          Group group, int field, int index) {
-        throw new UnsupportedOperationException();
-      }
-
     };
 
     abstract public String toString(ColumnReader columnReader);
@@ -120,8 +95,8 @@ public class PrimitiveType extends Type {
 
   private final Primitive primitive;
 
-  public PrimitiveType(Repetition repeatition, Primitive primitive, String name) {
-    super(name, repeatition);
+  public PrimitiveType(Repetition repetition, Primitive primitive, String name) {
+    super(name, repetition);
     this.primitive = primitive;
   }
 
@@ -135,28 +110,38 @@ public class PrimitiveType extends Type {
   }
 
   @Override
-  public String toString() {
-    return new StringBuilder(getName()).append(": ").append(primitive).toString();
-  }
-
-  @Override
-<<<<<<< HEAD
-  public StringBuilder toString(String indent) {
-    return new StringBuilder(indent)
-                .append(getRepetition().name().toLowerCase())
-                .append(" ")
-                .append(primitive.name().toLowerCase())
-                .append(" ")
-                .append(getName());
-=======
-  public String toString(String indent) {
-    return indent + getRepetition().name().toLowerCase() + " " + primitive.name().toLowerCase() + " " + getName();
->>>>>>> 11b8190df05c1ef61a6dc677db378bca62338062
-  }
-
-  @Override
   public void accept(TypeVisitor visitor) {
     visitor.visit(this);
   }
 
+  @Override
+  public StringBuilder toStringBuilder(String indent) {
+    return new StringBuilder(indent)
+               .append(getRepetition().name().toLowerCase())
+               .append(" ")
+               .append(primitive.name().toLowerCase())
+               .append(" ")
+               .append(getName());
+  }
+
+  @Override
+  protected boolean typeEquals(Type other) {
+      if (other.isPrimitive()) {
+          PrimitiveType primitiveType = other.asPrimitiveType();
+          return getRepetition() == primitiveType.getRepetition() &&
+                 getPrimitive().equals(primitiveType.getPrimitive()) &&
+                 getName().equals(primitiveType.getName());
+      } else {
+          return false;
+      }
+  }
+
+  @Override
+  protected int typeHashCode() {
+    int hash = 17;
+    hash += 31 * getRepetition().hashCode();
+    hash += 31 * getPrimitive().hashCode();
+    hash += 31 * getName().hashCode();
+    return hash;
+  }
 }

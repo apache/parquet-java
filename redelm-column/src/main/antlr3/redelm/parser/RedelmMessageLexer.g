@@ -51,10 +51,10 @@ OPTIONAL : O P T I O N A L;
 REPEATED: R E P E A T E D;
 
 GROUP : G R O U P;
-LONG : 'int64';
-STRING : 'string';
-FLOAT: 'float';
-DOUBLE: 'double';
+LONG : I N T '64';
+STRING : S T R I N G;
+FLOAT : F L O A T;
+DOUBLE : D O U B L E;
 
 MESSAGE : M E S S A G E;
 

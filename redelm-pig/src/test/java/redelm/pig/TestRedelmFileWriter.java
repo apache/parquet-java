@@ -20,9 +20,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import junit.framework.Assert;
-import redelm.column.ColumnDescriptor;
-import redelm.schema.MessageType;
-import redelm.schema.PrimitiveType.Primitive;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -30,6 +27,11 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
+
+import redelm.column.ColumnDescriptor;
+import redelm.parser.RedelmParser;
+import redelm.schema.MessageType;
+import redelm.schema.PrimitiveType.Primitive;
 
 public class TestRedelmFileWriter {
 
@@ -41,7 +43,7 @@ public class TestRedelmFileWriter {
 
     FSDataOutputStream fout = fileSystem.create(path, true);
 
-    MessageType schema = MessageType.parse("message m { required group a {required string b;}; required group c { required int64 d; };}");
+    MessageType schema = RedelmParser.parse("message m { required group a {required string b;}; required group c { required int64 d; };}");
     String[] path1 = {"a", "b"};
     ColumnDescriptor c1 = new ColumnDescriptor(path1 , Primitive.STRING);
     String[] path2 = {"c", "d"};

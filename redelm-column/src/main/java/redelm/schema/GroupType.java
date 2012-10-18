@@ -76,7 +76,7 @@ public class GroupType extends Type {
 
   StringBuilder membersDisplayString(StringBuilder sb, String indent) {
       for (Type field : fields) {
-          sb.append(field.toString(indent));
+          sb.append(field.toStringBuilder(indent));
           if (field.isPrimitive()) {
               sb.append(";");
           }
@@ -87,19 +87,18 @@ public class GroupType extends Type {
 
   @Override
   public String toString() {
-    return toString("").toString();
+    return toStringBuilder("").toString();
   }
 
   @Override
-  public StringBuilder toString(String indent) {
+  public StringBuilder toStringBuilder(String indent) {
     return membersDisplayString(
-            new StringBuilder(indent)
-                .append(getRepetition()
-                .name()
-                .toLowerCase())
-                .append(" group ")
-                .append(getName())
-                .append(" {\n"), indent+"  ")
+                new StringBuilder(indent)
+                    .append(getRepetition().name().toLowerCase())
+                    .append(" group ")
+                    .append(getName())
+                    .append(" {\n")
+                , indent+"  ")
             .append(indent)
             .append("}");
   }
@@ -108,4 +107,26 @@ public class GroupType extends Type {
   public void accept(TypeVisitor visitor) {
     visitor.visit(this);
   }
+
+  @Override
+  protected int typeHashCode() {
+      int c = 17;
+      c += 31 * getRepetition().hashCode();
+      c += 31 * getName().hashCode();
+      c += 31 * getFields().hashCode();
+      return c;
+  }
+
+  @Override
+  protected boolean typeEquals(Type other) {
+      Type otherType = (Type) other;
+      if (otherType.isPrimitive()) {
+          return false;
+      } else {
+          GroupType groupType = otherType.asGroupType();
+          return getRepetition() == groupType.getRepetition() &&
+                 getName().equals(groupType.getName()) &&
+                 getFields().equals(groupType.getFields());
+      }
+   }
 }

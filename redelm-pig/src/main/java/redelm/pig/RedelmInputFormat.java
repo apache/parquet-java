@@ -23,13 +23,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import redelm.column.mem.MemColumnsStore;
-import redelm.io.ColumnIOFactory;
-import redelm.io.MessageColumnIO;
-import redelm.schema.GroupType;
-import redelm.schema.MessageType;
-import redelm.schema.Type;
-
+import org.antlr.runtime.RecognitionException;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
@@ -43,13 +37,25 @@ import org.apache.log4j.Logger;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigFileInputFormat;
 import org.apache.pig.data.Tuple;
 
+import redelm.column.mem.MemColumnsStore;
+import redelm.io.ColumnIOFactory;
+import redelm.io.MessageColumnIO;
+import redelm.parser.RedelmParser;
+import redelm.schema.GroupType;
+import redelm.schema.MessageType;
+import redelm.schema.Type;
+
 public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
   private static final Logger LOG = Logger.getLogger(RedelmInputFormat.class);
 
   private MessageType requestedSchema;
 
   public RedelmInputFormat(String requestedSchema) {
-    this.requestedSchema = requestedSchema == null ? null : MessageType.parse(requestedSchema);
+    try {
+        this.requestedSchema = requestedSchema == null ? null : RedelmParser.parse(requestedSchema);
+    } catch (RecognitionException e) {
+        throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -124,7 +130,11 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
         FileSystem fs = FileSystem.get(taskAttemptContext.getConfiguration());
         RedelmInputSplit redelmInputSplit = (RedelmInputSplit)inputSplit;
         Path path = redelmInputSplit.getPath();
-        schema = MessageType.parse(redelmInputSplit.getSchema());
+        try {
+            schema = RedelmParser.parse(redelmInputSplit.getSchema());
+        } catch (RecognitionException e) {
+            throw new IOException("Unable to parse Schema", e);
+        }
         if (requestedSchema == null) {
           requestedSchema = schema;
         }

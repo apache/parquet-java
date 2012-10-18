@@ -15,11 +15,6 @@
  */
 package redelm.schema;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.StringTokenizer;
-
-import redelm.schema.PrimitiveType.Primitive;
 
 public class MessageType extends GroupType {
   public MessageType(String name, Type... fields) {
@@ -32,11 +27,11 @@ public class MessageType extends GroupType {
   }
 
   @Override
-  public String toString() {
+  public StringBuilder toStringBuilder(String indent) {
     return membersDisplayString(
                 new StringBuilder("message ")
                     .append(getName())
                     .append(" {\n"), "  ")
-                .append("}\n").toString();
+                .append("}\n");
   }
 }
