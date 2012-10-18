@@ -15,6 +15,8 @@
  */
 package redelm.pig.summary;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,22 +24,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import redelm.pig.RedelmStorer;
-
 import org.apache.pig.ExecType;
 import org.apache.pig.PigServer;
-import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.builtin.mock.Storage;
 import org.apache.pig.builtin.mock.Storage.Data;
 import org.apache.pig.data.BagFactory;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
-import org.apache.pig.impl.logicalLayer.schema.Schema;
-import org.apache.pig.impl.util.Utils;
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestSummary {
@@ -111,15 +107,15 @@ public class TestSummary {
   private void validate(String result, int factor) throws JsonParseException, JsonMappingException, IOException {
     TupleSummaryData s = SummaryData.fromJSON(result, TupleSummaryData.class);
 //          System.out.println(SummaryData.toPrettyJSON(s));
-    Assert.assertEquals(9 * factor, s.getCount());
-    Assert.assertEquals(1 * factor, s.getFields().get(0).getNull().longValue());
-    Assert.assertEquals(7 * factor, s.getFields().get(0).getBag().getCount());
-    Assert.assertEquals(15 * factor,
+    assertEquals(9 * factor, s.getCount());
+    assertEquals(1 * factor, s.getFields().get(0).getNull().longValue());
+    assertEquals(7 * factor, s.getFields().get(0).getBag().getCount());
+    assertEquals(15 * factor,
         s.getFields().get(0).getBag().getContent().getTuple().getFields().get(0).getCount());
     MapSummaryData map =
         s.getFields().get(0).getBag().getContent().getTuple().getFields().get(1).getMap();
-    Assert.assertEquals(2 * factor, map.getCount());
-    Assert.assertEquals(3 * factor, map.getKey().getCount());
+    assertEquals(2 * factor, map.getCount());
+    assertEquals(3 * factor, map.getKey().getCount());
   }
 
   @Test

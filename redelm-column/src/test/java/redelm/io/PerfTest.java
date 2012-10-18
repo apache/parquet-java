@@ -15,7 +15,11 @@
  */
 package redelm.io;
 
-import static redelm.data.simple.example.Paper.*;
+import static redelm.data.simple.example.Paper.r1;
+import static redelm.data.simple.example.Paper.r2;
+import static redelm.data.simple.example.Paper.schema;
+import static redelm.data.simple.example.Paper.schema2;
+import static redelm.data.simple.example.Paper.schema3;
 
 import java.util.Collection;
 import java.util.Iterator;

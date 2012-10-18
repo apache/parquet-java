@@ -65,16 +65,16 @@ public class TestRedelmStorer {
     Data data = Storage.resetData(pigServer);
     Collection<Tuple> list = new ArrayList<Tuple>();
     for (int i = 0; i < 1000; i++) {
-        list.add(tuple("a"+i, bag(tuple("o", "b"))));
+      list.add(tuple("a"+i, bag(tuple("o", "b"))));
     }
     for (int i = 10; i < 2000; i++) {
-        list.add(tuple("a"+i, bag(tuple("o", "b"), tuple("o", "b"), tuple("o", "b"), tuple("o", "b"))));
+      list.add(tuple("a"+i, bag(tuple("o", "b"), tuple("o", "b"), tuple("o", "b"), tuple("o", "b"))));
     }
     for (int i = 20; i < 3000; i++) {
-        list.add(tuple("a"+i, bag(tuple("o", "b"), tuple("o", null), tuple(null, "b"), tuple(null, null))));
+      list.add(tuple("a"+i, bag(tuple("o", "b"), tuple("o", null), tuple(null, "b"), tuple(null, null))));
     }
     for (int i = 30; i < 4000; i++) {
-        list.add(tuple("a"+i, null));
+      list.add(tuple("a"+i, null));
     }
     Collections.shuffle((List<?>)list);
     data.set("in", "a:chararray, b:{t:(c:chararray, d:chararray)}", list );
@@ -106,14 +106,14 @@ public class TestRedelmStorer {
       }
 
       final Function<Tuple,Object> grabFirstColumn = new Function<Tuple,Object>() {
-          @Override
-          public Object apply(Tuple input) {
-              try {
-                  return input.get(0);
-              } catch (ExecException e) {
-                  throw new RuntimeException(e);
-              }
+        @Override
+        public Object apply(Tuple input) {
+          try {
+              return input.get(0);
+          } catch (ExecException e) {
+            throw new RuntimeException(e);
           }
+        }
       };
 
       List<Tuple> result2 = data.get("out2");
