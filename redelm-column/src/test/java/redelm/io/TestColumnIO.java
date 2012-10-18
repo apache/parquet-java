@@ -17,16 +17,17 @@ package redelm.io;
 
 import static redelm.data.simple.example.Paper.*;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
 
 import junit.framework.Assert;
 import redelm.Log;
+import redelm.column.BytesOutput;
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnReader;
 import redelm.column.ColumnWriter;
@@ -93,7 +94,7 @@ public class TestColumnIO {
       groupWriter.write(r2);
       System.out.println(columns);
       System.out.println("=========");
-
+      columns.flip();
       List<Group> records = new ArrayList<Group>();
       RecordReader recordReader = columnIO.getRecordReader();
 
@@ -108,11 +109,12 @@ public class TestColumnIO {
         System.out.println(record);
       }
 
-      Assert.assertEquals("deserialization does not display the same result", records.get(0).toString(), r1.toString());
-      Assert.assertEquals("deserialization does not display the same result", records.get(1).toString(), r2.toString());
+      Assert.assertEquals("deserialization does not display the same result", r1.toString(), records.get(0).toString());
+      Assert.assertEquals("deserialization does not display the same result", r2.toString(), records.get(1).toString());
 
     }
     {
+      columns.flip();
       MessageColumnIO columnIO2 = new ColumnIOFactory().getColumnIO(schema2, columns);
       List<Group> records = new ArrayList<Group>();
       RecordReader recordReader = columnIO2.getRecordReader();
@@ -127,8 +129,8 @@ public class TestColumnIO {
         System.out.println("r" + (++i));
         System.out.println(record);
       }
-      Assert.assertEquals("deserialization does not display the expected result", records.get(0).toString(), pr1.toString());
-      Assert.assertEquals("deserialization does not display the expected result", records.get(1).toString(), pr2.toString());
+      Assert.assertEquals("deserialization does not display the expected result", pr1.toString(), records.get(0).toString());
+      Assert.assertEquals("deserialization does not display the expected result", pr2.toString(), records.get(1).toString());
 
     }
   }
@@ -153,6 +155,7 @@ public class TestColumnIO {
     ColumnsStore columns = new MemColumnsStore(1024);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema, columns);
     new GroupWriter(columnIO.getRecordWriter(), schema).write(r1);
+    columns.flip();
     RecordReader recordReader = columnIO.getRecordReader();
 
     String[] expected = {
@@ -382,14 +385,41 @@ public class TestColumnIO {
           public void write(double value, int repetitionLevel, int definitionLevel) {
             validate(value, repetitionLevel, definitionLevel);
           }
+
+          @Override
+          public void writeRepetitionLevelColumn(BytesOutput out)
+              throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public void writeDefinitionLevelColumn(BytesOutput out)
+              throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public void writeDataColumn(BytesOutput out) throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public void reset() {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public int getValueCount() {
+            throw new UnsupportedOperationException();
+          }
         };
       }
       @Override
-      public Collection<ColumnReader> getColumnReaders() {
+      public ColumnReader getColumnReader(ColumnDescriptor path) {
         throw new UnsupportedOperationException();
       }
       @Override
-      public ColumnReader getColumnReader(ColumnDescriptor path) {
+      public void flip() {
         throw new UnsupportedOperationException();
       }
     };

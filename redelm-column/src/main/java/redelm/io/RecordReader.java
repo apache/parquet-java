@@ -24,7 +24,8 @@ import redelm.schema.PrimitiveType.Primitive;
 
 public class RecordReader {
 
-  static final boolean DEBUG = Log.DEBUG;
+  private static final Log LOG = Log.getLog(RecordReader.class);
+  private static final boolean DEBUG = Log.DEBUG;
 
   private final PrimitiveColumnIO[] leaves;
   private final ColumnReader[] columns;
@@ -187,7 +188,7 @@ public class RecordReader {
   }
 
   private static void log(String string) {
-    System.out.println(string);
+    LOG.debug(string);
   }
 
   int getNextReader(int current, int nextRepetitionLevel) {

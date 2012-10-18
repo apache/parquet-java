@@ -39,20 +39,40 @@ public class TestRedelmFileWriter {
 
     RedelmFileWriter w = new RedelmFileWriter(schema, fout);
     w.start();
-    w.startBlock();
-    w.startColumn(c1);
-    w.writeData(bytes1, 1);
+    w.startBlock(1);
+    w.startColumn(c1, 1);
+    w.startRepetitionLevels();
+    w.write(bytes1, 0, bytes1.length);
+    w.startDefinitionLevels();
+    w.write(bytes1, 0, bytes1.length);
+    w.startData();
+    w.write(bytes1, 0, bytes1.length);
     w.endColumn();
-    w.startColumn(c2);
-    w.writeData(bytes2, 1);
+    w.startColumn(c2, 1);
+    w.startRepetitionLevels();
+    w.write(bytes2, 0, bytes2.length);
+    w.startDefinitionLevels();
+    w.write(bytes2, 0, bytes2.length);
+    w.startData();
+    w.write(bytes2, 0, bytes2.length);
     w.endColumn();
     w.endBlock();
-    w.startBlock();
-    w.startColumn(c1);
-    w.writeData(bytes3, 1);
+    w.startBlock(1);
+    w.startColumn(c1, 1);
+    w.startRepetitionLevels();
+    w.write(bytes3, 0, bytes3.length);
+    w.startDefinitionLevels();
+    w.write(bytes3, 0, bytes3.length);
+    w.startData();
+    w.write(bytes3, 0, bytes3.length);
     w.endColumn();
-    w.startColumn(c2);
-    w.writeData(bytes4, 1);
+    w.startColumn(c2, 1);
+    w.startRepetitionLevels();
+    w.write(bytes4, 0, bytes4.length);
+    w.startDefinitionLevels();
+    w.write(bytes4, 0, bytes4.length);
+    w.startData();
+    w.write(bytes4, 0, bytes4.length);
     w.endColumn();
     w.endBlock();
     w.end();
@@ -65,7 +85,9 @@ public class TestRedelmFileWriter {
     {
       Assert.assertEquals(2, readFooter.getBlocks().size());
       RedelmFileReader r = new RedelmFileReader(fin, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.<String[]>asList(path1));
-      List<ColumnData> cols = r.readColumns();
+      BlockData blockData = r.readColumns();
+      List<ColumnData> cols = blockData.getColumns();
+      System.out.println(cols);
       Assert.assertEquals(1, cols.size());
       Assert.assertEquals(bytes1.length, cols.get(0).getData().length);
       Assert.assertEquals(bytes1[0], cols.get(0).getData()[0]);
@@ -74,7 +96,8 @@ public class TestRedelmFileWriter {
 
     {
       RedelmFileReader r = new RedelmFileReader(fin, readFooter.getBlocks(), Arrays.<String[]>asList(path1, path2));
-      List<ColumnData> cols1 = r.readColumns();
+      BlockData blockData1 = r.readColumns();
+      List<ColumnData> cols1 = blockData1.getColumns();
       Assert.assertEquals(2, cols1.size());
       ColumnData c11 = cols1.get(0);
       Assert.assertEquals(bytes1.length, c11.getData().length);
@@ -82,7 +105,8 @@ public class TestRedelmFileWriter {
       ColumnData c12 = cols1.get(1);
       Assert.assertEquals(bytes2.length, c12.getData().length);
       Assert.assertEquals(bytes2[0], c12.getData()[0]);
-      List<ColumnData> cols2 = r.readColumns();
+      BlockData blockData2 = r.readColumns();
+      List<ColumnData> cols2 = blockData2.getColumns();
       Assert.assertEquals(2, cols2.size());
       ColumnData c21 = cols2.get(0);
       Assert.assertEquals(bytes3.length, c21.getData().length);

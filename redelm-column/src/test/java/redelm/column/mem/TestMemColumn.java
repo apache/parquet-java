@@ -31,6 +31,7 @@ public class TestMemColumn {
     ColumnDescriptor path = new ColumnDescriptor(new String[]{"foo", "bar"}, Primitive.INT64);
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
     columnWriter.write(42, 0, 0);
+    memColumnsStore.flip();
     ColumnReader columnReader = memColumnsStore.getColumnReader(path);
     System.out.println(memColumnsStore.toString());
     System.out.println("value, r, d");
@@ -53,6 +54,7 @@ public class TestMemColumn {
     ColumnDescriptor path = new ColumnDescriptor(new String[]{"foo", "bar"}, Primitive.STRING);
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
     columnWriter.write("42", 0, 0);
+    memColumnsStore.flip();
     ColumnReader columnReader = memColumnsStore.getColumnReader(path);
     System.out.println(memColumnsStore.toString());
     System.out.println("value, r, d");

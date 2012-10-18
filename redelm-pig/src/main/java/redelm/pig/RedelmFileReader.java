@@ -44,6 +44,7 @@ public class RedelmFileReader {
   private final FSDataInputStream f;
   private int currentBlock = 0;
   private Set<String> paths = new HashSet<String>();
+  private long previousReadIndex = 0;
 
   public RedelmFileReader(FSDataInputStream f, List<BlockMetaData> blocks, List<String[]> colums) {
     this.f = f;
@@ -53,30 +54,37 @@ public class RedelmFileReader {
     }
   }
 
-  public List<ColumnData> readColumns() throws IOException {
+  public BlockData readColumns() throws IOException {
     if (currentBlock == blocks.size()) {
       return null;
     }
     List<ColumnData> result = new ArrayList<ColumnData>();
     BlockMetaData block = blocks.get(currentBlock);
-    long previousReadIndex = 0;
     for (ColumnMetaData mc : block.getColumns()) {
       String pathKey = Arrays.toString(mc.getPath());
       if (paths.contains(pathKey)) {
-        byte[] data = new byte[(int)(mc.getEndIndex() - mc.getStartIndex())];
-        if (mc.getStartIndex() != previousReadIndex) {
-          LOG.info("seeking to next column " + (mc.getStartIndex() - previousReadIndex) + " bytes");
-        }
-        long t0 = System.currentTimeMillis();
-        f.readFully(mc.getStartIndex(), data);
-        long t1 = System.currentTimeMillis();
-        LOG.info("Read " + data.length + " bytes for column " + pathKey + " in " + (t1 - t0) + " ms: " + (float)(t1 - t0)/data.length + " ms/byte");
-        previousReadIndex = mc.getEndIndex();
-        result.add(new ColumnData(mc.getPath(), data));
+        byte[] repetitionLevels = read(pathKey + ".r", mc.getRepetitionStart(), mc.getRepetitionLength());
+        byte[] definitionLevels = read(pathKey + ".d", mc.getDefinitionStart(), mc.getDefinitionLength());
+        byte[] data = read(pathKey + ".data", mc.getDataStart(), mc.getDataLength());
+        result.add(new ColumnData(mc.getPath(), repetitionLevels, definitionLevels, data));
       }
     }
+
     ++currentBlock;
-    return result;
+    return new BlockData(block.getRecordCount(), result);
+  }
+
+  private byte[] read(String name, long start, long length) throws IOException {
+    byte[] data = new byte[(int)length];
+    if (start != previousReadIndex) {
+      LOG.info("seeking to next column " + (start - previousReadIndex) + " bytes");
+    }
+    long t0 = System.currentTimeMillis();
+    f.readFully(start, data);
+    long t1 = System.currentTimeMillis();
+    LOG.info("Read " + length + " bytes for column " + name + " in " + (t1 - t0) + " ms: " + (float)(t1 - t0)/data.length + " ms/byte");
+    previousReadIndex = start + length;
+    return data;
   }
 
 }

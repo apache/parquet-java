@@ -61,13 +61,19 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
       private void checkRead() throws IOException {
         if(columnsStore == null || columnsStore.isFullyConsumed()) {
           columnsStore = new MemColumnsStore(0);
-          List<ColumnData> readColumns = reader.readColumns();
+          BlockData readColumns = reader.readColumns();
           if (readColumns == null) {
             return;
           }
-          for (ColumnData columnData : readColumns) {
+          for (ColumnData columnData : readColumns.getColumns()) {
             ColumnMetaData columnMetaData = columnTypes.get(Arrays.toString(columnData.getPath()));
-            columnsStore.setColumn(columnData.getPath(), columnMetaData.getType(), columnData.getData(), columnMetaData.getRecordCount());
+            columnsStore.setForRead(
+                columnData.getPath(), columnMetaData.getType(),
+                columnMetaData.getValueCount(),
+                columnData.getRepetitionLevels(),
+                columnData.getDefinitionLevels(),
+                columnData.getData()
+                );
           }
           MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, columnsStore);
           recordReader = columnIO.getRecordReader();

@@ -1,11 +1,10 @@
 package redelm.pig;
 
-import static redelm.data.simple.example.Paper.schema;
-
 import java.io.IOException;
 import java.util.Collection;
 
 import redelm.column.ColumnDescriptor;
+import redelm.column.ColumnWriter;
 import redelm.column.mem.MemColumn;
 import redelm.column.mem.MemColumnsStore;
 import redelm.io.ColumnIOFactory;
@@ -13,7 +12,6 @@ import redelm.io.MessageColumnIO;
 import redelm.schema.MessageType;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.RecordWriter;
@@ -50,6 +48,7 @@ public class RedelmOutputFormat extends FileOutputFormat<Object, Tuple> {
     final RedelmFileWriter w = new RedelmFileWriter(schema, fs.create(file, false));
     w.start();
     return new RecordWriter<Object, Tuple>() {
+      private int recordCount;
 
       @Override
       public void close(TaskAttemptContext taskAttemptContext) throws IOException,
@@ -61,6 +60,7 @@ public class RedelmOutputFormat extends FileOutputFormat<Object, Tuple> {
       @Override
       public void write(Object key, Tuple value) throws IOException, InterruptedException {
         tupleWriter.write(value);
+        ++ recordCount;
         checkBlockSizeReached();
       }
 
@@ -73,15 +73,21 @@ public class RedelmOutputFormat extends FileOutputFormat<Object, Tuple> {
 
       private void flushStore()
           throws IOException {
-        w.startBlock();
+        w.startBlock(recordCount);
         Collection<MemColumn> columns = store.getColumns();
         for (MemColumn column : columns) {
           ColumnDescriptor descriptor = column.getDescriptor();
-          w.startColumn(descriptor);
-          byte[] data = column.getData();
-          w.writeData(data, column.getRecordCount());
+          ColumnWriter columnWriter = column.getColumnWriter();
+          w.startColumn(descriptor, columnWriter.getValueCount());
+          w.startRepetitionLevels();
+          columnWriter.writeRepetitionLevelColumn(w);
+          w.startDefinitionLevels();
+          columnWriter.writeDefinitionLevelColumn(w);
+          w.startData();
+          columnWriter.writeDataColumn(w);
           w.endColumn();
         }
+        recordCount = 0;
         w.endBlock();
         store = null;
         tupleWriter = null;
