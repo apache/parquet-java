@@ -30,7 +30,7 @@ public class TestMemColumn {
     MemColumnsStore memColumnsStore = new MemColumnsStore(1024);
     ColumnDescriptor path = new ColumnDescriptor(new String[]{"foo", "bar"}, Primitive.INT64);
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
-    columnWriter.write(42, 0, 0);
+    columnWriter.write(42l, 0, 0);
     memColumnsStore.flip();
     ColumnReader columnReader = memColumnsStore.getColumnReader(path);
     System.out.println(memColumnsStore.toString());
@@ -38,8 +38,8 @@ public class TestMemColumn {
     while (!columnReader.isFullyConsumed()) {
       Assert.assertEquals(columnReader.getCurrentRepetitionLevel(), 0);
       Assert.assertEquals(columnReader.getCurrentDefinitionLevel(), 0);
-      Assert.assertEquals(columnReader.getInt(), 42);
-      System.out.println(columnReader.getInt()
+      Assert.assertEquals(columnReader.getLong(), 42);
+      System.out.println(columnReader.getLong()
           +", "+columnReader.getCurrentRepetitionLevel()
           +", "+columnReader.getCurrentDefinitionLevel());
       columnReader.consume();

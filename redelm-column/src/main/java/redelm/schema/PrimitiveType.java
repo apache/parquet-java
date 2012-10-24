@@ -34,6 +34,17 @@ public class PrimitiveType extends Type {
     INT64 {
       @Override
       public String toString(ColumnReader columnReader) {
+        return String.valueOf(columnReader.getLong());
+      }
+      @Override
+      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
+          ColumnReader columnReader) {
+        recordConsumer.addLong(columnReader.getLong());
+      }
+    },
+    INT32 {
+      @Override
+      public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getInt());
       }
       @Override

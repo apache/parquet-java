@@ -109,6 +109,14 @@ final class MemColumnWriter implements ColumnWriter {
     ++ valueCount;
   }
 
+  @Override
+  public void write(long value, int repetitionLevel, int definitionLevel) {
+    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+    repetitionLevelColumn.writeByte(repetitionLevel);
+    definitionLevelColumn.writeByte(definitionLevel);
+    dataColumn.writeLong(value);
+    ++ valueCount;
+  }
 
   @Override
   public void writeRepetitionLevelColumn(BytesOutput out) throws IOException {

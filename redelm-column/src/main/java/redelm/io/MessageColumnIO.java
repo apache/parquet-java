@@ -84,19 +84,28 @@ public class MessageColumnIO extends GroupColumnIO {
 
       @Override
       public void startField(String field, int index) {
-        if (DEBUG) log("startField("+field+", "+index+")");
-        writeNullForMissingFields(index - 1);
-        currentColumnIO = ((GroupColumnIO)currentColumnIO).getChild(index);
-        currentIndex[currentLevel] = index;
-        if (DEBUG) printState();
+        try {
+          if (DEBUG) log("startField("+field+", "+index+")");
+          writeNullForMissingFields(index - 1);
+          currentColumnIO = ((GroupColumnIO)currentColumnIO).getChild(index);
+          currentIndex[currentLevel] = index;
+          if (DEBUG) printState();
+        } catch (RuntimeException e) {
+          throw new RuntimeException("error starting field " + field + " at " + index, e);
+        }
       }
 
-      private void writeNullForMissingFields(int to) {
+      private void writeNullForMissingFields(final int to) {
+        final int from = currentIndex[currentLevel];
         for (;currentIndex[currentLevel]<=to; ++currentIndex[currentLevel]) {
-          ColumnIO undefinedField = ((GroupColumnIO)currentColumnIO).getChild(currentIndex[currentLevel]);
-          int d = currentColumnIO.getDefinitionLevel();
-          if (DEBUG) log(Arrays.toString(undefinedField.getFieldPath())+".writeNull("+r[currentLevel]+","+d+")");
-          undefinedField.writeNull(r[currentLevel], d);
+          try {
+            ColumnIO undefinedField = ((GroupColumnIO)currentColumnIO).getChild(currentIndex[currentLevel]);
+            int d = currentColumnIO.getDefinitionLevel();
+            if (DEBUG) log(Arrays.toString(undefinedField.getFieldPath())+".writeNull("+r[currentLevel]+","+d+")");
+            undefinedField.writeNull(r[currentLevel], d);
+          } catch (RuntimeException e) {
+            throw new RuntimeException("error while writing nulls from " + from + " to " + to + ". current index: "+currentIndex[currentLevel], e);
+          }
         }
       }
 
@@ -143,6 +152,16 @@ public class MessageColumnIO extends GroupColumnIO {
       @Override
       public void addInt(int value) {
         if (DEBUG) log("addInt("+value+")");
+
+        ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
+
+        setRepetitionLevel();
+        if (DEBUG) printState();
+      }
+
+      @Override
+      public void addLong(long value) {
+        if (DEBUG) log("addLong("+value+")");
 
         ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 

@@ -51,6 +51,8 @@ public class MemColumn {
 
   private MemColumnReader newMemColumnReader() {
     switch (path.getType()) {
+    case INT32:
+      return new INT32MemColumnReader(path);
     case INT64:
       return new INT64MemColumnReader(path);
     case STRING:
@@ -117,10 +119,10 @@ public class MemColumn {
     throw new RuntimeException("Not writing anymore");
   }
 
-  private static final class INT64MemColumnReader extends MemColumnReader {
+  private static final class INT32MemColumnReader extends MemColumnReader {
     private int currentInt;
 
-    public INT64MemColumnReader(ColumnDescriptor path) {
+    public INT32MemColumnReader(ColumnDescriptor path) {
       super(path);
     }
 
@@ -139,6 +141,31 @@ public class MemColumn {
     public String getCurrentValueToString() throws IOException {
       checkRead();
       return String.valueOf(currentInt);
+    }
+  }
+
+  private static final class INT64MemColumnReader extends MemColumnReader {
+    private long currentLong;
+
+    public INT64MemColumnReader(ColumnDescriptor path) {
+      super(path);
+    }
+
+    @Override
+    public long getLong() {
+      checkValueRead();
+      return currentLong;
+    }
+
+    @Override
+    protected void readCurrentValue() {
+      currentLong = dataColumn.readLong();
+    }
+
+    @Override
+    public String getCurrentValueToString() throws IOException {
+      checkRead();
+      return String.valueOf(currentLong);
     }
   }
 

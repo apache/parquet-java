@@ -42,6 +42,8 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.log4j.Logger;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigFileInputFormat;
 import org.apache.pig.data.Tuple;
+import org.apache.pig.impl.logicalLayer.schema.Schema;
+import org.apache.pig.impl.util.Utils;
 
 public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
   private static final Logger LOG = Logger.getLogger(RedelmInputFormat.class);
@@ -72,6 +74,7 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
       private MemColumnsStore columnsStore;
       private TupleRecordConsumer recordConsumer;
       private FSDataInputStream f;
+      private Schema pigSchema;
 
       private void checkRead() throws IOException {
         if(columnsStore == null || columnsStore.isFullyConsumed()) {
@@ -92,7 +95,7 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
           }
           MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, columnsStore);
           recordReader = columnIO.getRecordReader();
-          recordConsumer = new TupleRecordConsumer(requestedSchema, destination);
+          recordConsumer = new TupleRecordConsumer(requestedSchema, pigSchema, destination);
         }
       }
 
@@ -125,6 +128,8 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
         RedelmInputSplit redelmInputSplit = (RedelmInputSplit)inputSplit;
         Path path = redelmInputSplit.getPath();
         schema = MessageType.parse(redelmInputSplit.getSchema());
+        LOG.debug(redelmInputSplit.getPigSchema());
+        pigSchema = Utils.getSchemaFromString(redelmInputSplit.getPigSchema());
         if (requestedSchema == null) {
           requestedSchema = schema;
         }
@@ -207,7 +212,8 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
                 length,
                 hosts.toArray(new String[hosts.size()]),
                 block,
-                footer.getSchema()));
+                footer.getSchema(),
+                footer.getPigSchema()));
       }
     }
     return splits;

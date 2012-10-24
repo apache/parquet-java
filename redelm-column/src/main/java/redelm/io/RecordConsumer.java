@@ -27,6 +27,7 @@ abstract public class RecordConsumer {
   abstract public void endGroup();
 
   abstract public void addInt(int value);
+  abstract public void addLong(long value);
   abstract public void addString(String value);
   abstract public void addBoolean(boolean value);
   abstract public void addBinary(byte[] value);

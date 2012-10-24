@@ -27,20 +27,31 @@ import redelm.Log;
 import redelm.data.Group;
 import redelm.data.GroupRecordConsumer;
 import redelm.data.GroupWriter;
+import redelm.data.simple.SimpleGroup;
 import redelm.data.simple.SimpleGroupFactory;
 import redelm.io.RecordConsumerWrapper;
+import redelm.schema.MessageType;
 
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.Tuple;
+import org.apache.pig.impl.logicalLayer.schema.Schema;
+import org.apache.pig.impl.util.Utils;
+import org.apache.pig.parser.ParserException;
 import org.junit.Test;
 
 public class TestTupleRecordConsumer {
   private static final Log logger = Log.getLog(TestTupleRecordConsumer.class);
 
   @Test
-  public void test() throws ExecException {
+  public void test() throws ExecException, ParserException {
     List<Tuple> tuples = new ArrayList<Tuple>();
-    TupleRecordConsumer tupleRecordConsumer = new TupleRecordConsumer(schema, tuples);
+
+    TupleRecordConsumer tupleRecordConsumer = new TupleRecordConsumer(schema,
+        Utils.getSchemaFromString(
+        "DocId:long, " +
+        "Links:(Backward:{(long)}, Forward:{(long)}), " +
+        "Name:{(Language:{(Code:chararray,Country:chararray)}, Url:chararray)}"),
+        tuples);
     GroupWriter groupWriter = new GroupWriter(new RecordConsumerWrapper(tupleRecordConsumer), schema);
     groupWriter.write(r1);
     groupWriter.write(r2);
@@ -57,6 +68,34 @@ public class TestTupleRecordConsumer {
     }
     Assert.assertEquals(r1.toString(), groups.get(0).toString());
     Assert.assertEquals(r2.toString(), groups.get(1).toString());
+  }
+
+  @Test
+  public void testMaps() throws ExecException, ParserException {
+    List<Tuple> tuples = new ArrayList<Tuple>();
+
+    String pigSchemaString = "a: [(b: chararray)]";
+    Schema pigSchema = Utils.getSchemaFromString(pigSchemaString);
+    MessageType redelmSchema = new PigSchemaConverter().convert(pigSchema);
+    System.out.println(redelmSchema);
+    TupleRecordConsumer tupleRecordConsumer = new TupleRecordConsumer(redelmSchema, pigSchema, tuples);
+    GroupWriter groupWriter = new GroupWriter(new RecordConsumerWrapper(tupleRecordConsumer), redelmSchema);
+    SimpleGroup g = new SimpleGroup(redelmSchema);
+    g.addGroup("a").append("key", "foo").addGroup("a").append("b", "foo");
+    g.addGroup("a").append("key", "bar").addGroup("a").append("b", "bar");
+    groupWriter.write(g);
+
+    for (Tuple t : tuples) {
+      logger.debug(t);
+    }
+
+    List<Group> groups = new ArrayList<Group>();
+    TupleWriter tupleWriter = new TupleWriter(new RecordConsumerWrapper(new GroupRecordConsumer(new SimpleGroupFactory(redelmSchema), groups)), redelmSchema);
+    for (Tuple t : tuples) {
+      logger.debug(t);
+      tupleWriter.write(t);
+    }
+    Assert.assertEquals(g.toString(), groups.get(0).toString());
   }
 
 }

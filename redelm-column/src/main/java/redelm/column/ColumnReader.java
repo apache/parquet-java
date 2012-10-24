@@ -34,6 +34,8 @@ public interface ColumnReader {
 
   int getInt();
 
+  long getLong();
+
   boolean getBool();
 
   byte[] getBinary();

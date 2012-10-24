@@ -106,7 +106,11 @@ public class GroupColumnIO extends ColumnIO {
   }
 
   public ColumnIO getChild(int fieldIndex) {
-    return children.get(fieldIndex);
+    try {
+      return children.get(fieldIndex);
+    } catch (IndexOutOfBoundsException e) {
+      throw new RuntimeException("could not get child " + fieldIndex + " from " + children, e);
+    }
   }
 
   public int getChildrenCount() {

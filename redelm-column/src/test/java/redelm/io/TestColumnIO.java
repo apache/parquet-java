@@ -161,14 +161,14 @@ public class TestColumnIO {
     String[] expected = {
     "startMessage()",
      "startField(DocId, 0)",
-      "addInt(10)",
+      "addLong(10)",
      "endField(DocId, 0)",
      "startField(Links, 1)",
       "startGroup()",
        "startField(Forward, 1)",
-        "addInt(20)",
-        "addInt(40)",
-        "addInt(60)",
+        "addLong(20)",
+        "addLong(40)",
+        "addLong(60)",
        "endField(Forward, 1)",
       "endGroup()",
      "endField(Links, 1)",
@@ -264,6 +264,11 @@ public class TestColumnIO {
       @Override
       public void addInt(int value) {
         validate("addInt("+value+")");
+      }
+
+      @Override
+      public void addLong(long value) {
+        validate("addLong("+value+")");
       }
 
       @Override
@@ -373,6 +378,11 @@ public class TestColumnIO {
 
           @Override
           public void write(int value, int repetitionLevel, int definitionLevel) {
+            validate(value, repetitionLevel, definitionLevel);
+          }
+
+          @Override
+          public void write(long value, int repetitionLevel, int definitionLevel) {
             validate(value, repetitionLevel, definitionLevel);
           }
 

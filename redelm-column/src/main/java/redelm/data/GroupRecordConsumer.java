@@ -72,6 +72,11 @@ public class GroupRecordConsumer extends RecordConsumer {
   }
 
   @Override
+  public void addLong(long value) {
+    groups.peek().add(fields.peek(), value);
+  }
+
+  @Override
   public void addString(String value) {
     groups.peek().add(fields.peek(), value);
   }

@@ -45,4 +45,8 @@ public abstract class PrimitiveColumnReader {
     throw new UnsupportedOperationException();
   }
 
+  public long readLong() {
+    throw new UnsupportedOperationException();
+  }
+
 }

@@ -77,11 +77,11 @@ public class Paper {
   //    Code: 'en-gb'
   //    Country: 'gb'
   static {
-    r1.add("DocId", 10);
+    r1.add("DocId", 10l);
     r1.addGroup("Links")
-      .append("Forward", 20)
-      .append("Forward", 40)
-      .append("Forward", 60);
+      .append("Forward", 20l)
+      .append("Forward", 40l)
+      .append("Forward", 60l);
     Group name = r1.addGroup("Name");
     {
       name.addGroup("Language")
@@ -111,11 +111,11 @@ public class Paper {
   //Name
   // Url: 'http://C'
   static {
-    r2.add("DocId", 20);
+    r2.add("DocId", 20l);
     r2.addGroup("Links")
-      .append("Backward", 10)
-      .append("Backward", 30)
-      .append("Forward", 80);
+      .append("Backward", 10l)
+      .append("Backward", 30l)
+      .append("Forward", 80l);
     r2.addGroup("Name")
       .append("Url", "http://C");
   }
@@ -133,7 +133,7 @@ public class Paper {
   //  Language
   //    Country: 'gb'
   static {
-    pr1.add("DocId", 10);
+    pr1.add("DocId", 10l);
     Group name = pr1.addGroup("Name");
     {
       name.addGroup("Language")
@@ -152,7 +152,7 @@ public class Paper {
   //DocId: 20
   //Name
   static {
-    pr2.add("DocId", 20);
+    pr2.add("DocId", 20l);
     pr2.addGroup("Name");
   }
 }

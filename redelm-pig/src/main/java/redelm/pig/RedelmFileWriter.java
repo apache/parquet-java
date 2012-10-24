@@ -35,6 +35,7 @@ public class RedelmFileWriter extends BytesOutput {
   private static final Log LOG = Log.getLog(RedelmFileWriter.class);
 
   private final MessageType schema;
+  private final String pigSchema;
   private final FSDataOutputStream out;
   private BlockMetaData currentBlock;
   private ColumnMetaData currentColumn;
@@ -98,9 +99,10 @@ public class RedelmFileWriter extends BytesOutput {
 
   private STATE state = STATE.NOT_STARTED;
 
-  public RedelmFileWriter(MessageType schema, FSDataOutputStream out) {
+  public RedelmFileWriter(MessageType schema, String pigSchema, FSDataOutputStream out) {
     super();
     this.schema = schema;
+    this.pigSchema = pigSchema;
     this.out = out;
   }
 
@@ -160,7 +162,7 @@ public class RedelmFileWriter extends BytesOutput {
     state = state.end();
     long footerIndex = out.getPos();
     out.writeInt(CURRENT_VERSION);
-    Footer footer = new Footer(schema.toString(), blocks);
+    Footer footer = new Footer(schema.toString(), pigSchema, blocks);
 //    out.writeUTF(Footer.toJSON(footer));
     // lazy: use serialization
     // TODO: change that

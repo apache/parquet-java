@@ -53,9 +53,11 @@ public class RedelmStorer extends StoreFunc implements StoreMetadata {
 
   @Override
   public OutputFormat<Object, Tuple> getOutputFormat() throws IOException {
-    MessageType schema = new PigSchemaConverter().convert(getSchema());
+    Schema pigSchema = getSchema();
+    MessageType schema = new PigSchemaConverter().convert(pigSchema);
 
-    return new RedelmOutputFormat(schema);
+    String pigSchemaString = pigSchema.toString();
+    return new RedelmOutputFormat(schema, pigSchemaString.substring(1, pigSchemaString.length() - 1));
   }
 
   private Schema getSchema() {

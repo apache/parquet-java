@@ -27,6 +27,10 @@ public abstract class Primitive {
     throw new UnsupportedOperationException();
   }
 
+  public long getLong() {
+    throw new UnsupportedOperationException();
+  }
+
   public boolean getBool() {
     throw new UnsupportedOperationException();
   }
