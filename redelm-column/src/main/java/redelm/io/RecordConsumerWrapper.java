@@ -59,9 +59,9 @@ public class RecordConsumerWrapper extends RecordConsumer {
     }
 
     @Override
-    public void addInt(int value) {
+    public void addInteger(int value) {
       if (DEBUG) log(value);
-      delegate.addInt(value);
+      delegate.addInteger(value);
     }
 
     @Override

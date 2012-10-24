@@ -54,7 +54,7 @@ public class PigSchemaConverter {
       case DataType.MAP:
         return convertMap(fieldSchema);
       case DataType.BOOLEAN:
-        return primitive(Primitive.BOOL, fieldSchema.alias);
+        return primitive(Primitive.BOOLEAN, fieldSchema.alias);
       case DataType.CHARARRAY:
         return primitive(Primitive.STRING, fieldSchema.alias);
       case DataType.INTEGER:

@@ -265,7 +265,7 @@ public class TestColumnIO {
       }
 
       @Override
-      public void addInt(int value) {
+      public void addInteger(int value) {
         validate("addInt("+value+")");
       }
 

@@ -141,7 +141,7 @@ public class PerfTest {
       public void endGroup() {}
       public void endField(String field, int index) {}
       public void addString(String value) {}
-      public void addInt(int value) {}
+      public void addInteger(int value) {}
       public void addFloat(float value) {}
       public void addDouble(double value) {}
       public void addBoolean(boolean value) {}

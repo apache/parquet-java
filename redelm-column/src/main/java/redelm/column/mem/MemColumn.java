@@ -55,7 +55,7 @@ public class MemColumn {
       return new INT64MemColumnReader(path);
     case STRING:
       return new STRINGMemColumnReader(path);
-    case BOOL:
+    case BOOLEAN:
       return new BOOLMemColumnReader(path);
     case BINARY:
       return new BINARYMemColumnReader(path);
@@ -125,7 +125,7 @@ public class MemColumn {
     }
 
     @Override
-    public int getInt() {
+    public int getInteger() {
       checkValueRead();
       return currentInt;
     }
@@ -200,7 +200,7 @@ public class MemColumn {
     }
 
     @Override
-    public boolean getBool() {
+    public boolean getBoolean() {
       checkValueRead();
       return current;
     }

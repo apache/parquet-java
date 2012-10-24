@@ -107,7 +107,7 @@ public class TupleRecordConsumer extends RecordConsumer {
   }
 
   @Override
-  public void addInt(int value) {
+  public void addInteger(int value) {
     setCurrentField(value);
   }
 

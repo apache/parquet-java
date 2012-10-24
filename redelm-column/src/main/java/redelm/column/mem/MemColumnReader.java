@@ -50,12 +50,12 @@ abstract class MemColumnReader implements ColumnReader {
   }
 
   @Override
-  public int getInt() {
+  public int getInteger() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public boolean getBool() {
+  public boolean getBoolean() {
     throw new UnsupportedOperationException();
   }
 

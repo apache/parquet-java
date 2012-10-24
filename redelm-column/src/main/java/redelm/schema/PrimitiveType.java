@@ -34,23 +34,23 @@ public class PrimitiveType extends Type {
     INT64 {
       @Override
       public String toString(ColumnReader columnReader) {
-        return String.valueOf(columnReader.getInt());
+        return String.valueOf(columnReader.getInteger());
       }
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
-        recordConsumer.addInt(columnReader.getInt());
+        recordConsumer.addInteger(columnReader.getInteger());
       }
     },
-    BOOL {
+    BOOLEAN {
       @Override
       public String toString(ColumnReader columnReader) {
-        return String.valueOf(columnReader.getBool());
+        return String.valueOf(columnReader.getBoolean());
       }
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
-        recordConsumer.addBoolean(columnReader.getBool());
+        recordConsumer.addBoolean(columnReader.getBoolean());
       }
     },
     BINARY {

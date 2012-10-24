@@ -38,8 +38,8 @@ public class TestMemColumn {
     while (!columnReader.isFullyConsumed()) {
       Assert.assertEquals(columnReader.getCurrentRepetitionLevel(), 0);
       Assert.assertEquals(columnReader.getCurrentDefinitionLevel(), 0);
-      Assert.assertEquals(columnReader.getInt(), 42);
-      System.out.println(columnReader.getInt()
+      Assert.assertEquals(columnReader.getInteger(), 42);
+      System.out.println(columnReader.getInteger()
           +", "+columnReader.getCurrentRepetitionLevel()
           +", "+columnReader.getCurrentDefinitionLevel());
       columnReader.consume();

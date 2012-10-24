@@ -32,9 +32,9 @@ public interface ColumnReader {
 
   String getString();
 
-  int getInt();
+  int getInteger();
 
-  boolean getBool();
+  boolean getBoolean();
 
   byte[] getBinary();
 

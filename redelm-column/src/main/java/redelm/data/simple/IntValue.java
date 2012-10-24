@@ -38,6 +38,6 @@ public class IntValue extends Primitive {
 
   @Override
   public void writeValue(RecordConsumer recordConsumer) {
-    recordConsumer.addInt(value);
+    recordConsumer.addInteger(value);
   }
 }
