@@ -16,6 +16,7 @@ tokens {
     STRING;
     FLOAT;
     DOUBLE;
+    BOOLEAN;
     MESSAGE;
     NAME;
     LINE;
@@ -49,7 +50,8 @@ repetition returns[Repetition rep] : REQUIRED { $rep = Repetition.REQUIRED; }
 primitive_type returns[Primitive primitive] : LONG { $primitive = Primitive.INT64; }
                                             | STRING { $primitive = Primitive.STRING; }
                                             | FLOAT { $primitive = Primitive.FLOAT; }
-                                            | DOUBLE { $primitive = Primitive.FLOAT; };
+                                            | DOUBLE { $primitive = Primitive.FLOAT; }
+                                            | BOOLEAN { $primitive = Primitive.BOOLEAN; };
 
 line returns[Type type] : repetition primitive_type NAME SEMI_COLON+
      {

@@ -15,12 +15,12 @@
  */
 package redelm.pig;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
-
-import junit.framework.Assert;
 
 import org.apache.pig.ExecType;
 import org.apache.pig.PigServer;
@@ -90,7 +90,7 @@ public class PerfTest {
     }
     Long count = (Long)it.next().get(0);
 
-    Assert.assertEquals(ROW_COUNT, count.longValue());
+    assertEquals(ROW_COUNT, count.longValue());
     long t1 = System.currentTimeMillis();
     results.append((t1-t0)+" ms to read "+colsToLoad+" columns\n");
   }

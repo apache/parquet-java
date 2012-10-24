@@ -23,7 +23,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import org.antlr.runtime.RecognitionException;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
@@ -41,6 +40,7 @@ import redelm.column.mem.MemColumnsStore;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
 import redelm.parser.RedelmParser;
+import redelm.parser.RedelmParser.RedelmParserException;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.Type;
@@ -52,8 +52,8 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
 
   public RedelmInputFormat(String requestedSchema) {
     try {
-        this.requestedSchema = requestedSchema == null ? null : RedelmParser.parse(requestedSchema);
-    } catch (RecognitionException e) {
+        this.requestedSchema = requestedSchema == null ? null : RedelmParser.parseMessageType(requestedSchema);
+    } catch (RedelmParserException e) {
         throw new RuntimeException(e);
     }
   }
@@ -131,9 +131,9 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
         RedelmInputSplit redelmInputSplit = (RedelmInputSplit)inputSplit;
         Path path = redelmInputSplit.getPath();
         try {
-            schema = RedelmParser.parse(redelmInputSplit.getSchema());
-        } catch (RecognitionException e) {
-            throw new IOException("Unable to parse Schema", e);
+            schema = RedelmParser.parseMessageType(redelmInputSplit.getSchema());
+        } catch (RedelmParserException e) {
+            throw new RuntimeException("Unable to parse Schema", e);
         }
         if (requestedSchema == null) {
           requestedSchema = schema;

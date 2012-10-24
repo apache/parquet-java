@@ -55,6 +55,7 @@ LONG : I N T '64';
 STRING : S T R I N G;
 FLOAT : F L O A T;
 DOUBLE : D O U B L E;
+BOOLEAN : B O O L E A N;
 
 MESSAGE : M E S S A G E;
 

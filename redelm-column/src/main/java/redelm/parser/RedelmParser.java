@@ -15,21 +15,45 @@ public class RedelmParser {
 
   private RedelmParser() {}
 
-  public static MessageType parse(String input) throws RecognitionException {
-    return parse(new ANTLRStringStream(input));
+  public static MessageType parseMessageType(String input) throws RedelmParserException {
+    return parseMessageType(new ANTLRStringStream(input));
   }
 
-  public static MessageType parseFile(String fileName) throws RecognitionException, IOException {
-    return parse(new ANTLRFileStream(fileName));
+  public static MessageType parseMessageTypeFromFile(String fileName) throws RedelmParserException, IOException {
+    return parseMessageType(new ANTLRFileStream(fileName));
   }
 
-  private static MessageType parse(ANTLRStringStream stream) throws RecognitionException {
+  private static MessageType parseMessageType(ANTLRStringStream stream) throws RedelmParserException {
     RedelmMessageLexer lexer = new RedelmMessageLexer(stream);
     RedelmMessageParser parser = new RedelmMessageParser(new CommonTokenStream(lexer));
-    MessageType ret = parser.message();
+    MessageType ret;
+    try {
+      ret = parser.message();
+    } catch (RecognitionException e) {
+      throw new RedelmParserException(e);
+    }
     if (ret == null) {
-      LOG.warn("Attempted to parse object, result was null: " + stream.toString());
+      throw new RedelmParserException("Attempted to parse object, result was null: " + stream.toString());
     }
     return ret;
+  }
+
+  public static class RedelmParserException extends Exception {
+    private static final long serialVersionUID = 8058462449549308200L;
+
+    public RedelmParserException() {
+    }
+
+    public RedelmParserException(String msg) {
+      super(msg);
+    }
+
+    public RedelmParserException(String msg, Exception e) {
+      super(msg, e);
+    }
+
+    public RedelmParserException(Exception e) {
+      super(e);
+    }
   }
 }

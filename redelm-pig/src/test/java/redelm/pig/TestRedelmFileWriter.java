@@ -44,7 +44,7 @@ public class TestRedelmFileWriter {
 
     FSDataOutputStream fout = fileSystem.create(path, true);
 
-    MessageType schema = RedelmParser.parse("message m { required group a {required string b;}; required group c { required int64 d; };}");
+    MessageType schema = RedelmParser.parseMessageType("message m { required group a {required string b;}; required group c { required int64 d; };}");
     String[] path1 = {"a", "b"};
     ColumnDescriptor c1 = new ColumnDescriptor(path1 , Primitive.STRING);
     String[] path2 = {"c", "d"};

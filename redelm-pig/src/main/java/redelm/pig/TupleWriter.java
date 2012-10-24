@@ -47,11 +47,6 @@ public class TupleWriter {
   private void writeTuple(GroupType schema, Tuple t) throws ExecException {
     List<Type> fields = schema.getFields();
     for (int i = 0; i < fields.size(); i++) {
-      /**
-       * TODO jco commentary
-       * Is this an error? Even if a record is null, isn't it the case that nested pieces
-       * of that record will need to be written?
-       */
       if (!t.isNull(i)) {
         Type fieldType = fields.get(i);
         if (fieldType.getRepetition() == Repetition.REPEATED) {

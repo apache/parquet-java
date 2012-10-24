@@ -38,7 +38,7 @@ public class TestPigSchemaConverter {
                       "    optional string d;\n" +
                       "  }\n" +
                       "}\n";
-    MessageType expectedMT = RedelmParser.parse(expected);
+    MessageType expectedMT = RedelmParser.parseMessageType(expected);
     assertEquals(expectedMT, schema);
     assertEquals(expected, schema.toString());
   }
