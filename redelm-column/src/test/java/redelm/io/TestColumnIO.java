@@ -296,9 +296,8 @@ public class TestColumnIO {
 
   public void read(RecordReader recordReader, MessageType schema, List<Group> groups) {
     RecordConsumer recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema), groups);
-    if (Log.DEBUG) {
-      recordConsumer = new RecordConsumerWrapper(recordConsumer);
-    }
+    recordConsumer = new ValidatingRecordConsumer(recordConsumer, schema);
+    recordConsumer = new RecordConsumerWrapper(recordConsumer);
     recordReader.read(recordConsumer);
   }
 
