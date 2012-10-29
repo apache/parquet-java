@@ -72,9 +72,7 @@ public class RecordConsumerWrapper extends RecordConsumer {
 
     @Override
     public void addString(String value) {
-      if (DEBUG) {
-        log(value);
-      }
+      if (DEBUG) log(value);
       delegate.addString(value);
     }
 

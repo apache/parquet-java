@@ -78,6 +78,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
       @Override
       public void endMessage() {
+        writeNullForMissingFields(((GroupColumnIO)currentColumnIO).getChildrenCount() - 1);
         if (DEBUG) log("< MESSAGE END >");
         if (DEBUG) printState();
       }
