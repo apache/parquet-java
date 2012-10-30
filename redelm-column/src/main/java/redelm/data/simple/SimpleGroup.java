@@ -135,6 +135,11 @@ public class SimpleGroup extends Group {
   }
 
   @Override
+  public void add(int fieldIndex, long value) {
+    add(fieldIndex, new LongValue(value));
+  }
+
+  @Override
   public void add(int fieldIndex, String value) {
     add(fieldIndex, new StringValue(value));
   }

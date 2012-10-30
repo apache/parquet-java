@@ -58,7 +58,7 @@ public class PigSchemaConverter {
       case DataType.CHARARRAY:
         return primitive(Primitive.STRING, fieldSchema.alias);
       case DataType.INTEGER:
-        return primitive(Primitive.INT64, fieldSchema.alias);
+        return primitive(Primitive.INT32, fieldSchema.alias);
       case DataType.LONG:
         return primitive(Primitive.INT64, fieldSchema.alias);
       case DataType.FLOAT:
@@ -80,7 +80,7 @@ public class PigSchemaConverter {
   }
 
   private Type primitive(Primitive primitive, String name) {
-    return new PrimitiveType(Repetition.OPTIONAL, Primitive.STRING, name);
+    return new PrimitiveType(Repetition.OPTIONAL, primitive, name);
   }
 
   private Type convertMap(FieldSchema fieldSchema) throws FrontendException {

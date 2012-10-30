@@ -164,14 +164,14 @@ public class TestColumnIO {
     String[] expected = {
     "startMessage()",
      "startField(DocId, 0)",
-      "addInt(10)",
+      "addLong(10)",
      "endField(DocId, 0)",
      "startField(Links, 1)",
       "startGroup()",
        "startField(Forward, 1)",
-        "addInt(20)",
-        "addInt(40)",
-        "addInt(60)",
+        "addLong(20)",
+        "addLong(40)",
+        "addLong(60)",
        "endField(Forward, 1)",
       "endGroup()",
      "endField(Links, 1)",
@@ -270,6 +270,11 @@ public class TestColumnIO {
       }
 
       @Override
+      public void addLong(long value) {
+        validate("addLong("+value+")");
+      }
+
+      @Override
       public void addBoolean(boolean value) {
         validate("addBoolean("+value+")");
       }
@@ -294,9 +299,8 @@ public class TestColumnIO {
 
   public void read(RecordReader recordReader, MessageType schema, List<Group> groups) {
     RecordConsumer recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema), groups);
-    if (Log.DEBUG) {
-      recordConsumer = new RecordConsumerWrapper(recordConsumer);
-    }
+    recordConsumer = new ValidatingRecordConsumer(recordConsumer, schema);
+    recordConsumer = new RecordConsumerWrapper(recordConsumer);
     recordReader.read(recordConsumer);
   }
 
@@ -376,6 +380,11 @@ public class TestColumnIO {
 
           @Override
           public void write(int value, int repetitionLevel, int definitionLevel) {
+            validate(value, repetitionLevel, definitionLevel);
+          }
+
+          @Override
+          public void write(long value, int repetitionLevel, int definitionLevel) {
             validate(value, repetitionLevel, definitionLevel);
           }
 

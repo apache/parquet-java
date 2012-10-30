@@ -17,36 +17,26 @@ package redelm.data.simple;
 
 import redelm.io.RecordConsumer;
 
-public abstract class Primitive {
+public class LongValue extends Primitive {
 
-  public String getString() {
-    throw new UnsupportedOperationException();
+  private final long value;
+
+  public LongValue(long value) {
+    this.value = value;
   }
 
-  public int getInt() {
-    throw new UnsupportedOperationException();
+  @Override
+  public String toString() {
+    return String.valueOf(value);
   }
 
+  @Override
   public long getLong() {
-    throw new UnsupportedOperationException();
+    return value;
   }
 
-  public boolean getBool() {
-    throw new UnsupportedOperationException();
+  @Override
+  public void writeValue(RecordConsumer recordConsumer) {
+    recordConsumer.addLong(value);
   }
-
-  public byte[] getBinary() {
-    throw new UnsupportedOperationException();
-  }
-
-  public float getFloat() {
-    throw new UnsupportedOperationException();
-  }
-
-  public double getDouble() {
-    throw new UnsupportedOperationException();
-  }
-
-  abstract public void writeValue(RecordConsumer recordConsumer);
-
 }

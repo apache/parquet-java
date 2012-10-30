@@ -18,33 +18,46 @@ package redelm.pig;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
+import java.util.HashMap;
+import java.util.Map;
 
+import redelm.Log;
 import redelm.io.RecordConsumer;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.Type;
 import redelm.schema.Type.Repetition;
 
-import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.BagFactory;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataByteArray;
+import org.apache.pig.data.DataType;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
+import org.apache.pig.impl.logicalLayer.FrontendException;
+import org.apache.pig.impl.logicalLayer.schema.Schema;
+import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
 public class TupleRecordConsumer extends RecordConsumer {
-
+  private static final boolean DEBUG = Log.DEBUG;
+  private static final Log LOG = Log.getLog(TupleRecordConsumer.class);
   private static final TupleFactory tf = TupleFactory.getInstance();
   private static final BagFactory bf = BagFactory.getInstance();
 
   private Deque<Type> types = new ArrayDeque<Type>();
+  private Deque<FieldSchema> pigTypes = new ArrayDeque<FieldSchema>();
   private Deque<Tuple> groups = new ArrayDeque<Tuple>();
-  private Deque<String> fields = new ArrayDeque<String>();
+  private Deque<Integer> fields = new ArrayDeque<Integer>();
   private final Collection<Tuple> destination;
 
-  public TupleRecordConsumer(MessageType schema, Collection<Tuple> destination) {
-    this.destination = destination;
-    this.types.push(schema);
+  public TupleRecordConsumer(MessageType schema, Schema pigSchema, Collection<Tuple> destination) {
+    try {
+      this.destination = destination;
+      this.types.push(schema);
+      this.pigTypes.push(new FieldSchema("tuple", pigSchema, DataType.TUPLE));
+    } catch (FrontendException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -59,7 +72,7 @@ public class TupleRecordConsumer extends RecordConsumer {
 
   @Override
   public void startField(String field, int index) {
-    fields.push(field);
+    fields.push(index);
   }
 
   @Override
@@ -69,45 +82,93 @@ public class TupleRecordConsumer extends RecordConsumer {
 
   @Override
   public void startGroup() {
-    Type fieldType = types.peek().asGroupType().getType(fields.peek());
-    Tuple newTuple = tf.newTuple(fieldType.asGroupType().getFieldCount());
-    setCurrentField(newTuple);
-    types.push(fieldType);
-    groups.push(newTuple);
+    try {
+      Type fieldType = types.peek().asGroupType().getType(fields.peek());
+
+      FieldSchema fieldSchema = getPigChildSchema();
+      Tuple newTuple = tf.newTuple(fieldType.asGroupType().getFieldCount());
+      types.push(fieldType);
+      pigTypes.push(fieldSchema);
+      groups.push(newTuple);
+    } catch (Exception e) {
+      throw new RuntimeException("error "+e.toString()+"\ntype: "+types.peek()+"\npig type: "+pigTypes.peek(), e);
+    }
+  }
+
+  private FieldSchema getPigChildSchema() throws FrontendException {
+    FieldSchema fieldSchema;
+    FieldSchema currentPigType = pigTypes.peek();
+    int fieldIndex = fields.peek();
+    if (currentPigType.type == DataType.BAG) {
+      if (DEBUG) LOG.debug("skipping Bag of : " + currentPigType.schema);
+      fieldSchema = currentPigType.schema.getField(0).schema.getField(fieldIndex);
+    } else if (currentPigType.type == DataType.MAP) {
+      if (DEBUG) LOG.debug("skipping Map of : " + currentPigType.schema);
+      if (fieldIndex == 0) {
+        fieldSchema = new FieldSchema("key", DataType.CHARARRAY);
+      } else {
+        fieldSchema = currentPigType.schema.getField(0);
+      }
+    } else {
+      fieldSchema = currentPigType.schema.getField(fieldIndex);
+    }
+    return fieldSchema;
   }
 
   @Override
   public void endGroup() {
-    groups.pop();
     types.pop();
+    pigTypes.pop();
+    setCurrentField(groups.pop());
   }
 
   private void setCurrentField(Object value) {
     try {
       Tuple parent = groups.peek();
       GroupType type = types.peek().asGroupType();
-      int fieldIndex = type.getFieldIndex(fields.peek());
+      int fieldIndex = fields.peek();
+      FieldSchema pigChildSchema = getPigChildSchema();
       if (type.getType(fieldIndex).getRepetition() == Repetition.REPEATED) {
-        DataBag bag = (DataBag)parent.get(fieldIndex);
-        if (bag == null) {
-          bag = bf.newDefaultBag();
-          parent.set(fieldIndex, bag);
-        }
-        if (value instanceof Tuple) {
-          bag.add((Tuple)value);
-        } else {
-          bag.add(tf.newTuple(value));
+        switch (pigChildSchema.type) {
+        case DataType.BAG:
+          DataBag bag = (DataBag)parent.get(fieldIndex);
+          if (bag == null) {
+            bag = bf.newDefaultBag();
+            parent.set(fieldIndex, bag);
+          }
+          if (value instanceof Tuple) {
+            bag.add((Tuple)value);
+          } else {
+            bag.add(tf.newTuple(value));
+          }
+          break;
+        case DataType.MAP:
+          Map<String, Object> map = (Map<String, Object>)parent.get(fieldIndex);
+          if (map == null) {
+            map = new HashMap<String, Object>();
+            parent.set(fieldIndex, map);
+          }
+          Tuple t = (Tuple)value;
+          map.put((String)t.get(0), t.get(1));
+          break;
+        default:
+          throw new RuntimeException("unsupported repeated field "+pigChildSchema+" for "+type.getType(fieldIndex));
         }
       } else {
         parent.set(fieldIndex, value);
       }
-    } catch (ExecException e) {
-      throw new RuntimeException(e);
+    } catch (Exception e) {
+      throw new RuntimeException("error\ntype: "+types.peek()+"\npig type: "+pigTypes.peek() + "\nfield: "+fields.peek(), e);
     }
   }
 
   @Override
   public void addInteger(int value) {
+    setCurrentField(value);
+  }
+
+  @Override
+  public void addLong(long value) {
     setCurrentField(value);
   }
 

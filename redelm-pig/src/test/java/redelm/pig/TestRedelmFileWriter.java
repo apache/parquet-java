@@ -55,7 +55,7 @@ public class TestRedelmFileWriter {
     byte[] bytes3 = { 2, 3, 4, 5};
     byte[] bytes4 = { 3, 4, 5, 6};
 
-    RedelmFileWriter w = new RedelmFileWriter(schema, fout);
+    RedelmFileWriter w = new RedelmFileWriter(schema, "", fout);
     w.start();
     w.startBlock(1);
     w.startColumn(c1, 1);

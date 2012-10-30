@@ -84,6 +84,15 @@ public class SimplePrimitiveColumnReader extends PrimitiveColumnReader {
   }
 
   @Override
+  public long readLong() {
+    try {
+      return in.readLong();
+    } catch (IOException e) {
+      throw new RuntimeException("never happens", e);
+    }
+  }
+
+  @Override
   public int readByte() {
     try {
       return in.read();

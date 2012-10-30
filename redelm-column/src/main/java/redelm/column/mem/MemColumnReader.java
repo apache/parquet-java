@@ -59,6 +59,10 @@ abstract class MemColumnReader implements ColumnReader {
     throw new UnsupportedOperationException();
   }
 
+  public long getLong() {
+    throw new UnsupportedOperationException();
+  }
+
   @Override
   public byte[] getBinary() {
     throw new UnsupportedOperationException();

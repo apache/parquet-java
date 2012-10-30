@@ -30,6 +30,7 @@ import java.util.Arrays;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.pig.impl.logicalLayer.schema.Schema;
 
 public class RedelmInputSplit extends InputSplit implements Serializable, Writable {
   private static final long serialVersionUID = 1L;
@@ -40,18 +41,22 @@ public class RedelmInputSplit extends InputSplit implements Serializable, Writab
   private String[] hosts;
   private BlockMetaData block;
   private String schemaString;
+  private String pigSchemaString;
 
   public RedelmInputSplit() {
   }
 
-  public RedelmInputSplit(Path path, long start, long length, String[] hosts, BlockMetaData block, String schemaString) {
-    System.out.println("RedelmInputSplit("+path+", "+start+", "+length+", "+Arrays.toString(hosts)+", "+block+", "+schemaString+")");
+  public RedelmInputSplit(Path path, long start, long length, String[] hosts, BlockMetaData block, String schemaString, String pigSchemaString) {
     this.path = path.toUri().toString();
     this.start = start;
     this.length = length;
     this.hosts = hosts;
     this.block = block;
     this.schemaString = schemaString;
+    if (pigSchemaString == null) {
+      throw new NullPointerException();
+    }
+    this.pigSchemaString = pigSchemaString;
   }
 
   public BlockMetaData getBlock() {
@@ -99,6 +104,7 @@ public class RedelmInputSplit extends InputSplit implements Serializable, Writab
     this.hosts = other.hosts;
     this.block = other.block;
     this.schemaString = other.schemaString;
+    this.pigSchemaString = other.pigSchemaString;
   }
 
   @Override
@@ -114,4 +120,19 @@ public class RedelmInputSplit extends InputSplit implements Serializable, Writab
     return schemaString;
   }
 
+  public String getPigSchema() {
+    return pigSchemaString;
+  }
+
+  public String toString() {
+    return this.getClass().getSimpleName() + "{" +
+           "part: " + path
+        + " start: " + start
+        + " length: " + length
+        + " hosts: " + hosts
+        + " block: " + block
+        + " schema: " + schemaString
+        + " pigSchema: " + pigSchemaString
+        + "}";
+  };
 }

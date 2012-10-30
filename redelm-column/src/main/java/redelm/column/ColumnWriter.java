@@ -21,6 +21,8 @@ public interface ColumnWriter {
 
   void write(int value, int repetitionLevel, int definitionLevel);
 
+  void write(long value, int repetitionLevel, int definitionLevel);
+
   void write(String value, int repetitionLevel, int definitionLevel);
 
   void write(boolean value, int repetitionLevel, int definitionLevel);
@@ -42,4 +44,5 @@ public interface ColumnWriter {
   void reset();
 
   int getValueCount();
+
 }

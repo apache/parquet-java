@@ -42,9 +42,11 @@ public class RedelmOutputFormat extends FileOutputFormat<Object, Tuple> {
   private MemColumnsStore store;
 
   private final MessageType schema;
+  private final String pigSchema;
 
-  public RedelmOutputFormat(MessageType schema) {
+  public RedelmOutputFormat(MessageType schema, String pigSchema) {
     this.schema = schema;
+    this.pigSchema = pigSchema;
     initStore();
   }
 
@@ -60,7 +62,7 @@ public class RedelmOutputFormat extends FileOutputFormat<Object, Tuple> {
     final Path file = getDefaultWorkFile(taskAttemptContext, "");
     final Configuration conf = taskAttemptContext.getConfiguration();
     final FileSystem fs = file.getFileSystem(conf);
-    final RedelmFileWriter w = new RedelmFileWriter(schema, fs.create(file, false));
+    final RedelmFileWriter w = new RedelmFileWriter(schema, pigSchema, fs.create(file, false));
     w.start();
     return new RecordWriter<Object, Tuple>() {
       private int recordCount;
