@@ -99,7 +99,7 @@ public class TestTupleRecordConsumer {
       logger.debug(t);
       tupleWriter.write(t);
     }
-    Assert.assertEquals(g.toString(), groups.get(0).toString());
+    assertEquals(g.toString(), groups.get(0).toString());
   }
 
 }

@@ -96,9 +96,9 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     }
   }
 
-  public void addInt(int value) {
+  public void addInteger(int value) {
     validate(Primitive.INT32);
-    delegate.addInt(value);
+    delegate.addInteger(value);
   }
 
   public void addLong(long value) {
@@ -112,7 +112,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   }
 
   public void addBoolean(boolean value) {
-    validate(Primitive.BOOL);
+    validate(Primitive.BOOLEAN);
     delegate.addBoolean(value);
   }
 

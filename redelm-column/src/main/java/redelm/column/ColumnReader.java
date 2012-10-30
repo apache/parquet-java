@@ -34,13 +34,9 @@ public interface ColumnReader {
 
   int getInteger();
 
-<<<<<<< HEAD
   boolean getBoolean();
-=======
-  long getLong();
 
-  boolean getBool();
->>>>>>> da419bfe8ddb40261da15a88d5dad6520ed91ec2
+  long getLong();
 
   byte[] getBinary();
 
