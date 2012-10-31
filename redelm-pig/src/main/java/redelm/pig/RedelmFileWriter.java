@@ -27,12 +27,23 @@ import redelm.column.BytesOutput;
 import redelm.column.ColumnDescriptor;
 import redelm.schema.MessageType;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.io.compress.CodecPool;
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.CompressionOutputStream;
+import org.apache.hadoop.io.compress.Compressor;
+import org.apache.hadoop.io.compress.GzipCodec;
+import org.apache.hadoop.util.ReflectionUtils;
 
 public class RedelmFileWriter extends BytesOutput {
   public static final byte[] MAGIC = {82, 101, 100, 32, 69, 108, 109, 10}; // "Red Elm\n"
   public static final int CURRENT_VERSION = 1;
   private static final Log LOG = Log.getLog(RedelmFileWriter.class);
+
+  private final CompressionCodec codec;
+  private Compressor compressor;
+  private CompressionOutputStream cos;
 
   private final MessageType schema;
   private final String pigSchema;
@@ -73,16 +84,25 @@ public class RedelmFileWriter extends BytesOutput {
       STATE startDefinition() {
         return DEFINITION;
       }
+      STATE write() {
+        return this;
+      }
     },
     DEFINITION {
       STATE startData() {
         return DATA;
+      }
+      STATE write() {
+        return this;
       }
     },
     DATA {
       STATE endColumn() {
         return BLOCK;
       };
+      STATE write() {
+        return this;
+      }
     },
     ENDED;
 
@@ -95,6 +115,7 @@ public class RedelmFileWriter extends BytesOutput {
     STATE endColumn() {throw new IllegalStateException(this.name());}
     STATE endBlock() {throw new IllegalStateException(this.name());}
     STATE end() {throw new IllegalStateException(this.name());}
+    STATE write() {throw new IllegalStateException(this.name());}
   }
 
   private STATE state = STATE.NOT_STARTED;
@@ -104,6 +125,14 @@ public class RedelmFileWriter extends BytesOutput {
     this.schema = schema;
     this.pigSchema = pigSchema;
     this.out = out;
+    try {
+      String codecClassname = GzipCodec.class.getName();
+      Class<?> codecClass = Class.forName(codecClassname);
+      Configuration conf = new Configuration();
+      codec = (CompressionCodec)ReflectionUtils.newInstance(codecClass, conf);
+    } catch (ClassNotFoundException e) {
+      throw new RuntimeException("Should not happen", e);
+    }
   }
 
   public void start() throws IOException {
@@ -123,27 +152,46 @@ public class RedelmFileWriter extends BytesOutput {
     currentColumn.setValueCount(valueCount);
   }
 
+  private void startCompression() throws IOException {
+    compressor = CodecPool.getCompressor(codec);
+    cos = codec.createOutputStream(out, compressor);
+  }
+
+  private void endCompression() throws IOException {
+    cos.finish();
+    cos = null;
+    CodecPool.returnCompressor(compressor);
+    compressor = null;
+  }
+
   public void startRepetitionLevels() throws IOException {
     state = state.startRepetition();
     currentColumn.setRepetitionStart(out.getPos());
-  }
-
-  public void write(byte[] data, int offset, int length) throws IOException {
-    out.write(data, offset, length);
+    startCompression();
   }
 
   public void startDefinitionLevels() throws IOException {
     state = state.startDefinition();
+    endCompression();
     currentColumn.setDefinitionStart(out.getPos());
+    startCompression();
   }
 
   public void startData() throws IOException {
-    currentColumn.setDataStart(out.getPos());
     state = state.startData();
+    endCompression();
+    currentColumn.setDataStart(out.getPos());
+    startCompression();
+  }
+
+  public void write(byte[] data, int offset, int length) throws IOException {
+    state = state.write();
+    cos.write(data, offset, length);
   }
 
   public void endColumn() throws IOException {
     state = state.endColumn();
+    endCompression();
     currentColumn.setDataEnd(out.getPos());
     currentBlock.addColumn(currentColumn);
     if (INFO) LOG.info(currentColumn);
