@@ -116,7 +116,7 @@ public class SimpleGroup extends Group {
 
   @Override
   public int getInteger(int fieldIndex, int index) {
-    return ((IntValue)getValue(fieldIndex, index)).getInt();
+    return ((IntegerValue)getValue(fieldIndex, index)).getInteger();
   }
 
   @Override
@@ -131,7 +131,7 @@ public class SimpleGroup extends Group {
 
   @Override
   public void add(int fieldIndex, int value) {
-    add(fieldIndex, new IntValue(value));
+    add(fieldIndex, new IntegerValue(value));
   }
 
   @Override

@@ -18,11 +18,11 @@ package redelm.data.simple;
 import redelm.io.RecordConsumer;
 
 
-public class IntValue extends Primitive {
+public class IntegerValue extends Primitive {
 
   private final int value;
 
-  public IntValue(int value) {
+  public IntegerValue(int value) {
     this.value = value;
   }
 
@@ -32,7 +32,7 @@ public class IntValue extends Primitive {
   }
 
   @Override
-  public int getInt() {
+  public int getInteger() {
     return value;
   }
 
