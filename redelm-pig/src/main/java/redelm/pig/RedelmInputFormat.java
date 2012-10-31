@@ -42,7 +42,6 @@ import redelm.column.mem.MemColumnsStore;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
 import redelm.parser.RedelmParser;
-import redelm.parser.RedelmParser.RedelmParserException;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.Type;
@@ -53,11 +52,7 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
   private MessageType requestedSchema;
 
   public RedelmInputFormat(String requestedSchema) {
-    try {
-        this.requestedSchema = requestedSchema == null ? null : RedelmParser.parseMessageType(requestedSchema);
-    } catch (RedelmParserException e) {
-        throw new RuntimeException(e);
-    }
+      this.requestedSchema = requestedSchema == null ? null : RedelmParser.parseMessageType(requestedSchema);
   }
 
   @Override
@@ -133,11 +128,7 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
         FileSystem fs = FileSystem.get(taskAttemptContext.getConfiguration());
         RedelmInputSplit redelmInputSplit = (RedelmInputSplit)inputSplit;
         Path path = redelmInputSplit.getPath();
-        try {
-            schema = RedelmParser.parseMessageType(redelmInputSplit.getSchema());
-        } catch (RedelmParserException e) {
-            throw new RuntimeException("Unable to parse Schema", e);
-        }
+        schema = RedelmParser.parseMessageType(redelmInputSplit.getSchema());
         pigSchema = Utils.getSchemaFromString(redelmInputSplit.getPigSchema());
         if (requestedSchema == null) {
           requestedSchema = schema;

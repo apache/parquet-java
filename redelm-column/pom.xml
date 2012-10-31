@@ -19,16 +19,16 @@
   </properties>
 
   <dependencies>
-    <dependency>
+    <!--dependency>
       <groupId>org.antlr</groupId>
       <artifactId>antlr</artifactId>
       <version>3.4</version>
-    </dependency>
+    </dependency-->
   </dependencies>
 
   <build>
     <plugins>
-      <plugin>
+      <!--plugin>
         <groupId>org.antlr</groupId>
         <artifactId>antlr3-maven-plugin</artifactId>
         <version>3.4</version>
@@ -39,7 +39,7 @@
             </goals>
           </execution>
         </executions>
-      </plugin>
+      </plugin-->
     </plugins>
   </build>
 </project>

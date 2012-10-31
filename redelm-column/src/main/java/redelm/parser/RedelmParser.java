@@ -15,21 +15,81 @@
  */
 package redelm.parser;
 
-import java.io.IOException;
-
-import org.antlr.runtime.ANTLRFileStream;
-import org.antlr.runtime.ANTLRStringStream;
-import org.antlr.runtime.CommonTokenStream;
-import org.antlr.runtime.RecognitionException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.StringTokenizer;
 
 import redelm.Log;
+import redelm.schema.GroupType;
 import redelm.schema.MessageType;
+import redelm.schema.PrimitiveType;
+import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.Type;
+import redelm.schema.Type.Repetition;
 
 public class RedelmParser {
   private static final Log LOG = Log.getLog(RedelmParser.class);
 
   private RedelmParser() {}
 
+  public static MessageType parseMessageType(String input) {
+    return parse(input);
+  }
+
+  private static MessageType parse(String schemaString) {
+    StringTokenizer st = new StringTokenizer(schemaString, " ;{}\n\t", true);
+    String t = nextToken(st);
+    check(t, "message", "start with 'message'");
+    String name = nextToken(st);
+    Type[] fields = readGroupTypeFields(st);
+    return new MessageType(name, fields);
+  }
+
+  private static Type[] readGroupTypeFields(StringTokenizer st) {
+    List<Type> types = new ArrayList<Type>();
+    String t = nextToken(st);
+    check(t, "{", "start of message");
+    while (!(t = nextToken(st)).equals("}")) {
+      types.add(readType(t, st));
+    }
+    return types.toArray(new Type[types.size()]);
+  }
+
+  private static Type readType(String t, StringTokenizer st) {
+    Repetition r = Repetition.valueOf(t.toUpperCase());
+    t = nextToken(st);
+    String name = nextToken(st);
+    if (t.equalsIgnoreCase("group")) {
+      Type[] fields = readGroupTypeFields(st);
+      check(nextToken(st), ";", "field ended by ;");
+      return new GroupType(r, name, fields);
+    } else {
+      Primitive p = Primitive.valueOf(t.toUpperCase());
+      check(nextToken(st), ";", "field ended by ;");
+      return new PrimitiveType(r, p, name);
+    }
+  }
+
+  private static void check(String t, String expected, String message) {
+    if (!t.equalsIgnoreCase(expected)) {
+      throw new IllegalArgumentException("expected: "+message+ ": '" + expected + "' got '" + t + "'");
+    }
+  }
+
+  private static String nextToken(StringTokenizer st) {
+    while (st.hasMoreTokens()) {
+      String t = st.nextToken();
+      if (!isWhitespace(t)) {
+        return t;
+      }
+    }
+    throw new IllegalArgumentException("unexpected end of schema");
+  }
+
+  private static boolean isWhitespace(String t) {
+    return t.equals(" ") || t.equals("\t") || t.equals("\n");
+  }
+/*
   public static MessageType parseMessageType(String input) throws RedelmParserException {
     return parseMessageType(new ANTLRStringStream(input));
   }
@@ -71,4 +131,5 @@ public class RedelmParser {
       super(e);
     }
   }
+  */
 }
