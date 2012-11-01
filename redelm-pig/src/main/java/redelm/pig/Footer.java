@@ -72,12 +72,14 @@ public class Footer implements Serializable {
 
   private final String schema;
   private final String pigSchema;
+  private final String codecClassName;
   private final List<BlockMetaData> blocks;
 
-  public Footer(String schema, String pigSchema, List<BlockMetaData> blocks) {
+  public Footer(String schema, String pigSchema, String codecClassName, List<BlockMetaData> blocks) {
     this.schema = schema;
     /** TODO: move to a generic annotation field */
     this.pigSchema = pigSchema;
+    this.codecClassName = codecClassName;
     this.blocks = blocks;
   }
 
@@ -93,8 +95,13 @@ public class Footer implements Serializable {
     return pigSchema;
   }
 
+  public String getCodecClassName() {
+    return codecClassName;
+  }
+
   @Override
   public String toString() {
-    return "Footer{"+blocks+"}";
+    return "Footer{schema: "+schema+", pigSchema: "+pigSchema+", codec: "+codecClassName+", blocks"+blocks+"}";
+
   }
 }

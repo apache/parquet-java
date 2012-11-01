@@ -17,6 +17,7 @@ package redelm.column.primitive;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.charset.Charset;
 
 import redelm.column.BytesOutput;
 import redelm.column.RedelmByteArrayOutputStream;
@@ -28,6 +29,8 @@ import redelm.column.RedelmByteArrayOutputStream;
  *
  */
 public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
+
+  public static final Charset CHARSET = Charset.forName("UTF-8");
 
   private RedelmByteArrayOutputStream arrayOut;
   private DataOutputStream out;
@@ -95,7 +98,10 @@ public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
   @Override
   public final void writeString(String str) {
     try {
-      out.writeUTF(str);
+      // writeUTF() has a max size of 64k :((
+      byte[] bytes = str.getBytes(CHARSET);
+      out.writeInt(bytes.length);
+      out.write(bytes);
     } catch (IOException e) {
       throw new RuntimeException("never happens", e);
     }

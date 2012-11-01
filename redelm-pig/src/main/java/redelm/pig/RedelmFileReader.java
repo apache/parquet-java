@@ -73,15 +73,14 @@ public class RedelmFileReader {
   private long previousReadIndex = 0;
   private final CompressionCodec codec;
 
-  public RedelmFileReader(FSDataInputStream f, List<BlockMetaData> blocks, List<String[]> colums) {
+  public RedelmFileReader(FSDataInputStream f, List<BlockMetaData> blocks, List<String[]> colums, String codecClassName) {
     this.f = f;
     this.blocks = blocks;
     for (String[] path : colums) {
       paths.add(Arrays.toString(path));
     }
     try {
-      String codecClassname = GzipCodec.class.getName();
-      Class<?> codecClass = Class.forName(codecClassname);
+      Class<?> codecClass = Class.forName(codecClassName);
       Configuration conf = new Configuration();
       codec = (CompressionCodec)ReflectionUtils.newInstance(codecClass, conf);
     } catch (ClassNotFoundException e) {

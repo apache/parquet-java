@@ -41,6 +41,7 @@ public class RedelmFileWriter extends BytesOutput {
   public static final int CURRENT_VERSION = 1;
   private static final Log LOG = Log.getLog(RedelmFileWriter.class);
 
+  private final String codecClassName;
   private final CompressionCodec codec;
   private Compressor compressor;
   private CompressionOutputStream cos;
@@ -120,14 +121,14 @@ public class RedelmFileWriter extends BytesOutput {
 
   private STATE state = STATE.NOT_STARTED;
 
-  public RedelmFileWriter(MessageType schema, String pigSchema, FSDataOutputStream out) {
+  public RedelmFileWriter(MessageType schema, String pigSchema, FSDataOutputStream out, String codecClassName) {
     super();
     this.schema = schema;
     this.pigSchema = pigSchema;
     this.out = out;
+    this.codecClassName = codecClassName;
     try {
-      String codecClassname = GzipCodec.class.getName();
-      Class<?> codecClass = Class.forName(codecClassname);
+      Class<?> codecClass = Class.forName(codecClassName);
       Configuration conf = new Configuration();
       codec = (CompressionCodec)ReflectionUtils.newInstance(codecClass, conf);
     } catch (ClassNotFoundException e) {
@@ -210,7 +211,7 @@ public class RedelmFileWriter extends BytesOutput {
     state = state.end();
     long footerIndex = out.getPos();
     out.writeInt(CURRENT_VERSION);
-    Footer footer = new Footer(schema.toString(), pigSchema, blocks);
+    Footer footer = new Footer(schema.toString(), pigSchema, codecClassName, blocks);
 //    out.writeUTF(Footer.toJSON(footer));
     // lazy: use serialization
     // TODO: change that

@@ -43,10 +43,12 @@ public class RedelmOutputFormat extends FileOutputFormat<Object, Tuple> {
 
   private final MessageType schema;
   private final String pigSchema;
+  private final String codecClassName;
 
-  public RedelmOutputFormat(MessageType schema, String pigSchema) {
+  public RedelmOutputFormat(MessageType schema, String pigSchema, String codecClassName) {
     this.schema = schema;
     this.pigSchema = pigSchema;
+    this.codecClassName = codecClassName;
     initStore();
   }
 
@@ -62,7 +64,7 @@ public class RedelmOutputFormat extends FileOutputFormat<Object, Tuple> {
     final Path file = getDefaultWorkFile(taskAttemptContext, "");
     final Configuration conf = taskAttemptContext.getConfiguration();
     final FileSystem fs = file.getFileSystem(conf);
-    final RedelmFileWriter w = new RedelmFileWriter(schema, pigSchema, fs.create(file, false));
+    final RedelmFileWriter w = new RedelmFileWriter(schema, pigSchema, fs.create(file, false), codecClassName);
     w.start();
     return new RecordWriter<Object, Tuple>() {
       private int recordCount;

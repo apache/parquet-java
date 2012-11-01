@@ -142,7 +142,7 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
             columns.add(columnMetaData.getPath());
           }
         }
-        reader = new RedelmFileReader(f, Arrays.asList(block), columns);
+        reader = new RedelmFileReader(f, Arrays.asList(block), columns, redelmInputSplit.getCodecClassName());
         total = block.getRecordCount();
       }
 
@@ -213,7 +213,8 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
                 hosts.toArray(new String[hosts.size()]),
                 block,
                 footer.getSchema(),
-                footer.getPigSchema()));
+                footer.getPigSchema(),
+                footer.getCodecClassName()));
       }
     }
     return splits;

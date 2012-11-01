@@ -19,6 +19,8 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 
+import static redelm.column.primitive.SimplePrimitiveColumnWriter.CHARSET;
+
 public class SimplePrimitiveColumnReader extends PrimitiveColumnReader {
 
   private DataInputStream in;
@@ -59,7 +61,17 @@ public class SimplePrimitiveColumnReader extends PrimitiveColumnReader {
   @Override
   public String readString() {
     try {
-      return in.readUTF();
+      int size = in.readInt();
+      byte[] bytes = new byte[size];
+      int i = 0;
+      do {
+        int n = in.read(bytes, i, bytes.length - i);
+        if (n == -1) {
+          throw new RuntimeException("Reached end of stream");
+        }
+        i = i + n;
+      } while (i < bytes.length);
+      return new String(bytes, CHARSET);
     } catch (IOException e) {
       throw new RuntimeException("never happens", e);
     }
