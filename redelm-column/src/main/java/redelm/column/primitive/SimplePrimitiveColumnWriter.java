@@ -100,7 +100,7 @@ public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
     try {
       // writeUTF() has a max size of 64k :((
       byte[] bytes = str.getBytes(CHARSET);
-      out.writeInt(bytes.length);
+      writeUnsignedVarInt(bytes.length);
       out.write(bytes);
     } catch (IOException e) {
       throw new RuntimeException("never happens", e);
@@ -131,4 +131,11 @@ public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
     arrayOut.reset();
   }
 
+  private void writeUnsignedVarInt(int value) throws IOException {
+    while ((value & 0xFFFFFF80) != 0L) {
+      out.writeByte((value & 0x7F) | 0x80);
+      value >>>= 7;
+    }
+    out.writeByte(value & 0x7F);
+  }
 }

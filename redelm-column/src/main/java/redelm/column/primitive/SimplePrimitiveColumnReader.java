@@ -61,7 +61,7 @@ public class SimplePrimitiveColumnReader extends PrimitiveColumnReader {
   @Override
   public String readString() {
     try {
-      int size = in.readInt();
+      int size = readUnsignedVarInt();
       if (size == 0) {
         return "";
       } else {
@@ -115,6 +115,17 @@ public class SimplePrimitiveColumnReader extends PrimitiveColumnReader {
     } catch (IOException e) {
       throw new RuntimeException("never happens", e);
     }
+  }
+
+  private int readUnsignedVarInt() throws IOException {
+    int value = 0;
+    int i = 0;
+    int b;
+    while (((b = in.readByte()) & 0x80) != 0) {
+      value |= (b & 0x7F) << i;
+      i += 7;
+    }
+    return value | (b << i);
   }
 
 }
