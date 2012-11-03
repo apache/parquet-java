@@ -15,23 +15,116 @@
  */
 package redelm.io;
 
+/**
+ *
+ * Abstraction for writing or consuming records
+ * It decouples the striping/assembly algorithm from the actual record model
+ * example:
+ * <pre>
+ * startMessage()
+ *  startField("A", 0)
+ *   addValue(1)
+ *   addValue(2)
+ *  endField("A", 0)
+ *  startField("B", 1)
+ *   startGroup()
+ *    startField("C", 0)
+ *     addValue(3)
+ *    endField("C", 0)
+ *   endGroup()
+ *  endField("B", 1)
+ * endMessage()
+ * </pre>
+ *
+ * would produce the following message:
+ * <pre>
+ * {
+ *   A: [1, 2]
+ *   B: {
+ *     C: 3
+ *   }
+ * }
+ * </pre>
+ * @author Julien Le Dem
+ *
+ */
 abstract public class RecordConsumer {
 
+  /**
+   * start a new record
+   */
   abstract public void startMessage();
+
+  /**
+   * end of a record
+   */
   abstract public void endMessage();
 
+  /**
+   * start of a field in a group or message
+   * if the field is repeated the field is started only once and all values added in between start and end
+   * @param field name of the field
+   * @param index of the field in the group or message
+   */
   abstract public void startField(String field, int index);
+
+  /**
+   * end of a field in a group or message
+   * @param field name of the field
+   * @param index of the field in the group or message
+   */
   abstract public void endField(String field, int index);
 
+  /**
+   * start of a group in a field
+   */
   abstract public void startGroup();
+
+  /**
+   * end of a group in a field
+   */
   abstract public void endGroup();
 
+  /**
+   * add an int value in the current field
+   * @param value
+   */
   abstract public void addInt(int value);
+
+  /**
+   * add a long value in the current field
+   * @param value
+   */
   abstract public void addLong(long value);
+
+  /**
+   * add a string value in the current field
+   * @param value
+   */
   abstract public void addString(String value);
+
+  /**
+   * add a boolean value in the current field
+   * @param value
+   */
   abstract public void addBoolean(boolean value);
+
+  /**
+   * add a binary value in the current field
+   * @param value
+   */
   abstract public void addBinary(byte[] value);
+
+  /**
+   * add a float value in the current field
+   * @param value
+   */
   abstract public void addFloat(float value);
+
+  /**
+   * add a double value in the current field
+   * @param value
+   */
   abstract public void addDouble(double value);
 
 }
