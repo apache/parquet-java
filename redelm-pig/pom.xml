@@ -44,11 +44,11 @@
       <artifactId>joda-time</artifactId>
       <version>1.6</version>
     </dependency>
-    <dependency>
+    <!--dependency>
       <groupId>org.antlr</groupId>
       <artifactId>antlr-runtime</artifactId>
       <version>3.4</version>
-    </dependency>
+    </dependency-->
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>

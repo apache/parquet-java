@@ -15,7 +15,6 @@
  */
 package redelm.schema;
 
-
 public class MessageType extends GroupType {
   public MessageType(String name, Type... fields) {
     super(Repetition.REPEATED, name, fields);
@@ -27,11 +26,12 @@ public class MessageType extends GroupType {
   }
 
   @Override
-  public StringBuilder toStringBuilder(String indent) {
-    return membersDisplayString(
-                new StringBuilder("message ")
-                    .append(getName())
-                    .append(" {\n"), "  ")
-                .append("}\n");
+  public void writeToStringBuilder(StringBuilder sb, String indent) {
+    sb.append("message ")
+        .append(getName())
+        .append(" {\n");
+    membersDisplayString(sb
+        , "  ");
+    sb.append("}\n");
   }
 }

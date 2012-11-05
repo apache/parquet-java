@@ -41,7 +41,7 @@ public class TestRedelmParser {
                 "      required string Code;\n" +
                 "      required string Country; }\n" +
                 "    optional string Url; }}";
-        MessageType parsed = RedelmParser.parseMessageType(example);
+        MessageType parsed = MessageTypeParser.parseMessageType(example);
         MessageType manuallyMade =
             new MessageType("Document",
                 new PrimitiveType(REQUIRED, INT64, "DocId"),
@@ -55,11 +55,11 @@ public class TestRedelmParser {
                     new PrimitiveType(OPTIONAL, STRING, "Url")));
         assertEquals(manuallyMade, parsed);
 
-        MessageType parsedThenReparsed = RedelmParser.parseMessageType(parsed.toString());
+        MessageType parsedThenReparsed = MessageTypeParser.parseMessageType(parsed.toString());
 
         assertEquals(manuallyMade, parsedThenReparsed);
 
-        parsed = RedelmParser.parseMessageType("message m { required group a {required string b;}; required group c { required int64 d; };}");
+        parsed = MessageTypeParser.parseMessageType("message m { required group a {required string b;}; required group c { required int64 d; };}");
         manuallyMade =
             new MessageType("m",
                 new GroupType(REQUIRED, "a",
@@ -69,7 +69,7 @@ public class TestRedelmParser {
 
         assertEquals(manuallyMade, parsed);
 
-        parsedThenReparsed = RedelmParser.parseMessageType(parsed.toString());
+        parsedThenReparsed = MessageTypeParser.parseMessageType(parsed.toString());
 
         assertEquals(manuallyMade, parsedThenReparsed);
     }

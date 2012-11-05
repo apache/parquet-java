@@ -41,7 +41,7 @@ import org.apache.pig.impl.util.Utils;
 import redelm.column.mem.MemColumnsStore;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
-import redelm.parser.RedelmParser;
+import redelm.parser.MessageTypeParser;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.Type;
@@ -52,7 +52,7 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
   private MessageType requestedSchema;
 
   public RedelmInputFormat(String requestedSchema) {
-      this.requestedSchema = requestedSchema == null ? null : RedelmParser.parseMessageType(requestedSchema);
+      this.requestedSchema = requestedSchema == null ? null : MessageTypeParser.parseMessageType(requestedSchema);
   }
 
   @Override
@@ -128,7 +128,7 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
         FileSystem fs = FileSystem.get(taskAttemptContext.getConfiguration());
         RedelmInputSplit redelmInputSplit = (RedelmInputSplit)inputSplit;
         Path path = redelmInputSplit.getPath();
-        schema = RedelmParser.parseMessageType(redelmInputSplit.getSchema());
+        schema = MessageTypeParser.parseMessageType(redelmInputSplit.getSchema());
         pigSchema = Utils.getSchemaFromString(redelmInputSplit.getPigSchema());
         if (requestedSchema == null) {
           requestedSchema = schema;

@@ -21,7 +21,7 @@ import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
 import org.junit.Test;
 
-import redelm.parser.RedelmParser;
+import redelm.parser.MessageTypeParser;
 import redelm.schema.MessageType;
 
 public class TestPigSchemaConverter {
@@ -38,7 +38,7 @@ public class TestPigSchemaConverter {
                       "    optional string d;\n" +
                       "  }\n" +
                       "}\n";
-    MessageType expectedMT = RedelmParser.parseMessageType(expected);
+    MessageType expectedMT = MessageTypeParser.parseMessageType(expected);
     assertEquals(expectedMT, schema);
     assertEquals(expected, schema.toString());
   }

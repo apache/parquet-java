@@ -25,6 +25,7 @@ public class PrimitiveType extends Type {
       public String toString(ColumnReader columnReader) {
         return columnReader.getString();
       }
+
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
@@ -36,6 +37,7 @@ public class PrimitiveType extends Type {
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getLong());
       }
+
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
@@ -47,6 +49,7 @@ public class PrimitiveType extends Type {
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getInteger());
       }
+
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
@@ -58,6 +61,7 @@ public class PrimitiveType extends Type {
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getBoolean());
       }
+
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
@@ -69,6 +73,7 @@ public class PrimitiveType extends Type {
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getBinary());
       }
+
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
@@ -80,6 +85,7 @@ public class PrimitiveType extends Type {
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getFloat());
       }
+
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
@@ -91,6 +97,7 @@ public class PrimitiveType extends Type {
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getDouble());
       }
+
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
@@ -100,7 +107,8 @@ public class PrimitiveType extends Type {
 
     abstract public String toString(ColumnReader columnReader);
 
-    abstract public void addValueToRecordConsumer(RecordConsumer recordConsumer, ColumnReader columnReader);
+    abstract public void addValueToRecordConsumer(RecordConsumer recordConsumer,
+        ColumnReader columnReader);
 
   }
 
@@ -126,25 +134,25 @@ public class PrimitiveType extends Type {
   }
 
   @Override
-  public StringBuilder toStringBuilder(String indent) {
-    return new StringBuilder(indent)
-               .append(getRepetition().name().toLowerCase())
-               .append(" ")
-               .append(primitive.name().toLowerCase())
-               .append(" ")
-               .append(getName());
+  public void writeToStringBuilder(StringBuilder sb, String indent) {
+    sb.append(indent)
+        .append(getRepetition().name().toLowerCase())
+        .append(" ")
+        .append(primitive.name().toLowerCase())
+        .append(" ")
+        .append(getName());
   }
 
   @Override
   protected boolean typeEquals(Type other) {
-      if (other.isPrimitive()) {
-          PrimitiveType primitiveType = other.asPrimitiveType();
-          return getRepetition() == primitiveType.getRepetition() &&
-                 getPrimitive().equals(primitiveType.getPrimitive()) &&
-                 getName().equals(primitiveType.getName());
-      } else {
-          return false;
-      }
+    if (other.isPrimitive()) {
+      PrimitiveType primitiveType = other.asPrimitiveType();
+      return getRepetition() == primitiveType.getRepetition() &&
+          getPrimitive().equals(primitiveType.getPrimitive()) &&
+          getName().equals(primitiveType.getName());
+    } else {
+      return false;
+    }
   }
 
   @Override
