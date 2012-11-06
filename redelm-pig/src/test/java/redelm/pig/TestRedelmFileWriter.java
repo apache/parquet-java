@@ -29,9 +29,12 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.compress.GzipCodec;
 import org.junit.Test;
 
 public class TestRedelmFileWriter {
+
+  private static final String CODEC = GzipCodec.class.getName();
 
   @Test
   public void test() throws Exception {
@@ -52,7 +55,7 @@ public class TestRedelmFileWriter {
     byte[] bytes3 = { 2, 3, 4, 5};
     byte[] bytes4 = { 3, 4, 5, 6};
 
-    RedelmFileWriter w = new RedelmFileWriter(schema, "", fout);
+    RedelmFileWriter w = new RedelmFileWriter(schema, "", fout, CODEC);
     w.start();
     w.startBlock(1);
     w.startColumn(c1, 1);
@@ -99,7 +102,7 @@ public class TestRedelmFileWriter {
 
     {
       Assert.assertEquals(2, readFooter.getBlocks().size());
-      RedelmFileReader r = new RedelmFileReader(fin, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.<String[]>asList(path1));
+      RedelmFileReader r = new RedelmFileReader(fin, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.<String[]>asList(path1), CODEC);
       BlockData blockData = r.readColumns();
       List<ColumnData> cols = blockData.getColumns();
       System.out.println(cols);
@@ -110,7 +113,7 @@ public class TestRedelmFileWriter {
     }
 
     {
-      RedelmFileReader r = new RedelmFileReader(fin, readFooter.getBlocks(), Arrays.<String[]>asList(path1, path2));
+      RedelmFileReader r = new RedelmFileReader(fin, readFooter.getBlocks(), Arrays.<String[]>asList(path1, path2), CODEC);
       BlockData blockData1 = r.readColumns();
       List<ColumnData> cols1 = blockData1.getColumns();
       Assert.assertEquals(2, cols1.size());

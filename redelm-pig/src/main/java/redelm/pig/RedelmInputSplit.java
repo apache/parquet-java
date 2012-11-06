@@ -42,19 +42,21 @@ public class RedelmInputSplit extends InputSplit implements Serializable, Writab
   private BlockMetaData block;
   private String schemaString;
   private String pigSchemaString;
+  private String codecClassName;
 
   public RedelmInputSplit() {
   }
 
-  public RedelmInputSplit(Path path, long start, long length, String[] hosts, BlockMetaData block, String schemaString, String pigSchemaString) {
+  public RedelmInputSplit(Path path, long start, long length, String[] hosts, BlockMetaData block, String schemaString, String pigSchemaString, String codecClassName) {
     this.path = path.toUri().toString();
     this.start = start;
     this.length = length;
     this.hosts = hosts;
     this.block = block;
     this.schemaString = schemaString;
+    this.codecClassName = codecClassName;
     if (pigSchemaString == null) {
-      throw new NullPointerException();
+      throw new NullPointerException("pigSchemaString is null");
     }
     this.pigSchemaString = pigSchemaString;
   }
@@ -105,6 +107,7 @@ public class RedelmInputSplit extends InputSplit implements Serializable, Writab
     this.block = other.block;
     this.schemaString = other.schemaString;
     this.pigSchemaString = other.pigSchemaString;
+    this.codecClassName = other.codecClassName;
   }
 
   @Override
@@ -124,6 +127,10 @@ public class RedelmInputSplit extends InputSplit implements Serializable, Writab
     return pigSchemaString;
   }
 
+  public String getCodecClassName() {
+    return codecClassName;
+  };
+
   public String toString() {
     return this.getClass().getSimpleName() + "{" +
            "part: " + path
@@ -134,5 +141,5 @@ public class RedelmInputSplit extends InputSplit implements Serializable, Writab
         + " schema: " + schemaString
         + " pigSchema: " + pigSchemaString
         + "}";
-  };
+  }
 }

@@ -15,6 +15,8 @@
  */
 package redelm.pig;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
@@ -23,7 +25,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.io.IOUtils;
+import org.apache.hadoop.io.compress.CodecPool;
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.CompressionInputStream;
+import org.apache.hadoop.io.compress.Compressor;
+import org.apache.hadoop.io.compress.Decompressor;
+import org.apache.hadoop.io.compress.GzipCodec;
+import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.log4j.Logger;
 
 public class RedelmFileReader {
@@ -60,12 +71,20 @@ public class RedelmFileReader {
   private int currentBlock = 0;
   private Set<String> paths = new HashSet<String>();
   private long previousReadIndex = 0;
+  private final CompressionCodec codec;
 
-  public RedelmFileReader(FSDataInputStream f, List<BlockMetaData> blocks, List<String[]> colums) {
+  public RedelmFileReader(FSDataInputStream f, List<BlockMetaData> blocks, List<String[]> colums, String codecClassName) {
     this.f = f;
     this.blocks = blocks;
     for (String[] path : colums) {
       paths.add(Arrays.toString(path));
+    }
+    try {
+      Class<?> codecClass = Class.forName(codecClassName);
+      Configuration conf = new Configuration();
+      codec = (CompressionCodec)ReflectionUtils.newInstance(codecClass, conf);
+    } catch (ClassNotFoundException e) {
+      throw new RuntimeException("Should not happen", e);
     }
   }
 
@@ -98,8 +117,17 @@ public class RedelmFileReader {
     f.readFully(start, data);
     long t1 = System.currentTimeMillis();
     LOG.info("Read " + length + " bytes for column " + name + " in " + (t1 - t0) + " ms: " + (float)(t1 - t0)/data.length + " ms/byte");
-    previousReadIndex = start + length;
-    return data;
+    // TODO make this streaming instead of reading into an array to decompress
+    Decompressor decompressor = CodecPool.getDecompressor(codec);
+    try {
+      CompressionInputStream cis = codec.createInputStream(new ByteArrayInputStream(data), decompressor);
+      ByteArrayOutputStream decompressed = new ByteArrayOutputStream();
+      IOUtils.copyBytes(cis, decompressed, 4096, false);
+      previousReadIndex = start + length;
+      return decompressed.toByteArray();
+    } finally {
+      CodecPool.returnDecompressor(decompressor);
+    }
   }
 
 }
