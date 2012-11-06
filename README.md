@@ -13,9 +13,10 @@ mvn test
 The build runs in [Travis CI](http://travis-ci.org/julienledem/redelm):
 [![Build Status](https://secure.travis-ci.org/julienledem/redelm.png)](http://travis-ci.org/julienledem/redelm)
 
-## Authors
+## Authors and contributors
 
 * Julien Le Dem <http://twitter.com/J_>
+* Jonathan Coveney <http://twitter.com/jco>
 
 ## License
 
