@@ -15,16 +15,16 @@
  */
 package redelm.pig;
 
-import static org.apache.pig.builtin.mock.Storage.*;
+import static org.apache.pig.builtin.mock.Storage.bag;
+import static org.apache.pig.builtin.mock.Storage.tuple;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
-import junit.framework.Assert;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.io.serializer.SerializationFactory;
 import org.apache.pig.ExecType;
 import org.apache.pig.PigServer;
 import org.apache.pig.backend.executionengine.ExecException;
@@ -33,6 +33,9 @@ import org.apache.pig.builtin.mock.Storage;
 import org.apache.pig.builtin.mock.Storage.Data;
 import org.apache.pig.data.Tuple;
 import org.junit.Test;
+
+import com.google.common.base.Function;
+import com.google.common.collect.Collections2;
 
 public class TestRedelmStorer {
 
@@ -62,10 +65,10 @@ public class TestRedelmStorer {
 
     List<Tuple> result = data.get("out");
 
-    Assert.assertEquals(1000, result.size());
+    assertEquals(1000, result.size());
     int i = 0;
     for (Tuple tuple : result) {
-      Assert.assertEquals("a"+i, tuple.get(0));
+      assertEquals("a"+i, tuple.get(0));
       ++i;
     }
   }
@@ -79,6 +82,16 @@ public class TestRedelmStorer {
     for (int i = 0; i < 1000; i++) {
       list.add(tuple("a"+i, bag(tuple("o", "b"))));
     }
+    for (int i = 10; i < 2000; i++) {
+      list.add(tuple("a"+i, bag(tuple("o", "b"), tuple("o", "b"), tuple("o", "b"), tuple("o", "b"))));
+    }
+    for (int i = 20; i < 3000; i++) {
+      list.add(tuple("a"+i, bag(tuple("o", "b"), tuple("o", null), tuple(null, "b"), tuple(null, null))));
+    }
+    for (int i = 30; i < 4000; i++) {
+      list.add(tuple("a"+i, null));
+    }
+    Collections.shuffle((List<?>)list);
     data.set("in", "a:chararray, b:{t:(c:chararray, d:chararray)}", list );
     pigServer.setBatchOn();
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
@@ -97,13 +110,7 @@ public class TestRedelmStorer {
 
       List<Tuple> result = data.get("out");
 
-      Assert.assertEquals(1000, result.size());
-      int i = 0;
-      for (Tuple tuple : result) {
-        Assert.assertEquals("a"+i, tuple.get(0));
-        Assert.assertEquals("{(o,b)}", tuple.get(1).toString());
-        ++i;
-      }
+      assertEquals(list, result);
     }
 
     {
@@ -113,15 +120,23 @@ public class TestRedelmStorer {
         throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
       }
 
-      List<Tuple> result2 = data.get("out2");
+      final Function<Tuple,Object> grabFirstColumn = new Function<Tuple,Object>() {
+        @Override
+        public Object apply(Tuple input) {
+          try {
+              return input.get(0);
+          } catch (ExecException e) {
+            throw new RuntimeException(e);
+          }
+        }
+      };
 
-      Assert.assertEquals(1000, result2.size());
-      int i = 0;
-      for (Tuple tuple : result2) {
-        Assert.assertEquals(1, tuple.size());
-        Assert.assertEquals("a"+i, tuple.get(0));
-        ++i;
-      }
+      List<Tuple> result2 = data.get("out2");
+      // Functional programming!!
+      Object[] result2int = Collections2.transform(result2, grabFirstColumn).toArray();
+      Object[] input2int = Collections2.transform(list, grabFirstColumn).toArray();
+
+      assertArrayEquals(input2int, result2int);
     }
   }
 }

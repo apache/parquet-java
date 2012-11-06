@@ -25,8 +25,8 @@ public class GroupType extends Type {
   private final List<Type> fields;
   private final Map<String, Integer> indexByName;
 
-  public GroupType(Repetition repeatition, String name, List<Type> fields) {
-    super(name, repeatition);
+  public GroupType(Repetition repetition, String name, List<Type> fields) {
+    super(name, repetition);
     this.fields = fields;
     this.indexByName = new HashMap<String, Integer>();
     for (int i = 0; i < fields.size(); i++) {
@@ -74,28 +74,59 @@ public class GroupType extends Type {
     return fields.get(index);
   }
 
-  String membersDisplayString(String indent) {
-    String string = "";
+  void membersDisplayString(StringBuilder sb, String indent) {
     for (Type field : fields) {
-      string += field.toString(indent)+";\n";
+      field.writeToStringBuilder(sb, indent);
+      if (field.isPrimitive()) {
+        sb.append(";");
+      }
+      sb.append("\n");
     }
-    return string;
   }
 
   @Override
   public String toString() {
-    return toString("");
+    StringBuilder sb = new StringBuilder();
+    writeToStringBuilder(sb, "");
+    return sb.toString();
   }
 
   @Override
-  public String toString(String indent) {
-    return indent+getRepetition().name().toLowerCase()+" group "+getName()+" {\n"
-        +membersDisplayString(indent+"  ")
-        +indent+"}";
+  public void writeToStringBuilder(StringBuilder sb, String indent) {
+    sb.append(indent)
+        .append(getRepetition().name().toLowerCase())
+        .append(" group ")
+        .append(getName())
+        .append(" {\n");
+    membersDisplayString(sb, indent + "  ");
+    sb.append(indent)
+        .append("}");
   }
 
   @Override
   public void accept(TypeVisitor visitor) {
     visitor.visit(this);
+  }
+
+  @Override
+  protected int typeHashCode() {
+    int c = 17;
+    c += 31 * getRepetition().hashCode();
+    c += 31 * getName().hashCode();
+    c += 31 * getFields().hashCode();
+    return c;
+  }
+
+  @Override
+  protected boolean typeEquals(Type other) {
+    Type otherType = (Type) other;
+    if (otherType.isPrimitive()) {
+      return false;
+    } else {
+      GroupType groupType = otherType.asGroupType();
+      return getRepetition() == groupType.getRepetition() &&
+          getName().equals(groupType.getName()) &&
+          getFields().equals(groupType.getFields());
+    }
   }
 }

@@ -17,27 +17,25 @@ package redelm.data.simple;
 
 import redelm.io.RecordConsumer;
 
+public class BooleanValue extends Primitive {
 
-public class IntValue extends Primitive {
-
-  private final int value;
-
-  public IntValue(int value) {
-    this.value = value;
+  private final boolean bool;
+  public BooleanValue(boolean bool) {
+    this.bool = bool;
   }
 
   @Override
   public String toString() {
-    return String.valueOf(value);
+    return String.valueOf(bool);
   }
 
   @Override
-  public int getInt() {
-    return value;
+  public boolean getBoolean() {
+    return bool;
   }
 
   @Override
   public void writeValue(RecordConsumer recordConsumer) {
-    recordConsumer.addInt(value);
+    recordConsumer.addBoolean(bool);
   }
 }

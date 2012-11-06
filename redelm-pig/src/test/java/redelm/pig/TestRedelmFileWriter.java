@@ -15,14 +15,12 @@
  */
 package redelm.pig;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
-
-import junit.framework.Assert;
-import redelm.column.ColumnDescriptor;
-import redelm.schema.MessageType;
-import redelm.schema.PrimitiveType.Primitive;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -31,6 +29,11 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.compress.GzipCodec;
 import org.junit.Test;
+
+import redelm.column.ColumnDescriptor;
+import redelm.parser.MessageTypeParser;
+import redelm.schema.MessageType;
+import redelm.schema.PrimitiveType.Primitive;
 
 public class TestRedelmFileWriter {
 
@@ -44,7 +47,7 @@ public class TestRedelmFileWriter {
 
     FSDataOutputStream fout = fileSystem.create(path, true);
 
-    MessageType schema = MessageType.parse("message m { required group a {required string b;}; required group c { required int64 d; };}");
+    MessageType schema = MessageTypeParser.parseMessageType("message m { required group a {required string b;} required group c { required int64 d; }}");
     String[] path1 = {"a", "b"};
     ColumnDescriptor c1 = new ColumnDescriptor(path1 , Primitive.STRING);
     String[] path2 = {"c", "d"};
@@ -101,38 +104,38 @@ public class TestRedelmFileWriter {
     Footer readFooter = RedelmFileReader.readFooter(fin, fileSystem.getFileStatus(path).getLen());
 
     {
-      Assert.assertEquals(2, readFooter.getBlocks().size());
+      assertEquals(2, readFooter.getBlocks().size());
       RedelmFileReader r = new RedelmFileReader(fin, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.<String[]>asList(path1), CODEC);
       BlockData blockData = r.readColumns();
       List<ColumnData> cols = blockData.getColumns();
       System.out.println(cols);
-      Assert.assertEquals(1, cols.size());
-      Assert.assertEquals(bytes1.length, cols.get(0).getData().length);
-      Assert.assertEquals(bytes1[0], cols.get(0).getData()[0]);
-      Assert.assertNull(r.readColumns());
+      assertEquals(1, cols.size());
+      assertEquals(bytes1.length, cols.get(0).getData().length);
+      assertEquals(bytes1[0], cols.get(0).getData()[0]);
+      assertNull(r.readColumns());
     }
 
     {
       RedelmFileReader r = new RedelmFileReader(fin, readFooter.getBlocks(), Arrays.<String[]>asList(path1, path2), CODEC);
       BlockData blockData1 = r.readColumns();
       List<ColumnData> cols1 = blockData1.getColumns();
-      Assert.assertEquals(2, cols1.size());
+      assertEquals(2, cols1.size());
       ColumnData c11 = cols1.get(0);
-      Assert.assertEquals(bytes1.length, c11.getData().length);
-      Assert.assertEquals(bytes1[0], c11.getData()[0]);
+      assertEquals(bytes1[0], c11.getData()[0]);
+      assertEquals(bytes1.length, c11.getData().length);
       ColumnData c12 = cols1.get(1);
-      Assert.assertEquals(bytes2.length, c12.getData().length);
-      Assert.assertEquals(bytes2[0], c12.getData()[0]);
+      assertEquals(bytes2.length, c12.getData().length);
+      assertEquals(bytes2[0], c12.getData()[0]);
       BlockData blockData2 = r.readColumns();
       List<ColumnData> cols2 = blockData2.getColumns();
-      Assert.assertEquals(2, cols2.size());
+      assertEquals(2, cols2.size());
       ColumnData c21 = cols2.get(0);
-      Assert.assertEquals(bytes3.length, c21.getData().length);
-      Assert.assertEquals(bytes3[0], c21.getData()[0]);
+      assertEquals(bytes3.length, c21.getData().length);
+      assertEquals(bytes3[0], c21.getData()[0]);
       ColumnData c22 = cols2.get(1);
-      Assert.assertEquals(bytes4.length, c22.getData().length);
-      Assert.assertEquals(bytes4[0], c22.getData()[0]);
-      Assert.assertNull(r.readColumns());
+      assertEquals(bytes4.length, c22.getData().length);
+      assertEquals(bytes4[0], c22.getData()[0]);
+      assertNull(r.readColumns());
     }
   }
 }

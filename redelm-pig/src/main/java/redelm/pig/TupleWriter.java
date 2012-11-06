@@ -104,11 +104,11 @@ public class TupleWriter {
         case BINARY:
           recordConsumer.addBinary(((DataByteArray)t.get(i)).get());
           break;
-        case BOOL:
+        case BOOLEAN:
           recordConsumer.addBoolean((Boolean)t.get(i));
           break;
         case INT32:
-          recordConsumer.addInt(((Number)t.get(i)).intValue());
+          recordConsumer.addInteger(((Number)t.get(i)).intValue());
           break;
         case INT64:
           recordConsumer.addLong(((Number)t.get(i)).longValue());

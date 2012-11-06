@@ -32,11 +32,11 @@ public interface ColumnReader {
 
   String getString();
 
-  int getInt();
+  int getInteger();
+
+  boolean getBoolean();
 
   long getLong();
-
-  boolean getBool();
 
   byte[] getBinary();
 

@@ -15,10 +15,10 @@
  */
 package redelm.pig;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.File;
 import java.util.List;
-
-import junit.framework.Assert;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -37,7 +37,6 @@ import org.apache.pig.LoadFunc;
 import org.apache.pig.ResourceSchema;
 import org.apache.pig.StoreFuncInterface;
 import org.apache.pig.StoreMetadata;
-import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigSplit;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.util.Utils;
@@ -153,7 +152,7 @@ public class PerfTest2 {
         ++i;
       }
     }
-    Assert.assertEquals(ROW_COUNT, i);
+    assertEquals(ROW_COUNT, i);
     long t1 = System.currentTimeMillis();
     results.append((t1-t0)+" ms to read "+colsToLoad+" columns\n");
   }

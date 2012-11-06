@@ -43,16 +43,19 @@
       <groupId>joda-time</groupId>
       <artifactId>joda-time</artifactId>
       <version>1.6</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.antlr</groupId>
       <artifactId>antlr-runtime</artifactId>
       <version>3.4</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>11.0</version>
+      <scope>test</scope>
     </dependency>
 
   </dependencies>

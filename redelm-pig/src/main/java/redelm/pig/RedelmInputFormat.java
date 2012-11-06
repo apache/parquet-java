@@ -23,13 +23,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import redelm.column.mem.MemColumnsStore;
-import redelm.io.ColumnIOFactory;
-import redelm.io.MessageColumnIO;
-import redelm.schema.GroupType;
-import redelm.schema.MessageType;
-import redelm.schema.Type;
-
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
@@ -45,13 +38,21 @@ import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
 
+import redelm.column.mem.MemColumnsStore;
+import redelm.io.ColumnIOFactory;
+import redelm.io.MessageColumnIO;
+import redelm.parser.MessageTypeParser;
+import redelm.schema.GroupType;
+import redelm.schema.MessageType;
+import redelm.schema.Type;
+
 public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
   private static final Logger LOG = Logger.getLogger(RedelmInputFormat.class);
 
   private MessageType requestedSchema;
 
   public RedelmInputFormat(String requestedSchema) {
-    this.requestedSchema = requestedSchema == null ? null : MessageType.parse(requestedSchema);
+      this.requestedSchema = requestedSchema == null ? null : MessageTypeParser.parseMessageType(requestedSchema);
   }
 
   @Override
@@ -127,8 +128,7 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
         FileSystem fs = FileSystem.get(taskAttemptContext.getConfiguration());
         RedelmInputSplit redelmInputSplit = (RedelmInputSplit)inputSplit;
         Path path = redelmInputSplit.getPath();
-        schema = MessageType.parse(redelmInputSplit.getSchema());
-        LOG.debug(redelmInputSplit.getPigSchema());
+        schema = MessageTypeParser.parseMessageType(redelmInputSplit.getSchema());
         pigSchema = Utils.getSchemaFromString(redelmInputSplit.getPigSchema());
         if (requestedSchema == null) {
           requestedSchema = schema;

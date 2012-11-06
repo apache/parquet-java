@@ -31,12 +31,12 @@ abstract public class GroupValueSource {
     return getString(getType().getFieldIndex(field), index);
   }
 
-  public int getInt(String field, int index) {
-    return getInt(getType().getFieldIndex(field), index);
+  public int getInteger(String field, int index) {
+    return getInteger(getType().getFieldIndex(field), index);
   }
 
-  public boolean getBool(String field, int index) {
-    return getBool(getType().getFieldIndex(field), index);
+  public boolean getBoolean(String field, int index) {
+    return getBoolean(getType().getFieldIndex(field), index);
   }
 
   public byte[] getBinary(String field, int index) {
@@ -49,9 +49,9 @@ abstract public class GroupValueSource {
 
   abstract public String getString(int fieldIndex, int index);
 
-  abstract public int getInt(int fieldIndex, int index);
+  abstract public int getInteger(int fieldIndex, int index);
 
-  abstract public boolean getBool(int fieldIndex, int index);
+  abstract public boolean getBoolean(int fieldIndex, int index);
 
   abstract public byte[] getBinary(int fieldIndex, int index);
 

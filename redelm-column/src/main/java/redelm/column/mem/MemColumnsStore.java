@@ -60,7 +60,7 @@ public class MemColumnsStore extends ColumnsStore {
 
   @Override
   public String toString() {
-      StringBuffer sb = new StringBuffer();
+      StringBuilder sb = new StringBuilder();
       for (Entry<ColumnDescriptor, MemColumn> entry : columns.entrySet()) {
         sb.append(Arrays.toString(entry.getKey().getPath())).append(": ");
         sb.append(entry.getValue().memSize()).append(" bytes");

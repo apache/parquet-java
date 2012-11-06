@@ -115,13 +115,13 @@ public class SimpleGroup extends Group {
   }
 
   @Override
-  public int getInt(int fieldIndex, int index) {
-    return ((IntValue)getValue(fieldIndex, index)).getInt();
+  public int getInteger(int fieldIndex, int index) {
+    return ((IntegerValue)getValue(fieldIndex, index)).getInteger();
   }
 
   @Override
-  public boolean getBool(int fieldIndex, int index) {
-    return ((BoolValue)getValue(fieldIndex, index)).getBool();
+  public boolean getBoolean(int fieldIndex, int index) {
+    return ((BooleanValue)getValue(fieldIndex, index)).getBoolean();
   }
 
   @Override
@@ -131,7 +131,7 @@ public class SimpleGroup extends Group {
 
   @Override
   public void add(int fieldIndex, int value) {
-    add(fieldIndex, new IntValue(value));
+    add(fieldIndex, new IntegerValue(value));
   }
 
   @Override
@@ -146,7 +146,7 @@ public class SimpleGroup extends Group {
 
   @Override
   public void add(int fieldIndex, boolean value) {
-    add(fieldIndex, new BoolValue(value));
+    add(fieldIndex, new BooleanValue(value));
   }
 
   @Override

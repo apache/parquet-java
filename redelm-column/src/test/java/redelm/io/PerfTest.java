@@ -15,7 +15,11 @@
  */
 package redelm.io;
 
-import static redelm.data.simple.example.Paper.*;
+import static redelm.data.simple.example.Paper.r1;
+import static redelm.data.simple.example.Paper.r2;
+import static redelm.data.simple.example.Paper.schema;
+import static redelm.data.simple.example.Paper.schema2;
+import static redelm.data.simple.example.Paper.schema3;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -137,7 +141,7 @@ public class PerfTest {
       public void endGroup() {}
       public void endField(String field, int index) {}
       public void addString(String value) {}
-      public void addInt(int value) {}
+      public void addInteger(int value) {}
       public void addLong(long value) {}
       public void addFloat(float value) {}
       public void addDouble(double value) {}

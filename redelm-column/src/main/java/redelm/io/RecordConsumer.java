@@ -89,7 +89,7 @@ abstract public class RecordConsumer {
    * add an int value in the current field
    * @param value
    */
-  abstract public void addInt(int value);
+  abstract public void addInteger(int value);
 
   /**
    * add a long value in the current field

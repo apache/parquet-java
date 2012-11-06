@@ -151,7 +151,7 @@ public class MessageColumnIO extends GroupColumnIO {
       }
 
       @Override
-      public void addInt(int value) {
+      public void addInteger(int value) {
         if (DEBUG) log("addInt("+value+")");
 
         ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());

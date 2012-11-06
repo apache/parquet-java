@@ -15,12 +15,14 @@
  */
 package redelm.pig;
 
-import junit.framework.Assert;
-import redelm.schema.MessageType;
+import static org.junit.Assert.assertEquals;
 
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
 import org.junit.Test;
+
+import redelm.parser.MessageTypeParser;
+import redelm.schema.MessageType;
 
 public class TestPigSchemaConverter {
 
@@ -29,14 +31,15 @@ public class TestPigSchemaConverter {
     PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
     Schema pigSchema = Utils.getSchemaFromString("a:chararray, b:{t:(c:chararray, d:chararray)}");
     MessageType schema = pigSchemaConverter.convert(pigSchema);
-    String expected =
-    "message message {\n" +
-    "  optional string a;\n" +
-    "  repeated group b_t {\n" +
-    "    optional string c;\n" +
-    "    optional string d;\n" +
-    "  };\n" +
-    "}\n";
-    Assert.assertEquals(expected, schema.toString());
+    String expected = "message pig_schema {\n" +
+                      "  optional string a;\n" +
+                      "  repeated group b_t {\n" +
+                      "    optional string c;\n" +
+                      "    optional string d;\n" +
+                      "  }\n" +
+                      "}\n";
+    MessageType expectedMT = MessageTypeParser.parseMessageType(expected);
+    assertEquals(expectedMT, schema);
+    assertEquals(expected, schema.toString());
   }
 }

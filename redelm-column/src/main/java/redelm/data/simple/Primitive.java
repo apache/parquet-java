@@ -23,7 +23,7 @@ public abstract class Primitive {
     throw new UnsupportedOperationException();
   }
 
-  public int getInt() {
+  public int getInteger() {
     throw new UnsupportedOperationException();
   }
 
@@ -31,7 +31,7 @@ public abstract class Primitive {
     throw new UnsupportedOperationException();
   }
 
-  public boolean getBool() {
+  public boolean getBoolean() {
     throw new UnsupportedOperationException();
   }
 

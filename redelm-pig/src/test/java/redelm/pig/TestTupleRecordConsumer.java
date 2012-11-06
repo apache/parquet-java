@@ -15,6 +15,7 @@
  */
 package redelm.pig;
 
+import static org.junit.Assert.assertEquals;
 import static redelm.data.simple.example.Paper.r1;
 import static redelm.data.simple.example.Paper.r2;
 import static redelm.data.simple.example.Paper.schema;
@@ -22,7 +23,10 @@ import static redelm.data.simple.example.Paper.schema;
 import java.util.ArrayList;
 import java.util.List;
 
-import junit.framework.Assert;
+import org.apache.pig.backend.executionengine.ExecException;
+import org.apache.pig.data.Tuple;
+import org.junit.Test;
+
 import redelm.Log;
 import redelm.data.Group;
 import redelm.data.GroupRecordConsumer;
@@ -66,8 +70,8 @@ public class TestTupleRecordConsumer {
       logger.debug(t);
       tupleWriter.write(t);
     }
-    Assert.assertEquals(r1.toString(), groups.get(0).toString());
-    Assert.assertEquals(r2.toString(), groups.get(1).toString());
+    assertEquals(r1.toString(), groups.get(0).toString());
+    assertEquals(r2.toString(), groups.get(1).toString());
   }
 
   @Test
@@ -95,7 +99,7 @@ public class TestTupleRecordConsumer {
       logger.debug(t);
       tupleWriter.write(t);
     }
-    Assert.assertEquals(g.toString(), groups.get(0).toString());
+    assertEquals(g.toString(), groups.get(0).toString());
   }
 
 }

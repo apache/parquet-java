@@ -67,7 +67,7 @@ public class GroupRecordConsumer extends RecordConsumer {
   }
 
   @Override
-  public void addInt(int value) {
+  public void addInteger(int value) {
     groups.peek().add(fields.peek(), value);
   }
 

@@ -15,16 +15,19 @@
  */
 package redelm.schema;
 
-import junit.framework.Assert;
-import redelm.data.simple.example.Paper;
+import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
+import redelm.data.simple.example.Paper;
+import redelm.parser.MessageTypeParser;
+
 public class TestMessageType {
   @Test
-  public void test() {
+  public void test() throws Exception {
     System.out.println(Paper.schema.toString());
-    MessageType schema = MessageType.parse(Paper.schema.toString());
-    Assert.assertEquals(schema.toString(), Paper.schema.toString());
+    MessageType schema = MessageTypeParser.parseMessageType(Paper.schema.toString());
+    assertEquals(Paper.schema, schema);
+    assertEquals(schema.toString(), Paper.schema.toString());
   }
 }
