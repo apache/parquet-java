@@ -54,6 +54,8 @@ public class RedelmFileWriter extends BytesOutput {
   private int currentRecordCount;
   private List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
 
+  private long uncompressedLength;
+
   private enum STATE {
     NOT_STARTED {
       STATE start() {
@@ -156,6 +158,7 @@ public class RedelmFileWriter extends BytesOutput {
   private void startCompression() throws IOException {
     compressor = CodecPool.getCompressor(codec);
     cos = codec.createOutputStream(out, compressor);
+    uncompressedLength = 0;
   }
 
   private void endCompression() throws IOException {
@@ -174,6 +177,7 @@ public class RedelmFileWriter extends BytesOutput {
   public void startDefinitionLevels() throws IOException {
     state = state.startDefinition();
     endCompression();
+    currentColumn.setRepetitionUncompressedLenght(uncompressedLength);
     currentColumn.setDefinitionStart(out.getPos());
     startCompression();
   }
@@ -181,6 +185,7 @@ public class RedelmFileWriter extends BytesOutput {
   public void startData() throws IOException {
     state = state.startData();
     endCompression();
+    currentColumn.setDefinitionUncompressedLength(uncompressedLength);
     currentColumn.setDataStart(out.getPos());
     startCompression();
   }
@@ -188,11 +193,13 @@ public class RedelmFileWriter extends BytesOutput {
   public void write(byte[] data, int offset, int length) throws IOException {
     state = state.write();
     cos.write(data, offset, length);
+    uncompressedLength += length;
   }
 
   public void endColumn() throws IOException {
     state = state.endColumn();
     endCompression();
+    currentColumn.setDataUncompressedLength(uncompressedLength);
     currentColumn.setDataEnd(out.getPos());
     currentBlock.addColumn(currentColumn);
     if (INFO) LOG.info(currentColumn);

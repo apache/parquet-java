@@ -137,5 +137,6 @@ public class TestRedelmFileWriter {
       assertEquals(bytes4[0], c22.getData()[0]);
       assertNull(r.readColumns());
     }
+    PrintFooter.main(new String[] {path.toString()});
   }
 }

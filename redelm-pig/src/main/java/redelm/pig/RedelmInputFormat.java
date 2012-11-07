@@ -186,10 +186,10 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
   public List<InputSplit> getSplits(JobContext jobContext) throws IOException {
     List<InputSplit> splits = new ArrayList<InputSplit>();
     List<FileStatus> statuses = super.listStatus(jobContext);
-    LOG.info(statuses);
+    LOG.info("reading " + statuses.size() + " files");
     FileSystem fs = FileSystem.get(jobContext.getConfiguration());
     for (FileStatus fileStatus : statuses) {
-      LOG.info(fileStatus);
+      LOG.info(fileStatus.getPath());
       FSDataInputStream f = fs.open(fileStatus.getPath());
       Footer footer = RedelmFileReader.readFooter(f, fileStatus.getLen());
       List<BlockMetaData> blocks = footer.getBlocks();

@@ -31,9 +31,7 @@ import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionInputStream;
-import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
-import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.log4j.Logger;
 
@@ -41,6 +39,9 @@ public class RedelmFileReader {
   private static final Logger LOG = Logger.getLogger(RedelmFileReader.class);
 
   public static final Footer readFooter(FSDataInputStream f, long l) throws IOException {
+    if (l <= 3 * 8) { // MAGIC (8) + data + footer + footerIndex (8) + MAGIC (8)
+      throw new RuntimeException("Not a Red Elm file");
+    }
     long footerIndexIndex = l - 8 - 8;
     LOG.info("reading footer index at " + footerIndexIndex);
     f.seek(footerIndexIndex);
@@ -50,7 +51,7 @@ public class RedelmFileReader {
     if (!Arrays.equals(RedelmFileWriter.MAGIC, magic)) {
       throw new RuntimeException("Not a Red Elm file");
     }
-    LOG.info("read footer index: " + footerIndex);
+    LOG.info("read footer index: " + footerIndex + ", footer size: " + (footerIndexIndex - footerIndex));
     f.seek(footerIndex);
     int version = f.readInt();
     if (version != RedelmFileWriter.CURRENT_VERSION) {

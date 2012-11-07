@@ -30,6 +30,9 @@ public class ColumnMetaData implements Serializable {
   private final String[] path;
   private final Primitive type;
   private int valueCount;
+  private long repetitionUncompressedLength;
+  private long definitionUncompressedLength;
+  private long dataUncompressedLength;
 
   public ColumnMetaData(String[] path, Primitive type) {
     this.path = path;
@@ -43,12 +46,6 @@ public class ColumnMetaData implements Serializable {
   public Primitive getType() {
     return type;
   }
-
-  @Override
-  public String toString() {
-    return "ColumnMetaData{" + repetitionStart + ", " + definitionStart + ", " + dataStart + ", " + dataEnd + " " + Arrays.toString(path) + "}";
-  }
-
 
   public void setRepetitionStart(long repetitionStart) {
     this.repetitionStart = repetitionStart;
@@ -120,6 +117,39 @@ public class ColumnMetaData implements Serializable {
 
   public int getValueCount() {
     return valueCount;
+  }
+
+  public void setRepetitionUncompressedLenght(long repetitionUncompressedLength) {
+    this.repetitionUncompressedLength = repetitionUncompressedLength;
+  }
+
+  public long getRepetitionUncompressedLength() {
+    return repetitionUncompressedLength;
+  }
+
+  public void setRepetitionUncompressedLength(long repetitionUncompressedLength) {
+    this.repetitionUncompressedLength = repetitionUncompressedLength;
+  }
+
+  public long getDefinitionUncompressedLength() {
+    return definitionUncompressedLength;
+  }
+
+  public void setDefinitionUncompressedLength(long definitionUncompressedLength) {
+    this.definitionUncompressedLength = definitionUncompressedLength;
+  }
+
+  public long getDataUncompressedLength() {
+    return dataUncompressedLength;
+  }
+
+  public void setDataUncompressedLength(long dataUncompressedLength) {
+    this.dataUncompressedLength = dataUncompressedLength;
+  }
+
+  @Override
+  public String toString() {
+    return "ColumnMetaData{" + repetitionStart + ", " + definitionStart + ", " + dataStart + ", " + dataEnd + " " + Arrays.toString(path) + "}";
   }
 
 }
