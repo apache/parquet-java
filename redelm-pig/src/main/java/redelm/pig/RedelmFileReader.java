@@ -43,7 +43,7 @@ public class RedelmFileReader {
       throw new RuntimeException("Not a Red Elm file");
     }
     long footerIndexIndex = l - 8 - 8;
-    LOG.info("reading footer index at " + footerIndexIndex);
+    LOG.debug("reading footer index at " + footerIndexIndex);
     f.seek(footerIndexIndex);
     long footerIndex = f.readLong();
     byte[] magic = new byte[8];
@@ -51,7 +51,7 @@ public class RedelmFileReader {
     if (!Arrays.equals(RedelmFileWriter.MAGIC, magic)) {
       throw new RuntimeException("Not a Red Elm file");
     }
-    LOG.info("read footer index: " + footerIndex + ", footer size: " + (footerIndexIndex - footerIndex));
+    LOG.debug("read footer index: " + footerIndex + ", footer size: " + (footerIndexIndex - footerIndex));
     f.seek(footerIndex);
     int version = f.readInt();
     if (version != RedelmFileWriter.CURRENT_VERSION) {
