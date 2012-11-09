@@ -26,6 +26,12 @@ import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType;
 
+/**
+ * Examples from the Dremel Paper
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class Paper {
   public static final MessageType schema =
       new MessageType("Document",

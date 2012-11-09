@@ -42,7 +42,7 @@ import org.codehaus.jackson.map.JsonMappingException;
 /**
  * computes a summary of the input to a json string
  *
- * @author julien
+ * @author Julien Le Dem
  *
  */
 public class Summary extends EvalFunc<String> implements Algebraic {

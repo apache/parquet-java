@@ -28,11 +28,23 @@ import redelm.schema.PrimitiveType.Primitive;
 import redelm.schema.Type;
 import redelm.schema.Type.Repetition;
 
+/**
+ *
+ * Parses a schema
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class MessageTypeParser {
   private static final Log LOG = Log.getLog(MessageTypeParser.class);
 
   private MessageTypeParser() {}
 
+  /**
+   *
+   * @param input the text representation of the schema to parse
+   * @return the corresponding object representation
+   */
   public static MessageType parseMessageType(String input) {
     return parse(input);
   }

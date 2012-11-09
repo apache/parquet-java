@@ -17,6 +17,12 @@ package redelm.io;
 
 import redelm.Log;
 
+/**
+ * This class can be used to wrap an actual RecordConsumer and log all calls
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class RecordConsumerWrapper extends RecordConsumer {
     private static final Log logger = Log.getLog(RecordConsumerWrapper.class);
     private static final boolean DEBUG = Log.DEBUG;
@@ -25,10 +31,17 @@ public class RecordConsumerWrapper extends RecordConsumer {
 
     int indent = 0;
 
+    /**
+     * all calls a delegate to the wrapped delegate
+     * @param delegate
+     */
     public RecordConsumerWrapper(RecordConsumer delegate) {
       this.delegate = delegate;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void startField(String field, int index) {
       if (DEBUG) logOpen(field);
@@ -51,6 +64,9 @@ public class RecordConsumerWrapper extends RecordConsumer {
       logger.debug(indent() + value);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void startGroup() {
       if (DEBUG) ++indent;
@@ -58,47 +74,72 @@ public class RecordConsumerWrapper extends RecordConsumer {
       delegate.startGroup();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void addInteger(int value) {
       if (DEBUG) log(value);
       delegate.addInteger(value);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void addLong(long value) {
       if (DEBUG) log(value);
       delegate.addLong(value);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void addString(String value) {
       if (DEBUG) log(value);
       delegate.addString(value);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void addBoolean(boolean value) {
       if (DEBUG) log(value);
       delegate.addBoolean(value);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void addBinary(byte[] value) {
       if (DEBUG) log(value);
       delegate.addBinary(value);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void addFloat(float value) {
       if (DEBUG) log(value);
       delegate.addFloat(value);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void addDouble(double value) {
       if (DEBUG) log(value);
       delegate.addDouble(value);
     }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void endGroup() {
       if (DEBUG) log("<!-- end group -->");
@@ -106,6 +147,9 @@ public class RecordConsumerWrapper extends RecordConsumer {
       delegate.endGroup();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void endField(String field, int index) {
       if (DEBUG) logClose(field);
@@ -116,12 +160,18 @@ public class RecordConsumerWrapper extends RecordConsumer {
       log("</"+field+">");
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void startMessage() {
       if (DEBUG) log("<!-- start message -->");
       delegate.startMessage();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void endMessage() {
       delegate.endMessage();

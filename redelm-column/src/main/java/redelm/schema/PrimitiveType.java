@@ -18,7 +18,20 @@ package redelm.schema;
 import redelm.column.ColumnReader;
 import redelm.io.RecordConsumer;
 
+/**
+ *
+ * Representation of a Primitive type
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class PrimitiveType extends Type {
+  /**
+   * Supported Primitive types
+   *
+   * @author Julien Le Dem
+   *
+   */
   public static enum Primitive {
     STRING {
       @Override
@@ -105,8 +118,18 @@ public class PrimitiveType extends Type {
       }
     };
 
+    /**
+     * reads the value from the columnReader with the appropriate accessor and returns a String representation
+     * @param columnReader
+     * @return a string
+     */
     abstract public String toString(ColumnReader columnReader);
 
+    /**
+     * reads the value from the columnReader with the appropriate accessor and writes it to the recordConsumer
+     * @param recordConsumer where to write
+     * @param columnReader where to read from
+     */
     abstract public void addValueToRecordConsumer(RecordConsumer recordConsumer,
         ColumnReader columnReader);
 
@@ -114,25 +137,43 @@ public class PrimitiveType extends Type {
 
   private final Primitive primitive;
 
+  /**
+   *
+   * @param repetition the OPTIONAL, REPEATED, REQUIRED
+   * @param primitive STRING, INT64, ...
+   * @param name the name of the type
+   */
   public PrimitiveType(Repetition repetition, Primitive primitive, String name) {
     super(name, repetition);
     this.primitive = primitive;
   }
 
+  /**
+   * @return the primitive type
+   */
   public Primitive getPrimitive() {
     return primitive;
   }
 
+  /**
+   * @return true
+   */
   @Override
   public boolean isPrimitive() {
     return true;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void accept(TypeVisitor visitor) {
     visitor.visit(this);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void writeToStringBuilder(StringBuilder sb, String indent) {
     sb.append(indent)
@@ -143,6 +184,9 @@ public class PrimitiveType extends Type {
         .append(getName());
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   protected boolean typeEquals(Type other) {
     if (other.isPrimitive()) {
@@ -155,6 +199,9 @@ public class PrimitiveType extends Type {
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   protected int typeHashCode() {
     int hash = 17;

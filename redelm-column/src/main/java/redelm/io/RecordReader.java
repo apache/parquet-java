@@ -22,6 +22,11 @@ import redelm.Log;
 import redelm.column.ColumnReader;
 import redelm.schema.PrimitiveType.Primitive;
 
+/**
+ * used to read reassembled records
+ * @author Julien Le Dem
+ *
+ */
 public class RecordReader {
 
   private static final Log LOG = Log.getLog(RecordReader.class);
@@ -33,6 +38,11 @@ public class RecordReader {
   private final MessageColumnIO root;
   private final int[][] nextLevel;
 
+  /**
+   *
+   * @param root the root of the schema
+   * @param leaves the leaves of the schema
+   */
   public RecordReader(MessageColumnIO root, List<PrimitiveColumnIO> leaves) {
     this.root = root;
     this.leaves = leaves.toArray(new PrimitiveColumnIO[leaves.size()]);
@@ -81,6 +91,10 @@ public class RecordReader {
     }
   }
 
+  /**
+   * reads one record and writes it in the RecordConsumer
+   * @param recordConsumer
+   */
   public void read(RecordConsumer recordConsumer) {
     GroupColumnIO[] currentNodePath = new GroupColumnIO[16];
     int currentLevel = 0;
