@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -58,7 +59,7 @@ public class TestRedelmFileWriter {
     byte[] bytes3 = { 2, 3, 4, 5};
     byte[] bytes4 = { 3, 4, 5, 6};
 
-    RedelmFileWriter w = new RedelmFileWriter(schema, "", fout, CODEC);
+    RedelmFileWriter w = new RedelmFileWriter(schema, fout, CODEC);
     w.start();
     w.startBlock(1);
     w.startColumn(c1, 1);
@@ -96,12 +97,12 @@ public class TestRedelmFileWriter {
     w.write(bytes4, 0, bytes4.length);
     w.endColumn();
     w.endBlock();
-    w.end();
+    w.end(new ArrayList<MetaDataBlock>());
 
 
     FSDataInputStream fin = fileSystem.open(path);
 
-    Footer readFooter = RedelmFileReader.readFooter(fin, fileSystem.getFileStatus(path).getLen());
+    Footer readFooter = Footer.fromMetaDataBlocks(RedelmFileReader.readFooter(fin, fileSystem.getFileStatus(path).getLen()));
 
     {
       assertEquals(2, readFooter.getBlocks().size());

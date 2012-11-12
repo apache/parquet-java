@@ -15,7 +15,9 @@
  */
 package redelm.pig;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -29,6 +31,8 @@ import org.codehaus.jackson.map.SerializationConfig.Feature;
 
 public class Footer implements Serializable {
   private static final long serialVersionUID = 1L;
+
+  private static final String META_DATA_BLOCK_NAME = "RedElm";
 
   private static ObjectMapper objectMapper = new ObjectMapper();
   private static ObjectMapper prettyObjectMapper = new ObjectMapper();
@@ -70,15 +74,27 @@ public class Footer implements Serializable {
     }
   }
 
+  public static Footer fromMetaDataBlocks(List<MetaDataBlock> metaDataBlocks) {
+    for (MetaDataBlock metaDataBlock : metaDataBlocks) {
+      if (metaDataBlock.getName().equals(META_DATA_BLOCK_NAME)) {
+        try {
+          return (Footer)new ObjectInputStream(new ByteArrayInputStream(metaDataBlock.getData())).readObject();
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        } catch (ClassNotFoundException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+    throw new RuntimeException("There should always be a RedElm metadata block");
+  }
+
   private final String schema;
-  private final String pigSchema;
   private final String codecClassName;
   private final List<BlockMetaData> blocks;
 
-  public Footer(String schema, String pigSchema, String codecClassName, List<BlockMetaData> blocks) {
+  public Footer(String schema, String codecClassName, List<BlockMetaData> blocks) {
     this.schema = schema;
-    /** TODO: move to a generic annotation field */
-    this.pigSchema = pigSchema;
     this.codecClassName = codecClassName;
     this.blocks = blocks;
   }
@@ -91,17 +107,13 @@ public class Footer implements Serializable {
     return schema;
   }
 
-  public String getPigSchema() {
-    return pigSchema;
-  }
-
   public String getCodecClassName() {
     return codecClassName;
   }
 
   @Override
   public String toString() {
-    return "Footer{schema: "+schema+", pigSchema: "+pigSchema+", codec: "+codecClassName+", blocks"+blocks+"}";
+    return "Footer{schema: "+schema+", codec: "+codecClassName+", blocks"+blocks+"}";
 
   }
 }

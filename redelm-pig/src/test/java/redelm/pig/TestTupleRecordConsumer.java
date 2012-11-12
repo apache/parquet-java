@@ -65,7 +65,8 @@ public class TestTupleRecordConsumer {
     }
 
     List<Group> groups = new ArrayList<Group>();
-    TupleWriter tupleWriter = new TupleWriter(new RecordConsumerWrapper(new GroupRecordConsumer(new SimpleGroupFactory(schema), groups)), schema);
+    TupleWriteSupport tupleWriter = new TupleWriteSupport();
+    tupleWriter.initForWrite(new RecordConsumerWrapper(new GroupRecordConsumer(new SimpleGroupFactory(schema), groups)), schema);
     for (Tuple t : tuples) {
       logger.debug(t);
       tupleWriter.write(t);
@@ -94,7 +95,8 @@ public class TestTupleRecordConsumer {
     }
 
     List<Group> groups = new ArrayList<Group>();
-    TupleWriter tupleWriter = new TupleWriter(new RecordConsumerWrapper(new GroupRecordConsumer(new SimpleGroupFactory(redelmSchema), groups)), redelmSchema);
+    TupleWriteSupport tupleWriter = new TupleWriteSupport();
+    tupleWriter.initForWrite(new RecordConsumerWrapper(new GroupRecordConsumer(new SimpleGroupFactory(redelmSchema), groups)), redelmSchema);
     for (Tuple t : tuples) {
       logger.debug(t);
       tupleWriter.write(t);

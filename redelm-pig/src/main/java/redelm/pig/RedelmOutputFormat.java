@@ -16,6 +16,7 @@
 package redelm.pig;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 
 import redelm.column.ColumnDescriptor;
@@ -32,20 +33,26 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.pig.data.Tuple;
 
-public class RedelmOutputFormat extends FileOutputFormat<Object, Tuple> {
+public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   private static final int THRESHOLD = 1024*1024*50;
 
-  private TupleWriter tupleWriter;
   private MemColumnsStore store;
 
   private final MessageType schema;
   private final String pigSchema;
   private final String codecClassName;
+  private WriteSupport<T> writeSupport;
 
-  public RedelmOutputFormat(MessageType schema, String pigSchema, String codecClassName) {
+  public <S extends WriteSupport<T>> RedelmOutputFormat(Class<S> writeSupportClass, MessageType schema, String pigSchema, String codecClassName) {
+    try {
+      this.writeSupport = writeSupportClass.newInstance();
+    } catch (InstantiationException e) {
+      throw new RuntimeException("could not instantiate " + writeSupportClass.getName(), e);
+    } catch (IllegalAccessException e) {
+      throw new RuntimeException("Illegal access to class " + writeSupportClass.getName(), e);
+    }
     this.schema = schema;
     this.pigSchema = pigSchema;
     this.codecClassName = codecClassName;
@@ -55,30 +62,31 @@ public class RedelmOutputFormat extends FileOutputFormat<Object, Tuple> {
   private void initStore() {
     store = new MemColumnsStore(1024 * 1024 * 16);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(this.schema, store);
-    tupleWriter = new TupleWriter(columnIO.getRecordWriter(), this.schema);
+    writeSupport.initForWrite(columnIO.getRecordWriter(), this.schema);
   }
 
   @Override
-  public RecordWriter<Object, Tuple> getRecordWriter(TaskAttemptContext taskAttemptContext)
+  public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
     final Path file = getDefaultWorkFile(taskAttemptContext, "");
     final Configuration conf = taskAttemptContext.getConfiguration();
     final FileSystem fs = file.getFileSystem(conf);
-    final RedelmFileWriter w = new RedelmFileWriter(schema, pigSchema, fs.create(file, false), codecClassName);
+    final MetaDataBlock pigMetaDataBlock = new PigMetaData(pigSchema).toMetaDataBlock();
+    final RedelmFileWriter w = new RedelmFileWriter(schema, fs.create(file, false), codecClassName);
     w.start();
-    return new RecordWriter<Object, Tuple>() {
+    return new RecordWriter<Void, T>() {
       private int recordCount;
 
       @Override
       public void close(TaskAttemptContext taskAttemptContext) throws IOException,
       InterruptedException {
         flushStore();
-        w.end();
+        w.end(Arrays.asList(pigMetaDataBlock));
       }
 
       @Override
-      public void write(Object key, Tuple value) throws IOException, InterruptedException {
-        tupleWriter.write(value);
+      public void write(Void key, T value) throws IOException, InterruptedException {
+        writeSupport.write(value);
         ++ recordCount;
         checkBlockSizeReached();
       }
@@ -109,7 +117,7 @@ public class RedelmOutputFormat extends FileOutputFormat<Object, Tuple> {
         recordCount = 0;
         w.endBlock();
         store = null;
-        tupleWriter = null;
+        writeSupport = null;
       }
     };
   }

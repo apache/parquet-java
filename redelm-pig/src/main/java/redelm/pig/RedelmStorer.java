@@ -67,7 +67,7 @@ public class RedelmStorer extends StoreFunc implements StoreMetadata {
     MessageType schema = new PigSchemaConverter().convert(pigSchema);
 
     String pigSchemaString = pigSchema.toString();
-    return new RedelmOutputFormat(schema, pigSchemaString.substring(1, pigSchemaString.length() - 1), codecClassName);
+    return new RedelmOutputFormat(TupleWriteSupport.class, schema, pigSchemaString.substring(1, pigSchemaString.length() - 1), codecClassName);
   }
 
   private Schema getSchema() {
