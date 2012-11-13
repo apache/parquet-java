@@ -223,6 +223,10 @@ public class RedelmFileWriter extends BytesOutput {
     // TODO: change that
     new ObjectOutputStream(baos).writeObject(footer);
     MetaDataBlock redelmFooter = new MetaDataBlock("RedElm", baos.toByteArray());
+    if (metaDataBlocks.size() > 254) {
+      throw new IllegalArgumentException("maximum of 255 metadata blocks in footer");
+    }
+    out.write(metaDataBlocks.size() + 1);
     writeMetaDataBlock(redelmFooter);
     for (MetaDataBlock metaDataBlock : metaDataBlocks) {
       writeMetaDataBlock(metaDataBlock);

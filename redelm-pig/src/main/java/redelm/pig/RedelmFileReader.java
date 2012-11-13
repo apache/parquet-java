@@ -38,9 +38,10 @@ import org.apache.log4j.Logger;
 public class RedelmFileReader {
   private static final Logger LOG = Logger.getLogger(RedelmFileReader.class);
 
-  private static List<MetaDataBlock> readMetaDataBlocks(FSDataInputStream f, long end) throws IOException {
+  private static List<MetaDataBlock> readMetaDataBlocks(FSDataInputStream f) throws IOException {
     List<MetaDataBlock> blocks = new ArrayList<MetaDataBlock>();
-    while (f.getPos() < end) {
+    int blockCount =  f.read();
+    for (int i = 0; i < blockCount; i++) {
       String name = f.readUTF();
       byte[] data = new byte[f.readInt()];
       f.readFully(data);
@@ -71,7 +72,7 @@ public class RedelmFileReader {
           "supporting up to " + RedelmFileWriter.CURRENT_VERSION);
     }
 
-    return readMetaDataBlocks(f, footerIndexIndex);
+    return readMetaDataBlocks(f);
 
   }
 
