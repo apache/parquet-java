@@ -38,7 +38,19 @@ import org.apache.log4j.Logger;
 public class RedelmFileReader {
   private static final Logger LOG = Logger.getLogger(RedelmFileReader.class);
 
-  public static final Footer readFooter(FSDataInputStream f, long l) throws IOException {
+  private static List<MetaDataBlock> readMetaDataBlocks(FSDataInputStream f) throws IOException {
+    List<MetaDataBlock> blocks = new ArrayList<MetaDataBlock>();
+    int blockCount =  f.read();
+    for (int i = 0; i < blockCount; i++) {
+      String name = f.readUTF();
+      byte[] data = new byte[f.readInt()];
+      f.readFully(data);
+      blocks.add(new MetaDataBlock(name, data));
+    }
+    return blocks;
+  }
+
+  public static final List<MetaDataBlock> readFooter(FSDataInputStream f, long l) throws IOException {
     if (l <= 3 * 8) { // MAGIC (8) + data + footer + footerIndex (8) + MAGIC (8)
       throw new RuntimeException("Not a Red Elm file");
     }
@@ -59,12 +71,9 @@ public class RedelmFileReader {
           "unsupported version: " + version + ". " +
           "supporting up to " + RedelmFileWriter.CURRENT_VERSION);
     }
-//    Footer footer = Footer.fromJSON(f.readUTF());
-    try {
-      return (Footer) new ObjectInputStream(f).readObject();
-    } catch (ClassNotFoundException e) {
-      throw new IOException("Can not deserialize footer", e);
-    }
+
+    return readMetaDataBlocks(f);
+
   }
 
   private final List<BlockMetaData> blocks;

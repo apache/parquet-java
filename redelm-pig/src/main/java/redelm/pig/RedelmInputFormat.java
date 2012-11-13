@@ -33,49 +33,57 @@ import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.log4j.Logger;
-import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigFileInputFormat;
-import org.apache.pig.data.Tuple;
-import org.apache.pig.impl.logicalLayer.schema.Schema;
-import org.apache.pig.impl.util.Utils;
+
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
 import redelm.column.mem.MemColumnsStore;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
+import redelm.io.RecordConsumer;
 import redelm.parser.MessageTypeParser;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.Type;
 
-public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
+public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
   private static final Logger LOG = Logger.getLogger(RedelmInputFormat.class);
 
+  private ReadSupport<T> readSupport;
   private MessageType requestedSchema;
 
-  public RedelmInputFormat(String requestedSchema) {
-      this.requestedSchema = requestedSchema == null ? null : MessageTypeParser.parseMessageType(requestedSchema);
+
+  public <S extends ReadSupport<T>> RedelmInputFormat(Class<S> recordSupportClass, String requestedSchema) {
+    try {
+      this.readSupport = recordSupportClass.newInstance();
+    } catch (InstantiationException e) {
+      throw new RuntimeException("could not instantiate " + recordSupportClass.getName(), e);
+    } catch (IllegalAccessException e) {
+      throw new RuntimeException("Illegal access to class " + recordSupportClass.getName(), e);
+    }
+    this.requestedSchema = requestedSchema == null ? null : MessageTypeParser.parseMessageType(requestedSchema);
+
   }
 
   @Override
-  public RecordReader<Object, Tuple> createRecordReader(
+  public RecordReader<Void, T> createRecordReader(
       InputSplit inputSplit,
       TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
-    return new RecordReader<Object, Tuple>() {
+    return new RecordReader<Void, T>() {
       private ColumnIOFactory columnIOFactory = new ColumnIOFactory();
       private Map<String, ColumnMetaData> columnTypes = new HashMap<String, ColumnMetaData>();
 
       private MessageType schema;
 
-      private Tuple currentTuple;
+      private T currentValue;
       private int total;
       private int current;
 
       private RedelmFileReader reader;
-      private List<Tuple> destination = new LinkedList<Tuple>();
+      private List<T> destination = new LinkedList<T>();
       private redelm.io.RecordReader recordReader;
       private MemColumnsStore columnsStore;
-      private TupleRecordConsumer recordConsumer;
+      private RecordConsumer recordConsumer;
       private FSDataInputStream f;
-      private Schema pigSchema;
 
       private void checkRead() throws IOException {
         if(columnsStore == null || columnsStore.isFullyConsumed()) {
@@ -96,7 +104,7 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
           }
           MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, columnsStore);
           recordReader = columnIO.getRecordReader();
-          recordConsumer = new TupleRecordConsumer(requestedSchema, pigSchema, destination);
+          recordConsumer = readSupport.newRecordConsumer(destination);
         }
       }
 
@@ -106,15 +114,14 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
       }
 
       @Override
-      public Object getCurrentKey() throws IOException,
-      InterruptedException {
+      public Void getCurrentKey() throws IOException, InterruptedException {
         return null;
       }
 
       @Override
-      public Tuple getCurrentValue() throws IOException,
+      public T getCurrentValue() throws IOException,
       InterruptedException {
-        return currentTuple;
+        return currentValue;
       }
 
       @Override
@@ -129,10 +136,10 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
         RedelmInputSplit redelmInputSplit = (RedelmInputSplit)inputSplit;
         Path path = redelmInputSplit.getPath();
         schema = MessageTypeParser.parseMessageType(redelmInputSplit.getSchema());
-        pigSchema = Utils.getSchemaFromString(redelmInputSplit.getPigSchema());
         if (requestedSchema == null) {
           requestedSchema = schema;
         }
+        readSupport.initForRead(redelmInputSplit, requestedSchema);
         f = fs.open(path);
         BlockMetaData block = redelmInputSplit.getBlock();
         List<String[]> columns = new ArrayList<String[]>();
@@ -172,11 +179,11 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
           recordReader.read(recordConsumer);
         }
         if (destination.size() == 0) {
-          currentTuple = null;
+          currentValue = null;
           return false;
         }
         current ++;
-        currentTuple = destination.remove(0);
+        currentValue = destination.remove(0);
         return true;
       }
     };
@@ -191,7 +198,8 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
     for (FileStatus fileStatus : statuses) {
       LOG.debug(fileStatus.getPath());
       FSDataInputStream f = fs.open(fileStatus.getPath());
-      Footer footer = RedelmFileReader.readFooter(f, fileStatus.getLen());
+      List<MetaDataBlock> metaDataBlocks = RedelmFileReader.readFooter(f, fileStatus.getLen());
+      Footer footer = Footer.fromMetaDataBlocks(metaDataBlocks);
       List<BlockMetaData> blocks = footer.getBlocks();
       for (BlockMetaData block : blocks) {
         long startIndex = block.getStartIndex();
@@ -201,7 +209,7 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
         for (BlockLocation blockLocation : fileBlockLocations) {
           hosts.addAll(Arrays.asList(blockLocation.getHosts()));
         }
-
+        PigMetaData pigMetaData = PigMetaData.fromMetaDataBlocks(metaDataBlocks);
         splits.add(
             new RedelmInputSplit(
                 fileStatus.getPath(),
@@ -210,7 +218,7 @@ public class RedelmInputFormat extends PigFileInputFormat<Object, Tuple> {
                 hosts.toArray(new String[hosts.size()]),
                 block,
                 footer.getSchema(),
-                footer.getPigSchema(),
+                pigMetaData == null ? null : pigMetaData.getPigSchema(),
                 footer.getCodecClassName()));
       }
     }

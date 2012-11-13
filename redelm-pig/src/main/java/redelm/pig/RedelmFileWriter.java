@@ -17,6 +17,7 @@ package redelm.pig;
 
 import static redelm.Log.INFO;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
@@ -33,7 +34,6 @@ import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
-import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.util.ReflectionUtils;
 
 public class RedelmFileWriter extends BytesOutput {
@@ -47,7 +47,6 @@ public class RedelmFileWriter extends BytesOutput {
   private CompressionOutputStream cos;
 
   private final MessageType schema;
-  private final String pigSchema;
   private final FSDataOutputStream out;
   private BlockMetaData currentBlock;
   private ColumnMetaData currentColumn;
@@ -123,10 +122,9 @@ public class RedelmFileWriter extends BytesOutput {
 
   private STATE state = STATE.NOT_STARTED;
 
-  public RedelmFileWriter(MessageType schema, String pigSchema, FSDataOutputStream out, String codecClassName) {
+  public RedelmFileWriter(MessageType schema, FSDataOutputStream out, String codecClassName) {
     super();
     this.schema = schema;
-    this.pigSchema = pigSchema;
     this.out = out;
     this.codecClassName = codecClassName;
     try {
@@ -214,18 +212,34 @@ public class RedelmFileWriter extends BytesOutput {
     currentBlock = null;
   }
 
-  public void end() throws IOException {
+  public void end(List<MetaDataBlock> metaDataBlocks) throws IOException {
     state = state.end();
     long footerIndex = out.getPos();
     out.writeInt(CURRENT_VERSION);
-    Footer footer = new Footer(schema.toString(), pigSchema, codecClassName, blocks);
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    Footer footer = new Footer(schema.toString(), codecClassName, blocks);
 //    out.writeUTF(Footer.toJSON(footer));
     // lazy: use serialization
     // TODO: change that
-    new ObjectOutputStream(out).writeObject(footer);
+    new ObjectOutputStream(baos).writeObject(footer);
+    MetaDataBlock redelmFooter = new MetaDataBlock("RedElm", baos.toByteArray());
+    if (metaDataBlocks.size() > 254) {
+      throw new IllegalArgumentException("maximum of 255 metadata blocks in footer");
+    }
+    out.write(metaDataBlocks.size() + 1);
+    writeMetaDataBlock(redelmFooter);
+    for (MetaDataBlock metaDataBlock : metaDataBlocks) {
+      writeMetaDataBlock(metaDataBlock);
+    }
     out.writeLong(footerIndex);
     out.write(MAGIC);
     out.close();
+  }
+
+  private void writeMetaDataBlock(MetaDataBlock metaDataBlock) throws IOException {
+    out.writeUTF(metaDataBlock.getName());
+    out.writeInt(metaDataBlock.getData().length);
+    out.write(metaDataBlock.getData());
   }
 
 }

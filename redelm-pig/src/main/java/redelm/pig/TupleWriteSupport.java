@@ -33,21 +33,25 @@ import redelm.schema.MessageType;
 import redelm.schema.Type;
 import redelm.schema.Type.Repetition;
 
-public class TupleWriter {
+public class TupleWriteSupport extends WriteSupport<Tuple> {
   private static final TupleFactory TF = TupleFactory.getInstance();
 
-  private final RecordConsumer recordConsumer;
-  private final MessageType rootSchema;
+  private RecordConsumer recordConsumer;
+  private MessageType rootSchema;
 
-  public TupleWriter(RecordConsumer recordConsumer, MessageType schema) {
+  public void initForWrite(RecordConsumer recordConsumer, MessageType schema) {
     this.recordConsumer = recordConsumer;
     this.rootSchema = schema;
   }
 
-  public void write(Tuple t) throws ExecException {
-    recordConsumer.startMessage();
-    writeTuple(rootSchema, t);
-    recordConsumer.endMessage();
+  public void write(Tuple t) {
+    try {
+      recordConsumer.startMessage();
+      writeTuple(rootSchema, t);
+      recordConsumer.endMessage();
+    } catch (ExecException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private void writeTuple(GroupType schema, Tuple t) throws ExecException {

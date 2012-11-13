@@ -61,7 +61,7 @@ public class PrintFooter {
         footers.add(threadPool.submit(new Callable<Footer>() {
           @Override
           public Footer call() throws Exception {
-            Footer footer = RedelmFileReader.readFooter(fs.open(currentFile.getPath()), currentFile.getLen());
+            Footer footer = Footer.fromMetaDataBlocks(RedelmFileReader.readFooter(fs.open(currentFile.getPath()), currentFile.getLen()));
             return footer;
           }
         }));
