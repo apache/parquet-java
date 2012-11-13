@@ -15,16 +15,34 @@
  */
 package redelm.schema;
 
+/**
+ * The root of a schema
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class MessageType extends GroupType {
+
+  /**
+   *
+   * @param name the name of the type
+   * @param fields the fields contained by this message
+   */
   public MessageType(String name, Type... fields) {
     super(Repetition.REPEATED, name, fields);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void accept(TypeVisitor visitor) {
     visitor.visit(this);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void writeToStringBuilder(StringBuilder sb, String indent) {
     sb.append("message ")

@@ -29,8 +29,25 @@ import redelm.schema.PrimitiveType.Primitive;
 import redelm.schema.Type;
 import redelm.schema.Type.Repetition;
 
+/**
+ *
+ * Converts a Pig Schema into a RedElm schema
+ *
+ * Bags are converted into repeated fields
+ * Map are converted into repeated groups of key/values
+ *
+ * TODO: add an optional group containing the repeated field for bags so that null != empty
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class PigSchemaConverter {
 
+  /**
+   *
+   * @param pigSchema the pig schema
+   * @return the resulting RedElm schema
+   */
   public MessageType convert(Schema pigSchema) {
     return new MessageType("pig_schema", convertTypes(pigSchema));
   }

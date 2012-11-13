@@ -9,6 +9,13 @@ import redelm.schema.PrimitiveType.Primitive;
 import redelm.schema.Type;
 import redelm.schema.Type.Repetition;
 
+/**
+ * Wraps a record consumer
+ * Validates the record written aainst the schema and pass down the event to the wrapped consumer
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class ValidatingRecordConsumer extends RecordConsumer {
   private static final Log LOG = Log.getLog(ValidatingRecordConsumer.class);
   private static final boolean DEBUG = Log.DEBUG;
@@ -20,22 +27,36 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   private Deque<Integer> previousField = new ArrayDeque<Integer>();
   private Deque<Integer> fieldValueCount = new ArrayDeque<Integer>();
 
+  /**
+   *
+   * @param delegate the consumer to pass down the event to
+   * @param schema the schema to validate against
+   */
   public ValidatingRecordConsumer(RecordConsumer delegate, MessageType schema) {
     this.delegate = delegate;
     this.types.push(schema);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   public void startMessage() {
     previousField.push(-1);
     delegate.startMessage();
   }
 
+  /**
+   * {@inheritDoc}
+   */
   public void endMessage() {
     delegate.endMessage();
     validateMissingFields(types.peek().asGroupType().getFieldCount());
     previousField.pop();
   }
 
+  /**
+   * {@inheritDoc}
+   */
   public void startField(String field, int index) {
     if (index <= previousField.peek()) {
       throw new InvalidRecordException("fields must be added in order " + field + " index " + index + " is before previous field " + previousField.peek());
@@ -55,18 +76,27 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   public void endField(String field, int index) {
     delegate.endField(field, index);
     fieldValueCount.pop();
     previousField.push(fields.pop());
   }
 
+  /**
+   * {@inheritDoc}
+   */
   public void startGroup() {
     previousField.push(-1);
     types.push(types.peek().asGroupType().getType(fields.peek()));
     delegate.startGroup();
   }
 
+  /**
+   * {@inheritDoc}
+   */
   public void endGroup() {
     delegate.endGroup();
     validateMissingFields(types.peek().asGroupType().getFieldCount());
@@ -96,36 +126,57 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   public void addInteger(int value) {
     validate(Primitive.INT32);
     delegate.addInteger(value);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   public void addLong(long value) {
     validate(Primitive.INT64);
     delegate.addLong(value);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   public void addString(String value) {
     validate(Primitive.STRING);
     delegate.addString(value);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   public void addBoolean(boolean value) {
     validate(Primitive.BOOLEAN);
     delegate.addBoolean(value);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   public void addBinary(byte[] value) {
     validate(Primitive.BINARY);
     delegate.addBinary(value);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   public void addFloat(float value) {
     validate(Primitive.FLOAT);
     delegate.addFloat(value);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   public void addDouble(double value) {
     validate(Primitive.DOUBLE);
     delegate.addDouble(value);
