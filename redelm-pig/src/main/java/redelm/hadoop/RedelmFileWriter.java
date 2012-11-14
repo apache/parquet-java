@@ -36,6 +36,11 @@ import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.util.ReflectionUtils;
 
+/**
+ * Writes a RedElm file
+ * @author Julien Le Dem
+ *
+ */
 public class RedelmFileWriter extends BytesOutput {
   public static final byte[] MAGIC = {82, 101, 100, 32, 69, 108, 109, 10}; // "Red Elm\n"
   public static final int CURRENT_VERSION = 1;
@@ -122,6 +127,12 @@ public class RedelmFileWriter extends BytesOutput {
 
   private STATE state = STATE.NOT_STARTED;
 
+  /**
+   *
+   * @param schema the schema of the data
+   * @param out the file to write to
+   * @param codecClassName the codec to use to compress blocks
+   */
   public RedelmFileWriter(MessageType schema, FSDataOutputStream out, String codecClassName) {
     super();
     this.schema = schema;
@@ -136,17 +147,32 @@ public class RedelmFileWriter extends BytesOutput {
     }
   }
 
+  /**
+   * start the file
+   * @throws IOException
+   */
   public void start() throws IOException {
     state = state.start();
     out.write(MAGIC);
   }
 
+  /**
+   * start a block
+   * @param recordCount the record count in this block
+   * @throws IOException
+   */
   public void startBlock(int recordCount) throws IOException {
     state = state.startBlock();
     currentBlock = new BlockMetaData(out.getPos());
     currentRecordCount = recordCount;
   }
 
+  /**
+   * start a column inside a block
+   * @param descriptor the column descriptor
+   * @param valueCount the value count in this column
+   * @throws IOException
+   */
   public void startColumn(ColumnDescriptor descriptor, int valueCount) throws IOException {
     state = state.startColumn();
     currentColumn = new ColumnMetaData(descriptor.getPath(), descriptor.getType());
@@ -166,20 +192,32 @@ public class RedelmFileWriter extends BytesOutput {
     compressor = null;
   }
 
+  /**
+   * starts the repetitionLevels in this column
+   * @throws IOException
+   */
   public void startRepetitionLevels() throws IOException {
     state = state.startRepetition();
     currentColumn.setRepetitionStart(out.getPos());
     startCompression();
   }
 
+  /**
+   * ends the repetition levels and starts the definition levels in this column
+   * @throws IOException
+   */
   public void startDefinitionLevels() throws IOException {
     state = state.startDefinition();
     endCompression();
-    currentColumn.setRepetitionUncompressedLenght(uncompressedLength);
+    currentColumn.setRepetitionUncompressedLength(uncompressedLength);
     currentColumn.setDefinitionStart(out.getPos());
     startCompression();
   }
 
+  /**
+   * ends the definition levels and starts the data in this column
+   * @throws IOException
+   */
   public void startData() throws IOException {
     state = state.startData();
     endCompression();
@@ -188,12 +226,22 @@ public class RedelmFileWriter extends BytesOutput {
     startCompression();
   }
 
+  /**
+   * write binary representation of repetition, definition or data
+   * @param data array containing the data
+   * @param offset where to start reading from the data
+   * @param length how many bytes to read
+   */
   public void write(byte[] data, int offset, int length) throws IOException {
     state = state.write();
     cos.write(data, offset, length);
     uncompressedLength += length;
   }
 
+  /**
+   * end a column (once all rep, def and data have been written)
+   * @throws IOException
+   */
   public void endColumn() throws IOException {
     state = state.endColumn();
     endCompression();
@@ -204,6 +252,10 @@ public class RedelmFileWriter extends BytesOutput {
     currentColumn = null;
   }
 
+  /**
+   * ends a block once all column have been written
+   * @throws IOException
+   */
   public void endBlock() throws IOException {
     state = state.endBlock();
     currentBlock.setEndIndex(out.getPos());
@@ -212,12 +264,17 @@ public class RedelmFileWriter extends BytesOutput {
     currentBlock = null;
   }
 
+  /**
+   * ends a file once all blocks have been written
+   * @param metaDataBlocks the extra meta data blocks to write in the footer
+   * @throws IOException
+   */
   public void end(List<MetaDataBlock> metaDataBlocks) throws IOException {
     state = state.end();
     long footerIndex = out.getPos();
     out.writeInt(CURRENT_VERSION);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    RedElmMetaData footer = new RedElmMetaData(new RedElmMetaData.FileMetaData(schema.toString(), codecClassName), blocks);
+    RedelmMetaData footer = new RedelmMetaData(new RedelmMetaData.FileMetaData(schema.toString(), codecClassName), blocks);
 //    out.writeUTF(Footer.toJSON(footer));
     // lazy: use serialization
     // TODO: change that

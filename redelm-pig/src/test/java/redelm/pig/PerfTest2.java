@@ -20,6 +20,8 @@ import static org.junit.Assert.assertEquals;
 import java.io.File;
 import java.util.List;
 
+import redelm.Log;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.InputFormat;
@@ -41,9 +43,17 @@ import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.util.Utils;
 
+/**
+ *
+ * Uses directly loader and storer to bypass the scheduling overhead
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class PerfTest2 {
+
   private static final int COLUMN_COUNT = 50;
-  private static final long ROW_COUNT = 100000;
+  private static final long ROW_COUNT = 1000000;
   private static StringBuilder results = new StringBuilder();
   private static Configuration conf = new Configuration();
   private static int jobid = 0;
@@ -150,7 +160,7 @@ public class PerfTest2 {
       recordReader.initialize(split, taskAttemptContext);
       Tuple t;
       while ((t = loadFunc.getNext()) != null) {
-//      System.out.println(t);
+        if (Log.DEBUG) System.out.println(t);
         ++i;
       }
     }

@@ -26,13 +26,21 @@ import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
 
-import redelm.hadoop.RedElmMetaData.FileMetaData;
+import redelm.hadoop.RedelmMetaData.FileMetaData;
 
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.InputSplit;
 
+/**
+ * An input split for the RedElm format
+ * It contains the information to read one block of the file.
+ *
+ * @author Julien Le Dem
+ *
+ * @param <T> the type of the materialized tuples
+ */
 public class RedelmInputSplit<T> extends InputSplit implements Serializable, Writable {
   private static final long serialVersionUID = 1L;
 
@@ -44,10 +52,22 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
   private FileMetaData fileMetaData;
   private ReadSupport<T> readSupport;
 
-
+  /**
+   * Writables must have a parameterless constructor
+   */
   public RedelmInputSplit() {
   }
 
+  /**
+   * Used by {@link RedelmInputFormat#getSplits(org.apache.hadoop.mapreduce.JobContext)}
+   * @param path the path to the file
+   * @param start the offset of the block in the file
+   * @param length the size of the block in the file
+   * @param hosts the hosts where this block can be found
+   * @param block the block meta data (Columns locations)
+   * @param fileMetaData the file level metadata (Codec, Schema, ...)
+   * @param readSupport the object used to materialize records (must be serializable)
+   */
   public RedelmInputSplit(Path path, long start, long length, String[] hosts, BlockMetaData block, FileMetaData fileMetaData, ReadSupport<T> readSupport) {
     this.path = path.toUri().toString();
     this.start = start;
@@ -58,24 +78,42 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
     this.readSupport = readSupport;
   }
 
+  /**
+   *
+   * @return the block meta data
+   */
   public BlockMetaData getBlock() {
     return block;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public long getLength() throws IOException, InterruptedException {
     return length;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public String[] getLocations() throws IOException, InterruptedException {
     return hosts;
   }
 
+  /**
+   *
+   * @return the offset of the block in the file
+   */
   public long getStart() {
     return start;
   }
 
+  /**
+   *
+   * @return the path of the file containing the block
+   */
   public Path getPath() {
     try {
       return new Path(new URI(path));
@@ -84,6 +122,9 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void readFields(DataInput in) throws IOException {
     int l = in.readInt();
@@ -106,6 +147,9 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void write(DataOutput out) throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -115,14 +159,23 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
     out.write(b);
   }
 
+  /**
+   *
+   * @return the file level meta data
+   */
   public FileMetaData getFileMetaData() {
     return fileMetaData;
   }
 
+  /**
+   *
+   * @return the object used to materialize records
+   */
   public ReadSupport<T> getReadSupport() {
     return readSupport;
   }
 
+  @Override
   public String toString() {
     return this.getClass().getSimpleName() + "{" +
            "part: " + path

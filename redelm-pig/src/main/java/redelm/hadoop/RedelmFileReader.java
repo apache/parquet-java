@@ -35,6 +35,11 @@ import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.util.ReflectionUtils;
 
+/**
+ * Reads a RedElm file
+ * @author Julien Le Dem
+ *
+ */
 public class RedelmFileReader {
   private static final Log LOG = Log.getLog(RedelmFileReader.class);
 
@@ -50,6 +55,14 @@ public class RedelmFileReader {
     return blocks;
   }
 
+  /**
+   * Reads the meta data block in the footer of the file
+   * @see RedelmMetaData#fromMetaDataBlocks(List)
+   * @param f the RedElm File
+   * @param l the length of the file
+   * @return the metadata blocks in the footer
+   * @throws IOException if an error occurs while reading the file
+   */
   public static final List<MetaDataBlock> readFooter(FSDataInputStream f, long l) throws IOException {
     if (l <= 3 * 8) { // MAGIC (8) + data + footer + footerIndex (8) + MAGIC (8)
       throw new RuntimeException("Not a Red Elm file");
@@ -83,6 +96,13 @@ public class RedelmFileReader {
   private long previousReadIndex = 0;
   private final CompressionCodec codec;
 
+  /**
+   *
+   * @param f the redelm file
+   * @param blocks the blocks to read
+   * @param colums the columns to read (their path)
+   * @param codecClassName the codec used to compress the blocks
+   */
   public RedelmFileReader(FSDataInputStream f, List<BlockMetaData> blocks, List<String[]> colums, String codecClassName) {
     this.f = f;
     this.blocks = blocks;
@@ -98,6 +118,11 @@ public class RedelmFileReader {
     }
   }
 
+  /**
+   * reads all the columns requested in the next block
+   * @return the block data for the next block
+   * @throws IOException if an error occurs while reading
+   */
   public BlockData readColumns() throws IOException {
     if (currentBlock == blocks.size()) {
       return null;

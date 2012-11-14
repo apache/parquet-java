@@ -21,7 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import redelm.Log;
-import redelm.hadoop.RedElmMetaData.FileMetaData;
+import redelm.hadoop.RedelmMetaData.FileMetaData;
 
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -33,18 +33,39 @@ import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
+/**
+ * The input format to read a RedElm file
+ *
+ * It requires an implementation of {@link ReadSupport} to materialize the records
+ *
+ * The requestedSchema will control how the original records get projected by the loader.
+ * It must be a subset of the original schema. Only the columns needed to reconstruct the records with the requestedSchema will be scanned.
+ *
+ * @author Julien Le Dem
+ *
+ * @param <T> the type of the materialized records
+ */
 public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
 
   private static final Log LOG = Log.getLog(RedelmInputFormat.class);
 
-  private final String requestedSchema;
-  private final Class<?> readSupportClass;
+  private String requestedSchema;
+  private Class<?> readSupportClass;
 
+  /**
+   * constructor used when this InputFormat in wrapped in another one (In Pig for example)
+   * TODO: standalone constructor
+   * @param readSupportClass the class to materialize records
+   * @param requestedSchema the schema use to project the records (must be a subset of the original schema)
+   */
   public <S extends ReadSupport<T>> RedelmInputFormat(Class<S> readSupportClass, String requestedSchema) {
     this.readSupportClass = readSupportClass;
     this.requestedSchema = requestedSchema;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public RecordReader<Void, T> createRecordReader(
       InputSplit inputSplit,
@@ -60,6 +81,9 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
         requestedSchema;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public List<InputSplit> getSplits(JobContext jobContext) throws IOException {
     List<InputSplit> splits = new ArrayList<InputSplit>();
@@ -74,7 +98,7 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
         ReadSupport<T> readSupport = (ReadSupport<T>) readSupportClass.newInstance();
 
         List<MetaDataBlock> metaDataBlocks = RedelmFileReader.readFooter(f, fileStatus.getLen());
-        RedElmMetaData redelmMetaData = RedElmMetaData.fromMetaDataBlocks(metaDataBlocks);
+        RedelmMetaData redelmMetaData = RedelmMetaData.fromMetaDataBlocks(metaDataBlocks);
         readSupport.initForRead(
             metaDataBlocks,
             getRequestedSchema(redelmMetaData.getFileMetaData())

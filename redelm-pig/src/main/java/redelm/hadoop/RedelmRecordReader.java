@@ -24,7 +24,16 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
-class RedelmRecordReader<T> extends RecordReader<Void, T> {
+/**
+ * Reads the records from a block of a RedElm file
+ *
+ * @see RedelmInputFormat
+ *
+ * @author Julien Le Dem
+ *
+ * @param <T> type of the materialized records
+ */
+public class RedelmRecordReader<T> extends RecordReader<Void, T> {
 
   private ColumnIOFactory columnIOFactory = new ColumnIOFactory();
   private Map<String, ColumnMetaData> columnTypes = new HashMap<String, ColumnMetaData>();
@@ -40,7 +49,11 @@ class RedelmRecordReader<T> extends RecordReader<Void, T> {
   private ReadSupport<T> readSupport;
   private MessageType requestedSchema;
 
-  public RedelmRecordReader(String requestedSchema) {
+  /**
+   *
+   * @param requestedSchema the requested schema (a subset of the original schema) for record projection
+   */
+  RedelmRecordReader(String requestedSchema) {
     this.requestedSchema = MessageTypeParser.parseMessageType(requestedSchema);
   }
 
@@ -67,27 +80,42 @@ class RedelmRecordReader<T> extends RecordReader<Void, T> {
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void close() throws IOException {
     f.close();
   }
 
+  /**
+   * always returns null
+   */
   @Override
   public Void getCurrentKey() throws IOException, InterruptedException {
     return null;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public T getCurrentValue() throws IOException,
   InterruptedException {
     return currentValue;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public float getProgress() throws IOException, InterruptedException {
     return (float)current/total;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
@@ -128,6 +156,9 @@ class RedelmRecordReader<T> extends RecordReader<Void, T> {
     return false;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
     checkRead();

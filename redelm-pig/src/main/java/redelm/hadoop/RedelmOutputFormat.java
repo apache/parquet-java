@@ -16,15 +16,8 @@
 package redelm.hadoop;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.List;
 
-import redelm.column.ColumnDescriptor;
-import redelm.column.ColumnWriter;
-import redelm.column.mem.MemColumn;
-import redelm.column.mem.MemColumnsStore;
-import redelm.io.ColumnIOFactory;
-import redelm.io.MessageColumnIO;
 import redelm.schema.MessageType;
 
 import org.apache.hadoop.conf.Configuration;
@@ -34,39 +27,47 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
+/**
+ * OutputFormat to write to a RedElm file
+ *
+ * it requires a {@link WriteSupport} to convert the actual records to the underlying format
+ * it requires the schema of the incoming records
+ * it allows storing extra metadata in the footer (for example: for schema compatibility purpose when converting from a different schema language)
+ *
+ * @author Julien Le Dem
+ *
+ * @param <T> the type of the materialized records
+ */
 public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   // TODO: make this configurable
-  private static final int THRESHOLD = 1024*1024*50;
-
-  private MemColumnsStore store;
+  static final int THRESHOLD = 1024*1024*50;
 
   private final MessageType schema;
   private final String codecClassName;
-  private WriteSupport<T> writeSupport;
+  private Class<?> writeSupportClass;
 
   private final List<MetaDataBlock> extraMetaData;
 
+  /**
+   * constructor used when this OutputFormat in wrapped in another one (In Pig for example)
+   * TODO: standalone constructor
+   * @param writeSupportClass the class used to convert the incoming records
+   * @param schema the schema of the records
+   * @param extraMetaData extra meta data to be stored in the footer of the file
+   * @param codecClassName TODO: remove this parameter and figure it out from the hadoop conf
+   */
   public <S extends WriteSupport<T>> RedelmOutputFormat(Class<S> writeSupportClass, MessageType schema, List<MetaDataBlock> extraMetaData, String codecClassName) {
-    try {
-      this.writeSupport = writeSupportClass.newInstance();
-    } catch (InstantiationException e) {
-      throw new RuntimeException("could not instantiate " + writeSupportClass.getName(), e);
-    } catch (IllegalAccessException e) {
-      throw new RuntimeException("Illegal access to class " + writeSupportClass.getName(), e);
-    }
+    this.writeSupportClass = writeSupportClass;
     this.schema = schema;
     this.extraMetaData = extraMetaData;
     this.codecClassName = codecClassName;
-    initStore();
   }
 
-  private void initStore() {
-    store = new MemColumnsStore(1024 * 1024 * 16);
-    MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(this.schema, store);
-    writeSupport.initForWrite(columnIO.getRecordWriter(), this.schema);
-  }
-
+  /**
+   * {@inheritDoc}
+   */
+  @SuppressWarnings("unchecked") // writeSupport instantiation
   @Override
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
@@ -75,52 +76,13 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
     final FileSystem fs = file.getFileSystem(conf);
     final RedelmFileWriter w = new RedelmFileWriter(schema, fs.create(file, false), codecClassName);
     w.start();
-    return new RecordWriter<Void, T>() {
-      private int recordCount;
-
-      @Override
-      public void close(TaskAttemptContext taskAttemptContext) throws IOException,
-      InterruptedException {
-        flushStore();
-        w.end(extraMetaData);
-      }
-
-      @Override
-      public void write(Void key, T value) throws IOException, InterruptedException {
-        writeSupport.write(value);
-        ++ recordCount;
-        checkBlockSizeReached();
-      }
-
-      private void checkBlockSizeReached() throws IOException {
-        if (store.memSize() > THRESHOLD) {
-          flushStore();
-          initStore();
-        }
-      }
-
-      private void flushStore()
-          throws IOException {
-        w.startBlock(recordCount);
-        Collection<MemColumn> columns = store.getColumns();
-        for (MemColumn column : columns) {
-          ColumnDescriptor descriptor = column.getDescriptor();
-          ColumnWriter columnWriter = column.getColumnWriter();
-          w.startColumn(descriptor, columnWriter.getValueCount());
-          w.startRepetitionLevels();
-          columnWriter.writeRepetitionLevelColumn(w);
-          w.startDefinitionLevels();
-          columnWriter.writeDefinitionLevelColumn(w);
-          w.startData();
-          columnWriter.writeDataColumn(w);
-          w.endColumn();
-        }
-        recordCount = 0;
-        w.endBlock();
-        store = null;
-        writeSupport = null;
-      }
-    };
+    try {
+      return new RedelmRecordWriter<T>(w, (WriteSupport<T>) writeSupportClass.newInstance(), schema, extraMetaData);
+    } catch (InstantiationException e) {
+      throw new RuntimeException("could not instantiate " + writeSupportClass.getName(), e);
+    } catch (IllegalAccessException e) {
+      throw new RuntimeException("Illegal access to class " + writeSupportClass.getName(), e);
+    }
   }
 
 }

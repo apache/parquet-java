@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.pig;
+package redelm.hadoop;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -34,7 +34,7 @@ import org.junit.Test;
 import redelm.column.ColumnDescriptor;
 import redelm.hadoop.BlockData;
 import redelm.hadoop.ColumnData;
-import redelm.hadoop.RedElmMetaData;
+import redelm.hadoop.RedelmMetaData;
 import redelm.hadoop.MetaDataBlock;
 import redelm.hadoop.PrintFooter;
 import redelm.hadoop.RedelmFileReader;
@@ -109,7 +109,7 @@ public class TestRedelmFileWriter {
 
     FSDataInputStream fin = fileSystem.open(path);
 
-    RedElmMetaData readFooter = RedElmMetaData.fromMetaDataBlocks(RedelmFileReader.readFooter(fin, fileSystem.getFileStatus(path).getLen()));
+    RedelmMetaData readFooter = RedelmMetaData.fromMetaDataBlocks(RedelmFileReader.readFooter(fin, fileSystem.getFileStatus(path).getLen()));
 
     {
       assertEquals(2, readFooter.getBlocks().size());

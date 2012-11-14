@@ -38,6 +38,15 @@ import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
+/**
+ *
+ * Converts a tuple into the format understood by the striping algorithm
+ *
+ * TODO: pre-process the schema to avoid traversing it for each record
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class TupleRecordConsumer extends RecordConsumer {
   private static final boolean DEBUG = Log.DEBUG;
   private static final Log LOG = Log.getLog(TupleRecordConsumer.class);

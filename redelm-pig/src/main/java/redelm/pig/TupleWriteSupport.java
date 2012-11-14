@@ -27,6 +27,7 @@ import org.apache.pig.data.DataByteArray;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 
+import redelm.hadoop.MetaDataBlock;
 import redelm.hadoop.WriteSupport;
 import redelm.io.RecordConsumer;
 import redelm.schema.GroupType;
@@ -40,7 +41,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
   private RecordConsumer recordConsumer;
   private MessageType rootSchema;
 
-  public void initForWrite(RecordConsumer recordConsumer, MessageType schema) {
+  public void initForWrite(RecordConsumer recordConsumer, MessageType schema, List<MetaDataBlock> extraMetaData) {
     this.recordConsumer = recordConsumer;
     this.rootSchema = schema;
   }

@@ -17,7 +17,13 @@ package redelm.hadoop;
 
 import java.util.List;
 
-public class BlockData {
+/**
+ * Contains the data of a block in raw form
+ *
+ * @author Julien Le Dem
+ *
+ */
+class BlockData {
 
   private final int recordCount;
   private final List<ColumnData> columns;
@@ -27,10 +33,18 @@ public class BlockData {
     this.columns = columns;
   }
 
+  /**
+   *
+   * @return count of records in this block
+   */
   public int getRecordCount() {
     return recordCount;
   }
 
+  /**
+   * column data for this block
+   * @return
+   */
   public List<ColumnData> getColumns() {
     return columns;
   }
