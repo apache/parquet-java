@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.pig;
+package redelm.hadoop;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnWriter;
@@ -36,16 +36,18 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
 
+  // TODO: make this configurable
   private static final int THRESHOLD = 1024*1024*50;
 
   private MemColumnsStore store;
 
   private final MessageType schema;
-  private final String pigSchema;
   private final String codecClassName;
   private WriteSupport<T> writeSupport;
 
-  public <S extends WriteSupport<T>> RedelmOutputFormat(Class<S> writeSupportClass, MessageType schema, String pigSchema, String codecClassName) {
+  private final List<MetaDataBlock> extraMetaData;
+
+  public <S extends WriteSupport<T>> RedelmOutputFormat(Class<S> writeSupportClass, MessageType schema, List<MetaDataBlock> extraMetaData, String codecClassName) {
     try {
       this.writeSupport = writeSupportClass.newInstance();
     } catch (InstantiationException e) {
@@ -54,7 +56,7 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
       throw new RuntimeException("Illegal access to class " + writeSupportClass.getName(), e);
     }
     this.schema = schema;
-    this.pigSchema = pigSchema;
+    this.extraMetaData = extraMetaData;
     this.codecClassName = codecClassName;
     initStore();
   }
@@ -71,7 +73,6 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
     final Path file = getDefaultWorkFile(taskAttemptContext, "");
     final Configuration conf = taskAttemptContext.getConfiguration();
     final FileSystem fs = file.getFileSystem(conf);
-    final MetaDataBlock pigMetaDataBlock = new PigMetaData(pigSchema).toMetaDataBlock();
     final RedelmFileWriter w = new RedelmFileWriter(schema, fs.create(file, false), codecClassName);
     w.start();
     return new RecordWriter<Void, T>() {
@@ -81,7 +82,7 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
       public void close(TaskAttemptContext taskAttemptContext) throws IOException,
       InterruptedException {
         flushStore();
-        w.end(Arrays.asList(pigMetaDataBlock));
+        w.end(extraMetaData);
       }
 
       @Override

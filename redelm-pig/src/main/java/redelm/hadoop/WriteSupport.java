@@ -1,4 +1,4 @@
-package redelm.pig;
+package redelm.hadoop;
 
 import redelm.io.RecordConsumer;
 import redelm.schema.MessageType;

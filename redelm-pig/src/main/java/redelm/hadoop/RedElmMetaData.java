@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.pig;
+package redelm.hadoop;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -29,8 +29,29 @@ import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.SerializationConfig.Feature;
 
-public class Footer implements Serializable {
+public class RedElmMetaData implements Serializable {
   private static final long serialVersionUID = 1L;
+
+  public static class FileMetaData implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private final String schema;
+    private final String codecClassName;
+
+    public FileMetaData(String schema, String codecClassName) {
+      super();
+      this.schema = schema;
+      this.codecClassName = codecClassName;
+    }
+
+    public String getSchema() {
+      return schema;
+    }
+
+    public String getCodecClassName() {
+      return codecClassName;
+    }
+  }
 
   private static final String META_DATA_BLOCK_NAME = "RedElm";
 
@@ -40,18 +61,18 @@ public class Footer implements Serializable {
     prettyObjectMapper.getSerializationConfig().set(Feature.INDENT_OUTPUT, true);
   }
 
-  public static String toJSON(Footer footer) {
-    return toJSON(footer, objectMapper);
+  public static String toJSON(RedElmMetaData redElmMetaData) {
+    return toJSON(redElmMetaData, objectMapper);
   }
 
-  public static String toPrettyJSON(Footer footer) {
-    return toJSON(footer, prettyObjectMapper);
+  public static String toPrettyJSON(RedElmMetaData redElmMetaData) {
+    return toJSON(redElmMetaData, prettyObjectMapper);
   }
 
-  private static String toJSON(Footer footer, ObjectMapper mapper) {
+  private static String toJSON(RedElmMetaData redElmMetaData, ObjectMapper mapper) {
     StringWriter stringWriter = new StringWriter();
     try {
-      mapper.writeValue(stringWriter, footer);
+      mapper.writeValue(stringWriter, redElmMetaData);
     } catch (JsonGenerationException e) {
       throw new RuntimeException(e);
     } catch (JsonMappingException e) {
@@ -62,9 +83,9 @@ public class Footer implements Serializable {
     return stringWriter.toString();
   }
 
-  public static Footer fromJSON(String json) {
+  public static RedElmMetaData fromJSON(String json) {
     try {
-      return objectMapper.readValue(new StringReader(json), Footer.class);
+      return objectMapper.readValue(new StringReader(json), RedElmMetaData.class);
     } catch (JsonParseException e) {
       throw new RuntimeException(e);
     } catch (JsonMappingException e) {
@@ -74,11 +95,11 @@ public class Footer implements Serializable {
     }
   }
 
-  public static Footer fromMetaDataBlocks(List<MetaDataBlock> metaDataBlocks) {
+  public static RedElmMetaData fromMetaDataBlocks(List<MetaDataBlock> metaDataBlocks) {
     for (MetaDataBlock metaDataBlock : metaDataBlocks) {
       if (metaDataBlock.getName().equals(META_DATA_BLOCK_NAME)) {
         try {
-          return (Footer)new ObjectInputStream(new ByteArrayInputStream(metaDataBlock.getData())).readObject();
+          return (RedElmMetaData)new ObjectInputStream(new ByteArrayInputStream(metaDataBlock.getData())).readObject();
         } catch (IOException e) {
           throw new RuntimeException(e);
         } catch (ClassNotFoundException e) {
@@ -89,13 +110,11 @@ public class Footer implements Serializable {
     throw new RuntimeException("There should always be a RedElm metadata block");
   }
 
-  private final String schema;
-  private final String codecClassName;
+  private final FileMetaData fileMetaData;
   private final List<BlockMetaData> blocks;
 
-  public Footer(String schema, String codecClassName, List<BlockMetaData> blocks) {
-    this.schema = schema;
-    this.codecClassName = codecClassName;
+  public RedElmMetaData(FileMetaData fileMetaData, List<BlockMetaData> blocks) {
+    this.fileMetaData = fileMetaData;
     this.blocks = blocks;
   }
 
@@ -103,17 +122,13 @@ public class Footer implements Serializable {
     return blocks;
   }
 
-  public String getSchema() {
-    return schema;
-  }
-
-  public String getCodecClassName() {
-    return codecClassName;
+  public FileMetaData getFileMetaData() {
+    return fileMetaData;
   }
 
   @Override
   public String toString() {
-    return "Footer{schema: "+schema+", codec: "+codecClassName+", blocks"+blocks+"}";
+    return "RedElmMetaData{"+fileMetaData+", blocks"+blocks+"}";
 
   }
 }

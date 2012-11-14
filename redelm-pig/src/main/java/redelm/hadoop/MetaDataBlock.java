@@ -1,4 +1,4 @@
-package redelm.pig;
+package redelm.hadoop;
 
 public class MetaDataBlock {
 

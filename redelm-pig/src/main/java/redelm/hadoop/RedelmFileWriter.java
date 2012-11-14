@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.pig;
+package redelm.hadoop;
 
 import static redelm.Log.INFO;
 
@@ -217,7 +217,7 @@ public class RedelmFileWriter extends BytesOutput {
     long footerIndex = out.getPos();
     out.writeInt(CURRENT_VERSION);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    Footer footer = new Footer(schema.toString(), codecClassName, blocks);
+    RedElmMetaData footer = new RedElmMetaData(new RedElmMetaData.FileMetaData(schema.toString(), codecClassName), blocks);
 //    out.writeUTF(Footer.toJSON(footer));
     // lazy: use serialization
     // TODO: change that

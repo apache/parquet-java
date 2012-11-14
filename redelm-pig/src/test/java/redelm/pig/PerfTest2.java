@@ -69,7 +69,8 @@ public class PerfTest2 {
       String absPath = storer.relToAbsPathForStoreLocation(location, new Path(new File(".").getAbsoluteFile().toURI()));
       storer.setStoreLocation(absPath, job);
       storer.checkSchema(new ResourceSchema(Utils.getSchemaFromString(schema)));
-      OutputFormat outputFormat = storer.getOutputFormat();
+      @SuppressWarnings("unchecked") // that's how the base class is defined
+      OutputFormat<Void, Tuple> outputFormat = storer.getOutputFormat();
       // it's job.getConfiguration() and not just conf !
       JobContext jobContext = new JobContext(job.getConfiguration(), new JobID("jt", jobid ++));
       outputFormat.checkOutputSpecs(jobContext);
@@ -81,7 +82,7 @@ public class PerfTest2 {
         }
       }
       TaskAttemptContext taskAttemptContext = new TaskAttemptContext(job.getConfiguration(), new TaskAttemptID("jt", jobid, true, 1, 0));
-      RecordWriter recordWriter = outputFormat.getRecordWriter(taskAttemptContext);
+      RecordWriter<Void, Tuple> recordWriter = outputFormat.getRecordWriter(taskAttemptContext);
       storer.prepareToWrite(recordWriter);
 
       for (int i = 0; i < ROW_COUNT; i++) {
@@ -136,16 +137,17 @@ public class PerfTest2 {
     loadFunc.setUDFContextSignature("sigLoader"+loadjobId);
     String absPath = loadFunc.relativeToAbsolutePath(out, new Path(new File(".").getAbsoluteFile().toURI()));
     loadFunc.setLocation(absPath, job);
-    InputFormat inputFormat = loadFunc.getInputFormat();
+    @SuppressWarnings("unchecked") // that's how the base class is defined
+    InputFormat<Void, Tuple> inputFormat = loadFunc.getInputFormat();
     JobContext jobContext = new JobContext(job.getConfiguration(), new JobID("jt", loadjobId));
-    List splits = inputFormat.getSplits(jobContext);
+    List<InputSplit> splits = inputFormat.getSplits(jobContext);
     int i = 0;
     int taskid = 0;
-    for (Object split : splits) {
+    for (InputSplit split : splits) {
       TaskAttemptContext taskAttemptContext = new TaskAttemptContext(job.getConfiguration(), new TaskAttemptID("jt", loadjobId, true, taskid++, 0));
-      RecordReader recordReader = inputFormat.createRecordReader((InputSplit)split, taskAttemptContext);
+      RecordReader<Void, Tuple> recordReader = inputFormat.createRecordReader(split, taskAttemptContext);
       loadFunc.prepareToRead(recordReader, null);
-      recordReader.initialize((InputSplit)split, taskAttemptContext);
+      recordReader.initialize(split, taskAttemptContext);
       Tuple t;
       while ((t = loadFunc.getNext()) != null) {
 //      System.out.println(t);

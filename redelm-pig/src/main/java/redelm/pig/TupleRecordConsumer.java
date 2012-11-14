@@ -52,6 +52,12 @@ public class TupleRecordConsumer extends RecordConsumer {
 
   public TupleRecordConsumer(MessageType schema, Schema pigSchema, Collection<Tuple> destination) {
     try {
+      if (schema == null) {
+        throw new NullPointerException("schema");
+      }
+      if (pigSchema == null) {
+        throw new NullPointerException("pigSchema");
+      }
       this.destination = destination;
       this.types.push(schema);
       this.pigTypes.push(new FieldSchema("tuple", pigSchema, DataType.TUPLE));
@@ -143,6 +149,7 @@ public class TupleRecordConsumer extends RecordConsumer {
           }
           break;
         case DataType.MAP:
+          @SuppressWarnings("unchecked") // I know
           Map<String, Object> map = (Map<String, Object>)parent.get(fieldIndex);
           if (map == null) {
             map = new HashMap<String, Object>();

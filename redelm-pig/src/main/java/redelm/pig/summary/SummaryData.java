@@ -32,7 +32,7 @@ import org.codehaus.jackson.map.SerializationConfig.Feature;
 /**
  * Base class for a node of the data summary tree
  *
- * @author julien
+ * @author Julien Le Dem
  *
  */
 @JsonWriteNullProperties(value = false)

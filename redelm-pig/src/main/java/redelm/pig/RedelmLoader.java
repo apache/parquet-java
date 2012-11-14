@@ -17,6 +17,8 @@ package redelm.pig;
 
 import java.io.IOException;
 
+import redelm.hadoop.RedelmInputFormat;
+
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.RecordReader;

@@ -23,10 +23,6 @@ import static redelm.data.simple.example.Paper.schema;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.pig.backend.executionengine.ExecException;
-import org.apache.pig.data.Tuple;
-import org.junit.Test;
-
 import redelm.Log;
 import redelm.data.Group;
 import redelm.data.GroupRecordConsumer;

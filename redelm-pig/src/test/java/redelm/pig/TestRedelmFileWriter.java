@@ -32,6 +32,13 @@ import org.apache.hadoop.io.compress.GzipCodec;
 import org.junit.Test;
 
 import redelm.column.ColumnDescriptor;
+import redelm.hadoop.BlockData;
+import redelm.hadoop.ColumnData;
+import redelm.hadoop.RedElmMetaData;
+import redelm.hadoop.MetaDataBlock;
+import redelm.hadoop.PrintFooter;
+import redelm.hadoop.RedelmFileReader;
+import redelm.hadoop.RedelmFileWriter;
 import redelm.parser.MessageTypeParser;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType.Primitive;
@@ -102,7 +109,7 @@ public class TestRedelmFileWriter {
 
     FSDataInputStream fin = fileSystem.open(path);
 
-    Footer readFooter = Footer.fromMetaDataBlocks(RedelmFileReader.readFooter(fin, fileSystem.getFileStatus(path).getLen()));
+    RedElmMetaData readFooter = RedElmMetaData.fromMetaDataBlocks(RedelmFileReader.readFooter(fin, fileSystem.getFileStatus(path).getLen()));
 
     {
       assertEquals(2, readFooter.getBlocks().size());

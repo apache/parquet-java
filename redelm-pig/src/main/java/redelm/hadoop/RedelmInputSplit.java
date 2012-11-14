@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.pig;
+package redelm.hadoop;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -25,14 +25,15 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
+
+import redelm.hadoop.RedElmMetaData.FileMetaData;
+
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.pig.impl.logicalLayer.schema.Schema;
 
-public class RedelmInputSplit extends InputSplit implements Serializable, Writable {
+public class RedelmInputSplit<T> extends InputSplit implements Serializable, Writable {
   private static final long serialVersionUID = 1L;
 
   private String path;
@@ -40,25 +41,21 @@ public class RedelmInputSplit extends InputSplit implements Serializable, Writab
   private long length;
   private String[] hosts;
   private BlockMetaData block;
-  private String schemaString;
-  private String pigSchemaString;
-  private String codecClassName;
+  private FileMetaData fileMetaData;
+  private ReadSupport<T> readSupport;
+
 
   public RedelmInputSplit() {
   }
 
-  public RedelmInputSplit(Path path, long start, long length, String[] hosts, BlockMetaData block, String schemaString, String pigSchemaString, String codecClassName) {
+  public RedelmInputSplit(Path path, long start, long length, String[] hosts, BlockMetaData block, FileMetaData fileMetaData, ReadSupport<T> readSupport) {
     this.path = path.toUri().toString();
     this.start = start;
     this.length = length;
     this.hosts = hosts;
     this.block = block;
-    this.schemaString = schemaString;
-    this.codecClassName = codecClassName;
-    if (pigSchemaString == null) {
-      throw new NullPointerException("pigSchemaString is null");
-    }
-    this.pigSchemaString = pigSchemaString;
+    this.fileMetaData = fileMetaData;
+    this.readSupport = readSupport;
   }
 
   public BlockMetaData getBlock() {
@@ -92,22 +89,21 @@ public class RedelmInputSplit extends InputSplit implements Serializable, Writab
     int l = in.readInt();
     byte[] b = new byte[l];
     in.readFully(b);
-    RedelmInputSplit other;
     try {
-      other = (RedelmInputSplit)
+      @SuppressWarnings("unchecked") // I know
+      RedelmInputSplit<T> other = (RedelmInputSplit<T>)
           new ObjectInputStream(new ByteArrayInputStream(b))
-        .readObject();
+      .readObject();
+      this.path = other.path;
+      this.start = other.start;
+      this.length = other.length;
+      this.hosts = other.hosts;
+      this.block = other.block;
+      this.fileMetaData = other.fileMetaData;
+      this.readSupport = other.readSupport;
     } catch (ClassNotFoundException e) {
       throw new IOException("wrong class serialized", e);
     }
-    this.path = other.path;
-    this.start = other.start;
-    this.length = other.length;
-    this.hosts = other.hosts;
-    this.block = other.block;
-    this.schemaString = other.schemaString;
-    this.pigSchemaString = other.pigSchemaString;
-    this.codecClassName = other.codecClassName;
   }
 
   @Override
@@ -119,17 +115,13 @@ public class RedelmInputSplit extends InputSplit implements Serializable, Writab
     out.write(b);
   }
 
-  public String getSchema() {
-    return schemaString;
+  public FileMetaData getFileMetaData() {
+    return fileMetaData;
   }
 
-  public String getPigSchema() {
-    return pigSchemaString;
+  public ReadSupport<T> getReadSupport() {
+    return readSupport;
   }
-
-  public String getCodecClassName() {
-    return codecClassName;
-  };
 
   public String toString() {
     return this.getClass().getSimpleName() + "{" +
@@ -138,8 +130,7 @@ public class RedelmInputSplit extends InputSplit implements Serializable, Writab
         + " length: " + length
         + " hosts: " + hosts
         + " block: " + block
-        + " schema: " + schemaString
-        + " pigSchema: " + pigSchemaString
+        + " fileMetaData: " + fileMetaData
         + "}";
   }
 }

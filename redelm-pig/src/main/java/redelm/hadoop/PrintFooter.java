@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.pig;
+package redelm.hadoop;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -56,19 +56,19 @@ public class PrintFooter {
     ExecutorService threadPool = Executors.newFixedThreadPool(5);
     try {
 
-      List<Future<Footer>> footers = new ArrayList<Future<Footer>>();
+      List<Future<RedElmMetaData>> footers = new ArrayList<Future<RedElmMetaData>>();
       for (final FileStatus currentFile : statuses) {
-        footers.add(threadPool.submit(new Callable<Footer>() {
+        footers.add(threadPool.submit(new Callable<RedElmMetaData>() {
           @Override
-          public Footer call() throws Exception {
-            Footer footer = Footer.fromMetaDataBlocks(RedelmFileReader.readFooter(fs.open(currentFile.getPath()), currentFile.getLen()));
+          public RedElmMetaData call() throws Exception {
+            RedElmMetaData footer = RedElmMetaData.fromMetaDataBlocks(RedelmFileReader.readFooter(fs.open(currentFile.getPath()), currentFile.getLen()));
             return footer;
           }
         }));
       }
       int blockCount = 0;
-      for (Future<Footer> futureFooter : footers) {
-        Footer footer = futureFooter.get();
+      for (Future<RedElmMetaData> futureFooter : footers) {
+        RedElmMetaData footer = futureFooter.get();
         System.out.println("Reading footers: " + (++i * 100 / statuses.size()) + "%");
         //  System.out.println(Footer.toPrettyJSON(footer));
         List<BlockMetaData> blocks = footer.getBlocks();

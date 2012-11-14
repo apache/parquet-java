@@ -13,17 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.pig;
+package redelm.hadoop;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import redelm.Log;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -33,10 +34,9 @@ import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.util.ReflectionUtils;
-import org.apache.log4j.Logger;
 
 public class RedelmFileReader {
-  private static final Logger LOG = Logger.getLogger(RedelmFileReader.class);
+  private static final Log LOG = Log.getLog(RedelmFileReader.class);
 
   private static List<MetaDataBlock> readMetaDataBlocks(FSDataInputStream f) throws IOException {
     List<MetaDataBlock> blocks = new ArrayList<MetaDataBlock>();
