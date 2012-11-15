@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.pig;
+package redelm.hadoop;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -28,10 +28,18 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.GzipCodec;
 import org.junit.Test;
 
 import redelm.column.ColumnDescriptor;
+import redelm.hadoop.BlockData;
+import redelm.hadoop.ColumnData;
+import redelm.hadoop.RedelmMetaData;
+import redelm.hadoop.MetaDataBlock;
+import redelm.hadoop.PrintFooter;
+import redelm.hadoop.RedelmFileReader;
+import redelm.hadoop.RedelmFileWriter;
 import redelm.parser.MessageTypeParser;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType.Primitive;
@@ -59,7 +67,7 @@ public class TestRedelmFileWriter {
     byte[] bytes3 = { 2, 3, 4, 5};
     byte[] bytes4 = { 3, 4, 5, 6};
 
-    RedelmFileWriter w = new RedelmFileWriter(schema, fout, CODEC);
+    RedelmFileWriter w = new RedelmFileWriter(schema, fout, (CompressionCodec)Class.forName(CODEC).newInstance());
     w.start();
     w.startBlock(1);
     w.startColumn(c1, 1);
@@ -102,7 +110,7 @@ public class TestRedelmFileWriter {
 
     FSDataInputStream fin = fileSystem.open(path);
 
-    Footer readFooter = Footer.fromMetaDataBlocks(RedelmFileReader.readFooter(fin, fileSystem.getFileStatus(path).getLen()));
+    RedelmMetaData readFooter = RedelmMetaData.fromMetaDataBlocks(RedelmFileReader.readFooter(fin, fileSystem.getFileStatus(path).getLen()));
 
     {
       assertEquals(2, readFooter.getBlocks().size());

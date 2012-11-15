@@ -16,12 +16,13 @@
 package redelm.pig;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Properties;
 
+import redelm.hadoop.RedelmOutputFormat;
 import redelm.schema.MessageType;
 
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.OutputFormat;
 import org.apache.hadoop.mapreduce.RecordWriter;
@@ -40,17 +41,9 @@ public class RedelmStorer extends StoreFunc implements StoreMetadata {
 
   private static final String SCHEMA = "schema";
 
-  private RecordWriter<Object, Tuple> recordWriter;
-  private String location;
-
-  private final String codecClassName;
+  private RecordWriter<Void, Tuple> recordWriter;
 
   public RedelmStorer() {
-     this(GzipCodec.class.getName());
-  }
-
-  public RedelmStorer(String codecClassName) {
-    this.codecClassName = codecClassName;
   }
 
   @Override
@@ -62,12 +55,15 @@ public class RedelmStorer extends StoreFunc implements StoreMetadata {
   }
 
   @Override
-  public OutputFormat<Object, Tuple> getOutputFormat() throws IOException {
+  public OutputFormat<Void, Tuple> getOutputFormat() throws IOException {
     Schema pigSchema = getSchema();
     MessageType schema = new PigSchemaConverter().convert(pigSchema);
 
     String pigSchemaString = pigSchema.toString();
-    return new RedelmOutputFormat(TupleWriteSupport.class, schema, pigSchemaString.substring(1, pigSchemaString.length() - 1), codecClassName);
+    return new RedelmOutputFormat<Tuple>(
+        TupleWriteSupport.class,
+        schema,
+        Arrays.asList(new PigMetaData(pigSchemaString.substring(1, pigSchemaString.length() - 1)).toMetaDataBlock()));
   }
 
   private Schema getSchema() {
@@ -80,6 +76,7 @@ public class RedelmStorer extends StoreFunc implements StoreMetadata {
     }
   }
 
+  @SuppressWarnings({ "rawtypes", "unchecked" }) // that's how the base class is defined
   @Override
   public void prepareToWrite(RecordWriter recordWriter) throws IOException {
     this.recordWriter = recordWriter;
@@ -97,7 +94,6 @@ public class RedelmStorer extends StoreFunc implements StoreMetadata {
 
   @Override
   public void setStoreLocation(String location, Job job) throws IOException {
-    this.location = location;
     FileOutputFormat.setOutputPath(job, new Path(location));
   }
 

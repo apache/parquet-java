@@ -31,6 +31,13 @@ import org.apache.pig.builtin.mock.Storage.Data;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 
+/**
+ *
+ * some hardcoded latencies in hadoop prevent any information to come out of this test
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class PerfTest {
   private static final int COLUMN_COUNT = 50;
   private static final long ROW_COUNT = 100000;

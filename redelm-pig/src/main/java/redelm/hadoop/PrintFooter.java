@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.pig;
+package redelm.hadoop;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -34,6 +34,11 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.Utils;
 
+/**
+ * Utility to print footer information
+ * @author Julien Le Dem
+ *
+ */
 public class PrintFooter {
 
   public static void main(String[] args) throws Exception {
@@ -56,19 +61,19 @@ public class PrintFooter {
     ExecutorService threadPool = Executors.newFixedThreadPool(5);
     try {
 
-      List<Future<Footer>> footers = new ArrayList<Future<Footer>>();
+      List<Future<RedelmMetaData>> footers = new ArrayList<Future<RedelmMetaData>>();
       for (final FileStatus currentFile : statuses) {
-        footers.add(threadPool.submit(new Callable<Footer>() {
+        footers.add(threadPool.submit(new Callable<RedelmMetaData>() {
           @Override
-          public Footer call() throws Exception {
-            Footer footer = Footer.fromMetaDataBlocks(RedelmFileReader.readFooter(fs.open(currentFile.getPath()), currentFile.getLen()));
+          public RedelmMetaData call() throws Exception {
+            RedelmMetaData footer = RedelmMetaData.fromMetaDataBlocks(RedelmFileReader.readFooter(fs.open(currentFile.getPath()), currentFile.getLen()));
             return footer;
           }
         }));
       }
       int blockCount = 0;
-      for (Future<Footer> futureFooter : footers) {
-        Footer footer = futureFooter.get();
+      for (Future<RedelmMetaData> futureFooter : footers) {
+        RedelmMetaData footer = futureFooter.get();
         System.out.println("Reading footers: " + (++i * 100 / statuses.size()) + "%");
         //  System.out.println(Footer.toPrettyJSON(footer));
         List<BlockMetaData> blocks = footer.getBlocks();

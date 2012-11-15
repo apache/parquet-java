@@ -15,17 +15,15 @@
  */
 package redelm.pig.summary;
 
-import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.Tuple;
-import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
 /**
  * summary data for a bag
  *
- * @author julien
+ * @author Julien Le Dem
  *
  */
 public class BagSummaryData extends SummaryData {

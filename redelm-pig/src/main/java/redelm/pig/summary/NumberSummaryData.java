@@ -18,7 +18,7 @@ package redelm.pig.summary;
 /**
  * Summary data for a Number
  *
- * @author julien
+ * @author Julien Le Dem
  *
  */
 public class NumberSummaryData extends SummaryData {

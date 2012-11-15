@@ -28,7 +28,7 @@ import redelm.pig.summary.EnumStat.EnumValueCount;
 /**
  * Summary data for a String
  *
- * @author julien
+ * @author Julien Le Dem
  *
  */
 @JsonWriteNullProperties(value = false)

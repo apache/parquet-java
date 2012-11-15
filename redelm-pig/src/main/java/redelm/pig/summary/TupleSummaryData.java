@@ -22,7 +22,6 @@ import java.util.logging.Logger;
 
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.Tuple;
-import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
@@ -30,7 +29,7 @@ import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
  * Summary data for a Tuple
  * fields are in the same order as the input tuple
  *
- * @author julien
+ * @author Julien Le Dem
  *
  */
 public class TupleSummaryData extends SummaryData {

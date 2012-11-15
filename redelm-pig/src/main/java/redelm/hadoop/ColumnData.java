@@ -13,10 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.pig;
+package redelm.hadoop;
 
 import java.util.Arrays;
 
+/**
+ * Column data for a given block in raw format
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class ColumnData {
 
   private final String[] path;
@@ -24,6 +30,13 @@ public class ColumnData {
   private byte[] definitionLevels;
   private byte[] data;
 
+  /**
+   *
+   * @param path identifier of the column
+   * @param repetitionLevels repetition levels data
+   * @param definitionLevels definition levels data
+   * @param data actual column data
+   */
   public ColumnData(String[] path,
       byte[] repetitionLevels, byte[] definitionLevels, byte[] data) {
     super();
@@ -33,18 +46,34 @@ public class ColumnData {
     this.data = data;
   }
 
+  /**
+   *
+   * @return identifier of the column
+   */
   public String[] getPath() {
     return path;
   }
 
+  /**
+   *
+   * @return repetition level data
+   */
   public byte[] getRepetitionLevels() {
     return repetitionLevels;
   }
 
+  /**
+   *
+   * @return definition levels data
+   */
   public byte[] getDefinitionLevels() {
     return definitionLevels;
   }
 
+  /**
+   *
+   * @return raw column data
+   */
   public byte[] getData() {
     return data;
   }

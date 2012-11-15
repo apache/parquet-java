@@ -17,14 +17,13 @@ package redelm.pig.summary;
 
 import java.util.Map;
 
-import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
 /**
  * Summary data for a Map
  *
- * @author julien
+ * @author Julien Le Dem
  *
  */
 public class MapSummaryData extends SummaryData {

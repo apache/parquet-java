@@ -27,6 +27,8 @@ import org.apache.pig.data.DataByteArray;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 
+import redelm.hadoop.MetaDataBlock;
+import redelm.hadoop.WriteSupport;
 import redelm.io.RecordConsumer;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
@@ -39,7 +41,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
   private RecordConsumer recordConsumer;
   private MessageType rootSchema;
 
-  public void initForWrite(RecordConsumer recordConsumer, MessageType schema) {
+  public void initForWrite(RecordConsumer recordConsumer, MessageType schema, List<MetaDataBlock> extraMetaData) {
     this.recordConsumer = recordConsumer;
     this.rootSchema = schema;
   }
@@ -77,6 +79,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
               recordConsumer.endField(fieldType.getName(), i);
             }
           } else if (repeated instanceof Map) {
+            @SuppressWarnings("unchecked") // I know
             Map<String, Object> map = (Map<String, Object>)repeated;
             if (map.size() > 0) {
               recordConsumer.startField(fieldType.getName(), i);

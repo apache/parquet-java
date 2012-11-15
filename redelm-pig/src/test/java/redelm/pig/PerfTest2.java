@@ -17,11 +17,23 @@ package redelm.pig;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.List;
+
+import redelm.Log;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.CompressionInputStream;
+import org.apache.hadoop.io.compress.CompressionOutputStream;
+import org.apache.hadoop.io.compress.Compressor;
+import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
@@ -41,9 +53,17 @@ import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.util.Utils;
 
+/**
+ *
+ * Uses directly loader and storer to bypass the scheduling overhead
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class PerfTest2 {
+
   private static final int COLUMN_COUNT = 50;
-  private static final long ROW_COUNT = 100000;
+  private static final long ROW_COUNT = 1000000;
   private static StringBuilder results = new StringBuilder();
   private static Configuration conf = new Configuration();
   private static int jobid = 0;
@@ -69,7 +89,8 @@ public class PerfTest2 {
       String absPath = storer.relToAbsPathForStoreLocation(location, new Path(new File(".").getAbsoluteFile().toURI()));
       storer.setStoreLocation(absPath, job);
       storer.checkSchema(new ResourceSchema(Utils.getSchemaFromString(schema)));
-      OutputFormat outputFormat = storer.getOutputFormat();
+      @SuppressWarnings("unchecked") // that's how the base class is defined
+      OutputFormat<Void, Tuple> outputFormat = storer.getOutputFormat();
       // it's job.getConfiguration() and not just conf !
       JobContext jobContext = new JobContext(job.getConfiguration(), new JobID("jt", jobid ++));
       outputFormat.checkOutputSpecs(jobContext);
@@ -81,7 +102,7 @@ public class PerfTest2 {
         }
       }
       TaskAttemptContext taskAttemptContext = new TaskAttemptContext(job.getConfiguration(), new TaskAttemptID("jt", jobid, true, 1, 0));
-      RecordWriter recordWriter = outputFormat.getRecordWriter(taskAttemptContext);
+      RecordWriter<Void, Tuple> recordWriter = outputFormat.getRecordWriter(taskAttemptContext);
       storer.prepareToWrite(recordWriter);
 
       for (int i = 0; i < ROW_COUNT; i++) {
@@ -136,19 +157,20 @@ public class PerfTest2 {
     loadFunc.setUDFContextSignature("sigLoader"+loadjobId);
     String absPath = loadFunc.relativeToAbsolutePath(out, new Path(new File(".").getAbsoluteFile().toURI()));
     loadFunc.setLocation(absPath, job);
-    InputFormat inputFormat = loadFunc.getInputFormat();
+    @SuppressWarnings("unchecked") // that's how the base class is defined
+    InputFormat<Void, Tuple> inputFormat = loadFunc.getInputFormat();
     JobContext jobContext = new JobContext(job.getConfiguration(), new JobID("jt", loadjobId));
-    List splits = inputFormat.getSplits(jobContext);
+    List<InputSplit> splits = inputFormat.getSplits(jobContext);
     int i = 0;
     int taskid = 0;
-    for (Object split : splits) {
+    for (InputSplit split : splits) {
       TaskAttemptContext taskAttemptContext = new TaskAttemptContext(job.getConfiguration(), new TaskAttemptID("jt", loadjobId, true, taskid++, 0));
-      RecordReader recordReader = inputFormat.createRecordReader((InputSplit)split, taskAttemptContext);
+      RecordReader<Void, Tuple> recordReader = inputFormat.createRecordReader(split, taskAttemptContext);
       loadFunc.prepareToRead(recordReader, null);
-      recordReader.initialize((InputSplit)split, taskAttemptContext);
+      recordReader.initialize(split, taskAttemptContext);
       Tuple t;
       while ((t = loadFunc.getNext()) != null) {
-//      System.out.println(t);
+        if (Log.DEBUG) System.out.println(t);
         ++i;
       }
     }

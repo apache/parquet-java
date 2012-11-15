@@ -23,9 +23,7 @@ import static redelm.data.simple.example.Paper.schema;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.pig.backend.executionengine.ExecException;
-import org.apache.pig.data.Tuple;
-import org.junit.Test;
+import com.google.common.collect.Lists;
 
 import redelm.Log;
 import redelm.data.Group;
@@ -33,6 +31,7 @@ import redelm.data.GroupRecordConsumer;
 import redelm.data.GroupWriter;
 import redelm.data.simple.SimpleGroup;
 import redelm.data.simple.SimpleGroupFactory;
+import redelm.hadoop.MetaDataBlock;
 import redelm.io.RecordConsumerWrapper;
 import redelm.schema.MessageType;
 
@@ -66,7 +65,7 @@ public class TestTupleRecordConsumer {
 
     List<Group> groups = new ArrayList<Group>();
     TupleWriteSupport tupleWriter = new TupleWriteSupport();
-    tupleWriter.initForWrite(new RecordConsumerWrapper(new GroupRecordConsumer(new SimpleGroupFactory(schema), groups)), schema);
+    tupleWriter.initForWrite(new RecordConsumerWrapper(new GroupRecordConsumer(new SimpleGroupFactory(schema), groups)), schema, Lists.<MetaDataBlock>newArrayList());
     for (Tuple t : tuples) {
       logger.debug(t);
       tupleWriter.write(t);
@@ -96,7 +95,7 @@ public class TestTupleRecordConsumer {
 
     List<Group> groups = new ArrayList<Group>();
     TupleWriteSupport tupleWriter = new TupleWriteSupport();
-    tupleWriter.initForWrite(new RecordConsumerWrapper(new GroupRecordConsumer(new SimpleGroupFactory(redelmSchema), groups)), redelmSchema);
+    tupleWriter.initForWrite(new RecordConsumerWrapper(new GroupRecordConsumer(new SimpleGroupFactory(redelmSchema), groups)), redelmSchema, Lists.<MetaDataBlock>newArrayList());
     for (Tuple t : tuples) {
       logger.debug(t);
       tupleWriter.write(t);

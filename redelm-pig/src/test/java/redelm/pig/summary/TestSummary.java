@@ -132,7 +132,7 @@ public class TestSummary {
     pigServer.registerQuery("STORE B INTO 'out' USING mock.Storage();");
     System.out.println(data.get("out").get(0).get(0));
     TupleSummaryData s = SummaryData.fromJSON((String)data.get("out").get(0).get(0), TupleSummaryData.class);
-
+    System.out.println(s);
   }
 
 
