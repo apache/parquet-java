@@ -25,8 +25,10 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.DefaultCodec;
+import org.apache.hadoop.mapred.FileOutputCommitter;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.JobContext;
+import org.apache.hadoop.mapreduce.OutputCommitter;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -69,10 +71,11 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
   private Class<?> writeSupportClass;
 
   private final List<MetaDataBlock> extraMetaData;
+  private RedelmOutputCommitter committer;
 
   /**
    * constructor used when this OutputFormat in wrapped in another one (In Pig for example)
-   * TODO: standalone constructor
+   * TODO: stand-alone constructor
    * @param writeSupportClass the class used to convert the incoming records
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to be stored in the footer of the file
@@ -90,19 +93,20 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
   @Override
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
-    final Path file = getDefaultWorkFile(taskAttemptContext, "");
     final Configuration conf = taskAttemptContext.getConfiguration();
-    final FileSystem fs = file.getFileSystem(conf);
 
     int blockSize = getBlockSize(taskAttemptContext);
 
     CompressionCodec codec = null;
+    String extension = ".redelm";
     if (getCompressOutput(taskAttemptContext)) {
       // find the right codec
       Class<?> codecClass = getOutputCompressorClass(taskAttemptContext, DefaultCodec.class);
       codec = (CompressionCodec) ReflectionUtils.newInstance(codecClass, conf);
+      extension += codec.getDefaultExtension();
     }
-
+    final Path file = getDefaultWorkFile(taskAttemptContext, extension);
+    final FileSystem fs = file.getFileSystem(conf);
     final RedelmFileWriter w = new RedelmFileWriter(schema, fs.create(file, false), codec);
     w.start();
     try {
@@ -114,4 +118,13 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
     }
   }
 
+  @Override
+  public OutputCommitter getOutputCommitter(TaskAttemptContext context)
+      throws IOException {
+    if (committer == null) {
+      Path output = getOutputPath(context);
+      committer = new RedelmOutputCommitter(output, context);
+    }
+    return committer;
+  }
 }

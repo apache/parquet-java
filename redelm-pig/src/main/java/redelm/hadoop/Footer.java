@@ -13,25 +13,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm;
+package redelm.hadoop;
 
-abstract public class RedelmRuntimeException extends RuntimeException {
-  private static final long serialVersionUID = 1L;
+import java.util.List;
 
-  public RedelmRuntimeException() {
+import org.apache.hadoop.fs.Path;
+
+/**
+ * 
+ * Represent the footer for a given file
+ * 
+ * @author Julien Le Dem
+ *
+ */
+public class Footer {
+
+  private Path file;
+
+  private List<MetaDataBlock> metaDataBlocks;
+
+  public Footer(Path file, List<MetaDataBlock> metaDataBlocks) {
     super();
+    this.file = file;
+    this.metaDataBlocks = metaDataBlocks;
   }
 
-  public RedelmRuntimeException(String message, Throwable cause) {
-    super(message, cause);
+  public Path getFile() {
+    return file;
   }
 
-  public RedelmRuntimeException(String message) {
-    super(message);
+  public List<MetaDataBlock> getMetaDataBlocks() {
+    return metaDataBlocks;
   }
 
-  public RedelmRuntimeException(Throwable cause) {
-    super(cause);
-  }
 
 }
