@@ -33,6 +33,7 @@ public class RedelmRecordWriter<T> extends
   private WriteSupport<T> writeSupport;
   private int recordCount;
   private MemColumnsStore store;
+  private final int blockSize;
 
   /**
    *
@@ -40,8 +41,9 @@ public class RedelmRecordWriter<T> extends
    * @param writeSupport the class to convert incoming records
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to write in the footer of the file
+   * @param blockSize the size of a block in the file (this will be approximate)
    */
-  RedelmRecordWriter(RedelmFileWriter w, WriteSupport<T> writeSupport, MessageType schema, List<MetaDataBlock> extraMetaData) {
+  RedelmRecordWriter(RedelmFileWriter w, WriteSupport<T> writeSupport, MessageType schema, List<MetaDataBlock> extraMetaData, int blockSize) {
     if (writeSupport == null) {
       throw new NullPointerException("writeSupport");
     }
@@ -49,6 +51,7 @@ public class RedelmRecordWriter<T> extends
     this.writeSupport = writeSupport;
     this.schema = schema;
     this.extraMetaData = extraMetaData;
+    this.blockSize = blockSize;
     initStore();
   }
 
@@ -81,7 +84,7 @@ public class RedelmRecordWriter<T> extends
   }
 
   private void checkBlockSizeReached() throws IOException {
-    if (store.memSize() > RedelmOutputFormat.THRESHOLD) {
+    if (store.memSize() > blockSize) {
       flushStore();
       initStore();
     }

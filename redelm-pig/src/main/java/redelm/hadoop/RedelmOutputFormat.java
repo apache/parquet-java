@@ -25,6 +25,8 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.DefaultCodec;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -39,18 +41,29 @@ import org.apache.hadoop.util.ReflectionUtils;
  *
  * data is compressed according to the job conf (per block per column):
  * <pre>
- * mapred.compress.map.output=true
- * mapred.map.output.compression.codec=org.apache.hadoop.io.compress.SomeCodec
+ * mapreduce.output.fileoutputformat.compress=true
+ * mapreduce.output.fileoutputformat.compress.codec=org.apache.hadoop.io.compress.SomeCodec
  * </pre>
  *
+ * block size is controlled in job conf settings:
+ * <pre>
+ * redelm.block.size=52428800 # in bytes, default = 50 * 1024 * 1024
+ *</pre>
  * @author Julien Le Dem
  *
  * @param <T> the type of the materialized records
  */
 public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
 
-  // TODO: make this configurable
-  static final int THRESHOLD = 1024*1024*50;
+  public static final String BLOCK_SIZE = "redelm.block.size";
+
+  public static void setBlockSize(Job job, int blockSize) {
+    job.getConfiguration().setInt(BLOCK_SIZE, blockSize);
+  }
+
+  public static int getBlockSize(JobContext jobContext) {
+    return jobContext.getConfiguration().getInt(BLOCK_SIZE, 50*1024*1024);
+  }
 
   private final MessageType schema;
   private Class<?> writeSupportClass;
@@ -81,6 +94,8 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
     final Configuration conf = taskAttemptContext.getConfiguration();
     final FileSystem fs = file.getFileSystem(conf);
 
+    int blockSize = getBlockSize(taskAttemptContext);
+
     CompressionCodec codec = null;
     if (getCompressOutput(taskAttemptContext)) {
       // find the right codec
@@ -91,7 +106,7 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
     final RedelmFileWriter w = new RedelmFileWriter(schema, fs.create(file, false), codec);
     w.start();
     try {
-      return new RedelmRecordWriter<T>(w, (WriteSupport<T>) writeSupportClass.newInstance(), schema, extraMetaData);
+      return new RedelmRecordWriter<T>(w, (WriteSupport<T>) writeSupportClass.newInstance(), schema, extraMetaData, blockSize);
     } catch (InstantiationException e) {
       throw new RuntimeException("could not instantiate " + writeSupportClass.getName(), e);
     } catch (IllegalAccessException e) {
