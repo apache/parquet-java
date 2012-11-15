@@ -28,6 +28,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.GzipCodec;
 import org.junit.Test;
 
@@ -66,7 +67,7 @@ public class TestRedelmFileWriter {
     byte[] bytes3 = { 2, 3, 4, 5};
     byte[] bytes4 = { 3, 4, 5, 6};
 
-    RedelmFileWriter w = new RedelmFileWriter(schema, fout, CODEC);
+    RedelmFileWriter w = new RedelmFileWriter(schema, fout, (CompressionCodec)Class.forName(CODEC).newInstance());
     w.start();
     w.startBlock(1);
     w.startColumn(c1, 1);

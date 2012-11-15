@@ -109,12 +109,16 @@ public class RedelmFileReader {
     for (String[] path : colums) {
       paths.add(Arrays.toString(path));
     }
-    try {
-      Class<?> codecClass = Class.forName(codecClassName);
-      Configuration conf = new Configuration();
-      codec = (CompressionCodec)ReflectionUtils.newInstance(codecClass, conf);
-    } catch (ClassNotFoundException e) {
-      throw new RuntimeException("Should not happen", e);
+    if (codecClassName == null) {
+      this.codec = null;
+    } else {
+      try {
+        Class<?> codecClass = Class.forName(codecClassName);
+        Configuration conf = new Configuration();
+        this.codec = (CompressionCodec)ReflectionUtils.newInstance(codecClass, conf);
+      } catch (ClassNotFoundException e) {
+        throw new RuntimeException("Should not happen", e);
+      }
     }
   }
 
@@ -152,17 +156,23 @@ public class RedelmFileReader {
     f.readFully(start, data);
     long t1 = System.currentTimeMillis();
     LOG.info("Read " + length + " bytes for column " + name + " in " + (t1 - t0) + " ms: " + (float)(t1 - t0)/data.length + " ms/byte");
-    // TODO make this streaming instead of reading into an array to decompress
-    Decompressor decompressor = CodecPool.getDecompressor(codec);
-    try {
-      CompressionInputStream cis = codec.createInputStream(new ByteArrayInputStream(data), decompressor);
-      ByteArrayOutputStream decompressed = new ByteArrayOutputStream();
-      IOUtils.copyBytes(cis, decompressed, 4096, false);
-      previousReadIndex = start + length;
-      return decompressed.toByteArray();
-    } finally {
-      CodecPool.returnDecompressor(decompressor);
+    byte[] result;
+    if (codec == null) {
+      result = data;
+    } else {
+      Decompressor decompressor = CodecPool.getDecompressor(codec);
+      try {
+        // TODO make this streaming instead of reading into an array to decompress
+        CompressionInputStream cis = codec.createInputStream(new ByteArrayInputStream(data), decompressor);
+        ByteArrayOutputStream decompressed = new ByteArrayOutputStream();
+        IOUtils.copyBytes(cis, decompressed, 4096, false);
+        result = decompressed.toByteArray();
+      } finally {
+        CodecPool.returnDecompressor(decompressor);
+      }
     }
+    previousReadIndex = start + length;
+    return result;
   }
 
 }

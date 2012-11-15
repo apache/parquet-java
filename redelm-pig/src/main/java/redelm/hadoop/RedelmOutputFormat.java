@@ -23,9 +23,12 @@ import redelm.schema.MessageType;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.DefaultCodec;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.util.ReflectionUtils;
 
 /**
  * OutputFormat to write to a RedElm file
@@ -33,6 +36,12 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
  * it requires a {@link WriteSupport} to convert the actual records to the underlying format
  * it requires the schema of the incoming records
  * it allows storing extra metadata in the footer (for example: for schema compatibility purpose when converting from a different schema language)
+ *
+ * data is compressed according to the job conf (per block per column):
+ * <pre>
+ * mapred.compress.map.output=true
+ * mapred.map.output.compression.codec=org.apache.hadoop.io.compress.SomeCodec
+ * </pre>
  *
  * @author Julien Le Dem
  *
@@ -44,7 +53,6 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
   static final int THRESHOLD = 1024*1024*50;
 
   private final MessageType schema;
-  private final String codecClassName;
   private Class<?> writeSupportClass;
 
   private final List<MetaDataBlock> extraMetaData;
@@ -55,13 +63,11 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
    * @param writeSupportClass the class used to convert the incoming records
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to be stored in the footer of the file
-   * @param codecClassName TODO: remove this parameter and figure it out from the hadoop conf
    */
-  public <S extends WriteSupport<T>> RedelmOutputFormat(Class<S> writeSupportClass, MessageType schema, List<MetaDataBlock> extraMetaData, String codecClassName) {
+  public <S extends WriteSupport<T>> RedelmOutputFormat(Class<S> writeSupportClass, MessageType schema, List<MetaDataBlock> extraMetaData) {
     this.writeSupportClass = writeSupportClass;
     this.schema = schema;
     this.extraMetaData = extraMetaData;
-    this.codecClassName = codecClassName;
   }
 
   /**
@@ -74,7 +80,15 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
     final Path file = getDefaultWorkFile(taskAttemptContext, "");
     final Configuration conf = taskAttemptContext.getConfiguration();
     final FileSystem fs = file.getFileSystem(conf);
-    final RedelmFileWriter w = new RedelmFileWriter(schema, fs.create(file, false), codecClassName);
+
+    CompressionCodec codec = null;
+    if (getCompressOutput(taskAttemptContext)) {
+      // find the right codec
+      Class<?> codecClass = getOutputCompressorClass(taskAttemptContext, DefaultCodec.class);
+      codec = (CompressionCodec) ReflectionUtils.newInstance(codecClass, conf);
+    }
+
+    final RedelmFileWriter w = new RedelmFileWriter(schema, fs.create(file, false), codec);
     w.start();
     try {
       return new RedelmRecordWriter<T>(w, (WriteSupport<T>) writeSupportClass.newInstance(), schema, extraMetaData);

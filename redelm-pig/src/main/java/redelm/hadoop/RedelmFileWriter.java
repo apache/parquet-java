@@ -46,7 +46,6 @@ public class RedelmFileWriter extends BytesOutput {
   public static final int CURRENT_VERSION = 1;
   private static final Log LOG = Log.getLog(RedelmFileWriter.class);
 
-  private final String codecClassName;
   private final CompressionCodec codec;
   private Compressor compressor;
   private CompressionOutputStream cos;
@@ -60,6 +59,12 @@ public class RedelmFileWriter extends BytesOutput {
 
   private long uncompressedLength;
 
+  /**
+   * Captures the order in which methods should be called
+   *
+   * @author Julien Le Dem
+   *
+   */
   private enum STATE {
     NOT_STARTED {
       STATE start() {
@@ -131,20 +136,13 @@ public class RedelmFileWriter extends BytesOutput {
    *
    * @param schema the schema of the data
    * @param out the file to write to
-   * @param codecClassName the codec to use to compress blocks
+   * @param codec the codec to use to compress blocks
    */
-  public RedelmFileWriter(MessageType schema, FSDataOutputStream out, String codecClassName) {
+  public RedelmFileWriter(MessageType schema, FSDataOutputStream out, CompressionCodec codec) {
     super();
     this.schema = schema;
     this.out = out;
-    this.codecClassName = codecClassName;
-    try {
-      Class<?> codecClass = Class.forName(codecClassName);
-      Configuration conf = new Configuration();
-      codec = (CompressionCodec)ReflectionUtils.newInstance(codecClass, conf);
-    } catch (ClassNotFoundException e) {
-      throw new RuntimeException("Should not happen", e);
-    }
+    this.codec = codec;
   }
 
   /**
@@ -180,16 +178,20 @@ public class RedelmFileWriter extends BytesOutput {
   }
 
   private void startCompression() throws IOException {
-    compressor = CodecPool.getCompressor(codec);
-    cos = codec.createOutputStream(out, compressor);
-    uncompressedLength = 0;
+    if (codec != null) {
+      compressor = CodecPool.getCompressor(codec);
+      cos = codec.createOutputStream(out, compressor);
+      uncompressedLength = 0;
+    }
   }
 
   private void endCompression() throws IOException {
-    cos.finish();
-    cos = null;
-    CodecPool.returnCompressor(compressor);
-    compressor = null;
+    if (codec != null) {
+      cos.finish();
+      cos = null;
+      CodecPool.returnCompressor(compressor);
+      compressor = null;
+    }
   }
 
   /**
@@ -234,7 +236,11 @@ public class RedelmFileWriter extends BytesOutput {
    */
   public void write(byte[] data, int offset, int length) throws IOException {
     state = state.write();
-    cos.write(data, offset, length);
+    if (codec == null) {
+      out.write(data, offset, length);
+    } else {
+      cos.write(data, offset, length);
+    }
     uncompressedLength += length;
   }
 
@@ -274,7 +280,7 @@ public class RedelmFileWriter extends BytesOutput {
     long footerIndex = out.getPos();
     out.writeInt(CURRENT_VERSION);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    RedelmMetaData footer = new RedelmMetaData(new RedelmMetaData.FileMetaData(schema.toString(), codecClassName), blocks);
+    RedelmMetaData footer = new RedelmMetaData(new RedelmMetaData.FileMetaData(schema.toString(), codec == null ? null : codec.getClass().getName()), blocks);
 //    out.writeUTF(Footer.toJSON(footer));
     // lazy: use serialization
     // TODO: change that

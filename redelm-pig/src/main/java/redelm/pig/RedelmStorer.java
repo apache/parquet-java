@@ -23,7 +23,6 @@ import redelm.hadoop.RedelmOutputFormat;
 import redelm.schema.MessageType;
 
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.OutputFormat;
 import org.apache.hadoop.mapreduce.RecordWriter;
@@ -44,14 +43,7 @@ public class RedelmStorer extends StoreFunc implements StoreMetadata {
 
   private RecordWriter<Void, Tuple> recordWriter;
 
-  private final String codecClassName;
-
   public RedelmStorer() {
-     this(GzipCodec.class.getName());
-  }
-
-  public RedelmStorer(String codecClassName) {
-    this.codecClassName = codecClassName;
   }
 
   @Override
@@ -71,8 +63,7 @@ public class RedelmStorer extends StoreFunc implements StoreMetadata {
     return new RedelmOutputFormat<Tuple>(
         TupleWriteSupport.class,
         schema,
-        Arrays.asList(new PigMetaData(pigSchemaString.substring(1, pigSchemaString.length() - 1)).toMetaDataBlock()),
-        codecClassName);
+        Arrays.asList(new PigMetaData(pigSchemaString.substring(1, pigSchemaString.length() - 1)).toMetaDataBlock()));
   }
 
   private Schema getSchema() {
