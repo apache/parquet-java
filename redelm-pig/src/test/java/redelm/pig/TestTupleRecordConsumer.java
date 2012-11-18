@@ -15,15 +15,14 @@
  */
 package redelm.pig;
 
-import static org.junit.Assert.assertEquals;
-import static redelm.data.simple.example.Paper.r1;
-import static redelm.data.simple.example.Paper.r2;
-import static redelm.data.simple.example.Paper.schema;
+import static junit.framework.Assert.assertEquals;
+import static org.apache.pig.builtin.mock.Storage.bag;
+import static org.apache.pig.builtin.mock.Storage.tuple;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
-
-import com.google.common.collect.Lists;
 
 import redelm.Log;
 import redelm.data.Group;
@@ -31,8 +30,9 @@ import redelm.data.GroupRecordConsumer;
 import redelm.data.GroupWriter;
 import redelm.data.simple.SimpleGroup;
 import redelm.data.simple.SimpleGroupFactory;
-import redelm.hadoop.MetaDataBlock;
+import redelm.io.RecordConsumer;
 import redelm.io.RecordConsumerWrapper;
+import redelm.io.ValidatingRecordConsumer;
 import redelm.schema.MessageType;
 
 import org.apache.pig.backend.executionengine.ExecException;
@@ -46,61 +46,138 @@ public class TestTupleRecordConsumer {
   private static final Log logger = Log.getLog(TestTupleRecordConsumer.class);
 
   @Test
-  public void test() throws ExecException, ParserException {
-    List<Tuple> tuples = new ArrayList<Tuple>();
+  public void testArtSchema() throws ExecException, ParserException {
 
-    TupleRecordConsumer tupleRecordConsumer = new TupleRecordConsumer(schema,
-        Utils.getSchemaFromString(
-        "DocId:long, " +
-        "Links:(Backward:{(long)}, Forward:{(long)}), " +
-        "Name:{(Language:{(Code:chararray,Country:chararray)}, Url:chararray)}"),
-        tuples);
-    GroupWriter groupWriter = new GroupWriter(new RecordConsumerWrapper(tupleRecordConsumer), schema);
-    groupWriter.write(r1);
-    groupWriter.write(r2);
+    String pigSchemaString =
+            "DocId:long, " +
+            "Links:(Backward:{(long)}, Forward:{(long)}), " +
+            "Name:{(Language:{(Code:chararray,Country:chararray)}, Url:chararray)}";
 
-    for (Tuple t : tuples) {
-      logger.debug(t);
-    }
+    SimpleGroup g = new SimpleGroup(getMessageType(pigSchemaString));
+    g.add("DocId", 1l);
+    Group links = g.addGroup("Links");
+    links.addGroup("Backward").addGroup("bag").add(0, 1l);
+    links.addGroup("Forward").addGroup("bag").add(0, 1l);
+    Group name = g.addGroup("Name").addGroup("bag");
+    name.addGroup("Language").addGroup("bag").append("Code", "en").append("Country", "US");
+    name.add("Url", "http://foo/bar");
 
-    List<Group> groups = new ArrayList<Group>();
-    TupleWriteSupport tupleWriter = new TupleWriteSupport();
-    tupleWriter.initForWrite(new RecordConsumerWrapper(new GroupRecordConsumer(new SimpleGroupFactory(schema), groups)), schema, Lists.<MetaDataBlock>newArrayList());
-    for (Tuple t : tuples) {
-      logger.debug(t);
-      tupleWriter.write(t);
-    }
-    assertEquals(r1.toString(), groups.get(0).toString());
-    assertEquals(r2.toString(), groups.get(1).toString());
+    testFromGroups(pigSchemaString, Arrays.<Group>asList(g));
+  }
+
+  @Test
+  public void testBags() throws ExecException, ParserException {
+    String pigSchemaString = "a: {(b: chararray)}";
+
+    SimpleGroup g = new SimpleGroup(getMessageType(pigSchemaString));
+    Group addGroup = g.addGroup("a");
+    addGroup.addGroup("bag").append("b", "foo");
+    addGroup.addGroup("bag").append("b", "bar");
+
+    testFromGroups(pigSchemaString, Arrays.<Group>asList(g));
   }
 
   @Test
   public void testMaps() throws ExecException, ParserException {
+        String pigSchemaString = "a: [(b: chararray)]";
+    SimpleGroup g = new SimpleGroup(getMessageType(pigSchemaString));
+    Group map = g.addGroup("a");
+    map.addGroup("map").append("key", "foo").addGroup("value").append("b", "foo");
+    map.addGroup("map").append("key", "bar").addGroup("value").append("b", "bar");
+
+    testFromGroups(pigSchemaString, Arrays.<Group>asList(g));
+  }
+
+  @Test
+  public void testComplexSchema() throws Exception {
+
+    String pigSchemaString = "a:chararray, b:{t:(c:chararray, d:chararray)}";
+    Tuple t0 = tuple("a"+0, bag(tuple("o", "b")));
+    Tuple t1 = tuple("a"+1, bag(tuple("o", "b"), tuple("o", "b"), tuple("o", "b"), tuple("o", "b")));
+    Tuple t2 = tuple("a"+2, bag(tuple("o", "b"), tuple("o", null), tuple(null, "b"), tuple(null, null)));
+    Tuple t3 = tuple("a"+3, null);
+    testFromTuple(pigSchemaString, Arrays.asList(t0, t1, t2, t3));
+
+  }
+
+  @Test
+  public void testMapSchema() throws Exception {
+
+    String pigSchemaString = "a:chararray, b:[(c:chararray, d:chararray)]";
+    Tuple t0 = tuple("a"+0, new HashMap() {{put("foo", tuple("o", "b"));}});
+    Tuple t1 = tuple("a"+1, new HashMap() {{put("foo", tuple("o", "b")); put("foo", tuple("o", "b")); put("foo", tuple("o", "b")); put("foo", tuple("o", "b"));}});
+    Tuple t2 = tuple("a"+2, new HashMap() {{put("foo", tuple("o", "b")); put("foo", tuple("o", null)); put("foo", tuple(null, "b")); put("foo", tuple(null, null));}});
+    Tuple t3 = tuple("a"+3, null);
+    testFromTuple(pigSchemaString, Arrays.asList(t0, t1, t2, t3));
+
+  }
+
+  private void testFromTuple(String pigSchemaString, List<Tuple> input) throws Exception {
     List<Tuple> tuples = new ArrayList<Tuple>();
-
-    String pigSchemaString = "a: [(b: chararray)]";
     Schema pigSchema = Utils.getSchemaFromString(pigSchemaString);
-    MessageType redelmSchema = new PigSchemaConverter().convert(pigSchema);
-    System.out.println(redelmSchema);
-    TupleRecordConsumer tupleRecordConsumer = new TupleRecordConsumer(redelmSchema, pigSchema, tuples);
-    GroupWriter groupWriter = new GroupWriter(new RecordConsumerWrapper(tupleRecordConsumer), redelmSchema);
-    SimpleGroup g = new SimpleGroup(redelmSchema);
-    g.addGroup("a").append("key", "foo").addGroup("a").append("b", "foo");
-    g.addGroup("a").append("key", "bar").addGroup("a").append("b", "bar");
-    groupWriter.write(g);
+    MessageType redelmSchema = getMessageType(pigSchemaString);
+    RecordConsumer recordConsumer = newPigRecordConsumer(redelmSchema, pigSchema, tuples);
+    TupleWriteSupport tupleWriter = newTupleWriter(redelmSchema, pigSchemaString, recordConsumer);
+    for (Tuple tuple : input) {
+      logger.debug(tuple);
+      tupleWriter.write(tuple);
+    }
 
-    for (Tuple t : tuples) {
-      logger.debug(t);
+    assertEquals(input.size(), tuples.size());
+    for (int i = 0; i < input.size(); i++) {
+      Tuple in = input.get(i);
+      Tuple out = tuples.get(i);
+      assertEquals(in.toString(), out.toString());
+    }
+
+  }
+
+  private void testFromGroups(String pigSchemaString, List<Group> input) throws ParserException {
+    List<Tuple> tuples = new ArrayList<Tuple>();
+    Schema pigSchema = Utils.getSchemaFromString(pigSchemaString);
+    MessageType schema = getMessageType(pigSchemaString);
+    GroupWriter groupWriter = new GroupWriter(newPigRecordConsumer(schema, pigSchema, tuples), schema);
+
+    for (Group group : input) {
+      groupWriter.write(group);
     }
 
     List<Group> groups = new ArrayList<Group>();
-    TupleWriteSupport tupleWriter = new TupleWriteSupport();
-    tupleWriter.initForWrite(new RecordConsumerWrapper(new GroupRecordConsumer(new SimpleGroupFactory(redelmSchema), groups)), redelmSchema, Lists.<MetaDataBlock>newArrayList());
+    TupleWriteSupport tupleWriter = newTupleWriter(schema, pigSchemaString, new GroupRecordConsumer(new SimpleGroupFactory(schema), groups));
     for (Tuple t : tuples) {
       logger.debug(t);
       tupleWriter.write(t);
     }
-    assertEquals(g.toString(), groups.get(0).toString());
+
+    assertEquals(input.size(), groups.size());
+    for (int i = 0; i < input.size(); i++) {
+      Group in = input.get(i);
+      Group out = groups.get(i);
+      assertEquals(in.toString(), out.toString());
+    }
+  }
+
+  private TupleWriteSupport newTupleWriter(MessageType redelmSchema, String pigSchemaString, RecordConsumer recordConsumer) {
+    TupleWriteSupport tupleWriter = new TupleWriteSupport();
+    tupleWriter.initForWrite(
+        wrap(recordConsumer,redelmSchema),
+        redelmSchema,
+        Arrays.asList(new PigMetaData(pigSchemaString).toMetaDataBlock())
+        );
+    return tupleWriter;
+  }
+
+  private RecordConsumer wrap(RecordConsumer recordConsumer, MessageType redelmSchema) {
+    return new RecordConsumerWrapper(new ValidatingRecordConsumer(recordConsumer, redelmSchema));
+  }
+
+  private RecordConsumer newPigRecordConsumer(MessageType redelmSchema, Schema pigSchema, List<Tuple> tuples) {
+    return wrap(new TupleRecordConsumer(redelmSchema, pigSchema, tuples), redelmSchema);
+  }
+
+  private MessageType getMessageType(String pigSchemaString) throws ParserException {
+    Schema pigSchema = Utils.getSchemaFromString(pigSchemaString);
+    return new PigSchemaConverter().convert(pigSchema);
   }
 
 }

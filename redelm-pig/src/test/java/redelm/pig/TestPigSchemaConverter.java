@@ -26,20 +26,69 @@ import redelm.schema.MessageType;
 
 public class TestPigSchemaConverter {
 
-  @Test
-  public void test() throws Exception {
+  private void testConversion(String pigSchemaString, String redelmSchemaString) throws Exception {
     PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
-    Schema pigSchema = Utils.getSchemaFromString("a:chararray, b:{t:(c:chararray, d:chararray)}");
+    Schema pigSchema = Utils.getSchemaFromString(pigSchemaString);
     MessageType schema = pigSchemaConverter.convert(pigSchema);
-    String expected = "message pig_schema {\n" +
-                      "  optional string a;\n" +
-                      "  repeated group b_t {\n" +
-                      "    optional string c;\n" +
-                      "    optional string d;\n" +
-                      "  }\n" +
-                      "}\n";
-    MessageType expectedMT = MessageTypeParser.parseMessageType(expected);
-    assertEquals(expectedMT, schema);
-    assertEquals(expected, schema.toString());
+    MessageType expectedMT = MessageTypeParser.parseMessageType(redelmSchemaString);
+    assertEquals("converting "+pigSchemaString+" to "+redelmSchemaString, expectedMT, schema);
+  }
+
+  @Test
+  public void testTupleBag() throws Exception {
+    testConversion(
+        "a:chararray, b:{t:(c:chararray, d:chararray)}",
+        "message pig_schema {\n" +
+        "  optional string a;\n" +
+        "  optional group b {\n" +
+        "    repeated group t {\n" +
+        "      optional string c;\n" +
+        "      optional string d;\n" +
+        "    }\n" +
+        "  }\n" +
+        "}\n");
+  }
+
+  @Test
+  public void testTupleBagWithAnonymousInnerField() throws Exception {
+    testConversion(
+        "a:chararray, b:{(c:chararray, d:chararray)}",
+        "message pig_schema {\n" +
+        "  optional string a;\n" +
+        "  optional group b {\n" +
+        "    repeated group bag {\n" + // the inner field in the bag is called "bag"
+        "      optional string c;\n" +
+        "      optional string d;\n" +
+        "    }\n" +
+        "  }\n" +
+        "}\n");
+  }
+
+  @Test
+  public void testMap() throws Exception {
+    testConversion(
+        "a:chararray, b:[(c:chararray, d:chararray)]",
+        "message pig_schema {\n" +
+        "  optional string a;\n" +
+        "  optional group b {\n" +
+        "    repeated group map {\n" +
+        "      required string key;\n" +
+        "      optional group value {\n" +
+        "        optional string c;\n" +
+        "        optional string d;\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}\n");
+  }
+
+  @Test
+  public void testAnnonymousField() throws Exception {
+    testConversion(
+        "a:chararray, int",
+        "message pig_schema {\n" +
+        "  optional string a;\n" +
+        "  optional int32 val_0;\n" +
+        "}\n");
   }
 }

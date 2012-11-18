@@ -33,10 +33,9 @@ import redelm.schema.Type.Repetition;
  *
  * Converts a Pig Schema into a RedElm schema
  *
- * Bags are converted into repeated fields
- * Map are converted into repeated groups of key/values
- *
- * TODO: add an optional group containing the repeated field for bags so that null != empty
+ * Bags are converted into an optional group containing one repeated group field to preserve distinction between empty bag and null.
+ * Map are converted into an optional group containing one repeated group field of (key, value).
+ * anonymous fields are named field_{index}. (apparently pig already gives them an alias val_{int}, so this never happens)
  *
  * @author Julien Le Dem
  *
@@ -56,36 +55,37 @@ public class PigSchemaConverter {
     List<FieldSchema> fields = pigSchema.getFields();
     Type[] types = new Type[fields.size()];
     for (int i = 0; i < types.length; i++) {
-      types[i] = convert(fields.get(i));
+      types[i] = convert(fields.get(i), i);
     }
     return types;
   }
 
-  private Type convert(FieldSchema fieldSchema) {
+  private Type convert(FieldSchema fieldSchema, int index) {
     try {
+      String name = name(fieldSchema.alias, "field_"+index);
       switch (fieldSchema.type) {
       case DataType.BAG:
-        return convertTuple(fieldSchema.alias, fieldSchema.schema.getField(0), Repetition.REPEATED);
+        return convertBag(name, fieldSchema);
       case DataType.TUPLE:
-        return convertTuple(fieldSchema.alias, fieldSchema, Repetition.OPTIONAL);
+        return convertTuple(name, fieldSchema, Repetition.OPTIONAL);
       case DataType.MAP:
-        return convertMap(fieldSchema);
+        return convertMap(name, fieldSchema);
       case DataType.BOOLEAN:
-        return primitive(Primitive.BOOLEAN, fieldSchema.alias);
+        return primitive(name, Primitive.BOOLEAN);
       case DataType.CHARARRAY:
-        return primitive(Primitive.STRING, fieldSchema.alias);
+        return primitive(name, Primitive.STRING);
       case DataType.INTEGER:
-        return primitive(Primitive.INT32, fieldSchema.alias);
+        return primitive(name, Primitive.INT32);
       case DataType.LONG:
-        return primitive(Primitive.INT64, fieldSchema.alias);
+        return primitive(name, Primitive.INT64);
       case DataType.FLOAT:
-        return primitive(Primitive.FLOAT, fieldSchema.alias);
+        return primitive(name, Primitive.FLOAT);
       case DataType.DOUBLE:
-        return primitive(Primitive.DOUBLE, fieldSchema.alias);
+        return primitive(name, Primitive.DOUBLE);
       case DataType.DATETIME:
         throw new UnsupportedOperationException();
       case DataType.BYTEARRAY:
-        return primitive(Primitive.BINARY, fieldSchema.alias);
+        return primitive(name, Primitive.BINARY);
       default:
         throw new RuntimeException("Unknown type "+fieldSchema.type+" "+DataType.findTypeName(fieldSchema.type));
       }
@@ -96,29 +96,55 @@ public class PigSchemaConverter {
     }
   }
 
-  private Type primitive(Primitive primitive, String name) {
+  /**
+   *
+   * @param name
+   * @param fieldSchema
+   * @return an optional group containing one repeated group field
+   * @throws FrontendException
+   */
+  private GroupType convertBag(String name, FieldSchema fieldSchema) throws FrontendException {
+    FieldSchema innerField = fieldSchema.schema.getField(0);
+    return listWrapper(
+        name,
+        convertTuple(name(innerField.alias, "bag"), innerField, Repetition.REPEATED));
+  }
+
+  private String name(String fieldAlias, String defaultName) {
+    return fieldAlias == null ? defaultName : fieldAlias;
+  }
+
+  private PrimitiveType primitive(String name, Primitive primitive) {
     return new PrimitiveType(Repetition.OPTIONAL, primitive, name);
   }
 
-  private Type convertMap(FieldSchema fieldSchema) throws FrontendException {
-    Type[] types = new Type[2];
-    types[0] = new PrimitiveType(Repetition.REQUIRED, Primitive.STRING, "key");
-    types[1] = convertTuple(fieldSchema.alias, fieldSchema.schema.getField(0), Repetition.REQUIRED);
-    return new GroupType(Repetition.REPEATED, fieldSchema.alias, types);
+  /**
+   * to preserve the difference between empty list and null
+   * @param alias
+   * @param groupType
+   * @return an optional group
+   */
+  private GroupType listWrapper(String alias, GroupType groupType) {
+    return new GroupType(Repetition.OPTIONAL, alias, groupType);
   }
 
-  private Type convertTuple(String alias, FieldSchema field, Repetition repetition) {
-    String name;
-    if (alias == null) {
-      name = field.alias;
-    } else if (field.alias == null) {
-      name = alias;
-    } else if (alias.equals(field.alias)) {
-      name = alias;
-    } else  {
-      name = alias + "_" + field.alias;
-    }
-    return new GroupType(repetition, name, convertTypes(field.schema));
+  /**
+   *
+   * @param alias
+   * @param fieldSchema
+   * @return an optional group containing one repeated group field (key, value)
+   * @throws FrontendException
+   */
+  private GroupType convertMap(String alias, FieldSchema fieldSchema) throws FrontendException {
+    Type[] types = new Type[2];
+    types[0] = new PrimitiveType(Repetition.REQUIRED, Primitive.STRING, "key");
+    FieldSchema innerField = fieldSchema.schema.getField(0);
+    types[1] = convertTuple("value", innerField, Repetition.OPTIONAL);
+    return listWrapper(alias, new GroupType(Repetition.REPEATED, name(innerField.alias, "map"), types));
+  }
+
+  private GroupType convertTuple(String alias, FieldSchema field, Repetition repetition) {
+    return new GroupType(repetition, alias, convertTypes(field.schema));
   }
 
 }

@@ -15,10 +15,13 @@
  */
 package redelm.pig;
 
+import static redelm.schema.Type.Repetition.REPEATED;
+
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 import redelm.Log;
@@ -99,76 +102,89 @@ public class TupleRecordConsumer extends RecordConsumer {
   public void startGroup() {
     try {
       Type fieldType = types.peek().asGroupType().getType(fields.peek());
-
       FieldSchema fieldSchema = getPigChildSchema();
-      Tuple newTuple = tf.newTuple(fieldType.asGroupType().getFieldCount());
       types.push(fieldType);
       pigTypes.push(fieldSchema);
-      groups.push(newTuple);
+      switch (fieldSchema.type) {
+        case DataType.BAG:
+          groups.peek().set(fields.peek(), bf.newDefaultBag());
+          break;
+        case DataType.MAP:
+          groups.peek().set(fields.peek(), new HashMap<String, Object>());
+          break;
+        default:
+          Tuple newTuple = tf.newTuple(fieldType.asGroupType().getFieldCount());
+          groups.push(newTuple);
+      }
     } catch (Exception e) {
       throw new RuntimeException("error "+e.toString()+"\ntype: "+types.peek()+"\npig type: "+pigTypes.peek(), e);
     }
   }
 
-  private FieldSchema getPigChildSchema() throws FrontendException {
+  private FieldSchema getPigChildSchema() {
     FieldSchema fieldSchema;
-    FieldSchema currentPigType = pigTypes.peek();
+    Iterator<FieldSchema> it = pigTypes.iterator();
+    FieldSchema currentPigType = it.next();
+    FieldSchema previousPigType = it.hasNext() ? it.next() : null;
     int fieldIndex = fields.peek();
-    if (currentPigType.type == DataType.BAG) {
-      if (DEBUG) LOG.debug("skipping Bag of : " + currentPigType.schema);
-      fieldSchema = currentPigType.schema.getField(0).schema.getField(fieldIndex);
-    } else if (currentPigType.type == DataType.MAP) {
-      if (DEBUG) LOG.debug("skipping Map of : " + currentPigType.schema);
-      if (fieldIndex == 0) {
-        fieldSchema = new FieldSchema("key", DataType.CHARARRAY);
+    try {
+      if (previousPigType!=null && previousPigType.type == DataType.MAP) {
+        if (DEBUG) LOG.debug("handling Map of : " + currentPigType);
+        if (fieldIndex == 0) {
+          fieldSchema = new FieldSchema("key", DataType.CHARARRAY);
+        } else if (fieldIndex == 1) {
+          fieldSchema = currentPigType;
+        } else {
+          throw new RuntimeException("can't access field" + fieldIndex + " in map entry " + previousPigType);
+        }
       } else {
-        fieldSchema = currentPigType.schema.getField(0);
+        fieldSchema = currentPigType.schema.getField(fieldIndex);
       }
-    } else {
-      fieldSchema = currentPigType.schema.getField(fieldIndex);
+    } catch (Exception e) {
+      throw new RuntimeException(e.getMessage()+" currentPigType: "+currentPigType.type+" " +currentPigType + " at "+fieldIndex,e);
     }
     return fieldSchema;
   }
 
   @Override
   public void endGroup() {
-    types.pop();
-    pigTypes.pop();
-    setCurrentField(groups.pop());
+    Type type = types.pop();
+    FieldSchema fieldSchema = pigTypes.pop();
+    switch (fieldSchema.type) {
+    case DataType.BAG:
+    case DataType.MAP:
+      if (DEBUG) LOG.debug("not poping the value");
+      break;
+    default:
+      setCurrentField(groups.pop());
+    }
   }
 
   private void setCurrentField(Object value) {
     try {
       Tuple parent = groups.peek();
       GroupType type = types.peek().asGroupType();
-      int fieldIndex = fields.peek();
+      Iterator<Integer> it = fields.iterator();
+      int fieldIndex = it.next();
+      int previousFieldIndex = it.hasNext() ? it.next() : -1;
+      FieldSchema pigSchema = pigTypes.peek();
       FieldSchema pigChildSchema = getPigChildSchema();
-      if (type.getType(fieldIndex).getRepetition() == Repetition.REPEATED) {
-        switch (pigChildSchema.type) {
-        case DataType.BAG:
-          DataBag bag = (DataBag)parent.get(fieldIndex);
-          if (bag == null) {
-            bag = bf.newDefaultBag();
-            parent.set(fieldIndex, bag);
-          }
+      if (type.getType(fieldIndex).getRepetition() == REPEATED) {
+        Object repeated = parent.get(previousFieldIndex);
+        if (repeated instanceof DataBag) {
+          DataBag bag = (DataBag) repeated;
           if (value instanceof Tuple) {
             bag.add((Tuple)value);
           } else {
             bag.add(tf.newTuple(value));
           }
-          break;
-        case DataType.MAP:
+        } else if (repeated instanceof Map) {
           @SuppressWarnings("unchecked") // I know
-          Map<String, Object> map = (Map<String, Object>)parent.get(fieldIndex);
-          if (map == null) {
-            map = new HashMap<String, Object>();
-            parent.set(fieldIndex, map);
-          }
+          Map<String, Object> map = (Map<String, Object>)repeated;
           Tuple t = (Tuple)value;
           map.put((String)t.get(0), t.get(1));
-          break;
-        default:
-          throw new RuntimeException("unsupported repeated field "+pigChildSchema+" for "+type.getType(fieldIndex));
+        } else {
+          throw new RuntimeException("Unsupported repeated field " + repeated.getClass().getName() + " " + repeated);
         }
       } else {
         parent.set(fieldIndex, value);

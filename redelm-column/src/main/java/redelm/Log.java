@@ -31,6 +31,10 @@ import java.util.logging.StreamHandler;
  * Adds compile time log level.
  * The compiler removes completely if statements that reference to a false constant
  *
+ * <code>
+ *   if (DEBUG) LOG.debug("removed by the compiler if DEBUG is a false constant")
+ * <code>
+ *
  * @author Julien Le Dem
  *
  */
