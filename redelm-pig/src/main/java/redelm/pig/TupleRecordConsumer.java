@@ -29,7 +29,6 @@ import redelm.io.RecordConsumer;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.Type;
-import redelm.schema.Type.Repetition;
 
 import org.apache.pig.data.BagFactory;
 import org.apache.pig.data.DataBag;
@@ -148,7 +147,7 @@ public class TupleRecordConsumer extends RecordConsumer {
 
   @Override
   public void endGroup() {
-    Type type = types.pop();
+    types.pop();
     FieldSchema fieldSchema = pigTypes.pop();
     switch (fieldSchema.type) {
     case DataType.BAG:
@@ -167,8 +166,6 @@ public class TupleRecordConsumer extends RecordConsumer {
       Iterator<Integer> it = fields.iterator();
       int fieldIndex = it.next();
       int previousFieldIndex = it.hasNext() ? it.next() : -1;
-      FieldSchema pigSchema = pigTypes.peek();
-      FieldSchema pigChildSchema = getPigChildSchema();
       if (type.getType(fieldIndex).getRepetition() == REPEATED) {
         Object repeated = parent.get(previousFieldIndex);
         if (repeated instanceof DataBag) {
