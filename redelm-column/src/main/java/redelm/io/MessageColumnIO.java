@@ -43,179 +43,180 @@ public class MessageColumnIO extends GroupColumnIO {
     return new RecordReader(this, leaves);
   }
 
-  public RecordConsumer getRecordWriter() {
-    return new RecordConsumer() {
+  private class MessageColumnIORecordConsumer extends RecordConsumer {
+    ColumnIO currentColumnIO;
+    int currentLevel = 0;
+    int[] currentIndex = new int[16];
+    int[] r = new int[16];
 
-      ColumnIO currentColumnIO;
-      int currentLevel = 0;
-      int[] currentIndex = new int[16];
-      int[] r = new int[16];
-
-      public void printState() {
-        log(currentLevel+", "+currentIndex[currentLevel]+": "+Arrays.toString(currentColumnIO.getFieldPath())+" r:"+r[currentLevel]);
-        if (r[currentLevel] > currentColumnIO.getRepetitionLevel()) {
-          // sanity check
-          throw new RuntimeException(r[currentLevel]+"(r) > "+currentColumnIO.getRepetitionLevel()+" ( schema r)");
-        }
+    public void printState() {
+      log(currentLevel+", "+currentIndex[currentLevel]+": "+Arrays.toString(currentColumnIO.getFieldPath())+" r:"+r[currentLevel]);
+      if (r[currentLevel] > currentColumnIO.getRepetitionLevel()) {
+        // sanity check
+        throw new RuntimeException(r[currentLevel]+"(r) > "+currentColumnIO.getRepetitionLevel()+" ( schema r)");
       }
+    }
 
-      private void log(Object m) {
-        String indent = "";
-        for (int i = 0; i<currentLevel; ++i) {
-          indent += "  ";
-        }
-        logger.debug(indent + m);
+    private void log(Object m) {
+      String indent = "";
+      for (int i = 0; i<currentLevel; ++i) {
+        indent += "  ";
       }
+      logger.debug(indent + m);
+    }
 
-      @Override
-      public void startMessage() {
-        if (DEBUG) log("< MESSAGE START >");
-        currentColumnIO = MessageColumnIO.this;
-        r[0] = 0;
-        currentIndex[0] = 0;
+    @Override
+    public void startMessage() {
+      if (DEBUG) log("< MESSAGE START >");
+      currentColumnIO = MessageColumnIO.this;
+      r[0] = 0;
+      currentIndex[0] = 0;
+      if (DEBUG) printState();
+    }
+
+    @Override
+    public void endMessage() {
+      writeNullForMissingFields(((GroupColumnIO)currentColumnIO).getChildrenCount() - 1);
+      if (DEBUG) log("< MESSAGE END >");
+      if (DEBUG) printState();
+    }
+
+    @Override
+    public void startField(String field, int index) {
+      try {
+        if (DEBUG) log("startField("+field+", "+index+")");
+        writeNullForMissingFields(index - 1);
+        currentColumnIO = ((GroupColumnIO)currentColumnIO).getChild(index);
+        currentIndex[currentLevel] = index;
         if (DEBUG) printState();
+      } catch (RuntimeException e) {
+        throw new RuntimeException("error starting field " + field + " at " + index, e);
       }
+    }
 
-      @Override
-      public void endMessage() {
-        writeNullForMissingFields(((GroupColumnIO)currentColumnIO).getChildrenCount() - 1);
-        if (DEBUG) log("< MESSAGE END >");
-        if (DEBUG) printState();
-      }
-
-      @Override
-      public void startField(String field, int index) {
+    private void writeNullForMissingFields(final int to) {
+      final int from = currentIndex[currentLevel];
+      for (;currentIndex[currentLevel]<=to; ++currentIndex[currentLevel]) {
         try {
-          if (DEBUG) log("startField("+field+", "+index+")");
-          writeNullForMissingFields(index - 1);
-          currentColumnIO = ((GroupColumnIO)currentColumnIO).getChild(index);
-          currentIndex[currentLevel] = index;
-          if (DEBUG) printState();
+          ColumnIO undefinedField = ((GroupColumnIO)currentColumnIO).getChild(currentIndex[currentLevel]);
+          int d = currentColumnIO.getDefinitionLevel();
+          if (DEBUG) log(Arrays.toString(undefinedField.getFieldPath())+".writeNull("+r[currentLevel]+","+d+")");
+          undefinedField.writeNull(r[currentLevel], d);
         } catch (RuntimeException e) {
-          throw new RuntimeException("error starting field " + field + " at " + index, e);
+          throw new RuntimeException("error while writing nulls from " + from + " to " + to + ". current index: "+currentIndex[currentLevel], e);
         }
       }
+    }
 
-      private void writeNullForMissingFields(final int to) {
-        final int from = currentIndex[currentLevel];
-        for (;currentIndex[currentLevel]<=to; ++currentIndex[currentLevel]) {
-          try {
-            ColumnIO undefinedField = ((GroupColumnIO)currentColumnIO).getChild(currentIndex[currentLevel]);
-            int d = currentColumnIO.getDefinitionLevel();
-            if (DEBUG) log(Arrays.toString(undefinedField.getFieldPath())+".writeNull("+r[currentLevel]+","+d+")");
-            undefinedField.writeNull(r[currentLevel], d);
-          } catch (RuntimeException e) {
-            throw new RuntimeException("error while writing nulls from " + from + " to " + to + ". current index: "+currentIndex[currentLevel], e);
-          }
-        }
-      }
+    private void setRepetitionLevel() {
+      r[currentLevel] = currentColumnIO.getRepetitionLevel();
+      if (DEBUG) log("r: "+r[currentLevel]);
+    }
 
-      private void setRepetitionLevel() {
-        r[currentLevel] = currentColumnIO.getRepetitionLevel();
-        if (DEBUG) log("r: "+r[currentLevel]);
-      }
+    @Override
+    public void endField(String field, int index) {
+      if (DEBUG) log("endField("+field+", "+index+")");
+      currentColumnIO = currentColumnIO.getParent();
 
-      @Override
-      public void endField(String field, int index) {
-        if (DEBUG) log("endField("+field+", "+index+")");
-        currentColumnIO = currentColumnIO.getParent();
+      currentIndex[currentLevel] = index + 1;
 
-        currentIndex[currentLevel] = index + 1;
+      r[currentLevel] = currentLevel == 0 ? 0 : r[currentLevel - 1];
 
-        r[currentLevel] = currentLevel == 0 ? 0 : r[currentLevel - 1];
+      if (DEBUG) printState();
+    }
 
-        if (DEBUG) printState();
-      }
+    @Override
+    public void startGroup() {
+      if (DEBUG) log("startGroup()");
 
-      @Override
-      public void startGroup() {
-        if (DEBUG) log("startGroup()");
+      ++ currentLevel;
+      r[currentLevel] = r[currentLevel - 1];
 
-        ++ currentLevel;
-        r[currentLevel] = r[currentLevel - 1];
+      currentIndex[currentLevel] = 0;
+      if (DEBUG) printState();
+    }
 
-        currentIndex[currentLevel] = 0;
-        if (DEBUG) printState();
-      }
+    @Override
+    public void endGroup() {
+      if (DEBUG) log("endGroup()");
+      int lastIndex = ((GroupColumnIO)currentColumnIO).getChildrenCount() - 1;
+      writeNullForMissingFields(lastIndex);
 
-      @Override
-      public void endGroup() {
-        if (DEBUG) log("endGroup()");
-        int lastIndex = ((GroupColumnIO)currentColumnIO).getChildrenCount() - 1;
-        writeNullForMissingFields(lastIndex);
+      -- currentLevel;
 
-        -- currentLevel;
+      setRepetitionLevel();
+      if (DEBUG) printState();
+    }
 
-        setRepetitionLevel();
-        if (DEBUG) printState();
-      }
+    @Override
+    public void addInteger(int value) {
+      if (DEBUG) log("addInt("+value+")");
 
-      @Override
-      public void addInteger(int value) {
-        if (DEBUG) log("addInt("+value+")");
+      ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
-        ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
+      setRepetitionLevel();
+      if (DEBUG) printState();
+    }
 
-        setRepetitionLevel();
-        if (DEBUG) printState();
-      }
+    @Override
+    public void addLong(long value) {
+      if (DEBUG) log("addLong("+value+")");
 
-      @Override
-      public void addLong(long value) {
-        if (DEBUG) log("addLong("+value+")");
+      ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
-        ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
+      setRepetitionLevel();
+      if (DEBUG) printState();
+    }
 
-        setRepetitionLevel();
-        if (DEBUG) printState();
-      }
+    @Override
+    public void addString(String value) {
+      if (DEBUG) log("addString("+value+")");
 
-      @Override
-      public void addString(String value) {
-        if (DEBUG) log("addString("+value+")");
+      ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
-        ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
+      setRepetitionLevel();
+      if (DEBUG) printState();
+    }
 
-        setRepetitionLevel();
-        if (DEBUG) printState();
-      }
+    @Override
+    public void addBoolean(boolean value) {
+      if (DEBUG) log("addBoolean("+value+")");
+      ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
-      @Override
-      public void addBoolean(boolean value) {
-        if (DEBUG) log("addBoolean("+value+")");
-        ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
+      setRepetitionLevel();
+      if (DEBUG) printState();
+    }
 
-        setRepetitionLevel();
-        if (DEBUG) printState();
-      }
+    @Override
+    public void addBinary(byte[] value) {
+      if (DEBUG) log("addBinary("+value+")");
+      ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
-      @Override
-      public void addBinary(byte[] value) {
-        if (DEBUG) log("addBinary("+value+")");
-        ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
+      setRepetitionLevel();
+      if (DEBUG) printState();
+    }
 
-        setRepetitionLevel();
-        if (DEBUG) printState();
-      }
+    @Override
+    public void addFloat(float value) {
+      if (DEBUG) log("addFloat("+value+")");
+      ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
-      @Override
-      public void addFloat(float value) {
-        if (DEBUG) log("addFloat("+value+")");
-        ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
+      setRepetitionLevel();
+      if (DEBUG) printState();
+    }
 
-        setRepetitionLevel();
-        if (DEBUG) printState();
-      }
+    @Override
+    public void addDouble(double value) {
+      if (DEBUG) log("addDouble("+value+")");
+      ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
-      @Override
-      public void addDouble(double value) {
-        if (DEBUG) log("addDouble("+value+")");
-        ((PrimitiveColumnIO)currentColumnIO).getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
+      setRepetitionLevel();
+      if (DEBUG) printState();
+    }
+  }
 
-        setRepetitionLevel();
-        if (DEBUG) printState();
-      }
-      };
+  public RecordConsumer getRecordWriter() {
+    return new MessageColumnIORecordConsumer();
   }
 
   void setLevels(ColumnsStore columns) {

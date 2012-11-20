@@ -15,11 +15,11 @@
  */
 package redelm.column.primitive;
 
+import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
-import redelm.column.BytesOutput;
 import redelm.column.RedelmByteArrayOutputStream;
 
 /**
@@ -60,7 +60,7 @@ public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
   }
 
   @Override
-  public final void writeInt(int v) {
+  public final void writeInteger(int v) {
     try {
       out.writeInt(v);
     } catch (IOException e) {
@@ -122,7 +122,7 @@ public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
   }
 
   @Override
-  public void writeData(BytesOutput output) throws IOException {
+  public void writeData(DataOutput output) throws IOException {
     arrayOut.writeTo(output);
   }
 

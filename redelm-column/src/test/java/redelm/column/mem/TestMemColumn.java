@@ -15,20 +15,23 @@
  */
 package redelm.column.mem;
 
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
+
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnReader;
 import redelm.column.ColumnWriter;
-import redelm.schema.PrimitiveType.Primitive;
-
-import org.junit.Assert;
-import org.junit.Test;
+import redelm.parser.MessageTypeParser;
+import redelm.schema.MessageType;
 
 public class TestMemColumn {
   @Test
   public void testMemColumn() throws Exception {
     System.out.println("<<<");
-    MemColumnsStore memColumnsStore = new MemColumnsStore(1024);
-    ColumnDescriptor path = new ColumnDescriptor(new String[]{"foo", "bar"}, Primitive.INT64);
+    MessageType mt = MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
+    MemColumnsStore memColumnsStore = new MemColumnsStore(1024, mt);
+    ColumnDescriptor path = mt.getColumnDescription(new String[]{"foo", "bar"});
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
     columnWriter.write(42l, 0, 0);
     memColumnsStore.flip();
@@ -36,9 +39,9 @@ public class TestMemColumn {
     System.out.println(memColumnsStore.toString());
     System.out.println("value, r, d");
     while (!columnReader.isFullyConsumed()) {
-      Assert.assertEquals(columnReader.getCurrentRepetitionLevel(), 0);
-      Assert.assertEquals(columnReader.getCurrentDefinitionLevel(), 0);
-      Assert.assertEquals(columnReader.getLong(), 42);
+      assertEquals(columnReader.getCurrentRepetitionLevel(), 0);
+      assertEquals(columnReader.getCurrentDefinitionLevel(), 0);
+      assertEquals(columnReader.getLong(), 42);
       System.out.println(columnReader.getLong()
           +", "+columnReader.getCurrentRepetitionLevel()
           +", "+columnReader.getCurrentDefinitionLevel());
@@ -50,8 +53,9 @@ public class TestMemColumn {
   @Test
   public void testMemColumnString() throws Exception {
     System.out.println("<<<");
-    MemColumnsStore memColumnsStore = new MemColumnsStore(1024);
-    ColumnDescriptor path = new ColumnDescriptor(new String[]{"foo", "bar"}, Primitive.STRING);
+    MessageType mt = MessageTypeParser.parseMessageType("message msg { required group foo { required string bar; } }");
+    MemColumnsStore memColumnsStore = new MemColumnsStore(1024, mt);
+    ColumnDescriptor path = mt.getColumnDescription(new String[]{"foo", "bar"});
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
     columnWriter.write("42", 0, 0);
     memColumnsStore.flip();
@@ -59,9 +63,9 @@ public class TestMemColumn {
     System.out.println(memColumnsStore.toString());
     System.out.println("value, r, d");
     while (!columnReader.isFullyConsumed()) {
-      Assert.assertEquals(columnReader.getCurrentRepetitionLevel(), 0);
-      Assert.assertEquals(columnReader.getCurrentDefinitionLevel(), 0);
-      Assert.assertEquals(columnReader.getString(), "42");
+      assertEquals(columnReader.getCurrentRepetitionLevel(), 0);
+      assertEquals(columnReader.getCurrentDefinitionLevel(), 0);
+      assertEquals(columnReader.getString(), "42");
       System.out.println(columnReader.getString()
           +", "+columnReader.getCurrentRepetitionLevel()
           +", "+columnReader.getCurrentDefinitionLevel());

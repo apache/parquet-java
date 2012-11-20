@@ -40,7 +40,7 @@ import redelm.schema.MessageType;
 public class PerfTest {
 
   public static void main(String[] args) {
-    MemColumnsStore columns = new MemColumnsStore(50*1024*1024);
+    MemColumnsStore columns = new MemColumnsStore(50*1024*1024, schema);
     write(columns);
     read(columns);
     System.out.println(columns.memSize()+" bytes used total");

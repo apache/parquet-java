@@ -33,16 +33,8 @@ import org.apache.hadoop.io.compress.GzipCodec;
 import org.junit.Test;
 
 import redelm.column.ColumnDescriptor;
-import redelm.hadoop.BlockData;
-import redelm.hadoop.ColumnData;
-import redelm.hadoop.RedelmMetaData;
-import redelm.hadoop.MetaDataBlock;
-import redelm.hadoop.PrintFooter;
-import redelm.hadoop.RedelmFileReader;
-import redelm.hadoop.RedelmFileWriter;
 import redelm.parser.MessageTypeParser;
 import redelm.schema.MessageType;
-import redelm.schema.PrimitiveType.Primitive;
 
 public class TestRedelmFileWriter {
 
@@ -59,9 +51,9 @@ public class TestRedelmFileWriter {
 
     MessageType schema = MessageTypeParser.parseMessageType("message m { required group a {required string b;} required group c { required int64 d; }}");
     String[] path1 = {"a", "b"};
-    ColumnDescriptor c1 = new ColumnDescriptor(path1 , Primitive.STRING);
+    ColumnDescriptor c1 = schema.getColumnDescription(path1);
     String[] path2 = {"c", "d"};
-    ColumnDescriptor c2 = new ColumnDescriptor(path2 , Primitive.INT64);
+    ColumnDescriptor c2 = schema.getColumnDescription(path2);
 
     byte[] bytes1 = { 0, 1, 2, 3};
     byte[] bytes2 = { 1, 2, 3, 4};
@@ -107,7 +99,6 @@ public class TestRedelmFileWriter {
     w.endColumn();
     w.endBlock();
     w.end(new ArrayList<MetaDataBlock>());
-
 
     FSDataInputStream fin = fileSystem.open(path);
 

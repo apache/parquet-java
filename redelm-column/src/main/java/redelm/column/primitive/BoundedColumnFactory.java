@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.column;
+package redelm.column.primitive;
 
-import java.io.IOException;
+public class BoundedColumnFactory {
+  public static PrimitiveColumnReader getBoundedReader(int bound) {
+    return bound == 0 ? new DevNullColumnReader() : new BoundedIntColumnReader(bound);
+  }
 
-abstract public class BytesOutput {
-
-  public abstract void write(byte[] bytes, int index, int length) throws IOException;
-
+  public static PrimitiveColumnWriter getBoundedWriter(int bound) {
+    return bound == 0 ? new DevNullColumnWriter() : new BoundedIntColumnWriter(bound);
+  }
 }

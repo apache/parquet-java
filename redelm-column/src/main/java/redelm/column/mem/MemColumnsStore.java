@@ -25,16 +25,19 @@ import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnReader;
 import redelm.column.ColumnWriter;
 import redelm.column.ColumnsStore;
+import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType.Primitive;
 
 public class MemColumnsStore extends ColumnsStore {
 
   Map<ColumnDescriptor, MemColumn> columns = new TreeMap<ColumnDescriptor, MemColumn>();
   private int initialColumnSize;
+  private MessageType schema;
 
-  public MemColumnsStore(int initialColumnSize) {
+  public MemColumnsStore(int initialColumnSize, MessageType schema) {
     super();
     this.initialColumnSize = initialColumnSize;
+    this.schema = schema;
   }
 
   public ColumnReader getColumnReader(ColumnDescriptor path) {
@@ -92,12 +95,13 @@ public class MemColumnsStore extends ColumnsStore {
   }
 
   public void setForRead(
-      String[] path, Primitive primitive,
+      String[] path, Primitive primitive, //TODO can eliminate the primitive?
       int recordCount,
-      byte[] repetitionLevels, byte[] definitionLevel, byte[] data) {
-    ColumnDescriptor descriptor = new ColumnDescriptor(path, primitive);
+      byte[] repetitionLevels,
+      byte[] definitionLevels, byte[] data) {
+    ColumnDescriptor descriptor = schema.getColumnDescription(path);
     MemColumn col = getColumn(descriptor);
-    col.setForRead(recordCount, repetitionLevels, definitionLevel, data);
+    col.setForRead(recordCount, repetitionLevels, definitionLevels, data);
     columns.put(descriptor, col);
   }
 

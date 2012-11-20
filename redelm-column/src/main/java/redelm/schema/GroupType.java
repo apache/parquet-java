@@ -182,4 +182,30 @@ public class GroupType extends Type {
           getFields().equals(groupType.getFields());
     }
   }
+
+  @Override
+  protected int getRepetitionLevel(String[] path, int i) {
+    int myVal = getRepetition() == Repetition.REPEATED ? 1 : 0;
+    if (i == path.length) {
+      return myVal;
+    }
+    return myVal + getType(path[i++]).getRepetitionLevel(path, i);
+  }
+
+  @Override
+  protected int getDefinitionLevel(String[] path, int i) {
+    int myVal = getRepetition() != Repetition.REQUIRED ? 1 : 0;
+    if (i == path.length) {
+      return myVal;
+    }
+    return myVal + getType(path[i++]).getDefinitionLevel(path, i);
+  }
+
+  @Override
+  protected Type getType(String[] path, int i) {
+    if (i == path.length) {
+      return this;
+    }
+    return getType(path[i++]).getType(path, i);
+  }
 }

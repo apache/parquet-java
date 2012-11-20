@@ -75,7 +75,7 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
 
   private void checkRead() throws IOException {
     if (columnsStore == null || columnsStore.isFullyConsumed()) {
-      columnsStore = new MemColumnsStore(0);
+      columnsStore = new MemColumnsStore(0, requestedSchema);
       BlockData readColumns = reader.readColumns();
       if (readColumns == null) {
         return;

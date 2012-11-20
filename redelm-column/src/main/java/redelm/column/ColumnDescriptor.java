@@ -23,15 +23,28 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
 
   private final String[] path;
   private final Primitive type;
+  private final int maxRep;
+  private final int maxDef;
 
-  public ColumnDescriptor(String[] path, Primitive type) {
+  //TODO see if we actually need the maxRep and maxDef here
+  public ColumnDescriptor(String[] path, Primitive type, int maxRep, int maxDef) {
     super();
     this.path = path;
     this.type = type;
+    this.maxRep = maxRep;
+    this.maxDef = maxDef;
   }
 
   public String[] getPath() {
     return path;
+  }
+
+  public int getRepetitionLevel() {
+    return maxRep;
+  }
+
+  public int getDefinitionLevel() {
+    return maxDef;
   }
 
   public Primitive getType() {
