@@ -35,7 +35,7 @@ import redelm.schema.Type.Repetition;
  *
  * Bags are converted into an optional group containing one repeated group field to preserve distinction between empty bag and null.
  * Map are converted into an optional group containing one repeated group field of (key, value).
- * anonymous fields are named field_{index}. (apparently pig already gives them an alias val_{int}, so this never happens)
+ * anonymous fields are named field_{index}. (in most cases pig already gives them an alias val_{int}, so this rarely happens)
  *
  * @author Julien Le Dem
  *
