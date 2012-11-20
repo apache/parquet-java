@@ -4,9 +4,16 @@ public abstract class Converter {
 
   private Converter parent;
 
+  Converter(Converter parent) {
+    super();
+    this.parent = parent;
+  }
+
   abstract public void start();
 
-  abstract public Converter end();
+  public Converter end() {
+    return parent;
+  }
 
   abstract public void startField(String field, int index);
 

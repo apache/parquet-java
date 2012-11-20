@@ -1,8 +1,15 @@
 package redelm.pig.converter;
 
+import redelm.schema.GroupType;
+import redelm.schema.Type;
+
 import org.apache.pig.backend.executionengine.ExecException;
+import org.apache.pig.data.DataType;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
+import org.apache.pig.impl.logicalLayer.FrontendException;
+import org.apache.pig.impl.logicalLayer.schema.Schema;
+import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
 public class TupleConverter extends Converter {
 
@@ -12,6 +19,29 @@ public class TupleConverter extends Converter {
   private int schemaSize;
   private int currentField;
   private Converter[] converters;
+
+  TupleConverter(GroupType redelmSchema, Schema pigSchema, Converter parent) throws FrontendException {
+    super(parent);
+    this.schemaSize = redelmSchema.getFieldCount();
+    this.converters = new Converter[this.schemaSize];
+    for (int i = 0; i < converters.length; i++) {
+      FieldSchema field = pigSchema.getField(i);
+      Type type = redelmSchema.getType(i);
+      switch (field.type) {
+      case DataType.BAG:
+        converters[i] = new BagConverter(type.asGroupType(), field, this);
+        break;
+      case DataType.MAP:
+        converters[i] = new MapConverter(type.asGroupType(), field, this);
+        break;
+      case DataType.TUPLE:
+        converters[i] = new TupleConverter(type.asGroupType(), field.schema, this);
+        break;
+      default:
+        converters[i] = null;
+      }
+    }
+  }
 
   @Override
   public Converter startGroup() {
@@ -27,10 +57,6 @@ public class TupleConverter extends Converter {
     }
   }
 
-  private Tuple getGroup() {
-    return currentTuple;
-  }
-
   @Override
   public void startField(String field, int index) {
     this.currentField = index;
@@ -44,16 +70,10 @@ public class TupleConverter extends Converter {
   @Override
   public void start() {
     currentTuple = TF.newTuple(schemaSize);
-
   }
 
   @Override
-  public Converter end() {
-    return getParent();
-  }
-
-  @Override
-  public Object get() {
+  public Tuple get() {
     return currentTuple;
   }
 

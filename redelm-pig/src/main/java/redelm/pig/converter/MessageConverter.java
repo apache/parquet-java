@@ -1,14 +1,23 @@
 package redelm.pig.converter;
 
+import java.util.List;
+
+import org.apache.pig.data.Tuple;
+import org.apache.pig.impl.logicalLayer.FrontendException;
+import org.apache.pig.impl.logicalLayer.schema.Schema;
+
 import redelm.io.RecordConsumer;
+import redelm.schema.MessageType;
 
 public class MessageConverter extends TupleConverter {
 
   private static final class TupleRecordConsumer extends RecordConsumer {
     private Converter currentConverter;
+    private final List<Tuple> destination;
 
-    public TupleRecordConsumer(MessageConverter messageConverter) {
+    public TupleRecordConsumer(MessageConverter messageConverter, List<Tuple> destination) {
       this.currentConverter = messageConverter;
+      this.destination = destination;
     }
 
     @Override
@@ -30,6 +39,7 @@ public class MessageConverter extends TupleConverter {
     @Override
     public void endMessage() {
       currentConverter.end();
+      destination.add((Tuple)currentConverter.get());
     }
 
     @Override
@@ -45,49 +55,45 @@ public class MessageConverter extends TupleConverter {
 
     @Override
     public void addString(String value) {
-      // TODO Auto-generated method stub
-
+      currentConverter.set(value);
     }
 
     @Override
     public void addLong(long value) {
-      // TODO Auto-generated method stub
-
+      currentConverter.set(value);
     }
 
     @Override
     public void addInteger(int value) {
-      // TODO Auto-generated method stub
-
+      currentConverter.set(value);
     }
 
     @Override
     public void addFloat(float value) {
-      // TODO Auto-generated method stub
-
+      currentConverter.set(value);
     }
 
     @Override
     public void addDouble(double value) {
-      // TODO Auto-generated method stub
-
+      currentConverter.set(value);
     }
 
     @Override
     public void addBoolean(boolean value) {
-      // TODO Auto-generated method stub
-
+      currentConverter.set(value);
     }
 
     @Override
     public void addBinary(byte[] value) {
-      // TODO Auto-generated method stub
-
+      currentConverter.set(value);
     }
   }
 
-  public RecordConsumer newRecordConsumer() {
-    return new TupleRecordConsumer(this);
+  public MessageConverter(MessageType redelmSchema, Schema pigSchema) throws FrontendException {
+    super(redelmSchema, pigSchema, null);
+  }
 
+  public RecordConsumer newRecordConsumer(List<Tuple> destination) {
+    return new TupleRecordConsumer(this, destination);
   }
 }

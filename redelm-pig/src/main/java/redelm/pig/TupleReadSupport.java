@@ -21,9 +21,11 @@ import redelm.hadoop.MetaDataBlock;
 import redelm.hadoop.ReadSupport;
 import redelm.io.RecordConsumer;
 import redelm.parser.MessageTypeParser;
+import redelm.pig.converter.MessageConverter;
 import redelm.schema.MessageType;
 
 import org.apache.pig.data.Tuple;
+import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
@@ -60,12 +62,21 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
    */
   @Override
   public RecordConsumer newRecordConsumer(List<Tuple> destination) {
-
     MessageType redelmSchema = MessageTypeParser.parseMessageType(requestedSchema);
-    return new TupleRecordConsumer(
-        redelmSchema,
-        pigSchema,
-        destination);
+    MessageConverter converter = newParsingTree(redelmSchema, pigSchema);
+    return converter.newRecordConsumer(destination);
+//    return new TupleRecordConsumer(
+//        redelmSchema,
+//        pigSchema,
+//        destination);
+  }
+
+  private MessageConverter newParsingTree(MessageType redelmSchema, Schema pigSchema) {
+    try {
+      return new MessageConverter(redelmSchema, pigSchema);
+    } catch (FrontendException e) {
+      throw new RuntimeException(e);
+    }
   }
 
 }

@@ -1,23 +1,25 @@
 package redelm.pig.converter;
 
-import org.apache.pig.data.BagFactory;
+import redelm.schema.GroupType;
+
 import org.apache.pig.data.DataBag;
-import org.apache.pig.data.Tuple;
+import org.apache.pig.data.NonSpillableDataBag;
+import org.apache.pig.impl.logicalLayer.FrontendException;
+import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
 public class BagConverter extends Converter {
-  private static final BagFactory BF = BagFactory.getInstance();
 
   private DataBag currentBag;
-  private Converter child;
+  private TupleConverter child;
 
-  @Override
-  public void start() {
-    currentBag = BF.newDefaultBag();
+  BagConverter(GroupType redelmSchema, FieldSchema pigSchema, Converter parent) throws FrontendException {
+    super(parent);
+    child = new TupleConverter(redelmSchema.getType(0).asGroupType(), pigSchema.schema.getField(0).schema, this);
   }
 
   @Override
-  public Converter end() {
-    return getParent();
+  public void start() {
+    currentBag = new NonSpillableDataBag();
   }
 
   @Override
@@ -37,11 +39,11 @@ public class BagConverter extends Converter {
 
   @Override
   public void endGroup() {
-    currentBag.add((Tuple)child.get());
+    currentBag.add(child.get());
   }
 
   @Override
-  public Object get() {
+  public DataBag get() {
     return currentBag;
   }
 
