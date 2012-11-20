@@ -15,12 +15,13 @@
  */
 package redelm.column.mem;
 
+import java.io.DataOutput;
 import java.io.IOException;
 
 import redelm.Log;
-import redelm.column.BytesOutput;
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnWriter;
+import redelm.column.primitive.BoundedColumnFactory;
 import redelm.column.primitive.PrimitiveColumnWriter;
 import redelm.column.primitive.SimplePrimitiveColumnWriter;
 
@@ -37,8 +38,8 @@ final class MemColumnWriter implements ColumnWriter {
   public MemColumnWriter(ColumnDescriptor path, int initialSize) {
     this.path = path;
     // 5% each for repetition and definition level
-    this.repetitionLevelColumn = new SimplePrimitiveColumnWriter(initialSize/20);
-    this.definitionLevelColumn = new SimplePrimitiveColumnWriter(initialSize/20);
+    repetitionLevelColumn = BoundedColumnFactory.getBoundedWriter(path.getRepetitionLevel());
+    definitionLevelColumn = BoundedColumnFactory.getBoundedWriter(path.getDefinitionLevel());
     // 90% for the data
     this.dataColumn = new SimplePrimitiveColumnWriter(initialSize*9/10);
   }
@@ -50,16 +51,16 @@ final class MemColumnWriter implements ColumnWriter {
   @Override
   public void writeNull(int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(null, repetitionLevel, definitionLevel);
-    repetitionLevelColumn.writeByte(repetitionLevel);
-    definitionLevelColumn.writeByte(definitionLevel);
+    repetitionLevelColumn.writeInteger(repetitionLevel);
+    definitionLevelColumn.writeInteger(definitionLevel);
     ++ valueCount;
   }
 
   @Override
   public void write(double value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevelColumn.writeByte(repetitionLevel);
-    definitionLevelColumn.writeByte(definitionLevel);
+    repetitionLevelColumn.writeInteger(repetitionLevel);
+    definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeDouble(value);
     ++ valueCount;
   }
@@ -67,8 +68,8 @@ final class MemColumnWriter implements ColumnWriter {
   @Override
   public void write(float value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevelColumn.writeByte(repetitionLevel);
-    definitionLevelColumn.writeByte(definitionLevel);
+    repetitionLevelColumn.writeInteger(repetitionLevel);
+    definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeFloat(value);
     ++ valueCount;
   }
@@ -76,8 +77,8 @@ final class MemColumnWriter implements ColumnWriter {
   @Override
   public void write(byte[] value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevelColumn.writeByte(repetitionLevel);
-    definitionLevelColumn.writeByte(definitionLevel);
+    repetitionLevelColumn.writeInteger(repetitionLevel);
+    definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeBytes(value);
     ++ valueCount;
   }
@@ -85,8 +86,8 @@ final class MemColumnWriter implements ColumnWriter {
   @Override
   public void write(boolean value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevelColumn.writeByte(repetitionLevel);
-    definitionLevelColumn.writeByte(definitionLevel);
+    repetitionLevelColumn.writeInteger(repetitionLevel);
+    definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeBoolean(value);
     ++ valueCount;
   }
@@ -94,8 +95,8 @@ final class MemColumnWriter implements ColumnWriter {
   @Override
   public void write(String value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevelColumn.writeByte(repetitionLevel);
-    definitionLevelColumn.writeByte(definitionLevel);
+    repetitionLevelColumn.writeInteger(repetitionLevel);
+    definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeString(value);
     ++ valueCount;
   }
@@ -103,33 +104,33 @@ final class MemColumnWriter implements ColumnWriter {
   @Override
   public void write(int value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevelColumn.writeByte(repetitionLevel);
-    definitionLevelColumn.writeByte(definitionLevel);
-    dataColumn.writeInt(value);
+    repetitionLevelColumn.writeInteger(repetitionLevel);
+    definitionLevelColumn.writeInteger(definitionLevel);
+    dataColumn.writeInteger(value);
     ++ valueCount;
   }
 
   @Override
   public void write(long value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevelColumn.writeByte(repetitionLevel);
-    definitionLevelColumn.writeByte(definitionLevel);
+    repetitionLevelColumn.writeInteger(repetitionLevel);
+    definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeLong(value);
     ++ valueCount;
   }
 
   @Override
-  public void writeRepetitionLevelColumn(BytesOutput out) throws IOException {
-    repetitionLevelColumn.writeData(out);
+  public void writeRepetitionLevelColumn(DataOutput dataOutputStream) throws IOException {
+    repetitionLevelColumn.writeData(dataOutputStream);
   }
 
   @Override
-  public void writeDefinitionLevelColumn(BytesOutput out) throws IOException {
+  public void writeDefinitionLevelColumn(DataOutput out) throws IOException {
     definitionLevelColumn.writeData(out);
   }
 
   @Override
-  public void writeDataColumn(BytesOutput out) throws IOException {
+  public void writeDataColumn(DataOutput out) throws IOException {
     dataColumn.writeData(out);
   }
 

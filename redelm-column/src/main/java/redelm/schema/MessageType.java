@@ -15,6 +15,9 @@
  */
 package redelm.schema;
 
+import redelm.column.ColumnDescriptor;
+import redelm.schema.PrimitiveType.Primitive;
+
 /**
  * The root of a schema
  *
@@ -51,5 +54,24 @@ public class MessageType extends GroupType {
     membersDisplayString(sb
         , "  ");
     sb.append("}\n");
+  }
+
+  public int getRepetitionLevel(String[] path) {
+    return getRepetitionLevel(path, 0) - 1;
+  }
+
+  public int getDefinitionLevel(String[] path) {
+    return getDefinitionLevel(path, 0) - 1;
+  }
+
+  public Type getType(String[] path) {
+    return getType(path, 0);
+  }
+
+  public ColumnDescriptor getColumnDescription(String[] path) {
+    int maxRep = getRepetitionLevel(path);
+    int maxDef = getDefinitionLevel(path);
+    Primitive type = getType(path).asPrimitiveType().getPrimitive();
+    return new ColumnDescriptor(path, type, maxRep, maxDef);
   }
 }

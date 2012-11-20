@@ -15,7 +15,11 @@
  */
 package redelm.column.primitive;
 
+import java.io.DataInputStream;
+import java.io.IOException;
+
 public abstract class PrimitiveColumnReader {
+  public abstract void readStripe(DataInputStream in) throws IOException;
 
   public boolean readBoolean() {
     throw new UnsupportedOperationException();
@@ -41,12 +45,11 @@ public abstract class PrimitiveColumnReader {
     throw new UnsupportedOperationException();
   }
 
-  public int readInt() {
+  public int readInteger() {
     throw new UnsupportedOperationException();
   }
 
   public long readLong() {
     throw new UnsupportedOperationException();
   }
-
 }

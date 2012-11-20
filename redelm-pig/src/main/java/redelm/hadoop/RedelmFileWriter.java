@@ -23,25 +23,22 @@ import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import redelm.Log;
-import redelm.column.BytesOutput;
-import redelm.column.ColumnDescriptor;
-import redelm.schema.MessageType;
-
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
-import org.apache.hadoop.util.ReflectionUtils;
+
+import redelm.Log;
+import redelm.column.ColumnDescriptor;
+import redelm.schema.MessageType;
 
 /**
  * Writes a RedElm file
  * @author Julien Le Dem
  *
  */
-public class RedelmFileWriter extends BytesOutput {
+public class RedelmFileWriter {
   public static final byte[] MAGIC = {82, 101, 100, 32, 69, 108, 109, 10}; // "Red Elm\n"
   public static final int CURRENT_VERSION = 1;
   private static final Log LOG = Log.getLog(RedelmFileWriter.class);

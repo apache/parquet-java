@@ -15,11 +15,12 @@
  */
 package redelm.column.mem;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
 import redelm.Log;
-import redelm.column.BytesOutput;
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnReader;
 import redelm.column.ColumnWriter;
@@ -58,7 +59,7 @@ public class MemColumn {
     case STRING:
       return new STRINGMemColumnReader(path);
     case BOOLEAN:
-      return new BOOLMemColumnReader(path);
+      return new BOOLEANMemColumnReader(path);
     case BINARY:
       return new BINARYMemColumnReader(path);
     case FLOAT:
@@ -82,21 +83,23 @@ public class MemColumn {
       try {
         memColumnReader = newMemColumnReader();
         memColumnReader.setValueCount(memColumnWriter.getValueCount());
-        memColumnWriter.writeRepetitionLevelColumn(new BytesOutput() {
-          public void write(byte[] bytes, int index, int length) throws IOException {
-            memColumnReader.initRepetitionLevelColumn(bytes, index, length);
-          }
-        });
-        memColumnWriter.writeDefinitionLevelColumn(new BytesOutput() {
-          public void write(byte[] bytes, int index, int length) throws IOException {
-            memColumnReader.initDefinitionLevelColumn(bytes, index, length);
-          }
-        });
-        memColumnWriter.writeDataColumn(new BytesOutput() {
-          public void write(byte[] bytes, int index, int length) throws IOException {
-            memColumnReader.initDataColumn(bytes, index, length);
-          }
-        });
+
+        //TODO we need a better pattern for moving the bytes around. As is, the bytes
+        // will be copied into the provided buffer, thus increasing the amount of memory.
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        memColumnWriter.writeRepetitionLevelColumn(new DataOutputStream(baos));
+        byte[] buf = baos.toByteArray();
+        memColumnReader.initRepetitionLevelColumn(buf, 0, buf.length);
+
+        baos = new ByteArrayOutputStream();
+        memColumnWriter.writeDefinitionLevelColumn(new DataOutputStream(baos));
+        buf = baos.toByteArray();
+        memColumnReader.initDefinitionLevelColumn(buf, 0, buf.length);
+
+        baos = new ByteArrayOutputStream();
+        memColumnWriter.writeDataColumn(new DataOutputStream(baos));
+        buf = baos.toByteArray();
+        memColumnReader.initDataColumn(buf, 0, buf.length);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -134,7 +137,7 @@ public class MemColumn {
 
     @Override
     protected void readCurrentValue() {
-        currentInt = dataColumn.readInt();
+        currentInt = dataColumn.readInteger();
     }
 
     @Override
@@ -219,10 +222,10 @@ public class MemColumn {
       return currentString;
     }
   }
-  private static final class BOOLMemColumnReader extends MemColumnReader {
+  private static final class BOOLEANMemColumnReader extends MemColumnReader {
     private boolean current;
 
-    public BOOLMemColumnReader(ColumnDescriptor path) {
+    public BOOLEANMemColumnReader(ColumnDescriptor path) {
       super(path);
     }
 
@@ -293,5 +296,4 @@ public class MemColumn {
       return String.valueOf(current);
     }
   }
-
 }

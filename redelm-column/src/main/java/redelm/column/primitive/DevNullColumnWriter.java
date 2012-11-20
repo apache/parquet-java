@@ -18,43 +18,54 @@ package redelm.column.primitive;
 import java.io.DataOutput;
 import java.io.IOException;
 
-public abstract class PrimitiveColumnWriter {
-
-  public abstract int getMemSize();
-
-  public abstract void writeData(DataOutput out) throws IOException;
-
-  public abstract void reset();
-
-  public void writeByte(int value) {
-    throw new UnsupportedOperationException();
+/**
+ * This is a special writer that doesn't write anything. The idea being that
+ * some columns will always be the same value, and this will capture that. An
+ * example is a schema with no repeated fields.
+ */
+public class DevNullColumnWriter extends PrimitiveColumnWriter {
+  @Override
+  public int getMemSize() {
+    return 0;
   }
 
-  public void writeBoolean(boolean v) {
-    throw new UnsupportedOperationException();
+  @Override
+  public void writeData(DataOutput out) throws IOException {
   }
 
-  public void writeBytes(byte[] v) {
-    throw new UnsupportedOperationException();
+  @Override
+  public void reset() {
   }
 
+  @Override
   public void writeInteger(int v) {
-    throw new UnsupportedOperationException();
   }
 
+  @Override
+  public void writeByte(int value) {
+  }
+
+  @Override
+  public void writeBoolean(boolean v) {
+  }
+
+  @Override
+  public void writeBytes(byte[] v) {
+  }
+
+  @Override
   public void writeLong(long v) {
-    throw new UnsupportedOperationException();
   }
 
+  @Override
   public void writeDouble(double v) {
-    throw new UnsupportedOperationException();
   }
 
+  @Override
   public void writeString(String str) {
-    throw new UnsupportedOperationException();
   }
 
+  @Override
   public void writeFloat(float v) {
-    throw new UnsupportedOperationException();
   }
 }

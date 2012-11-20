@@ -15,9 +15,14 @@
  */
 package redelm.hadoop;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+
+import org.apache.hadoop.mapreduce.RecordWriter;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnWriter;
@@ -26,9 +31,6 @@ import redelm.column.mem.MemColumnsStore;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
 import redelm.schema.MessageType;
-
-import org.apache.hadoop.mapreduce.RecordWriter;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 /**
  * Writes records to a Redelm file
@@ -72,7 +74,7 @@ public class RedelmRecordWriter<T> extends
 
   private void initStore() {
     // TODO: parameterize this
-    store = new MemColumnsStore(1024 * 1024 * 16);
+    store = new MemColumnsStore(1024 * 1024 * 16, schema);
     //
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema, store);
     writeSupport.initForWrite(columnIO.getRecordWriter(), schema, extraMetaData);
@@ -114,11 +116,20 @@ public class RedelmRecordWriter<T> extends
       ColumnWriter columnWriter = column.getColumnWriter();
       w.startColumn(descriptor, columnWriter.getValueCount());
       w.startRepetitionLevels();
-      columnWriter.writeRepetitionLevelColumn(w);
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      columnWriter.writeRepetitionLevelColumn(new DataOutputStream(baos));
+      byte[] buf = baos.toByteArray();
+      w.write(buf, 0, buf.length);
       w.startDefinitionLevels();
-      columnWriter.writeDefinitionLevelColumn(w);
+      baos = new ByteArrayOutputStream();
+      columnWriter.writeDefinitionLevelColumn(new DataOutputStream(baos));
+      buf = baos.toByteArray();
+      w.write(buf, 0, buf.length);
       w.startData();
-      columnWriter.writeDataColumn(w);
+      baos = new ByteArrayOutputStream();
+      columnWriter.writeDataColumn(new DataOutputStream(baos));
+      buf = baos.toByteArray();
+      w.write(buf, 0, buf.length);
       w.endColumn();
     }
     recordCount = 0;

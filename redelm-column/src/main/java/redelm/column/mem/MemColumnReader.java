@@ -15,10 +15,13 @@
  */
 package redelm.column.mem;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.IOException;
 
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnReader;
+import redelm.column.primitive.BoundedColumnFactory;
 import redelm.column.primitive.PrimitiveColumnReader;
 import redelm.column.primitive.SimplePrimitiveColumnReader;
 
@@ -103,8 +106,8 @@ abstract class MemColumnReader implements ColumnReader {
   }
 
   private void read() {
-    repetitionLevel = repetitionLevelColumn.readByte();
-    definitionLevel = definitionLevelColumn.readByte();
+    repetitionLevel = repetitionLevelColumn.readInteger();
+    definitionLevel = definitionLevelColumn.readInteger();
     ++readValues;
     consumed = false;
   }
@@ -128,15 +131,29 @@ abstract class MemColumnReader implements ColumnReader {
   }
 
   public void initRepetitionLevelColumn(byte[] bytes, int index, int length) {
-    repetitionLevelColumn = new SimplePrimitiveColumnReader(bytes, index, length);
+    repetitionLevelColumn = BoundedColumnFactory.getBoundedReader(path.getRepetitionLevel());
+    try {
+      repetitionLevelColumn.readStripe(new DataInputStream(new ByteArrayInputStream(bytes, index, length)));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public void initDefinitionLevelColumn(byte[] bytes, int index, int length) {
-    definitionLevelColumn = new SimplePrimitiveColumnReader(bytes, index, length);
+    definitionLevelColumn = BoundedColumnFactory.getBoundedReader(path.getDefinitionLevel());
+    try {
+      definitionLevelColumn.readStripe(new DataInputStream(new ByteArrayInputStream(bytes, index, length)));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public void initDataColumn(byte[] bytes, int index, int length) {
-    dataColumn = new SimplePrimitiveColumnReader(bytes, index, length);
+    dataColumn = new SimplePrimitiveColumnReader();
+    try {
+      dataColumn.readStripe(new DataInputStream(new ByteArrayInputStream(bytes, index, length)));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
-
 }

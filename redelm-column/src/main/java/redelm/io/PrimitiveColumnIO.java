@@ -42,7 +42,7 @@ public class PrimitiveColumnIO extends ColumnIO {
   void setLevels(int r, int d, String[] fieldPath, int[] fieldIndexPath, List<ColumnIO> repetition, List<ColumnIO> path, ColumnsStore columns) {
     this.columns = columns;
     super.setLevels(r, d, fieldPath, fieldIndexPath, repetition, path, columns);
-    this.columnDescriptor = new ColumnDescriptor(fieldPath, getType().asPrimitiveType().getPrimitive());
+    this.columnDescriptor = new ColumnDescriptor(fieldPath, getType().asPrimitiveType().getPrimitive(), getRepetitionLevel(), getDefinitionLevel());
     this.columnWriter = columns.getColumnWriter(columnDescriptor);
     this.path = path.toArray(new ColumnIO[path.size()]);
   }

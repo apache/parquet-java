@@ -210,4 +210,28 @@ public class PrimitiveType extends Type {
     hash += 31 * getName().hashCode();
     return hash;
   }
+
+  @Override
+  public int getRepetitionLevel(String[] path, int i) {
+    if (path.length != i) {
+      throw new RuntimeException("Arrived at primitive node, path invalid");
+    }
+    return getRepetition() == Repetition.REPEATED ? 1 : 0;
+  }
+
+  @Override
+  public int getDefinitionLevel(String[] path, int i) {
+    if (path.length != i) {
+      throw new RuntimeException("Arrived at primitive node, path invalid");
+    }
+    return getRepetition() == Repetition.REQUIRED ? 0 : 1;
+  }
+
+  @Override
+  public Type getType(String[] path, int i) {
+    if (path.length != i) {
+      throw new RuntimeException("Arrived at primitive node, path invalid");
+    }
+    return this;
+  }
 }
