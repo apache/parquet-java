@@ -15,7 +15,6 @@
  */
 package redelm.data;
 
-import redelm.data.Group;
 import redelm.io.RecordConsumer;
 import redelm.schema.GroupType;
 import redelm.schema.Type;
@@ -57,5 +56,4 @@ public class GroupWriter {
       }
     }
   }
-
 }

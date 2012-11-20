@@ -23,6 +23,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.RecordReader;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+
 import redelm.column.mem.MemColumnsStore;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
@@ -31,13 +38,6 @@ import redelm.parser.MessageTypeParser;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.Type;
-
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.hadoop.mapreduce.RecordReader;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 /**
  * Reads the records from a block of a RedElm file
@@ -74,7 +74,7 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
 
   private void checkRead() throws IOException {
     if (columnsStore == null || columnsStore.isFullyConsumed()) {
-      columnsStore = new MemColumnsStore(0);
+      columnsStore = new MemColumnsStore(0, requestedSchema);
       BlockData readColumns = reader.readColumns();
       if (readColumns == null) {
         return;

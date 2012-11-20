@@ -23,6 +23,7 @@ import static redelm.data.simple.example.Paper.r2;
 import static redelm.data.simple.example.Paper.schema;
 import static redelm.data.simple.example.Paper.schema2;
 
+import java.io.DataOutput;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
@@ -33,8 +34,6 @@ import java.util.List;
 
 import org.junit.Test;
 
-import redelm.Log;
-import redelm.column.BytesOutput;
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnReader;
 import redelm.column.ColumnWriter;
@@ -90,7 +89,8 @@ public class TestColumnIO {
     System.out.println("r2");
     System.out.println(r2);
 
-    ColumnsStore columns = new MemColumnsStore(1024);
+    ColumnsStore columns = new MemColumnsStore(1024, schema);
+
     {
       MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema, columns);
       System.out.println(columnIO);
@@ -119,7 +119,10 @@ public class TestColumnIO {
     }
     {
       columns.flip();
+
       MessageColumnIO columnIO2 = new ColumnIOFactory().getColumnIO(schema2, columns);
+
+
       List<Group> records = new ArrayList<Group>();
       RecordReader recordReader = columnIO2.getRecordReader();
 
@@ -155,7 +158,7 @@ public class TestColumnIO {
 
   @Test
   public void testPushParser() {
-    ColumnsStore columns = new MemColumnsStore(1024);
+    ColumnsStore columns = new MemColumnsStore(1024, schema);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema, columns);
     new GroupWriter(columnIO.getRecordWriter(), schema).write(r1);
     columns.flip();
@@ -399,19 +402,19 @@ public class TestColumnIO {
           }
 
           @Override
-          public void writeRepetitionLevelColumn(BytesOutput out)
+          public void writeRepetitionLevelColumn(DataOutput out)
               throws IOException {
             throw new UnsupportedOperationException();
           }
 
           @Override
-          public void writeDefinitionLevelColumn(BytesOutput out)
+          public void writeDefinitionLevelColumn(DataOutput out)
               throws IOException {
             throw new UnsupportedOperationException();
           }
 
           @Override
-          public void writeDataColumn(BytesOutput out) throws IOException {
+          public void writeDataColumn(DataOutput out) throws IOException {
             throw new UnsupportedOperationException();
           }
 
