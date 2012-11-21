@@ -33,7 +33,7 @@ import java.util.logging.StreamHandler;
  *
  * <code>
  *   if (DEBUG) LOG.debug("removed by the compiler if DEBUG is a false constant")
- * <code>
+ * </code>
  *
  * @author Julien Le Dem
  *

@@ -34,6 +34,7 @@ import org.apache.pig.data.BagFactory;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataByteArray;
 import org.apache.pig.data.DataType;
+import org.apache.pig.data.NonSpillableDataBag;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.logicalLayer.FrontendException;
@@ -53,7 +54,7 @@ public class TupleRecordConsumer extends RecordConsumer {
   private static final boolean DEBUG = Log.DEBUG;
   private static final Log LOG = Log.getLog(TupleRecordConsumer.class);
   private static final TupleFactory tf = TupleFactory.getInstance();
-  private static final BagFactory bf = BagFactory.getInstance();
+//  private static final BagFactory bf = BagFactory.getInstance();
 
   private Deque<Type> types = new ArrayDeque<Type>();
   private Deque<FieldSchema> pigTypes = new ArrayDeque<FieldSchema>();
@@ -106,7 +107,7 @@ public class TupleRecordConsumer extends RecordConsumer {
       pigTypes.push(fieldSchema);
       switch (fieldSchema.type) {
         case DataType.BAG:
-          groups.peek().set(fields.peek(), bf.newDefaultBag());
+          groups.peek().set(fields.peek(), newBag());
           break;
         case DataType.MAP:
           groups.peek().set(fields.peek(), new HashMap<String, Object>());
@@ -118,6 +119,11 @@ public class TupleRecordConsumer extends RecordConsumer {
     } catch (Exception e) {
       throw new RuntimeException("error "+e.toString()+"\ntype: "+types.peek()+"\npig type: "+pigTypes.peek(), e);
     }
+  }
+
+  private DataBag newBag() {
+    return new NonSpillableDataBag();
+//    return bf.newDefaultBag();
   }
 
   private FieldSchema getPigChildSchema() {
