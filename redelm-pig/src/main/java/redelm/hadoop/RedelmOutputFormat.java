@@ -15,9 +15,12 @@
  */
 package redelm.hadoop;
 
+import static redelm.Log.INFO;
+
 import java.io.IOException;
 import java.util.List;
 
+import redelm.Log;
 import redelm.schema.MessageType;
 
 import org.apache.hadoop.conf.Configuration;
@@ -41,8 +44,8 @@ import org.apache.hadoop.util.ReflectionUtils;
  *
  * data is compressed according to the job conf (per block per column):
  * <pre>
- * mapreduce.output.fileoutputformat.compress=true
- * mapreduce.output.fileoutputformat.compress.codec=org.apache.hadoop.io.compress.SomeCodec
+ * mapred.output.compress=true
+ * mapred.output.compression.codec=org.apache.hadoop.io.compress.SomeCodec
  * </pre>
  *
  * block size is controlled in job conf settings:
@@ -54,6 +57,7 @@ import org.apache.hadoop.util.ReflectionUtils;
  * @param <T> the type of the materialized records
  */
 public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
+  private static final Log LOG = Log.getLog(RedelmOutputFormat.class);
 
   public static final String BLOCK_SIZE = "redelm.block.size";
 
@@ -100,6 +104,7 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (getCompressOutput(taskAttemptContext)) {
       // find the right codec
       Class<?> codecClass = getOutputCompressorClass(taskAttemptContext, DefaultCodec.class);
+      if (INFO) LOG.info("Compression codec: " + codecClass.getName());
       codec = (CompressionCodec) ReflectionUtils.newInstance(codecClass, conf);
     }
 
