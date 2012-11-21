@@ -45,7 +45,7 @@ import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
  *
  * Converts a tuple into the format understood by the striping algorithm
  *
- * TODO: pre-process the schema to avoid traversing it for each record
+ * @deprecated replaced by the preprocessed version (Converters) Still so that we can compare performance
  *
  * @author Julien Le Dem
  *
@@ -74,7 +74,7 @@ public class TupleRecordConsumer extends RecordConsumer {
       this.types.push(schema);
       this.pigTypes.push(new FieldSchema("tuple", pigSchema, DataType.TUPLE));
     } catch (FrontendException e) {
-      throw new RuntimeException(e);
+      throw new TupleRecordConsumerException("Could not initialize the pig schema " + pigSchema, e);
     }
   }
 
@@ -117,7 +117,7 @@ public class TupleRecordConsumer extends RecordConsumer {
           groups.push(newTuple);
       }
     } catch (Exception e) {
-      throw new RuntimeException("error "+e.toString()+"\ntype: "+types.peek()+"\npig type: "+pigTypes.peek(), e);
+      throw new TupleRecordConsumerException("error starting consuming a group\ntype: "+types.peek()+"\npig type: "+pigTypes.peek(), e);
     }
   }
 
@@ -140,13 +140,13 @@ public class TupleRecordConsumer extends RecordConsumer {
         } else if (fieldIndex == 1) {
           fieldSchema = currentPigType;
         } else {
-          throw new RuntimeException("can't access field" + fieldIndex + " in map entry " + previousPigType);
+          throw new TupleRecordConsumerException("can't access field" + fieldIndex + " in map entry " + previousPigType);
         }
       } else {
         fieldSchema = currentPigType.schema.getField(fieldIndex);
       }
     } catch (Exception e) {
-      throw new RuntimeException(e.getMessage()+" currentPigType: "+currentPigType.type+" " +currentPigType + " at "+fieldIndex,e);
+      throw new TupleRecordConsumerException("error resolving pig child schema for current Pig Type: "+currentPigType.type+" " +currentPigType + " at "+fieldIndex,e);
     }
     return fieldSchema;
   }
@@ -187,13 +187,13 @@ public class TupleRecordConsumer extends RecordConsumer {
           Tuple t = (Tuple)value;
           map.put((String)t.get(0), t.get(1));
         } else {
-          throw new RuntimeException("Unsupported repeated field " + repeated.getClass().getName() + " " + repeated);
+          throw new TupleRecordConsumerException("Unsupported repeated field " + repeated.getClass().getName() + " " + repeated);
         }
       } else {
         parent.set(fieldIndex, value);
       }
     } catch (Exception e) {
-      throw new RuntimeException("error\ntype: "+types.peek()+"\npig type: "+pigTypes.peek() + "\nfield: "+fields.peek(), e);
+      throw new TupleRecordConsumerException("error setting the current value to a Pig object\ntype: "+types.peek()+"\npig type: "+pigTypes.peek() + "\nfield: "+fields.peek(), e);
     }
   }
 
