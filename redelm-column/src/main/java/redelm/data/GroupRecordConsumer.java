@@ -15,6 +15,8 @@
  */
 package redelm.data;
 
+import static redelm.Log.DEBUG;
+
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Deque;
@@ -41,7 +43,7 @@ public class GroupRecordConsumer extends RecordConsumer {
 
   @Override
   public void endMessage() {
-    if (Log.DEBUG) if (groups.size() != 1) throw new IllegalStateException("end of message in the middle of a record "+fields);
+    if (DEBUG) if (groups.size() != 1) throw new IllegalStateException("end of message in the middle of a record "+fields);
     this.result.add(groups.pop());
   }
 
@@ -52,7 +54,7 @@ public class GroupRecordConsumer extends RecordConsumer {
 
   @Override
   public void endField(String field, int index) {
-    if (Log.DEBUG) if (!fields.peek().equals(index)) throw new IllegalStateException("opening "+fields.peek()+" but closing "+index+" ("+field+")");
+    if (DEBUG) if (!fields.peek().equals(index)) throw new IllegalStateException("opening "+fields.peek()+" but closing "+index+" ("+field+")");
     fields.pop();
   }
 
