@@ -74,7 +74,7 @@ public class TupleRecordConsumer extends RecordConsumer {
       this.types.push(schema);
       this.pigTypes.push(new FieldSchema("tuple", pigSchema, DataType.TUPLE));
     } catch (FrontendException e) {
-      throw new TupleRecordConsumerException("Could not initialize the pig schema " + pigSchema, e);
+      throw new TupleConversionException("Could not initialize the pig schema " + pigSchema, e);
     }
   }
 
@@ -117,7 +117,7 @@ public class TupleRecordConsumer extends RecordConsumer {
           groups.push(newTuple);
       }
     } catch (Exception e) {
-      throw new TupleRecordConsumerException("error starting consuming a group\ntype: "+types.peek()+"\npig type: "+pigTypes.peek(), e);
+      throw new TupleConversionException("error starting consuming a group\ntype: "+types.peek()+"\npig type: "+pigTypes.peek(), e);
     }
   }
 
@@ -140,13 +140,13 @@ public class TupleRecordConsumer extends RecordConsumer {
         } else if (fieldIndex == 1) {
           fieldSchema = currentPigType;
         } else {
-          throw new TupleRecordConsumerException("can't access field" + fieldIndex + " in map entry " + previousPigType);
+          throw new TupleConversionException("can't access field" + fieldIndex + " in map entry " + previousPigType);
         }
       } else {
         fieldSchema = currentPigType.schema.getField(fieldIndex);
       }
     } catch (Exception e) {
-      throw new TupleRecordConsumerException("error resolving pig child schema for current Pig Type: "+currentPigType.type+" " +currentPigType + " at "+fieldIndex,e);
+      throw new TupleConversionException("error resolving pig child schema for current Pig Type: "+currentPigType.type+" " +currentPigType + " at "+fieldIndex,e);
     }
     return fieldSchema;
   }
@@ -187,13 +187,13 @@ public class TupleRecordConsumer extends RecordConsumer {
           Tuple t = (Tuple)value;
           map.put((String)t.get(0), t.get(1));
         } else {
-          throw new TupleRecordConsumerException("Unsupported repeated field " + repeated.getClass().getName() + " " + repeated);
+          throw new TupleConversionException("Unsupported repeated field " + repeated.getClass().getName() + " " + repeated);
         }
       } else {
         parent.set(fieldIndex, value);
       }
     } catch (Exception e) {
-      throw new TupleRecordConsumerException("error setting the current value to a Pig object\ntype: "+types.peek()+"\npig type: "+pigTypes.peek() + "\nfield: "+fields.peek(), e);
+      throw new TupleConversionException("error setting the current value to a Pig object\ntype: "+types.peek()+"\npig type: "+pigTypes.peek() + "\nfield: "+fields.peek(), e);
     }
   }
 

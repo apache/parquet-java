@@ -3,6 +3,7 @@ package redelm.pig.converter;
 import java.util.HashMap;
 import java.util.Map;
 
+import redelm.pig.TupleConversionException;
 import redelm.schema.GroupType;
 
 import org.apache.pig.data.Tuple;
@@ -51,7 +52,7 @@ public class MapConverter extends Converter {
 
   @Override
   public void set(Object value) {
-    throw new UnsupportedOperationException("maps contain only key/value groups");
+    throw new TupleConversionException("maps contain only key/value groups, not primitive value: "+ value);
   }
 
 }

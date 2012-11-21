@@ -1,5 +1,6 @@
 package redelm.pig.converter;
 
+import redelm.pig.TupleConversionException;
 import redelm.schema.GroupType;
 import redelm.schema.Type;
 
@@ -53,7 +54,9 @@ public class TupleConverter extends Converter {
     try {
       currentTuple.set(currentField, converters[currentField].get());
     } catch (ExecException e) {
-      throw new RuntimeException(e);
+      throw new TupleConversionException(
+          "Could not set the child value to the currentTuple " + currentTuple +
+          " at " + currentField, e);
     }
   }
 
@@ -82,7 +85,9 @@ public class TupleConverter extends Converter {
     try {
       currentTuple.set(currentField, value);
     } catch (ExecException e) {
-      throw new RuntimeException(e);
+      throw new TupleConversionException(
+          "Could not set " + value +
+          " to current tuple " + currentTuple + " at " + currentField, e);
     }
   }
 

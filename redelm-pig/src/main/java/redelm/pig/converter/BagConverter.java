@@ -1,5 +1,6 @@
 package redelm.pig.converter;
 
+import redelm.pig.TupleConversionException;
 import redelm.schema.GroupType;
 
 import org.apache.pig.data.DataBag;
@@ -49,7 +50,7 @@ public class BagConverter extends Converter {
 
   @Override
   public void set(Object value) {
-    throw new RuntimeException("bag can not contain primitive value "+value);
+    throw new TupleConversionException("bag can not contain primitive value " + value);
   }
 
 }
