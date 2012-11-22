@@ -94,19 +94,24 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
   @Override
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
-    final Path file = getDefaultWorkFile(taskAttemptContext, "");
     final Configuration conf = taskAttemptContext.getConfiguration();
-    final FileSystem fs = file.getFileSystem(conf);
 
     int blockSize = getBlockSize(taskAttemptContext);
+    if (INFO) LOG.info("RedElm block size to " + blockSize);
 
     CompressionCodec codec = null;
+    String extension = ".redelm";
     if (getCompressOutput(taskAttemptContext)) {
       // find the right codec
       Class<?> codecClass = getOutputCompressorClass(taskAttemptContext, DefaultCodec.class);
       if (INFO) LOG.info("Compression codec: " + codecClass.getName());
       codec = (CompressionCodec) ReflectionUtils.newInstance(codecClass, conf);
+      extension += codec.getDefaultExtension();
+    } else {
+      if (INFO) LOG.info("Compression set to false");
     }
+    final Path file = getDefaultWorkFile(taskAttemptContext, extension);
+    final FileSystem fs = file.getFileSystem(conf);
 
     final RedelmFileWriter w = new RedelmFileWriter(schema, fs.create(file, false), codec);
     w.start();
