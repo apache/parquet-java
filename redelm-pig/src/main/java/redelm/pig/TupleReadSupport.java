@@ -21,18 +21,31 @@ import redelm.hadoop.MetaDataBlock;
 import redelm.hadoop.ReadSupport;
 import redelm.io.RecordConsumer;
 import redelm.parser.MessageTypeParser;
+import redelm.pig.converter.MessageConverter;
+import redelm.schema.MessageType;
 
 import org.apache.pig.data.Tuple;
+import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
+/**
+ * Read support for Pig Tuple
+ * a Pig MetaDataBlock is expected in the initialization call
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class TupleReadSupport extends ReadSupport<Tuple> {
   private static final long serialVersionUID = 1L;
 
   private Schema pigSchema;
   private String requestedSchema;
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void initForRead(List<MetaDataBlock> metaDataBlocks, String requestedSchema) {
     this.requestedSchema = requestedSchema;
@@ -44,12 +57,26 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public RecordConsumer newRecordConsumer(List<Tuple> destination) {
-    return new TupleRecordConsumer(
-        MessageTypeParser.parseMessageType(requestedSchema),
-        pigSchema,
-        destination);
+    MessageType redelmSchema = MessageTypeParser.parseMessageType(requestedSchema);
+    MessageConverter converter = newParsingTree(redelmSchema, pigSchema);
+    return converter.newRecordConsumer(destination);
+//    return new TupleRecordConsumer(
+//        redelmSchema,
+//        pigSchema,
+//        destination);
+  }
+
+  private MessageConverter newParsingTree(MessageType redelmSchema, Schema pigSchema) {
+    try {
+      return new MessageConverter(redelmSchema, pigSchema);
+    } catch (FrontendException e) {
+      throw new RuntimeException(e);
+    }
   }
 
 }
