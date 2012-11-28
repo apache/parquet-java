@@ -44,7 +44,8 @@ public class TestRedelmFileWriter {
   public void test() throws Exception {
 
     Path path = new Path(new File("target/testRedelmFile").getAbsoluteFile().toURI());
-    FileSystem fileSystem = path.getFileSystem(new Configuration());
+    Configuration configuration = new Configuration();
+    FileSystem fileSystem = path.getFileSystem(configuration);
 
     FSDataOutputStream fout = fileSystem.create(path, true);
 
@@ -105,7 +106,7 @@ public class TestRedelmFileWriter {
 
     {
       assertEquals(2, readFooter.getBlocks().size());
-      RedelmFileReader r = new RedelmFileReader(fin, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.<String[]>asList(path1), CODEC);
+      RedelmFileReader r = new RedelmFileReader(configuration, fin, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.<String[]>asList(path1), CODEC);
       BlockData blockData = r.readColumns();
       List<ColumnData> cols = blockData.getColumns();
       System.out.println(cols);
@@ -116,7 +117,7 @@ public class TestRedelmFileWriter {
     }
 
     {
-      RedelmFileReader r = new RedelmFileReader(fin, readFooter.getBlocks(), Arrays.<String[]>asList(path1, path2), CODEC);
+      RedelmFileReader r = new RedelmFileReader(configuration, fin, readFooter.getBlocks(), Arrays.<String[]>asList(path1, path2), CODEC);
       BlockData blockData1 = r.readColumns();
       List<ColumnData> cols1 = blockData1.getColumns();
       assertEquals(2, cols1.size());

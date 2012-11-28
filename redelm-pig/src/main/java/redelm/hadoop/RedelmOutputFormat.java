@@ -30,6 +30,7 @@ import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.DefaultCodec;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.JobContext;
+import org.apache.hadoop.mapreduce.OutputCommitter;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -73,10 +74,11 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
   private Class<?> writeSupportClass;
 
   private final List<MetaDataBlock> extraMetaData;
+  private RedelmOutputCommitter committer;
 
   /**
    * constructor used when this OutputFormat in wrapped in another one (In Pig for example)
-   * TODO: standalone constructor
+   * TODO: stand-alone constructor
    * @param writeSupportClass the class used to convert the incoming records
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to be stored in the footer of the file
@@ -124,4 +126,13 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
     }
   }
 
+  @Override
+  public OutputCommitter getOutputCommitter(TaskAttemptContext context)
+      throws IOException {
+    if (committer == null) {
+      Path output = getOutputPath(context);
+      committer = new RedelmOutputCommitter(output, context);
+    }
+    return committer;
+  }
 }
