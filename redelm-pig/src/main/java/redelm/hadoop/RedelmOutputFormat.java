@@ -15,9 +15,12 @@
  */
 package redelm.hadoop;
 
+import static redelm.Log.INFO;
+
 import java.io.IOException;
 import java.util.List;
 
+import redelm.Log;
 import redelm.schema.MessageType;
 
 import org.apache.hadoop.conf.Configuration;
@@ -25,7 +28,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.DefaultCodec;
-import org.apache.hadoop.mapred.FileOutputCommitter;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.OutputCommitter;
@@ -43,8 +45,8 @@ import org.apache.hadoop.util.ReflectionUtils;
  *
  * data is compressed according to the job conf (per block per column):
  * <pre>
- * mapreduce.output.fileoutputformat.compress=true
- * mapreduce.output.fileoutputformat.compress.codec=org.apache.hadoop.io.compress.SomeCodec
+ * mapred.output.compress=true
+ * mapred.output.compression.codec=org.apache.hadoop.io.compress.SomeCodec
  * </pre>
  *
  * block size is controlled in job conf settings:
@@ -56,6 +58,7 @@ import org.apache.hadoop.util.ReflectionUtils;
  * @param <T> the type of the materialized records
  */
 public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
+  private static final Log LOG = Log.getLog(RedelmOutputFormat.class);
 
   public static final String BLOCK_SIZE = "redelm.block.size";
 
@@ -96,17 +99,22 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
     final Configuration conf = taskAttemptContext.getConfiguration();
 
     int blockSize = getBlockSize(taskAttemptContext);
+    if (INFO) LOG.info("RedElm block size to " + blockSize);
 
     CompressionCodec codec = null;
     String extension = ".redelm";
     if (getCompressOutput(taskAttemptContext)) {
       // find the right codec
       Class<?> codecClass = getOutputCompressorClass(taskAttemptContext, DefaultCodec.class);
+      if (INFO) LOG.info("Compression codec: " + codecClass.getName());
       codec = (CompressionCodec) ReflectionUtils.newInstance(codecClass, conf);
       extension += codec.getDefaultExtension();
+    } else {
+      if (INFO) LOG.info("Compression set to false");
     }
     final Path file = getDefaultWorkFile(taskAttemptContext, extension);
     final FileSystem fs = file.getFileSystem(conf);
+
     final RedelmFileWriter w = new RedelmFileWriter(schema, fs.create(file, false), codec);
     w.start();
     try {

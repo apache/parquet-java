@@ -23,6 +23,11 @@ import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import redelm.Log;
+import redelm.column.ColumnDescriptor;
+import redelm.hadoop.RedelmMetaData.FileMetaData;
+import redelm.schema.MessageType;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -31,10 +36,6 @@ import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
-
-import redelm.Log;
-import redelm.column.ColumnDescriptor;
-import redelm.schema.MessageType;
 
 /**
  * Writes a RedElm file
@@ -281,7 +282,7 @@ public class RedelmFileWriter {
     long footerIndex = out.getPos();
     out.writeInt(CURRENT_VERSION);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    RedelmMetaData footer = new RedelmMetaData(new RedelmMetaData.FileMetaData(schema.toString(), codec == null ? null : codec.getClass().getName()), blocks);
+    RedelmMetaData footer = new RedelmMetaData(new FileMetaData(schema.toString(), codec == null ? null : codec.getClass().getName()), blocks);
 //    out.writeUTF(Footer.toJSON(footer));
     // lazy: use serialization
     // TODO: change that

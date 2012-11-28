@@ -26,7 +26,7 @@ import redelm.column.primitive.PrimitiveColumnWriter;
 import redelm.column.primitive.SimplePrimitiveColumnWriter;
 
 final class MemColumnWriter implements ColumnWriter {
-  private static final Log LOG = Log.getLog(MemColumn.class);
+  private static final Log LOG = Log.getLog(MemColumnWriter.class);
   private static final boolean DEBUG = Log.DEBUG;
 
   private final ColumnDescriptor path;
