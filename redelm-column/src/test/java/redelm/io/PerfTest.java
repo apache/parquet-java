@@ -15,6 +15,7 @@
  */
 package redelm.io;
 
+import static redelm.Log.DEBUG;
 import static redelm.data.simple.example.Paper.r1;
 import static redelm.data.simple.example.Paper.r2;
 import static redelm.data.simple.example.Paper.schema;
@@ -42,6 +43,7 @@ public class PerfTest {
   public static void main(String[] args) {
     MemColumnsStore columns = new MemColumnsStore(50*1024*1024, schema);
     write(columns);
+    columns.flip();
     read(columns);
     System.out.println(columns.memSize()+" bytes used total");
     System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
@@ -148,7 +150,7 @@ public class PerfTest {
       public void addBoolean(boolean value) {}
       public void addBinary(byte[] value) {}
     };
-    if (Log.DEBUG) {
+    if (DEBUG) {
       recordConsumer = new RecordConsumerWrapper(recordConsumer);
     }
     long t0 = System.currentTimeMillis();
@@ -157,7 +159,8 @@ public class PerfTest {
     }
     long t1 = System.currentTimeMillis();
     long t = t1-t0;
-    System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s\n", count , t, t == 0 ? 0 : count * 1000 / t);
+    float err = (float)100 * 2 / t; // (+/- 1 ms)
+    System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s err: %3.2f%%\n", count , t, t == 0 ? 0 : count * 1000 / t, err);
   }
 
   private static void write(GroupWriter groupWriter, int count) {

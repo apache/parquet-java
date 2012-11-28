@@ -25,6 +25,7 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 
 import redelm.hadoop.RedelmMetaData.FileMetaData;
 
@@ -181,7 +182,7 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
            "part: " + path
         + " start: " + start
         + " length: " + length
-        + " hosts: " + hosts
+        + " hosts: " + Arrays.toString(hosts)
         + " block: " + block
         + " fileMetaData: " + fileMetaData
         + "}";

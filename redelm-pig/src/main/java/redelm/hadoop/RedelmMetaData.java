@@ -64,6 +64,11 @@ public class RedelmMetaData implements Serializable {
     public String getCodecClassName() {
       return codecClassName;
     }
+
+    @Override
+    public String toString() {
+      return "FileMetaData{schema: "+schema+", codecClassName: "+codecClassName+"}";
+    }
   }
 
   private static final String META_DATA_BLOCK_NAME = "RedElm";
@@ -174,7 +179,6 @@ public class RedelmMetaData implements Serializable {
 
   @Override
   public String toString() {
-    return "RedElmMetaData{"+fileMetaData+", blocks"+blocks+"}";
-
+    return "RedElmMetaData{"+fileMetaData+", blocks: "+blocks+"}";
   }
 }

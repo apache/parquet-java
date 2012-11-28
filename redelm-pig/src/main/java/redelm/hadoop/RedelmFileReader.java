@@ -133,6 +133,8 @@ public class RedelmFileReader {
     }
     List<ColumnData> result = new ArrayList<ColumnData>();
     BlockMetaData block = blocks.get(currentBlock);
+    LOG.info("starting reading block " + currentBlock);
+    long t0 = System.currentTimeMillis();
     for (ColumnMetaData mc : block.getColumns()) {
       String pathKey = Arrays.toString(mc.getPath());
       if (paths.contains(pathKey)) {
@@ -142,6 +144,8 @@ public class RedelmFileReader {
         result.add(new ColumnData(mc.getPath(), repetitionLevels, definitionLevels, data));
       }
     }
+    long t1 = System.currentTimeMillis();
+    LOG.info("block data read in " + (t1 - t0) + " ms");
 
     ++currentBlock;
     return new BlockData(block.getRecordCount(), result);
@@ -155,7 +159,8 @@ public class RedelmFileReader {
     long t0 = System.currentTimeMillis();
     f.readFully(start, data);
     long t1 = System.currentTimeMillis();
-    LOG.info("Read " + length + " bytes for column " + name + " in " + (t1 - t0) + " ms: " + (float)(t1 - t0)/data.length + " ms/byte");
+    long l = t1 - t0;
+    LOG.info("Read " + length + " bytes for column " + name + " in " + l + " ms" +  (l == 0 ? "" : " : " + (float)data.length*1000/l + " bytes/s"));
     byte[] result;
     if (codec == null) {
       result = data;
