@@ -26,6 +26,7 @@ import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.List;
 
 import redelm.hadoop.RedelmMetaData.FileMetaData;
 
@@ -49,7 +50,7 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
   private long start;
   private long length;
   private String[] hosts;
-  private BlockMetaData block;
+  private List<BlockMetaData> blocks;
   private FileMetaData fileMetaData;
   private ReadSupport<T> readSupport;
 
@@ -65,16 +66,16 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
    * @param start the offset of the block in the file
    * @param length the size of the block in the file
    * @param hosts the hosts where this block can be found
-   * @param block the block meta data (Columns locations)
+   * @param blocks the block meta data (Columns locations)
    * @param fileMetaData the file level metadata (Codec, Schema, ...)
    * @param readSupport the object used to materialize records (must be serializable)
    */
-  public RedelmInputSplit(Path path, long start, long length, String[] hosts, BlockMetaData block, FileMetaData fileMetaData, ReadSupport<T> readSupport) {
+  public RedelmInputSplit(Path path, long start, long length, String[] hosts, List<BlockMetaData> blocks, FileMetaData fileMetaData, ReadSupport<T> readSupport) {
     this.path = path.toUri().toString();
     this.start = start;
     this.length = length;
     this.hosts = hosts;
-    this.block = block;
+    this.blocks = blocks;
     this.fileMetaData = fileMetaData;
     this.readSupport = readSupport;
   }
@@ -83,8 +84,8 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
    *
    * @return the block meta data
    */
-  public BlockMetaData getBlock() {
-    return block;
+  public List<BlockMetaData> getBlocks() {
+    return blocks;
   }
 
   /**
@@ -140,7 +141,7 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
       this.start = other.start;
       this.length = other.length;
       this.hosts = other.hosts;
-      this.block = other.block;
+      this.blocks = other.blocks;
       this.fileMetaData = other.fileMetaData;
       this.readSupport = other.readSupport;
     } catch (ClassNotFoundException e) {
@@ -183,7 +184,7 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
         + " start: " + start
         + " length: " + length
         + " hosts: " + Arrays.toString(hosts)
-        + " block: " + block
+        + " blocks: " + blocks.size()
         + " fileMetaData: " + fileMetaData
         + "}";
   }

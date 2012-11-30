@@ -37,11 +37,9 @@ final class MemColumnWriter implements ColumnWriter {
 
   public MemColumnWriter(ColumnDescriptor path, int initialSize) {
     this.path = path;
-    // 5% each for repetition and definition level
     repetitionLevelColumn = BoundedColumnFactory.getBoundedWriter(path.getRepetitionLevel());
     definitionLevelColumn = BoundedColumnFactory.getBoundedWriter(path.getDefinitionLevel());
-    // 90% for the data
-    this.dataColumn = new SimplePrimitiveColumnWriter(initialSize*9/10);
+    this.dataColumn = new SimplePrimitiveColumnWriter(initialSize);
   }
 
   private void log(Object value, int r, int d) {
