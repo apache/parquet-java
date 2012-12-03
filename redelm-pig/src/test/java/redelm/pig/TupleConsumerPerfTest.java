@@ -17,6 +17,7 @@ package redelm.pig;
 
 import static redelm.Log.DEBUG;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
@@ -162,6 +163,7 @@ public class TupleConsumerPerfTest {
 
   private static void read(RecordReader recordReader, int count, String pigSchemaString) throws ParserException {
     List<Tuple> result = new List<Tuple>() {
+      Tuple current;
       public int size() {
         return 0;
       }
@@ -181,6 +183,7 @@ public class TupleConsumerPerfTest {
         return null;
       }
       public boolean add(Tuple e) {
+        current = e;
         return false;
       }
       public boolean remove(Object o) {

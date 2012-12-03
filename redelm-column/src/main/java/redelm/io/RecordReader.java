@@ -15,6 +15,7 @@
  */
 package redelm.io;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -37,6 +38,25 @@ public class RecordReader {
   private final int[][] nextReader;
   private final MessageColumnIO root;
   private final int[][] nextLevel;
+
+  public RecordReader(MessageColumnIO root) {
+    this(root, findleaves(root));
+  }
+
+  private static List<PrimitiveColumnIO> findleaves(ColumnIO root) {
+    if (root.getType().isPrimitive()) {
+      return Arrays.asList((PrimitiveColumnIO)root);
+    } else {
+      GroupColumnIO groupColumnIO = (GroupColumnIO)root;
+      int childrenCount = groupColumnIO.getChildrenCount();
+      List<PrimitiveColumnIO> result = new ArrayList<PrimitiveColumnIO>();
+      for (int i = 0; i < childrenCount; i++) {
+        ColumnIO columnio = groupColumnIO.getChild(i);
+        result.addAll(findleaves(columnio));
+      }
+      return result;
+    }
+  }
 
   /**
    *
@@ -119,7 +139,7 @@ public class RecordReader {
         addPrimitive(recordConsumer, columnReader, primitiveColumnIO.getType().asPrimitiveType().getPrimitive(), field, fieldIndex);
       }
       columnReader.consume();
-      int nextR = columnReader.getCurrentRepetitionLevel();
+      int nextR = primitiveColumnIO.getRepetitionLevel() == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
       int nextCol = nextReader[currentCol][nextR];
 
       // level to go to close current groups
@@ -134,13 +154,13 @@ public class RecordReader {
     endMessage(recordConsumer);
   }
 
-  private void startMessage(RecordConsumer recordConsumer) {
+  protected void startMessage(RecordConsumer recordConsumer) {
     // reset state
     endField = null;
     recordConsumer.startMessage();
   }
 
-  private void endMessage(RecordConsumer recordConsumer) {
+  protected void endMessage(RecordConsumer recordConsumer) {
     if (endField != null) {
       // close the previous field
       recordConsumer.endField(endField, endIndex);
@@ -219,6 +239,10 @@ public class RecordReader {
       ++i;
     }
     return i;
+  }
+
+  public MessageColumnIO getRoot() {
+    return root;
   }
 
 }

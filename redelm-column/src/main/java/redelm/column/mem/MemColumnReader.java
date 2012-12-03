@@ -22,6 +22,7 @@ import java.io.IOException;
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnReader;
 import redelm.column.primitive.BoundedColumnFactory;
+import redelm.column.primitive.DevNullColumnReader;
 import redelm.column.primitive.PrimitiveColumnReader;
 import redelm.column.primitive.SimplePrimitiveColumnReader;
 
@@ -106,7 +107,9 @@ abstract class MemColumnReader implements ColumnReader {
   }
 
   private void read() {
+    if (!(repetitionLevelColumn instanceof DevNullColumnReader)) {
     repetitionLevel = repetitionLevelColumn.readInteger();
+    }
     definitionLevel = definitionLevelColumn.readInteger();
     ++readValues;
     consumed = false;

@@ -25,7 +25,6 @@ import static redelm.data.simple.example.Paper.schema2;
 
 import java.io.DataOutput;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -75,6 +74,62 @@ public class TestColumnIO {
       { 1 },      // 0: DocId
       { 2, 1, 1 },// 1: Name.Language.Country
   };
+
+  public static final String[] expectedEventsForR1 = {
+      "startMessage()",
+       "startField(DocId, 0)",
+        "addLong(10)",
+       "endField(DocId, 0)",
+       "startField(Links, 1)",
+        "startGroup()",
+         "startField(Forward, 1)",
+          "addLong(20)",
+          "addLong(40)",
+          "addLong(60)",
+         "endField(Forward, 1)",
+        "endGroup()",
+       "endField(Links, 1)",
+       "startField(Name, 2)",
+        "startGroup()",
+         "startField(Language, 0)",
+          "startGroup()",
+           "startField(Code, 0)",
+            "addString(en-us)",
+           "endField(Code, 0)",
+           "startField(Country, 1)",
+            "addString(us)",
+           "endField(Country, 1)",
+          "endGroup()",
+          "startGroup()",
+           "startField(Code, 0)",
+            "addString(en)",
+           "endField(Code, 0)",
+          "endGroup()",
+         "endField(Language, 0)",
+         "startField(Url, 1)",
+          "addString(http://A)",
+         "endField(Url, 1)",
+        "endGroup()",
+        "startGroup()",
+         "startField(Url, 1)",
+          "addString(http://B)",
+         "endField(Url, 1)",
+        "endGroup()",
+        "startGroup()",
+         "startField(Language, 0)",
+          "startGroup()",
+           "startField(Code, 0)",
+            "addString(en-gb)",
+           "endField(Code, 0)",
+           "startField(Country, 1)",
+            "addString(gb)",
+           "endField(Country, 1)",
+          "endGroup()",
+         "endField(Language, 0)",
+        "endGroup()",
+       "endField(Name, 2)",
+      "endMessage()"
+      };
 
   @Test
   public void testSchema() {
@@ -164,139 +219,12 @@ public class TestColumnIO {
     columns.flip();
     RecordReader recordReader = columnIO.getRecordReader();
 
-    String[] expected = {
-    "startMessage()",
-     "startField(DocId, 0)",
-      "addLong(10)",
-     "endField(DocId, 0)",
-     "startField(Links, 1)",
-      "startGroup()",
-       "startField(Forward, 1)",
-        "addLong(20)",
-        "addLong(40)",
-        "addLong(60)",
-       "endField(Forward, 1)",
-      "endGroup()",
-     "endField(Links, 1)",
-     "startField(Name, 2)",
-      "startGroup()",
-       "startField(Language, 0)",
-        "startGroup()",
-         "startField(Code, 0)",
-          "addString(en-us)",
-         "endField(Code, 0)",
-         "startField(Country, 1)",
-          "addString(us)",
-         "endField(Country, 1)",
-        "endGroup()",
-        "startGroup()",
-         "startField(Code, 0)",
-          "addString(en)",
-         "endField(Code, 0)",
-        "endGroup()",
-       "endField(Language, 0)",
-       "startField(Url, 1)",
-        "addString(http://A)",
-       "endField(Url, 1)",
-      "endGroup()",
-      "startGroup()",
-       "startField(Url, 1)",
-        "addString(http://B)",
-       "endField(Url, 1)",
-      "endGroup()",
-      "startGroup()",
-       "startField(Language, 0)",
-        "startGroup()",
-         "startField(Code, 0)",
-          "addString(en-gb)",
-         "endField(Code, 0)",
-         "startField(Country, 1)",
-          "addString(gb)",
-         "endField(Country, 1)",
-        "endGroup()",
-       "endField(Language, 0)",
-      "endGroup()",
-     "endField(Name, 2)",
-    "endMessage()"
-    };
     final Deque<String> expectations = new ArrayDeque<String>();
-    for (String string : expected) {
+    for (String string : expectedEventsForR1) {
       expectations.add(string);
     }
 
-    recordReader.read(new RecordConsumer() {
-
-      int count = 0;
-      private void validate(String got) {
-        assertEquals("event #"+count, expectations.pop(), got);
-        ++count;
-      }
-
-      @Override
-      public void startMessage() {
-        validate("startMessage()");
-      }
-
-      @Override
-      public void startGroup() {
-        validate("startGroup()");
-      }
-
-      @Override
-      public void startField(String field, int index) {
-        validate("startField("+field+", "+index+")");
-      }
-
-      @Override
-      public void endMessage() {
-        validate("endMessage()");
-      }
-
-      @Override
-      public void endGroup() {
-        validate("endGroup()");
-      }
-
-      @Override
-      public void endField(String field, int index) {
-        validate("endField("+field+", "+index+")");
-      }
-
-      @Override
-      public void addString(String value) {
-        validate("addString("+value+")");
-      }
-
-      @Override
-      public void addInteger(int value) {
-        validate("addInt("+value+")");
-      }
-
-      @Override
-      public void addLong(long value) {
-        validate("addLong("+value+")");
-      }
-
-      @Override
-      public void addBoolean(boolean value) {
-        validate("addBoolean("+value+")");
-      }
-
-      @Override
-      public void addBinary(byte[] value) {
-        validate("addBinary("+new BigInteger(value).toString(16)+")");
-      }
-
-      @Override
-      public void addFloat(float value) {
-        validate("addFloat("+value+")");
-      }
-
-      @Override
-      public void addDouble(double value) {
-        validate("addDouble("+value+")");
-      }
-    });
+    recordReader.read(new ExpectationValidatingRecordConsumer(expectations));
 
   }
 
