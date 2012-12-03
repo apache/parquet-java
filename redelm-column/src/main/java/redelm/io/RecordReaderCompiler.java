@@ -4,11 +4,19 @@ import static brennus.ClassBuilder.startClass;
 import static brennus.model.ExistingType.VOID;
 import static brennus.model.ExistingType.existing;
 import static brennus.model.Protection.PUBLIC;
+import static brennus.model.Protection.PRIVATE;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Set;
 
 import redelm.column.ColumnReader;
 
+import brennus.CaseBuilder;
+import brennus.ClassBuilder;
+import brennus.ConstructorBuilder;
+import brennus.MethodBuilder;
+import brennus.MethodDeclarationBuilder;
+import brennus.SwitchBuilder;
 import brennus.asm.ASMTypeGenerator;
 import brennus.model.FutureType;
 
@@ -27,23 +35,62 @@ public class RecordReaderCompiler {
   private int id = 0;
 
   public RecordReader compile(RecordReader recordReader) {
+    int stateCount = recordReader.getStateCount();
     String className = "redelm.io.RecordReaderCompiler$CompiledRecordReader"+(++id);
-    FutureType testClass =
-        startClass(className, existing(RecordReader.class))
-          .startConstructor(PUBLIC).param(existing(MessageColumnIO.class), "root")
-            .callSuperConstructor().get("root").endConstructorCall()
-          .endConstructor()
-          .startMethod(PUBLIC, VOID, "read").param(existing(RecordConsumer.class), "recordConsumer")
+    ClassBuilder classBuilder = startClass(className, existing(RecordReader.class));
+    for (int i = 0; i < stateCount; i++) {
+      classBuilder = classBuilder
+        .field(PRIVATE, existing(ColumnReader.class), "column_"+i)
+        .field(PRIVATE, existing(PrimitiveColumnIO.class), "leaf_"+i);
+    }
+    ConstructorBuilder constructorBuilder = classBuilder
+        .startConstructor(PUBLIC).param(existing(MessageColumnIO.class), "root")
+        .callSuperConstructor().get("root").endConstructorCall();
+
+    for (int i = 0; i < stateCount; i++) {
+      constructorBuilder = constructorBuilder
+        .set("column_"+i).callOnThis("getColumn").literal(i).endCall().endSet()
+        .set("leaf_"+i).callOnThis("getLeaf").literal(i).endCall().endSet();
+    }
+    MethodBuilder readMethodBuilder = constructorBuilder
+        .endConstructor()
+        .startMethod(PUBLIC, VOID, "read").param(existing(RecordConsumer.class), "recordConsumer")
             .exec().callOnThis("startMessage").get("recordConsumer").endCall().endExec()
-//             do {
-//      ColumnReader columnReader = columns[currentCol];
-//      PrimitiveColumnIO primitiveColumnIO = leaves[currentCol];
-//      int d = columnReader.getCurrentDefinitionLevel();
-//      // creating needed nested groups until the current field (opening tags)
+            .set("currentLevel").literal(0).endSet();
+            for (int i = 0; i < stateCount; i++) {
+              // columnReader is "column_"+i;
+              // primitiveColumnIO is "leaf_"+i;
+              readMethodBuilder = readMethodBuilder
+                  .label("state_"+i)
+              //  int d = columnReader.getCurrentDefinitionLevel();
+                  .set("d").get("column_"+i).callNoParam("getCurrentDefinitionLevel").endSet();
+              // creating needed nested groups until the current field (opening tags)
+              SwitchBuilder<MethodBuilder> switchBlock = readMethodBuilder
+                  .switchOn().get("currentLevel").switchBlock();
 //      for (; currentLevel < (primitiveColumnIO.getFieldPath().length - 1)
 //          && d > currentNodePath[currentLevel].getDefinitionLevel(); ++currentLevel) {
 //        startGroup(recordConsumer, currentNodePath, currentLevel, primitiveColumnIO);
 //      }
+
+              //TODO: find the lowest of
+              // d > currentNodePath[i].getDefinitionLevel()
+              for (int j = 0; j < recordReader.getLeaf(i).getFieldPath().length - 1 ; j++) {
+                switchBlock = switchBlock
+                    .caseBlock(j)
+                      .exec().callOnThis("startGroup")
+                        .get("recordConsumer").nextParam()
+                        .get("nodePath_"+i).nextParam()
+                        .literal(j).nextParam()
+                        .get("leaf_"+i).endCall()
+                      .endExec()
+                      .set("currentLevel").literal(j).endSet()
+                      .ifExp().get("d").isGreaterThan().get("node_path_"+i+"_"+j).thenBlock().gotoLabel("endSwitch").endIf()
+                    .endCase();
+              }
+              readMethodBuilder = switchBlock.endSwitch().label("endSwitch");
+
+            }
+
 //      // set the current value
 //      if (d >= primitiveColumnIO.getDefinitionLevel()) {
 //        // not null
@@ -65,6 +112,7 @@ public class RecordReaderCompiler {
 //      }
 //      currentCol = nextCol;
 //    } while (currentCol < leaves.length);
+    FutureType testClass = readMethodBuilder
             .exec().callOnThis("endMessage").get("recordConsumer").endCall().endExec()
           .endMethod()
         .endClass();
