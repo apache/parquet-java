@@ -1,6 +1,7 @@
 package redelm.io;
 
 import static brennus.ClassBuilder.startClass;
+import static brennus.model.ExistingType.INT;
 import static brennus.model.ExistingType.VOID;
 import static brennus.model.ExistingType.existing;
 import static brennus.model.Protection.PUBLIC;
@@ -18,7 +19,9 @@ import brennus.MethodBuilder;
 import brennus.MethodDeclarationBuilder;
 import brennus.SwitchBuilder;
 import brennus.asm.ASMTypeGenerator;
+import brennus.model.ExistingType;
 import brennus.model.FutureType;
+import brennus.printer.TypePrinter;
 
 public class RecordReaderCompiler {
 
@@ -26,6 +29,7 @@ public class RecordReaderCompiler {
     ASMTypeGenerator asmTypeGenerator = new ASMTypeGenerator();
 
     public Class<?> define(FutureType type) {
+      new TypePrinter().print(type);
       byte[] classBytes = asmTypeGenerator.generate(type);
       return super.defineClass(type.getName(), classBytes, 0, classBytes.length);
     }
@@ -37,7 +41,11 @@ public class RecordReaderCompiler {
   public RecordReader compile(RecordReader recordReader) {
     int stateCount = recordReader.getStateCount();
     String className = "redelm.io.RecordReaderCompiler$CompiledRecordReader"+(++id);
-    ClassBuilder classBuilder = startClass(className, existing(RecordReader.class));
+    ClassBuilder classBuilder = startClass(className, existing(RecordReader.class))
+        // TODO: add support for local variables in Brennus instead
+        .field(PRIVATE, INT, "currentLevel")
+        .field(PRIVATE, INT, "d")
+        .field(PRIVATE, INT, "nextR");
     for (int i = 0; i < stateCount; i++) {
       classBuilder = classBuilder
         .field(PRIVATE, existing(ColumnReader.class), "column_"+i)
@@ -58,50 +66,80 @@ public class RecordReaderCompiler {
             .exec().callOnThis("startMessage").get("recordConsumer").endCall().endExec()
             .set("currentLevel").literal(0).endSet();
             for (int i = 0; i < stateCount; i++) {
-              // columnReader is "column_"+i;
-              // primitiveColumnIO is "leaf_"+i;
+              String columnReader = "column_"+i;
+              String primitiveColumnIO = "leaf_"+i;
               readMethodBuilder = readMethodBuilder
                   .label("state_"+i)
               //  int d = columnReader.getCurrentDefinitionLevel();
-                  .set("d").get("column_"+i).callNoParam("getCurrentDefinitionLevel").endSet();
+                  .set("d").get(columnReader).callNoParam("getCurrentDefinitionLevel").endSet();
               // creating needed nested groups until the current field (opening tags)
-              SwitchBuilder<MethodBuilder> switchBlock = readMethodBuilder
-                  .switchOn().get("currentLevel").switchBlock();
-//      for (; currentLevel < (primitiveColumnIO.getFieldPath().length - 1)
-//          && d > currentNodePath[currentLevel].getDefinitionLevel(); ++currentLevel) {
-//        startGroup(recordConsumer, currentNodePath, currentLevel, primitiveColumnIO);
-//      }
+              if (0 < recordReader.getLeaf(i).getFieldPath().length - 1) {
+                SwitchBuilder<MethodBuilder> switchBlock = readMethodBuilder
+                    .switchOn().get("currentLevel").switchBlock();
+                //            for (; currentLevel < (primitiveColumnIO.getFieldPath().length - 1)
+                //              && d > getDefinitionLevel(currentLevel, primitiveColumnIO); ++currentLevel) {
+                //              startGroup(recordConsumer, currentLevel, primitiveColumnIO);
+                //            }
+                // j takes any possible value of currentLevel
+                for (int j = 0; j < recordReader.getLeaf(i).getFieldPath().length - 1 ; j++) {
+                  switchBlock = switchBlock
+                      .caseBlock(j)
+                        .exec().callOnThis("startGroup")
+                                .get("recordConsumer").nextParam()
+                                .literal(j).nextParam()
+                                .get(primitiveColumnIO).endCall()
+                        .endExec()
+                        .ifExp().get("d").isGreaterThan().callOnThis("getDefinitionLevel").literal(j).nextParam().get(primitiveColumnIO).endCall()
+                        .thenBlock()
+                          .set("currentLevel").literal(j).endSet()
+                          .gotoLabel("endSwitch")
+                        .endIf()
+                      .endCase();
+                }
+                switchBlock = switchBlock.defaultCase().breakCase();
 
-              //TODO: find the lowest of
-              // d > currentNodePath[i].getDefinitionLevel()
-              for (int j = 0; j < recordReader.getLeaf(i).getFieldPath().length - 1 ; j++) {
-                switchBlock = switchBlock
-                    .caseBlock(j)
-                      .exec().callOnThis("startGroup")
-                        .get("recordConsumer").nextParam()
-                        .get("nodePath_"+i).nextParam()
-                        .literal(j).nextParam()
-                        .get("leaf_"+i).endCall()
-                      .endExec()
-                      .set("currentLevel").literal(j).endSet()
-                      .ifExp().get("d").isGreaterThan().get("node_path_"+i+"_"+j).thenBlock().gotoLabel("endSwitch").endIf()
-                    .endCase();
+                readMethodBuilder = switchBlock.endSwitch();
               }
-              readMethodBuilder = switchBlock.endSwitch().label("endSwitch");
+              readMethodBuilder
+                  .set("currentLevel").literal(recordReader.getLeaf(i).getFieldPath().length - 2).endSet()
+                  // not null
+//        String field = primitiveColumnIO.getFieldPath(currentLevel);
+//        int fieldIndex = primitiveColumnIO.getIndexFieldPath(currentLevel);
+//        if (DEBUG) log(field+"(" + currentLevel + ") = "+primitiveColumnIO.getType().asPrimitiveType().getPrimitive().toString(columnReader));
+                  //      // set the current value
+//        addPrimitive(recordConsumer, columnReader, primitiveColumnIO.getPrimitive(), field, fieldIndex);
+                  .exec().callOnThis("addPrimitive")
+                    .get("recordConsumer").nextParam()
+                    .get(columnReader).nextParam()
+                    .get(primitiveColumnIO).callNoParam("getPrimitive").nextParam()
+                    .get(primitiveColumnIO).call("getFieldPath").get("currentLevel").endCall().nextParam()
+                    .get(primitiveColumnIO).call("getIndexFieldPath").get("currentLevel").endCall().endCall()
+                  .endExec()
+                  .label("endSwitch")
+//      columnReader.consume();
+                  .exec().get(columnReader).callNoParam("consume").endExec()
+//      int nextR = primitiveColumnIO.getRepetitionLevel() == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
+                  .set("nextR").get(columnReader).callNoParam("getCurrentRepetitionLevel").endSet();
+//      int nextCol = nextReader[currentCol][nextR];
+              SwitchBuilder<MethodBuilder> nextStateSwitch = readMethodBuilder
+                    .switchOn().get("nextR").switchBlock();
+
+              for (int r = 0; r <= recordReader.getLeaf(i).getRepetitionLevel() ; r++) {
+                CaseBuilder<MethodBuilder> caseBlock = nextStateSwitch.caseBlock(r);
+                if (recordReader.getNextReader(i, r) == stateCount) {
+                        caseBlock = caseBlock
+                            .gotoLabel("endRecord");
+                      } else {
+                        caseBlock = caseBlock
+                            .gotoLabel("state_"+recordReader.getNextReader(i, r));
+                      }
+                nextStateSwitch = caseBlock.endCase();
+
+              }
+              readMethodBuilder = nextStateSwitch.endSwitch();
 
             }
-
-//      // set the current value
-//      if (d >= primitiveColumnIO.getDefinitionLevel()) {
-//        // not null
-//        String field = primitiveColumnIO.getFieldPath()[currentLevel];
-//        int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel];
-//        if (DEBUG) log(field+"(" + currentLevel + ") = "+primitiveColumnIO.getType().asPrimitiveType().getPrimitive().toString(columnReader));
-//        addPrimitive(recordConsumer, columnReader, primitiveColumnIO.getType().asPrimitiveType().getPrimitive(), field, fieldIndex);
-//      }
-//      columnReader.consume();
-//      int nextR = primitiveColumnIO.getRepetitionLevel() == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
-//      int nextCol = nextReader[currentCol][nextR];
+//
 //
 //      // level to go to close current groups
 //      int next = nextLevel[currentCol][nextR];
@@ -113,6 +151,7 @@ public class RecordReaderCompiler {
 //      currentCol = nextCol;
 //    } while (currentCol < leaves.length);
     FutureType testClass = readMethodBuilder
+            .label("endRecord")
             .exec().callOnThis("endMessage").get("recordConsumer").endCall().endExec()
           .endMethod()
         .endClass();

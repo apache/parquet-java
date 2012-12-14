@@ -125,16 +125,16 @@ public class RecordReader {
       int d = columnReader.getCurrentDefinitionLevel();
       // creating needed nested groups until the current field (opening tags)
       for (; currentLevel < (primitiveColumnIO.getFieldPath().length - 1)
-          && d > primitiveColumnIO.getPath()[currentLevel].getDefinitionLevel(); ++currentLevel) {
+          && d > getDefinitionLevel(currentLevel, primitiveColumnIO); ++currentLevel) {
         startGroup(recordConsumer, currentLevel, primitiveColumnIO);
       }
       // set the current value
       if (d >= primitiveColumnIO.getDefinitionLevel()) {
         // not null
-        String field = primitiveColumnIO.getFieldPath()[currentLevel];
-        int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel];
+        String field = primitiveColumnIO.getFieldPath(currentLevel);
+        int fieldIndex = primitiveColumnIO.getIndexFieldPath(currentLevel);
         if (DEBUG) log(field+"(" + currentLevel + ") = "+primitiveColumnIO.getType().asPrimitiveType().getPrimitive().toString(columnReader));
-        addPrimitive(recordConsumer, columnReader, primitiveColumnIO.getType().asPrimitiveType().getPrimitive(), field, fieldIndex);
+        addPrimitive(recordConsumer, columnReader, primitiveColumnIO.getPrimitive(), field, fieldIndex);
       }
       columnReader.consume();
       int nextR = primitiveColumnIO.getRepetitionLevel() == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
@@ -150,6 +150,11 @@ public class RecordReader {
       currentCol = nextCol;
     } while (currentCol < leaves.length);
     endMessage(recordConsumer);
+  }
+
+  private int getDefinitionLevel(int currentLevel,
+      PrimitiveColumnIO primitiveColumnIO) {
+    return primitiveColumnIO.getPath()[currentLevel].getDefinitionLevel();
   }
 
   protected void startMessage(RecordConsumer recordConsumer) {

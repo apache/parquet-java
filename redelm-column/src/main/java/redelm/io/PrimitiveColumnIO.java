@@ -23,6 +23,7 @@ import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnReader;
 import redelm.column.ColumnWriter;
 import redelm.column.ColumnsStore;
+import redelm.schema.PrimitiveType.Primitive;
 import redelm.schema.Type;
 
 
@@ -96,6 +97,10 @@ public class PrimitiveColumnIO extends ColumnIO {
   private PrimitiveColumnIO getFirst(int r) {
     ColumnIO parent = getParent(r);
     return parent.getFirst();
+  }
+
+  public Primitive getPrimitive() {
+    return getType().asPrimitiveType().getPrimitive();
   }
 
 }
