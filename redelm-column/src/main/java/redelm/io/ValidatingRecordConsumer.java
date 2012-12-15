@@ -30,12 +30,13 @@ import redelm.schema.Type.Repetition;
  *
  * @author Julien Le Dem
  *
+ * @param T the materialized record
  */
-public class ValidatingRecordConsumer extends RecordConsumer {
+public class ValidatingRecordConsumer<T> extends RecordConsumer<T> {
   private static final Log LOG = Log.getLog(ValidatingRecordConsumer.class);
   private static final boolean DEBUG = Log.DEBUG;
 
-  private final RecordConsumer delegate;
+  private final RecordConsumer<T> delegate;
 
   private Deque<Type> types = new ArrayDeque<Type>();
   private Deque<Integer> fields = new ArrayDeque<Integer>();
@@ -47,7 +48,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
    * @param delegate the consumer to pass down the event to
    * @param schema the schema to validate against
    */
-  public ValidatingRecordConsumer(RecordConsumer delegate, MessageType schema) {
+  public ValidatingRecordConsumer(RecordConsumer<T> delegate, MessageType schema) {
     this.delegate = delegate;
     this.types.push(schema);
   }
@@ -195,6 +196,11 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   public void addDouble(double value) {
     validate(Primitive.DOUBLE);
     delegate.addDouble(value);
+  }
+
+  @Override
+  public T getCurrentRecord() {
+    return delegate.getCurrentRecord();
   }
 
 }

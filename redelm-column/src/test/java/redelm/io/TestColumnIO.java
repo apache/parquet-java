@@ -100,12 +100,12 @@ public class TestColumnIO {
       System.out.println(columns);
       System.out.println("=========");
       columns.flip();
-      List<Group> records = new ArrayList<Group>();
-      RecordReader recordReader = columnIO.getRecordReader();
+      RecordReader<Group> recordReader = getRecordReader(columnIO, schema);
 
       validateFSA(expectedFSA, columnIO, recordReader);
 
-      read(recordReader, schema, records);
+      List<Group> records = new ArrayList<Group>();
+      read(recordReader, schema, records );
       read(recordReader, schema, records);
 
       int i = 0;
@@ -124,7 +124,7 @@ public class TestColumnIO {
 
 
       List<Group> records = new ArrayList<Group>();
-      RecordReader recordReader = columnIO2.getRecordReader();
+      RecordReader<Group> recordReader = getRecordReader(columnIO2, schema2);
 
       validateFSA(expectedFSA2, columnIO2, recordReader);
 
@@ -141,7 +141,14 @@ public class TestColumnIO {
     }
   }
 
-  private void validateFSA(int[][] expectedFSA, MessageColumnIO columnIO, RecordReader recordReader) {
+  private RecordReader<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema) {
+    RecordConsumer<Group> recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
+    recordConsumer = new ValidatingRecordConsumer<Group>(recordConsumer, schema);
+    recordConsumer = new RecordConsumerWrapper<Group>(recordConsumer);
+    return columnIO.getRecordReader(recordConsumer);
+  }
+
+  private void validateFSA(int[][] expectedFSA, MessageColumnIO columnIO, RecordReader<?> recordReader) {
     System.out.println("FSA: ----");
     List<PrimitiveColumnIO> leaves = columnIO.getLeaves();
     for (int i = 0; i < leaves.size(); ++i) {
@@ -162,7 +169,6 @@ public class TestColumnIO {
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema, columns);
     new GroupWriter(columnIO.getRecordWriter(), schema).write(r1);
     columns.flip();
-    RecordReader recordReader = columnIO.getRecordReader();
 
     String[] expected = {
     "startMessage()",
@@ -223,8 +229,7 @@ public class TestColumnIO {
     for (String string : expected) {
       expectations.add(string);
     }
-
-    recordReader.read(new RecordConsumer() {
+    RecordReader<Void> recordReader = columnIO.getRecordReader(new RecordConsumer<Void>() {
 
       int count = 0;
       private void validate(String got) {
@@ -296,23 +301,29 @@ public class TestColumnIO {
       public void addDouble(double value) {
         validate("addDouble("+value+")");
       }
+
+      @Override
+      public Void getCurrentRecord() {
+        return null;
+      }
     });
+    recordReader.read();
 
   }
 
-  public void read(RecordReader recordReader, MessageType schema, List<Group> groups) {
-    RecordConsumer recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema), groups);
-    recordConsumer = new ValidatingRecordConsumer(recordConsumer, schema);
-    recordConsumer = new RecordConsumerWrapper(recordConsumer);
-    recordReader.read(recordConsumer);
+  public void read(RecordReader<Group> recordReader, MessageType schema, List<Group> records) {
+    records.add(recordReader.read());
   }
 
   @Test
   public void testGroupWriter() {
     List<Group> result = new ArrayList<Group>();
-    GroupWriter groupWriter = new GroupWriter(new RecordConsumerWrapper(new GroupRecordConsumer(new SimpleGroupFactory(schema), result)), schema);
+    GroupRecordConsumer groupConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
+    GroupWriter groupWriter = new GroupWriter(new RecordConsumerWrapper<Group>(groupConsumer), schema);
     groupWriter.write(r1);
+    result.add(groupConsumer.getCurrentRecord());
     groupWriter.write(r2);
+    result.add(groupConsumer.getCurrentRecord());
     assertEquals("deserialization does not display the expected result", result.get(0).toString(), r1.toString());
     assertEquals("deserialization does not display the expected result", result.get(1).toString(), r2.toString());
   }

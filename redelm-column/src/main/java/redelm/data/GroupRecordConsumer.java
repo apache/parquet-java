@@ -18,22 +18,19 @@ package redelm.data;
 import static redelm.Log.DEBUG;
 
 import java.util.ArrayDeque;
-import java.util.Collection;
 import java.util.Deque;
 
-import redelm.Log;
 import redelm.io.RecordConsumer;
 
-public class GroupRecordConsumer extends RecordConsumer {
+public class GroupRecordConsumer extends RecordConsumer<Group> {
 
   private final Deque<Group> groups = new ArrayDeque<Group>();
   private final Deque<Integer> fields = new ArrayDeque<Integer>();
   private final GroupFactory groupFactory;
-  private final Collection<Group> result;
+  private Group currentRecord;
 
-  public GroupRecordConsumer(GroupFactory groupFactory, Collection<Group> result) {
+  public GroupRecordConsumer(GroupFactory groupFactory) {
     this.groupFactory = groupFactory;
-    this.result = result;
   }
 
   @Override
@@ -44,7 +41,7 @@ public class GroupRecordConsumer extends RecordConsumer {
   @Override
   public void endMessage() {
     if (DEBUG) if (groups.size() != 1) throw new IllegalStateException("end of message in the middle of a record "+fields);
-    this.result.add(groups.pop());
+    this.currentRecord = groups.pop();
   }
 
   @Override
@@ -101,6 +98,11 @@ public class GroupRecordConsumer extends RecordConsumer {
   @Override
   public void addDouble(double value) {
     groups.peek().add(fields.peek(), value);
+  }
+
+  @Override
+  public Group getCurrentRecord() {
+    return currentRecord;
   }
 
 }

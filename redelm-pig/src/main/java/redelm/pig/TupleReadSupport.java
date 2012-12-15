@@ -61,10 +61,10 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
    * {@inheritDoc}
    */
   @Override
-  public RecordConsumer newRecordConsumer(List<Tuple> destination) {
+  public RecordConsumer<Tuple> newRecordConsumer() {
     MessageType redelmSchema = MessageTypeParser.parseMessageType(requestedSchema);
     MessageConverter converter = newParsingTree(redelmSchema, pigSchema);
-    return converter.newRecordConsumer(destination);
+    return converter.newRecordConsumer();
 //    return new TupleRecordConsumer(
 //        redelmSchema,
 //        pigSchema,

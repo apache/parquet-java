@@ -18,7 +18,6 @@ package redelm.pig;
 import static redelm.schema.Type.Repetition.REPEATED;
 
 import java.util.ArrayDeque;
-import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -30,7 +29,6 @@ import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.Type;
 
-import org.apache.pig.data.BagFactory;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataByteArray;
 import org.apache.pig.data.DataType;
@@ -50,7 +48,7 @@ import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
  * @author Julien Le Dem
  *
  */
-public class TupleRecordConsumer extends RecordConsumer {
+public class TupleRecordConsumer extends RecordConsumer<Tuple> {
   private static final boolean DEBUG = Log.DEBUG;
   private static final Log LOG = Log.getLog(TupleRecordConsumer.class);
   private static final TupleFactory tf = TupleFactory.getInstance();
@@ -60,9 +58,9 @@ public class TupleRecordConsumer extends RecordConsumer {
   private Deque<FieldSchema> pigTypes = new ArrayDeque<FieldSchema>();
   private Deque<Tuple> groups = new ArrayDeque<Tuple>();
   private Deque<Integer> fields = new ArrayDeque<Integer>();
-  private final Collection<Tuple> destination;
+  private Tuple currentRecord;
 
-  public TupleRecordConsumer(MessageType schema, Schema pigSchema, Collection<Tuple> destination) {
+  public TupleRecordConsumer(MessageType schema, Schema pigSchema) {
     try {
       if (schema == null) {
         throw new NullPointerException("schema");
@@ -70,7 +68,6 @@ public class TupleRecordConsumer extends RecordConsumer {
       if (pigSchema == null) {
         throw new NullPointerException("pigSchema");
       }
-      this.destination = destination;
       this.types.push(schema);
       this.pigTypes.push(new FieldSchema("tuple", pigSchema, DataType.TUPLE));
     } catch (FrontendException e) {
@@ -85,7 +82,7 @@ public class TupleRecordConsumer extends RecordConsumer {
 
   @Override
   public void endMessage() {
-    destination.add(groups.pop());
+    currentRecord = groups.pop();
   }
 
   @Override
@@ -230,6 +227,11 @@ public class TupleRecordConsumer extends RecordConsumer {
   @Override
   public void addDouble(double value) {
     setCurrentField(value);
+  }
+
+  @Override
+  public Tuple getCurrentRecord() {
+    return currentRecord;
   }
 
 }

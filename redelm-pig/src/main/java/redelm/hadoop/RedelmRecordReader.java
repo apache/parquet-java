@@ -19,9 +19,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+
+import redelm.column.mem.MemColumnsStore;
+import redelm.io.ColumnIOFactory;
+import redelm.io.MessageColumnIO;
+import redelm.parser.MessageTypeParser;
+import redelm.schema.GroupType;
+import redelm.schema.MessageType;
+import redelm.schema.Type;
 
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -29,15 +36,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
-
-import redelm.column.mem.MemColumnsStore;
-import redelm.io.ColumnIOFactory;
-import redelm.io.MessageColumnIO;
-import redelm.io.RecordConsumer;
-import redelm.parser.MessageTypeParser;
-import redelm.schema.GroupType;
-import redelm.schema.MessageType;
-import redelm.schema.Type;
 
 /**
  * Reads the records from a block of a RedElm file
@@ -56,10 +54,8 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   private int total;
   private int current;
   private RedelmFileReader reader;
-  private List<T> destination = new LinkedList<T>();
-  private redelm.io.RecordReader recordReader;
+  private redelm.io.RecordReader<T> recordReader;
   private MemColumnsStore columnsStore;
-  private RecordConsumer recordConsumer;
   private FSDataInputStream f;
   private ReadSupport<T> readSupport;
   private MessageType requestedSchema;
@@ -90,8 +86,7 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
             );
       }
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, columnsStore);
-      recordReader = columnIO.getRecordReader();
-      recordConsumer = readSupport.newRecordConsumer(destination);
+      recordReader = columnIO.getRecordReader(readSupport.newRecordConsumer());
     }
   }
 
@@ -177,15 +172,11 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
     checkRead();
-    if (destination.size() == 0 && current<total) {
-      recordReader.read(recordConsumer);
+    if (current<total) {
+      currentValue = recordReader.read();
+      current ++;
+      return true;
     }
-    if (destination.size() == 0) {
-      currentValue = null;
-      return false;
-    }
-    current ++;
-    currentValue = destination.remove(0);
-    return true;
+    return false;
   }
 }

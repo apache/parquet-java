@@ -39,11 +39,11 @@ public class MessageColumnIO extends GroupColumnIO {
     return super.getColumnNames();
   }
 
-  public RecordReader getRecordReader() {
-    return new RecordReader(this, leaves);
+  public <T> RecordReader<T> getRecordReader(RecordConsumer<T> recordConsumer) {
+    return new RecordReader<T>(this, leaves, recordConsumer);
   }
 
-  private class MessageColumnIORecordConsumer extends RecordConsumer {
+  private class MessageColumnIORecordConsumer extends RecordConsumer<Void> {
     ColumnIO currentColumnIO;
     int currentLevel = 0;
     int[] currentIndex = new int[16];
@@ -213,9 +213,15 @@ public class MessageColumnIO extends GroupColumnIO {
       setRepetitionLevel();
       if (DEBUG) printState();
     }
+
+    @Override
+    public Void getCurrentRecord() {
+      // TODO
+      throw new UnsupportedOperationException();
+    }
   }
 
-  public RecordConsumer getRecordWriter() {
+  public RecordConsumer<Void> getRecordWriter() {
     return new MessageColumnIORecordConsumer();
   }
 

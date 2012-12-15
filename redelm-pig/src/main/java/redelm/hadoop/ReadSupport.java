@@ -42,9 +42,8 @@ abstract public class ReadSupport<T> implements Serializable {
   /**
    * called by the record reader in the backend.
    * the returned RecordConsumer will materialize the records and add them to the destination
-   * @param destination where to write the records
    * @return the recordConsumer that will receive the events
    */
-  abstract public RecordConsumer newRecordConsumer(List<T> destination);
+  abstract public RecordConsumer<T> newRecordConsumer();
 
 }

@@ -26,8 +26,9 @@ import redelm.schema.PrimitiveType.Primitive;
  * used to read reassembled records
  * @author Julien Le Dem
  *
+ * @param T the type of the materialized record
  */
-public class RecordReader {
+public class RecordReader<T> {
 
   private static final Log LOG = Log.getLog(RecordReader.class);
   private static final boolean DEBUG = Log.DEBUG;
@@ -37,14 +38,16 @@ public class RecordReader {
   private final int[][] nextReader;
   private final MessageColumnIO root;
   private final int[][] nextLevel;
+  private final RecordConsumer<T> recordConsumer;
 
   /**
    *
    * @param root the root of the schema
    * @param leaves the leaves of the schema
    */
-  public RecordReader(MessageColumnIO root, List<PrimitiveColumnIO> leaves) {
+  public RecordReader(MessageColumnIO root, List<PrimitiveColumnIO> leaves, RecordConsumer<T> recordConsumer) {
     this.root = root;
+    this.recordConsumer = recordConsumer;
     this.leaves = leaves.toArray(new PrimitiveColumnIO[leaves.size()]);
     this.columns = new ColumnReader[leaves.size()];
     this.nextReader = new int[leaves.size()][];
@@ -95,12 +98,12 @@ public class RecordReader {
    * reads one record and writes it in the RecordConsumer
    * @param recordConsumer
    */
-  public void read(RecordConsumer recordConsumer) {
+  public T read() {
     GroupColumnIO[] currentNodePath = new GroupColumnIO[16];
     int currentLevel = 0;
     currentNodePath[0] = root;
     int currentCol = 0;
-    startMessage(recordConsumer);
+    startMessage();
     do {
       ColumnReader columnReader = columns[currentCol];
       PrimitiveColumnIO primitiveColumnIO = leaves[currentCol];
@@ -108,7 +111,7 @@ public class RecordReader {
       // creating needed nested groups until the current field (opening tags)
       for (; currentLevel < (primitiveColumnIO.getFieldPath().length - 1)
           && d > currentNodePath[currentLevel].getDefinitionLevel(); ++currentLevel) {
-        startGroup(recordConsumer, currentNodePath, currentLevel, primitiveColumnIO);
+        startGroup(currentNodePath, currentLevel, primitiveColumnIO);
       }
       // set the current value
       if (d >= primitiveColumnIO.getDefinitionLevel()) {
@@ -116,7 +119,7 @@ public class RecordReader {
         String field = primitiveColumnIO.getFieldPath()[currentLevel];
         int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel];
         if (DEBUG) log(field+"(" + currentLevel + ") = "+primitiveColumnIO.getType().asPrimitiveType().getPrimitive().toString(columnReader));
-        addPrimitive(recordConsumer, columnReader, primitiveColumnIO.getType().asPrimitiveType().getPrimitive(), field, fieldIndex);
+        addPrimitive(columnReader, primitiveColumnIO.getType().asPrimitiveType().getPrimitive(), field, fieldIndex);
       }
       columnReader.consume();
       int nextR = columnReader.getCurrentRepetitionLevel();
@@ -127,20 +130,21 @@ public class RecordReader {
       for (; currentLevel > next; currentLevel--) {
         String field = primitiveColumnIO.getFieldPath()[currentLevel-1];
         int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel-1];
-        endGroup(recordConsumer, field, fieldIndex);
+        endGroup(field, fieldIndex);
       }
       currentCol = nextCol;
     } while (currentCol < leaves.length);
-    endMessage(recordConsumer);
+    endMessage();
+    return recordConsumer.getCurrentRecord();
   }
 
-  private void startMessage(RecordConsumer recordConsumer) {
+  private void startMessage() {
     // reset state
     endField = null;
     recordConsumer.startMessage();
   }
 
-  private void endMessage(RecordConsumer recordConsumer) {
+  private void endMessage() {
     if (endField != null) {
       // close the previous field
       recordConsumer.endField(endField, endIndex);
@@ -149,16 +153,16 @@ public class RecordReader {
     recordConsumer.endMessage();
   }
 
-  private void addPrimitive(RecordConsumer recordConsumer, ColumnReader columnReader, Primitive primitive, String field, int index) {
-    startField(recordConsumer, field, index);
+  private void addPrimitive(ColumnReader columnReader, Primitive primitive, String field, int index) {
+    startField(field, index);
     primitive.addValueToRecordConsumer(recordConsumer, columnReader);
-    endField(recordConsumer, field, index);
+    endField(field, index);
   }
 
   private String endField;
   private int endIndex;
 
-  private void endField(RecordConsumer recordConsumer, String field, int index) {
+  private void endField(String field, int index) {
     if (endField != null) {
       recordConsumer.endField(endField, endIndex);
     }
@@ -166,7 +170,7 @@ public class RecordReader {
     endIndex = index;
   }
 
-  private void startField(RecordConsumer recordConsumer, String field, int index) {
+  private void startField(String field, int index) {
     if (endField != null && index == endIndex) {
       // skip the close/open tag
       endField = null;
@@ -180,24 +184,24 @@ public class RecordReader {
     }
   }
 
-  private void endGroup(RecordConsumer recordConsumer, String field, int index) {
+  private void endGroup(String field, int index) {
     if (endField != null) {
       // close the previous field
       recordConsumer.endField(endField, endIndex);
       endField = null;
     }
     recordConsumer.endGroup();
-    endField(recordConsumer, field, index);
+    endField(field, index);
   }
 
-  private void startGroup(RecordConsumer recordConsumer,
+  private void startGroup(
       GroupColumnIO[] currentNodePath, int currentLevel,
       PrimitiveColumnIO primitiveColumnIO) {
     String field = primitiveColumnIO.getFieldPath()[currentLevel];
     int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel];
     currentNodePath[currentLevel + 1] = (GroupColumnIO)currentNodePath[currentLevel].getChild(fieldIndex);
     if (DEBUG) log(field + "(" + currentLevel + ") = new Group()");
-    startField(recordConsumer, field, fieldIndex);
+    startField(field, fieldIndex);
     recordConsumer.startGroup();
   }
 

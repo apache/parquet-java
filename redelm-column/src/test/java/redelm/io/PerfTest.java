@@ -21,13 +21,10 @@ import static redelm.data.simple.example.Paper.schema;
 import static redelm.data.simple.example.Paper.schema2;
 import static redelm.data.simple.example.Paper.schema3;
 
-import java.util.Collection;
-import java.util.Iterator;
 import java.util.logging.Level;
 
 import redelm.Log;
 import redelm.column.mem.MemColumnsStore;
-import redelm.data.Group;
 import redelm.data.GroupWriter;
 import redelm.schema.MessageType;
 
@@ -42,6 +39,7 @@ public class PerfTest {
   public static void main(String[] args) {
     MemColumnsStore columns = new MemColumnsStore(50*1024*1024, schema);
     write(columns);
+    columns.flip();
     read(columns);
     System.out.println(columns.memSize()+" bytes used total");
     System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
@@ -57,7 +55,26 @@ public class PerfTest {
       String message) {
     MessageColumnIO columnIO = newColumnFactory(columns, myschema);
     System.out.println(message);
-    RecordReader recordReader = columnIO.getRecordReader();
+    RecordConsumer<Void> recordConsumer = new RecordConsumer<Void>() {
+      public void startMessage() {}
+      public void startGroup() {}
+      public void startField(String field, int index) {}
+      public void endMessage() {}
+      public void endGroup() {}
+      public void endField(String field, int index) {}
+      public void addString(String value) {}
+      public void addInteger(int value) {}
+      public void addLong(long value) {}
+      public void addFloat(float value) {}
+      public void addDouble(double value) {}
+      public void addBoolean(boolean value) {}
+      public void addBinary(byte[] value) {}
+      public Void getCurrentRecord() { return null; }
+    };
+    if (Log.DEBUG) {
+      recordConsumer = new RecordConsumerWrapper<Void>(recordConsumer);
+    }
+    RecordReader<Void> recordReader = columnIO.getRecordReader(recordConsumer);
     read(recordReader, 2, myschema);
     read(recordReader, 10000, myschema);
     read(recordReader, 10000, myschema);
@@ -91,69 +108,10 @@ public class PerfTest {
     return new ColumnIOFactory().getColumnIO(schema, columns);
   }
 
-  private static void read(RecordReader recordReader, int count, MessageType schema) {
-    Collection<Group> result = new Collection<Group>() {
-      public int size() {
-        return 0;
-      }
-      public boolean isEmpty() {
-        return false;
-      }
-      public boolean contains(Object o) {
-        return false;
-      }
-      public Iterator<Group> iterator() {
-        return null;
-      }
-      public Object[] toArray() {
-        return null;
-      }
-      public <T> T[] toArray(T[] a) {
-        return null;
-      }
-      public boolean add(Group e) {
-        return false;
-      }
-      public boolean remove(Object o) {
-        return false;
-      }
-      public boolean containsAll(Collection<?> c) {
-        return false;
-      }
-      public boolean addAll(Collection<? extends Group> c) {
-        return false;
-      }
-      public boolean removeAll(Collection<?> c) {
-        return false;
-      }
-      public boolean retainAll(Collection<?> c) {
-        return false;
-      }
-      public void clear() {
-      }
-    };
-//    RecordConsumer recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema), result);
-    RecordConsumer recordConsumer = new RecordConsumer() {
-      public void startMessage() {}
-      public void startGroup() {}
-      public void startField(String field, int index) {}
-      public void endMessage() {}
-      public void endGroup() {}
-      public void endField(String field, int index) {}
-      public void addString(String value) {}
-      public void addInteger(int value) {}
-      public void addLong(long value) {}
-      public void addFloat(float value) {}
-      public void addDouble(double value) {}
-      public void addBoolean(boolean value) {}
-      public void addBinary(byte[] value) {}
-    };
-    if (Log.DEBUG) {
-      recordConsumer = new RecordConsumerWrapper(recordConsumer);
-    }
+  private static void read(RecordReader<Void> recordReader, int count, MessageType schema) {
     long t0 = System.currentTimeMillis();
     for (int i = 0; i < count; i++) {
-      recordReader.read(recordConsumer);
+      recordReader.read();
     }
     long t1 = System.currentTimeMillis();
     long t = t1-t0;
