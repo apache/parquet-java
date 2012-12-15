@@ -22,13 +22,12 @@ import redelm.Log;
  *
  * @author Julien Le Dem
  *
- * @param T the materialized record
  */
-public class RecordConsumerWrapper<T> extends RecordConsumer<T> {
+public class RecordConsumerWrapper extends RecordConsumer {
     private static final Log logger = Log.getLog(RecordConsumerWrapper.class);
     private static final boolean DEBUG = Log.DEBUG;
 
-    private final RecordConsumer<T> delegate;
+    private final RecordConsumer delegate;
 
     int indent = 0;
 
@@ -36,7 +35,7 @@ public class RecordConsumerWrapper<T> extends RecordConsumer<T> {
      * all calls a delegate to the wrapped delegate
      * @param delegate
      */
-    public RecordConsumerWrapper(RecordConsumer<T> delegate) {
+    public RecordConsumerWrapper(RecordConsumer delegate) {
       this.delegate = delegate;
     }
 
@@ -177,11 +176,6 @@ public class RecordConsumerWrapper<T> extends RecordConsumer<T> {
     public void endMessage() {
       delegate.endMessage();
       if (DEBUG) log("<!-- end message -->");
-    }
-
-    @Override
-    public T getCurrentRecord() {
-      return delegate.getCurrentRecord();
     }
 
 }

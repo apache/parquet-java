@@ -91,8 +91,9 @@ public class TestColumnIO {
 
     ColumnsStore columns = new MemColumnsStore(1024, schema);
 
+    ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     {
-      MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema, columns);
+      MessageColumnIO columnIO = columnIOFactory.getColumnIO(schema, columns);
       System.out.println(columnIO);
       GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(), schema);
       groupWriter.write(r1);
@@ -120,7 +121,7 @@ public class TestColumnIO {
     {
       columns.flip();
 
-      MessageColumnIO columnIO2 = new ColumnIOFactory().getColumnIO(schema2, columns);
+      MessageColumnIO columnIO2 = columnIOFactory.getColumnIO(schema2, columns);
 
 
       List<Group> records = new ArrayList<Group>();
@@ -142,9 +143,7 @@ public class TestColumnIO {
   }
 
   private RecordReader<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema) {
-    RecordConsumer<Group> recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
-    recordConsumer = new ValidatingRecordConsumer<Group>(recordConsumer, schema);
-    recordConsumer = new RecordConsumerWrapper<Group>(recordConsumer);
+    RecordMaterializer<Group> recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
     return columnIO.getRecordReader(recordConsumer);
   }
 
@@ -229,7 +228,7 @@ public class TestColumnIO {
     for (String string : expected) {
       expectations.add(string);
     }
-    RecordReader<Void> recordReader = columnIO.getRecordReader(new RecordConsumer<Void>() {
+    RecordReader<Void> recordReader = columnIO.getRecordReader(new RecordMaterializer<Void>() {
 
       int count = 0;
       private void validate(String got) {
@@ -319,7 +318,7 @@ public class TestColumnIO {
   public void testGroupWriter() {
     List<Group> result = new ArrayList<Group>();
     GroupRecordConsumer groupConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
-    GroupWriter groupWriter = new GroupWriter(new RecordConsumerWrapper<Group>(groupConsumer), schema);
+    GroupWriter groupWriter = new GroupWriter(new RecordConsumerWrapper(groupConsumer), schema);
     groupWriter.write(r1);
     result.add(groupConsumer.getCurrentRecord());
     groupWriter.write(r2);

@@ -24,7 +24,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import redelm.Log;
-import redelm.io.RecordConsumer;
+import redelm.io.RecordMaterializer;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.Type;
@@ -48,7 +48,7 @@ import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
  * @author Julien Le Dem
  *
  */
-public class TupleRecordConsumer extends RecordConsumer<Tuple> {
+public class TupleRecordConsumer extends RecordMaterializer<Tuple> {
   private static final boolean DEBUG = Log.DEBUG;
   private static final Log LOG = Log.getLog(TupleRecordConsumer.class);
   private static final TupleFactory tf = TupleFactory.getInstance();

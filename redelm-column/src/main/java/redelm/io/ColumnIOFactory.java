@@ -34,9 +34,11 @@ public class ColumnIOFactory {
     private GroupColumnIO current;
     private final ColumnsStore columnStore;
     private List<PrimitiveColumnIO> leaves = new ArrayList<PrimitiveColumnIO>();
+    private final boolean validating;
 
-    public ColumnIOCreatorVisitor(ColumnsStore columnStore) {
+    public ColumnIOCreatorVisitor(ColumnsStore columnStore, boolean validating) {
       this.columnStore = columnStore;
+      this.validating = validating;
     }
 
     @Override
@@ -62,7 +64,7 @@ public class ColumnIOFactory {
 
     @Override
     public void visit(MessageType messageType) {
-      columnIO = new MessageColumnIO(messageType);
+      columnIO = new MessageColumnIO(messageType, validating);
       visitChildren(columnIO, messageType);
       columnIO.setLevels(columnStore);
       columnIO.setLeaves(leaves);
@@ -81,12 +83,18 @@ public class ColumnIOFactory {
 
   }
 
+  private final boolean validating;
+
   public ColumnIOFactory() {
-    super();
+    this(false);
   }
 
+  public ColumnIOFactory(boolean validating) {
+    super();
+    this.validating = validating;
+  }
   public MessageColumnIO getColumnIO(MessageType schema, ColumnsStore columnStore) {
-    ColumnIOCreatorVisitor visitor = new ColumnIOCreatorVisitor(columnStore);
+    ColumnIOCreatorVisitor visitor = new ColumnIOCreatorVisitor(columnStore, validating);
     schema.accept(visitor);
     return visitor.getColumnIO();
   }

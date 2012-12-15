@@ -20,9 +20,9 @@ import static redelm.Log.DEBUG;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-import redelm.io.RecordConsumer;
+import redelm.io.RecordMaterializer;
 
-public class GroupRecordConsumer extends RecordConsumer<Group> {
+public class GroupRecordConsumer extends RecordMaterializer<Group> {
 
   private final Deque<Group> groups = new ArrayDeque<Group>();
   private final Deque<Integer> fields = new ArrayDeque<Integer>();

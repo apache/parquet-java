@@ -20,13 +20,15 @@ import java.util.List;
 
 import redelm.Log;
 import redelm.column.ColumnReader;
+import redelm.data.Group;
+import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType.Primitive;
 
 /**
  * used to read reassembled records
  * @author Julien Le Dem
  *
- * @param T the type of the materialized record
+ * @param <T> the type of the materialized record
  */
 public class RecordReader<T> {
 
@@ -38,16 +40,19 @@ public class RecordReader<T> {
   private final int[][] nextReader;
   private final MessageColumnIO root;
   private final int[][] nextLevel;
-  private final RecordConsumer<T> recordConsumer;
+  private final RecordConsumer recordConsumer;
+  private final RecordMaterializer<T> recordMaterializer;
 
   /**
    *
    * @param root the root of the schema
    * @param leaves the leaves of the schema
+   * @param validating
    */
-  public RecordReader(MessageColumnIO root, List<PrimitiveColumnIO> leaves, RecordConsumer<T> recordConsumer) {
+  public RecordReader(MessageColumnIO root, List<PrimitiveColumnIO> leaves, RecordMaterializer<T> recordMaterializer, boolean validating) {
     this.root = root;
-    this.recordConsumer = recordConsumer;
+    this.recordMaterializer = recordMaterializer;
+    this.recordConsumer = validator(wrap(recordMaterializer), validating, root.getType());
     this.leaves = leaves.toArray(new PrimitiveColumnIO[leaves.size()]);
     this.columns = new ColumnReader[leaves.size()];
     this.nextReader = new int[leaves.size()][];
@@ -94,6 +99,17 @@ public class RecordReader<T> {
     }
   }
 
+  private RecordConsumer validator(RecordConsumer recordConsumer, boolean validating, MessageType schema) {
+    return validating ? new ValidatingRecordConsumer<Group>(recordConsumer, schema) : recordConsumer;
+  }
+
+  private RecordConsumer wrap(RecordConsumer recordConsumer) {
+    if (Log.DEBUG) {
+      return new RecordConsumerWrapper(recordConsumer);
+    }
+    return recordConsumer;
+  }
+
   /**
    * reads one record and writes it in the RecordConsumer
    * @param recordConsumer
@@ -135,7 +151,7 @@ public class RecordReader<T> {
       currentCol = nextCol;
     } while (currentCol < leaves.length);
     endMessage();
-    return recordConsumer.getCurrentRecord();
+    return recordMaterializer.getCurrentRecord();
   }
 
   private void startMessage() {

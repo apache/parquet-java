@@ -47,10 +47,8 @@ package redelm.io;
  * </pre>
  * @author Julien Le Dem
  *
- * @param T the type of the materialized tuple
- *
  */
-abstract public class RecordConsumer<T> {
+abstract public class RecordConsumer {
 
   /**
    * start a new record
@@ -129,9 +127,4 @@ abstract public class RecordConsumer<T> {
    */
   abstract public void addDouble(double value);
 
-  /**
-   * called after a call to endMessage()
-   * @return the materialized record
-   */
-  abstract public T getCurrentRecord();
 }

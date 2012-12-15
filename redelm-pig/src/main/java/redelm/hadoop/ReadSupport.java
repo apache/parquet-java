@@ -18,9 +18,9 @@ package redelm.hadoop;
 import java.io.Serializable;
 import java.util.List;
 
-import org.apache.hadoop.mapred.InputFormat;
+import redelm.io.RecordMaterializer;
 
-import redelm.io.RecordConsumer;
+import org.apache.hadoop.mapred.InputFormat;
 
 /**
  * Abstraction used by the {@link RedelmInputFormat} to materialize records
@@ -44,6 +44,6 @@ abstract public class ReadSupport<T> implements Serializable {
    * the returned RecordConsumer will materialize the records and add them to the destination
    * @return the recordConsumer that will receive the events
    */
-  abstract public RecordConsumer<T> newRecordConsumer();
+  abstract public RecordMaterializer<T> newRecordConsumer();
 
 }

@@ -31,19 +31,22 @@ public class MessageColumnIO extends GroupColumnIO {
 
   private List<PrimitiveColumnIO> leaves;
 
-  MessageColumnIO(MessageType messageType) {
+  private final boolean validating;
+
+  MessageColumnIO(MessageType messageType, boolean validating) {
     super(messageType, null);
+    this.validating = validating;
   }
 
   public List<String[]> getColumnNames() {
     return super.getColumnNames();
   }
 
-  public <T> RecordReader<T> getRecordReader(RecordConsumer<T> recordConsumer) {
-    return new RecordReader<T>(this, leaves, recordConsumer);
+  public <T> RecordReader<T> getRecordReader(RecordMaterializer<T> recordMaterializer) {
+    return new RecordReader<T>(this, leaves, recordMaterializer, validating);
   }
 
-  private class MessageColumnIORecordConsumer extends RecordConsumer<Void> {
+  private class MessageColumnIORecordConsumer extends RecordConsumer {
     ColumnIO currentColumnIO;
     int currentLevel = 0;
     int[] currentIndex = new int[16];
@@ -214,14 +217,9 @@ public class MessageColumnIO extends GroupColumnIO {
       if (DEBUG) printState();
     }
 
-    @Override
-    public Void getCurrentRecord() {
-      // TODO
-      throw new UnsupportedOperationException();
-    }
   }
 
-  public RecordConsumer<Void> getRecordWriter() {
+  public RecordConsumer getRecordWriter() {
     return new MessageColumnIORecordConsumer();
   }
 
@@ -237,4 +235,8 @@ public class MessageColumnIO extends GroupColumnIO {
     return this.leaves;
   }
 
+  @Override
+  MessageType getType() {
+    return (MessageType)super.getType();
+  }
 }

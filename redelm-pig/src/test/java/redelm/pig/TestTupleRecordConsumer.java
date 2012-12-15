@@ -31,9 +31,7 @@ import redelm.data.GroupWriter;
 import redelm.data.simple.SimpleGroup;
 import redelm.data.simple.SimpleGroupFactory;
 import redelm.hadoop.MetaDataBlock;
-import redelm.io.RecordConsumer;
-import redelm.io.RecordConsumerWrapper;
-import redelm.io.ValidatingRecordConsumer;
+import redelm.io.RecordMaterializer;
 import redelm.schema.MessageType;
 
 import org.apache.pig.backend.executionengine.ExecException;
@@ -116,7 +114,7 @@ public class TestTupleRecordConsumer {
   private void testFromTuple(String pigSchemaString, List<Tuple> input) throws Exception {
     List<Tuple> tuples = new ArrayList<Tuple>();
     MessageType redelmSchema = getMessageType(pigSchemaString);
-    RecordConsumer<Tuple> recordConsumer = newPigRecordConsumer(redelmSchema, pigSchemaString);
+    RecordMaterializer<Tuple> recordConsumer = newPigRecordConsumer(redelmSchema, pigSchemaString);
     TupleWriteSupport tupleWriter = newTupleWriter(redelmSchema, pigSchemaString, recordConsumer);
     for (Tuple tuple : input) {
       logger.debug(tuple);
@@ -136,7 +134,7 @@ public class TestTupleRecordConsumer {
   private void testFromGroups(String pigSchemaString, List<Group> input) throws ParserException {
     List<Tuple> tuples = new ArrayList<Tuple>();
     MessageType schema = getMessageType(pigSchemaString);
-    RecordConsumer<Tuple> pigRecordConsumer = newPigRecordConsumer(schema, pigSchemaString);
+    RecordMaterializer<Tuple> pigRecordConsumer = newPigRecordConsumer(schema, pigSchemaString);
     GroupWriter groupWriter = new GroupWriter(pigRecordConsumer, schema);
 
     for (Group group : input) {
@@ -161,10 +159,10 @@ public class TestTupleRecordConsumer {
     }
   }
 
-  private <T> TupleWriteSupport newTupleWriter(MessageType redelmSchema, String pigSchemaString, RecordConsumer<T> recordConsumer) {
+  private <T> TupleWriteSupport newTupleWriter(MessageType redelmSchema, String pigSchemaString, RecordMaterializer<T> recordConsumer) {
     TupleWriteSupport tupleWriter = new TupleWriteSupport();
     tupleWriter.initForWrite(
-        wrap(recordConsumer,redelmSchema),
+        recordConsumer,
         redelmSchema,
         pigMetaData(pigSchemaString)
         );
@@ -175,14 +173,10 @@ public class TestTupleRecordConsumer {
     return Arrays.asList(new PigMetaData(pigSchemaString).toMetaDataBlock());
   }
 
-  private <T> RecordConsumer<T> wrap(RecordConsumer<T> recordConsumer, MessageType redelmSchema) {
-    return new RecordConsumerWrapper<T>(new ValidatingRecordConsumer<T>(recordConsumer, redelmSchema));
-  }
-
-  private RecordConsumer<Tuple> newPigRecordConsumer(MessageType redelmSchema, String pigSchemaString) throws ParserException {
+  private RecordMaterializer<Tuple> newPigRecordConsumer(MessageType redelmSchema, String pigSchemaString) throws ParserException {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
     tupleReadSupport.initForRead(pigMetaData(pigSchemaString), redelmSchema.toString());
-    return wrap(tupleReadSupport.newRecordConsumer(), redelmSchema);
+    return tupleReadSupport.newRecordConsumer();
   }
 
   private MessageType getMessageType(String pigSchemaString) throws ParserException {

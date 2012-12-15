@@ -55,7 +55,7 @@ public class PerfTest {
       String message) {
     MessageColumnIO columnIO = newColumnFactory(columns, myschema);
     System.out.println(message);
-    RecordConsumer<Void> recordConsumer = new RecordConsumer<Void>() {
+    RecordMaterializer<Void> recordConsumer = new RecordMaterializer<Void>() {
       public void startMessage() {}
       public void startGroup() {}
       public void startField(String field, int index) {}
@@ -71,9 +71,6 @@ public class PerfTest {
       public void addBinary(byte[] value) {}
       public Void getCurrentRecord() { return null; }
     };
-    if (Log.DEBUG) {
-      recordConsumer = new RecordConsumerWrapper<Void>(recordConsumer);
-    }
     RecordReader<Void> recordReader = columnIO.getRecordReader(recordConsumer);
     read(recordReader, 2, myschema);
     read(recordReader, 10000, myschema);
