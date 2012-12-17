@@ -43,7 +43,7 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   public <T> RecordReader<T> getRecordReader(RecordMaterializer<T> recordMaterializer) {
-    return new RecordReader<T>(this, leaves, recordMaterializer, validating);
+    return new RecordReader<T>(this, recordMaterializer, validating);
   }
 
   private class MessageColumnIORecordConsumer extends RecordConsumer {

@@ -49,14 +49,14 @@ public class RecordReader<T> {
    * @param leaves the leaves of the schema
    * @param validating
    */
-  public RecordReader(MessageColumnIO root, List<PrimitiveColumnIO> leaves, RecordMaterializer<T> recordMaterializer, boolean validating) {
+  public RecordReader(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating) {
     this.root = root;
     this.recordMaterializer = recordMaterializer;
     this.recordConsumer = validator(wrap(recordMaterializer), validating, root.getType());
-    this.leaves = leaves.toArray(new PrimitiveColumnIO[leaves.size()]);
-    this.columns = new ColumnReader[leaves.size()];
-    this.nextReader = new int[leaves.size()][];
-    this.nextLevel = new int[leaves.size()][];
+    this.leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
+    this.columns = new ColumnReader[this.leaves.length];
+    this.nextReader = new int[this.leaves.length][];
+    this.nextLevel = new int[this.leaves.length][];
     int[] firsts  = new int[16];
     // build the automaton
     for (int i = 0; i < this.leaves.length; i++) {
