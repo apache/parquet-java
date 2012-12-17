@@ -16,7 +16,6 @@
 package redelm.io;
 
 import java.util.Arrays;
-import java.util.List;
 
 import redelm.Log;
 import redelm.column.ColumnReader;
@@ -38,7 +37,6 @@ public class RecordReader<T> {
   private final PrimitiveColumnIO[] leaves;
   private final ColumnReader[] columns;
   private final int[][] nextReader;
-  private final MessageColumnIO root;
   private final int[][] nextLevel;
   private final RecordConsumer recordConsumer;
   private final RecordMaterializer<T> recordMaterializer;
@@ -50,7 +48,6 @@ public class RecordReader<T> {
    * @param validating
    */
   public RecordReader(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating) {
-    this.root = root;
     this.recordMaterializer = recordMaterializer;
     this.recordConsumer = validator(wrap(recordMaterializer), validating, root.getType());
     this.leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
@@ -115,9 +112,7 @@ public class RecordReader<T> {
    * @param recordConsumer
    */
   public T read() {
-    GroupColumnIO[] currentNodePath = new GroupColumnIO[16];
     int currentLevel = 0;
-    currentNodePath[0] = root;
     int currentCol = 0;
     startMessage();
     do {
@@ -126,8 +121,8 @@ public class RecordReader<T> {
       int d = columnReader.getCurrentDefinitionLevel();
       // creating needed nested groups until the current field (opening tags)
       for (; currentLevel < (primitiveColumnIO.getFieldPath().length - 1)
-          && d > currentNodePath[currentLevel].getDefinitionLevel(); ++currentLevel) {
-        startGroup(currentNodePath, currentLevel, primitiveColumnIO);
+          && d > primitiveColumnIO.getPath()[currentLevel].getDefinitionLevel(); ++currentLevel) {
+        startGroup(recordConsumer, currentLevel, primitiveColumnIO);
       }
       // set the current value
       if (d >= primitiveColumnIO.getDefinitionLevel()) {
@@ -210,12 +205,10 @@ public class RecordReader<T> {
     endField(field, index);
   }
 
-  private void startGroup(
-      GroupColumnIO[] currentNodePath, int currentLevel,
+  private void startGroup(RecordConsumer recordConsumer, int currentLevel,
       PrimitiveColumnIO primitiveColumnIO) {
     String field = primitiveColumnIO.getFieldPath()[currentLevel];
     int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel];
-    currentNodePath[currentLevel + 1] = (GroupColumnIO)currentNodePath[currentLevel].getChild(fieldIndex);
     if (DEBUG) log(field + "(" + currentLevel + ") = new Group()");
     startField(field, fieldIndex);
     recordConsumer.startGroup();

@@ -30,6 +30,7 @@ import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.Type;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -129,7 +130,8 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   @Override
   public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
-    FileSystem fs = FileSystem.get(taskAttemptContext.getConfiguration());
+    Configuration configuration = taskAttemptContext.getConfiguration();
+    FileSystem fs = FileSystem.get(configuration);
     @SuppressWarnings("unchecked") // I know
     RedelmInputSplit<T> redelmInputSplit = (RedelmInputSplit<T>)inputSplit;
     this.readSupport = redelmInputSplit.getReadSupport();
@@ -143,7 +145,7 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
         columns.add(columnMetaData.getPath());
       }
     }
-    reader = new RedelmFileReader(f, Arrays.asList(block), columns, redelmInputSplit.getFileMetaData().getCodecClassName());
+    reader = new RedelmFileReader(configuration, f, Arrays.asList(block), columns, redelmInputSplit.getFileMetaData().getCodecClassName());
     total = block.getRecordCount();
   }
 
