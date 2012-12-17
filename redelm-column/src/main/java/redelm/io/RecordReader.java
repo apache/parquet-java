@@ -41,6 +41,16 @@ public class RecordReader<T> {
   private final RecordConsumer recordConsumer;
   private final RecordMaterializer<T> recordMaterializer;
 
+
+  private static class State {
+
+    private State[] nextState;
+    private int[] nextLevel;
+    private PrimitiveColumnIO primitiveColumnIO;
+    private ColumnReader column;
+
+  }
+
   /**
    *
    * @param root the root of the schema
@@ -54,7 +64,7 @@ public class RecordReader<T> {
     this.columns = new ColumnReader[this.leaves.length];
     this.nextReader = new int[this.leaves.length][];
     this.nextLevel = new int[this.leaves.length][];
-    int[] firsts  = new int[16];
+    int[] firsts  = new int[256]; // "256 levels of nesting ought to be enough for anybody"
     // build the automaton
     for (int i = 0; i < this.leaves.length; i++) {
       PrimitiveColumnIO primitiveColumnIO = this.leaves[i];
@@ -94,6 +104,22 @@ public class RecordReader<T> {
         this.nextReader[i][r] = next;
       }
     }
+    states = new State[this.leaves.length];
+    for (int i = 0; i < this.leaves.length; i++) {
+      State state = new State();
+      state.nextLevel = nextLevel[i];
+      state.primitiveColumnIO = this.leaves[i];
+      state.column = columns[i];
+      states[i] = state;
+    }
+    for (int i = 0; i < this.leaves.length; i++) {
+      State state = states[i];
+      int[] nextStateIds = this.nextReader[i];
+      state.nextState = new State[nextStateIds.length];
+      for (int j = 0; j < nextStateIds.length; j++) {
+        state.nextState[j] = nextStateIds[j] == states.length ? null : states[nextStateIds[j]];
+      }
+    }
   }
 
   private RecordConsumer validator(RecordConsumer recordConsumer, boolean validating, MessageType schema) {
@@ -113,11 +139,11 @@ public class RecordReader<T> {
    */
   public T read() {
     int currentLevel = 0;
-    int currentCol = 0;
+    State currentState = states[0];
     startMessage();
     do {
-      ColumnReader columnReader = columns[currentCol];
-      PrimitiveColumnIO primitiveColumnIO = leaves[currentCol];
+      ColumnReader columnReader = currentState.column;
+      PrimitiveColumnIO primitiveColumnIO = currentState.primitiveColumnIO;
       int d = columnReader.getCurrentDefinitionLevel();
       // creating needed nested groups until the current field (opening tags)
       for (; currentLevel < (primitiveColumnIO.getFieldPath().length - 1)
@@ -134,17 +160,17 @@ public class RecordReader<T> {
       }
       columnReader.consume();
       int nextR = columnReader.getCurrentRepetitionLevel();
-      int nextCol = nextReader[currentCol][nextR];
+      State nextState = currentState.nextState[nextR];
 
       // level to go to close current groups
-      int next = nextLevel[currentCol][nextR];
+      int next = currentState.nextLevel[nextR];
       for (; currentLevel > next; currentLevel--) {
         String field = primitiveColumnIO.getFieldPath()[currentLevel-1];
         int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel-1];
         endGroup(field, fieldIndex);
       }
-      currentCol = nextCol;
-    } while (currentCol < leaves.length);
+      currentState = nextState;
+    } while (currentState != null);
     endMessage();
     return recordMaterializer.getCurrentRecord();
   }
@@ -172,6 +198,7 @@ public class RecordReader<T> {
 
   private String endField;
   private int endIndex;
+  private State[] states;
 
   private void endField(String field, int index) {
     if (endField != null) {
