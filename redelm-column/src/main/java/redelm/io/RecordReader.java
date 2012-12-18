@@ -34,22 +34,37 @@ public class RecordReader<T> {
   private static final Log LOG = Log.getLog(RecordReader.class);
   private static final boolean DEBUG = Log.DEBUG;
 
-  private final PrimitiveColumnIO[] leaves;
-  private final ColumnReader[] columns;
-  private final int[][] nextReader;
-  private final int[][] nextLevel;
+  private static class State {
+
+    private final int id;
+    private final PrimitiveColumnIO primitiveColumnIO;
+    private final Primitive primitive;
+    private final ColumnReader column;
+    private final String[] fieldPath;
+    private final int[] indexFieldPath;
+    private final int[] nextLevel;
+
+    private int[] definitionLevelToDepth;
+    private State[] nextState;
+
+    private State(int id, PrimitiveColumnIO primitiveColumnIO, ColumnReader column, int[] nextLevel) {
+      this.id = id;
+      this.primitiveColumnIO = primitiveColumnIO;
+      this.column = column;
+      this.nextLevel = nextLevel;
+      this.primitive = primitiveColumnIO.getType().asPrimitiveType().getPrimitive();
+      this.fieldPath = primitiveColumnIO.getFieldPath();
+      this.indexFieldPath = primitiveColumnIO.getIndexFieldPath();
+    }
+
+  }
+
   private final RecordConsumer recordConsumer;
   private final RecordMaterializer<T> recordMaterializer;
 
-
-  private static class State {
-
-    private State[] nextState;
-    private int[] nextLevel;
-    private PrimitiveColumnIO primitiveColumnIO;
-    private ColumnReader column;
-
-  }
+  private String endField;
+  private int endIndex;
+  private State[] states;
 
   /**
    *
@@ -60,18 +75,18 @@ public class RecordReader<T> {
   public RecordReader(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating) {
     this.recordMaterializer = recordMaterializer;
     this.recordConsumer = validator(wrap(recordMaterializer), validating, root.getType());
-    this.leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
-    this.columns = new ColumnReader[this.leaves.length];
-    this.nextReader = new int[this.leaves.length][];
-    this.nextLevel = new int[this.leaves.length][];
+    PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
+    ColumnReader[] columns = new ColumnReader[leaves.length];
+    int[][] nextReader = new int[leaves.length][];
+    int[][] nextLevel = new int[leaves.length][];
     int[] firsts  = new int[256]; // "256 levels of nesting ought to be enough for anybody"
     // build the automaton
-    for (int i = 0; i < this.leaves.length; i++) {
-      PrimitiveColumnIO primitiveColumnIO = this.leaves[i];
-      this.columns[i] = primitiveColumnIO.getColumnReader();
+    for (int i = 0; i < leaves.length; i++) {
+      PrimitiveColumnIO primitiveColumnIO = leaves[i];
+      columns[i] = primitiveColumnIO.getColumnReader();
       int repetitionLevel = primitiveColumnIO.getRepetitionLevel();
-      this.nextReader[i] = new int[repetitionLevel+1];
-      this.nextLevel[i] = new int[repetitionLevel+1];
+      nextReader[i] = new int[repetitionLevel+1];
+      nextLevel[i] = new int[repetitionLevel+1];
       for (int r = 0; r <= repetitionLevel; ++r) {
         // remember which is the first for this level
         if (primitiveColumnIO.isFirst(r)) {
@@ -87,7 +102,7 @@ public class RecordReader<T> {
           next = i + 1;
         }
         // figure out which level down the tree we need to go back
-        if (next == this.leaves.length) { // reached the end of the record => close all levels
+        if (next == leaves.length) { // reached the end of the record => close all levels
           nextLevel[i][r] = 0;
         } else if (primitiveColumnIO.isLast(r)) { // reached the end of this level => close the repetition level
           ColumnIO parent = primitiveColumnIO.getParent(r);
@@ -95,26 +110,34 @@ public class RecordReader<T> {
         } else { // otherwise close until the next common parent
           nextLevel[i][r] = getCommonParentLevel(
               primitiveColumnIO.getFieldPath(),
-              this.leaves[next].getFieldPath());
+              leaves[next].getFieldPath());
         }
         // sanity check: that would be a bug
-        if (nextLevel[i][r] > this.leaves[i].getFieldPath().length-1) {
-          throw new RuntimeException(Arrays.toString(this.leaves[i].getFieldPath())+" -("+r+")-> "+nextLevel[i][r]);
+        if (nextLevel[i][r] > leaves[i].getFieldPath().length-1) {
+          throw new RuntimeException(Arrays.toString(leaves[i].getFieldPath())+" -("+r+")-> "+nextLevel[i][r]);
         }
-        this.nextReader[i][r] = next;
+        nextReader[i][r] = next;
       }
     }
-    states = new State[this.leaves.length];
-    for (int i = 0; i < this.leaves.length; i++) {
-      State state = new State();
-      state.nextLevel = nextLevel[i];
-      state.primitiveColumnIO = this.leaves[i];
-      state.column = columns[i];
-      states[i] = state;
+    states = new State[leaves.length];
+    for (int i = 0; i < leaves.length; i++) {
+      states[i] = new State(i, leaves[i], columns[i], nextLevel[i]);
+
+      int[] definitionLevelToDepth = new int[states[i].primitiveColumnIO.getDefinitionLevel() + 1];
+      int depth = 0;
+      for (int d = 0; d < definitionLevelToDepth.length; ++d) {
+        while (depth < (states[i].fieldPath.length - 1)
+          && d > states[i].primitiveColumnIO.getPath()[depth].getDefinitionLevel()) {
+          ++ depth;
+        }
+        definitionLevelToDepth[d] = depth - 1;
+      }
+      states[i].definitionLevelToDepth = definitionLevelToDepth;
+
     }
-    for (int i = 0; i < this.leaves.length; i++) {
+    for (int i = 0; i < leaves.length; i++) {
       State state = states[i];
-      int[] nextStateIds = this.nextReader[i];
+      int[] nextStateIds = nextReader[i];
       state.nextState = new State[nextStateIds.length];
       for (int j = 0; j < nextStateIds.length; j++) {
         state.nextState[j] = nextStateIds[j] == states.length ? null : states[nextStateIds[j]];
@@ -146,17 +169,21 @@ public class RecordReader<T> {
       PrimitiveColumnIO primitiveColumnIO = currentState.primitiveColumnIO;
       int d = columnReader.getCurrentDefinitionLevel();
       // creating needed nested groups until the current field (opening tags)
-      for (; currentLevel < (primitiveColumnIO.getFieldPath().length - 1)
-          && d > primitiveColumnIO.getPath()[currentLevel].getDefinitionLevel(); ++currentLevel) {
+//      for (; currentLevel < (currentState.fieldPath.length - 1)
+//          && d > primitiveColumnIO.getPath()[currentLevel].getDefinitionLevel(); ++currentLevel) {
+//        startGroup(recordConsumer, currentLevel, primitiveColumnIO);
+//      }
+      int depth = currentState.definitionLevelToDepth[d];
+      for (; currentLevel <= depth; ++currentLevel) {
         startGroup(recordConsumer, currentLevel, primitiveColumnIO);
       }
       // set the current value
       if (d >= primitiveColumnIO.getDefinitionLevel()) {
         // not null
-        String field = primitiveColumnIO.getFieldPath()[currentLevel];
-        int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel];
-        if (DEBUG) log(field+"(" + currentLevel + ") = "+primitiveColumnIO.getType().asPrimitiveType().getPrimitive().toString(columnReader));
-        addPrimitive(columnReader, primitiveColumnIO.getType().asPrimitiveType().getPrimitive(), field, fieldIndex);
+        String field = currentState.fieldPath[currentLevel];
+        int fieldIndex = currentState.indexFieldPath[currentLevel];
+        if (DEBUG) log(field+"(" + currentLevel + ") = "+currentState.primitive.toString(columnReader));
+        addPrimitive(columnReader, currentState.primitive, field, fieldIndex);
       }
       columnReader.consume();
       int nextR = columnReader.getCurrentRepetitionLevel();
@@ -165,8 +192,8 @@ public class RecordReader<T> {
       // level to go to close current groups
       int next = currentState.nextLevel[nextR];
       for (; currentLevel > next; currentLevel--) {
-        String field = primitiveColumnIO.getFieldPath()[currentLevel-1];
-        int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel-1];
+        String field = currentState.fieldPath[currentLevel-1];
+        int fieldIndex = currentState.indexFieldPath[currentLevel-1];
         endGroup(field, fieldIndex);
       }
       currentState = nextState;
@@ -195,10 +222,6 @@ public class RecordReader<T> {
     primitive.addValueToRecordConsumer(recordConsumer, columnReader);
     endField(field, index);
   }
-
-  private String endField;
-  private int endIndex;
-  private State[] states;
 
   private void endField(String field, int index) {
     if (endField != null) {
@@ -246,11 +269,12 @@ public class RecordReader<T> {
   }
 
   int getNextReader(int current, int nextRepetitionLevel) {
-    return nextReader[current][nextRepetitionLevel];
+    State nextState = states[current].nextState[nextRepetitionLevel];
+    return nextState == null ? states.length : nextState.id;
   }
 
   int getNextLevel(int current, int nextRepetitionLevel) {
-    return nextLevel[current][nextRepetitionLevel];
+    return states[current].nextLevel[nextRepetitionLevel];
   }
 
   private int getCommonParentLevel(String[] previous, String[] next) {
