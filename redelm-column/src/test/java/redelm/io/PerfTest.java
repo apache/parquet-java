@@ -107,9 +107,10 @@ public class PerfTest {
 
   private static void read(RecordReader<Void> recordReader, int count, MessageType schema) {
     long t0 = System.currentTimeMillis();
-    for (int i = 0; i < count; i++) {
-      recordReader.read();
-    }
+//    for (int i = 0; i < count; i++) {
+//      recordReader.read();
+//    }
+    recordReader.read(new Void[count], count);
     long t1 = System.currentTimeMillis();
     long t = t1-t0;
     System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s\n", count , t, t == 0 ? 0 : count * 1000 / t);
