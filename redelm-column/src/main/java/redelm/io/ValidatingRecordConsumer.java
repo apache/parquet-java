@@ -31,7 +31,7 @@ import redelm.schema.Type.Repetition;
  * @author Julien Le Dem
  *
  */
-public class ValidatingRecordConsumer<T> extends RecordConsumer {
+public class ValidatingRecordConsumer extends RecordConsumer {
   private static final Log LOG = Log.getLog(ValidatingRecordConsumer.class);
   private static final boolean DEBUG = Log.DEBUG;
 

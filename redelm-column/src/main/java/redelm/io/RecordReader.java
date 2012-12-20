@@ -20,7 +20,6 @@ import java.util.Arrays;
 import redelm.Log;
 import redelm.column.ColumnReader;
 import redelm.column.ColumnsStore;
-import redelm.data.Group;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType.Primitive;
 
@@ -149,7 +148,7 @@ public class RecordReader<T> {
   }
 
   private RecordConsumer validator(RecordConsumer recordConsumer, boolean validating, MessageType schema) {
-    return validating ? new ValidatingRecordConsumer<Group>(recordConsumer, schema) : recordConsumer;
+    return validating ? new ValidatingRecordConsumer(recordConsumer, schema) : recordConsumer;
   }
 
   private RecordConsumer wrap(RecordConsumer recordConsumer) {
