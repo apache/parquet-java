@@ -86,8 +86,8 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
             columnData.getData()
             );
       }
-      MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, columnsStore);
-      recordReader = columnIO.getRecordReader(readSupport.newRecordConsumer());
+      MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema);
+      recordReader = columnIO.getRecordReader(columnsStore, readSupport.newRecordConsumer());
     }
   }
 

@@ -19,6 +19,7 @@ import java.util.Arrays;
 
 import redelm.Log;
 import redelm.column.ColumnReader;
+import redelm.column.ColumnsStore;
 import redelm.data.Group;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType.Primitive;
@@ -71,8 +72,9 @@ public class RecordReader<T> {
    * @param root the root of the schema
    * @param leaves the leaves of the schema
    * @param validating
+   * @param columns2
    */
-  public RecordReader(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating) {
+  public RecordReader(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnsStore columnStore) {
     this.recordMaterializer = recordMaterializer;
     this.recordConsumer = validator(wrap(recordMaterializer), validating, root.getType());
     PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
@@ -83,7 +85,7 @@ public class RecordReader<T> {
     // build the automaton
     for (int i = 0; i < leaves.length; i++) {
       PrimitiveColumnIO primitiveColumnIO = leaves[i];
-      columns[i] = primitiveColumnIO.getColumnReader();
+      columns[i] = columnStore.getColumnReader(primitiveColumnIO.getColumnDescriptor());
       int repetitionLevel = primitiveColumnIO.getRepetitionLevel();
       nextReader[i] = new int[repetitionLevel+1];
       nextLevel[i] = new int[repetitionLevel+1];

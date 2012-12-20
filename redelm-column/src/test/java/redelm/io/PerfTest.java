@@ -53,7 +53,7 @@ public class PerfTest {
 
   private static void read(MemColumnsStore columns, MessageType myschema,
       String message) {
-    MessageColumnIO columnIO = newColumnFactory(columns, myschema);
+    MessageColumnIO columnIO = newColumnFactory(myschema);
     System.out.println(message);
     RecordMaterializer<Void> recordConsumer = new RecordMaterializer<Void>() {
       public void startMessage() {}
@@ -71,7 +71,7 @@ public class PerfTest {
       public void addBinary(byte[] value) {}
       public Void getCurrentRecord() { return null; }
     };
-    RecordReader<Void> recordReader = columnIO.getRecordReader(recordConsumer);
+    RecordReader<Void> recordReader = columnIO.getRecordReader(columns, recordConsumer);
     read(recordReader, 2, myschema);
     read(recordReader, 10000, myschema);
     read(recordReader, 10000, myschema);
@@ -84,9 +84,9 @@ public class PerfTest {
   }
 
   private static void write(MemColumnsStore columns) {
-    MessageColumnIO columnIO = newColumnFactory(columns, schema);
+    MessageColumnIO columnIO = newColumnFactory(schema);
 
-    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(), schema);
+    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
     groupWriter.write(r1);
     groupWriter.write(r2);
 
@@ -100,9 +100,8 @@ public class PerfTest {
     System.out.println();
   }
 
-  private static MessageColumnIO newColumnFactory(MemColumnsStore columns,
-      MessageType schema) {
-    return new ColumnIOFactory().getColumnIO(schema, columns);
+  private static MessageColumnIO newColumnFactory(MessageType schema) {
+    return new ColumnIOFactory().getColumnIO(schema);
   }
 
   private static void read(RecordReader<Void> recordReader, int count, MessageType schema) {

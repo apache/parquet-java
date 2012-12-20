@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 
 import redelm.Log;
-import redelm.column.ColumnsStore;
 import redelm.schema.GroupType;
 
 public class GroupColumnIO extends ColumnIO {
@@ -46,8 +45,8 @@ public class GroupColumnIO extends ColumnIO {
   }
 
   @Override
-  void setLevels(int r, int d, String[] fieldPath, int[] indexFieldPath, List<ColumnIO> repetition, List<ColumnIO> path, ColumnsStore columns) {
-    super.setLevels(r, d, fieldPath, indexFieldPath, repetition, path, columns);
+  void setLevels(int r, int d, String[] fieldPath, int[] indexFieldPath, List<ColumnIO> repetition, List<ColumnIO> path) {
+    super.setLevels(r, d, fieldPath, indexFieldPath, repetition, path);
     for (ColumnIO child : this.children) {
       String[] newFieldPath = Arrays.copyOf(fieldPath, fieldPath.length + 1);
       int[] newIndexFieldPath = Arrays.copyOf(indexFieldPath, indexFieldPath.length + 1);
@@ -70,17 +69,9 @@ public class GroupColumnIO extends ColumnIO {
           newFieldPath,
           newIndexFieldPath,
           newRepetition,
-          newPath,
-          columns
+          newPath
           );
 
-    }
-  }
-
-  @Override
-  void writeNull(int r, int d) {
-    for (ColumnIO child : this.children) {
-      child.writeNull(r, d);
     }
   }
 

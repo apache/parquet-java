@@ -18,7 +18,6 @@ package redelm.io;
 import java.util.ArrayList;
 import java.util.List;
 
-import redelm.column.ColumnsStore;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType;
@@ -32,12 +31,10 @@ public class ColumnIOFactory {
 
     private MessageColumnIO columnIO;
     private GroupColumnIO current;
-    private final ColumnsStore columnStore;
     private List<PrimitiveColumnIO> leaves = new ArrayList<PrimitiveColumnIO>();
     private final boolean validating;
 
-    public ColumnIOCreatorVisitor(ColumnsStore columnStore, boolean validating) {
-      this.columnStore = columnStore;
+    public ColumnIOCreatorVisitor(boolean validating) {
       this.validating = validating;
     }
 
@@ -66,13 +63,13 @@ public class ColumnIOFactory {
     public void visit(MessageType messageType) {
       columnIO = new MessageColumnIO(messageType, validating);
       visitChildren(columnIO, messageType);
-      columnIO.setLevels(columnStore);
+      columnIO.setLevels();
       columnIO.setLeaves(leaves);
     }
 
     @Override
     public void visit(PrimitiveType primitiveType) {
-      PrimitiveColumnIO newIO = new PrimitiveColumnIO(primitiveType, current);
+      PrimitiveColumnIO newIO = new PrimitiveColumnIO(primitiveType, current, leaves.size());
       current.add(newIO);
       leaves.add(newIO);
     }
@@ -93,8 +90,8 @@ public class ColumnIOFactory {
     super();
     this.validating = validating;
   }
-  public MessageColumnIO getColumnIO(MessageType schema, ColumnsStore columnStore) {
-    ColumnIOCreatorVisitor visitor = new ColumnIOCreatorVisitor(columnStore, validating);
+  public MessageColumnIO getColumnIO(MessageType schema) {
+    ColumnIOCreatorVisitor visitor = new ColumnIOCreatorVisitor(validating);
     schema.accept(visitor);
     return visitor.getColumnIO();
   }
