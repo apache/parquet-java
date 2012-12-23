@@ -129,9 +129,9 @@ public class TupleConsumerPerfTest {
 
   private static void read(MemColumnsStore columns,
       String pigSchemaString, String message) throws ParserException {
-    MessageColumnIO columnIO = newColumnFactory(columns, pigSchemaString);
+    MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     System.out.println(message);
-    RecordReader recordReader = columnIO.getRecordReader();
+    RecordReader recordReader = columnIO.getRecordReader(columns, null);
     read(recordReader, 10000, pigSchemaString);
     read(recordReader, 10000, pigSchemaString);
     read(recordReader, 10000, pigSchemaString);
@@ -143,9 +143,9 @@ public class TupleConsumerPerfTest {
   }
 
   private static void write(MemColumnsStore columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
-    MessageColumnIO columnIO = newColumnFactory(columns, pigSchemaString);
+    MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     TupleWriteSupport tupleWriter = new TupleWriteSupport();
-    tupleWriter.initForWrite(columnIO.getRecordWriter(), schema, Arrays.asList(new PigMetaData(pigSchemaString).toMetaDataBlock()));
+    tupleWriter.initForWrite(columnIO.getRecordWriter(columns), schema, Arrays.asList(new PigMetaData(pigSchemaString).toMetaDataBlock()));
     write(tupleWriter, 10000);
     write(tupleWriter, 10000);
     write(tupleWriter, 10000);
@@ -156,9 +156,9 @@ public class TupleConsumerPerfTest {
     System.out.println();
   }
 
-  private static MessageColumnIO newColumnFactory(MemColumnsStore columns, String pigSchemaString) throws ParserException {
+  private static MessageColumnIO newColumnFactory(String pigSchemaString) throws ParserException {
     MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchemaString));
-    return new ColumnIOFactory().getColumnIO(schema, columns);
+    return new ColumnIOFactory().getColumnIO(schema);
   }
 
   private static void read(RecordReader recordReader, int count, String pigSchemaString) throws ParserException {
@@ -235,13 +235,13 @@ public class TupleConsumerPerfTest {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
     MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchemaString));
     tupleReadSupport.initForRead(Arrays.asList(new PigMetaData(pigSchemaString).toMetaDataBlock()), schema.toString());
-    RecordConsumer recordConsumer = tupleReadSupport.newRecordConsumer(result);
+    RecordConsumer recordConsumer = tupleReadSupport.newRecordConsumer();
     if (DEBUG) {
       recordConsumer = new RecordConsumerWrapper(recordConsumer);
     }
     long t0 = System.currentTimeMillis();
     for (int i = 0; i < count; i++) {
-      recordReader.read(recordConsumer);
+      recordReader.read();
     }
     long t1 = System.currentTimeMillis();
     long t = t1-t0;

@@ -6,7 +6,7 @@ import java.math.BigInteger;
 import java.util.Deque;
 
 final class ExpectationValidatingRecordConsumer extends
-    RecordConsumer {
+    RecordMaterializer<Void> {
   private final Deque<String> expectations;
   int count = 0;
 
@@ -82,5 +82,10 @@ final class ExpectationValidatingRecordConsumer extends
   @Override
   public void addDouble(double value) {
     validate("addDouble("+value+")");
+  }
+
+  @Override
+  public Void getCurrentRecord() {
+    return null;
   }
 }

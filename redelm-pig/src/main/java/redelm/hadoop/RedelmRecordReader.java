@@ -19,26 +19,25 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import redelm.Log;
+import redelm.column.mem.MemColumnsStore;
+import redelm.io.ColumnIOFactory;
+import redelm.io.MessageColumnIO;
+import redelm.parser.MessageTypeParser;
+import redelm.schema.GroupType;
+import redelm.schema.MessageType;
+import redelm.schema.Type;
+
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
-
-import redelm.Log;
-import redelm.column.mem.MemColumnsStore;
-import redelm.io.ColumnIOFactory;
-import redelm.io.MessageColumnIO;
-import redelm.io.RecordConsumer;
-import redelm.parser.MessageTypeParser;
-import redelm.schema.GroupType;
-import redelm.schema.MessageType;
-import redelm.schema.Type;
 
 /**
  * Reads the records from a block of a RedElm file
@@ -58,10 +57,8 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   private int total;
   private int current;
   private RedelmFileReader reader;
-  private List<T> destination = new LinkedList<T>();
-  private redelm.io.RecordReader recordReader;
+  private redelm.io.RecordReader<T> recordReader;
   private MemColumnsStore columnsStore;
-  private RecordConsumer recordConsumer;
   private FSDataInputStream f;
   private ReadSupport<T> readSupport;
   private MessageType requestedSchema;
@@ -111,9 +108,8 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
       long timeSpentReading = System.currentTimeMillis() - t0;
       totalTimeSpentReadingBytes += timeSpentReading;
       LOG.info("block read in memory in " + timeSpentReading + " ms");
-      MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, columnsStore);
-      recordReader = columnIO.getRecordReader();
-      recordConsumer = readSupport.newRecordConsumer(destination);
+      MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema);
+      recordReader = columnIO.getRecordReader(columnsStore, readSupport.newRecordConsumer());
       startedReadingCurrentBlockAt = System.currentTimeMillis();
       currentBlockRecordCount = columnsData.getRecordCount();
     }
@@ -158,7 +154,8 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   @Override
   public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
-    FileSystem fs = FileSystem.get(taskAttemptContext.getConfiguration());
+    Configuration configuration = taskAttemptContext.getConfiguration();
+    FileSystem fs = FileSystem.get(configuration);
     @SuppressWarnings("unchecked") // I know
     RedelmInputSplit<T> redelmInputSplit = (RedelmInputSplit<T>)inputSplit;
     this.readSupport = redelmInputSplit.getReadSupport();
@@ -175,7 +172,7 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
         columns.add(columnMetaData.getPath());
       }
     }
-    reader = new RedelmFileReader(f, blocks, columns, redelmInputSplit.getFileMetaData().getCodecClassName());
+    reader = new RedelmFileReader(configuration, f, blocks, columns, redelmInputSplit.getFileMetaData().getCodecClassName());
     for (BlockMetaData block : blocks) {
       total += block.getRecordCount();
     }
@@ -206,15 +203,11 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
     checkRead();
-    if (destination.size() == 0 && current<total) {
-      recordReader.read(recordConsumer);
+    if (current<total) {
+      currentValue = recordReader.read();
+      current ++;
+      return true;
     }
-    if (destination.size() == 0) {
-      currentValue = null;
-      return false;
-    }
-    current ++;
-    currentValue = destination.remove(0);
-    return true;
+    return false;
   }
 }
