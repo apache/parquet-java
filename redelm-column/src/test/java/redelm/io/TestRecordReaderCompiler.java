@@ -20,7 +20,7 @@ import org.junit.Test;
 
 public class TestRecordReaderCompiler {
 
-//  @Test
+  @Test
   public void testRecordReaderCompiler() {
 
 

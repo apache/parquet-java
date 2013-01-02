@@ -3,6 +3,7 @@ package redelm.io;
 import static brennus.ClassBuilder.startClass;
 import static brennus.model.ExistingType.INT;
 import static brennus.model.ExistingType.VOID;
+import static brennus.model.ExistingType.OBJECT;
 import static brennus.model.ExistingType.existing;
 import static brennus.model.Protection.PUBLIC;
 import static brennus.model.Protection.PRIVATE;
@@ -11,6 +12,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Set;
 
 import redelm.column.ColumnReader;
+import redelm.column.ColumnsStore;
 
 import brennus.CaseBuilder;
 import brennus.ClassBuilder;
@@ -25,6 +27,32 @@ import brennus.printer.TypePrinter;
 
 public class RecordReaderCompiler {
 
+  public static abstract class BaseRecordReader<T> extends RecordReader<T> {
+    public RecordMaterializer<T> recordMaterializer;
+    public ColumnsStore columnStore;
+    @Override
+    public T read() {
+      readOneRecord();
+      return recordMaterializer.getCurrentRecord();
+    }
+
+    /* (non-Javadoc)
+     * @see redelm.io.RecordReader#read(T[], int)
+     */
+    @Override
+    public void read(T[] records, int count) {
+      if (count > records.length) {
+        throw new IllegalArgumentException("count is greater than records size");
+      }
+      for (int i = 0; i < count; i++) {
+        readOneRecord();
+        records[i] = recordMaterializer.getCurrentRecord();
+      }
+    }
+
+    abstract void readOneRecord();
+  }
+
   public static class DynamicClassLoader extends ClassLoader {
     ASMTypeGenerator asmTypeGenerator = new ASMTypeGenerator();
 
@@ -38,34 +66,19 @@ public class RecordReaderCompiler {
   private DynamicClassLoader cl = new DynamicClassLoader();
   private int id = 0;
 
-  public RecordReader compile(RecordReader recordReader) {
-    return null;
-  }
-//    int stateCount = recordReader.getStateCount();
-//    String className = "redelm.io.RecordReaderCompiler$CompiledRecordReader"+(++id);
-//    ClassBuilder classBuilder = startClass(className, existing(RecordReader.class))
-//        // TODO: add support for local variables in Brennus instead
-//        .field(PRIVATE, INT, "currentLevel")
-//        .field(PRIVATE, INT, "d")
-//        .field(PRIVATE, INT, "nextR");
-//    for (int i = 0; i < stateCount; i++) {
-//      classBuilder = classBuilder
-//        .field(PRIVATE, existing(ColumnReader.class), "column_"+i)
-//        .field(PRIVATE, existing(PrimitiveColumnIO.class), "leaf_"+i);
-//    }
-//    ConstructorBuilder constructorBuilder = classBuilder
-//        .startConstructor(PUBLIC).param(existing(MessageColumnIO.class), "root")
-//        .callSuperConstructor().get("root").endConstructorCall();
-//
-//    for (int i = 0; i < stateCount; i++) {
-//      constructorBuilder = constructorBuilder
-//        .set("column_"+i).callOnThis("getColumn").literal(i).endCall().endSet()
-//        .set("leaf_"+i).callOnThis("getLeaf").literal(i).endCall().endSet();
-//    }
-//    MethodBuilder readMethodBuilder = constructorBuilder
-//        .endConstructor()
-//        .startMethod(PUBLIC, VOID, "read").param(existing(RecordConsumer.class), "recordConsumer")
-//            .exec().callOnThis("startMessage").get("recordConsumer").endCall().endExec()
+  public <T> RecordReader<T> compile(RecordReaderImplementation<T> recordReader) {
+    int stateCount = recordReader.getStateCount();
+    String className = "redelm.io.RecordReaderCompiler$CompiledRecordReader"+(++id);
+    ClassBuilder classBuilder = startClass(className, existing(BaseRecordReader.class));
+    for (int i = 0; i < stateCount; i++) {
+      classBuilder = classBuilder
+        .field(PUBLIC, existing(ColumnReader.class), "state_"+i+"_column")
+        .field(PUBLIC, existing(PrimitiveColumnIO.class), "state_"+i+"_primitiveColumnIO");
+    }
+
+    MethodBuilder readMethodBuilder = classBuilder
+        .startMethod(PUBLIC, VOID, "readOneRecord")
+            .exec().callOnThis("startMessage").get("recordConsumer").endCall().endExec()
 //            .set("currentLevel").literal(0).endSet();
 //            for (int i = 0; i < stateCount; i++) {
 //              String columnReader = "column_"+i;
@@ -177,5 +190,5 @@ public class RecordReaderCompiler {
 //    } catch (NoSuchMethodException e) {
 //      throw new RuntimeException("generated class "+className+" could not be instanciated", e);
 //    }
-//  }
+  }
 }

@@ -156,7 +156,7 @@ public class TestColumnIO {
       System.out.println(columns);
       System.out.println("=========");
       columns.flip();
-      RecordReader<Group> recordReader = getRecordReader(columnIO, schema, columns);
+      RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, schema, columns);
 
       validateFSA(expectedFSA, columnIO, recordReader);
 
@@ -180,7 +180,7 @@ public class TestColumnIO {
 
 
       List<Group> records = new ArrayList<Group>();
-      RecordReader<Group> recordReader = getRecordReader(columnIO2, schema2, columns);
+      RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO2, schema2, columns);
 
       validateFSA(expectedFSA2, columnIO2, recordReader);
 
@@ -197,12 +197,12 @@ public class TestColumnIO {
     }
   }
 
-  private RecordReader<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, ColumnsStore columns) {
+  private RecordReaderImplementation<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, ColumnsStore columns) {
     RecordMaterializer<Group> recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
     return columnIO.getRecordReader(columns, recordConsumer);
   }
 
-  private void validateFSA(int[][] expectedFSA, MessageColumnIO columnIO, RecordReader<?> recordReader) {
+  private void validateFSA(int[][] expectedFSA, MessageColumnIO columnIO, RecordReaderImplementation<?> recordReader) {
     System.out.println("FSA: ----");
     List<PrimitiveColumnIO> leaves = columnIO.getLeaves();
     for (int i = 0; i < leaves.size(); ++i) {
