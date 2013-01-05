@@ -29,7 +29,7 @@ import redelm.column.mem.MemColumnsStore;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
 import redelm.io.RecordConsumer;
-import redelm.io.RecordConsumerWrapper;
+import redelm.io.RecordConsumerLoggingWrapper;
 import redelm.io.RecordReader;
 import redelm.schema.MessageType;
 
@@ -234,7 +234,7 @@ public class TupleConsumerPerfTest {
     tupleReadSupport.initForRead(Arrays.asList(new PigMetaData(pigSchemaString).toMetaDataBlock()), schema.toString());
     RecordConsumer recordConsumer = tupleReadSupport.newRecordConsumer(result);
     if (DEBUG) {
-      recordConsumer = new RecordConsumerWrapper(recordConsumer);
+      recordConsumer = new RecordConsumerLoggingWrapper(recordConsumer);
     }
     long t0 = System.currentTimeMillis();
     for (int i = 0; i < count; i++) {

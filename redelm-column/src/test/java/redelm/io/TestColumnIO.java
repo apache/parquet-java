@@ -303,14 +303,14 @@ public class TestColumnIO {
   public void read(RecordReader recordReader, MessageType schema, List<Group> groups) {
     RecordConsumer recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema), groups);
     recordConsumer = new ValidatingRecordConsumer(recordConsumer, schema);
-    recordConsumer = new RecordConsumerWrapper(recordConsumer);
+    recordConsumer = new RecordConsumerLoggingWrapper(recordConsumer);
     recordReader.read(recordConsumer);
   }
 
   @Test
   public void testGroupWriter() {
     List<Group> result = new ArrayList<Group>();
-    GroupWriter groupWriter = new GroupWriter(new RecordConsumerWrapper(new GroupRecordConsumer(new SimpleGroupFactory(schema), result)), schema);
+    GroupWriter groupWriter = new GroupWriter(new RecordConsumerLoggingWrapper(new GroupRecordConsumer(new SimpleGroupFactory(schema), result)), schema);
     groupWriter.write(r1);
     groupWriter.write(r2);
     assertEquals("deserialization does not display the expected result", result.get(0).toString(), r1.toString());

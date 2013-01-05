@@ -151,7 +151,7 @@ public class PerfTest {
       public void addBinary(byte[] value) {}
     };
     if (DEBUG) {
-      recordConsumer = new RecordConsumerWrapper(recordConsumer);
+      recordConsumer = new RecordConsumerLoggingWrapper(recordConsumer);
     }
     long t0 = System.currentTimeMillis();
     for (int i = 0; i < count; i++) {

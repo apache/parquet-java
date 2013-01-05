@@ -23,8 +23,8 @@ import redelm.Log;
  * @author Julien Le Dem
  *
  */
-public class RecordConsumerWrapper extends RecordConsumer {
-    private static final Log logger = Log.getLog(RecordConsumerWrapper.class);
+public class RecordConsumerLoggingWrapper extends RecordConsumer {
+    private static final Log logger = Log.getLog(RecordConsumerLoggingWrapper.class);
     private static final boolean DEBUG = Log.DEBUG;
 
     private final RecordConsumer delegate;
@@ -35,7 +35,7 @@ public class RecordConsumerWrapper extends RecordConsumer {
      * all calls a delegate to the wrapped delegate
      * @param delegate
      */
-    public RecordConsumerWrapper(RecordConsumer delegate) {
+    public RecordConsumerLoggingWrapper(RecordConsumer delegate) {
       this.delegate = delegate;
     }
 
