@@ -28,7 +28,10 @@ import redelm.column.ColumnDescriptor;
 import redelm.hadoop.RedelmMetaData.FileMetaData;
 import redelm.schema.MessageType;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
@@ -40,6 +43,7 @@ import org.apache.hadoop.io.compress.Compressor;
  *
  */
 public class RedelmFileWriter {
+  public static final String RED_ELM_SUMMARY = "_RedElmSummary";
   public static final byte[] MAGIC = {82, 101, 100, 32, 69, 108, 109, 10}; // "Red Elm\n"
   public static final int CURRENT_VERSION = 1;
   private static final Log LOG = Log.getLog(RedelmFileWriter.class);
@@ -301,6 +305,23 @@ public class RedelmFileWriter {
     out.writeUTF(metaDataBlock.getName());
     out.writeInt(metaDataBlock.getData().length);
     out.write(metaDataBlock.getData());
+  }
+
+  public static void writeSummaryFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
+    Path summaryPath = new Path(outputPath, RED_ELM_SUMMARY);
+    FileSystem fs = outputPath.getFileSystem(configuration);
+    FSDataOutputStream summary = fs.create(summaryPath);
+    summary.writeInt(footers.size());
+    for (Footer footer : footers) {
+      summary.writeUTF(footer.getFile().toString());
+      summary.write(footer.getMetaDataBlocks().size());
+      for (MetaDataBlock metaDataBlock : footer.getMetaDataBlocks()) {
+        summary.writeUTF(metaDataBlock.getName());
+        summary.writeInt(metaDataBlock.getData().length);
+        summary.write(metaDataBlock.getData());
+      }
+    }
+    summary.close();
   }
 
 }

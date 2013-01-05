@@ -23,20 +23,30 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import redelm.Log;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.Decompressor;
+import org.apache.hadoop.mapred.Utils;
 import org.apache.hadoop.util.ReflectionUtils;
 
 /**
  * Reads a RedElm file
+ *
  * @author Julien Le Dem
  *
  */
@@ -53,6 +63,96 @@ public class RedelmFileReader {
       blocks.add(new MetaDataBlock(name, data));
     }
     return blocks;
+  }
+
+  public static List<Footer> readAllFootersInParallel(final Configuration configuration, List<FileStatus> partFiles) throws IOException {
+    ExecutorService threadPool = Executors.newFixedThreadPool(5);
+    try {
+      List<Future<Footer>> footers = new ArrayList<Future<Footer>>();
+      for (final FileStatus currentFile : partFiles) {
+        footers.add(threadPool.submit(new Callable<Footer>() {
+          @Override
+          public Footer call() throws Exception {
+            try {
+              FileSystem fs = currentFile.getPath().getFileSystem(configuration);
+              return readFooter(fs, currentFile);
+            } catch (IOException e) {
+              throw new IOException("Could not read footer for file " + currentFile, e);
+            }
+          }
+
+          private Footer readFooter(final FileSystem fs,
+              final FileStatus currentFile) throws IOException {
+            List<MetaDataBlock> blocks = RedelmFileReader.readFooter(fs.open(currentFile.getPath()), currentFile.getLen());
+            return new Footer(currentFile.getPath(), blocks);
+          }
+        }));
+      }
+      List<Footer> result = new ArrayList<Footer>(footers.size());
+      for (Future<Footer> futureFooter : footers) {
+        try {
+          result.add(futureFooter.get());
+        } catch (InterruptedException e) {
+          Thread.interrupted();
+          throw new RuntimeException("The thread was interrupted", e);
+        } catch (ExecutionException e) {
+          throw new IOException("Could not read footer: " + e.getMessage(), e.getCause());
+        }
+      }
+      return result;
+    } finally {
+      threadPool.shutdownNow();
+    }
+  }
+
+  public static List<Footer> readAllFootersInParallel(Configuration configuration, FileStatus fileStatus) throws IOException {
+    final FileSystem fs = fileStatus.getPath().getFileSystem(configuration);
+    List<FileStatus> statuses;
+    if (fileStatus.isDir()) {
+      statuses = Arrays.asList(fs.listStatus(fileStatus.getPath(), new Utils.OutputFileUtils.OutputFilesFilter()));
+    } else {
+      statuses = new ArrayList<FileStatus>();
+      statuses.add(fileStatus);
+    }
+    return readAllFootersInParallel(configuration, statuses);
+  }
+
+  public static List<Footer> readFooters(Configuration configuration, FileStatus pathStatus) throws IOException {
+    try {
+      if (pathStatus.isDir()) {
+        Path summaryPath = new Path(pathStatus.getPath(), "_RedElmSummary");
+        FileSystem fs = summaryPath.getFileSystem(configuration);
+        if (fs.exists(summaryPath)) {
+          FileStatus summaryStatus = fs.getFileStatus(summaryPath);
+          return readSummaryFile(configuration, summaryStatus);
+        }
+      }
+    } catch (IOException e) {
+      LOG.warn("can not read summary file for " + pathStatus.getPath(), e);
+    }
+    return readAllFootersInParallel(configuration, pathStatus);
+
+  }
+
+  public static List<Footer> readSummaryFile(Configuration configuration, FileStatus summaryStatus) throws IOException {
+    FileSystem fs = summaryStatus.getPath().getFileSystem(configuration);
+    FSDataInputStream summary = fs.open(summaryStatus.getPath());
+    int footerCount = summary.readInt();
+    List<Footer> result = new ArrayList<Footer>(footerCount);
+    for (int i = 0; i < footerCount; i++) {
+      Path file = new Path(summary.readUTF());
+      int blockCount = summary.readInt();
+      List<MetaDataBlock> blocks = new ArrayList<MetaDataBlock>(blockCount);
+      for (int j = 0; j < footerCount; j++) {
+        String name = summary.readUTF();
+        byte[] data = new byte[summary.readInt()];
+        summary.readFully(data);
+        blocks.add(new MetaDataBlock(name, data));
+      }
+      result.add(new Footer(file, blocks));
+    }
+    summary.close();
+    return result;
   }
 
   /**
@@ -103,7 +203,7 @@ public class RedelmFileReader {
    * @param colums the columns to read (their path)
    * @param codecClassName the codec used to compress the blocks
    */
-  public RedelmFileReader(FSDataInputStream f, List<BlockMetaData> blocks, List<String[]> colums, String codecClassName) {
+  public RedelmFileReader(Configuration configuration, FSDataInputStream f, List<BlockMetaData> blocks, List<String[]> colums, String codecClassName) {
     this.f = f;
     this.blocks = blocks;
     for (String[] path : colums) {
@@ -114,10 +214,9 @@ public class RedelmFileReader {
     } else {
       try {
         Class<?> codecClass = Class.forName(codecClassName);
-        Configuration conf = new Configuration();
-        this.codec = (CompressionCodec)ReflectionUtils.newInstance(codecClass, conf);
+        this.codec = (CompressionCodec)ReflectionUtils.newInstance(codecClass, configuration);
       } catch (ClassNotFoundException e) {
-        throw new RuntimeException("Should not happen", e);
+        throw new RuntimeException("Class " + codecClassName + " was not found", e);
       }
     }
   }

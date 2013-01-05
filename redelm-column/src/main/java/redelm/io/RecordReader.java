@@ -96,9 +96,7 @@ public class RecordReader {
    * @param recordConsumer
    */
   public void read(RecordConsumer recordConsumer) {
-    GroupColumnIO[] currentNodePath = new GroupColumnIO[16];
     int currentLevel = 0;
-    currentNodePath[0] = root;
     int currentCol = 0;
     startMessage(recordConsumer);
     do {
@@ -107,8 +105,8 @@ public class RecordReader {
       int d = columnReader.getCurrentDefinitionLevel();
       // creating needed nested groups until the current field (opening tags)
       for (; currentLevel < (primitiveColumnIO.getFieldPath().length - 1)
-          && d > currentNodePath[currentLevel].getDefinitionLevel(); ++currentLevel) {
-        startGroup(recordConsumer, currentNodePath, currentLevel, primitiveColumnIO);
+          && d > primitiveColumnIO.getPath()[currentLevel].getDefinitionLevel(); ++currentLevel) {
+        startGroup(recordConsumer, currentLevel, primitiveColumnIO);
       }
       // set the current value
       if (d >= primitiveColumnIO.getDefinitionLevel()) {
@@ -190,12 +188,10 @@ public class RecordReader {
     endField(recordConsumer, field, index);
   }
 
-  private void startGroup(RecordConsumer recordConsumer,
-      GroupColumnIO[] currentNodePath, int currentLevel,
+  private void startGroup(RecordConsumer recordConsumer, int currentLevel,
       PrimitiveColumnIO primitiveColumnIO) {
     String field = primitiveColumnIO.getFieldPath()[currentLevel];
     int fieldIndex = primitiveColumnIO.getIndexFieldPath()[currentLevel];
-    currentNodePath[currentLevel + 1] = (GroupColumnIO)currentNodePath[currentLevel].getChild(fieldIndex);
     if (DEBUG) log(field + "(" + currentLevel + ") = new Group()");
     startField(recordConsumer, field, fieldIndex);
     recordConsumer.startGroup();
