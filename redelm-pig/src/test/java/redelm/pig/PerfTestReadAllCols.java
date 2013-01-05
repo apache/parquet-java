@@ -15,25 +15,34 @@
  */
 package redelm.pig;
 
-import redelm.RedelmRuntimeException;
+import java.io.File;
 
-public class TupleConversionException extends RedelmRuntimeException {
-  private static final long serialVersionUID = 1L;
 
-  public TupleConversionException() {
-    super();
+/**
+ *
+ * Uses directly loader and storer to bypass the scheduling overhead
+ *
+ * @author Julien Le Dem
+ *
+ */
+public class PerfTestReadAllCols {
+
+  public static void main(String[] args) throws Exception {
+    StringBuilder results = new StringBuilder();
+    String out = "target/PerfTestReadAllCols";
+    File outDir = new File(out);
+    if (outDir.exists()) {
+      PerfTest2.clean(outDir);
+    }
+    PerfTest2.write(out);
+
+    for (int i = 0; i < 5; i++) {
+
+      PerfTest2.load(out, PerfTest2.COLUMN_COUNT, results);
+      results.append("\n");
+    }
+    System.out.println(results);
   }
 
-  public TupleConversionException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public TupleConversionException(String message) {
-    super(message);
-  }
-
-  public TupleConversionException(Throwable cause) {
-    super(cause);
-  }
 
 }

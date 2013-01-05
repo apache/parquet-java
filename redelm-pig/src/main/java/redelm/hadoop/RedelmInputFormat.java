@@ -17,7 +17,6 @@ package redelm.hadoop;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import redelm.Log;
@@ -83,6 +82,46 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   /**
+   * groups together all the data blocks for the same HDFS block
+   * @param blocks data blocks (row groups)
+   * @param hdfsBlocks hdfs blocks
+   * @param fileStatus the containing file
+   * @param fileMetaData file level meta data
+   * @param readSupport how to materialize the records
+   * @return the splits (one per HDFS block)
+   * @throws IOException If hosts can't be retrieved for the HDFS block
+   */
+  static <T> List<InputSplit> generateSplits(List<BlockMetaData> blocks,
+      BlockLocation[] hdfsBlocks, FileStatus fileStatus,
+      FileMetaData fileMetaData, ReadSupport<T> readSupport) throws IOException {
+    int currentBlock = 0;
+    List<InputSplit> splits = new ArrayList<InputSplit>();
+    for (BlockLocation hdfsBlock : hdfsBlocks) {
+      long start = hdfsBlock.getOffset();
+      long end = hdfsBlock.getOffset() + hdfsBlock.getLength();
+      List<BlockMetaData> blocksForCurrentSplit = new ArrayList<BlockMetaData>();
+      while (
+          currentBlock < blocks.size()
+          && blocks.get(currentBlock).getStartIndex() >= start
+          && blocks.get(currentBlock).getStartIndex() < end) {
+        blocksForCurrentSplit.add(blocks.get(currentBlock));
+        ++ currentBlock;
+      }
+      if (blocksForCurrentSplit.size() > 0) {
+        splits.add(new RedelmInputSplit<T>(
+            fileStatus.getPath(),
+            hdfsBlock.getOffset(),
+            hdfsBlock.getLength(),
+            hdfsBlock.getHosts(),
+            blocksForCurrentSplit,
+            fileMetaData,
+            readSupport));
+      }
+    }
+    return splits;
+  }
+
+  /**
    * {@inheritDoc}
    */
   @Override
@@ -107,24 +146,10 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
             getRequestedSchema(redelmMetaData.getFileMetaData())
             );
         List<BlockMetaData> blocks = redelmMetaData.getBlocks();
-        for (BlockMetaData block : blocks) {
-          long startIndex = block.getStartIndex();
-          long length = block.getEndIndex() - startIndex;
-          BlockLocation[] fileBlockLocations = fs.getFileBlockLocations(fileStatus, startIndex, length);
-          List<String> hosts = new ArrayList<String>();
-          for (BlockLocation blockLocation : fileBlockLocations) {
-            hosts.addAll(Arrays.asList(blockLocation.getHosts()));
-          }
-          splits.add(
-              new RedelmInputSplit<T>(
-                  fileStatus.getPath(),
-                  startIndex,
-                  length,
-                  hosts.toArray(new String[hosts.size()]),
-                  block,
-                  redelmMetaData.getFileMetaData(),
-                  readSupport));
-        }
+        BlockLocation[] fileBlockLocations = fs.getFileBlockLocations(fileStatus, 0, fileStatus.getLen());
+        splits.addAll(
+            generateSplits(blocks, fileBlockLocations, fileStatus, redelmMetaData.getFileMetaData(), readSupport)
+              );
       } catch (InstantiationException e) {
         throw new RuntimeException("could not instantiate " + readSupportClass.getName(), e);
       } catch (IllegalAccessException e) {
@@ -133,4 +158,5 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
     }
     return splits;
   }
+
 }
