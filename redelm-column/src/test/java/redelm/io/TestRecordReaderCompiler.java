@@ -41,7 +41,7 @@ public class TestRecordReaderCompiler {
       MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
       new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
       columns.flip();
-      RecordReader recordReader = new RecordReaderCompiler().compile(
+      RecordReader<Void> recordReader = new RecordReaderCompiler().compile((RecordReaderImplementation<Void>)
           columnIO.getRecordReader(
               columns,
               new ExpectationValidatingRecordConsumer(

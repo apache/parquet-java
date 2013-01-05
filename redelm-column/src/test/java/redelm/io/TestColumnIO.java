@@ -199,7 +199,7 @@ public class TestColumnIO {
 
   private RecordReaderImplementation<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, ColumnsStore columns) {
     RecordMaterializer<Group> recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
-    return columnIO.getRecordReader(columns, recordConsumer);
+    return (RecordReaderImplementation)columnIO.getRecordReader(columns, recordConsumer);
   }
 
   private void validateFSA(int[][] expectedFSA, MessageColumnIO columnIO, RecordReaderImplementation<?> recordReader) {

@@ -16,6 +16,9 @@
 package redelm.io;
 
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 import redelm.Log;
 import redelm.column.ColumnReader;
@@ -34,20 +37,111 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
   private static final Log LOG = Log.getLog(RecordReaderImplementation.class);
   private static final boolean DEBUG = Log.DEBUG;
 
-  private static class State {
+  public static class Case {
 
-    private final int id;
-    private final PrimitiveColumnIO primitiveColumnIO;
-    private final int maxDefinitionLevel;
-    private final int maxRepetitionLevel;
-    private final Primitive primitive;
-    private final ColumnReader column;
-    private final String[] fieldPath; // indexed on currentLevel
-    private final int[] indexFieldPath; // indexed on currentLevel
-    private final int[] nextLevel; //indexed on next r
+    private int id;
+    private final int startLevel;
+    private final int depth;
+    private final int nextLevel;
+    private final boolean goingUp;
+    private final boolean goingDown;
+
+    public Case(int startLevel, int depth, int nextLevel) {
+      this.startLevel = startLevel;
+      this.depth = depth;
+      this.nextLevel = nextLevel;
+      goingUp = startLevel <= depth;
+      goingDown = depth + 1 > nextLevel;
+    }
+
+    public void setID(int id) {
+      this.id = id;
+    }
+
+    @Override
+    public int hashCode() {
+      int hashCode = 0;
+      if (goingUp) {
+        hashCode += 1 * (1 + startLevel) + 2 * (1 + depth);
+      }
+      if (goingDown) {
+        hashCode += 3 * (1 + depth) + 5 * (1 + nextLevel);
+      }
+      return hashCode;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj instanceof Case) {
+        return equals((Case)obj);
+      }
+      return false;
+    };
+
+    public boolean equals(Case other) {
+      if (goingUp && !other.goingUp || !goingUp && other.goingUp) {
+        return false;
+      }
+      if (goingUp && other.goingUp && (startLevel != other.startLevel || depth != other.depth)) {
+        return false;
+      }
+      if (goingDown && !other.goingDown || !goingDown && other.goingDown) {
+        return false;
+      }
+      if (goingDown && other.goingDown && (depth != other.depth || nextLevel != other.nextLevel)) {
+        return false;
+      }
+      return true;
+    }
+
+    public int getID() {
+      return id;
+    }
+
+    public int getStartLevel() {
+      return startLevel;
+    }
+
+    public int getDepth() {
+      return depth;
+    }
+    public int getNextLevel() {
+      return nextLevel;
+    }
+
+    public boolean isGoingUp() {
+      return goingUp;
+    }
+
+    public boolean isGoingDown() {
+      return goingDown;
+    }
+
+    @Override
+    public String toString() {
+      return "Case " + startLevel + " -> " + depth + " -> " + nextLevel;
+    }
+
+  }
+
+  public static class State {
+
+    public final int id;
+    public final PrimitiveColumnIO primitiveColumnIO;
+    public final int maxDefinitionLevel;
+    public final int maxRepetitionLevel;
+    public final Primitive primitive;
+    public final ColumnReader column;
+    public final String[] fieldPath; // indexed on currentLevel
+    public final int[] indexFieldPath; // indexed on currentLevel
+    public final String primitiveField;
+    public final int primitiveFieldIndex;
+    public final int[] nextLevel; //indexed on next r
 
     private int[] definitionLevelToDepth; // indexed on current d
     private State[] nextState; // indexed on next r
+    private Case[][][] caseLookup;
+    private Collection<Case> cases;
 
     private State(int id, PrimitiveColumnIO primitiveColumnIO, ColumnReader column, int[] nextLevel) {
       this.id = id;
@@ -58,7 +152,17 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
       this.nextLevel = nextLevel;
       this.primitive = primitiveColumnIO.getType().asPrimitiveType().getPrimitive();
       this.fieldPath = primitiveColumnIO.getFieldPath();
+      this.primitiveField = fieldPath[fieldPath.length - 1];
       this.indexFieldPath = primitiveColumnIO.getIndexFieldPath();
+      this.primitiveFieldIndex = indexFieldPath[indexFieldPath.length - 1];
+    }
+
+    public int getDepth(int definitionLevel) {
+      return definitionLevelToDepth[definitionLevel];
+    }
+
+    public Collection<Case> getCases() {
+      return cases;
     }
 
   }
@@ -149,6 +253,36 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
         state.nextState[j] = nextStateIds[j] == states.length ? null : states[nextStateIds[j]];
       }
     }
+    for (int i = 0; i < states.length; i++) {
+      State state = states[i];
+      final Map<Case, Case> cases = new HashMap<Case, Case>();
+      int nextCaseID = 0;
+      Case[][][] caseLookup = new Case[state.fieldPath.length][][];
+      for (int currentLevel = 0; currentLevel < state.fieldPath.length; ++ currentLevel) {
+        caseLookup[currentLevel] = new Case[state.maxDefinitionLevel+1][];
+        for (int d = 0; d <= state.maxDefinitionLevel; ++ d) {
+          caseLookup[currentLevel][d] = new Case[state.maxRepetitionLevel+1];
+          for (int nextR = 0; nextR <= state.maxRepetitionLevel; ++ nextR) {
+            int caseStartLevel = currentLevel;
+            int caseDepth = state.getDepth(d);
+            int caseNextLevel = state.nextLevel[nextR];
+            Case currentCase = new Case(caseStartLevel, caseDepth, caseNextLevel);
+            if (!cases.containsKey(currentCase)) {
+//              System.out.println("adding "+currentCase);
+              currentCase.setID(++ nextCaseID);
+              cases.put(currentCase, currentCase);
+            } else {
+//              System.out.println("not adding "+currentCase);
+              currentCase = cases.get(currentCase);
+            }
+//            System.out.println(currentLevel+", "+d+", "+nextR);
+            caseLookup[currentLevel][d][nextR] = currentCase;
+          }
+        }
+      }
+      state.caseLookup = caseLookup;
+      state.cases = cases.values();
+    }
   }
 
   private RecordConsumer validator(RecordConsumer recordConsumer, boolean validating, MessageType schema) {
@@ -195,24 +329,28 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
 
       // creating needed nested groups until the current field (opening tags)
       int depth = currentState.definitionLevelToDepth[d];
+//      System.out.println("depth: "+d+" => "+ depth);
       for (; currentLevel <= depth; ++currentLevel) {
         startGroup(currentState, currentLevel);
       }
-
+      // currentLevel = depth + 1 at this point
+//      System.out.println(currentLevel);
       // set the current value
       if (d >= currentState.maxDefinitionLevel) {
         // not null
-        addPrimitive(currentState, currentLevel, columnReader);
+        addPrimitive(currentState, columnReader);
       }
       columnReader.consume();
 
       int nextR = currentState.maxRepetitionLevel == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
       // level to go to close current groups
       int next = currentState.nextLevel[nextR];
+//      System.out.println("nextLevel: "+nextR+" => "+ next);
       for (; currentLevel > next; currentLevel--) {
         endGroup(currentState, currentLevel - 1);
       }
       // currentLevel always equals next at this point
+//      System.out.println(currentLevel);
 
       currentState = currentState.nextState[nextR];
     } while (currentState != null);
@@ -225,11 +363,9 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     endGroup(field, fieldIndex);
   }
 
-  private void addPrimitive(State currentState, int level, ColumnReader columnReader) {
-    String field = currentState.fieldPath[level];
-    int fieldIndex = currentState.indexFieldPath[level];
-    if (DEBUG) log(field+"(" + level + ") = "+currentState.primitive.toString(columnReader));
-    addPrimitive(columnReader, currentState.primitive, field, fieldIndex);
+  private void addPrimitive(State currentState, ColumnReader columnReader) {
+    if (DEBUG) log(currentState.primitiveField +"(" + (currentState.fieldPath.length - 1) + ") = "+currentState.primitive.toString(columnReader));
+    addPrimitive(columnReader, currentState.primitive, currentState.primitiveField, currentState.primitiveFieldIndex);
   }
 
   private void startGroup(State currentState, int level) {
@@ -320,6 +456,10 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
 
   protected int getStateCount() {
     return states.length;
+  }
+
+  protected State getState(int i) {
+    return states[i];
   }
 
 }
