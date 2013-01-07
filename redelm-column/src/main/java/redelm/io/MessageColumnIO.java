@@ -48,17 +48,21 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   private class MessageColumnIORecordConsumer extends RecordConsumer {
-    ColumnIO currentColumnIO;
-    int currentLevel = 0;
-    int[] currentIndex = new int[256]; // "256 levels of nesting ought to be enough to anybody"
-    int[] r = new int[256];
-    private ColumnWriter[] columnWriter;
+    private ColumnIO currentColumnIO;
+    private int currentLevel = 0;
+    private final int[] currentIndex;
+    private final int[] r;
+    private final ColumnWriter[] columnWriter;
 
     public MessageColumnIORecordConsumer(ColumnsStore columns) {
-      columnWriter = new ColumnWriter[MessageColumnIO.this.getLeaves().size()];
+      int maxDepth = 0;
+      this.columnWriter = new ColumnWriter[MessageColumnIO.this.getLeaves().size()];
       for (PrimitiveColumnIO primitiveColumnIO : MessageColumnIO.this.getLeaves()) {
+        maxDepth = Math.max(maxDepth, primitiveColumnIO.getFieldPath().length);
         columnWriter[primitiveColumnIO.getId()] = columns.getColumnWriter(primitiveColumnIO.getColumnDescriptor());
       }
+      currentIndex = new int[maxDepth];
+      r = new int[maxDepth];
     }
 
     public void printState() {
