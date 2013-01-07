@@ -22,6 +22,7 @@ import java.util.List;
 import redelm.Log;
 import redelm.hadoop.RedelmMetaData.FileMetaData;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
@@ -53,7 +54,7 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
 
   /**
    * constructor used when this InputFormat in wrapped in another one (In Pig for example)
-   * TODO: standalone constructor
+   * TODO: stand-alone constructor
    * @param readSupportClass the class to materialize records
    * @param requestedSchema the schema use to project the records (must be a subset of the original schema)
    */
@@ -128,15 +129,17 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
     List<InputSplit> splits = new ArrayList<InputSplit>();
     List<FileStatus> statuses = super.listStatus(jobContext);
     LOG.debug("reading " + statuses.size() + " files");
-    FileSystem fs = FileSystem.get(jobContext.getConfiguration());
-    for (FileStatus fileStatus : statuses) {
-      LOG.debug(fileStatus.getPath());
-      FSDataInputStream f = fs.open(fileStatus.getPath());
+    Configuration configuration = jobContext.getConfiguration();
+    FileSystem fs = FileSystem.get(configuration);
+    // TODO use summary files
+    List<Footer> footers = RedelmFileReader.readAllFootersInParallel(configuration, statuses);
+    for (Footer footer : footers) {
+      LOG.debug(footer.getFile());
       try {
         @SuppressWarnings("unchecked")
         ReadSupport<T> readSupport = (ReadSupport<T>) readSupportClass.newInstance();
-
-        List<MetaDataBlock> metaDataBlocks = RedelmFileReader.readFooter(f, fileStatus.getLen());
+        FileStatus fileStatus = fs.getFileStatus(footer.getFile());
+        List<MetaDataBlock> metaDataBlocks = footer.getMetaDataBlocks();
         RedelmMetaData redelmMetaData = RedelmMetaData.fromMetaDataBlocks(metaDataBlocks);
         readSupport.initForRead(
             metaDataBlocks,

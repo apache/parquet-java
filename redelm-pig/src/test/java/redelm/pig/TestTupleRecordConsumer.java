@@ -32,7 +32,7 @@ import redelm.data.simple.SimpleGroup;
 import redelm.data.simple.SimpleGroupFactory;
 import redelm.hadoop.MetaDataBlock;
 import redelm.io.RecordConsumer;
-import redelm.io.RecordConsumerWrapper;
+import redelm.io.RecordConsumerLoggingWrapper;
 import redelm.io.ValidatingRecordConsumer;
 import redelm.schema.MessageType;
 
@@ -171,7 +171,7 @@ public class TestTupleRecordConsumer {
   }
 
   private RecordConsumer wrap(RecordConsumer recordConsumer, MessageType redelmSchema) {
-    return new RecordConsumerWrapper(new ValidatingRecordConsumer(recordConsumer, redelmSchema));
+    return new RecordConsumerLoggingWrapper(new ValidatingRecordConsumer(recordConsumer, redelmSchema));
   }
 
   private RecordConsumer newPigRecordConsumer(MessageType redelmSchema, String pigSchemaString, List<Tuple> tuples) throws ParserException {

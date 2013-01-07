@@ -40,6 +40,14 @@ import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.Type;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.RecordReader;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+
 /**
  * Reads the records from a block of a RedElm file
  *
@@ -158,7 +166,8 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   @Override
   public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
-    FileSystem fs = FileSystem.get(taskAttemptContext.getConfiguration());
+    Configuration configuration = taskAttemptContext.getConfiguration();
+    FileSystem fs = FileSystem.get(configuration);
     @SuppressWarnings("unchecked") // I know
     RedelmInputSplit<T> redelmInputSplit = (RedelmInputSplit<T>)inputSplit;
     this.readSupport = redelmInputSplit.getReadSupport();
@@ -175,10 +184,11 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
         columns.add(columnMetaData.getPath());
       }
     }
-    reader = new RedelmFileReader(f, blocks, columns, redelmInputSplit.getFileMetaData().getCodecClassName());
+    reader = new RedelmFileReader(configuration, f, blocks, columns, redelmInputSplit.getFileMetaData().getCodecClassName());
     for (BlockMetaData block : blocks) {
       total += block.getRecordCount();
     }
+
   }
 
   private boolean contains(GroupType requestedSchema, String[] path) {
