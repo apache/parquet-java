@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import redelm.Log;
 import redelm.column.mem.MemColumnsStore;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
@@ -48,6 +49,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
  * @param <T> type of the materialized records
  */
 public class RedelmRecordReader<T> extends RecordReader<Void, T> {
+  private static final Log LOG = Log.getLog(RedelmRecordReader.class);
 
   private ColumnIOFactory columnIOFactory = new ColumnIOFactory();
   private Map<String, ColumnMetaData> columnTypes = new HashMap<String, ColumnMetaData>();
@@ -61,6 +63,12 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   private ReadSupport<T> readSupport;
   private MessageType requestedSchema;
 
+  private long totalTimeSpentReadingBytes;
+  private long totalTimeSpentProcessingRecords;
+
+  private long startedReadingCurrentBlockAt;
+  private int currentBlockRecordCount;
+
   /**
    *
    * @param requestedSchema the requested schema (a subset of the original schema) for record projection
@@ -71,12 +79,23 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
 
   private void checkRead() throws IOException {
     if (columnsStore == null || columnsStore.isFullyConsumed()) {
+      if (columnsStore != null) {
+        long timeAssembling = System.currentTimeMillis() - startedReadingCurrentBlockAt;
+        totalTimeSpentProcessingRecords += timeAssembling;
+        LOG.info("Assembled and processed " + currentBlockRecordCount + " records in " + timeAssembling + " ms "+((float)currentBlockRecordCount / timeAssembling) + " rec/ms");
+        long totalTime = totalTimeSpentProcessingRecords + totalTimeSpentReadingBytes;
+        long percentReading = 100 * totalTimeSpentReadingBytes / totalTime;
+        long percentProcessing = 100 * totalTimeSpentProcessingRecords / totalTime;
+        LOG.info("time spent so far " + percentReading + "% reading ("+totalTimeSpentReadingBytes+" ms) and " + percentProcessing + "% processing ("+totalTimeSpentProcessingRecords+" ms)");
+      }
       columnsStore = new MemColumnsStore(0, requestedSchema);
-      BlockData readColumns = reader.readColumns();
-      if (readColumns == null) {
+      LOG.info("reading next block");
+      long t0 = System.currentTimeMillis();
+      BlockData columnsData = reader.readColumns();
+      if (columnsData == null) {
         return;
       }
-      for (ColumnData columnData : readColumns.getColumns()) {
+      for (ColumnData columnData : columnsData.getColumns()) {
         ColumnMetaData columnMetaData = columnTypes.get(Arrays.toString(columnData.getPath()));
         columnsStore.setForRead(
             columnData.getPath(), columnMetaData.getType(),
@@ -86,8 +105,13 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
             columnData.getData()
             );
       }
+      long timeSpentReading = System.currentTimeMillis() - t0;
+      totalTimeSpentReadingBytes += timeSpentReading;
+      LOG.info("block read in memory in " + timeSpentReading + " ms");
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema);
       recordReader = columnIO.getRecordReader(columnsStore, readSupport.newRecordConsumer());
+      startedReadingCurrentBlockAt = System.currentTimeMillis();
+      currentBlockRecordCount = columnsData.getRecordCount();
     }
   }
 
@@ -137,16 +161,22 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
     this.readSupport = redelmInputSplit.getReadSupport();
     Path path = redelmInputSplit.getPath();
     f = fs.open(path);
-    BlockMetaData block = redelmInputSplit.getBlock();
+    List<BlockMetaData> blocks = redelmInputSplit.getBlocks();
     List<String[]> columns = new ArrayList<String[]>();
-    for (ColumnMetaData columnMetaData : block.getColumns()) {
+    // a split has at least one block
+    // all blocks have the same columns
+    // TODO: just generate the column list from the schema
+    for (ColumnMetaData columnMetaData : blocks.get(0).getColumns()) {
       columnTypes.put(Arrays.toString(columnMetaData.getPath()), columnMetaData);
       if (contains(requestedSchema, columnMetaData.getPath())) {
         columns.add(columnMetaData.getPath());
       }
     }
-    reader = new RedelmFileReader(configuration, f, Arrays.asList(block), columns, redelmInputSplit.getFileMetaData().getCodecClassName());
-    total = block.getRecordCount();
+    reader = new RedelmFileReader(configuration, f, blocks, columns, redelmInputSplit.getFileMetaData().getCodecClassName());
+    for (BlockMetaData block : blocks) {
+      total += block.getRecordCount();
+    }
+
   }
 
   private boolean contains(GroupType requestedSchema, String[] path) {

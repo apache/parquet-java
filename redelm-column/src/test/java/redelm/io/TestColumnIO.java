@@ -317,8 +317,9 @@ public class TestColumnIO {
   @Test
   public void testGroupWriter() {
     List<Group> result = new ArrayList<Group>();
+
     GroupRecordConsumer groupConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
-    GroupWriter groupWriter = new GroupWriter(new RecordConsumerWrapper(groupConsumer), schema);
+    GroupWriter groupWriter = new GroupWriter(new RecordConsumerLoggingWrapper(groupConsumer), schema);
     groupWriter.write(r1);
     result.add(groupConsumer.getCurrentRecord());
     groupWriter.write(r2);

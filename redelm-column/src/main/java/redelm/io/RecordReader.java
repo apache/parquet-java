@@ -153,7 +153,7 @@ public class RecordReader<T> {
 
   private RecordConsumer wrap(RecordConsumer recordConsumer) {
     if (Log.DEBUG) {
-      return new RecordConsumerWrapper(recordConsumer);
+      return new RecordConsumerLoggingWrapper(recordConsumer);
     }
     return recordConsumer;
   }

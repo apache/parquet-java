@@ -74,7 +74,7 @@ public class RedelmRecordWriter<T> extends
 
   private void initStore() {
     // TODO: parameterize this
-    store = new MemColumnsStore(1024 * 1024 * 16, schema);
+    store = new MemColumnsStore(1024 * 1024 * 1, schema);
     //
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     writeSupport.initForWrite(columnIO.getRecordWriter(store), schema, extraMetaData);

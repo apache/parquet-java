@@ -17,23 +17,14 @@ package redelm.pig;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Arrays;
 import java.util.List;
 
 import redelm.Log;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.io.compress.CompressionInputStream;
-import org.apache.hadoop.io.compress.CompressionOutputStream;
-import org.apache.hadoop.io.compress.Compressor;
-import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
@@ -49,9 +40,11 @@ import org.apache.pig.LoadFunc;
 import org.apache.pig.ResourceSchema;
 import org.apache.pig.StoreFuncInterface;
 import org.apache.pig.StoreMetadata;
+import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.util.Utils;
+import org.apache.pig.parser.ParserException;
 
 /**
  *
@@ -62,18 +55,36 @@ import org.apache.pig.impl.util.Utils;
  */
 public class PerfTest2 {
 
-  private static final int COLUMN_COUNT = 50;
-  private static final long ROW_COUNT = 1000000;
-  private static StringBuilder results = new StringBuilder();
+  static final int COLUMN_COUNT = 50;
+  private static final long ROW_COUNT = 100000;
   private static Configuration conf = new Configuration();
   private static int jobid = 0;
 
   public static void main(String[] args) throws Exception {
+    StringBuilder results = new StringBuilder();
     String out = "target/PerfTest2";
     File outDir = new File(out);
     if (outDir.exists()) {
       clean(outDir);
     }
+    write(out);
+    for (int i = 0; i < 2; i++) {
+
+    load(out, 1, results);
+    load(out, 2, results);
+    load(out, 3, results);
+    load(out, 4, results);
+    load(out, 5, results);
+    load(out, 10, results);
+    load(out, 20, results);
+    load(out, 50, results);
+    results.append("\n");
+    }
+    System.out.println(results);
+  }
+
+  public static void write(String out) throws IOException, ParserException,
+      InterruptedException, ExecException {
     {
       StringBuilder schemaString = new StringBuilder("a0: chararray");
       for (int i = 1; i < COLUMN_COUNT; i++) {
@@ -119,22 +130,9 @@ public class PerfTest2 {
       outputCommitter.commitJob(jobContext);
 
     }
-    for (int i = 0; i < 2; i++) {
-
-    load(out, 1);
-    load(out, 2);
-    load(out, 3);
-    load(out, 4);
-    load(out, 5);
-    load(out, 10);
-    load(out, 20);
-    load(out, 50);
-    results.append("\n");
-    }
-    System.out.println(results);
   }
 
-  private static void clean(File outDir) {
+  static void clean(File outDir) {
     if (outDir.isDirectory()) {
       File[] listFiles = outDir.listFiles();
       for (File file : listFiles) {
@@ -144,7 +142,7 @@ public class PerfTest2 {
     outDir.delete();
   }
 
-  private static void load(String out, int colsToLoad) throws Exception {
+  static void load(String out, int colsToLoad, StringBuilder results) throws Exception {
     StringBuilder schemaString = new StringBuilder("a0: chararray");
     for (int i = 1; i < colsToLoad; i++) {
       schemaString.append(", a" + i + ": chararray");

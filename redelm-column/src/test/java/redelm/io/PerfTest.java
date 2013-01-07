@@ -15,6 +15,7 @@
  */
 package redelm.io;
 
+import static redelm.Log.DEBUG;
 import static redelm.data.simple.example.Paper.r1;
 import static redelm.data.simple.example.Paper.r2;
 import static redelm.data.simple.example.Paper.schema;
@@ -112,7 +113,8 @@ public class PerfTest {
     recordReader.read(new Void[count], count);
     long t1 = System.currentTimeMillis();
     long t = t1-t0;
-    System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s\n", count , t, t == 0 ? 0 : count * 1000 / t);
+    float err = (float)100 * 2 / t; // (+/- 1 ms)
+    System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s err: %3.2f%%\n", count , t, t == 0 ? 0 : count * 1000 / t, err);
   }
 
   private static void write(GroupWriter groupWriter, int count) {
