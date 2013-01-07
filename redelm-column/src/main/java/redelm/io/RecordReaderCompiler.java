@@ -59,7 +59,7 @@ public class RecordReaderCompiler {
       }
     }
 
-    abstract void readOneRecord();
+    public abstract void readOneRecord();
 
     private int[][][][] caseLookup;
 
