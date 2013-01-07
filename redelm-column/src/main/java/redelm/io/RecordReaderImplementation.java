@@ -291,7 +291,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
 
   private RecordConsumer wrap(RecordConsumer recordConsumer) {
     if (Log.DEBUG) {
-      return new RecordConsumerWrapper(recordConsumer);
+      return new RecordConsumerLoggingWrapper(recordConsumer);
     }
     return recordConsumer;
   }

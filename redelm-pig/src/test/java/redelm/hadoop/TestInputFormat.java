@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import redelm.hadoop.RedelmMetaData.FileMetaData;
-import redelm.io.RecordConsumer;
 import redelm.io.RecordMaterializer;
 
 import org.apache.hadoop.fs.BlockLocation;

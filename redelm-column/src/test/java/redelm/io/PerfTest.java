@@ -15,7 +15,6 @@
  */
 package redelm.io;
 
-import static redelm.Log.DEBUG;
 import static redelm.data.simple.example.Paper.r1;
 import static redelm.data.simple.example.Paper.r2;
 import static redelm.data.simple.example.Paper.schema;
@@ -107,9 +106,7 @@ public class PerfTest {
 
   private static void read(RecordReader<Void> recordReader, int count, MessageType schema) {
     long t0 = System.currentTimeMillis();
-//    for (int i = 0; i < count; i++) {
-//      recordReader.read();
-//    }
+
     recordReader.read(new Void[count], count);
     long t1 = System.currentTimeMillis();
     long t = t1-t0;

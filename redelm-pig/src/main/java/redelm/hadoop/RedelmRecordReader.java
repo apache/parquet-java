@@ -176,6 +176,7 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
     for (BlockMetaData block : blocks) {
       total += block.getRecordCount();
     }
+
   }
 
   private boolean contains(GroupType requestedSchema, String[] path) {
