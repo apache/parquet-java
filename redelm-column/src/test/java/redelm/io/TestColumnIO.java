@@ -106,7 +106,7 @@ public class TestColumnIO {
       validateFSA(expectedFSA, columnIO, recordReader);
 
       List<Group> records = new ArrayList<Group>();
-      read(recordReader, schema, records );
+      read(recordReader, schema, records);
       read(recordReader, schema, records);
 
       int i = 0;
