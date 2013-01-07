@@ -19,9 +19,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Properties;
 
-import redelm.hadoop.RedelmOutputFormat;
-import redelm.schema.MessageType;
-
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.OutputFormat;
@@ -36,6 +33,9 @@ import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.UDFContext;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
+
+import redelm.hadoop.RedelmOutputFormat;
+import redelm.schema.MessageType;
 
 public class RedelmStorer extends StoreFunc implements StoreMetadata {
 
@@ -57,7 +57,7 @@ public class RedelmStorer extends StoreFunc implements StoreMetadata {
   @Override
   public OutputFormat<Void, Tuple> getOutputFormat() throws IOException {
     Schema pigSchema = getSchema();
-    MessageType schema = new PigSchemaConverter().convert(pigSchema);
+    MessageType schema = PigSchemaConverter.convert(pigSchema);
 
     String pigSchemaString = pigSchema.toString();
     return new RedelmOutputFormat<Tuple>(

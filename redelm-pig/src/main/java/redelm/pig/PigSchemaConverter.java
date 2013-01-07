@@ -41,17 +41,18 @@ import redelm.schema.Type.Repetition;
  *
  */
 public class PigSchemaConverter {
+  private PigSchemaConverter() {}
 
   /**
    *
    * @param pigSchema the pig schema
    * @return the resulting RedElm schema
    */
-  public MessageType convert(Schema pigSchema) {
+  public static MessageType convert(Schema pigSchema) {
     return new MessageType("pig_schema", convertTypes(pigSchema));
   }
 
-  private Type[] convertTypes(Schema pigSchema) {
+  private static Type[] convertTypes(Schema pigSchema) {
     List<FieldSchema> fields = pigSchema.getFields();
     Type[] types = new Type[fields.size()];
     for (int i = 0; i < types.length; i++) {
@@ -60,7 +61,7 @@ public class PigSchemaConverter {
     return types;
   }
 
-  private Type convert(FieldSchema fieldSchema, int index) {
+  private static Type convert(FieldSchema fieldSchema, int index) {
     try {
       String name = name(fieldSchema.alias, "field_"+index);
       switch (fieldSchema.type) {
@@ -103,18 +104,18 @@ public class PigSchemaConverter {
    * @return an optional group containing one repeated group field
    * @throws FrontendException
    */
-  private GroupType convertBag(String name, FieldSchema fieldSchema) throws FrontendException {
+  private static GroupType convertBag(String name, FieldSchema fieldSchema) throws FrontendException {
     FieldSchema innerField = fieldSchema.schema.getField(0);
     return listWrapper(
         name,
         convertTuple(name(innerField.alias, "bag"), innerField, Repetition.REPEATED));
   }
 
-  private String name(String fieldAlias, String defaultName) {
+  private static String name(String fieldAlias, String defaultName) {
     return fieldAlias == null ? defaultName : fieldAlias;
   }
 
-  private PrimitiveType primitive(String name, Primitive primitive) {
+  private static PrimitiveType primitive(String name, Primitive primitive) {
     return new PrimitiveType(Repetition.OPTIONAL, primitive, name);
   }
 
@@ -124,7 +125,7 @@ public class PigSchemaConverter {
    * @param groupType
    * @return an optional group
    */
-  private GroupType listWrapper(String alias, GroupType groupType) {
+  private static GroupType listWrapper(String alias, GroupType groupType) {
     return new GroupType(Repetition.OPTIONAL, alias, groupType);
   }
 
@@ -135,7 +136,7 @@ public class PigSchemaConverter {
    * @return an optional group containing one repeated group field (key, value)
    * @throws FrontendException
    */
-  private GroupType convertMap(String alias, FieldSchema fieldSchema) throws FrontendException {
+  private static GroupType convertMap(String alias, FieldSchema fieldSchema) throws FrontendException {
     Type[] types = new Type[2];
     types[0] = new PrimitiveType(Repetition.REQUIRED, Primitive.STRING, "key");
     FieldSchema innerField = fieldSchema.schema.getField(0);
@@ -143,7 +144,7 @@ public class PigSchemaConverter {
     return listWrapper(alias, new GroupType(Repetition.REPEATED, name(innerField.alias, "map"), types));
   }
 
-  private GroupType convertTuple(String alias, FieldSchema field, Repetition repetition) {
+  private static GroupType convertTuple(String alias, FieldSchema field, Repetition repetition) {
     return new GroupType(repetition, alias, convertTypes(field.schema));
   }
 

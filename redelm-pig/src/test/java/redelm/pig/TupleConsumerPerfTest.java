@@ -24,6 +24,14 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.logging.Level;
 
+import org.apache.pig.backend.executionengine.ExecException;
+import org.apache.pig.data.DataBag;
+import org.apache.pig.data.NonSpillableDataBag;
+import org.apache.pig.data.Tuple;
+import org.apache.pig.data.TupleFactory;
+import org.apache.pig.impl.util.Utils;
+import org.apache.pig.parser.ParserException;
+
 import redelm.Log;
 import redelm.column.mem.MemColumnsStore;
 import redelm.io.ColumnIOFactory;
@@ -32,14 +40,6 @@ import redelm.io.RecordConsumer;
 import redelm.io.RecordConsumerLoggingWrapper;
 import redelm.io.RecordReader;
 import redelm.schema.MessageType;
-
-import org.apache.pig.backend.executionengine.ExecException;
-import org.apache.pig.data.DataBag;
-import org.apache.pig.data.NonSpillableDataBag;
-import org.apache.pig.data.Tuple;
-import org.apache.pig.data.TupleFactory;
-import org.apache.pig.impl.util.Utils;
-import org.apache.pig.parser.ParserException;
 
 /**
  * make sure {@link Log#LEVEL} is set to {@link Level#OFF}
@@ -55,8 +55,7 @@ public class TupleConsumerPerfTest {
     String pigSchema = pigSchema(false, false);
     String pigSchemaProjected = pigSchema(true, false);
     String pigSchemaNoString = pigSchema(true, true);
-    PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
-    MessageType schema = pigSchemaConverter.convert(Utils.getSchemaFromString(pigSchema));
+    MessageType schema = PigSchemaConverter.convert(Utils.getSchemaFromString(pigSchema));
 
     MemColumnsStore columns = new MemColumnsStore(50*1024*1024, schema);
     write(columns, schema, pigSchema);
@@ -156,7 +155,7 @@ public class TupleConsumerPerfTest {
   }
 
   private static MessageColumnIO newColumnFactory(MemColumnsStore columns, String pigSchemaString) throws ParserException {
-    MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchemaString));
+    MessageType schema = PigSchemaConverter.convert(Utils.getSchemaFromString(pigSchemaString));
     return new ColumnIOFactory().getColumnIO(schema, columns);
   }
 
@@ -230,7 +229,7 @@ public class TupleConsumerPerfTest {
       }
     };
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
-    MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchemaString));
+    MessageType schema = PigSchemaConverter.convert(Utils.getSchemaFromString(pigSchemaString));
     tupleReadSupport.initForRead(Arrays.asList(new PigMetaData(pigSchemaString).toMetaDataBlock()), schema.toString());
     RecordConsumer recordConsumer = tupleReadSupport.newRecordConsumer(result);
     if (DEBUG) {
