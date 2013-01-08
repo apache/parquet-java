@@ -139,13 +139,57 @@ public class PigSchemaConverter {
   private static GroupType convertMap(String alias, FieldSchema fieldSchema) throws FrontendException {
     Type[] types = new Type[2];
     types[0] = new PrimitiveType(Repetition.REQUIRED, Primitive.STRING, "key");
-    FieldSchema innerField = fieldSchema.schema.getField(0);
-    types[1] = convertTuple("value", innerField, Repetition.OPTIONAL);
+    Schema innerSchema = fieldSchema.schema;
+    if (innerSchema.size() != 1) {
+      throw new FrontendException("Invalid map Schema: " + fieldSchema);
+    }
+    FieldSchema innerField = innerSchema.getField(0);
+    switch (innerField.type) {
+    case DataType.TUPLE:
+      types[1] = convertTuple("value", innerField, Repetition.OPTIONAL);
+      break;
+    case DataType.MAP:
+      types[1] = convertMap("value", innerField);
+      break;
+    case DataType.BAG:
+      types[1] = convertBag("value", innerField);
+      break;
+    case DataType.INTEGER:
+    case DataType.LONG:
+    case DataType.BOOLEAN:
+    case DataType.FLOAT:
+    case DataType.DOUBLE:
+    case DataType.CHARARRAY:
+      types[1] = new PrimitiveType(Repetition.OPTIONAL, getPrimitive(innerField.type), name(innerField.alias, "value"));
+      break;
+    default:
+      throw new FrontendException("Invalid map Schema: " + fieldSchema);
+    }
     return listWrapper(alias, new GroupType(Repetition.REPEATED, name(innerField.alias, "map"), types));
   }
 
   private static GroupType convertTuple(String alias, FieldSchema field, Repetition repetition) {
     return new GroupType(repetition, alias, convertTypes(field.schema));
+  }
+
+  public static Primitive getPrimitive(byte type) {
+    //TODO DataByteArray = binary?
+    //TODO will we support DateTime?
+    switch (type) {
+    case DataType.INTEGER:
+      return Primitive.INT32;
+    case DataType.LONG:
+      return Primitive.INT64;
+    case DataType.BOOLEAN:
+      return Primitive.BOOLEAN;
+    case DataType.FLOAT:
+      return Primitive.FLOAT;
+    case DataType.DOUBLE:
+      return Primitive.DOUBLE;
+    case DataType.CHARARRAY:
+      return Primitive.STRING;
+    }
+    return null; //TODO throw error?
   }
 
 }
