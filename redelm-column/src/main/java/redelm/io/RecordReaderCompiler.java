@@ -59,32 +59,58 @@ public class RecordReaderCompiler {
       }
     }
 
-    public abstract void readOneRecord();
+    protected abstract void readOneRecord();
 
-    private int[][][][] caseLookup;
+    private State[] caseLookup;
 
-    private int getCaseId(int state, int currentLevel, int d, int nextR) {
-      return caseLookup[state][currentLevel][d][nextR];
+    protected int getCaseId(int state, int currentLevel, int d, int nextR) {
+      return caseLookup[state].getCase(currentLevel, d, nextR).getID();
     }
 
     protected void startMessage() {
-
+      recordMaterializer.startMessage();
     }
 
     protected void startGroup(int state, int depth) {
-
+      String field = caseLookup[state].fieldPath[depth];
+      int index = caseLookup[state].indexFieldPath[depth];
+      recordMaterializer.startField(field, index);
+      recordMaterializer.startGroup();
     }
 
-    protected void addPrimitive(long value) {
+    protected void addPrimitiveINT64(int state, int depth, long value) {
+      String field = caseLookup[state].fieldPath[depth];
+      int index = caseLookup[state].indexFieldPath[depth];
+      recordMaterializer.startField(field, index);
+      recordMaterializer.addLong(value);
+      recordMaterializer.endField(field, index);
+    }
 
+    protected void addPrimitiveSTRING(int state, int depth, String value) {
+      String field = caseLookup[state].fieldPath[depth];
+      int index = caseLookup[state].indexFieldPath[depth];
+      recordMaterializer.startField(field, index);
+      recordMaterializer.addString(value);
+      recordMaterializer.endField(field, index);
+    }
+
+    protected void addPrimitiveINT32(int state, int depth, int value) {
+      String field = caseLookup[state].fieldPath[depth];
+      int index = caseLookup[state].indexFieldPath[depth];
+      recordMaterializer.startField(field, index);
+      recordMaterializer.addInteger(value);
+      recordMaterializer.endField(field, index);
     }
 
     protected void endGroup(int state, int depth) {
-
+      recordMaterializer.endGroup();
+      String field = caseLookup[state].fieldPath[depth];
+      int index = caseLookup[state].indexFieldPath[depth];
+      recordMaterializer.endField(field, index);
     }
 
     protected void endMessage() {
-
+      recordMaterializer.endMessage();
     }
 
     protected void error(String message) {
@@ -136,7 +162,10 @@ public class RecordReaderCompiler {
                     if (addPrimitive) {
                       //  addPrimitive(currentState, currentLevel, columnReader);
                       // TODO: finalize method and params
-                      caseBlock = caseBlock.exec().callOnThis("addPrimitive").get("value_"+state.id).endCall().endExec();
+                      caseBlock =
+                          caseBlock.exec().callOnThis("addPrimitive"+state.primitive.name())
+                            .literal(state.id).nextParam().literal(currentCase.getDepth() + 1).nextParam().get("value_"+state.id)
+                          .endCall().endExec();
                     }
                     if (currentCase.isGoingDown()) {
                       //  for (; currentLevel > next; currentLevel--) {
@@ -226,7 +255,20 @@ public class RecordReaderCompiler {
     cl.define(testClass);
     try {
       Class<?> generated = (Class<?>)cl.loadClass(className);
-      return (RecordReader<T>)generated.getConstructor().newInstance();
+      BaseRecordReader<T> compiledRecordReader = (BaseRecordReader<T>)generated.getConstructor().newInstance();
+      compiledRecordReader.caseLookup = new State[stateCount];
+      for (int i = 0; i < stateCount; i++) {
+        State state = recordReader.getState(i);
+        try {
+          generated.getField("state_"+i+"_column").set(compiledRecordReader, state.column);
+          generated.getField("state_"+i+"_primitiveColumnIO").set(compiledRecordReader, state.primitiveColumnIO);
+        } catch (NoSuchFieldException e) {
+          throw new RuntimeException("bug: can't find field for state " + i, e);
+        }
+        compiledRecordReader.caseLookup[i] = state;
+      }
+      compiledRecordReader.recordMaterializer = recordReader.getMaterializer();
+      return compiledRecordReader;
     } catch (ClassNotFoundException e) {
       throw new RuntimeException("generated class "+className+" could not be loaded", e);
     } catch (InstantiationException e) {

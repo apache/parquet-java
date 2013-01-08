@@ -27,13 +27,13 @@ public class TestRecordReaderCompiler {
     Logger.getLogger("brennus").setLevel(Level.FINEST);
     Logger.getLogger("brennus").addHandler(new Handler() {
       public void publish(LogRecord record) {
-        System.out.println(record.getMessage());
+        System.err.println(record.getMessage());
       }
       public void flush() {
-        System.out.flush();
+        System.err.flush();
       }
       public void close() throws SecurityException {
-        System.out.flush();
+        System.err.flush();
       }
     });
 
@@ -41,17 +41,17 @@ public class TestRecordReaderCompiler {
       MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
       new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
       columns.flip();
+      System.err.flush();
+      Logger.getLogger("brennus").info("compile");
+      System.out.println("compile");
       RecordReader<Void> recordReader = new RecordReaderCompiler().compile((RecordReaderImplementation<Void>)
           columnIO.getRecordReader(
               columns,
               new ExpectationValidatingRecordConsumer(
                   new ArrayDeque<String>(Arrays.asList(expectedEventsForR1)))));
 
-      final Deque<String> expectations = new ArrayDeque<String>();
-      for (String string : expectedEventsForR1) {
-        expectations.add(string);
-      }
-
+      Logger.getLogger("brennus").info("read");
+      System.out.println("read");
       recordReader.read();
 
     }

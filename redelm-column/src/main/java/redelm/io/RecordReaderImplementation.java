@@ -165,6 +165,9 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
       return cases;
     }
 
+    public Case getCase(int currentLevel, int d, int nextR) {
+      return caseLookup[currentLevel][d][nextR];
+    }
   }
 
   private final RecordConsumer recordConsumer;
@@ -460,6 +463,10 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
 
   protected State getState(int i) {
     return states[i];
+  }
+
+  protected RecordMaterializer<T> getMaterializer() {
+    return recordMaterializer;
   }
 
 }
