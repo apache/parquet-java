@@ -159,15 +159,6 @@ public class RecordReader<T> {
   }
 
   /**
-   * reads one record and returns it
-   * @return the materialized record
-   */
-  public T read() {
-    readOneRecord();
-    return recordMaterializer.getCurrentRecord();
-  }
-
-  /**
    * reads count record and writes them in the provided array
    * @param records the target
    * @param count how many to read
@@ -177,12 +168,15 @@ public class RecordReader<T> {
       throw new IllegalArgumentException("count is greater than records size");
     }
     for (int i = 0; i < count; i++) {
-      readOneRecord();
-      records[i] = recordMaterializer.getCurrentRecord();
+      records[i] = read();
     }
   }
 
-  private void readOneRecord() {
+  /**
+   * reads one record and returns it
+   * @return the materialized record
+   */
+  public T read() {
     int currentLevel = 0;
     State currentState = states[0];
     startMessage();
@@ -225,6 +219,7 @@ public class RecordReader<T> {
       currentState = currentState.nextState[nextR];
     } while (currentState != null);
     endMessage();
+    return recordMaterializer.getCurrentRecord();
   }
 
   private void startMessage() {
