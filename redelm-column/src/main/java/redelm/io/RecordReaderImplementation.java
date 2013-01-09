@@ -16,9 +16,13 @@
 package redelm.io;
 
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import redelm.Log;
@@ -150,7 +154,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     private int[] definitionLevelToDepth; // indexed on current d
     private State[] nextState; // indexed on next r
     private Case[][][] caseLookup;
-    private Collection<Case> cases;
+    private List<Case> cases;
 
     private State(int id, PrimitiveColumnIO primitiveColumnIO, ColumnReader column, int[] nextLevel) {
       this.id = id;
@@ -170,7 +174,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
       return definitionLevelToDepth[definitionLevel];
     }
 
-    public Collection<Case> getCases() {
+    public List<Case> getCases() {
       return cases;
     }
 
@@ -281,7 +285,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
             Case currentCase = new Case(caseStartLevel, caseDepth, caseNextLevel);
             if (!cases.containsKey(currentCase)) {
 //              System.out.println("adding "+currentCase);
-              currentCase.setID(++ nextCaseID);
+              currentCase.setID(nextCaseID ++);
               cases.put(currentCase, currentCase);
             } else {
 //              System.out.println("not adding "+currentCase);
@@ -293,7 +297,13 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
         }
       }
       state.caseLookup = caseLookup;
-      state.cases = cases.values();
+      state.cases = new ArrayList<Case>(cases.values());
+      Collections.sort(state.cases, new Comparator<Case>() {
+        @Override
+        public int compare(Case o1, Case o2) {
+          return o1.id - o2.id;
+        }
+      });
     }
   }
 

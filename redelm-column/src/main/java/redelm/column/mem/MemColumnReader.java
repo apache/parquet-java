@@ -108,9 +108,11 @@ abstract class MemColumnReader implements ColumnReader {
 
   private void read() {
     if (!(repetitionLevelColumn instanceof DevNullColumnReader)) {
-    repetitionLevel = repetitionLevelColumn.readInteger();
+      repetitionLevel = repetitionLevelColumn.readInteger();
     }
-    definitionLevel = definitionLevelColumn.readInteger();
+    if (!(definitionLevelColumn instanceof DevNullColumnReader)) {
+      definitionLevel = definitionLevelColumn.readInteger();
+    }
     ++readValues;
     consumed = false;
   }

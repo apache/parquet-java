@@ -39,22 +39,28 @@ public class PerfTest {
   public static void main(String[] args) {
     MemColumnsStore columns = new MemColumnsStore(50*1024*1024, schema);
     write(columns);
-    columns.flip();
+//    columns.flip();
     read(columns);
     System.out.println(columns.memSize()+" bytes used total");
     System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
   }
 
   private static void read(MemColumnsStore columns) {
-      read(columns, schema, "read all");
-      read(columns, schema2, "read projected");
-      read(columns, schema3, "read projected no Strings");
+      read(columns, schema, "read all", false);
+      read(columns, schema, "read all", false);
+      read(columns, schema, "read all", true);
+      read(columns, schema, "read all", true);
+      read(columns, schema2, "read projected", false);
+      read(columns, schema2, "read projected", true);
+      read(columns, schema3, "read projected no Strings", false);
+      read(columns, schema3, "read projected no Strings", true);
   }
 
   private static void read(MemColumnsStore columns, MessageType myschema,
-      String message) {
+      String message, boolean compiled) {
+    columns.flip();
     MessageColumnIO columnIO = newColumnFactory(myschema);
-    System.out.println(message);
+    System.out.println(message + (compiled ? " compiled" : ""));
     RecordMaterializer<Object> recordConsumer = new RecordMaterializer<Object>() {
       Object a;
       public void startMessage() { a = "startmessage";}
@@ -73,7 +79,9 @@ public class PerfTest {
       public Object getCurrentRecord() { return a; }
     };
     RecordReader<Object> recordReader = columnIO.getRecordReader(columns, recordConsumer);
-    recordReader = new RecordReaderCompiler().compile((RecordReaderImplementation<Object>)recordReader);
+    if (compiled) {
+      recordReader = new RecordReaderCompiler().compile((RecordReaderImplementation<Object>)recordReader);
+    }
     read(recordReader, 2, myschema);
     read(recordReader, 10000, myschema);
     read(recordReader, 10000, myschema);
@@ -115,7 +123,9 @@ public class PerfTest {
     long t = t1-t0;
     float err = (float)100 * 2 / t; // (+/- 1 ms)
     System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s err: %3.2f%%\n", count , t, t == 0 ? 0 : count * 1000 / t, err);
-    System.out.println(records[0]);
+    if (!records[0].equals("endmessage")) {
+      throw new RuntimeException();
+    }
   }
 
   private static void write(GroupWriter groupWriter, int count) {

@@ -64,7 +64,7 @@ public class RecordReaderCompiler {
     private int endIndex;
 
     protected void currentLevel(int currentLevel) {
-      LOG.debug("currentLevel: "+currentLevel);
+      if (DEBUG) LOG.debug("currentLevel: "+currentLevel);
     }
 
     protected void log(String message) {
@@ -163,7 +163,7 @@ public class RecordReaderCompiler {
     ASMTypeGenerator asmTypeGenerator = new ASMTypeGenerator();
 
     public Class<?> define(FutureType type) {
-      new TypePrinter().print(type);
+      if (DEBUG) new TypePrinter().print(type);
       byte[] classBytes = asmTypeGenerator.generate(type);
       return super.defineClass(type.getName(), classBytes, 0, classBytes.length);
     }
@@ -185,12 +185,9 @@ public class RecordReaderCompiler {
     }
     if (addPrimitive) {
       //  addPrimitive(currentState, currentLevel, columnReader);
-      // TODO: finalize method and params
-      String field = state.fieldPath[currentCase.getDepth() + 1];
-      int index = state.indexFieldPath[currentCase.getDepth() + 1];
       builder =
           builder.exec().callOnThis("addPrimitive"+state.primitive.name())
-            .literal(field).nextParam().literal(index).nextParam().get("value_"+state.id)
+            .literal(state.primitiveField).nextParam().literal(state.primitiveFieldIndex).nextParam().get("value_"+state.id)
           .endCall().endExec();
     }
     if (currentCase.isGoingDown()) {
@@ -225,7 +222,7 @@ public class RecordReaderCompiler {
     builder = builder
         .exec().get(columnReader).callNoParam("consume").endExec();
     if (state.maxRepetitionLevel == 0) {
-      builder = builder
+      builder = builder // TODO: instead change the case lookup code
           .set("nextR").literal(0).endSet();
     } else {
       builder = builder
@@ -262,8 +259,7 @@ public class RecordReaderCompiler {
     ClassBuilder classBuilder = startClass(className, existing(BaseRecordReader.class));
     for (int i = 0; i < stateCount; i++) {
       classBuilder = classBuilder
-        .field(PUBLIC, existing(ColumnReader.class), "state_"+i+"_column")
-        .field(PUBLIC, existing(PrimitiveColumnIO.class), "state_"+i+"_primitiveColumnIO");
+        .field(PUBLIC, existing(ColumnReader.class), "state_"+i+"_column");
     }
 
     MethodBuilder readMethodBuilder = classBuilder
@@ -282,11 +278,11 @@ public class RecordReaderCompiler {
           .label("state_"+i)
           .transform(this.<MethodBuilder>debug("state "+i));
 
-      //  int d = columnReader.getCurrentDefinitionLevel();
       if (state.maxDefinitionLevel == 0) {
         readMethodBuilder = generateSwitch(readMethodBuilder, true, state);
       } else {
         readMethodBuilder = readMethodBuilder
+            //  int d = columnReader.getCurrentDefinitionLevel();
             .set("d").get(columnReader).callNoParam("getCurrentDefinitionLevel").endSet()
             .ifExp().get("d").isEqualTo().literal(state.maxDefinitionLevel).thenBlock()
               .transform(new Function<ThenBuilder<MethodBuilder>, ThenBuilder<MethodBuilder>>() {
@@ -302,9 +298,17 @@ public class RecordReaderCompiler {
               })
             .endIf();
       }
-      if (state.maxRepetitionLevel == 0) {
-        int nextReader = recordReader.getNextReader(state.id, 0);
-        if (nextReader != state.id) { // if this is next state, just keep going
+      int firstTransitionNextReader = recordReader.getNextReader(state.id, 0);
+      boolean allTheSame = true;
+      for (int j = 0; j <= state.maxRepetitionLevel; j++) {
+        if (recordReader.getNextReader(state.id, j) != firstTransitionNextReader) {
+          allTheSame = false;
+          break;
+        }
+      }
+      if (allTheSame) { // if there's only one transition, no need to switch
+        int nextReader = firstTransitionNextReader;
+        if (nextReader != (state.id + 1)) { // if this is next state, just keep going
           String label = nextReader == recordReader.getStateCount() ? "endRecord" : "state_" + nextReader;
           readMethodBuilder = readMethodBuilder.gotoLabel(label);
         }
@@ -321,9 +325,9 @@ public class RecordReaderCompiler {
                   return builder;
                 }
               })
-            .defaultCase()
-            .exec().callOnThis("error").literal("unknown transition").endCall().endExec()
-            .breakCase()
+              .defaultCase()
+                .exec().callOnThis("error").literal("unknown transition").endCall().endExec()
+              .breakCase()
             .endSwitch();
       }
     }
@@ -344,7 +348,6 @@ public class RecordReaderCompiler {
         State state = recordReader.getState(i);
         try {
           generated.getField("state_"+i+"_column").set(compiledRecordReader, state.column);
-          generated.getField("state_"+i+"_primitiveColumnIO").set(compiledRecordReader, state.primitiveColumnIO);
         } catch (NoSuchFieldException e) {
           throw new RuntimeException("bug: can't find field for state " + i, e);
         }
