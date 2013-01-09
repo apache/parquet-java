@@ -7,3 +7,8 @@ target
 *.jar
 *.war
 *.ear
+*.iml
+*.ipr
+*.iws
+*.orig
+*.rej
