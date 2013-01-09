@@ -115,11 +115,13 @@ public class PerfTest {
   }
 
   private static void read(RecordReader<Object> recordReader, int count, MessageType schema) {
-    System.gc();
-    long t0 = System.currentTimeMillis();
     Object[] records = new Object[count];
+    System.gc();
+    System.out.println("<<<");
+    long t0 = System.currentTimeMillis();
     recordReader.read(records, count);
     long t1 = System.currentTimeMillis();
+    System.out.println(">>>");
     long t = t1-t0;
     float err = (float)100 * 2 / t; // (+/- 1 ms)
     System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s err: %3.2f%%\n", count , t, t == 0 ? 0 : count * 1000 / t, err);
