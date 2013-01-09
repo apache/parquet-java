@@ -44,11 +44,11 @@ public class TestRecordReaderCompiler {
       System.err.flush();
       Logger.getLogger("brennus").info("compile");
       System.out.println("compile");
-      RecordReader<Void> recordReader = new RecordReaderCompiler().compile((RecordReaderImplementation<Void>)
-          columnIO.getRecordReader(
-              columns,
-              new ExpectationValidatingRecordConsumer(
-                  new ArrayDeque<String>(Arrays.asList(expectedEventsForR1)))));
+      RecordReader<Void> recordReader = columnIO.getRecordReader(
+          columns,
+          new ExpectationValidatingRecordConsumer(
+              new ArrayDeque<String>(Arrays.asList(expectedEventsForR1))));
+      recordReader = new RecordReaderCompiler().compile((RecordReaderImplementation<Void>)recordReader);
 
       Logger.getLogger("brennus").info("read");
       System.out.println("read");

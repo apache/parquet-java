@@ -55,23 +55,25 @@ public class PerfTest {
       String message) {
     MessageColumnIO columnIO = newColumnFactory(myschema);
     System.out.println(message);
-    RecordMaterializer<Void> recordConsumer = new RecordMaterializer<Void>() {
-      public void startMessage() {}
-      public void startGroup() {}
-      public void startField(String field, int index) {}
-      public void endMessage() {}
-      public void endGroup() {}
-      public void endField(String field, int index) {}
-      public void addString(String value) {}
-      public void addInteger(int value) {}
-      public void addLong(long value) {}
-      public void addFloat(float value) {}
-      public void addDouble(double value) {}
-      public void addBoolean(boolean value) {}
-      public void addBinary(byte[] value) {}
-      public Void getCurrentRecord() { return null; }
+    RecordMaterializer<Object> recordConsumer = new RecordMaterializer<Object>() {
+      Object a;
+      public void startMessage() { a = "startmessage";}
+      public void startGroup() { a = "startgroup";}
+      public void startField(String field, int index) { a = field;}
+      public void endMessage() { a = "endmessage";}
+      public void endGroup() { a = "endgroup";}
+      public void endField(String field, int index) { a = field;}
+      public void addString(String value) { a = value;}
+      public void addInteger(int value) { a = "int";}
+      public void addLong(long value) { a = "long";}
+      public void addFloat(float value) { a = "float";}
+      public void addDouble(double value) { a = "double";}
+      public void addBoolean(boolean value) { a = "boolean";}
+      public void addBinary(byte[] value) { a = value;}
+      public Object getCurrentRecord() { return a; }
     };
-    RecordReader<Void> recordReader = columnIO.getRecordReader(columns, recordConsumer);
+    RecordReader<Object> recordReader = columnIO.getRecordReader(columns, recordConsumer);
+    recordReader = new RecordReaderCompiler().compile((RecordReaderImplementation<Object>)recordReader);
     read(recordReader, 2, myschema);
     read(recordReader, 10000, myschema);
     read(recordReader, 10000, myschema);
@@ -104,14 +106,16 @@ public class PerfTest {
     return new ColumnIOFactory().getColumnIO(schema);
   }
 
-  private static void read(RecordReader<Void> recordReader, int count, MessageType schema) {
+  private static void read(RecordReader<Object> recordReader, int count, MessageType schema) {
     long t0 = System.currentTimeMillis();
 
-    recordReader.read(new Void[count], count);
+    Object[] records = new Object[count];
+    recordReader.read(records, count);
     long t1 = System.currentTimeMillis();
     long t = t1-t0;
     float err = (float)100 * 2 / t; // (+/- 1 ms)
     System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s err: %3.2f%%\n", count , t, t == 0 ? 0 : count * 1000 / t, err);
+    System.out.println(records[0]);
   }
 
   private static void write(GroupWriter groupWriter, int count) {

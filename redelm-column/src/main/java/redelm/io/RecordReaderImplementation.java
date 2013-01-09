@@ -15,6 +15,7 @@
  */
 package redelm.io;
 
+import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -59,15 +60,19 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     }
 
     @Override
+//    public int hashCode() {
+//      int hashCode = 0;
+//      if (goingUp) {
+//        hashCode += 1 * (1 + startLevel) + 2 * (1 + depth);
+//      }
+//      if (goingDown) {
+//        hashCode += 3 * (1 + depth) + 5 * (1 + nextLevel);
+//      }
+//      return hashCode;
+//    }
+
     public int hashCode() {
-      int hashCode = 0;
-      if (goingUp) {
-        hashCode += 1 * (1 + startLevel) + 2 * (1 + depth);
-      }
-      if (goingDown) {
-        hashCode += 3 * (1 + depth) + 5 * (1 + nextLevel);
-      }
-      return hashCode;
+      return 1 * startLevel + 2 * depth + 3 * nextLevel;
     }
 
     @Override
@@ -78,20 +83,24 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
       return false;
     };
 
+//    public boolean equals(Case other) {
+//      if (goingUp && !other.goingUp || !goingUp && other.goingUp) {
+//        return false;
+//      }
+//      if (goingUp && other.goingUp && (startLevel != other.startLevel || depth != other.depth)) {
+//        return false;
+//      }
+//      if (goingDown && !other.goingDown || !goingDown && other.goingDown) {
+//        return false;
+//      }
+//      if (goingDown && other.goingDown && (depth != other.depth || nextLevel != other.nextLevel)) {
+//        return false;
+//      }
+//      return true;
+//    }
+
     public boolean equals(Case other) {
-      if (goingUp && !other.goingUp || !goingUp && other.goingUp) {
-        return false;
-      }
-      if (goingUp && other.goingUp && (startLevel != other.startLevel || depth != other.depth)) {
-        return false;
-      }
-      if (goingDown && !other.goingDown || !goingDown && other.goingDown) {
-        return false;
-      }
-      if (goingDown && other.goingDown && (depth != other.depth || nextLevel != other.nextLevel)) {
-        return false;
-      }
-      return true;
+      return startLevel == other.startLevel && depth == other.depth && nextLevel == other.nextLevel;
     }
 
     public int getID() {
@@ -267,8 +276,8 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
           caseLookup[currentLevel][d] = new Case[state.maxRepetitionLevel+1];
           for (int nextR = 0; nextR <= state.maxRepetitionLevel; ++ nextR) {
             int caseStartLevel = currentLevel;
-            int caseDepth = state.getDepth(d);
-            int caseNextLevel = state.nextLevel[nextR];
+            int caseDepth = Math.max(state.getDepth(d), caseStartLevel - 1);
+            int caseNextLevel = Math.min(state.nextLevel[nextR], caseDepth + 1);
             Case currentCase = new Case(caseStartLevel, caseDepth, caseNextLevel);
             if (!cases.containsKey(currentCase)) {
 //              System.out.println("adding "+currentCase);
@@ -329,15 +338,12 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     do {
       ColumnReader columnReader = currentState.column;
       int d = columnReader.getCurrentDefinitionLevel();
-
       // creating needed nested groups until the current field (opening tags)
       int depth = currentState.definitionLevelToDepth[d];
-//      System.out.println("depth: "+d+" => "+ depth);
       for (; currentLevel <= depth; ++currentLevel) {
         startGroup(currentState, currentLevel);
       }
       // currentLevel = depth + 1 at this point
-//      System.out.println(currentLevel);
       // set the current value
       if (d >= currentState.maxDefinitionLevel) {
         // not null
@@ -348,12 +354,9 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
       int nextR = currentState.maxRepetitionLevel == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
       // level to go to close current groups
       int next = currentState.nextLevel[nextR];
-//      System.out.println("nextLevel: "+nextR+" => "+ next);
       for (; currentLevel > next; currentLevel--) {
         endGroup(currentState, currentLevel - 1);
       }
-      // currentLevel always equals next at this point
-//      System.out.println(currentLevel);
 
       currentState = currentState.nextState[nextR];
     } while (currentState != null);
@@ -467,6 +470,10 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
 
   protected RecordMaterializer<T> getMaterializer() {
     return recordMaterializer;
+  }
+
+  protected RecordConsumer getRecordConsumer() {
+    return recordConsumer;
   }
 
 }
