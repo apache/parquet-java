@@ -19,7 +19,7 @@ import java.util.List;
 
 import redelm.hadoop.MetaDataBlock;
 import redelm.hadoop.ReadSupport;
-import redelm.io.RecordConsumer;
+import redelm.io.RecordMaterializer;
 import redelm.parser.MessageTypeParser;
 import redelm.pig.converter.MessageConverter;
 import redelm.schema.MessageType;
@@ -61,10 +61,10 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
    * {@inheritDoc}
    */
   @Override
-  public RecordConsumer newRecordConsumer(List<Tuple> destination) {
+  public RecordMaterializer<Tuple> newRecordConsumer() {
     MessageType redelmSchema = MessageTypeParser.parseMessageType(requestedSchema);
     MessageConverter converter = newParsingTree(redelmSchema, pigSchema);
-    return converter.newRecordConsumer(destination);
+    return converter.newRecordConsumer();
 //    return new TupleRecordConsumer(
 //        redelmSchema,
 //        pigSchema,

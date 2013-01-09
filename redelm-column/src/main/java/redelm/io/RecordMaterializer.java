@@ -13,38 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.hadoop;
-
-import java.util.List;
-
-import org.apache.hadoop.fs.Path;
+package redelm.io;
 
 /**
  *
- * Represent the footer for a given file
+ * materializes records coming from the assembly algorithm
  *
  * @author Julien Le Dem
  *
+ * @param <T> the type of the materialized tuple
  */
-public class Footer {
+abstract public class RecordMaterializer<T> extends RecordConsumer {
 
-  private Path file;
-
-  private List<MetaDataBlock> metaDataBlocks;
-
-  public Footer(Path file, List<MetaDataBlock> metaDataBlocks) {
-    super();
-    this.file = file;
-    this.metaDataBlocks = metaDataBlocks;
-  }
-
-  public Path getFile() {
-    return file;
-  }
-
-  public List<MetaDataBlock> getMetaDataBlocks() {
-    return metaDataBlocks;
-  }
-
+  /**
+   * called after a call to endMessage()
+   * @return the materialized record
+   */
+  abstract public T getCurrentRecord();
 
 }

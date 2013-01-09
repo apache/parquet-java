@@ -20,7 +20,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import redelm.Log;
-import redelm.column.ColumnsStore;
 import redelm.schema.Type;
 import redelm.schema.Type.Repetition;
 
@@ -69,13 +68,11 @@ abstract public class ColumnIO {
     this.indexFieldPath = indexFieldPath;
   }
 
-  abstract void writeNull(int r, int d);
-
   Type getType() {
     return type;
   }
 
-  void setLevels(int r, int d, String[] fieldPath, int[] indexFieldPath, List<ColumnIO> repetition, List<ColumnIO> path, ColumnsStore columns) {
+  void setLevels(int r, int d, String[] fieldPath, int[] indexFieldPath, List<ColumnIO> repetition, List<ColumnIO> path) {
     setRepetitionLevel(r);
     setDefinitionLevel(d);
     setFieldPath(fieldPath, indexFieldPath);

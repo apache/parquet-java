@@ -22,13 +22,10 @@ import static redelm.data.simple.example.Paper.schema;
 import static redelm.data.simple.example.Paper.schema2;
 import static redelm.data.simple.example.Paper.schema3;
 
-import java.util.Collection;
-import java.util.Iterator;
 import java.util.logging.Level;
 
 import redelm.Log;
 import redelm.column.mem.MemColumnsStore;
-import redelm.data.Group;
 import redelm.data.GroupWriter;
 import redelm.schema.MessageType;
 
@@ -57,85 +54,9 @@ public class PerfTest {
 
   private static void read(MemColumnsStore columns, MessageType myschema,
       String message) {
-    MessageColumnIO columnIO = newColumnFactory(columns, myschema);
+    MessageColumnIO columnIO = newColumnFactory(myschema);
     System.out.println(message);
-    RecordReader recordReader = columnIO.getRecordReader();
-    read(recordReader, 2, myschema);
-    read(recordReader, 10000, myschema);
-    read(recordReader, 10000, myschema);
-    read(recordReader, 10000, myschema);
-    read(recordReader, 10000, myschema);
-    read(recordReader, 10000, myschema);
-    read(recordReader, 100000, myschema);
-    read(recordReader, 1000000, myschema);
-    System.out.println();
-  }
-
-  private static void write(MemColumnsStore columns) {
-    MessageColumnIO columnIO = newColumnFactory(columns, schema);
-
-    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(), schema);
-    groupWriter.write(r1);
-    groupWriter.write(r2);
-
-    write(groupWriter, 10000);
-    write(groupWriter, 10000);
-    write(groupWriter, 10000);
-    write(groupWriter, 10000);
-    write(groupWriter, 10000);
-    write(groupWriter, 100000);
-    write(groupWriter, 1000000);
-    System.out.println();
-  }
-
-  private static MessageColumnIO newColumnFactory(MemColumnsStore columns,
-      MessageType schema) {
-    return new ColumnIOFactory().getColumnIO(schema, columns);
-  }
-
-  private static void read(RecordReader recordReader, int count, MessageType schema) {
-    Collection<Group> result = new Collection<Group>() {
-      public int size() {
-        return 0;
-      }
-      public boolean isEmpty() {
-        return false;
-      }
-      public boolean contains(Object o) {
-        return false;
-      }
-      public Iterator<Group> iterator() {
-        return null;
-      }
-      public Object[] toArray() {
-        return null;
-      }
-      public <T> T[] toArray(T[] a) {
-        return null;
-      }
-      public boolean add(Group e) {
-        return false;
-      }
-      public boolean remove(Object o) {
-        return false;
-      }
-      public boolean containsAll(Collection<?> c) {
-        return false;
-      }
-      public boolean addAll(Collection<? extends Group> c) {
-        return false;
-      }
-      public boolean removeAll(Collection<?> c) {
-        return false;
-      }
-      public boolean retainAll(Collection<?> c) {
-        return false;
-      }
-      public void clear() {
-      }
-    };
-//    RecordConsumer recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema), result);
-    RecordConsumer recordConsumer = new RecordConsumer() {
+    RecordMaterializer<Void> recordConsumer = new RecordMaterializer<Void>() {
       public void startMessage() {}
       public void startGroup() {}
       public void startField(String field, int index) {}
@@ -149,14 +70,44 @@ public class PerfTest {
       public void addDouble(double value) {}
       public void addBoolean(boolean value) {}
       public void addBinary(byte[] value) {}
+      public Void getCurrentRecord() { return null; }
     };
-    if (DEBUG) {
-      recordConsumer = new RecordConsumerLoggingWrapper(recordConsumer);
-    }
+    RecordReader<Void> recordReader = columnIO.getRecordReader(columns, recordConsumer);
+    read(recordReader, 2, myschema);
+    read(recordReader, 10000, myschema);
+    read(recordReader, 10000, myschema);
+    read(recordReader, 10000, myschema);
+    read(recordReader, 10000, myschema);
+    read(recordReader, 10000, myschema);
+    read(recordReader, 100000, myschema);
+    read(recordReader, 1000000, myschema);
+    System.out.println();
+  }
+
+  private static void write(MemColumnsStore columns) {
+    MessageColumnIO columnIO = newColumnFactory(schema);
+
+    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
+    groupWriter.write(r1);
+    groupWriter.write(r2);
+
+    write(groupWriter, 10000);
+    write(groupWriter, 10000);
+    write(groupWriter, 10000);
+    write(groupWriter, 10000);
+    write(groupWriter, 10000);
+    write(groupWriter, 100000);
+    write(groupWriter, 1000000);
+    System.out.println();
+  }
+
+  private static MessageColumnIO newColumnFactory(MessageType schema) {
+    return new ColumnIOFactory().getColumnIO(schema);
+  }
+
+  private static void read(RecordReader<Void> recordReader, int count, MessageType schema) {
     long t0 = System.currentTimeMillis();
-    for (int i = 0; i < count; i++) {
-      recordReader.read(recordConsumer);
-    }
+    recordReader.read(new Void[count], count);
     long t1 = System.currentTimeMillis();
     long t = t1-t0;
     float err = (float)100 * 2 / t; // (+/- 1 ms)

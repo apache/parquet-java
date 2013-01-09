@@ -30,6 +30,7 @@ import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
 import redelm.io.RecordConsumer;
 import redelm.io.RecordConsumerLoggingWrapper;
+import redelm.io.RecordMaterializer;
 import redelm.io.RecordReader;
 import redelm.schema.MessageType;
 
@@ -128,9 +129,25 @@ public class TupleConsumerPerfTest {
 
   private static void read(MemColumnsStore columns,
       String pigSchemaString, String message) throws ParserException {
-    MessageColumnIO columnIO = newColumnFactory(columns, pigSchemaString);
+    RecordMaterializer<Void> recordConsumer = new RecordMaterializer<Void>() {
+      public void startMessage() {}
+      public void startGroup() {}
+      public void startField(String field, int index) {}
+      public void endMessage() {}
+      public void endGroup() {}
+      public void endField(String field, int index) {}
+      public void addString(String value) {}
+      public void addInteger(int value) {}
+      public void addLong(long value) {}
+      public void addFloat(float value) {}
+      public void addDouble(double value) {}
+      public void addBoolean(boolean value) {}
+      public void addBinary(byte[] value) {}
+      public Void getCurrentRecord() { return null; }
+    };
+    MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     System.out.println(message);
-    RecordReader recordReader = columnIO.getRecordReader();
+    RecordReader recordReader = columnIO.getRecordReader(columns, recordConsumer);
     read(recordReader, 10000, pigSchemaString);
     read(recordReader, 10000, pigSchemaString);
     read(recordReader, 10000, pigSchemaString);
@@ -142,9 +159,9 @@ public class TupleConsumerPerfTest {
   }
 
   private static void write(MemColumnsStore columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
-    MessageColumnIO columnIO = newColumnFactory(columns, pigSchemaString);
+    MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     TupleWriteSupport tupleWriter = new TupleWriteSupport();
-    tupleWriter.initForWrite(columnIO.getRecordWriter(), schema, Arrays.asList(new PigMetaData(pigSchemaString).toMetaDataBlock()));
+    tupleWriter.initForWrite(columnIO.getRecordWriter(columns), schema, Arrays.asList(new PigMetaData(pigSchemaString).toMetaDataBlock()));
     write(tupleWriter, 10000);
     write(tupleWriter, 10000);
     write(tupleWriter, 10000);
@@ -155,90 +172,22 @@ public class TupleConsumerPerfTest {
     System.out.println();
   }
 
-  private static MessageColumnIO newColumnFactory(MemColumnsStore columns, String pigSchemaString) throws ParserException {
+  private static MessageColumnIO newColumnFactory(String pigSchemaString) throws ParserException {
     MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchemaString));
-    return new ColumnIOFactory().getColumnIO(schema, columns);
+    return new ColumnIOFactory().getColumnIO(schema);
   }
 
-  private static void read(RecordReader recordReader, int count, String pigSchemaString) throws ParserException {
-    List<Tuple> result = new List<Tuple>() {
-      public int size() {
-        return 0;
-      }
-      public boolean isEmpty() {
-        return false;
-      }
-      public boolean contains(Object o) {
-        return false;
-      }
-      public Iterator<Tuple> iterator() {
-        return null;
-      }
-      public Object[] toArray() {
-        return null;
-      }
-      public <T> T[] toArray(T[] a) {
-        return null;
-      }
-      public boolean add(Tuple e) {
-        return false;
-      }
-      public boolean remove(Object o) {
-        return false;
-      }
-      public boolean containsAll(Collection<?> c) {
-        return false;
-      }
-      public boolean addAll(Collection<? extends Tuple> c) {
-        return false;
-      }
-      public boolean removeAll(Collection<?> c) {
-        return false;
-      }
-      public boolean retainAll(Collection<?> c) {
-        return false;
-      }
-      public void clear() {}
-      public boolean addAll(int index, Collection<? extends Tuple> c) {
-        return false;
-      }
-      public Tuple get(int index) {
-        return null;
-      }
-      public Tuple set(int index, Tuple element) {
-        return null;
-      }
-      public void add(int index, Tuple element) {
-      }
-      public Tuple remove(int index) {
-        return null;
-      }
-      public int indexOf(Object o) {
-        return 0;
-      }
-      public int lastIndexOf(Object o) {
-        return 0;
-      }
-      public ListIterator<Tuple> listIterator() {
-        return null;
-      }
-      public ListIterator<Tuple> listIterator(int index) {
-        return null;
-      }
-      public List<Tuple> subList(int fromIndex, int toIndex) {
-        return null;
-      }
-    };
+  private static void read(RecordReader<Void> recordReader, int count, String pigSchemaString) throws ParserException {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
     MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchemaString));
     tupleReadSupport.initForRead(Arrays.asList(new PigMetaData(pigSchemaString).toMetaDataBlock()), schema.toString());
-    RecordConsumer recordConsumer = tupleReadSupport.newRecordConsumer(result);
+    RecordConsumer recordConsumer = tupleReadSupport.newRecordConsumer();
     if (DEBUG) {
       recordConsumer = new RecordConsumerLoggingWrapper(recordConsumer);
     }
     long t0 = System.currentTimeMillis();
     for (int i = 0; i < count; i++) {
-      recordReader.read(recordConsumer);
+      recordReader.read();
     }
     long t1 = System.currentTimeMillis();
     long t = t1-t0;

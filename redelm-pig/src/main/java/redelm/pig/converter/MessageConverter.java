@@ -15,24 +15,21 @@
  */
 package redelm.pig.converter;
 
-import java.util.List;
+import redelm.io.RecordMaterializer;
+import redelm.schema.MessageType;
 
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 
-import redelm.io.RecordConsumer;
-import redelm.schema.MessageType;
-
 public class MessageConverter extends TupleConverter {
 
-  private static final class TupleRecordConsumer extends RecordConsumer {
+  private static final class TupleRecordConsumer extends RecordMaterializer<Tuple> {
     private Converter currentConverter;
-    private final List<Tuple> destination;
+    private Tuple currentTuple;
 
-    public TupleRecordConsumer(MessageConverter messageConverter, List<Tuple> destination) {
+    public TupleRecordConsumer(MessageConverter messageConverter) {
       this.currentConverter = messageConverter;
-      this.destination = destination;
     }
 
     @Override
@@ -54,7 +51,7 @@ public class MessageConverter extends TupleConverter {
     @Override
     public void endMessage() {
       currentConverter.end();
-      destination.add((Tuple)currentConverter.get());
+      this.currentTuple = (Tuple)currentConverter.get();
     }
 
     @Override
@@ -102,13 +99,18 @@ public class MessageConverter extends TupleConverter {
     public void addBinary(byte[] value) {
       currentConverter.set(value);
     }
+
+    @Override
+    public Tuple getCurrentRecord() {
+      return currentTuple;
+    }
   }
 
   public MessageConverter(MessageType redelmSchema, Schema pigSchema) throws FrontendException {
     super(redelmSchema, pigSchema, null);
   }
 
-  public RecordConsumer newRecordConsumer(List<Tuple> destination) {
-    return new TupleRecordConsumer(this, destination);
+  public RecordMaterializer<Tuple> newRecordConsumer() {
+    return new TupleRecordConsumer(this);
   }
 }

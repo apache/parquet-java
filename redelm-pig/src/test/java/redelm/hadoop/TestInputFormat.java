@@ -24,6 +24,7 @@ import java.util.List;
 
 import redelm.hadoop.RedelmMetaData.FileMetaData;
 import redelm.io.RecordConsumer;
+import redelm.io.RecordMaterializer;
 
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
@@ -41,7 +42,7 @@ public class TestInputFormat {
     }
     ReadSupport<Void> readSupport = new ReadSupport<Void>() {
       @Override
-      public RecordConsumer newRecordConsumer(List<Void> destination) {
+      public RecordMaterializer<Void> newRecordConsumer() {
         return null;
       }
       @Override

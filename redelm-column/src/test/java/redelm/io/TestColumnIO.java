@@ -91,20 +91,21 @@ public class TestColumnIO {
 
     ColumnsStore columns = new MemColumnsStore(1024, schema);
 
+    ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     {
-      MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema, columns);
+      MessageColumnIO columnIO = columnIOFactory.getColumnIO(schema);
       System.out.println(columnIO);
-      GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(), schema);
+      GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
       groupWriter.write(r1);
       groupWriter.write(r2);
       System.out.println(columns);
       System.out.println("=========");
       columns.flip();
-      List<Group> records = new ArrayList<Group>();
-      RecordReader recordReader = columnIO.getRecordReader();
+      RecordReader<Group> recordReader = getRecordReader(columnIO, schema, columns);
 
       validateFSA(expectedFSA, columnIO, recordReader);
 
+      List<Group> records = new ArrayList<Group>();
       read(recordReader, schema, records);
       read(recordReader, schema, records);
 
@@ -120,11 +121,11 @@ public class TestColumnIO {
     {
       columns.flip();
 
-      MessageColumnIO columnIO2 = new ColumnIOFactory().getColumnIO(schema2, columns);
+      MessageColumnIO columnIO2 = columnIOFactory.getColumnIO(schema2);
 
 
       List<Group> records = new ArrayList<Group>();
-      RecordReader recordReader = columnIO2.getRecordReader();
+      RecordReader<Group> recordReader = getRecordReader(columnIO2, schema2, columns);
 
       validateFSA(expectedFSA2, columnIO2, recordReader);
 
@@ -141,7 +142,12 @@ public class TestColumnIO {
     }
   }
 
-  private void validateFSA(int[][] expectedFSA, MessageColumnIO columnIO, RecordReader recordReader) {
+  private RecordReader<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, ColumnsStore columns) {
+    RecordMaterializer<Group> recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
+    return columnIO.getRecordReader(columns, recordConsumer);
+  }
+
+  private void validateFSA(int[][] expectedFSA, MessageColumnIO columnIO, RecordReader<?> recordReader) {
     System.out.println("FSA: ----");
     List<PrimitiveColumnIO> leaves = columnIO.getLeaves();
     for (int i = 0; i < leaves.size(); ++i) {
@@ -159,10 +165,9 @@ public class TestColumnIO {
   @Test
   public void testPushParser() {
     ColumnsStore columns = new MemColumnsStore(1024, schema);
-    MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema, columns);
-    new GroupWriter(columnIO.getRecordWriter(), schema).write(r1);
+    MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+    new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
     columns.flip();
-    RecordReader recordReader = columnIO.getRecordReader();
 
     String[] expected = {
     "startMessage()",
@@ -223,8 +228,7 @@ public class TestColumnIO {
     for (String string : expected) {
       expectations.add(string);
     }
-
-    recordReader.read(new RecordConsumer() {
+    RecordReader<Void> recordReader = columnIO.getRecordReader(columns, new RecordMaterializer<Void>() {
 
       int count = 0;
       private void validate(String got) {
@@ -296,23 +300,30 @@ public class TestColumnIO {
       public void addDouble(double value) {
         validate("addDouble("+value+")");
       }
+
+      @Override
+      public Void getCurrentRecord() {
+        return null;
+      }
     });
+    recordReader.read();
 
   }
 
-  public void read(RecordReader recordReader, MessageType schema, List<Group> groups) {
-    RecordConsumer recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema), groups);
-    recordConsumer = new ValidatingRecordConsumer(recordConsumer, schema);
-    recordConsumer = new RecordConsumerLoggingWrapper(recordConsumer);
-    recordReader.read(recordConsumer);
+  public void read(RecordReader<Group> recordReader, MessageType schema, List<Group> records) {
+    records.add(recordReader.read());
   }
 
   @Test
   public void testGroupWriter() {
     List<Group> result = new ArrayList<Group>();
-    GroupWriter groupWriter = new GroupWriter(new RecordConsumerLoggingWrapper(new GroupRecordConsumer(new SimpleGroupFactory(schema), result)), schema);
+
+    GroupRecordConsumer groupConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
+    GroupWriter groupWriter = new GroupWriter(new RecordConsumerLoggingWrapper(groupConsumer), schema);
     groupWriter.write(r1);
+    result.add(groupConsumer.getCurrentRecord());
     groupWriter.write(r2);
+    result.add(groupConsumer.getCurrentRecord());
     assertEquals("deserialization does not display the expected result", result.get(0).toString(), r1.toString());
     assertEquals("deserialization does not display the expected result", result.get(1).toString(), r2.toString());
   }
@@ -438,8 +449,8 @@ public class TestColumnIO {
         throw new UnsupportedOperationException();
       }
     };
-    MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema, columns);
-    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(), schema);
+    MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
     groupWriter.write(r1);
     groupWriter.write(r2);
   }
