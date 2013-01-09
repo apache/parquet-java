@@ -115,8 +115,8 @@ public class PerfTest {
   }
 
   private static void read(RecordReader<Object> recordReader, int count, MessageType schema) {
+    System.gc();
     long t0 = System.currentTimeMillis();
-
     Object[] records = new Object[count];
     recordReader.read(records, count);
     long t1 = System.currentTimeMillis();
