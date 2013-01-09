@@ -83,6 +83,54 @@ public class TestPigSchemaConverter {
   }
 
   @Test
+  public void testMap2() throws Exception {
+    testConversion("a:map[int]",
+        "message pig_schema {\n" +
+        "  optional group a {\n" +
+        "    repeated group map {\n" +
+        "      required string key;\n" +
+        "      optional int32 value;" +
+        "    }\n" +
+        "  }\n" +
+        "}\n");
+  }
+
+  @Test
+  public void testMap3() throws Exception {
+    testConversion("a:map[map[int]]",
+        "message pig_schema {\n" +
+        "  optional group a {\n" +
+        "    repeated group map {\n" +
+        "      required string key;\n" +
+        "      optional group value {\n" +
+        "        repeated group map {\n" +
+        "          required string key;\n" +
+        "          optional int32 value;\n" +
+        "        }\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}\n");
+  }
+
+  @Test
+  public void testMap4() throws Exception {
+    testConversion("a:map[bag{(a:int)}]",
+        "message pig_schema {\n" +
+        "  optional group a {\n" +
+        "    repeated group map {\n" +
+        "      required string key;\n" +
+        "      optional group value {\n" +
+        "        repeated group bag {\n" +
+        "          optional int32 a;\n" +
+        "        }\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}\n");
+  }
+
+  @Test
   public void testAnnonymousField() throws Exception {
     testConversion(
         "a:chararray, int",

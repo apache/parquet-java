@@ -234,7 +234,6 @@ public class TestColumnIO {
 
   }
 
-
   public void read(RecordReader<Group> recordReader, MessageType schema, List<Group> records) {
     records.add(recordReader.read());
   }

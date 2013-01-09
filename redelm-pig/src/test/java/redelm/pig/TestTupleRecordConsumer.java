@@ -173,7 +173,6 @@ public class TestTupleRecordConsumer {
     return Arrays.asList(new PigMetaData(pigSchemaString).toMetaDataBlock());
   }
 
-
   private RecordMaterializer<Tuple> newPigRecordConsumer(MessageType redelmSchema, String pigSchemaString) throws ParserException {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
     tupleReadSupport.initForRead(pigMetaData(pigSchemaString), redelmSchema.toString());

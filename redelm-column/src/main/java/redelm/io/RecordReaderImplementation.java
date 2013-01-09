@@ -15,10 +15,8 @@
  */
 package redelm.io;
 
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -318,15 +316,6 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     return recordConsumer;
   }
 
-  /**
-   * @see redelm.io.RecordReader#read()
-   */
-  @Override
-  public T read() {
-    readOneRecord();
-    return recordMaterializer.getCurrentRecord();
-  }
-
   /* (non-Javadoc)
    * @see redelm.io.RecordReader#read(T[], int)
    */
@@ -336,12 +325,15 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
       throw new IllegalArgumentException("count is greater than records size");
     }
     for (int i = 0; i < count; i++) {
-      readOneRecord();
-      records[i] = recordMaterializer.getCurrentRecord();
+      records[i] = read();
     }
   }
 
-  private void readOneRecord() {
+  /**
+   * @see redelm.io.RecordReader#read()
+   */
+  @Override
+  public T read() {
     int currentLevel = 0;
     State currentState = states[0];
     startMessage();
@@ -371,6 +363,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
       currentState = currentState.nextState[nextR];
     } while (currentState != null);
     endMessage();
+    return recordMaterializer.getCurrentRecord();
   }
 
   private void endGroup(State currentState, int level) {

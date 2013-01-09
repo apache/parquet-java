@@ -113,7 +113,6 @@ public class PerfTest {
   private static MessageColumnIO newColumnFactory(MessageType schema) {
     return new ColumnIOFactory().getColumnIO(schema);
   }
-
   private static void read(RecordReader<Object> recordReader, int count, MessageType schema) {
     Object[] records = new Object[count];
     System.gc();

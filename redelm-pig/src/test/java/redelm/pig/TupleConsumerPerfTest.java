@@ -26,6 +26,7 @@ import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
 import redelm.io.RecordConsumer;
 import redelm.io.RecordConsumerLoggingWrapper;
+import redelm.io.RecordMaterializer;
 import redelm.io.RecordReader;
 import redelm.schema.MessageType;
 
@@ -124,9 +125,27 @@ public class TupleConsumerPerfTest {
 
   private static void read(MemColumnsStore columns,
       String pigSchemaString, String message) throws ParserException {
+
+    RecordMaterializer<Void> recordConsumer = new RecordMaterializer<Void>() {
+      public void startMessage() {}
+      public void startGroup() {}
+      public void startField(String field, int index) {}
+      public void endMessage() {}
+      public void endGroup() {}
+      public void endField(String field, int index) {}
+      public void addString(String value) {}
+      public void addInteger(int value) {}
+      public void addLong(long value) {}
+      public void addFloat(float value) {}
+      public void addDouble(double value) {}
+      public void addBoolean(boolean value) {}
+      public void addBinary(byte[] value) {}
+      public Void getCurrentRecord() { return null; }
+    };
     MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     System.out.println(message);
-    RecordReader<Tuple> recordReader = columnIO.getRecordReader(columns, null);
+    RecordReader<Void> recordReader = columnIO.getRecordReader(columns, recordConsumer);
+
     read(recordReader, 10000, pigSchemaString);
     read(recordReader, 10000, pigSchemaString);
     read(recordReader, 10000, pigSchemaString);
@@ -156,7 +175,8 @@ public class TupleConsumerPerfTest {
     return new ColumnIOFactory().getColumnIO(schema);
   }
 
-  private static void read(RecordReader<Tuple> recordReader, int count, String pigSchemaString) throws ParserException {
+
+  private static void read(RecordReader<Void> recordReader, int count, String pigSchemaString) throws ParserException {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
     MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchemaString));
     tupleReadSupport.initForRead(Arrays.asList(new PigMetaData(pigSchemaString).toMetaDataBlock()), schema.toString());
