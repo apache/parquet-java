@@ -60,40 +60,44 @@ public class PigSchemaConverter {
     return types;
   }
 
-  private Type convert(FieldSchema fieldSchema, int index) {
+  private Type convert(FieldSchema fieldSchema, String defaultAlias) {
     try {
-      String name = name(fieldSchema.alias, "field_"+index);
+      String name = name(fieldSchema.alias, defaultAlias);
       switch (fieldSchema.type) {
       case DataType.BAG:
-        return convertBag(name, fieldSchema);
+          return convertBag(name, fieldSchema);
       case DataType.TUPLE:
-        return convertTuple(name, fieldSchema, Repetition.OPTIONAL);
+          return convertTuple(name, fieldSchema, Repetition.OPTIONAL);
       case DataType.MAP:
-        return convertMap(name, fieldSchema);
+          return convertMap(name, fieldSchema);
       case DataType.BOOLEAN:
-        return primitive(name, Primitive.BOOLEAN);
+          return primitive(name, Primitive.BOOLEAN);
       case DataType.CHARARRAY:
-        return primitive(name, Primitive.STRING);
+          return primitive(name, Primitive.STRING);
       case DataType.INTEGER:
-        return primitive(name, Primitive.INT32);
+          return primitive(name, Primitive.INT32);
       case DataType.LONG:
-        return primitive(name, Primitive.INT64);
+          return primitive(name, Primitive.INT64);
       case DataType.FLOAT:
-        return primitive(name, Primitive.FLOAT);
+          return primitive(name, Primitive.FLOAT);
       case DataType.DOUBLE:
-        return primitive(name, Primitive.DOUBLE);
+          return primitive(name, Primitive.DOUBLE);
       case DataType.DATETIME:
-        throw new UnsupportedOperationException();
+          throw new UnsupportedOperationException();
       case DataType.BYTEARRAY:
-        return primitive(name, Primitive.BINARY);
+          return primitive(name, Primitive.BINARY);
       default:
-        throw new RuntimeException("Unknown type "+fieldSchema.type+" "+DataType.findTypeName(fieldSchema.type));
+          throw new RuntimeException("Unknown type "+fieldSchema.type+" "+DataType.findTypeName(fieldSchema.type));
       }
     } catch (FrontendException e) {
-      throw new RuntimeException("can't convert "+fieldSchema, e);
+        throw new RuntimeException("can't convert "+fieldSchema, e);
     } catch (RuntimeException e) {
-      throw new RuntimeException("can't convert "+fieldSchema, e);
+        throw new RuntimeException("can't convert "+fieldSchema, e);
     }
+  }
+
+  private Type convert(FieldSchema fieldSchema, int index) {
+    return convert(fieldSchema, "field_"+index);
   }
 
   /**
@@ -140,7 +144,7 @@ public class PigSchemaConverter {
     types[0] = new PrimitiveType(Repetition.REQUIRED, Primitive.STRING, "key");
     Schema innerSchema = fieldSchema.schema;
     if (innerSchema.size() != 1) {
-      throw new FrontendException("Invalid map Schema: " + fieldSchema);
+      throw new FrontendException("Invalid map Schema, schema should contain exactly one field: " + fieldSchema);
     }
     FieldSchema innerField = innerSchema.getField(0);
     switch (innerField.type) {
@@ -159,10 +163,10 @@ public class PigSchemaConverter {
     case DataType.FLOAT:
     case DataType.DOUBLE:
     case DataType.CHARARRAY:
-      types[1] = new PrimitiveType(Repetition.OPTIONAL, getPrimitive(innerField.type), name(innerField.alias, "value"));
+      types[1] = convert(innerField, "value");
       break;
     default:
-      throw new FrontendException("Invalid map Schema: " + fieldSchema);
+      throw new FrontendException("Invalid map Schema, field type not recognized: " + fieldSchema);
     }
     return listWrapper(alias, new GroupType(Repetition.REPEATED, name(innerField.alias, "map"), types));
   }
@@ -170,25 +174,4 @@ public class PigSchemaConverter {
   private GroupType convertTuple(String alias, FieldSchema field, Repetition repetition) {
     return new GroupType(repetition, alias, convertTypes(field.schema));
   }
-
-  public static Primitive getPrimitive(byte type) {
-    //TODO DataByteArray = binary?
-    //TODO will we support DateTime?
-    switch (type) {
-    case DataType.INTEGER:
-      return Primitive.INT32;
-    case DataType.LONG:
-      return Primitive.INT64;
-    case DataType.BOOLEAN:
-      return Primitive.BOOLEAN;
-    case DataType.FLOAT:
-      return Primitive.FLOAT;
-    case DataType.DOUBLE:
-      return Primitive.DOUBLE;
-    case DataType.CHARARRAY:
-      return Primitive.STRING;
-    }
-    return null; //TODO throw error?
-  }
-
 }
