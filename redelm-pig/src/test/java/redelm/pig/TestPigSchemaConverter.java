@@ -27,8 +27,9 @@ import redelm.schema.MessageType;
 public class TestPigSchemaConverter {
 
   private void testConversion(String pigSchemaString, String redelmSchemaString) throws Exception {
+    PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
     Schema pigSchema = Utils.getSchemaFromString(pigSchemaString);
-    MessageType schema = PigSchemaConverter.convert(pigSchema);
+    MessageType schema = pigSchemaConverter.convert(pigSchema);
     MessageType expectedMT = MessageTypeParser.parseMessageType(redelmSchemaString);
     assertEquals("converting "+pigSchemaString+" to "+redelmSchemaString, expectedMT, schema);
   }

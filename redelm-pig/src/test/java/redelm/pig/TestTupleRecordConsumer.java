@@ -24,13 +24,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-import org.apache.pig.backend.executionengine.ExecException;
-import org.apache.pig.data.Tuple;
-import org.apache.pig.impl.logicalLayer.schema.Schema;
-import org.apache.pig.impl.util.Utils;
-import org.apache.pig.parser.ParserException;
-import org.junit.Test;
-
 import redelm.Log;
 import redelm.data.Group;
 import redelm.data.GroupRecordConsumer;
@@ -42,6 +35,13 @@ import redelm.io.RecordConsumer;
 import redelm.io.RecordConsumerLoggingWrapper;
 import redelm.io.ValidatingRecordConsumer;
 import redelm.schema.MessageType;
+
+import org.apache.pig.backend.executionengine.ExecException;
+import org.apache.pig.data.Tuple;
+import org.apache.pig.impl.logicalLayer.schema.Schema;
+import org.apache.pig.impl.util.Utils;
+import org.apache.pig.parser.ParserException;
+import org.junit.Test;
 
 public class TestTupleRecordConsumer {
   private static final Log logger = Log.getLog(TestTupleRecordConsumer.class);
@@ -182,7 +182,7 @@ public class TestTupleRecordConsumer {
 
   private MessageType getMessageType(String pigSchemaString) throws ParserException {
     Schema pigSchema = Utils.getSchemaFromString(pigSchemaString);
-    return PigSchemaConverter.convert(pigSchema);
+    return new PigSchemaConverter().convert(pigSchema);
   }
 
 }
