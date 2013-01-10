@@ -23,14 +23,10 @@ import static brennus.model.Protection.PUBLIC;
 import static redelm.Log.DEBUG;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
 
-import redelm.Log;
 import redelm.column.ColumnReader;
-import redelm.column.ColumnsStore;
 import redelm.io.RecordReaderImplementation.Case;
 import redelm.io.RecordReaderImplementation.State;
-import brennus.CaseBuilder;
 import brennus.ClassBuilder;
 import brennus.ElseBuilder;
 import brennus.Function;
@@ -43,136 +39,6 @@ import brennus.model.FutureType;
 import brennus.printer.TypePrinter;
 
 public class RecordReaderCompiler {
-
-  public static abstract class BaseRecordReader<T> extends RecordReader<T> {
-    private static final Log LOG = Log.getLog(BaseRecordReader.class);
-
-    public RecordConsumer recordConsumer;
-    public RecordMaterializer<T> recordMaterializer;
-    public ColumnsStore columnStore;
-    @Override
-    public T read() {
-      readOneRecord();
-      return recordMaterializer.getCurrentRecord();
-    }
-
-    /* (non-Javadoc)
-     * @see redelm.io.RecordReader#read(T[], int)
-     */
-    @Override
-    public void read(T[] records, int count) {
-      if (count > records.length) {
-        throw new IllegalArgumentException("count is greater than records size");
-      }
-      for (int i = 0; i < count; i++) {
-        readOneRecord();
-        records[i] = recordMaterializer.getCurrentRecord();
-      }
-    }
-
-    protected abstract void readOneRecord();
-
-    private State[] caseLookup;
-
-    private String endField;
-
-    private int endIndex;
-
-    protected void currentLevel(int currentLevel) {
-      if (DEBUG) LOG.debug("currentLevel: "+currentLevel);
-    }
-
-    protected void log(String message) {
-      if (DEBUG) LOG.debug("bc: "+message);
-    }
-
-    final protected int getCaseId(int state, int currentLevel, int d, int nextR) {
-      return caseLookup[state].getCase(currentLevel, d, nextR).getID();
-    }
-
-    final protected void startMessage() {
-      // reset state
-      endField = null;
-      if (DEBUG) LOG.debug("startMessage()");
-      recordConsumer.startMessage();
-    }
-
-    final protected void startGroup(String field, int index) {
-      startField(field, index);
-      if (DEBUG) LOG.debug("startGroup()");
-      recordConsumer.startGroup();
-    }
-
-    private void startField(String field, int index) {
-      if (DEBUG) LOG.debug("startField("+field+","+index+")");
-      if (endField != null && index == endIndex) {
-        // skip the close/open tag
-        endField = null;
-      } else {
-        if (endField != null) {
-          // close the previous field
-          recordConsumer.endField(endField, endIndex);
-          endField = null;
-        }
-        recordConsumer.startField(field, index);
-      }
-    }
-
-    final protected void addPrimitiveINT64(String field, int index, long value) {
-      startField(field, index);
-      if (DEBUG) LOG.debug("addLong("+value+")");
-      recordConsumer.addLong(value);
-      endField(field, index);
-    }
-
-    private void endField(String field, int index) {
-      if (DEBUG) LOG.debug("endField("+field+","+index+")");
-      if (endField != null) {
-        recordConsumer.endField(endField, endIndex);
-      }
-      endField = field;
-      endIndex = index;
-    }
-
-    final protected void addPrimitiveSTRING(String field, int index, String value) {
-      startField(field, index);
-      if (DEBUG) LOG.debug("addString("+value+")");
-      recordConsumer.addString(value);
-      endField(field, index);
-    }
-
-    final protected void addPrimitiveINT32(String field, int index, int value) {
-      startField(field, index);
-      if (DEBUG) LOG.debug("addInteger("+value+")");
-      recordConsumer.addInteger(value);
-      endField(field, index);
-    }
-
-    final protected void endGroup(String field, int index) {
-      if (endField != null) {
-        // close the previous field
-        recordConsumer.endField(endField, endIndex);
-        endField = null;
-      }
-      if (DEBUG) LOG.debug("endGroup()");
-      recordConsumer.endGroup();
-      endField(field, index);
-    }
-
-    final protected void endMessage() {
-      if (endField != null) {
-        // close the previous field
-        recordConsumer.endField(endField, endIndex);
-        endField = null;
-      }
-      if (DEBUG) LOG.debug("endMessage()");
-      recordConsumer.endMessage();
-    }
-
-    protected void error(String message) {
-      throw new RuntimeException(message);
-    }
-  }
 
   public static class DynamicClassLoader extends ClassLoader {
     ASMTypeGenerator asmTypeGenerator = new ASMTypeGenerator();
