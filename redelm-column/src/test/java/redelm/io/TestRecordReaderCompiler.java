@@ -6,7 +6,6 @@ import static redelm.io.TestColumnIO.expectedEventsForR1;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Deque;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
