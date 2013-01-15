@@ -26,6 +26,7 @@ import java.util.Map;
 import redelm.Log;
 import redelm.column.ColumnReader;
 import redelm.column.ColumnsStore;
+import redelm.io.RecordReaderImplementation.Case;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType.Primitive;
 
@@ -48,11 +49,13 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     private final int nextLevel;
     private final boolean goingUp;
     private final boolean goingDown;
+    private final int nextState;
 
-    public Case(int startLevel, int depth, int nextLevel) {
+    public Case(int startLevel, int depth, int nextLevel, int nextState) {
       this.startLevel = startLevel;
       this.depth = depth;
       this.nextLevel = nextLevel;
+      this.nextState = nextState;
       goingUp = startLevel <= depth;
       goingDown = depth + 1 > nextLevel;
     }
@@ -74,7 +77,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
 //    }
 
     public int hashCode() {
-      return 1 * startLevel + 2 * depth + 3 * nextLevel;
+      return 1 * startLevel + 2 * depth + 3 * nextLevel + 5 * nextState;
     }
 
     @Override
@@ -102,7 +105,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
 //    }
 
     public boolean equals(Case other) {
-      return startLevel == other.startLevel && depth == other.depth && nextLevel == other.nextLevel;
+      return startLevel == other.startLevel && depth == other.depth && nextLevel == other.nextLevel && nextState == other.nextState;
     }
 
     public int getID() {
@@ -120,6 +123,10 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
       return nextLevel;
     }
 
+    public int getNextState() {
+      return nextState;
+    }
+
     public boolean isGoingUp() {
       return goingUp;
     }
@@ -130,7 +137,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
 
     @Override
     public String toString() {
-      return "Case " + startLevel + " -> " + depth + " -> " + nextLevel;
+      return "Case " + startLevel + " -> " + depth + " -> " + nextLevel + "; goto sate_"+getNextState();
     }
 
   }
@@ -152,7 +159,8 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     private int[] definitionLevelToDepth; // indexed on current d
     private State[] nextState; // indexed on next r
     private Case[][][] caseLookup;
-    private List<Case> cases;
+    private List<Case> definedCases;
+    private List<Case> undefinedCases;
 
     private State(int id, PrimitiveColumnIO primitiveColumnIO, ColumnReader column, int[] nextLevel) {
       this.id = id;
@@ -172,8 +180,12 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
       return definitionLevelToDepth[definitionLevel];
     }
 
-    public List<Case> getCases() {
-      return cases;
+    public List<Case> getDefinedCases() {
+      return definedCases;
+    }
+
+    public List<Case> getUndefinedCases() {
+      return undefinedCases;
     }
 
     public Case getCase(int currentLevel, int d, int nextR) {
@@ -269,8 +281,8 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     }
     for (int i = 0; i < states.length; i++) {
       State state = states[i];
-      final Map<Case, Case> cases = new HashMap<Case, Case>();
-      int nextCaseID = 0;
+      final Map<Case, Case> definedCases = new HashMap<Case, Case>();
+      final Map<Case, Case> undefinedCases = new HashMap<Case, Case>();
       Case[][][] caseLookup = new Case[state.fieldPath.length][][];
       for (int currentLevel = 0; currentLevel < state.fieldPath.length; ++ currentLevel) {
         caseLookup[currentLevel] = new Case[state.maxDefinitionLevel+1][];
@@ -280,10 +292,11 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
             int caseStartLevel = currentLevel;
             int caseDepth = Math.max(state.getDepth(d), caseStartLevel - 1);
             int caseNextLevel = Math.min(state.nextLevel[nextR], caseDepth + 1);
-            Case currentCase = new Case(caseStartLevel, caseDepth, caseNextLevel);
+            Case currentCase = new Case(caseStartLevel, caseDepth, caseNextLevel, getNextReader(state.id, nextR));
+            Map<Case, Case> cases = d == state.maxDefinitionLevel ? definedCases : undefinedCases;
             if (!cases.containsKey(currentCase)) {
 //              System.out.println("adding "+currentCase);
-              currentCase.setID(nextCaseID ++);
+              currentCase.setID(cases.size());
               cases.put(currentCase, currentCase);
             } else {
 //              System.out.println("not adding "+currentCase);
@@ -295,13 +308,16 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
         }
       }
       state.caseLookup = caseLookup;
-      state.cases = new ArrayList<Case>(cases.values());
-      Collections.sort(state.cases, new Comparator<Case>() {
+      state.definedCases = new ArrayList<Case>(definedCases.values());
+      state.undefinedCases = new ArrayList<Case>(undefinedCases.values());
+      Comparator<Case> caseComparator = new Comparator<Case>() {
         @Override
         public int compare(Case o1, Case o2) {
           return o1.id - o2.id;
         }
-      });
+      };
+      Collections.sort(state.definedCases, caseComparator);
+      Collections.sort(state.undefinedCases, caseComparator);
     }
   }
 
