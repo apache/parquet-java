@@ -9,7 +9,7 @@
 
   <name>redfile metadata</name>
   <url>http://github.com/redfile</url>
-  <description>A Thrift generator for Scala</description>
+  <description>Redfile is a columnar storage format that supports nested data</description>
 
   <scm>
     <connection>scm:git:git@github.com:redfile/redfile.git</connection>
@@ -28,6 +28,10 @@
     <developer>
       <name>Julien Le Dem</name>
       <email>julien@twitter.com</email>
+    </developer>
+    <developer>
+      <name>Nong Li</name>
+      <email>nong@cloudera.com</email>
     </developer>
   </developers>
 
