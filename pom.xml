@@ -4,13 +4,76 @@
 
   <groupId>redfile</groupId>
   <artifactId>redfile-metadata</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.0.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>redfile metadata</name>
-  <url>http://maven.apache.org</url>
+  <url>http://github.com/redfile</url>
+  <description>A Thrift generator for Scala</description>
+
+  <scm>
+    <connection>scm:git:git@github.com:redfile/redfile.git</connection>
+    <url>scm:git:git@github.com:redfile/redfile.git</url>
+    <developerConnection>scm:git:git@github.com:redfile/redfile.git</developerConnection>
+  </scm>
+
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>Julien Le Dem</name>
+      <email>julien@twitter.com</email>
+    </developer>
+  </developers>
+
+  <distributionManagement>
+    <snapshotRepository>
+      <id>sonatype-nexus-snapshots</id>
+      <name>Sonatype OSS</name>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+    <repository>
+      <id>sonatype-nexus-staging</id>
+      <name>Nexus Release Repository</name>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
+
+  <!-- TODO: remove twitter-maven-repository eventually -->
+  <repositories>
+    <repository>
+      <id>twitter-maven-repository</id>
+      <name>Twitter's public artifact repository</name>
+      <url>http://maven.twttr.com/</url>
+    </repository>
+    <repository>
+      <id>sonatype-nexus-snapshots</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+     </repository>
+  </repositories>
+
+  <!-- this is needed for maven-finagle-thrift-plugin, would like to remove this -->
+  <pluginRepositories>
+    <pluginRepository>
+      <id>Twitter public Maven repo</id>
+      <url>http://maven.twttr.com</url>
+    </pluginRepository>
+  </pluginRepositories>
 
   <properties>
+    <maven.compiler.source>1.6</maven.compiler.source>
+    <maven.compiler.target>1.6</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
