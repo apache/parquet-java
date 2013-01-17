@@ -38,7 +38,7 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
   @Override
   public void read(T[] records, int count) {
     if (count > records.length) {
-      throw new IllegalArgumentException("count is greater than records size");
+      throw new IllegalArgumentException("count is greater than records size: " + count + " > " + records.length);
     }
     for (int i = 0; i < count; i++) {
       readOneRecord();

@@ -26,7 +26,6 @@ import java.util.Map;
 import redelm.Log;
 import redelm.column.ColumnReader;
 import redelm.column.ColumnsStore;
-import redelm.io.RecordReaderImplementation.Case;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType.Primitive;
 
@@ -50,13 +49,19 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     private final boolean goingUp;
     private final boolean goingDown;
     private final int nextState;
+    private final boolean defined;
 
-    public Case(int startLevel, int depth, int nextLevel, int nextState) {
+    public Case(int startLevel, int depth, int nextLevel, int nextState, boolean defined) {
       this.startLevel = startLevel;
       this.depth = depth;
       this.nextLevel = nextLevel;
       this.nextState = nextState;
+      this.defined = defined;
+      // means going up the tree (towards the leaves) of the record
+      // true if we need to open up groups in this case
       goingUp = startLevel <= depth;
+      // means going down the tree (towards the root) of the record
+      // true if we need to close groups in this case
       goingDown = depth + 1 > nextLevel;
     }
 
@@ -65,6 +70,9 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     }
 
     @Override
+    // this implementation is buggy but the simpler one bellow has duplicates.
+    // it still works but generates more code than necessary
+    // a middle ground is necessary
 //    public int hashCode() {
 //      int hashCode = 0;
 //      if (goingUp) {
@@ -77,7 +85,13 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
 //    }
 
     public int hashCode() {
-      return 1 * startLevel + 2 * depth + 3 * nextLevel + 5 * nextState;
+      int hashCode = 17;
+      hashCode += 31 * startLevel;
+      hashCode += 31 * depth;
+      hashCode += 31 * nextLevel;
+      hashCode += 31 * nextState;
+      hashCode += 31 * (defined ? 0 : 1);
+      return hashCode;
     }
 
     @Override
@@ -88,6 +102,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
       return false;
     };
 
+    // see comment for hashCode above
 //    public boolean equals(Case other) {
 //      if (goingUp && !other.goingUp || !goingUp && other.goingUp) {
 //        return false;
@@ -105,7 +120,11 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
 //    }
 
     public boolean equals(Case other) {
-      return startLevel == other.startLevel && depth == other.depth && nextLevel == other.nextLevel && nextState == other.nextState;
+      return startLevel == other.startLevel
+          && depth == other.depth
+          && nextLevel == other.nextLevel
+          && nextState == other.nextState
+          && ((defined && other.defined) || (!defined && !other.defined));
     }
 
     public int getID() {
@@ -133,6 +152,10 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
 
     public boolean isGoingDown() {
       return goingDown;
+    }
+
+    public boolean isDefined() {
+      return defined;
     }
 
     @Override
@@ -292,8 +315,8 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
             int caseStartLevel = currentLevel;
             int caseDepth = Math.max(state.getDepth(d), caseStartLevel - 1);
             int caseNextLevel = Math.min(state.nextLevel[nextR], caseDepth + 1);
-            Case currentCase = new Case(caseStartLevel, caseDepth, caseNextLevel, getNextReader(state.id, nextR));
-            Map<Case, Case> cases = d == state.maxDefinitionLevel ? definedCases : undefinedCases;
+            Case currentCase = new Case(caseStartLevel, caseDepth, caseNextLevel, getNextReader(state.id, nextR), d == state.maxDefinitionLevel);
+            Map<Case, Case> cases = currentCase.isDefined() ? definedCases : undefinedCases;
             if (!cases.containsKey(currentCase)) {
 //              System.out.println("adding "+currentCase);
               currentCase.setID(cases.size());
@@ -473,7 +496,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
 
   private int getCommonParentLevel(String[] previous, String[] next) {
     int i = 0;
-    while (i < previous.length && i < next.length && previous[i].equals(next[i])) {
+    while (i < Math.min(previous.length, next.length) && previous[i].equals(next[i])) {
       ++i;
     }
     return i;

@@ -15,7 +15,6 @@
  */
 package redelm.io;
 
-import static brennus.ClassBuilder.startClass;
 import static brennus.model.ExistingType.INT;
 import static brennus.model.ExistingType.VOID;
 import static brennus.model.ExistingType.existing;
@@ -28,6 +27,7 @@ import java.util.List;
 import redelm.column.ColumnReader;
 import redelm.io.RecordReaderImplementation.Case;
 import redelm.io.RecordReaderImplementation.State;
+import brennus.Builder;
 import brennus.ClassBuilder;
 import brennus.ElseBuilder;
 import brennus.Function;
@@ -40,6 +40,8 @@ import brennus.model.FutureType;
 import brennus.printer.TypePrinter;
 
 public class RecordReaderCompiler {
+
+  private static final String END_RECORD = "endRecord";
 
   public static class DynamicClassLoader extends ClassLoader {
     ASMTypeGenerator asmTypeGenerator = new ASMTypeGenerator();
@@ -56,6 +58,7 @@ public class RecordReaderCompiler {
 
   private <S extends StatementBuilder<S>> S generateCase(boolean addPrimitive, State state, Case currentCase, S builder, int stateCount) {
     if (currentCase.isGoingUp()) {
+      // Generating the following loop
       //  for (; currentLevel <= depth; ++currentLevel) {
       //    startGroup(currentState, currentLevel);
       //  }
@@ -66,6 +69,7 @@ public class RecordReaderCompiler {
       }
     }
     if (addPrimitive) {
+      // Generating the following call
       //  addPrimitive(currentState, currentLevel, columnReader);
       builder =
           builder.exec().callOnThis("addPrimitive"+state.primitive.name())
@@ -73,6 +77,7 @@ public class RecordReaderCompiler {
           .endCall().endExec();
     }
     if (currentCase.isGoingDown()) {
+      // Generating the following loop
       //  for (; currentLevel > next; currentLevel--) {
       //    endGroup(currentState, currentLevel - 1);
       //  }
@@ -82,6 +87,7 @@ public class RecordReaderCompiler {
         builder = builder.exec().callOnThis("endGroup").literal(field).nextParam().literal(index).endCall().endExec();
       }
     }
+    // set currentLevel to its new value
     if (currentCase.isGoingDown()) {
       builder = builder
           .set("currentLevel").literal(currentCase.getNextLevel()).endSet();
@@ -89,20 +95,23 @@ public class RecordReaderCompiler {
       builder = builder
           .set("currentLevel").literal(currentCase.getDepth() + 1).endSet();
     } else {
-      // stays the same
+      // currentLevel stays the same
     }
     int nextReader = currentCase.getNextState();
-    String label = nextReader == stateCount ? "endRecord" : "state_" + nextReader;
-//    if (nextReader != (state.id + 1)) { // if this is next state, just keep going
-      builder = builder.gotoLabel(label);
-//    }
+    String label = getStateLabel(stateCount, nextReader);
+    builder = builder.gotoLabel(label);
     return builder;
+  }
+
+  private String getStateLabel(int stateCount, int stateId) {
+    return stateId == stateCount ? END_RECORD : "state_" + stateId;
   }
 
   private <S extends StatementBuilder<S>> S generateSwitch(S builder, final boolean defined, final State state, final int stateCount) {
     final List<Case> cases = defined ? state.getDefinedCases() : state.getUndefinedCases();
     String columnReader = "state_"+state.id+"_column";
     if (defined) {
+      // if defined we need to save the current value
       builder = builder
           .var(existing(state.primitive.javaType), "value_"+state.id)
           .set("value_"+state.id).get(columnReader).callNoParam(state.primitive.getMethod).endSet();
@@ -110,6 +119,7 @@ public class RecordReaderCompiler {
     builder = builder
         .exec().get(columnReader).callNoParam("consume").endExec();
     if (state.maxRepetitionLevel == 0) {
+      // in that case nextR is always 0
       builder = builder // TODO: instead change the case lookup code
           .set("nextR").literal(0).endSet();
     } else {
@@ -117,9 +127,11 @@ public class RecordReaderCompiler {
           .set("nextR").get(columnReader).callNoParam("getCurrentRepetitionLevel").endSet();
     }
     if (cases.size() == 1) {
+      // then no need to switch, directly generate the body of the case
       final Case currentCase = cases.get(0);
       return generateCase(defined, state, currentCase, builder, stateCount);
     } else {
+      // more than one case: generate a switch
       return builder
         .switchOn()
           .callOnThis("getCaseId").literal(state.id).nextParam().get("currentLevel").nextParam().get("d").nextParam().get("nextR").endCall()
@@ -132,7 +144,8 @@ public class RecordReaderCompiler {
                           generateCase(defined, state, currentCase, builder.caseBlock(currentCase.getID()), stateCount)
                           .endCase();
                     } else {
-                      String label = currentCase.getNextState() == stateCount ? "endRecord" : "state_" + currentCase.getNextState();
+                      // if nothing to do, directly jump to the next state
+                      String label = getStateLabel(stateCount, currentCase.getNextState());
                       builder = builder.gotoLabel(currentCase.getID(), label);
                     }
                   }
@@ -140,6 +153,7 @@ public class RecordReaderCompiler {
                 }
               })
           .defaultCase()
+            // a default case to be safe: this should never happen
             .exec().callOnThis("error").literal("unknown case").endCall().endExec()
           .breakCase()
         .endSwitch();
@@ -148,23 +162,30 @@ public class RecordReaderCompiler {
 
   public <T> RecordReader<T> compile(final RecordReaderImplementation<T> recordReader) {
     final int stateCount = recordReader.getStateCount();
+    // create a unique class name
     String className = "redelm.io.RecordReaderCompiler$CompiledRecordReader"+(++id);
-    ClassBuilder classBuilder = startClass(className, existing(BaseRecordReader.class));
+    ClassBuilder classBuilder = new Builder(false)
+        .startClass(className, existing(BaseRecordReader.class));
     for (int i = 0; i < stateCount; i++) {
+      // create a field for each column reader
       classBuilder = classBuilder
         .field(PUBLIC, existing(ColumnReader.class), "state_"+i+"_column");
     }
 
     MethodBuilder readMethodBuilder = classBuilder
         .startMethod(PUBLIC, VOID, "readOneRecord")
-        .var(INT, "currentLevel")
-        .var(INT, "d")
-        .var(INT, "nextR")
-        //  startMessage();
-        .transform(this.<MethodBuilder>debug("startMessage"))
-        .exec().callOnThisNoParam("startMessage").endExec()
-        .set("currentLevel").literal(0).endSet();
+          // declare variables
+          .var(INT, "currentLevel")
+          .var(INT, "d")
+          .var(INT, "nextR")
+          // debug statement
+          .transform(this.<MethodBuilder>debug("startMessage"))
+          //  generating: startMessage();
+          .exec().callOnThisNoParam("startMessage").endExec()
+          // initially: currentLevel = 0;
+          .set("currentLevel").literal(0).endSet();
     for (int i = 0; i < stateCount; i++) {
+      // generate the code for each state of the FSA
       final State state = recordReader.getState(i);
       String columnReader = "state_"+i+"_column";
       readMethodBuilder = readMethodBuilder
@@ -172,20 +193,25 @@ public class RecordReaderCompiler {
           .transform(this.<MethodBuilder>debug("state "+i));
 
       if (state.maxDefinitionLevel == 0) {
+        // then it is always defined, we can skip the if
         readMethodBuilder = generateSwitch(readMethodBuilder, true, state, stateCount);
       } else {
         readMethodBuilder = readMethodBuilder
+            // generating:
             //  int d = columnReader.getCurrentDefinitionLevel();
             .set("d").get(columnReader).callNoParam("getCurrentDefinitionLevel").endSet()
+            // if it is defined (d == maxDefinitionLevel) then
             .ifExp().get("d").isEqualTo().literal(state.maxDefinitionLevel).thenBlock()
               .transform(new Function<ThenBuilder<MethodBuilder>, ThenBuilder<MethodBuilder>>() {
                 public ThenBuilder<MethodBuilder> apply(ThenBuilder<MethodBuilder> builder) {
+                  // generate The switch in the defined case (primitive values will be created)
                   return generateSwitch(builder, true, state, stateCount);
                 }
               })
-            .elseBlock()
+            .elseBlock() // otherwise:
               .transform(new Function<ElseBuilder<MethodBuilder>, ElseBuilder<MethodBuilder>>() {
                 public ElseBuilder<MethodBuilder> apply(ElseBuilder<MethodBuilder> builder) {
+                  // generate The switch in the undefined case (primitive values will not be created)
                   return generateSwitch(builder, false, state, stateCount);
                 }
               })
@@ -194,7 +220,7 @@ public class RecordReaderCompiler {
     }
 
     FutureType testClass = readMethodBuilder
-            .label("endRecord")
+            .label(END_RECORD)
             //  endMessage();
             .exec().callOnThisNoParam("endMessage").endExec()
           .endMethod()

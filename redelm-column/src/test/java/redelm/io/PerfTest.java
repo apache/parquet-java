@@ -39,7 +39,6 @@ public class PerfTest {
   public static void main(String[] args) {
     MemColumnsStore columns = new MemColumnsStore(50*1024*1024, schema);
     write(columns);
-//    columns.flip();
     read(columns);
     System.out.println(columns.memSize()+" bytes used total");
     System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
