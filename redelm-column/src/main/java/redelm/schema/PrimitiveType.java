@@ -15,6 +15,9 @@
  */
 package redelm.schema;
 
+import java.util.Arrays;
+import java.util.List;
+
 import redelm.column.ColumnReader;
 import redelm.io.RecordConsumer;
 
@@ -230,8 +233,13 @@ public class PrimitiveType extends Type {
   @Override
   public Type getType(String[] path, int i) {
     if (path.length != i) {
-      throw new RuntimeException("Arrived at primitive node, path invalid");
+      throw new RuntimeException("Arrived at primitive node at index " + i + " , path invalid: " + Arrays.toString(path));
     }
     return this;
+  }
+
+  @Override
+  protected List<String[]> getPaths(int depth) {
+    return Arrays.<String[]>asList(new String[depth]);
   }
 }

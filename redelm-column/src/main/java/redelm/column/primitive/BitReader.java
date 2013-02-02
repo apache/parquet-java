@@ -24,6 +24,8 @@ public class BitReader {
   private int currentBufferPosition = 0;
   private static final int[] byteGetValueMask = new int[8];
   private static final int[] readMask = new int[32];
+  private int endBufferPosistion;
+
   static {
     int currentMask = 1;
     for (int i = 0; i < byteGetValueMask.length; i++) {
@@ -38,11 +40,12 @@ public class BitReader {
     }
   }
 
-  public void prepare(byte[] buf) {
+  public void prepare(byte[] buf, int offset, int length) {
     this.buf = buf;
+    this.endBufferPosistion = offset + length;
     currentByte = 0;
     currentPosition = 8;
-    currentBufferPosition = 0;
+    currentBufferPosition = offset;
   }
 
   public static boolean getBytePosition(int val, int position) {
@@ -65,7 +68,7 @@ public class BitReader {
   }
 
   private int getNextByte() {
-    if (currentBufferPosition < buf.length) {
+    if (currentBufferPosition < endBufferPosistion) {
       return buf[currentBufferPosition++] & 0xFF;
     }
     return 0;

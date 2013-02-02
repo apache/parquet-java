@@ -17,6 +17,7 @@ package redelm.hadoop;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 import redelm.io.RecordMaterializer;
 
@@ -37,7 +38,7 @@ abstract public class ReadSupport<T> implements Serializable {
    * @param metaDataBlocks metadata blocks from the footer
    * @param requestedSchema the schema requested by the user
    */
-  abstract public void initForRead(List<MetaDataBlock> metaDataBlocks, String requestedSchema);
+  abstract public void initForRead(Map<String, String> keyValueMetaData, String requestedSchema);
 
   /**
    * called by the record reader in the backend.

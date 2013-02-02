@@ -21,6 +21,6 @@ abstract public class ColumnsStore {
 
   abstract public ColumnWriter getColumnWriter(ColumnDescriptor path);
 
-  abstract public void flip();
+  abstract public void flush();
 
 }

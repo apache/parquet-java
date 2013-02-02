@@ -18,6 +18,8 @@ package redelm.column.primitive;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import redelm.bytes.BytesInput;
+
 /**
  * This is a special writer that doesn't write anything. The idea being that
  * some columns will always be the same value, and this will capture that. An
@@ -25,12 +27,8 @@ import java.io.IOException;
  */
 public class DevNullColumnWriter extends PrimitiveColumnWriter {
   @Override
-  public int getMemSize() {
+  public long getMemSize() {
     return 0;
-  }
-
-  @Override
-  public void writeData(DataOutput out) throws IOException {
   }
 
   @Override
@@ -67,5 +65,10 @@ public class DevNullColumnWriter extends PrimitiveColumnWriter {
 
   @Override
   public void writeFloat(float v) {
+  }
+
+  @Override
+  public BytesInput getBytes() {
+    return BytesInput.empty();
   }
 }

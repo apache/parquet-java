@@ -20,11 +20,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import redelm.Log;
-import redelm.hadoop.RedelmMetaData.FileMetaData;
+import redelm.hadoop.metadata.BlockMetaData;
+import redelm.hadoop.metadata.FileMetaData;
+import redelm.hadoop.metadata.RedelmMetaData;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.mapreduce.InputSplit;
@@ -100,12 +101,15 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
       long start = hdfsBlock.getOffset();
       long end = hdfsBlock.getOffset() + hdfsBlock.getLength();
       List<BlockMetaData> blocksForCurrentSplit = new ArrayList<BlockMetaData>();
-      while (
-          currentBlock < blocks.size()
-          && blocks.get(currentBlock).getStartIndex() >= start
-          && blocks.get(currentBlock).getStartIndex() < end) {
-        blocksForCurrentSplit.add(blocks.get(currentBlock));
-        ++ currentBlock;
+      if (currentBlock < blocks.size()) {
+        // TODO: some sanity regarding location of columns
+        while (
+            currentBlock < blocks.size()
+            && blocks.get(currentBlock).getColumns().get(0).getFirstDataPage() >= start
+            && blocks.get(currentBlock).getColumns().get(0).getFirstDataPage() < end) {
+          blocksForCurrentSplit.add(blocks.get(currentBlock));
+          ++ currentBlock;
+        }
       }
       if (blocksForCurrentSplit.size() > 0) {
         splits.add(new RedelmInputSplit<T>(
@@ -139,10 +143,9 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
         @SuppressWarnings("unchecked")
         ReadSupport<T> readSupport = (ReadSupport<T>) readSupportClass.newInstance();
         FileStatus fileStatus = fs.getFileStatus(footer.getFile());
-        List<MetaDataBlock> metaDataBlocks = footer.getMetaDataBlocks();
-        RedelmMetaData redelmMetaData = RedelmMetaData.fromMetaDataBlocks(metaDataBlocks);
+        RedelmMetaData redelmMetaData = footer.getRedelmMetaData();
         readSupport.initForRead(
-            metaDataBlocks,
+            redelmMetaData.getKeyValueMetaData(),
             getRequestedSchema(redelmMetaData.getFileMetaData())
             );
         List<BlockMetaData> blocks = redelmMetaData.getBlocks();

@@ -15,12 +15,13 @@
  */
 package redelm.column.primitive;
 
-import java.io.DataOutput;
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
-import redelm.column.RedelmByteArrayOutputStream;
+import redelm.Log;
+import redelm.bytes.BytesInput;
 
 /**
  * A combination of DataOutputStream and ByteArrayOutputStream
@@ -29,14 +30,15 @@ import redelm.column.RedelmByteArrayOutputStream;
  *
  */
 public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
+  private static final Log LOG = Log.getLog(SimplePrimitiveColumnWriter.class);
 
   public static final Charset CHARSET = Charset.forName("UTF-8");
 
-  private RedelmByteArrayOutputStream arrayOut;
+  private ByteArrayOutputStream arrayOut;
   private DataOutputStream out;
 
   public SimplePrimitiveColumnWriter(int initialSize) {
-    arrayOut = new RedelmByteArrayOutputStream(initialSize);
+    arrayOut = new ByteArrayOutputStream(initialSize);
     out = new DataOutputStream(arrayOut);
   }
 
@@ -117,13 +119,19 @@ public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
   }
 
   @Override
-  public int getMemSize() {
+  public long getMemSize() {
     return arrayOut.size();
   }
 
   @Override
-  public void writeData(DataOutput output) throws IOException {
-    arrayOut.writeTo(output);
+  public BytesInput getBytes() {
+    try {
+      out.flush();
+    } catch (IOException e) {
+      throw new RuntimeException("never happens", e);
+    }
+    if (Log.DEBUG) LOG.debug("writing a buffer of size " + arrayOut.size());
+    return BytesInput.from(arrayOut);
   }
 
   @Override
@@ -138,4 +146,5 @@ public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
     }
     out.writeByte(value & 0x7F);
   }
+
 }

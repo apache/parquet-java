@@ -15,10 +15,11 @@
  */
 package redelm.column.mem;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
+import static redelm.Log.DEBUG;
+
 import java.io.IOException;
 
+import redelm.Log;
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnReader;
 import redelm.column.primitive.BoundedColumnFactory;
@@ -26,25 +27,34 @@ import redelm.column.primitive.PrimitiveColumnReader;
 import redelm.column.primitive.SimplePrimitiveColumnReader;
 
 abstract class MemColumnReader implements ColumnReader {
+  private static final Log LOG = Log.getLog(MemColumnReader.class);
 
-  private int repetitionLevel;
-  private int definitionLevel;
-  private int readValues;
-  private int valueCount;
-  private boolean valueRead = false;
-  private boolean consumed = true;
+  private final ColumnDescriptor path;
+  private final long totalValueCount;
+  private final PageReader pageReader;
+
   private PrimitiveColumnReader repetitionLevelColumn;
   private PrimitiveColumnReader definitionLevelColumn;
   protected PrimitiveColumnReader dataColumn;
-  private final ColumnDescriptor path;
 
-  public MemColumnReader(ColumnDescriptor path) {
+  private int repetitionLevel;
+  private int definitionLevel;
+  private boolean valueRead = false;
+  private boolean consumed = true;
+
+  private int readValues;
+  private int readValuesInPage;
+  private long pageValueCount;
+
+  public MemColumnReader(ColumnDescriptor path, PageReader pageReader) {
     this.path = path;
+    this.pageReader = pageReader;
+    this.totalValueCount = pageReader.getTotalValueCount();
   }
 
   @Override
   public boolean isFullyConsumed() {
-    return readValues >= valueCount;
+    return readValues >= totalValueCount;
   }
 
   @Override
@@ -109,15 +119,46 @@ abstract class MemColumnReader implements ColumnReader {
     repetitionLevel = repetitionLevelColumn.readInteger();
     definitionLevel = definitionLevelColumn.readInteger();
     ++readValues;
+    ++readValuesInPage;
     consumed = false;
   }
 
   protected void checkRead() {
-    if (consumed && !isFullyConsumed()) {
-      read();
-    } else if (isFullyConsumed()) {
-      repetitionLevel = 0;
+    if (!consumed) {
+      return;
     }
+    if (isFullyConsumed()) {
+      if (DEBUG) LOG.debug("end reached");
+      repetitionLevel = 0; // the next repetition level
+      return;
+    }
+    if (isPageFullyConsumed()) {
+      if (DEBUG) LOG.debug("loading page");
+      Page page = pageReader.readPage();
+      // TODO: bitpacking instead
+      repetitionLevelColumn = BoundedColumnFactory.getBoundedReader(path.getRepetitionLevel());
+      definitionLevelColumn = BoundedColumnFactory.getBoundedReader(path.getDefinitionLevel());
+      // TODO: from encoding
+      dataColumn = new SimplePrimitiveColumnReader();
+
+      this.pageValueCount = page.getValueCount();
+      this.readValuesInPage = 0;
+      byte[] bytes = page.getBytes().toByteArray();
+      if (DEBUG) LOG.debug("page size " + bytes.length + " bytes and " + pageValueCount + " records");
+      try {
+        int next = repetitionLevelColumn.initFromPage(bytes, 0);
+        next = definitionLevelColumn.initFromPage(bytes, next);
+        dataColumn.initFromPage(bytes, next);
+      } catch (IOException e) {
+        // TODO: clean that up
+        throw new RuntimeException("can not happen", e);
+      }
+    }
+    read();
+  }
+
+  private boolean isPageFullyConsumed() {
+    return readValuesInPage >= pageValueCount;
   }
 
   @Override
@@ -126,34 +167,4 @@ abstract class MemColumnReader implements ColumnReader {
     valueRead = false;
   }
 
-  public void setValueCount(int valueCount) {
-    this.valueCount = valueCount;
-  }
-
-  public void initRepetitionLevelColumn(byte[] bytes, int index, int length) {
-    repetitionLevelColumn = BoundedColumnFactory.getBoundedReader(path.getRepetitionLevel());
-    try {
-      repetitionLevelColumn.readStripe(new DataInputStream(new ByteArrayInputStream(bytes, index, length)));
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  public void initDefinitionLevelColumn(byte[] bytes, int index, int length) {
-    definitionLevelColumn = BoundedColumnFactory.getBoundedReader(path.getDefinitionLevel());
-    try {
-      definitionLevelColumn.readStripe(new DataInputStream(new ByteArrayInputStream(bytes, index, length)));
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  public void initDataColumn(byte[] bytes, int index, int length) {
-    dataColumn = new SimplePrimitiveColumnReader();
-    try {
-      dataColumn.readStripe(new DataInputStream(new ByteArrayInputStream(bytes, index, length)));
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
 }

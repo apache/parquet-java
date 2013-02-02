@@ -15,6 +15,7 @@
  */
 package redelm.schema;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -208,4 +209,18 @@ public class GroupType extends Type {
     }
     return getType(path[i++]).getType(path, i);
   }
+
+  @Override
+  protected List<String[]> getPaths(int depth) {
+    List<String[]> result = new ArrayList<String[]>();
+    for (Type field : fields) {
+      List<String[]> paths = field.getPaths(depth + 1);
+      for (String[] path : paths) {
+        path[depth] = field.getName();
+        result.add(path);
+      }
+    }
+    return result;
+  }
+
 }

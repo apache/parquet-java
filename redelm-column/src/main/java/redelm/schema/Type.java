@@ -15,6 +15,8 @@
  */
 package redelm.schema;
 
+import java.util.List;
+
 abstract public class Type {
 
   public static enum Repetition {
@@ -91,6 +93,8 @@ abstract public class Type {
   protected abstract int getDefinitionLevel(String[] path, int i);
 
   protected abstract Type getType(String[] path, int i);
+
+  protected abstract List<String[]> getPaths(int depth);
 
   /**
    * {@inheritDoc}

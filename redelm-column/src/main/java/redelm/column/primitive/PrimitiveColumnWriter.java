@@ -15,14 +15,13 @@
  */
 package redelm.column.primitive;
 
-import java.io.DataOutput;
-import java.io.IOException;
+import redelm.bytes.BytesInput;
 
 public abstract class PrimitiveColumnWriter {
 
-  public abstract int getMemSize();
+  public abstract long getMemSize();
 
-  public abstract void writeData(DataOutput out) throws IOException;
+  public abstract BytesInput getBytes();
 
   public abstract void reset();
 

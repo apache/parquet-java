@@ -16,9 +16,13 @@
 package redelm.column.primitive;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+
+import redelm.Log;
 
 public class BitWriter {
+  private static final Log LOG = Log.getLog(BitWriter.class);
+  private static final boolean DEBUG = false;//Log.DEBUG;
+
   private ByteArrayOutputStream baos = new ByteArrayOutputStream();
   private int currentByte = 0;
   private int currentBytePosition = 0;
@@ -35,43 +39,55 @@ public class BitWriter {
   }
 
   public void writeBit(boolean bit) {
+    if (DEBUG) LOG.debug("writing: " + (bit ? "1" : "0"));
     currentByte = setBytePosition(currentByte, currentBytePosition++, bit);
     if (currentBytePosition == 8) {
       baos.write(currentByte);
+      if (DEBUG) LOG.debug("to buffer: " + toBinary(currentByte));
       currentByte = 0;
       currentBytePosition = 0;
     }
   }
 
   public void writeByte(int val) {
+    if (DEBUG) LOG.debug("writing: " + toBinary(val) + " (" + val + ")");
     currentByte |= ((val & 0xFF) << currentBytePosition);
     baos.write(currentByte);
+    if (DEBUG) LOG.debug("to buffer: " + toBinary(currentByte));
     currentByte >>>= 8;
   }
 
   public void writeBits(int val, int bitsToWrite) {
+    if (DEBUG) LOG.debug("writing: " + toBinary(val, bitsToWrite) + " (" + val + ")");
     val <<= currentBytePosition;
     int upperByte = currentBytePosition + bitsToWrite;
     currentByte |= val;
     while (upperByte >= 8) {
       baos.write(currentByte); //this only writes the lowest byte
+      if (DEBUG) LOG.debug("to buffer: " + toBinary(currentByte));
       upperByte -= 8;
       currentByte >>>= 8;
     }
     currentBytePosition = (currentBytePosition + bitsToWrite) % 8;
   }
 
+  private String toBinary(int val, int alignTo) {
+    String result = Integer.toBinaryString(val);
+    while (result.length() < alignTo) {
+      result = "0" + result;
+    }
+    return result;
+  }
+
+  private String toBinary(int val) {
+    return toBinary(val, 8);
+  }
+
   public byte[] finish() {
     if (!finished) {
       if (currentBytePosition > 0) {
         baos.write(currentByte);
-      }
-      try {
-        baos.flush();
-      } catch (IOException e) {
-        // This shouldn't be possible as ByteArrayOutputStream
-        // uses OutputStream's flush, which is a noop
-        throw new RuntimeException(e);
+        if (DEBUG) LOG.debug("to buffer: " + toBinary(currentByte));
       }
     }
     byte[] buf = baos.toByteArray();
@@ -80,7 +96,7 @@ public class BitWriter {
   }
 
   public void reset() {
-    baos = new ByteArrayOutputStream();
+    baos.reset();
     currentByte = 0;
     currentBytePosition = 0;
     finished = false;

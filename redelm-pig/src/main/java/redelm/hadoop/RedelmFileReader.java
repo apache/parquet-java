@@ -15,9 +15,10 @@
  */
 package redelm.hadoop;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import static redelm.Log.DEBUG;
+
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -30,19 +31,19 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import redelm.Log;
+import redelm.hadoop.metadata.BlockMetaData;
+import redelm.hadoop.metadata.ColumnChunkMetaData;
+import redelm.hadoop.metadata.RedelmMetaData;
+import redelm.redfile.RedFileMetadataConverter;
+import redfile.PageHeader;
+import redfile.PageType;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.io.compress.CodecPool;
-import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.io.compress.CompressionInputStream;
-import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.mapred.Utils;
-import org.apache.hadoop.util.ReflectionUtils;
 
 /**
  * Reads a RedElm file
@@ -53,16 +54,15 @@ import org.apache.hadoop.util.ReflectionUtils;
 public class RedelmFileReader {
   private static final Log LOG = Log.getLog(RedelmFileReader.class);
 
-  private static List<MetaDataBlock> readMetaDataBlocks(FSDataInputStream f) throws IOException {
-    List<MetaDataBlock> blocks = new ArrayList<MetaDataBlock>();
-    int blockCount =  f.read();
-    for (int i = 0; i < blockCount; i++) {
-      String name = f.readUTF();
-      byte[] data = new byte[f.readInt()];
-      f.readFully(data);
-      blocks.add(new MetaDataBlock(name, data));
-    }
-    return blocks;
+  private static RedFileMetadataConverter redFileMetadataConverter = new RedFileMetadataConverter();
+
+  private static RedelmMetaData deserializeFooter(InputStream is) throws IOException {
+    redfile.FileMetaData redFileMetadata = redFileMetadataConverter.readFileMetaData(is);
+    return redFileMetadataConverter.fromRedFileMetadata(redFileMetadata);
+  }
+
+  private static RedelmMetaData readMetaDataBlocks(FSDataInputStream f) throws IOException {
+    return deserializeFooter(f);
   }
 
   public static List<Footer> readAllFootersInParallel(final Configuration configuration, List<FileStatus> partFiles) throws IOException {
@@ -83,8 +83,8 @@ public class RedelmFileReader {
 
           private Footer readFooter(final FileSystem fs,
               final FileStatus currentFile) throws IOException {
-            List<MetaDataBlock> blocks = RedelmFileReader.readFooter(fs.open(currentFile.getPath()), currentFile.getLen());
-            return new Footer(currentFile.getPath(), blocks);
+            RedelmMetaData redelmMetaData = RedelmFileReader.readFooter(configuration, currentFile);
+            return new Footer(currentFile.getPath(), redelmMetaData);
           }
         }));
       }
@@ -141,15 +141,8 @@ public class RedelmFileReader {
     List<Footer> result = new ArrayList<Footer>(footerCount);
     for (int i = 0; i < footerCount; i++) {
       Path file = new Path(summary.readUTF());
-      int blockCount = summary.readInt();
-      List<MetaDataBlock> blocks = new ArrayList<MetaDataBlock>(blockCount);
-      for (int j = 0; j < footerCount; j++) {
-        String name = summary.readUTF();
-        byte[] data = new byte[summary.readInt()];
-        summary.readFully(data);
-        blocks.add(new MetaDataBlock(name, data));
-      }
-      result.add(new Footer(file, blocks));
+      RedelmMetaData redelmMetaData = redFileMetadataConverter.fromRedFileMetadata(redFileMetadataConverter.readFileMetaData(summary));
+      result.add(new Footer(file, redelmMetaData));
     }
     summary.close();
     return result;
@@ -157,13 +150,27 @@ public class RedelmFileReader {
 
   /**
    * Reads the meta data block in the footer of the file
-   * @see RedelmMetaData#fromMetaDataBlocks(List)
-   * @param f the RedElm File
-   * @param l the length of the file
+   * @param configuration
+   * @param file the RedElm File
    * @return the metadata blocks in the footer
    * @throws IOException if an error occurs while reading the file
    */
-  public static final List<MetaDataBlock> readFooter(FSDataInputStream f, long l) throws IOException {
+  public static final RedelmMetaData readFooter(Configuration configuration, Path file) throws IOException {
+    FileSystem fileSystem = file.getFileSystem(configuration);
+    return readFooter(configuration, fileSystem.getFileStatus(file));
+  }
+
+  /**
+   * Reads the meta data block in the footer of the file
+   * @param configuration
+   * @param file the RedElm File
+   * @return the metadata blocks in the footer
+   * @throws IOException if an error occurs while reading the file
+   */
+  public static final RedelmMetaData readFooter(Configuration configuration, FileStatus file) throws IOException {
+    FileSystem fileSystem = file.getPath().getFileSystem(configuration);
+    FSDataInputStream f = fileSystem.open(file.getPath());
+    long l = file.getLen();
     if (l <= 3 * 8) { // MAGIC (8) + data + footer + footerIndex (8) + MAGIC (8)
       throw new RuntimeException("Not a Red Elm file");
     }
@@ -194,7 +201,6 @@ public class RedelmFileReader {
   private int currentBlock = 0;
   private Set<String> paths = new HashSet<String>();
   private long previousReadIndex = 0;
-  private final CompressionCodec codec;
 
   /**
    *
@@ -202,22 +208,14 @@ public class RedelmFileReader {
    * @param blocks the blocks to read
    * @param colums the columns to read (their path)
    * @param codecClassName the codec used to compress the blocks
+   * @throws IOException if the file can not be opened
    */
-  public RedelmFileReader(Configuration configuration, FSDataInputStream f, List<BlockMetaData> blocks, List<String[]> colums, String codecClassName) {
-    this.f = f;
+  public RedelmFileReader(Configuration configuration, Path filePath, List<BlockMetaData> blocks, List<String[]> colums) throws IOException {
+    FileSystem fs = FileSystem.get(configuration);
+    this.f = fs.open(filePath);
     this.blocks = blocks;
     for (String[] path : colums) {
       paths.add(Arrays.toString(path));
-    }
-    if (codecClassName == null) {
-      this.codec = null;
-    } else {
-      try {
-        Class<?> codecClass = Class.forName(codecClassName);
-        this.codec = (CompressionCodec)ReflectionUtils.newInstance(codecClass, configuration);
-      } catch (ClassNotFoundException e) {
-        throw new RuntimeException("Class " + codecClassName + " was not found", e);
-      }
     }
   }
 
@@ -225,58 +223,49 @@ public class RedelmFileReader {
    * reads all the columns requested in the next block
    * @return the block data for the next block
    * @throws IOException if an error occurs while reading
+   * @return how many records where read or 0 if end reached.
    */
-  public BlockData readColumns() throws IOException {
+  public long readColumns(PageConsumer pageConsumer) throws IOException {
     if (currentBlock == blocks.size()) {
-      return null;
+      return 0;
     }
-    List<ColumnData> result = new ArrayList<ColumnData>();
     BlockMetaData block = blocks.get(currentBlock);
     LOG.info("starting reading block " + currentBlock);
     long t0 = System.currentTimeMillis();
-    for (ColumnMetaData mc : block.getColumns()) {
+    for (ColumnChunkMetaData mc : block.getColumns()) {
       String pathKey = Arrays.toString(mc.getPath());
       if (paths.contains(pathKey)) {
-        byte[] repetitionLevels = read(pathKey + ".r", mc.getRepetitionStart(), mc.getRepetitionLength());
-        byte[] definitionLevels = read(pathKey + ".d", mc.getDefinitionStart(), mc.getDefinitionLength());
-        byte[] data = read(pathKey + ".data", mc.getDataStart(), mc.getDataLength());
-        result.add(new ColumnData(mc.getPath(), repetitionLevels, definitionLevels, data));
+        f.seek(mc.getFirstDataPage());
+        if (DEBUG) LOG.debug(f.getPos() + ": start column chunk " + Arrays.toString(mc.getPath()) + " " + mc.getType() + " count=" + mc.getValueCount());
+        long valuesCountReadSoFar = 0;
+        while (valuesCountReadSoFar < mc.getValueCount()) {
+          PageHeader pageHeader = readNextDataPageHeader();
+          pageConsumer.consumePage(mc.getPath(), pageHeader.data_page.num_values, f, pageHeader.compressed_page_size);
+          valuesCountReadSoFar += pageHeader.data_page.num_values;
+        }
       }
     }
     long t1 = System.currentTimeMillis();
     LOG.info("block data read in " + (t1 - t0) + " ms");
-
     ++currentBlock;
-    return new BlockData(block.getRecordCount(), result);
+    return block.getRowCount();
   }
 
-  private byte[] read(String name, long start, long length) throws IOException {
-    byte[] data = new byte[(int)length];
-    if (start != previousReadIndex) {
-      LOG.info("seeking to next column " + (start - previousReadIndex) + " bytes");
-    }
-    long t0 = System.currentTimeMillis();
-    f.readFully(start, data);
-    long t1 = System.currentTimeMillis();
-    long l = t1 - t0;
-    LOG.info("Read " + length + " bytes for column " + name + " in " + l + " ms" +  (l == 0 ? "" : " : " + (float)data.length*1000/l + " bytes/s"));
-    byte[] result;
-    if (codec == null) {
-      result = data;
-    } else {
-      Decompressor decompressor = CodecPool.getDecompressor(codec);
-      try {
-        // TODO make this streaming instead of reading into an array to decompress
-        CompressionInputStream cis = codec.createInputStream(new ByteArrayInputStream(data), decompressor);
-        ByteArrayOutputStream decompressed = new ByteArrayOutputStream();
-        IOUtils.copyBytes(cis, decompressed, 4096, false);
-        result = decompressed.toByteArray();
-      } finally {
-        CodecPool.returnDecompressor(decompressor);
+  private PageHeader readNextDataPageHeader() throws IOException {
+    PageHeader pageHeader;
+    do {
+      if (DEBUG) LOG.debug(f.getPos() + ": reading page");
+      pageHeader = redFileMetadataConverter.readPageHeader(f);
+      if (pageHeader.type != PageType.DATA_PAGE) {
+        if (DEBUG) LOG.debug("not a data page, skipping " + pageHeader.compressed_page_size);
+        f.skip(pageHeader.compressed_page_size);
       }
-    }
-    previousReadIndex = start + length;
-    return result;
+    } while (pageHeader.type != PageType.DATA_PAGE);
+    return pageHeader;
+  }
+
+  public void close() throws IOException {
+    f.close();
   }
 
 }

@@ -15,8 +15,6 @@
  */
 package redelm.column.mem;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
@@ -32,11 +30,10 @@ public class MemColumn {
   private final ColumnDescriptor path;
 
   private MemColumnWriter memColumnWriter;
-  private MemColumnReader memColumnReader;
 
-  public MemColumn(ColumnDescriptor path, int initialSize) {
+  public MemColumn(ColumnDescriptor path, int initialSize, PageWriter pageWriter, int pageSizeThreshold) {
     this.path = path;
-    this.memColumnWriter = new MemColumnWriter(path, initialSize);
+    this.memColumnWriter = new MemColumnWriter(path, initialSize, pageWriter, pageSizeThreshold);
   }
 
   public ColumnDescriptor getDescriptor() {
@@ -44,89 +41,38 @@ public class MemColumn {
   }
 
   public ColumnWriter getColumnWriter() {
-    if (memColumnWriter == null) {
-      throw new IllegalStateException("now in read mode");
-    }
     return memColumnWriter;
   }
 
-  private MemColumnReader newMemColumnReader() {
+  private MemColumnReader newMemColumnReader(PageReader pageReader) {
     switch (path.getType()) {
     case INT32:
-      return new INT32MemColumnReader(path);
+      return new INT32MemColumnReader(path, pageReader);
     case INT64:
-      return new INT64MemColumnReader(path);
+      return new INT64MemColumnReader(path, pageReader);
     case STRING:
-      return new STRINGMemColumnReader(path);
+      return new STRINGMemColumnReader(path, pageReader);
     case BOOLEAN:
-      return new BOOLEANMemColumnReader(path);
+      return new BOOLEANMemColumnReader(path, pageReader);
     case BINARY:
-      return new BINARYMemColumnReader(path);
+      return new BINARYMemColumnReader(path, pageReader);
     case FLOAT:
-      return new FLOATMemColumnReader(path);
+      return new FLOATMemColumnReader(path, pageReader);
     case DOUBLE:
-      return new DOUBLEMemColumnReader(path);
+      return new DOUBLEMemColumnReader(path, pageReader);
     }
     throw new RuntimeException("type "+path.getType()+" not supported");
   }
 
-  public void setForRead(int valueCount, byte[] repetitionLevels, byte[] definitionLevel, byte[] data) {
-    memColumnReader = newMemColumnReader();
-    memColumnReader.initRepetitionLevelColumn(repetitionLevels, 0, repetitionLevels.length);
-    memColumnReader.initDefinitionLevelColumn(definitionLevel, 0, definitionLevel.length);
-    memColumnReader.initDataColumn(data, 0, data.length);
-    memColumnReader.setValueCount(valueCount);
-  }
-
-  public void flip() {
-    if (memColumnWriter != null) {
-      try {
-        memColumnReader = newMemColumnReader();
-        memColumnReader.setValueCount(memColumnWriter.getValueCount());
-
-        //TODO we need a better pattern for moving the bytes around. As is, the bytes
-        // will be copied into the provided buffer, thus increasing the amount of memory.
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        memColumnWriter.writeRepetitionLevelColumn(new DataOutputStream(baos));
-        byte[] buf = baos.toByteArray();
-        memColumnReader.initRepetitionLevelColumn(buf, 0, buf.length);
-
-        baos = new ByteArrayOutputStream();
-        memColumnWriter.writeDefinitionLevelColumn(new DataOutputStream(baos));
-        buf = baos.toByteArray();
-        memColumnReader.initDefinitionLevelColumn(buf, 0, buf.length);
-
-        baos = new ByteArrayOutputStream();
-        memColumnWriter.writeDataColumn(new DataOutputStream(baos));
-        buf = baos.toByteArray();
-        memColumnReader.initDataColumn(buf, 0, buf.length);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    } else {
-      throw new RuntimeException("nothing to flip");
-    }
-  }
-
-  public ColumnReader getColumnReader() {
-    if (memColumnReader == null) {
-      throw new IllegalStateException("not in read mode");
-    }
-    return memColumnReader;
-  }
-
-  public int memSize() {
-    if (memColumnWriter != null) {
-      return memColumnWriter.memSize();
-    }
-    throw new RuntimeException("Not writing anymore");
+  public ColumnReader getColumnReader(PageReader pageReader) {
+    return newMemColumnReader(pageReader);
   }
 
   private static final class INT32MemColumnReader extends MemColumnReader {
     private int currentInt;
 
-    public INT32MemColumnReader(ColumnDescriptor path) {
-      super(path);
+    public INT32MemColumnReader(ColumnDescriptor path, PageReader pageReader) {
+      super(path, pageReader);
     }
 
     @Override
@@ -150,8 +96,8 @@ public class MemColumn {
   private static final class INT64MemColumnReader extends MemColumnReader {
     private long currentLong;
 
-    public INT64MemColumnReader(ColumnDescriptor path) {
-      super(path);
+    public INT64MemColumnReader(ColumnDescriptor path, PageReader pageReader) {
+      super(path, pageReader);
     }
 
     @Override
@@ -175,8 +121,8 @@ public class MemColumn {
   private static final class BINARYMemColumnReader extends MemColumnReader {
     private byte[] current;
 
-    public BINARYMemColumnReader(ColumnDescriptor path) {
-      super(path);
+    public BINARYMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
+      super(path, pageReader);
     }
 
     @Override
@@ -201,8 +147,8 @@ public class MemColumn {
     private static final Charset ENCODING = Charset.forName("UTF-8");
     private String currentString;
 
-    public STRINGMemColumnReader(ColumnDescriptor path) {
-      super(path);
+    public STRINGMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
+      super(path, pageReader);
     }
 
     @Override
@@ -225,8 +171,8 @@ public class MemColumn {
   private static final class BOOLEANMemColumnReader extends MemColumnReader {
     private boolean current;
 
-    public BOOLEANMemColumnReader(ColumnDescriptor path) {
-      super(path);
+    public BOOLEANMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
+      super(path, pageReader);
     }
 
     @Override
@@ -250,8 +196,8 @@ public class MemColumn {
   private static final class FLOATMemColumnReader extends MemColumnReader {
     private float current;
 
-    public FLOATMemColumnReader(ColumnDescriptor path) {
-      super(path);
+    public FLOATMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
+      super(path, pageReader);
     }
 
     @Override
@@ -275,8 +221,8 @@ public class MemColumn {
   private static final class DOUBLEMemColumnReader extends MemColumnReader {
     private double current;
 
-    public DOUBLEMemColumnReader(ColumnDescriptor path) {
-      super(path);
+    public DOUBLEMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
+      super(path, pageReader);
     }
 
     @Override
@@ -295,5 +241,9 @@ public class MemColumn {
       checkRead();
       return String.valueOf(current);
     }
+  }
+
+  public long getMemSize() {
+    return memColumnWriter.memSize();
   }
 }

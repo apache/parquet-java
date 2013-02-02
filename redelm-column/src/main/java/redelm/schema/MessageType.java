@@ -15,6 +15,9 @@
  */
 package redelm.schema;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import redelm.column.ColumnDescriptor;
 import redelm.schema.PrimitiveType.Primitive;
 
@@ -73,5 +76,15 @@ public class MessageType extends GroupType {
     int maxDef = getDefinitionLevel(path);
     Primitive type = getType(path).asPrimitiveType().getPrimitive();
     return new ColumnDescriptor(path, type, maxRep, maxDef);
+  }
+
+  public List<ColumnDescriptor> getColumns() {
+    List<String[]> paths = this.getPaths(0);
+    List<ColumnDescriptor> columns = new ArrayList<ColumnDescriptor>(paths.size());
+    for (String[] path : paths) {
+      // TODO: optimize this
+      columns.add(new ColumnDescriptor(path, getType(path).asPrimitiveType().getPrimitive(), getRepetitionLevel(path), getDefinitionLevel(path)));
+    }
+    return columns;
   }
 }

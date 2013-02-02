@@ -20,14 +20,22 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
+import redelm.bytes.BytesInput;
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnWriter;
 import redelm.column.mem.MemColumn;
 import redelm.column.mem.MemColumnsStore;
+import redelm.column.mem.MemPageStore;
+import redelm.column.mem.Page;
+import redelm.column.mem.PageReader;
+import redelm.column.mem.PageStore;
+import redelm.column.mem.PageWriter;
+import redelm.hadoop.metadata.CompressionCodecName;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
 import redelm.schema.MessageType;
@@ -46,11 +54,14 @@ public class RedelmRecordWriter<T> extends
 
   private final RedelmFileWriter w;
   private final MessageType schema;
-  private final List<MetaDataBlock> extraMetaData;
+  private final Map<String, String> extraMetaData;
   private WriteSupport<T> writeSupport;
   private int recordCount;
   private MemColumnsStore store;
   private final int blockSize;
+  private final CompressionCodecName codec;
+
+  private MemPageStore pageStore;
 
   /**
    *
@@ -59,8 +70,9 @@ public class RedelmRecordWriter<T> extends
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to write in the footer of the file
    * @param blockSize the size of a block in the file (this will be approximate)
+   * @param codec the codec used to compress
    */
-  RedelmRecordWriter(RedelmFileWriter w, WriteSupport<T> writeSupport, MessageType schema, List<MetaDataBlock> extraMetaData, int blockSize) {
+  RedelmRecordWriter(RedelmFileWriter w, WriteSupport<T> writeSupport, MessageType schema,  Map<String, String> extraMetaData, int blockSize, CompressionCodecName codec) {
     if (writeSupport == null) {
       throw new NullPointerException("writeSupport");
     }
@@ -69,12 +81,13 @@ public class RedelmRecordWriter<T> extends
     this.schema = schema;
     this.extraMetaData = extraMetaData;
     this.blockSize = blockSize;
+    this.codec = codec;
     initStore();
   }
 
   private void initStore() {
-    // TODO: parameterize this
-    store = new MemColumnsStore(1024 * 1024 * 1, schema);
+    pageStore = new MemPageStore();
+    store = new MemColumnsStore(1024 * 1024 * 1, pageStore, 8*1024);
     //
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     writeSupport.initForWrite(columnIO.getRecordWriter(store), schema, extraMetaData);
@@ -110,30 +123,24 @@ public class RedelmRecordWriter<T> extends
   private void flushStore()
       throws IOException {
     w.startBlock(recordCount);
-    Collection<MemColumn> columns = store.getColumns();
-    for (MemColumn column : columns) {
-      ColumnDescriptor descriptor = column.getDescriptor();
-      ColumnWriter columnWriter = column.getColumnWriter();
-      w.startColumn(descriptor, columnWriter.getValueCount());
-      w.startRepetitionLevels();
-      ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      columnWriter.writeRepetitionLevelColumn(new DataOutputStream(baos));
-      byte[] buf = baos.toByteArray();
-      w.write(buf, 0, buf.length);
-      w.startDefinitionLevels();
-      baos = new ByteArrayOutputStream();
-      columnWriter.writeDefinitionLevelColumn(new DataOutputStream(baos));
-      buf = baos.toByteArray();
-      w.write(buf, 0, buf.length);
-      w.startData();
-      baos = new ByteArrayOutputStream();
-      columnWriter.writeDataColumn(new DataOutputStream(baos));
-      buf = baos.toByteArray();
-      w.write(buf, 0, buf.length);
+    store.flush();
+    List<ColumnDescriptor> columns = schema.getColumns();
+    for (ColumnDescriptor columnDescriptor : columns) {
+      PageReader pageReader = pageStore.getPageReader(columnDescriptor);
+      int totalValueCount = pageReader.getTotalValueCount();
+      w.startColumn(columnDescriptor, totalValueCount, codec);
+      int n = 0;
+      do {
+        Page page = pageReader.readPage();
+        n += page.getValueCount();
+        // TODO: change INTFC
+        w.writeDataPage(page.getValueCount(), (int)page.getBytes().size(), page.getBytes().toByteArray(), 0, (int)page.getBytes().size());
+      } while (n < totalValueCount);
       w.endColumn();
     }
     recordCount = 0;
     w.endBlock();
     store = null;
+    pageStore = null;
   }
 }

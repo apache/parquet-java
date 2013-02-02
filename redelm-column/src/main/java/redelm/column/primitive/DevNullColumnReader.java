@@ -15,8 +15,9 @@
  */
 package redelm.column.primitive;
 
-import java.io.DataInputStream;
 import java.io.IOException;
+
+import redelm.bytes.BytesInput;
 
 public class DevNullColumnReader extends PrimitiveColumnReader {
   private boolean defaultBoolean = false;
@@ -93,6 +94,8 @@ public class DevNullColumnReader extends PrimitiveColumnReader {
   }
 
   @Override
-  public void readStripe(DataInputStream in) throws IOException {
+  public int initFromPage(byte[] in, int offset) throws IOException {
+    return offset;
   }
+
 }

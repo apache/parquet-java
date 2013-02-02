@@ -21,7 +21,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import redelm.hadoop.MetaDataBlock;
 import redelm.hadoop.WriteSupport;
 import redelm.io.RecordConsumer;
 import redelm.schema.GroupType;
@@ -47,7 +46,9 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
   private MessageType rootSchema;
   private Schema rootPigSchema;
 
-  public void initForWrite(RecordConsumer recordConsumer, MessageType schema, List<MetaDataBlock> extraMetaData) {
+
+  @Override
+  public void initForWrite(RecordConsumer recordConsumer, MessageType schema, Map<String, String> extraMetaData) {
     this.recordConsumer = recordConsumer;
     this.rootSchema = schema;
     PigMetaData pigMetaData = PigMetaData.fromMetaDataBlocks(extraMetaData);

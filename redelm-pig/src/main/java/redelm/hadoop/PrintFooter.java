@@ -28,6 +28,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import redelm.hadoop.metadata.BlockMetaData;
+import redelm.hadoop.metadata.ColumnChunkMetaData;
+import redelm.hadoop.metadata.RedelmMetaData;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -47,7 +51,8 @@ public class PrintFooter {
       return;
     }
     Path path = new Path(new URI(args[0]));
-    final FileSystem fs = path.getFileSystem(new Configuration());
+    final Configuration configuration = new Configuration();
+    final FileSystem fs = path.getFileSystem(configuration);
     FileStatus fileStatus = fs.getFileStatus(path);
     List<FileStatus> statuses;
     if (fileStatus.isDir()) {
@@ -66,7 +71,7 @@ public class PrintFooter {
         footers.add(threadPool.submit(new Callable<RedelmMetaData>() {
           @Override
           public RedelmMetaData call() throws Exception {
-            RedelmMetaData footer = RedelmMetaData.fromMetaDataBlocks(RedelmFileReader.readFooter(fs.open(currentFile.getPath()), currentFile.getLen()));
+            RedelmMetaData footer = RedelmFileReader.readFooter(configuration, currentFile);
             return footer;
           }
         }));
@@ -79,51 +84,40 @@ public class PrintFooter {
         List<BlockMetaData> blocks = footer.getBlocks();
         for (BlockMetaData blockMetaData : blocks) {
           ++ blockCount;
-          List<ColumnMetaData> columns = blockMetaData.getColumns();
-          for (ColumnMetaData columnMetaData : columns) {
+          List<ColumnChunkMetaData> columns = blockMetaData.getColumns();
+          for (ColumnChunkMetaData columnMetaData : columns) {
             add(
                 columnMetaData.getPath(),
-                columnMetaData.getColumnLength(),
-                columnMetaData.getRepetitionLength(),
-                columnMetaData.getRepetitionUncompressedLength(),
-                columnMetaData.getDefinitionLength(),
-                columnMetaData.getDefinitionUncompressedLength(),
-                columnMetaData.getDataLength(),
-                columnMetaData.getDataUncompressedLength());
+                columnMetaData.getValueCount(),
+                columnMetaData.getTotalSize(),
+                columnMetaData.getTotalUncompressedSize());
           }
         }
       }
 
       Set<Entry<String, ColStats>> entries = stats.entrySet();
       long total = 0;
-      long totalRL = 0;
-      long totalRLUnc = 0;
-      long totalDL = 0;
-      long totalDLUnc = 0;
-      long totalData = 0;
-      long totalDataUnc = 0;
+      long totalValues = 0;
+      long totalUnc = 0;
       for (Entry<String, ColStats> entry : entries) {
         ColStats colStats = entry.getValue();
         total += colStats.allStats.total;
-        totalRL += colStats.repStats.total;
-        totalRLUnc += colStats.repUncStats.total;
-        totalDL += colStats.defStats.total;
-        totalDLUnc += colStats.defUncStats.total;
-        totalData += colStats.dataStats.total;
-        totalDataUnc += colStats.dataUncStats.total;
+        totalValues += colStats.valueCountStats.total;
+        totalUnc += colStats.uncStats.total;
       }
 
-      for (Entry<String, ColStats> entry : entries) {
-        ColStats colStats = entry.getValue();
-        System.out.println(entry.getKey() +" " + percent(colStats.dataStats.total, totalData) + "% of data " + colStats);
-      }
+//      for (Entry<String, ColStats> entry : entries) {
+//        ColStats colStats = entry.getValue();
+//        System.out.println(entry.getKey() +" " + percent(colStats.allStats.total, totalData) + "% of data " + colStats);
+//      }
 
-      printTotalString("repetition levels", totalRL, totalRLUnc);
-      printTotalString("definition levels", totalDL, totalDLUnc);
-      printTotalString("data", totalData, totalDataUnc);
-      long totalUnc = totalRLUnc + totalDLUnc + totalDataUnc;
-      System.out.println("Repetition and definition levels overhead: " + percent(totalRL + totalDL,totalData) + "% of data size");
+//      printTotalString("repetition levels", totalRL, totalRL);
+//      printTotalString("definition levels", totalDL, totalDL);
+//      printTotalString("data", totalData, totalDataUnc);
+//      long totalUnc = totalRL + totalDL + totalDataUnc;
+//      System.out.println("Repetition and definition levels overhead: " + percent(totalRL + totalDL,totalData) + "% of data size");
       System.out.println("average block size: "+ humanReadable(total/blockCount)+" (raw "+humanReadable(totalUnc/blockCount)+")");
+      System.out.println("average value count: "+ humanReadable(totalValues/blockCount));
     } finally {
       threadPool.shutdownNow();
     }
@@ -180,45 +174,36 @@ public class PrintFooter {
 
   private static class ColStats {
 
+    Stats valueCountStats = new Stats();
     Stats allStats = new Stats();
-    Stats repStats = new Stats();
-    Stats defStats = new Stats();
-    Stats dataStats = new Stats();
-    Stats repUncStats = new Stats();
-    Stats defUncStats = new Stats();
-    Stats dataUncStats = new Stats();
+    Stats uncStats = new Stats();
     int blocks = 0;
 
-    public void add(long columnLength, long rep, long repUnc, long def, long defUnc, long data, long dataUnc) {
+    public void add(long valueCount, long size, long uncSize) {
       ++blocks;
-      allStats.add(columnLength);
-      repStats.add(rep);
-      repUncStats.add(repUnc);
-      defStats.add(def);
-      defUncStats.add(defUnc);
-      dataStats.add(data);
-      dataUncStats.add(dataUnc);
+      valueCountStats.add(valueCount);
+      allStats.add(size);
+      uncStats.add(uncSize);
     }
 
     @Override
     public String toString() {
-      long raw = dataUncStats.total;
+      long raw = uncStats.total;
       long compressed = allStats.total;
       return allStats.toString(blocks) + " (raw data: " + humanReadable(raw) + (raw == 0 ? "" : " saving " + (raw - compressed)*100/raw + "%") + ")\n"
-      + "  r: "+repStats.toString(blocks) + " (uncompressed "+repUncStats.toString(blocks)+") \n"
-      + "  d: "+defStats.toString(blocks) + " (uncompressed "+defUncStats.toString(blocks)+")\n"
-      + "  data: "+dataStats.toString(blocks)+" (uncompressed "+dataUncStats.toString(blocks)+")";
+      + "  values: "+valueCountStats.toString(blocks) + "\n"
+      + "  uncompressed: "+uncStats.toString(blocks);
     }
 
   }
 
-  private static void add(String[] path, long columnLength, long rep, long repUnc, long def, long defUnc, long data, long dataUnc) {
+  private static void add(String[] path, long valueCount, long size, long uncSize) {
     String key = Arrays.toString(path);
     ColStats colStats = stats.get(key);
     if (colStats == null) {
       colStats = new ColStats();
       stats.put(key, colStats);
     }
-    colStats.add(columnLength, rep, repUnc, def, defUnc, data, dataUnc);
+    colStats.add(valueCount, size, uncSize);
   }
 }

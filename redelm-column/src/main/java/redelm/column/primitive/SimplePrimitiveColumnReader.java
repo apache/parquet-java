@@ -15,12 +15,17 @@
  */
 package redelm.column.primitive;
 
+import static redelm.Log.DEBUG;
 import static redelm.column.primitive.SimplePrimitiveColumnWriter.CHARSET;
 
+import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 
+import redelm.Log;
+
 public class SimplePrimitiveColumnReader extends PrimitiveColumnReader {
+  private static final Log LOG = Log.getLog(SimplePrimitiveColumnReader.class);
 
   private DataInputStream in;
 
@@ -123,8 +128,15 @@ public class SimplePrimitiveColumnReader extends PrimitiveColumnReader {
     return value | (b << i);
   }
 
+  /**
+   * {@inheritDoc}
+   * @see redelm.column.primitive.PrimitiveColumnReader#initFromPage(byte[], int)
+   */
   @Override
-  public void readStripe(DataInputStream in) throws IOException {
-    this.in = in;
+  public int initFromPage(byte[] in, int offset) throws IOException {
+    if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));
+    this.in = new DataInputStream(new ByteArrayInputStream(in, offset, in.length - offset));
+    return in.length;
   }
+
 }

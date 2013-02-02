@@ -13,18 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.column;
+package redelm.column.mem;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutput;
-import java.io.IOException;
+import redelm.column.ColumnDescriptor;
 
-public class RedelmByteArrayOutputStream extends ByteArrayOutputStream {
-  public RedelmByteArrayOutputStream(int initialSize) {
-    super(initialSize);
-  }
 
-  public void writeTo(DataOutput out) throws IOException {
-    out.write(buf, 0, count);
-  }
+abstract public class PageStore {
+
+  abstract public PageWriter getPageWriter(ColumnDescriptor path);
+
+  abstract public PageReader getPageReader(ColumnDescriptor descriptor);
+
 }

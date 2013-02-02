@@ -26,6 +26,7 @@ import java.util.logging.Level;
 
 import redelm.Log;
 import redelm.column.mem.MemColumnsStore;
+import redelm.column.mem.MemPageStore;
 import redelm.data.GroupWriter;
 import redelm.schema.MessageType;
 
@@ -38,9 +39,8 @@ import redelm.schema.MessageType;
 public class PerfTest {
 
   public static void main(String[] args) {
-    MemColumnsStore columns = new MemColumnsStore(50*1024*1024, schema);
+    MemColumnsStore columns = new MemColumnsStore(50*1024*1024, new MemPageStore(), 50*1024*1024);
     write(columns);
-    columns.flip();
     read(columns);
     System.out.println(columns.memSize()+" bytes used total");
     System.out.println("max col size: "+columns.maxColMemSize()+" bytes");

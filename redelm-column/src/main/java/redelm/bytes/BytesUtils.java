@@ -13,43 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.hadoop;
+package redelm.bytes;
 
-/**
- * Raw content of a Metadata block in the file
- *
- * @author Julien Le Dem
- *
- */
-public class MetaDataBlock {
+import java.io.IOException;
+import java.io.OutputStream;
 
-  private final String name;
-  private final byte[] data;
+public class BytesUtils {
 
-  /**
-   *
-   * @param name name of the block (must be unique)
-   * @param data data for the block
-   */
-  public MetaDataBlock(String name, byte[] data) {
-    this.name = name;
-    this.data = data;
+  public static int readInt(byte[] in, int offset) throws IOException {
+    int ch1 = in[offset] & 0xff;
+    int ch2 = in[offset + 1] & 0xff;
+    int ch3 = in[offset + 2] & 0xff;
+    int ch4 = in[offset + 3] & 0xff;
+    return ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
   }
 
-  /**
-   *
-   * @return name of the block
-   */
-  public String getName() {
-    return name;
+  public static void writeInt(OutputStream out, int v) throws IOException {
+    out.write((v >>> 24) & 0xFF);
+    out.write((v >>> 16) & 0xFF);
+    out.write((v >>>  8) & 0xFF);
+    out.write((v >>>  0) & 0xFF);
   }
-
-  /**
-   *
-   * @return raw content
-   */
-  public byte[] getData() {
-    return data;
-  }
-
 }

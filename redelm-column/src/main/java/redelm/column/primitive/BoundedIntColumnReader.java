@@ -15,15 +15,19 @@
  */
 package redelm.column.primitive;
 
-import java.io.DataInputStream;
+import static redelm.Log.DEBUG;
+
 import java.io.IOException;
 
-import redelm.utils.Varint;
+import redelm.Log;
+import redelm.bytes.BytesUtils;
 
 public class BoundedIntColumnReader extends PrimitiveColumnReader {
+  private static final Log LOG = Log.getLog(BoundedIntColumnReader.class);
+
   private int currentValueCt = 0;
   private int currentValue = 0;
-  private int bitsPerValue = 0;
+  private final int bitsPerValue;
   private BitReader bitReader = new BitReader();
 
   public BoundedIntColumnReader(int bound) {
@@ -57,10 +61,13 @@ public class BoundedIntColumnReader extends PrimitiveColumnReader {
   // bytes would have to be serialized). This is the flip-side
   // to BoundedIntColumnWriter.writeData(BytesOutput)
   @Override
-  public void readStripe(DataInputStream in) throws IOException {
-    int totalBytes = Varint.readSignedVarInt(in);
-    byte[] buf = new byte[totalBytes];
-    in.readFully(buf);
-    bitReader.prepare(buf);
+  public int initFromPage(byte[] in, int offset) throws IOException {
+    int totalBytes = BytesUtils.readInt(in, offset);
+    if (DEBUG) LOG.debug("will read "+ totalBytes + " bytes");
+    currentValueCt = 0;
+    currentValue = 0;
+    bitReader.prepare(in, offset + 4, totalBytes);
+    if (DEBUG) LOG.debug("will read next from " + (offset + totalBytes + 4));
+    return offset + totalBytes + 4;
   }
 }

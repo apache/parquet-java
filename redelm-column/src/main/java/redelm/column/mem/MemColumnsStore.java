@@ -26,22 +26,23 @@ import redelm.column.ColumnReader;
 import redelm.column.ColumnWriter;
 import redelm.column.ColumnsStore;
 import redelm.schema.MessageType;
-import redelm.schema.PrimitiveType.Primitive;
 
 public class MemColumnsStore extends ColumnsStore {
 
-  Map<ColumnDescriptor, MemColumn> columns = new TreeMap<ColumnDescriptor, MemColumn>();
-  private int initialColumnSize;
-  private MessageType schema;
+  private final Map<ColumnDescriptor, MemColumn> columns = new TreeMap<ColumnDescriptor, MemColumn>();
+  private final int initialColumnSize;
+  private final PageStore pageStore;
+  private final int pageSizeThreshold;
 
-  public MemColumnsStore(int initialColumnSize, MessageType schema) {
+  public MemColumnsStore(int initialColumnSize, PageStore pageStore, int pageSizeThreshold) {
     super();
     this.initialColumnSize = initialColumnSize;
-    this.schema = schema;
+    this.pageStore = pageStore;
+    this.pageSizeThreshold = pageSizeThreshold;
   }
 
   public ColumnReader getColumnReader(ColumnDescriptor path) {
-    return getColumn(path).getColumnReader();
+    return getColumn(path).getColumnReader(pageStore.getPageReader(path));
   }
 
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
@@ -58,7 +59,8 @@ public class MemColumnsStore extends ColumnsStore {
   }
 
   private MemColumn newMemColumn(ColumnDescriptor path) {
-    return new MemColumn(path, initialColumnSize);
+    PageWriter pageWriter = pageStore.getPageWriter(path);
+    return new MemColumn(path, initialColumnSize, pageWriter, pageSizeThreshold);
   }
 
   @Override
@@ -66,7 +68,7 @@ public class MemColumnsStore extends ColumnsStore {
       StringBuilder sb = new StringBuilder();
       for (Entry<ColumnDescriptor, MemColumn> entry : columns.entrySet()) {
         sb.append(Arrays.toString(entry.getKey().getPath())).append(": ");
-        sb.append(entry.getValue().memSize()).append(" bytes");
+        sb.append(entry.getValue().getMemSize()).append(" bytes");
         sb.append("\n");
       }
       return sb.toString();
@@ -76,47 +78,26 @@ public class MemColumnsStore extends ColumnsStore {
     Collection<MemColumn> values = columns.values();
     int total = 0;
     for (MemColumn memColumn : values) {
-      total += memColumn.memSize();
+      total += memColumn.getMemSize();
     }
     return total;
   }
 
-  public int maxColMemSize() {
+  public long maxColMemSize() {
     Collection<MemColumn> values = columns.values();
-    int max = 0;
+    long max = 0;
     for (MemColumn memColumn : values) {
-      max = Math.max(max, memColumn.memSize());
+      max = Math.max(max, memColumn.getMemSize());
     }
     return max;
   }
 
-  public Collection<MemColumn> getColumns() {
-    return columns.values();
-  }
-
-  public void setForRead(
-      String[] path, Primitive primitive, //TODO can eliminate the primitive?
-      int recordCount,
-      byte[] repetitionLevels,
-      byte[] definitionLevels, byte[] data) {
-    ColumnDescriptor descriptor = schema.getColumnDescription(path);
-    MemColumn col = getColumn(descriptor);
-    col.setForRead(recordCount, repetitionLevels, definitionLevels, data);
-    columns.put(descriptor, col);
-  }
-
-  public boolean isFullyConsumed() {
-    for (MemColumn c : columns.values()) {
-      if (c.getColumnReader().isFullyConsumed()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  public void flip() {
-    for (MemColumn c : columns.values()) {
-      c.flip();
+  @Override
+  public void flush() {
+    Collection<MemColumn> values = columns.values();
+    for (MemColumn memColumn : values) {
+      memColumn.getColumnWriter().flush();
     }
   }
+
 }

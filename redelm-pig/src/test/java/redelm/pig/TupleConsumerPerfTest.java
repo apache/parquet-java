@@ -17,15 +17,13 @@ package redelm.pig;
 
 import static redelm.Log.DEBUG;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 
 import redelm.Log;
 import redelm.column.mem.MemColumnsStore;
+import redelm.column.mem.MemPageStore;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
 import redelm.io.RecordConsumer;
@@ -59,9 +57,9 @@ public class TupleConsumerPerfTest {
     PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
     MessageType schema = pigSchemaConverter.convert(Utils.getSchemaFromString(pigSchema));
 
-    MemColumnsStore columns = new MemColumnsStore(50*1024*1024, schema);
+    MemColumnsStore columns = new MemColumnsStore(50*1024*1024, new MemPageStore(), 50*1024*1024);
     write(columns, schema, pigSchema);
-    columns.flip();
+    columns.flush();
     read(columns, pigSchema, pigSchemaProjected, pigSchemaNoString);
     System.out.println(columns.memSize()+" bytes used total");
     System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
@@ -158,10 +156,16 @@ public class TupleConsumerPerfTest {
     System.out.println();
   }
 
+  private static Map<String, String> pigMetaData(String pigSchemaString) {
+    Map<String, String> map = new HashMap<String, String>();
+    new PigMetaData(pigSchemaString).addToMetaData(map);
+    return map;
+  }
+
   private static void write(MemColumnsStore columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
     MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     TupleWriteSupport tupleWriter = new TupleWriteSupport();
-    tupleWriter.initForWrite(columnIO.getRecordWriter(columns), schema, Arrays.asList(new PigMetaData(pigSchemaString).toMetaDataBlock()));
+    tupleWriter.initForWrite(columnIO.getRecordWriter(columns), schema, pigMetaData(pigSchemaString));
     write(tupleWriter, 10000);
     write(tupleWriter, 10000);
     write(tupleWriter, 10000);
@@ -180,7 +184,7 @@ public class TupleConsumerPerfTest {
   private static void read(RecordReader<Void> recordReader, int count, String pigSchemaString) throws ParserException {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
     MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchemaString));
-    tupleReadSupport.initForRead(Arrays.asList(new PigMetaData(pigSchemaString).toMetaDataBlock()), schema.toString());
+    tupleReadSupport.initForRead(pigMetaData(pigSchemaString), schema.toString());
     RecordConsumer recordConsumer = tupleReadSupport.newRecordConsumer();
     if (DEBUG) {
       recordConsumer = new RecordConsumerLoggingWrapper(recordConsumer);

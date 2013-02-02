@@ -15,9 +15,8 @@
  */
 package redelm.pig;
 
-import java.util.List;
+import java.util.Map;
 
-import redelm.hadoop.MetaDataBlock;
 import redelm.hadoop.ReadSupport;
 import redelm.io.RecordMaterializer;
 import redelm.parser.MessageTypeParser;
@@ -47,9 +46,9 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
    * {@inheritDoc}
    */
   @Override
-  public void initForRead(List<MetaDataBlock> metaDataBlocks, String requestedSchema) {
+  public void initForRead(Map<String, String> keyValueMetaData, String requestedSchema) {
     this.requestedSchema = requestedSchema;
-    PigMetaData pigMetaData = PigMetaData.fromMetaDataBlocks(metaDataBlocks);
+    PigMetaData pigMetaData = PigMetaData.fromMetaDataBlocks(keyValueMetaData);
     try {
       this.pigSchema = Utils.getSchemaFromString(pigMetaData.getPigSchema());
     } catch (ParserException e) {

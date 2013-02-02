@@ -15,10 +15,8 @@
  */
 package redelm.column.primitive;
 
-import java.io.DataOutput;
-import java.io.IOException;
-
-import redelm.utils.Varint;
+import redelm.Log;
+import redelm.bytes.BytesInput;
 
 /**
  * This is a special ColumnWriter for the case when you need to write
@@ -28,6 +26,8 @@ import redelm.utils.Varint;
  * the values written are between 0 and the bound, inclusive.
  */
 public class BoundedIntColumnWriter extends PrimitiveColumnWriter {
+  private static final Log LOG = Log.getLog(BoundedIntColumnWriter.class);
+
   private int currentValue = -1;
   private int currentValueCt = -1;
   private boolean currentValueIsRepeated = false;
@@ -52,10 +52,11 @@ public class BoundedIntColumnWriter extends PrimitiveColumnWriter {
     }
     bitsPerValue = (int)Math.ceil(Math.log(bound + 1)/Math.log(2));
     shouldRepeatThreshold = (bitsPerValue + 9)/(1 + bitsPerValue);
+    if (Log.DEBUG) LOG.debug("init column with bit width of " + bitsPerValue + " and repeat threshold of " + shouldRepeatThreshold);
   }
 
   @Override
-  public int getMemSize() {
+  public long getMemSize() {
     // currentValue + currentValueCt = 8 bytes
     // shouldRepeatThreshold + bitsPerValue = 8 bytes
     // bitWriter = 8 bytes
@@ -65,14 +66,14 @@ public class BoundedIntColumnWriter extends PrimitiveColumnWriter {
 
   // This assumes that the full state must be serialized, since there is no close method
   @Override
-  public void writeData(DataOutput out) throws IOException {
+  public BytesInput getBytes() {
     serializeCurrentValue();
     byte[] buf = bitWriter.finish();
+    if (Log.DEBUG) LOG.debug("writing a buffer of size " + buf.length + " + 4 bytes");
     // We serialize the length so that on deserialization we can
     // deserialize as we go, instead of having to load everything
     // into memory
-    Varint.writeSignedVarInt(buf.length, out);
-    out.write(buf);
+    return BytesInput.fromSequence(BytesInput.fromInt(buf.length), BytesInput.from(buf));
   }
 
   @Override
@@ -80,6 +81,7 @@ public class BoundedIntColumnWriter extends PrimitiveColumnWriter {
     currentValue = -1;
     currentValueCt = -1;
     currentValueIsRepeated = false;
+    thereIsABufferedValue = false;
     isFirst = true;
     bitWriter.reset();
   }
@@ -92,20 +94,17 @@ public class BoundedIntColumnWriter extends PrimitiveColumnWriter {
         currentValueIsRepeated = true;
       }
     } else {
-      try {
-        if (!isFirst) {
-          serializeCurrentValue();
-        } else {
-          isFirst = false;
-        }
-      } catch (IOException e) {
-        throw new RuntimeException("Error serializing current value: " + currentValue, e);
+      if (!isFirst) {
+        serializeCurrentValue();
+      } else {
+        isFirst = false;
       }
+
       newCurrentValue(val);
     }
   }
 
-  private void serializeCurrentValue() throws IOException {
+  private void serializeCurrentValue() {
     if (thereIsABufferedValue) {
       if (currentValueIsRepeated) {
         bitWriter.writeBit(true);
@@ -127,4 +126,5 @@ public class BoundedIntColumnWriter extends PrimitiveColumnWriter {
     currentValueIsRepeated = false;
     thereIsABufferedValue = true;
   }
+
 }

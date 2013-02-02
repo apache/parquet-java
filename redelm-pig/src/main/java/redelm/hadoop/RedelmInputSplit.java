@@ -28,7 +28,8 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
 
-import redelm.hadoop.RedelmMetaData.FileMetaData;
+import redelm.hadoop.metadata.BlockMetaData;
+import redelm.hadoop.metadata.FileMetaData;
 
 
 import org.apache.hadoop.fs.Path;

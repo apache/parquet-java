@@ -34,11 +34,13 @@ import java.util.List;
 
 import org.junit.Test;
 
+import redelm.Log;
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnReader;
 import redelm.column.ColumnWriter;
 import redelm.column.ColumnsStore;
 import redelm.column.mem.MemColumnsStore;
+import redelm.column.mem.MemPageStore;
 import redelm.data.Group;
 import redelm.data.GroupRecordConsumer;
 import redelm.data.GroupWriter;
@@ -46,6 +48,8 @@ import redelm.data.simple.SimpleGroupFactory;
 import redelm.schema.MessageType;
 
 public class TestColumnIO {
+  private static final Log LOG = Log.getLog(TestColumnIO.class);
+
   private static final String schemaString =
       "message Document {\n"
     + "  required int64 DocId;\n"
@@ -83,24 +87,24 @@ public class TestColumnIO {
 
   @Test
   public void testColumnIO() {
-    System.out.println(schema);
-    System.out.println("r1");
-    System.out.println(r1);
-    System.out.println("r2");
-    System.out.println(r2);
+    log(schema);
+    log("r1");
+    log(r1);
+    log("r2");
+    log(r2);
 
-    ColumnsStore columns = new MemColumnsStore(1024, schema);
+    ColumnsStore columns = new MemColumnsStore(1024, new MemPageStore(), 800);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     {
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(schema);
-      System.out.println(columnIO);
+      log(columnIO);
       GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
       groupWriter.write(r1);
       groupWriter.write(r2);
-      System.out.println(columns);
-      System.out.println("=========");
-      columns.flip();
+      columns.flush();
+      log(columns);
+      log("=========");
       RecordReader<Group> recordReader = getRecordReader(columnIO, schema, columns);
 
       validateFSA(expectedFSA, columnIO, recordReader);
@@ -111,16 +115,14 @@ public class TestColumnIO {
 
       int i = 0;
       for (Group record : records) {
-        System.out.println("r" + (++i));
-        System.out.println(record);
+        log("r" + (++i));
+        log(record);
       }
 
       assertEquals("deserialization does not display the same result", r1.toString(), records.get(0).toString());
       assertEquals("deserialization does not display the same result", r2.toString(), records.get(1).toString());
     }
     {
-      columns.flip();
-
       MessageColumnIO columnIO2 = columnIOFactory.getColumnIO(schema2);
 
 
@@ -134,12 +136,16 @@ public class TestColumnIO {
 
       int i = 0;
       for (Group record : records) {
-        System.out.println("r" + (++i));
-        System.out.println(record);
+        log("r" + (++i));
+        log(record);
       }
       assertEquals("deserialization does not display the expected result", pr1.toString(), records.get(0).toString());
       assertEquals("deserialization does not display the expected result", pr2.toString(), records.get(1).toString());
     }
+  }
+
+  private void log(Object o) {
+    LOG.info(o);
   }
 
   private RecordReader<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, ColumnsStore columns) {
@@ -148,26 +154,26 @@ public class TestColumnIO {
   }
 
   private void validateFSA(int[][] expectedFSA, MessageColumnIO columnIO, RecordReader<?> recordReader) {
-    System.out.println("FSA: ----");
+    log("FSA: ----");
     List<PrimitiveColumnIO> leaves = columnIO.getLeaves();
     for (int i = 0; i < leaves.size(); ++i) {
       PrimitiveColumnIO primitiveColumnIO = leaves.get(i);
-      System.out.println(Arrays.toString(primitiveColumnIO.getFieldPath()));
+      log(Arrays.toString(primitiveColumnIO.getFieldPath()));
       for (int r = 0; r < expectedFSA[i].length; r++) {
         int next = expectedFSA[i][r];
-        System.out.println(" "+r+" -> "+ (next==leaves.size() ? "end" : Arrays.toString(leaves.get(next).getFieldPath()))+": "+recordReader.getNextLevel(i, r));
+        log(" "+r+" -> "+ (next==leaves.size() ? "end" : Arrays.toString(leaves.get(next).getFieldPath()))+": "+recordReader.getNextLevel(i, r));
         assertEquals(Arrays.toString(primitiveColumnIO.getFieldPath())+": "+r+" -> ", next, recordReader.getNextReader(i, r));
       }
     }
-    System.out.println("----");
+    log("----");
   }
 
   @Test
   public void testPushParser() {
-    ColumnsStore columns = new MemColumnsStore(1024, schema);
+    ColumnsStore columns = new MemColumnsStore(1024, new MemPageStore(), 800);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
-    columns.flip();
+    columns.flush();
 
     String[] expected = {
     "startMessage()",
@@ -413,29 +419,12 @@ public class TestColumnIO {
           }
 
           @Override
-          public void writeRepetitionLevelColumn(DataOutput out)
-              throws IOException {
+          public void flush() {
             throw new UnsupportedOperationException();
           }
 
           @Override
-          public void writeDefinitionLevelColumn(DataOutput out)
-              throws IOException {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public void writeDataColumn(DataOutput out) throws IOException {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public void reset() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public int getValueCount() {
+          public long memSize() {
             throw new UnsupportedOperationException();
           }
         };
@@ -445,13 +434,14 @@ public class TestColumnIO {
         throw new UnsupportedOperationException();
       }
       @Override
-      public void flip() {
-        throw new UnsupportedOperationException();
+      public void flush() {
+        assertEquals("read all events", expected.length, counter);
       }
     };
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
     groupWriter.write(r1);
     groupWriter.write(r2);
+    columns.flush();
   }
 }
