@@ -20,17 +20,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import redelm.Log;
 import redelm.column.ColumnDescriptor;
 import redelm.column.UnknownColumnException;
 
 public class MemPageStore extends PageStore {
+  private static final Log LOG = Log.getLog(MemPageStore.class);
 
   private Map<ColumnDescriptor, MemPageWriter> pageWriters = new HashMap<ColumnDescriptor, MemPageWriter>();
 
   @Override
   public PageWriter getPageWriter(ColumnDescriptor path) {
     MemPageWriter pageWriter;
-    if (pageWriters.containsKey(pageWriters)) {
+    if (pageWriters.containsKey(path)) {
       pageWriter = pageWriters.get(path);
     } else {
       pageWriter = new MemPageWriter();
@@ -46,6 +48,7 @@ public class MemPageStore extends PageStore {
       throw new UnknownColumnException(descriptor);
     }
     List<Page> pages = new ArrayList<Page>(pageWriter.getPages());
+    if (Log.DEBUG) LOG.debug("initialize page reader with "+ pageWriter.getTotalValueCount() + " values and " + pages.size() + " pages");
     return new MemPageReader(pageWriter.getTotalValueCount(), pages.iterator());
   }
 

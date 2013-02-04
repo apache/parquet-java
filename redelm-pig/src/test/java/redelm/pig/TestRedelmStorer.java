@@ -42,10 +42,11 @@ public class TestRedelmStorer {
   @Test
   public void testStorer() throws ExecException, Exception {
     String out = "target/out";
+    int rows = 10;
     PigServer pigServer = new PigServer(ExecType.LOCAL);
     Data data = Storage.resetData(pigServer);
     Collection<Tuple> list = new ArrayList<Tuple>();
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < rows; i++) {
       list.add(Storage.tuple("a"+i));
     }
     data.set("in", "a:chararray", list );
@@ -65,7 +66,7 @@ public class TestRedelmStorer {
 
     List<Tuple> result = data.get("out");
 
-    assertEquals(1000, result.size());
+    assertEquals(rows, result.size());
     int i = 0;
     for (Tuple tuple : result) {
       assertEquals("a"+i, tuple.get(0));

@@ -230,7 +230,10 @@ public class RedelmFileReader {
       return 0;
     }
     BlockMetaData block = blocks.get(currentBlock);
-    LOG.info("starting reading block " + currentBlock);
+    if (block.getRowCount() == 0) {
+      throw new RuntimeException("Illegal row group of 0 rows");
+    }
+    LOG.info("starting reading block #" + currentBlock);
     long t0 = System.currentTimeMillis();
     for (ColumnChunkMetaData mc : block.getColumns()) {
       String pathKey = Arrays.toString(mc.getPath());

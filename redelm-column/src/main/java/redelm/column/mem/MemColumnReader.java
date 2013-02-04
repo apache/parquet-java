@@ -47,9 +47,18 @@ abstract class MemColumnReader implements ColumnReader {
   private long pageValueCount;
 
   public MemColumnReader(ColumnDescriptor path, PageReader pageReader) {
+    if (path == null) {
+      throw new NullPointerException("path");
+    }
+    if (pageReader == null) {
+      throw new NullPointerException("pageReader");
+    }
     this.path = path;
     this.pageReader = pageReader;
     this.totalValueCount = pageReader.getTotalValueCount();
+    if (totalValueCount == 0) {
+      throw new RuntimeException("totalValueCount == 0");
+    }
   }
 
   @Override

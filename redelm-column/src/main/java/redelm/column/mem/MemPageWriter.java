@@ -33,6 +33,9 @@ public class MemPageWriter implements PageWriter {
 
   @Override
   public void writePage(BytesInput bytesInput, int valueCount) {
+    if (valueCount == 0) {
+      throw new RuntimeException("illegal page of 0 values");
+    }
     memSize += bytesInput.size();
     pages.add(new Page(BytesInput.copy(bytesInput), valueCount));
     totalValueCount += valueCount;

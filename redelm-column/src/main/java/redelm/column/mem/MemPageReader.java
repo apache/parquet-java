@@ -29,6 +29,9 @@ public class MemPageReader implements PageReader {
 
   public MemPageReader(int totalValueCount, Iterator<Page> pages) {
     super();
+    if (pages == null) {
+      throw new NullPointerException("pages");
+    }
     this.totalValueCount = totalValueCount;
     this.pages = pages;
   }

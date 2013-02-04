@@ -15,6 +15,8 @@
  */
 package redelm.hadoop;
 
+import static redelm.Log.DEBUG;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -94,11 +96,11 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
         LOG.info("time spent so far " + percentReading + "% reading ("+totalTimeSpentReadingBytes+" ms) and " + percentProcessing + "% processing ("+totalTimeSpentProcessingRecords+" ms)");
       }
       final MemPageStore memPageStore = new MemPageStore();
-      columnsStore = new MemColumnsStore(0, memPageStore, 8 * 1024); // TODO: parameterize this
       LOG.info("reading next block");
       long t0 = System.currentTimeMillis();
       long count = reader.readColumns(new PageConsumer() {
         public void consumePage(String[] path, int valueCount, InputStream is, int pageSize) {
+          if (DEBUG) LOG.debug("reading page for col " + Arrays.toString(path) + ": " + valueCount + " values, " + pageSize + " bytes");
           PageWriter pageWriter = memPageStore.getPageWriter(requestedSchema.getColumnDescription(path));
           pageWriter.writePage(BytesInput.from(is, pageSize), valueCount);
         }
@@ -106,9 +108,10 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
       if (count == 0) {
         return;
       }
+      columnsStore = new MemColumnsStore(0, memPageStore, 8 * 1024); // TODO: parameterize this
       long timeSpentReading = System.currentTimeMillis() - t0;
       totalTimeSpentReadingBytes += timeSpentReading;
-      LOG.info("block read in memory in " + timeSpentReading + " ms");
+      LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + count);
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema);
       recordReader = columnIO.getRecordReader(columnsStore, readSupport.newRecordConsumer());
       startedReadingCurrentBlockAt = System.currentTimeMillis();
@@ -175,7 +178,6 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
     for (BlockMetaData block : blocks) {
       total += block.getRowCount();
     }
-
   }
 
   private boolean contains(GroupType requestedSchema, String[] path) {
@@ -205,6 +207,7 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
     checkRead();
     if (current<total) {
       currentValue = recordReader.read();
+      if (DEBUG) LOG.debug("read value: " + currentValue);
       current ++;
       return true;
     }
