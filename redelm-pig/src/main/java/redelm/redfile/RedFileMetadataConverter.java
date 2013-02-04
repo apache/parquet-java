@@ -70,9 +70,9 @@ public class RedFileMetadataConverter {
   }
 
   private void addRowGroup(RedelmMetaData redelmMetadata, FileMetaData fileMetaData, BlockMetaData block) {
-    RowGroup rowGroup = new RowGroup();
     //rowGroup.total_byte_size = ;
     List<ColumnChunkMetaData> columns = block.getColumns();
+    List<ColumnChunk> redFileColumns = new ArrayList<ColumnChunk>();
     for (ColumnChunkMetaData columnMetaData : columns) {
       ColumnChunk columnChunk = new ColumnChunk();
       columnChunk.file_path = null; // same file
@@ -90,8 +90,9 @@ public class RedFileMetadataConverter {
 //      columnChunk.meta_data.index_page_offset = ;
 //      columnChunk.meta_data.key_value_metadata = ; // nothing yet
 
-      rowGroup.addToColumns(columnChunk);
+      redFileColumns.add(columnChunk);
     }
+    RowGroup rowGroup = new RowGroup(redFileColumns, block.getTotalByteSize(), block.getRowCount());
     fileMetaData.addToRow_groups(rowGroup);
   }
 
