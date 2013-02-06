@@ -28,6 +28,7 @@ import redelm.hadoop.metadata.ColumnChunkMetaData;
 import redelm.hadoop.metadata.CompressionCodecName;
 import redelm.hadoop.metadata.FileMetaData;
 import redelm.io.RecordMaterializer;
+import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType.Primitive;
 
 import org.apache.hadoop.fs.BlockLocation;
@@ -59,7 +60,7 @@ public class TestInputFormat {
         new BlockLocation(new String[0], new String[] { "foo1.datanode", "bar1.datanode"}, 50, 50)
     };
     FileStatus fileStatus = new FileStatus(100, false, 2, 50, 0, new Path("hdfs://foo.namenode:1234/bar"));
-    FileMetaData fileMetaData = new FileMetaData("foo");
+    FileMetaData fileMetaData = new FileMetaData(new MessageType("foo"));
     List<InputSplit> splits = RedelmInputFormat.generateSplits(blocks, hdfsBlocks, fileStatus, fileMetaData, readSupport);
     assertEquals(splits.toString().replaceAll("([{])", "$0\n").replaceAll("([}])", "\n$0"), 2, splits.size());
     for (int i = 0; i < splits.size(); i++) {
@@ -73,7 +74,7 @@ public class TestInputFormat {
 
   private BlockMetaData newBlock(long start) {
     BlockMetaData blockMetaData = new BlockMetaData();
-    ColumnChunkMetaData column = new ColumnChunkMetaData(new String[] {"foo"}, Primitive.STRING, CompressionCodecName.GZIP);
+    ColumnChunkMetaData column = new ColumnChunkMetaData(new String[] {"foo"}, Primitive.BINARY, CompressionCodecName.GZIP);
     column.setFirstDataPage(start);
     blockMetaData.addColumn(column);
     return blockMetaData;

@@ -39,11 +39,11 @@ public class TestPigSchemaConverter {
     testConversion(
         "a:chararray, b:{t:(c:chararray, d:chararray)}",
         "message pig_schema {\n" +
-        "  optional string a;\n" +
+        "  optional binary a;\n" +
         "  optional group b {\n" +
         "    repeated group t {\n" +
-        "      optional string c;\n" +
-        "      optional string d;\n" +
+        "      optional binary c;\n" +
+        "      optional binary d;\n" +
         "    }\n" +
         "  }\n" +
         "}\n");
@@ -54,11 +54,11 @@ public class TestPigSchemaConverter {
     testConversion(
         "a:chararray, b:{(c:chararray, d:chararray)}",
         "message pig_schema {\n" +
-        "  optional string a;\n" +
+        "  optional binary a;\n" +
         "  optional group b {\n" +
         "    repeated group bag {\n" + // the inner field in the bag is called "bag"
-        "      optional string c;\n" +
-        "      optional string d;\n" +
+        "      optional binary c;\n" +
+        "      optional binary d;\n" +
         "    }\n" +
         "  }\n" +
         "}\n");
@@ -69,13 +69,13 @@ public class TestPigSchemaConverter {
     testConversion(
         "a:chararray, b:[(c:chararray, d:chararray)]",
         "message pig_schema {\n" +
-        "  optional string a;\n" +
+        "  optional binary a;\n" +
         "  optional group b {\n" +
         "    repeated group map {\n" +
-        "      required string key;\n" +
+        "      required binary key;\n" +
         "      optional group value {\n" +
-        "        optional string c;\n" +
-        "        optional string d;\n" +
+        "        optional binary c;\n" +
+        "        optional binary d;\n" +
         "      }\n" +
         "    }\n" +
         "  }\n" +
@@ -88,7 +88,7 @@ public class TestPigSchemaConverter {
         "message pig_schema {\n" +
         "  optional group a {\n" +
         "    repeated group map {\n" +
-        "      required string key;\n" +
+        "      required binary key;\n" +
         "      optional int32 value;" +
         "    }\n" +
         "  }\n" +
@@ -101,10 +101,10 @@ public class TestPigSchemaConverter {
         "message pig_schema {\n" +
         "  optional group a {\n" +
         "    repeated group map {\n" +
-        "      required string key;\n" +
+        "      required binary key;\n" +
         "      optional group value {\n" +
         "        repeated group map {\n" +
-        "          required string key;\n" +
+        "          required binary key;\n" +
         "          optional int32 value;\n" +
         "        }\n" +
         "      }\n" +
@@ -119,7 +119,7 @@ public class TestPigSchemaConverter {
         "message pig_schema {\n" +
         "  optional group a {\n" +
         "    repeated group map {\n" +
-        "      required string key;\n" +
+        "      required binary key;\n" +
         "      optional group value {\n" +
         "        repeated group bag {\n" +
         "          optional int32 a;\n" +
@@ -135,7 +135,7 @@ public class TestPigSchemaConverter {
     testConversion(
         "a:chararray, int",
         "message pig_schema {\n" +
-        "  optional string a;\n" +
+        "  optional binary a;\n" +
         "  optional int32 val_0;\n" +
         "}\n");
   }

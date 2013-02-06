@@ -62,7 +62,7 @@ public class BoundedIntColumnReader extends PrimitiveColumnReader {
   // to BoundedIntColumnWriter.writeData(BytesOutput)
   @Override
   public int initFromPage(byte[] in, int offset) throws IOException {
-    int totalBytes = BytesUtils.readInt(in, offset);
+    int totalBytes = BytesUtils.readIntBigEndian(in, offset);
     if (DEBUG) LOG.debug("will read "+ totalBytes + " bytes");
     currentValueCt = 0;
     currentValue = 0;

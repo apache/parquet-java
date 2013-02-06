@@ -92,14 +92,14 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
       delegate.addLong(value);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void addString(String value) {
-      if (DEBUG) log(value);
-      delegate.addString(value);
-    }
+//    /**
+//     * {@inheritDoc}
+//     */
+//    @Override
+//    public void addString(String value) {
+//      if (DEBUG) log(value);
+//      delegate.addString(value);
+//    }
 
     /**
      * {@inheritDoc}

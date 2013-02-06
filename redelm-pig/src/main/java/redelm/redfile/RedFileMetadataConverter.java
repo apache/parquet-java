@@ -31,15 +31,21 @@ import redelm.hadoop.metadata.ColumnChunkMetaData;
 import redelm.hadoop.metadata.CompressionCodecName;
 import redelm.hadoop.metadata.RedelmMetaData;
 import redelm.parser.MessageTypeParser;
+import redelm.schema.GroupType;
 import redelm.schema.MessageType;
+import redelm.schema.PrimitiveType;
+import redelm.schema.Type.Repetition;
+import redelm.schema.TypeVisitor;
 import redelm.schema.PrimitiveType.Primitive;
 import redfile.ColumnChunk;
 import redfile.CompressionCodec;
 import redfile.Encoding;
+import redfile.FieldRepetition;
 import redfile.FileMetaData;
 import redfile.KeyValue;
 import redfile.PageHeader;
 import redfile.RowGroup;
+import redfile.SchemaElement;
 import redfile.Type;
 
 import org.apache.thrift.TBase;
@@ -50,16 +56,19 @@ import org.apache.thrift.transport.TIOStreamTransport;
 public class RedFileMetadataConverter {
 
   public FileMetaData toRedFileMetadata(int currentVersion, RedelmMetaData redelmMetadata) {
-    FileMetaData fileMetaData = new FileMetaData();
-    fileMetaData.schema = redelmMetadata.getFileMetaData().getSchema();
-    fileMetaData.version = currentVersion;
     List<BlockMetaData> blocks = redelmMetadata.getBlocks();
+    List<RowGroup> rowGroups = new ArrayList<RowGroup>();
     int numRows = 0;
     for (BlockMetaData block : blocks) {
       numRows += block.getRowCount();
-      addRowGroup(redelmMetadata, fileMetaData, block);
+      addRowGroup(redelmMetadata, rowGroups, block);
     }
-    fileMetaData.num_rows = numRows;
+    FileMetaData fileMetaData = new FileMetaData(
+        currentVersion,
+        toRedFileSchema(redelmMetadata.getFileMetaData().getSchema()),
+        numRows,
+        rowGroups
+        );
 
     Set<Entry<String, String>> keyValues = redelmMetadata.getKeyValueMetaData().entrySet();
     for (Entry<String, String> keyValue : keyValues) {
@@ -69,7 +78,50 @@ public class RedFileMetadataConverter {
     return fileMetaData;
   }
 
-  private void addRowGroup(RedelmMetaData redelmMetadata, FileMetaData fileMetaData, BlockMetaData block) {
+  List<SchemaElement> toRedFileSchema(MessageType schema) {
+    List<SchemaElement> result = new ArrayList<SchemaElement>();
+    addToList(result, schema);
+    return result;
+  }
+
+  private void addToList(final List<SchemaElement> result, redelm.schema.Type field) {
+    field.accept(new TypeVisitor() {
+      @Override
+      public void visit(PrimitiveType primitiveType) {
+        SchemaElement element = new SchemaElement(toRedfileRepetition(primitiveType.getRepetition()), primitiveType.getName());
+        element.setType(getType(primitiveType.getPrimitive()));
+        result.add(element);
+      }
+
+      private FieldRepetition toRedfileRepetition(Repetition repetition) {
+        switch (repetition) {
+        case REQUIRED: return FieldRepetition.REQUIRED;
+        case OPTIONAL: return FieldRepetition.OPTIONAL;
+        case REPEATED: return FieldRepetition.REPEATED;
+        }
+        throw new RuntimeException("unknown repetition: " + repetition);
+      }
+
+      @Override
+      public void visit(MessageType messageType) {
+        this.visit(messageType.asGroupType());
+      }
+
+      @Override
+      public void visit(GroupType groupType) {
+        SchemaElement element = new SchemaElement(toRedfileRepetition(groupType.getRepetition()), groupType.getName());
+        result.add(element);
+        List<Integer> children = new ArrayList<Integer>();
+        for (redelm.schema.Type field : groupType.getFields()) {
+          children.add(result.size());
+          addToList(result, field);
+        }
+        element.setChildren_indices(children);
+      }
+    });
+  }
+
+  private void addRowGroup(RedelmMetaData redelmMetadata, List<RowGroup> rowGroups, BlockMetaData block) {
     //rowGroup.total_byte_size = ;
     List<ColumnChunkMetaData> columns = block.getColumns();
     List<ColumnChunk> redFileColumns = new ArrayList<ColumnChunk>();
@@ -93,7 +145,7 @@ public class RedFileMetadataConverter {
       redFileColumns.add(columnChunk);
     }
     RowGroup rowGroup = new RowGroup(redFileColumns, block.getTotalByteSize(), block.getRowCount());
-    fileMetaData.addToRow_groups(rowGroup);
+    rowGroups.add(rowGroup);
   }
 
   private CompressionCodec getCodec(String codecClassName) {
@@ -110,10 +162,29 @@ public class RedFileMetadataConverter {
     }
   }
 
+  private Primitive getPrimitive(Type type) {
+    switch (type) {
+      case BYTE_ARRAY:
+        return Primitive.BINARY;
+      case INT64:
+        return Primitive.INT64;
+      case INT32:
+        return Primitive.INT32;
+      case BOOLEAN:
+        return Primitive.BOOLEAN;
+      case FLOAT:
+        return Primitive.FLOAT;
+      case DOUBLE:
+        return Primitive.DOUBLE;
+      default:
+        throw new RuntimeException("Unknown type " + type);
+    }
+  }
+
   private Type getType(Primitive type) {
     switch (type) {
-      case STRING:
-        return Type.BYTE_ARRAY;
+//      case STRING:
+//        return Type.BYTE_ARRAY;
       case INT64:
         return Type.INT64;
       case INT32:
@@ -139,9 +210,8 @@ public class RedFileMetadataConverter {
 
   public RedelmMetaData fromRedFileMetadata(FileMetaData redFileMetadata) throws IOException {
 //    List<MetaDataBlock> result = new ArrayList<MetaDataBlock>();
-    String schema = redFileMetadata.getSchema();
-    MessageType messageType = MessageTypeParser.parseMessageType(schema);
-    redelm.hadoop.metadata.FileMetaData fileMetadata = new redelm.hadoop.metadata.FileMetaData(schema);
+    MessageType messageType = fromRedFileSchema(redFileMetadata.getSchema());
+    redelm.hadoop.metadata.FileMetaData fileMetadata = new redelm.hadoop.metadata.FileMetaData(messageType);
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     List<RowGroup> row_groups = redFileMetadata.getRow_groups();
     for (RowGroup rowGroup : row_groups) {
@@ -173,6 +243,47 @@ public class RedFileMetadataConverter {
       }
     }
     return new RedelmMetaData(fileMetadata, blocks, keyValueMetaData);
+  }
+
+  MessageType fromRedFileSchema(List<SchemaElement> schema) {
+    SchemaElement root = schema.get(0);
+    return new MessageType(root.getName(), convertChildren(schema, root.getChildren_indices()));
+  }
+
+  private redelm.schema.Type[] convertChildren(List<SchemaElement> schema,
+      List<Integer> children_indices) {
+    redelm.schema.Type[] result = new redelm.schema.Type[children_indices.size()];
+    for (int i = 0; i < result.length; i++) {
+      int index = children_indices.get(i);
+      SchemaElement schemaElement = schema.get(index);
+      if ((schemaElement.type == null && schemaElement.children_indices == null)
+          || (schemaElement.type != null && schemaElement.children_indices != null)) {
+        throw new RuntimeException("bad element " + schemaElement);
+      }
+      Repetition repetition = fromRedFileRepetition(schemaElement.getRepetition());
+      String name = schemaElement.getName();
+      if (schemaElement.type != null) {
+        result[i] = new PrimitiveType(
+            repetition,
+            getPrimitive(schemaElement.getType()),
+            name);
+      } else {
+        result[i] = new GroupType(
+            repetition,
+            name,
+            convertChildren(schema, schemaElement.getChildren_indices()));
+      }
+    }
+    return result;
+  }
+
+  private Repetition fromRedFileRepetition(FieldRepetition repetition) {
+    switch (repetition) {
+    case REQUIRED: return Repetition.REQUIRED;
+    case OPTIONAL: return Repetition.OPTIONAL;
+    case REPEATED: return Repetition.REPEATED;
+    }
+    throw new RuntimeException("unknown repetition: " + repetition);
   }
 
   public void writePageHeader(PageHeader pageHeader, OutputStream to) throws IOException {

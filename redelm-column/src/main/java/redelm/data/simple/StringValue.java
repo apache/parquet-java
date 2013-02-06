@@ -17,13 +17,14 @@ package redelm.data.simple;
 
 import redelm.io.RecordConsumer;
 
-
+// TODO: delete
 public class StringValue extends Primitive {
 
   private final String value;
 
   public StringValue(String value) {
-    this.value = value;
+    throw new UnsupportedOperationException();
+//    this.value = value;
   }
 
   public String get() {
@@ -42,6 +43,7 @@ public class StringValue extends Primitive {
 
   @Override
   public void writeValue(RecordConsumer recordConsumer) {
-    recordConsumer.addString(value);
+    throw new UnsupportedOperationException();
+//    recordConsumer.addString(value);
   }
 }

@@ -73,7 +73,7 @@ public class PigSchemaConverter {
       case DataType.BOOLEAN:
           return primitive(name, Primitive.BOOLEAN);
       case DataType.CHARARRAY:
-          return primitive(name, Primitive.STRING);
+          return primitive(name, Primitive.BINARY);
       case DataType.INTEGER:
           return primitive(name, Primitive.INT32);
       case DataType.LONG:
@@ -141,7 +141,7 @@ public class PigSchemaConverter {
    */
   private GroupType convertMap(String alias, FieldSchema fieldSchema) throws FrontendException {
     Type[] types = new Type[2];
-    types[0] = new PrimitiveType(Repetition.REQUIRED, Primitive.STRING, "key");
+    types[0] = new PrimitiveType(Repetition.REQUIRED, Primitive.BINARY, "key");
     Schema innerSchema = fieldSchema.schema;
     if (innerSchema.size() != 1) {
       throw new FrontendException("Invalid map Schema, schema should contain exactly one field: " + fieldSchema);

@@ -22,7 +22,7 @@ public interface ColumnWriter {
 
   void write(long value, int repetitionLevel, int definitionLevel);
 
-  void write(String value, int repetitionLevel, int definitionLevel);
+//  void write(String value, int repetitionLevel, int definitionLevel);
 
   void write(boolean value, int repetitionLevel, int definitionLevel);
 

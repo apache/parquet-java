@@ -203,11 +203,11 @@ public class TupleRecordConsumer extends RecordMaterializer<Tuple> {
   public void addLong(long value) {
     setCurrentField(value);
   }
-
-  @Override
-  public void addString(String value) {
-    setCurrentField(value);
-  }
+//
+//  @Override
+//  public void addString(String value) {
+//    setCurrentField(value);
+//  }
 
   @Override
   public void addBoolean(boolean value) {

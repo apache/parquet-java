@@ -52,8 +52,9 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
   private long length;
   private String[] hosts;
   private List<BlockMetaData> blocks;
-  private FileMetaData fileMetaData;
+  private String schema;
   private ReadSupport<T> readSupport;
+
 
   /**
    * Writables must have a parameterless constructor
@@ -71,13 +72,13 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
    * @param fileMetaData the file level metadata (Codec, Schema, ...)
    * @param readSupport the object used to materialize records (must be serializable)
    */
-  public RedelmInputSplit(Path path, long start, long length, String[] hosts, List<BlockMetaData> blocks, FileMetaData fileMetaData, ReadSupport<T> readSupport) {
+  public RedelmInputSplit(Path path, long start, long length, String[] hosts, List<BlockMetaData> blocks, String schema, ReadSupport<T> readSupport) {
     this.path = path.toUri().toString();
     this.start = start;
     this.length = length;
     this.hosts = hosts;
     this.blocks = blocks;
-    this.fileMetaData = fileMetaData;
+    this.schema = schema;
     this.readSupport = readSupport;
   }
 
@@ -143,7 +144,7 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
       this.length = other.length;
       this.hosts = other.hosts;
       this.blocks = other.blocks;
-      this.fileMetaData = other.fileMetaData;
+      this.schema = other.schema;
       this.readSupport = other.readSupport;
     } catch (ClassNotFoundException e) {
       throw new IOException("wrong class serialized", e);
@@ -164,10 +165,10 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
 
   /**
    *
-   * @return the file level meta data
+   * @return the schema to read
    */
-  public FileMetaData getFileMetaData() {
-    return fileMetaData;
+  public String getSchema() {
+    return schema;
   }
 
   /**
@@ -186,7 +187,7 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
         + " length: " + length
         + " hosts: " + Arrays.toString(hosts)
         + " blocks: " + blocks.size()
-        + " fileMetaData: " + fileMetaData
+        + " schema: " + schema
         + "}";
   }
 }

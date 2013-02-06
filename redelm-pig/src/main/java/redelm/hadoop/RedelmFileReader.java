@@ -16,7 +16,10 @@
 package redelm.hadoop;
 
 import static redelm.Log.DEBUG;
+import static redelm.bytes.BytesUtils.readIntLittleEndian;
+import static redelm.hadoop.RedelmFileWriter.MAGIC;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -31,6 +34,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import redelm.Log;
+import redelm.bytes.BytesUtils;
 import redelm.hadoop.metadata.BlockMetaData;
 import redelm.hadoop.metadata.ColumnChunkMetaData;
 import redelm.hadoop.metadata.RedelmMetaData;
@@ -171,27 +175,27 @@ public class RedelmFileReader {
     FileSystem fileSystem = file.getPath().getFileSystem(configuration);
     FSDataInputStream f = fileSystem.open(file.getPath());
     long l = file.getLen();
-    if (l <= 3 * 8) { // MAGIC (8) + data + footer + footerIndex (8) + MAGIC (8)
+    LOG.debug("File length " + l);
+    int FOOTER_LENGTH_SIZE = 4;
+    if (l <= MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
       throw new RuntimeException("Not a Red Elm file");
     }
-    long footerIndexIndex = l - 8 - 8;
-    LOG.debug("reading footer index at " + footerIndexIndex);
-    f.seek(footerIndexIndex);
-    long footerIndex = f.readLong();
-    byte[] magic = new byte[8];
-    f.readFully(magic);
-    if (!Arrays.equals(RedelmFileWriter.MAGIC, magic)) {
-      throw new RuntimeException("Not a Red Elm file");
-    }
-    LOG.debug("read footer index: " + footerIndex + ", footer size: " + (footerIndexIndex - footerIndex));
-    f.seek(footerIndex);
-    int version = f.readInt();
-    if (version != RedelmFileWriter.CURRENT_VERSION) {
-      throw new RuntimeException(
-          "unsupported version: " + version + ". " +
-          "supporting up to " + RedelmFileWriter.CURRENT_VERSION);
-    }
+    long footerLengthIndex = l - FOOTER_LENGTH_SIZE - MAGIC.length;
+    LOG.debug("reading footer index at " + footerLengthIndex);
 
+    f.seek(footerLengthIndex);
+    int footerLength = readIntLittleEndian(f);
+    byte[] magic = new byte[MAGIC.length];
+    f.readFully(magic);
+    if (!Arrays.equals(MAGIC, magic)) {
+      throw new RuntimeException("Not a RedElm file. expected " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
+    }
+    long footerIndex = footerLengthIndex - footerLength;
+    LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
+    if (footerIndex < MAGIC.length || footerIndex >= footerLengthIndex) {
+      throw new RuntimeException("corrupted file: the footer index is not within the file");
+    }
+    f.seek(footerIndex);
     return readMetaDataBlocks(f);
 
   }

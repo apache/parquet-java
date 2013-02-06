@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 import redelm.Log;
+import redelm.bytes.BytesUtils;
 import redelm.column.ColumnDescriptor;
 import redelm.hadoop.metadata.BlockMetaData;
 import redelm.hadoop.metadata.ColumnChunkMetaData;
@@ -53,7 +54,8 @@ public class RedelmFileWriter {
   private static final Log LOG = Log.getLog(RedelmFileWriter.class);
 
   public static final String RED_ELM_SUMMARY = "_RedElmSummary";
-  public static final byte[] MAGIC = {82, 101, 100, 32, 69, 108, 109, 10}; // "Red Elm\n"
+//  public static final byte[] MAGIC = {82, 101, 100, 32, 69, 108, 109, 10}; // "Red Elm\n"
+  public static final byte[] MAGIC = {82, 69, 68, 49}; // "RED1"
   public static final int CURRENT_VERSION = 1;
 
   private static RedFileMetadataConverter redFileMetadataConverter = new RedFileMetadataConverter();
@@ -233,11 +235,10 @@ public class RedelmFileWriter {
     state = state.end();
     if (DEBUG) LOG.debug(out.getPos() + ": end");
     long footerIndex = out.getPos();
-    out.writeInt(CURRENT_VERSION);
-    RedelmMetaData footer = new RedelmMetaData(new FileMetaData(schema.toString()), blocks, extraMetaData);
+    RedelmMetaData footer = new RedelmMetaData(new FileMetaData(schema), blocks, extraMetaData);
     serializeFooter(footer, out);
-    if (DEBUG) LOG.debug(out.getPos() + ": footer index");
-    out.writeLong(footerIndex);
+    if (DEBUG) LOG.debug(out.getPos() + ": footer length = " + (out.getPos() - footerIndex));
+    BytesUtils.writeIntLittleEndian(out, (int)(out.getPos() - footerIndex));
     out.write(MAGIC);
     out.close();
   }

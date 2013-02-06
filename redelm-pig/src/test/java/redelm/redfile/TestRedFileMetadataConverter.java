@@ -20,9 +20,13 @@ import static org.junit.Assert.assertEquals;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.List;
 
+import redelm.data.simple.example.Paper;
+import redelm.schema.MessageType;
 import redfile.PageHeader;
 import redfile.PageType;
+import redfile.SchemaElement;
 
 import org.junit.Test;
 
@@ -39,6 +43,14 @@ public class TestRedFileMetadataConverter {
     redFileMetadataConverter.writePageHeader(pageHeader, out);
     PageHeader readPageHeader = redFileMetadataConverter.readPageHeader(new ByteArrayInputStream(out.toByteArray()));
     assertEquals(pageHeader, readPageHeader);
+  }
+
+  @Test
+  public void testSchemaConverter() {
+    RedFileMetadataConverter redFileMetadataConverter = new RedFileMetadataConverter();
+    List<SchemaElement> redFileSchema = redFileMetadataConverter.toRedFileSchema(Paper.schema);
+    MessageType schema = redFileMetadataConverter.fromRedFileSchema(redFileSchema);
+    assertEquals(Paper.schema, schema);
   }
 
 }

@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import redelm.schema.MessageType;
+
 /**
  * File level meta data (Schema, codec, ...)
  *
@@ -31,14 +33,14 @@ import java.util.Map;
 public final class FileMetaData implements Serializable {
   private static final long serialVersionUID = 1L;
 
-  private final String schema;
+  private final MessageType schema;
 
-  public FileMetaData(String schema) {
+  public FileMetaData(MessageType schema) {
     super();
     this.schema = schema;
   }
 
-  public String getSchema() {
+  public MessageType getSchema() {
     return schema;
   }
 

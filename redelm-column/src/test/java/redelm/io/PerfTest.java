@@ -41,6 +41,7 @@ public class PerfTest {
   public static void main(String[] args) {
     MemColumnsStore columns = new MemColumnsStore(50*1024*1024, new MemPageStore(), 50*1024*1024);
     write(columns);
+    columns.flush();
     read(columns);
     System.out.println(columns.memSize()+" bytes used total");
     System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
@@ -63,7 +64,6 @@ public class PerfTest {
       public void endMessage() {}
       public void endGroup() {}
       public void endField(String field, int index) {}
-      public void addString(String value) {}
       public void addInteger(int value) {}
       public void addLong(long value) {}
       public void addFloat(float value) {}

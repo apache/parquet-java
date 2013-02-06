@@ -148,7 +148,7 @@ abstract public class BytesInput {
 
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
-      BytesUtils.writeInt(out, intValue);
+      BytesUtils.writeIntBigEndian(out, intValue);
     }
 
     @Override

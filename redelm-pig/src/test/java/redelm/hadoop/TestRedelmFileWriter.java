@@ -82,7 +82,7 @@ public class TestRedelmFileWriter {
     Path path = new Path(testFile.toURI());
     Configuration configuration = new Configuration();
 
-    MessageType schema = MessageTypeParser.parseMessageType("message m { required group a {required string b;} required group c { required int64 d; }}");
+    MessageType schema = MessageTypeParser.parseMessageType("message m { required group a {required binary b;} required group c { required int64 d; }}");
     String[] path1 = {"a", "b"};
     ColumnDescriptor c1 = schema.getColumnDescription(path1);
     String[] path2 = {"c", "d"};

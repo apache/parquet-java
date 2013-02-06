@@ -78,6 +78,10 @@ public class MessageType extends GroupType {
     return new ColumnDescriptor(path, type, maxRep, maxDef);
   }
 
+  public List<String[]> getPaths() {
+    return this.getPaths(0);
+  }
+
   public List<ColumnDescriptor> getColumns() {
     List<String[]> paths = this.getPaths(0);
     List<ColumnDescriptor> columns = new ArrayList<ColumnDescriptor>(paths.size());

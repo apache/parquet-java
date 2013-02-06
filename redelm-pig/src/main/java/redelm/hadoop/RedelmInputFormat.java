@@ -73,12 +73,12 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
       TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
     @SuppressWarnings("unchecked") // I know
     RedelmInputSplit<T> redelmInputSplit = (RedelmInputSplit<T>)inputSplit;
-    return new RedelmRecordReader<T>(getRequestedSchema(redelmInputSplit.getFileMetaData()));
+    return new RedelmRecordReader<T>(getRequestedSchema(redelmInputSplit.getSchema()));
   }
 
-  private String getRequestedSchema(FileMetaData fileMetaData) {
+  private String getRequestedSchema(String fileSchema) {
     return requestedSchema == null ?
-        fileMetaData.getSchema() :
+        fileSchema :
         requestedSchema;
   }
 
@@ -118,7 +118,7 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
             hdfsBlock.getLength(),
             hdfsBlock.getHosts(),
             blocksForCurrentSplit,
-            fileMetaData,
+            fileMetaData.getSchema().toString(),
             readSupport));
       }
     }
@@ -146,7 +146,7 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
         RedelmMetaData redelmMetaData = footer.getRedelmMetaData();
         readSupport.initForRead(
             redelmMetaData.getKeyValueMetaData(),
-            getRequestedSchema(redelmMetaData.getFileMetaData())
+            getRequestedSchema(redelmMetaData.getFileMetaData().getSchema().toString())
             );
         List<BlockMetaData> blocks = redelmMetaData.getBlocks();
         BlockLocation[] fileBlockLocations = fs.getFileBlockLocations(fileStatus, 0, fileStatus.getLen());

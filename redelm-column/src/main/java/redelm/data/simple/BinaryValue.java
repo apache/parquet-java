@@ -35,4 +35,9 @@ public class BinaryValue extends Primitive {
   public void writeValue(RecordConsumer recordConsumer) {
     recordConsumer.addBinary(binary);
   }
+
+  @Override
+  public String toString() {
+    return new String(binary);
+  }
 }

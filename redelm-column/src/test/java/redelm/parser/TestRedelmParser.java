@@ -16,17 +16,16 @@
 package redelm.parser;
 
 import static org.junit.Assert.assertEquals;
+import static redelm.schema.PrimitiveType.Primitive.BINARY;
 import static redelm.schema.PrimitiveType.Primitive.INT64;
-import static redelm.schema.PrimitiveType.Primitive.STRING;
 import static redelm.schema.Type.Repetition.OPTIONAL;
 import static redelm.schema.Type.Repetition.REPEATED;
 import static redelm.schema.Type.Repetition.REQUIRED;
-
-import org.junit.Test;
-
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType;
+
+import org.junit.Test;
 
 public class TestRedelmParser {
     @Test
@@ -38,9 +37,9 @@ public class TestRedelmParser {
                 "    repeated int64 Forward; }\n" +
                 "  repeated group Name {\n" +
                 "    repeated group Language {\n" +
-                "      required string Code;\n" +
-                "      required string Country; }\n" +
-                "    optional string Url; }}";
+                "      required binary Code;\n" +
+                "      required binary Country; }\n" +
+                "    optional binary Url; }}";
         MessageType parsed = MessageTypeParser.parseMessageType(example);
         MessageType manuallyMade =
             new MessageType("Document",
@@ -50,20 +49,20 @@ public class TestRedelmParser {
                     new PrimitiveType(REPEATED, INT64, "Forward")),
                 new GroupType(REPEATED, "Name",
                     new GroupType(REPEATED, "Language",
-                        new PrimitiveType(REQUIRED, STRING, "Code"),
-                        new PrimitiveType(REQUIRED, STRING, "Country")),
-                    new PrimitiveType(OPTIONAL, STRING, "Url")));
+                        new PrimitiveType(REQUIRED, BINARY, "Code"),
+                        new PrimitiveType(REQUIRED, BINARY, "Country")),
+                    new PrimitiveType(OPTIONAL, BINARY, "Url")));
         assertEquals(manuallyMade, parsed);
 
         MessageType parsedThenReparsed = MessageTypeParser.parseMessageType(parsed.toString());
 
         assertEquals(manuallyMade, parsedThenReparsed);
 
-        parsed = MessageTypeParser.parseMessageType("message m { required group a {required string b;} required group c { required int64 d; }}");
+        parsed = MessageTypeParser.parseMessageType("message m { required group a {required binary b;} required group c { required int64 d; }}");
         manuallyMade =
             new MessageType("m",
                 new GroupType(REQUIRED, "a",
-                    new PrimitiveType(REQUIRED, STRING, "b")),
+                    new PrimitiveType(REQUIRED, BINARY, "b")),
                 new GroupType(REQUIRED, "c",
                     new PrimitiveType(REQUIRED, INT64, "d")));
 

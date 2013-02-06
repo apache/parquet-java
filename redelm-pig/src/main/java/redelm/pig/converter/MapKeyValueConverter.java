@@ -15,6 +15,8 @@
  */
 package redelm.pig.converter;
 
+import java.io.UnsupportedEncodingException;
+
 import redelm.schema.GroupType;
 
 import org.apache.pig.data.Tuple;
@@ -68,7 +70,11 @@ public class MapKeyValueConverter extends Converter {
   @Override
   public void set(Object value) {
     assert currentField == 0;
-    currentKey = (String)value;
+    try {
+      currentKey = new String((byte[])value, "UTF-8");
+    } catch (UnsupportedEncodingException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public String getKey() {

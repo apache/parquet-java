@@ -74,11 +74,11 @@ public class GroupRecordConsumer extends RecordMaterializer<Group> {
   public void addLong(long value) {
     groups.peek().add(fields.peek(), value);
   }
-
-  @Override
-  public void addString(String value) {
-    groups.peek().add(fields.peek(), value);
-  }
+//
+//  @Override
+//  public void addString(String value) {
+//    groups.peek().add(fields.peek(), value);
+//  }
 
   @Override
   public void addBoolean(boolean value) {

@@ -50,8 +50,8 @@ public class MemColumn {
       return new INT32MemColumnReader(path, pageReader);
     case INT64:
       return new INT64MemColumnReader(path, pageReader);
-    case STRING:
-      return new STRINGMemColumnReader(path, pageReader);
+//    case STRING:
+//      return new STRINGMemColumnReader(path, pageReader);
     case BOOLEAN:
       return new BOOLEANMemColumnReader(path, pageReader);
     case BINARY:

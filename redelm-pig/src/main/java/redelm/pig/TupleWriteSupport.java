@@ -136,7 +136,15 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
         switch (type.asPrimitiveType().getPrimitive()) {
         // TODO: use PrimitiveTuple accessors
         case BINARY:
-          recordConsumer.addBinary(((DataByteArray)t.get(i)).get());
+          byte[] bytes;
+          if (pigType.type == DataType.BYTEARRAY) {
+            bytes = ((DataByteArray)t.get(i)).get();
+          } else if (pigType.type == DataType.CHARARRAY) {
+            bytes = ((String)t.get(i)).getBytes();
+          } else {
+            throw new UnsupportedOperationException("can not convert from " + DataType.findTypeName(pigType.type) + " to BINARY ");
+          }
+          recordConsumer.addBinary(bytes);
           break;
         case BOOLEAN:
           recordConsumer.addBoolean((Boolean)t.get(i));
@@ -146,9 +154,6 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
           break;
         case INT64:
           recordConsumer.addLong(((Number)t.get(i)).longValue());
-          break;
-        case STRING:
-          recordConsumer.addString((String)t.get(i));
           break;
         case DOUBLE:
           recordConsumer.addDouble(((Number)t.get(i)).doubleValue());

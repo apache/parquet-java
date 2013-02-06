@@ -97,11 +97,11 @@ abstract public class RecordConsumer {
    */
   abstract public void addLong(long value);
 
-  /**
-   * add a string value in the current field
-   * @param value
-   */
-  abstract public void addString(String value);
+//  /**
+//   * add a string value in the current field
+//   * @param value
+//   */
+//  abstract public void addString(String value);
 
   /**
    * add a boolean value in the current field

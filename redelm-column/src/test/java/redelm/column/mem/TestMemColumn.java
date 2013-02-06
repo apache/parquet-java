@@ -59,21 +59,21 @@ public class TestMemColumn {
   }
 
   @Test
-  public void testMemColumnString() throws Exception {
-    String schema = "message msg { required group foo { required string bar; } }";
+  public void testMemColumnBinary() throws Exception {
+    String schema = "message msg { required group foo { required binary bar; } }";
     String[] col = new String[]{"foo", "bar"};
     MemColumnsStore memColumnsStore = initColumnStore();
     ColumnDescriptor path = getCol(schema, col);
 
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
-    columnWriter.write("42", 0, 0);
+    columnWriter.write("42".getBytes(), 0, 0);
     columnWriter.flush();
 
     ColumnReader columnReader = memColumnsStore.getColumnReader(path);
     while (!columnReader.isFullyConsumed()) {
       assertEquals(columnReader.getCurrentRepetitionLevel(), 0);
       assertEquals(columnReader.getCurrentDefinitionLevel(), 0);
-      assertEquals(columnReader.getString(), "42");
+      assertEquals(new String(columnReader.getBinary()), "42");
       columnReader.consume();
     }
   }

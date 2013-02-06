@@ -23,8 +23,6 @@ import static redelm.data.simple.example.Paper.r2;
 import static redelm.data.simple.example.Paper.schema;
 import static redelm.data.simple.example.Paper.schema2;
 
-import java.io.DataOutput;
-import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -59,10 +57,10 @@ public class TestColumnIO {
     + "  }\n"
     + "  repeated group Name {\n"
     + "    repeated group Language {\n"
-    + "      required string Code;\n"
-    + "      optional string Country;\n"
+    + "      required binary Code;\n"
+    + "      optional binary Country;\n"
     + "    }\n"
-    + "    optional string Url;\n"
+    + "    optional binary Url;\n"
     + "  }\n"
     + "}\n";
 
@@ -194,35 +192,35 @@ public class TestColumnIO {
        "startField(Language, 0)",
         "startGroup()",
          "startField(Code, 0)",
-          "addString(en-us)",
+          "addBinary(en-us)",
          "endField(Code, 0)",
          "startField(Country, 1)",
-          "addString(us)",
+          "addBinary(us)",
          "endField(Country, 1)",
         "endGroup()",
         "startGroup()",
          "startField(Code, 0)",
-          "addString(en)",
+          "addBinary(en)",
          "endField(Code, 0)",
         "endGroup()",
        "endField(Language, 0)",
        "startField(Url, 1)",
-        "addString(http://A)",
+        "addBinary(http://A)",
        "endField(Url, 1)",
       "endGroup()",
       "startGroup()",
        "startField(Url, 1)",
-        "addString(http://B)",
+        "addBinary(http://B)",
        "endField(Url, 1)",
       "endGroup()",
       "startGroup()",
        "startField(Language, 0)",
         "startGroup()",
          "startField(Code, 0)",
-          "addString(en-gb)",
+          "addBinary(en-gb)",
          "endField(Code, 0)",
          "startField(Country, 1)",
-          "addString(gb)",
+          "addBinary(gb)",
          "endField(Country, 1)",
         "endGroup()",
        "endField(Language, 0)",
@@ -271,11 +269,11 @@ public class TestColumnIO {
       public void endField(String field, int index) {
         validate("endField("+field+", "+index+")");
       }
-
-      @Override
-      public void addString(String value) {
-        validate("addString("+value+")");
-      }
+//
+//      @Override
+//      public void addString(String value) {
+//        validate("addString("+value+")");
+//      }
 
       @Override
       public void addInteger(int value) {
@@ -294,7 +292,7 @@ public class TestColumnIO {
 
       @Override
       public void addBinary(byte[] value) {
-        validate("addBinary("+new BigInteger(value).toString(16)+")");
+        validate("addBinary("+new String(value)+")");
       }
 
       @Override
@@ -385,18 +383,18 @@ public class TestColumnIO {
 
           @Override
           public void write(byte[] value, int repetitionLevel, int definitionLevel) {
-            validate(value, repetitionLevel, definitionLevel);
+            validate(new String(value), repetitionLevel, definitionLevel);
           }
 
           @Override
           public void write(boolean value, int repetitionLevel, int definitionLevel) {
             validate(value, repetitionLevel, definitionLevel);
           }
-
-          @Override
-          public void write(String value, int repetitionLevel, int definitionLevel) {
-            validate(value, repetitionLevel, definitionLevel);
-          }
+//
+//          @Override
+//          public void write(String value, int repetitionLevel, int definitionLevel) {
+//            validate(value, repetitionLevel, definitionLevel);
+//          }
 
           @Override
           public void write(int value, int repetitionLevel, int definitionLevel) {

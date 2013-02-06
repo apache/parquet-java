@@ -30,8 +30,8 @@ public class TestBytesUtil {
   @Test
   public void testInt() throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    BytesUtils.writeInt(baos, 1208);
-    int readInt = BytesUtils.readInt(baos.toByteArray(), 0);
+    BytesUtils.writeIntBigEndian(baos, 1208);
+    int readInt = BytesUtils.readIntBigEndian(baos.toByteArray(), 0);
     assertEquals(1208, readInt);
   }
 
@@ -39,14 +39,14 @@ public class TestBytesUtil {
   public void testReadInt() throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     new DataOutputStream(baos).writeInt(1208);
-    int readInt = BytesUtils.readInt(baos.toByteArray(), 0);
+    int readInt = BytesUtils.readIntBigEndian(baos.toByteArray(), 0);
     assertEquals(1208, readInt);
   }
 
   @Test
   public void testWriteInt() throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    BytesUtils.writeInt(baos, 1208);
+    BytesUtils.writeIntBigEndian(baos, 1208);
     int readInt = new DataInputStream(new ByteArrayInputStream(baos.toByteArray())).readInt();
     assertEquals(1208, readInt);
   }
