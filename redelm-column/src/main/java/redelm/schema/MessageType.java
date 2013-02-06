@@ -38,6 +38,15 @@ public class MessageType extends GroupType {
     super(Repetition.REPEATED, name, fields);
   }
 
+ /**
+  *
+  * @param name the name of the type
+  * @param fields the fields contained by this message
+  */
+ public MessageType(String name, List<Type> fields) {
+   super(Repetition.REPEATED, name, fields);
+ }
+
   /**
    * {@inheritDoc}
    */
