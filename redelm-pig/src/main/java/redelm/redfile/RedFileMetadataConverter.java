@@ -30,12 +30,13 @@ import redelm.hadoop.metadata.BlockMetaData;
 import redelm.hadoop.metadata.ColumnChunkMetaData;
 import redelm.hadoop.metadata.CompressionCodecName;
 import redelm.hadoop.metadata.RedelmMetaData;
+import redelm.parser.MessageTypeParser;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType;
-import redelm.schema.PrimitiveType.Primitive;
 import redelm.schema.Type.Repetition;
 import redelm.schema.TypeVisitor;
+import redelm.schema.PrimitiveType.Primitive;
 import redfile.ColumnChunk;
 import redfile.CompressionCodec;
 import redfile.Encoding;
@@ -79,45 +80,47 @@ public class RedFileMetadataConverter {
 
   List<SchemaElement> toRedFileSchema(MessageType schema) {
     List<SchemaElement> result = new ArrayList<SchemaElement>();
-    result.add(new SchemaElement(schema.getName()));
-    addToList(result, schema.getFields(), 0);
+    addToList(result, schema);
     return result;
   }
 
-  private void addToList(List<SchemaElement> result, List<redelm.schema.Type> fields, int parent) {
-    for (redelm.schema.Type field : fields) {
-      addToList(result, field, parent);
-    }
-  }
-
-  private void addToList(final List<SchemaElement> result, redelm.schema.Type field, final int parent) {
-    final SchemaElement element = new SchemaElement(field.getName());
-    element.setField_type(toRedfileRepetition(field.getRepetition()));
-    element.setParent_index(parent);
-    result.add(element);
+  private void addToList(final List<SchemaElement> result, redelm.schema.Type field) {
     field.accept(new TypeVisitor() {
       @Override
       public void visit(PrimitiveType primitiveType) {
+        SchemaElement element = new SchemaElement(primitiveType.getName());
+        element.setField_type(toRedfileRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitive()));
+        result.add(element);
       }
+
+      private FieldRepetitionType toRedfileRepetition(Repetition repetition) {
+        switch (repetition) {
+        case REQUIRED: return FieldRepetitionType.REQUIRED;
+        case OPTIONAL: return FieldRepetitionType.OPTIONAL;
+        case REPEATED: return FieldRepetitionType.REPEATED;
+        }
+        throw new RuntimeException("unknown repetition: " + repetition);
+      }
+
       @Override
       public void visit(MessageType messageType) {
-        throw new RuntimeException();
+        this.visit(messageType.asGroupType());
       }
+
       @Override
       public void visit(GroupType groupType) {
-        addToList(result, groupType.getFields(), result.size() - 1);
+        SchemaElement element = new SchemaElement(groupType.getName());
+        element.setField_type(toRedfileRepetition(groupType.getRepetition()));
+        result.add(element);
+        List<Integer> children = new ArrayList<Integer>();
+        for (redelm.schema.Type field : groupType.getFields()) {
+          children.add(result.size());
+          addToList(result, field);
+        }
+        element.setChildren_indices(children);
       }
     });
-  }
-
-  private FieldRepetitionType toRedfileRepetition(Repetition repetition) {
-    switch (repetition) {
-    case REQUIRED: return FieldRepetitionType.REQUIRED;
-    case OPTIONAL: return FieldRepetitionType.OPTIONAL;
-    case REPEATED: return FieldRepetitionType.REPEATED;
-    }
-    throw new RuntimeException("unknown repetition: " + repetition);
   }
 
   private void addRowGroup(RedelmMetaData redelmMetadata, List<RowGroup> rowGroups, BlockMetaData block) {
@@ -206,6 +209,7 @@ public class RedFileMetadataConverter {
   }
 
   public RedelmMetaData fromRedFileMetadata(FileMetaData redFileMetadata) throws IOException {
+//    List<MetaDataBlock> result = new ArrayList<MetaDataBlock>();
     MessageType messageType = fromRedFileSchema(redFileMetadata.getSchema());
     redelm.hadoop.metadata.FileMetaData fileMetadata = new redelm.hadoop.metadata.FileMetaData(messageType);
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
@@ -243,30 +247,31 @@ public class RedFileMetadataConverter {
 
   MessageType fromRedFileSchema(List<SchemaElement> schema) {
     SchemaElement root = schema.get(0);
-    return new MessageType(root.getName(), convertChildren(schema, 0));
+    return new MessageType(root.getName(), convertChildren(schema, root.getChildren_indices()));
   }
 
-  private List<redelm.schema.Type> convertChildren(List<SchemaElement> schema, int parentId) {
-    List<redelm.schema.Type> result = new ArrayList<redelm.schema.Type>();
-    for (int i = 1 /* skip root */; i < schema.size(); i++) {
-      SchemaElement schemaElement = schema.get(i);
-      if (!schemaElement.isSetParent_index()) {
-        throw new RuntimeException("only root does not have a parent: " + schemaElement);
+  private redelm.schema.Type[] convertChildren(List<SchemaElement> schema,
+      List<Integer> children_indices) {
+    redelm.schema.Type[] result = new redelm.schema.Type[children_indices.size()];
+    for (int i = 0; i < result.length; i++) {
+      int index = children_indices.get(i);
+      SchemaElement schemaElement = schema.get(index);
+      if ((schemaElement.type == null && schemaElement.children_indices == null)
+          || (schemaElement.type != null && schemaElement.children_indices != null)) {
+        throw new RuntimeException("bad element " + schemaElement);
       }
-      if (schemaElement.getParent_index() == parentId) {
-        Repetition repetition = fromRedFileRepetition(schemaElement.getField_type());
-        String name = schemaElement.getName();
-        if (schemaElement.type != null) {
-          result.add(new PrimitiveType(
-              repetition,
-              getPrimitive(schemaElement.getType()),
-              name));
-        } else {
-          result.add(new GroupType(
-              repetition,
-              name,
-              convertChildren(schema, i)));
-        }
+      Repetition repetition = fromRedFileRepetition(schemaElement.getField_type());
+      String name = schemaElement.getName();
+      if (schemaElement.type != null) {
+        result[i] = new PrimitiveType(
+            repetition,
+            getPrimitive(schemaElement.getType()),
+            name);
+      } else {
+        result[i] = new GroupType(
+            repetition,
+            name,
+            convertChildren(schema, schemaElement.getChildren_indices()));
       }
     }
     return result;

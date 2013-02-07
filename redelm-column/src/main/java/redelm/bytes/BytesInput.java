@@ -67,17 +67,27 @@ abstract public class BytesInput {
   abstract public void writeAllTo(OutputStream out) throws IOException;
 
   public byte[] toByteArray() {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    BAOS baos = new BAOS((int)size());
     try {
       this.writeAllTo(baos);
     } catch (IOException e) {
       throw new RuntimeException("Never happens", e);
     }
     if (DEBUG) LOG.debug("converted " + size() + " to byteArray of " + baos.size() + " bytes");
-    return baos.toByteArray();
+    return baos.getBuf();
   }
 
   abstract public long size();
+
+  private static final class BAOS extends ByteArrayOutputStream {
+    private BAOS(int size) {
+      super(size);
+    }
+
+    public byte[] getBuf() {
+      return this.buf;
+    }
+  }
 
   private static class StreamBytesInput extends BytesInput {
     private static final Log LOG = Log.getLog(BytesInput.StreamBytesInput.class);
