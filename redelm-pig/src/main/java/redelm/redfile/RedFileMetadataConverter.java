@@ -30,7 +30,6 @@ import redelm.hadoop.metadata.BlockMetaData;
 import redelm.hadoop.metadata.ColumnChunkMetaData;
 import redelm.hadoop.metadata.CompressionCodecName;
 import redelm.hadoop.metadata.RedelmMetaData;
-import redelm.parser.MessageTypeParser;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType;

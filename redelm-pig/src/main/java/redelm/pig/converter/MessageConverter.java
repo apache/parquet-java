@@ -65,11 +65,6 @@ public class MessageConverter extends TupleConverter {
       currentConverter.endField(field, index);
     }
 
-//    @Override
-//    public void addString(String value) {
-//      currentConverter.set(value);
-//    }
-
     @Override
     public void addLong(long value) {
       currentConverter.set(value);

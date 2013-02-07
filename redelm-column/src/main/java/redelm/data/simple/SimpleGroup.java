@@ -111,7 +111,7 @@ public class SimpleGroup extends Group {
 
   @Override
   public String getString(int fieldIndex, int index) {
-    return ((StringValue)getValue(fieldIndex, index)).getString();
+    return ((BinaryValue)getValue(fieldIndex, index)).getString();
   }
 
   @Override

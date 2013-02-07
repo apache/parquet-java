@@ -15,9 +15,6 @@
  */
 package redelm.column.primitive;
 
-import java.io.DataOutput;
-import java.io.IOException;
-
 import redelm.bytes.BytesInput;
 
 /**
@@ -57,10 +54,6 @@ public class DevNullColumnWriter extends PrimitiveColumnWriter {
 
   @Override
   public void writeDouble(double v) {
-  }
-
-  @Override
-  public void writeString(String str) {
   }
 
   @Override

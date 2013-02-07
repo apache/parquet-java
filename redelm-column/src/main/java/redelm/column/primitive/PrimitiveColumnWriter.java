@@ -49,10 +49,6 @@ public abstract class PrimitiveColumnWriter {
     throw new UnsupportedOperationException();
   }
 
-  public void writeString(String str) {
-    throw new UnsupportedOperationException();
-  }
-
   public void writeFloat(float v) {
     throw new UnsupportedOperationException();
   }

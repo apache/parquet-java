@@ -269,11 +269,6 @@ public class TestColumnIO {
       public void endField(String field, int index) {
         validate("endField("+field+", "+index+")");
       }
-//
-//      @Override
-//      public void addString(String value) {
-//        validate("addString("+value+")");
-//      }
 
       @Override
       public void addInteger(int value) {
@@ -390,11 +385,6 @@ public class TestColumnIO {
           public void write(boolean value, int repetitionLevel, int definitionLevel) {
             validate(value, repetitionLevel, definitionLevel);
           }
-//
-//          @Override
-//          public void write(String value, int repetitionLevel, int definitionLevel) {
-//            validate(value, repetitionLevel, definitionLevel);
-//          }
 
           @Override
           public void write(int value, int repetitionLevel, int definitionLevel) {

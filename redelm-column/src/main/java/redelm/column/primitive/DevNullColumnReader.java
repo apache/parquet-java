@@ -17,8 +17,6 @@ package redelm.column.primitive;
 
 import java.io.IOException;
 
-import redelm.bytes.BytesInput;
-
 public class DevNullColumnReader extends PrimitiveColumnReader {
   private boolean defaultBoolean = false;
   private int defaultInt = 0;
@@ -27,7 +25,6 @@ public class DevNullColumnReader extends PrimitiveColumnReader {
   private float defaultFloat = 0f;
   private double defaultDouble = 0.0;
   private byte[] defaultBytes = new byte[0];
-  private String defaultString = "";
 
   public void setDefaultBoolean(boolean defaultBoolean) {
     this.defaultBoolean = defaultBoolean;
@@ -57,10 +54,6 @@ public class DevNullColumnReader extends PrimitiveColumnReader {
     this.defaultBytes = defaultBytes;
   }
 
-  public void setDefaultString(String defaultString) {
-    this.defaultString = defaultString;
-  }
-
   public boolean readBoolean() {
     return defaultBoolean;
   }
@@ -75,10 +68,6 @@ public class DevNullColumnReader extends PrimitiveColumnReader {
 
   public byte[] readBytes() {
     return defaultBytes;
-  }
-
-  public String readString() {
-    return defaultString;
   }
 
   public double readDouble() {

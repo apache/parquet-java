@@ -45,10 +45,6 @@ public abstract class PrimitiveColumnReader {
     throw new UnsupportedOperationException();
   }
 
-  public String readString() {
-    throw new UnsupportedOperationException();
-  }
-
   public double readDouble() {
     throw new UnsupportedOperationException();
   }

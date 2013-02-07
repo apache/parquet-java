@@ -98,18 +98,6 @@ public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
   }
 
   @Override
-  public final void writeString(String str) {
-    try {
-      // writeUTF() has a max size of 64k :((
-      byte[] bytes = str.getBytes(CHARSET);
-      writeUnsignedVarInt(bytes.length);
-      out.write(bytes);
-    } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
-    }
-  }
-
-  @Override
   public void writeByte(int value) {
     try {
       out.write(value);

@@ -200,16 +200,6 @@ public class MessageColumnIO extends GroupColumnIO {
       if (DEBUG) printState();
     }
 
-//    @Override
-//    public void addString(String value) {
-//      if (DEBUG) log("addString("+value+")");
-//
-//      getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
-//
-//      setRepetitionLevel();
-//      if (DEBUG) printState();
-//    }
-
     @Override
     public void addBoolean(boolean value) {
       if (DEBUG) log("addBoolean("+value+")");

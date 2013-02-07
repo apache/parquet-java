@@ -16,7 +16,6 @@
 package redelm.column.mem;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
 
 import redelm.Log;
 import redelm.column.ColumnDescriptor;
@@ -50,8 +49,6 @@ public class MemColumn {
       return new INT32MemColumnReader(path, pageReader);
     case INT64:
       return new INT64MemColumnReader(path, pageReader);
-//    case STRING:
-//      return new STRINGMemColumnReader(path, pageReader);
     case BOOLEAN:
       return new BOOLEANMemColumnReader(path, pageReader);
     case BINARY:
@@ -143,31 +140,6 @@ public class MemColumn {
     }
   }
 
-  private static final class STRINGMemColumnReader extends MemColumnReader {
-    private static final Charset ENCODING = Charset.forName("UTF-8");
-    private String currentString;
-
-    public STRINGMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
-      super(path, pageReader);
-    }
-
-    @Override
-    public String getString() {
-      checkValueRead();
-      return currentString;
-    }
-
-    @Override
-    protected void readCurrentValue() {
-      currentString = dataColumn.readString();
-    }
-
-    @Override
-    public String getCurrentValueToString() throws IOException {
-      checkRead();
-      return currentString;
-    }
-  }
   private static final class BOOLEANMemColumnReader extends MemColumnReader {
     private boolean current;
 

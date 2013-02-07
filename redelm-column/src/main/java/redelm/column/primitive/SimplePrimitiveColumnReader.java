@@ -59,29 +59,6 @@ public class SimplePrimitiveColumnReader extends PrimitiveColumnReader {
   }
 
   @Override
-  public String readString() {
-    try {
-      int size = readUnsignedVarInt();
-      if (size == 0) {
-        return "";
-      } else {
-        byte[] bytes = new byte[size];
-        int i = 0;
-        do {
-          int n = in.read(bytes, i, bytes.length - i);
-          if (n == -1) {
-            throw new RuntimeException("Reached end of stream");
-          }
-          i = i + n;
-        } while (i < bytes.length);
-        return new String(bytes, CHARSET);
-      }
-    } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
-    }
-  }
-
-  @Override
   public double readDouble() {
     try {
       return in.readDouble();

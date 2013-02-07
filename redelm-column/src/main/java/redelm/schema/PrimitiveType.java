@@ -36,18 +36,6 @@ public class PrimitiveType extends Type {
    *
    */
   public static enum Primitive {
-//    STRING {
-//      @Override
-//      public String toString(ColumnReader columnReader) {
-//        return columnReader.getString();
-//      }
-//
-//      @Override
-//      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
-//          ColumnReader columnReader) {
-//        recordConsumer.addString(columnReader.getString());
-//      }
-//    },
     INT64 {
       @Override
       public String toString(ColumnReader columnReader) {

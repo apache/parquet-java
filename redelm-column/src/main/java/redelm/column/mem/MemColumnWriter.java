@@ -111,15 +111,6 @@ final class MemColumnWriter implements ColumnWriter {
     accountForValueWritten();
   }
 
-//  @Override
-//  public void write(String value, int repetitionLevel, int definitionLevel) {
-//    if (DEBUG) log(value, repetitionLevel, definitionLevel);
-//    repetitionLevelColumn.writeInteger(repetitionLevel);
-//    definitionLevelColumn.writeInteger(definitionLevel);
-//    dataColumn.writeString(value);
-//    accountForValueWritten();
-//  }
-
   @Override
   public void write(int value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);

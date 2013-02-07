@@ -156,14 +156,6 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     validate(Primitive.INT64);
     delegate.addLong(value);
   }
-//
-//  /**
-//   * {@inheritDoc}
-//   */
-//  public void addString(String value) {
-//    validate(Primitive.STRING);
-//    delegate.addString(value);
-//  }
 
   /**
    * {@inheritDoc}
