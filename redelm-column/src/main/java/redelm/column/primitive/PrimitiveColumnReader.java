@@ -27,7 +27,7 @@ public abstract class PrimitiveColumnReader {
    * @return the next offset to read from
    * @throws IOException
    */
-  public abstract int initFromPage(byte[] in, int offset) throws IOException;
+  public abstract int initFromPage(long valueCount, byte[] in, int offset) throws IOException;
 
   public boolean readBoolean() {
     throw new UnsupportedOperationException();

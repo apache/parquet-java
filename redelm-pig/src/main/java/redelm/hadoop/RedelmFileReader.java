@@ -62,11 +62,8 @@ public class RedelmFileReader {
 
   private static RedelmMetaData deserializeFooter(InputStream is) throws IOException {
     redfile.FileMetaData redFileMetadata = redFileMetadataConverter.readFileMetaData(is);
+    if (Log.INFO) LOG.info(redFileMetadataConverter.toString(redFileMetadata));
     return redFileMetadataConverter.fromRedFileMetadata(redFileMetadata);
-  }
-
-  private static RedelmMetaData readMetaDataBlocks(FSDataInputStream f) throws IOException {
-    return deserializeFooter(f);
   }
 
   public static List<Footer> readAllFootersInParallel(final Configuration configuration, List<FileStatus> partFiles) throws IOException {
@@ -196,7 +193,7 @@ public class RedelmFileReader {
       throw new RuntimeException("corrupted file: the footer index is not within the file");
     }
     f.seek(footerIndex);
-    return readMetaDataBlocks(f);
+    return deserializeFooter(f);
 
   }
 

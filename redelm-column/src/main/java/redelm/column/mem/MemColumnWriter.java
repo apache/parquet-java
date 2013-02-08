@@ -19,6 +19,9 @@ import redelm.Log;
 import redelm.bytes.BytesInput;
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnWriter;
+import redelm.column.primitive.BitPackingColumnWriter;
+import redelm.column.primitive.BooleanPlainColumnReader;
+import redelm.column.primitive.BooleanPlainColumnWriter;
 import redelm.column.primitive.BoundedColumnFactory;
 import redelm.column.primitive.PrimitiveColumnWriter;
 import redelm.column.primitive.SimplePrimitiveColumnWriter;
@@ -39,9 +42,14 @@ final class MemColumnWriter implements ColumnWriter {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
-    repetitionLevelColumn = BoundedColumnFactory.getBoundedWriter(path.getRepetitionLevel());
+    repetitionLevelColumn = new BitPackingColumnWriter(path.getRepetitionLevel());
     definitionLevelColumn = BoundedColumnFactory.getBoundedWriter(path.getDefinitionLevel());
-    this.dataColumn = new SimplePrimitiveColumnWriter(initialSize);
+    switch (path.getType()) {
+    case BOOLEAN:
+      this.dataColumn = new BooleanPlainColumnWriter(initialSize);
+    default:
+      this.dataColumn = new SimplePrimitiveColumnWriter(initialSize);
+    }
   }
 
   private void log(Object value, int r, int d) {

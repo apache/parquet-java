@@ -68,12 +68,15 @@ public class BitPacking {
     abstract public int read() throws IOException;
   }
 
+  private BitPacking() {
+  }
+
   /**
    * @param bitLength the width in bits of the integers to write
    * @param out the stream to write the bytes to
    * @return the correct implementation for the width
    */
-  public BitPackingWriter getBitPackingWriter(int bitLength, OutputStream out) {
+  public static BitPackingWriter getBitPackingWriter(int bitLength, OutputStream out) {
     switch (bitLength) {
     case 0:
       return new ZeroBitPackingWriter();
@@ -104,7 +107,7 @@ public class BitPacking {
    * @param inthe stream to read the bytes from
    * @return the correct implementation for the width
    */
-  public BitPackingReader getBitPackingReader(int bitLength, InputStream in) {
+  public static BitPackingReader getBitPackingReader(int bitLength, InputStream in) {
     switch (bitLength) {
     case 0:
       return new ZeroBitPackingReader();

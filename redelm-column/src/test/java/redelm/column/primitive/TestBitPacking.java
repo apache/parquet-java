@@ -29,8 +29,6 @@ import org.junit.Test;
 
 public class TestBitPacking {
 
-  private BitPacking bitPacking = new BitPacking();
-
   @Test
   public void testZero() throws IOException {
     int bitLength = 0;
@@ -160,7 +158,7 @@ public class TestBitPacking {
   private void validateEncodeDecode(int bitLength, int[] vals, String expected)
       throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    BitPackingWriter w = bitPacking.getBitPackingWriter(bitLength, baos);
+    BitPackingWriter w = BitPacking.getBitPackingWriter(bitLength, baos);
     for (int i : vals) {
       w.write(i);
     }
@@ -170,7 +168,7 @@ public class TestBitPacking {
     System.out.println("bytes: " + toString(bytes));
     Assert.assertEquals(expected, toString(bytes));
     ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-    BitPackingReader r = bitPacking.getBitPackingReader(bitLength, bais);
+    BitPackingReader r = BitPacking.getBitPackingReader(bitLength, bais);
     int[] result = new int[vals.length];
     for (int i = 0; i < result.length; i++) {
       result[i] = r.read();

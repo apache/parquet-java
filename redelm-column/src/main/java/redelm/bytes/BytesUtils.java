@@ -25,6 +25,10 @@ import redelm.Log;
 public class BytesUtils {
   private static final Log LOG = Log.getLog(BytesUtils.class);
 
+  public static int getWidthFromMaxInt(int bound) {
+    return (int)Math.ceil(Math.log(bound + 1)/Math.log(2));
+  }
+
   public static int readIntBigEndian(byte[] in, int offset) throws IOException {
     int ch1 = in[offset] & 0xff;
     int ch2 = in[offset + 1] & 0xff;
@@ -57,5 +61,24 @@ public class BytesUtils {
     out.write((v >>> 16) & 0xFF);
     out.write((v >>> 24) & 0xFF);
     if (Log.DEBUG) LOG.debug("write le int: " + v + " => "+ ((v >>>  0) & 0xFF) + " " + ((v >>>  8) & 0xFF) + " " + ((v >>> 16) & 0xFF) + " " + ((v >>> 24) & 0xFF));
+  }
+
+  public static int readUnsignedVarInt(InputStream in) throws IOException {
+    int value = 0;
+    int i = 0;
+    int b;
+    while (((b = in.read()) & 0x80) != 0) {
+      value |= (b & 0x7F) << i;
+      i += 7;
+    }
+    return value | (b << i);
+  }
+
+  public static void writeUnsignedVarInt(int value, OutputStream out) throws IOException {
+    while ((value & 0xFFFFFF80) != 0L) {
+      out.write((value & 0x7F) | 0x80);
+      value >>>= 7;
+    }
+    out.write(value & 0x7F);
   }
 }

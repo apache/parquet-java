@@ -61,7 +61,7 @@ public class BoundedIntColumnReader extends PrimitiveColumnReader {
   // bytes would have to be serialized). This is the flip-side
   // to BoundedIntColumnWriter.writeData(BytesOutput)
   @Override
-  public int initFromPage(byte[] in, int offset) throws IOException {
+  public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
     int totalBytes = BytesUtils.readIntBigEndian(in, offset);
     if (DEBUG) LOG.debug("will read "+ totalBytes + " bytes");
     currentValueCt = 0;

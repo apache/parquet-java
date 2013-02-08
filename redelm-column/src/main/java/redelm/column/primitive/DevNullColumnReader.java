@@ -83,7 +83,7 @@ public class DevNullColumnReader extends PrimitiveColumnReader {
   }
 
   @Override
-  public int initFromPage(byte[] in, int offset) throws IOException {
+  public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
     return offset;
   }
 

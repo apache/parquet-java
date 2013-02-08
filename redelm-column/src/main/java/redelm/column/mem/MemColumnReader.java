@@ -22,9 +22,13 @@ import java.io.IOException;
 import redelm.Log;
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnReader;
+import redelm.column.primitive.BitPackingColumnReader;
+import redelm.column.primitive.BooleanPlainColumnReader;
+import redelm.column.primitive.BooleanPlainColumnWriter;
 import redelm.column.primitive.BoundedColumnFactory;
 import redelm.column.primitive.PrimitiveColumnReader;
 import redelm.column.primitive.SimplePrimitiveColumnReader;
+import redelm.column.primitive.SimplePrimitiveColumnWriter;
 
 abstract class MemColumnReader implements ColumnReader {
   private static final Log LOG = Log.getLog(MemColumnReader.class);
@@ -144,20 +148,24 @@ abstract class MemColumnReader implements ColumnReader {
     if (isPageFullyConsumed()) {
       if (DEBUG) LOG.debug("loading page");
       Page page = pageReader.readPage();
-      // TODO: bitpacking instead
-      repetitionLevelColumn = BoundedColumnFactory.getBoundedReader(path.getRepetitionLevel());
+      repetitionLevelColumn = new BitPackingColumnReader(path.getRepetitionLevel());
       definitionLevelColumn = BoundedColumnFactory.getBoundedReader(path.getDefinitionLevel());
       // TODO: from encoding
-      dataColumn = new SimplePrimitiveColumnReader();
+      switch (path.getType()) {
+      case BOOLEAN:
+        this.dataColumn = new BooleanPlainColumnReader();
+      default:
+        this.dataColumn = new SimplePrimitiveColumnReader();
+      }
 
       this.pageValueCount = page.getValueCount();
       this.readValuesInPage = 0;
       byte[] bytes = page.getBytes().toByteArray();
       if (DEBUG) LOG.debug("page size " + bytes.length + " bytes and " + pageValueCount + " records");
       try {
-        int next = repetitionLevelColumn.initFromPage(bytes, 0);
-        next = definitionLevelColumn.initFromPage(bytes, next);
-        dataColumn.initFromPage(bytes, next);
+        int next = repetitionLevelColumn.initFromPage(pageValueCount, bytes, 0);
+        next = definitionLevelColumn.initFromPage(pageValueCount, bytes, next);
+        dataColumn.initFromPage(pageValueCount, bytes, next);
       } catch (IOException e) {
         // TODO: clean that up
         throw new RuntimeException("can not happen", e);

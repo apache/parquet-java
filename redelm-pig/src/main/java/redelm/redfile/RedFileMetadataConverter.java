@@ -50,7 +50,10 @@ import redfile.Type;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
+import org.apache.thrift.protocol.TSimpleJSONProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.thrift.transport.TMemoryBuffer;
 
 public class RedFileMetadataConverter {
 
@@ -299,6 +302,18 @@ public class RedFileMetadataConverter {
 
   public redfile.FileMetaData readFileMetaData(InputStream from) throws IOException {
     return read(from, new redfile.FileMetaData());
+  }
+
+  public String toString(TBase<?, ?> tbase) {
+    return tbase.toString();
+//    TMemoryBuffer trans = new TMemoryBuffer(1024);
+//    try {
+//      TSimpleJSONProtocol jsonProt = new TSimpleJSONProtocol(trans);
+//      tbase.write(jsonProt);
+//      return trans.toString("UTF-8");
+//    } catch (Exception e) { // TODO: cleanup exceptions
+//      throw new RuntimeException(e);
+//    }
   }
 
   private TCompactProtocol protocol(OutputStream to) {

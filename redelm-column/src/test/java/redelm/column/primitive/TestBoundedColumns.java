@@ -19,7 +19,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
@@ -61,7 +60,7 @@ public class TestBoundedColumns {
     byte[] byteArray = bicw.getBytes().toByteArray();
     assertEquals(concat(result), toBinaryString(byteArray, 4));
     BoundedIntColumnReader bicr = new BoundedIntColumnReader(bound);
-    bicr.initFromPage(byteArray, 0);
+    bicr.initFromPage(1, byteArray, 0);
     String expected = "";
     String got = "";
     for (int i : ints) {
@@ -119,7 +118,6 @@ public class TestBoundedColumns {
     for (int bound = 1; bound < 8; bound++) {
       System.out.println("bound: "+ bound);
       ByteArrayOutputStream tmp = new ByteArrayOutputStream();
-      DataOutputStream dos = new DataOutputStream(tmp);
 
       int[] stream = new int[totalValuesInStream];
       BoundedIntColumnWriter bicw = new BoundedIntColumnWriter(bound);
@@ -143,10 +141,10 @@ public class TestBoundedColumns {
             bicw.writeInteger(next);
           }
         }
-        bicw.getBytes().writeAllTo(dos);
+        bicw.getBytes().writeAllTo(tmp);
         bicw.reset();
       }
-      dos.close();
+      tmp.close();
 
       byte[] input = tmp.toByteArray();
 
@@ -154,7 +152,7 @@ public class TestBoundedColumns {
       idx = 0;
       int offset = 0;
       for (int stripeNum = 0; stripeNum < valuesPerStripe.length; stripeNum++) {
-        offset = bicr.initFromPage(input, offset);
+        offset = bicr.initFromPage(1, input, offset);
         for (int i = 0; i < valuesPerStripe[stripeNum]; i++) {
           int number = stream[idx++];
           int ct = stream[idx++];

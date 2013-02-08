@@ -16,12 +16,13 @@
 package redelm.column.primitive;
 
 import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
 import redelm.Log;
 import redelm.bytes.BytesInput;
+import redelm.bytes.BytesUtils;
+import redelm.bytes.LittleEndianDataOutputStream;
 
 /**
  * A combination of DataOutputStream and ByteArrayOutputStream
@@ -35,11 +36,11 @@ public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
   public static final Charset CHARSET = Charset.forName("UTF-8");
 
   private ByteArrayOutputStream arrayOut;
-  private DataOutputStream out;
+  private LittleEndianDataOutputStream out;
 
   public SimplePrimitiveColumnWriter(int initialSize) {
     arrayOut = new ByteArrayOutputStream(initialSize);
-    out = new DataOutputStream(arrayOut);
+    out = new LittleEndianDataOutputStream(arrayOut);
   }
 
   @Override
@@ -54,7 +55,7 @@ public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
   @Override
   public final void writeBytes(byte[] v) {
     try {
-      out.writeInt(v.length);
+      BytesUtils.writeUnsignedVarInt(v.length, out);
       out.write(v);
     } catch (IOException e) {
       throw new RuntimeException("never happens", e);
@@ -125,14 +126,6 @@ public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
   @Override
   public void reset() {
     arrayOut.reset();
-  }
-
-  private void writeUnsignedVarInt(int value) throws IOException {
-    while ((value & 0xFFFFFF80) != 0L) {
-      out.writeByte((value & 0x7F) | 0x80);
-      value >>>= 7;
-    }
-    out.writeByte(value & 0x7F);
   }
 
 }
