@@ -21,6 +21,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -114,13 +115,11 @@ public class RedFileMetadataConverter {
       public void visit(GroupType groupType) {
         SchemaElement element = new SchemaElement(groupType.getName());
         element.setField_type(toRedfileRepetition(groupType.getRepetition()));
+        element.setChildren_count(groupType.getFieldCount());
         result.add(element);
-        List<Integer> children = new ArrayList<Integer>();
         for (redelm.schema.Type field : groupType.getFields()) {
-          children.add(result.size());
           addToList(result, field);
         }
-        element.setChildren_indices(children);
       }
     });
   }
@@ -248,18 +247,17 @@ public class RedFileMetadataConverter {
   }
 
   MessageType fromRedFileSchema(List<SchemaElement> schema) {
-    SchemaElement root = schema.get(0);
-    return new MessageType(root.getName(), convertChildren(schema, root.getChildren_indices()));
+    Iterator<SchemaElement> iterator = schema.iterator();
+    SchemaElement root = iterator.next();
+    return new MessageType(root.getName(), convertChildren(iterator, root.getChildren_count()));
   }
 
-  private redelm.schema.Type[] convertChildren(List<SchemaElement> schema,
-      List<Integer> children_indices) {
-    redelm.schema.Type[] result = new redelm.schema.Type[children_indices.size()];
+  private redelm.schema.Type[] convertChildren(Iterator<SchemaElement> schema, int childrenCount) {
+    redelm.schema.Type[] result = new redelm.schema.Type[childrenCount];
     for (int i = 0; i < result.length; i++) {
-      int index = children_indices.get(i);
-      SchemaElement schemaElement = schema.get(index);
-      if ((schemaElement.type == null && schemaElement.children_indices == null)
-          || (schemaElement.type != null && schemaElement.children_indices != null)) {
+      SchemaElement schemaElement = schema.next();
+      if ((!schemaElement.isSetType() && !schemaElement.isSetChildren_count())
+          || (schemaElement.isSetType() && schemaElement.isSetChildren_count())) {
         throw new RuntimeException("bad element " + schemaElement);
       }
       Repetition repetition = fromRedFileRepetition(schemaElement.getField_type());
@@ -273,7 +271,7 @@ public class RedFileMetadataConverter {
         result[i] = new GroupType(
             repetition,
             name,
-            convertChildren(schema, schemaElement.getChildren_indices()));
+            convertChildren(schema, schemaElement.getChildren_count()));
       }
     }
     return result;
