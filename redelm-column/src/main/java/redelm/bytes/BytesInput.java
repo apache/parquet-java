@@ -32,7 +32,7 @@ import redelm.Log;
  */
 abstract public class BytesInput {
   private static final Log LOG = Log.getLog(BytesInput.class);
-  private static final boolean DEBUG = Log.DEBUG;
+  private static final boolean DEBUG = false;//Log.DEBUG;
   private static final EmptyBytesInput EMPTY_BYTES_INPUT = new EmptyBytesInput();
 
   public static BytesInput fromSequence(BytesInput... inputs) {

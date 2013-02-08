@@ -133,7 +133,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
   private void writeValue(Type type, FieldSchema pigType, Tuple t, int i) {
     try {
       if (type.isPrimitive()) {
-        switch (type.asPrimitiveType().getPrimitive()) {
+        switch (type.asPrimitiveType().getPrimitiveTypeName()) {
         // TODO: use PrimitiveTuple accessors
         case BINARY:
           byte[] bytes;
@@ -162,7 +162,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
           recordConsumer.addFloat(((Number)t.get(i)).floatValue());
           break;
         default:
-          throw new UnsupportedOperationException(type.asPrimitiveType().getPrimitive().name());
+          throw new UnsupportedOperationException(type.asPrimitiveType().getPrimitiveTypeName().name());
         }
       } else {
         assert pigType.type == DataType.TUPLE;

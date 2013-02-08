@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import redelm.column.ColumnDescriptor;
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * The root of a schema
@@ -83,7 +83,7 @@ public class MessageType extends GroupType {
   public ColumnDescriptor getColumnDescription(String[] path) {
     int maxRep = getRepetitionLevel(path);
     int maxDef = getDefinitionLevel(path);
-    Primitive type = getType(path).asPrimitiveType().getPrimitive();
+    PrimitiveTypeName type = getType(path).asPrimitiveType().getPrimitiveTypeName();
     return new ColumnDescriptor(path, type, maxRep, maxDef);
   }
 
@@ -96,7 +96,7 @@ public class MessageType extends GroupType {
     List<ColumnDescriptor> columns = new ArrayList<ColumnDescriptor>(paths.size());
     for (String[] path : paths) {
       // TODO: optimize this
-      columns.add(new ColumnDescriptor(path, getType(path).asPrimitiveType().getPrimitive(), getRepetitionLevel(path), getDefinitionLevel(path)));
+      columns.add(new ColumnDescriptor(path, getType(path).asPrimitiveType().getPrimitiveTypeName(), getRepetitionLevel(path), getDefinitionLevel(path)));
     }
     return columns;
   }

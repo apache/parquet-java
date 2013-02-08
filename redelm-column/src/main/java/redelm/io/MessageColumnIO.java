@@ -28,7 +28,7 @@ import redelm.schema.MessageType;
 public class MessageColumnIO extends GroupColumnIO {
   private static final Log logger = Log.getLog(MessageColumnIO.class);
 
-  private static final boolean DEBUG = Log.DEBUG;
+  private static final boolean DEBUG = false;//Log.DEBUG;
 
   private List<PrimitiveColumnIO> leaves;
 
@@ -211,7 +211,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
     @Override
     public void addBinary(byte[] value) {
-      if (DEBUG) log("addBinary("+value+")");
+      if (DEBUG) log("addBinary("+value.length+" bytes)");
       getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
       setRepetitionLevel();

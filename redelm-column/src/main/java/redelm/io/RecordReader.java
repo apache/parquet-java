@@ -21,7 +21,7 @@ import redelm.Log;
 import redelm.column.ColumnReader;
 import redelm.column.ColumnsStore;
 import redelm.schema.MessageType;
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * used to read reassembled records
@@ -38,7 +38,7 @@ public class RecordReader<T> {
 
     private final int id;
     private final PrimitiveColumnIO primitiveColumnIO;
-    private final Primitive primitive;
+    private final PrimitiveTypeName primitive;
     private final ColumnReader column;
     private final String[] fieldPath; // indexed on currentLevel
     private final int[] indexFieldPath; // indexed on currentLevel
@@ -52,7 +52,7 @@ public class RecordReader<T> {
       this.primitiveColumnIO = primitiveColumnIO;
       this.column = column;
       this.nextLevel = nextLevel;
-      this.primitive = primitiveColumnIO.getType().asPrimitiveType().getPrimitive();
+      this.primitive = primitiveColumnIO.getType().asPrimitiveType().getPrimitiveTypeName();
       this.fieldPath = primitiveColumnIO.getFieldPath();
       this.indexFieldPath = primitiveColumnIO.getIndexFieldPath();
     }
@@ -237,7 +237,7 @@ public class RecordReader<T> {
     recordConsumer.endMessage();
   }
 
-  private void addPrimitive(ColumnReader columnReader, Primitive primitive, String field, int index) {
+  private void addPrimitive(ColumnReader columnReader, PrimitiveTypeName primitive, String field, int index) {
     startField(field, index);
     primitive.addValueToRecordConsumer(recordConsumer, columnReader);
     endField(field, index);

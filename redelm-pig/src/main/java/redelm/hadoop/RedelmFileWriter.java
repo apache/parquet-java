@@ -150,7 +150,7 @@ public class RedelmFileWriter {
   public void startBlock(int recordCount) throws IOException {
     state = state.startBlock();
     if (DEBUG) LOG.debug(out.getPos() + ": start block");
-    out.write(MAGIC);
+//    out.write(MAGIC); // TODO: add a magic delimiter
     currentBlock = new BlockMetaData();
     currentRecordCount = recordCount;
   }

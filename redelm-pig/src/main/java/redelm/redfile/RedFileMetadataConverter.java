@@ -35,7 +35,7 @@ import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType;
 import redelm.schema.Type.Repetition;
 import redelm.schema.TypeVisitor;
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 import redfile.ColumnChunk;
 import redfile.CompressionCodec;
 import redfile.Encoding;
@@ -92,7 +92,7 @@ public class RedFileMetadataConverter {
       public void visit(PrimitiveType primitiveType) {
         SchemaElement element = new SchemaElement(primitiveType.getName());
         element.setField_type(toRedfileRepetition(primitiveType.getRepetition()));
-        element.setType(getType(primitiveType.getPrimitive()));
+        element.setType(getType(primitiveType.getPrimitiveTypeName()));
         result.add(element);
       }
 
@@ -166,26 +166,26 @@ public class RedFileMetadataConverter {
     }
   }
 
-  private Primitive getPrimitive(Type type) {
+  private PrimitiveTypeName getPrimitive(Type type) {
     switch (type) {
       case BYTE_ARRAY:
-        return Primitive.BINARY;
+        return PrimitiveTypeName.BINARY;
       case INT64:
-        return Primitive.INT64;
+        return PrimitiveTypeName.INT64;
       case INT32:
-        return Primitive.INT32;
+        return PrimitiveTypeName.INT32;
       case BOOLEAN:
-        return Primitive.BOOLEAN;
+        return PrimitiveTypeName.BOOLEAN;
       case FLOAT:
-        return Primitive.FLOAT;
+        return PrimitiveTypeName.FLOAT;
       case DOUBLE:
-        return Primitive.DOUBLE;
+        return PrimitiveTypeName.DOUBLE;
       default:
         throw new RuntimeException("Unknown type " + type);
     }
   }
 
-  private Type getType(Primitive type) {
+  private Type getType(PrimitiveTypeName type) {
     switch (type) {
       case INT64:
         return Type.INT64;
@@ -224,7 +224,7 @@ public class RedFileMetadataConverter {
       for (ColumnChunk columnChunk : columns) {
         redfile.ColumnMetaData metaData = columnChunk.meta_data;
         String[] path = metaData.path_in_schema.toArray(new String[metaData.path_in_schema.size()]);
-        ColumnChunkMetaData column = new ColumnChunkMetaData(path, messageType.getType(path).asPrimitiveType().getPrimitive(), CompressionCodecName.fromRedFile(metaData.codec));
+        ColumnChunkMetaData column = new ColumnChunkMetaData(path, messageType.getType(path).asPrimitiveType().getPrimitiveTypeName(), CompressionCodecName.fromRedFile(metaData.codec));
         column.setFirstDataPage(metaData.data_page_offset);
         column.setValueCount(metaData.num_values);
         column.setTotalUncompressedSize(metaData.total_uncompressed_size);

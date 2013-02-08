@@ -10,6 +10,8 @@ import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
+import redelm.Log;
+import redelm.bytes.BytesInput;
 import redelm.column.ColumnDescriptor;
 import redelm.column.mem.MemColumnsStore;
 import redelm.column.mem.MemPageStore;
@@ -25,10 +27,12 @@ import redelm.io.MessageColumnIO;
 import redelm.io.RecordConsumer;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType;
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 import redelm.schema.Type.Repetition;
 
 public class GenerateIntTestFile {
+  private static final Log LOG = Log.getLog(GenerateIntTestFile.class);
+
   public static void main(String[] args) throws Throwable {
     File out = new File("testdata/from_java/int_test_file");
     if (out.exists()) {
@@ -39,10 +43,7 @@ public class GenerateIntTestFile {
     Path testFile = new Path(out.toURI());
     Configuration configuration = new Configuration();
     {
-      MessageType schema = new MessageType("int_test_file", new PrimitiveType(Repetition.OPTIONAL, Primitive.INT32, "int_col"));
-
-      RedelmFileWriter w = new RedelmFileWriter(configuration, schema, testFile);
-
+      MessageType schema = new MessageType("int_test_file", new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.INT32, "int_col"));
 
       MemPageStore pageStore = new MemPageStore();
       MemColumnsStore store = new MemColumnsStore(1024 * 1024 * 1, pageStore, 8*1024);
@@ -62,43 +63,67 @@ public class GenerateIntTestFile {
         recordWriter.endMessage();
         ++ recordCount;
       }
-
-
-      w.start();
-      w.startBlock(recordCount);
       store.flush();
-      List<ColumnDescriptor> columns = schema.getColumns();
-      for (ColumnDescriptor columnDescriptor : columns) {
-        PageReader pageReader = pageStore.getPageReader(columnDescriptor);
-        int totalValueCount = pageReader.getTotalValueCount();
-        w.startColumn(columnDescriptor, totalValueCount, CompressionCodecName.UNCOMPRESSED);
-        int n = 0;
-        do {
-          Page page = pageReader.readPage();
-          n += page.getValueCount();
-          // TODO: change INTFC
-          w.writeDataPage(page.getValueCount(), (int)page.getBytes().size(), page.getBytes().toByteArray(), 0, (int)page.getBytes().size());
-        } while (n < totalValueCount);
-        w.endColumn();
-      }
-      recordCount = 0;
-      w.endBlock();
-      store = null;
-      pageStore = null;
-      w.end(new HashMap<String, String>());
+
+
+      writeToFile(testFile, configuration, schema, pageStore, recordCount);
     }
 
     {
-      RedelmMetaData readFooter = RedelmFileReader.readFooter(configuration, testFile);
-      MessageType schema = readFooter.getFileMetaData().getSchema();
-      RedelmFileReader redelmFileReader = new RedelmFileReader(configuration, testFile, readFooter.getBlocks(), schema.getPaths());
-      redelmFileReader.readColumns(new PageConsumer() {
-        @Override
-        public void consumePage(String[] path, int valueCount, InputStream is,
-            int pageSize) {
-          System.out.println(Arrays.toString(path) + " " + valueCount + " " + pageSize);
-        }
-      });
+      readTestFile(testFile, configuration);
     }
+  }
+
+  public static void readTestFile(Path testFile, Configuration configuration)
+      throws IOException {
+    RedelmMetaData readFooter = RedelmFileReader.readFooter(configuration, testFile);
+    MessageType schema = readFooter.getFileMetaData().getSchema();
+    RedelmFileReader redelmFileReader = new RedelmFileReader(configuration, testFile, readFooter.getBlocks(), schema.getPaths());
+    redelmFileReader.readColumns(new PageConsumer() {
+      @Override
+      public void consumePage(String[] path, int valueCount, InputStream is,
+          int pageSize) {
+        if (Log.INFO) LOG.info(Arrays.toString(path) + " " + valueCount + " " + pageSize);
+        BytesInput.copy(BytesInput.from(is, pageSize));
+      }
+    });
+  }
+
+  public static void writeToFile(Path file, Configuration configuration, MessageType schema, MemPageStore pageStore, int recordCount)
+      throws IOException {
+    RedelmFileWriter w = startFile(file, configuration, schema);
+    writeBlock(schema, pageStore, recordCount, w);
+    endFile(w);
+  }
+
+  public static void endFile(RedelmFileWriter w) throws IOException {
+    w.end(new HashMap<String, String>());
+  }
+
+  public static void writeBlock(MessageType schema, MemPageStore pageStore,
+      int recordCount, RedelmFileWriter w) throws IOException {
+    w.startBlock(recordCount);
+    List<ColumnDescriptor> columns = schema.getColumns();
+    for (ColumnDescriptor columnDescriptor : columns) {
+      PageReader pageReader = pageStore.getPageReader(columnDescriptor);
+      int totalValueCount = pageReader.getTotalValueCount();
+      w.startColumn(columnDescriptor, totalValueCount, CompressionCodecName.UNCOMPRESSED);
+      int n = 0;
+      do {
+        Page page = pageReader.readPage();
+        n += page.getValueCount();
+        // TODO: change INTFC
+        w.writeDataPage(page.getValueCount(), (int)page.getBytes().size(), page.getBytes().toByteArray(), 0, (int)page.getBytes().size());
+      } while (n < totalValueCount);
+      w.endColumn();
+    }
+    w.endBlock();
+  }
+
+  public static RedelmFileWriter startFile(Path file,
+      Configuration configuration, MessageType schema) throws IOException {
+    RedelmFileWriter w = new RedelmFileWriter(configuration, schema, file);
+    w.start();
+    return w;
   }
 }

@@ -43,7 +43,7 @@ public class Log {
   /**
    * this is the compile time log level
    */
-  public static final Level LEVEL = Level.INFO;
+  public static final Level LEVEL = Level.FINEST;
 
   public static final boolean DEBUG = (LEVEL.intValue() <= Level.FINE.intValue());
   public static final boolean INFO = (LEVEL.intValue() <= Level.INFO.intValue());
@@ -144,6 +144,18 @@ public class Log {
 
   public void warn(Object m, Throwable t) {
     logger.log(Level.WARNING, String.valueOf(m), t);
+  }
+
+  public void error(Object m) {
+    if (m instanceof Throwable) {
+      logger.log(Level.SEVERE, "", (Throwable)m);
+    } else {
+      logger.warning(String.valueOf(m));
+    }
+  }
+
+  public void error(Object m, Throwable t) {
+    logger.log(Level.SEVERE, String.valueOf(m), t);
   }
 
 }

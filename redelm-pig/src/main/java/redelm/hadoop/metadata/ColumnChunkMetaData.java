@@ -18,7 +18,7 @@ package redelm.hadoop.metadata;
 import java.io.Serializable;
 import java.util.Arrays;
 
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * Column meta data for a block stored in the file footer and passed in the InputSplit
@@ -30,7 +30,7 @@ public class ColumnChunkMetaData implements Serializable {
 
   private final CompressionCodecName codec;
   private final String[] path;
-  private final Primitive type;
+  private final PrimitiveTypeName type;
 
   private long firstDataPage;
 
@@ -45,7 +45,7 @@ public class ColumnChunkMetaData implements Serializable {
    * @param path column identifier
    * @param type type of the column
    */
-  public ColumnChunkMetaData(String[] path, Primitive type, CompressionCodecName codec) {
+  public ColumnChunkMetaData(String[] path, PrimitiveTypeName type, CompressionCodecName codec) {
     this.path = path;
     this.type = type;
     this.codec = codec;
@@ -67,7 +67,7 @@ public class ColumnChunkMetaData implements Serializable {
    *
    * @return type of the column
    */
-  public Primitive getType() {
+  public PrimitiveTypeName getType() {
     return type;
   }
 

@@ -16,8 +16,8 @@
 package redelm.parser;
 
 import static org.junit.Assert.assertEquals;
-import static redelm.schema.PrimitiveType.Primitive.BINARY;
-import static redelm.schema.PrimitiveType.Primitive.INT64;
+import static redelm.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static redelm.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static redelm.schema.Type.Repetition.OPTIONAL;
 import static redelm.schema.Type.Repetition.REPEATED;
 import static redelm.schema.Type.Repetition.REQUIRED;

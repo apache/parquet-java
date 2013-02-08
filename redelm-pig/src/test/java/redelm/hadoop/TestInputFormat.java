@@ -29,7 +29,7 @@ import redelm.hadoop.metadata.CompressionCodecName;
 import redelm.hadoop.metadata.FileMetaData;
 import redelm.io.RecordMaterializer;
 import redelm.schema.MessageType;
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
@@ -74,7 +74,7 @@ public class TestInputFormat {
 
   private BlockMetaData newBlock(long start) {
     BlockMetaData blockMetaData = new BlockMetaData();
-    ColumnChunkMetaData column = new ColumnChunkMetaData(new String[] {"foo"}, Primitive.BINARY, CompressionCodecName.GZIP);
+    ColumnChunkMetaData column = new ColumnChunkMetaData(new String[] {"foo"}, PrimitiveTypeName.BINARY, CompressionCodecName.GZIP);
     column.setFirstDataPage(start);
     blockMetaData.addColumn(column);
     return blockMetaData;

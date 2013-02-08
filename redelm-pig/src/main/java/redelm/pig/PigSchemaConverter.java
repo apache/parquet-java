@@ -25,7 +25,7 @@ import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType;
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 import redelm.schema.Type;
 import redelm.schema.Type.Repetition;
 
@@ -71,21 +71,21 @@ public class PigSchemaConverter {
       case DataType.MAP:
           return convertMap(name, fieldSchema);
       case DataType.BOOLEAN:
-          return primitive(name, Primitive.BOOLEAN);
+          return primitive(name, PrimitiveTypeName.BOOLEAN);
       case DataType.CHARARRAY:
-          return primitive(name, Primitive.BINARY);
+          return primitive(name, PrimitiveTypeName.BINARY);
       case DataType.INTEGER:
-          return primitive(name, Primitive.INT32);
+          return primitive(name, PrimitiveTypeName.INT32);
       case DataType.LONG:
-          return primitive(name, Primitive.INT64);
+          return primitive(name, PrimitiveTypeName.INT64);
       case DataType.FLOAT:
-          return primitive(name, Primitive.FLOAT);
+          return primitive(name, PrimitiveTypeName.FLOAT);
       case DataType.DOUBLE:
-          return primitive(name, Primitive.DOUBLE);
+          return primitive(name, PrimitiveTypeName.DOUBLE);
       case DataType.DATETIME:
           throw new UnsupportedOperationException();
       case DataType.BYTEARRAY:
-          return primitive(name, Primitive.BINARY);
+          return primitive(name, PrimitiveTypeName.BINARY);
       default:
           throw new RuntimeException("Unknown type "+fieldSchema.type+" "+DataType.findTypeName(fieldSchema.type));
       }
@@ -118,7 +118,7 @@ public class PigSchemaConverter {
     return fieldAlias == null ? defaultName : fieldAlias;
   }
 
-  private PrimitiveType primitive(String name, Primitive primitive) {
+  private PrimitiveType primitive(String name, PrimitiveTypeName primitive) {
     return new PrimitiveType(Repetition.OPTIONAL, primitive, name);
   }
 
@@ -141,7 +141,7 @@ public class PigSchemaConverter {
    */
   private GroupType convertMap(String alias, FieldSchema fieldSchema) throws FrontendException {
     Type[] types = new Type[2];
-    types[0] = new PrimitiveType(Repetition.REQUIRED, Primitive.BINARY, "key");
+    types[0] = new PrimitiveType(Repetition.REQUIRED, PrimitiveTypeName.BINARY, "key");
     Schema innerSchema = fieldSchema.schema;
     if (innerSchema.size() != 1) {
       throw new FrontendException("Invalid map Schema, schema should contain exactly one field: " + fieldSchema);

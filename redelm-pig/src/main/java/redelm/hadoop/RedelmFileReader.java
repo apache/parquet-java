@@ -63,7 +63,9 @@ public class RedelmFileReader {
   private static RedelmMetaData deserializeFooter(InputStream is) throws IOException {
     redfile.FileMetaData redFileMetadata = redFileMetadataConverter.readFileMetaData(is);
     if (Log.INFO) LOG.info(redFileMetadataConverter.toString(redFileMetadata));
-    return redFileMetadataConverter.fromRedFileMetadata(redFileMetadata);
+    RedelmMetaData metadata = redFileMetadataConverter.fromRedFileMetadata(redFileMetadata);
+    if (Log.INFO) LOG.info(RedelmMetaData.toPrettyJSON(metadata));
+    return metadata;
   }
 
   public static List<Footer> readAllFootersInParallel(final Configuration configuration, List<FileStatus> partFiles) throws IOException {

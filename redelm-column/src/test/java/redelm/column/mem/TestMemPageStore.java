@@ -17,7 +17,7 @@ package redelm.column.mem;
 
 import redelm.bytes.BytesInput;
 import redelm.column.ColumnDescriptor;
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 
 import org.junit.Test;
 
@@ -28,7 +28,7 @@ public class TestMemPageStore {
   @Test
   public void test() {
     MemPageStore memPageStore = new MemPageStore();
-    ColumnDescriptor col = new ColumnDescriptor(path , Primitive.INT64, 2, 2);
+    ColumnDescriptor col = new ColumnDescriptor(path , PrimitiveTypeName.INT64, 2, 2);
     PageWriter pageWriter = memPageStore.getPageWriter(col);
     pageWriter.writePage(BytesInput.from(new byte[735]), 209);
     pageWriter.writePage(BytesInput.from(new byte[743]), 209);
