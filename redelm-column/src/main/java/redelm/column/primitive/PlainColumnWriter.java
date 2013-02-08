@@ -30,15 +30,15 @@ import redelm.bytes.LittleEndianDataOutputStream;
  * @author Julien Le Dem
  *
  */
-public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
-  private static final Log LOG = Log.getLog(SimplePrimitiveColumnWriter.class);
+public class PlainColumnWriter extends PrimitiveColumnWriter {
+  private static final Log LOG = Log.getLog(PlainColumnWriter.class);
 
   public static final Charset CHARSET = Charset.forName("UTF-8");
 
   private ByteArrayOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
 
-  public SimplePrimitiveColumnWriter(int initialSize) {
+  public PlainColumnWriter(int initialSize) {
     arrayOut = new ByteArrayOutputStream(initialSize);
     out = new LittleEndianDataOutputStream(arrayOut);
   }

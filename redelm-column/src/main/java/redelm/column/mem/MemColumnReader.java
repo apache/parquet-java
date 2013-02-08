@@ -27,8 +27,8 @@ import redelm.column.primitive.BooleanPlainColumnReader;
 import redelm.column.primitive.BooleanPlainColumnWriter;
 import redelm.column.primitive.BoundedColumnFactory;
 import redelm.column.primitive.PrimitiveColumnReader;
-import redelm.column.primitive.SimplePrimitiveColumnReader;
-import redelm.column.primitive.SimplePrimitiveColumnWriter;
+import redelm.column.primitive.PlainColumnReader;
+import redelm.column.primitive.PlainColumnWriter;
 
 abstract class MemColumnReader implements ColumnReader {
   private static final Log LOG = Log.getLog(MemColumnReader.class);
@@ -155,7 +155,7 @@ abstract class MemColumnReader implements ColumnReader {
       case BOOLEAN:
         this.dataColumn = new BooleanPlainColumnReader();
       default:
-        this.dataColumn = new SimplePrimitiveColumnReader();
+        this.dataColumn = new PlainColumnReader();
       }
 
       this.pageValueCount = page.getValueCount();

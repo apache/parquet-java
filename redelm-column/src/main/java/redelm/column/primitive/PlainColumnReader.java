@@ -24,8 +24,8 @@ import redelm.Log;
 import redelm.bytes.BytesUtils;
 import redelm.bytes.LittleEndianDataInputStream;
 
-public class SimplePrimitiveColumnReader extends PrimitiveColumnReader {
-  private static final Log LOG = Log.getLog(SimplePrimitiveColumnReader.class);
+public class PlainColumnReader extends PrimitiveColumnReader {
+  private static final Log LOG = Log.getLog(PlainColumnReader.class);
 
   private LittleEndianDataInputStream in;
 

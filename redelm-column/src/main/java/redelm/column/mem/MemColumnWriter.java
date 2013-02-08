@@ -24,7 +24,7 @@ import redelm.column.primitive.BooleanPlainColumnReader;
 import redelm.column.primitive.BooleanPlainColumnWriter;
 import redelm.column.primitive.BoundedColumnFactory;
 import redelm.column.primitive.PrimitiveColumnWriter;
-import redelm.column.primitive.SimplePrimitiveColumnWriter;
+import redelm.column.primitive.PlainColumnWriter;
 
 final class MemColumnWriter implements ColumnWriter {
   private static final Log LOG = Log.getLog(MemColumnWriter.class);
@@ -48,7 +48,7 @@ final class MemColumnWriter implements ColumnWriter {
     case BOOLEAN:
       this.dataColumn = new BooleanPlainColumnWriter(initialSize);
     default:
-      this.dataColumn = new SimplePrimitiveColumnWriter(initialSize);
+      this.dataColumn = new PlainColumnWriter(initialSize);
     }
   }
 
