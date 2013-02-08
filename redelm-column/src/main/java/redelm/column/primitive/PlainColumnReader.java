@@ -24,6 +24,12 @@ import redelm.Log;
 import redelm.bytes.BytesUtils;
 import redelm.bytes.LittleEndianDataInputStream;
 
+/**
+ * Plain encoding except for booleans
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class PlainColumnReader extends PrimitiveColumnReader {
   private static final Log LOG = Log.getLog(PlainColumnReader.class);
 
@@ -41,18 +47,10 @@ public class PlainColumnReader extends PrimitiveColumnReader {
   @Override
   public byte[] readBytes() {
     try {
-      byte[] value = new byte[BytesUtils.readUnsignedVarInt(in)];
+//      byte[] value = new byte[BytesUtils.readUnsignedVarInt(in)];
+      byte[] value = new byte[in.readInt()];
       in.readFully(value);
       return value;
-    } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
-    }
-  }
-
-  @Override
-  public boolean readBoolean() {
-    try {
-      return in.readBoolean();
     } catch (IOException e) {
       throw new RuntimeException("never happens", e);
     }

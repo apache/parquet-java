@@ -25,7 +25,7 @@ import redelm.bytes.BytesUtils;
 import redelm.bytes.LittleEndianDataOutputStream;
 
 /**
- * A combination of DataOutputStream and ByteArrayOutputStream
+ * Plain encoding except for booleans
  *
  * @author Julien Le Dem
  *
@@ -44,18 +44,10 @@ public class PlainColumnWriter extends PrimitiveColumnWriter {
   }
 
   @Override
-  public final void writeBoolean(boolean v) {
-    try {
-      out.writeBoolean(v);
-    } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
-    }
-  }
-
-  @Override
   public final void writeBytes(byte[] v) {
     try {
-      BytesUtils.writeUnsignedVarInt(v.length, out);
+//      BytesUtils.writeUnsignedVarInt(v.length, out);
+      out.writeInt(v.length);
       out.write(v);
     } catch (IOException e) {
       throw new RuntimeException("never happens", e);
