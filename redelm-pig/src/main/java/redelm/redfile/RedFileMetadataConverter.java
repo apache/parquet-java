@@ -34,9 +34,9 @@ import redelm.hadoop.metadata.RedelmMetaData;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 import redelm.schema.Type.Repetition;
 import redelm.schema.TypeVisitor;
-import redelm.schema.PrimitiveType.PrimitiveTypeName;
 import redfile.ColumnChunk;
 import redfile.CompressionCodec;
 import redfile.Encoding;
@@ -51,10 +51,7 @@ import redfile.Type;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.protocol.TJSONProtocol;
-import org.apache.thrift.protocol.TSimpleJSONProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
-import org.apache.thrift.transport.TMemoryBuffer;
 
 public class RedFileMetadataConverter {
 
@@ -108,13 +105,19 @@ public class RedFileMetadataConverter {
 
       @Override
       public void visit(MessageType messageType) {
-        this.visit(messageType.asGroupType());
+        SchemaElement element = new SchemaElement(messageType.getName());
+        visitChildren(result, messageType.asGroupType(), element);
       }
 
       @Override
       public void visit(GroupType groupType) {
         SchemaElement element = new SchemaElement(groupType.getName());
         element.setField_type(toRedfileRepetition(groupType.getRepetition()));
+        visitChildren(result, groupType, element);
+      }
+
+      private void visitChildren(final List<SchemaElement> result,
+          GroupType groupType, SchemaElement element) {
         element.setChildren_count(groupType.getFieldCount());
         result.add(element);
         for (redelm.schema.Type field : groupType.getFields()) {
