@@ -118,7 +118,7 @@ public class RedFileMetadataConverter {
 
       private void visitChildren(final List<SchemaElement> result,
           GroupType groupType, SchemaElement element) {
-        element.setChildren_count(groupType.getFieldCount());
+        element.setNum_children(groupType.getFieldCount());
         result.add(element);
         for (redelm.schema.Type field : groupType.getFields()) {
           addToList(result, field);
@@ -132,9 +132,8 @@ public class RedFileMetadataConverter {
     List<ColumnChunkMetaData> columns = block.getColumns();
     List<ColumnChunk> redFileColumns = new ArrayList<ColumnChunk>();
     for (ColumnChunkMetaData columnMetaData : columns) {
-      ColumnChunk columnChunk = new ColumnChunk();
+      ColumnChunk columnChunk = new ColumnChunk(columnMetaData.getFirstDataPage()); // verify this is the right offset
       columnChunk.file_path = null; // same file
-      columnChunk.file_offset = columnMetaData.getFirstDataPage(); // TODO ?
       columnChunk.meta_data = new redfile.ColumnMetaData(
           getType(columnMetaData.getType()),
           Arrays.asList(Encoding.PLAIN), // TODO: deal with encodings
@@ -252,15 +251,15 @@ public class RedFileMetadataConverter {
   MessageType fromRedFileSchema(List<SchemaElement> schema) {
     Iterator<SchemaElement> iterator = schema.iterator();
     SchemaElement root = iterator.next();
-    return new MessageType(root.getName(), convertChildren(iterator, root.getChildren_count()));
+    return new MessageType(root.getName(), convertChildren(iterator, root.getNum_children()));
   }
 
   private redelm.schema.Type[] convertChildren(Iterator<SchemaElement> schema, int childrenCount) {
     redelm.schema.Type[] result = new redelm.schema.Type[childrenCount];
     for (int i = 0; i < result.length; i++) {
       SchemaElement schemaElement = schema.next();
-      if ((!schemaElement.isSetType() && !schemaElement.isSetChildren_count())
-          || (schemaElement.isSetType() && schemaElement.isSetChildren_count())) {
+      if ((!schemaElement.isSetType() && !schemaElement.isSetNum_children())
+          || (schemaElement.isSetType() && schemaElement.isSetNum_children())) {
         throw new RuntimeException("bad element " + schemaElement);
       }
       Repetition repetition = fromRedFileRepetition(schemaElement.getField_type());
@@ -274,7 +273,7 @@ public class RedFileMetadataConverter {
         result[i] = new GroupType(
             repetition,
             name,
-            convertChildren(schema, schemaElement.getChildren_count()));
+            convertChildren(schema, schemaElement.getNum_children()));
       }
     }
     return result;

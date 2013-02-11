@@ -113,7 +113,7 @@ public class GenerateIntTestFile {
         Page page = pageReader.readPage();
         n += page.getValueCount();
         // TODO: change INTFC
-        w.writeDataPage(page.getValueCount(), (int)page.getBytes().size(), page.getBytes().toByteArray(), 0, (int)page.getBytes().size());
+        w.writeDataPage(page.getValueCount(), (int)page.getBytes().size(), BytesInput.from(page.getBytes().toByteArray()));
       } while (n < totalValueCount);
       w.endColumn();
     }

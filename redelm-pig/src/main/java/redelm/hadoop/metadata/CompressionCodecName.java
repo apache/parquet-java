@@ -23,6 +23,13 @@ public enum CompressionCodecName {
   GZIP("org.apache.hadoop.io.compress.GzipCodec", CompressionCodec.GZIP, ".gz"),
   LZO("com.hadoop.compression.lzo.LzopCodec", CompressionCodec.LZO, ".lzo");
 
+  public static CompressionCodecName fromConf(String name) {
+     if (name == null) {
+       return UNCOMPRESSED;
+     }
+     return valueOf(name.toUpperCase());
+  }
+
   public static CompressionCodecName fromCompressionCodec(Class<?> clazz) {
     if (clazz == null) {
       return UNCOMPRESSED;

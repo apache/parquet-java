@@ -16,29 +16,27 @@
 package redelm.hadoop;
 
 import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.hadoop.mapreduce.RecordWriter;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
-
 import redelm.bytes.BytesInput;
 import redelm.column.ColumnDescriptor;
-import redelm.column.ColumnWriter;
-import redelm.column.mem.MemColumn;
 import redelm.column.mem.MemColumnsStore;
 import redelm.column.mem.MemPageStore;
 import redelm.column.mem.Page;
 import redelm.column.mem.PageReader;
-import redelm.column.mem.PageStore;
-import redelm.column.mem.PageWriter;
 import redelm.hadoop.metadata.CompressionCodecName;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
 import redelm.schema.MessageType;
+
+import org.apache.hadoop.io.compress.CodecPool;
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.CompressionOutputStream;
+import org.apache.hadoop.io.compress.Compressor;
+import org.apache.hadoop.mapreduce.RecordWriter;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 /**
  * Writes records to a Redelm file
@@ -53,14 +51,19 @@ public class RedelmRecordWriter<T> extends
     RecordWriter<Void, T> {
 
   private final RedelmFileWriter w;
+  private final WriteSupport<T> writeSupport;
   private final MessageType schema;
   private final Map<String, String> extraMetaData;
-  private WriteSupport<T> writeSupport;
-  private int recordCount;
-  private MemColumnsStore store;
   private final int blockSize;
-  private final CompressionCodecName codec;
+  private final int pageSize;
+  private final CompressionCodecName codecName;
+  private final CompressionCodec codec;
+  private final Compressor compressor;
+  private final ByteArrayOutputStream compressedOutBuffer;
 
+  private int recordCount;
+
+  private MemColumnsStore store;
   private MemPageStore pageStore;
 
   /**
@@ -72,7 +75,7 @@ public class RedelmRecordWriter<T> extends
    * @param blockSize the size of a block in the file (this will be approximate)
    * @param codec the codec used to compress
    */
-  RedelmRecordWriter(RedelmFileWriter w, WriteSupport<T> writeSupport, MessageType schema,  Map<String, String> extraMetaData, int blockSize, CompressionCodecName codec) {
+  RedelmRecordWriter(RedelmFileWriter w, WriteSupport<T> writeSupport, MessageType schema,  Map<String, String> extraMetaData, int blockSize, int pageSize, CompressionCodecName codecName, CompressionCodec codec) {
     if (writeSupport == null) {
       throw new NullPointerException("writeSupport");
     }
@@ -81,13 +84,22 @@ public class RedelmRecordWriter<T> extends
     this.schema = schema;
     this.extraMetaData = extraMetaData;
     this.blockSize = blockSize;
+    this.pageSize = pageSize;
+    this.codecName = codecName;
     this.codec = codec;
+    if (codec != null) {
+      this.compressor = CodecPool.getCompressor(codec);
+      this.compressedOutBuffer = new ByteArrayOutputStream(pageSize);
+    } else {
+      this.compressor = null;
+      this.compressedOutBuffer = null;
+    }
     initStore();
   }
 
   private void initStore() {
     pageStore = new MemPageStore();
-    store = new MemColumnsStore(1024 * 1024 * 1, pageStore, 8*1024);
+    store = new MemColumnsStore(1024 * 1024 / 2, pageStore, pageSize);
     //
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     writeSupport.initForWrite(columnIO.getRecordWriter(store), schema, extraMetaData);
@@ -101,6 +113,7 @@ public class RedelmRecordWriter<T> extends
   InterruptedException {
     flushStore();
     w.end(extraMetaData);
+    CodecPool.returnCompressor(compressor);
   }
 
   /**
@@ -128,13 +141,23 @@ public class RedelmRecordWriter<T> extends
     for (ColumnDescriptor columnDescriptor : columns) {
       PageReader pageReader = pageStore.getPageReader(columnDescriptor);
       int totalValueCount = pageReader.getTotalValueCount();
-      w.startColumn(columnDescriptor, totalValueCount, codec);
+      w.startColumn(columnDescriptor, totalValueCount, codecName);
       int n = 0;
+      BytesInput compressedBytes;
       do {
         Page page = pageReader.readPage();
         n += page.getValueCount();
-        // TODO: change INTFC
-        w.writeDataPage(page.getValueCount(), (int)page.getBytes().size(), page.getBytes().toByteArray(), 0, (int)page.getBytes().size());
+        long uncompressedSize = page.getBytes().size();
+        if (codec == null) {
+          compressedBytes = page.getBytes();
+        } else {
+          compressedOutBuffer.reset();
+          CompressionOutputStream cos = codec.createOutputStream(compressedOutBuffer, compressor);
+          page.getBytes().writeAllTo(cos);
+          cos.finish();
+          compressedBytes = BytesInput.from(compressedOutBuffer);
+        }
+        w.writeDataPage(page.getValueCount(), (int)uncompressedSize, compressedBytes);
       } while (n < totalValueCount);
       w.endColumn();
     }

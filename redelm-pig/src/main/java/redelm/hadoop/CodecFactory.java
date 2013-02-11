@@ -32,6 +32,11 @@ public class CodecFactory {
     this.configuration = configuration;
   }
 
+  /**
+   *
+   * @param codecName the requested codec
+   * @return the corresponding hadoop codec. null if UNCOMPRESSED
+   */
   public CompressionCodec getCodec(CompressionCodecName codecName) {
     String codecClassName = codecName.getHadoopCompressionCodecClass();
     if (codecClassName == null) {

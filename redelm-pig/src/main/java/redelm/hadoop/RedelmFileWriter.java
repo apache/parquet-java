@@ -21,11 +21,11 @@ import static redelm.Log.INFO;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 import redelm.Log;
+import redelm.bytes.BytesInput;
 import redelm.bytes.BytesUtils;
 import redelm.column.ColumnDescriptor;
 import redelm.hadoop.metadata.BlockMetaData;
@@ -67,6 +67,7 @@ public class RedelmFileWriter {
   private int currentRecordCount;
   private List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
   private long uncompressedLength;
+  private long compressedLength;
   private final RedFileMetadataConverter metadataConverter = new RedFileMetadataConverter();
 
   /**
@@ -178,26 +179,18 @@ public class RedelmFileWriter {
    */
   public void writeDataPage(
       int valueCount, int uncompressedPageSize,
-      byte[] bytes, int offset, int length) throws IOException {
+      BytesInput bytes) throws IOException {
     state = state.write();
     if (DEBUG) LOG.debug(out.getPos() + ": write data page: " + valueCount + " values");
-//      codec = codecFactory.getCodec(currentColumn.getCodec());
-//      compressor = CodecPool.getCompressor(codec);
-//      cos = codec.createOutputStream(compressedOut, compressor);
-//      uncompressedLength = 0;
-//      cos.write(data, offset, length);
-//      cos.finish();
-//      cos = null;
-//      CodecPool.returnCompressor(compressor);
-//      compressor = null;
-//      codec = null;
-    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedPageSize, length);
+    int compressedPageSize = (int)bytes.size();
+    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedPageSize, compressedPageSize);
     // pageHeader.crc = ...;
     pageHeader.data_page = new DataPageHeader(valueCount, Encoding.PLAIN); // TODO: encoding
     metadataConverter.writePageHeader(pageHeader, out);
     this.uncompressedLength += uncompressedPageSize;
-    if (DEBUG) LOG.debug(out.getPos() + ": write data page content "+length);
-    out.write(bytes, offset, length);
+    this.compressedLength += compressedPageSize;
+    if (DEBUG) LOG.debug(out.getPos() + ": write data page content " + compressedPageSize);
+    bytes.writeAllTo(out);
   }
 
   /**
@@ -208,6 +201,7 @@ public class RedelmFileWriter {
     state = state.endColumn();
     if (DEBUG) LOG.debug(out.getPos() + ": end column");
     currentColumn.setTotalUncompressedSize(uncompressedLength);
+    currentColumn.setTotalSize(compressedLength);
     currentBlock.addColumn(currentColumn);
     if (INFO) LOG.info(currentColumn);
     currentColumn = null;

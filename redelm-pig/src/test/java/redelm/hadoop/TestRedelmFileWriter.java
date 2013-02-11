@@ -16,22 +16,17 @@
 package redelm.hadoop;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Deque;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 
 import redelm.Log;
 import redelm.bytes.BytesInput;
 import redelm.column.ColumnDescriptor;
-import redelm.column.mem.Page;
 import redelm.hadoop.metadata.CompressionCodecName;
 import redelm.hadoop.metadata.RedelmMetaData;
 import redelm.parser.MessageTypeParser;
@@ -97,21 +92,21 @@ public class TestRedelmFileWriter {
     w.start();
     w.startBlock(3);
     w.startColumn(c1, 5, codec);
-    w.writeDataPage(2, 10, bytes1, 0, bytes1.length);
-    w.writeDataPage(3, 10, bytes1, 0, bytes1.length);
+    w.writeDataPage(2, 10, BytesInput.from(bytes1));
+    w.writeDataPage(3, 10, BytesInput.from(bytes1));
     w.endColumn();
     w.startColumn(c2, 6, codec);
-    w.writeDataPage(2, 10, bytes2, 0, bytes2.length);
-    w.writeDataPage(3, 10, bytes2, 0, bytes2.length);
-    w.writeDataPage(1, 10, bytes2, 0, bytes2.length);
+    w.writeDataPage(2, 10, BytesInput.from(bytes2));
+    w.writeDataPage(3, 10, BytesInput.from(bytes2));
+    w.writeDataPage(1, 10, BytesInput.from(bytes2));
     w.endColumn();
     w.endBlock();
     w.startBlock(4);
     w.startColumn(c1, 7, codec);
-    w.writeDataPage(7, 10, bytes3, 0, bytes3.length);
+    w.writeDataPage(7, 10, BytesInput.from(bytes3));
     w.endColumn();
     w.startColumn(c2, 8, codec);
-    w.writeDataPage(8, 10, bytes4, 0, bytes4.length);
+    w.writeDataPage(8, 10, BytesInput.from(bytes4));
     w.endColumn();
     w.endBlock();
     w.end(new HashMap<String, String>());
