@@ -39,7 +39,7 @@ import redelm.schema.MessageType;
 public class PerfTest {
 
   public static void main(String[] args) {
-    MemColumnsStore columns = new MemColumnsStore(50*1024*1024, new MemPageStore(), 50*1024*1024);
+    MemColumnsStore columns = new MemColumnsStore(new MemPageStore(), 50*1024*1024);
     write(columns);
     columns.flush();
     read(columns);

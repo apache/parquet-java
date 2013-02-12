@@ -35,7 +35,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import redelm.Log;
+import redelm.bytes.BytesInput;
 import redelm.bytes.BytesUtils;
+import redelm.hadoop.CodecFactory.BytesDecompressor;
 import redelm.hadoop.metadata.BlockMetaData;
 import redelm.hadoop.metadata.ColumnChunkMetaData;
 import redelm.hadoop.metadata.RedelmMetaData;
@@ -67,9 +69,9 @@ public class RedelmFileReader {
 
   private static RedelmMetaData deserializeFooter(InputStream is) throws IOException {
     redfile.FileMetaData redFileMetadata = redFileMetadataConverter.readFileMetaData(is);
-    if (Log.INFO) LOG.info(redFileMetadataConverter.toString(redFileMetadata));
+    if (Log.DEBUG) LOG.debug(redFileMetadataConverter.toString(redFileMetadata));
     RedelmMetaData metadata = redFileMetadataConverter.fromRedFileMetadata(redFileMetadata);
-    if (Log.INFO) LOG.info(RedelmMetaData.toPrettyJSON(metadata));
+    if (Log.DEBUG) LOG.debug(RedelmMetaData.toPrettyJSON(metadata));
     return metadata;
   }
 
@@ -251,22 +253,19 @@ public class RedelmFileReader {
       if (paths.contains(pathKey)) {
         f.seek(mc.getFirstDataPage());
         if (DEBUG) LOG.debug(f.getPos() + ": start column chunk " + Arrays.toString(mc.getPath()) + " " + mc.getType() + " count=" + mc.getValueCount());
-        CompressionCodec codec = codecFactory.getCodec(mc.getCodec());
-        Decompressor decompressor = null;
-        if (codec != null) {
-          decompressor = CodecPool.getDecompressor(codec);
-        }
-        long valuesCountReadSoFar = 0;
-        while (valuesCountReadSoFar < mc.getValueCount()) {
-          PageHeader pageHeader = readNextDataPageHeader();
-          InputStream is;
-          if (codec != null) {
-            is = codec.createInputStream(f, decompressor);
-          } else {
-            is = f;
+        BytesDecompressor decompressor = codecFactory.getDecompressor(mc.getCodec());
+        try {
+          long valuesCountReadSoFar = 0;
+          while (valuesCountReadSoFar < mc.getValueCount()) {
+            PageHeader pageHeader = readNextDataPageHeader();
+            pageConsumer.consumePage(
+                mc.getPath(),
+                pageHeader.data_page.num_values,
+                decompressor.decompress(BytesInput.from(f, pageHeader.compressed_page_size), pageHeader.uncompressed_page_size));
+            valuesCountReadSoFar += pageHeader.data_page.num_values;
           }
-          pageConsumer.consumePage(mc.getPath(), pageHeader.data_page.num_values, is, pageHeader.uncompressed_page_size);
-          valuesCountReadSoFar += pageHeader.data_page.num_values;
+        } finally {
+          decompressor.release();
         }
       }
     }
@@ -279,11 +278,16 @@ public class RedelmFileReader {
   private PageHeader readNextDataPageHeader() throws IOException {
     PageHeader pageHeader;
     do {
-      if (DEBUG) LOG.debug(f.getPos() + ": reading page");
-      pageHeader = redFileMetadataConverter.readPageHeader(f);
-      if (pageHeader.type != PageType.DATA_PAGE) {
-        if (DEBUG) LOG.debug("not a data page, skipping " + pageHeader.compressed_page_size);
-        f.skip(pageHeader.compressed_page_size);
+      long pos = f.getPos();
+      if (DEBUG) LOG.debug(pos + ": reading page");
+      try {
+        pageHeader = redFileMetadataConverter.readPageHeader(f);
+        if (pageHeader.type != PageType.DATA_PAGE) {
+          if (DEBUG) LOG.debug("not a data page, skipping " + pageHeader.compressed_page_size);
+          f.skip(pageHeader.compressed_page_size);
+        }
+      } catch (IOException e) {
+        throw new IOException("could not read page header at position " + pos, e);
       }
     } while (pageHeader.type != PageType.DATA_PAGE);
     return pageHeader;

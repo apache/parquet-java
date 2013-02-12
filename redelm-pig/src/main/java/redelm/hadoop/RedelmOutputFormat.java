@@ -148,7 +148,7 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
     final RedelmFileWriter w = new RedelmFileWriter(conf, schema, file);
     w.start();
     try {
-      return new RedelmRecordWriter<T>(w, (WriteSupport<T>) writeSupportClass.newInstance(), schema, extraMetaData, blockSize, pageSize, codec, codecFactory.getCodec(codec));
+      return new RedelmRecordWriter<T>(w, (WriteSupport<T>) writeSupportClass.newInstance(), schema, extraMetaData, blockSize, pageSize, codec, codecFactory.getCompressor(codec, pageSize));
     } catch (InstantiationException e) {
       throw new RuntimeException("could not instantiate " + writeSupportClass.getName(), e);
     } catch (IllegalAccessException e) {

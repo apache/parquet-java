@@ -15,10 +15,10 @@
  */
 package redelm.hadoop;
 
-import java.io.InputStream;
+import redelm.bytes.BytesInput;
 
 abstract public class PageConsumer {
 
-  abstract public void consumePage(String[] path, int valueCount, InputStream is, int uncompressedPageSize);
+  abstract public void consumePage(String[] path, int valueCount, BytesInput bytes);
 
 }

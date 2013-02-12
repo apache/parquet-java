@@ -55,7 +55,7 @@ public class TestMemColumn {
   }
 
   private MemColumnsStore initColumnStore() {
-    return new MemColumnsStore(1024, new MemPageStore() , 2048);
+    return new MemColumnsStore(new MemPageStore() , 2048);
   }
 
   @Test

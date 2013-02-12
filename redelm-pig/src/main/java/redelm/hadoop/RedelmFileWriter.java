@@ -172,10 +172,10 @@ public class RedelmFileWriter {
   }
 
   /**
-   * write binary representation of repetition, definition or data
-   * @param data array containing the data
-   * @param offset where to start reading from the data
-   * @param length how many bytes to read
+   * writes a single page
+   * @param valueCount count of values
+   * @param uncompressedPageSize the size of the data once uncompressed
+   * @param bytes the compressed data for the page without header
    */
   public void writeDataPage(
       int valueCount, int uncompressedPageSize,
@@ -190,6 +190,27 @@ public class RedelmFileWriter {
     this.uncompressedLength += uncompressedPageSize;
     this.compressedLength += compressedPageSize;
     if (DEBUG) LOG.debug(out.getPos() + ": write data page content " + compressedPageSize);
+    bytes.writeAllTo(out);
+  }
+
+  /**
+   * writes a number of pages at once
+   * @param bytes bytes to be written including page headers
+   * @param uncompressedTotalPageSize total uncompressed size (without page headers)
+   * @param compressedTotalPageSize total compressed size (without page headers)
+   * @throws IOException
+   */
+  public void writeDataPages(BytesInput bytes, long uncompressedTotalPageSize, long compressedTotalPageSize) throws IOException {
+    state = state.write();
+    if (DEBUG) LOG.debug(out.getPos() + ": write data pages");
+//    int compressedPageSize = (int)bytes.size();
+//    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedPageSize, compressedPageSize);
+//    // pageHeader.crc = ...;
+//    pageHeader.data_page = new DataPageHeader(valueCount, Encoding.PLAIN); // TODO: encoding
+//    metadataConverter.writePageHeader(pageHeader, out);
+    this.uncompressedLength += uncompressedTotalPageSize;
+    this.compressedLength += compressedTotalPageSize;
+    if (DEBUG) LOG.debug(out.getPos() + ": write data pages content");
     bytes.writeAllTo(out);
   }
 

@@ -43,8 +43,11 @@ public class TestRedelmStorer {
   @Test
   public void testStorer() throws ExecException, Exception {
     String out = "target/out";
-    int rows = 10;
-    PigServer pigServer = new PigServer(ExecType.LOCAL);
+    int rows = 1000;
+    Properties props = new Properties();
+    props.setProperty("redelm.compression", "uncompressed");
+    props.setProperty("redelm.page.size", "1000");
+    PigServer pigServer = new PigServer(ExecType.LOCAL, props);
     Data data = Storage.resetData(pigServer);
     Collection<Tuple> list = new ArrayList<Tuple>();
     for (int i = 0; i < rows; i++) {
@@ -78,10 +81,11 @@ public class TestRedelmStorer {
   @Test
   public void testStorerCompressed() throws ExecException, Exception {
     String out = "target/out";
-    int rows = 10;
+    int rows = 1000;
     Properties props = new Properties();
     props.setProperty("redelm.compression", "gzip");
-    PigServer pigServer = new PigServer(ExecType.LOCAL, props );
+    props.setProperty("redelm.page.size", "1000");
+    PigServer pigServer = new PigServer(ExecType.LOCAL, props);
     Data data = Storage.resetData(pigServer);
     Collection<Tuple> list = new ArrayList<Tuple>();
     for (int i = 0; i < rows; i++) {

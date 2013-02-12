@@ -40,7 +40,7 @@ final class MemColumnWriter implements ColumnWriter {
   private PrimitiveColumnWriter dataColumn;
   private int valueCount;
 
-  public MemColumnWriter(ColumnDescriptor path, int initialSize, PageWriter pageWriter, int pageSizeThreshold) {
+  public MemColumnWriter(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold) {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
@@ -48,9 +48,9 @@ final class MemColumnWriter implements ColumnWriter {
     definitionLevelColumn = BoundedColumnFactory.getBoundedWriter(path.getDefinitionLevel());
     switch (path.getType()) {
     case BOOLEAN:
-      this.dataColumn = new BooleanPlainColumnWriter(initialSize);
+      this.dataColumn = new BooleanPlainColumnWriter(pageSizeThreshold * 11 / 10);
     default:
-      this.dataColumn = new PlainColumnWriter(initialSize);
+      this.dataColumn = new PlainColumnWriter(pageSizeThreshold * 11 / 10);
     }
   }
 

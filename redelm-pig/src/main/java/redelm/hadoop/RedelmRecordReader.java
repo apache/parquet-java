@@ -99,11 +99,11 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
       LOG.info("reading next block");
       long t0 = System.currentTimeMillis();
       long count = reader.readColumns(new PageConsumer() {
-        public void consumePage(String[] path, int valueCount, InputStream is, int pageSize) {
-          if (DEBUG) LOG.debug("reading page for col " + Arrays.toString(path) + ": " + valueCount + " values, " + pageSize + " bytes");
+        public void consumePage(String[] path, int valueCount, BytesInput bytes) {
+          if (DEBUG) LOG.debug("reading page for col " + Arrays.toString(path) + ": " + valueCount + " values, " + bytes.size() + " bytes");
           PageWriter pageWriter = memPageStore.getPageWriter(requestedSchema.getColumnDescription(path));
           try {
-            pageWriter.writePage(BytesInput.from(is, pageSize), valueCount);
+            pageWriter.writePage(bytes, valueCount);
           } catch (IOException e) {
             // TODO cleanup
             throw new RuntimeException(e);
@@ -113,7 +113,7 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
       if (count == 0) {
         return;
       }
-      columnsStore = new MemColumnsStore(0, memPageStore, 8 * 1024); // TODO: parameterize this
+      columnsStore = new MemColumnsStore(memPageStore, 8 * 1024); // TODO: parameterize this
       long timeSpentReading = System.currentTimeMillis() - t0;
       totalTimeSpentReadingBytes += timeSpentReading;
       LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + count);

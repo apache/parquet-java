@@ -2,13 +2,9 @@ package redelm.pig;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 
 import redelm.Log;
 import redelm.bytes.BytesInput;
@@ -30,6 +26,9 @@ import redelm.schema.PrimitiveType;
 import redelm.schema.PrimitiveType.PrimitiveTypeName;
 import redelm.schema.Type.Repetition;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+
 public class GenerateIntTestFile {
   private static final Log LOG = Log.getLog(GenerateIntTestFile.class);
 
@@ -46,7 +45,7 @@ public class GenerateIntTestFile {
       MessageType schema = new MessageType("int_test_file", new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.INT32, "int_col"));
 
       MemPageStore pageStore = new MemPageStore();
-      MemColumnsStore store = new MemColumnsStore(1024 * 1024 * 1, pageStore, 8*1024);
+      MemColumnsStore store = new MemColumnsStore(pageStore, 8*1024);
       //
       MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
 
@@ -81,11 +80,10 @@ public class GenerateIntTestFile {
     RedelmFileReader redelmFileReader = new RedelmFileReader(configuration, testFile, readFooter.getBlocks(), schema.getPaths());
     redelmFileReader.readColumns(new PageConsumer() {
       @Override
-      public void consumePage(String[] path, int valueCount, InputStream is,
-          int pageSize) {
-        if (Log.INFO) LOG.info(Arrays.toString(path) + " " + valueCount + " " + pageSize);
+      public void consumePage(String[] path, int valueCount, BytesInput bytes) {
+        if (Log.INFO) LOG.info(Arrays.toString(path) + " " + valueCount + " " + bytes.size());
         try {
-          BytesInput.copy(BytesInput.from(is, pageSize));
+          BytesInput.copy(bytes);
         } catch (IOException e) {
           throw new RuntimeException(e);
         }

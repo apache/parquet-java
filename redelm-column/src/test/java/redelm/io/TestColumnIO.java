@@ -91,7 +91,7 @@ public class TestColumnIO {
     log("r2");
     log(r2);
 
-    ColumnsStore columns = new MemColumnsStore(1024, new MemPageStore(), 800);
+    ColumnsStore columns = new MemColumnsStore(new MemPageStore(), 800);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     {
@@ -168,7 +168,7 @@ public class TestColumnIO {
 
   @Test
   public void testPushParser() {
-    ColumnsStore columns = new MemColumnsStore(1024, new MemPageStore(), 800);
+    ColumnsStore columns = new MemColumnsStore(new MemPageStore(), 800);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
     columns.flush();

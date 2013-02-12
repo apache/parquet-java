@@ -30,13 +30,11 @@ import redelm.schema.MessageType;
 public class MemColumnsStore extends ColumnsStore {
 
   private final Map<ColumnDescriptor, MemColumn> columns = new TreeMap<ColumnDescriptor, MemColumn>();
-  private final int initialColumnSize;
   private final PageStore pageStore;
   private final int pageSizeThreshold;
 
-  public MemColumnsStore(int initialColumnSize, PageStore pageStore, int pageSizeThreshold) {
+  public MemColumnsStore(PageStore pageStore, int pageSizeThreshold) {
     super();
-    this.initialColumnSize = initialColumnSize;
     this.pageStore = pageStore;
     this.pageSizeThreshold = pageSizeThreshold;
   }
@@ -60,7 +58,7 @@ public class MemColumnsStore extends ColumnsStore {
 
   private MemColumn newMemColumn(ColumnDescriptor path) {
     PageWriter pageWriter = pageStore.getPageWriter(path);
-    return new MemColumn(path, initialColumnSize, pageWriter, pageSizeThreshold);
+    return new MemColumn(path, pageWriter, pageSizeThreshold);
   }
 
   @Override

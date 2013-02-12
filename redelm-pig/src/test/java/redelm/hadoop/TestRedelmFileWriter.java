@@ -19,7 +19,6 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -47,9 +46,8 @@ public class TestRedelmFileWriter {
 
 
     @Override
-    public void consumePage(String[] path, int valueCount, InputStream is,
-        int pageSize) {
-      assertEquals("at index "+counter, expected.get(counter), toString(path, valueCount, BytesInput.from(is, pageSize)));
+    public void consumePage(String[] path, int valueCount, BytesInput bytes) {
+      assertEquals("at index "+counter, expected.get(counter), toString(path, valueCount, bytes));
       ++ counter;
     }
 

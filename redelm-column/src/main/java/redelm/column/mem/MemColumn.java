@@ -30,9 +30,9 @@ public class MemColumn {
 
   private MemColumnWriter memColumnWriter;
 
-  public MemColumn(ColumnDescriptor path, int initialSize, PageWriter pageWriter, int pageSizeThreshold) {
+  public MemColumn(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold) {
     this.path = path;
-    this.memColumnWriter = new MemColumnWriter(path, initialSize, pageWriter, pageSizeThreshold);
+    this.memColumnWriter = new MemColumnWriter(path, pageWriter, pageSizeThreshold);
   }
 
   public ColumnDescriptor getDescriptor() {
