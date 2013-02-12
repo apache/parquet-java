@@ -15,6 +15,8 @@
  */
 package redelm.column.mem;
 
+import java.io.IOException;
+
 import redelm.bytes.BytesInput;
 import redelm.column.ColumnDescriptor;
 import redelm.schema.PrimitiveType.PrimitiveTypeName;
@@ -26,7 +28,7 @@ public class TestMemPageStore {
   private String[] path = { "foo", "bar"};
 
   @Test
-  public void test() {
+  public void test() throws IOException {
     MemPageStore memPageStore = new MemPageStore();
     ColumnDescriptor col = new ColumnDescriptor(path , PrimitiveTypeName.INT64, 2, 2);
     PageWriter pageWriter = memPageStore.getPageWriter(col);

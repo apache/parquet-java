@@ -102,7 +102,12 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
         public void consumePage(String[] path, int valueCount, InputStream is, int pageSize) {
           if (DEBUG) LOG.debug("reading page for col " + Arrays.toString(path) + ": " + valueCount + " values, " + pageSize + " bytes");
           PageWriter pageWriter = memPageStore.getPageWriter(requestedSchema.getColumnDescription(path));
-          pageWriter.writePage(BytesInput.from(is, pageSize), valueCount);
+          try {
+            pageWriter.writePage(BytesInput.from(is, pageSize), valueCount);
+          } catch (IOException e) {
+            // TODO cleanup
+            throw new RuntimeException(e);
+          }
         }
       });
       if (count == 0) {

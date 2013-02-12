@@ -84,7 +84,11 @@ public class GenerateIntTestFile {
       public void consumePage(String[] path, int valueCount, InputStream is,
           int pageSize) {
         if (Log.INFO) LOG.info(Arrays.toString(path) + " " + valueCount + " " + pageSize);
-        BytesInput.copy(BytesInput.from(is, pageSize));
+        try {
+          BytesInput.copy(BytesInput.from(is, pageSize));
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
       }
     });
   }

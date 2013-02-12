@@ -21,7 +21,7 @@ public enum CompressionCodecName {
   UNCOMPRESSED(null, CompressionCodec.UNCOMPRESSED, ""),
   SNAPPY("org.apache.hadoop.io.compress.SnappyCodec", CompressionCodec.SNAPPY, ".snappy"),
   GZIP("org.apache.hadoop.io.compress.GzipCodec", CompressionCodec.GZIP, ".gz"),
-  LZO("com.hadoop.compression.lzo.LzopCodec", CompressionCodec.LZO, ".lzo");
+  LZO("com.hadoop.compression.lzo.LzoCodec", CompressionCodec.LZO, ".lzo");
 
   public static CompressionCodecName fromConf(String name) {
      if (name == null) {

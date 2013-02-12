@@ -19,6 +19,6 @@ import java.io.InputStream;
 
 abstract public class PageConsumer {
 
-  abstract public void consumePage(String[] path, int valueCount, InputStream is, int pageSize);
+  abstract public void consumePage(String[] path, int valueCount, InputStream is, int uncompressedPageSize);
 
 }

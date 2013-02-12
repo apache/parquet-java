@@ -113,7 +113,9 @@ public class RedelmRecordWriter<T> extends
   InterruptedException {
     flushStore();
     w.end(extraMetaData);
-    CodecPool.returnCompressor(compressor);
+    if (compressor != null) {
+      CodecPool.returnCompressor(compressor);
+    }
   }
 
   /**
@@ -155,6 +157,7 @@ public class RedelmRecordWriter<T> extends
           CompressionOutputStream cos = codec.createOutputStream(compressedOutBuffer, compressor);
           page.getBytes().writeAllTo(cos);
           cos.finish();
+          cos.close();
           compressedBytes = BytesInput.from(compressedOutBuffer);
         }
         w.writeDataPage(page.getValueCount(), (int)uncompressedSize, compressedBytes);

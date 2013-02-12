@@ -17,6 +17,7 @@ package redelm.column.mem;
 
 import static redelm.Log.DEBUG;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,7 +33,7 @@ public class MemPageWriter implements PageWriter {
 
 
   @Override
-  public void writePage(BytesInput bytesInput, int valueCount) {
+  public void writePage(BytesInput bytesInput, int valueCount) throws IOException {
     if (valueCount == 0) {
       throw new RuntimeException("illegal page of 0 values");
     }

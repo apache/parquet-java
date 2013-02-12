@@ -19,6 +19,7 @@ import static redelm.Log.DEBUG;
 import static redelm.bytes.BytesUtils.readIntLittleEndian;
 import static redelm.hadoop.RedelmFileWriter.MAGIC;
 
+import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -47,6 +48,10 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.compress.CodecPool;
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.CompressionInputStream;
+import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.mapred.Utils;
 
 /**
@@ -198,12 +203,14 @@ public class RedelmFileReader {
     return deserializeFooter(f);
 
   }
+  private CodecFactory codecFactory;
 
   private final List<BlockMetaData> blocks;
   private final FSDataInputStream f;
   private int currentBlock = 0;
   private Set<String> paths = new HashSet<String>();
   private long previousReadIndex = 0;
+
 
   /**
    *
@@ -220,6 +227,7 @@ public class RedelmFileReader {
     for (String[] path : colums) {
       paths.add(Arrays.toString(path));
     }
+    this.codecFactory = new CodecFactory(configuration);
   }
 
   /**
@@ -243,10 +251,21 @@ public class RedelmFileReader {
       if (paths.contains(pathKey)) {
         f.seek(mc.getFirstDataPage());
         if (DEBUG) LOG.debug(f.getPos() + ": start column chunk " + Arrays.toString(mc.getPath()) + " " + mc.getType() + " count=" + mc.getValueCount());
+        CompressionCodec codec = codecFactory.getCodec(mc.getCodec());
+        Decompressor decompressor = null;
+        if (codec != null) {
+          decompressor = CodecPool.getDecompressor(codec);
+        }
         long valuesCountReadSoFar = 0;
         while (valuesCountReadSoFar < mc.getValueCount()) {
           PageHeader pageHeader = readNextDataPageHeader();
-          pageConsumer.consumePage(mc.getPath(), pageHeader.data_page.num_values, f, pageHeader.compressed_page_size);
+          InputStream is;
+          if (codec != null) {
+            is = codec.createInputStream(f, decompressor);
+          } else {
+            is = f;
+          }
+          pageConsumer.consumePage(mc.getPath(), pageHeader.data_page.num_values, is, pageHeader.uncompressed_page_size);
           valuesCountReadSoFar += pageHeader.data_page.num_values;
         }
       }

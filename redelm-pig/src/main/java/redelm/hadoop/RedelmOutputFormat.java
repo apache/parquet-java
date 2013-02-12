@@ -44,7 +44,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
  * format config controlled in job conf settings:
  * <pre>
  * redelm.block.size=52428800 # in bytes, default = 50 * 1024 * 1024
- * redelm.page.size=8000 # in bytes, default = 8 * 1024
+ * redelm.page.size=8192 # in bytes, default = 8 * 1024
  * redelm.compression=UNCOMPRESSED # one of: UNCOMPRESSED, SNAPPY, GZIP, LZO. Default: UNCOMPRESSED. Supersedes mapred.output.compress*
  * </pre>
  *
@@ -135,12 +135,13 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
     } else if (getCompressOutput(taskAttemptContext)) { // from hadoop config
       // find the right codec
       Class<?> codecClass = getOutputCompressorClass(taskAttemptContext, DefaultCodec.class);
-      if (INFO) LOG.info("Compression codec: " + codecClass.getName());
+      if (INFO) LOG.info("Compression set through hadoop codec: " + codecClass.getName());
       codec = CompressionCodecName.fromCompressionCodec(codecClass);
     } else {
       if (INFO) LOG.info("Compression set to false");
       codec = CompressionCodecName.UNCOMPRESSED;
     }
+    if (INFO) LOG.info("Compression: " + codec.name());
     extension += codec.getExtension();
     final Path file = getDefaultWorkFile(taskAttemptContext, extension);
 

@@ -15,6 +15,8 @@
  */
 package redelm.column.mem;
 
+import java.io.IOException;
+
 import redelm.Log;
 import redelm.bytes.BytesInput;
 import redelm.column.ColumnDescriptor;
@@ -68,7 +70,12 @@ final class MemColumnWriter implements ColumnWriter {
 
   private void writePage() {
     if (DEBUG) LOG.debug("write page");
-    pageWriter.writePage(BytesInput.fromSequence(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()), valueCount);
+    try {
+      pageWriter.writePage(BytesInput.fromSequence(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()), valueCount);
+    } catch (IOException e) {
+      // TODO: cleanup
+      throw new RuntimeException(e);
+    }
     repetitionLevelColumn.reset();
     definitionLevelColumn.reset();
     dataColumn.reset();

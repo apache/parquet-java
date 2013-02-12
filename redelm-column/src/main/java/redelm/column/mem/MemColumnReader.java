@@ -160,9 +160,9 @@ abstract class MemColumnReader implements ColumnReader {
 
       this.pageValueCount = page.getValueCount();
       this.readValuesInPage = 0;
-      byte[] bytes = page.getBytes().toByteArray();
-      if (DEBUG) LOG.debug("page size " + bytes.length + " bytes and " + pageValueCount + " records");
       try {
+        byte[] bytes = page.getBytes().toByteArray();
+        if (DEBUG) LOG.debug("page size " + bytes.length + " bytes and " + pageValueCount + " records");
         int next = repetitionLevelColumn.initFromPage(pageValueCount, bytes, 0);
         next = definitionLevelColumn.initFromPage(pageValueCount, bytes, next);
         dataColumn.initFromPage(pageValueCount, bytes, next);

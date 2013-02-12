@@ -18,6 +18,7 @@ package redelm.hadoop;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,12 +49,16 @@ public class TestRedelmFileWriter {
     @Override
     public void consumePage(String[] path, int valueCount, InputStream is,
         int pageSize) {
-      assertEquals(expected.get(counter), toString(path, valueCount, BytesInput.from(is, pageSize)));
+      assertEquals("at index "+counter, expected.get(counter), toString(path, valueCount, BytesInput.from(is, pageSize)));
       ++ counter;
     }
 
     private String toString(String[] path, int valueCount, BytesInput bytes) {
-      return Arrays.toString(path) + " "+valueCount+" "+Arrays.toString(bytes.toByteArray());
+      try {
+        return Arrays.toString(path) + " "+valueCount+" "+Arrays.toString(bytes.toByteArray());
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     public void add(String[] path, int valueCount, BytesInput bytes) {
@@ -87,26 +92,26 @@ public class TestRedelmFileWriter {
     byte[] bytes2 = { 1, 2, 3, 4};
     byte[] bytes3 = { 2, 3, 4, 5};
     byte[] bytes4 = { 3, 4, 5, 6};
-    CompressionCodecName codec = CompressionCodecName.GZIP;
+    CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
     RedelmFileWriter w = new RedelmFileWriter(configuration, schema, path);
     w.start();
     w.startBlock(3);
     w.startColumn(c1, 5, codec);
-    w.writeDataPage(2, 10, BytesInput.from(bytes1));
-    w.writeDataPage(3, 10, BytesInput.from(bytes1));
+    w.writeDataPage(2, 4, BytesInput.from(bytes1));
+    w.writeDataPage(3, 4, BytesInput.from(bytes1));
     w.endColumn();
     w.startColumn(c2, 6, codec);
-    w.writeDataPage(2, 10, BytesInput.from(bytes2));
-    w.writeDataPage(3, 10, BytesInput.from(bytes2));
-    w.writeDataPage(1, 10, BytesInput.from(bytes2));
+    w.writeDataPage(2, 4, BytesInput.from(bytes2));
+    w.writeDataPage(3, 4, BytesInput.from(bytes2));
+    w.writeDataPage(1, 4, BytesInput.from(bytes2));
     w.endColumn();
     w.endBlock();
     w.startBlock(4);
     w.startColumn(c1, 7, codec);
-    w.writeDataPage(7, 10, BytesInput.from(bytes3));
+    w.writeDataPage(7, 4, BytesInput.from(bytes3));
     w.endColumn();
     w.startColumn(c2, 8, codec);
-    w.writeDataPage(8, 10, BytesInput.from(bytes4));
+    w.writeDataPage(8, 4, BytesInput.from(bytes4));
     w.endColumn();
     w.endBlock();
     w.end(new HashMap<String, String>());

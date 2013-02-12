@@ -15,11 +15,13 @@
  */
 package redelm.column.mem;
 
+import java.io.IOException;
+
 import redelm.bytes.BytesInput;
 
 public interface PageWriter {
 
-  abstract public void writePage(BytesInput bytesInput, int valueCount);
+  abstract public void writePage(BytesInput bytesInput, int valueCount) throws IOException;
 
   abstract public long getMemSize();
 

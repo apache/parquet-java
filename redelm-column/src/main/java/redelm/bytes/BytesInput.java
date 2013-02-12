@@ -60,19 +60,15 @@ abstract public class BytesInput {
     return EMPTY_BYTES_INPUT;
   }
 
-  public static BytesInput copy(BytesInput bytesInput) {
+  public static BytesInput copy(BytesInput bytesInput) throws IOException {
     return from(bytesInput.toByteArray());
   }
 
   abstract public void writeAllTo(OutputStream out) throws IOException;
 
-  public byte[] toByteArray() {
+  public byte[] toByteArray() throws IOException {
     BAOS baos = new BAOS((int)size());
-    try {
-      this.writeAllTo(baos);
-    } catch (IOException e) {
-      throw new RuntimeException("Never happens", e);
-    }
+    this.writeAllTo(baos);
     if (DEBUG) LOG.debug("converted " + size() + " to byteArray of " + baos.size() + " bytes");
     return baos.getBuf();
   }
