@@ -1,12 +1,13 @@
 package redelm.pig;
 
-import static redelm.pig.GenerateIntTestFile.*;
+import static redelm.pig.GenerateIntTestFile.readTestFile;
+import static redelm.pig.GenerateIntTestFile.writeToFile;
 
 import java.io.File;
 import java.io.IOException;
 
 import redelm.Log;
-import redelm.column.mem.MemColumnsStore;
+import redelm.column.mem.MemColumnWriteStore;
 import redelm.column.mem.MemPageStore;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
@@ -43,7 +44,7 @@ public class GenerateTPCH {
         );
 
     MemPageStore pageStore = new MemPageStore();
-    MemColumnsStore store = new MemColumnsStore(pageStore, 8*1024);
+    MemColumnWriteStore store = new MemColumnWriteStore(pageStore, 8*1024);
     //
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
 

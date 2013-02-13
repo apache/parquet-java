@@ -22,33 +22,23 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 
 import redelm.column.ColumnDescriptor;
-import redelm.column.ColumnReader;
+import redelm.column.ColumnWriteStore;
 import redelm.column.ColumnWriter;
-import redelm.column.ColumnsStore;
-import redelm.schema.MessageType;
 
-public class MemColumnsStore extends ColumnsStore {
+public class MemColumnWriteStore implements ColumnWriteStore {
 
-  private final Map<ColumnDescriptor, MemColumn> columns = new TreeMap<ColumnDescriptor, MemColumn>();
-  private final PageStore pageStore;
+  private final Map<ColumnDescriptor, MemColumnWriter> columns = new TreeMap<ColumnDescriptor, MemColumnWriter>();
+  private final PageWriteStore pageWriteStore;
   private final int pageSizeThreshold;
 
-  public MemColumnsStore(PageStore pageStore, int pageSizeThreshold) {
+  public MemColumnWriteStore(PageWriteStore pageWriteStore, int pageSizeThreshold) {
     super();
-    this.pageStore = pageStore;
+    this.pageWriteStore = pageWriteStore;
     this.pageSizeThreshold = pageSizeThreshold;
   }
 
-  public ColumnReader getColumnReader(ColumnDescriptor path) {
-    return getColumn(path).getColumnReader(pageStore.getPageReader(path));
-  }
-
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
-    return getColumn(path).getColumnWriter();
-  }
-
-  private MemColumn getColumn(ColumnDescriptor path) {
-    MemColumn column = columns.get(path);
+    MemColumnWriter column = columns.get(path);
     if (column == null) {
       column = newMemColumn(path);
       columns.put(path, column);
@@ -56,45 +46,45 @@ public class MemColumnsStore extends ColumnsStore {
     return column;
   }
 
-  private MemColumn newMemColumn(ColumnDescriptor path) {
-    PageWriter pageWriter = pageStore.getPageWriter(path);
-    return new MemColumn(path, pageWriter, pageSizeThreshold);
+  private MemColumnWriter newMemColumn(ColumnDescriptor path) {
+    PageWriter pageWriter = pageWriteStore.getPageWriter(path);
+    return new MemColumnWriter(path, pageWriter, pageSizeThreshold);
   }
 
   @Override
   public String toString() {
       StringBuilder sb = new StringBuilder();
-      for (Entry<ColumnDescriptor, MemColumn> entry : columns.entrySet()) {
+      for (Entry<ColumnDescriptor, MemColumnWriter> entry : columns.entrySet()) {
         sb.append(Arrays.toString(entry.getKey().getPath())).append(": ");
-        sb.append(entry.getValue().getMemSize()).append(" bytes");
+        sb.append(entry.getValue().memSize()).append(" bytes");
         sb.append("\n");
       }
       return sb.toString();
   }
 
   public int memSize() {
-    Collection<MemColumn> values = columns.values();
+    Collection<MemColumnWriter> values = columns.values();
     int total = 0;
-    for (MemColumn memColumn : values) {
-      total += memColumn.getMemSize();
+    for (MemColumnWriter memColumn : values) {
+      total += memColumn.memSize();
     }
     return total;
   }
 
   public long maxColMemSize() {
-    Collection<MemColumn> values = columns.values();
+    Collection<MemColumnWriter> values = columns.values();
     long max = 0;
-    for (MemColumn memColumn : values) {
-      max = Math.max(max, memColumn.getMemSize());
+    for (MemColumnWriter memColumn : values) {
+      max = Math.max(max, memColumn.memSize());
     }
     return max;
   }
 
   @Override
   public void flush() {
-    Collection<MemColumn> values = columns.values();
-    for (MemColumn memColumn : values) {
-      memColumn.getColumnWriter().flush();
+    Collection<MemColumnWriter> values = columns.values();
+    for (MemColumnWriter memColumn : values) {
+      memColumn.flush();
     }
   }
 

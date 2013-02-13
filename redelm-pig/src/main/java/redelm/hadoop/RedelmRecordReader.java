@@ -18,8 +18,6 @@ package redelm.hadoop;
 import static redelm.Log.DEBUG;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +25,7 @@ import java.util.Map;
 
 import redelm.Log;
 import redelm.bytes.BytesInput;
-import redelm.column.mem.MemColumnsStore;
+import redelm.column.mem.MemColumnReadStore;
 import redelm.column.mem.MemPageStore;
 import redelm.column.mem.PageWriter;
 import redelm.hadoop.metadata.BlockMetaData;
@@ -40,8 +38,6 @@ import redelm.schema.MessageType;
 import redelm.schema.Type;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
@@ -60,13 +56,12 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   private static final Log LOG = Log.getLog(RedelmRecordReader.class);
 
   private ColumnIOFactory columnIOFactory = new ColumnIOFactory();
-  private Map<String, ColumnChunkMetaData> columnTypes = new HashMap<String, ColumnChunkMetaData>();
   private T currentValue;
   private long total;
   private int current;
   private RedelmFileReader reader;
   private redelm.io.RecordReader<T> recordReader;
-  private MemColumnsStore columnsStore;
+  private MemColumnReadStore columnsStore;
   private ReadSupport<T> readSupport;
   private MessageType requestedSchema;
 
@@ -113,12 +108,11 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
       if (count == 0) {
         return;
       }
-      columnsStore = new MemColumnsStore(memPageStore, 8 * 1024); // TODO: this value does not matter here => refactor this
       long timeSpentReading = System.currentTimeMillis() - t0;
       totalTimeSpentReadingBytes += timeSpentReading;
       LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + count);
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema);
-      recordReader = columnIO.getRecordReader(columnsStore, readSupport.newRecordConsumer());
+      recordReader = columnIO.getRecordReader(memPageStore, readSupport.newRecordConsumer());
       startedReadingCurrentBlockAt = System.currentTimeMillis();
       totalCountLoadedSoFar += count;
     }

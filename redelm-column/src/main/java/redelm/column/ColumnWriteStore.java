@@ -15,9 +15,7 @@
  */
 package redelm.column;
 
-abstract public class ColumnsStore {
-
-  abstract public ColumnReader getColumnReader(ColumnDescriptor path);
+public interface ColumnWriteStore {
 
   abstract public ColumnWriter getColumnWriter(ColumnDescriptor path);
 

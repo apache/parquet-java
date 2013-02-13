@@ -22,8 +22,9 @@ import java.util.Map;
 import java.util.logging.Level;
 
 import redelm.Log;
-import redelm.column.mem.MemColumnsStore;
+import redelm.column.mem.MemColumnWriteStore;
 import redelm.column.mem.MemPageStore;
+import redelm.column.mem.PageReadStore;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
 import redelm.io.RecordConsumer;
@@ -57,10 +58,11 @@ public class TupleConsumerPerfTest {
     PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
     MessageType schema = pigSchemaConverter.convert(Utils.getSchemaFromString(pigSchema));
 
-    MemColumnsStore columns = new MemColumnsStore(new MemPageStore(), 50*1024*1024);
+    MemPageStore memPageStore = new MemPageStore();
+    MemColumnWriteStore columns = new MemColumnWriteStore(memPageStore, 50*1024*1024);
     write(columns, schema, pigSchema);
     columns.flush();
-    read(columns, pigSchema, pigSchemaProjected, pigSchemaNoString);
+    read(memPageStore, pigSchema, pigSchemaProjected, pigSchemaNoString);
     System.out.println(columns.memSize()+" bytes used total");
     System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
   }
@@ -119,14 +121,13 @@ public class TupleConsumerPerfTest {
     return t;
   }
 
-  private static void read(MemColumnsStore columns, String pigSchemaString, String pigSchemaProjected, String pigSchemaProjectedNoStrings) throws ParserException {
+  private static void read(PageReadStore columns, String pigSchemaString, String pigSchemaProjected, String pigSchemaProjectedNoStrings) throws ParserException {
       read(columns, pigSchemaString, "read all");
       read(columns, pigSchemaProjected, "read projected");
       read(columns, pigSchemaProjectedNoStrings, "read projected no Strings");
   }
 
-  private static void read(MemColumnsStore columns,
-      String pigSchemaString, String message) throws ParserException {
+  private static void read(PageReadStore columns, String pigSchemaString, String message) throws ParserException {
     RecordMaterializer<Void> recordConsumer = new RecordMaterializer<Void>() {
       public void startMessage() {}
       public void startGroup() {}
@@ -162,7 +163,7 @@ public class TupleConsumerPerfTest {
     return map;
   }
 
-  private static void write(MemColumnsStore columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
+  private static void write(MemColumnWriteStore columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
     MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     TupleWriteSupport tupleWriter = new TupleWriteSupport();
     tupleWriter.initForWrite(columnIO.getRecordWriter(columns), schema, pigMetaData(pigSchemaString));

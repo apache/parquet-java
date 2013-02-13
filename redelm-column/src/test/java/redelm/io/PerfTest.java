@@ -25,7 +25,8 @@ import static redelm.data.simple.example.Paper.schema3;
 import java.util.logging.Level;
 
 import redelm.Log;
-import redelm.column.mem.MemColumnsStore;
+import redelm.column.mem.MemColumnReadStore;
+import redelm.column.mem.MemColumnWriteStore;
 import redelm.column.mem.MemPageStore;
 import redelm.data.GroupWriter;
 import redelm.schema.MessageType;
@@ -39,21 +40,18 @@ import redelm.schema.MessageType;
 public class PerfTest {
 
   public static void main(String[] args) {
-    MemColumnsStore columns = new MemColumnsStore(new MemPageStore(), 50*1024*1024);
-    write(columns);
-    columns.flush();
-    read(columns);
-    System.out.println(columns.memSize()+" bytes used total");
-    System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
+    MemPageStore memPageStore = new MemPageStore();
+    write(memPageStore);
+    read(memPageStore);
   }
 
-  private static void read(MemColumnsStore columns) {
-      read(columns, schema, "read all");
-      read(columns, schema2, "read projected");
-      read(columns, schema3, "read projected no Strings");
+  private static void read(MemPageStore memPageStore) {
+      read(memPageStore , schema, "read all");
+      read(memPageStore, schema2, "read projected");
+      read(memPageStore, schema3, "read projected no Strings");
   }
 
-  private static void read(MemColumnsStore columns, MessageType myschema,
+  private static void read(MemPageStore memPageStore, MessageType myschema,
       String message) {
     MessageColumnIO columnIO = newColumnFactory(myschema);
     System.out.println(message);
@@ -72,7 +70,7 @@ public class PerfTest {
       public void addBinary(byte[] value) {}
       public Void getCurrentRecord() { return null; }
     };
-    RecordReader<Void> recordReader = columnIO.getRecordReader(columns, recordConsumer);
+    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, recordConsumer);
     read(recordReader, 2, myschema);
     read(recordReader, 10000, myschema);
     read(recordReader, 10000, myschema);
@@ -84,7 +82,8 @@ public class PerfTest {
     System.out.println();
   }
 
-  private static void write(MemColumnsStore columns) {
+  private static void write(MemPageStore memPageStore) {
+    MemColumnWriteStore columns = new MemColumnWriteStore(memPageStore, 50*1024*1024);
     MessageColumnIO columnIO = newColumnFactory(schema);
 
     GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
@@ -98,7 +97,10 @@ public class PerfTest {
     write(groupWriter, 10000);
     write(groupWriter, 100000);
     write(groupWriter, 1000000);
+    columns.flush();
     System.out.println();
+    System.out.println(columns.memSize()+" bytes used total");
+    System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
   }
 
   private static MessageColumnIO newColumnFactory(MessageType schema) {

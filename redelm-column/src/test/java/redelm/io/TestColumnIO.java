@@ -34,11 +34,14 @@ import org.junit.Test;
 
 import redelm.Log;
 import redelm.column.ColumnDescriptor;
+import redelm.column.ColumnReadStore;
 import redelm.column.ColumnReader;
 import redelm.column.ColumnWriter;
-import redelm.column.ColumnsStore;
-import redelm.column.mem.MemColumnsStore;
+import redelm.column.ColumnWriteStore;
+import redelm.column.mem.MemColumnReadStore;
+import redelm.column.mem.MemColumnWriteStore;
 import redelm.column.mem.MemPageStore;
+import redelm.column.mem.PageReadStore;
 import redelm.data.Group;
 import redelm.data.GroupRecordConsumer;
 import redelm.data.GroupWriter;
@@ -91,7 +94,8 @@ public class TestColumnIO {
     log("r2");
     log(r2);
 
-    ColumnsStore columns = new MemColumnsStore(new MemPageStore(), 800);
+    MemPageStore memPageStore = new MemPageStore();
+    MemColumnWriteStore columns = new MemColumnWriteStore(memPageStore, 800);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     {
@@ -103,7 +107,7 @@ public class TestColumnIO {
       columns.flush();
       log(columns);
       log("=========");
-      RecordReader<Group> recordReader = getRecordReader(columnIO, schema, columns);
+      RecordReader<Group> recordReader = getRecordReader(columnIO, schema, memPageStore);
 
       validateFSA(expectedFSA, columnIO, recordReader);
 
@@ -125,7 +129,7 @@ public class TestColumnIO {
 
 
       List<Group> records = new ArrayList<Group>();
-      RecordReader<Group> recordReader = getRecordReader(columnIO2, schema2, columns);
+      RecordReader<Group> recordReader = getRecordReader(columnIO2, schema2, memPageStore);
 
       validateFSA(expectedFSA2, columnIO2, recordReader);
 
@@ -146,9 +150,9 @@ public class TestColumnIO {
     LOG.info(o);
   }
 
-  private RecordReader<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, ColumnsStore columns) {
+  private RecordReader<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, PageReadStore pageReadStore) {
     RecordMaterializer<Group> recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
-    return columnIO.getRecordReader(columns, recordConsumer);
+    return columnIO.getRecordReader(pageReadStore, recordConsumer);
   }
 
   private void validateFSA(int[][] expectedFSA, MessageColumnIO columnIO, RecordReader<?> recordReader) {
@@ -168,7 +172,8 @@ public class TestColumnIO {
 
   @Test
   public void testPushParser() {
-    ColumnsStore columns = new MemColumnsStore(new MemPageStore(), 800);
+    MemPageStore memPageStore = new MemPageStore();
+    MemColumnWriteStore columns = new MemColumnWriteStore(memPageStore, 800);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
     columns.flush();
@@ -232,7 +237,7 @@ public class TestColumnIO {
     for (String string : expected) {
       expectations.add(string);
     }
-    RecordReader<Void> recordReader = columnIO.getRecordReader(columns, new RecordMaterializer<Void>() {
+    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new RecordMaterializer<Void>() {
 
       int count = 0;
       private void validate(String got) {
@@ -357,7 +362,7 @@ public class TestColumnIO {
     };
 
 
-    ColumnsStore columns = new ColumnsStore() {
+    ColumnWriteStore columns = new ColumnWriteStore() {
 
       int counter = 0;
 
@@ -416,10 +421,6 @@ public class TestColumnIO {
             throw new UnsupportedOperationException();
           }
         };
-      }
-      @Override
-      public ColumnReader getColumnReader(ColumnDescriptor path) {
-        throw new UnsupportedOperationException();
       }
       @Override
       public void flush() {

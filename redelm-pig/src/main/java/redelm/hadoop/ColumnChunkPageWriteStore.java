@@ -6,15 +6,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.hadoop.io.compress.CodecPool;
-import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.io.compress.CompressionOutputStream;
-import org.apache.hadoop.io.compress.Compressor;
-
 import redelm.bytes.BytesInput;
 import redelm.column.ColumnDescriptor;
-import redelm.column.mem.PageReader;
-import redelm.column.mem.PageStore;
+import redelm.column.mem.PageWriteStore;
 import redelm.column.mem.PageWriter;
 import redelm.hadoop.CodecFactory.BytesCompressor;
 import redelm.redfile.RedFileMetadataConverter;
@@ -24,7 +18,7 @@ import redfile.Encoding;
 import redfile.PageHeader;
 import redfile.PageType;
 
-public class ColumnChunkPageStore extends PageStore {
+public class ColumnChunkPageWriteStore implements PageWriteStore {
 
   private static RedFileMetadataConverter redFileMetadataConverter = new RedFileMetadataConverter();
 
@@ -63,32 +57,27 @@ public class ColumnChunkPageStore extends PageStore {
     }
   }
 
-  private final Map<ColumnDescriptor, ColumnChunkPageWriter> buffers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
+  private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
   private final MessageType schema;
   private final BytesCompressor compressor;
 
-  public ColumnChunkPageStore(BytesCompressor compressor, MessageType schema) {
+  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema) {
     this.compressor = compressor;
     this.schema = schema;
   }
 
   @Override
   public PageWriter getPageWriter(ColumnDescriptor path) {
-    if (!buffers.containsKey(path)) {
-      buffers.put(path,  new ColumnChunkPageWriter(compressor));
+    if (!writers.containsKey(path)) {
+      writers.put(path,  new ColumnChunkPageWriter(compressor));
     }
-    return buffers.get(path);
-  }
-
-  @Override
-  public PageReader getPageReader(ColumnDescriptor descriptor) {
-    throw new UnsupportedOperationException("Write only store");
+    return writers.get(path);
   }
 
   public void flushToFileWriter(RedelmFileWriter writer) throws IOException {
     List<ColumnDescriptor> columns = schema.getColumns();
     for (ColumnDescriptor columnDescriptor : columns) {
-      ColumnChunkPageWriter pageWriter = buffers.get(columnDescriptor);
+      ColumnChunkPageWriter pageWriter = writers.get(columnDescriptor);
       pageWriter.writeToFileWriter(writer);
     }
   }

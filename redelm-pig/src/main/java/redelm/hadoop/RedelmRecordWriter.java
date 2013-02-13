@@ -21,7 +21,7 @@ import java.util.Map;
 
 import redelm.Log;
 import redelm.column.ColumnDescriptor;
-import redelm.column.mem.MemColumnsStore;
+import redelm.column.mem.MemColumnWriteStore;
 import redelm.column.mem.MemPageStore;
 import redelm.column.mem.Page;
 import redelm.column.mem.PageReader;
@@ -57,7 +57,7 @@ public class RedelmRecordWriter<T> extends RecordWriter<Void, T> {
 
   private int recordCount;
 
-  private MemColumnsStore store;
+  private MemColumnWriteStore store;
   private MemPageStore pageStore;
 
 
@@ -87,7 +87,7 @@ public class RedelmRecordWriter<T> extends RecordWriter<Void, T> {
 
   private void initStore() {
     pageStore = new MemPageStore();
-    store = new MemColumnsStore(pageStore, pageSize);
+    store = new MemColumnWriteStore(pageStore, pageSize);
     //
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     writeSupport.initForWrite(columnIO.getRecordWriter(store), schema, extraMetaData);

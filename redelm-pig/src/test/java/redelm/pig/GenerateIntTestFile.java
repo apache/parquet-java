@@ -9,7 +9,7 @@ import java.util.List;
 import redelm.Log;
 import redelm.bytes.BytesInput;
 import redelm.column.ColumnDescriptor;
-import redelm.column.mem.MemColumnsStore;
+import redelm.column.mem.MemColumnWriteStore;
 import redelm.column.mem.MemPageStore;
 import redelm.column.mem.Page;
 import redelm.column.mem.PageReader;
@@ -45,7 +45,7 @@ public class GenerateIntTestFile {
       MessageType schema = new MessageType("int_test_file", new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.INT32, "int_col"));
 
       MemPageStore pageStore = new MemPageStore();
-      MemColumnsStore store = new MemColumnsStore(pageStore, 8*1024);
+      MemColumnWriteStore store = new MemColumnWriteStore(pageStore, 8*1024);
       //
       MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
 

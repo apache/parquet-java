@@ -24,7 +24,7 @@ import redelm.Log;
 import redelm.column.ColumnDescriptor;
 import redelm.column.UnknownColumnException;
 
-public class MemPageStore extends PageStore {
+public class MemPageStore implements PageReadStore, PageWriteStore {
   private static final Log LOG = Log.getLog(MemPageStore.class);
 
   private Map<ColumnDescriptor, MemPageWriter> pageWriters = new HashMap<ColumnDescriptor, MemPageWriter>();

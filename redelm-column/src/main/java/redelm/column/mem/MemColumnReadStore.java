@@ -17,33 +17,24 @@ package redelm.column.mem;
 
 import java.io.IOException;
 
-import redelm.Log;
 import redelm.column.ColumnDescriptor;
+import redelm.column.ColumnReadStore;
 import redelm.column.ColumnReader;
-import redelm.column.ColumnWriter;
 
-public class MemColumn {
-  private static final Log LOG = Log.getLog(MemColumn.class);
-  private static final boolean DEBUG = Log.DEBUG;
+public class MemColumnReadStore implements ColumnReadStore {
 
-  private final ColumnDescriptor path;
+  private final PageReadStore pageReadStore;
 
-  private MemColumnWriter memColumnWriter;
-
-  public MemColumn(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold) {
-    this.path = path;
-    this.memColumnWriter = new MemColumnWriter(path, pageWriter, pageSizeThreshold);
+  public MemColumnReadStore(PageReadStore pageReadStore) {
+    super();
+    this.pageReadStore = pageReadStore;
   }
 
-  public ColumnDescriptor getDescriptor() {
-    return path;
+  public ColumnReader getColumnReader(ColumnDescriptor path) {
+    return newMemColumnReader(path, pageReadStore.getPageReader(path));
   }
 
-  public ColumnWriter getColumnWriter() {
-    return memColumnWriter;
-  }
-
-  private MemColumnReader newMemColumnReader(PageReader pageReader) {
+  private MemColumnReader newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
     switch (path.getType()) {
     case INT32:
       return new INT32MemColumnReader(path, pageReader);
@@ -59,10 +50,6 @@ public class MemColumn {
       return new DOUBLEMemColumnReader(path, pageReader);
     }
     throw new RuntimeException("type "+path.getType()+" not supported");
-  }
-
-  public ColumnReader getColumnReader(PageReader pageReader) {
-    return newMemColumnReader(pageReader);
   }
 
   private static final class INT32MemColumnReader extends MemColumnReader {
@@ -213,9 +200,5 @@ public class MemColumn {
       checkRead();
       return String.valueOf(current);
     }
-  }
-
-  public long getMemSize() {
-    return memColumnWriter.memSize();
   }
 }

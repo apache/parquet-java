@@ -17,11 +17,8 @@ package redelm.column.mem;
 
 import redelm.column.ColumnDescriptor;
 
+public interface PageWriteStore {
 
-abstract public class PageStore {
-
-  abstract public PageWriter getPageWriter(ColumnDescriptor path);
-
-  abstract public PageReader getPageReader(ColumnDescriptor descriptor);
+  PageWriter getPageWriter(ColumnDescriptor path);
 
 }
