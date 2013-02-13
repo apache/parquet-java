@@ -184,7 +184,7 @@ public class RedelmFileReader {
     LOG.debug("File length " + l);
     int FOOTER_LENGTH_SIZE = 4;
     if (l <= MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
-      throw new RuntimeException("Not a Red Elm file");
+      throw new RuntimeException(file.getPath() + " is not a Red Elm file (too small)");
     }
     long footerLengthIndex = l - FOOTER_LENGTH_SIZE - MAGIC.length;
     LOG.debug("reading footer index at " + footerLengthIndex);
@@ -194,7 +194,7 @@ public class RedelmFileReader {
     byte[] magic = new byte[MAGIC.length];
     f.readFully(magic);
     if (!Arrays.equals(MAGIC, magic)) {
-      throw new RuntimeException("Not a RedElm file. expected " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
+      throw new RuntimeException(file.getPath() + " is not a RedElm file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
     }
     long footerIndex = footerLengthIndex - footerLength;
     LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);

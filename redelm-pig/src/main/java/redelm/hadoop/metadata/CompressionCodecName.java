@@ -52,13 +52,14 @@ public enum CompressionCodecName {
     throw new IllegalArgumentException("Unknown compression codec " + codec);
   }
 
-  private String hadoopCompressionCodecClass;
-  private CompressionCodec redFileCompressionCodec;
-  private String extension;
+  private final String hadoopCompressionCodecClass;
+  private final CompressionCodec redFileCompressionCodec;
+  private final String extension;
 
   private CompressionCodecName(String hadoopCompressionCodecClass, CompressionCodec redFileCompressionCodec, String extension) {
     this.hadoopCompressionCodecClass = hadoopCompressionCodecClass;
     this.redFileCompressionCodec = redFileCompressionCodec;
+    this.extension = extension;
   }
 
   public String getHadoopCompressionCodecClass() {

@@ -50,7 +50,6 @@ public class MessageConverter extends TupleConverter {
 
     @Override
     public void endMessage() {
-      currentConverter.end();
       this.currentTuple = (Tuple)currentConverter.get();
     }
 
@@ -107,5 +106,10 @@ public class MessageConverter extends TupleConverter {
 
   public RecordMaterializer<Tuple> newRecordConsumer() {
     return new TupleRecordConsumer(this);
+  }
+
+  @Override
+  public Converter end() {
+    throw new UnsupportedOperationException("bad input. Can not close the message converter");
   }
 }

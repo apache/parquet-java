@@ -15,9 +15,12 @@
  */
 package redelm.hadoop;
 
+import static redelm.hadoop.RedelmFileWriter.RED_ELM_SUMMARY;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +30,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingDeque;
 
 import redelm.hadoop.metadata.BlockMetaData;
 import redelm.hadoop.metadata.ColumnChunkMetaData;
@@ -36,7 +40,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.mapred.Utils;
+import org.apache.hadoop.fs.PathFilter;
 
 /**
  * Utility to print footer information
@@ -52,74 +56,115 @@ public class PrintFooter {
     }
     Path path = new Path(new URI(args[0]));
     final Configuration configuration = new Configuration();
+
     final FileSystem fs = path.getFileSystem(configuration);
     FileStatus fileStatus = fs.getFileStatus(path);
-    List<FileStatus> statuses;
-    if (fileStatus.isDir()) {
-      System.out.println("listing files in " + fileStatus.getPath());
-      statuses = Arrays.asList(fs.listStatus(fileStatus.getPath(), new Utils.OutputFileUtils.OutputFilesFilter()));
+    Path summary = new Path(fileStatus.getPath(), RED_ELM_SUMMARY);
+    if (fileStatus.isDir() && fs.exists(summary)) {
+      System.out.println("reading summary file");
+      FileStatus summaryStatus = fs.getFileStatus(summary);
+      List<Footer> readSummaryFile = RedelmFileReader.readSummaryFile(configuration, summaryStatus);
+      for (Footer footer : readSummaryFile) {
+        add(footer.getRedelmMetaData());
+      }
     } else {
-      statuses = new ArrayList<FileStatus>();
-      statuses.add(fileStatus);
-    }
-    int i = 0;
-    ExecutorService threadPool = Executors.newFixedThreadPool(5);
-    try {
-
-      List<Future<RedelmMetaData>> footers = new ArrayList<Future<RedelmMetaData>>();
-      for (final FileStatus currentFile : statuses) {
-        footers.add(threadPool.submit(new Callable<RedelmMetaData>() {
+      List<FileStatus> statuses;
+      if (fileStatus.isDir()) {
+        System.out.println("listing files in " + fileStatus.getPath());
+        statuses = Arrays.asList(fs.listStatus(fileStatus.getPath(), new PathFilter() {
           @Override
-          public RedelmMetaData call() throws Exception {
-            RedelmMetaData footer = RedelmFileReader.readFooter(configuration, currentFile);
-            return footer;
+          public boolean accept(Path path) {
+            return !path.getName().startsWith("_");
           }
         }));
+      } else {
+        statuses = new ArrayList<FileStatus>();
+        statuses.add(fileStatus);
       }
-      int blockCount = 0;
-      for (Future<RedelmMetaData> futureFooter : footers) {
-        RedelmMetaData footer = futureFooter.get();
-        System.out.println("Reading footers: " + (++i * 100 / statuses.size()) + "%");
-        //  System.out.println(Footer.toPrettyJSON(footer));
-        List<BlockMetaData> blocks = footer.getBlocks();
-        for (BlockMetaData blockMetaData : blocks) {
-          ++ blockCount;
-          List<ColumnChunkMetaData> columns = blockMetaData.getColumns();
-          for (ColumnChunkMetaData columnMetaData : columns) {
-            add(
-                columnMetaData.getPath(),
-                columnMetaData.getValueCount(),
-                columnMetaData.getTotalSize(),
-                columnMetaData.getTotalUncompressedSize());
-          }
+      System.out.println("opening " + statuses.size() + " files");
+      int i = 0;
+      ExecutorService threadPool = Executors.newFixedThreadPool(5);
+      try {
+        long t0 = System.currentTimeMillis();
+        Deque<Future<RedelmMetaData>> footers = new LinkedBlockingDeque<Future<RedelmMetaData>>();
+        for (final FileStatus currentFile : statuses) {
+          footers.add(threadPool.submit(new Callable<RedelmMetaData>() {
+            @Override
+            public RedelmMetaData call() throws Exception {
+              try {
+                RedelmMetaData footer = RedelmFileReader.readFooter(configuration, currentFile);
+                return footer;
+              } catch (Exception e) {
+                throw new RuntimeException("could not read footer", e);
+              }
+            }
+          }));
         }
+        int previousPercent = 0;
+        int n = 60;
+        System.out.print("0% [");
+        for (int j = 0; j < n; j++) {
+          System.out.print(" ");
+
+        }
+        System.out.print("] 100%");
+        for (int j = 0; j < n + 6; j++) {
+          System.out.print('\b');
+        }
+        while (!footers.isEmpty()) {
+          Future<RedelmMetaData> futureFooter = footers.removeFirst();
+          if (!futureFooter.isDone()) {
+            footers.addLast(futureFooter);
+            continue;
+          }
+          RedelmMetaData footer = futureFooter.get();
+          int currentPercent = (++i * n / statuses.size());
+          while (currentPercent > previousPercent) {
+            System.out.print("*");
+            previousPercent ++;
+          }
+          add(footer);
+        }
+        System.out.println("");
+        long t1 = System.currentTimeMillis();
+        System.out.println("read all footers in " + (t1 - t0) + " ms");
+      } finally {
+        threadPool.shutdownNow();
       }
+    }
+    Set<Entry<String, ColStats>> entries = stats.entrySet();
+    long total = 0;
+    long totalUnc = 0;
+    for (Entry<String, ColStats> entry : entries) {
+      ColStats colStats = entry.getValue();
+      total += colStats.allStats.total;
+      totalUnc += colStats.uncStats.total;
+    }
 
-      Set<Entry<String, ColStats>> entries = stats.entrySet();
-      long total = 0;
-      long totalValues = 0;
-      long totalUnc = 0;
-      for (Entry<String, ColStats> entry : entries) {
-        ColStats colStats = entry.getValue();
-        total += colStats.allStats.total;
-        totalValues += colStats.valueCountStats.total;
-        totalUnc += colStats.uncStats.total;
+    for (Entry<String, ColStats> entry : entries) {
+      ColStats colStats = entry.getValue();
+      System.out.println(entry.getKey() +" " + percent(colStats.allStats.total, total) + "% of all space " + colStats);
+    }
+
+    System.out.println("number of blocks: " + blockCount);
+    System.out.println("total data size: " + humanReadable(total) + " (raw " + humanReadable(totalUnc) + ")");
+    System.out.println("total record: " + humanReadable(recordCount));
+    System.out.println("average block size: " + humanReadable(total/blockCount) + " (raw " + humanReadable(totalUnc/blockCount) + ")");
+    System.out.println("average record count: " + humanReadable(recordCount/blockCount));
+  }
+
+  private static void add(RedelmMetaData footer) {
+    for (BlockMetaData blockMetaData : footer.getBlocks()) {
+      ++ blockCount;
+      recordCount += blockMetaData.getRowCount();
+      List<ColumnChunkMetaData> columns = blockMetaData.getColumns();
+      for (ColumnChunkMetaData columnMetaData : columns) {
+        add(
+            columnMetaData.getPath(),
+            columnMetaData.getValueCount(),
+            columnMetaData.getTotalSize(),
+            columnMetaData.getTotalUncompressedSize());
       }
-
-//      for (Entry<String, ColStats> entry : entries) {
-//        ColStats colStats = entry.getValue();
-//        System.out.println(entry.getKey() +" " + percent(colStats.allStats.total, totalData) + "% of data " + colStats);
-//      }
-
-//      printTotalString("repetition levels", totalRL, totalRL);
-//      printTotalString("definition levels", totalDL, totalDL);
-//      printTotalString("data", totalData, totalDataUnc);
-//      long totalUnc = totalRL + totalDL + totalDataUnc;
-//      System.out.println("Repetition and definition levels overhead: " + percent(totalRL + totalDL,totalData) + "% of data size");
-      System.out.println("average block size: "+ humanReadable(total/blockCount)+" (raw "+humanReadable(totalUnc/blockCount)+")");
-      System.out.println("average value count: "+ humanReadable(totalValues/blockCount));
-    } finally {
-      threadPool.shutdownNow();
     }
   }
 
@@ -137,12 +182,12 @@ public class PrintFooter {
 
   private static String humanReadable(long size) {
     if (size < 1000) {
-      return size + "B";
+      return String.valueOf(size);
     }
     long currentSize = size;
-    long previousSize = 0;
+    long previousSize = size * 1000;
     int count = 0;
-    String[] unit = {"B", "KB", "MB", "GB", "TB", "PB"};
+    String[] unit = {"", "K", "M", "G", "T", "P"};
     while (currentSize >= 1000) {
       previousSize = currentSize;
       currentSize = currentSize / 1000;
@@ -152,11 +197,14 @@ public class PrintFooter {
   }
 
   private static Map<String, ColStats> stats = new HashMap<String, ColStats>();
+  private static int blockCount = 0;
+  private static long recordCount = 0;
 
   private static class Stats {
     long min = Long.MAX_VALUE;
     long max = Long.MIN_VALUE;
     long total = 0;
+
     public void add(long  length) {
       min = Math.min(length, min);
       max = Math.max(length, max);

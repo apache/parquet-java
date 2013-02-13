@@ -169,6 +169,8 @@ public class RedelmFileWriter {
     currentColumn = new ColumnChunkMetaData(descriptor.getPath(), descriptor.getType(), compressionCodecName);
     currentColumn.setValueCount(valueCount);
     currentColumn.setFirstDataPage(out.getPos());
+    compressedLength = 0;
+    uncompressedLength = 0;
   }
 
   /**
@@ -224,8 +226,10 @@ public class RedelmFileWriter {
     currentColumn.setTotalUncompressedSize(uncompressedLength);
     currentColumn.setTotalSize(compressedLength);
     currentBlock.addColumn(currentColumn);
-    if (INFO) LOG.info(currentColumn);
+    if (INFO) LOG.info("ended Column chumk: " + currentColumn);
     currentColumn = null;
+    this.uncompressedLength = 0;
+    this.compressedLength = 0;
   }
 
   /**

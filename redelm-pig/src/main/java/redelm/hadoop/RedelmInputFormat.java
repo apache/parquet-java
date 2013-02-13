@@ -17,6 +17,9 @@ package redelm.hadoop;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import redelm.Log;
@@ -95,31 +98,51 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
   static <T> List<InputSplit> generateSplits(List<BlockMetaData> blocks,
       BlockLocation[] hdfsBlocks, FileStatus fileStatus,
       FileMetaData fileMetaData, ReadSupport<T> readSupport) throws IOException {
-    int currentBlock = 0;
-    List<InputSplit> splits = new ArrayList<InputSplit>();
-    for (BlockLocation hdfsBlock : hdfsBlocks) {
-      long start = hdfsBlock.getOffset();
-      long end = hdfsBlock.getOffset() + hdfsBlock.getLength();
-      List<BlockMetaData> blocksForCurrentSplit = new ArrayList<BlockMetaData>();
-      if (currentBlock < blocks.size()) {
-        // TODO: some sanity regarding location of columns
-        while (
-            currentBlock < blocks.size()
-            && blocks.get(currentBlock).getColumns().get(0).getFirstDataPage() >= start
-            && blocks.get(currentBlock).getColumns().get(0).getFirstDataPage() < end) {
-          blocksForCurrentSplit.add(blocks.get(currentBlock));
-          ++ currentBlock;
+    Comparator<BlockLocation> comparator = new Comparator<BlockLocation>() {
+      @Override
+      public int compare(BlockLocation b1, BlockLocation b2) {
+        return Long.signum(b1.getOffset() - b2.getOffset());
+      }
+    };
+    Arrays.sort(hdfsBlocks, comparator);
+    List<List<BlockMetaData>> splitGroups = new ArrayList<List<BlockMetaData>>(hdfsBlocks.length);
+    for (int i = 0; i < hdfsBlocks.length; i++) {
+      splitGroups.add(new ArrayList<BlockMetaData>());
+    }
+    for (BlockMetaData block : blocks) {
+      final long firstDataPage = block.getColumns().get(0).getFirstDataPage();
+      int index = Arrays.binarySearch(hdfsBlocks, new BlockLocation() {@Override
+        public long getOffset() {
+        return firstDataPage;
+      }}, comparator);
+      if (index >= 0) {
+        splitGroups.get(index).add(block);
+      } else {
+        int insertionPoint = - index - 1;
+        if (insertionPoint == 0) {
+          // really, there should always be a block in 0
+          LOG.warn("row group before the first HDFS block:  " + block);
+          splitGroups.get(0).add(block);
+        } else {
+          splitGroups.get(insertionPoint - 1).add(block);
         }
       }
-      if (blocksForCurrentSplit.size() > 0) {
+    }
+    List<InputSplit> splits = new ArrayList<InputSplit>();
+    for (int i = 0; i < hdfsBlocks.length; i++) {
+      BlockLocation hdfsBlock = hdfsBlocks[i];
+      List<BlockMetaData> blocksForCurrentSplit = splitGroups.get(i);
+      if (blocksForCurrentSplit.size() == 0) {
+        LOG.warn("HDFS block without row group: " + hdfsBlocks[i]);
+      } else {
         splits.add(new RedelmInputSplit<T>(
-            fileStatus.getPath(),
-            hdfsBlock.getOffset(),
-            hdfsBlock.getLength(),
-            hdfsBlock.getHosts(),
-            blocksForCurrentSplit,
-            fileMetaData.getSchema().toString(),
-            readSupport));
+          fileStatus.getPath(),
+          hdfsBlock.getOffset(),
+          hdfsBlock.getLength(),
+          hdfsBlock.getHosts(),
+          blocksForCurrentSplit,
+          fileMetaData.getSchema().toString(),
+          readSupport));
       }
     }
     return splits;

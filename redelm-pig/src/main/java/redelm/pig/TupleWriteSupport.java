@@ -140,7 +140,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
           if (pigType.type == DataType.BYTEARRAY) {
             bytes = ((DataByteArray)t.get(i)).get();
           } else if (pigType.type == DataType.CHARARRAY) {
-            bytes = ((String)t.get(i)).getBytes();
+            bytes = ((String)t.get(i)).getBytes("UTF-8");
           } else {
             throw new UnsupportedOperationException("can not convert from " + DataType.findTypeName(pigType.type) + " to BINARY ");
           }

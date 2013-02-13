@@ -74,7 +74,7 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   private long totalTimeSpentProcessingRecords;
 
   private long startedReadingCurrentBlockAt;
-  private long currentBlockRecordCount;
+  private long totalCountLoadedSoFar;
 
   /**
    *
@@ -85,11 +85,11 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   }
 
   private void checkRead() throws IOException {
-    if (columnsStore == null || current == total) {
+    if (columnsStore == null || current == totalCountLoadedSoFar) {
       if (columnsStore != null) {
         long timeAssembling = System.currentTimeMillis() - startedReadingCurrentBlockAt;
         totalTimeSpentProcessingRecords += timeAssembling;
-        LOG.info("Assembled and processed " + currentBlockRecordCount + " records in " + timeAssembling + " ms "+((float)currentBlockRecordCount / timeAssembling) + " rec/ms");
+        LOG.info("Assembled and processed " + totalCountLoadedSoFar + " records in " + timeAssembling + " ms "+((float)totalCountLoadedSoFar / timeAssembling) + " rec/ms");
         long totalTime = totalTimeSpentProcessingRecords + totalTimeSpentReadingBytes;
         long percentReading = 100 * totalTimeSpentReadingBytes / totalTime;
         long percentProcessing = 100 * totalTimeSpentProcessingRecords / totalTime;
@@ -113,14 +113,14 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
       if (count == 0) {
         return;
       }
-      columnsStore = new MemColumnsStore(memPageStore, 8 * 1024); // TODO: parameterize this
+      columnsStore = new MemColumnsStore(memPageStore, 8 * 1024); // TODO: this value does not matter here => refactor this
       long timeSpentReading = System.currentTimeMillis() - t0;
       totalTimeSpentReadingBytes += timeSpentReading;
       LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + count);
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema);
       recordReader = columnIO.getRecordReader(columnsStore, readSupport.newRecordConsumer());
       startedReadingCurrentBlockAt = System.currentTimeMillis();
-      currentBlockRecordCount = count;
+      totalCountLoadedSoFar += count;
     }
   }
 
@@ -169,24 +169,11 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
     this.readSupport = redelmInputSplit.getReadSupport();
     Path path = redelmInputSplit.getPath();
     List<BlockMetaData> blocks = redelmInputSplit.getBlocks();
-    List<String[]> columns = new ArrayList<String[]>();
-    // a split has at least one block
-    // all blocks have the same columns
-    // TODO: just generate the column list from the schema
-    for (ColumnChunkMetaData columnMetaData : blocks.get(0).getColumns()) {
-      columnTypes.put(Arrays.toString(columnMetaData.getPath()), columnMetaData);
-      if (contains(requestedSchema, columnMetaData.getPath())) {
-        columns.add(columnMetaData.getPath());
-      }
-    }
+    List<String[]> columns = requestedSchema.getPaths();
     reader = new RedelmFileReader(configuration, path, blocks, columns);
     for (BlockMetaData block : blocks) {
       total += block.getRowCount();
     }
-  }
-
-  private boolean contains(GroupType requestedSchema, String[] path) {
-    return contains(requestedSchema, path, 0);
   }
 
   private boolean contains(GroupType group, String[] path, int index) {
@@ -210,7 +197,7 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
     checkRead();
-    if (current<total) {
+    if (current < total) {
       currentValue = recordReader.read();
       if (DEBUG) LOG.debug("read value: " + currentValue);
       current ++;
