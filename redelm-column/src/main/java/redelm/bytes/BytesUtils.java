@@ -19,11 +19,14 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 
 import redelm.Log;
 
 public class BytesUtils {
   private static final Log LOG = Log.getLog(BytesUtils.class);
+
+  public static final Charset UTF8 = Charset.forName("UTF-8");
 
   public static int getWidthFromMaxInt(int bound) {
     return (int)Math.ceil(Math.log(bound + 1)/Math.log(2));
