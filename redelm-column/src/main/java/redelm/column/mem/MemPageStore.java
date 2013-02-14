@@ -52,4 +52,9 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
     return new MemPageReader(pageWriter.getTotalValueCount(), pages.iterator());
   }
 
+  @Override
+  public long getRowCount() {
+    throw new UnsupportedOperationException();
+  }
+
 }

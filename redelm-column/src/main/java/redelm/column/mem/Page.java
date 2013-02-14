@@ -26,11 +26,13 @@ public class Page {
 
   private final BytesInput bytes;
   private final int valueCount;
+  private final int uncompressedSize;
   private final int id;
 
-  public Page(BytesInput bytes, int valueCount) {
+  public Page(BytesInput bytes, int valueCount, int uncompressedSize) {
     this.bytes = bytes;
     this.valueCount = valueCount;
+    this.uncompressedSize = uncompressedSize;
     this.id = nextId ++;
     if (DEBUG) LOG.debug("new Page #"+id+" : " + bytes.size() + " bytes and " + valueCount + " records");
   }
@@ -41,6 +43,10 @@ public class Page {
 
   public int getValueCount() {
     return valueCount;
+  }
+
+  public int getUncompressedSize() {
+    return uncompressedSize;
   }
 
   @Override

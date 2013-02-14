@@ -25,8 +25,10 @@ import java.util.Map;
 
 import redelm.Log;
 import redelm.bytes.BytesInput;
+import redelm.column.ColumnDescriptor;
 import redelm.column.mem.MemColumnReadStore;
 import redelm.column.mem.MemPageStore;
+import redelm.column.mem.PageReadStore;
 import redelm.column.mem.PageWriter;
 import redelm.hadoop.metadata.BlockMetaData;
 import redelm.hadoop.metadata.ColumnChunkMetaData;
@@ -55,21 +57,20 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   private static final Log LOG = Log.getLog(RedelmRecordReader.class);
 
-  private ColumnIOFactory columnIOFactory = new ColumnIOFactory();
+  private final ColumnIOFactory columnIOFactory = new ColumnIOFactory();
+  private final MessageType requestedSchema;
   private T currentValue;
   private long total;
-  private int current;
+  private int current = 0;
   private RedelmFileReader reader;
   private redelm.io.RecordReader<T> recordReader;
-  private MemColumnReadStore columnsStore;
   private ReadSupport<T> readSupport;
-  private MessageType requestedSchema;
 
   private long totalTimeSpentReadingBytes;
   private long totalTimeSpentProcessingRecords;
-
   private long startedReadingCurrentBlockAt;
-  private long totalCountLoadedSoFar;
+
+  private long totalCountLoadedSoFar = 0;
 
   /**
    *
@@ -80,8 +81,8 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   }
 
   private void checkRead() throws IOException {
-    if (columnsStore == null || current == totalCountLoadedSoFar) {
-      if (columnsStore != null) {
+    if (current == totalCountLoadedSoFar) {
+      if (current != 0) {
         long timeAssembling = System.currentTimeMillis() - startedReadingCurrentBlockAt;
         totalTimeSpentProcessingRecords += timeAssembling;
         LOG.info("Assembled and processed " + totalCountLoadedSoFar + " records in " + timeAssembling + " ms "+((float)totalCountLoadedSoFar / timeAssembling) + " rec/ms");
@@ -90,31 +91,20 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
         long percentProcessing = 100 * totalTimeSpentProcessingRecords / totalTime;
         LOG.info("time spent so far " + percentReading + "% reading ("+totalTimeSpentReadingBytes+" ms) and " + percentProcessing + "% processing ("+totalTimeSpentProcessingRecords+" ms)");
       }
-      final MemPageStore memPageStore = new MemPageStore();
-      LOG.info("reading next block");
+
+      LOG.info("at row " + current + " out of " + totalCountLoadedSoFar + " loaded so far => reading next block");
       long t0 = System.currentTimeMillis();
-      long count = reader.readColumns(new PageConsumer() {
-        public void consumePage(String[] path, int valueCount, BytesInput bytes) {
-          if (DEBUG) LOG.debug("reading page for col " + Arrays.toString(path) + ": " + valueCount + " values, " + bytes.size() + " bytes");
-          PageWriter pageWriter = memPageStore.getPageWriter(requestedSchema.getColumnDescription(path));
-          try {
-            pageWriter.writePage(bytes, valueCount);
-          } catch (IOException e) {
-            // TODO cleanup
-            throw new RuntimeException(e);
-          }
-        }
-      });
-      if (count == 0) {
-        return;
+      PageReadStore pages = reader.readColumns();
+      if (pages == null) {
+        throw new IOException("expecting more rows but reached last block. Read " + current + " out of " + total);
       }
       long timeSpentReading = System.currentTimeMillis() - t0;
       totalTimeSpentReadingBytes += timeSpentReading;
-      LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + count);
+      LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema);
-      recordReader = columnIO.getRecordReader(memPageStore, readSupport.newRecordConsumer());
+      recordReader = columnIO.getRecordReader(pages, readSupport.newRecordConsumer());
       startedReadingCurrentBlockAt = System.currentTimeMillis();
-      totalCountLoadedSoFar += count;
+      totalCountLoadedSoFar += pages.getRowCount();
     }
   }
 
@@ -148,7 +138,7 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
    */
   @Override
   public float getProgress() throws IOException, InterruptedException {
-    return (float)current/total;
+    return (float) current / total;
   }
 
   /**
@@ -163,11 +153,12 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
     this.readSupport = redelmInputSplit.getReadSupport();
     Path path = redelmInputSplit.getPath();
     List<BlockMetaData> blocks = redelmInputSplit.getBlocks();
-    List<String[]> columns = requestedSchema.getPaths();
+    List<ColumnDescriptor> columns = requestedSchema.getColumns();
     reader = new RedelmFileReader(configuration, path, blocks, columns);
     for (BlockMetaData block : blocks) {
       total += block.getRowCount();
     }
+    LOG.info("RecordReader initialized will read a total of " + total + " records.");
   }
 
   private boolean contains(GroupType group, String[] path, int index) {
@@ -190,8 +181,8 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
    */
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
-    checkRead();
     if (current < total) {
+      checkRead();
       currentValue = recordReader.read();
       if (DEBUG) LOG.debug("read value: " + currentValue);
       current ++;

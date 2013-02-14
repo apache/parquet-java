@@ -37,7 +37,7 @@ public class TestMemPageStore {
     pageWriter.writePage(BytesInput.from(new byte[743]), 209);
     pageWriter.writePage(BytesInput.from(new byte[735]), 209);
     PageReader pageReader = memPageStore.getPageReader(col);
-    int totalValueCount = pageReader.getTotalValueCount();
+    long totalValueCount = pageReader.getTotalValueCount();
     System.out.println(totalValueCount);
     int total = 0;
     do {

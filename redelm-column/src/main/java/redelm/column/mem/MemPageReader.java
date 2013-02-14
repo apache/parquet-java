@@ -24,10 +24,10 @@ import redelm.Log;
 public class MemPageReader implements PageReader {
   private static final Log LOG = Log.getLog(MemPageReader.class);
 
-  private int totalValueCount;
+  private long totalValueCount;
   private Iterator<Page> pages;
 
-  public MemPageReader(int totalValueCount, Iterator<Page> pages) {
+  public MemPageReader(long totalValueCount, Iterator<Page> pages) {
     super();
     if (pages == null) {
       throw new NullPointerException("pages");
@@ -37,7 +37,7 @@ public class MemPageReader implements PageReader {
   }
 
   @Override
-  public int getTotalValueCount() {
+  public long getTotalValueCount() {
     return totalValueCount;
   }
 

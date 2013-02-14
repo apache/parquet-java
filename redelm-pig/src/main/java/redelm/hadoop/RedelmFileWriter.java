@@ -163,7 +163,7 @@ public class RedelmFileWriter {
    * @param compressionCodecName
    * @throws IOException
    */
-  public void startColumn(ColumnDescriptor descriptor, int valueCount, CompressionCodecName compressionCodecName) throws IOException {
+  public void startColumn(ColumnDescriptor descriptor, long valueCount, CompressionCodecName compressionCodecName) throws IOException {
     state = state.startColumn();
     if (DEBUG) LOG.debug(out.getPos() + ": start column: " + descriptor + " count=" + valueCount);
     currentColumn = new ColumnChunkMetaData(descriptor.getPath(), descriptor.getType(), compressionCodecName);
@@ -202,7 +202,7 @@ public class RedelmFileWriter {
    * @param compressedTotalPageSize total compressed size (without page headers)
    * @throws IOException
    */
-  public void writeDataPages(BytesInput bytes, long uncompressedTotalPageSize, long compressedTotalPageSize) throws IOException {
+   void writeDataPages(BytesInput bytes, long uncompressedTotalPageSize, long compressedTotalPageSize) throws IOException {
     state = state.write();
     if (DEBUG) LOG.debug(out.getPos() + ": write data pages");
 //    int compressedPageSize = (int)bytes.size();

@@ -12,6 +12,7 @@ import redelm.column.ColumnDescriptor;
 import redelm.column.mem.MemColumnWriteStore;
 import redelm.column.mem.MemPageStore;
 import redelm.column.mem.Page;
+import redelm.column.mem.PageReadStore;
 import redelm.column.mem.PageReader;
 import redelm.hadoop.PageConsumer;
 import redelm.hadoop.RedelmFileReader;
@@ -77,18 +78,9 @@ public class GenerateIntTestFile {
       throws IOException {
     RedelmMetaData readFooter = RedelmFileReader.readFooter(configuration, testFile);
     MessageType schema = readFooter.getFileMetaData().getSchema();
-    RedelmFileReader redelmFileReader = new RedelmFileReader(configuration, testFile, readFooter.getBlocks(), schema.getPaths());
-    redelmFileReader.readColumns(new PageConsumer() {
-      @Override
-      public void consumePage(String[] path, int valueCount, BytesInput bytes) {
-        if (Log.INFO) LOG.info(Arrays.toString(path) + " " + valueCount + " " + bytes.size());
-        try {
-          BytesInput.copy(bytes);
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
-      }
-    });
+    RedelmFileReader redelmFileReader = new RedelmFileReader(configuration, testFile, readFooter.getBlocks(), schema.getColumns());
+    PageReadStore pages = redelmFileReader.readColumns();
+    System.out.println(pages.getRowCount());
   }
 
   public static void writeToFile(Path file, Configuration configuration, MessageType schema, MemPageStore pageStore, int recordCount)
@@ -108,7 +100,7 @@ public class GenerateIntTestFile {
     List<ColumnDescriptor> columns = schema.getColumns();
     for (ColumnDescriptor columnDescriptor : columns) {
       PageReader pageReader = pageStore.getPageReader(columnDescriptor);
-      int totalValueCount = pageReader.getTotalValueCount();
+      long totalValueCount = pageReader.getTotalValueCount();
       w.startColumn(columnDescriptor, totalValueCount, CompressionCodecName.UNCOMPRESSED);
       int n = 0;
       do {

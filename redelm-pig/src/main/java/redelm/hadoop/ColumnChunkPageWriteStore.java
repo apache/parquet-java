@@ -8,6 +8,7 @@ import java.util.Map;
 
 import redelm.bytes.BytesInput;
 import redelm.column.ColumnDescriptor;
+import redelm.column.mem.PageReader;
 import redelm.column.mem.PageWriteStore;
 import redelm.column.mem.PageWriter;
 import redelm.hadoop.CodecFactory.BytesCompressor;
@@ -26,9 +27,12 @@ public class ColumnChunkPageWriteStore implements PageWriteStore {
     private ByteArrayOutputStream buf = new ByteArrayOutputStream(1024*1024/2);
     private long uncompressedLength;
     private long compressedLength;
+    private long totalValueCount;
     private final BytesCompressor compressor;
+    private final ColumnDescriptor path;
 
-    private ColumnChunkPageWriter(BytesCompressor compressor) {
+    private ColumnChunkPageWriter(ColumnDescriptor path, BytesCompressor compressor) {
+      this.path = path;
       this.compressor = compressor;
     }
 
@@ -44,6 +48,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore {
       redFileMetadataConverter.writePageHeader(pageHeader, buf);
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
+      this.totalValueCount += valueCount;
       compressedBytes.writeAllTo(buf);
     }
 
@@ -53,7 +58,9 @@ public class ColumnChunkPageWriteStore implements PageWriteStore {
     }
 
     public void writeToFileWriter(RedelmFileWriter writer) throws IOException {
+      writer.startColumn(path, totalValueCount, compressor.getCodecName());
       writer.writeDataPages(BytesInput.from(buf), uncompressedLength, compressedLength);
+      writer.endColumn();
     }
   }
 
@@ -69,7 +76,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore {
   @Override
   public PageWriter getPageWriter(ColumnDescriptor path) {
     if (!writers.containsKey(path)) {
-      writers.put(path,  new ColumnChunkPageWriter(compressor));
+      writers.put(path,  new ColumnChunkPageWriter(path, compressor));
     }
     return writers.get(path);
   }

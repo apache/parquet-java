@@ -21,4 +21,6 @@ public interface PageReadStore {
 
   PageReader getPageReader(ColumnDescriptor descriptor);
 
+  long getRowCount();
+
 }

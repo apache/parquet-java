@@ -61,7 +61,7 @@ public class CodecFactory {
       return decompressed;
     }
 
-    public void release() {
+    private void release() {
       if (decompressor != null) {
         CodecPool.returnDecompressor(decompressor);
       }
@@ -79,8 +79,10 @@ public class CodecFactory {
     private final CompressionCodec codec;
     private final Compressor compressor;
     private final ByteArrayOutputStream compressedOutBuffer;
+    private final CompressionCodecName codecName;
 
-    public BytesCompressor(CompressionCodec codec, int pageSize) {
+    public BytesCompressor(CompressionCodecName codecName, CompressionCodec codec, int pageSize) {
+      this.codecName = codecName;
       this.codec = codec;
       if (codec != null) {
         this.compressor = CodecPool.getCompressor(codec);
@@ -110,14 +112,20 @@ public class CodecFactory {
       return compressedBytes;
     }
 
-    public void release() {
+    private void release() {
       if (compressor != null) {
         CodecPool.returnCompressor(compressor);
       }
     }
 
+    public CompressionCodecName getCodecName() {
+      return codecName;
+    }
+
   }
 
+  private final Map<CompressionCodecName, BytesCompressor> compressors = new HashMap<CompressionCodecName, BytesCompressor>();
+  private final Map<CompressionCodecName, BytesDecompressor> decompressors = new HashMap<CompressionCodecName, BytesDecompressor>();
   private final Map<String, CompressionCodec> codecByName = new HashMap<String, CompressionCodec>();
   private final Configuration configuration;
 
@@ -130,7 +138,7 @@ public class CodecFactory {
    * @param codecName the requested codec
    * @return the corresponding hadoop codec. null if UNCOMPRESSED
    */
-  public CompressionCodec getCodec(CompressionCodecName codecName) {
+  private CompressionCodec getCodec(CompressionCodecName codecName) {
     String codecClassName = codecName.getHadoopCompressionCodecClass();
     if (codecClassName == null) {
       return null;
@@ -149,12 +157,29 @@ public class CodecFactory {
   }
 
   public BytesCompressor getCompressor(CompressionCodecName codecName, int pageSize) {
-    CompressionCodec codec = getCodec(codecName);
-    return new BytesCompressor(codec, pageSize);
+    if (!compressors.containsKey(codecName)) {
+      CompressionCodec codec = getCodec(codecName);
+      compressors.put(codecName, new BytesCompressor(codecName, codec, pageSize));
+    }
+    return compressors.get(codecName);
   }
 
   public BytesDecompressor getDecompressor(CompressionCodecName codecName) {
-    CompressionCodec codec = getCodec(codecName);
-    return new BytesDecompressor(codec);
+    if (!decompressors.containsKey(codecName)) {
+      CompressionCodec codec = getCodec(codecName);
+      decompressors.put(codecName, new BytesDecompressor(codec));
+    }
+    return decompressors.get(codecName);
+  }
+
+  public void release() {
+    for (BytesCompressor compressor : compressors.values()) {
+      compressor.release();
+    }
+    compressors.clear();
+    for (BytesDecompressor decompressor : decompressors.values()) {
+      decompressor.release();
+    }
+    decompressors.clear();
   }
 }

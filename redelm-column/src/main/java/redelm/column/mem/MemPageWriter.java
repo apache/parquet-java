@@ -29,7 +29,7 @@ public class MemPageWriter implements PageWriter {
 
   private final List<Page> pages = new ArrayList<Page>();
   private long memSize = 0;
-  private int totalValueCount = 0;
+  private long totalValueCount = 0;
 
 
   @Override
@@ -38,7 +38,7 @@ public class MemPageWriter implements PageWriter {
       throw new RuntimeException("illegal page of 0 values");
     }
     memSize += bytesInput.size();
-    pages.add(new Page(BytesInput.copy(bytesInput), valueCount));
+    pages.add(new Page(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size()));
     totalValueCount += valueCount;
     if (DEBUG) LOG.debug("page written for " + bytesInput.size() + " bytes and " + valueCount + " records");
   }
@@ -52,7 +52,7 @@ public class MemPageWriter implements PageWriter {
     return pages;
   }
 
-  public int getTotalValueCount() {
+  public long getTotalValueCount() {
     return totalValueCount;
   }
 

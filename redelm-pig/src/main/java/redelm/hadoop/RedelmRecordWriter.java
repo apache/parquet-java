@@ -16,17 +16,11 @@
 package redelm.hadoop;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 
 import redelm.Log;
-import redelm.column.ColumnDescriptor;
 import redelm.column.mem.MemColumnWriteStore;
-import redelm.column.mem.MemPageStore;
-import redelm.column.mem.Page;
-import redelm.column.mem.PageReader;
 import redelm.hadoop.CodecFactory.BytesCompressor;
-import redelm.hadoop.metadata.CompressionCodecName;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
 import redelm.schema.MessageType;
@@ -52,13 +46,12 @@ public class RedelmRecordWriter<T> extends RecordWriter<Void, T> {
   private final Map<String, String> extraMetaData;
   private final int blockSize;
   private final int pageSize;
-  private final CompressionCodecName codecName;
   private final BytesCompressor compressor;
 
   private int recordCount;
 
   private MemColumnWriteStore store;
-  private MemPageStore pageStore;
+  private ColumnChunkPageWriteStore pageStore;
 
 
   /**
@@ -70,7 +63,7 @@ public class RedelmRecordWriter<T> extends RecordWriter<Void, T> {
    * @param blockSize the size of a block in the file (this will be approximate)
    * @param codec the codec used to compress
    */
-  RedelmRecordWriter(RedelmFileWriter w, WriteSupport<T> writeSupport, MessageType schema,  Map<String, String> extraMetaData, int blockSize, int pageSize, CompressionCodecName codecName, BytesCompressor compressor) {
+  RedelmRecordWriter(RedelmFileWriter w, WriteSupport<T> writeSupport, MessageType schema,  Map<String, String> extraMetaData, int blockSize, int pageSize, BytesCompressor compressor) {
     if (writeSupport == null) {
       throw new NullPointerException("writeSupport");
     }
@@ -80,15 +73,13 @@ public class RedelmRecordWriter<T> extends RecordWriter<Void, T> {
     this.extraMetaData = extraMetaData;
     this.blockSize = blockSize;
     this.pageSize = pageSize;
-    this.codecName = codecName;
     this.compressor = compressor;
     initStore();
   }
 
   private void initStore() {
-    pageStore = new MemPageStore();
+    pageStore = new ColumnChunkPageWriteStore(compressor, schema);
     store = new MemColumnWriteStore(pageStore, pageSize);
-    //
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     writeSupport.initForWrite(columnIO.getRecordWriter(store), schema, extraMetaData);
   }
@@ -101,7 +92,6 @@ public class RedelmRecordWriter<T> extends RecordWriter<Void, T> {
   InterruptedException {
     flushStore();
     w.end(extraMetaData);
-    compressor.release();
   }
 
   /**
@@ -125,20 +115,7 @@ public class RedelmRecordWriter<T> extends RecordWriter<Void, T> {
       throws IOException {
     w.startBlock(recordCount);
     store.flush();
-    List<ColumnDescriptor> columns = schema.getColumns();
-    for (ColumnDescriptor columnDescriptor : columns) {
-      PageReader pageReader = pageStore.getPageReader(columnDescriptor);
-      int totalValueCount = pageReader.getTotalValueCount();
-      w.startColumn(columnDescriptor, totalValueCount, codecName);
-      int n = 0;
-      do {
-        Page page = pageReader.readPage();
-        n += page.getValueCount();
-        long uncompressedSize = page.getBytes().size();
-        w.writeDataPage(page.getValueCount(), (int)uncompressedSize, compressor.compress(page.getBytes()));
-      } while (n < totalValueCount);
-      w.endColumn();
-    }
+    pageStore.flushToFileWriter(w);
     recordCount = 0;
     w.endBlock();
     store = null;

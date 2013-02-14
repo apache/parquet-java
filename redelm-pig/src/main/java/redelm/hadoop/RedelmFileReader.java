@@ -19,15 +19,13 @@ import static redelm.Log.DEBUG;
 import static redelm.bytes.BytesUtils.readIntLittleEndian;
 import static redelm.hadoop.RedelmFileWriter.MAGIC;
 
-import java.io.ByteArrayOutputStream;
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -36,8 +34,11 @@ import java.util.concurrent.Future;
 
 import redelm.Log;
 import redelm.bytes.BytesInput;
-import redelm.bytes.BytesUtils;
+import redelm.column.ColumnDescriptor;
+import redelm.column.mem.Page;
+import redelm.column.mem.PageReadStore;
 import redelm.hadoop.CodecFactory.BytesDecompressor;
+import redelm.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
 import redelm.hadoop.metadata.BlockMetaData;
 import redelm.hadoop.metadata.ColumnChunkMetaData;
 import redelm.hadoop.metadata.RedelmMetaData;
@@ -50,10 +51,6 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.compress.CodecPool;
-import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.io.compress.CompressionInputStream;
-import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.mapred.Utils;
 
 /**
@@ -210,7 +207,7 @@ public class RedelmFileReader {
   private final List<BlockMetaData> blocks;
   private final FSDataInputStream f;
   private int currentBlock = 0;
-  private Set<String> paths = new HashSet<String>();
+  private Map<String, ColumnDescriptor> paths = new HashMap<String, ColumnDescriptor>();
   private long previousReadIndex = 0;
 
 
@@ -222,12 +219,12 @@ public class RedelmFileReader {
    * @param codecClassName the codec used to compress the blocks
    * @throws IOException if the file can not be opened
    */
-  public RedelmFileReader(Configuration configuration, Path filePath, List<BlockMetaData> blocks, List<String[]> colums) throws IOException {
+  public RedelmFileReader(Configuration configuration, Path filePath, List<BlockMetaData> blocks, List<ColumnDescriptor> columns) throws IOException {
     FileSystem fs = FileSystem.get(configuration);
     this.f = fs.open(filePath);
     this.blocks = blocks;
-    for (String[] path : colums) {
-      paths.add(Arrays.toString(path));
+    for (ColumnDescriptor col : columns) {
+      paths.put(Arrays.toString(col.getPath()), col);
     }
     this.codecFactory = new CodecFactory(configuration);
   }
@@ -238,41 +235,42 @@ public class RedelmFileReader {
    * @throws IOException if an error occurs while reading
    * @return how many records where read or 0 if end reached.
    */
-  public long readColumns(PageConsumer pageConsumer) throws IOException {
+  public PageReadStore readColumns() throws IOException {
     if (currentBlock == blocks.size()) {
-      return 0;
+      return null;
     }
     BlockMetaData block = blocks.get(currentBlock);
     if (block.getRowCount() == 0) {
       throw new RuntimeException("Illegal row group of 0 rows");
     }
-    LOG.info("starting reading block #" + currentBlock);
+    ColumnChunkPageReadStore columnChunkPageReadStore = new ColumnChunkPageReadStore(block.getRowCount());
     long t0 = System.currentTimeMillis();
     for (ColumnChunkMetaData mc : block.getColumns()) {
       String pathKey = Arrays.toString(mc.getPath());
-      if (paths.contains(pathKey)) {
+      if (paths.containsKey(pathKey)) {
+        ColumnDescriptor columnDescriptor = paths.get(pathKey);
         f.seek(mc.getFirstDataPage());
         if (DEBUG) LOG.debug(f.getPos() + ": start column chunk " + Arrays.toString(mc.getPath()) + " " + mc.getType() + " count=" + mc.getValueCount());
         BytesDecompressor decompressor = codecFactory.getDecompressor(mc.getCodec());
-        try {
-          long valuesCountReadSoFar = 0;
-          while (valuesCountReadSoFar < mc.getValueCount()) {
-            PageHeader pageHeader = readNextDataPageHeader();
-            pageConsumer.consumePage(
-                mc.getPath(),
-                pageHeader.data_page.num_values,
-                decompressor.decompress(BytesInput.from(f, pageHeader.compressed_page_size), pageHeader.uncompressed_page_size));
-            valuesCountReadSoFar += pageHeader.data_page.num_values;
-          }
-        } finally {
-          decompressor.release();
+        ColumnChunkPageReader columnChunkPageReader = new ColumnChunkPageReader(decompressor, mc.getValueCount());
+        long valuesCountReadSoFar = 0;
+        while (valuesCountReadSoFar < mc.getValueCount()) {
+          PageHeader pageHeader = readNextDataPageHeader();
+          columnChunkPageReader.addPage(
+              new Page(
+                  BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)),
+                  pageHeader.data_page.num_values,
+                  pageHeader.uncompressed_page_size
+                  ));
+          valuesCountReadSoFar += pageHeader.data_page.num_values;
         }
+        columnChunkPageReadStore.addColumn(columnDescriptor, columnChunkPageReader);
       }
     }
     long t1 = System.currentTimeMillis();
     LOG.info("block data read in " + (t1 - t0) + " ms");
     ++currentBlock;
-    return block.getRowCount();
+    return columnChunkPageReadStore;
   }
 
   private PageHeader readNextDataPageHeader() throws IOException {
@@ -295,6 +293,7 @@ public class RedelmFileReader {
 
   public void close() throws IOException {
     f.close();
+    this.codecFactory.release();
   }
 
 }

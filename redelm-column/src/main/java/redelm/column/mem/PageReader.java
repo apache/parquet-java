@@ -18,7 +18,7 @@ package redelm.column.mem;
 
 public interface PageReader {
 
-  abstract public int getTotalValueCount();
+  abstract public long getTotalValueCount();
 
   abstract public Page readPage();
 }

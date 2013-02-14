@@ -15,7 +15,7 @@
  */
 package redelm.hadoop;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,6 +27,9 @@ import java.util.List;
 import redelm.Log;
 import redelm.bytes.BytesInput;
 import redelm.column.ColumnDescriptor;
+import redelm.column.mem.Page;
+import redelm.column.mem.PageReadStore;
+import redelm.column.mem.PageReader;
 import redelm.hadoop.metadata.CompressionCodecName;
 import redelm.hadoop.metadata.RedelmMetaData;
 import redelm.parser.MessageTypeParser;
@@ -38,38 +41,6 @@ import org.junit.Test;
 
 public class TestRedelmFileWriter {
   private static final Log LOG = Log.getLog(TestRedelmFileWriter.class);
-
-  public static class ValidatingPageConsumer extends PageConsumer {
-
-    List<String> expected = new ArrayList<String>();
-    int counter = 0;
-
-
-    @Override
-    public void consumePage(String[] path, int valueCount, BytesInput bytes) {
-      assertEquals("at index "+counter, expected.get(counter), toString(path, valueCount, bytes));
-      ++ counter;
-    }
-
-    private String toString(String[] path, int valueCount, BytesInput bytes) {
-      try {
-        return Arrays.toString(path) + " "+valueCount+" "+Arrays.toString(bytes.toByteArray());
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    }
-
-    public void add(String[] path, int valueCount, BytesInput bytes) {
-      expected.add(toString(path, valueCount, bytes));
-    }
-
-    public void validate() {
-      assertEquals(expected.size(), counter);
-      expected.clear();
-      counter = 0;
-    }
-
-  }
 
   @Test
   public void test() throws Exception {
@@ -117,38 +88,43 @@ public class TestRedelmFileWriter {
     RedelmMetaData readFooter = RedelmFileReader.readFooter(configuration, path);
     assertEquals("footer: "+readFooter, 2, readFooter.getBlocks().size());
 
-    ValidatingPageConsumer pageConsumer = new ValidatingPageConsumer();
     { // read first block of col #1
-      pageConsumer.add(path1, 2, BytesInput.from(bytes1));
-      pageConsumer.add(path1, 3, BytesInput.from(bytes1));
-
-      RedelmFileReader r = new RedelmFileReader(configuration, path, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.<String[]>asList(path1));
-      assertEquals(3, r.readColumns(pageConsumer));
-      pageConsumer.validate();
-      assertEquals(0, r.readColumns(pageConsumer));
+      RedelmFileReader r = new RedelmFileReader(configuration, path, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(path1)));
+      PageReadStore pages = r.readColumns();
+      assertEquals(3, pages.getRowCount());
+      validateContains(schema, pages, path1, 2, BytesInput.from(bytes1));
+      validateContains(schema, pages, path1, 3, BytesInput.from(bytes1));
+      assertNull(r.readColumns());
     }
 
     { // read all blocks of col #1 and #2
 
-      pageConsumer.add(path1, 2, BytesInput.from(bytes1));
-      pageConsumer.add(path1, 3, BytesInput.from(bytes1));
-      pageConsumer.add(path2, 2, BytesInput.from(bytes2));
-      pageConsumer.add(path2, 3, BytesInput.from(bytes2));
-      pageConsumer.add(path2, 1, BytesInput.from(bytes2));
+      RedelmFileReader r = new RedelmFileReader(configuration, path, readFooter.getBlocks(), Arrays.asList(schema.getColumnDescription(path1), schema.getColumnDescription(path2)));
 
-      RedelmFileReader r = new RedelmFileReader(configuration, path, readFooter.getBlocks(), Arrays.<String[]>asList(path1, path2));
+      PageReadStore pages = r.readColumns();
+      assertEquals(3, pages.getRowCount());
+      validateContains(schema, pages, path1, 2, BytesInput.from(bytes1));
+      validateContains(schema, pages, path1, 3, BytesInput.from(bytes1));
+      validateContains(schema, pages, path2, 2, BytesInput.from(bytes2));
+      validateContains(schema, pages, path2, 3, BytesInput.from(bytes2));
+      validateContains(schema, pages, path2, 1, BytesInput.from(bytes2));
 
-      assertEquals(3, r.readColumns(pageConsumer));
-      pageConsumer.validate();
+      pages = r.readColumns();
+      assertEquals(4, pages.getRowCount());
 
-      pageConsumer.add(path1, 7, BytesInput.from(bytes3));
-      pageConsumer.add(path2, 8, BytesInput.from(bytes4));
+      validateContains(schema, pages, path1, 7, BytesInput.from(bytes3));
+      validateContains(schema, pages, path2, 8, BytesInput.from(bytes4));
 
-      assertEquals(4, r.readColumns(pageConsumer));
-      pageConsumer.validate();
-
-      assertEquals(0, r.readColumns(pageConsumer));
+      assertNull(r.readColumns());
     }
     PrintFooter.main(new String[] {path.toString()});
   }
+
+  private void validateContains(MessageType schema, PageReadStore pages, String[] path, int values, BytesInput bytes) throws IOException {
+    PageReader pageReader = pages.getPageReader(schema.getColumnDescription(path));
+    Page page = pageReader.readPage();
+    assertEquals(values, page.getValueCount());
+    assertArrayEquals(bytes.toByteArray(), page.getBytes().toByteArray());
+  }
+
 }
