@@ -31,7 +31,7 @@ import redelm.schema.MessageType;
 public class MessageColumnIO extends GroupColumnIO {
   private static final Log logger = Log.getLog(MessageColumnIO.class);
 
-  private static final boolean DEBUG = false;//Log.DEBUG;
+  private static final boolean DEBUG = Log.DEBUG;
 
   private List<PrimitiveColumnIO> leaves;
 

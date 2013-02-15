@@ -223,4 +223,17 @@ public class GroupType extends Type {
     return result;
   }
 
+  @Override
+  void checkContains(Type subType) {
+    super.checkContains(subType);
+    if (subType.isPrimitive()) {
+      throw new RuntimeException(subType + " found: expected " + this);
+    }
+    List<Type> fields = subType.asGroupType().getFields();
+    for (Type otherType : fields) {
+      Type thisType = this.getType(otherType.getName());
+      thisType.checkContains(otherType);
+    }
+  }
+
 }

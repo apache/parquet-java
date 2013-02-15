@@ -26,6 +26,9 @@ import redelm.Log;
 import redelm.hadoop.metadata.BlockMetaData;
 import redelm.hadoop.metadata.FileMetaData;
 import redelm.hadoop.metadata.RedelmMetaData;
+import redelm.parser.MessageTypeParser;
+import redelm.pig.PigSchemaConverter;
+import redelm.schema.MessageType;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
@@ -52,6 +55,8 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
 
   private static final Log LOG = Log.getLog(RedelmInputFormat.class);
+
+  private static final PigSchemaConverter schemaConverter = new PigSchemaConverter();
 
   private String requestedSchema;
   private Class<?> readSupportClass;
@@ -80,9 +85,13 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   private String getRequestedSchema(String fileSchema) {
-    return requestedSchema == null ?
-        fileSchema :
-        requestedSchema;
+    if (requestedSchema != null) {
+      MessageType requestedMessageType = MessageTypeParser.parseMessageType(requestedSchema);
+      MessageType fileMessageType = MessageTypeParser.parseMessageType(fileSchema);
+      fileMessageType.checkContains(requestedMessageType);
+      return requestedSchema;
+    }
+    return fileSchema;
   }
 
   /**

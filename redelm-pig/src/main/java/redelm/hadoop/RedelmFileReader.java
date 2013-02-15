@@ -18,14 +18,17 @@ package redelm.hadoop;
 import static redelm.Log.DEBUG;
 import static redelm.bytes.BytesUtils.readIntLittleEndian;
 import static redelm.hadoop.RedelmFileWriter.MAGIC;
+import static redelm.hadoop.RedelmFileWriter.RED_ELM_SUMMARY;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -60,6 +63,7 @@ import org.apache.hadoop.mapred.Utils;
  *
  */
 public class RedelmFileReader {
+
   private static final Log LOG = Log.getLog(RedelmFileReader.class);
 
   private static RedFileMetadataConverter redFileMetadataConverter = new RedFileMetadataConverter();
@@ -70,6 +74,52 @@ public class RedelmFileReader {
     RedelmMetaData metadata = redFileMetadataConverter.fromRedFileMetadata(redFileMetadata);
     if (Log.DEBUG) LOG.debug(RedelmMetaData.toPrettyJSON(metadata));
     return metadata;
+  }
+
+  /**
+   * for files provided, check if there's a summary file.
+   * If a summary file is found it is used otherwise the file footer is used.
+   * @param configuration the hadoop conf to connect to the file system;
+   * @param partFiles the part files to read
+   * @return the footers for those files using the summary file if possible.
+   * @throws IOException
+   */
+  public static List<Footer> readAllFootersInParallelUsingSummaryFiles(final Configuration configuration, List<FileStatus> partFiles) throws IOException {
+
+    // figure out list of all parents to part files
+    Set<Path> parents = new HashSet<Path>();
+    for (FileStatus part : partFiles) {
+      parents.add(part.getPath().getParent());
+    }
+
+    // read corresponding summary files if they exist
+    Map<Path, Footer> cache = new HashMap<Path, Footer>();
+    for (Path path : parents) {
+      FileSystem fileSystem = path.getFileSystem(configuration);
+      Path summaryFile = new Path(path, RED_ELM_SUMMARY);
+      if (fileSystem.exists(summaryFile)) {
+        List<Footer> footers = readSummaryFile(configuration, fileSystem.getFileStatus(summaryFile));
+        for (Footer footer : footers) {
+          cache.put(footer.getFile(), footer);
+        }
+      }
+    }
+
+    // keep only footers for files actually requested and read file footer if not found in summaries
+    List<Footer> result = new ArrayList<Footer>(partFiles.size());
+    List<FileStatus> toRead = new ArrayList<FileStatus>();
+    for (FileStatus part : partFiles) {
+      if (cache.containsKey(part.getPath())) {
+        result.add(cache.get(part.getPath()));
+      } else {
+        toRead.add(part);
+      }
+    }
+
+    // read the footers of the files that did not have a summary file
+    result.addAll(readAllFootersInParallel(configuration, toRead));
+
+    return result;
   }
 
   public static List<Footer> readAllFootersInParallel(final Configuration configuration, List<FileStatus> partFiles) throws IOException {
@@ -127,7 +177,7 @@ public class RedelmFileReader {
   public static List<Footer> readFooters(Configuration configuration, FileStatus pathStatus) throws IOException {
     try {
       if (pathStatus.isDir()) {
-        Path summaryPath = new Path(pathStatus.getPath(), "_RedElmSummary");
+        Path summaryPath = new Path(pathStatus.getPath(), RED_ELM_SUMMARY);
         FileSystem fs = summaryPath.getFileSystem(configuration);
         if (fs.exists(summaryPath)) {
           FileStatus summaryStatus = fs.getFileStatus(summaryPath);

@@ -81,4 +81,10 @@ public class MapKeyValueConverter extends Converter {
     return currentKey;
   }
 
+  @Override
+  public void toString(String indent, StringBuffer sb) {
+    sb.append(indent).append(getClass().getSimpleName()).append("{\n");
+    value.toString(" " + indent, sb);
+    sb.append("\n").append(indent).append("}");
+  }
 }

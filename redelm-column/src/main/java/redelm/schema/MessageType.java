@@ -100,4 +100,12 @@ public class MessageType extends GroupType {
     }
     return columns;
   }
+
+  @Override
+  public void checkContains(Type subType) {
+    if (!(subType instanceof MessageType)) {
+      throw new RuntimeException(subType + " found: expected " + this);
+    }
+    super.checkContains(subType);
+  }
 }

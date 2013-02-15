@@ -17,6 +17,7 @@ package redelm.pig;
 
 import java.util.Map;
 
+import redelm.Log;
 import redelm.hadoop.ReadSupport;
 import redelm.io.RecordMaterializer;
 import redelm.parser.MessageTypeParser;
@@ -38,6 +39,9 @@ import org.apache.pig.parser.ParserException;
  */
 public class TupleReadSupport extends ReadSupport<Tuple> {
   private static final long serialVersionUID = 1L;
+  private static final Log LOG = Log.getLog(TupleReadSupport.class);
+
+  private static final PigSchemaConverter schemaConverter = new PigSchemaConverter();
 
   private Schema pigSchema;
   private String requestedSchema;
@@ -50,7 +54,9 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
     this.requestedSchema = requestedSchema;
     PigMetaData pigMetaData = PigMetaData.fromMetaDataBlocks(keyValueMetaData);
     try {
-      this.pigSchema = Utils.getSchemaFromString(pigMetaData.getPigSchema());
+      this.pigSchema = schemaConverter.filter(
+          Utils.getSchemaFromString(pigMetaData.getPigSchema()),
+          MessageTypeParser.parseMessageType(requestedSchema));
     } catch (ParserException e) {
       throw new RuntimeException("could not parse Pig schema: " + pigMetaData.getPigSchema(), e);
     }
@@ -63,11 +69,9 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
   public RecordMaterializer<Tuple> newRecordConsumer() {
     MessageType redelmSchema = MessageTypeParser.parseMessageType(requestedSchema);
     MessageConverter converter = newParsingTree(redelmSchema, pigSchema);
+    LOG.info("assembled converter: " + converter);
     return converter.newRecordConsumer();
-//    return new TupleRecordConsumer(
-//        redelmSchema,
-//        pigSchema,
-//        destination);
+//    return new TupleRecordConsumer(redelmSchema, pigSchema);
   }
 
   private MessageConverter newParsingTree(MessageType redelmSchema, Schema pigSchema) {

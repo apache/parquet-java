@@ -101,6 +101,7 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
       long timeSpentReading = System.currentTimeMillis() - t0;
       totalTimeSpentReadingBytes += timeSpentReading;
       LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
+      LOG.info("initializing Record assembly with requested schema " + requestedSchema);
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema);
       recordReader = columnIO.getRecordReader(pages, readSupport.newRecordConsumer());
       startedReadingCurrentBlockAt = System.currentTimeMillis();

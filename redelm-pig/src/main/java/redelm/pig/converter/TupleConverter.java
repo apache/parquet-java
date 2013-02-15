@@ -18,6 +18,7 @@ package redelm.pig.converter;
 import java.io.UnsupportedEncodingException;
 
 import scala.annotation.target.field;
+import scala.collection.mutable.StringBuilder;
 
 import redelm.pig.TupleConversionException;
 import redelm.schema.GroupType;
@@ -122,4 +123,16 @@ public class TupleConverter extends Converter {
     }
   }
 
+  @Override
+  public void toString(String indent, StringBuffer sb) {
+    sb.append(indent).append(getClass().getSimpleName()).append("{\n");
+    for (Converter converter : converters) {
+      if (converter == null) {
+        sb.append(indent).append("primitive");
+      } else {
+        converter.toString(" " + indent, sb);
+      }
+    }
+    sb.append("\n").append(indent).append("}");
+  }
 }

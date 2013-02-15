@@ -230,4 +230,17 @@ public class PrimitiveType extends Type {
   protected List<String[]> getPaths(int depth) {
     return Arrays.<String[]>asList(new String[depth]);
   }
+
+  @Override
+  void checkContains(Type subType) {
+    super.checkContains(subType);
+    if (!subType.isPrimitive()) {
+      throw new RuntimeException(subType + " found: expected " + this);
+    }
+    PrimitiveType primitiveType = subType.asPrimitiveType();
+    if (this.primitive != primitiveType.primitive) {
+      throw new RuntimeException(subType + " found: expected " + this);
+    }
+
+  }
 }

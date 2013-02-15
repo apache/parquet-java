@@ -46,4 +46,12 @@ public abstract class Converter {
 
   abstract public void set(Object value);
 
+  abstract public void toString(String indent, StringBuffer sb);
+
+  @Override
+  public String toString() {
+    StringBuffer sb = new StringBuffer();
+    toString("", sb);
+    return sb.toString();
+  }
 }

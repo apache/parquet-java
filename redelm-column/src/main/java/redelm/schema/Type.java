@@ -105,4 +105,11 @@ abstract public class Type {
     writeToStringBuilder(sb, "");
     return sb.toString();
   }
+
+  void checkContains(Type subType) {
+    if (!this.name.equals(subType.name)
+        || this.repetition != subType.repetition) {
+      throw new RuntimeException(subType + " found: expected " + this);
+    }
+  }
 }

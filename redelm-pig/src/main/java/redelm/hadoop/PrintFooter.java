@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -32,9 +33,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingDeque;
 
+import redelm.column.ColumnDescriptor;
 import redelm.hadoop.metadata.BlockMetaData;
 import redelm.hadoop.metadata.ColumnChunkMetaData;
 import redelm.hadoop.metadata.RedelmMetaData;
+import redelm.schema.MessageType;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -132,16 +135,16 @@ public class PrintFooter {
         threadPool.shutdownNow();
       }
     }
-    Set<Entry<String, ColStats>> entries = stats.entrySet();
+    Set<Entry<ColumnDescriptor, ColStats>> entries = stats.entrySet();
     long total = 0;
     long totalUnc = 0;
-    for (Entry<String, ColStats> entry : entries) {
+    for (Entry<ColumnDescriptor, ColStats> entry : entries) {
       ColStats colStats = entry.getValue();
       total += colStats.allStats.total;
       totalUnc += colStats.uncStats.total;
     }
 
-    for (Entry<String, ColStats> entry : entries) {
+    for (Entry<ColumnDescriptor, ColStats> entry : entries) {
       ColStats colStats = entry.getValue();
       System.out.println(entry.getKey() +" " + percent(colStats.allStats.total, total) + "% of all space " + colStats);
     }
@@ -156,11 +159,13 @@ public class PrintFooter {
   private static void add(RedelmMetaData footer) {
     for (BlockMetaData blockMetaData : footer.getBlocks()) {
       ++ blockCount;
+      MessageType schema = footer.getFileMetaData().getSchema();
       recordCount += blockMetaData.getRowCount();
       List<ColumnChunkMetaData> columns = blockMetaData.getColumns();
       for (ColumnChunkMetaData columnMetaData : columns) {
+        ColumnDescriptor desc = schema.getColumnDescription(columnMetaData.getPath());
         add(
-            columnMetaData.getPath(),
+            desc,
             columnMetaData.getValueCount(),
             columnMetaData.getTotalSize(),
             columnMetaData.getTotalUncompressedSize());
@@ -196,7 +201,7 @@ public class PrintFooter {
     return ((float)previousSize/1000) + unit[count];
   }
 
-  private static Map<String, ColStats> stats = new HashMap<String, ColStats>();
+  private static Map<ColumnDescriptor, ColStats> stats = new LinkedHashMap<ColumnDescriptor, ColStats>();
   private static int blockCount = 0;
   private static long recordCount = 0;
 
@@ -245,12 +250,11 @@ public class PrintFooter {
 
   }
 
-  private static void add(String[] path, long valueCount, long size, long uncSize) {
-    String key = Arrays.toString(path);
-    ColStats colStats = stats.get(key);
+  private static void add(ColumnDescriptor desc, long valueCount, long size, long uncSize) {
+    ColStats colStats = stats.get(desc);
     if (colStats == null) {
       colStats = new ColStats();
-      stats.put(key, colStats);
+      stats.put(desc, colStats);
     }
     colStats.add(valueCount, size, uncSize);
   }

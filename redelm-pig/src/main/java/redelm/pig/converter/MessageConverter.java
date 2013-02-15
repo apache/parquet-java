@@ -112,4 +112,5 @@ public class MessageConverter extends TupleConverter {
   public Converter end() {
     throw new UnsupportedOperationException("bad input. Can not close the message converter");
   }
+
 }
