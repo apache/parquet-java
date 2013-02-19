@@ -15,13 +15,12 @@
  */
 package redelm.column.primitive;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
 import redelm.Log;
 import redelm.bytes.BytesInput;
-import redelm.bytes.BytesUtils;
+import redelm.bytes.CapacityByteArrayOutputStream;
 import redelm.bytes.LittleEndianDataOutputStream;
 
 /**
@@ -35,11 +34,11 @@ public class PlainColumnWriter extends PrimitiveColumnWriter {
 
   public static final Charset CHARSET = Charset.forName("UTF-8");
 
-  private ByteArrayOutputStream arrayOut;
+  private CapacityByteArrayOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
 
   public PlainColumnWriter(int initialSize) {
-    arrayOut = new ByteArrayOutputStream(initialSize);
+    arrayOut = new CapacityByteArrayOutputStream(initialSize);
     out = new LittleEndianDataOutputStream(arrayOut);
   }
 
@@ -118,6 +117,11 @@ public class PlainColumnWriter extends PrimitiveColumnWriter {
   @Override
   public void reset() {
     arrayOut.reset();
+  }
+
+  @Override
+  public long allocatedSize() {
+    return arrayOut.getCapacity();
   }
 
 }

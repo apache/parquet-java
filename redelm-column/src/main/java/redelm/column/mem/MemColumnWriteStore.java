@@ -62,9 +62,18 @@ public class MemColumnWriteStore implements ColumnWriteStore {
       return sb.toString();
   }
 
-  public int memSize() {
+  public long allocatedSize() {
     Collection<MemColumnWriter> values = columns.values();
-    int total = 0;
+    long total = 0;
+    for (MemColumnWriter memColumn : values) {
+      total += memColumn.allocatedSize();
+    }
+    return total;
+  }
+
+  public long memSize() {
+    Collection<MemColumnWriter> values = columns.values();
+    long total = 0;
     for (MemColumnWriter memColumn : values) {
       total += memColumn.memSize();
     }

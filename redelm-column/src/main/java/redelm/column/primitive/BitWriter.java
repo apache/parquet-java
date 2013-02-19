@@ -15,15 +15,14 @@
  */
 package redelm.column.primitive;
 
-import java.io.ByteArrayOutputStream;
-
 import redelm.Log;
+import redelm.bytes.CapacityByteArrayOutputStream;
 
 public class BitWriter {
   private static final Log LOG = Log.getLog(BitWriter.class);
   private static final boolean DEBUG = false;//Log.DEBUG;
 
-  private ByteArrayOutputStream baos = new ByteArrayOutputStream();
+  private CapacityByteArrayOutputStream baos = new CapacityByteArrayOutputStream(32 * 1024); // default of 32 is too small
   private int currentByte = 0;
   private int currentBytePosition = 0;
   private static final int[] byteToTrueMask = new int[8];
@@ -126,6 +125,10 @@ public class BitWriter {
     // the size of baos:
     //   count : 4 bytes (rounded to 8)
     //   buf : 12 bytes (8 ptr + 4 length) should technically be rounded to 8 depending on buffer size
-    return 32 + baos.size() * 8;
+    return 32 + baos.size();
+  }
+
+  public int getCapacity() {
+    return baos.getCapacity();
   }
 }

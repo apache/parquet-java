@@ -58,7 +58,10 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   private static final Log LOG = Log.getLog(RedelmRecordReader.class);
 
   private final ColumnIOFactory columnIOFactory = new ColumnIOFactory();
+
   private final MessageType requestedSchema;
+  private final int columnCount;
+
   private T currentValue;
   private long total;
   private int current = 0;
@@ -68,9 +71,10 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
 
   private long totalTimeSpentReadingBytes;
   private long totalTimeSpentProcessingRecords;
-  private long startedReadingCurrentBlockAt;
+  private long startedAssemblingCurrentBlockAt;
 
   private long totalCountLoadedSoFar = 0;
+
 
   /**
    *
@@ -78,21 +82,22 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
    */
   RedelmRecordReader(String requestedSchema) {
     this.requestedSchema = MessageTypeParser.parseMessageType(requestedSchema);
+    this.columnCount = this.requestedSchema.getPaths().size();
   }
 
   private void checkRead() throws IOException {
     if (current == totalCountLoadedSoFar) {
       if (current != 0) {
-        long timeAssembling = System.currentTimeMillis() - startedReadingCurrentBlockAt;
+        long timeAssembling = System.currentTimeMillis() - startedAssemblingCurrentBlockAt;
         totalTimeSpentProcessingRecords += timeAssembling;
-        LOG.info("Assembled and processed " + totalCountLoadedSoFar + " records in " + timeAssembling + " ms "+((float)totalCountLoadedSoFar / timeAssembling) + " rec/ms");
+        LOG.info("Assembled and processed " + totalCountLoadedSoFar + " records from " + columnCount + " columns in " + totalTimeSpentProcessingRecords + " ms: "+((float)totalCountLoadedSoFar / totalTimeSpentProcessingRecords) + " rec/ms, " + ((float)totalCountLoadedSoFar * columnCount / totalTimeSpentProcessingRecords) + " cell/ms");
         long totalTime = totalTimeSpentProcessingRecords + totalTimeSpentReadingBytes;
         long percentReading = 100 * totalTimeSpentReadingBytes / totalTime;
         long percentProcessing = 100 * totalTimeSpentProcessingRecords / totalTime;
         LOG.info("time spent so far " + percentReading + "% reading ("+totalTimeSpentReadingBytes+" ms) and " + percentProcessing + "% processing ("+totalTimeSpentProcessingRecords+" ms)");
       }
 
-      LOG.info("at row " + current + " out of " + totalCountLoadedSoFar + " loaded so far => reading next block");
+      LOG.info("at row " + current + ". reading next block");
       long t0 = System.currentTimeMillis();
       PageReadStore pages = reader.readColumns();
       if (pages == null) {
@@ -101,10 +106,10 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
       long timeSpentReading = System.currentTimeMillis() - t0;
       totalTimeSpentReadingBytes += timeSpentReading;
       LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
-      LOG.info("initializing Record assembly with requested schema " + requestedSchema);
+      if (Log.DEBUG) LOG.debug("initializing Record assembly with requested schema " + requestedSchema);
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema);
       recordReader = columnIO.getRecordReader(pages, readSupport.newRecordConsumer());
-      startedReadingCurrentBlockAt = System.currentTimeMillis();
+      startedAssemblingCurrentBlockAt = System.currentTimeMillis();
       totalCountLoadedSoFar += pages.getRowCount();
     }
   }

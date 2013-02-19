@@ -64,7 +64,7 @@ public class RedelmFileWriter {
   private final FSDataOutputStream out;
   private BlockMetaData currentBlock;
   private ColumnChunkMetaData currentColumn;
-  private int currentRecordCount;
+  private long currentRecordCount;
   private List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
   private long uncompressedLength;
   private long compressedLength;
@@ -148,7 +148,7 @@ public class RedelmFileWriter {
    * @param recordCount the record count in this block
    * @throws IOException
    */
-  public void startBlock(int recordCount) throws IOException {
+  public void startBlock(long recordCount) throws IOException {
     state = state.startBlock();
     if (DEBUG) LOG.debug(out.getPos() + ": start block");
 //    out.write(MAGIC); // TODO: add a magic delimiter

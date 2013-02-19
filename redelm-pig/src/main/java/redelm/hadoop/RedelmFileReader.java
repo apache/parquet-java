@@ -228,13 +228,13 @@ public class RedelmFileReader {
     FileSystem fileSystem = file.getPath().getFileSystem(configuration);
     FSDataInputStream f = fileSystem.open(file.getPath());
     long l = file.getLen();
-    LOG.debug("File length " + l);
+    if (Log.DEBUG) LOG.debug("File length " + l);
     int FOOTER_LENGTH_SIZE = 4;
     if (l <= MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
       throw new RuntimeException(file.getPath() + " is not a Red Elm file (too small)");
     }
     long footerLengthIndex = l - FOOTER_LENGTH_SIZE - MAGIC.length;
-    LOG.debug("reading footer index at " + footerLengthIndex);
+    if (Log.DEBUG) LOG.debug("reading footer index at " + footerLengthIndex);
 
     f.seek(footerLengthIndex);
     int footerLength = readIntLittleEndian(f);
@@ -244,7 +244,7 @@ public class RedelmFileReader {
       throw new RuntimeException(file.getPath() + " is not a RedElm file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
     }
     long footerIndex = footerLengthIndex - footerLength;
-    LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
+    if (Log.DEBUG) LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
     if (footerIndex < MAGIC.length || footerIndex >= footerLengthIndex) {
       throw new RuntimeException("corrupted file: the footer index is not within the file");
     }
@@ -294,7 +294,6 @@ public class RedelmFileReader {
       throw new RuntimeException("Illegal row group of 0 rows");
     }
     ColumnChunkPageReadStore columnChunkPageReadStore = new ColumnChunkPageReadStore(block.getRowCount());
-    long t0 = System.currentTimeMillis();
     for (ColumnChunkMetaData mc : block.getColumns()) {
       String pathKey = Arrays.toString(mc.getPath());
       if (paths.containsKey(pathKey)) {
@@ -317,8 +316,6 @@ public class RedelmFileReader {
         columnChunkPageReadStore.addColumn(columnDescriptor, columnChunkPageReader);
       }
     }
-    long t1 = System.currentTimeMillis();
-    LOG.info("block data read in " + (t1 - t0) + " ms");
     ++currentBlock;
     return columnChunkPageReadStore;
   }

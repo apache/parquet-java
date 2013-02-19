@@ -127,4 +127,9 @@ public class BoundedIntColumnWriter extends PrimitiveColumnWriter {
     thereIsABufferedValue = true;
   }
 
+  @Override
+  public long allocatedSize() {
+    return bitWriter.getCapacity();
+  }
+
 }

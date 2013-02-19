@@ -22,6 +22,7 @@ import java.io.IOException;
 
 import redelm.Log;
 import redelm.bytes.BytesInput;
+import redelm.bytes.CapacityByteArrayOutputStream;
 import redelm.column.primitive.BitPacking.BitPackingWriter;
 
 /**
@@ -33,11 +34,11 @@ import redelm.column.primitive.BitPacking.BitPackingWriter;
 public class BooleanPlainColumnWriter extends PrimitiveColumnWriter {
   private static final Log LOG = Log.getLog(BooleanPlainColumnWriter.class);
 
-  private ByteArrayOutputStream out;
+  private CapacityByteArrayOutputStream out;
   private BitPackingWriter bitPackingWriter;
 
   public BooleanPlainColumnWriter(int initialSize) {
-    out = new ByteArrayOutputStream(initialSize);
+    out = new CapacityByteArrayOutputStream(initialSize);
     bitPackingWriter = getBitPackingWriter(1, out);
   }
 
@@ -70,6 +71,11 @@ public class BooleanPlainColumnWriter extends PrimitiveColumnWriter {
   public void reset() {
     out.reset();
     bitPackingWriter = getBitPackingWriter(1, out);
+  }
+
+  @Override
+  public long allocatedSize() {
+    return out.getCapacity();
   }
 
 }

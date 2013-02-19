@@ -25,4 +25,6 @@ public interface PageWriter {
 
   abstract public long getMemSize();
 
+  public abstract long allocatedSize();
+
 }

@@ -48,7 +48,8 @@ public class RedelmRecordWriter<T> extends RecordWriter<Void, T> {
   private final int pageSize;
   private final BytesCompressor compressor;
 
-  private int recordCount;
+  private long recordCount = 0;
+  private long recordCountForNextMemCheck = 100;
 
   private MemColumnWriteStore store;
   private ColumnChunkPageWriteStore pageStore;
@@ -105,14 +106,24 @@ public class RedelmRecordWriter<T> extends RecordWriter<Void, T> {
   }
 
   private void checkBlockSizeReached() throws IOException {
-    if (store.memSize() > blockSize) {
-      flushStore();
-      initStore();
+    if (recordCount >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it for every record.
+      long memSize = store.memSize();
+      float recordSize = (float) memSize / recordCount;
+      recordCountForNextMemCheck = (long)(blockSize * 0.9 / recordSize); // -10% so that we don't miss it.
+      if (recordCountForNextMemCheck - recordCount > 1000) {
+        LOG.info("Checked mem at " + recordCount + " will check again at: " + recordCountForNextMemCheck);
+      }
+      if (memSize > blockSize) {
+        LOG.info("mem size " + memSize + " > " + blockSize + ": flushing " + recordCount + " records to disk.");
+        flushStore();
+        initStore();
+      }
     }
   }
 
   private void flushStore()
       throws IOException {
+    LOG.info("Flushing mem store to file. allocated memory: " + store.allocatedSize());
     w.startBlock(recordCount);
     store.flush();
     pageStore.flushToFileWriter(w);

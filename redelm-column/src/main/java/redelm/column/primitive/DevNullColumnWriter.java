@@ -64,4 +64,9 @@ public class DevNullColumnWriter extends PrimitiveColumnWriter {
   public BytesInput getBytes() {
     return BytesInput.empty();
   }
+
+  @Override
+  public long allocatedSize() {
+    return 0;
+  }
 }

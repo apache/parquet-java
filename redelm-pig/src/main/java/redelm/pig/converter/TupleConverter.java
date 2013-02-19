@@ -128,9 +128,10 @@ public class TupleConverter extends Converter {
     sb.append(indent).append(getClass().getSimpleName()).append("{\n");
     for (Converter converter : converters) {
       if (converter == null) {
-        sb.append(indent).append("primitive");
+        sb.append(indent).append("primitive\n");
       } else {
         converter.toString(" " + indent, sb);
+        sb.append("\n");
       }
     }
     sb.append("\n").append(indent).append("}");

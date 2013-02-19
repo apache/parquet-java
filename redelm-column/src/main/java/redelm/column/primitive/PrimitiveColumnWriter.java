@@ -25,6 +25,8 @@ public abstract class PrimitiveColumnWriter {
 
   public abstract void reset();
 
+  abstract public long allocatedSize();
+
   public void writeByte(int value) {
     throw new UnsupportedOperationException();
   }
@@ -52,4 +54,5 @@ public abstract class PrimitiveColumnWriter {
   public void writeFloat(float v) {
     throw new UnsupportedOperationException();
   }
+
 }

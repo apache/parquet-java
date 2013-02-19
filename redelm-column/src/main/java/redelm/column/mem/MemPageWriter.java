@@ -56,4 +56,10 @@ public class MemPageWriter implements PageWriter {
     return totalValueCount;
   }
 
+  @Override
+  public long allocatedSize() {
+    // this store keeps only the bytes written
+    return memSize;
+  }
+
 }

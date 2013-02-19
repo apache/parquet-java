@@ -2,7 +2,6 @@ package redelm.pig;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
@@ -14,7 +13,6 @@ import redelm.column.mem.MemPageStore;
 import redelm.column.mem.Page;
 import redelm.column.mem.PageReadStore;
 import redelm.column.mem.PageReader;
-import redelm.hadoop.PageConsumer;
 import redelm.hadoop.RedelmFileReader;
 import redelm.hadoop.RedelmFileWriter;
 import redelm.hadoop.metadata.CompressionCodecName;

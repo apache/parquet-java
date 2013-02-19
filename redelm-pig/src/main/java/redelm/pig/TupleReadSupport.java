@@ -69,7 +69,7 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
   public RecordMaterializer<Tuple> newRecordConsumer() {
     MessageType redelmSchema = MessageTypeParser.parseMessageType(requestedSchema);
     MessageConverter converter = newParsingTree(redelmSchema, pigSchema);
-    LOG.info("assembled converter: " + converter);
+    if (Log.DEBUG) LOG.debug("assembled converter: " + converter);
     return converter.newRecordConsumer();
 //    return new TupleRecordConsumer(redelmSchema, pigSchema);
   }

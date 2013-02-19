@@ -158,4 +158,11 @@ final class MemColumnWriter implements ColumnWriter {
         + dataColumn.getMemSize()
         + pageWriter.getMemSize();
   }
+
+  public long allocatedSize() {
+    return repetitionLevelColumn.allocatedSize()
+    + definitionLevelColumn.allocatedSize()
+    + dataColumn.allocatedSize()
+    + pageWriter.allocatedSize();
+  }
 }
