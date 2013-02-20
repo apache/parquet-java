@@ -20,6 +20,7 @@ import static redelm.Log.INFO;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -55,8 +56,7 @@ public class RedelmFileWriter {
   private static final Log LOG = Log.getLog(RedelmFileWriter.class);
 
   public static final String RED_ELM_SUMMARY = "_RedElmSummary";
-//  public static final byte[] MAGIC = {82, 101, 100, 32, 69, 108, 109, 10}; // "Red Elm\n"
-  public static final byte[] MAGIC = {82, 69, 68, 49}; // "RED1"
+  public static final byte[] MAGIC = "PAR1".getBytes(Charset.forName("ASCII"));
   public static final int CURRENT_VERSION = 1;
 
   private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
