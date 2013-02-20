@@ -17,6 +17,8 @@ package redelm.pig;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 import redelm.hadoop.RedelmOutputFormat;
@@ -100,10 +102,12 @@ public class RedelmStorer extends StoreFunc implements StoreMetadata {
     MessageType schema = new PigSchemaConverter().convert(pigSchema);
 
     String pigSchemaString = pigSchema.toString();
+    Map<String, String> extraMetaData = new HashMap<String, String>();
+    new PigMetaData(pigSchemaString.substring(1, pigSchemaString.length() - 1)).addToMetaData(extraMetaData);
     return new RedelmOutputFormat<Tuple>(
         TupleWriteSupport.class,
         schema,
-        Arrays.asList(new PigMetaData(pigSchemaString.substring(1, pigSchemaString.length() - 1)).toMetaDataBlock()));
+        extraMetaData);
   }
 
   /**

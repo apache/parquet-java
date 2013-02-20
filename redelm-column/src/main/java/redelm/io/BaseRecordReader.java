@@ -17,7 +17,7 @@ package redelm.io;
 
 import static redelm.Log.DEBUG;
 import redelm.Log;
-import redelm.column.ColumnsStore;
+import redelm.column.ColumnReadStore;
 import redelm.io.RecordReaderImplementation.State;
 
 public abstract class BaseRecordReader<T> extends RecordReader<T> {
@@ -25,25 +25,11 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
 
   public RecordConsumer recordConsumer;
   public RecordMaterializer<T> recordMaterializer;
-  public ColumnsStore columnStore;
+  public ColumnReadStore columnStore;
   @Override
   public T read() {
     readOneRecord();
     return recordMaterializer.getCurrentRecord();
-  }
-
-  /* (non-Javadoc)
-   * @see redelm.io.RecordReader#read(T[], int)
-   */
-  @Override
-  public void read(T[] records, int count) {
-    if (count > records.length) {
-      throw new IllegalArgumentException("count is greater than records size: " + count + " > " + records.length);
-    }
-    for (int i = 0; i < count; i++) {
-      readOneRecord();
-      records[i] = recordMaterializer.getCurrentRecord();
-    }
   }
 
   protected abstract void readOneRecord();
@@ -110,10 +96,10 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
     endIndex = index;
   }
 
-  final protected void addPrimitiveSTRING(String field, int index, String value) {
+  final protected void addPrimitiveBINARY(String field, int index, byte[] value) {
     startField(field, index);
-    if (DEBUG) LOG.debug("addString("+value+")");
-    recordConsumer.addString(value);
+    if (DEBUG) LOG.debug("addBinary("+value+")");
+    recordConsumer.addBinary(value);
     endField(field, index);
   }
 

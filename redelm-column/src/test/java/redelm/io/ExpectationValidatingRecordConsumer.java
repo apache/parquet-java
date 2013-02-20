@@ -65,11 +65,6 @@ final class ExpectationValidatingRecordConsumer extends
   }
 
   @Override
-  public void addString(String value) {
-    validate("addString("+value+")");
-  }
-
-  @Override
   public void addInteger(int value) {
     validate("addInt("+value+")");
   }
@@ -86,7 +81,7 @@ final class ExpectationValidatingRecordConsumer extends
 
   @Override
   public void addBinary(byte[] value) {
-    validate("addBinary("+new BigInteger(value).toString(16)+")");
+    validate("addBinary("+new String(value)+")");
   }
 
   @Override

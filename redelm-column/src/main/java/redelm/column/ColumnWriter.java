@@ -15,15 +15,12 @@
  */
 package redelm.column;
 
-import java.io.DataOutput;
-import java.io.IOException;
 
 public interface ColumnWriter {
+
   void write(int value, int repetitionLevel, int definitionLevel);
 
   void write(long value, int repetitionLevel, int definitionLevel);
-
-  void write(String value, int repetitionLevel, int definitionLevel);
 
   void write(boolean value, int repetitionLevel, int definitionLevel);
 
@@ -35,13 +32,8 @@ public interface ColumnWriter {
 
   void writeNull(int repetitionLevel, int definitionLevel);
 
-  void writeRepetitionLevelColumn(DataOutput out) throws IOException;
+  void flush();
 
-  void writeDefinitionLevelColumn(DataOutput out) throws IOException;
+  long memSize();
 
-  void writeDataColumn(DataOutput out) throws IOException ;
-
-  void reset();
-
-  int getValueCount();
 }

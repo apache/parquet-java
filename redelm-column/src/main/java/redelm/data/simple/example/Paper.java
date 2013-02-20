@@ -15,8 +15,8 @@
  */
 package redelm.data.simple.example;
 
-import static redelm.schema.PrimitiveType.Primitive.INT64;
-import static redelm.schema.PrimitiveType.Primitive.STRING;
+import static redelm.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static redelm.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static redelm.schema.Type.Repetition.OPTIONAL;
 import static redelm.schema.Type.Repetition.REPEATED;
 import static redelm.schema.Type.Repetition.REQUIRED;
@@ -42,16 +42,16 @@ public class Paper {
               ),
           new GroupType(REPEATED, "Name",
               new GroupType(REPEATED, "Language",
-                  new PrimitiveType(REQUIRED, STRING, "Code"),
-                  new PrimitiveType(OPTIONAL, STRING, "Country")),
-              new PrimitiveType(OPTIONAL, STRING, "Url")));
+                  new PrimitiveType(REQUIRED, BINARY, "Code"),
+                  new PrimitiveType(OPTIONAL, BINARY, "Country")),
+              new PrimitiveType(OPTIONAL, BINARY, "Url")));
 
   public static final MessageType schema2 =
       new MessageType("Document",
           new PrimitiveType(REQUIRED, INT64, "DocId"),
           new GroupType(REPEATED, "Name",
               new GroupType(REPEATED, "Language",
-                  new PrimitiveType(OPTIONAL, STRING, "Country"))));
+                  new PrimitiveType(OPTIONAL, BINARY, "Country"))));
 
   public static final MessageType schema3 =
       new MessageType("Document",

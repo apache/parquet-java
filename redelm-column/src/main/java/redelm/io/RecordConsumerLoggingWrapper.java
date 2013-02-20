@@ -96,15 +96,6 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      * {@inheritDoc}
      */
     @Override
-    public void addString(String value) {
-      if (DEBUG) log(value);
-      delegate.addString(value);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void addBoolean(boolean value) {
       if (DEBUG) log(value);
       delegate.addBoolean(value);

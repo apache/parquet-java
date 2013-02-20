@@ -15,8 +15,11 @@
  */
 package redelm.schema;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import redelm.column.ColumnDescriptor;
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * The root of a schema
@@ -34,6 +37,15 @@ public class MessageType extends GroupType {
   public MessageType(String name, Type... fields) {
     super(Repetition.REPEATED, name, fields);
   }
+
+ /**
+  *
+  * @param name the name of the type
+  * @param fields the fields contained by this message
+  */
+ public MessageType(String name, List<Type> fields) {
+   super(Repetition.REPEATED, name, fields);
+ }
 
   /**
    * {@inheritDoc}
@@ -71,7 +83,29 @@ public class MessageType extends GroupType {
   public ColumnDescriptor getColumnDescription(String[] path) {
     int maxRep = getRepetitionLevel(path);
     int maxDef = getDefinitionLevel(path);
-    Primitive type = getType(path).asPrimitiveType().getPrimitive();
+    PrimitiveTypeName type = getType(path).asPrimitiveType().getPrimitiveTypeName();
     return new ColumnDescriptor(path, type, maxRep, maxDef);
+  }
+
+  public List<String[]> getPaths() {
+    return this.getPaths(0);
+  }
+
+  public List<ColumnDescriptor> getColumns() {
+    List<String[]> paths = this.getPaths(0);
+    List<ColumnDescriptor> columns = new ArrayList<ColumnDescriptor>(paths.size());
+    for (String[] path : paths) {
+      // TODO: optimize this
+      columns.add(new ColumnDescriptor(path, getType(path).asPrimitiveType().getPrimitiveTypeName(), getRepetitionLevel(path), getDefinitionLevel(path)));
+    }
+    return columns;
+  }
+
+  @Override
+  public void checkContains(Type subType) {
+    if (!(subType instanceof MessageType)) {
+      throw new RuntimeException(subType + " found: expected " + this);
+    }
+    super.checkContains(subType);
   }
 }

@@ -15,14 +15,25 @@
  */
 package redelm.column.primitive;
 
-import static redelm.column.primitive.SimplePrimitiveColumnWriter.CHARSET;
+import static redelm.Log.DEBUG;
 
-import java.io.DataInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
-public class SimplePrimitiveColumnReader extends PrimitiveColumnReader {
+import redelm.Log;
+import redelm.bytes.BytesUtils;
+import redelm.bytes.LittleEndianDataInputStream;
 
-  private DataInputStream in;
+/**
+ * Plain encoding except for booleans
+ *
+ * @author Julien Le Dem
+ *
+ */
+public class PlainColumnReader extends PrimitiveColumnReader {
+  private static final Log LOG = Log.getLog(PlainColumnReader.class);
+
+  private LittleEndianDataInputStream in;
 
   @Override
   public float readFloat() {
@@ -36,41 +47,10 @@ public class SimplePrimitiveColumnReader extends PrimitiveColumnReader {
   @Override
   public byte[] readBytes() {
     try {
+//      byte[] value = new byte[BytesUtils.readUnsignedVarInt(in)];
       byte[] value = new byte[in.readInt()];
       in.readFully(value);
       return value;
-    } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
-    }
-  }
-
-  @Override
-  public boolean readBoolean() {
-    try {
-      return in.readBoolean();
-    } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
-    }
-  }
-
-  @Override
-  public String readString() {
-    try {
-      int size = readUnsignedVarInt();
-      if (size == 0) {
-        return "";
-      } else {
-        byte[] bytes = new byte[size];
-        int i = 0;
-        do {
-          int n = in.read(bytes, i, bytes.length - i);
-          if (n == -1) {
-            throw new RuntimeException("Reached end of stream");
-          }
-          i = i + n;
-        } while (i < bytes.length);
-        return new String(bytes, CHARSET);
-      }
     } catch (IOException e) {
       throw new RuntimeException("never happens", e);
     }
@@ -112,19 +92,15 @@ public class SimplePrimitiveColumnReader extends PrimitiveColumnReader {
     }
   }
 
-  private int readUnsignedVarInt() throws IOException {
-    int value = 0;
-    int i = 0;
-    int b;
-    while (((b = in.readByte()) & 0x80) != 0) {
-      value |= (b & 0x7F) << i;
-      i += 7;
-    }
-    return value | (b << i);
+  /**
+   * {@inheritDoc}
+   * @see redelm.column.primitive.PrimitiveColumnReader#initFromPage(byte[], int)
+   */
+  @Override
+  public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
+    if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));
+    this.in = new LittleEndianDataInputStream(new ByteArrayInputStream(in, offset, in.length - offset));
+    return in.length;
   }
 
-  @Override
-  public void readStripe(DataInputStream in) throws IOException {
-    this.in = in;
-  }
 }

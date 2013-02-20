@@ -15,27 +15,37 @@
  */
 package redelm.hadoop;
 
+import static redelm.Log.DEBUG;
 import static redelm.Log.INFO;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import redelm.Log;
+import redelm.bytes.BytesInput;
+import redelm.bytes.BytesUtils;
 import redelm.column.ColumnDescriptor;
-import redelm.hadoop.RedelmMetaData.FileMetaData;
+import redelm.format.converter.ParquetMetadataConverter;
+import redelm.hadoop.metadata.BlockMetaData;
+import redelm.hadoop.metadata.ColumnChunkMetaData;
+import redelm.hadoop.metadata.CompressionCodecName;
+import redelm.hadoop.metadata.FileMetaData;
+import redelm.hadoop.metadata.RedelmMetaData;
 import redelm.schema.MessageType;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.compress.CodecPool;
-import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.io.compress.CompressionOutputStream;
-import org.apache.hadoop.io.compress.Compressor;
+
+import parquet.format.DataPageHeader;
+import parquet.format.Encoding;
+import parquet.format.PageHeader;
+import parquet.format.PageType;
 
 /**
  * Writes a RedElm file
@@ -43,23 +53,23 @@ import org.apache.hadoop.io.compress.Compressor;
  *
  */
 public class RedelmFileWriter {
-  public static final String RED_ELM_SUMMARY = "_RedElmSummary";
-  public static final byte[] MAGIC = {82, 101, 100, 32, 69, 108, 109, 10}; // "Red Elm\n"
-  public static final int CURRENT_VERSION = 1;
   private static final Log LOG = Log.getLog(RedelmFileWriter.class);
 
-  private final CompressionCodec codec;
-  private Compressor compressor;
-  private CompressionOutputStream cos;
+  public static final String RED_ELM_SUMMARY = "_RedElmSummary";
+  public static final byte[] MAGIC = "PAR1".getBytes(Charset.forName("ASCII"));
+  public static final int CURRENT_VERSION = 1;
+
+  private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
   private final MessageType schema;
   private final FSDataOutputStream out;
   private BlockMetaData currentBlock;
-  private ColumnMetaData currentColumn;
-  private int currentRecordCount;
+  private ColumnChunkMetaData currentColumn;
+  private long currentRecordCount;
   private List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
-
   private long uncompressedLength;
+  private long compressedLength;
+  private final ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter();
 
   /**
    * Captures the order in which methods should be called
@@ -90,27 +100,6 @@ public class RedelmFileWriter {
       }
     },
     COLUMN {
-      STATE startRepetition() {
-        return REPETITION;
-      }
-    },
-    REPETITION {
-      STATE startDefinition() {
-        return DEFINITION;
-      }
-      STATE write() {
-        return this;
-      }
-    },
-    DEFINITION {
-      STATE startData() {
-        return DATA;
-      }
-      STATE write() {
-        return this;
-      }
-    },
-    DATA {
       STATE endColumn() {
         return BLOCK;
       };
@@ -123,13 +112,10 @@ public class RedelmFileWriter {
     STATE start() {throw new IllegalStateException(this.name());}
     STATE startBlock() {throw new IllegalStateException(this.name());}
     STATE startColumn() {throw new IllegalStateException(this.name());}
-    STATE startRepetition() {throw new IllegalStateException(this.name());}
-    STATE startDefinition() {throw new IllegalStateException(this.name());}
-    STATE startData() {throw new IllegalStateException(this.name());}
+    STATE write() {throw new IllegalStateException(this.name());}
     STATE endColumn() {throw new IllegalStateException(this.name());}
     STATE endBlock() {throw new IllegalStateException(this.name());}
     STATE end() {throw new IllegalStateException(this.name());}
-    STATE write() {throw new IllegalStateException(this.name());}
   }
 
   private STATE state = STATE.NOT_STARTED;
@@ -139,12 +125,13 @@ public class RedelmFileWriter {
    * @param schema the schema of the data
    * @param out the file to write to
    * @param codec the codec to use to compress blocks
+   * @throws IOException if the file can not be created
    */
-  public RedelmFileWriter(MessageType schema, FSDataOutputStream out, CompressionCodec codec) {
+  public RedelmFileWriter(Configuration configuration, MessageType schema, Path file) throws IOException {
     super();
     this.schema = schema;
-    this.out = out;
-    this.codec = codec;
+    FileSystem fs = file.getFileSystem(configuration);
+    this.out = fs.create(file, false);
   }
 
   /**
@@ -153,6 +140,7 @@ public class RedelmFileWriter {
    */
   public void start() throws IOException {
     state = state.start();
+    if (DEBUG) LOG.debug(out.getPos() + ": start");
     out.write(MAGIC);
   }
 
@@ -161,9 +149,11 @@ public class RedelmFileWriter {
    * @param recordCount the record count in this block
    * @throws IOException
    */
-  public void startBlock(int recordCount) throws IOException {
+  public void startBlock(long recordCount) throws IOException {
     state = state.startBlock();
-    currentBlock = new BlockMetaData(out.getPos());
+    if (DEBUG) LOG.debug(out.getPos() + ": start block");
+//    out.write(MAGIC); // TODO: add a magic delimiter
+    currentBlock = new BlockMetaData();
     currentRecordCount = recordCount;
   }
 
@@ -171,79 +161,60 @@ public class RedelmFileWriter {
    * start a column inside a block
    * @param descriptor the column descriptor
    * @param valueCount the value count in this column
+   * @param compressionCodecName
    * @throws IOException
    */
-  public void startColumn(ColumnDescriptor descriptor, int valueCount) throws IOException {
+  public void startColumn(ColumnDescriptor descriptor, long valueCount, CompressionCodecName compressionCodecName) throws IOException {
     state = state.startColumn();
-    currentColumn = new ColumnMetaData(descriptor.getPath(), descriptor.getType());
+    if (DEBUG) LOG.debug(out.getPos() + ": start column: " + descriptor + " count=" + valueCount);
+    currentColumn = new ColumnChunkMetaData(descriptor.getPath(), descriptor.getType(), compressionCodecName);
     currentColumn.setValueCount(valueCount);
-  }
-
-  private void startCompression() throws IOException {
-    if (codec != null) {
-      compressor = CodecPool.getCompressor(codec);
-      cos = codec.createOutputStream(out, compressor);
-      uncompressedLength = 0;
-    }
-  }
-
-  private void endCompression() throws IOException {
-    if (codec != null) {
-      cos.finish();
-      cos = null;
-      CodecPool.returnCompressor(compressor);
-      compressor = null;
-    }
+    currentColumn.setFirstDataPage(out.getPos());
+    compressedLength = 0;
+    uncompressedLength = 0;
   }
 
   /**
-   * starts the repetitionLevels in this column
-   * @throws IOException
+   * writes a single page
+   * @param valueCount count of values
+   * @param uncompressedPageSize the size of the data once uncompressed
+   * @param bytes the compressed data for the page without header
    */
-  public void startRepetitionLevels() throws IOException {
-    state = state.startRepetition();
-    currentColumn.setRepetitionStart(out.getPos());
-    startCompression();
-  }
-
-  /**
-   * ends the repetition levels and starts the definition levels in this column
-   * @throws IOException
-   */
-  public void startDefinitionLevels() throws IOException {
-    state = state.startDefinition();
-    endCompression();
-    currentColumn.setRepetitionUncompressedLength(uncompressedLength);
-    currentColumn.setDefinitionStart(out.getPos());
-    startCompression();
-  }
-
-  /**
-   * ends the definition levels and starts the data in this column
-   * @throws IOException
-   */
-  public void startData() throws IOException {
-    state = state.startData();
-    endCompression();
-    currentColumn.setDefinitionUncompressedLength(uncompressedLength);
-    currentColumn.setDataStart(out.getPos());
-    startCompression();
-  }
-
-  /**
-   * write binary representation of repetition, definition or data
-   * @param data array containing the data
-   * @param offset where to start reading from the data
-   * @param length how many bytes to read
-   */
-  public void write(byte[] data, int offset, int length) throws IOException {
+  public void writeDataPage(
+      int valueCount, int uncompressedPageSize,
+      BytesInput bytes) throws IOException {
     state = state.write();
-    if (codec == null) {
-      out.write(data, offset, length);
-    } else {
-      cos.write(data, offset, length);
-    }
-    uncompressedLength += length;
+    if (DEBUG) LOG.debug(out.getPos() + ": write data page: " + valueCount + " values");
+    int compressedPageSize = (int)bytes.size();
+    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedPageSize, compressedPageSize);
+    // pageHeader.crc = ...;
+    pageHeader.data_page = new DataPageHeader(valueCount, Encoding.PLAIN); // TODO: encoding
+    metadataConverter.writePageHeader(pageHeader, out);
+    this.uncompressedLength += uncompressedPageSize;
+    this.compressedLength += compressedPageSize;
+    if (DEBUG) LOG.debug(out.getPos() + ": write data page content " + compressedPageSize);
+    bytes.writeAllTo(out);
+  }
+
+  /**
+   * writes a number of pages at once
+   * @param bytes bytes to be written including page headers
+   * @param uncompressedTotalPageSize total uncompressed size (without page headers)
+   * @param compressedTotalPageSize total compressed size (without page headers)
+   * @throws IOException
+   */
+   void writeDataPages(BytesInput bytes, long uncompressedTotalPageSize, long compressedTotalPageSize) throws IOException {
+    state = state.write();
+    if (DEBUG) LOG.debug(out.getPos() + ": write data pages");
+//    int compressedPageSize = (int)bytes.size();
+//    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedPageSize, compressedPageSize);
+//    // pageHeader.crc = ...;
+//    pageHeader.data_page = new DataPageHeader(valueCount, Encoding.PLAIN); // TODO: encoding
+//    metadataConverter.writePageHeader(pageHeader, out);
+    this.uncompressedLength += uncompressedTotalPageSize;
+    this.compressedLength += compressedTotalPageSize;
+    if (DEBUG) LOG.debug(out.getPos() + ": write data pages content");
+    bytes.writeAllTo(out);
   }
 
   /**
@@ -252,59 +223,49 @@ public class RedelmFileWriter {
    */
   public void endColumn() throws IOException {
     state = state.endColumn();
-    endCompression();
-    currentColumn.setDataUncompressedLength(uncompressedLength);
-    currentColumn.setDataEnd(out.getPos());
+    if (DEBUG) LOG.debug(out.getPos() + ": end column");
+    currentColumn.setTotalUncompressedSize(uncompressedLength);
+    currentColumn.setTotalSize(compressedLength);
     currentBlock.addColumn(currentColumn);
-    if (INFO) LOG.info(currentColumn);
+    if (INFO) LOG.info("ended Column chumk: " + currentColumn);
     currentColumn = null;
+    this.uncompressedLength = 0;
+    this.compressedLength = 0;
   }
 
   /**
-   * ends a block once all column have been written
+   * ends a block once all column chunks have been written
    * @throws IOException
    */
   public void endBlock() throws IOException {
     state = state.endBlock();
-    currentBlock.setEndIndex(out.getPos());
-    currentBlock.setRecordCount(currentRecordCount);
+    if (DEBUG) LOG.debug(out.getPos() + ": end block");
+    currentBlock.setRowCount(currentRecordCount);
     blocks.add(currentBlock);
     currentBlock = null;
   }
 
   /**
-   * ends a file once all blocks have been written
-   * @param metaDataBlocks the extra meta data blocks to write in the footer
+   * ends a file once all blocks have been written.
+   * closes the file.
+   * @param extraMetaData the extra meta data to write in the footer
    * @throws IOException
    */
-  public void end(List<MetaDataBlock> metaDataBlocks) throws IOException {
+  public void end(Map<String, String> extraMetaData) throws IOException {
     state = state.end();
+    if (DEBUG) LOG.debug(out.getPos() + ": end");
     long footerIndex = out.getPos();
-    out.writeInt(CURRENT_VERSION);
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    RedelmMetaData footer = new RedelmMetaData(new FileMetaData(schema.toString(), codec == null ? null : codec.getClass().getName()), blocks);
-//    out.writeUTF(Footer.toJSON(footer));
-    // lazy: use serialization
-    // TODO: change that
-    new ObjectOutputStream(baos).writeObject(footer);
-    MetaDataBlock redelmFooter = new MetaDataBlock("RedElm", baos.toByteArray());
-    if (metaDataBlocks.size() > 254) {
-      throw new IllegalArgumentException("maximum of 255 metadata blocks in footer");
-    }
-    out.write(metaDataBlocks.size() + 1);
-    writeMetaDataBlock(redelmFooter);
-    for (MetaDataBlock metaDataBlock : metaDataBlocks) {
-      writeMetaDataBlock(metaDataBlock);
-    }
-    out.writeLong(footerIndex);
+    RedelmMetaData footer = new RedelmMetaData(new FileMetaData(schema), blocks, extraMetaData);
+    serializeFooter(footer, out);
+    if (DEBUG) LOG.debug(out.getPos() + ": footer length = " + (out.getPos() - footerIndex));
+    BytesUtils.writeIntLittleEndian(out, (int)(out.getPos() - footerIndex));
     out.write(MAGIC);
     out.close();
   }
 
-  private void writeMetaDataBlock(MetaDataBlock metaDataBlock) throws IOException {
-    out.writeUTF(metaDataBlock.getName());
-    out.writeInt(metaDataBlock.getData().length);
-    out.write(metaDataBlock.getData());
+  private void serializeFooter(RedelmMetaData footer, OutputStream os) throws IOException {
+    parquet.format.FileMetaData parquetMetadata = new ParquetMetadataConverter().toParquetMetadata(CURRENT_VERSION, footer);
+    metadataConverter.writeFileMetaData(parquetMetadata, os);
   }
 
   public static void writeSummaryFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
@@ -314,12 +275,8 @@ public class RedelmFileWriter {
     summary.writeInt(footers.size());
     for (Footer footer : footers) {
       summary.writeUTF(footer.getFile().toString());
-      summary.write(footer.getMetaDataBlocks().size());
-      for (MetaDataBlock metaDataBlock : footer.getMetaDataBlocks()) {
-        summary.writeUTF(metaDataBlock.getName());
-        summary.writeInt(metaDataBlock.getData().length);
-        summary.write(metaDataBlock.getData());
-      }
+      parquet.format.FileMetaData parquetMetadata = parquetMetadataConverter.toParquetMetadata(CURRENT_VERSION, footer.getRedelmMetaData());
+      parquetMetadataConverter.writeFileMetaData(parquetMetadata, summary);
     }
     summary.close();
   }

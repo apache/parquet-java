@@ -13,35 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.data.simple;
+package redelm.column.mem;
 
-import redelm.io.RecordConsumer;
+import redelm.column.ColumnDescriptor;
 
+public interface PageWriteStore {
 
-public class StringValue extends Primitive {
+  PageWriter getPageWriter(ColumnDescriptor path);
 
-  private final String value;
-
-  public StringValue(String value) {
-    this.value = value;
-  }
-
-  public String get() {
-    return value;
-  }
-
-  @Override
-  public String toString() {
-    return value;
-  }
-
-  @Override
-  public String getString() {
-    return get();
-  }
-
-  @Override
-  public void writeValue(RecordConsumer recordConsumer) {
-    recordConsumer.addString(value);
-  }
 }

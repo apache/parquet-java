@@ -70,4 +70,11 @@ public class MapConverter extends Converter {
     throw new TupleConversionException("maps contain only key/value groups, not primitive value: "+ value);
   }
 
+  @Override
+  public void toString(String indent, StringBuffer sb) {
+    sb.append(indent).append(getClass().getSimpleName()).append("{\n");
+    keyValue.toString(" " + indent, sb);
+    sb.append("\n").append(indent).append("}");
+  }
+
 }

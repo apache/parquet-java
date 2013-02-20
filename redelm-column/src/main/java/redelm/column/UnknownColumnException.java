@@ -15,16 +15,26 @@
  */
 package redelm.column;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutput;
-import java.io.IOException;
+import redelm.RedelmRuntimeException;
 
-public class RedelmByteArrayOutputStream extends ByteArrayOutputStream {
-  public RedelmByteArrayOutputStream(int initialSize) {
-    super(initialSize);
+/**
+ * Thrown when the column in unknown from the underlying storage
+ *
+ * @author Julien Le Dem
+ *
+ */
+public class UnknownColumnException extends RedelmRuntimeException {
+  private static final long serialVersionUID = 1L;
+
+  private final ColumnDescriptor descriptor;
+
+  public UnknownColumnException(ColumnDescriptor descriptor) {
+    super("column not found: " + descriptor.toString());
+    this.descriptor = descriptor;
   }
 
-  public void writeTo(DataOutput out) throws IOException {
-    out.write(buf, 0, count);
+  public ColumnDescriptor getDescriptor() {
+    return descriptor;
   }
+
 }

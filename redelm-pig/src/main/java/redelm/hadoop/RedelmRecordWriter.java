@@ -15,22 +15,18 @@
  */
 package redelm.hadoop;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
+import java.util.Map;
 
-import org.apache.hadoop.mapreduce.RecordWriter;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
-
-import redelm.column.ColumnDescriptor;
-import redelm.column.ColumnWriter;
-import redelm.column.mem.MemColumn;
-import redelm.column.mem.MemColumnsStore;
+import redelm.Log;
+import redelm.column.mem.MemColumnWriteStore;
+import redelm.hadoop.CodecFactory.BytesCompressor;
 import redelm.io.ColumnIOFactory;
 import redelm.io.MessageColumnIO;
 import redelm.schema.MessageType;
+
+import org.apache.hadoop.mapreduce.RecordWriter;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 /**
  * Writes records to a Redelm file
@@ -41,16 +37,23 @@ import redelm.schema.MessageType;
  *
  * @param <T> the type of the materialized records
  */
-public class RedelmRecordWriter<T> extends
-    RecordWriter<Void, T> {
+public class RedelmRecordWriter<T> extends RecordWriter<Void, T> {
+  private static final Log LOG = Log.getLog(RedelmRecordWriter.class);
 
   private final RedelmFileWriter w;
+  private final WriteSupport<T> writeSupport;
   private final MessageType schema;
-  private final List<MetaDataBlock> extraMetaData;
-  private WriteSupport<T> writeSupport;
-  private int recordCount;
-  private MemColumnsStore store;
+  private final Map<String, String> extraMetaData;
   private final int blockSize;
+  private final int pageSize;
+  private final BytesCompressor compressor;
+
+  private long recordCount = 0;
+  private long recordCountForNextMemCheck = 100;
+
+  private MemColumnWriteStore store;
+  private ColumnChunkPageWriteStore pageStore;
+
 
   /**
    *
@@ -59,8 +62,9 @@ public class RedelmRecordWriter<T> extends
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to write in the footer of the file
    * @param blockSize the size of a block in the file (this will be approximate)
+   * @param codec the codec used to compress
    */
-  RedelmRecordWriter(RedelmFileWriter w, WriteSupport<T> writeSupport, MessageType schema, List<MetaDataBlock> extraMetaData, int blockSize) {
+  RedelmRecordWriter(RedelmFileWriter w, WriteSupport<T> writeSupport, MessageType schema,  Map<String, String> extraMetaData, int blockSize, int pageSize, BytesCompressor compressor) {
     if (writeSupport == null) {
       throw new NullPointerException("writeSupport");
     }
@@ -69,13 +73,14 @@ public class RedelmRecordWriter<T> extends
     this.schema = schema;
     this.extraMetaData = extraMetaData;
     this.blockSize = blockSize;
+    this.pageSize = pageSize;
+    this.compressor = compressor;
     initStore();
   }
 
   private void initStore() {
-    // TODO: parameterize this
-    store = new MemColumnsStore(1024 * 1024 * 1, schema);
-    //
+    pageStore = new ColumnChunkPageWriteStore(compressor, schema);
+    store = new MemColumnWriteStore(pageStore, pageSize);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     writeSupport.initForWrite(columnIO.getRecordWriter(store), schema, extraMetaData);
   }
@@ -101,39 +106,30 @@ public class RedelmRecordWriter<T> extends
   }
 
   private void checkBlockSizeReached() throws IOException {
-    if (store.memSize() > blockSize) {
-      flushStore();
-      initStore();
+    if (recordCount >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it for every record.
+      long memSize = store.memSize();
+      float recordSize = (float) memSize / recordCount;
+      recordCountForNextMemCheck = (long)(blockSize * 0.9 / recordSize); // -10% so that we don't miss it.
+      if (recordCountForNextMemCheck - recordCount > 1000) {
+        LOG.info("Checked mem at " + recordCount + " will check again at: " + recordCountForNextMemCheck);
+      }
+      if (memSize > blockSize) {
+        LOG.info("mem size " + memSize + " > " + blockSize + ": flushing " + recordCount + " records to disk.");
+        flushStore();
+        initStore();
+      }
     }
   }
 
   private void flushStore()
       throws IOException {
+    LOG.info("Flushing mem store to file. allocated memory: " + store.allocatedSize());
     w.startBlock(recordCount);
-    Collection<MemColumn> columns = store.getColumns();
-    for (MemColumn column : columns) {
-      ColumnDescriptor descriptor = column.getDescriptor();
-      ColumnWriter columnWriter = column.getColumnWriter();
-      w.startColumn(descriptor, columnWriter.getValueCount());
-      w.startRepetitionLevels();
-      ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      columnWriter.writeRepetitionLevelColumn(new DataOutputStream(baos));
-      byte[] buf = baos.toByteArray();
-      w.write(buf, 0, buf.length);
-      w.startDefinitionLevels();
-      baos = new ByteArrayOutputStream();
-      columnWriter.writeDefinitionLevelColumn(new DataOutputStream(baos));
-      buf = baos.toByteArray();
-      w.write(buf, 0, buf.length);
-      w.startData();
-      baos = new ByteArrayOutputStream();
-      columnWriter.writeDataColumn(new DataOutputStream(baos));
-      buf = baos.toByteArray();
-      w.write(buf, 0, buf.length);
-      w.endColumn();
-    }
+    store.flush();
+    pageStore.flushToFileWriter(w);
     recordCount = 0;
     w.endBlock();
     store = null;
+    pageStore = null;
   }
 }

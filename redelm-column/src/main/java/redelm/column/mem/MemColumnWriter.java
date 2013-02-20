@@ -15,35 +15,71 @@
  */
 package redelm.column.mem;
 
-import java.io.DataOutput;
 import java.io.IOException;
 
 import redelm.Log;
+import redelm.bytes.BytesInput;
 import redelm.column.ColumnDescriptor;
 import redelm.column.ColumnWriter;
+import redelm.column.primitive.BitPackingColumnWriter;
+import redelm.column.primitive.BooleanPlainColumnReader;
+import redelm.column.primitive.BooleanPlainColumnWriter;
 import redelm.column.primitive.BoundedColumnFactory;
 import redelm.column.primitive.PrimitiveColumnWriter;
-import redelm.column.primitive.SimplePrimitiveColumnWriter;
+import redelm.column.primitive.PlainColumnWriter;
 
 final class MemColumnWriter implements ColumnWriter {
   private static final Log LOG = Log.getLog(MemColumnWriter.class);
-  private static final boolean DEBUG = Log.DEBUG;
+  private static final boolean DEBUG = false; //Log.DEBUG;
 
   private final ColumnDescriptor path;
+  private final PageWriter pageWriter;
+  private final long pageSizeThreshold;
   private PrimitiveColumnWriter repetitionLevelColumn;
   private PrimitiveColumnWriter definitionLevelColumn;
   private PrimitiveColumnWriter dataColumn;
   private int valueCount;
 
-  public MemColumnWriter(ColumnDescriptor path, int initialSize) {
+  public MemColumnWriter(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold) {
     this.path = path;
-    repetitionLevelColumn = BoundedColumnFactory.getBoundedWriter(path.getRepetitionLevel());
+    this.pageWriter = pageWriter;
+    this.pageSizeThreshold = pageSizeThreshold;
+    repetitionLevelColumn = new BitPackingColumnWriter(path.getRepetitionLevel());
     definitionLevelColumn = BoundedColumnFactory.getBoundedWriter(path.getDefinitionLevel());
-    this.dataColumn = new SimplePrimitiveColumnWriter(initialSize);
+    switch (path.getType()) {
+    case BOOLEAN:
+      this.dataColumn = new BooleanPlainColumnWriter(pageSizeThreshold * 11 / 10);
+    default:
+      this.dataColumn = new PlainColumnWriter(pageSizeThreshold * 11 / 10);
+    }
   }
 
   private void log(Object value, int r, int d) {
     LOG.debug(path+" "+value+" r:"+r+" d:"+d);
+  }
+
+  private void accountForValueWritten() {
+    ++ valueCount;
+    long memSize = repetitionLevelColumn.getMemSize()
+        + definitionLevelColumn.getMemSize()
+        + dataColumn.getMemSize();
+    if (memSize > pageSizeThreshold) {
+      writePage();
+    }
+  }
+
+  private void writePage() {
+    if (DEBUG) LOG.debug("write page");
+    try {
+      pageWriter.writePage(BytesInput.fromSequence(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()), valueCount);
+    } catch (IOException e) {
+      // TODO: cleanup
+      throw new RuntimeException(e);
+    }
+    repetitionLevelColumn.reset();
+    definitionLevelColumn.reset();
+    dataColumn.reset();
+    valueCount = 0;
   }
 
   @Override
@@ -51,7 +87,7 @@ final class MemColumnWriter implements ColumnWriter {
     if (DEBUG) log(null, repetitionLevel, definitionLevel);
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
-    ++ valueCount;
+    accountForValueWritten();
   }
 
   @Override
@@ -60,7 +96,7 @@ final class MemColumnWriter implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeDouble(value);
-    ++ valueCount;
+    accountForValueWritten();
   }
 
   @Override
@@ -69,7 +105,7 @@ final class MemColumnWriter implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeFloat(value);
-    ++ valueCount;
+    accountForValueWritten();
   }
 
   @Override
@@ -78,7 +114,7 @@ final class MemColumnWriter implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeBytes(value);
-    ++ valueCount;
+    accountForValueWritten();
   }
 
   @Override
@@ -87,16 +123,7 @@ final class MemColumnWriter implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeBoolean(value);
-    ++ valueCount;
-  }
-
-  @Override
-  public void write(String value, int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevelColumn.writeInteger(repetitionLevel);
-    definitionLevelColumn.writeInteger(definitionLevel);
-    dataColumn.writeString(value);
-    ++ valueCount;
+    accountForValueWritten();
   }
 
   @Override
@@ -105,7 +132,7 @@ final class MemColumnWriter implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeInteger(value);
-    ++ valueCount;
+    accountForValueWritten();
   }
 
   @Override
@@ -114,41 +141,28 @@ final class MemColumnWriter implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeLong(value);
-    ++ valueCount;
+    accountForValueWritten();
   }
 
   @Override
-  public void writeRepetitionLevelColumn(DataOutput dataOutputStream) throws IOException {
-    repetitionLevelColumn.writeData(dataOutputStream);
+  public void flush() {
+    if (valueCount > 0) {
+      writePage();
+    }
   }
 
   @Override
-  public void writeDefinitionLevelColumn(DataOutput out) throws IOException {
-    definitionLevelColumn.writeData(out);
-  }
-
-  @Override
-  public void writeDataColumn(DataOutput out) throws IOException {
-    dataColumn.writeData(out);
-  }
-
-  @Override
-  public void reset() {
-    repetitionLevelColumn.reset();
-    definitionLevelColumn.reset();
-    dataColumn.reset();
-    valueCount = 0;
-  }
-
-
-  public int memSize() {
+  public long memSize() {
     return repetitionLevelColumn.getMemSize()
         + definitionLevelColumn.getMemSize()
-        + dataColumn.getMemSize();
+        + dataColumn.getMemSize()
+        + pageWriter.getMemSize();
   }
 
-  @Override
-  public int getValueCount() {
-    return valueCount;
+  public long allocatedSize() {
+    return repetitionLevelColumn.allocatedSize()
+    + definitionLevelColumn.allocatedSize()
+    + dataColumn.allocatedSize()
+    + pageWriter.allocatedSize();
   }
 }

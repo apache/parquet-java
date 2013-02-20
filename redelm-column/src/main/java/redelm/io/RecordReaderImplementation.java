@@ -25,9 +25,9 @@ import java.util.Map;
 
 import redelm.Log;
 import redelm.column.ColumnReader;
-import redelm.column.ColumnsStore;
+import redelm.column.mem.MemColumnReadStore;
 import redelm.schema.MessageType;
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * used to read reassembled records
@@ -171,7 +171,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     public final PrimitiveColumnIO primitiveColumnIO;
     public final int maxDefinitionLevel;
     public final int maxRepetitionLevel;
-    public final Primitive primitive;
+    public final PrimitiveTypeName primitive;
     public final ColumnReader column;
     public final String[] fieldPath; // indexed on currentLevel
     public final int[] indexFieldPath; // indexed on currentLevel
@@ -192,7 +192,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
       this.maxRepetitionLevel = primitiveColumnIO.getRepetitionLevel();
       this.column = column;
       this.nextLevel = nextLevel;
-      this.primitive = primitiveColumnIO.getType().asPrimitiveType().getPrimitive();
+      this.primitive = primitiveColumnIO.getType().asPrimitiveType().getPrimitiveTypeName();
       this.fieldPath = primitiveColumnIO.getFieldPath();
       this.primitiveField = fieldPath[fieldPath.length - 1];
       this.indexFieldPath = primitiveColumnIO.getIndexFieldPath();
@@ -230,7 +230,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
    * @param validating
    * @param columns2
    */
-  public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnsStore columnStore) {
+  public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, MemColumnReadStore columnStore) {
     this.recordMaterializer = recordMaterializer;
     this.recordConsumer = validator(wrap(recordMaterializer), validating, root.getType());
     PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
@@ -355,19 +355,6 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     return recordConsumer;
   }
 
-  /* (non-Javadoc)
-   * @see redelm.io.RecordReader#read(T[], int)
-   */
-  @Override
-  public void read(T[] records, int count) {
-    if (count > records.length) {
-      throw new IllegalArgumentException("count is greater than records size");
-    }
-    for (int i = 0; i < count; i++) {
-      records[i] = read();
-    }
-  }
-
   /**
    * @see redelm.io.RecordReader#read()
    */
@@ -438,7 +425,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     recordConsumer.endMessage();
   }
 
-  private void addPrimitive(ColumnReader columnReader, Primitive primitive, String field, int index) {
+  private void addPrimitive(ColumnReader columnReader, PrimitiveTypeName primitive, String field, int index) {
     startField(field, index);
     primitive.addValueToRecordConsumer(recordConsumer, columnReader);
     endField(field, index);

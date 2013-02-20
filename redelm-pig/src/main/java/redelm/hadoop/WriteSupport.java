@@ -15,7 +15,7 @@
  */
 package redelm.hadoop;
 
-import java.util.List;
+import java.util.Map;
 
 import redelm.io.RecordConsumer;
 import redelm.schema.MessageType;
@@ -34,7 +34,7 @@ abstract public class WriteSupport<T> {
    * @param schema the schema of the incoming records
    * @param extraMetaData extra meta data being written to the footer of the file
    */
-  public abstract void initForWrite(RecordConsumer recordConsumer, MessageType schema, List<MetaDataBlock> extraMetaData);
+  public abstract void initForWrite(RecordConsumer recordConsumer, MessageType schema, Map<String, String> extraMetaData);
 
   /**
    *

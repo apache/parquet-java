@@ -205,11 +205,6 @@ public class TupleRecordConsumer extends RecordMaterializer<Tuple> {
   }
 
   @Override
-  public void addString(String value) {
-    setCurrentField(value);
-  }
-
-  @Override
   public void addBoolean(boolean value) {
     setCurrentField(value);
   }

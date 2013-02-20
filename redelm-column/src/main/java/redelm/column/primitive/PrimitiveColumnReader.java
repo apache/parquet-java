@@ -15,11 +15,19 @@
  */
 package redelm.column.primitive;
 
-import java.io.DataInputStream;
 import java.io.IOException;
 
 public abstract class PrimitiveColumnReader {
-  public abstract void readStripe(DataInputStream in) throws IOException;
+
+  /**
+   * to initialize the column reader
+   * The underlying implementation knows how much data to read
+   * @param in the array to read from
+   * @param offset where to start reading from
+   * @return the next offset to read from
+   * @throws IOException
+   */
+  public abstract int initFromPage(long valueCount, byte[] in, int offset) throws IOException;
 
   public boolean readBoolean() {
     throw new UnsupportedOperationException();
@@ -34,10 +42,6 @@ public abstract class PrimitiveColumnReader {
   }
 
   public byte[] readBytes() {
-    throw new UnsupportedOperationException();
-  }
-
-  public String readString() {
     throw new UnsupportedOperationException();
   }
 

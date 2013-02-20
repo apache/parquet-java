@@ -15,43 +15,37 @@
  */
 package redelm.column.primitive;
 
-import java.io.DataOutput;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
-import redelm.column.RedelmByteArrayOutputStream;
+import redelm.Log;
+import redelm.bytes.BytesInput;
+import redelm.bytes.CapacityByteArrayOutputStream;
+import redelm.bytes.LittleEndianDataOutputStream;
 
 /**
- * A combination of DataOutputStream and ByteArrayOutputStream
+ * Plain encoding except for booleans
  *
  * @author Julien Le Dem
  *
  */
-public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
+public class PlainColumnWriter extends PrimitiveColumnWriter {
+  private static final Log LOG = Log.getLog(PlainColumnWriter.class);
 
   public static final Charset CHARSET = Charset.forName("UTF-8");
 
-  private RedelmByteArrayOutputStream arrayOut;
-  private DataOutputStream out;
+  private CapacityByteArrayOutputStream arrayOut;
+  private LittleEndianDataOutputStream out;
 
-  public SimplePrimitiveColumnWriter(int initialSize) {
-    arrayOut = new RedelmByteArrayOutputStream(initialSize);
-    out = new DataOutputStream(arrayOut);
-  }
-
-  @Override
-  public final void writeBoolean(boolean v) {
-    try {
-      out.writeBoolean(v);
-    } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
-    }
+  public PlainColumnWriter(int initialSize) {
+    arrayOut = new CapacityByteArrayOutputStream(initialSize);
+    out = new LittleEndianDataOutputStream(arrayOut);
   }
 
   @Override
   public final void writeBytes(byte[] v) {
     try {
+//      BytesUtils.writeUnsignedVarInt(v.length, out);
       out.writeInt(v.length);
       out.write(v);
     } catch (IOException e) {
@@ -96,18 +90,6 @@ public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
   }
 
   @Override
-  public final void writeString(String str) {
-    try {
-      // writeUTF() has a max size of 64k :((
-      byte[] bytes = str.getBytes(CHARSET);
-      writeUnsignedVarInt(bytes.length);
-      out.write(bytes);
-    } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
-    }
-  }
-
-  @Override
   public void writeByte(int value) {
     try {
       out.write(value);
@@ -117,13 +99,19 @@ public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
   }
 
   @Override
-  public int getMemSize() {
+  public long getMemSize() {
     return arrayOut.size();
   }
 
   @Override
-  public void writeData(DataOutput output) throws IOException {
-    arrayOut.writeTo(output);
+  public BytesInput getBytes() {
+    try {
+      out.flush();
+    } catch (IOException e) {
+      throw new RuntimeException("never happens", e);
+    }
+    if (Log.DEBUG) LOG.debug("writing a buffer of size " + arrayOut.size());
+    return BytesInput.from(arrayOut);
   }
 
   @Override
@@ -131,11 +119,9 @@ public class SimplePrimitiveColumnWriter extends PrimitiveColumnWriter {
     arrayOut.reset();
   }
 
-  private void writeUnsignedVarInt(int value) throws IOException {
-    while ((value & 0xFFFFFF80) != 0L) {
-      out.writeByte((value & 0x7F) | 0x80);
-      value >>>= 7;
-    }
-    out.writeByte(value & 0x7F);
+  @Override
+  public long allocatedSize() {
+    return arrayOut.getCapacity();
   }
+
 }

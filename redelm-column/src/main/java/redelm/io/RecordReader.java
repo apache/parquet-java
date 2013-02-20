@@ -15,6 +15,13 @@
  */
 package redelm.io;
 
+
+/**
+ * used to read reassembled records
+ * @author Julien Le Dem
+ *
+ * @param <T> the type of the materialized record
+ */
 public abstract class RecordReader<T> {
 
   /**
@@ -22,12 +29,5 @@ public abstract class RecordReader<T> {
    * @return the materialized record
    */
   public abstract T read();
-
-  /**
-   * reads count record and writes them in the provided array
-   * @param records the target
-   * @param count how many to read
-   */
-  public abstract void read(T[] records, int count);
 
 }

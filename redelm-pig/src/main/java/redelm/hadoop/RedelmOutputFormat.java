@@ -18,15 +18,14 @@ package redelm.hadoop;
 import static redelm.Log.INFO;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Map;
 
 import redelm.Log;
+import redelm.hadoop.metadata.CompressionCodecName;
 import redelm.schema.MessageType;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.DefaultCodec;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.JobContext;
@@ -34,7 +33,6 @@ import org.apache.hadoop.mapreduce.OutputCommitter;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.util.ReflectionUtils;
 
 /**
  * OutputFormat to write to a RedElm file
@@ -43,16 +41,21 @@ import org.apache.hadoop.util.ReflectionUtils;
  * it requires the schema of the incoming records
  * it allows storing extra metadata in the footer (for example: for schema compatibility purpose when converting from a different schema language)
  *
- * data is compressed according to the job conf (per block per column):
+ * format config controlled in job conf settings:
+ * <pre>
+ * redelm.block.size=52428800 # in bytes, default = 50 * 1024 * 1024
+ * redelm.page.size=8192 # in bytes, default = 8 * 1024
+ * redelm.compression=UNCOMPRESSED # one of: UNCOMPRESSED, SNAPPY, GZIP, LZO. Default: UNCOMPRESSED. Supersedes mapred.output.compress*
+ * </pre>
+ *
+ * If redelm.compression is not set, the following properties are checked (FileOutputFormat behavior)
  * <pre>
  * mapred.output.compress=true
  * mapred.output.compression.codec=org.apache.hadoop.io.compress.SomeCodec
  * </pre>
  *
- * block size is controlled in job conf settings:
- * <pre>
- * redelm.block.size=52428800 # in bytes, default = 50 * 1024 * 1024
- *</pre>
+ * if none of those is set the data is uncompressed.
+ *
  * @author Julien Le Dem
  *
  * @param <T> the type of the materialized records
@@ -61,19 +64,41 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
   private static final Log LOG = Log.getLog(RedelmOutputFormat.class);
 
   public static final String BLOCK_SIZE = "redelm.block.size";
+  public static final String PAGE_SIZE = "redelm.page.size";
+  public static final String COMPRESSION = "redelm.compression";
 
   public static void setBlockSize(Job job, int blockSize) {
     job.getConfiguration().setInt(BLOCK_SIZE, blockSize);
+  }
+
+  public static void setPageSize(Job job, int pageSize) {
+    job.getConfiguration().setInt(PAGE_SIZE, pageSize);
+  }
+
+  public static void setCompression(Job job, CompressionCodecName compression) {
+    job.getConfiguration().set(COMPRESSION, compression.name());
   }
 
   public static int getBlockSize(JobContext jobContext) {
     return jobContext.getConfiguration().getInt(BLOCK_SIZE, 50*1024*1024);
   }
 
+  public static int getPageSize(JobContext jobContext) {
+    return jobContext.getConfiguration().getInt(PAGE_SIZE, 8*1024);
+  }
+
+  public static CompressionCodecName getCompression(JobContext jobContext) {
+    return CompressionCodecName.fromConf(jobContext.getConfiguration().get(COMPRESSION, CompressionCodecName.UNCOMPRESSED.name()));
+  }
+
+  public static boolean isCompressionSet(JobContext jobContext) {
+    return jobContext.getConfiguration().get(COMPRESSION) != null;
+  }
+
   private final MessageType schema;
   private Class<?> writeSupportClass;
 
-  private final List<MetaDataBlock> extraMetaData;
+  private final Map<String, String> extraMetaData;
   private RedelmOutputCommitter committer;
 
   /**
@@ -83,7 +108,7 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to be stored in the footer of the file
    */
-  public <S extends WriteSupport<T>> RedelmOutputFormat(Class<S> writeSupportClass, MessageType schema, List<MetaDataBlock> extraMetaData) {
+  public <S extends WriteSupport<T>> RedelmOutputFormat(Class<S> writeSupportClass, MessageType schema, Map<String, String> extraMetaData) {
     this.writeSupportClass = writeSupportClass;
     this.schema = schema;
     this.extraMetaData = extraMetaData;
@@ -97,28 +122,33 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
     final Configuration conf = taskAttemptContext.getConfiguration();
-
+    CodecFactory codecFactory = new CodecFactory(conf);
     int blockSize = getBlockSize(taskAttemptContext);
     if (INFO) LOG.info("RedElm block size to " + blockSize);
+    int pageSize = getPageSize(taskAttemptContext);
+    if (INFO) LOG.info("RedElm page size to " + pageSize);
 
-    CompressionCodec codec = null;
     String extension = ".redelm";
-    if (getCompressOutput(taskAttemptContext)) {
+    CompressionCodecName codec;
+    if (isCompressionSet(taskAttemptContext)) { // explicit redelm config
+      codec = getCompression(taskAttemptContext);
+    } else if (getCompressOutput(taskAttemptContext)) { // from hadoop config
       // find the right codec
       Class<?> codecClass = getOutputCompressorClass(taskAttemptContext, DefaultCodec.class);
-      if (INFO) LOG.info("Compression codec: " + codecClass.getName());
-      codec = (CompressionCodec) ReflectionUtils.newInstance(codecClass, conf);
-      extension += codec.getDefaultExtension();
+      if (INFO) LOG.info("Compression set through hadoop codec: " + codecClass.getName());
+      codec = CompressionCodecName.fromCompressionCodec(codecClass);
     } else {
       if (INFO) LOG.info("Compression set to false");
+      codec = CompressionCodecName.UNCOMPRESSED;
     }
+    if (INFO) LOG.info("Compression: " + codec.name());
+    extension += codec.getExtension();
     final Path file = getDefaultWorkFile(taskAttemptContext, extension);
-    final FileSystem fs = file.getFileSystem(conf);
 
-    final RedelmFileWriter w = new RedelmFileWriter(schema, fs.create(file, false), codec);
+    final RedelmFileWriter w = new RedelmFileWriter(conf, schema, file);
     w.start();
     try {
-      return new RedelmRecordWriter<T>(w, (WriteSupport<T>) writeSupportClass.newInstance(), schema, extraMetaData, blockSize);
+      return new RedelmRecordWriter<T>(w, (WriteSupport<T>) writeSupportClass.newInstance(), schema, extraMetaData, blockSize, pageSize, codecFactory.getCompressor(codec, pageSize));
     } catch (InstantiationException e) {
       throw new RuntimeException("could not instantiate " + writeSupportClass.getName(), e);
     } catch (IllegalAccessException e) {

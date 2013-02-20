@@ -26,8 +26,8 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
-import redelm.column.ColumnsStore;
-import redelm.column.mem.MemColumnsStore;
+import redelm.column.mem.MemColumnWriteStore;
+import redelm.column.mem.MemPageStore;
 import redelm.data.GroupWriter;
 
 import org.junit.Test;
@@ -51,22 +51,23 @@ public class TestRecordReaderCompiler {
       }
     });
 
-      ColumnsStore columns = new MemColumnsStore(1024, schema);
-      MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
-      new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
-      columns.flip();
-      System.err.flush();
-      Logger.getLogger("brennus").info("compile");
-      System.out.println("compile");
-      RecordReader<Void> recordReader = columnIO.getRecordReader(
-          columns,
-          new ExpectationValidatingRecordConsumer(
-              new ArrayDeque<String>(Arrays.asList(expectedEventsForR1))));
-      recordReader = new RecordReaderCompiler().compile((RecordReaderImplementation<Void>)recordReader);
+    MemPageStore memPageStore = new MemPageStore();
+    MemColumnWriteStore writeStore = new MemColumnWriteStore(memPageStore, 1024*1024*1);
+    MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+    new GroupWriter(columnIO.getRecordWriter(writeStore), schema).write(r1);
+    writeStore.flush();
+    System.err.flush();
+    Logger.getLogger("brennus").info("compile");
+    System.out.println("compile");
+    RecordReader<Void> recordReader = columnIO.getRecordReader(
+        memPageStore,
+        new ExpectationValidatingRecordConsumer(
+            new ArrayDeque<String>(Arrays.asList(expectedEventsForR1))));
+    recordReader = new RecordReaderCompiler().compile((RecordReaderImplementation<Void>)recordReader);
 
-      Logger.getLogger("brennus").info("read");
-      System.out.println("read");
-      recordReader.read();
+    Logger.getLogger("brennus").info("read");
+    System.out.println("read");
+    recordReader.read();
 
-    }
+  }
 }

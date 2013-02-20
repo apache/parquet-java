@@ -21,7 +21,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import redelm.hadoop.MetaDataBlock;
 import redelm.hadoop.WriteSupport;
 import redelm.io.RecordConsumer;
 import redelm.schema.GroupType;
@@ -47,7 +46,9 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
   private MessageType rootSchema;
   private Schema rootPigSchema;
 
-  public void initForWrite(RecordConsumer recordConsumer, MessageType schema, List<MetaDataBlock> extraMetaData) {
+
+  @Override
+  public void initForWrite(RecordConsumer recordConsumer, MessageType schema, Map<String, String> extraMetaData) {
     this.recordConsumer = recordConsumer;
     this.rootSchema = schema;
     PigMetaData pigMetaData = PigMetaData.fromMetaDataBlocks(extraMetaData);
@@ -132,10 +133,18 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
   private void writeValue(Type type, FieldSchema pigType, Tuple t, int i) {
     try {
       if (type.isPrimitive()) {
-        switch (type.asPrimitiveType().getPrimitive()) {
+        switch (type.asPrimitiveType().getPrimitiveTypeName()) {
         // TODO: use PrimitiveTuple accessors
         case BINARY:
-          recordConsumer.addBinary(((DataByteArray)t.get(i)).get());
+          byte[] bytes;
+          if (pigType.type == DataType.BYTEARRAY) {
+            bytes = ((DataByteArray)t.get(i)).get();
+          } else if (pigType.type == DataType.CHARARRAY) {
+            bytes = ((String)t.get(i)).getBytes("UTF-8");
+          } else {
+            throw new UnsupportedOperationException("can not convert from " + DataType.findTypeName(pigType.type) + " to BINARY ");
+          }
+          recordConsumer.addBinary(bytes);
           break;
         case BOOLEAN:
           recordConsumer.addBoolean((Boolean)t.get(i));
@@ -146,9 +155,6 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
         case INT64:
           recordConsumer.addLong(((Number)t.get(i)).longValue());
           break;
-        case STRING:
-          recordConsumer.addString((String)t.get(i));
-          break;
         case DOUBLE:
           recordConsumer.addDouble(((Number)t.get(i)).doubleValue());
           break;
@@ -156,7 +162,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
           recordConsumer.addFloat(((Number)t.get(i)).floatValue());
           break;
         default:
-          throw new UnsupportedOperationException(type.asPrimitiveType().getPrimitive().name());
+          throw new UnsupportedOperationException(type.asPrimitiveType().getPrimitiveTypeName().name());
         }
       } else {
         assert pigType.type == DataType.TUPLE;

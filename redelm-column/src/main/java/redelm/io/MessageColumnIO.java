@@ -20,8 +20,11 @@ import java.util.Arrays;
 import java.util.List;
 
 import redelm.Log;
+import redelm.column.ColumnReadStore;
 import redelm.column.ColumnWriter;
-import redelm.column.ColumnsStore;
+import redelm.column.ColumnWriteStore;
+import redelm.column.mem.MemColumnReadStore;
+import redelm.column.mem.PageReadStore;
 import redelm.schema.MessageType;
 
 
@@ -43,8 +46,8 @@ public class MessageColumnIO extends GroupColumnIO {
     return super.getColumnNames();
   }
 
-  public <T> RecordReader<T> getRecordReader(ColumnsStore columns, RecordMaterializer<T> recordMaterializer) {
-    return new RecordReaderImplementation<T>(this, recordMaterializer, validating, columns);
+  public <T> RecordReader<T> getRecordReader(PageReadStore columns, RecordMaterializer<T> recordMaterializer) {
+    return new RecordReaderImplementation<T>(this, recordMaterializer, validating, new MemColumnReadStore(columns));
   }
 
   private class MessageColumnIORecordConsumer extends RecordConsumer {
@@ -54,7 +57,7 @@ public class MessageColumnIO extends GroupColumnIO {
     private final int[] r;
     private final ColumnWriter[] columnWriter;
 
-    public MessageColumnIORecordConsumer(ColumnsStore columns) {
+    public MessageColumnIORecordConsumer(ColumnWriteStore columns) {
       int maxDepth = 0;
       this.columnWriter = new ColumnWriter[MessageColumnIO.this.getLeaves().size()];
       for (PrimitiveColumnIO primitiveColumnIO : MessageColumnIO.this.getLeaves()) {
@@ -201,16 +204,6 @@ public class MessageColumnIO extends GroupColumnIO {
     }
 
     @Override
-    public void addString(String value) {
-      if (DEBUG) log("addString("+value+")");
-
-      getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
-
-      setRepetitionLevel();
-      if (DEBUG) printState();
-    }
-
-    @Override
     public void addBoolean(boolean value) {
       if (DEBUG) log("addBoolean("+value+")");
       getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
@@ -221,7 +214,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
     @Override
     public void addBinary(byte[] value) {
-      if (DEBUG) log("addBinary("+value+")");
+      if (DEBUG) log("addBinary("+value.length+" bytes)");
       getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
       setRepetitionLevel();
@@ -248,7 +241,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
   }
 
-  public RecordConsumer getRecordWriter(ColumnsStore columns) {
+  public RecordConsumer getRecordWriter(ColumnWriteStore columns) {
     return new MessageColumnIORecordConsumer(columns);
   }
 

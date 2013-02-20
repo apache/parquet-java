@@ -15,6 +15,8 @@
  */
 package redelm.schema;
 
+import java.util.List;
+
 abstract public class Type {
 
   public static enum Repetition {
@@ -92,6 +94,8 @@ abstract public class Type {
 
   protected abstract Type getType(String[] path, int i);
 
+  protected abstract List<String[]> getPaths(int depth);
+
   /**
    * {@inheritDoc}
    */
@@ -100,5 +104,12 @@ abstract public class Type {
     StringBuilder sb = new StringBuilder();
     writeToStringBuilder(sb, "");
     return sb.toString();
+  }
+
+  void checkContains(Type subType) {
+    if (!this.name.equals(subType.name)
+        || this.repetition != subType.repetition) {
+      throw new RuntimeException(subType + " found: expected " + this);
+    }
   }
 }

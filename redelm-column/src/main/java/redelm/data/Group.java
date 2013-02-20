@@ -84,7 +84,7 @@ abstract public class Group extends GroupValueSource {
   }
 
   public Group append(String fieldName, String value) {
-    add(fieldName, value);
+    add(fieldName, value.getBytes());
     return this;
   }
 

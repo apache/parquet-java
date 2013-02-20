@@ -15,14 +15,15 @@
  */
 package redelm.pig;
 
-import static junit.framework.Assert.assertEquals;
 import static org.apache.pig.builtin.mock.Storage.bag;
 import static org.apache.pig.builtin.mock.Storage.tuple;
+import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import redelm.Log;
 import redelm.data.Group;
@@ -30,7 +31,6 @@ import redelm.data.GroupRecordConsumer;
 import redelm.data.GroupWriter;
 import redelm.data.simple.SimpleGroup;
 import redelm.data.simple.SimpleGroupFactory;
-import redelm.hadoop.MetaDataBlock;
 import redelm.io.RecordMaterializer;
 import redelm.schema.MessageType;
 
@@ -169,8 +169,10 @@ public class TestTupleRecordConsumer {
     return tupleWriter;
   }
 
-  private List<MetaDataBlock> pigMetaData(String pigSchemaString) {
-    return Arrays.asList(new PigMetaData(pigSchemaString).toMetaDataBlock());
+  private Map<String, String> pigMetaData(String pigSchemaString) {
+    Map<String, String> map = new HashMap<String, String>();
+    new PigMetaData(pigSchemaString).addToMetaData(map);
+    return map;
   }
 
   private RecordMaterializer<Tuple> newPigRecordConsumer(MessageType redelmSchema, String pigSchemaString) throws ParserException {

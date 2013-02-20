@@ -20,7 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import redelm.column.ColumnDescriptor;
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 import redelm.schema.Type;
 
 
@@ -39,7 +39,7 @@ public class PrimitiveColumnIO extends ColumnIO {
   @Override
   void setLevels(int r, int d, String[] fieldPath, int[] fieldIndexPath, List<ColumnIO> repetition, List<ColumnIO> path) {
     super.setLevels(r, d, fieldPath, fieldIndexPath, repetition, path);
-    this.columnDescriptor = new ColumnDescriptor(fieldPath, getType().asPrimitiveType().getPrimitive(), getRepetitionLevel(), getDefinitionLevel());
+    this.columnDescriptor = new ColumnDescriptor(fieldPath, getType().asPrimitiveType().getPrimitiveTypeName(), getRepetitionLevel(), getDefinitionLevel());
     this.path = path.toArray(new ColumnIO[path.size()]);
   }
 
@@ -85,8 +85,8 @@ public class PrimitiveColumnIO extends ColumnIO {
     return parent.getFirst();
   }
 
-  public Primitive getPrimitive() {
-    return getType().asPrimitiveType().getPrimitive();
+  public PrimitiveTypeName getPrimitive() {
+    return getType().asPrimitiveType().getPrimitiveTypeName();
   }
 
   public int getId() {

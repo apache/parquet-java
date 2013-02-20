@@ -17,17 +17,17 @@ package redelm.column;
 
 import java.util.Arrays;
 
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 
 public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
 
   private final String[] path;
-  private final Primitive type;
+  private final PrimitiveTypeName type;
   private final int maxRep;
   private final int maxDef;
 
   //TODO see if we actually need the maxRep and maxDef here
-  public ColumnDescriptor(String[] path, Primitive type, int maxRep, int maxDef) {
+  public ColumnDescriptor(String[] path, PrimitiveTypeName type, int maxRep, int maxDef) {
     super();
     this.path = path;
     this.type = type;
@@ -47,7 +47,7 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
     return maxDef;
   }
 
-  public Primitive getType() {
+  public PrimitiveTypeName getType() {
     return type;
   }
 

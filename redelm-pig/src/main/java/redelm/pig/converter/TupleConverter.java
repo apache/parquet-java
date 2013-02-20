@@ -15,6 +15,11 @@
  */
 package redelm.pig.converter;
 
+import java.io.UnsupportedEncodingException;
+
+import scala.annotation.target.field;
+import scala.collection.mutable.StringBuilder;
+
 import redelm.pig.TupleConversionException;
 import redelm.schema.GroupType;
 import redelm.schema.Type;
@@ -35,13 +40,16 @@ public class TupleConverter extends Converter {
   private int schemaSize;
   private int currentField;
   private Converter[] converters;
+  private FieldSchema[] fields;
 
   TupleConverter(GroupType redelmSchema, Schema pigSchema, Converter parent) throws FrontendException {
     super(parent);
     this.schemaSize = redelmSchema.getFieldCount();
     this.converters = new Converter[this.schemaSize];
+    this.fields = new FieldSchema[this.schemaSize];
     for (int i = 0; i < converters.length; i++) {
       FieldSchema field = pigSchema.getField(i);
+      fields[i] = field;
       Type type = redelmSchema.getType(i);
       switch (field.type) {
       case DataType.BAG:
@@ -98,7 +106,16 @@ public class TupleConverter extends Converter {
   @Override
   public void set(Object value) {
     try {
-      currentTuple.set(currentField, value);
+      if (fields[currentField].type == DataType.CHARARRAY) {
+        try {
+          currentTuple.set(currentField, new String((byte[])value, "UTF-8"));
+        } catch (UnsupportedEncodingException e) {
+          throw new RuntimeException(e);
+        }
+      } else {
+        currentTuple.set(currentField, value);
+      }
+
     } catch (ExecException e) {
       throw new TupleConversionException(
           "Could not set " + value +
@@ -106,4 +123,17 @@ public class TupleConverter extends Converter {
     }
   }
 
+  @Override
+  public void toString(String indent, StringBuffer sb) {
+    sb.append(indent).append(getClass().getSimpleName()).append("{\n");
+    for (Converter converter : converters) {
+      if (converter == null) {
+        sb.append(indent).append("primitive\n");
+      } else {
+        converter.toString(" " + indent, sb);
+        sb.append("\n");
+      }
+    }
+    sb.append("\n").append(indent).append("}");
+  }
 }

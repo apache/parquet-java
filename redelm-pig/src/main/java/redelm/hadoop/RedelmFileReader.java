@@ -15,13 +15,19 @@
  */
 package redelm.hadoop;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import static redelm.Log.DEBUG;
+import static redelm.bytes.BytesUtils.readIntLittleEndian;
+import static redelm.hadoop.RedelmFileWriter.MAGIC;
+import static redelm.hadoop.RedelmFileWriter.RED_ELM_SUMMARY;
+
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -30,19 +36,25 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import redelm.Log;
+import redelm.bytes.BytesInput;
+import redelm.column.ColumnDescriptor;
+import redelm.column.mem.Page;
+import redelm.column.mem.PageReadStore;
+import redelm.format.converter.ParquetMetadataConverter;
+import redelm.hadoop.CodecFactory.BytesDecompressor;
+import redelm.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
+import redelm.hadoop.metadata.BlockMetaData;
+import redelm.hadoop.metadata.ColumnChunkMetaData;
+import redelm.hadoop.metadata.RedelmMetaData;
+import parquet.format.PageHeader;
+import parquet.format.PageType;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.io.compress.CodecPool;
-import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.io.compress.CompressionInputStream;
-import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.mapred.Utils;
-import org.apache.hadoop.util.ReflectionUtils;
 
 /**
  * Reads a RedElm file
@@ -51,18 +63,63 @@ import org.apache.hadoop.util.ReflectionUtils;
  *
  */
 public class RedelmFileReader {
+
   private static final Log LOG = Log.getLog(RedelmFileReader.class);
 
-  private static List<MetaDataBlock> readMetaDataBlocks(FSDataInputStream f) throws IOException {
-    List<MetaDataBlock> blocks = new ArrayList<MetaDataBlock>();
-    int blockCount =  f.read();
-    for (int i = 0; i < blockCount; i++) {
-      String name = f.readUTF();
-      byte[] data = new byte[f.readInt()];
-      f.readFully(data);
-      blocks.add(new MetaDataBlock(name, data));
+  private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+
+  private static RedelmMetaData deserializeFooter(InputStream is) throws IOException {
+    parquet.format.FileMetaData parquetMetadata = parquetMetadataConverter.readFileMetaData(is);
+    if (Log.DEBUG) LOG.debug(parquetMetadataConverter.toString(parquetMetadata));
+    RedelmMetaData metadata = parquetMetadataConverter.fromParquetMetadata(parquetMetadata);
+    if (Log.DEBUG) LOG.debug(RedelmMetaData.toPrettyJSON(metadata));
+    return metadata;
+  }
+
+  /**
+   * for files provided, check if there's a summary file.
+   * If a summary file is found it is used otherwise the file footer is used.
+   * @param configuration the hadoop conf to connect to the file system;
+   * @param partFiles the part files to read
+   * @return the footers for those files using the summary file if possible.
+   * @throws IOException
+   */
+  public static List<Footer> readAllFootersInParallelUsingSummaryFiles(final Configuration configuration, List<FileStatus> partFiles) throws IOException {
+
+    // figure out list of all parents to part files
+    Set<Path> parents = new HashSet<Path>();
+    for (FileStatus part : partFiles) {
+      parents.add(part.getPath().getParent());
     }
-    return blocks;
+
+    // read corresponding summary files if they exist
+    Map<Path, Footer> cache = new HashMap<Path, Footer>();
+    for (Path path : parents) {
+      FileSystem fileSystem = path.getFileSystem(configuration);
+      Path summaryFile = new Path(path, RED_ELM_SUMMARY);
+      if (fileSystem.exists(summaryFile)) {
+        List<Footer> footers = readSummaryFile(configuration, fileSystem.getFileStatus(summaryFile));
+        for (Footer footer : footers) {
+          cache.put(footer.getFile(), footer);
+        }
+      }
+    }
+
+    // keep only footers for files actually requested and read file footer if not found in summaries
+    List<Footer> result = new ArrayList<Footer>(partFiles.size());
+    List<FileStatus> toRead = new ArrayList<FileStatus>();
+    for (FileStatus part : partFiles) {
+      if (cache.containsKey(part.getPath())) {
+        result.add(cache.get(part.getPath()));
+      } else {
+        toRead.add(part);
+      }
+    }
+
+    // read the footers of the files that did not have a summary file
+    result.addAll(readAllFootersInParallel(configuration, toRead));
+
+    return result;
   }
 
   public static List<Footer> readAllFootersInParallel(final Configuration configuration, List<FileStatus> partFiles) throws IOException {
@@ -83,8 +140,8 @@ public class RedelmFileReader {
 
           private Footer readFooter(final FileSystem fs,
               final FileStatus currentFile) throws IOException {
-            List<MetaDataBlock> blocks = RedelmFileReader.readFooter(fs.open(currentFile.getPath()), currentFile.getLen());
-            return new Footer(currentFile.getPath(), blocks);
+            RedelmMetaData redelmMetaData = RedelmFileReader.readFooter(configuration, currentFile);
+            return new Footer(currentFile.getPath(), redelmMetaData);
           }
         }));
       }
@@ -120,7 +177,7 @@ public class RedelmFileReader {
   public static List<Footer> readFooters(Configuration configuration, FileStatus pathStatus) throws IOException {
     try {
       if (pathStatus.isDir()) {
-        Path summaryPath = new Path(pathStatus.getPath(), "_RedElmSummary");
+        Path summaryPath = new Path(pathStatus.getPath(), RED_ELM_SUMMARY);
         FileSystem fs = summaryPath.getFileSystem(configuration);
         if (fs.exists(summaryPath)) {
           FileStatus summaryStatus = fs.getFileStatus(summaryPath);
@@ -141,15 +198,8 @@ public class RedelmFileReader {
     List<Footer> result = new ArrayList<Footer>(footerCount);
     for (int i = 0; i < footerCount; i++) {
       Path file = new Path(summary.readUTF());
-      int blockCount = summary.readInt();
-      List<MetaDataBlock> blocks = new ArrayList<MetaDataBlock>(blockCount);
-      for (int j = 0; j < footerCount; j++) {
-        String name = summary.readUTF();
-        byte[] data = new byte[summary.readInt()];
-        summary.readFully(data);
-        blocks.add(new MetaDataBlock(name, data));
-      }
-      result.add(new Footer(file, blocks));
+      RedelmMetaData redelmMetaData = parquetMetadataConverter.fromParquetMetadata(parquetMetadataConverter.readFileMetaData(summary));
+      result.add(new Footer(file, redelmMetaData));
     }
     summary.close();
     return result;
@@ -157,44 +207,59 @@ public class RedelmFileReader {
 
   /**
    * Reads the meta data block in the footer of the file
-   * @see RedelmMetaData#fromMetaDataBlocks(List)
-   * @param f the RedElm File
-   * @param l the length of the file
+   * @param configuration
+   * @param file the RedElm File
    * @return the metadata blocks in the footer
    * @throws IOException if an error occurs while reading the file
    */
-  public static final List<MetaDataBlock> readFooter(FSDataInputStream f, long l) throws IOException {
-    if (l <= 3 * 8) { // MAGIC (8) + data + footer + footerIndex (8) + MAGIC (8)
-      throw new RuntimeException("Not a Red Elm file");
-    }
-    long footerIndexIndex = l - 8 - 8;
-    LOG.debug("reading footer index at " + footerIndexIndex);
-    f.seek(footerIndexIndex);
-    long footerIndex = f.readLong();
-    byte[] magic = new byte[8];
-    f.readFully(magic);
-    if (!Arrays.equals(RedelmFileWriter.MAGIC, magic)) {
-      throw new RuntimeException("Not a Red Elm file");
-    }
-    LOG.debug("read footer index: " + footerIndex + ", footer size: " + (footerIndexIndex - footerIndex));
-    f.seek(footerIndex);
-    int version = f.readInt();
-    if (version != RedelmFileWriter.CURRENT_VERSION) {
-      throw new RuntimeException(
-          "unsupported version: " + version + ". " +
-          "supporting up to " + RedelmFileWriter.CURRENT_VERSION);
-    }
+  public static final RedelmMetaData readFooter(Configuration configuration, Path file) throws IOException {
+    FileSystem fileSystem = file.getFileSystem(configuration);
+    return readFooter(configuration, fileSystem.getFileStatus(file));
+  }
 
-    return readMetaDataBlocks(f);
+  /**
+   * Reads the meta data block in the footer of the file
+   * @param configuration
+   * @param file the RedElm File
+   * @return the metadata blocks in the footer
+   * @throws IOException if an error occurs while reading the file
+   */
+  public static final RedelmMetaData readFooter(Configuration configuration, FileStatus file) throws IOException {
+    FileSystem fileSystem = file.getPath().getFileSystem(configuration);
+    FSDataInputStream f = fileSystem.open(file.getPath());
+    long l = file.getLen();
+    if (Log.DEBUG) LOG.debug("File length " + l);
+    int FOOTER_LENGTH_SIZE = 4;
+    if (l <= MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
+      throw new RuntimeException(file.getPath() + " is not a Red Elm file (too small)");
+    }
+    long footerLengthIndex = l - FOOTER_LENGTH_SIZE - MAGIC.length;
+    if (Log.DEBUG) LOG.debug("reading footer index at " + footerLengthIndex);
+
+    f.seek(footerLengthIndex);
+    int footerLength = readIntLittleEndian(f);
+    byte[] magic = new byte[MAGIC.length];
+    f.readFully(magic);
+    if (!Arrays.equals(MAGIC, magic)) {
+      throw new RuntimeException(file.getPath() + " is not a RedElm file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
+    }
+    long footerIndex = footerLengthIndex - footerLength;
+    if (Log.DEBUG) LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
+    if (footerIndex < MAGIC.length || footerIndex >= footerLengthIndex) {
+      throw new RuntimeException("corrupted file: the footer index is not within the file");
+    }
+    f.seek(footerIndex);
+    return deserializeFooter(f);
 
   }
+  private CodecFactory codecFactory;
 
   private final List<BlockMetaData> blocks;
   private final FSDataInputStream f;
   private int currentBlock = 0;
-  private Set<String> paths = new HashSet<String>();
+  private Map<String, ColumnDescriptor> paths = new HashMap<String, ColumnDescriptor>();
   private long previousReadIndex = 0;
-  private final CompressionCodec codec;
+
 
   /**
    *
@@ -202,81 +267,80 @@ public class RedelmFileReader {
    * @param blocks the blocks to read
    * @param colums the columns to read (their path)
    * @param codecClassName the codec used to compress the blocks
+   * @throws IOException if the file can not be opened
    */
-  public RedelmFileReader(Configuration configuration, FSDataInputStream f, List<BlockMetaData> blocks, List<String[]> colums, String codecClassName) {
-    this.f = f;
+  public RedelmFileReader(Configuration configuration, Path filePath, List<BlockMetaData> blocks, List<ColumnDescriptor> columns) throws IOException {
+    FileSystem fs = FileSystem.get(configuration);
+    this.f = fs.open(filePath);
     this.blocks = blocks;
-    for (String[] path : colums) {
-      paths.add(Arrays.toString(path));
+    for (ColumnDescriptor col : columns) {
+      paths.put(Arrays.toString(col.getPath()), col);
     }
-    if (codecClassName == null) {
-      this.codec = null;
-    } else {
-      try {
-        Class<?> codecClass = Class.forName(codecClassName);
-        this.codec = (CompressionCodec)ReflectionUtils.newInstance(codecClass, configuration);
-      } catch (ClassNotFoundException e) {
-        throw new RuntimeException("Class " + codecClassName + " was not found", e);
-      }
-    }
+    this.codecFactory = new CodecFactory(configuration);
   }
 
   /**
    * reads all the columns requested in the next block
    * @return the block data for the next block
    * @throws IOException if an error occurs while reading
+   * @return how many records where read or 0 if end reached.
    */
-  public BlockData readColumns() throws IOException {
+  public PageReadStore readColumns() throws IOException {
     if (currentBlock == blocks.size()) {
       return null;
     }
-    List<ColumnData> result = new ArrayList<ColumnData>();
     BlockMetaData block = blocks.get(currentBlock);
-    LOG.info("starting reading block " + currentBlock);
-    long t0 = System.currentTimeMillis();
-    for (ColumnMetaData mc : block.getColumns()) {
+    if (block.getRowCount() == 0) {
+      throw new RuntimeException("Illegal row group of 0 rows");
+    }
+    ColumnChunkPageReadStore columnChunkPageReadStore = new ColumnChunkPageReadStore(block.getRowCount());
+    for (ColumnChunkMetaData mc : block.getColumns()) {
       String pathKey = Arrays.toString(mc.getPath());
-      if (paths.contains(pathKey)) {
-        byte[] repetitionLevels = read(pathKey + ".r", mc.getRepetitionStart(), mc.getRepetitionLength());
-        byte[] definitionLevels = read(pathKey + ".d", mc.getDefinitionStart(), mc.getDefinitionLength());
-        byte[] data = read(pathKey + ".data", mc.getDataStart(), mc.getDataLength());
-        result.add(new ColumnData(mc.getPath(), repetitionLevels, definitionLevels, data));
+      if (paths.containsKey(pathKey)) {
+        ColumnDescriptor columnDescriptor = paths.get(pathKey);
+        f.seek(mc.getFirstDataPage());
+        if (DEBUG) LOG.debug(f.getPos() + ": start column chunk " + Arrays.toString(mc.getPath()) + " " + mc.getType() + " count=" + mc.getValueCount());
+        BytesDecompressor decompressor = codecFactory.getDecompressor(mc.getCodec());
+        ColumnChunkPageReader columnChunkPageReader = new ColumnChunkPageReader(decompressor, mc.getValueCount());
+        long valuesCountReadSoFar = 0;
+        while (valuesCountReadSoFar < mc.getValueCount()) {
+          PageHeader pageHeader = readNextDataPageHeader();
+          columnChunkPageReader.addPage(
+              new Page(
+                  BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)),
+                  pageHeader.data_page.num_values,
+                  pageHeader.uncompressed_page_size
+                  ));
+          valuesCountReadSoFar += pageHeader.data_page.num_values;
+        }
+        columnChunkPageReadStore.addColumn(columnDescriptor, columnChunkPageReader);
       }
     }
-    long t1 = System.currentTimeMillis();
-    LOG.info("block data read in " + (t1 - t0) + " ms");
-
     ++currentBlock;
-    return new BlockData(block.getRecordCount(), result);
+    return columnChunkPageReadStore;
   }
 
-  private byte[] read(String name, long start, long length) throws IOException {
-    byte[] data = new byte[(int)length];
-    if (start != previousReadIndex) {
-      LOG.info("seeking to next column " + (start - previousReadIndex) + " bytes");
-    }
-    long t0 = System.currentTimeMillis();
-    f.readFully(start, data);
-    long t1 = System.currentTimeMillis();
-    long l = t1 - t0;
-    LOG.info("Read " + length + " bytes for column " + name + " in " + l + " ms" +  (l == 0 ? "" : " : " + (float)data.length*1000/l + " bytes/s"));
-    byte[] result;
-    if (codec == null) {
-      result = data;
-    } else {
-      Decompressor decompressor = CodecPool.getDecompressor(codec);
+  private PageHeader readNextDataPageHeader() throws IOException {
+    PageHeader pageHeader;
+    do {
+      long pos = f.getPos();
+      if (DEBUG) LOG.debug(pos + ": reading page");
       try {
-        // TODO make this streaming instead of reading into an array to decompress
-        CompressionInputStream cis = codec.createInputStream(new ByteArrayInputStream(data), decompressor);
-        ByteArrayOutputStream decompressed = new ByteArrayOutputStream();
-        IOUtils.copyBytes(cis, decompressed, 4096, false);
-        result = decompressed.toByteArray();
-      } finally {
-        CodecPool.returnDecompressor(decompressor);
+        pageHeader = parquetMetadataConverter.readPageHeader(f);
+        if (pageHeader.type != PageType.DATA_PAGE) {
+          if (DEBUG) LOG.debug("not a data page, skipping " + pageHeader.compressed_page_size);
+          f.skip(pageHeader.compressed_page_size);
+        }
+      } catch (IOException e) {
+        throw new IOException("could not read page header at position " + pos, e);
       }
-    }
-    previousReadIndex = start + length;
-    return result;
+    } while (pageHeader.type != PageType.DATA_PAGE);
+    return pageHeader;
+  }
+
+  public void close() throws IOException {
+    f.close();
+    this.codecFactory.release();
   }
 
 }
