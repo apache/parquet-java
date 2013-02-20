@@ -22,7 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import redelm.schema.MessageType;
+import parquet.schema.MessageType;
+
 
 /**
  * File level meta data (Schema, codec, ...)

@@ -15,7 +15,7 @@
  */
 package parquet.pig;
 
-import static redelm.Log.DEBUG;
+import static parquet.Log.DEBUG;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,13 +27,14 @@ import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
-import redelm.Log;
-import redelm.schema.GroupType;
-import redelm.schema.MessageType;
-import redelm.schema.PrimitiveType;
-import redelm.schema.PrimitiveType.PrimitiveTypeName;
-import redelm.schema.Type;
-import redelm.schema.Type.Repetition;
+import parquet.Log;
+import parquet.schema.GroupType;
+import parquet.schema.MessageType;
+import parquet.schema.PrimitiveType;
+import parquet.schema.Type;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.schema.Type.Repetition;
+
 
 /**
  *

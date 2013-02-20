@@ -25,14 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import redelm.Log;
-import redelm.data.Group;
-import redelm.data.GroupRecordConsumer;
-import redelm.data.GroupWriter;
-import redelm.data.simple.SimpleGroup;
-import redelm.data.simple.SimpleGroupFactory;
-import redelm.io.RecordMaterializer;
-import redelm.schema.MessageType;
 
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.Tuple;
@@ -41,10 +33,18 @@ import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 import org.junit.Test;
 
+import parquet.Log;
+import parquet.data.Group;
+import parquet.data.GroupRecordConsumer;
+import parquet.data.GroupWriter;
+import parquet.data.simple.SimpleGroup;
+import parquet.data.simple.SimpleGroupFactory;
+import parquet.io.RecordMaterializer;
 import parquet.pig.PigMetaData;
 import parquet.pig.PigSchemaConverter;
 import parquet.pig.TupleReadSupport;
 import parquet.pig.TupleWriteSupport;
+import parquet.schema.MessageType;
 
 public class TestTupleRecordConsumer {
   private static final Log logger = Log.getLog(TestTupleRecordConsumer.class);

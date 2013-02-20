@@ -15,7 +15,7 @@
  */
 package parquet.pig.convert;
 
-import static redelm.bytes.BytesUtils.UTF8;
+import static parquet.bytes.BytesUtils.UTF8;
 
 import java.util.AbstractMap;
 import java.util.AbstractSet;
@@ -26,14 +26,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import redelm.io.convert.GroupConverter;
-import redelm.io.convert.PrimitiveConverter;
-import redelm.schema.GroupType;
 
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
+
+import parquet.io.convert.GroupConverter;
+import parquet.io.convert.PrimitiveConverter;
+import parquet.schema.GroupType;
 
 final class MapConverter extends GroupConverter {
 

@@ -15,7 +15,7 @@
  */
 package parquet.hadoop;
 
-import static redelm.Log.DEBUG;
+import static parquet.Log.DEBUG;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -23,19 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import redelm.Log;
-import redelm.bytes.BytesInput;
-import redelm.column.ColumnDescriptor;
-import redelm.column.mem.MemColumnReadStore;
-import redelm.column.mem.MemPageStore;
-import redelm.column.mem.PageReadStore;
-import redelm.column.mem.PageWriter;
-import redelm.io.ColumnIOFactory;
-import redelm.io.MessageColumnIO;
-import redelm.parser.MessageTypeParser;
-import redelm.schema.GroupType;
-import redelm.schema.MessageType;
-import redelm.schema.Type;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -43,8 +30,21 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
+import parquet.Log;
+import parquet.bytes.BytesInput;
+import parquet.column.ColumnDescriptor;
+import parquet.column.mem.MemColumnReadStore;
+import parquet.column.mem.MemPageStore;
+import parquet.column.mem.PageReadStore;
+import parquet.column.mem.PageWriter;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
+import parquet.io.ColumnIOFactory;
+import parquet.io.MessageColumnIO;
+import parquet.parser.MessageTypeParser;
+import parquet.schema.GroupType;
+import parquet.schema.MessageType;
+import parquet.schema.Type;
 
 /**
  * Reads the records from a block of a RedElm file
@@ -67,7 +67,7 @@ public class RedelmRecordReader<T> extends RecordReader<Void, T> {
   private long total;
   private int current = 0;
   private RedelmFileReader reader;
-  private redelm.io.RecordReader<T> recordReader;
+  private parquet.io.RecordReader<T> recordReader;
   private ReadSupport<T> readSupport;
 
   private long totalTimeSpentReadingBytes;

@@ -17,8 +17,9 @@ package parquet.hadoop;
 
 import java.util.Map;
 
-import redelm.io.RecordConsumer;
-import redelm.schema.MessageType;
+import parquet.io.RecordConsumer;
+import parquet.schema.MessageType;
+
 
 /**
  * Abstraction to use with {@link RedelmOutputFormat} to convert incoming records

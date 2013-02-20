@@ -17,10 +17,6 @@ package parquet.pig;
 
 import java.util.Map;
 
-import redelm.Log;
-import redelm.io.RecordMaterializer;
-import redelm.parser.MessageTypeParser;
-import redelm.schema.MessageType;
 
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
@@ -28,8 +24,12 @@ import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
+import parquet.Log;
 import parquet.hadoop.ReadSupport;
+import parquet.io.RecordMaterializer;
+import parquet.parser.MessageTypeParser;
 import parquet.pig.converter.MessageConverter;
+import parquet.schema.MessageType;
 
 /**
  * Read support for Pig Tuple

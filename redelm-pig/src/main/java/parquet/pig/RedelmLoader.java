@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-import redelm.Log;
 
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
@@ -35,6 +34,7 @@ import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
+import parquet.Log;
 import parquet.hadoop.Footer;
 import parquet.hadoop.RedelmInputFormat;
 import parquet.hadoop.metadata.BlockMetaData;

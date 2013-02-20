@@ -15,12 +15,13 @@
  */
 package parquet.pig.converter;
 
-import redelm.io.RecordMaterializer;
-import redelm.schema.MessageType;
 
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
+
+import parquet.io.RecordMaterializer;
+import parquet.schema.MessageType;
 
 public class MessageConverter extends TupleConverter {
 

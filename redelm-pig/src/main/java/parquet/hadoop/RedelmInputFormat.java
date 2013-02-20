@@ -22,9 +22,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import redelm.Log;
-import redelm.parser.MessageTypeParser;
-import redelm.schema.MessageType;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
@@ -36,10 +33,13 @@ import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
+import parquet.Log;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.RedelmMetaData;
+import parquet.parser.MessageTypeParser;
 import parquet.pig.PigSchemaConverter;
+import parquet.schema.MessageType;
 
 /**
  * The input format to read a RedElm file

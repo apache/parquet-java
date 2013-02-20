@@ -27,12 +27,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import redelm.schema.GroupType;
-import redelm.schema.MessageType;
-import redelm.schema.PrimitiveType;
-import redelm.schema.PrimitiveType.PrimitiveTypeName;
-import redelm.schema.Type.Repetition;
-import redelm.schema.TypeVisitor;
 
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
@@ -53,6 +47,12 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.RedelmMetaData;
+import parquet.schema.GroupType;
+import parquet.schema.MessageType;
+import parquet.schema.PrimitiveType;
+import parquet.schema.TypeVisitor;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.schema.Type.Repetition;
 
 public class ParquetMetadataConverter {
 
@@ -85,7 +85,7 @@ public class ParquetMetadataConverter {
     return result;
   }
 
-  private void addToList(final List<SchemaElement> result, redelm.schema.Type field) {
+  private void addToList(final List<SchemaElement> result, parquet.schema.Type field) {
     field.accept(new TypeVisitor() {
       @Override
       public void visit(PrimitiveType primitiveType) {
@@ -121,7 +121,7 @@ public class ParquetMetadataConverter {
           GroupType groupType, SchemaElement element) {
         element.setNum_children(groupType.getFieldCount());
         result.add(element);
-        for (redelm.schema.Type field : groupType.getFields()) {
+        for (parquet.schema.Type field : groupType.getFields()) {
           addToList(result, field);
         }
       }
@@ -255,8 +255,8 @@ public class ParquetMetadataConverter {
     return new MessageType(root.getName(), convertChildren(iterator, root.getNum_children()));
   }
 
-  private redelm.schema.Type[] convertChildren(Iterator<SchemaElement> schema, int childrenCount) {
-    redelm.schema.Type[] result = new redelm.schema.Type[childrenCount];
+  private parquet.schema.Type[] convertChildren(Iterator<SchemaElement> schema, int childrenCount) {
+    parquet.schema.Type[] result = new parquet.schema.Type[childrenCount];
     for (int i = 0; i < result.length; i++) {
       SchemaElement schemaElement = schema.next();
       if ((!schemaElement.isSetType() && !schemaElement.isSetNum_children())

@@ -15,15 +15,11 @@
  */
 package parquet.pig.convert;
 
-import static redelm.bytes.BytesUtils.UTF8;
+import static parquet.bytes.BytesUtils.UTF8;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import redelm.io.convert.GroupConverter;
-import redelm.io.convert.PrimitiveConverter;
-import redelm.schema.GroupType;
-import redelm.schema.Type;
 
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataByteArray;
@@ -35,7 +31,11 @@ import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
+import parquet.io.convert.GroupConverter;
+import parquet.io.convert.PrimitiveConverter;
 import parquet.pig.TupleConversionException;
+import parquet.schema.GroupType;
+import parquet.schema.Type;
 
 public class TupleConverter extends GroupConverter {
 

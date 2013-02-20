@@ -20,8 +20,6 @@ import java.io.UnsupportedEncodingException;
 import scala.annotation.target.field;
 import scala.collection.mutable.StringBuilder;
 
-import redelm.schema.GroupType;
-import redelm.schema.Type;
 
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataType;
@@ -32,6 +30,8 @@ import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
 import parquet.pig.TupleConversionException;
+import parquet.schema.GroupType;
+import parquet.schema.Type;
 
 public class TupleConverter extends Converter {
 

@@ -18,16 +18,16 @@ package parquet.hadoop;
 import java.io.IOException;
 import java.util.Map;
 
-import redelm.Log;
-import redelm.column.mem.MemColumnWriteStore;
-import redelm.io.ColumnIOFactory;
-import redelm.io.MessageColumnIO;
-import redelm.schema.MessageType;
 
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
+import parquet.Log;
+import parquet.column.mem.MemColumnWriteStore;
 import parquet.hadoop.CodecFactory.BytesCompressor;
+import parquet.io.ColumnIOFactory;
+import parquet.io.MessageColumnIO;
+import parquet.schema.MessageType;
 
 /**
  * Writes records to a Redelm file

@@ -15,13 +15,11 @@
  */
 package parquet.hadoop;
 
-import static redelm.Log.INFO;
+import static parquet.Log.INFO;
 
 import java.io.IOException;
 import java.util.Map;
 
-import redelm.Log;
-import redelm.schema.MessageType;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -33,7 +31,9 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
+import parquet.Log;
 import parquet.hadoop.metadata.CompressionCodecName;
+import parquet.schema.MessageType;
 
 /**
  * OutputFormat to write to a RedElm file

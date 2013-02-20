@@ -15,7 +15,7 @@
  */
 package parquet.pig;
 
-import static redelm.schema.Type.Repetition.REPEATED;
+import static parquet.schema.Type.Repetition.REPEATED;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -23,11 +23,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import redelm.Log;
-import redelm.io.RecordMaterializer;
-import redelm.schema.GroupType;
-import redelm.schema.MessageType;
-import redelm.schema.Type;
 
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataByteArray;
@@ -38,6 +33,12 @@ import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
+
+import parquet.Log;
+import parquet.io.RecordMaterializer;
+import parquet.schema.GroupType;
+import parquet.schema.MessageType;
+import parquet.schema.Type;
 
 /**
  *

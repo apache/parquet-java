@@ -24,24 +24,24 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-import redelm.Log;
-import redelm.bytes.BytesInput;
-import redelm.column.ColumnDescriptor;
-import redelm.column.mem.Page;
-import redelm.column.mem.PageReadStore;
-import redelm.column.mem.PageReader;
-import redelm.parser.MessageTypeParser;
-import redelm.schema.MessageType;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
 
+import parquet.Log;
+import parquet.bytes.BytesInput;
+import parquet.column.ColumnDescriptor;
+import parquet.column.mem.Page;
+import parquet.column.mem.PageReadStore;
+import parquet.column.mem.PageReader;
 import parquet.hadoop.PrintFooter;
 import parquet.hadoop.RedelmFileReader;
 import parquet.hadoop.RedelmFileWriter;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.RedelmMetaData;
+import parquet.parser.MessageTypeParser;
+import parquet.schema.MessageType;
 
 public class TestRedelmFileWriter {
   private static final Log LOG = Log.getLog(TestRedelmFileWriter.class);

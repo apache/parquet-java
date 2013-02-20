@@ -21,13 +21,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import parquet.Log;
+import parquet.column.ColumnDescriptor;
+import parquet.column.mem.Page;
+import parquet.column.mem.PageReadStore;
+import parquet.column.mem.PageReader;
 import parquet.hadoop.CodecFactory.BytesDecompressor;
 
-import redelm.Log;
-import redelm.column.ColumnDescriptor;
-import redelm.column.mem.Page;
-import redelm.column.mem.PageReadStore;
-import redelm.column.mem.PageReader;
 
 public class ColumnChunkPageReadStore implements PageReadStore {
   private static final Log LOG = Log.getLog(ColumnChunkPageReadStore.class);

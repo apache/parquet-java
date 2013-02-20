@@ -22,7 +22,6 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-import redelm.bytes.BytesInput;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CodecPool;
@@ -32,6 +31,7 @@ import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.util.ReflectionUtils;
 
+import parquet.bytes.BytesInput;
 import parquet.hadoop.metadata.CompressionCodecName;
 
 public class CodecFactory {

@@ -21,19 +21,20 @@ import static parquet.pig.GenerateIntTestFile.writeToFile;
 import java.io.File;
 import java.io.IOException;
 
-import redelm.Log;
-import redelm.column.mem.MemColumnWriteStore;
-import redelm.column.mem.MemPageStore;
-import redelm.io.ColumnIOFactory;
-import redelm.io.MessageColumnIO;
-import redelm.io.RecordConsumer;
-import redelm.schema.MessageType;
-import redelm.schema.PrimitiveType;
-import redelm.schema.PrimitiveType.PrimitiveTypeName;
-import redelm.schema.Type.Repetition;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+
+import parquet.Log;
+import parquet.column.mem.MemColumnWriteStore;
+import parquet.column.mem.MemPageStore;
+import parquet.io.ColumnIOFactory;
+import parquet.io.MessageColumnIO;
+import parquet.io.RecordConsumer;
+import parquet.schema.MessageType;
+import parquet.schema.PrimitiveType;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.schema.Type.Repetition;
 
 public class GenerateTPCH {
   private static final Log LOG = Log.getLog(GenerateTPCH.class);

@@ -15,8 +15,8 @@
  */
 package parquet.hadoop;
 
-import static redelm.Log.DEBUG;
-import static redelm.Log.INFO;
+import static parquet.Log.DEBUG;
+import static parquet.Log.INFO;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -25,17 +25,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import redelm.Log;
-import redelm.bytes.BytesInput;
-import redelm.bytes.BytesUtils;
-import redelm.column.ColumnDescriptor;
-import redelm.schema.MessageType;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
+import parquet.Log;
+import parquet.bytes.BytesInput;
+import parquet.bytes.BytesUtils;
+import parquet.column.ColumnDescriptor;
 import parquet.format.DataPageHeader;
 import parquet.format.Encoding;
 import parquet.format.PageHeader;
@@ -46,6 +45,7 @@ import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.RedelmMetaData;
+import parquet.schema.MessageType;
 
 /**
  * Writes a RedElm file

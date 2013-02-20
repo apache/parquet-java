@@ -20,18 +20,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import redelm.bytes.BytesInput;
-import redelm.bytes.CapacityByteArrayOutputStream;
-import redelm.column.ColumnDescriptor;
-import redelm.column.mem.PageWriteStore;
-import redelm.column.mem.PageWriter;
-import redelm.schema.MessageType;
+import parquet.bytes.BytesInput;
+import parquet.bytes.CapacityByteArrayOutputStream;
+import parquet.column.ColumnDescriptor;
+import parquet.column.mem.PageWriteStore;
+import parquet.column.mem.PageWriter;
 import parquet.format.DataPageHeader;
 import parquet.format.Encoding;
 import parquet.format.PageHeader;
 import parquet.format.PageType;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.CodecFactory.BytesCompressor;
+import parquet.schema.MessageType;
 
 public class ColumnChunkPageWriteStore implements PageWriteStore {
 

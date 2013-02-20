@@ -15,7 +15,7 @@
  */
 package parquet.pig;
 
-import redelm.RedelmRuntimeException;
+import parquet.RedelmRuntimeException;
 
 public class TupleConversionException extends RedelmRuntimeException {
   private static final long serialVersionUID = 1L;

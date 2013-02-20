@@ -17,7 +17,6 @@ package parquet.pig.converter;
 
 import scala.collection.mutable.StringBuilder;
 
-import redelm.schema.GroupType;
 
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.NonSpillableDataBag;
@@ -25,6 +24,7 @@ import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
 import parquet.pig.TupleConversionException;
+import parquet.schema.GroupType;
 
 public class BagConverter extends Converter {
 

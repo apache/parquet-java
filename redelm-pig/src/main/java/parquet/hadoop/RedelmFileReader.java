@@ -15,10 +15,10 @@
  */
 package parquet.hadoop;
 
+import static parquet.Log.DEBUG;
+import static parquet.bytes.BytesUtils.readIntLittleEndian;
 import static parquet.hadoop.RedelmFileWriter.MAGIC;
 import static parquet.hadoop.RedelmFileWriter.RED_ELM_SUMMARY;
-import static redelm.Log.DEBUG;
-import static redelm.bytes.BytesUtils.readIntLittleEndian;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,11 +35,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import redelm.Log;
-import redelm.bytes.BytesInput;
-import redelm.column.ColumnDescriptor;
-import redelm.column.mem.Page;
-import redelm.column.mem.PageReadStore;
+import parquet.Log;
+import parquet.bytes.BytesInput;
+import parquet.column.ColumnDescriptor;
+import parquet.column.mem.Page;
+import parquet.column.mem.PageReadStore;
 import parquet.format.PageHeader;
 import parquet.format.PageType;
 import parquet.format.converter.ParquetMetadataConverter;

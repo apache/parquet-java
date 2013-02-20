@@ -18,7 +18,8 @@ package parquet.hadoop.metadata;
 import java.io.Serializable;
 import java.util.Arrays;
 
-import redelm.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
+
 
 /**
  * Column meta data for a block stored in the file footer and passed in the InputSplit

@@ -23,9 +23,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import redelm.io.RecordMaterializer;
-import redelm.schema.MessageType;
-import redelm.schema.PrimitiveType.PrimitiveTypeName;
 
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
@@ -40,6 +37,9 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
+import parquet.io.RecordMaterializer;
+import parquet.schema.MessageType;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 public class TestInputFormat {
 

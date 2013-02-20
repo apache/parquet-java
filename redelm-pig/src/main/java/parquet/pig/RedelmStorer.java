@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import redelm.schema.MessageType;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
@@ -39,6 +38,7 @@ import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
 import parquet.hadoop.RedelmOutputFormat;
+import parquet.schema.MessageType;
 
 /**
  * A pig storer implementation for the RedElm file format.

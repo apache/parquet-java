@@ -17,11 +17,12 @@ package parquet.pig.converter;
 
 import java.io.UnsupportedEncodingException;
 
-import redelm.schema.GroupType;
 
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
+
+import parquet.schema.GroupType;
 
 public class MapKeyValueConverter extends Converter {
   private TupleConverter value;

@@ -18,13 +18,13 @@ package parquet.pig.converter;
 import java.util.HashMap;
 import java.util.Map;
 
-import redelm.schema.GroupType;
 
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
 import parquet.pig.TupleConversionException;
+import parquet.schema.GroupType;
 
 public class MapConverter extends Converter {
 

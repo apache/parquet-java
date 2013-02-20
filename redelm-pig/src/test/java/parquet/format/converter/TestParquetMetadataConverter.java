@@ -22,15 +22,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 
-import redelm.data.simple.example.Paper;
-import redelm.schema.MessageType;
 
 import org.junit.Test;
 
+import parquet.data.simple.example.Paper;
 import parquet.format.PageHeader;
 import parquet.format.PageType;
 import parquet.format.SchemaElement;
 import parquet.format.converter.ParquetMetadataConverter;
+import parquet.schema.MessageType;
 
 public class TestParquetMetadataConverter {
 

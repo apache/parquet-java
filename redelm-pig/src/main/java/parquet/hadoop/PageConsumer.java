@@ -15,7 +15,7 @@
  */
 package parquet.hadoop;
 
-import redelm.bytes.BytesInput;
+import parquet.bytes.BytesInput;
 
 abstract public class PageConsumer {
 
