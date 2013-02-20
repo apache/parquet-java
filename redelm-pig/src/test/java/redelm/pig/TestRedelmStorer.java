@@ -33,6 +33,7 @@ import org.apache.pig.backend.executionengine.ExecJob.JOB_STATUS;
 import org.apache.pig.builtin.mock.Storage;
 import org.apache.pig.builtin.mock.Storage.Data;
 import org.apache.pig.data.Tuple;
+import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.junit.Test;
 
 import com.google.common.base.Function;
@@ -152,8 +153,9 @@ public class TestRedelmStorer {
       }
 
       List<Tuple> result = data.get("out");
-
       assertEquals(list, result);
+      final Schema schema = data.getSchema("out");
+      assertEquals("{a:chararray, b:{t:(c:chararray, d:chararray)}}".replaceAll(" ", ""), schema.toString().replaceAll(" ", ""));
     }
 
     {

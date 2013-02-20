@@ -56,10 +56,10 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
 
   private static final Log LOG = Log.getLog(RedelmInputFormat.class);
 
-  private static final PigSchemaConverter schemaConverter = new PigSchemaConverter();
-
   private String requestedSchema;
   private Class<?> readSupportClass;
+
+  private List<Footer> footers;
 
   /**
    * constructor used when this InputFormat in wrapped in another one (In Pig for example)
@@ -163,12 +163,9 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
   @Override
   public List<InputSplit> getSplits(JobContext jobContext) throws IOException {
     List<InputSplit> splits = new ArrayList<InputSplit>();
-    List<FileStatus> statuses = super.listStatus(jobContext);
-    LOG.debug("reading " + statuses.size() + " files");
     Configuration configuration = jobContext.getConfiguration();
     FileSystem fs = FileSystem.get(configuration);
-    // TODO use summary files
-    List<Footer> footers = RedelmFileReader.readAllFootersInParallel(configuration, statuses);
+    List<Footer> footers = getFooters(jobContext);
     for (Footer footer : footers) {
       LOG.debug(footer.getFile());
       try {
@@ -192,6 +189,16 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
       }
     }
     return splits;
+  }
+
+  public List<Footer> getFooters(JobContext jobContext) throws IOException {
+    if (footers == null) {
+      Configuration configuration = jobContext.getConfiguration();
+      List<FileStatus> statuses = super.listStatus(jobContext);
+      LOG.debug("reading " + statuses.size() + " files");
+      footers = RedelmFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses);
+    }
+    return footers;
   }
 
 }
