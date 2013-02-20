@@ -48,13 +48,7 @@
     </repository>
   </distributionManagement>
 
-  <!-- TODO: remove twitter-maven-repository eventually -->
   <repositories>
-    <repository>
-      <id>twitter-maven-repository</id>
-      <name>Twitter's public artifact repository</name>
-      <url>http://maven.twttr.com/</url>
-    </repository>
     <repository>
       <id>sonatype-nexus-snapshots</id>
       <url>https://oss.sonatype.org/content/repositories/snapshots</url>
@@ -67,14 +61,6 @@
      </repository>
   </repositories>
 
-  <!-- this is needed for maven-finagle-thrift-plugin, would like to remove this -->
-  <pluginRepositories>
-    <pluginRepository>
-      <id>Twitter public Maven repo</id>
-      <url>http://maven.twttr.com</url>
-    </pluginRepository>
-  </pluginRepositories>
-
   <properties>
     <maven.compiler.source>1.6</maven.compiler.source>
     <maven.compiler.target>1.6</maven.compiler.target>
@@ -83,14 +69,12 @@
 
   <build>
     <plugins>
+      <!-- thrift -->
       <plugin>
-        <groupId>com.twitter</groupId>
-        <artifactId>maven-finagle-thrift-plugin</artifactId>
-        <version>0.0.9</version>
+        <groupId>org.apache.thrift.tools</groupId>
+        <artifactId>maven-thrift-plugin</artifactId>
+        <version>0.1.10</version>
         <configuration>
-          <thriftGenerators>
-            <thriftGenerator>java</thriftGenerator>
-          </thriftGenerators>
           <thriftSourceRoot>src/thrift</thriftSourceRoot>
         </configuration>
         <executions>
@@ -99,13 +83,6 @@
             <phase>generate-sources</phase>
             <goals>
               <goal>compile</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>thrift-test-sources</id>
-            <phase>generate-test-sources</phase>
-            <goals>
-              <goal>testCompile</goal>
             </goals>
           </execution>
         </executions>
@@ -122,13 +99,8 @@
     <dependency>
       <groupId>org.apache.thrift</groupId>
       <artifactId>libthrift</artifactId>
-      <version>0.5.0</version>
+      <version>0.7.0</version>
     </dependency>
-    <dependency>
-      <groupId>com.twitter</groupId>
-      <artifactId>scrooge-runtime</artifactId>
-      <version>3.0.3</version>
-   </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
