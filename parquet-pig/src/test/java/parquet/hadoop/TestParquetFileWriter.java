@@ -15,15 +15,14 @@
  */
 package parquet.hadoop;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
-
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -35,9 +34,6 @@ import parquet.column.ColumnDescriptor;
 import parquet.column.mem.Page;
 import parquet.column.mem.PageReadStore;
 import parquet.column.mem.PageReader;
-import parquet.hadoop.PrintFooter;
-import parquet.hadoop.ParquetFileReader;
-import parquet.hadoop.ParquetFileWriter;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.parser.MessageTypeParser;

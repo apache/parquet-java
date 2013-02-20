@@ -21,7 +21,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 import parquet.Log;
-import parquet.bytes.BytesUtils;
 import parquet.bytes.LittleEndianDataInputStream;
 
 
@@ -48,7 +47,6 @@ public class PlainColumnReader extends PrimitiveColumnReader {
   @Override
   public byte[] readBytes() {
     try {
-//      byte[] value = new byte[BytesUtils.readUnsignedVarInt(in)];
       byte[] value = new byte[in.readInt()];
       in.readFully(value);
       return value;

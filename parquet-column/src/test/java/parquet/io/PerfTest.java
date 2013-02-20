@@ -24,16 +24,9 @@ import static parquet.data.simple.example.Paper.schema3;
 import java.util.logging.Level;
 
 import parquet.Log;
-import parquet.column.mem.MemColumnReadStore;
 import parquet.column.mem.MemColumnWriteStore;
 import parquet.column.mem.MemPageStore;
 import parquet.data.GroupWriter;
-import parquet.io.ColumnIOFactory;
-import parquet.io.MessageColumnIO;
-import parquet.io.RecordMaterializer;
-import parquet.io.RecordReader;
-import parquet.io.RecordReaderCompiler;
-import parquet.io.RecordReaderImplementation;
 import parquet.schema.MessageType;
 
 

@@ -27,7 +27,6 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
   private final int maxRep;
   private final int maxDef;
 
-  //TODO see if we actually need the maxRep and maxDef here
   public ColumnDescriptor(String[] path, PrimitiveTypeName type, int maxRep, int maxDef) {
     super();
     this.path = path;

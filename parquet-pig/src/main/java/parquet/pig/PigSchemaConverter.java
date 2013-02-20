@@ -20,8 +20,6 @@ import static parquet.Log.DEBUG;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.sun.org.apache.xml.internal.resolver.helpers.Debug;
-
 import org.apache.pig.data.DataType;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
@@ -31,8 +29,8 @@ import parquet.Log;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType;
-import parquet.schema.Type;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.schema.Type;
 import parquet.schema.Type.Repetition;
 
 

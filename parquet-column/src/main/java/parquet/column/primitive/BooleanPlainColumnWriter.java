@@ -17,7 +17,6 @@ package parquet.column.primitive;
 
 import static parquet.column.primitive.BitPacking.getBitPackingWriter;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import parquet.Log;

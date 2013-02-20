@@ -17,10 +17,7 @@ package parquet.io;
 
 import static org.junit.Assert.assertEquals;
 
-import java.math.BigInteger;
 import java.util.Deque;
-
-import parquet.io.RecordMaterializer;
 
 final class ExpectationValidatingRecordConsumer extends
     RecordMaterializer<Void> {

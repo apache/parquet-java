@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
@@ -40,10 +39,6 @@ import parquet.data.GroupWriter;
 import parquet.data.simple.SimpleGroup;
 import parquet.data.simple.SimpleGroupFactory;
 import parquet.io.RecordMaterializer;
-import parquet.pig.PigMetaData;
-import parquet.pig.PigSchemaConverter;
-import parquet.pig.TupleReadSupport;
-import parquet.pig.TupleWriteSupport;
 import parquet.schema.MessageType;
 
 public class TestTupleRecordConsumer {

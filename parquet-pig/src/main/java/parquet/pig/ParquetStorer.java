@@ -16,11 +16,9 @@
 package parquet.pig;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;

@@ -16,7 +16,6 @@
 package parquet.hadoop.metadata;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.List;

@@ -15,19 +15,15 @@
  */
 package parquet.io;
 
-
 import java.util.Arrays;
 import java.util.List;
 
 import parquet.Log;
-import parquet.column.ColumnReadStore;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
 import parquet.column.mem.MemColumnReadStore;
 import parquet.column.mem.PageReadStore;
 import parquet.schema.MessageType;
-
-
 
 public class MessageColumnIO extends GroupColumnIO {
   private static final Log logger = Log.getLog(MessageColumnIO.class);

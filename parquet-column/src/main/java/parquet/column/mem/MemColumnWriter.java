@@ -22,7 +22,6 @@ import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
 import parquet.column.primitive.BitPackingColumnWriter;
-import parquet.column.primitive.BooleanPlainColumnReader;
 import parquet.column.primitive.BooleanPlainColumnWriter;
 import parquet.column.primitive.BoundedColumnFactory;
 import parquet.column.primitive.PlainColumnWriter;
@@ -74,8 +73,7 @@ final class MemColumnWriter implements ColumnWriter {
     try {
       pageWriter.writePage(BytesInput.fromSequence(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()), valueCount);
     } catch (IOException e) {
-      // TODO: cleanup
-      throw new RuntimeException(e);
+      throw new ParquetEncodingException("could not write page for " + path, e);
     }
     repetitionLevelColumn.reset();
     definitionLevelColumn.reset();

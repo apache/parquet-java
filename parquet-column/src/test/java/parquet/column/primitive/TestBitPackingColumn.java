@@ -20,11 +20,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 
-import org.junit.Assert;
 import org.junit.Test;
-
-import parquet.column.primitive.BitPackingColumnReader;
-import parquet.column.primitive.BitPackingColumnWriter;
 
 public class TestBitPackingColumn {
 

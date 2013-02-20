@@ -18,7 +18,6 @@ package parquet.hadoop;
 import java.io.File;
 import java.io.IOException;
 
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
@@ -26,10 +25,8 @@ import org.junit.Test;
 import parquet.Log;
 import parquet.column.mem.PageReadStore;
 import parquet.data.Group;
-import parquet.data.GroupFactory;
 import parquet.data.GroupRecordConsumer;
 import parquet.data.simple.SimpleGroupFactory;
-import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;

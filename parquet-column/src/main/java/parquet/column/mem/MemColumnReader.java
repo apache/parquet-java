@@ -24,11 +24,8 @@ import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnReader;
 import parquet.column.primitive.BitPackingColumnReader;
 import parquet.column.primitive.BooleanPlainColumnReader;
-import parquet.column.primitive.BooleanPlainColumnWriter;
 import parquet.column.primitive.BoundedColumnFactory;
-import parquet.column.primitive.DevNullColumnReader;
 import parquet.column.primitive.PlainColumnReader;
-import parquet.column.primitive.PlainColumnWriter;
 import parquet.column.primitive.PrimitiveColumnReader;
 
 
@@ -170,8 +167,7 @@ abstract class MemColumnReader implements ColumnReader {
         next = definitionLevelColumn.initFromPage(pageValueCount, bytes, next);
         dataColumn.initFromPage(pageValueCount, bytes, next);
       } catch (IOException e) {
-        // TODO: clean that up
-        throw new RuntimeException("can not happen", e);
+        throw new ParquetDecodingException("could not read page " + page + " in col " + path, e);
       }
     }
     read();

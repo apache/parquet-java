@@ -23,12 +23,6 @@ import static parquet.data.simple.example.Paper.r2;
 import static parquet.data.simple.example.Paper.schema;
 import static parquet.data.simple.example.Paper.schema2;
 
-
-import java.io.DataOutput;
-import java.io.IOException;
-
-import java.math.BigInteger;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,11 +33,8 @@ import org.junit.Test;
 
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
-import parquet.column.ColumnReadStore;
-import parquet.column.ColumnReader;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
-import parquet.column.mem.MemColumnReadStore;
 import parquet.column.mem.MemColumnWriteStore;
 import parquet.column.mem.MemPageStore;
 import parquet.column.mem.PageReadStore;
@@ -51,13 +42,6 @@ import parquet.data.Group;
 import parquet.data.GroupRecordConsumer;
 import parquet.data.GroupWriter;
 import parquet.data.simple.SimpleGroupFactory;
-import parquet.io.ColumnIOFactory;
-import parquet.io.MessageColumnIO;
-import parquet.io.PrimitiveColumnIO;
-import parquet.io.RecordConsumerLoggingWrapper;
-import parquet.io.RecordMaterializer;
-import parquet.io.RecordReader;
-import parquet.io.RecordReaderImplementation;
 import parquet.schema.MessageType;
 
 
