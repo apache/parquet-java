@@ -36,21 +36,21 @@ import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.junit.Test;
 
-import parquet.pig.RedelmLoader;
-import parquet.pig.RedelmStorer;
+import parquet.pig.ParquetLoader;
+import parquet.pig.ParquetStorer;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
 
-public class TestRedelmStorer {
+public class TestParquetStorer {
 
   @Test
   public void testStorer() throws ExecException, Exception {
     String out = "target/out";
     int rows = 1000;
     Properties props = new Properties();
-    props.setProperty("redelm.compression", "uncompressed");
-    props.setProperty("redelm.page.size", "1000");
+    props.setProperty("parquet.compression", "uncompressed");
+    props.setProperty("parquet.page.size", "1000");
     PigServer pigServer = new PigServer(ExecType.LOCAL, props);
     Data data = Storage.resetData(pigServer);
     Collection<Tuple> list = new ArrayList<Tuple>();
@@ -61,12 +61,12 @@ public class TestRedelmStorer {
     pigServer.setBatchOn();
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
     pigServer.deleteFile(out);
-    pigServer.registerQuery("Store A into '"+out+"' using "+RedelmStorer.class.getName()+"();");
+    pigServer.registerQuery("Store A into '"+out+"' using "+ParquetStorer.class.getName()+"();");
     if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
       throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
     }
 
-    pigServer.registerQuery("B = LOAD '"+out+"' USING "+RedelmLoader.class.getName()+"();");
+    pigServer.registerQuery("B = LOAD '"+out+"' USING "+ParquetLoader.class.getName()+"();");
     pigServer.registerQuery("Store B into 'out' using mock.Storage();");
     if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
       throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
@@ -87,8 +87,8 @@ public class TestRedelmStorer {
     String out = "target/out";
     int rows = 1000;
     Properties props = new Properties();
-    props.setProperty("redelm.compression", "gzip");
-    props.setProperty("redelm.page.size", "1000");
+    props.setProperty("parquet.compression", "gzip");
+    props.setProperty("parquet.page.size", "1000");
     PigServer pigServer = new PigServer(ExecType.LOCAL, props);
     Data data = Storage.resetData(pigServer);
     Collection<Tuple> list = new ArrayList<Tuple>();
@@ -99,12 +99,12 @@ public class TestRedelmStorer {
     pigServer.setBatchOn();
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
     pigServer.deleteFile(out);
-    pigServer.registerQuery("Store A into '"+out+"' using "+RedelmStorer.class.getName()+"();");
+    pigServer.registerQuery("Store A into '"+out+"' using "+ParquetStorer.class.getName()+"();");
     if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
       throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
     }
 
-    pigServer.registerQuery("B = LOAD '"+out+"' USING "+RedelmLoader.class.getName()+"();");
+    pigServer.registerQuery("B = LOAD '"+out+"' USING "+ParquetLoader.class.getName()+"();");
     pigServer.registerQuery("Store B into 'out' using mock.Storage();");
     if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
       throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
@@ -143,13 +143,13 @@ public class TestRedelmStorer {
     pigServer.setBatchOn();
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
     pigServer.deleteFile(out);
-    pigServer.registerQuery("Store A into '"+out+"' using "+RedelmStorer.class.getName()+"();");
+    pigServer.registerQuery("Store A into '"+out+"' using "+ParquetStorer.class.getName()+"();");
     if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
       throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
     }
 
     {
-      pigServer.registerQuery("B = LOAD '"+out+"' USING "+RedelmLoader.class.getName()+"();");
+      pigServer.registerQuery("B = LOAD '"+out+"' USING "+ParquetLoader.class.getName()+"();");
       pigServer.registerQuery("Store B into 'out' using mock.Storage();");
       if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
         throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
@@ -162,7 +162,7 @@ public class TestRedelmStorer {
     }
 
     {
-      pigServer.registerQuery("C = LOAD '"+out+"' USING "+RedelmLoader.class.getName()+"('a:chararray');");
+      pigServer.registerQuery("C = LOAD '"+out+"' USING "+ParquetLoader.class.getName()+"('a:chararray');");
       pigServer.registerQuery("Store C into 'out2' using mock.Storage();");
       if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
         throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());

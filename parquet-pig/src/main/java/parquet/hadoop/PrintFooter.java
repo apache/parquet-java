@@ -15,13 +15,12 @@
  */
 package parquet.hadoop;
 
-import static parquet.hadoop.RedelmFileWriter.RED_ELM_SUMMARY;
+import static parquet.hadoop.ParquetFileWriter.PARQUET_SUMMARY;
 
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +32,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingDeque;
 
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -43,7 +41,7 @@ import org.apache.hadoop.fs.PathFilter;
 import parquet.column.ColumnDescriptor;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
-import parquet.hadoop.metadata.RedelmMetaData;
+import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.schema.MessageType;
 
 /**
@@ -63,13 +61,13 @@ public class PrintFooter {
 
     final FileSystem fs = path.getFileSystem(configuration);
     FileStatus fileStatus = fs.getFileStatus(path);
-    Path summary = new Path(fileStatus.getPath(), RED_ELM_SUMMARY);
+    Path summary = new Path(fileStatus.getPath(), PARQUET_SUMMARY);
     if (fileStatus.isDir() && fs.exists(summary)) {
       System.out.println("reading summary file");
       FileStatus summaryStatus = fs.getFileStatus(summary);
-      List<Footer> readSummaryFile = RedelmFileReader.readSummaryFile(configuration, summaryStatus);
+      List<Footer> readSummaryFile = ParquetFileReader.readSummaryFile(configuration, summaryStatus);
       for (Footer footer : readSummaryFile) {
-        add(footer.getRedelmMetaData());
+        add(footer.getParquetMetadata());
       }
     } else {
       List<FileStatus> statuses;
@@ -90,13 +88,13 @@ public class PrintFooter {
       ExecutorService threadPool = Executors.newFixedThreadPool(5);
       try {
         long t0 = System.currentTimeMillis();
-        Deque<Future<RedelmMetaData>> footers = new LinkedBlockingDeque<Future<RedelmMetaData>>();
+        Deque<Future<ParquetMetadata>> footers = new LinkedBlockingDeque<Future<ParquetMetadata>>();
         for (final FileStatus currentFile : statuses) {
-          footers.add(threadPool.submit(new Callable<RedelmMetaData>() {
+          footers.add(threadPool.submit(new Callable<ParquetMetadata>() {
             @Override
-            public RedelmMetaData call() throws Exception {
+            public ParquetMetadata call() throws Exception {
               try {
-                RedelmMetaData footer = RedelmFileReader.readFooter(configuration, currentFile);
+                ParquetMetadata footer = ParquetFileReader.readFooter(configuration, currentFile);
                 return footer;
               } catch (Exception e) {
                 throw new RuntimeException("could not read footer", e);
@@ -116,12 +114,12 @@ public class PrintFooter {
           System.out.print('\b');
         }
         while (!footers.isEmpty()) {
-          Future<RedelmMetaData> futureFooter = footers.removeFirst();
+          Future<ParquetMetadata> futureFooter = footers.removeFirst();
           if (!futureFooter.isDone()) {
             footers.addLast(futureFooter);
             continue;
           }
-          RedelmMetaData footer = futureFooter.get();
+          ParquetMetadata footer = futureFooter.get();
           int currentPercent = (++i * n / statuses.size());
           while (currentPercent > previousPercent) {
             System.out.print("*");
@@ -157,7 +155,7 @@ public class PrintFooter {
     System.out.println("average record count: " + humanReadable(recordCount/blockCount));
   }
 
-  private static void add(RedelmMetaData footer) {
+  private static void add(ParquetMetadata footer) {
     for (BlockMetaData blockMetaData : footer.getBlocks()) {
       ++ blockCount;
       MessageType schema = footer.getFileMetaData().getSchema();

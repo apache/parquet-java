@@ -68,16 +68,16 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
    */
   @Override
   public RecordMaterializer<Tuple> newRecordConsumer() {
-    MessageType redelmSchema = MessageTypeParser.parseMessageType(requestedSchema);
-    MessageConverter converter = newParsingTree(redelmSchema, pigSchema);
+    MessageType parquetSchema = MessageTypeParser.parseMessageType(requestedSchema);
+    MessageConverter converter = newParsingTree(parquetSchema, pigSchema);
     if (Log.DEBUG) LOG.debug("assembled converter: " + converter);
     return converter.newRecordConsumer();
-//    return new TupleRecordConsumer(redelmSchema, pigSchema);
+//    return new TupleRecordConsumer(parquetSchema, pigSchema);
   }
 
-  private MessageConverter newParsingTree(MessageType redelmSchema, Schema pigSchema) {
+  private MessageConverter newParsingTree(MessageType parquetSchema, Schema pigSchema) {
     try {
-      return new MessageConverter(redelmSchema, pigSchema);
+      return new MessageConverter(parquetSchema, pigSchema);
     } catch (FrontendException e) {
       throw new RuntimeException(e);
     }

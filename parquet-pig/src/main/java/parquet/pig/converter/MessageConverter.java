@@ -101,8 +101,8 @@ public class MessageConverter extends TupleConverter {
     }
   }
 
-  public MessageConverter(MessageType redelmSchema, Schema pigSchema) throws FrontendException {
-    super(redelmSchema, pigSchema, null);
+  public MessageConverter(MessageType schema, Schema pigSchema) throws FrontendException {
+    super(schema, pigSchema, null);
   }
 
   public RecordMaterializer<Tuple> newRecordConsumer() {

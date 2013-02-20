@@ -17,8 +17,6 @@ package parquet.pig;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
-
 
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
@@ -36,25 +34,24 @@ import org.apache.pig.parser.ParserException;
 
 import parquet.Log;
 import parquet.hadoop.Footer;
-import parquet.hadoop.RedelmInputFormat;
-import parquet.hadoop.metadata.BlockMetaData;
+import parquet.hadoop.ParquetInputFormat;
 
-public class RedelmLoader extends LoadFunc implements LoadMetadata {
-  private static final Log LOG = Log.getLog(RedelmLoader.class);
+public class ParquetLoader extends LoadFunc implements LoadMetadata {
+  private static final Log LOG = Log.getLog(ParquetLoader.class);
 
   private boolean setLocationHasBeenCalled = false;
 
   private RecordReader<Void, Tuple> reader;
   private final String schema;
 
-  private RedelmInputFormat<Tuple> redelmInputFormat;
+  private ParquetInputFormat<Tuple> parquetInputFormat;
 
 
-  public RedelmLoader() {
+  public ParquetLoader() {
     this.schema = null;
   }
 
-  public RedelmLoader(String schema) {
+  public ParquetLoader(String schema) {
     this.schema = schema;
   }
 
@@ -68,7 +65,7 @@ public class RedelmLoader extends LoadFunc implements LoadMetadata {
   @Override
   public InputFormat<Void, Tuple> getInputFormat() throws IOException {
     LOG.info("LoadFunc.getInputFormat()");
-    return getRedelmInputFormat();
+    return getParquetInputFormat();
   }
 
   private void checkSetLocationHasBeenCalled() {
@@ -77,15 +74,15 @@ public class RedelmLoader extends LoadFunc implements LoadMetadata {
     }
   }
 
-  private RedelmInputFormat<Tuple> getRedelmInputFormat() throws ParserException {
+  private ParquetInputFormat<Tuple> getParquetInputFormat() throws ParserException {
     checkSetLocationHasBeenCalled();
-    if (redelmInputFormat == null) {
-      redelmInputFormat = new RedelmInputFormat<Tuple>(
+    if (parquetInputFormat == null) {
+      parquetInputFormat = new ParquetInputFormat<Tuple>(
           TupleReadSupport.class,
           schema == null ? null :
             new PigSchemaConverter().convert(Utils.getSchemaFromString(schema)).toString());
     }
-    return redelmInputFormat;
+    return parquetInputFormat;
   }
 
   @SuppressWarnings("unchecked")
@@ -121,13 +118,13 @@ public class RedelmLoader extends LoadFunc implements LoadMetadata {
   public ResourceSchema getSchema(String location, Job job) throws IOException {
     LOG.info("LoadMetadata.getSchema(" + location + ", " + job + ")");
     setLocation(location, job);
-    final List<Footer> footers = getRedelmInputFormat().getFooters(job);
+    final List<Footer> footers = getParquetInputFormat().getFooters(job);
     String pigSchemaString = null;
     if (schema != null) {
       pigSchemaString = schema;
     } else {
       for (Footer footer : footers) {
-        PigMetaData pigMetaData = PigMetaData.fromMetaDataBlocks(footer.getRedelmMetaData().getKeyValueMetaData());
+        PigMetaData pigMetaData = PigMetaData.fromMetaDataBlocks(footer.getParquetMetadata().getKeyValueMetaData());
         if (pigSchemaString == null) {
           pigSchemaString = pigMetaData.getPigSchema();
         } else {

@@ -28,24 +28,21 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
 
-
-
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.InputSplit;
 
 import parquet.hadoop.metadata.BlockMetaData;
-import parquet.hadoop.metadata.FileMetaData;
 
 /**
- * An input split for the RedElm format
+ * An input split for the Parquet format
  * It contains the information to read one block of the file.
  *
  * @author Julien Le Dem
  *
  * @param <T> the type of the materialized tuples
  */
-public class RedelmInputSplit<T> extends InputSplit implements Serializable, Writable {
+public class ParquetInputSplit<T> extends InputSplit implements Serializable, Writable {
   private static final long serialVersionUID = 1L;
 
   private String path;
@@ -60,11 +57,11 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
   /**
    * Writables must have a parameterless constructor
    */
-  public RedelmInputSplit() {
+  public ParquetInputSplit() {
   }
 
   /**
-   * Used by {@link RedelmInputFormat#getSplits(org.apache.hadoop.mapreduce.JobContext)}
+   * Used by {@link ParquetInputFormat#getSplits(org.apache.hadoop.mapreduce.JobContext)}
    * @param path the path to the file
    * @param start the offset of the block in the file
    * @param length the size of the block in the file
@@ -73,7 +70,7 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
    * @param fileMetaData the file level metadata (Codec, Schema, ...)
    * @param readSupport the object used to materialize records (must be serializable)
    */
-  public RedelmInputSplit(Path path, long start, long length, String[] hosts, List<BlockMetaData> blocks, String schema, ReadSupport<T> readSupport) {
+  public ParquetInputSplit(Path path, long start, long length, String[] hosts, List<BlockMetaData> blocks, String schema, ReadSupport<T> readSupport) {
     this.path = path.toUri().toString();
     this.start = start;
     this.length = length;
@@ -137,7 +134,7 @@ public class RedelmInputSplit<T> extends InputSplit implements Serializable, Wri
     in.readFully(b);
     try {
       @SuppressWarnings("unchecked") // I know
-      RedelmInputSplit<T> other = (RedelmInputSplit<T>)
+      ParquetInputSplit<T> other = (ParquetInputSplit<T>)
           new ObjectInputStream(new ByteArrayInputStream(b))
       .readObject();
       this.path = other.path;

@@ -44,18 +44,18 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
-import parquet.hadoop.metadata.RedelmMetaData;
+import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.schema.MessageType;
 
 /**
- * Writes a RedElm file
+ * Writes a Parquet file
  * @author Julien Le Dem
  *
  */
-public class RedelmFileWriter {
-  private static final Log LOG = Log.getLog(RedelmFileWriter.class);
+public class ParquetFileWriter {
+  private static final Log LOG = Log.getLog(ParquetFileWriter.class);
 
-  public static final String RED_ELM_SUMMARY = "_RedElmSummary";
+  public static final String PARQUET_SUMMARY = "_ParquetSummary";
   public static final byte[] MAGIC = "PAR1".getBytes(Charset.forName("ASCII"));
   public static final int CURRENT_VERSION = 1;
 
@@ -127,7 +127,7 @@ public class RedelmFileWriter {
    * @param codec the codec to use to compress blocks
    * @throws IOException if the file can not be created
    */
-  public RedelmFileWriter(Configuration configuration, MessageType schema, Path file) throws IOException {
+  public ParquetFileWriter(Configuration configuration, MessageType schema, Path file) throws IOException {
     super();
     this.schema = schema;
     FileSystem fs = file.getFileSystem(configuration);
@@ -255,7 +255,7 @@ public class RedelmFileWriter {
     state = state.end();
     if (DEBUG) LOG.debug(out.getPos() + ": end");
     long footerIndex = out.getPos();
-    RedelmMetaData footer = new RedelmMetaData(new FileMetaData(schema), blocks, extraMetaData);
+    ParquetMetadata footer = new ParquetMetadata(new FileMetaData(schema), blocks, extraMetaData);
     serializeFooter(footer, out);
     if (DEBUG) LOG.debug(out.getPos() + ": footer length = " + (out.getPos() - footerIndex));
     BytesUtils.writeIntLittleEndian(out, (int)(out.getPos() - footerIndex));
@@ -263,19 +263,19 @@ public class RedelmFileWriter {
     out.close();
   }
 
-  private void serializeFooter(RedelmMetaData footer, OutputStream os) throws IOException {
+  private void serializeFooter(ParquetMetadata footer, OutputStream os) throws IOException {
     parquet.format.FileMetaData parquetMetadata = new ParquetMetadataConverter().toParquetMetadata(CURRENT_VERSION, footer);
     metadataConverter.writeFileMetaData(parquetMetadata, os);
   }
 
   public static void writeSummaryFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
-    Path summaryPath = new Path(outputPath, RED_ELM_SUMMARY);
+    Path summaryPath = new Path(outputPath, PARQUET_SUMMARY);
     FileSystem fs = outputPath.getFileSystem(configuration);
     FSDataOutputStream summary = fs.create(summaryPath);
     summary.writeInt(footers.size());
     for (Footer footer : footers) {
       summary.writeUTF(footer.getFile().toString());
-      parquet.format.FileMetaData parquetMetadata = parquetMetadataConverter.toParquetMetadata(CURRENT_VERSION, footer.getRedelmMetaData());
+      parquet.format.FileMetaData parquetMetadata = parquetMetadataConverter.toParquetMetadata(CURRENT_VERSION, footer.getParquetMetadata());
       parquetMetadataConverter.writeFileMetaData(parquetMetadata, summary);
     }
     summary.close();

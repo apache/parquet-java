@@ -18,7 +18,7 @@ package parquet.hadoop;
 
 import org.apache.hadoop.fs.Path;
 
-import parquet.hadoop.metadata.RedelmMetaData;
+import parquet.hadoop.metadata.ParquetMetadata;
 
 /**
  *
@@ -31,20 +31,20 @@ public class Footer {
 
   private final Path file;
 
-  private final RedelmMetaData redelmMetaData;
+  private final ParquetMetadata parquetMetadata;
 
-  public Footer(Path file, RedelmMetaData redelmMetaData) {
+  public Footer(Path file, ParquetMetadata parquetMetadata) {
     super();
     this.file = file;
-    this.redelmMetaData = redelmMetaData;
+    this.parquetMetadata = parquetMetadata;
   }
 
   public Path getFile() {
     return file;
   }
 
-  public RedelmMetaData getRedelmMetaData() {
-    return redelmMetaData;
+  public ParquetMetadata getParquetMetadata() {
+    return parquetMetadata;
   }
 
 }

@@ -164,7 +164,7 @@ public class RecordReaderCompiler {
   public <T> RecordReader<T> compile(final RecordReaderImplementation<T> recordReader) {
     final int stateCount = recordReader.getStateCount();
     // create a unique class name
-    String className = "redelm.io.RecordReaderCompiler$CompiledRecordReader"+(++id);
+    String className = this.getClass().getName()+"$CompiledRecordReader"+(++id);
     ClassBuilder classBuilder = new Builder(false)
         .startClass(className, existing(BaseRecordReader.class));
     for (int i = 0; i < stateCount; i++) {

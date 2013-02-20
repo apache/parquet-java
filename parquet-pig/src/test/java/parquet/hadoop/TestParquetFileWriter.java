@@ -36,20 +36,20 @@ import parquet.column.mem.Page;
 import parquet.column.mem.PageReadStore;
 import parquet.column.mem.PageReader;
 import parquet.hadoop.PrintFooter;
-import parquet.hadoop.RedelmFileReader;
-import parquet.hadoop.RedelmFileWriter;
+import parquet.hadoop.ParquetFileReader;
+import parquet.hadoop.ParquetFileWriter;
 import parquet.hadoop.metadata.CompressionCodecName;
-import parquet.hadoop.metadata.RedelmMetaData;
+import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.parser.MessageTypeParser;
 import parquet.schema.MessageType;
 
-public class TestRedelmFileWriter {
-  private static final Log LOG = Log.getLog(TestRedelmFileWriter.class);
+public class TestParquetFileWriter {
+  private static final Log LOG = Log.getLog(TestParquetFileWriter.class);
 
   @Test
   public void test() throws Exception {
 
-    File testFile = new File("target/testRedelmFile").getAbsoluteFile();
+    File testFile = new File("target/testParquetFile").getAbsoluteFile();
     testFile.delete();
 
     Path path = new Path(testFile.toURI());
@@ -66,7 +66,7 @@ public class TestRedelmFileWriter {
     byte[] bytes3 = { 2, 3, 4, 5};
     byte[] bytes4 = { 3, 4, 5, 6};
     CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
-    RedelmFileWriter w = new RedelmFileWriter(configuration, schema, path);
+    ParquetFileWriter w = new ParquetFileWriter(configuration, schema, path);
     w.start();
     w.startBlock(3);
     w.startColumn(c1, 5, codec);
@@ -89,11 +89,11 @@ public class TestRedelmFileWriter {
     w.endBlock();
     w.end(new HashMap<String, String>());
 
-    RedelmMetaData readFooter = RedelmFileReader.readFooter(configuration, path);
+    ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
     assertEquals("footer: "+readFooter, 2, readFooter.getBlocks().size());
 
     { // read first block of col #1
-      RedelmFileReader r = new RedelmFileReader(configuration, path, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(path1)));
+      ParquetFileReader r = new ParquetFileReader(configuration, path, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(path1)));
       PageReadStore pages = r.readColumns();
       assertEquals(3, pages.getRowCount());
       validateContains(schema, pages, path1, 2, BytesInput.from(bytes1));
@@ -103,7 +103,7 @@ public class TestRedelmFileWriter {
 
     { // read all blocks of col #1 and #2
 
-      RedelmFileReader r = new RedelmFileReader(configuration, path, readFooter.getBlocks(), Arrays.asList(schema.getColumnDescription(path1), schema.getColumnDescription(path2)));
+      ParquetFileReader r = new ParquetFileReader(configuration, path, readFooter.getBlocks(), Arrays.asList(schema.getColumnDescription(path1), schema.getColumnDescription(path2)));
 
       PageReadStore pages = r.readColumns();
       assertEquals(3, pages.getRowCount());

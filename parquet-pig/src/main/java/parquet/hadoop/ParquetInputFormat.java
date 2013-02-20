@@ -18,10 +18,8 @@ package parquet.hadoop;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
@@ -36,13 +34,12 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import parquet.Log;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.FileMetaData;
-import parquet.hadoop.metadata.RedelmMetaData;
+import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.parser.MessageTypeParser;
-import parquet.pig.PigSchemaConverter;
 import parquet.schema.MessageType;
 
 /**
- * The input format to read a RedElm file
+ * The input format to read a Parquet file
  *
  * It requires an implementation of {@link ReadSupport} to materialize the records
  *
@@ -53,9 +50,9 @@ import parquet.schema.MessageType;
  *
  * @param <T> the type of the materialized records
  */
-public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
+public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
-  private static final Log LOG = Log.getLog(RedelmInputFormat.class);
+  private static final Log LOG = Log.getLog(ParquetInputFormat.class);
 
   private String requestedSchema;
   private Class<?> readSupportClass;
@@ -68,7 +65,7 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
    * @param readSupportClass the class to materialize records
    * @param requestedSchema the schema use to project the records (must be a subset of the original schema)
    */
-  public <S extends ReadSupport<T>> RedelmInputFormat(Class<S> readSupportClass, String requestedSchema) {
+  public <S extends ReadSupport<T>> ParquetInputFormat(Class<S> readSupportClass, String requestedSchema) {
     this.readSupportClass = readSupportClass;
     this.requestedSchema = requestedSchema;
   }
@@ -81,8 +78,8 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
       InputSplit inputSplit,
       TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
     @SuppressWarnings("unchecked") // I know
-    RedelmInputSplit<T> redelmInputSplit = (RedelmInputSplit<T>)inputSplit;
-    return new RedelmRecordReader<T>(getRequestedSchema(redelmInputSplit.getSchema()));
+    ParquetInputSplit<T> parquetInputSplit = (ParquetInputSplit<T>)inputSplit;
+    return new ParquetRecordReader<T>(getRequestedSchema(parquetInputSplit.getSchema()));
   }
 
   private String getRequestedSchema(String fileSchema) {
@@ -145,7 +142,7 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
       if (blocksForCurrentSplit.size() == 0) {
         LOG.warn("HDFS block without row group: " + hdfsBlocks[i]);
       } else {
-        splits.add(new RedelmInputSplit<T>(
+        splits.add(new ParquetInputSplit<T>(
           fileStatus.getPath(),
           hdfsBlock.getOffset(),
           hdfsBlock.getLength(),
@@ -173,15 +170,15 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
         @SuppressWarnings("unchecked")
         ReadSupport<T> readSupport = (ReadSupport<T>) readSupportClass.newInstance();
         FileStatus fileStatus = fs.getFileStatus(footer.getFile());
-        RedelmMetaData redelmMetaData = footer.getRedelmMetaData();
+        ParquetMetadata parquetMetaData = footer.getParquetMetadata();
         readSupport.initForRead(
-            redelmMetaData.getKeyValueMetaData(),
-            getRequestedSchema(redelmMetaData.getFileMetaData().getSchema().toString())
+            parquetMetaData.getKeyValueMetaData(),
+            getRequestedSchema(parquetMetaData.getFileMetaData().getSchema().toString())
             );
-        List<BlockMetaData> blocks = redelmMetaData.getBlocks();
+        List<BlockMetaData> blocks = parquetMetaData.getBlocks();
         BlockLocation[] fileBlockLocations = fs.getFileBlockLocations(fileStatus, 0, fileStatus.getLen());
         splits.addAll(
-            generateSplits(blocks, fileBlockLocations, fileStatus, redelmMetaData.getFileMetaData(), readSupport)
+            generateSplits(blocks, fileBlockLocations, fileStatus, parquetMetaData.getFileMetaData(), readSupport)
               );
       } catch (InstantiationException e) {
         throw new RuntimeException("could not instantiate " + readSupportClass.getName(), e);
@@ -197,7 +194,7 @@ public class RedelmInputFormat<T> extends FileInputFormat<Void, T> {
       Configuration configuration = jobContext.getConfiguration();
       List<FileStatus> statuses = super.listStatus(jobContext);
       LOG.debug("reading " + statuses.size() + " files");
-      footers = RedelmFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses);
+      footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses);
     }
     return footers;
   }

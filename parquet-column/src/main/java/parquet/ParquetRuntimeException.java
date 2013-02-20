@@ -15,22 +15,22 @@
  */
 package parquet;
 
-abstract public class RedelmRuntimeException extends RuntimeException {
+abstract public class ParquetRuntimeException extends RuntimeException {
   private static final long serialVersionUID = 1L;
 
-  public RedelmRuntimeException() {
+  public ParquetRuntimeException() {
     super();
   }
 
-  public RedelmRuntimeException(String message, Throwable cause) {
+  public ParquetRuntimeException(String message, Throwable cause) {
     super(message, cause);
   }
 
-  public RedelmRuntimeException(String message) {
+  public ParquetRuntimeException(String message) {
     super(message);
   }
 
-  public RedelmRuntimeException(Throwable cause) {
+  public ParquetRuntimeException(Throwable cause) {
     super(cause);
   }
 

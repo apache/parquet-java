@@ -36,7 +36,7 @@ import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.schema.MessageType;
 
 /**
- * OutputFormat to write to a RedElm file
+ * OutputFormat to write to a Parquet file
  *
  * it requires a {@link WriteSupport} to convert the actual records to the underlying format
  * it requires the schema of the incoming records
@@ -44,12 +44,12 @@ import parquet.schema.MessageType;
  *
  * format config controlled in job conf settings:
  * <pre>
- * redelm.block.size=52428800 # in bytes, default = 50 * 1024 * 1024
- * redelm.page.size=8192 # in bytes, default = 8 * 1024
- * redelm.compression=UNCOMPRESSED # one of: UNCOMPRESSED, SNAPPY, GZIP, LZO. Default: UNCOMPRESSED. Supersedes mapred.output.compress*
+ * parquet.block.size=52428800 # in bytes, default = 50 * 1024 * 1024
+ * parquet.page.size=8192 # in bytes, default = 8 * 1024
+ * parquet.compression=UNCOMPRESSED # one of: UNCOMPRESSED, SNAPPY, GZIP, LZO. Default: UNCOMPRESSED. Supersedes mapred.output.compress*
  * </pre>
  *
- * If redelm.compression is not set, the following properties are checked (FileOutputFormat behavior)
+ * If parquet.compression is not set, the following properties are checked (FileOutputFormat behavior)
  * <pre>
  * mapred.output.compress=true
  * mapred.output.compression.codec=org.apache.hadoop.io.compress.SomeCodec
@@ -61,12 +61,12 @@ import parquet.schema.MessageType;
  *
  * @param <T> the type of the materialized records
  */
-public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
-  private static final Log LOG = Log.getLog(RedelmOutputFormat.class);
+public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
+  private static final Log LOG = Log.getLog(ParquetOutputFormat.class);
 
-  public static final String BLOCK_SIZE = "redelm.block.size";
-  public static final String PAGE_SIZE = "redelm.page.size";
-  public static final String COMPRESSION = "redelm.compression";
+  public static final String BLOCK_SIZE = "parquet.block.size";
+  public static final String PAGE_SIZE = "parquet.page.size";
+  public static final String COMPRESSION = "parquet.compression";
 
   public static void setBlockSize(Job job, int blockSize) {
     job.getConfiguration().setInt(BLOCK_SIZE, blockSize);
@@ -100,7 +100,7 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
   private Class<?> writeSupportClass;
 
   private final Map<String, String> extraMetaData;
-  private RedelmOutputCommitter committer;
+  private ParquetOutputCommitter committer;
 
   /**
    * constructor used when this OutputFormat in wrapped in another one (In Pig for example)
@@ -109,7 +109,7 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to be stored in the footer of the file
    */
-  public <S extends WriteSupport<T>> RedelmOutputFormat(Class<S> writeSupportClass, MessageType schema, Map<String, String> extraMetaData) {
+  public <S extends WriteSupport<T>> ParquetOutputFormat(Class<S> writeSupportClass, MessageType schema, Map<String, String> extraMetaData) {
     this.writeSupportClass = writeSupportClass;
     this.schema = schema;
     this.extraMetaData = extraMetaData;
@@ -125,13 +125,13 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
     final Configuration conf = taskAttemptContext.getConfiguration();
     CodecFactory codecFactory = new CodecFactory(conf);
     int blockSize = getBlockSize(taskAttemptContext);
-    if (INFO) LOG.info("RedElm block size to " + blockSize);
+    if (INFO) LOG.info("Parquet block size to " + blockSize);
     int pageSize = getPageSize(taskAttemptContext);
-    if (INFO) LOG.info("RedElm page size to " + pageSize);
+    if (INFO) LOG.info("Parquet page size to " + pageSize);
 
-    String extension = ".redelm";
+    String extension = ".parquet";
     CompressionCodecName codec;
-    if (isCompressionSet(taskAttemptContext)) { // explicit redelm config
+    if (isCompressionSet(taskAttemptContext)) { // explicit parquet config
       codec = getCompression(taskAttemptContext);
     } else if (getCompressOutput(taskAttemptContext)) { // from hadoop config
       // find the right codec
@@ -146,10 +146,10 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
     extension += codec.getExtension();
     final Path file = getDefaultWorkFile(taskAttemptContext, extension);
 
-    final RedelmFileWriter w = new RedelmFileWriter(conf, schema, file);
+    final ParquetFileWriter w = new ParquetFileWriter(conf, schema, file);
     w.start();
     try {
-      return new RedelmRecordWriter<T>(w, (WriteSupport<T>) writeSupportClass.newInstance(), schema, extraMetaData, blockSize, pageSize, codecFactory.getCompressor(codec, pageSize));
+      return new ParquetRecordWriter<T>(w, (WriteSupport<T>) writeSupportClass.newInstance(), schema, extraMetaData, blockSize, pageSize, codecFactory.getCompressor(codec, pageSize));
     } catch (InstantiationException e) {
       throw new RuntimeException("could not instantiate " + writeSupportClass.getName(), e);
     } catch (IllegalAccessException e) {
@@ -162,7 +162,7 @@ public class RedelmOutputFormat<T> extends FileOutputFormat<Void, T> {
       throws IOException {
     if (committer == null) {
       Path output = getOutputPath(context);
-      committer = new RedelmOutputCommitter(output, context);
+      committer = new ParquetOutputCommitter(output, context);
     }
     return committer;
   }

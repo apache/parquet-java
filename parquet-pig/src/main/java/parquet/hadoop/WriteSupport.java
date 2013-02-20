@@ -22,7 +22,7 @@ import parquet.schema.MessageType;
 
 
 /**
- * Abstraction to use with {@link RedelmOutputFormat} to convert incoming records
+ * Abstraction to use with {@link ParquetOutputFormat} to convert incoming records
  *
  * @author Julien Le Dem
  *

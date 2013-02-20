@@ -31,8 +31,8 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.junit.Test;
 
 import parquet.hadoop.ReadSupport;
-import parquet.hadoop.RedelmInputFormat;
-import parquet.hadoop.RedelmInputSplit;
+import parquet.hadoop.ParquetInputFormat;
+import parquet.hadoop.ParquetInputSplit;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
@@ -65,14 +65,14 @@ public class TestInputFormat {
     };
     FileStatus fileStatus = new FileStatus(100, false, 2, 50, 0, new Path("hdfs://foo.namenode:1234/bar"));
     FileMetaData fileMetaData = new FileMetaData(new MessageType("foo"));
-    List<InputSplit> splits = RedelmInputFormat.generateSplits(blocks, hdfsBlocks, fileStatus, fileMetaData, readSupport);
+    List<InputSplit> splits = ParquetInputFormat.generateSplits(blocks, hdfsBlocks, fileStatus, fileMetaData, readSupport);
     assertEquals(splits.toString().replaceAll("([{])", "$0\n").replaceAll("([}])", "\n$0"), 2, splits.size());
     for (int i = 0; i < splits.size(); i++) {
-      RedelmInputSplit<?> redelmInputSplit = (RedelmInputSplit<?>)splits.get(i);
-      assertEquals(5, redelmInputSplit.getBlocks().size());
-      assertEquals(2, redelmInputSplit.getLocations().length);
-      assertEquals("[foo" + i + ".datanode, bar" + i + ".datanode]", Arrays.toString(redelmInputSplit.getLocations()));
-      assertEquals(50, redelmInputSplit.getLength());
+      ParquetInputSplit<?> parquetInputSplit = (ParquetInputSplit<?>)splits.get(i);
+      assertEquals(5, parquetInputSplit.getBlocks().size());
+      assertEquals(2, parquetInputSplit.getLocations().length);
+      assertEquals("[foo" + i + ".datanode, bar" + i + ".datanode]", Arrays.toString(parquetInputSplit.getLocations()));
+      assertEquals(50, parquetInputSplit.getLength());
     }
   }
 

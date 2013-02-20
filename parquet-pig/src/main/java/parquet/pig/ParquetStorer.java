@@ -37,21 +37,21 @@ import org.apache.pig.impl.util.UDFContext;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
-import parquet.hadoop.RedelmOutputFormat;
+import parquet.hadoop.ParquetOutputFormat;
 import parquet.schema.MessageType;
 
 /**
- * A pig storer implementation for the RedElm file format.
- * see {@link RedelmOutputFormat} for available parameters.
+ * A pig storer implementation for the Parquet file format.
+ * see {@link ParquetOutputFormat} for available parameters.
  *
- * It uses a TupleWriteSupport to write Tuples into the RedelmOutputFormat
- * The Pig schema is automatically converted to the Redelm schema using {@link PigSchemaConverter}
+ * It uses a TupleWriteSupport to write Tuples into the ParquetOutputFormat
+ * The Pig schema is automatically converted to the Parquet schema using {@link PigSchemaConverter}
  * and stored in the file
  *
  * @author Julien Le Dem
  *
  */
-public class RedelmStorer extends StoreFunc implements StoreMetadata {
+public class ParquetStorer extends StoreFunc implements StoreMetadata {
 
   private static final String SCHEMA = "schema";
 
@@ -74,7 +74,7 @@ public class RedelmStorer extends StoreFunc implements StoreMetadata {
     }
   }
 
-  public RedelmStorer() {
+  public ParquetStorer() {
   }
 
   /**
@@ -105,7 +105,7 @@ public class RedelmStorer extends StoreFunc implements StoreMetadata {
     String pigSchemaString = pigSchema.toString();
     Map<String, String> extraMetaData = new HashMap<String, String>();
     new PigMetaData(pigSchemaString.substring(1, pigSchemaString.length() - 1)).addToMetaData(extraMetaData);
-    return new RedelmOutputFormat<Tuple>(
+    return new ParquetOutputFormat<Tuple>(
         TupleWriteSupport.class,
         schema,
         extraMetaData);

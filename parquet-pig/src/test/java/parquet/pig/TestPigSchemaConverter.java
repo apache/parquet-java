@@ -28,15 +28,15 @@ import parquet.schema.MessageType;
 
 public class TestPigSchemaConverter {
 
-  private void testConversion(String pigSchemaString, String redelmSchemaString) throws Exception {
+  private void testConversion(String pigSchemaString, String schemaString) throws Exception {
     PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
     Schema pigSchema = Utils.getSchemaFromString(pigSchemaString);
     MessageType schema = pigSchemaConverter.convert(pigSchema);
-    MessageType expectedMT = MessageTypeParser.parseMessageType(redelmSchemaString);
-    assertEquals("converting "+pigSchemaString+" to "+redelmSchemaString, expectedMT, schema);
+    MessageType expectedMT = MessageTypeParser.parseMessageType(schemaString);
+    assertEquals("converting "+pigSchemaString+" to "+schemaString, expectedMT, schema);
 
     Schema filtered = pigSchemaConverter.filter(pigSchema, schema);
-    assertEquals("converting "+pigSchemaString+" to "+redelmSchemaString+" and filtering", pigSchema.toString(), filtered.toString());
+    assertEquals("converting "+pigSchemaString+" to "+schemaString+" and filtering", pigSchema.toString(), filtered.toString());
   }
 
   @Test

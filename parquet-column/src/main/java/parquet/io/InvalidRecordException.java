@@ -15,9 +15,9 @@
  */
 package parquet.io;
 
-import parquet.RedelmRuntimeException;
+import parquet.ParquetRuntimeException;
 
-public class InvalidRecordException extends RedelmRuntimeException {
+public class InvalidRecordException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;
 
   public InvalidRecordException() {

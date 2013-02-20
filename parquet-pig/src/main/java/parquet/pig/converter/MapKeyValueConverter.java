@@ -29,12 +29,12 @@ public class MapKeyValueConverter extends Converter {
   private int currentField;
   private String currentKey;
 
-  MapKeyValueConverter(GroupType redelmSchema, Schema pigSchema, MapConverter parent) throws FrontendException {
+  MapKeyValueConverter(GroupType schema, Schema pigSchema, MapConverter parent) throws FrontendException {
     super(parent);
-    assert redelmSchema.getFieldCount() == 2;
-    assert redelmSchema.getType(0).getName().equals("key");
-    assert redelmSchema.getType(1).getName().equals("value");
-    value = new TupleConverter(redelmSchema.getType(1).asGroupType(), pigSchema, this);
+    assert schema.getFieldCount() == 2;
+    assert schema.getType(0).getName().equals("key");
+    assert schema.getType(1).getName().equals("value");
+    value = new TupleConverter(schema.getType(1).asGroupType(), pigSchema, this);
   }
 
   @Override

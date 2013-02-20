@@ -35,7 +35,7 @@ import org.codehaus.jackson.map.SerializationConfig.Feature;
  * @author Julien Le Dem
  *
  */
-public class RedelmMetaData {
+public class ParquetMetadata {
 
   private static ObjectMapper objectMapper = new ObjectMapper();
   private static ObjectMapper prettyObjectMapper = new ObjectMapper();
@@ -45,26 +45,26 @@ public class RedelmMetaData {
 
   /**
    *
-   * @param redElmMetaData
+   * @param parquetMetaData
    * @return the json representation
    */
-  public static String toJSON(RedelmMetaData redElmMetaData) {
-    return toJSON(redElmMetaData, objectMapper);
+  public static String toJSON(ParquetMetadata parquetMetaData) {
+    return toJSON(parquetMetaData, objectMapper);
   }
 
   /**
    *
-   * @param redElmMetaData
+   * @param parquetMetaData
    * @return the pretty printed json representation
    */
-  public static String toPrettyJSON(RedelmMetaData redElmMetaData) {
-    return toJSON(redElmMetaData, prettyObjectMapper);
+  public static String toPrettyJSON(ParquetMetadata parquetMetaData) {
+    return toJSON(parquetMetaData, prettyObjectMapper);
   }
 
-  private static String toJSON(RedelmMetaData redElmMetaData, ObjectMapper mapper) {
+  private static String toJSON(ParquetMetadata parquetMetaData, ObjectMapper mapper) {
     StringWriter stringWriter = new StringWriter();
     try {
-      mapper.writeValue(stringWriter, redElmMetaData);
+      mapper.writeValue(stringWriter, parquetMetaData);
     } catch (JsonGenerationException e) {
       throw new RuntimeException(e);
     } catch (JsonMappingException e) {
@@ -80,9 +80,9 @@ public class RedelmMetaData {
    * @param json the json representation
    * @return the parsed object
    */
-  public static RedelmMetaData fromJSON(String json) {
+  public static ParquetMetadata fromJSON(String json) {
     try {
-      return objectMapper.readValue(new StringReader(json), RedelmMetaData.class);
+      return objectMapper.readValue(new StringReader(json), ParquetMetadata.class);
     } catch (JsonParseException e) {
       throw new RuntimeException(e);
     } catch (JsonMappingException e) {
@@ -102,7 +102,7 @@ public class RedelmMetaData {
    * @param blocks block level metadata
    * @param keyValueMetaData
    */
-  public RedelmMetaData(FileMetaData fileMetaData, List<BlockMetaData> blocks, Map<String, String> keyValueMetaData) {
+  public ParquetMetadata(FileMetaData fileMetaData, List<BlockMetaData> blocks, Map<String, String> keyValueMetaData) {
     this.fileMetaData = fileMetaData;
     this.blocks = blocks;
     this.keyValueMetaData = keyValueMetaData;
@@ -134,7 +134,7 @@ public class RedelmMetaData {
 
   @Override
   public String toString() {
-    return "RedElmMetaData{"+fileMetaData+", blocks: "+blocks+"}";
+    return "ParquetMetaData{"+fileMetaData+", blocks: "+blocks+"}";
   }
 
 }

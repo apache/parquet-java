@@ -32,10 +32,10 @@ import parquet.column.mem.MemPageStore;
 import parquet.column.mem.Page;
 import parquet.column.mem.PageReadStore;
 import parquet.column.mem.PageReader;
-import parquet.hadoop.RedelmFileReader;
-import parquet.hadoop.RedelmFileWriter;
+import parquet.hadoop.ParquetFileReader;
+import parquet.hadoop.ParquetFileWriter;
 import parquet.hadoop.metadata.CompressionCodecName;
-import parquet.hadoop.metadata.RedelmMetaData;
+import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.io.RecordConsumer;
@@ -90,26 +90,26 @@ public class GenerateIntTestFile {
 
   public static void readTestFile(Path testFile, Configuration configuration)
       throws IOException {
-    RedelmMetaData readFooter = RedelmFileReader.readFooter(configuration, testFile);
+    ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, testFile);
     MessageType schema = readFooter.getFileMetaData().getSchema();
-    RedelmFileReader redelmFileReader = new RedelmFileReader(configuration, testFile, readFooter.getBlocks(), schema.getColumns());
-    PageReadStore pages = redelmFileReader.readColumns();
+    ParquetFileReader parquetFileReader = new ParquetFileReader(configuration, testFile, readFooter.getBlocks(), schema.getColumns());
+    PageReadStore pages = parquetFileReader.readColumns();
     System.out.println(pages.getRowCount());
   }
 
   public static void writeToFile(Path file, Configuration configuration, MessageType schema, MemPageStore pageStore, int recordCount)
       throws IOException {
-    RedelmFileWriter w = startFile(file, configuration, schema);
+    ParquetFileWriter w = startFile(file, configuration, schema);
     writeBlock(schema, pageStore, recordCount, w);
     endFile(w);
   }
 
-  public static void endFile(RedelmFileWriter w) throws IOException {
+  public static void endFile(ParquetFileWriter w) throws IOException {
     w.end(new HashMap<String, String>());
   }
 
   public static void writeBlock(MessageType schema, MemPageStore pageStore,
-      int recordCount, RedelmFileWriter w) throws IOException {
+      int recordCount, ParquetFileWriter w) throws IOException {
     w.startBlock(recordCount);
     List<ColumnDescriptor> columns = schema.getColumns();
     for (ColumnDescriptor columnDescriptor : columns) {
@@ -128,9 +128,9 @@ public class GenerateIntTestFile {
     w.endBlock();
   }
 
-  public static RedelmFileWriter startFile(Path file,
+  public static ParquetFileWriter startFile(Path file,
       Configuration configuration, MessageType schema) throws IOException {
-    RedelmFileWriter w = new RedelmFileWriter(configuration, schema, file);
+    ParquetFileWriter w = new ParquetFileWriter(configuration, schema, file);
     w.start();
     return w;
   }

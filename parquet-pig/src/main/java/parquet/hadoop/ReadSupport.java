@@ -16,16 +16,14 @@
 package parquet.hadoop;
 
 import java.io.Serializable;
-import java.util.List;
 import java.util.Map;
-
 
 import org.apache.hadoop.mapred.InputFormat;
 
 import parquet.io.RecordMaterializer;
 
 /**
- * Abstraction used by the {@link RedelmInputFormat} to materialize records
+ * Abstraction used by the {@link ParquetInputFormat} to materialize records
  *
  * @author Julien Le Dem
  *

@@ -46,8 +46,8 @@ import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
 import parquet.Log;
-import parquet.pig.RedelmLoader;
-import parquet.pig.RedelmStorer;
+import parquet.pig.ParquetLoader;
+import parquet.pig.ParquetStorer;
 
 /**
  *
@@ -97,7 +97,7 @@ public class PerfTest2 {
       String location = out;
       String schema = schemaString.toString();
 
-      StoreFuncInterface storer = new RedelmStorer();
+      StoreFuncInterface storer = new ParquetStorer();
       Job job = new Job(conf);
       storer.setStoreFuncUDFContextSignature("sig");
       String absPath = storer.relToAbsPathForStoreLocation(location, new Path(new File(".").getAbsoluteFile().toURI()));
@@ -154,7 +154,7 @@ public class PerfTest2 {
     long t0 = System.currentTimeMillis();
     Job job = new Job(conf);
     int loadjobId = jobid ++;
-    LoadFunc loadFunc = new RedelmLoader(schemaString.toString());
+    LoadFunc loadFunc = new ParquetLoader(schemaString.toString());
     loadFunc.setUDFContextSignature("sigLoader"+loadjobId);
     String absPath = loadFunc.relativeToAbsolutePath(out, new Path(new File(".").getAbsoluteFile().toURI()));
     loadFunc.setLocation(absPath, job);

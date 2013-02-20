@@ -17,10 +17,6 @@ package parquet.pig.converter;
 
 import java.io.UnsupportedEncodingException;
 
-import scala.annotation.target.field;
-import scala.collection.mutable.StringBuilder;
-
-
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataType;
 import org.apache.pig.data.Tuple;
@@ -43,15 +39,15 @@ public class TupleConverter extends Converter {
   private Converter[] converters;
   private FieldSchema[] fields;
 
-  TupleConverter(GroupType redelmSchema, Schema pigSchema, Converter parent) throws FrontendException {
+  TupleConverter(GroupType schema, Schema pigSchema, Converter parent) throws FrontendException {
     super(parent);
-    this.schemaSize = redelmSchema.getFieldCount();
+    this.schemaSize = schema.getFieldCount();
     this.converters = new Converter[this.schemaSize];
     this.fields = new FieldSchema[this.schemaSize];
     for (int i = 0; i < converters.length; i++) {
       FieldSchema field = pigSchema.getField(i);
       fields[i] = field;
-      Type type = redelmSchema.getType(i);
+      Type type = schema.getType(i);
       switch (field.type) {
       case DataType.BAG:
         converters[i] = new BagConverter(type.asGroupType(), field, this);

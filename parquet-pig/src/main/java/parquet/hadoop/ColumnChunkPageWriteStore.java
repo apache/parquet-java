@@ -75,7 +75,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore {
       return buf.size();
     }
 
-    public void writeToFileWriter(RedelmFileWriter writer) throws IOException {
+    public void writeToFileWriter(ParquetFileWriter writer) throws IOException {
       writer.startColumn(path, totalValueCount, compressor.getCodecName());
       writer.writeDataPages(BytesInput.from(buf), uncompressedLength, compressedLength);
       writer.endColumn();
@@ -104,7 +104,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore {
     return writers.get(path);
   }
 
-  public void flushToFileWriter(RedelmFileWriter writer) throws IOException {
+  public void flushToFileWriter(ParquetFileWriter writer) throws IOException {
     List<ColumnDescriptor> columns = schema.getColumns();
     for (ColumnDescriptor columnDescriptor : columns) {
       ColumnChunkPageWriter pageWriter = writers.get(columnDescriptor);

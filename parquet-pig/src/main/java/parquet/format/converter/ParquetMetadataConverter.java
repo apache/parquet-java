@@ -46,7 +46,7 @@ import parquet.format.Type;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
-import parquet.hadoop.metadata.RedelmMetaData;
+import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType;
@@ -56,22 +56,22 @@ import parquet.schema.Type.Repetition;
 
 public class ParquetMetadataConverter {
 
-  public FileMetaData toParquetMetadata(int currentVersion, RedelmMetaData redelmMetadata) {
-    List<BlockMetaData> blocks = redelmMetadata.getBlocks();
+  public FileMetaData toParquetMetadata(int currentVersion, ParquetMetadata parquetMetadata) {
+    List<BlockMetaData> blocks = parquetMetadata.getBlocks();
     List<RowGroup> rowGroups = new ArrayList<RowGroup>();
     int numRows = 0;
     for (BlockMetaData block : blocks) {
       numRows += block.getRowCount();
-      addRowGroup(redelmMetadata, rowGroups, block);
+      addRowGroup(parquetMetadata, rowGroups, block);
     }
     FileMetaData fileMetaData = new FileMetaData(
         currentVersion,
-        toParquetSchema(redelmMetadata.getFileMetaData().getSchema()),
+        toParquetSchema(parquetMetadata.getFileMetaData().getSchema()),
         numRows,
         rowGroups
         );
 
-    Set<Entry<String, String>> keyValues = redelmMetadata.getKeyValueMetaData().entrySet();
+    Set<Entry<String, String>> keyValues = parquetMetadata.getKeyValueMetaData().entrySet();
     for (Entry<String, String> keyValue : keyValues) {
       addKeyValue(fileMetaData, keyValue.getKey(), keyValue.getValue());
     }
@@ -128,7 +128,7 @@ public class ParquetMetadataConverter {
     });
   }
 
-  private void addRowGroup(RedelmMetaData redelmMetadata, List<RowGroup> rowGroups, BlockMetaData block) {
+  private void addRowGroup(ParquetMetadata parquetMetadata, List<RowGroup> rowGroups, BlockMetaData block) {
     //rowGroup.total_byte_size = ;
     List<ColumnChunkMetaData> columns = block.getColumns();
     List<ColumnChunk> parquetColumns = new ArrayList<ColumnChunk>();
@@ -212,7 +212,7 @@ public class ParquetMetadataConverter {
     fileMetaData.addToKey_value_metadata(keyValue);
   }
 
-  public RedelmMetaData fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
+  public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
 //    List<MetaDataBlock> result = new ArrayList<MetaDataBlock>();
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema());
     parquet.hadoop.metadata.FileMetaData fileMetadata = new parquet.hadoop.metadata.FileMetaData(messageType);
@@ -246,7 +246,7 @@ public class ParquetMetadataConverter {
         keyValueMetaData.put(keyValue.key, keyValue.value);
       }
     }
-    return new RedelmMetaData(fileMetadata, blocks, keyValueMetaData);
+    return new ParquetMetadata(fileMetadata, blocks, keyValueMetaData);
   }
 
   MessageType fromParquetSchema(List<SchemaElement> schema) {

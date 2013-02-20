@@ -31,9 +31,9 @@ public class MapConverter extends Converter {
   private Map<String, Tuple> currentMap;
   private MapKeyValueConverter keyValue;
 
-  MapConverter(GroupType redelmSchema, FieldSchema pigSchema, Converter parent) throws FrontendException {
+  MapConverter(GroupType schema, FieldSchema pigSchema, Converter parent) throws FrontendException {
     super(parent);
-    keyValue = new MapKeyValueConverter(redelmSchema.getType(0).asGroupType(), pigSchema.schema.getField(0).schema, this);
+    keyValue = new MapKeyValueConverter(schema.getType(0).asGroupType(), pigSchema.schema.getField(0).schema, this);
   }
 
   @Override

@@ -31,8 +31,8 @@ import org.apache.pig.builtin.mock.Storage.Data;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 
-import parquet.pig.RedelmLoader;
-import parquet.pig.RedelmStorer;
+import parquet.pig.ParquetLoader;
+import parquet.pig.ParquetStorer;
 
 /**
  *
@@ -68,7 +68,7 @@ public class PerfTest {
       pigServer.setBatchOn();
       pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
       pigServer.deleteFile(out);
-      pigServer.registerQuery("Store A into '"+out+"' using "+RedelmStorer.class.getName()+"();");
+      pigServer.registerQuery("Store A into '"+out+"' using "+ParquetStorer.class.getName()+"();");
 
       if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
         throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
@@ -92,7 +92,7 @@ public class PerfTest {
       schemaString.append(", a" + i + ": chararray");
     }
     PigServer pigServer = new PigServer(ExecType.LOCAL);
-    pigServer.registerQuery("B = LOAD '"+out+"' USING "+RedelmLoader.class.getName()+"('"+schemaString+"');");
+    pigServer.registerQuery("B = LOAD '"+out+"' USING "+ParquetLoader.class.getName()+"('"+schemaString+"');");
     pigServer.registerQuery("C = FOREACH (GROUP B ALL) GENERATE COUNT(B);");
     Iterator<Tuple> it = pigServer.openIterator("C");
     if (!it.hasNext()) {

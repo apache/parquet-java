@@ -46,13 +46,13 @@ final class MapConverter extends GroupConverter {
 
   private String currentKey;
 
-  MapConverter(GroupType redelmSchema, FieldSchema pigSchema, TupleConverter parent, int index) throws FrontendException {
-    if (redelmSchema.getFieldCount() != 0) {
-      throw new IllegalArgumentException("maps have only one field. " + redelmSchema);
+  MapConverter(GroupType parquetSchema, FieldSchema pigSchema, TupleConverter parent, int index) throws FrontendException {
+    if (parquetSchema.getFieldCount() != 0) {
+      throw new IllegalArgumentException("maps have only one field. " + parquetSchema);
     }
     this.parent = parent;
     this.index = index;
-    keyValue = new MapKeyValueConverter(redelmSchema.getType(0).asGroupType(), pigSchema.schema.getField(0).schema);
+    keyValue = new MapKeyValueConverter(parquetSchema.getType(0).asGroupType(), pigSchema.schema.getField(0).schema);
   }
 
   @Override
@@ -117,13 +117,13 @@ final class MapConverter extends GroupConverter {
     private final StringKeyConverter keyConverter = new StringKeyConverter();
     private final TupleConverter valueConverter;
 
-    MapKeyValueConverter(GroupType redelmSchema, Schema pigSchema) throws FrontendException {
-      if (redelmSchema.getFieldCount() != 2
-          || redelmSchema.getType(0).getName().equals("key")
-          || redelmSchema.getType(1).getName().equals("value")) {
-        throw new IllegalArgumentException("schema does not match map key/value " + redelmSchema);
+    MapKeyValueConverter(GroupType parquetSchema, Schema pigSchema) throws FrontendException {
+      if (parquetSchema.getFieldCount() != 2
+          || parquetSchema.getType(0).getName().equals("key")
+          || parquetSchema.getType(1).getName().equals("value")) {
+        throw new IllegalArgumentException("schema does not match map key/value " + parquetSchema);
       }
-      valueConverter = new TupleConverter(redelmSchema.getType(1).asGroupType(), pigSchema);
+      valueConverter = new TupleConverter(parquetSchema.getType(1).asGroupType(), pigSchema);
     }
 
     @Override

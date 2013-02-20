@@ -17,8 +17,8 @@ package parquet.hadoop;
 
 import static parquet.Log.DEBUG;
 import static parquet.bytes.BytesUtils.readIntLittleEndian;
-import static parquet.hadoop.RedelmFileWriter.MAGIC;
-import static parquet.hadoop.RedelmFileWriter.RED_ELM_SUMMARY;
+import static parquet.hadoop.ParquetFileWriter.MAGIC;
+import static parquet.hadoop.ParquetFileWriter.PARQUET_SUMMARY;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -47,7 +47,7 @@ import parquet.hadoop.CodecFactory.BytesDecompressor;
 import parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
-import parquet.hadoop.metadata.RedelmMetaData;
+import parquet.hadoop.metadata.ParquetMetadata;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -57,22 +57,22 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.Utils;
 
 /**
- * Reads a RedElm file
+ * Reads a Parquet file
  *
  * @author Julien Le Dem
  *
  */
-public class RedelmFileReader {
+public class ParquetFileReader {
 
-  private static final Log LOG = Log.getLog(RedelmFileReader.class);
+  private static final Log LOG = Log.getLog(ParquetFileReader.class);
 
   private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
-  private static RedelmMetaData deserializeFooter(InputStream is) throws IOException {
+  private static ParquetMetadata deserializeFooter(InputStream is) throws IOException {
     parquet.format.FileMetaData parquetMetadata = parquetMetadataConverter.readFileMetaData(is);
     if (Log.DEBUG) LOG.debug(parquetMetadataConverter.toString(parquetMetadata));
-    RedelmMetaData metadata = parquetMetadataConverter.fromParquetMetadata(parquetMetadata);
-    if (Log.DEBUG) LOG.debug(RedelmMetaData.toPrettyJSON(metadata));
+    ParquetMetadata metadata = parquetMetadataConverter.fromParquetMetadata(parquetMetadata);
+    if (Log.DEBUG) LOG.debug(ParquetMetadata.toPrettyJSON(metadata));
     return metadata;
   }
 
@@ -96,7 +96,7 @@ public class RedelmFileReader {
     Map<Path, Footer> cache = new HashMap<Path, Footer>();
     for (Path path : parents) {
       FileSystem fileSystem = path.getFileSystem(configuration);
-      Path summaryFile = new Path(path, RED_ELM_SUMMARY);
+      Path summaryFile = new Path(path, PARQUET_SUMMARY);
       if (fileSystem.exists(summaryFile)) {
         List<Footer> footers = readSummaryFile(configuration, fileSystem.getFileStatus(summaryFile));
         for (Footer footer : footers) {
@@ -140,8 +140,8 @@ public class RedelmFileReader {
 
           private Footer readFooter(final FileSystem fs,
               final FileStatus currentFile) throws IOException {
-            RedelmMetaData redelmMetaData = RedelmFileReader.readFooter(configuration, currentFile);
-            return new Footer(currentFile.getPath(), redelmMetaData);
+            ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(configuration, currentFile);
+            return new Footer(currentFile.getPath(), parquetMetadata);
           }
         }));
       }
@@ -177,7 +177,7 @@ public class RedelmFileReader {
   public static List<Footer> readFooters(Configuration configuration, FileStatus pathStatus) throws IOException {
     try {
       if (pathStatus.isDir()) {
-        Path summaryPath = new Path(pathStatus.getPath(), RED_ELM_SUMMARY);
+        Path summaryPath = new Path(pathStatus.getPath(), PARQUET_SUMMARY);
         FileSystem fs = summaryPath.getFileSystem(configuration);
         if (fs.exists(summaryPath)) {
           FileStatus summaryStatus = fs.getFileStatus(summaryPath);
@@ -198,8 +198,8 @@ public class RedelmFileReader {
     List<Footer> result = new ArrayList<Footer>(footerCount);
     for (int i = 0; i < footerCount; i++) {
       Path file = new Path(summary.readUTF());
-      RedelmMetaData redelmMetaData = parquetMetadataConverter.fromParquetMetadata(parquetMetadataConverter.readFileMetaData(summary));
-      result.add(new Footer(file, redelmMetaData));
+      ParquetMetadata parquetMetaData = parquetMetadataConverter.fromParquetMetadata(parquetMetadataConverter.readFileMetaData(summary));
+      result.add(new Footer(file, parquetMetaData));
     }
     summary.close();
     return result;
@@ -208,11 +208,11 @@ public class RedelmFileReader {
   /**
    * Reads the meta data block in the footer of the file
    * @param configuration
-   * @param file the RedElm File
+   * @param file the parquet File
    * @return the metadata blocks in the footer
    * @throws IOException if an error occurs while reading the file
    */
-  public static final RedelmMetaData readFooter(Configuration configuration, Path file) throws IOException {
+  public static final ParquetMetadata readFooter(Configuration configuration, Path file) throws IOException {
     FileSystem fileSystem = file.getFileSystem(configuration);
     return readFooter(configuration, fileSystem.getFileStatus(file));
   }
@@ -220,18 +220,18 @@ public class RedelmFileReader {
   /**
    * Reads the meta data block in the footer of the file
    * @param configuration
-   * @param file the RedElm File
+   * @param file the parquet File
    * @return the metadata blocks in the footer
    * @throws IOException if an error occurs while reading the file
    */
-  public static final RedelmMetaData readFooter(Configuration configuration, FileStatus file) throws IOException {
+  public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file) throws IOException {
     FileSystem fileSystem = file.getPath().getFileSystem(configuration);
     FSDataInputStream f = fileSystem.open(file.getPath());
     long l = file.getLen();
     if (Log.DEBUG) LOG.debug("File length " + l);
     int FOOTER_LENGTH_SIZE = 4;
     if (l <= MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
-      throw new RuntimeException(file.getPath() + " is not a Red Elm file (too small)");
+      throw new RuntimeException(file.getPath() + " is not a Parquet file (too small)");
     }
     long footerLengthIndex = l - FOOTER_LENGTH_SIZE - MAGIC.length;
     if (Log.DEBUG) LOG.debug("reading footer index at " + footerLengthIndex);
@@ -241,7 +241,7 @@ public class RedelmFileReader {
     byte[] magic = new byte[MAGIC.length];
     f.readFully(magic);
     if (!Arrays.equals(MAGIC, magic)) {
-      throw new RuntimeException(file.getPath() + " is not a RedElm file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
+      throw new RuntimeException(file.getPath() + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
     }
     long footerIndex = footerLengthIndex - footerLength;
     if (Log.DEBUG) LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
@@ -258,18 +258,16 @@ public class RedelmFileReader {
   private final FSDataInputStream f;
   private int currentBlock = 0;
   private Map<String, ColumnDescriptor> paths = new HashMap<String, ColumnDescriptor>();
-  private long previousReadIndex = 0;
-
 
   /**
    *
-   * @param f the redelm file
+   * @param f the Parquet file
    * @param blocks the blocks to read
    * @param colums the columns to read (their path)
    * @param codecClassName the codec used to compress the blocks
    * @throws IOException if the file can not be opened
    */
-  public RedelmFileReader(Configuration configuration, Path filePath, List<BlockMetaData> blocks, List<ColumnDescriptor> columns) throws IOException {
+  public ParquetFileReader(Configuration configuration, Path filePath, List<BlockMetaData> blocks, List<ColumnDescriptor> columns) throws IOException {
     FileSystem fs = FileSystem.get(configuration);
     this.f = fs.open(filePath);
     this.blocks = blocks;

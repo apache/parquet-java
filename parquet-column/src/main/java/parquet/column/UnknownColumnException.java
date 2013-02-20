@@ -15,7 +15,7 @@
  */
 package parquet.column;
 
-import parquet.RedelmRuntimeException;
+import parquet.ParquetRuntimeException;
 
 /**
  * Thrown when the column in unknown from the underlying storage
@@ -23,7 +23,7 @@ import parquet.RedelmRuntimeException;
  * @author Julien Le Dem
  *
  */
-public class UnknownColumnException extends RedelmRuntimeException {
+public class UnknownColumnException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;
 
   private final ColumnDescriptor descriptor;

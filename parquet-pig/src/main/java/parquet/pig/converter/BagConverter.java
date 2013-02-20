@@ -15,9 +15,6 @@
  */
 package parquet.pig.converter;
 
-import scala.collection.mutable.StringBuilder;
-
-
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.NonSpillableDataBag;
 import org.apache.pig.impl.logicalLayer.FrontendException;
@@ -31,9 +28,9 @@ public class BagConverter extends Converter {
   private DataBag currentBag;
   private TupleConverter child;
 
-  BagConverter(GroupType redelmSchema, FieldSchema pigSchema, Converter parent) throws FrontendException {
+  BagConverter(GroupType schema, FieldSchema pigSchema, Converter parent) throws FrontendException {
     super(parent);
-    child = new TupleConverter(redelmSchema.getType(0).asGroupType(), pigSchema.schema.getField(0).schema, this);
+    child = new TupleConverter(schema.getType(0).asGroupType(), pigSchema.schema.getField(0).schema, this);
   }
 
   @Override

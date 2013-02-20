@@ -29,7 +29,7 @@ import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType;
 
-public class TestRedelmParser {
+public class TestParquetParser {
     @Test
     public void test() throws Exception {
         String example = "message Document {\n" +

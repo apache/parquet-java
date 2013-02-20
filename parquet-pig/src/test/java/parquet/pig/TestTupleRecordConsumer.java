@@ -118,9 +118,9 @@ public class TestTupleRecordConsumer {
 
   private void testFromTuple(String pigSchemaString, List<Tuple> input) throws Exception {
     List<Tuple> tuples = new ArrayList<Tuple>();
-    MessageType redelmSchema = getMessageType(pigSchemaString);
-    RecordMaterializer<Tuple> recordConsumer = newPigRecordConsumer(redelmSchema, pigSchemaString);
-    TupleWriteSupport tupleWriter = newTupleWriter(redelmSchema, pigSchemaString, recordConsumer);
+    MessageType parquetSchema = getMessageType(pigSchemaString);
+    RecordMaterializer<Tuple> recordConsumer = newPigRecordConsumer(parquetSchema, pigSchemaString);
+    TupleWriteSupport tupleWriter = newTupleWriter(parquetSchema, pigSchemaString, recordConsumer);
     for (Tuple tuple : input) {
       logger.debug(tuple);
       tupleWriter.write(tuple);
@@ -164,11 +164,11 @@ public class TestTupleRecordConsumer {
     }
   }
 
-  private <T> TupleWriteSupport newTupleWriter(MessageType redelmSchema, String pigSchemaString, RecordMaterializer<T> recordConsumer) {
+  private <T> TupleWriteSupport newTupleWriter(MessageType parquetSchema, String pigSchemaString, RecordMaterializer<T> recordConsumer) {
     TupleWriteSupport tupleWriter = new TupleWriteSupport();
     tupleWriter.initForWrite(
         recordConsumer,
-        redelmSchema,
+        parquetSchema,
         pigMetaData(pigSchemaString)
         );
     return tupleWriter;
@@ -180,9 +180,9 @@ public class TestTupleRecordConsumer {
     return map;
   }
 
-  private RecordMaterializer<Tuple> newPigRecordConsumer(MessageType redelmSchema, String pigSchemaString) throws ParserException {
+  private RecordMaterializer<Tuple> newPigRecordConsumer(MessageType parquetSchema, String pigSchemaString) throws ParserException {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
-    tupleReadSupport.initForRead(pigMetaData(pigSchemaString), redelmSchema.toString());
+    tupleReadSupport.initForRead(pigMetaData(pigSchemaString), parquetSchema.toString());
     return tupleReadSupport.newRecordConsumer();
   }
 

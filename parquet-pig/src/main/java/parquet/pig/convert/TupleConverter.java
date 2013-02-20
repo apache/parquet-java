@@ -41,24 +41,24 @@ public class TupleConverter extends GroupConverter {
 
   private static final TupleFactory TF = TupleFactory.getInstance();
 
-  private final GroupType redelmSchema;
+  private final GroupType parquetSchema;
   private final int schemaSize;
 
   private Tuple currentTuple;
   private final GroupConverter[] groupConverters;
   private final PrimitiveConverter[] primitiveConverters;
 
-  TupleConverter(GroupType redelmSchema, Schema pigSchema) throws FrontendException {
-    this.redelmSchema = redelmSchema;
-    this.schemaSize = redelmSchema.getFieldCount();
+  TupleConverter(GroupType parquetSchema, Schema pigSchema) throws FrontendException {
+    this.parquetSchema = parquetSchema;
+    this.schemaSize = parquetSchema.getFieldCount();
     if (schemaSize != pigSchema.size()) {
-      throw new IllegalArgumentException("schema sizes don't match:\n" + redelmSchema + "\n" + pigSchema);
+      throw new IllegalArgumentException("schema sizes don't match:\n" + parquetSchema + "\n" + pigSchema);
     }
     this.groupConverters = new GroupConverter[this.schemaSize];
     this.primitiveConverters = new PrimitiveConverter[this.schemaSize];
     for (int i = 0; i < schemaSize; i++) {
       FieldSchema field = pigSchema.getField(i);
-      Type type = redelmSchema.getType(i);
+      Type type = parquetSchema.getType(i);
       switch (field.type) {
       case DataType.BAG:
         groupConverters[i] = new BagConverter(type.asGroupType(), field, i);
@@ -91,7 +91,7 @@ public class TupleConverter extends GroupConverter {
   @Override
   public GroupConverter getGroupConverter(int fieldIndex) {
     if (fieldIndex < 0 || fieldIndex >= groupConverters.length || groupConverters[fieldIndex] == null) {
-      throw new IllegalArgumentException("not the index of a group field in " + redelmSchema + " : " + fieldIndex);
+      throw new IllegalArgumentException("not the index of a group field in " + parquetSchema + " : " + fieldIndex);
     }
     return groupConverters[fieldIndex];
   }
@@ -99,7 +99,7 @@ public class TupleConverter extends GroupConverter {
   @Override
   public PrimitiveConverter getPrimitiveConverter(int fieldIndex) {
     if (fieldIndex < 0 || fieldIndex >= primitiveConverters.length || primitiveConverters[fieldIndex] == null) {
-      throw new IllegalArgumentException("not the index of a primitive field in " + redelmSchema + " : " + fieldIndex);
+      throw new IllegalArgumentException("not the index of a primitive field in " + parquetSchema + " : " + fieldIndex);
     }
     return primitiveConverters[fieldIndex];
   }
@@ -197,12 +197,12 @@ public class TupleConverter extends GroupConverter {
     private final TupleConverter child;
     private final int index;
 
-    BagConverter(GroupType redelmSchema, FieldSchema pigSchema, int index) throws FrontendException {
+    BagConverter(GroupType parquetSchema, FieldSchema pigSchema, int index) throws FrontendException {
       this.index = index;
-      if (redelmSchema.getFieldCount() != 0) {
-        throw new IllegalArgumentException("bags have only one field. " + redelmSchema);
+      if (parquetSchema.getFieldCount() != 0) {
+        throw new IllegalArgumentException("bags have only one field. " + parquetSchema);
       }
-      child = new TupleConverter(redelmSchema.getType(0).asGroupType(), pigSchema.schema.getField(0).schema) {
+      child = new TupleConverter(parquetSchema.getType(0).asGroupType(), pigSchema.schema.getField(0).schema) {
         public void end() {
           super.end();
           buffer.add(getCurrentTuple());

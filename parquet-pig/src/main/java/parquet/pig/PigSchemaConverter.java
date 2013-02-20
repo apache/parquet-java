@@ -38,7 +38,7 @@ import parquet.schema.Type.Repetition;
 
 /**
  *
- * Converts a Pig Schema into a RedElm schema
+ * Converts a Pig Schema into a Parquet schema
  *
  * Bags are converted into an optional group containing one repeated group field to preserve distinction between empty bag and null.
  * Map are converted into an optional group containing one repeated group field of (key, value).
@@ -53,7 +53,7 @@ public class PigSchemaConverter {
   /**
    *
    * @param pigSchema the pig schema
-   * @return the resulting RedElm schema
+   * @return the resulting Parquet schema
    */
   public MessageType convert(Schema pigSchema) {
     return new MessageType("pig_schema", convertTypes(pigSchema));
@@ -70,7 +70,7 @@ public class PigSchemaConverter {
    *
    * @param pigSchema the pig schema
    * @param
-   * @return the resulting RedElm schema
+   * @return the resulting Parquet schema
    */
   private Schema filterTupleSchema(Schema pigSchemaToFilter, GroupType schemaSubset) {
     List<FieldSchema> fields = pigSchemaToFilter.getFields();

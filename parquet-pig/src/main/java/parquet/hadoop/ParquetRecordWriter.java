@@ -30,18 +30,18 @@ import parquet.io.MessageColumnIO;
 import parquet.schema.MessageType;
 
 /**
- * Writes records to a Redelm file
+ * Writes records to a Parquet file
  *
- * @see RedelmOutputFormat
+ * @see ParquetOutputFormat
  *
  * @author Julien Le Dem
  *
  * @param <T> the type of the materialized records
  */
-public class RedelmRecordWriter<T> extends RecordWriter<Void, T> {
-  private static final Log LOG = Log.getLog(RedelmRecordWriter.class);
+public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
+  private static final Log LOG = Log.getLog(ParquetRecordWriter.class);
 
-  private final RedelmFileWriter w;
+  private final ParquetFileWriter w;
   private final WriteSupport<T> writeSupport;
   private final MessageType schema;
   private final Map<String, String> extraMetaData;
@@ -65,7 +65,7 @@ public class RedelmRecordWriter<T> extends RecordWriter<Void, T> {
    * @param blockSize the size of a block in the file (this will be approximate)
    * @param codec the codec used to compress
    */
-  RedelmRecordWriter(RedelmFileWriter w, WriteSupport<T> writeSupport, MessageType schema,  Map<String, String> extraMetaData, int blockSize, int pageSize, BytesCompressor compressor) {
+  ParquetRecordWriter(ParquetFileWriter w, WriteSupport<T> writeSupport, MessageType schema,  Map<String, String> extraMetaData, int blockSize, int pageSize, BytesCompressor compressor) {
     if (writeSupport == null) {
       throw new NullPointerException("writeSupport");
     }

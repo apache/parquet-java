@@ -28,12 +28,12 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputCommitter;
 
 import parquet.Log;
 
-public class RedelmOutputCommitter extends FileOutputCommitter {
-  private static final Log LOG = Log.getLog(RedelmOutputCommitter.class);
+public class ParquetOutputCommitter extends FileOutputCommitter {
+  private static final Log LOG = Log.getLog(ParquetOutputCommitter.class);
 
   private final Path outputPath;
 
-  public RedelmOutputCommitter(Path outputPath, TaskAttemptContext context) throws IOException {
+  public ParquetOutputCommitter(Path outputPath, TaskAttemptContext context) throws IOException {
     super(outputPath, context);
     this.outputPath = outputPath;
   }
@@ -43,8 +43,8 @@ public class RedelmOutputCommitter extends FileOutputCommitter {
     try {
       Configuration configuration = jobContext.getConfiguration();
       FileStatus outputStatus = outputPath.getFileSystem(configuration).getFileStatus(outputPath);
-      List<Footer> footers = RedelmFileReader.readAllFootersInParallel(configuration, outputStatus);
-      RedelmFileWriter.writeSummaryFile(configuration, outputPath, footers);
+      List<Footer> footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus);
+      ParquetFileWriter.writeSummaryFile(configuration, outputPath, footers);
     } catch (Exception e) {
       LOG.warn("could not write summary file for " + outputPath, e);
     }
