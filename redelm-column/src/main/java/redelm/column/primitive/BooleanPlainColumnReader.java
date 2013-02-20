@@ -46,7 +46,7 @@ public class BooleanPlainColumnReader extends PrimitiveColumnReader {
   @Override
   public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
     if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));
-    this.in = getBitPackingReader(1, new ByteArrayInputStream(in, offset, in.length - offset));
+    this.in = getBitPackingReader(1, new ByteArrayInputStream(in, offset, in.length - offset), valueCount);
     return in.length;
   }
 

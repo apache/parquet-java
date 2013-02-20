@@ -32,7 +32,7 @@ public class BitPackingColumnReader extends PrimitiveColumnReader {
     int effectiveBitLength = (int)valueCount * bitsPerValue;
     int length = effectiveBitLength / 8 + (effectiveBitLength % 8 == 0 ? 0 : 1); // ceil
     this.in = new ByteArrayInputStream(in, offset, length);
-    this.bitPackingReader = getBitPackingReader(bitsPerValue, this.in);
+    this.bitPackingReader = getBitPackingReader(bitsPerValue, this.in, valueCount);
     return offset + length;
   }
 

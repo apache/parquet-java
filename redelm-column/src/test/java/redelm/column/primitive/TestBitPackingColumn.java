@@ -1,33 +1,14 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package redelm.column.primitive;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-
-import redelm.column.primitive.BitPacking.BitPackingReader;
-import redelm.column.primitive.BitPacking.BitPackingWriter;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-public class TestBitPacking {
+public class TestBitPackingColumn {
 
   @Test
   public void testZero() throws IOException {
@@ -155,59 +136,24 @@ public class TestBitPacking {
     validateEncodeDecode(7, vals, expected);
   }
 
-  private void validateEncodeDecode(int bitLength, int[] vals, String expected)
-      throws IOException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    BitPackingWriter w = BitPacking.getBitPackingWriter(bitLength, baos);
+  private void validateEncodeDecode(int bitLength, int[] vals, String expected) throws IOException {
+    final int bound = (int)Math.pow(2, bitLength) - 1;
+    BitPackingColumnWriter w = new BitPackingColumnWriter(bound);
     for (int i : vals) {
-      w.write(i);
+      w.writeInteger(i);
     }
-    w.finish();
-    byte[] bytes = baos.toByteArray();
-    System.out.println("vals ("+bitLength+"): " + toString(vals));
-    System.out.println("bytes: " + toString(bytes));
-    Assert.assertEquals(expected, toString(bytes));
-    ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-    BitPackingReader r = BitPacking.getBitPackingReader(bitLength, bais, vals.length);
+    byte[] bytes = w.getBytes().toByteArray();
+    System.out.println("vals ("+bitLength+"): " + TestBitPacking.toString(vals));
+    System.out.println("bytes: " + TestBitPacking.toString(bytes));
+    assertEquals(expected, TestBitPacking.toString(bytes));
+    BitPackingColumnReader r = new BitPackingColumnReader(bound);
+    r.initFromPage(vals.length, bytes, 0);
     int[] result = new int[vals.length];
     for (int i = 0; i < result.length; i++) {
-      result[i] = r.read();
+      result[i] = r.readInteger();
     }
-    System.out.println("result: " + toString(result));
-    assertArrayEquals(vals, result);
-  }
-
-  public static String toString(int[] vals) {
-    StringBuilder sb = new StringBuilder();
-    boolean first = true;
-    for (int i : vals) {
-      if (first) {
-        first = false;
-      } else {
-        sb.append(" ");
-      }
-      sb.append(i);
-    }
-    return sb.toString();
-  }
-
-  public static String toString(byte[] bytes) {
-    StringBuilder sb = new StringBuilder();
-    boolean first = true;
-    for (byte b : bytes) {
-      if (first) {
-        first = false;
-      } else {
-        sb.append(" ");
-      }
-      int i = b < 0 ? 256 + b : b;
-      String binaryString = Integer.toBinaryString(i);
-      for (int j = binaryString.length(); j<8; ++j) {
-        sb.append("0");
-      }
-      sb.append(binaryString);
-    }
-    return sb.toString();
+    System.out.println("result: " + TestBitPacking.toString(result));
+    assertArrayEquals("result: " + TestBitPacking.toString(result), vals, result);
   }
 
 }
