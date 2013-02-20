@@ -24,11 +24,12 @@ import java.util.List;
 
 import redelm.data.simple.example.Paper;
 import redelm.schema.MessageType;
-import redfile.PageHeader;
-import redfile.PageType;
-import redfile.SchemaElement;
 
 import org.junit.Test;
+
+import parquet.format.PageHeader;
+import parquet.format.PageType;
+import parquet.format.SchemaElement;
 
 public class TestRedFileMetadataConverter {
 

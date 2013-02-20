@@ -13,10 +13,10 @@ import redelm.column.mem.PageWriter;
 import redelm.hadoop.CodecFactory.BytesCompressor;
 import redelm.redfile.RedFileMetadataConverter;
 import redelm.schema.MessageType;
-import redfile.DataPageHeader;
-import redfile.Encoding;
-import redfile.PageHeader;
-import redfile.PageType;
+import parquet.format.DataPageHeader;
+import parquet.format.Encoding;
+import parquet.format.PageHeader;
+import parquet.format.PageType;
 
 public class ColumnChunkPageWriteStore implements PageWriteStore {
 

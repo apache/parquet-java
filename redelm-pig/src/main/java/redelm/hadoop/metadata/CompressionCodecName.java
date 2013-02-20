@@ -15,7 +15,7 @@
  */
 package redelm.hadoop.metadata;
 
-import redfile.CompressionCodec;
+import parquet.format.CompressionCodec;
 
 public enum CompressionCodecName {
   UNCOMPRESSED(null, CompressionCodec.UNCOMPRESSED, ""),

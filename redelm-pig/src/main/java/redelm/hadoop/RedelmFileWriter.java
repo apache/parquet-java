@@ -35,15 +35,16 @@ import redelm.hadoop.metadata.FileMetaData;
 import redelm.hadoop.metadata.RedelmMetaData;
 import redelm.redfile.RedFileMetadataConverter;
 import redelm.schema.MessageType;
-import redfile.DataPageHeader;
-import redfile.Encoding;
-import redfile.PageHeader;
-import redfile.PageType;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+
+import parquet.format.DataPageHeader;
+import parquet.format.Encoding;
+import parquet.format.PageHeader;
+import parquet.format.PageType;
 
 /**
  * Writes a RedElm file
@@ -263,7 +264,7 @@ public class RedelmFileWriter {
   }
 
   private void serializeFooter(RedelmMetaData footer, OutputStream os) throws IOException {
-    redfile.FileMetaData redFileMetadata = new RedFileMetadataConverter().toRedFileMetadata(CURRENT_VERSION, footer);
+    parquet.format.FileMetaData redFileMetadata = new RedFileMetadataConverter().toRedFileMetadata(CURRENT_VERSION, footer);
     metadataConverter.writeFileMetaData(redFileMetadata, os);
   }
 
@@ -274,7 +275,7 @@ public class RedelmFileWriter {
     summary.writeInt(footers.size());
     for (Footer footer : footers) {
       summary.writeUTF(footer.getFile().toString());
-      redfile.FileMetaData redFileMetadata = redFileMetadataConverter.toRedFileMetadata(CURRENT_VERSION, footer.getRedelmMetaData());
+      parquet.format.FileMetaData redFileMetadata = redFileMetadataConverter.toRedFileMetadata(CURRENT_VERSION, footer.getRedelmMetaData());
       redFileMetadataConverter.writeFileMetaData(redFileMetadata, summary);
     }
     summary.close();

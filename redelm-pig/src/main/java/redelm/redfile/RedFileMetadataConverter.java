@@ -37,21 +37,22 @@ import redelm.schema.PrimitiveType;
 import redelm.schema.PrimitiveType.PrimitiveTypeName;
 import redelm.schema.Type.Repetition;
 import redelm.schema.TypeVisitor;
-import redfile.ColumnChunk;
-import redfile.CompressionCodec;
-import redfile.Encoding;
-import redfile.FieldRepetitionType;
-import redfile.FileMetaData;
-import redfile.KeyValue;
-import redfile.PageHeader;
-import redfile.RowGroup;
-import redfile.SchemaElement;
-import redfile.Type;
 
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
+
+import parquet.format.ColumnChunk;
+import parquet.format.CompressionCodec;
+import parquet.format.Encoding;
+import parquet.format.FieldRepetitionType;
+import parquet.format.FileMetaData;
+import parquet.format.KeyValue;
+import parquet.format.PageHeader;
+import parquet.format.RowGroup;
+import parquet.format.SchemaElement;
+import parquet.format.Type;
 
 public class RedFileMetadataConverter {
 
@@ -89,7 +90,7 @@ public class RedFileMetadataConverter {
       @Override
       public void visit(PrimitiveType primitiveType) {
         SchemaElement element = new SchemaElement(primitiveType.getName());
-        element.setField_type(toRedfileRepetition(primitiveType.getRepetition()));
+        element.setRepetition_type(toRedfileRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
         result.add(element);
       }
@@ -112,7 +113,7 @@ public class RedFileMetadataConverter {
       @Override
       public void visit(GroupType groupType) {
         SchemaElement element = new SchemaElement(groupType.getName());
-        element.setField_type(toRedfileRepetition(groupType.getRepetition()));
+        element.setRepetition_type(toRedfileRepetition(groupType.getRepetition()));
         visitChildren(result, groupType, element);
       }
 
@@ -134,7 +135,7 @@ public class RedFileMetadataConverter {
     for (ColumnChunkMetaData columnMetaData : columns) {
       ColumnChunk columnChunk = new ColumnChunk(columnMetaData.getFirstDataPage()); // verify this is the right offset
       columnChunk.file_path = null; // same file
-      columnChunk.meta_data = new redfile.ColumnMetaData(
+      columnChunk.meta_data = new parquet.format.ColumnMetaData(
           getType(columnMetaData.getType()),
           Arrays.asList(Encoding.PLAIN), // TODO: deal with encodings
           Arrays.asList(columnMetaData.getPath()),
@@ -223,7 +224,7 @@ public class RedFileMetadataConverter {
       blockMetaData.setTotalByteSize(rowGroup.getTotal_byte_size());
       List<ColumnChunk> columns = rowGroup.getColumns();
       for (ColumnChunk columnChunk : columns) {
-        redfile.ColumnMetaData metaData = columnChunk.meta_data;
+        parquet.format.ColumnMetaData metaData = columnChunk.meta_data;
         String[] path = metaData.path_in_schema.toArray(new String[metaData.path_in_schema.size()]);
         ColumnChunkMetaData column = new ColumnChunkMetaData(path, messageType.getType(path).asPrimitiveType().getPrimitiveTypeName(), CompressionCodecName.fromRedFile(metaData.codec));
         column.setFirstDataPage(metaData.data_page_offset);
@@ -262,7 +263,7 @@ public class RedFileMetadataConverter {
           || (schemaElement.isSetType() && schemaElement.isSetNum_children())) {
         throw new RuntimeException("bad element " + schemaElement);
       }
-      Repetition repetition = fromRedFileRepetition(schemaElement.getField_type());
+      Repetition repetition = fromRedFileRepetition(schemaElement.getRepetition_type());
       String name = schemaElement.getName();
       if (schemaElement.type != null) {
         result[i] = new PrimitiveType(
@@ -296,12 +297,12 @@ public class RedFileMetadataConverter {
     return read(from, new PageHeader());
   }
 
-  public void writeFileMetaData(redfile.FileMetaData fileMetadata, OutputStream to) throws IOException {
+  public void writeFileMetaData(parquet.format.FileMetaData fileMetadata, OutputStream to) throws IOException {
     write(fileMetadata, to);
   }
 
-  public redfile.FileMetaData readFileMetaData(InputStream from) throws IOException {
-    return read(from, new redfile.FileMetaData());
+  public parquet.format.FileMetaData readFileMetaData(InputStream from) throws IOException {
+    return read(from, new parquet.format.FileMetaData());
   }
 
   public String toString(TBase<?, ?> tbase) {

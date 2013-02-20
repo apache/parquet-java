@@ -46,8 +46,8 @@ import redelm.hadoop.metadata.BlockMetaData;
 import redelm.hadoop.metadata.ColumnChunkMetaData;
 import redelm.hadoop.metadata.RedelmMetaData;
 import redelm.redfile.RedFileMetadataConverter;
-import redfile.PageHeader;
-import redfile.PageType;
+import parquet.format.PageHeader;
+import parquet.format.PageType;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -69,7 +69,7 @@ public class RedelmFileReader {
   private static RedFileMetadataConverter redFileMetadataConverter = new RedFileMetadataConverter();
 
   private static RedelmMetaData deserializeFooter(InputStream is) throws IOException {
-    redfile.FileMetaData redFileMetadata = redFileMetadataConverter.readFileMetaData(is);
+    parquet.format.FileMetaData redFileMetadata = redFileMetadataConverter.readFileMetaData(is);
     if (Log.DEBUG) LOG.debug(redFileMetadataConverter.toString(redFileMetadata));
     RedelmMetaData metadata = redFileMetadataConverter.fromRedFileMetadata(redFileMetadata);
     if (Log.DEBUG) LOG.debug(RedelmMetaData.toPrettyJSON(metadata));
