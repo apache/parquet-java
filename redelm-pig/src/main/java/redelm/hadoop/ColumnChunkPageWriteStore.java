@@ -10,8 +10,8 @@ import redelm.bytes.CapacityByteArrayOutputStream;
 import redelm.column.ColumnDescriptor;
 import redelm.column.mem.PageWriteStore;
 import redelm.column.mem.PageWriter;
+import redelm.format.converter.ParquetMetadataConverter;
 import redelm.hadoop.CodecFactory.BytesCompressor;
-import redelm.redfile.RedFileMetadataConverter;
 import redelm.schema.MessageType;
 import parquet.format.DataPageHeader;
 import parquet.format.Encoding;
@@ -20,7 +20,7 @@ import parquet.format.PageType;
 
 public class ColumnChunkPageWriteStore implements PageWriteStore {
 
-  private static RedFileMetadataConverter redFileMetadataConverter = new RedFileMetadataConverter();
+  private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
   private static final class ColumnChunkPageWriter implements PageWriter {
 
@@ -48,7 +48,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore {
       PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, (int)uncompressedSize, (int)compressedSize);
       // pageHeader.crc = ...;
       pageHeader.data_page = new DataPageHeader(valueCount, Encoding.PLAIN); // TODO: encoding
-      redFileMetadataConverter.writePageHeader(pageHeader, buf);
+      parquetMetadataConverter.writePageHeader(pageHeader, buf);
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;

@@ -43,9 +43,9 @@ public enum CompressionCodecName {
     throw new IllegalArgumentException("Unknown compression codec " + clazz);
   }
 
-  public static CompressionCodecName fromRedFile(CompressionCodec codec) {
+  public static CompressionCodecName fromParquet(CompressionCodec codec) {
     for (CompressionCodecName codecName : CompressionCodecName.values()) {
-      if (codec.equals(codecName.redFileCompressionCodec)) {
+      if (codec.equals(codecName.parquetCompressionCodec)) {
         return codecName;
       }
     }
@@ -53,12 +53,12 @@ public enum CompressionCodecName {
   }
 
   private final String hadoopCompressionCodecClass;
-  private final CompressionCodec redFileCompressionCodec;
+  private final CompressionCodec parquetCompressionCodec;
   private final String extension;
 
-  private CompressionCodecName(String hadoopCompressionCodecClass, CompressionCodec redFileCompressionCodec, String extension) {
+  private CompressionCodecName(String hadoopCompressionCodecClass, CompressionCodec parquetCompressionCodec, String extension) {
     this.hadoopCompressionCodecClass = hadoopCompressionCodecClass;
-    this.redFileCompressionCodec = redFileCompressionCodec;
+    this.parquetCompressionCodec = parquetCompressionCodec;
     this.extension = extension;
   }
 
@@ -66,8 +66,8 @@ public enum CompressionCodecName {
     return hadoopCompressionCodecClass;
   }
 
-  public CompressionCodec getRedFileCompressionCodec() {
-    return redFileCompressionCodec;
+  public CompressionCodec getParquetCompressionCodec() {
+    return parquetCompressionCodec;
   }
 
   public String getExtension() {

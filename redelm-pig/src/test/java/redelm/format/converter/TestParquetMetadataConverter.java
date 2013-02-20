@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.redfile;
+package redelm.format.converter;
 
 import static org.junit.Assert.assertEquals;
 
@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.List;
 
 import redelm.data.simple.example.Paper;
+import redelm.format.converter.ParquetMetadataConverter;
 import redelm.schema.MessageType;
 
 import org.junit.Test;
@@ -31,26 +32,26 @@ import parquet.format.PageHeader;
 import parquet.format.PageType;
 import parquet.format.SchemaElement;
 
-public class TestRedFileMetadataConverter {
+public class TestParquetMetadataConverter {
 
   @Test
   public void testPageHeader() throws IOException {
-    RedFileMetadataConverter redFileMetadataConverter = new RedFileMetadataConverter();
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     PageType type = PageType.DATA_PAGE;
     int compSize = 10;
     int uncSize = 20;
     PageHeader pageHeader = new PageHeader(type, uncSize, compSize);
-    redFileMetadataConverter.writePageHeader(pageHeader, out);
-    PageHeader readPageHeader = redFileMetadataConverter.readPageHeader(new ByteArrayInputStream(out.toByteArray()));
+    parquetMetadataConverter.writePageHeader(pageHeader, out);
+    PageHeader readPageHeader = parquetMetadataConverter.readPageHeader(new ByteArrayInputStream(out.toByteArray()));
     assertEquals(pageHeader, readPageHeader);
   }
 
   @Test
   public void testSchemaConverter() {
-    RedFileMetadataConverter redFileMetadataConverter = new RedFileMetadataConverter();
-    List<SchemaElement> redFileSchema = redFileMetadataConverter.toRedFileSchema(Paper.schema);
-    MessageType schema = redFileMetadataConverter.fromRedFileSchema(redFileSchema);
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(Paper.schema);
+    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema);
     assertEquals(Paper.schema, schema);
   }
 

@@ -28,12 +28,12 @@ import redelm.Log;
 import redelm.bytes.BytesInput;
 import redelm.bytes.BytesUtils;
 import redelm.column.ColumnDescriptor;
+import redelm.format.converter.ParquetMetadataConverter;
 import redelm.hadoop.metadata.BlockMetaData;
 import redelm.hadoop.metadata.ColumnChunkMetaData;
 import redelm.hadoop.metadata.CompressionCodecName;
 import redelm.hadoop.metadata.FileMetaData;
 import redelm.hadoop.metadata.RedelmMetaData;
-import redelm.redfile.RedFileMetadataConverter;
 import redelm.schema.MessageType;
 
 import org.apache.hadoop.conf.Configuration;
@@ -59,7 +59,7 @@ public class RedelmFileWriter {
   public static final byte[] MAGIC = {82, 69, 68, 49}; // "RED1"
   public static final int CURRENT_VERSION = 1;
 
-  private static RedFileMetadataConverter redFileMetadataConverter = new RedFileMetadataConverter();
+  private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
   private final MessageType schema;
   private final FSDataOutputStream out;
@@ -69,7 +69,7 @@ public class RedelmFileWriter {
   private List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
   private long uncompressedLength;
   private long compressedLength;
-  private final RedFileMetadataConverter metadataConverter = new RedFileMetadataConverter();
+  private final ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter();
 
   /**
    * Captures the order in which methods should be called
@@ -264,8 +264,8 @@ public class RedelmFileWriter {
   }
 
   private void serializeFooter(RedelmMetaData footer, OutputStream os) throws IOException {
-    parquet.format.FileMetaData redFileMetadata = new RedFileMetadataConverter().toRedFileMetadata(CURRENT_VERSION, footer);
-    metadataConverter.writeFileMetaData(redFileMetadata, os);
+    parquet.format.FileMetaData parquetMetadata = new ParquetMetadataConverter().toParquetMetadata(CURRENT_VERSION, footer);
+    metadataConverter.writeFileMetaData(parquetMetadata, os);
   }
 
   public static void writeSummaryFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
@@ -275,8 +275,8 @@ public class RedelmFileWriter {
     summary.writeInt(footers.size());
     for (Footer footer : footers) {
       summary.writeUTF(footer.getFile().toString());
-      parquet.format.FileMetaData redFileMetadata = redFileMetadataConverter.toRedFileMetadata(CURRENT_VERSION, footer.getRedelmMetaData());
-      redFileMetadataConverter.writeFileMetaData(redFileMetadata, summary);
+      parquet.format.FileMetaData parquetMetadata = parquetMetadataConverter.toParquetMetadata(CURRENT_VERSION, footer.getRedelmMetaData());
+      parquetMetadataConverter.writeFileMetaData(parquetMetadata, summary);
     }
     summary.close();
   }

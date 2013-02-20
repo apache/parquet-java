@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.redfile;
+package redelm.format.converter;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,9 +54,9 @@ import parquet.format.RowGroup;
 import parquet.format.SchemaElement;
 import parquet.format.Type;
 
-public class RedFileMetadataConverter {
+public class ParquetMetadataConverter {
 
-  public FileMetaData toRedFileMetadata(int currentVersion, RedelmMetaData redelmMetadata) {
+  public FileMetaData toParquetMetadata(int currentVersion, RedelmMetaData redelmMetadata) {
     List<BlockMetaData> blocks = redelmMetadata.getBlocks();
     List<RowGroup> rowGroups = new ArrayList<RowGroup>();
     int numRows = 0;
@@ -66,7 +66,7 @@ public class RedFileMetadataConverter {
     }
     FileMetaData fileMetaData = new FileMetaData(
         currentVersion,
-        toRedFileSchema(redelmMetadata.getFileMetaData().getSchema()),
+        toParquetSchema(redelmMetadata.getFileMetaData().getSchema()),
         numRows,
         rowGroups
         );
@@ -79,7 +79,7 @@ public class RedFileMetadataConverter {
     return fileMetaData;
   }
 
-  List<SchemaElement> toRedFileSchema(MessageType schema) {
+  List<SchemaElement> toParquetSchema(MessageType schema) {
     List<SchemaElement> result = new ArrayList<SchemaElement>();
     addToList(result, schema);
     return result;
@@ -90,12 +90,12 @@ public class RedFileMetadataConverter {
       @Override
       public void visit(PrimitiveType primitiveType) {
         SchemaElement element = new SchemaElement(primitiveType.getName());
-        element.setRepetition_type(toRedfileRepetition(primitiveType.getRepetition()));
+        element.setRepetition_type(toParquetRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
         result.add(element);
       }
 
-      private FieldRepetitionType toRedfileRepetition(Repetition repetition) {
+      private FieldRepetitionType toParquetRepetition(Repetition repetition) {
         switch (repetition) {
         case REQUIRED: return FieldRepetitionType.REQUIRED;
         case OPTIONAL: return FieldRepetitionType.OPTIONAL;
@@ -113,7 +113,7 @@ public class RedFileMetadataConverter {
       @Override
       public void visit(GroupType groupType) {
         SchemaElement element = new SchemaElement(groupType.getName());
-        element.setRepetition_type(toRedfileRepetition(groupType.getRepetition()));
+        element.setRepetition_type(toParquetRepetition(groupType.getRepetition()));
         visitChildren(result, groupType, element);
       }
 
@@ -131,7 +131,7 @@ public class RedFileMetadataConverter {
   private void addRowGroup(RedelmMetaData redelmMetadata, List<RowGroup> rowGroups, BlockMetaData block) {
     //rowGroup.total_byte_size = ;
     List<ColumnChunkMetaData> columns = block.getColumns();
-    List<ColumnChunk> redFileColumns = new ArrayList<ColumnChunk>();
+    List<ColumnChunk> parquetColumns = new ArrayList<ColumnChunk>();
     for (ColumnChunkMetaData columnMetaData : columns) {
       ColumnChunk columnChunk = new ColumnChunk(columnMetaData.getFirstDataPage()); // verify this is the right offset
       columnChunk.file_path = null; // same file
@@ -139,7 +139,7 @@ public class RedFileMetadataConverter {
           getType(columnMetaData.getType()),
           Arrays.asList(Encoding.PLAIN), // TODO: deal with encodings
           Arrays.asList(columnMetaData.getPath()),
-          columnMetaData.getCodec().getRedFileCompressionCodec(),
+          columnMetaData.getCodec().getParquetCompressionCodec(),
           columnMetaData.getValueCount(),
           columnMetaData.getTotalUncompressedSize(),
           columnMetaData.getTotalSize(),
@@ -148,9 +148,9 @@ public class RedFileMetadataConverter {
 //      columnChunk.meta_data.index_page_offset = ;
 //      columnChunk.meta_data.key_value_metadata = ; // nothing yet
 
-      redFileColumns.add(columnChunk);
+      parquetColumns.add(columnChunk);
     }
-    RowGroup rowGroup = new RowGroup(redFileColumns, block.getTotalByteSize(), block.getRowCount());
+    RowGroup rowGroup = new RowGroup(parquetColumns, block.getTotalByteSize(), block.getRowCount());
     rowGroups.add(rowGroup);
   }
 
@@ -212,12 +212,12 @@ public class RedFileMetadataConverter {
     fileMetaData.addToKey_value_metadata(keyValue);
   }
 
-  public RedelmMetaData fromRedFileMetadata(FileMetaData redFileMetadata) throws IOException {
+  public RedelmMetaData fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
 //    List<MetaDataBlock> result = new ArrayList<MetaDataBlock>();
-    MessageType messageType = fromRedFileSchema(redFileMetadata.getSchema());
+    MessageType messageType = fromParquetSchema(parquetMetadata.getSchema());
     redelm.hadoop.metadata.FileMetaData fileMetadata = new redelm.hadoop.metadata.FileMetaData(messageType);
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
-    List<RowGroup> row_groups = redFileMetadata.getRow_groups();
+    List<RowGroup> row_groups = parquetMetadata.getRow_groups();
     for (RowGroup rowGroup : row_groups) {
       BlockMetaData blockMetaData = new BlockMetaData();
       blockMetaData.setRowCount(rowGroup.getNum_rows());
@@ -226,7 +226,7 @@ public class RedFileMetadataConverter {
       for (ColumnChunk columnChunk : columns) {
         parquet.format.ColumnMetaData metaData = columnChunk.meta_data;
         String[] path = metaData.path_in_schema.toArray(new String[metaData.path_in_schema.size()]);
-        ColumnChunkMetaData column = new ColumnChunkMetaData(path, messageType.getType(path).asPrimitiveType().getPrimitiveTypeName(), CompressionCodecName.fromRedFile(metaData.codec));
+        ColumnChunkMetaData column = new ColumnChunkMetaData(path, messageType.getType(path).asPrimitiveType().getPrimitiveTypeName(), CompressionCodecName.fromParquet(metaData.codec));
         column.setFirstDataPage(metaData.data_page_offset);
         column.setValueCount(metaData.num_values);
         column.setTotalUncompressedSize(metaData.total_uncompressed_size);
@@ -240,7 +240,7 @@ public class RedFileMetadataConverter {
       blocks.add(blockMetaData);
     }
     Map<String, String> keyValueMetaData = new HashMap<String, String>();
-    List<KeyValue> key_value_metadata = redFileMetadata.getKey_value_metadata();
+    List<KeyValue> key_value_metadata = parquetMetadata.getKey_value_metadata();
     if (key_value_metadata != null) {
       for (KeyValue keyValue : key_value_metadata) {
         keyValueMetaData.put(keyValue.key, keyValue.value);
@@ -249,7 +249,7 @@ public class RedFileMetadataConverter {
     return new RedelmMetaData(fileMetadata, blocks, keyValueMetaData);
   }
 
-  MessageType fromRedFileSchema(List<SchemaElement> schema) {
+  MessageType fromParquetSchema(List<SchemaElement> schema) {
     Iterator<SchemaElement> iterator = schema.iterator();
     SchemaElement root = iterator.next();
     return new MessageType(root.getName(), convertChildren(iterator, root.getNum_children()));
@@ -263,7 +263,7 @@ public class RedFileMetadataConverter {
           || (schemaElement.isSetType() && schemaElement.isSetNum_children())) {
         throw new RuntimeException("bad element " + schemaElement);
       }
-      Repetition repetition = fromRedFileRepetition(schemaElement.getRepetition_type());
+      Repetition repetition = fromParquetRepetition(schemaElement.getRepetition_type());
       String name = schemaElement.getName();
       if (schemaElement.type != null) {
         result[i] = new PrimitiveType(
@@ -280,7 +280,7 @@ public class RedFileMetadataConverter {
     return result;
   }
 
-  private Repetition fromRedFileRepetition(FieldRepetitionType repetition) {
+  private Repetition fromParquetRepetition(FieldRepetitionType repetition) {
     switch (repetition) {
     case REQUIRED: return Repetition.REQUIRED;
     case OPTIONAL: return Repetition.OPTIONAL;

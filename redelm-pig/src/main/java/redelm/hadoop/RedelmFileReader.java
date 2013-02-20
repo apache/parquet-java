@@ -40,12 +40,12 @@ import redelm.bytes.BytesInput;
 import redelm.column.ColumnDescriptor;
 import redelm.column.mem.Page;
 import redelm.column.mem.PageReadStore;
+import redelm.format.converter.ParquetMetadataConverter;
 import redelm.hadoop.CodecFactory.BytesDecompressor;
 import redelm.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
 import redelm.hadoop.metadata.BlockMetaData;
 import redelm.hadoop.metadata.ColumnChunkMetaData;
 import redelm.hadoop.metadata.RedelmMetaData;
-import redelm.redfile.RedFileMetadataConverter;
 import parquet.format.PageHeader;
 import parquet.format.PageType;
 
@@ -66,12 +66,12 @@ public class RedelmFileReader {
 
   private static final Log LOG = Log.getLog(RedelmFileReader.class);
 
-  private static RedFileMetadataConverter redFileMetadataConverter = new RedFileMetadataConverter();
+  private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
   private static RedelmMetaData deserializeFooter(InputStream is) throws IOException {
-    parquet.format.FileMetaData redFileMetadata = redFileMetadataConverter.readFileMetaData(is);
-    if (Log.DEBUG) LOG.debug(redFileMetadataConverter.toString(redFileMetadata));
-    RedelmMetaData metadata = redFileMetadataConverter.fromRedFileMetadata(redFileMetadata);
+    parquet.format.FileMetaData parquetMetadata = parquetMetadataConverter.readFileMetaData(is);
+    if (Log.DEBUG) LOG.debug(parquetMetadataConverter.toString(parquetMetadata));
+    RedelmMetaData metadata = parquetMetadataConverter.fromParquetMetadata(parquetMetadata);
     if (Log.DEBUG) LOG.debug(RedelmMetaData.toPrettyJSON(metadata));
     return metadata;
   }
@@ -198,7 +198,7 @@ public class RedelmFileReader {
     List<Footer> result = new ArrayList<Footer>(footerCount);
     for (int i = 0; i < footerCount; i++) {
       Path file = new Path(summary.readUTF());
-      RedelmMetaData redelmMetaData = redFileMetadataConverter.fromRedFileMetadata(redFileMetadataConverter.readFileMetaData(summary));
+      RedelmMetaData redelmMetaData = parquetMetadataConverter.fromParquetMetadata(parquetMetadataConverter.readFileMetaData(summary));
       result.add(new Footer(file, redelmMetaData));
     }
     summary.close();
@@ -326,7 +326,7 @@ public class RedelmFileReader {
       long pos = f.getPos();
       if (DEBUG) LOG.debug(pos + ": reading page");
       try {
-        pageHeader = redFileMetadataConverter.readPageHeader(f);
+        pageHeader = parquetMetadataConverter.readPageHeader(f);
         if (pageHeader.type != PageType.DATA_PAGE) {
           if (DEBUG) LOG.debug("not a data page, skipping " + pageHeader.compressed_page_size);
           f.skip(pageHeader.compressed_page_size);
