@@ -23,8 +23,6 @@ import static redelm.data.simple.example.Paper.r2;
 import static redelm.data.simple.example.Paper.schema;
 import static redelm.data.simple.example.Paper.schema2;
 
-import java.io.DataOutput;
-import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -34,11 +32,16 @@ import java.util.List;
 
 import org.junit.Test;
 
+import redelm.Log;
 import redelm.column.ColumnDescriptor;
+import redelm.column.ColumnReadStore;
 import redelm.column.ColumnReader;
 import redelm.column.ColumnWriter;
-import redelm.column.ColumnsStore;
-import redelm.column.mem.MemColumnsStore;
+import redelm.column.ColumnWriteStore;
+import redelm.column.mem.MemColumnReadStore;
+import redelm.column.mem.MemColumnWriteStore;
+import redelm.column.mem.MemPageStore;
+import redelm.column.mem.PageReadStore;
 import redelm.data.Group;
 import redelm.data.GroupRecordConsumer;
 import redelm.data.GroupWriter;
@@ -46,6 +49,8 @@ import redelm.data.simple.SimpleGroupFactory;
 import redelm.schema.MessageType;
 
 public class TestColumnIO {
+  private static final Log LOG = Log.getLog(TestColumnIO.class);
+
   private static final String schemaString =
       "message Document {\n"
     + "  required int64 DocId;\n"
@@ -55,10 +60,10 @@ public class TestColumnIO {
     + "  }\n"
     + "  repeated group Name {\n"
     + "    repeated group Language {\n"
-    + "      required string Code;\n"
-    + "      optional string Country;\n"
+    + "      required binary Code;\n"
+    + "      optional binary Country;\n"
     + "    }\n"
-    + "    optional string Url;\n"
+    + "    optional binary Url;\n"
     + "  }\n"
     + "}\n";
 
@@ -83,25 +88,26 @@ public class TestColumnIO {
 
   @Test
   public void testColumnIO() {
-    System.out.println(schema);
-    System.out.println("r1");
-    System.out.println(r1);
-    System.out.println("r2");
-    System.out.println(r2);
+    log(schema);
+    log("r1");
+    log(r1);
+    log("r2");
+    log(r2);
 
-    ColumnsStore columns = new MemColumnsStore(1024, schema);
+    MemPageStore memPageStore = new MemPageStore();
+    MemColumnWriteStore columns = new MemColumnWriteStore(memPageStore, 800);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     {
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(schema);
-      System.out.println(columnIO);
+      log(columnIO);
       GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
       groupWriter.write(r1);
       groupWriter.write(r2);
-      System.out.println(columns);
-      System.out.println("=========");
-      columns.flip();
-      RecordReader<Group> recordReader = getRecordReader(columnIO, schema, columns);
+      columns.flush();
+      log(columns);
+      log("=========");
+      RecordReader<Group> recordReader = getRecordReader(columnIO, schema, memPageStore);
 
       validateFSA(expectedFSA, columnIO, recordReader);
 
@@ -111,21 +117,19 @@ public class TestColumnIO {
 
       int i = 0;
       for (Group record : records) {
-        System.out.println("r" + (++i));
-        System.out.println(record);
+        log("r" + (++i));
+        log(record);
       }
 
       assertEquals("deserialization does not display the same result", r1.toString(), records.get(0).toString());
       assertEquals("deserialization does not display the same result", r2.toString(), records.get(1).toString());
     }
     {
-      columns.flip();
-
       MessageColumnIO columnIO2 = columnIOFactory.getColumnIO(schema2);
 
 
       List<Group> records = new ArrayList<Group>();
-      RecordReader<Group> recordReader = getRecordReader(columnIO2, schema2, columns);
+      RecordReader<Group> recordReader = getRecordReader(columnIO2, schema2, memPageStore);
 
       validateFSA(expectedFSA2, columnIO2, recordReader);
 
@@ -134,40 +138,45 @@ public class TestColumnIO {
 
       int i = 0;
       for (Group record : records) {
-        System.out.println("r" + (++i));
-        System.out.println(record);
+        log("r" + (++i));
+        log(record);
       }
       assertEquals("deserialization does not display the expected result", pr1.toString(), records.get(0).toString());
       assertEquals("deserialization does not display the expected result", pr2.toString(), records.get(1).toString());
     }
   }
 
-  private RecordReader<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, ColumnsStore columns) {
+  private void log(Object o) {
+    LOG.info(o);
+  }
+
+  private RecordReader<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, PageReadStore pageReadStore) {
     RecordMaterializer<Group> recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
-    return columnIO.getRecordReader(columns, recordConsumer);
+    return columnIO.getRecordReader(pageReadStore, recordConsumer);
   }
 
   private void validateFSA(int[][] expectedFSA, MessageColumnIO columnIO, RecordReader<?> recordReader) {
-    System.out.println("FSA: ----");
+    log("FSA: ----");
     List<PrimitiveColumnIO> leaves = columnIO.getLeaves();
     for (int i = 0; i < leaves.size(); ++i) {
       PrimitiveColumnIO primitiveColumnIO = leaves.get(i);
-      System.out.println(Arrays.toString(primitiveColumnIO.getFieldPath()));
+      log(Arrays.toString(primitiveColumnIO.getFieldPath()));
       for (int r = 0; r < expectedFSA[i].length; r++) {
         int next = expectedFSA[i][r];
-        System.out.println(" "+r+" -> "+ (next==leaves.size() ? "end" : Arrays.toString(leaves.get(next).getFieldPath()))+": "+recordReader.getNextLevel(i, r));
+        log(" "+r+" -> "+ (next==leaves.size() ? "end" : Arrays.toString(leaves.get(next).getFieldPath()))+": "+recordReader.getNextLevel(i, r));
         assertEquals(Arrays.toString(primitiveColumnIO.getFieldPath())+": "+r+" -> ", next, recordReader.getNextReader(i, r));
       }
     }
-    System.out.println("----");
+    log("----");
   }
 
   @Test
   public void testPushParser() {
-    ColumnsStore columns = new MemColumnsStore(1024, schema);
+    MemPageStore memPageStore = new MemPageStore();
+    MemColumnWriteStore columns = new MemColumnWriteStore(memPageStore, 800);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
-    columns.flip();
+    columns.flush();
 
     String[] expected = {
     "startMessage()",
@@ -188,35 +197,35 @@ public class TestColumnIO {
        "startField(Language, 0)",
         "startGroup()",
          "startField(Code, 0)",
-          "addString(en-us)",
+          "addBinary(en-us)",
          "endField(Code, 0)",
          "startField(Country, 1)",
-          "addString(us)",
+          "addBinary(us)",
          "endField(Country, 1)",
         "endGroup()",
         "startGroup()",
          "startField(Code, 0)",
-          "addString(en)",
+          "addBinary(en)",
          "endField(Code, 0)",
         "endGroup()",
        "endField(Language, 0)",
        "startField(Url, 1)",
-        "addString(http://A)",
+        "addBinary(http://A)",
        "endField(Url, 1)",
       "endGroup()",
       "startGroup()",
        "startField(Url, 1)",
-        "addString(http://B)",
+        "addBinary(http://B)",
        "endField(Url, 1)",
       "endGroup()",
       "startGroup()",
        "startField(Language, 0)",
         "startGroup()",
          "startField(Code, 0)",
-          "addString(en-gb)",
+          "addBinary(en-gb)",
          "endField(Code, 0)",
          "startField(Country, 1)",
-          "addString(gb)",
+          "addBinary(gb)",
          "endField(Country, 1)",
         "endGroup()",
        "endField(Language, 0)",
@@ -228,7 +237,7 @@ public class TestColumnIO {
     for (String string : expected) {
       expectations.add(string);
     }
-    RecordReader<Void> recordReader = columnIO.getRecordReader(columns, new RecordMaterializer<Void>() {
+    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new RecordMaterializer<Void>() {
 
       int count = 0;
       private void validate(String got) {
@@ -267,11 +276,6 @@ public class TestColumnIO {
       }
 
       @Override
-      public void addString(String value) {
-        validate("addString("+value+")");
-      }
-
-      @Override
       public void addInteger(int value) {
         validate("addInt("+value+")");
       }
@@ -288,7 +292,7 @@ public class TestColumnIO {
 
       @Override
       public void addBinary(byte[] value) {
-        validate("addBinary("+new BigInteger(value).toString(16)+")");
+        validate("addBinary("+new String(value)+")");
       }
 
       @Override
@@ -358,7 +362,7 @@ public class TestColumnIO {
     };
 
 
-    ColumnsStore columns = new ColumnsStore() {
+    ColumnWriteStore columns = new ColumnWriteStore() {
 
       int counter = 0;
 
@@ -379,16 +383,11 @@ public class TestColumnIO {
 
           @Override
           public void write(byte[] value, int repetitionLevel, int definitionLevel) {
-            validate(value, repetitionLevel, definitionLevel);
+            validate(new String(value), repetitionLevel, definitionLevel);
           }
 
           @Override
           public void write(boolean value, int repetitionLevel, int definitionLevel) {
-            validate(value, repetitionLevel, definitionLevel);
-          }
-
-          @Override
-          public void write(String value, int repetitionLevel, int definitionLevel) {
             validate(value, repetitionLevel, definitionLevel);
           }
 
@@ -413,45 +412,25 @@ public class TestColumnIO {
           }
 
           @Override
-          public void writeRepetitionLevelColumn(DataOutput out)
-              throws IOException {
+          public void flush() {
             throw new UnsupportedOperationException();
           }
 
           @Override
-          public void writeDefinitionLevelColumn(DataOutput out)
-              throws IOException {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public void writeDataColumn(DataOutput out) throws IOException {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public void reset() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public int getValueCount() {
+          public long memSize() {
             throw new UnsupportedOperationException();
           }
         };
       }
       @Override
-      public ColumnReader getColumnReader(ColumnDescriptor path) {
-        throw new UnsupportedOperationException();
-      }
-      @Override
-      public void flip() {
-        throw new UnsupportedOperationException();
+      public void flush() {
+        assertEquals("read all events", expected.length, counter);
       }
     };
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
     groupWriter.write(r1);
     groupWriter.write(r2);
+    columns.flush();
   }
 }

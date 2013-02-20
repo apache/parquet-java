@@ -146,4 +146,16 @@ public class Log {
     logger.log(Level.WARNING, String.valueOf(m), t);
   }
 
+  public void error(Object m) {
+    if (m instanceof Throwable) {
+      logger.log(Level.SEVERE, "", (Throwable)m);
+    } else {
+      logger.warning(String.valueOf(m));
+    }
+  }
+
+  public void error(Object m, Throwable t) {
+    logger.log(Level.SEVERE, String.valueOf(m), t);
+  }
+
 }

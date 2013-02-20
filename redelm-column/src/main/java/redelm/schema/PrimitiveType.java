@@ -15,6 +15,9 @@
  */
 package redelm.schema;
 
+import java.util.Arrays;
+import java.util.List;
+
 import redelm.column.ColumnReader;
 import redelm.io.RecordConsumer;
 
@@ -32,19 +35,7 @@ public class PrimitiveType extends Type {
    * @author Julien Le Dem
    *
    */
-  public static enum Primitive {
-    STRING {
-      @Override
-      public String toString(ColumnReader columnReader) {
-        return columnReader.getString();
-      }
-
-      @Override
-      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
-          ColumnReader columnReader) {
-        recordConsumer.addString(columnReader.getString());
-      }
-    },
+  public static enum PrimitiveTypeName {
     INT64 {
       @Override
       public String toString(ColumnReader columnReader) {
@@ -135,7 +126,7 @@ public class PrimitiveType extends Type {
 
   }
 
-  private final Primitive primitive;
+  private final PrimitiveTypeName primitive;
 
   /**
    *
@@ -143,7 +134,7 @@ public class PrimitiveType extends Type {
    * @param primitive STRING, INT64, ...
    * @param name the name of the type
    */
-  public PrimitiveType(Repetition repetition, Primitive primitive, String name) {
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, String name) {
     super(name, repetition);
     this.primitive = primitive;
   }
@@ -151,7 +142,7 @@ public class PrimitiveType extends Type {
   /**
    * @return the primitive type
    */
-  public Primitive getPrimitive() {
+  public PrimitiveTypeName getPrimitiveTypeName() {
     return primitive;
   }
 
@@ -192,7 +183,7 @@ public class PrimitiveType extends Type {
     if (other.isPrimitive()) {
       PrimitiveType primitiveType = other.asPrimitiveType();
       return getRepetition() == primitiveType.getRepetition() &&
-          getPrimitive().equals(primitiveType.getPrimitive()) &&
+          getPrimitiveTypeName().equals(primitiveType.getPrimitiveTypeName()) &&
           getName().equals(primitiveType.getName());
     } else {
       return false;
@@ -206,7 +197,7 @@ public class PrimitiveType extends Type {
   protected int typeHashCode() {
     int hash = 17;
     hash += 31 * getRepetition().hashCode();
-    hash += 31 * getPrimitive().hashCode();
+    hash += 31 * getPrimitiveTypeName().hashCode();
     hash += 31 * getName().hashCode();
     return hash;
   }
@@ -230,8 +221,26 @@ public class PrimitiveType extends Type {
   @Override
   public Type getType(String[] path, int i) {
     if (path.length != i) {
-      throw new RuntimeException("Arrived at primitive node, path invalid");
+      throw new RuntimeException("Arrived at primitive node at index " + i + " , path invalid: " + Arrays.toString(path));
     }
     return this;
+  }
+
+  @Override
+  protected List<String[]> getPaths(int depth) {
+    return Arrays.<String[]>asList(new String[depth]);
+  }
+
+  @Override
+  void checkContains(Type subType) {
+    super.checkContains(subType);
+    if (!subType.isPrimitive()) {
+      throw new RuntimeException(subType + " found: expected " + this);
+    }
+    PrimitiveType primitiveType = subType.asPrimitiveType();
+    if (this.primitive != primitiveType.primitive) {
+      throw new RuntimeException(subType + " found: expected " + this);
+    }
+
   }
 }

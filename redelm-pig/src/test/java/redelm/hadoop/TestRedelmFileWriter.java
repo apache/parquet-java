@@ -15,41 +15,43 @@
  */
 package redelm.hadoop;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.*;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.io.compress.GzipCodec;
-import org.junit.Test;
-
+import redelm.Log;
+import redelm.bytes.BytesInput;
 import redelm.column.ColumnDescriptor;
+import redelm.column.mem.Page;
+import redelm.column.mem.PageReadStore;
+import redelm.column.mem.PageReader;
+import redelm.hadoop.metadata.CompressionCodecName;
+import redelm.hadoop.metadata.RedelmMetaData;
 import redelm.parser.MessageTypeParser;
 import redelm.schema.MessageType;
 
-public class TestRedelmFileWriter {
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.junit.Test;
 
-  private static final String CODEC = GzipCodec.class.getName();
+public class TestRedelmFileWriter {
+  private static final Log LOG = Log.getLog(TestRedelmFileWriter.class);
 
   @Test
   public void test() throws Exception {
 
-    Path path = new Path(new File("target/testRedelmFile").getAbsoluteFile().toURI());
+    File testFile = new File("target/testRedelmFile").getAbsoluteFile();
+    testFile.delete();
+
+    Path path = new Path(testFile.toURI());
     Configuration configuration = new Configuration();
-    FileSystem fileSystem = path.getFileSystem(configuration);
 
-    FSDataOutputStream fout = fileSystem.create(path, true);
-
-    MessageType schema = MessageTypeParser.parseMessageType("message m { required group a {required string b;} required group c { required int64 d; }}");
+    MessageType schema = MessageTypeParser.parseMessageType("message m { required group a {required binary b;} required group c { required int64 d; }}");
     String[] path1 = {"a", "b"};
     ColumnDescriptor c1 = schema.getColumnDescription(path1);
     String[] path2 = {"c", "d"};
@@ -59,85 +61,70 @@ public class TestRedelmFileWriter {
     byte[] bytes2 = { 1, 2, 3, 4};
     byte[] bytes3 = { 2, 3, 4, 5};
     byte[] bytes4 = { 3, 4, 5, 6};
-
-    RedelmFileWriter w = new RedelmFileWriter(schema, fout, (CompressionCodec)Class.forName(CODEC).newInstance());
+    CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
+    RedelmFileWriter w = new RedelmFileWriter(configuration, schema, path);
     w.start();
-    w.startBlock(1);
-    w.startColumn(c1, 1);
-    w.startRepetitionLevels();
-    w.write(bytes1, 0, bytes1.length);
-    w.startDefinitionLevels();
-    w.write(bytes1, 0, bytes1.length);
-    w.startData();
-    w.write(bytes1, 0, bytes1.length);
+    w.startBlock(3);
+    w.startColumn(c1, 5, codec);
+    w.writeDataPage(2, 4, BytesInput.from(bytes1));
+    w.writeDataPage(3, 4, BytesInput.from(bytes1));
     w.endColumn();
-    w.startColumn(c2, 1);
-    w.startRepetitionLevels();
-    w.write(bytes2, 0, bytes2.length);
-    w.startDefinitionLevels();
-    w.write(bytes2, 0, bytes2.length);
-    w.startData();
-    w.write(bytes2, 0, bytes2.length);
+    w.startColumn(c2, 6, codec);
+    w.writeDataPage(2, 4, BytesInput.from(bytes2));
+    w.writeDataPage(3, 4, BytesInput.from(bytes2));
+    w.writeDataPage(1, 4, BytesInput.from(bytes2));
     w.endColumn();
     w.endBlock();
-    w.startBlock(1);
-    w.startColumn(c1, 1);
-    w.startRepetitionLevels();
-    w.write(bytes3, 0, bytes3.length);
-    w.startDefinitionLevels();
-    w.write(bytes3, 0, bytes3.length);
-    w.startData();
-    w.write(bytes3, 0, bytes3.length);
+    w.startBlock(4);
+    w.startColumn(c1, 7, codec);
+    w.writeDataPage(7, 4, BytesInput.from(bytes3));
     w.endColumn();
-    w.startColumn(c2, 1);
-    w.startRepetitionLevels();
-    w.write(bytes4, 0, bytes4.length);
-    w.startDefinitionLevels();
-    w.write(bytes4, 0, bytes4.length);
-    w.startData();
-    w.write(bytes4, 0, bytes4.length);
+    w.startColumn(c2, 8, codec);
+    w.writeDataPage(8, 4, BytesInput.from(bytes4));
     w.endColumn();
     w.endBlock();
-    w.end(new ArrayList<MetaDataBlock>());
+    w.end(new HashMap<String, String>());
 
-    FSDataInputStream fin = fileSystem.open(path);
+    RedelmMetaData readFooter = RedelmFileReader.readFooter(configuration, path);
+    assertEquals("footer: "+readFooter, 2, readFooter.getBlocks().size());
 
-    RedelmMetaData readFooter = RedelmMetaData.fromMetaDataBlocks(RedelmFileReader.readFooter(fin, fileSystem.getFileStatus(path).getLen()));
-
-    {
-      assertEquals(2, readFooter.getBlocks().size());
-      RedelmFileReader r = new RedelmFileReader(configuration, fin, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.<String[]>asList(path1), CODEC);
-      BlockData blockData = r.readColumns();
-      List<ColumnData> cols = blockData.getColumns();
-      System.out.println(cols);
-      assertEquals(1, cols.size());
-      assertEquals(bytes1.length, cols.get(0).getData().length);
-      assertEquals(bytes1[0], cols.get(0).getData()[0]);
+    { // read first block of col #1
+      RedelmFileReader r = new RedelmFileReader(configuration, path, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(path1)));
+      PageReadStore pages = r.readColumns();
+      assertEquals(3, pages.getRowCount());
+      validateContains(schema, pages, path1, 2, BytesInput.from(bytes1));
+      validateContains(schema, pages, path1, 3, BytesInput.from(bytes1));
       assertNull(r.readColumns());
     }
 
-    {
-      RedelmFileReader r = new RedelmFileReader(configuration, fin, readFooter.getBlocks(), Arrays.<String[]>asList(path1, path2), CODEC);
-      BlockData blockData1 = r.readColumns();
-      List<ColumnData> cols1 = blockData1.getColumns();
-      assertEquals(2, cols1.size());
-      ColumnData c11 = cols1.get(0);
-      assertEquals(bytes1[0], c11.getData()[0]);
-      assertEquals(bytes1.length, c11.getData().length);
-      ColumnData c12 = cols1.get(1);
-      assertEquals(bytes2.length, c12.getData().length);
-      assertEquals(bytes2[0], c12.getData()[0]);
-      BlockData blockData2 = r.readColumns();
-      List<ColumnData> cols2 = blockData2.getColumns();
-      assertEquals(2, cols2.size());
-      ColumnData c21 = cols2.get(0);
-      assertEquals(bytes3.length, c21.getData().length);
-      assertEquals(bytes3[0], c21.getData()[0]);
-      ColumnData c22 = cols2.get(1);
-      assertEquals(bytes4.length, c22.getData().length);
-      assertEquals(bytes4[0], c22.getData()[0]);
+    { // read all blocks of col #1 and #2
+
+      RedelmFileReader r = new RedelmFileReader(configuration, path, readFooter.getBlocks(), Arrays.asList(schema.getColumnDescription(path1), schema.getColumnDescription(path2)));
+
+      PageReadStore pages = r.readColumns();
+      assertEquals(3, pages.getRowCount());
+      validateContains(schema, pages, path1, 2, BytesInput.from(bytes1));
+      validateContains(schema, pages, path1, 3, BytesInput.from(bytes1));
+      validateContains(schema, pages, path2, 2, BytesInput.from(bytes2));
+      validateContains(schema, pages, path2, 3, BytesInput.from(bytes2));
+      validateContains(schema, pages, path2, 1, BytesInput.from(bytes2));
+
+      pages = r.readColumns();
+      assertEquals(4, pages.getRowCount());
+
+      validateContains(schema, pages, path1, 7, BytesInput.from(bytes3));
+      validateContains(schema, pages, path2, 8, BytesInput.from(bytes4));
+
       assertNull(r.readColumns());
     }
     PrintFooter.main(new String[] {path.toString()});
   }
+
+  private void validateContains(MessageType schema, PageReadStore pages, String[] path, int values, BytesInput bytes) throws IOException {
+    PageReader pageReader = pages.getPageReader(schema.getColumnDescription(path));
+    Page page = pageReader.readPage();
+    assertEquals(values, page.getValueCount());
+    assertArrayEquals(bytes.toByteArray(), page.getBytes().toByteArray());
+  }
+
 }

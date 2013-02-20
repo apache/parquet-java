@@ -18,10 +18,7 @@ package redelm.pig;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.nio.charset.Charset;
-import java.util.List;
-
-import redelm.hadoop.MetaDataBlock;
+import java.util.Map;
 
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.JsonParseException;
@@ -72,11 +69,9 @@ public class PigMetaData {
     }
   }
 
-  public static PigMetaData fromMetaDataBlocks(List<MetaDataBlock> metaDataBlocks) {
-    for (MetaDataBlock metaDataBlock : metaDataBlocks) {
-      if (metaDataBlock.getName().equals(META_DATA_BLOCK_NAME)) {
-        return fromJSON(new String(metaDataBlock.getData(), Charset.forName("UTF-8")));
-      }
+  public static PigMetaData fromMetaDataBlocks(Map<String, String> keyValueMetaData) {
+    if (keyValueMetaData.containsKey(META_DATA_BLOCK_NAME)) {
+      return fromJSON(keyValueMetaData.get(META_DATA_BLOCK_NAME));
     }
     return null;
   }
@@ -98,8 +93,8 @@ public class PigMetaData {
     return pigSchema;
   }
 
-  public MetaDataBlock toMetaDataBlock() {
-   return new MetaDataBlock(META_DATA_BLOCK_NAME, toJSON().getBytes(Charset.forName("UTF-8")));
+  public void addToMetaData(Map<String, String> map) {
+    map.put(META_DATA_BLOCK_NAME, toJSON());
   }
 
 }

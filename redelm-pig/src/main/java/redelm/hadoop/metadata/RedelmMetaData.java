@@ -13,15 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.hadoop;
+package redelm.hadoop.metadata;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.List;
+import java.util.Map;
 
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.JsonParseException;
@@ -36,42 +35,7 @@ import org.codehaus.jackson.map.SerializationConfig.Feature;
  * @author Julien Le Dem
  *
  */
-public class RedelmMetaData implements Serializable {
-  private static final long serialVersionUID = 1L;
-
-  /**
-   * File level meta data (Schema, codec, ...)
-   *
-   * @author Julien Le Dem
-   *
-   */
-  public static class FileMetaData implements Serializable {
-    private static final long serialVersionUID = 1L;
-
-    private final String schema;
-    private final String codecClassName;
-
-    public FileMetaData(String schema, String codecClassName) {
-      super();
-      this.schema = schema;
-      this.codecClassName = codecClassName;
-    }
-
-    public String getSchema() {
-      return schema;
-    }
-
-    public String getCodecClassName() {
-      return codecClassName;
-    }
-
-    @Override
-    public String toString() {
-      return "FileMetaData{schema: "+schema+", codecClassName: "+codecClassName+"}";
-    }
-  }
-
-  private static final String META_DATA_BLOCK_NAME = "RedElm";
+public class RedelmMetaData {
 
   private static ObjectMapper objectMapper = new ObjectMapper();
   private static ObjectMapper prettyObjectMapper = new ObjectMapper();
@@ -128,37 +92,20 @@ public class RedelmMetaData implements Serializable {
     }
   }
 
-  /**
-   *
-   * @param metaDataBlocks the meta data blocks read from the file footer
-   * @return the parsed meta data
-   */
-  public static RedelmMetaData fromMetaDataBlocks(List<MetaDataBlock> metaDataBlocks) {
-    for (MetaDataBlock metaDataBlock : metaDataBlocks) {
-      if (metaDataBlock.getName().equals(META_DATA_BLOCK_NAME)) {
-        try {
-          return (RedelmMetaData)new ObjectInputStream(new ByteArrayInputStream(metaDataBlock.getData())).readObject();
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        } catch (ClassNotFoundException e) {
-          throw new RuntimeException(e);
-        }
-      }
-    }
-    throw new RuntimeException("There should always be a RedElm metadata block");
-  }
-
   private final FileMetaData fileMetaData;
   private final List<BlockMetaData> blocks;
+  private final Map<String, String> keyValueMetaData;
 
   /**
    *
    * @param fileMetaData file level metadata
    * @param blocks block level metadata
+   * @param keyValueMetaData
    */
-  public RedelmMetaData(FileMetaData fileMetaData, List<BlockMetaData> blocks) {
+  public RedelmMetaData(FileMetaData fileMetaData, List<BlockMetaData> blocks, Map<String, String> keyValueMetaData) {
     this.fileMetaData = fileMetaData;
     this.blocks = blocks;
+    this.keyValueMetaData = keyValueMetaData;
   }
 
   /**
@@ -177,8 +124,17 @@ public class RedelmMetaData implements Serializable {
     return fileMetaData;
   }
 
+  /**
+   *
+   * @return meta data for extensions
+   */
+  public Map<String, String> getKeyValueMetaData() {
+    return keyValueMetaData;
+  }
+
   @Override
   public String toString() {
     return "RedElmMetaData{"+fileMetaData+", blocks: "+blocks+"}";
   }
+
 }

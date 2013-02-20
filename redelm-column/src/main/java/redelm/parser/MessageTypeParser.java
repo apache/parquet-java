@@ -24,7 +24,7 @@ import redelm.Log;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType;
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 import redelm.schema.Type;
 import redelm.schema.Type.Repetition;
 
@@ -76,7 +76,7 @@ public class MessageTypeParser {
       Type[] fields = readGroupTypeFields(st);
       return new GroupType(r, name, fields);
     } else {
-      Primitive p = Primitive.valueOf(t.toUpperCase());
+      PrimitiveTypeName p = PrimitiveTypeName.valueOf(t.toUpperCase());
       check(nextToken(st), ";", "field ended by ;");
       return new PrimitiveType(r, p, name);
     }

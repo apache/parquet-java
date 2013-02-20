@@ -21,10 +21,15 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
-import redelm.hadoop.RedelmMetaData.FileMetaData;
-import redelm.io.RecordConsumer;
+import redelm.hadoop.metadata.BlockMetaData;
+import redelm.hadoop.metadata.ColumnChunkMetaData;
+import redelm.hadoop.metadata.CompressionCodecName;
+import redelm.hadoop.metadata.FileMetaData;
 import redelm.io.RecordMaterializer;
+import redelm.schema.MessageType;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
@@ -46,7 +51,7 @@ public class TestInputFormat {
         return null;
       }
       @Override
-      public void initForRead(List<MetaDataBlock> metaDataBlocks,
+      public void initForRead(Map<String, String> keyValueMetaDatq,
           String requestedSchema) {
       }
     };
@@ -55,10 +60,9 @@ public class TestInputFormat {
         new BlockLocation(new String[0], new String[] { "foo1.datanode", "bar1.datanode"}, 50, 50)
     };
     FileStatus fileStatus = new FileStatus(100, false, 2, 50, 0, new Path("hdfs://foo.namenode:1234/bar"));
-    FileMetaData FileMetaData = new FileMetaData("foo", "bar");
-    List<InputSplit> splits = RedelmInputFormat.generateSplits(blocks, hdfsBlocks, fileStatus, FileMetaData, readSupport);
-    System.out.println(splits.toString().replaceAll("([{])", "$0\n").replaceAll("([}])", "\n$0\n"));
-    assertEquals(2, splits.size());
+    FileMetaData fileMetaData = new FileMetaData(new MessageType("foo"));
+    List<InputSplit> splits = RedelmInputFormat.generateSplits(blocks, hdfsBlocks, fileStatus, fileMetaData, readSupport);
+    assertEquals(splits.toString().replaceAll("([{])", "$0\n").replaceAll("([}])", "\n$0"), 2, splits.size());
     for (int i = 0; i < splits.size(); i++) {
       RedelmInputSplit<?> redelmInputSplit = (RedelmInputSplit<?>)splits.get(i);
       assertEquals(5, redelmInputSplit.getBlocks().size());
@@ -69,8 +73,10 @@ public class TestInputFormat {
   }
 
   private BlockMetaData newBlock(long start) {
-    BlockMetaData blockMetaData = new BlockMetaData(start);
-    blockMetaData.setEndIndex(start + 10);
+    BlockMetaData blockMetaData = new BlockMetaData();
+    ColumnChunkMetaData column = new ColumnChunkMetaData(new String[] {"foo"}, PrimitiveTypeName.BINARY, CompressionCodecName.GZIP);
+    column.setFirstDataPage(start);
+    blockMetaData.addColumn(column);
     return blockMetaData;
   }
 }

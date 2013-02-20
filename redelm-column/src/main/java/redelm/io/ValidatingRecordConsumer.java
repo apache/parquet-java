@@ -20,7 +20,7 @@ import java.util.Deque;
 
 import redelm.Log;
 import redelm.schema.MessageType;
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 import redelm.schema.Type;
 import redelm.schema.Type.Repetition;
 
@@ -119,7 +119,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     previousField.pop();
   }
 
-  private void validate(Primitive p) {
+  private void validate(PrimitiveTypeName p) {
     Type currentType = types.peek().asGroupType().getType(fields.peek());
     int c = fieldValueCount.pop() + 1;
     fieldValueCount.push(c);
@@ -136,7 +136,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
       default:
         throw new InvalidRecordException("unknown repetition " + currentType.getRepetition() + " in " + currentType);
     }
-    if (!currentType.isPrimitive() || currentType.asPrimitiveType().getPrimitive() != p) {
+    if (!currentType.isPrimitive() || currentType.asPrimitiveType().getPrimitiveTypeName() != p) {
       throw new InvalidRecordException("expected type " + currentType + " but got "+ p);
     }
   }
@@ -145,7 +145,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
    * {@inheritDoc}
    */
   public void addInteger(int value) {
-    validate(Primitive.INT32);
+    validate(PrimitiveTypeName.INT32);
     delegate.addInteger(value);
   }
 
@@ -153,23 +153,15 @@ public class ValidatingRecordConsumer extends RecordConsumer {
    * {@inheritDoc}
    */
   public void addLong(long value) {
-    validate(Primitive.INT64);
+    validate(PrimitiveTypeName.INT64);
     delegate.addLong(value);
   }
 
   /**
    * {@inheritDoc}
    */
-  public void addString(String value) {
-    validate(Primitive.STRING);
-    delegate.addString(value);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
   public void addBoolean(boolean value) {
-    validate(Primitive.BOOLEAN);
+    validate(PrimitiveTypeName.BOOLEAN);
     delegate.addBoolean(value);
   }
 
@@ -177,7 +169,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
    * {@inheritDoc}
    */
   public void addBinary(byte[] value) {
-    validate(Primitive.BINARY);
+    validate(PrimitiveTypeName.BINARY);
     delegate.addBinary(value);
   }
 
@@ -185,7 +177,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
    * {@inheritDoc}
    */
   public void addFloat(float value) {
-    validate(Primitive.FLOAT);
+    validate(PrimitiveTypeName.FLOAT);
     delegate.addFloat(value);
   }
 
@@ -193,7 +185,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
    * {@inheritDoc}
    */
   public void addDouble(double value) {
-    validate(Primitive.DOUBLE);
+    validate(PrimitiveTypeName.DOUBLE);
     delegate.addDouble(value);
   }
 

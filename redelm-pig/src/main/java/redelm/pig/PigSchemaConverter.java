@@ -15,17 +15,23 @@
  */
 package redelm.pig;
 
+import static redelm.Log.DEBUG;
+
+import java.util.ArrayList;
 import java.util.List;
+
+import com.sun.org.apache.xml.internal.resolver.helpers.Debug;
 
 import org.apache.pig.data.DataType;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
+import redelm.Log;
 import redelm.schema.GroupType;
 import redelm.schema.MessageType;
 import redelm.schema.PrimitiveType;
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 import redelm.schema.Type;
 import redelm.schema.Type.Repetition;
 
@@ -41,6 +47,7 @@ import redelm.schema.Type.Repetition;
  *
  */
 public class PigSchemaConverter {
+  private static final Log LOG = Log.getLog(PigSchemaConverter.class);
 
   /**
    *
@@ -49,6 +56,80 @@ public class PigSchemaConverter {
    */
   public MessageType convert(Schema pigSchema) {
     return new MessageType("pig_schema", convertTypes(pigSchema));
+  }
+
+  public Schema filter(Schema pigSchemaToFilter, MessageType schemaSubset) {
+    if (DEBUG) LOG.debug("filtering pig schema:\n" + pigSchemaToFilter + "\nwith:\n " + schemaSubset);
+    Schema result = filterTupleSchema(pigSchemaToFilter, schemaSubset);
+    if (DEBUG) LOG.debug("pig schema:\n" + pigSchemaToFilter + "\nfiltered to:\n" + result);
+    return result;
+  }
+
+  /**
+   *
+   * @param pigSchema the pig schema
+   * @param
+   * @return the resulting RedElm schema
+   */
+  private Schema filterTupleSchema(Schema pigSchemaToFilter, GroupType schemaSubset) {
+    List<FieldSchema> fields = pigSchemaToFilter.getFields();
+    List<FieldSchema> newFields = new ArrayList<Schema.FieldSchema>();
+    for (int i = 0; i < fields.size(); i++) {
+      FieldSchema fieldSchema = fields.get(i);
+      String name = name(fieldSchema.alias, "field_"+i);
+      if (schemaSubset.containsField(name)) {
+        Type type = schemaSubset.getType(name);
+        newFields.add(filter(fieldSchema, type));
+      }
+    }
+    return new Schema(newFields);
+  }
+
+  private FieldSchema filter(FieldSchema fieldSchema, Type type) {
+    if (DEBUG) LOG.debug("filtering Field pig schema:\n" + fieldSchema + "\nwith:\n " + type);
+    try {
+      switch (fieldSchema.type) {
+      case DataType.BAG:
+        return filterBag(fieldSchema, type.asGroupType());
+      case DataType.MAP:
+        return filterMap(fieldSchema, type.asGroupType());
+      case DataType.TUPLE:
+        return filterTuple(fieldSchema, type.asGroupType());
+      default:
+        return fieldSchema;
+      }
+    } catch (FrontendException e) {
+      throw new RuntimeException("can't filter " + fieldSchema, e);
+    }
+  }
+
+  private FieldSchema filterTuple(FieldSchema fieldSchema, GroupType schemaSubset) throws FrontendException {
+    if (DEBUG) LOG.debug("filtering TUPLE pig schema:\n" + fieldSchema + "\nwith:\n " + schemaSubset);
+    return new FieldSchema(fieldSchema.alias, filterTupleSchema(fieldSchema.schema, schemaSubset), fieldSchema.type);
+  }
+
+  private FieldSchema filterMap(FieldSchema fieldSchema, GroupType type) throws FrontendException {
+    if (DEBUG) LOG.debug("filtering MAP pig schema:\n" + fieldSchema + "\nwith:\n " + type);
+    GroupType nested = unwrap(type);
+    if (nested.getFieldCount() != 2) {
+      throw new RuntimeException("this should be a Map Key/Value: " + type);
+    }
+    FieldSchema innerField = fieldSchema.schema.getField(0);
+    return new FieldSchema(fieldSchema.alias, new Schema(filter(innerField, nested.getType(1))), fieldSchema.type);
+  }
+
+  private FieldSchema filterBag(FieldSchema fieldSchema, GroupType type) throws FrontendException {
+    if (DEBUG) LOG.debug("filtering BAG pig schema:\n" + fieldSchema + "\nwith:\n " + type);
+    GroupType nested = unwrap(type);
+    FieldSchema innerField = fieldSchema.schema.getField(0);
+    return new FieldSchema(fieldSchema.alias, new Schema(filterTuple(innerField, nested.asGroupType())), fieldSchema.type);
+  }
+
+  private GroupType unwrap(GroupType type) {
+    if (type.getFieldCount() != 1) {
+      throw new RuntimeException("not unwrapping the right type, this should be a Map or a Bag: " + type);
+    }
+    return type.getType(0).asGroupType();
   }
 
   private Type[] convertTypes(Schema pigSchema) {
@@ -65,34 +146,34 @@ public class PigSchemaConverter {
       String name = name(fieldSchema.alias, defaultAlias);
       switch (fieldSchema.type) {
       case DataType.BAG:
-          return convertBag(name, fieldSchema);
+        return convertBag(name, fieldSchema);
       case DataType.TUPLE:
-          return convertTuple(name, fieldSchema, Repetition.OPTIONAL);
+        return convertTuple(name, fieldSchema, Repetition.OPTIONAL);
       case DataType.MAP:
-          return convertMap(name, fieldSchema);
+        return convertMap(name, fieldSchema);
       case DataType.BOOLEAN:
-          return primitive(name, Primitive.BOOLEAN);
+        return primitive(name, PrimitiveTypeName.BOOLEAN);
       case DataType.CHARARRAY:
-          return primitive(name, Primitive.STRING);
+        return primitive(name, PrimitiveTypeName.BINARY);
       case DataType.INTEGER:
-          return primitive(name, Primitive.INT32);
+        return primitive(name, PrimitiveTypeName.INT32);
       case DataType.LONG:
-          return primitive(name, Primitive.INT64);
+        return primitive(name, PrimitiveTypeName.INT64);
       case DataType.FLOAT:
-          return primitive(name, Primitive.FLOAT);
+        return primitive(name, PrimitiveTypeName.FLOAT);
       case DataType.DOUBLE:
-          return primitive(name, Primitive.DOUBLE);
+        return primitive(name, PrimitiveTypeName.DOUBLE);
       case DataType.DATETIME:
-          throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException();
       case DataType.BYTEARRAY:
-          return primitive(name, Primitive.BINARY);
+        return primitive(name, PrimitiveTypeName.BINARY);
       default:
-          throw new RuntimeException("Unknown type "+fieldSchema.type+" "+DataType.findTypeName(fieldSchema.type));
+        throw new RuntimeException("Unknown type "+fieldSchema.type+" "+DataType.findTypeName(fieldSchema.type));
       }
     } catch (FrontendException e) {
-        throw new RuntimeException("can't convert "+fieldSchema, e);
+      throw new RuntimeException("can't convert "+fieldSchema, e);
     } catch (RuntimeException e) {
-        throw new RuntimeException("can't convert "+fieldSchema, e);
+      throw new RuntimeException("can't convert "+fieldSchema, e);
     }
   }
 
@@ -118,7 +199,7 @@ public class PigSchemaConverter {
     return fieldAlias == null ? defaultName : fieldAlias;
   }
 
-  private PrimitiveType primitive(String name, Primitive primitive) {
+  private PrimitiveType primitive(String name, PrimitiveTypeName primitive) {
     return new PrimitiveType(Repetition.OPTIONAL, primitive, name);
   }
 
@@ -141,7 +222,7 @@ public class PigSchemaConverter {
    */
   private GroupType convertMap(String alias, FieldSchema fieldSchema) throws FrontendException {
     Type[] types = new Type[2];
-    types[0] = new PrimitiveType(Repetition.REQUIRED, Primitive.STRING, "key");
+    types[0] = new PrimitiveType(Repetition.REQUIRED, PrimitiveTypeName.BINARY, "key");
     Schema innerSchema = fieldSchema.schema;
     if (innerSchema.size() != 1) {
       throw new FrontendException("Invalid map Schema, schema should contain exactly one field: " + fieldSchema);

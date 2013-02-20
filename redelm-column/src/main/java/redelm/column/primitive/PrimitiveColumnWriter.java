@@ -15,16 +15,17 @@
  */
 package redelm.column.primitive;
 
-import java.io.DataOutput;
-import java.io.IOException;
+import redelm.bytes.BytesInput;
 
 public abstract class PrimitiveColumnWriter {
 
-  public abstract int getMemSize();
+  public abstract long getMemSize();
 
-  public abstract void writeData(DataOutput out) throws IOException;
+  public abstract BytesInput getBytes();
 
   public abstract void reset();
+
+  abstract public long allocatedSize();
 
   public void writeByte(int value) {
     throw new UnsupportedOperationException();
@@ -50,11 +51,8 @@ public abstract class PrimitiveColumnWriter {
     throw new UnsupportedOperationException();
   }
 
-  public void writeString(String str) {
-    throw new UnsupportedOperationException();
-  }
-
   public void writeFloat(float v) {
     throw new UnsupportedOperationException();
   }
+
 }

@@ -13,14 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.column;
+package redelm.bytes;
 
-abstract public class ColumnsStore {
+import java.io.ByteArrayOutputStream;
 
-  abstract public ColumnReader getColumnReader(ColumnDescriptor path);
+/**
+ * expose the memory used by a ByteArrayOutputStream
+ *
+ * @author Julien Le Dem
+ *
+ */
+public class CapacityByteArrayOutputStream extends ByteArrayOutputStream {
 
-  abstract public ColumnWriter getColumnWriter(ColumnDescriptor path);
+  public CapacityByteArrayOutputStream(int initialSize) {
+    super(initialSize);
+  }
 
-  abstract public void flip();
+  public int getCapacity() {
+    return buf.length;
+  }
 
 }

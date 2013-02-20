@@ -13,43 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package redelm.hadoop;
+package redelm.column.mem;
 
-/**
- * Raw content of a Metadata block in the file
- *
- * @author Julien Le Dem
- *
- */
-public class MetaDataBlock {
+import redelm.column.ColumnDescriptor;
 
-  private final String name;
-  private final byte[] data;
+public interface PageReadStore {
 
-  /**
-   *
-   * @param name name of the block (must be unique)
-   * @param data data for the block
-   */
-  public MetaDataBlock(String name, byte[] data) {
-    this.name = name;
-    this.data = data;
-  }
+  PageReader getPageReader(ColumnDescriptor descriptor);
 
-  /**
-   *
-   * @return name of the block
-   */
-  public String getName() {
-    return name;
-  }
-
-  /**
-   *
-   * @return raw content
-   */
-  public byte[] getData() {
-    return data;
-  }
+  long getRowCount();
 
 }

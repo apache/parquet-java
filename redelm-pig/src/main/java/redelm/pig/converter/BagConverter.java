@@ -15,6 +15,8 @@
  */
 package redelm.pig.converter;
 
+import scala.collection.mutable.StringBuilder;
+
 import redelm.pig.TupleConversionException;
 import redelm.schema.GroupType;
 
@@ -66,6 +68,13 @@ public class BagConverter extends Converter {
   @Override
   public void set(Object value) {
     throw new TupleConversionException("bag can not contain primitive value " + value);
+  }
+
+  @Override
+  public void toString(String indent, StringBuffer sb) {
+    sb.append(indent).append(getClass().getSimpleName()).append("{\n");
+    child.toString(" " + indent, sb);
+    sb.append("\n").append(indent).append("}");
   }
 
 }

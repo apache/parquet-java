@@ -25,10 +25,10 @@ import java.util.List;
  */
 class BlockData {
 
-  private final int recordCount;
+  private final long recordCount;
   private final List<ColumnData> columns;
 
-  public BlockData(int recordCount, List<ColumnData> columns) {
+  public BlockData(long recordCount, List<ColumnData> columns) {
     this.recordCount = recordCount;
     this.columns = columns;
   }
@@ -37,7 +37,7 @@ class BlockData {
    *
    * @return count of records in this block
    */
-  public int getRecordCount() {
+  public long getRecordCount() {
     return recordCount;
   }
 

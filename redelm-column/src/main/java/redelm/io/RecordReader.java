@@ -18,10 +18,11 @@ package redelm.io;
 import java.util.Arrays;
 
 import redelm.Log;
+import redelm.column.ColumnReadStore;
 import redelm.column.ColumnReader;
-import redelm.column.ColumnsStore;
+import redelm.column.ColumnWriteStore;
 import redelm.schema.MessageType;
-import redelm.schema.PrimitiveType.Primitive;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * used to read reassembled records
@@ -38,7 +39,7 @@ public class RecordReader<T> {
 
     private final int id;
     private final PrimitiveColumnIO primitiveColumnIO;
-    private final Primitive primitive;
+    private final PrimitiveTypeName primitive;
     private final ColumnReader column;
     private final String[] fieldPath; // indexed on currentLevel
     private final int[] indexFieldPath; // indexed on currentLevel
@@ -52,7 +53,7 @@ public class RecordReader<T> {
       this.primitiveColumnIO = primitiveColumnIO;
       this.column = column;
       this.nextLevel = nextLevel;
-      this.primitive = primitiveColumnIO.getType().asPrimitiveType().getPrimitive();
+      this.primitive = primitiveColumnIO.getType().asPrimitiveType().getPrimitiveTypeName();
       this.fieldPath = primitiveColumnIO.getFieldPath();
       this.indexFieldPath = primitiveColumnIO.getIndexFieldPath();
     }
@@ -73,7 +74,7 @@ public class RecordReader<T> {
    * @param validating
    * @param columns2
    */
-  public RecordReader(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnsStore columnStore) {
+  public RecordReader(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnReadStore columnReadStore) {
     this.recordMaterializer = recordMaterializer;
     this.recordConsumer = validator(wrap(recordMaterializer), validating, root.getType());
     PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
@@ -84,7 +85,7 @@ public class RecordReader<T> {
     // build the automaton
     for (int i = 0; i < leaves.length; i++) {
       PrimitiveColumnIO primitiveColumnIO = leaves[i];
-      columns[i] = columnStore.getColumnReader(primitiveColumnIO.getColumnDescriptor());
+      columns[i] = columnReadStore.getColumnReader(primitiveColumnIO.getColumnDescriptor());
       int repetitionLevel = primitiveColumnIO.getRepetitionLevel();
       nextReader[i] = new int[repetitionLevel+1];
       nextLevel[i] = new int[repetitionLevel+1];
@@ -237,7 +238,7 @@ public class RecordReader<T> {
     recordConsumer.endMessage();
   }
 
-  private void addPrimitive(ColumnReader columnReader, Primitive primitive, String field, int index) {
+  private void addPrimitive(ColumnReader columnReader, PrimitiveTypeName primitive, String field, int index) {
     startField(field, index);
     primitive.addValueToRecordConsumer(recordConsumer, columnReader);
     endField(field, index);

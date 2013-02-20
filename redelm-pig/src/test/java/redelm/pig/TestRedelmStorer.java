@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Properties;
 
 import org.apache.pig.ExecType;
 import org.apache.pig.PigServer;
@@ -32,6 +33,7 @@ import org.apache.pig.backend.executionengine.ExecJob.JOB_STATUS;
 import org.apache.pig.builtin.mock.Storage;
 import org.apache.pig.builtin.mock.Storage.Data;
 import org.apache.pig.data.Tuple;
+import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.junit.Test;
 
 import com.google.common.base.Function;
@@ -42,10 +44,14 @@ public class TestRedelmStorer {
   @Test
   public void testStorer() throws ExecException, Exception {
     String out = "target/out";
-    PigServer pigServer = new PigServer(ExecType.LOCAL);
+    int rows = 1000;
+    Properties props = new Properties();
+    props.setProperty("redelm.compression", "uncompressed");
+    props.setProperty("redelm.page.size", "1000");
+    PigServer pigServer = new PigServer(ExecType.LOCAL, props);
     Data data = Storage.resetData(pigServer);
     Collection<Tuple> list = new ArrayList<Tuple>();
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < rows; i++) {
       list.add(Storage.tuple("a"+i));
     }
     data.set("in", "a:chararray", list );
@@ -65,7 +71,45 @@ public class TestRedelmStorer {
 
     List<Tuple> result = data.get("out");
 
-    assertEquals(1000, result.size());
+    assertEquals(rows, result.size());
+    int i = 0;
+    for (Tuple tuple : result) {
+      assertEquals("a"+i, tuple.get(0));
+      ++i;
+    }
+  }
+
+  @Test
+  public void testStorerCompressed() throws ExecException, Exception {
+    String out = "target/out";
+    int rows = 1000;
+    Properties props = new Properties();
+    props.setProperty("redelm.compression", "gzip");
+    props.setProperty("redelm.page.size", "1000");
+    PigServer pigServer = new PigServer(ExecType.LOCAL, props);
+    Data data = Storage.resetData(pigServer);
+    Collection<Tuple> list = new ArrayList<Tuple>();
+    for (int i = 0; i < rows; i++) {
+      list.add(Storage.tuple("a"+i));
+    }
+    data.set("in", "a:chararray", list );
+    pigServer.setBatchOn();
+    pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
+    pigServer.deleteFile(out);
+    pigServer.registerQuery("Store A into '"+out+"' using "+RedelmStorer.class.getName()+"();");
+    if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
+      throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
+    }
+
+    pigServer.registerQuery("B = LOAD '"+out+"' USING "+RedelmLoader.class.getName()+"();");
+    pigServer.registerQuery("Store B into 'out' using mock.Storage();");
+    if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
+      throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
+    }
+
+    List<Tuple> result = data.get("out");
+
+    assertEquals(rows, result.size());
     int i = 0;
     for (Tuple tuple : result) {
       assertEquals("a"+i, tuple.get(0));
@@ -109,8 +153,9 @@ public class TestRedelmStorer {
       }
 
       List<Tuple> result = data.get("out");
-
       assertEquals(list, result);
+      final Schema schema = data.getSchema("out");
+      assertEquals("{a:chararray, b:{t:(c:chararray, d:chararray)}}".replaceAll(" ", ""), schema.toString().replaceAll(" ", ""));
     }
 
     {

@@ -15,8 +15,7 @@
  */
 package redelm.column.primitive;
 
-import java.io.DataOutput;
-import java.io.IOException;
+import redelm.bytes.BytesInput;
 
 /**
  * This is a special writer that doesn't write anything. The idea being that
@@ -25,12 +24,8 @@ import java.io.IOException;
  */
 public class DevNullColumnWriter extends PrimitiveColumnWriter {
   @Override
-  public int getMemSize() {
+  public long getMemSize() {
     return 0;
-  }
-
-  @Override
-  public void writeData(DataOutput out) throws IOException {
   }
 
   @Override
@@ -62,10 +57,16 @@ public class DevNullColumnWriter extends PrimitiveColumnWriter {
   }
 
   @Override
-  public void writeString(String str) {
+  public void writeFloat(float v) {
   }
 
   @Override
-  public void writeFloat(float v) {
+  public BytesInput getBytes() {
+    return BytesInput.empty();
+  }
+
+  @Override
+  public long allocatedSize() {
+    return 0;
   }
 }

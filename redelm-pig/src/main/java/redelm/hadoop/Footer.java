@@ -15,7 +15,7 @@
  */
 package redelm.hadoop;
 
-import java.util.List;
+import redelm.hadoop.metadata.RedelmMetaData;
 
 import org.apache.hadoop.fs.Path;
 
@@ -28,23 +28,22 @@ import org.apache.hadoop.fs.Path;
  */
 public class Footer {
 
-  private Path file;
+  private final Path file;
 
-  private List<MetaDataBlock> metaDataBlocks;
+  private final RedelmMetaData redelmMetaData;
 
-  public Footer(Path file, List<MetaDataBlock> metaDataBlocks) {
+  public Footer(Path file, RedelmMetaData redelmMetaData) {
     super();
     this.file = file;
-    this.metaDataBlocks = metaDataBlocks;
+    this.redelmMetaData = redelmMetaData;
   }
 
   public Path getFile() {
     return file;
   }
 
-  public List<MetaDataBlock> getMetaDataBlocks() {
-    return metaDataBlocks;
+  public RedelmMetaData getRedelmMetaData() {
+    return redelmMetaData;
   }
-
 
 }
