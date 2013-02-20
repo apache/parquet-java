@@ -1,17 +1,15 @@
-Red Elm
+Parquet
 ======
 
-an anagram
-
-![Red Elm](http://upload.wikimedia.org/wikipedia/commons/e/eb/Mature_Ulmus_rubra_in_graveyard.jpg)
+Java implementation to read Parquet files in Hadoop
 
 ## Build
 
 to run the unit tests:
 mvn test
 
-The build runs in [Travis CI](http://travis-ci.org/julienledem/redelm):
-[![Build Status](https://secure.travis-ci.org/julienledem/redelm.png)](http://travis-ci.org/julienledem/redelm)
+The build runs in [Travis CI](http://travis-ci.org/Parquet/parquet-mr):
+[![Build Status](https://secure.travis-ci.org/Parquet/parquet-mr.png)](http://travis-ci.org/Parquet/parquet-mr)
 
 ## Authors and contributors
 
