@@ -23,7 +23,12 @@ import static redelm.data.simple.example.Paper.r2;
 import static redelm.data.simple.example.Paper.schema;
 import static redelm.data.simple.example.Paper.schema2;
 
+
+import java.io.DataOutput;
+import java.io.IOException;
+
 import java.math.BigInteger;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -81,6 +86,62 @@ public class TestColumnIO {
       { 2, 1, 1 },// 1: Name.Language.Country
   };
 
+  public static final String[] expectedEventsForR1 = {
+      "startMessage()",
+       "startField(DocId, 0)",
+        "addLong(10)",
+       "endField(DocId, 0)",
+       "startField(Links, 1)",
+        "startGroup()",
+         "startField(Forward, 1)",
+          "addLong(20)",
+          "addLong(40)",
+          "addLong(60)",
+         "endField(Forward, 1)",
+        "endGroup()",
+       "endField(Links, 1)",
+       "startField(Name, 2)",
+        "startGroup()",
+         "startField(Language, 0)",
+          "startGroup()",
+           "startField(Code, 0)",
+            "addBinary(en-us)",
+           "endField(Code, 0)",
+           "startField(Country, 1)",
+            "addBinary(us)",
+           "endField(Country, 1)",
+          "endGroup()",
+          "startGroup()",
+           "startField(Code, 0)",
+            "addBinary(en)",
+           "endField(Code, 0)",
+          "endGroup()",
+         "endField(Language, 0)",
+         "startField(Url, 1)",
+          "addBinary(http://A)",
+         "endField(Url, 1)",
+        "endGroup()",
+        "startGroup()",
+         "startField(Url, 1)",
+          "addBinary(http://B)",
+         "endField(Url, 1)",
+        "endGroup()",
+        "startGroup()",
+         "startField(Language, 0)",
+          "startGroup()",
+           "startField(Code, 0)",
+            "addBinary(en-gb)",
+           "endField(Code, 0)",
+           "startField(Country, 1)",
+            "addBinary(gb)",
+           "endField(Country, 1)",
+          "endGroup()",
+         "endField(Language, 0)",
+        "endGroup()",
+       "endField(Name, 2)",
+      "endMessage()"
+      };
+
   @Test
   public void testSchema() {
     assertEquals(schemaString, schema.toString());
@@ -107,7 +168,8 @@ public class TestColumnIO {
       columns.flush();
       log(columns);
       log("=========");
-      RecordReader<Group> recordReader = getRecordReader(columnIO, schema, memPageStore);
+
+      RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, schema, memPageStore);
 
       validateFSA(expectedFSA, columnIO, recordReader);
 
@@ -129,7 +191,7 @@ public class TestColumnIO {
 
 
       List<Group> records = new ArrayList<Group>();
-      RecordReader<Group> recordReader = getRecordReader(columnIO2, schema2, memPageStore);
+      RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO2, schema2, memPageStore);
 
       validateFSA(expectedFSA2, columnIO2, recordReader);
 
@@ -146,16 +208,16 @@ public class TestColumnIO {
     }
   }
 
+  private RecordReaderImplementation<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, PageReadStore pageReadStore) {
+    RecordMaterializer<Group> recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
+    return (RecordReaderImplementation<Group>)columnIO.getRecordReader(pageReadStore, recordConsumer);
+  }
+
   private void log(Object o) {
     LOG.info(o);
   }
 
-  private RecordReader<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, PageReadStore pageReadStore) {
-    RecordMaterializer<Group> recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
-    return columnIO.getRecordReader(pageReadStore, recordConsumer);
-  }
-
-  private void validateFSA(int[][] expectedFSA, MessageColumnIO columnIO, RecordReader<?> recordReader) {
+  private void validateFSA(int[][] expectedFSA, MessageColumnIO columnIO, RecordReaderImplementation<?> recordReader) {
     log("FSA: ----");
     List<PrimitiveColumnIO> leaves = columnIO.getLeaves();
     for (int i = 0; i < leaves.size(); ++i) {
@@ -178,138 +240,12 @@ public class TestColumnIO {
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
     columns.flush();
 
-    String[] expected = {
-    "startMessage()",
-     "startField(DocId, 0)",
-      "addLong(10)",
-     "endField(DocId, 0)",
-     "startField(Links, 1)",
-      "startGroup()",
-       "startField(Forward, 1)",
-        "addLong(20)",
-        "addLong(40)",
-        "addLong(60)",
-       "endField(Forward, 1)",
-      "endGroup()",
-     "endField(Links, 1)",
-     "startField(Name, 2)",
-      "startGroup()",
-       "startField(Language, 0)",
-        "startGroup()",
-         "startField(Code, 0)",
-          "addBinary(en-us)",
-         "endField(Code, 0)",
-         "startField(Country, 1)",
-          "addBinary(us)",
-         "endField(Country, 1)",
-        "endGroup()",
-        "startGroup()",
-         "startField(Code, 0)",
-          "addBinary(en)",
-         "endField(Code, 0)",
-        "endGroup()",
-       "endField(Language, 0)",
-       "startField(Url, 1)",
-        "addBinary(http://A)",
-       "endField(Url, 1)",
-      "endGroup()",
-      "startGroup()",
-       "startField(Url, 1)",
-        "addBinary(http://B)",
-       "endField(Url, 1)",
-      "endGroup()",
-      "startGroup()",
-       "startField(Language, 0)",
-        "startGroup()",
-         "startField(Code, 0)",
-          "addBinary(en-gb)",
-         "endField(Code, 0)",
-         "startField(Country, 1)",
-          "addBinary(gb)",
-         "endField(Country, 1)",
-        "endGroup()",
-       "endField(Language, 0)",
-      "endGroup()",
-     "endField(Name, 2)",
-    "endMessage()"
-    };
     final Deque<String> expectations = new ArrayDeque<String>();
-    for (String string : expected) {
+    for (String string : expectedEventsForR1) {
       expectations.add(string);
     }
-    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new RecordMaterializer<Void>() {
 
-      int count = 0;
-      private void validate(String got) {
-        assertEquals("event #"+count, expectations.pop(), got);
-        ++count;
-      }
-
-      @Override
-      public void startMessage() {
-        validate("startMessage()");
-      }
-
-      @Override
-      public void startGroup() {
-        validate("startGroup()");
-      }
-
-      @Override
-      public void startField(String field, int index) {
-        validate("startField("+field+", "+index+")");
-      }
-
-      @Override
-      public void endMessage() {
-        validate("endMessage()");
-      }
-
-      @Override
-      public void endGroup() {
-        validate("endGroup()");
-      }
-
-      @Override
-      public void endField(String field, int index) {
-        validate("endField("+field+", "+index+")");
-      }
-
-      @Override
-      public void addInteger(int value) {
-        validate("addInt("+value+")");
-      }
-
-      @Override
-      public void addLong(long value) {
-        validate("addLong("+value+")");
-      }
-
-      @Override
-      public void addBoolean(boolean value) {
-        validate("addBoolean("+value+")");
-      }
-
-      @Override
-      public void addBinary(byte[] value) {
-        validate("addBinary("+new String(value)+")");
-      }
-
-      @Override
-      public void addFloat(float value) {
-        validate("addFloat("+value+")");
-      }
-
-      @Override
-      public void addDouble(double value) {
-        validate("addDouble("+value+")");
-      }
-
-      @Override
-      public Void getCurrentRecord() {
-        return null;
-      }
-    });
+    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingRecordConsumer(expectations));
     recordReader.read();
 
   }
@@ -321,7 +257,6 @@ public class TestColumnIO {
   @Test
   public void testGroupWriter() {
     List<Group> result = new ArrayList<Group>();
-
     GroupRecordConsumer groupConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
     GroupWriter groupWriter = new GroupWriter(new RecordConsumerLoggingWrapper(groupConsumer), schema);
     groupWriter.write(r1);

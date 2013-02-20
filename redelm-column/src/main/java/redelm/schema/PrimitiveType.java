@@ -35,8 +35,9 @@ public class PrimitiveType extends Type {
    * @author Julien Le Dem
    *
    */
+
   public static enum PrimitiveTypeName {
-    INT64 {
+      INT64("getLong", Long.TYPE) {
       @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getLong());
@@ -48,7 +49,7 @@ public class PrimitiveType extends Type {
         recordConsumer.addLong(columnReader.getLong());
       }
     },
-    INT32 {
+    INT32("getInteger", Integer.TYPE) {
       @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getInteger());
@@ -60,7 +61,7 @@ public class PrimitiveType extends Type {
         recordConsumer.addInteger(columnReader.getInteger());
       }
     },
-    BOOLEAN {
+    BOOLEAN("getBoolean", Boolean.TYPE) {
       @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getBoolean());
@@ -72,7 +73,8 @@ public class PrimitiveType extends Type {
         recordConsumer.addBoolean(columnReader.getBoolean());
       }
     },
-    BINARY {
+    // TODO: array type literal?
+    BINARY("getBinary", new byte[]{}.getClass()) {
       @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getBinary());
@@ -84,7 +86,7 @@ public class PrimitiveType extends Type {
         recordConsumer.addBinary(columnReader.getBinary());
       }
     },
-    FLOAT {
+    FLOAT("getFloat", Float.TYPE) {
       @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getFloat());
@@ -96,7 +98,7 @@ public class PrimitiveType extends Type {
         recordConsumer.addFloat(columnReader.getFloat());
       }
     },
-    DOUBLE {
+    DOUBLE("getDouble", Double.TYPE) {
       @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getDouble());
@@ -108,6 +110,14 @@ public class PrimitiveType extends Type {
         recordConsumer.addDouble(columnReader.getDouble());
       }
     };
+
+    public final String getMethod;
+    public final Class<?> javaType;
+
+    private PrimitiveTypeName(String getMethod, Class<?> javaType) {
+      this.getMethod = getMethod;
+      this.javaType = javaType;
+    }
 
     /**
      * reads the value from the columnReader with the appropriate accessor and returns a String representation

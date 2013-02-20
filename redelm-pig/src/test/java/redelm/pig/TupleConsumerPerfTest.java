@@ -128,6 +128,7 @@ public class TupleConsumerPerfTest {
   }
 
   private static void read(PageReadStore columns, String pigSchemaString, String message) throws ParserException {
+
     RecordMaterializer<Void> recordConsumer = new RecordMaterializer<Void>() {
       public void startMessage() {}
       public void startGroup() {}
@@ -146,7 +147,8 @@ public class TupleConsumerPerfTest {
     };
     MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     System.out.println(message);
-    RecordReader recordReader = columnIO.getRecordReader(columns, recordConsumer);
+    RecordReader<Void> recordReader = columnIO.getRecordReader(columns, recordConsumer);
+
     read(recordReader, 10000, pigSchemaString);
     read(recordReader, 10000, pigSchemaString);
     read(recordReader, 10000, pigSchemaString);
@@ -181,6 +183,7 @@ public class TupleConsumerPerfTest {
     MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchemaString));
     return new ColumnIOFactory().getColumnIO(schema);
   }
+
 
   private static void read(RecordReader<Void> recordReader, int count, String pigSchemaString) throws ParserException {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();

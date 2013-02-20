@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import redelm.column.ColumnDescriptor;
+import redelm.schema.PrimitiveType.PrimitiveTypeName;
 import redelm.schema.Type;
 
 
@@ -82,6 +83,10 @@ public class PrimitiveColumnIO extends ColumnIO {
   private PrimitiveColumnIO getFirst(int r) {
     ColumnIO parent = getParent(r);
     return parent.getFirst();
+  }
+
+  public PrimitiveTypeName getPrimitive() {
+    return getType().asPrimitiveType().getPrimitiveTypeName();
   }
 
   public int getId() {

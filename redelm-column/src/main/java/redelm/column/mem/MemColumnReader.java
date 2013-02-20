@@ -26,6 +26,7 @@ import redelm.column.primitive.BitPackingColumnReader;
 import redelm.column.primitive.BooleanPlainColumnReader;
 import redelm.column.primitive.BooleanPlainColumnWriter;
 import redelm.column.primitive.BoundedColumnFactory;
+import redelm.column.primitive.DevNullColumnReader;
 import redelm.column.primitive.PrimitiveColumnReader;
 import redelm.column.primitive.PlainColumnReader;
 import redelm.column.primitive.PlainColumnWriter;
@@ -128,6 +129,7 @@ abstract class MemColumnReader implements ColumnReader {
     return definitionLevel;
   }
 
+  // TODO: change the logic around read() to not tie together reading from the 3 columns
   private void read() {
     repetitionLevel = repetitionLevelColumn.readInteger();
     definitionLevel = definitionLevelColumn.readInteger();

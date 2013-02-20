@@ -43,8 +43,16 @@ abstract public class ColumnIO {
     return fieldPath;
   }
 
+  public String getFieldPath(int level) {
+    return fieldPath[level];
+  }
+
   public int[] getIndexFieldPath() {
     return indexFieldPath;
+  }
+
+  public int getIndexFieldPath(int level) {
+    return indexFieldPath[level];
   }
 
   int getRepetitionLevel() {

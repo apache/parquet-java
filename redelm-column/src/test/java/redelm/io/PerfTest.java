@@ -15,7 +15,6 @@
  */
 package redelm.io;
 
-import static redelm.Log.DEBUG;
 import static redelm.data.simple.example.Paper.r1;
 import static redelm.data.simple.example.Paper.r2;
 import static redelm.data.simple.example.Paper.schema;
@@ -46,31 +45,41 @@ public class PerfTest {
   }
 
   private static void read(MemPageStore memPageStore) {
-      read(memPageStore , schema, "read all");
-      read(memPageStore, schema2, "read projected");
-      read(memPageStore, schema3, "read projected no Strings");
+    read(memPageStore, schema, "read all", false);
+    read(memPageStore, schema, "read all", false);
+    read(memPageStore, schema, "read all", true);
+    read(memPageStore, schema, "read all", true);
+    read(memPageStore, schema2, "read projected", false);
+    read(memPageStore, schema2, "read projected", true);
+    read(memPageStore, schema3, "read projected no Strings", false);
+    read(memPageStore, schema3, "read projected no Strings", true);
   }
 
   private static void read(MemPageStore memPageStore, MessageType myschema,
-      String message) {
+      String message, boolean compiled) {
     MessageColumnIO columnIO = newColumnFactory(myschema);
-    System.out.println(message);
-    RecordMaterializer<Void> recordConsumer = new RecordMaterializer<Void>() {
-      public void startMessage() {}
-      public void startGroup() {}
-      public void startField(String field, int index) {}
-      public void endMessage() {}
-      public void endGroup() {}
-      public void endField(String field, int index) {}
-      public void addInteger(int value) {}
-      public void addLong(long value) {}
-      public void addFloat(float value) {}
-      public void addDouble(double value) {}
-      public void addBoolean(boolean value) {}
-      public void addBinary(byte[] value) {}
-      public Void getCurrentRecord() { return null; }
+    System.out.println(message + (compiled ? " compiled" : ""));
+    RecordMaterializer<Object> recordConsumer = new RecordMaterializer<Object>() {
+      Object a;
+      public void startMessage() { a = "startmessage";}
+      public void startGroup() { a = "startgroup";}
+      public void startField(String field, int index) { a = field;}
+      public void endMessage() { a = "endmessage";}
+      public void endGroup() { a = "endgroup";}
+      public void endField(String field, int index) { a = field;}
+      public void addInteger(int value) { a = "int";}
+      public void addLong(long value) { a = "long";}
+      public void addFloat(float value) { a = "float";}
+      public void addDouble(double value) { a = "double";}
+      public void addBoolean(boolean value) { a = "boolean";}
+      public void addBinary(byte[] value) { a = value;}
+      public Object getCurrentRecord() { return a; }
     };
-    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, recordConsumer);
+    RecordReader<Object> recordReader = columnIO.getRecordReader(memPageStore, recordConsumer);
+    if (compiled) {
+      recordReader = new RecordReaderCompiler().compile((RecordReaderImplementation<Object>)recordReader);
+    }
+
     read(recordReader, 2, myschema);
     read(recordReader, 10000, myschema);
     read(recordReader, 10000, myschema);
@@ -81,6 +90,7 @@ public class PerfTest {
     read(recordReader, 1000000, myschema);
     System.out.println();
   }
+
 
   private static void write(MemPageStore memPageStore) {
     MemColumnWriteStore columns = new MemColumnWriteStore(memPageStore, 50*1024*1024);
@@ -106,14 +116,22 @@ public class PerfTest {
   private static MessageColumnIO newColumnFactory(MessageType schema) {
     return new ColumnIOFactory().getColumnIO(schema);
   }
-
-  private static void read(RecordReader<Void> recordReader, int count, MessageType schema) {
+  private static void read(RecordReader<Object> recordReader, int count, MessageType schema) {
+    Object[] records = new Object[count];
+    System.gc();
+    System.out.println("<<<");
     long t0 = System.currentTimeMillis();
-    recordReader.read(new Void[count], count);
+    for (int i = 0; i < records.length; i++) {
+      records[i] = recordReader.read();
+    }
     long t1 = System.currentTimeMillis();
+    System.out.println(">>>");
     long t = t1-t0;
     float err = (float)100 * 2 / t; // (+/- 1 ms)
     System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s err: %3.2f%%\n", count , t, t == 0 ? 0 : count * 1000 / t, err);
+    if (!records[0].equals("endmessage")) {
+      throw new RuntimeException();
+    }
   }
 
   private static void write(GroupWriter groupWriter, int count) {
