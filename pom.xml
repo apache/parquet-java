@@ -15,7 +15,9 @@
 
   <modules>
     <module>parquet-column</module>
+    <module>parquet-hadoop</module>
     <module>parquet-pig</module>
+    <module>parquet-thrift</module>
   </modules>
 
   <dependencies>
