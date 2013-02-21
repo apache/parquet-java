@@ -45,20 +45,15 @@ public class PerfTest {
   }
 
   private static void read(MemPageStore memPageStore) {
-    read(memPageStore, schema, "read all", false);
-    read(memPageStore, schema, "read all", false);
-    read(memPageStore, schema, "read all", true);
-    read(memPageStore, schema, "read all", true);
-    read(memPageStore, schema2, "read projected", false);
-    read(memPageStore, schema2, "read projected", true);
-    read(memPageStore, schema3, "read projected no Strings", false);
-    read(memPageStore, schema3, "read projected no Strings", true);
+    read(memPageStore, schema, "read all");
+    read(memPageStore, schema2, "read projected");
+    read(memPageStore, schema3, "read projected no Strings");
   }
 
   private static void read(MemPageStore memPageStore, MessageType myschema,
-      String message, boolean compiled) {
+      String message) {
     MessageColumnIO columnIO = newColumnFactory(myschema);
-    System.out.println(message + (compiled ? " compiled" : ""));
+    System.out.println(message);
     RecordMaterializer<Object> recordConsumer = new RecordMaterializer<Object>() {
       Object a;
       public void startMessage() { a = "startmessage";}
@@ -76,9 +71,6 @@ public class PerfTest {
       public Object getCurrentRecord() { return a; }
     };
     RecordReader<Object> recordReader = columnIO.getRecordReader(memPageStore, recordConsumer);
-    if (compiled) {
-      recordReader = new RecordReaderCompiler().compile((RecordReaderImplementation<Object>)recordReader);
-    }
 
     read(recordReader, 2, myschema);
     read(recordReader, 10000, myschema);
