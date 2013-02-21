@@ -16,12 +16,12 @@
 package parquet.io;
 
 import static org.junit.Assert.assertEquals;
-import static parquet.data.simple.example.Paper.pr1;
-import static parquet.data.simple.example.Paper.pr2;
-import static parquet.data.simple.example.Paper.r1;
-import static parquet.data.simple.example.Paper.r2;
-import static parquet.data.simple.example.Paper.schema;
-import static parquet.data.simple.example.Paper.schema2;
+import static parquet.example.Paper.pr1;
+import static parquet.example.Paper.pr2;
+import static parquet.example.Paper.r1;
+import static parquet.example.Paper.r2;
+import static parquet.example.Paper.schema;
+import static parquet.example.Paper.schema2;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -38,10 +38,12 @@ import parquet.column.ColumnWriter;
 import parquet.column.mem.MemColumnWriteStore;
 import parquet.column.mem.MemPageStore;
 import parquet.column.mem.PageReadStore;
-import parquet.data.Group;
-import parquet.data.GroupRecordConsumer;
-import parquet.data.GroupWriter;
-import parquet.data.simple.SimpleGroupFactory;
+import parquet.example.data.Group;
+import parquet.example.data.GroupRecordConsumer;
+import parquet.example.data.GroupWriter;
+import parquet.example.data.simple.SimpleGroupFactory;
+import parquet.example.data.simple.convert.GroupRecordConverter;
+import parquet.io.convert.RecordConverter;
 import parquet.schema.MessageType;
 
 
@@ -79,60 +81,34 @@ public class TestColumnIO {
   };
 
   public static final String[] expectedEventsForR1 = {
-      "startMessage()",
-       "startField(DocId, 0)",
-        "addLong(10)",
-       "endField(DocId, 0)",
-       "startField(Links, 1)",
-        "startGroup()",
-         "startField(Forward, 1)",
-          "addLong(20)",
-          "addLong(40)",
-          "addLong(60)",
-         "endField(Forward, 1)",
-        "endGroup()",
-       "endField(Links, 1)",
-       "startField(Name, 2)",
-        "startGroup()",
-         "startField(Language, 0)",
-          "startGroup()",
-           "startField(Code, 0)",
-            "addBinary(en-us)",
-           "endField(Code, 0)",
-           "startField(Country, 1)",
-            "addBinary(us)",
-           "endField(Country, 1)",
-          "endGroup()",
-          "startGroup()",
-           "startField(Code, 0)",
-            "addBinary(en)",
-           "endField(Code, 0)",
-          "endGroup()",
-         "endField(Language, 0)",
-         "startField(Url, 1)",
-          "addBinary(http://A)",
-         "endField(Url, 1)",
-        "endGroup()",
-        "startGroup()",
-         "startField(Url, 1)",
-          "addBinary(http://B)",
-         "endField(Url, 1)",
-        "endGroup()",
-        "startGroup()",
-         "startField(Language, 0)",
-          "startGroup()",
-           "startField(Code, 0)",
-            "addBinary(en-gb)",
-           "endField(Code, 0)",
-           "startField(Country, 1)",
-            "addBinary(gb)",
-           "endField(Country, 1)",
-          "endGroup()",
-         "endField(Language, 0)",
-        "endGroup()",
-       "endField(Name, 2)",
-      "endMessage()"
-      };
+    "startMessage()",
+    "0.addLong(10)",
+    "1.start()",
+    "1.1.addLong(20)",
+    "1.1.addLong(40)",
+    "1.1.addLong(60)",
+    "1.end()",
+    "2.start()",
+    "2.0.start()",
+    "2.0.0.addBinary(en-us)",
+    "2.0.1.addBinary(us)",
+    "2.0.end()",
+    "2.0.start()",
+    "2.0.0.addBinary(en)",
+    "2.0.end()",
+    "2.1.addBinary(http://A)",
+    "2.end()",
+    "2.start()",
+    "2.1.addBinary(http://B)",
+    "2.end()",
+    "2.start()",
+    "2.0.start()",
+    "2.0.0.addBinary(en-gb)",
+    "2.0.1.addBinary(gb)",
+    "2.0.end()",
+    "2.end()",
+    "endMessage()"
+  };
 
   @Test
   public void testSchema() {
@@ -201,8 +177,9 @@ public class TestColumnIO {
   }
 
   private RecordReaderImplementation<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, PageReadStore pageReadStore) {
-    RecordMaterializer<Group> recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
-    return (RecordReaderImplementation<Group>)columnIO.getRecordReader(pageReadStore, recordConsumer);
+    RecordConverter<Group> recordConverter = new GroupRecordConverter(schema);
+
+    return (RecordReaderImplementation<Group>)columnIO.getRecordReader(pageReadStore, recordConverter);
   }
 
   private void log(Object o) {
@@ -237,7 +214,7 @@ public class TestColumnIO {
       expectations.add(string);
     }
 
-    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingRecordConsumer(expectations));
+    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectations));
     recordReader.read();
 
   }

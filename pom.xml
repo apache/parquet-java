@@ -66,6 +66,29 @@
           <argLine>-Xmx512m</argLine>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>cobertura-maven-plugin</artifactId>
+        <version>2.5.2</version>
+        <configuration>
+          <instrumentation>
+            <ignores>
+              <ignore>*Exception</ignore>
+            </ignores>
+            <excludes>
+              <exclude>**/*Exception.class</exclude>
+              <exclude>parquet/data/**/*.class</exclude>
+            </excludes>
+          </instrumentation>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>clean</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 

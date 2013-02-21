@@ -13,29 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.data.simple;
+package parquet.example.data.simple;
 
 import parquet.io.RecordConsumer;
 
-public class BooleanValue extends Primitive {
 
-  private final boolean bool;
-  public BooleanValue(boolean bool) {
-    this.bool = bool;
+public class IntegerValue extends Primitive {
+
+  private final int value;
+
+  public IntegerValue(int value) {
+    this.value = value;
   }
 
   @Override
   public String toString() {
-    return String.valueOf(bool);
+    return String.valueOf(value);
   }
 
   @Override
-  public boolean getBoolean() {
-    return bool;
+  public int getInteger() {
+    return value;
   }
 
   @Override
   public void writeValue(RecordConsumer recordConsumer) {
-    recordConsumer.addBoolean(bool);
+    recordConsumer.addInteger(value);
   }
 }

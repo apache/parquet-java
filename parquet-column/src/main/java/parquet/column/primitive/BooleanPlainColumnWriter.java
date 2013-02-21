@@ -22,8 +22,8 @@ import java.io.IOException;
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
-import parquet.column.mem.ParquetEncodingException;
 import parquet.column.primitive.BitPacking.BitPackingWriter;
+import parquet.io.ParquetEncodingException;
 
 
 /**

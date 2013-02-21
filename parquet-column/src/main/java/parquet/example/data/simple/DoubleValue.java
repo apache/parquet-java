@@ -13,40 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.data.simple;
+package parquet.example.data.simple;
 
 import parquet.io.RecordConsumer;
 
-public abstract class Primitive {
+public class DoubleValue extends Primitive {
 
-  public String getString() {
-    throw new UnsupportedOperationException();
+  private final double value;
+
+  public DoubleValue(double value) {
+    this.value = value;
   }
 
-  public int getInteger() {
-    throw new UnsupportedOperationException();
-  }
-
-  public long getLong() {
-    throw new UnsupportedOperationException();
-  }
-
-  public boolean getBoolean() {
-    throw new UnsupportedOperationException();
-  }
-
-  public byte[] getBinary() {
-    throw new UnsupportedOperationException();
-  }
-
-  public float getFloat() {
-    throw new UnsupportedOperationException();
-  }
-
+  @Override
   public double getDouble() {
-    throw new UnsupportedOperationException();
+    return value;
   }
 
-  abstract public void writeValue(RecordConsumer recordConsumer);
+  @Override
+  public void writeValue(RecordConsumer recordConsumer) {
+    recordConsumer.addDouble(value);
+  }
 
 }

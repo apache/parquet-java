@@ -20,6 +20,7 @@ import static parquet.Log.DEBUG;
 import java.util.Iterator;
 
 import parquet.Log;
+import parquet.io.ParquetDecodingException;
 
 
 public class MemPageReader implements PageReader {

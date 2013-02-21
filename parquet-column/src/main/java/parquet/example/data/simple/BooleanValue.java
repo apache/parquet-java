@@ -13,23 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.data.simple;
+package parquet.example.data.simple;
 
-import parquet.data.Group;
-import parquet.data.GroupFactory;
-import parquet.schema.MessageType;
+import parquet.io.RecordConsumer;
 
-public class SimpleGroupFactory extends GroupFactory {
+public class BooleanValue extends Primitive {
 
-  private final MessageType schema;
-
-  public SimpleGroupFactory(MessageType schema) {
-    this.schema = schema;
+  private final boolean bool;
+  public BooleanValue(boolean bool) {
+    this.bool = bool;
   }
 
   @Override
-  public Group newGroup() {
-    return new SimpleGroup(schema);
+  public String toString() {
+    return String.valueOf(bool);
   }
 
+  @Override
+  public boolean getBoolean() {
+    return bool;
+  }
+
+  @Override
+  public void writeValue(RecordConsumer recordConsumer) {
+    recordConsumer.addBoolean(bool);
+  }
 }

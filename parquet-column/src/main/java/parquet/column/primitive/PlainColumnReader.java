@@ -22,7 +22,7 @@ import java.io.IOException;
 
 import parquet.Log;
 import parquet.bytes.LittleEndianDataInputStream;
-import parquet.column.mem.ParquetDecodingException;
+import parquet.io.ParquetDecodingException;
 
 
 /**

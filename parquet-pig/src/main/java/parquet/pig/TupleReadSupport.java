@@ -27,7 +27,9 @@ import org.apache.pig.parser.ParserException;
 import parquet.Log;
 import parquet.hadoop.ReadSupport;
 import parquet.io.RecordMaterializer;
+import parquet.io.convert.RecordConverter;
 import parquet.parser.MessageTypeParser;
+import parquet.pig.convert.TupleConverter;
 import parquet.pig.converter.MessageConverter;
 import parquet.schema.MessageType;
 
@@ -67,20 +69,8 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
    * {@inheritDoc}
    */
   @Override
-  public RecordMaterializer<Tuple> newRecordConsumer() {
+  public RecordConverter<Tuple> newRecordConsumer() {
     MessageType parquetSchema = MessageTypeParser.parseMessageType(requestedSchema);
-    MessageConverter converter = newParsingTree(parquetSchema, pigSchema);
-    if (Log.DEBUG) LOG.debug("assembled converter: " + converter);
-    return converter.newRecordConsumer();
-//    return new TupleRecordConsumer(parquetSchema, pigSchema);
+    return new TupleConverter(parquetSchema, pigSchema);
   }
-
-  private MessageConverter newParsingTree(MessageType parquetSchema, Schema pigSchema) {
-    try {
-      return new MessageConverter(parquetSchema, pigSchema);
-    } catch (FrontendException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
 }

@@ -20,6 +20,7 @@ import java.io.IOException;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnReadStore;
 import parquet.column.ColumnReader;
+import parquet.io.ParquetDecodingException;
 
 
 public class MemColumnReadStore implements ColumnReadStore {

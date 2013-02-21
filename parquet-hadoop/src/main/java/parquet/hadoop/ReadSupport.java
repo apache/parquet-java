@@ -20,7 +20,7 @@ import java.util.Map;
 
 import org.apache.hadoop.mapred.InputFormat;
 
-import parquet.io.RecordMaterializer;
+import parquet.io.convert.RecordConverter;
 
 /**
  * Abstraction used by the {@link ParquetInputFormat} to materialize records
@@ -44,6 +44,6 @@ abstract public class ReadSupport<T> implements Serializable {
    * the returned RecordConsumer will materialize the records and add them to the destination
    * @return the recordConsumer that will receive the events
    */
-  abstract public RecordMaterializer<T> newRecordConsumer();
+  abstract public RecordConverter<T> newRecordConsumer();
 
 }

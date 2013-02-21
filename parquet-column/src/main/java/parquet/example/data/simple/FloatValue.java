@@ -13,31 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.data.simple;
+package parquet.example.data.simple;
 
 import parquet.io.RecordConsumer;
 
+public class FloatValue extends Primitive {
 
-public class IntegerValue extends Primitive {
+  private final float value;
 
-  private final int value;
-
-  public IntegerValue(int value) {
+  public FloatValue(float value) {
     this.value = value;
   }
 
   @Override
-  public String toString() {
-    return String.valueOf(value);
-  }
-
-  @Override
-  public int getInteger() {
+  public float getFloat() {
     return value;
   }
 
   @Override
   public void writeValue(RecordConsumer recordConsumer) {
-    recordConsumer.addInteger(value);
+    recordConsumer.addFloat(value);
   }
+
 }

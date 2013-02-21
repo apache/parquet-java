@@ -23,6 +23,7 @@ import java.util.List;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
+import parquet.io.ParquetEncodingException;
 
 
 public class MemPageWriter implements PageWriter {

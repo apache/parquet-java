@@ -106,7 +106,7 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      */
     @Override
     public void addBinary(byte[] value) {
-      if (DEBUG) log(value);
+      if (DEBUG) log(new String(value));
       delegate.addBinary(value);
     }
 

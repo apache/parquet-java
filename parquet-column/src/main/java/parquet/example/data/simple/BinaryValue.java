@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.data.simple;
+package parquet.example.data.simple;
 
 import parquet.io.RecordConsumer;
 

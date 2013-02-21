@@ -17,7 +17,7 @@ package parquet.column.primitive;
 
 import java.io.IOException;
 
-import parquet.column.mem.ParquetDecodingException;
+import parquet.io.ParquetDecodingException;
 
 public class BitReader {
   private int currentByte = 0;

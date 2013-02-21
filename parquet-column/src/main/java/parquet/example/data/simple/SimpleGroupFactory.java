@@ -13,10 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.data;
+package parquet.example.data.simple;
 
-abstract public class GroupFactory {
+import parquet.example.data.Group;
+import parquet.example.data.GroupFactory;
+import parquet.schema.MessageType;
 
-  abstract public Group newGroup();
+public class SimpleGroupFactory extends GroupFactory {
+
+  private final MessageType schema;
+
+  public SimpleGroupFactory(MessageType schema) {
+    this.schema = schema;
+  }
+
+  @Override
+  public Group newGroup() {
+    return new SimpleGroup(schema);
+  }
 
 }

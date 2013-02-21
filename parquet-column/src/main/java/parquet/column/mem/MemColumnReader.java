@@ -27,6 +27,7 @@ import parquet.column.primitive.BooleanPlainColumnReader;
 import parquet.column.primitive.BoundedColumnFactory;
 import parquet.column.primitive.PlainColumnReader;
 import parquet.column.primitive.PrimitiveColumnReader;
+import parquet.io.ParquetDecodingException;
 
 
 abstract class MemColumnReader implements ColumnReader {

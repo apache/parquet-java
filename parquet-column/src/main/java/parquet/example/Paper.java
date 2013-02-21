@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.data.simple.example;
+package parquet.example;
 
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static parquet.schema.Type.Repetition.OPTIONAL;
 import static parquet.schema.Type.Repetition.REPEATED;
 import static parquet.schema.Type.Repetition.REQUIRED;
-import parquet.data.Group;
-import parquet.data.simple.SimpleGroup;
+import parquet.example.data.Group;
+import parquet.example.data.simple.SimpleGroup;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType;

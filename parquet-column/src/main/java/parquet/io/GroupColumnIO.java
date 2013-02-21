@@ -29,7 +29,7 @@ import parquet.schema.GroupType;
 
 
 public class GroupColumnIO extends ColumnIO {
-  private static final Log logger = Log.getLog(GroupColumnIO.class);
+  private static final Log LOG = Log.getLog(GroupColumnIO.class);
 
   private final Map<String, ColumnIO> childrenByName = new HashMap<String, ColumnIO>();
   private final List<ColumnIO> children = new ArrayList<ColumnIO>();

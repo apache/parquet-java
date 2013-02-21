@@ -17,7 +17,7 @@ package parquet.column.primitive;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
-import parquet.column.mem.ParquetEncodingException;
+import parquet.io.ParquetEncodingException;
 
 /**
  * This is a special ColumnWriter for the case when you need to write

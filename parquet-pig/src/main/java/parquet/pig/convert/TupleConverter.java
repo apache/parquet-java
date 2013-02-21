@@ -31,60 +31,67 @@ import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
+import parquet.io.ParquetDecodingException;
 import parquet.io.convert.GroupConverter;
 import parquet.io.convert.PrimitiveConverter;
+import parquet.io.convert.RecordConverter;
 import parquet.pig.TupleConversionException;
 import parquet.schema.GroupType;
 import parquet.schema.Type;
 
-public class TupleConverter extends GroupConverter {
+public class TupleConverter extends RecordConverter<Tuple> {
 
   private static final TupleFactory TF = TupleFactory.getInstance();
 
   private final GroupType parquetSchema;
   private final int schemaSize;
 
-  private Tuple currentTuple;
+  protected Tuple currentTuple;
   private final GroupConverter[] groupConverters;
   private final PrimitiveConverter[] primitiveConverters;
 
-  TupleConverter(GroupType parquetSchema, Schema pigSchema) throws FrontendException {
-    this.parquetSchema = parquetSchema;
-    this.schemaSize = parquetSchema.getFieldCount();
-    if (schemaSize != pigSchema.size()) {
-      throw new IllegalArgumentException("schema sizes don't match:\n" + parquetSchema + "\n" + pigSchema);
-    }
-    this.groupConverters = new GroupConverter[this.schemaSize];
-    this.primitiveConverters = new PrimitiveConverter[this.schemaSize];
-    for (int i = 0; i < schemaSize; i++) {
-      FieldSchema field = pigSchema.getField(i);
-      Type type = parquetSchema.getType(i);
-      switch (field.type) {
-      case DataType.BAG:
-        groupConverters[i] = new BagConverter(type.asGroupType(), field, i);
-        break;
-      case DataType.MAP:
-        groupConverters[i] = new MapConverter(type.asGroupType(), field, this, i);
-        break;
-      case DataType.TUPLE:
-        final int index = i;
-        groupConverters[i] = new TupleConverter(type.asGroupType(), field.schema) {
-          @Override
-          public void end() {
-            super.end();
-            set(index, currentTuple);
-          }
-        };
-        break;
-      case DataType.CHARARRAY:
-        primitiveConverters[i] = new FieldStringConverter(i);
-        break;
-      case DataType.BYTEARRAY:
-        primitiveConverters[i] = new FieldByteArrayConverter(i);
-        break;
-      default:
-        primitiveConverters[i] = new FieldPrimitiveConverter(i);
+  public TupleConverter(GroupType parquetSchema, Schema pigSchema) {
+    try {
+      this.parquetSchema = parquetSchema;
+      this.schemaSize = parquetSchema.getFieldCount();
+      if (schemaSize != pigSchema.size()) {
+        throw new IllegalArgumentException("schema sizes don't match:\n" + parquetSchema + "\n" + pigSchema);
       }
+      this.groupConverters = new GroupConverter[this.schemaSize];
+      this.primitiveConverters = new PrimitiveConverter[this.schemaSize];
+      for (int i = 0; i < schemaSize; i++) {
+        FieldSchema field = pigSchema.getField(i);
+        Type type = parquetSchema.getType(i);
+        switch (field.type) {
+        case DataType.BAG:
+          groupConverters[i] = new BagConverter(type.asGroupType(), field, i);
+          break;
+        case DataType.MAP:
+          groupConverters[i] = new MapConverter(type.asGroupType(), field, this, i);
+          break;
+        case DataType.TUPLE:
+          final int index = i;
+          final TupleConverter parent = this;
+          groupConverters[i] = new TupleConverter(type.asGroupType(), field.schema) {
+            @Override
+            public void end() {
+              super.end();
+              parent.set(index, this.currentTuple);
+            }
+          };
+          break;
+        case DataType.CHARARRAY:
+          primitiveConverters[i] = new FieldStringConverter(i);
+          break;
+        case DataType.BYTEARRAY:
+          primitiveConverters[i] = new FieldByteArrayConverter(i);
+          break;
+        default:
+          primitiveConverters[i] = new FieldPrimitiveConverter(i);
+        }
+      }
+    } catch (FrontendException e) {
+      throw new ParquetDecodingException("can not initialize pig converter from:\n" + parquetSchema + "\n" + pigSchema, e);
     }
   }
 
@@ -124,6 +131,11 @@ public class TupleConverter extends GroupConverter {
   }
 
   final public Tuple getCurrentTuple() {
+    return currentTuple;
+  }
+
+  @Override
+  final public Tuple getCurrentRecord() {
     return currentTuple;
   }
 
@@ -199,8 +211,8 @@ public class TupleConverter extends GroupConverter {
 
     BagConverter(GroupType parquetSchema, FieldSchema pigSchema, int index) throws FrontendException {
       this.index = index;
-      if (parquetSchema.getFieldCount() != 0) {
-        throw new IllegalArgumentException("bags have only one field. " + parquetSchema);
+      if (parquetSchema.getFieldCount() != 1) {
+        throw new IllegalArgumentException("bags have only one field. " + parquetSchema + " size = " + parquetSchema.getFieldCount());
       }
       child = new TupleConverter(parquetSchema.getType(0).asGroupType(), pigSchema.schema.getField(0).schema) {
         public void end() {
@@ -236,4 +248,5 @@ public class TupleConverter extends GroupConverter {
     }
 
   }
+
 }

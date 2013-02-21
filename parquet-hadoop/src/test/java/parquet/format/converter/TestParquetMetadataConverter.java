@@ -25,7 +25,7 @@ import java.util.List;
 
 import org.junit.Test;
 
-import parquet.data.simple.example.Paper;
+import parquet.example.Paper;
 import parquet.format.PageHeader;
 import parquet.format.PageType;
 import parquet.format.SchemaElement;

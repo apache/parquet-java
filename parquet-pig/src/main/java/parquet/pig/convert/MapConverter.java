@@ -47,7 +47,7 @@ final class MapConverter extends GroupConverter {
   private String currentKey;
 
   MapConverter(GroupType parquetSchema, FieldSchema pigSchema, TupleConverter parent, int index) throws FrontendException {
-    if (parquetSchema.getFieldCount() != 0) {
+    if (parquetSchema.getFieldCount() != 1) {
       throw new IllegalArgumentException("maps have only one field. " + parquetSchema);
     }
     this.parent = parent;
@@ -119,8 +119,8 @@ final class MapConverter extends GroupConverter {
 
     MapKeyValueConverter(GroupType parquetSchema, Schema pigSchema) throws FrontendException {
       if (parquetSchema.getFieldCount() != 2
-          || parquetSchema.getType(0).getName().equals("key")
-          || parquetSchema.getType(1).getName().equals("value")) {
+          || !parquetSchema.getType(0).getName().equals("key")
+          || !parquetSchema.getType(1).getName().equals("value")) {
         throw new IllegalArgumentException("schema does not match map key/value " + parquetSchema);
       }
       valueConverter = new TupleConverter(parquetSchema.getType(1).asGroupType(), pigSchema);

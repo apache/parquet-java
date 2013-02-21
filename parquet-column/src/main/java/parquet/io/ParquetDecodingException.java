@@ -1,4 +1,4 @@
-package parquet.column.mem;
+package parquet.io;
 
 import parquet.ParquetRuntimeException;
 

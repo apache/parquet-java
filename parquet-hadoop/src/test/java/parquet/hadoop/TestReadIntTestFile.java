@@ -24,9 +24,10 @@ import org.junit.Test;
 
 import parquet.Log;
 import parquet.column.mem.PageReadStore;
-import parquet.data.Group;
-import parquet.data.GroupRecordConsumer;
-import parquet.data.simple.SimpleGroupFactory;
+import parquet.example.data.Group;
+import parquet.example.data.GroupRecordConsumer;
+import parquet.example.data.simple.SimpleGroupFactory;
+import parquet.example.data.simple.convert.GroupRecordConverter;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
@@ -47,7 +48,7 @@ public class TestReadIntTestFile {
     final long rows = pages.getRowCount();
     LOG.info("rows: "+rows);
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
-    final RecordReader<Group> recordReader = columnIO.getRecordReader(pages, new GroupRecordConsumer(new SimpleGroupFactory(schema)));
+    final RecordReader<Group> recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(schema));
     for (int i = 0; i < rows; i++) {
       final Group g = recordReader.read();
       LOG.info(i + ": " + g);

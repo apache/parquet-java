@@ -22,7 +22,7 @@ import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.bytes.LittleEndianDataOutputStream;
-import parquet.column.mem.ParquetEncodingException;
+import parquet.io.ParquetEncodingException;
 
 
 /**

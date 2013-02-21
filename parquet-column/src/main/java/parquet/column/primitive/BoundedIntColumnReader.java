@@ -21,7 +21,7 @@ import java.io.IOException;
 
 import parquet.Log;
 import parquet.bytes.BytesUtils;
-import parquet.column.mem.ParquetDecodingException;
+import parquet.io.ParquetDecodingException;
 
 
 public class BoundedIntColumnReader extends PrimitiveColumnReader {

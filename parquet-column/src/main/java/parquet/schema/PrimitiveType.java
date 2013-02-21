@@ -21,6 +21,7 @@ import java.util.List;
 import parquet.column.ColumnReader;
 import parquet.io.InvalidRecordException;
 import parquet.io.RecordConsumer;
+import parquet.io.convert.PrimitiveConverter;
 
 
 /**
@@ -50,6 +51,12 @@ public class PrimitiveType extends Type {
           ColumnReader columnReader) {
         recordConsumer.addLong(columnReader.getLong());
       }
+
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        primitiveConverter.addLong(columnReader.getLong());
+      }
     },
     INT32("getInteger", Integer.TYPE) {
       @Override
@@ -62,6 +69,12 @@ public class PrimitiveType extends Type {
           ColumnReader columnReader) {
         recordConsumer.addInteger(columnReader.getInteger());
       }
+
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        primitiveConverter.addInt(columnReader.getInteger());
+      }
     },
     BOOLEAN("getBoolean", Boolean.TYPE) {
       @Override
@@ -73,6 +86,12 @@ public class PrimitiveType extends Type {
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
         recordConsumer.addBoolean(columnReader.getBoolean());
+      }
+
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        primitiveConverter.addBoolean(columnReader.getBoolean());
       }
     },
     // TODO: array type literal?
@@ -87,6 +106,12 @@ public class PrimitiveType extends Type {
           ColumnReader columnReader) {
         recordConsumer.addBinary(columnReader.getBinary());
       }
+
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        primitiveConverter.addBinary(columnReader.getBinary());
+      }
     },
     FLOAT("getFloat", Float.TYPE) {
       @Override
@@ -99,6 +124,12 @@ public class PrimitiveType extends Type {
           ColumnReader columnReader) {
         recordConsumer.addFloat(columnReader.getFloat());
       }
+
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        primitiveConverter.addFloat(columnReader.getFloat());
+      }
     },
     DOUBLE("getDouble", Double.TYPE) {
       @Override
@@ -110,6 +141,12 @@ public class PrimitiveType extends Type {
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
         recordConsumer.addDouble(columnReader.getDouble());
+      }
+
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        primitiveConverter.addDouble(columnReader.getDouble());
       }
     };
 
@@ -135,6 +172,9 @@ public class PrimitiveType extends Type {
      */
     abstract public void addValueToRecordConsumer(RecordConsumer recordConsumer,
         ColumnReader columnReader);
+
+    abstract public void addValueToPrimitiveConverter(
+        PrimitiveConverter primitiveConverter, ColumnReader columnReader);
 
   }
 

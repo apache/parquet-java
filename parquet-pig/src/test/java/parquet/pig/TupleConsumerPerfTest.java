@@ -34,12 +34,14 @@ import parquet.Log;
 import parquet.column.mem.MemColumnWriteStore;
 import parquet.column.mem.MemPageStore;
 import parquet.column.mem.PageReadStore;
+import parquet.example.DummyRecordConverter;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.io.RecordConsumer;
 import parquet.io.RecordConsumerLoggingWrapper;
 import parquet.io.RecordMaterializer;
 import parquet.io.RecordReader;
+import parquet.io.convert.RecordConverter;
 import parquet.pig.PigMetaData;
 import parquet.pig.PigSchemaConverter;
 import parquet.pig.TupleReadSupport;
@@ -133,27 +135,17 @@ public class TupleConsumerPerfTest {
   }
 
   private static void read(PageReadStore columns, String pigSchemaString, String message) throws ParserException {
-
-    RecordMaterializer<Void> recordConsumer = new RecordMaterializer<Void>() {
-      public void startMessage() {}
-      public void startGroup() {}
-      public void startField(String field, int index) {}
-      public void endMessage() {}
-      public void endGroup() {}
-      public void endField(String field, int index) {}
-      public void addString(String value) {}
-      public void addInteger(int value) {}
-      public void addLong(long value) {}
-      public void addFloat(float value) {}
-      public void addDouble(double value) {}
-      public void addBoolean(boolean value) {}
-      public void addBinary(byte[] value) {}
-      public Void getCurrentRecord() { return null; }
-    };
-    MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     System.out.println(message);
-    RecordReader<Void> recordReader = columnIO.getRecordReader(columns, recordConsumer);
-
+    MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
+    TupleReadSupport tupleReadSupport = new TupleReadSupport();
+    MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchemaString));
+    tupleReadSupport.initForRead(pigMetaData(pigSchemaString), schema.toString());
+    RecordConverter<Tuple> recordConsumer = tupleReadSupport.newRecordConsumer();
+    RecordReader<Tuple> recordReader = columnIO.getRecordReader(columns, recordConsumer);
+    // TODO: put this back
+//  if (DEBUG) {
+//    recordConsumer = new RecordConsumerLoggingWrapper(recordConsumer);
+//  }
     read(recordReader, 10000, pigSchemaString);
     read(recordReader, 10000, pigSchemaString);
     read(recordReader, 10000, pigSchemaString);
@@ -190,17 +182,15 @@ public class TupleConsumerPerfTest {
   }
 
 
-  private static void read(RecordReader<Void> recordReader, int count, String pigSchemaString) throws ParserException {
-    TupleReadSupport tupleReadSupport = new TupleReadSupport();
-    MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchemaString));
-    tupleReadSupport.initForRead(pigMetaData(pigSchemaString), schema.toString());
-    RecordConsumer recordConsumer = tupleReadSupport.newRecordConsumer();
-    if (DEBUG) {
-      recordConsumer = new RecordConsumerLoggingWrapper(recordConsumer);
-    }
+  private static void read(RecordReader<Tuple> recordReader, int count, String pigSchemaString) throws ParserException {
+
     long t0 = System.currentTimeMillis();
+    Tuple tuple = null;
     for (int i = 0; i < count; i++) {
-      recordReader.read();
+      tuple = recordReader.read();
+    }
+    if (tuple == null) {
+      throw new RuntimeException();
     }
     long t1 = System.currentTimeMillis();
     long t = t1-t0;

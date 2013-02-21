@@ -26,6 +26,7 @@ import parquet.column.primitive.BooleanPlainColumnWriter;
 import parquet.column.primitive.BoundedColumnFactory;
 import parquet.column.primitive.PlainColumnWriter;
 import parquet.column.primitive.PrimitiveColumnWriter;
+import parquet.io.ParquetEncodingException;
 
 
 final class MemColumnWriter implements ColumnWriter {

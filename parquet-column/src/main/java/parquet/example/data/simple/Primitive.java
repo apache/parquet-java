@@ -13,30 +13,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.data.simple;
+package parquet.example.data.simple;
 
 import parquet.io.RecordConsumer;
 
-public class LongValue extends Primitive {
+public abstract class Primitive {
 
-  private final long value;
-
-  public LongValue(long value) {
-    this.value = value;
+  public String getString() {
+    throw new UnsupportedOperationException();
   }
 
-  @Override
-  public String toString() {
-    return String.valueOf(value);
+  public int getInteger() {
+    throw new UnsupportedOperationException();
   }
 
-  @Override
   public long getLong() {
-    return value;
+    throw new UnsupportedOperationException();
   }
 
-  @Override
-  public void writeValue(RecordConsumer recordConsumer) {
-    recordConsumer.addLong(value);
+  public boolean getBoolean() {
+    throw new UnsupportedOperationException();
   }
+
+  public byte[] getBinary() {
+    throw new UnsupportedOperationException();
+  }
+
+  public float getFloat() {
+    throw new UnsupportedOperationException();
+  }
+
+  public double getDouble() {
+    throw new UnsupportedOperationException();
+  }
+
+  abstract public void writeValue(RecordConsumer recordConsumer);
+
 }

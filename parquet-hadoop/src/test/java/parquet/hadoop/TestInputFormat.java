@@ -38,6 +38,7 @@ import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.io.RecordMaterializer;
+import parquet.io.convert.RecordConverter;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -51,7 +52,7 @@ public class TestInputFormat {
     }
     ReadSupport<Void> readSupport = new ReadSupport<Void>() {
       @Override
-      public RecordMaterializer<Void> newRecordConsumer() {
+      public RecordConverter<Void> newRecordConsumer() {
         return null;
       }
       @Override

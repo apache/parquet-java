@@ -13,26 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.data.simple;
+package parquet.example.data;
 
-import parquet.io.RecordConsumer;
+abstract public class GroupFactory {
 
-public class FloatValue extends Primitive {
-
-  private final float value;
-
-  public FloatValue(float value) {
-    this.value = value;
-  }
-
-  @Override
-  public float getFloat() {
-    return value;
-  }
-
-  @Override
-  public void writeValue(RecordConsumer recordConsumer) {
-    recordConsumer.addFloat(value);
-  }
+  abstract public Group newGroup();
 
 }

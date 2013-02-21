@@ -18,14 +18,14 @@ package parquet.io;
 import static parquet.Log.DEBUG;
 import parquet.Log;
 import parquet.column.ColumnReadStore;
-import parquet.column.mem.ParquetDecodingException;
 import parquet.io.RecordReaderImplementation.State;
+import parquet.io.convert.RecordConverter;
 
 public abstract class BaseRecordReader<T> extends RecordReader<T> {
   private static final Log LOG = Log.getLog(BaseRecordReader.class);
 
   public RecordConsumer recordConsumer;
-  public RecordMaterializer<T> recordMaterializer;
+  public RecordConverter<T> recordMaterializer;
   public ColumnReadStore columnStore;
   @Override
   public T read() {

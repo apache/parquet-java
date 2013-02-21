@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.data.simple;
+package parquet.example.data.simple;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import parquet.data.Group;
+import parquet.example.data.Group;
 import parquet.io.RecordConsumer;
 import parquet.schema.GroupType;
 import parquet.schema.Type;

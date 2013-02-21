@@ -33,12 +33,12 @@ import org.apache.pig.parser.ParserException;
 import org.junit.Test;
 
 import parquet.Log;
-import parquet.data.Group;
-import parquet.data.GroupRecordConsumer;
-import parquet.data.GroupWriter;
-import parquet.data.simple.SimpleGroup;
-import parquet.data.simple.SimpleGroupFactory;
-import parquet.io.RecordMaterializer;
+import parquet.example.data.Group;
+import parquet.example.data.GroupWriter;
+import parquet.example.data.simple.SimpleGroup;
+import parquet.example.data.simple.convert.GroupRecordConverter;
+import parquet.io.RecordConsumerLoggingWrapper;
+import parquet.io.convert.RecordConverter;
 import parquet.schema.MessageType;
 
 public class TestTupleRecordConsumer {
@@ -114,7 +114,7 @@ public class TestTupleRecordConsumer {
   private void testFromTuple(String pigSchemaString, List<Tuple> input) throws Exception {
     List<Tuple> tuples = new ArrayList<Tuple>();
     MessageType parquetSchema = getMessageType(pigSchemaString);
-    RecordMaterializer<Tuple> recordConsumer = newPigRecordConsumer(parquetSchema, pigSchemaString);
+    RecordConverter<Tuple> recordConsumer = newPigRecordConsumer(parquetSchema, pigSchemaString);
     TupleWriteSupport tupleWriter = newTupleWriter(parquetSchema, pigSchemaString, recordConsumer);
     for (Tuple tuple : input) {
       logger.debug(tuple);
@@ -134,16 +134,18 @@ public class TestTupleRecordConsumer {
   private void testFromGroups(String pigSchemaString, List<Group> input) throws ParserException {
     List<Tuple> tuples = new ArrayList<Tuple>();
     MessageType schema = getMessageType(pigSchemaString);
-    RecordMaterializer<Tuple> pigRecordConsumer = newPigRecordConsumer(schema, pigSchemaString);
-    GroupWriter groupWriter = new GroupWriter(pigRecordConsumer, schema);
+    RecordConverter<Tuple> pigRecordConsumer = newPigRecordConsumer(schema, pigSchemaString);
+    GroupWriter groupWriter = new GroupWriter(new RecordConsumerLoggingWrapper(new ConverterConsumer(pigRecordConsumer, schema)), schema);
 
     for (Group group : input) {
       groupWriter.write(group);
-      tuples.add(pigRecordConsumer.getCurrentRecord());
+      final Tuple tuple = pigRecordConsumer.getCurrentRecord();
+      tuples.add(tuple);
+      logger.debug("in: "+group+"\nout:"+tuple);
     }
 
     List<Group> groups = new ArrayList<Group>();
-    GroupRecordConsumer recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
+    GroupRecordConverter recordConsumer = new GroupRecordConverter(schema);
     TupleWriteSupport tupleWriter = newTupleWriter(schema, pigSchemaString, recordConsumer);
     for (Tuple t : tuples) {
       logger.debug(t);
@@ -154,15 +156,16 @@ public class TestTupleRecordConsumer {
     assertEquals(input.size(), groups.size());
     for (int i = 0; i < input.size(); i++) {
       Group in = input.get(i);
+      logger.debug(in);
       Group out = groups.get(i);
       assertEquals(in.toString(), out.toString());
     }
   }
 
-  private <T> TupleWriteSupport newTupleWriter(MessageType parquetSchema, String pigSchemaString, RecordMaterializer<T> recordConsumer) {
+  private <T> TupleWriteSupport newTupleWriter(MessageType parquetSchema, String pigSchemaString, RecordConverter<T> recordConsumer) {
     TupleWriteSupport tupleWriter = new TupleWriteSupport();
     tupleWriter.initForWrite(
-        recordConsumer,
+        new ConverterConsumer(recordConsumer, parquetSchema),
         parquetSchema,
         pigMetaData(pigSchemaString)
         );
@@ -175,7 +178,7 @@ public class TestTupleRecordConsumer {
     return map;
   }
 
-  private RecordMaterializer<Tuple> newPigRecordConsumer(MessageType parquetSchema, String pigSchemaString) throws ParserException {
+  private RecordConverter<Tuple> newPigRecordConsumer(MessageType parquetSchema, String pigSchemaString) throws ParserException {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
     tupleReadSupport.initForRead(pigMetaData(pigSchemaString), parquetSchema.toString());
     return tupleReadSupport.newRecordConsumer();
