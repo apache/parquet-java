@@ -62,7 +62,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore {
       long compressedSize = compressedBytes.size();
       PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, (int)uncompressedSize, (int)compressedSize);
       // pageHeader.crc = ...;
-      pageHeader.data_page = new DataPageHeader(valueCount, Encoding.PLAIN); // TODO: encoding
+      pageHeader.data_page_header = new DataPageHeader(valueCount, Encoding.PLAIN); // TODO: encoding
       parquetMetadataConverter.writePageHeader(pageHeader, buf);
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;

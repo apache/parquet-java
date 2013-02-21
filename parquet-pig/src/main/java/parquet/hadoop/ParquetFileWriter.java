@@ -188,7 +188,7 @@ public class ParquetFileWriter {
     int compressedPageSize = (int)bytes.size();
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedPageSize, compressedPageSize);
     // pageHeader.crc = ...;
-    pageHeader.data_page = new DataPageHeader(valueCount, Encoding.PLAIN); // TODO: encoding
+    pageHeader.data_page_header = new DataPageHeader(valueCount, Encoding.PLAIN); // TODO: encoding
     metadataConverter.writePageHeader(pageHeader, out);
     this.uncompressedLength += uncompressedPageSize;
     this.compressedLength += compressedPageSize;
