@@ -17,6 +17,8 @@ package parquet.schema;
 
 import java.util.List;
 
+import parquet.io.InvalidRecordException;
+
 abstract public class Type {
 
   public static enum Repetition {
@@ -109,7 +111,7 @@ abstract public class Type {
   void checkContains(Type subType) {
     if (!this.name.equals(subType.name)
         || this.repetition != subType.repetition) {
-      throw new RuntimeException(subType + " found: expected " + this);
+      throw new InvalidRecordException(subType + " found: expected " + this);
     }
   }
 }

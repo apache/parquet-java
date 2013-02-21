@@ -237,7 +237,7 @@ public class RecordReaderCompiler {
         try {
           generated.getField("state_"+i+"_column").set(compiledRecordReader, state.column);
         } catch (NoSuchFieldException e) {
-          throw new RuntimeException("bug: can't find field for state " + i, e);
+          throw new CompilationException("bug: can't find field for state " + i, e);
         }
         compiledRecordReader.caseLookup[i] = state;
       }
@@ -245,19 +245,19 @@ public class RecordReaderCompiler {
       compiledRecordReader.recordConsumer = recordReader.getRecordConsumer();
       return compiledRecordReader;
     } catch (ClassNotFoundException e) {
-      throw new RuntimeException("generated class "+className+" could not be loaded", e);
+      throw new CompilationException("generated class "+className+" could not be loaded", e);
     } catch (InstantiationException e) {
-      throw new RuntimeException("generated class "+className+" could not be instantiated", e);
+      throw new CompilationException("generated class "+className+" could not be instantiated", e);
     } catch (IllegalAccessException e) {
-      throw new RuntimeException("generated class "+className+" is not accessible", e);
+      throw new CompilationException("generated class "+className+" is not accessible", e);
     } catch (IllegalArgumentException e) {
-      throw new RuntimeException("generated class "+className+" could not be instantiated", e);
+      throw new CompilationException("generated class "+className+" could not be instantiated", e);
     } catch (SecurityException e) {
-      throw new RuntimeException("generated class "+className+" could not be instantiated", e);
+      throw new CompilationException("generated class "+className+" could not be instantiated", e);
     } catch (InvocationTargetException e) {
-      throw new RuntimeException("generated class "+className+" could not be instantiated", e);
+      throw new CompilationException("generated class "+className+" could not be instantiated", e);
     } catch (NoSuchMethodException e) {
-      throw new RuntimeException("generated class "+className+" could not be instantiated", e);
+      throw new CompilationException("generated class "+className+" could not be instantiated", e);
     }
   }
 

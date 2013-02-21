@@ -60,7 +60,7 @@ abstract class MemColumnReader implements ColumnReader {
     this.pageReader = pageReader;
     this.totalValueCount = pageReader.getTotalValueCount();
     if (totalValueCount == 0) {
-      throw new RuntimeException("totalValueCount == 0");
+      throw new ParquetDecodingException("totalValueCount == 0");
     }
   }
 

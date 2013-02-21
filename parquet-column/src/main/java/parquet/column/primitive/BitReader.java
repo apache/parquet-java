@@ -17,6 +17,8 @@ package parquet.column.primitive;
 
 import java.io.IOException;
 
+import parquet.column.mem.ParquetDecodingException;
+
 public class BitReader {
   private int currentByte = 0;
   private int currentPosition = 8;
@@ -97,7 +99,7 @@ public class BitReader {
         value |= (b & 0x7F) << i;
         i += 7;
         if (i > 35) {
-            throw new RuntimeException("Variable length quantity is too long");
+            throw new ParquetDecodingException("Variable length quantity is too long");
         }
     }
     return value | (b << i);

@@ -50,7 +50,7 @@ public class MemColumnReadStore implements ColumnReadStore {
     case DOUBLE:
       return new DOUBLEMemColumnReader(path, pageReader);
     }
-    throw new RuntimeException("type "+path.getType()+" not supported");
+    throw new ParquetDecodingException("type "+path.getType()+" not supported");
   }
 
   private static final class INT32MemColumnReader extends MemColumnReader {

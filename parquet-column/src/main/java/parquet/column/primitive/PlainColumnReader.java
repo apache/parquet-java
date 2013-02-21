@@ -22,6 +22,7 @@ import java.io.IOException;
 
 import parquet.Log;
 import parquet.bytes.LittleEndianDataInputStream;
+import parquet.column.mem.ParquetDecodingException;
 
 
 /**
@@ -40,7 +41,7 @@ public class PlainColumnReader extends PrimitiveColumnReader {
     try {
       return in.readFloat();
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetDecodingException("could not read float", e);
     }
   }
 
@@ -51,7 +52,7 @@ public class PlainColumnReader extends PrimitiveColumnReader {
       in.readFully(value);
       return value;
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetDecodingException("could not read bytes", e);
     }
   }
 
@@ -60,7 +61,7 @@ public class PlainColumnReader extends PrimitiveColumnReader {
     try {
       return in.readDouble();
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetDecodingException("could not read double", e);
     }
   }
 
@@ -69,7 +70,7 @@ public class PlainColumnReader extends PrimitiveColumnReader {
     try {
       return in.readInt();
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetDecodingException("could not read int", e);
     }
   }
 
@@ -78,7 +79,7 @@ public class PlainColumnReader extends PrimitiveColumnReader {
     try {
       return in.readLong();
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetDecodingException("could not read long", e);
     }
   }
 
@@ -87,7 +88,7 @@ public class PlainColumnReader extends PrimitiveColumnReader {
     try {
       return in.read();
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetDecodingException("could not read byte", e);
     }
   }
 

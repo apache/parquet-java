@@ -102,7 +102,7 @@ abstract public class ColumnIO {
     } else  if (getParent()!=null && getParent().getDefinitionLevel()>=r) {
       return getParent().getParent(r);
     } else {
-      throw new RuntimeException("no parent("+r+") for "+Arrays.toString(this.getFieldPath()));
+      throw new InvalidRecordException("no parent("+r+") for "+Arrays.toString(this.getFieldPath()));
     }
   }
 

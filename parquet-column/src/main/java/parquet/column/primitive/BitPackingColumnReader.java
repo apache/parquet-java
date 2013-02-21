@@ -21,6 +21,7 @@ import static parquet.column.primitive.BitPacking.getBitPackingReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
+import parquet.column.mem.ParquetDecodingException;
 import parquet.column.primitive.BitPacking.BitPackingReader;
 
 
@@ -38,7 +39,7 @@ public class BitPackingColumnReader extends PrimitiveColumnReader {
     try {
       return bitPackingReader.read();
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new ParquetDecodingException(e);
     }
   }
 

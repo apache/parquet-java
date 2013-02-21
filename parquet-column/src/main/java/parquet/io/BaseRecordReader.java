@@ -18,6 +18,7 @@ package parquet.io;
 import static parquet.Log.DEBUG;
 import parquet.Log;
 import parquet.column.ColumnReadStore;
+import parquet.column.mem.ParquetDecodingException;
 import parquet.io.RecordReaderImplementation.State;
 
 public abstract class BaseRecordReader<T> extends RecordReader<T> {
@@ -132,6 +133,6 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
   }
 
   protected void error(String message) {
-    throw new RuntimeException(message);
+    throw new ParquetDecodingException(message);
   }
 }

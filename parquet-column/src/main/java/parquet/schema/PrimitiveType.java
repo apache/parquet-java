@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import parquet.column.ColumnReader;
+import parquet.io.InvalidRecordException;
 import parquet.io.RecordConsumer;
 
 
@@ -216,7 +217,7 @@ public class PrimitiveType extends Type {
   @Override
   public int getRepetitionLevel(String[] path, int i) {
     if (path.length != i) {
-      throw new RuntimeException("Arrived at primitive node, path invalid");
+      throw new InvalidRecordException("Arrived at primitive node, path invalid");
     }
     return getRepetition() == Repetition.REPEATED ? 1 : 0;
   }
@@ -224,7 +225,7 @@ public class PrimitiveType extends Type {
   @Override
   public int getDefinitionLevel(String[] path, int i) {
     if (path.length != i) {
-      throw new RuntimeException("Arrived at primitive node, path invalid");
+      throw new InvalidRecordException("Arrived at primitive node, path invalid");
     }
     return getRepetition() == Repetition.REQUIRED ? 0 : 1;
   }
@@ -232,7 +233,7 @@ public class PrimitiveType extends Type {
   @Override
   public Type getType(String[] path, int i) {
     if (path.length != i) {
-      throw new RuntimeException("Arrived at primitive node at index " + i + " , path invalid: " + Arrays.toString(path));
+      throw new InvalidRecordException("Arrived at primitive node at index " + i + " , path invalid: " + Arrays.toString(path));
     }
     return this;
   }
@@ -246,11 +247,11 @@ public class PrimitiveType extends Type {
   void checkContains(Type subType) {
     super.checkContains(subType);
     if (!subType.isPrimitive()) {
-      throw new RuntimeException(subType + " found: expected " + this);
+      throw new InvalidRecordException(subType + " found: expected " + this);
     }
     PrimitiveType primitiveType = subType.asPrimitiveType();
     if (this.primitive != primitiveType.primitive) {
-      throw new RuntimeException(subType + " found: expected " + this);
+      throw new InvalidRecordException(subType + " found: expected " + this);
     }
 
   }

@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import parquet.column.ColumnDescriptor;
+import parquet.io.InvalidRecordException;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 
@@ -105,7 +106,7 @@ public class MessageType extends GroupType {
   @Override
   public void checkContains(Type subType) {
     if (!(subType instanceof MessageType)) {
-      throw new RuntimeException(subType + " found: expected " + this);
+      throw new InvalidRecordException(subType + " found: expected " + this);
     }
     super.checkContains(subType);
   }

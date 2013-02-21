@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import parquet.Log;
 import parquet.bytes.BytesUtils;
+import parquet.column.mem.ParquetDecodingException;
 
 
 public class BoundedIntColumnReader extends PrimitiveColumnReader {
@@ -33,7 +34,7 @@ public class BoundedIntColumnReader extends PrimitiveColumnReader {
 
   public BoundedIntColumnReader(int bound) {
     if (bound == 0) {
-      throw new RuntimeException("Value bound cannot be 0. Use DevNullColumnReader instead.");
+      throw new ParquetDecodingException("Value bound cannot be 0. Use DevNullColumnReader instead.");
     }
     bitsPerValue = (int)Math.ceil(Math.log(bound + 1)/Math.log(2));
   }
@@ -53,7 +54,7 @@ public class BoundedIntColumnReader extends PrimitiveColumnReader {
       }
       return currentValue;
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new ParquetDecodingException("could not read int", e);
     }
   }
 

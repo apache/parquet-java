@@ -23,6 +23,7 @@ import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
 import parquet.column.mem.MemColumnReadStore;
 import parquet.column.mem.PageReadStore;
+import parquet.column.mem.ParquetEncodingException;
 import parquet.schema.MessageType;
 
 public class MessageColumnIO extends GroupColumnIO {
@@ -69,7 +70,7 @@ public class MessageColumnIO extends GroupColumnIO {
       log(currentLevel+", "+currentIndex[currentLevel]+": "+Arrays.toString(currentColumnIO.getFieldPath())+" r:"+r[currentLevel]);
       if (r[currentLevel] > currentColumnIO.getRepetitionLevel()) {
         // sanity check
-        throw new RuntimeException(r[currentLevel]+"(r) > "+currentColumnIO.getRepetitionLevel()+" ( schema r)");
+        throw new InvalidRecordException(r[currentLevel]+"(r) > "+currentColumnIO.getRepetitionLevel()+" ( schema r)");
       }
     }
 
@@ -106,7 +107,7 @@ public class MessageColumnIO extends GroupColumnIO {
         currentIndex[currentLevel] = index;
         if (DEBUG) printState();
       } catch (RuntimeException e) {
-        throw new RuntimeException("error starting field " + field + " at " + index, e);
+        throw new ParquetEncodingException("error starting field " + field + " at " + index, e);
       }
     }
 
@@ -119,7 +120,7 @@ public class MessageColumnIO extends GroupColumnIO {
           if (DEBUG) log(Arrays.toString(undefinedField.getFieldPath())+".writeNull("+r[currentLevel]+","+d+")");
           writeNull(undefinedField, r[currentLevel], d);
         } catch (RuntimeException e) {
-          throw new RuntimeException("error while writing nulls from " + from + " to " + to + ". current index: "+currentIndex[currentLevel], e);
+          throw new ParquetEncodingException("error while writing nulls from " + from + " to " + to + ". current index: "+currentIndex[currentLevel], e);
         }
       }
     }

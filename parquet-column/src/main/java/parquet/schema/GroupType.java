@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import parquet.io.InvalidRecordException;
+
 /**
  * Represents a group type: a list of fields
  *
@@ -80,7 +82,7 @@ public class GroupType extends Type {
    */
   public int getFieldIndex(String name) {
     if (!indexByName.containsKey(name)) {
-      throw new RuntimeException(name + " not found in " + this);
+      throw new InvalidRecordException(name + " not found in " + this);
     }
     return indexByName.get(name);
   }
@@ -227,7 +229,7 @@ public class GroupType extends Type {
   void checkContains(Type subType) {
     super.checkContains(subType);
     if (subType.isPrimitive()) {
-      throw new RuntimeException(subType + " found: expected " + this);
+      throw new InvalidRecordException(subType + " found: expected " + this);
     }
     List<Type> fields = subType.asGroupType().getFields();
     for (Type otherType : fields) {

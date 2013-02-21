@@ -49,7 +49,7 @@ public class MemPageReader implements PageReader {
       if (DEBUG) LOG.debug("read page " + next);
       return next;
     } else {
-      throw new RuntimeException("after last page");
+      throw new ParquetDecodingException("after last page");
     }
   }
 

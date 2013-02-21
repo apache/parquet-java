@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 import parquet.Log;
+import parquet.column.mem.ParquetDecodingException;
 import parquet.column.primitive.BitPacking.BitPackingReader;
 
 
@@ -35,7 +36,7 @@ public class BooleanPlainColumnReader extends PrimitiveColumnReader {
     try {
       return in.read() == 0 ? false : true;
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetDecodingException("never happens", e);
     }
   }
 

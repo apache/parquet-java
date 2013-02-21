@@ -22,6 +22,7 @@ import java.io.IOException;
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
+import parquet.column.mem.ParquetEncodingException;
 import parquet.column.primitive.BitPacking.BitPackingWriter;
 
 
@@ -47,7 +48,7 @@ public class BooleanPlainColumnWriter extends PrimitiveColumnWriter {
     try {
       bitPackingWriter.write(v ? 1 : 0);
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetEncodingException("could not write boolean", e);
     }
   }
 
@@ -61,7 +62,7 @@ public class BooleanPlainColumnWriter extends PrimitiveColumnWriter {
     try {
       bitPackingWriter.finish();
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetEncodingException("could not write page", e);
     }
     if (Log.DEBUG) LOG.debug("writing a buffer of size " + out.size());
     return BytesInput.from(out);

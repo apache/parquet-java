@@ -22,6 +22,7 @@ import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.bytes.LittleEndianDataOutputStream;
+import parquet.column.mem.ParquetEncodingException;
 
 
 /**
@@ -46,11 +47,10 @@ public class PlainColumnWriter extends PrimitiveColumnWriter {
   @Override
   public final void writeBytes(byte[] v) {
     try {
-//      BytesUtils.writeUnsignedVarInt(v.length, out);
       out.writeInt(v.length);
       out.write(v);
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetEncodingException("could not write bytes", e);
     }
   }
 
@@ -59,7 +59,7 @@ public class PlainColumnWriter extends PrimitiveColumnWriter {
     try {
       out.writeInt(v);
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetEncodingException("could not write int", e);
     }
   }
 
@@ -68,7 +68,7 @@ public class PlainColumnWriter extends PrimitiveColumnWriter {
     try {
       out.writeLong(v);
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetEncodingException("could not write long", e);
     }
   }
 
@@ -77,7 +77,7 @@ public class PlainColumnWriter extends PrimitiveColumnWriter {
     try {
       out.writeFloat(v);
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetEncodingException("could not write float", e);
     }
   }
 
@@ -86,7 +86,7 @@ public class PlainColumnWriter extends PrimitiveColumnWriter {
     try {
       out.writeDouble(v);
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetEncodingException("could not write double", e);
     }
   }
 
@@ -95,7 +95,7 @@ public class PlainColumnWriter extends PrimitiveColumnWriter {
     try {
       out.write(value);
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetEncodingException("could not write byte", e);
     }
   }
 
@@ -109,7 +109,7 @@ public class PlainColumnWriter extends PrimitiveColumnWriter {
     try {
       out.flush();
     } catch (IOException e) {
-      throw new RuntimeException("never happens", e);
+      throw new ParquetEncodingException("could not write page", e);
     }
     if (Log.DEBUG) LOG.debug("writing a buffer of size " + arrayOut.size());
     return BytesInput.from(arrayOut);

@@ -22,6 +22,7 @@ import java.io.IOException;
 
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
+import parquet.column.mem.ParquetEncodingException;
 import parquet.column.primitive.BitPacking.BitPackingWriter;
 
 
@@ -45,7 +46,7 @@ public class BitPackingColumnWriter extends PrimitiveColumnWriter {
     try {
       bitPackingWriter.write(v);
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new ParquetEncodingException(e);
     }
   }
 
@@ -60,7 +61,7 @@ public class BitPackingColumnWriter extends PrimitiveColumnWriter {
       this.bitPackingWriter.finish();
       return BytesInput.from(out);
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new ParquetEncodingException(e);
     }
   }
 

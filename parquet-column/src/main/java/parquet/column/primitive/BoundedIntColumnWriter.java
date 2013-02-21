@@ -17,6 +17,7 @@ package parquet.column.primitive;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
+import parquet.column.mem.ParquetEncodingException;
 
 /**
  * This is a special ColumnWriter for the case when you need to write
@@ -48,7 +49,7 @@ public class BoundedIntColumnWriter extends PrimitiveColumnWriter {
 
   public BoundedIntColumnWriter(int bound) {
     if (bound == 0) {
-      throw new RuntimeException("Value bound cannot be 0. Use DevNullColumnWriter instead.");
+      throw new ParquetEncodingException("Value bound cannot be 0. Use DevNullColumnWriter instead.");
     }
     bitsPerValue = (int)Math.ceil(Math.log(bound + 1)/Math.log(2));
     shouldRepeatThreshold = (bitsPerValue + 9)/(1 + bitsPerValue);

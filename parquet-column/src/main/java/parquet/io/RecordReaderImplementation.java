@@ -26,6 +26,7 @@ import java.util.Map;
 import parquet.Log;
 import parquet.column.ColumnReader;
 import parquet.column.mem.MemColumnReadStore;
+import parquet.column.mem.ParquetEncodingException;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -273,7 +274,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
         }
         // sanity check: that would be a bug
         if (nextLevel[i][r] > leaves[i].getFieldPath().length-1) {
-          throw new RuntimeException(Arrays.toString(leaves[i].getFieldPath())+" -("+r+")-> "+nextLevel[i][r]);
+          throw new ParquetEncodingException(Arrays.toString(leaves[i].getFieldPath())+" -("+r+")-> "+nextLevel[i][r]);
         }
         nextReader[i][r] = next;
       }

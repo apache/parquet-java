@@ -101,7 +101,7 @@ public class GroupColumnIO extends ColumnIO {
     try {
       return children.get(fieldIndex);
     } catch (IndexOutOfBoundsException e) {
-      throw new RuntimeException("could not get child " + fieldIndex + " from " + children, e);
+      throw new InvalidRecordException("could not get child " + fieldIndex + " from " + children, e);
     }
   }
 
