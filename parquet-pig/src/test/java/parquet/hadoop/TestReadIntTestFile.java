@@ -36,9 +36,9 @@ import parquet.schema.MessageType;
 public class TestReadIntTestFile {
   private static final Log LOG = Log.getLog(TestReadIntTestFile.class);
 
-  @Test
+//  @Test
   public void readTest() throws IOException {
-    Path testFile = new Path(new File("/Users/julien/github/Parquet/parquet-format/testdata/tpch/customer").toURI());
+    Path testFile = new Path(new File("testdata/tpch/customer").toURI());
     Configuration configuration = new Configuration(true);
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, testFile);
     MessageType schema = readFooter.getFileMetaData().getSchema();

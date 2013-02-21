@@ -306,10 +306,10 @@ public class ParquetFileReader {
           columnChunkPageReader.addPage(
               new Page(
                   BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)),
-                  pageHeader.data_page.num_values,
+                  pageHeader.data_page_header.num_values,
                   pageHeader.uncompressed_page_size
                   ));
-          valuesCountReadSoFar += pageHeader.data_page.num_values;
+          valuesCountReadSoFar += pageHeader.data_page_header.num_values;
         }
         columnChunkPageReadStore.addColumn(columnDescriptor, columnChunkPageReader);
       }
