@@ -58,6 +58,10 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata {
   @Override
   public void setLocation(String location, Job job) throws IOException {
     LOG.info("LoadFunc.setLocation(" + location + ", " + job + ")");
+    setInput(location, job);
+  }
+
+  private void setInput(String location, Job job) throws IOException {
     this.setLocationHasBeenCalled  = true;
     FileInputFormat.setInputPaths(job, location);
   }
@@ -110,14 +114,14 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata {
   @Override
   public String[] getPartitionKeys(String location, Job job) throws IOException {
     LOG.info("LoadMetadata.getPartitionKeys(" + location + ", " + job + ")");
-    setLocation(location, job);
+    setInput(location, job);
     return null;
   }
 
   @Override
   public ResourceSchema getSchema(String location, Job job) throws IOException {
     LOG.info("LoadMetadata.getSchema(" + location + ", " + job + ")");
-    setLocation(location, job);
+    setInput(location, job);
     final List<Footer> footers = getParquetInputFormat().getFooters(job);
     String pigSchemaString = null;
     if (schema != null) {
@@ -141,7 +145,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata {
   public ResourceStatistics getStatistics(String location, Job job)
       throws IOException {
     LOG.info("LoadMetadata.getStatistics(" + location + ", " + job + ")");
-    setLocation(location, job);
+    setInput(location, job);
     return null;
   }
 

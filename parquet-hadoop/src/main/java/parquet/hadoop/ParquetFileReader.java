@@ -98,6 +98,7 @@ public class ParquetFileReader {
       FileSystem fileSystem = path.getFileSystem(configuration);
       Path summaryFile = new Path(path, PARQUET_SUMMARY);
       if (fileSystem.exists(summaryFile)) {
+        if (Log.INFO) LOG.info("reading summary file: " + summaryFile);
         List<Footer> footers = readSummaryFile(configuration, fileSystem.getFileStatus(summaryFile));
         for (Footer footer : footers) {
           cache.put(footer.getFile(), footer);
@@ -117,6 +118,7 @@ public class ParquetFileReader {
     }
 
     // read the footers of the files that did not have a summary file
+    if (Log.INFO) LOG.info("reading another " + toRead.size() + " footers");
     result.addAll(readAllFootersInParallel(configuration, toRead));
 
     return result;

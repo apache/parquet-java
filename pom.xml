@@ -77,7 +77,7 @@
             </ignores>
             <excludes>
               <exclude>**/*Exception.class</exclude>
-              <exclude>parquet/data/**/*.class</exclude>
+              <exclude>parquet/example/**/*.class</exclude>
             </excludes>
           </instrumentation>
         </configuration>
