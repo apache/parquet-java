@@ -83,7 +83,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
     pageStore = new ColumnChunkPageWriteStore(compressor, schema);
     store = new MemColumnWriteStore(pageStore, pageSize);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
-    writeSupport.initForWrite(columnIO.getRecordWriter(store), schema, extraMetaData);
+    writeSupport.prepareForWrite(columnIO.getRecordWriter(store));
   }
 
   /**

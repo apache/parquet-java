@@ -16,8 +16,6 @@
 package parquet.pig;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
 
 import org.apache.hadoop.fs.Path;
@@ -99,14 +97,7 @@ public class ParquetStorer extends StoreFunc implements StoreMetadata {
   public OutputFormat<Void, Tuple> getOutputFormat() throws IOException {
     Schema pigSchema = getSchema();
     MessageType schema = new PigSchemaConverter().convert(pigSchema);
-
-    String pigSchemaString = pigSchema.toString();
-    Map<String, String> extraMetaData = new HashMap<String, String>();
-    new PigMetaData(pigSchemaString.substring(1, pigSchemaString.length() - 1)).addToMetaData(extraMetaData);
-    return new ParquetOutputFormat<Tuple>(
-        TupleWriteSupport.class,
-        schema,
-        extraMetaData);
+    return new ParquetOutputFormat<Tuple>(new TupleWriteSupport(schema, pigSchema));
   }
 
   /**

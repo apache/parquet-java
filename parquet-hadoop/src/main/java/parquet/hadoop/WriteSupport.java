@@ -15,7 +15,10 @@
  */
 package parquet.hadoop;
 
+import java.util.Collections;
 import java.util.Map;
+
+import org.apache.hadoop.conf.Configuration;
 
 import parquet.io.RecordConsumer;
 import parquet.schema.MessageType;
@@ -31,15 +34,51 @@ import parquet.schema.MessageType;
 abstract public class WriteSupport<T> {
 
   /**
-   * @param recordConsumer the recordConsumer to write to
-   * @param schema the schema of the incoming records
-   * @param extraMetaData extra meta data being written to the footer of the file
+   * information to be persisted in the file
+   *
+   * @author Julien Le Dem
+   *
    */
-  public abstract void initForWrite(RecordConsumer recordConsumer, MessageType schema, Map<String, String> extraMetaData);
+  public static class WriteContext {
+    private final MessageType schema;
+    private final Map<String, String> extraMetaData;
+
+    public WriteContext(MessageType schema, Map<String, String> extraMetaData) {
+      super();
+      this.schema = schema;
+      this.extraMetaData = Collections.unmodifiableMap(extraMetaData);
+    }
+    /**
+     * @return the schema of the file
+     */
+    public MessageType getSchema() {
+      return schema;
+    }
+    /**
+     * @return application specific metadata
+     */
+    public Map<String, String> getExtraMetaData() {
+      return extraMetaData;
+    }
+
+  }
 
   /**
-   *
-   * @param record one record to write
+   * called first in the task
+   * @param configuration the job's configuration
+   * @return the information needed to write the file
+   */
+  public abstract WriteContext init(Configuration configuration);
+
+  /**
+   * This will be called once per row group
+   * @param recordConsumer the recordConsumer to write to
+   */
+  public abstract void prepareForWrite(RecordConsumer recordConsumer);
+
+  /**
+   * called once per record
+   * @param record one record to write to the previously provided record consumer
    */
   public abstract void write(T record);
 

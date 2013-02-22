@@ -126,7 +126,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata {
       if (requestedSchema == null) {
         String pigSchemaString = null;
         for (Footer footer : footers) {
-          PigMetaData pigMetaData = PigMetaData.fromMetaDataBlocks(footer.getParquetMetadata().getKeyValueMetaData());
+          PigMetaData pigMetaData = PigMetaData.fromMetaData(footer.getParquetMetadata().getKeyValueMetaData());
           if (pigSchemaString == null) {
             pigSchemaString = pigMetaData.getPigSchema();
           } else {

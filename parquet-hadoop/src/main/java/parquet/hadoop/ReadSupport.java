@@ -15,12 +15,13 @@
  */
 package parquet.hadoop;
 
-import java.io.Serializable;
 import java.util.Map;
 
-import org.apache.hadoop.mapred.InputFormat;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.mapreduce.RecordReader;
 
 import parquet.io.convert.RecordConverter;
+import parquet.schema.MessageType;
 
 /**
  * Abstraction used by the {@link ParquetInputFormat} to materialize records
@@ -29,21 +30,21 @@ import parquet.io.convert.RecordConverter;
  *
  * @param <T> the type of the materialized record
  */
-abstract public class ReadSupport<T> implements Serializable {
-  private static final long serialVersionUID = 1L;
+abstract public class ReadSupport<T> {
 
   /**
-   * called in {@link InputFormat#getSplits(org.apache.hadoop.mapred.JobConf, int)} when the file footer is read
-   * @param metaDataBlocks metadata blocks from the footer
-   * @param requestedSchema the schema requested by the user
-   */
-  abstract public void initForRead(Map<String, String> keyValueMetaData, String requestedSchema);
-
-  /**
-   * called by the record reader in the backend.
+   * called in {@link RecordReader#initialize(org.apache.hadoop.mapreduce.InputSplit, org.apache.hadoop.mapreduce.TaskAttemptContext)}
    * the returned RecordConsumer will materialize the records and add them to the destination
+   * @param configuration the job configuration
+   * @param keyValueMetaData the app specific metadata from the file
+   * @param fileSchema the schema of the file
+   * @param requestedSchema the schema requested by the user
    * @return the recordConsumer that will receive the events
    */
-  abstract public RecordConverter<T> newRecordConsumer();
+  abstract public RecordConverter<T> initForRead(
+      Configuration configuration,
+      Map<String, String> keyValueMetaData,
+      MessageType fielSchema,
+      MessageType requestedSchema);
 
 }

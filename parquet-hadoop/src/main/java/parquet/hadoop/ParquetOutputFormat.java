@@ -32,7 +32,9 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import parquet.Log;
+import parquet.hadoop.WriteSupport.WriteContext;
 import parquet.hadoop.metadata.CompressionCodecName;
+import parquet.parser.MessageTypeParser;
 import parquet.schema.MessageType;
 
 /**
@@ -64,9 +66,30 @@ import parquet.schema.MessageType;
 public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   private static final Log LOG = Log.getLog(ParquetOutputFormat.class);
 
-  public static final String BLOCK_SIZE = "parquet.block.size";
-  public static final String PAGE_SIZE = "parquet.page.size";
-  public static final String COMPRESSION = "parquet.compression";
+  public static final String BLOCK_SIZE          = "parquet.block.size";
+  public static final String PAGE_SIZE           = "parquet.page.size";
+  public static final String COMPRESSION         = "parquet.compression";
+  public static final String WRITE_SUPPORT_CLASS = "parquet.write.support.class";
+
+  public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
+    job.getConfiguration().set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
+  }
+
+  public static Class<?> getWriteSupportClass(JobContext jobContext) {
+    final String className = jobContext.getConfiguration().get(WRITE_SUPPORT_CLASS);
+    if (className == null) {
+      return null;
+    }
+    try {
+      final Class<?> writeSupportClass = Class.forName(className);
+      if (!WriteSupport.class.isAssignableFrom(writeSupportClass)) {
+        throw new BadConfigurationException("class " + className + " set in job conf at " + WRITE_SUPPORT_CLASS + " is not a subclass of WriteSupport");
+      }
+      return writeSupportClass;
+    } catch (ClassNotFoundException e) {
+      throw new BadConfigurationException("could not instanciate class " + className + " set in job conf at " + WRITE_SUPPORT_CLASS , e);
+    }
+  }
 
   public static void setBlockSize(Job job, int blockSize) {
     job.getConfiguration().setInt(BLOCK_SIZE, blockSize);
@@ -96,23 +119,24 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return jobContext.getConfiguration().get(COMPRESSION) != null;
   }
 
-  private final MessageType schema;
-  private Class<?> writeSupportClass;
-
-  private final Map<String, String> extraMetaData;
+  private WriteSupport<T> writeSupport;
   private ParquetOutputCommitter committer;
 
   /**
    * constructor used when this OutputFormat in wrapped in another one (In Pig for example)
-   * TODO: stand-alone constructor
    * @param writeSupportClass the class used to convert the incoming records
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to be stored in the footer of the file
    */
-  public <S extends WriteSupport<T>> ParquetOutputFormat(Class<S> writeSupportClass, MessageType schema, Map<String, String> extraMetaData) {
-    this.writeSupportClass = writeSupportClass;
-    this.schema = schema;
-    this.extraMetaData = extraMetaData;
+  public <S extends WriteSupport<T>> ParquetOutputFormat(S writeSupport) {
+    this.writeSupport = writeSupport;
+  }
+
+  /**
+   * used when directly using the output format and configuring the write support implementation
+   * using parquet.write.support.class
+   */
+  public <S extends WriteSupport<T>> ParquetOutputFormat() {
   }
 
   /**
@@ -129,6 +153,17 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     int pageSize = getPageSize(taskAttemptContext);
     if (INFO) LOG.info("Parquet page size to " + pageSize);
 
+    if (writeSupport == null) {
+      Class<?> writeSupportClass = getWriteSupportClass(taskAttemptContext);
+      try {
+        writeSupport = (WriteSupport<T>) writeSupportClass.newInstance();
+      } catch (InstantiationException e) {
+        throw new BadConfigurationException("could not instantiate " + writeSupportClass.getName(), e);
+      } catch (IllegalAccessException e) {
+        throw new BadConfigurationException("Illegal access to class " + writeSupportClass.getName(), e);
+      }
+    }
+
     String extension = ".parquet";
     CompressionCodecName codec;
     if (isCompressionSet(taskAttemptContext)) { // explicit parquet config
@@ -144,17 +179,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     }
     if (INFO) LOG.info("Compression: " + codec.name());
     extension += codec.getExtension();
-    final Path file = getDefaultWorkFile(taskAttemptContext, extension);
-
-    final ParquetFileWriter w = new ParquetFileWriter(conf, schema, file);
+    Path file = getDefaultWorkFile(taskAttemptContext, extension);
+    WriteContext init = writeSupport.init(conf);
+    ParquetFileWriter w = new ParquetFileWriter(conf, init.getSchema(), file);
     w.start();
-    try {
-      return new ParquetRecordWriter<T>(w, (WriteSupport<T>) writeSupportClass.newInstance(), schema, extraMetaData, blockSize, pageSize, codecFactory.getCompressor(codec, pageSize));
-    } catch (InstantiationException e) {
-      throw new RuntimeException("could not instantiate " + writeSupportClass.getName(), e);
-    } catch (IllegalAccessException e) {
-      throw new RuntimeException("Illegal access to class " + writeSupportClass.getName(), e);
-    }
+    return new ParquetRecordWriter<T>(w, writeSupport, init.getSchema(), init.getExtraMetaData(), blockSize, pageSize, codecFactory.getCompressor(codec, pageSize));
   }
 
   @Override

@@ -162,12 +162,11 @@ public class TestTupleRecordConsumer {
     }
   }
 
-  private <T> TupleWriteSupport newTupleWriter(MessageType parquetSchema, String pigSchemaString, RecordConverter<T> recordConsumer) {
-    TupleWriteSupport tupleWriter = new TupleWriteSupport();
-    tupleWriter.initForWrite(
-        new ConverterConsumer(recordConsumer, parquetSchema),
-        parquetSchema,
-        pigMetaData(pigSchemaString)
+  private <T> TupleWriteSupport newTupleWriter(MessageType parquetSchema, String pigSchemaString, RecordConverter<T> recordConsumer) throws ParserException {
+    TupleWriteSupport tupleWriter = new TupleWriteSupport(parquetSchema, Utils.getSchemaFromString(pigSchemaString));
+    tupleWriter.init(null);
+    tupleWriter.prepareForWrite(
+        new ConverterConsumer(recordConsumer, parquetSchema)
         );
     return tupleWriter;
   }
@@ -180,8 +179,7 @@ public class TestTupleRecordConsumer {
 
   private RecordConverter<Tuple> newPigRecordConsumer(MessageType parquetSchema, String pigSchemaString) throws ParserException {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
-    tupleReadSupport.initForRead(pigMetaData(pigSchemaString), parquetSchema.toString());
-    return tupleReadSupport.newRecordConsumer();
+    return tupleReadSupport.initForRead(null, pigMetaData(pigSchemaString), parquetSchema, parquetSchema);
   }
 
   private MessageType getMessageType(String pigSchemaString) throws ParserException {

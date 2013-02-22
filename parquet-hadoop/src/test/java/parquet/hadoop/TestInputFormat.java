@@ -20,9 +20,8 @@ import static junit.framework.Assert.assertEquals;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
 
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
@@ -30,15 +29,10 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.junit.Test;
 
-import parquet.hadoop.ReadSupport;
-import parquet.hadoop.ParquetInputFormat;
-import parquet.hadoop.ParquetInputSplit;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
-import parquet.io.RecordMaterializer;
-import parquet.io.convert.RecordConverter;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -50,23 +44,13 @@ public class TestInputFormat {
     for (int i = 0; i < 10; i++) {
       blocks.add(newBlock(i * 10));
     }
-    ReadSupport<Void> readSupport = new ReadSupport<Void>() {
-      @Override
-      public RecordConverter<Void> newRecordConsumer() {
-        return null;
-      }
-      @Override
-      public void initForRead(Map<String, String> keyValueMetaDatq,
-          String requestedSchema) {
-      }
-    };
     BlockLocation[] hdfsBlocks = new BlockLocation[] {
         new BlockLocation(new String[0], new String[] { "foo0.datanode", "bar0.datanode"}, 0, 50),
         new BlockLocation(new String[0], new String[] { "foo1.datanode", "bar1.datanode"}, 50, 50)
     };
     FileStatus fileStatus = new FileStatus(100, false, 2, 50, 0, new Path("hdfs://foo.namenode:1234/bar"));
     FileMetaData fileMetaData = new FileMetaData(new MessageType("foo"));
-    List<InputSplit> splits = ParquetInputFormat.generateSplits(blocks, hdfsBlocks, fileStatus, fileMetaData, readSupport);
+    List<InputSplit> splits = ParquetInputFormat.generateSplits(blocks, hdfsBlocks, fileStatus, fileMetaData, ReadSupport.class, "", new HashMap<String, String>());
     assertEquals(splits.toString().replaceAll("([{])", "$0\n").replaceAll("([}])", "\n$0"), 2, splits.size());
     for (int i = 0; i < splits.size(); i++) {
       ParquetInputSplit<?> parquetInputSplit = (ParquetInputSplit<?>)splits.get(i);

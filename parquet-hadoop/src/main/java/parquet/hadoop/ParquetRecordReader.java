@@ -32,6 +32,7 @@ import parquet.column.mem.PageReadStore;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
+import parquet.io.convert.RecordConverter;
 import parquet.parser.MessageTypeParser;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
@@ -53,13 +54,15 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
   private final MessageType requestedSchema;
   private final int columnCount;
+  private final Class<?> readSupportClass;
+
+  private RecordConverter<T> recordConverter;
 
   private T currentValue;
   private long total;
   private int current = 0;
   private ParquetFileReader reader;
   private parquet.io.RecordReader<T> recordReader;
-  private ReadSupport<T> readSupport;
 
   private long totalTimeSpentReadingBytes;
   private long totalTimeSpentProcessingRecords;
@@ -68,13 +71,16 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   private long totalCountLoadedSoFar = 0;
 
 
+
   /**
    *
    * @param requestedSchema the requested schema (a subset of the original schema) for record projection
+   * @param readSupportClass
    */
-  ParquetRecordReader(String requestedSchema) {
+  ParquetRecordReader(String requestedSchema, Class<?> readSupportClass) {
     this.requestedSchema = MessageTypeParser.parseMessageType(requestedSchema);
     this.columnCount = this.requestedSchema.getPaths().size();
+    this.readSupportClass = readSupportClass;
   }
 
   private void checkRead() throws IOException {
@@ -100,7 +106,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
       if (Log.DEBUG) LOG.debug("initializing Record assembly with requested schema " + requestedSchema);
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema);
-      recordReader = columnIO.getRecordReader(pages, readSupport.newRecordConsumer());
+      recordReader = columnIO.getRecordReader(pages, recordConverter);
       startedAssemblingCurrentBlockAt = System.currentTimeMillis();
       totalCountLoadedSoFar += pages.getRowCount();
     }
@@ -148,7 +154,19 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
     Configuration configuration = taskAttemptContext.getConfiguration();
     @SuppressWarnings("unchecked") // I know
     ParquetInputSplit<T> parquetInputSplit = (ParquetInputSplit<T>)inputSplit;
-    this.readSupport = parquetInputSplit.getReadSupport();
+    try {
+      @SuppressWarnings("unchecked") // I know
+      ReadSupport<T> readSupport = (ReadSupport<T>)readSupportClass.newInstance();
+      this.recordConverter = readSupport.initForRead(
+          configuration,
+          parquetInputSplit.getExtraMetadata(),
+          MessageTypeParser.parseMessageType(parquetInputSplit.getSchema()),
+          requestedSchema);
+    } catch (InstantiationException e) {
+      throw new BadConfigurationException("could not instanciate read support class", e);
+    } catch (IllegalAccessException e) {
+      throw new BadConfigurationException("could not instanciate read support class", e);
+    }
     Path path = parquetInputSplit.getPath();
     List<BlockMetaData> blocks = parquetInputSplit.getBlocks();
     List<ColumnDescriptor> columns = requestedSchema.getColumns();

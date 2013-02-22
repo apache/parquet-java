@@ -17,20 +17,16 @@ package parquet.pig;
 
 import java.util.Map;
 
-
+import org.apache.hadoop.conf.Configuration;
 import org.apache.pig.data.Tuple;
-import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
 import parquet.Log;
 import parquet.hadoop.ReadSupport;
-import parquet.io.RecordMaterializer;
 import parquet.io.convert.RecordConverter;
-import parquet.parser.MessageTypeParser;
 import parquet.pig.convert.TupleConverter;
-import parquet.pig.converter.MessageConverter;
 import parquet.schema.MessageType;
 
 /**
@@ -41,36 +37,28 @@ import parquet.schema.MessageType;
  *
  */
 public class TupleReadSupport extends ReadSupport<Tuple> {
-  private static final long serialVersionUID = 1L;
   private static final Log LOG = Log.getLog(TupleReadSupport.class);
 
   private static final PigSchemaConverter schemaConverter = new PigSchemaConverter();
-
-  private Schema pigSchema;
-  private String requestedSchema;
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public void initForRead(Map<String, String> keyValueMetaData, String requestedSchema) {
-    this.requestedSchema = requestedSchema;
-    PigMetaData pigMetaData = PigMetaData.fromMetaDataBlocks(keyValueMetaData);
+  public RecordConverter<Tuple> initForRead(
+      Configuration configuration,
+      Map<String, String> keyValueMetaData,
+      MessageType fielSchema,
+      MessageType requestedSchema) {
+    PigMetaData pigMetaData = PigMetaData.fromMetaData(keyValueMetaData);
     try {
-      this.pigSchema = schemaConverter.filter(
+      Schema pigSchema = schemaConverter.filter(
           Utils.getSchemaFromString(pigMetaData.getPigSchema()),
-          MessageTypeParser.parseMessageType(requestedSchema));
+          requestedSchema);
+      return new TupleConverter(requestedSchema, pigSchema);
     } catch (ParserException e) {
       throw new RuntimeException("could not parse Pig schema: " + pigMetaData.getPigSchema(), e);
     }
   }
 
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public RecordConverter<Tuple> newRecordConsumer() {
-    MessageType parquetSchema = MessageTypeParser.parseMessageType(requestedSchema);
-    return new TupleConverter(parquetSchema, pigSchema);
-  }
 }

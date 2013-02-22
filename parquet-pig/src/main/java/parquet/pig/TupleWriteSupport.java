@@ -16,12 +16,14 @@
 package parquet.pig;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataByteArray;
@@ -47,17 +49,23 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
   private MessageType rootSchema;
   private Schema rootPigSchema;
 
+  public TupleWriteSupport(MessageType schema, Schema pigSchema) {
+    super();
+    this.rootSchema = schema;
+    this.rootPigSchema = pigSchema;
+  }
 
   @Override
-  public void initForWrite(RecordConsumer recordConsumer, MessageType schema, Map<String, String> extraMetaData) {
+  public WriteContext init(Configuration configuration) {
+    Map<String, String> extraMetaData = new HashMap<String, String>();
+    String pigSchemaString = rootPigSchema.toString();
+    new PigMetaData(pigSchemaString.substring(1, pigSchemaString.length() - 1)).addToMetaData(extraMetaData);
+    return new WriteContext(rootSchema, extraMetaData);
+  }
+
+  @Override
+  public void prepareForWrite(RecordConsumer recordConsumer) {
     this.recordConsumer = recordConsumer;
-    this.rootSchema = schema;
-    PigMetaData pigMetaData = PigMetaData.fromMetaDataBlocks(extraMetaData);
-    try {
-      this.rootPigSchema = Utils.getSchemaFromString(pigMetaData.getPigSchema());
-    } catch (ParserException e) {
-      throw new RuntimeException("Could not parse pig Schema: "+pigMetaData.getPigSchema(), e);
-    }
   }
 
   public void write(Tuple t) {

@@ -139,8 +139,7 @@ public class TupleConsumerPerfTest {
     MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
     MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchemaString));
-    tupleReadSupport.initForRead(pigMetaData(pigSchemaString), schema.toString());
-    RecordConverter<Tuple> recordConsumer = tupleReadSupport.newRecordConsumer();
+    RecordConverter<Tuple> recordConsumer = tupleReadSupport.initForRead(null, pigMetaData(pigSchemaString), schema, schema);
     RecordReader<Tuple> recordReader = columnIO.getRecordReader(columns, recordConsumer);
     // TODO: put this back
 //  if (DEBUG) {
@@ -164,8 +163,9 @@ public class TupleConsumerPerfTest {
 
   private static void write(MemColumnWriteStore columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
     MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
-    TupleWriteSupport tupleWriter = new TupleWriteSupport();
-    tupleWriter.initForWrite(columnIO.getRecordWriter(columns), schema, pigMetaData(pigSchemaString));
+    TupleWriteSupport tupleWriter = new TupleWriteSupport(schema, Utils.getSchemaFromString(pigSchemaString));
+    tupleWriter.init(null);
+    tupleWriter.prepareForWrite(columnIO.getRecordWriter(columns));
     write(tupleWriter, 10000);
     write(tupleWriter, 10000);
     write(tupleWriter, 10000);
