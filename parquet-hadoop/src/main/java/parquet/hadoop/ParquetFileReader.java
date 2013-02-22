@@ -35,6 +35,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapred.Utils;
+
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
@@ -48,13 +55,6 @@ import parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.mapred.Utils;
 
 /**
  * Reads a Parquet file
@@ -101,6 +101,8 @@ public class ParquetFileReader {
         if (Log.INFO) LOG.info("reading summary file: " + summaryFile);
         List<Footer> footers = readSummaryFile(configuration, fileSystem.getFileStatus(summaryFile));
         for (Footer footer : footers) {
+          // the folder may have been moved
+          footer = new Footer(new Path(path, footer.getFile().getName()), footer.getParquetMetadata());
           cache.put(footer.getFile(), footer);
         }
       }
@@ -117,9 +119,11 @@ public class ParquetFileReader {
       }
     }
 
-    // read the footers of the files that did not have a summary file
-    if (Log.INFO) LOG.info("reading another " + toRead.size() + " footers");
-    result.addAll(readAllFootersInParallel(configuration, toRead));
+    if (toRead.size() > 0) {
+      // read the footers of the files that did not have a summary file
+      if (Log.INFO) LOG.info("reading another " + toRead.size() + " footers");
+      result.addAll(readAllFootersInParallel(configuration, toRead));
+    }
 
     return result;
   }

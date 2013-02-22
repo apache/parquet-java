@@ -39,25 +39,24 @@ import parquet.hadoop.ParquetInputFormat;
 public class ParquetLoader extends LoadFunc implements LoadMetadata {
   private static final Log LOG = Log.getLog(ParquetLoader.class);
 
+  private final String requestedSchema;
+
   private boolean setLocationHasBeenCalled = false;
-
   private RecordReader<Void, Tuple> reader;
-  private final String schema;
-
   private ParquetInputFormat<Tuple> parquetInputFormat;
-
+  private String schema;
 
   public ParquetLoader() {
-    this.schema = null;
+    this.requestedSchema = null;
   }
 
-  public ParquetLoader(String schema) {
-    this.schema = schema;
+  public ParquetLoader(String requestedSchema) {
+    this.requestedSchema = requestedSchema;
   }
 
   @Override
   public void setLocation(String location, Job job) throws IOException {
-    LOG.info("LoadFunc.setLocation(" + location + ", " + job + ")");
+    LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
     setInput(location, job);
   }
 
@@ -68,7 +67,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata {
 
   @Override
   public InputFormat<Void, Tuple> getInputFormat() throws IOException {
-    LOG.info("LoadFunc.getInputFormat()");
+    LOG.debug("LoadFunc.getInputFormat()");
     return getParquetInputFormat();
   }
 
@@ -83,8 +82,8 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata {
     if (parquetInputFormat == null) {
       parquetInputFormat = new ParquetInputFormat<Tuple>(
           TupleReadSupport.class,
-          schema == null ? null :
-            new PigSchemaConverter().convert(Utils.getSchemaFromString(schema)).toString());
+          requestedSchema == null ? null :
+            new PigSchemaConverter().convert(Utils.getSchemaFromString(requestedSchema)).toString());
     }
     return parquetInputFormat;
   }
@@ -93,7 +92,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata {
   @Override
   public void prepareToRead(@SuppressWarnings("rawtypes") RecordReader reader, PigSplit split)
       throws IOException {
-    LOG.info("LoadFunc.prepareToRead(" + reader + ", " + split + ")");
+    LOG.debug("LoadFunc.prepareToRead(" + reader + ", " + split + ")");
     this.reader = reader;
   }
 
@@ -113,45 +112,48 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata {
 
   @Override
   public String[] getPartitionKeys(String location, Job job) throws IOException {
-    LOG.info("LoadMetadata.getPartitionKeys(" + location + ", " + job + ")");
+    LOG.debug("LoadMetadata.getPartitionKeys(" + location + ", " + job + ")");
     setInput(location, job);
     return null;
   }
 
   @Override
   public ResourceSchema getSchema(String location, Job job) throws IOException {
-    LOG.info("LoadMetadata.getSchema(" + location + ", " + job + ")");
+    LOG.debug("LoadMetadata.getSchema(" + location + ", " + job + ")");
     setInput(location, job);
     final List<Footer> footers = getParquetInputFormat().getFooters(job);
-    String pigSchemaString = null;
-    if (schema != null) {
-      pigSchemaString = schema;
-    } else {
-      for (Footer footer : footers) {
-        PigMetaData pigMetaData = PigMetaData.fromMetaDataBlocks(footer.getParquetMetadata().getKeyValueMetaData());
-        if (pigSchemaString == null) {
-          pigSchemaString = pigMetaData.getPigSchema();
-        } else {
-          if (!pigSchemaString.equals(pigMetaData.getPigSchema())) {
-            throw new RuntimeException("all files must have the same pig schema: " + pigSchemaString + " != " + pigMetaData.getPigSchema());
+    if (schema == null) {
+      if (requestedSchema == null) {
+        String pigSchemaString = null;
+        for (Footer footer : footers) {
+          PigMetaData pigMetaData = PigMetaData.fromMetaDataBlocks(footer.getParquetMetadata().getKeyValueMetaData());
+          if (pigSchemaString == null) {
+            pigSchemaString = pigMetaData.getPigSchema();
+          } else {
+            if (!pigSchemaString.equals(pigMetaData.getPigSchema())) {
+              throw new RuntimeException("all files must have the same pig schema: " + pigSchemaString + " != " + pigMetaData.getPigSchema());
+            }
           }
         }
+        schema = pigSchemaString;
+      } else {
+        schema = requestedSchema;
       }
     }
-    return new ResourceSchema(Utils.getSchemaFromString(pigSchemaString));
+    return new ResourceSchema(Utils.getSchemaFromString(schema));
   }
 
   @Override
   public ResourceStatistics getStatistics(String location, Job job)
       throws IOException {
-    LOG.info("LoadMetadata.getStatistics(" + location + ", " + job + ")");
+    LOG.debug("LoadMetadata.getStatistics(" + location + ", " + job + ")");
     setInput(location, job);
     return null;
   }
 
   @Override
   public void setPartitionFilter(Expression expression) throws IOException {
-    LOG.info("LoadMetadata.setPartitionFilter(" + expression + ")");
+    LOG.debug("LoadMetadata.setPartitionFilter(" + expression + ")");
   }
 
 }
