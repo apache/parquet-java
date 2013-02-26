@@ -16,6 +16,7 @@
 package parquet.pig;
 
 import static parquet.Log.DEBUG;
+import static parquet.schema.OriginalType.LIST;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +29,7 @@ import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import parquet.Log;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
+import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type;
@@ -153,7 +155,7 @@ public class PigSchemaConverter {
       case DataType.BOOLEAN:
         return primitive(name, PrimitiveTypeName.BOOLEAN);
       case DataType.CHARARRAY:
-        return primitive(name, PrimitiveTypeName.BINARY);
+        return primitive(name, PrimitiveTypeName.BINARY, OriginalType.UTF8);
       case DataType.INTEGER:
         return primitive(name, PrimitiveTypeName.INT32);
       case DataType.LONG:
@@ -176,6 +178,7 @@ public class PigSchemaConverter {
     }
   }
 
+
   private Type convert(FieldSchema fieldSchema, int index) {
     return convert(fieldSchema, "field_"+index);
   }
@@ -191,6 +194,7 @@ public class PigSchemaConverter {
     FieldSchema innerField = fieldSchema.schema.getField(0);
     return listWrapper(
         name,
+        LIST,
         convertTuple(name(innerField.alias, "bag"), innerField, Repetition.REPEATED));
   }
 
@@ -198,18 +202,23 @@ public class PigSchemaConverter {
     return fieldAlias == null ? defaultName : fieldAlias;
   }
 
+  private Type primitive(String name, PrimitiveTypeName primitive, OriginalType originalType) {
+    return new PrimitiveType(Repetition.OPTIONAL, primitive, name, originalType);
+  }
+
   private PrimitiveType primitive(String name, PrimitiveTypeName primitive) {
-    return new PrimitiveType(Repetition.OPTIONAL, primitive, name);
+    return new PrimitiveType(Repetition.OPTIONAL, primitive, name, null);
   }
 
   /**
    * to preserve the difference between empty list and null
    * @param alias
+   * @param originalType
    * @param groupType
    * @return an optional group
    */
-  private GroupType listWrapper(String alias, GroupType groupType) {
-    return new GroupType(Repetition.OPTIONAL, alias, groupType);
+  private GroupType listWrapper(String alias, OriginalType originalType, GroupType groupType) {
+    return new GroupType(Repetition.OPTIONAL, alias, originalType, groupType);
   }
 
   /**
@@ -248,7 +257,7 @@ public class PigSchemaConverter {
     default:
       throw new FrontendException("Invalid map Schema, field type not recognized: " + fieldSchema);
     }
-    return listWrapper(alias, new GroupType(Repetition.REPEATED, name(innerField.alias, "map"), types));
+    return listWrapper(alias, OriginalType.MAP, new GroupType(Repetition.REPEATED, name(innerField.alias, "map"), OriginalType.MAP_KEY_VALUE, types));
   }
 
   private GroupType convertTuple(String alias, FieldSchema field, Repetition repetition) {

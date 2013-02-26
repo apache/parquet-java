@@ -40,12 +40,7 @@ public class GroupType extends Type {
    * @param fields the contained fields
    */
   public GroupType(Repetition repetition, String name, List<Type> fields) {
-    super(name, repetition);
-    this.fields = fields;
-    this.indexByName = new HashMap<String, Integer>();
-    for (int i = 0; i < fields.size(); i++) {
-      indexByName.put(fields.get(i).getName(), i);
-    }
+    this(repetition, name, null, fields);
   }
 
   /**
@@ -54,8 +49,21 @@ public class GroupType extends Type {
    * @param name
    * @param fields
    */
-  public GroupType(Repetition required, String name, Type... fields) {
-    this(required, name, Arrays.asList(fields));
+  public GroupType(Repetition repetition, String name, Type... fields) {
+    this(repetition, name, null, fields);
+  }
+
+  public GroupType(Repetition repetition, String name, OriginalType originalType, Type... fields) {
+    this(repetition, name, originalType, Arrays.asList(fields));
+  }
+
+  public GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields) {
+    super(name, repetition, originalType);
+    this.fields = fields;
+    this.indexByName = new HashMap<String, Integer>();
+    for (int i = 0; i < fields.size(); i++) {
+      indexByName.put(fields.get(i).getName(), i);
+    }
   }
 
   /**
@@ -144,6 +152,7 @@ public class GroupType extends Type {
         .append(getRepetition().name().toLowerCase())
         .append(" group ")
         .append(getName())
+        .append(getOriginalType() == null ? "" : " (" + getOriginalType() +")")
         .append(" {\n");
     membersDisplayString(sb, indent + "  ");
     sb.append(indent)

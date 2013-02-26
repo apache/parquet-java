@@ -25,13 +25,22 @@ import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.column.primitive.BitPacking.BitPackingWriter;
 import parquet.io.ParquetEncodingException;
 
-
+/**
+ * a column writer that packs the ints in the number of bits required based on the maximum size.
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class BitPackingColumnWriter extends PrimitiveColumnWriter {
 
   private CapacityByteArrayOutputStream out;
   private BitPackingWriter bitPackingWriter;
   private int bitsPerValue;
 
+  /**
+   *
+   * @param bound the maximum value stored by this column
+   */
   public BitPackingColumnWriter(int bound) {
     this.bitsPerValue = getWidthFromMaxInt(bound);
     this.out = new CapacityByteArrayOutputStream(32*1024); // size needed could be small but starting at 32 is really small
@@ -42,6 +51,12 @@ public class BitPackingColumnWriter extends PrimitiveColumnWriter {
     this.bitPackingWriter = getBitPackingWriter(bitsPerValue, out);
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.primitive.PrimitiveColumnWriter#writeInteger(int)
+   */
+  @Override
   public void writeInteger(int v) {
     try {
       bitPackingWriter.write(v);
@@ -50,11 +65,21 @@ public class BitPackingColumnWriter extends PrimitiveColumnWriter {
     }
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.primitive.PrimitiveColumnWriter#getMemSize()
+   */
   @Override
   public long getMemSize() {
     return out.size();
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.primitive.PrimitiveColumnWriter#getBytes()
+   */
   @Override
   public BytesInput getBytes() {
     try {
@@ -65,12 +90,22 @@ public class BitPackingColumnWriter extends PrimitiveColumnWriter {
     }
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.primitive.PrimitiveColumnWriter#reset()
+   */
   @Override
   public void reset() {
     out.reset();
     init();
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.primitive.PrimitiveColumnWriter#allocatedSize()
+   */
   @Override
   public long allocatedSize() {
     return out.getCapacity();

@@ -15,8 +15,18 @@
  */
 package parquet.column;
 
+/**
+ * contains all the columns for a given type
+ *
+ * @author Julien Le Dem
+ *
+ */
 public interface ColumnReadStore {
 
+  /**
+   * @param path
+   * @return the column reader for that descriptor
+   */
   abstract public ColumnReader getColumnReader(ColumnDescriptor path);
 
 }

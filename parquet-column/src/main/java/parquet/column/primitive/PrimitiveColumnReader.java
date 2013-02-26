@@ -17,6 +17,12 @@ package parquet.column.primitive;
 
 import java.io.IOException;
 
+/**
+ * base class to implement an encoding for a given column
+ *
+ * @author Julien Le Dem
+ *
+ */
 public abstract class PrimitiveColumnReader {
 
   /**

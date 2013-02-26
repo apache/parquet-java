@@ -24,17 +24,32 @@ import java.io.IOException;
 import parquet.column.primitive.BitPacking.BitPackingReader;
 import parquet.io.ParquetDecodingException;
 
-
+/**
+ * a column reader that packs the ints in the number of bits required based on the maximum size.
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class BitPackingColumnReader extends PrimitiveColumnReader {
 
   private ByteArrayInputStream in;
   private BitPackingReader bitPackingReader;
   private final int bitsPerValue;
 
+  /**
+   *
+   * @param bound the maximum value stored by this column
+   */
   public BitPackingColumnReader(int bound) {
     this.bitsPerValue = getWidthFromMaxInt(bound);
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.primitive.PrimitiveColumnReader#readInteger()
+   */
+  @Override
   public int readInteger() {
     try {
       return bitPackingReader.read();
@@ -43,6 +58,11 @@ public class BitPackingColumnReader extends PrimitiveColumnReader {
     }
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.primitive.PrimitiveColumnReader#initFromPage(long, byte[], int)
+   */
   @Override
   public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
     // TODO: int vs long

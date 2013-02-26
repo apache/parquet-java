@@ -15,33 +15,78 @@
  */
 package parquet.column;
 
-
+/**
+ * reader for (repetition level, definition level, values) triplets
+ * each iteration looks at the current definition level and value as well as the next repetition level
+ *
+ * @author Julien Le Dem
+ *
+ */
 public interface ColumnReader {
 
+  /**
+   * if the data has been fully consumed
+   * @return
+   */
   boolean isFullyConsumed();
 
+  /**
+   * moves to the next value
+   */
   void consume();
 
   /**
    * must return 0 when isFullyConsumed() == true
-   * @return
+   * @return the repetition level for the current value
    */
   int getCurrentRepetitionLevel();
 
+  /**
+   *
+   * @return the definition level for the current value
+   */
   int getCurrentDefinitionLevel();
 
+  /**
+   *
+   * @return the current value
+   */
   String getString();
 
+  /**
+   *
+   * @return the current value
+   */
   int getInteger();
 
+  /**
+   *
+   * @return the current value
+   */
   boolean getBoolean();
 
+  /**
+   *
+   * @return the current value
+   */
   long getLong();
 
+  /**
+   *
+   * @return the current value
+   */
   byte[] getBinary();
 
+  /**
+   *
+   * @return the current value
+   */
   float getFloat();
 
+  /**
+   *
+   * @return the current value
+   */
   double getDouble();
 
 }

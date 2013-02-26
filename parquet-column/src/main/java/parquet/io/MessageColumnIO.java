@@ -26,6 +26,13 @@ import parquet.column.mem.PageReadStore;
 import parquet.io.convert.RecordConverter;
 import parquet.schema.MessageType;
 
+/**
+ * Message level of the IO structure
+ *
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class MessageColumnIO extends GroupColumnIO {
   private static final Log logger = Log.getLog(MessageColumnIO.class);
 

@@ -17,40 +17,82 @@ package parquet.column.primitive;
 
 import parquet.bytes.BytesInput;
 
+/**
+ * base class to implement an encoding for a given column
+ *
+ * @author Julien Le Dem
+ *
+ */
 public abstract class PrimitiveColumnWriter {
 
+  /**
+   * used to decide if we want to work to the next page
+   * @return the size of the currently buffered data
+   */
   public abstract long getMemSize();
 
+  /**
+   *
+   * @return the bytes buffered so far to write to the current page
+   */
   public abstract BytesInput getBytes();
 
+  /**
+   * called after getBytes() to reset the current buffer and start writing the next page
+   */
   public abstract void reset();
 
+  /**
+   *
+   * @return the allocated size of the buffer ( > getMemSize() )
+   */
   abstract public long allocatedSize();
 
+  /**
+   * @param value the value to encode
+   */
   public void writeByte(int value) {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   * @param value the value to encode
+   */
   public void writeBoolean(boolean v) {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   * @param value the value to encode
+   */
   public void writeBytes(byte[] v) {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   * @param value the value to encode
+   */
   public void writeInteger(int v) {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   * @param value the value to encode
+   */
   public void writeLong(long v) {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   * @param value the value to encode
+   */
   public void writeDouble(double v) {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   * @param value the value to encode
+   */
   public void writeFloat(float v) {
     throw new UnsupportedOperationException();
   }

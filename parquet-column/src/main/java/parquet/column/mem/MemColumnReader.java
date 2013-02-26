@@ -29,7 +29,12 @@ import parquet.column.primitive.PlainColumnReader;
 import parquet.column.primitive.PrimitiveColumnReader;
 import parquet.io.ParquetDecodingException;
 
-
+/**
+ * implementation of the columnReader
+ *
+ * @author Julien Le Dem
+ *
+ */
 abstract class MemColumnReader implements ColumnReader {
   private static final Log LOG = Log.getLog(MemColumnReader.class);
 
@@ -50,6 +55,11 @@ abstract class MemColumnReader implements ColumnReader {
   private int readValuesInPage;
   private long pageValueCount;
 
+  /**
+   *
+   * @param path the descriptor for the corresponding column
+   * @param pageReader the underlying store to read from
+   */
   public MemColumnReader(ColumnDescriptor path, PageReader pageReader) {
     if (path == null) {
       throw new NullPointerException("path");
@@ -65,53 +75,106 @@ abstract class MemColumnReader implements ColumnReader {
     }
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#isFullyConsumed()
+   */
   @Override
   public boolean isFullyConsumed() {
     return readValues >= totalValueCount;
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#getString()
+   */
   @Override
   public String getString() {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#getInteger()
+   */
   @Override
   public int getInteger() {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#getBoolean()
+   */
   @Override
   public boolean getBoolean() {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#getLong()
+   */
   public long getLong() {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#getBinary()
+   */
   @Override
   public byte[] getBinary() {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#getFloat()
+   */
   @Override
   public float getFloat() {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#getDouble()
+   */
   @Override
   public double getDouble() {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#getCurrentRepetitionLevel()
+   */
   @Override
   public int getCurrentRepetitionLevel() {
     checkRead();
     return repetitionLevel;
   }
 
+  /**
+   * used for debugging
+   * @return
+   * @throws IOException
+   */
   abstract public String getCurrentValueToString() throws IOException;
 
+  /**
+   * reads the current value
+   */
   protected abstract void readCurrentValue();
 
   protected void checkValueRead() {
@@ -122,6 +185,11 @@ abstract class MemColumnReader implements ColumnReader {
     }
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#getCurrentDefinitionLevel()
+   */
   @Override
   public int getCurrentDefinitionLevel() {
     checkRead();
@@ -178,6 +246,11 @@ abstract class MemColumnReader implements ColumnReader {
     return readValuesInPage >= pageValueCount;
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#consume()
+   */
   @Override
   public void consume() {
     consumed = true;

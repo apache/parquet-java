@@ -15,10 +15,23 @@
  */
 package parquet.column.mem;
 
-
+/**
+ * Reader for a sequence a page from a given column chunk
+ *
+ * @author Julien Le Dem
+ *
+ */
 public interface PageReader {
 
+  /**
+   *
+   * @return the total number of values in the column chunk
+   */
   abstract public long getTotalValueCount();
 
+  /**
+   *
+   * @return the next page in that chunk
+   */
   abstract public Page readPage();
 }

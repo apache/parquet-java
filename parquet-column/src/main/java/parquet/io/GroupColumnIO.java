@@ -27,7 +27,13 @@ import java.util.Map;
 import parquet.Log;
 import parquet.schema.GroupType;
 
-
+/**
+ * Group level of the IO structure
+ *
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class GroupColumnIO extends ColumnIO {
   private static final Log LOG = Log.getLog(GroupColumnIO.class);
 

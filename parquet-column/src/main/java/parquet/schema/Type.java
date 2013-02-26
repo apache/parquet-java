@@ -29,11 +29,17 @@ abstract public class Type {
 
   private final String name;
   private final Repetition repetition;
+  private final OriginalType originalType;
 
   public Type(String name, Repetition repetition) {
+    this(name, repetition, null);
+  }
+
+  public Type(String name, Repetition repetition, OriginalType originalType) {
     super();
     this.name = name;
     this.repetition = repetition;
+    this.originalType = originalType;
   }
 
   public String getName() {
@@ -42,6 +48,10 @@ abstract public class Type {
 
   public Repetition getRepetition() {
     return repetition;
+  }
+
+  public OriginalType getOriginalType() {
+    return originalType;
   }
 
   abstract public boolean isPrimitive();

@@ -17,8 +17,19 @@ package parquet.column.mem;
 
 import parquet.column.ColumnDescriptor;
 
+/**
+ * contains all the writers for the columns in the corresponding row group
+ *
+ * @author Julien Le Dem
+ *
+ */
 public interface PageWriteStore {
 
+  /**
+   *
+   * @param path the descriptor for the column
+   * @return the corresponding page writer
+   */
   PageWriter getPageWriter(ColumnDescriptor path);
 
 }

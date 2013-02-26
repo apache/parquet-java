@@ -15,25 +15,78 @@
  */
 package parquet.column;
 
-
+/**
+ * writer for (repetition level, definition level, values) triplets
+ *
+ * @author Julien Le Dem
+ *
+ */
 public interface ColumnWriter {
 
+  /**
+   * writes the current value
+   * @param value
+   * @param repetitionLevel
+   * @param definitionLevel
+   */
   void write(int value, int repetitionLevel, int definitionLevel);
 
+  /**
+   * writes the current value
+   * @param value
+   * @param repetitionLevel
+   * @param definitionLevel
+   */
   void write(long value, int repetitionLevel, int definitionLevel);
 
+  /**
+   * writes the current value
+   * @param value
+   * @param repetitionLevel
+   * @param definitionLevel
+   */
   void write(boolean value, int repetitionLevel, int definitionLevel);
 
+  /**
+   * writes the current value
+   * @param value
+   * @param repetitionLevel
+   * @param definitionLevel
+   */
   void write(byte[] value, int repetitionLevel, int definitionLevel);
 
+  /**
+   * writes the current value
+   * @param value
+   * @param repetitionLevel
+   * @param definitionLevel
+   */
   void write(float value, int repetitionLevel, int definitionLevel);
 
+  /**
+   * writes the current value
+   * @param value
+   * @param repetitionLevel
+   * @param definitionLevel
+   */
   void write(double value, int repetitionLevel, int definitionLevel);
 
+  /**
+   * writes the current null value
+   * @param repetitionLevel
+   * @param definitionLevel
+   */
   void writeNull(int repetitionLevel, int definitionLevel);
 
+  /**
+   * called when no more values will be written to flush to the underlying store
+   */
   void flush();
 
+  /**
+   * used to decide when to write a page or row group
+   * @return the current size buffered in memory
+   */
   long memSize();
 
 }

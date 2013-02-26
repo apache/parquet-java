@@ -25,12 +25,22 @@ import parquet.Log;
 import parquet.column.primitive.BitPacking.BitPackingReader;
 import parquet.io.ParquetDecodingException;
 
-
+/**
+ * encodes boolean for the plain encoding: one bit at a time (0 = false)
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class BooleanPlainColumnReader extends PrimitiveColumnReader {
   private static final Log LOG = Log.getLog(BooleanPlainColumnReader.class);
 
   private BitPackingReader in;
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.column.primitive.PrimitiveColumnReader#readBoolean()
+   */
   @Override
   public boolean readBoolean() {
     try {

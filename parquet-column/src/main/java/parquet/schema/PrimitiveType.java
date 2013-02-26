@@ -187,7 +187,11 @@ public class PrimitiveType extends Type {
    * @param name the name of the type
    */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, String name) {
-    super(name, repetition);
+    this(repetition, primitive, name, null);
+  }
+
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, String name, OriginalType originalType) {
+    super(name, repetition, originalType);
     this.primitive = primitive;
   }
 
@@ -225,6 +229,9 @@ public class PrimitiveType extends Type {
         .append(primitive.name().toLowerCase())
         .append(" ")
         .append(getName());
+    if (getOriginalType() != null) {
+      sb.append(" (").append(getOriginalType()).append(")");
+    }
   }
 
   /**

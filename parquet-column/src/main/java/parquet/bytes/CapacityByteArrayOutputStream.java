@@ -29,6 +29,10 @@ public class CapacityByteArrayOutputStream extends ByteArrayOutputStream {
     super(initialSize);
   }
 
+  /**
+   *
+   * @return the size of the allocated buffer
+   */
   public int getCapacity() {
     return buf.length;
   }

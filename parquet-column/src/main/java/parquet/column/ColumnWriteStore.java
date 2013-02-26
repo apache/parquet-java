@@ -15,10 +15,24 @@
  */
 package parquet.column;
 
+/**
+ * contains all the columns for a given type
+ *
+ * @author Julien Le Dem
+ *
+ */
 public interface ColumnWriteStore {
 
+  /**
+   *
+   * @param path
+   * @return the column writer for the given column
+   */
   abstract public ColumnWriter getColumnWriter(ColumnDescriptor path);
 
+  /**
+   * when we are done writing to flush to the underlying storage
+   */
   abstract public void flush();
 
 }

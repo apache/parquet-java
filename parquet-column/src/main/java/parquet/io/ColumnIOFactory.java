@@ -25,7 +25,12 @@ import parquet.schema.Type;
 import parquet.schema.TypeVisitor;
 import parquet.schema.Type.Repetition;
 
-
+/**
+ * Factory constructing the ColumnIO structure from the schema
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class ColumnIOFactory {
 
   public class ColumnIOCreatorVisitor implements TypeVisitor {
@@ -83,14 +88,25 @@ public class ColumnIOFactory {
 
   private final boolean validating;
 
+  /**
+   * validation is off by default
+   */
   public ColumnIOFactory() {
     this(false);
   }
 
+  /**
+   * @param validating to turn validation on
+   */
   public ColumnIOFactory(boolean validating) {
     super();
     this.validating = validating;
   }
+
+  /**
+   * @param schema the schema we want to read/write
+   * @return the corresponding serializing/deserializing structure
+   */
   public MessageColumnIO getColumnIO(MessageType schema) {
     ColumnIOCreatorVisitor visitor = new ColumnIOCreatorVisitor(validating);
     schema.accept(visitor);

@@ -17,10 +17,25 @@ package parquet.column.mem;
 
 import parquet.column.ColumnDescriptor;
 
+/**
+ * contains all the readers for all the columns of the corresponding row group
+ *
+ * @author Julien Le Dem
+ *
+ */
 public interface PageReadStore {
 
+  /**
+   *
+   * @param descriptor the descriptor of the column
+   * @return the page reader for that column
+   */
   PageReader getPageReader(ColumnDescriptor descriptor);
 
+  /**
+   *
+   * @return the total number of rows in that row group
+   */
   long getRowCount();
 
 }

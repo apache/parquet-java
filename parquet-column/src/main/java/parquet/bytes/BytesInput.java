@@ -36,37 +36,81 @@ abstract public class BytesInput {
   private static final boolean DEBUG = false;//Log.DEBUG;
   private static final EmptyBytesInput EMPTY_BYTES_INPUT = new EmptyBytesInput();
 
+  /**
+   * logically concatenate the provided inputs
+   * @param inputs the concatenated inputs
+   * @return a concatenated input
+   */
   public static BytesInput fromSequence(BytesInput... inputs) {
     return new SequenceBytesIn(inputs);
   }
 
+  /**
+   * @param in
+   * @param bytes number of bytes to read
+   * @return a BytesInput that will read that number of bytes from the stream
+   */
   public static BytesInput from(InputStream in, int bytes) {
     return new StreamBytesInput(in, bytes);
   }
 
+  /**
+   *
+   * @param in
+   * @return a Bytes input that will write the given bytes
+   */
   public static BytesInput from(byte[] in) {
     if (DEBUG) LOG.debug("BytesInput from array of " + in.length + " bytes");
     return new ByteArrayBytesInput(in);
   }
 
+  /**
+   *
+   * @param intValue the int to write
+   * @return a BytesInput that will write 4 bytes in big endian
+   */
   public static BytesInput fromInt(int intValue) {
     return new IntBytesInput(intValue);
   }
 
+  /**
+   *
+   * @param arrayOut
+   * @return a BytesInput that will write the content of the buffer
+   */
   public static BytesInput from(ByteArrayOutputStream arrayOut) {
     return new BAOSBytesInput(arrayOut);
   }
 
+  /**
+   * @return an empty bytes input
+   */
   public static BytesInput empty() {
     return EMPTY_BYTES_INPUT;
   }
 
+  /**
+   * copies the input into a new byte array
+   * @param bytesInput
+   * @return
+   * @throws IOException
+   */
   public static BytesInput copy(BytesInput bytesInput) throws IOException {
     return from(bytesInput.toByteArray());
   }
 
+  /**
+   * writes the bytes into a stream
+   * @param out
+   * @throws IOException
+   */
   abstract public void writeAllTo(OutputStream out) throws IOException;
 
+  /**
+   *
+   * @return a new byte array materializing the contents of this input
+   * @throws IOException
+   */
   public byte[] toByteArray() throws IOException {
     BAOS baos = new BAOS((int)size());
     this.writeAllTo(baos);
@@ -74,6 +118,10 @@ abstract public class BytesInput {
     return baos.getBuf();
   }
 
+  /**
+   *
+   * @return the size in bytes that would be written
+   */
   abstract public long size();
 
   private static final class BAOS extends ByteArrayOutputStream {

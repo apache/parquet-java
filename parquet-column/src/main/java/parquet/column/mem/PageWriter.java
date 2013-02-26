@@ -19,13 +19,32 @@ import java.io.IOException;
 
 import parquet.bytes.BytesInput;
 
-
+/**
+ * a writer for all the pages of a given column chunk
+ *
+ * @author Julien Le Dem
+ *
+ */
 public interface PageWriter {
 
+  /**
+   * writes a single page
+   * @param bytesInput the bytes for the page
+   * @param valueCount the number of values in that page
+   * @throws IOException
+   */
   abstract public void writePage(BytesInput bytesInput, int valueCount) throws IOException;
 
+  /**
+   *
+   * @return the current size used in the memory buffer for that column chunk
+   */
   abstract public long getMemSize();
 
+  /**
+   *
+   * @return the allocated size for the buffer ( > getMemSize() )
+   */
   public abstract long allocatedSize();
 
 }

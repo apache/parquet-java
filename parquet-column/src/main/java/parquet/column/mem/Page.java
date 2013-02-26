@@ -18,6 +18,12 @@ package parquet.column.mem;
 import parquet.Log;
 import parquet.bytes.BytesInput;
 
+/**
+ * one page in a chunk
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class Page {
   private static final boolean DEBUG = Log.DEBUG;
   private static final Log LOG = Log.getLog(Page.class);
@@ -37,14 +43,26 @@ public class Page {
     if (DEBUG) LOG.debug("new Page #"+id+" : " + bytes.size() + " bytes and " + valueCount + " records");
   }
 
+  /**
+   *
+   * @return the bytes for the page
+   */
   public BytesInput getBytes() {
     return bytes;
   }
 
+  /**
+   *
+   * @return the number of values in that page
+   */
   public int getValueCount() {
     return valueCount;
   }
 
+  /**
+   *
+   * @return the uncompressed size of the page when the bytes are compressed
+   */
   public int getUncompressedSize() {
     return uncompressedSize;
   }
