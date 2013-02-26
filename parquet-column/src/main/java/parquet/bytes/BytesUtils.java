@@ -23,16 +23,33 @@ import java.nio.charset.Charset;
 
 import parquet.Log;
 
-
+/**
+ * utility methods to deal with bytes
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class BytesUtils {
   private static final Log LOG = Log.getLog(BytesUtils.class);
 
   public static final Charset UTF8 = Charset.forName("UTF-8");
 
+  /**
+   * give the number of bits needed to encode an int given the max value
+   * @param bound max int that we want to encode
+   * @return the number of bits required
+   */
   public static int getWidthFromMaxInt(int bound) {
     return (int)Math.ceil(Math.log(bound + 1)/Math.log(2));
   }
 
+  /**
+   * reads an int in big endian at the given position
+   * @param in
+   * @param offset
+   * @return
+   * @throws IOException
+   */
   public static int readIntBigEndian(byte[] in, int offset) throws IOException {
     int ch1 = in[offset] & 0xff;
     int ch2 = in[offset + 1] & 0xff;

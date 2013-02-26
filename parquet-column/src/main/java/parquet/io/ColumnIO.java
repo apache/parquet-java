@@ -23,7 +23,12 @@ import parquet.Log;
 import parquet.schema.Type;
 import parquet.schema.Type.Repetition;
 
-
+/**
+ * a structure used to serialize deserialize records
+ *
+ * @author Julien Le Dem
+ *
+ */
 abstract public class ColumnIO {
 
   static final boolean DEBUG = Log.DEBUG;
