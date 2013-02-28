@@ -123,7 +123,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
           Set<Entry<String, Object>> entrySet = map.entrySet();
           for (Entry<String, Object> entry : entrySet) {
             recordConsumer.startGroup();
-            Schema keyValueSchema = new Schema(Arrays.asList(new FieldSchema("key", DataType.CHARARRAY), new FieldSchema("value", pigMapInnerType.schema, DataType.TUPLE)));
+            Schema keyValueSchema = new Schema(Arrays.asList(new FieldSchema("key", DataType.CHARARRAY), new FieldSchema("value", pigMapInnerType.schema, pigMapInnerType.type)));
             writeTuple(mapType.asGroupType(), keyValueSchema, TF.newTuple(Arrays.asList(entry.getKey(), entry.getValue())));
             recordConsumer.endGroup();
           }
@@ -180,7 +180,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
         recordConsumer.endGroup();
       }
     } catch (Exception e) {
-      throw new RuntimeException("can not write value at "+i+" for type "+type+" in tuple "+t, e);
+      throw new RuntimeException("can not write value at " + i + " in tuple " + t + " from type '" + pigType + "' to type '" + type +"'", e);
     }
   }
 

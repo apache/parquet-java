@@ -44,7 +44,7 @@ abstract public class ReadSupport<T> {
   abstract public RecordConverter<T> initForRead(
       Configuration configuration,
       Map<String, String> keyValueMetaData,
-      MessageType fielSchema,
+      MessageType fileSchema,
       MessageType requestedSchema);
 
 }

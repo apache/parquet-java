@@ -43,7 +43,7 @@ public class MessageColumnIO extends GroupColumnIO {
   private final boolean validating;
 
   MessageColumnIO(MessageType messageType, boolean validating) {
-    super(messageType, null);
+    super(messageType, null, 0);
     this.validating = validating;
   }
 
@@ -263,7 +263,7 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   @Override
-  MessageType getType() {
+  public MessageType getType() {
     return (MessageType)super.getType();
   }
 }

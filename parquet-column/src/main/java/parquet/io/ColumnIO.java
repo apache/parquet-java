@@ -35,14 +35,19 @@ abstract public class ColumnIO {
 
   private final GroupColumnIO parent;
   private final Type type;
+  private final String name;
+  private final int index;
   private int repetitionLevel;
   private int definitionLevel;
   private String[] fieldPath;
   private int[] indexFieldPath;
 
-  ColumnIO(Type type, GroupColumnIO parent) {
+
+  ColumnIO(Type type, GroupColumnIO parent, int index) {
     this.type = type;
     this.parent = parent;
+    this.index = index;
+    this.name = type.getName();
   }
 
   String[] getFieldPath() {
@@ -59,6 +64,14 @@ abstract public class ColumnIO {
 
   public int getIndexFieldPath(int level) {
     return indexFieldPath[level];
+  }
+
+  public int getIndex() {
+    return this.index;
+  }
+
+  public String getName() {
+    return name;
   }
 
   int getRepetitionLevel() {
@@ -82,7 +95,7 @@ abstract public class ColumnIO {
     this.indexFieldPath = indexFieldPath;
   }
 
-  Type getType() {
+  public Type getType() {
     return type;
   }
 

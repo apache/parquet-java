@@ -19,16 +19,17 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Deque;
 
-final class ExpectationValidatingRecordConsumer extends
+final public class ExpectationValidatingRecordConsumer extends
     RecordMaterializer<Void> {
   private final Deque<String> expectations;
   int count = 0;
 
-  ExpectationValidatingRecordConsumer(Deque<String> expectations) {
+  public ExpectationValidatingRecordConsumer(Deque<String> expectations) {
     this.expectations = expectations;
   }
 
   private void validate(String got) {
+//    System.out.println("  \"" + got + "\";");
     assertEquals("event #"+count, expectations.pop(), got);
     ++count;
   }

@@ -48,9 +48,9 @@ public class ColumnIOFactory {
     public void visit(GroupType groupType) {
       GroupColumnIO newIO;
       if (groupType.getRepetition() == Repetition.REPEATED) {
-        newIO = new GroupColumnIO(groupType, current);
+        newIO = new GroupColumnIO(groupType, current, current.getChildrenCount());
       } else {
-        newIO = new GroupColumnIO(groupType, current);
+        newIO = new GroupColumnIO(groupType, current, current.getChildrenCount());
       }
       current.add(newIO);
       visitChildren(newIO, groupType);
@@ -75,7 +75,7 @@ public class ColumnIOFactory {
 
     @Override
     public void visit(PrimitiveType primitiveType) {
-      PrimitiveColumnIO newIO = new PrimitiveColumnIO(primitiveType, current, leaves.size());
+      PrimitiveColumnIO newIO = new PrimitiveColumnIO(primitiveType, current, current.getChildrenCount(), leaves.size());
       current.add(newIO);
       leaves.add(newIO);
     }

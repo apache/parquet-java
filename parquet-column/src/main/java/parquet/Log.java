@@ -55,6 +55,7 @@ public class Log {
     Logger logger = Logger.getLogger(Log.class.getPackage().getName());
     Handler[] handlers = logger.getHandlers();
     if (handlers == null || handlers.length == 0) {
+      logger.setUseParentHandlers(false);
       StreamHandler handler = new StreamHandler(System.out, new Formatter() {
         Date dat = new Date();
         private final static String format = "{0,date} {0,time}";

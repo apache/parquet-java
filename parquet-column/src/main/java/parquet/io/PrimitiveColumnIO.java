@@ -38,8 +38,8 @@ public class PrimitiveColumnIO extends ColumnIO {
   private ColumnDescriptor columnDescriptor;
   private final int id;
 
-  PrimitiveColumnIO(Type type, GroupColumnIO parent, int id) {
-    super(type, parent);
+  PrimitiveColumnIO(Type type, GroupColumnIO parent, int index, int id) {
+    super(type, parent, index);
     this.id = id;
   }
 

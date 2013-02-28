@@ -41,8 +41,8 @@ public class GroupColumnIO extends ColumnIO {
   private final List<ColumnIO> children = new ArrayList<ColumnIO>();
   private int childrenSize = 0;
 
-  GroupColumnIO(GroupType groupType, GroupColumnIO parent) {
-    super(groupType, parent);
+  GroupColumnIO(GroupType groupType, GroupColumnIO parent, int index) {
+    super(groupType, parent, index);
   }
 
   void add(ColumnIO child) {
