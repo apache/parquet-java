@@ -13,20 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.hadoop.thrift.struct;
+package parquet.thrift.struct;
 
-import static parquet.hadoop.thrift.struct.ThriftTypeID.BOOL;
-import static parquet.hadoop.thrift.struct.ThriftTypeID.BYTE;
-import static parquet.hadoop.thrift.struct.ThriftTypeID.DOUBLE;
-import static parquet.hadoop.thrift.struct.ThriftTypeID.ENUM;
-import static parquet.hadoop.thrift.struct.ThriftTypeID.I16;
-import static parquet.hadoop.thrift.struct.ThriftTypeID.I32;
-import static parquet.hadoop.thrift.struct.ThriftTypeID.I64;
-import static parquet.hadoop.thrift.struct.ThriftTypeID.LIST;
-import static parquet.hadoop.thrift.struct.ThriftTypeID.MAP;
-import static parquet.hadoop.thrift.struct.ThriftTypeID.SET;
-import static parquet.hadoop.thrift.struct.ThriftTypeID.STRING;
-import static parquet.hadoop.thrift.struct.ThriftTypeID.STRUCT;
+import static parquet.thrift.struct.ThriftTypeID.BOOL;
+import static parquet.thrift.struct.ThriftTypeID.BYTE;
+import static parquet.thrift.struct.ThriftTypeID.DOUBLE;
+import static parquet.thrift.struct.ThriftTypeID.ENUM;
+import static parquet.thrift.struct.ThriftTypeID.I16;
+import static parquet.thrift.struct.ThriftTypeID.I32;
+import static parquet.thrift.struct.ThriftTypeID.I64;
+import static parquet.thrift.struct.ThriftTypeID.LIST;
+import static parquet.thrift.struct.ThriftTypeID.MAP;
+import static parquet.thrift.struct.ThriftTypeID.SET;
+import static parquet.thrift.struct.ThriftTypeID.STRING;
+import static parquet.thrift.struct.ThriftTypeID.STRUCT;
 
 import java.io.IOException;
 import java.io.StringWriter;

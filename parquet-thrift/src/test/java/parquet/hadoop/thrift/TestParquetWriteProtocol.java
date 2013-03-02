@@ -38,7 +38,6 @@ import com.twitter.elephantbird.thrift.test.TestPerson;
 import com.twitter.elephantbird.thrift.test.TestPhoneType;
 import com.twitter.elephantbird.thrift.test.TestStructInMap;
 
-import parquet.hadoop.thrift.struct.ThriftType.StructType;
 import parquet.io.ColumnIOFactory;
 import parquet.io.ExpectationValidatingRecordConsumer;
 import parquet.io.MessageColumnIO;
@@ -46,9 +45,12 @@ import parquet.io.RecordConsumerLoggingWrapper;
 import parquet.pig.PigSchemaConverter;
 import parquet.pig.TupleWriteSupport;
 import parquet.schema.MessageType;
+import parquet.thrift.ParquetWriteProtocol;
+import parquet.thrift.ThriftSchemaConverter;
+import parquet.thrift.struct.ThriftType.StructType;
 
 
-public class TestParquetProtocol {
+public class TestParquetWriteProtocol {
 
   @Test
   public void testMap() throws Exception {

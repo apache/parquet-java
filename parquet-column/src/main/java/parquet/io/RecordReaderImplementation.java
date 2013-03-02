@@ -26,6 +26,7 @@ import java.util.Map;
 import parquet.Log;
 import parquet.column.ColumnReader;
 import parquet.column.mem.MemColumnReadStore;
+import parquet.io.convert.Converter;
 import parquet.io.convert.GroupConverter;
 import parquet.io.convert.PrimitiveConverter;
 import parquet.io.convert.RecordConverter;
@@ -238,7 +239,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
    */
   public RecordReaderImplementation(MessageColumnIO root, RecordConverter<T> recordMaterializer, boolean validating, MemColumnReadStore columnStore) {
     this.recordMaterializer = recordMaterializer;
-    this.recordConsumer = recordMaterializer; // TODO: validator(wrap(recordMaterializer), validating, root.getType());
+    this.recordConsumer = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer), validating, root.getType());
     PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
     ColumnReader[] columns = new ColumnReader[leaves.length];
     int[][] nextReader = new int[leaves.length][];
@@ -251,12 +252,12 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
       PrimitiveColumnIO primitiveColumnIO = leaves[i];
       final int[] indexFieldPath = primitiveColumnIO.getIndexFieldPath();
       groupConverterPaths[i] = new GroupConverter[indexFieldPath.length - 1];
-      GroupConverter current = recordMaterializer;
+      GroupConverter current = this.recordConsumer;
       for (int j = 0; j < indexFieldPath.length - 1; j++) {
-        current = current.getGroupConverter(indexFieldPath[j]);
+        current = current.getConverter(indexFieldPath[j]).asGroupConverter();
         groupConverterPaths[i][j] = current;
       }
-      primitiveConverters[i] = current.getPrimitiveConverter(indexFieldPath[indexFieldPath.length - 1]);
+      primitiveConverters[i] = current.getConverter(indexFieldPath[indexFieldPath.length - 1]).asPrimitiveConverter();
       columns[i] = columnStore.getColumnReader(primitiveColumnIO.getColumnDescriptor());
       int repetitionLevel = primitiveColumnIO.getRepetitionLevel();
       nextReader[i] = new int[repetitionLevel+1];
@@ -441,7 +442,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     return recordMaterializer;
   }
 
-  protected GroupConverter getRecordConsumer() {
+  protected Converter getRecordConsumer() {
     return recordConsumer;
   }
 

@@ -124,4 +124,12 @@ abstract public class Type {
       throw new InvalidRecordException(subType + " found: expected " + this);
     }
   }
+
+  /**
+   *
+   * @param converter logic to convert the tree
+   * @return the converted tree
+   */
+   abstract <T> T convert(List<GroupType> path, TypeConverter<T> converter);
+
 }

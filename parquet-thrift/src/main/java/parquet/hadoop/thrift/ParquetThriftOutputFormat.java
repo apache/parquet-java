@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package parquet.hadoop.thrift;
+import org.apache.hadoop.mapreduce.Job;
 import org.apache.thrift.TBase;
 
 import parquet.hadoop.ParquetOutputFormat;
@@ -22,9 +23,17 @@ import parquet.hadoop.ParquetOutputFormat;
  *
  * @author Julien Le Dem
  *
- * @param <T> the thrift class use for therialization
+ * @param <T> the thrift class use for serialization
  */
-public class ParquetThriftOutputFormat<T extends TBase> extends ParquetOutputFormat<T> {
+public class ParquetThriftOutputFormat<T extends TBase<?,?>> extends ParquetOutputFormat<T> {
+
+  public static <U extends TBase<?,?>> void setThriftClass(Job job, Class<U> thriftClass) {
+    ThriftWriteSupport.setThriftClass(job.getConfiguration(), thriftClass);
+  }
+
+  public static Class<TBase<?,?>> getThriftClass(Job job) {
+    return ThriftWriteSupport.getThriftClass(job.getConfiguration());
+  }
 
   public ParquetThriftOutputFormat() {
     super(new ThriftWriteSupport<T>());

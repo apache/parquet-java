@@ -16,22 +16,22 @@
 package parquet.io.convert;
 
 /**
- * top level of the conversion.
- * returns the record converted
+ * Represent a tree of converters
+ * that materializes tuples
  *
  * @author Julien Le Dem
  *
- * @param <T>
  */
-abstract public class RecordConverter<T> {
+public abstract class Converter {
 
-  /**
-   * @return the result of the conversion
-   */
-  abstract public T getCurrentRecord();
+  abstract public boolean isPrimitive();
 
-  /**
-   * @return the root converter for this tree
-   */
-  abstract public GroupConverter getRootConverter();
+  public PrimitiveConverter asPrimitiveConverter() {
+    throw new ClassCastException(getClass().getName());
+  }
+
+  public GroupConverter asGroupConverter() {
+    throw new ClassCastException(getClass().getName());
+  }
+
 }

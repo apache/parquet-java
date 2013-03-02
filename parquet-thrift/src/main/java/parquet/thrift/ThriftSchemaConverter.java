@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.hadoop.thrift;
+package parquet.thrift;
 
 import static parquet.schema.OriginalType.*;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
@@ -34,16 +34,16 @@ import org.apache.thrift.TBase;
 import org.apache.thrift.TEnum;
 import org.apache.thrift.protocol.TType;
 
-import parquet.hadoop.thrift.struct.ThriftType;
-import parquet.hadoop.thrift.struct.ThriftType.*;
-import parquet.hadoop.thrift.struct.ThriftField;
-import parquet.hadoop.thrift.struct.ThriftTypeID;
 import parquet.schema.ConversionPatterns;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType;
 import parquet.schema.Type;
 import parquet.schema.Type.Repetition;
+import parquet.thrift.struct.ThriftField;
+import parquet.thrift.struct.ThriftType;
+import parquet.thrift.struct.ThriftTypeID;
+import parquet.thrift.struct.ThriftType.*;
 
 import com.twitter.elephantbird.thrift.TStructDescriptor;
 import com.twitter.elephantbird.thrift.TStructDescriptor.Field;

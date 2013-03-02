@@ -40,7 +40,7 @@ public class BytesUtils {
    * @return the number of bits required
    */
   public static int getWidthFromMaxInt(int bound) {
-    return (int)Math.ceil(Math.log(bound + 1)/Math.log(2));
+    return (int)Math.ceil(Math.log((double)bound + 1)/Math.log(2));
   }
 
   /**

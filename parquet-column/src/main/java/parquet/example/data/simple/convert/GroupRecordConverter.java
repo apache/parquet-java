@@ -17,17 +17,30 @@ package parquet.example.data.simple.convert;
 
 import parquet.example.data.Group;
 import parquet.example.data.simple.SimpleGroupFactory;
+import parquet.io.convert.GroupConverter;
+import parquet.io.convert.RecordConverter;
 import parquet.schema.MessageType;
 
-public class GroupRecordConverter extends SimpleGroupConverter {
+public class GroupRecordConverter extends RecordConverter<Group> {
 
   private final SimpleGroupFactory simpleGroupFactory;
 
   private Group current;
 
+  private GroupConverter root;
+
   public GroupRecordConverter(MessageType schema) {
-    super(null, -1, schema);
     this.simpleGroupFactory = new SimpleGroupFactory(schema);
+    this.root = new SimpleGroupConverter(null, 0, schema) {
+      @Override
+      public void start() {
+        current = simpleGroupFactory.newGroup();
+      }
+
+      @Override
+      public void end() {
+      }
+    };
   }
 
   @Override
@@ -36,12 +49,8 @@ public class GroupRecordConverter extends SimpleGroupConverter {
   }
 
   @Override
-  public void start() {
-    current = simpleGroupFactory.newGroup();
-  }
-
-  @Override
-  public void end() {
+  public GroupConverter getRootConverter() {
+    return root;
   }
 
 }

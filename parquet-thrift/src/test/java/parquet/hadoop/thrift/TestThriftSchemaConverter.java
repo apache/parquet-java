@@ -20,10 +20,11 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import parquet.hadoop.thrift.struct.ThriftType;
-import parquet.hadoop.thrift.struct.ThriftType.StructType;
 import parquet.parser.MessageTypeParser;
 import parquet.schema.MessageType;
+import parquet.thrift.ThriftSchemaConverter;
+import parquet.thrift.struct.ThriftType;
+import parquet.thrift.struct.ThriftType.StructType;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 

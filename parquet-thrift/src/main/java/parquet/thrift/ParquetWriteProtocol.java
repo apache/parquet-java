@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.hadoop.thrift;
+package parquet.thrift;
 
 import static parquet.Log.DEBUG;
 
@@ -30,18 +30,18 @@ import org.apache.thrift.protocol.TStruct;
 
 import parquet.Log;
 import parquet.bytes.BytesUtils;
-import parquet.hadoop.thrift.struct.ThriftField;
-import parquet.hadoop.thrift.struct.ThriftType;
-import parquet.hadoop.thrift.struct.ThriftType.EnumType;
-import parquet.hadoop.thrift.struct.ThriftType.ListType;
-import parquet.hadoop.thrift.struct.ThriftType.MapType;
-import parquet.hadoop.thrift.struct.ThriftType.SetType;
-import parquet.hadoop.thrift.struct.ThriftType.StructType;
 import parquet.io.ColumnIO;
 import parquet.io.GroupColumnIO;
 import parquet.io.MessageColumnIO;
 import parquet.io.PrimitiveColumnIO;
 import parquet.io.RecordConsumer;
+import parquet.thrift.struct.ThriftField;
+import parquet.thrift.struct.ThriftType;
+import parquet.thrift.struct.ThriftType.EnumType;
+import parquet.thrift.struct.ThriftType.ListType;
+import parquet.thrift.struct.ThriftType.MapType;
+import parquet.thrift.struct.ThriftType.SetType;
+import parquet.thrift.struct.ThriftType.StructType;
 
 public class ParquetWriteProtocol extends ParquetProtocol {
 
@@ -395,7 +395,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeMessageBegin(org.apache.thrift.protocol.TMessage)
+   * @see parquet.thrift.ParquetProtocol#writeMessageBegin(org.apache.thrift.protocol.TMessage)
    */
   @Override
   public void writeMessageBegin(TMessage message) throws TException {
@@ -405,7 +405,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeMessageEnd()
+   * @see parquet.thrift.ParquetProtocol#writeMessageEnd()
    */
   @Override
   public void writeMessageEnd() throws TException {
@@ -415,7 +415,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeStructBegin(org.apache.thrift.protocol.TStruct)
+   * @see parquet.thrift.ParquetProtocol#writeStructBegin(org.apache.thrift.protocol.TStruct)
    */
   @Override
   public void writeStructBegin(TStruct struct) throws TException {
@@ -425,7 +425,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeStructEnd()
+   * @see parquet.thrift.ParquetProtocol#writeStructEnd()
    */
   @Override
   public void writeStructEnd() throws TException {
@@ -435,7 +435,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeFieldBegin(org.apache.thrift.protocol.TField)
+   * @see parquet.thrift.ParquetProtocol#writeFieldBegin(org.apache.thrift.protocol.TField)
    */
   @Override
   public void writeFieldBegin(TField field) throws TException {
@@ -445,7 +445,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeFieldEnd()
+   * @see parquet.thrift.ParquetProtocol#writeFieldEnd()
    */
   @Override
   public void writeFieldEnd() throws TException {
@@ -455,7 +455,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeFieldStop()
+   * @see parquet.thrift.ParquetProtocol#writeFieldStop()
    */
   @Override
   public void writeFieldStop() throws TException {
@@ -465,7 +465,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeMapBegin(org.apache.thrift.protocol.TMap)
+   * @see parquet.thrift.ParquetProtocol#writeMapBegin(org.apache.thrift.protocol.TMap)
    */
   @Override
   public void writeMapBegin(TMap map) throws TException {
@@ -475,7 +475,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeMapEnd()
+   * @see parquet.thrift.ParquetProtocol#writeMapEnd()
    */
   @Override
   public void writeMapEnd() throws TException {
@@ -485,7 +485,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeListBegin(org.apache.thrift.protocol.TList)
+   * @see parquet.thrift.ParquetProtocol#writeListBegin(org.apache.thrift.protocol.TList)
    */
   @Override
   public void writeListBegin(TList list) throws TException {
@@ -496,7 +496,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeListEnd()
+   * @see parquet.thrift.ParquetProtocol#writeListEnd()
    */
   @Override
   public void writeListEnd() throws TException {
@@ -507,7 +507,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeSetBegin(org.apache.thrift.protocol.TSet)
+   * @see parquet.thrift.ParquetProtocol#writeSetBegin(org.apache.thrift.protocol.TSet)
    */
   @Override
   public void writeSetBegin(TSet set) throws TException {
@@ -517,7 +517,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeSetEnd()
+   * @see parquet.thrift.ParquetProtocol#writeSetEnd()
    */
   @Override
   public void writeSetEnd() throws TException {
@@ -527,7 +527,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeBool(boolean)
+   * @see parquet.thrift.ParquetProtocol#writeBool(boolean)
    */
   @Override
   public void writeBool(boolean b) throws TException {
@@ -537,7 +537,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeByte(byte)
+   * @see parquet.thrift.ParquetProtocol#writeByte(byte)
    */
   @Override
   public void writeByte(byte b) throws TException {
@@ -547,7 +547,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeI16(short)
+   * @see parquet.thrift.ParquetProtocol#writeI16(short)
    */
   @Override
   public void writeI16(short i16) throws TException {
@@ -557,7 +557,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeI32(int)
+   * @see parquet.thrift.ParquetProtocol#writeI32(int)
    */
   @Override
   public void writeI32(int i32) throws TException {
@@ -567,7 +567,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeI64(long)
+   * @see parquet.thrift.ParquetProtocol#writeI64(long)
    */
   @Override
   public void writeI64(long i64) throws TException {
@@ -577,7 +577,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeDouble(double)
+   * @see parquet.thrift.ParquetProtocol#writeDouble(double)
    */
   @Override
   public void writeDouble(double dub) throws TException {
@@ -587,7 +587,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeString(java.lang.String)
+   * @see parquet.thrift.ParquetProtocol#writeString(java.lang.String)
    */
   @Override
   public void writeString(String str) throws TException {
@@ -597,7 +597,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   /**
    * {@inheritDoc}
-   * @see parquet.hadoop.thrift.ParquetProtocol#writeBinary(java.nio.ByteBuffer)
+   * @see parquet.thrift.ParquetProtocol#writeBinary(java.nio.ByteBuffer)
    */
   @Override
   public void writeBinary(ByteBuffer buf) throws TException {

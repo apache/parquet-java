@@ -37,6 +37,7 @@ import parquet.example.data.Group;
 import parquet.example.data.GroupWriter;
 import parquet.example.data.simple.SimpleGroup;
 import parquet.example.data.simple.convert.GroupRecordConverter;
+import parquet.io.ConverterConsumer;
 import parquet.io.RecordConsumerLoggingWrapper;
 import parquet.io.convert.RecordConverter;
 import parquet.schema.MessageType;
@@ -135,7 +136,7 @@ public class TestTupleRecordConsumer {
     List<Tuple> tuples = new ArrayList<Tuple>();
     MessageType schema = getMessageType(pigSchemaString);
     RecordConverter<Tuple> pigRecordConsumer = newPigRecordConsumer(schema, pigSchemaString);
-    GroupWriter groupWriter = new GroupWriter(new RecordConsumerLoggingWrapper(new ConverterConsumer(pigRecordConsumer, schema)), schema);
+    GroupWriter groupWriter = new GroupWriter(new RecordConsumerLoggingWrapper(new ConverterConsumer(pigRecordConsumer.getRootConverter(), schema)), schema);
 
     for (Group group : input) {
       groupWriter.write(group);
@@ -166,7 +167,7 @@ public class TestTupleRecordConsumer {
     TupleWriteSupport tupleWriter = new TupleWriteSupport(parquetSchema, Utils.getSchemaFromString(pigSchemaString));
     tupleWriter.init(null);
     tupleWriter.prepareForWrite(
-        new ConverterConsumer(recordConsumer, parquetSchema)
+        new ConverterConsumer(recordConsumer.getRootConverter(), parquetSchema)
         );
     return tupleWriter;
   }

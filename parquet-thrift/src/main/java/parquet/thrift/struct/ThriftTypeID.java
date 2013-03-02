@@ -13,22 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.hadoop.thrift.struct;
+package parquet.thrift.struct;
 
 import org.apache.thrift.protocol.TType;
 
-import parquet.hadoop.thrift.struct.ThriftType.BoolType;
-import parquet.hadoop.thrift.struct.ThriftType.ByteType;
-import parquet.hadoop.thrift.struct.ThriftType.DoubleType;
-import parquet.hadoop.thrift.struct.ThriftType.EnumType;
-import parquet.hadoop.thrift.struct.ThriftType.I16Type;
-import parquet.hadoop.thrift.struct.ThriftType.I32Type;
-import parquet.hadoop.thrift.struct.ThriftType.I64Type;
-import parquet.hadoop.thrift.struct.ThriftType.ListType;
-import parquet.hadoop.thrift.struct.ThriftType.MapType;
-import parquet.hadoop.thrift.struct.ThriftType.SetType;
-import parquet.hadoop.thrift.struct.ThriftType.StringType;
-import parquet.hadoop.thrift.struct.ThriftType.StructType;
+import parquet.thrift.struct.ThriftType.BoolType;
+import parquet.thrift.struct.ThriftType.ByteType;
+import parquet.thrift.struct.ThriftType.DoubleType;
+import parquet.thrift.struct.ThriftType.EnumType;
+import parquet.thrift.struct.ThriftType.I16Type;
+import parquet.thrift.struct.ThriftType.I32Type;
+import parquet.thrift.struct.ThriftType.I64Type;
+import parquet.thrift.struct.ThriftType.ListType;
+import parquet.thrift.struct.ThriftType.MapType;
+import parquet.thrift.struct.ThriftType.SetType;
+import parquet.thrift.struct.ThriftType.StringType;
+import parquet.thrift.struct.ThriftType.StructType;
 
 public enum ThriftTypeID {
   STOP (TType.STOP),

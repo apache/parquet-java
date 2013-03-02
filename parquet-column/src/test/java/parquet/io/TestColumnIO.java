@@ -214,7 +214,7 @@ public class TestColumnIO {
       expectations.add(string);
     }
 
-    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectations));
+    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectations, schema));
     recordReader.read();
 
   }
