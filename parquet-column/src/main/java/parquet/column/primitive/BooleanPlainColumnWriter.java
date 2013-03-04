@@ -15,6 +15,7 @@
  */
 package parquet.column.primitive;
 
+import static parquet.column.Encoding.PLAIN;
 import static parquet.column.primitive.BitPacking.getBitPackingWriter;
 
 import java.io.IOException;
@@ -22,6 +23,7 @@ import java.io.IOException;
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
+import parquet.column.Encoding;
 import parquet.column.primitive.BitPacking.BitPackingWriter;
 import parquet.io.ParquetEncodingException;
 
@@ -32,7 +34,7 @@ import parquet.io.ParquetEncodingException;
  * @author Julien Le Dem
  *
  */
-public class BooleanPlainColumnWriter extends PrimitiveColumnWriter {
+public class BooleanPlainColumnWriter extends DataColumnWriter {
   private static final Log LOG = Log.getLog(BooleanPlainColumnWriter.class);
 
   private CapacityByteArrayOutputStream out;
@@ -77,6 +79,11 @@ public class BooleanPlainColumnWriter extends PrimitiveColumnWriter {
   @Override
   public long allocatedSize() {
     return out.getCapacity();
+  }
+
+  @Override
+  public Encoding getEncoding() {
+    return PLAIN;
   }
 
 }

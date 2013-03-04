@@ -313,7 +313,8 @@ public class ParquetFileReader {
               new Page(
                   BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)),
                   pageHeader.data_page_header.num_values,
-                  pageHeader.uncompressed_page_size
+                  pageHeader.uncompressed_page_size,
+                  parquetMetadataConverter.getEncoding(pageHeader.data_page_header.encoding)
                   ));
           valuesCountReadSoFar += pageHeader.data_page_header.num_values;
         }

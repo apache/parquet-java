@@ -154,6 +154,24 @@ public class ParquetMetadataConverter {
     rowGroups.add(rowGroup);
   }
 
+  public parquet.column.Encoding getEncoding(Encoding encoding) {
+    switch (encoding) {
+    case PLAIN:
+      return parquet.column.Encoding.PLAIN;
+    default:
+      throw new RuntimeException("Unknown encoding " + encoding);
+    }
+  }
+
+  public Encoding getEncoding(parquet.column.Encoding encoding) {
+    switch (encoding) {
+    case PLAIN:
+      return parquet.format.Encoding.PLAIN;
+    default:
+      throw new RuntimeException("Unknown encoding " + encoding);
+    }
+  }
+
   private CompressionCodec getCodec(String codecClassName) {
     if (codecClassName.equals("org.apache.hadoop.io.compress.GzipCodec")) {
       return CompressionCodec.GZIP;
@@ -344,5 +362,6 @@ public class ParquetMetadataConverter {
       throw new IOException("can not write " + tbase, e);
     }
   }
+
 
 }

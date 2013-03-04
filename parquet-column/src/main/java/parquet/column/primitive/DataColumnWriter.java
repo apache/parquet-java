@@ -13,13 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.thrift;
+package parquet.column.primitive;
 
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TProtocol;
+import parquet.column.Encoding;
 
-abstract public class ThriftReader<T> {
+/**
+ * The data column controls the encoding
+ *
+ * @author Julien Le Dem
+ *
+ */
+abstract public class DataColumnWriter extends PrimitiveColumnWriter {
 
-  public abstract T readOneRecord(TProtocol protocol) throws TException;
-
+  /**
+   * called after getBytes() and before reset()
+   * @return the encoding that was used to encode the bytes
+   */
+  public abstract Encoding getEncoding();
 }

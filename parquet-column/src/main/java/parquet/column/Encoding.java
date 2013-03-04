@@ -13,13 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.thrift;
+package parquet.column;
 
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TProtocol;
-
-abstract public class ThriftReader<T> {
-
-  public abstract T readOneRecord(TProtocol protocol) throws TException;
-
+public enum Encoding {
+  PLAIN
 }

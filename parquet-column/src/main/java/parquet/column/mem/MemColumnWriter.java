@@ -24,6 +24,7 @@ import parquet.column.ColumnWriter;
 import parquet.column.primitive.BitPackingColumnWriter;
 import parquet.column.primitive.BooleanPlainColumnWriter;
 import parquet.column.primitive.BoundedColumnFactory;
+import parquet.column.primitive.DataColumnWriter;
 import parquet.column.primitive.PlainColumnWriter;
 import parquet.column.primitive.PrimitiveColumnWriter;
 import parquet.io.ParquetEncodingException;
@@ -38,7 +39,7 @@ final class MemColumnWriter implements ColumnWriter {
   private final long pageSizeThreshold;
   private PrimitiveColumnWriter repetitionLevelColumn;
   private PrimitiveColumnWriter definitionLevelColumn;
-  private PrimitiveColumnWriter dataColumn;
+  private DataColumnWriter dataColumn;
   private int valueCount;
 
   public MemColumnWriter(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold) {
@@ -72,7 +73,7 @@ final class MemColumnWriter implements ColumnWriter {
   private void writePage() {
     if (DEBUG) LOG.debug("write page");
     try {
-      pageWriter.writePage(BytesInput.fromSequence(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()), valueCount);
+      pageWriter.writePage(BytesInput.fromSequence(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()), valueCount, dataColumn.getEncoding());
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write page for " + path, e);
     }

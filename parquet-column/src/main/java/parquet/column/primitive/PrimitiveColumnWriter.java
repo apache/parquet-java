@@ -16,6 +16,7 @@
 package parquet.column.primitive;
 
 import parquet.bytes.BytesInput;
+import parquet.column.Encoding;
 
 /**
  * base class to implement an encoding for a given column

@@ -55,14 +55,13 @@ public class ColumnChunkPageWriteStore implements PageWriteStore {
     }
 
     @Override
-    public void writePage(BytesInput bytes, int valueCount)
-        throws IOException {
+    public void writePage(BytesInput bytes, int valueCount, parquet.column.Encoding encoding) throws IOException {
       long uncompressedSize = bytes.size();
       BytesInput compressedBytes = compressor.compress(bytes);
       long compressedSize = compressedBytes.size();
       PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, (int)uncompressedSize, (int)compressedSize);
       // pageHeader.crc = ...;
-      pageHeader.data_page_header = new DataPageHeader(valueCount, Encoding.PLAIN); // TODO: encoding
+      pageHeader.data_page_header = new DataPageHeader(valueCount, parquetMetadataConverter.getEncoding(encoding));
       parquetMetadataConverter.writePageHeader(pageHeader, buf);
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;

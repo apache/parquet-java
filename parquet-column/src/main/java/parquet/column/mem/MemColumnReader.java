@@ -16,6 +16,7 @@
 package parquet.column.mem;
 
 import static parquet.Log.DEBUG;
+import static parquet.column.Encoding.PLAIN;
 
 import java.io.IOException;
 
@@ -217,9 +218,14 @@ abstract class MemColumnReader implements ColumnReader {
     if (isPageFullyConsumed()) {
       if (DEBUG) LOG.debug("loading page");
       Page page = pageReader.readPage();
+      if (page.getEncoding() != PLAIN) {
+        // TODO: implement more encoding
+        throw new ParquetDecodingException("Unsupported encoding: " + page.getEncoding());
+      }
+
       repetitionLevelColumn = new BitPackingColumnReader(path.getRepetitionLevel());
       definitionLevelColumn = BoundedColumnFactory.getBoundedReader(path.getDefinitionLevel());
-      // TODO: from encoding
+
       switch (path.getType()) {
       case BOOLEAN:
         this.dataColumn = new BooleanPlainColumnReader();
