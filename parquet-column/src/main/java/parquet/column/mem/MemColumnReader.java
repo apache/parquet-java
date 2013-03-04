@@ -232,8 +232,11 @@ abstract class MemColumnReader implements ColumnReader {
       try {
         byte[] bytes = page.getBytes().toByteArray();
         if (DEBUG) LOG.debug("page size " + bytes.length + " bytes and " + pageValueCount + " records");
+        if (DEBUG) LOG.debug("reading repetition levels at 0");
         int next = repetitionLevelColumn.initFromPage(pageValueCount, bytes, 0);
+        if (DEBUG) LOG.debug("reading definition levels at " + next);
         next = definitionLevelColumn.initFromPage(pageValueCount, bytes, next);
+        if (DEBUG) LOG.debug("reading data at " + next);
         dataColumn.initFromPage(pageValueCount, bytes, next);
       } catch (IOException e) {
         throw new ParquetDecodingException("could not read page " + page + " in col " + path, e);

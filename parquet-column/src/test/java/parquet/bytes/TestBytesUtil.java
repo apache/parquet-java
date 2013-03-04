@@ -15,42 +15,32 @@
  */
 package parquet.bytes;
 
-import static org.junit.Assert.*;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import static org.junit.Assert.assertEquals;
+import static parquet.bytes.BytesUtils.getWidthFromMaxInt;
 
 import org.junit.Test;
-
-import parquet.bytes.BytesUtils;
 
 public class TestBytesUtil {
 
   @Test
-  public void testInt() throws IOException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    BytesUtils.writeIntBigEndian(baos, 1208);
-    int readInt = BytesUtils.readIntBigEndian(baos.toByteArray(), 0);
-    assertEquals(1208, readInt);
+  public void testWidth() {
+    assertEquals(0, getWidthFromMaxInt(0));
+    assertEquals(1, getWidthFromMaxInt(1));
+    assertEquals(2, getWidthFromMaxInt(2));
+    assertEquals(2, getWidthFromMaxInt(3));
+    assertEquals(3, getWidthFromMaxInt(4));
+    assertEquals(3, getWidthFromMaxInt(5));
+    assertEquals(3, getWidthFromMaxInt(6));
+    assertEquals(3, getWidthFromMaxInt(7));
+    assertEquals(4, getWidthFromMaxInt(8));
+    assertEquals(4, getWidthFromMaxInt(15));
+    assertEquals(5, getWidthFromMaxInt(16));
+    assertEquals(5, getWidthFromMaxInt(31));
+    assertEquals(6, getWidthFromMaxInt(32));
+    assertEquals(6, getWidthFromMaxInt(63));
+    assertEquals(7, getWidthFromMaxInt(64));
+    assertEquals(7, getWidthFromMaxInt(127));
+    assertEquals(8, getWidthFromMaxInt(128));
+    assertEquals(8, getWidthFromMaxInt(255));
   }
-
-  @Test
-  public void testReadInt() throws IOException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    new DataOutputStream(baos).writeInt(1208);
-    int readInt = BytesUtils.readIntBigEndian(baos.toByteArray(), 0);
-    assertEquals(1208, readInt);
-  }
-
-  @Test
-  public void testWriteInt() throws IOException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    BytesUtils.writeIntBigEndian(baos, 1208);
-    int readInt = new DataInputStream(new ByteArrayInputStream(baos.toByteArray())).readInt();
-    assertEquals(1208, readInt);
-  }
-
 }

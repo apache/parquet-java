@@ -36,7 +36,7 @@ public class BoundedIntColumnReader extends PrimitiveColumnReader {
     if (bound == 0) {
       throw new ParquetDecodingException("Value bound cannot be 0. Use DevNullColumnReader instead.");
     }
-    bitsPerValue = (int)Math.ceil(Math.log(bound + 1)/Math.log(2));
+    bitsPerValue = BytesUtils.getWidthFromMaxInt(bound);
   }
 
   @Override
@@ -64,7 +64,8 @@ public class BoundedIntColumnReader extends PrimitiveColumnReader {
   // to BoundedIntColumnWriter.writeData(BytesOutput)
   @Override
   public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
-    int totalBytes = BytesUtils.readIntBigEndian(in, offset);
+    if (DEBUG) LOG.debug("reading size at "+ offset + ": " + in[offset] + " " + in[offset + 1] + " " + in[offset + 2] + " " + in[offset + 3] + " ");
+    int totalBytes = BytesUtils.readIntLittleEndian(in, offset);
     if (DEBUG) LOG.debug("will read "+ totalBytes + " bytes");
     currentValueCt = 0;
     currentValue = 0;

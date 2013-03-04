@@ -2,8 +2,11 @@ package parquet.hadoop.thrift;
 
 import static junit.framework.Assert.assertEquals;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
@@ -18,6 +21,7 @@ import parquet.io.RecordConsumer;
 import parquet.io.RecordReader;
 import parquet.schema.MessageType;
 import parquet.thrift.ParquetWriteProtocol;
+import parquet.thrift.TBaseRecordConverter;
 import parquet.thrift.ThriftReader;
 import parquet.thrift.ThriftRecordConverter;
 import parquet.thrift.ThriftSchemaConverter;
@@ -27,6 +31,11 @@ import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
+import com.twitter.elephantbird.thrift.test.TestMap;
+import com.twitter.elephantbird.thrift.test.TestName;
+import com.twitter.elephantbird.thrift.test.TestPerson;
+import com.twitter.elephantbird.thrift.test.TestPhoneType;
+import com.twitter.elephantbird.thrift.test.TestStructInMap;
 
 public class TestParquetReadProtocol {
 
@@ -56,9 +65,25 @@ public class TestParquetReadProtocol {
     validate(expected);
   }
 
-  private void validate(TBase<?,?> expected) throws TException {
+  @Test
+  public void testMap() throws Exception {
+        final Map<String, String> map = new HashMap<String, String>();
+    map.put("foo", "bar");
+    TestMap testMap = new TestMap("map_name", map);
+    validate(testMap);
+  }
+
+  @Test
+  public void testStructInMap() throws Exception {
+    final Map<String, TestPerson> map = new HashMap<String, TestPerson>();
+    map.put("foo", new TestPerson(new TestName("john", "johnson"), new HashMap<TestPhoneType, String>()));
+    TestStructInMap testMap = new TestStructInMap("map_name", map);
+    validate(testMap);
+  }
+
+  private <T extends TBase<?,?>> void validate(T expected) throws TException {
     @SuppressWarnings("unchecked")
-    final Class<? extends TBase<?,?>> thriftClass = (Class<? extends TBase<?,?>>)expected.getClass();
+    final Class<T> thriftClass = (Class<T>)expected.getClass();
     final MemPageStore memPageStore = new MemPageStore();
     final ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final MessageType schema = schemaConverter.convert(thriftClass);
@@ -71,19 +96,10 @@ public class TestParquetReadProtocol {
     expected.write(parquetWriteProtocol);
     columns.flush();
 
-    ThriftRecordConverter<AddressBook> converter = new ThriftRecordConverter<AddressBook>(new ThriftReader<AddressBook>() {
-      @Override
-      public AddressBook readOneRecord(TProtocol protocol) throws TException {
-        AddressBook a = new AddressBook();
-        a.read(protocol);
-        return a;
-      }
+    ThriftRecordConverter<T> converter = new TBaseRecordConverter<T>(thriftClass, schema, thriftType);
+    final RecordReader<T> recordReader = columnIO.getRecordReader(memPageStore, converter);
 
-    }, thriftClass.getSimpleName(), schema, thriftType);
-
-    final RecordReader<AddressBook> recordReader = columnIO.getRecordReader(memPageStore, converter);
-
-    final AddressBook result = recordReader.read();
+    final T result = recordReader.read();
 
     assertEquals(expected, result);
   }

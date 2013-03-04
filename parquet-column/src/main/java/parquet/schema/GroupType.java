@@ -249,9 +249,9 @@ public class GroupType extends Type {
 
   @Override
   <T> T convert(List<GroupType> path, TypeConverter<T> converter) {
-    path.add(this);
-    final List<T> children = convertChildren(path, converter);
-    path.remove(path.size() - 1);
+    List<GroupType> childrenPath = new ArrayList<GroupType>(path);
+    childrenPath.add(this);
+    final List<T> children = convertChildren(childrenPath, converter);
     return converter.convertGroupType(path, this, children);
   }
 

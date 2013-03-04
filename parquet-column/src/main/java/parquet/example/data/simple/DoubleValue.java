@@ -35,4 +35,8 @@ public class DoubleValue extends Primitive {
     recordConsumer.addDouble(value);
   }
 
+  @Override
+  public String toString() {
+    return String.valueOf(value);
+  }
 }

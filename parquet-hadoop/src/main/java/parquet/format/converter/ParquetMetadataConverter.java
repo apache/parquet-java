@@ -250,6 +250,7 @@ public class ParquetMetadataConverter {
   }
 
   MessageType fromParquetSchema(List<SchemaElement> schema) {
+
     Iterator<SchemaElement> iterator = schema.iterator();
     SchemaElement root = iterator.next();
     return new MessageType(root.getName(), convertChildren(iterator, root.getNum_children()));

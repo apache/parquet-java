@@ -25,16 +25,14 @@ public class GroupRecordConverter extends RecordConverter<Group> {
 
   private final SimpleGroupFactory simpleGroupFactory;
 
-  private Group current;
-
-  private GroupConverter root;
+  private SimpleGroupConverter root;
 
   public GroupRecordConverter(MessageType schema) {
     this.simpleGroupFactory = new SimpleGroupFactory(schema);
     this.root = new SimpleGroupConverter(null, 0, schema) {
       @Override
       public void start() {
-        current = simpleGroupFactory.newGroup();
+        this.current = simpleGroupFactory.newGroup();
       }
 
       @Override
@@ -45,7 +43,7 @@ public class GroupRecordConverter extends RecordConverter<Group> {
 
   @Override
   public Group getCurrentRecord() {
-    return current;
+    return root.getCurrentRecord();
   }
 
   @Override

@@ -21,6 +21,7 @@ import static parquet.column.primitive.BitPacking.getBitPackingReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
+import parquet.Log;
 import parquet.column.primitive.BitPacking.BitPackingReader;
 import parquet.io.ParquetDecodingException;
 
@@ -31,6 +32,7 @@ import parquet.io.ParquetDecodingException;
  *
  */
 public class BitPackingColumnReader extends PrimitiveColumnReader {
+  private static final Log LOG = Log.getLog(BitPackingColumnReader.class);
 
   private ByteArrayInputStream in;
   private BitPackingReader bitPackingReader;
@@ -68,6 +70,7 @@ public class BitPackingColumnReader extends PrimitiveColumnReader {
     // TODO: int vs long
     int effectiveBitLength = (int)valueCount * bitsPerValue;
     int length = effectiveBitLength / 8 + (effectiveBitLength % 8 == 0 ? 0 : 1); // ceil
+    if (Log.DEBUG) LOG.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitsPerValue + " bits." );
     this.in = new ByteArrayInputStream(in, offset, length);
     this.bitPackingReader = getBitPackingReader(bitsPerValue, this.in, valueCount);
     return offset + length;

@@ -142,10 +142,12 @@ public class ExpectationValidatingConverter extends RecordConverter<Void> {
 
   private String path(List<GroupType> path, Type type) {
     String pathString = "";
-    for (GroupType groupType : path) {
-      pathString += groupType.getName() + ".";
+    if (path.size() > 0) {
+      for (int i = 1; i < path.size(); i++) {
+        pathString += path.get(i).getName() + ".";
+      }
     }
-    pathString += type.getName();
+    pathString += type.getName() + ".";
     return pathString;
   }
 

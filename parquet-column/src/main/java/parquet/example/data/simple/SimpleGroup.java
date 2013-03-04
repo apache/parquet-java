@@ -111,6 +111,11 @@ public class SimpleGroup extends Group {
   }
 
   @Override
+  public String getValueToString(int fieldIndex, int index) {
+    return String.valueOf(getValue(fieldIndex, index));
+  }
+
+  @Override
   public String getString(int fieldIndex, int index) {
     return ((BinaryValue)getValue(fieldIndex, index)).getString();
   }

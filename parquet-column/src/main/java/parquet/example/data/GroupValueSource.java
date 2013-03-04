@@ -55,5 +55,7 @@ abstract public class GroupValueSource {
 
   abstract public byte[] getBinary(int fieldIndex, int index);
 
+  abstract public String getValueToString(int fieldIndex, int index);
+
   abstract public GroupType getType();
 }

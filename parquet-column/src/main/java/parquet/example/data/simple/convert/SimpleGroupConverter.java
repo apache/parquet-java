@@ -24,7 +24,7 @@ import parquet.schema.Type;
 class SimpleGroupConverter extends GroupConverter {
   private final SimpleGroupConverter parent;
   private final int index;
-  private Group current;
+  protected Group current;
   private Converter[] converters;
 
   SimpleGroupConverter(SimpleGroupConverter parent, int index, GroupType schema) {

@@ -67,7 +67,7 @@ abstract public class BytesInput {
   /**
    *
    * @param intValue the int to write
-   * @return a BytesInput that will write 4 bytes in big endian
+   * @return a BytesInput that will write 4 bytes in little endian
    */
   public static BytesInput fromInt(int intValue) {
     return new IntBytesInput(intValue);
@@ -203,7 +203,7 @@ abstract public class BytesInput {
 
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
-      BytesUtils.writeIntBigEndian(out, intValue);
+      BytesUtils.writeIntLittleEndian(out, intValue);
     }
 
     @Override
