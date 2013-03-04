@@ -63,7 +63,7 @@ public class ThriftWriteSupport<T extends TBase> extends WriteSupport<T> {
     ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter();
     this.thriftStruct = thriftSchemaConverter.toStructType(thriftClass);
     this.schema = thriftSchemaConverter.convert(thriftClass);
-    return new WriteContext(schema, new ThriftMetaData(thriftClass).toExtraMetaData());
+    return new WriteContext(schema, new ThriftMetaData(thriftClass, thriftStruct).toExtraMetaData());
   }
 
   @Override

@@ -41,19 +41,34 @@ import parquet.example.data.Group;
 import parquet.hadoop.metadata.CompressionCodecName;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
+import com.twitter.data.proto.tutorial.thrift.Name;
 import com.twitter.data.proto.tutorial.thrift.Person;
+import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
 
 public class TestInputOutputFormat {
   private static final Log LOG = Log.getLog(TestInputOutputFormat.class);
+
+  public static AddressBook nextAddressbook(int i) {
+    final ArrayList<Person> persons = new ArrayList<Person>();
+    for (int j = 0; j < i % 3; j++) {
+      final ArrayList<PhoneNumber> phones = new ArrayList<PhoneNumber>();
+      for (int k = 0; k < i%4; k++) {
+        phones.add(new PhoneNumber("12345"+i));
+      }
+      persons.add(new Person(new Name("John"+i, "Roberts"), i, "John@example.com" + i, phones));
+    }
+    AddressBook a = new AddressBook(persons);
+    return a;
+  };
 
   public static class MyMapper extends Mapper<LongWritable, Text, Void, AddressBook> {
 
     public void run(org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,AddressBook>.Context context) throws IOException ,InterruptedException {
       for (int i = 0; i < 10; i++) {
-        AddressBook a = new AddressBook(new ArrayList<Person>());
+        AddressBook a = TestInputOutputFormat.nextAddressbook(i);
         context.write(null, a);
       }
-    };
+    }
   }
 
   public static class MyMapper2 extends Mapper<Void, Group, LongWritable, Text> {
@@ -67,8 +82,8 @@ public class TestInputOutputFormat {
   public void testReadWrite() throws Exception {
     final Configuration conf = new Configuration();
     final Path inputPath = new Path("src/test/java/parquet/hadoop/thrift/TestInputOutputFormat.java");
-    final Path parquetPath = new Path("target/test/example/TestInputOutputFormat/parquet");
-    final Path outputPath = new Path("target/test/example/TestInputOutputFormat/out");
+    final Path parquetPath = new Path("target/test/thrift/TestInputOutputFormat/parquet");
+    final Path outputPath = new Path("target/test/thrift/TestInputOutputFormat/out");
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);
     fileSystem.delete(outputPath, true);
@@ -103,19 +118,16 @@ public class TestInputOutputFormat {
       waitForJob(job);
     }
 
-    final BufferedReader in = new BufferedReader(new FileReader(new File(inputPath.toString())));
     final BufferedReader out = new BufferedReader(new FileReader(new File(outputPath.toString(), "part-m-00000")));
-    String lineIn;
     String lineOut = null;
     int lineNumber = 0;
-    while ((lineIn = in.readLine()) != null && (lineOut = out.readLine()) != null) {
-      ++ lineNumber;
+    while ((lineOut = out.readLine()) != null) {
       lineOut = lineOut.substring(lineOut.indexOf("\t") + 1);
-      assertEquals("line " + lineNumber, lineIn, lineOut);
+      AddressBook a = nextAddressbook(lineNumber);
+      assertEquals("line " + lineNumber, a.toString(), lineOut);
+      ++ lineNumber;
     }
-    assertNull("line " + lineNumber, lineIn);
     assertNull("line " + lineNumber, out.readLine());
-    in.close();
     out.close();
   }
 

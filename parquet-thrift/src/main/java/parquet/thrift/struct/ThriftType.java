@@ -151,7 +151,6 @@ public abstract class ThriftType {
 
   }
 
-//  @JsonTypeName("STRUCT") // TODO: cleanup type names
   public static class StructType extends ThriftType {
     private final List<ThriftField> children;
 
@@ -172,7 +171,6 @@ public abstract class ThriftType {
 
   }
 
-  @JsonTypeName("MAP")
   public static class MapType extends ThriftType {
     private final ThriftField key;
     private final ThriftField value;
@@ -199,7 +197,6 @@ public abstract class ThriftType {
 
   }
 
-  @JsonTypeName("SET")
   public static class SetType extends ThriftType {
     private final ThriftField values;
 
@@ -220,7 +217,6 @@ public abstract class ThriftType {
 
   }
 
-  @JsonTypeName("LIST")
   public static class ListType extends ThriftType {
     private final ThriftField values;
 
@@ -259,7 +255,6 @@ public abstract class ThriftType {
     }
   }
 
-  @JsonTypeName("ENUM")
   public static class EnumType extends ThriftType {
     private final List<EnumValue> values;
 
@@ -279,7 +274,6 @@ public abstract class ThriftType {
     }
   }
 
-  @JsonTypeName("BOOL")
   public static class BoolType extends ThriftType {
 
     @JsonCreator
@@ -292,7 +286,6 @@ public abstract class ThriftType {
     }
   }
 
-  @JsonTypeName("BYTE")
   public static class ByteType extends ThriftType {
 
     @JsonCreator
@@ -305,7 +298,6 @@ public abstract class ThriftType {
     }
   }
 
-  @JsonTypeName("DOUBLE")
   public static class DoubleType extends ThriftType {
 
     @JsonCreator
@@ -318,7 +310,6 @@ public abstract class ThriftType {
     }
   }
 
-  @JsonTypeName("I16")
   public static class I16Type extends ThriftType {
 
     @JsonCreator
@@ -331,7 +322,6 @@ public abstract class ThriftType {
     }
   }
 
-  @JsonTypeName("I32")
   public static class I32Type extends ThriftType {
 
     @JsonCreator
@@ -344,7 +334,6 @@ public abstract class ThriftType {
     }
   }
 
-  @JsonTypeName("I64")
   public static class I64Type extends ThriftType {
 
     @JsonCreator
@@ -357,7 +346,6 @@ public abstract class ThriftType {
     }
   }
 
-  @JsonTypeName("STRING")
   public static class StringType extends ThriftType {
 
     @JsonCreator

@@ -20,25 +20,35 @@ import java.util.Map;
 import org.apache.thrift.TBase;
 
 import parquet.hadoop.BadConfigurationException;
+import parquet.thrift.struct.ThriftType;
+import parquet.thrift.struct.ThriftType.StructType;
 
 
 public class ThriftMetaData {
 
   private static final String THRIFT_CLASS = "thrift.class";
+  private static final String THRIFT_DESCRIPTOR = "thrift.descriptor";
   private final Class<?> thriftClass;
+  private final StructType descriptor;
 
-  public ThriftMetaData(Class<?> thriftClass) {
+  public ThriftMetaData(Class<?> thriftClass, StructType descriptor) {
     this.thriftClass = thriftClass;
+    this.descriptor = descriptor;
   }
 
   public Class<?> getThriftClass() {
     return thriftClass;
   }
 
+  public StructType getDescriptor() {
+    return descriptor;
+  }
+
   public static ThriftMetaData fromExtraMetaData(
       Map<String, String> extraMetaData) {
     final String thriftClassName = extraMetaData.get(THRIFT_CLASS);
-    if (thriftClassName == null) {
+    final String thriftDescriptorString = extraMetaData.get(THRIFT_DESCRIPTOR);
+    if (thriftClassName == null && thriftDescriptorString == null) {
       return null;
     }
     Class<?> thriftClass;
@@ -50,12 +60,19 @@ public class ThriftMetaData {
     } catch (ClassNotFoundException e) {
       throw new BadConfigurationException("Could not instanciate thrift class " + thriftClassName, e);
     }
-    return new ThriftMetaData(thriftClass);
+    final StructType descriptor;
+    try {
+      descriptor = (StructType)ThriftType.fromJSON(thriftDescriptorString);
+    } catch (RuntimeException e) {
+      throw new BadConfigurationException("Could not read the thrift descriptor " + thriftDescriptorString, e);
+    }
+    return new ThriftMetaData(thriftClass, descriptor);
   }
 
   public Map<String, String> toExtraMetaData() {
     final Map<String, String> map = new HashMap<String, String>();
     map.put(THRIFT_CLASS, thriftClass.getName());
+    map.put(THRIFT_DESCRIPTOR, descriptor.toJSON());
     return map;
   }
 

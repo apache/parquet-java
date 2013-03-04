@@ -22,6 +22,9 @@ import org.apache.hadoop.conf.Configuration;
 import parquet.hadoop.ReadSupport;
 import parquet.io.convert.RecordConverter;
 import parquet.schema.MessageType;
+import parquet.thrift.TBaseRecordConverter;
+import parquet.thrift.ThriftMetaData;
+import parquet.thrift.ThriftRecordConverter;
 
 public class ThriftReadSupport<T> extends ReadSupport<T> {
 
@@ -29,9 +32,13 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
   public RecordConverter<T> initForRead(
       Configuration configuration,
       Map<String, String> keyValueMetaData,
-      MessageType fielSchema,
+      MessageType fileSchema,
       MessageType requestedSchema) {
-    throw new UnsupportedOperationException("NYI");
+    final ThriftMetaData thriftMetaData = ThriftMetaData.fromExtraMetaData(keyValueMetaData);
+    final Class<T> thriftClass = (Class<T>)thriftMetaData.getThriftClass();
+    // TODO: handle the requested schema
+    ThriftRecordConverter<T> converter = new TBaseRecordConverter(thriftClass, fileSchema, thriftMetaData.getDescriptor());
+    return converter;
   }
 
 
