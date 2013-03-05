@@ -17,7 +17,9 @@ package parquet.hadoop.metadata;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.List;
 
+import parquet.column.Encoding;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 
@@ -32,6 +34,7 @@ public class ColumnChunkMetaData implements Serializable {
   private final CompressionCodecName codec;
   private final String[] path;
   private final PrimitiveTypeName type;
+  private final List<Encoding> encodings;
 
   private long firstDataPage;
 
@@ -41,15 +44,18 @@ public class ColumnChunkMetaData implements Serializable {
 
   private long totalUncompressedSize;
 
+
   /**
    *
    * @param path column identifier
    * @param type type of the column
+   * @param encodings
    */
-  public ColumnChunkMetaData(String[] path, PrimitiveTypeName type, CompressionCodecName codec) {
+  public ColumnChunkMetaData(String[] path, PrimitiveTypeName type, CompressionCodecName codec, List<Encoding> encodings) {
     this.path = path;
     this.type = type;
     this.codec = codec;
+    this.encodings = encodings;
   }
 
   public CompressionCodecName getCodec() {
@@ -129,6 +135,14 @@ public class ColumnChunkMetaData implements Serializable {
    */
   public void setTotalSize(long totalSize) {
     this.totalSize = totalSize;
+  }
+
+  /**
+   *
+   * @return all the encodings used in this column
+   */
+  public List<Encoding> getEncodings() {
+    return encodings;
   }
 
   @Override

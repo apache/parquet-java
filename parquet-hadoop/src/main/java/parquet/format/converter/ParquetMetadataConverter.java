@@ -137,7 +137,7 @@ public class ParquetMetadataConverter {
       columnChunk.file_path = null; // same file
       columnChunk.meta_data = new parquet.format.ColumnMetaData(
           getType(columnMetaData.getType()),
-          Arrays.asList(Encoding.PLAIN), // TODO: deal with encodings
+          toFormatEncodings(columnMetaData.getEncodings()),
           Arrays.asList(columnMetaData.getPath()),
           columnMetaData.getCodec().getParquetCompressionCodec(),
           columnMetaData.getValueCount(),
@@ -152,6 +152,22 @@ public class ParquetMetadataConverter {
     }
     RowGroup rowGroup = new RowGroup(parquetColumns, block.getTotalByteSize(), block.getRowCount());
     rowGroups.add(rowGroup);
+  }
+
+  private List<Encoding> toFormatEncodings(List<parquet.column.Encoding> encodings) {
+    List<Encoding> converted = new ArrayList<Encoding>();
+    for (parquet.column.Encoding encoding : encodings) {
+      converted.add(getEncoding(encoding));
+    }
+    return converted;
+  }
+
+  private List<parquet.column.Encoding> fromFormatEncodings(List<Encoding> encodings) {
+    List<parquet.column.Encoding> converted = new ArrayList<parquet.column.Encoding>();
+    for (Encoding encoding : encodings) {
+      converted.add(getEncoding(encoding));
+    }
+    return converted;
   }
 
   public parquet.column.Encoding getEncoding(Encoding encoding) {
@@ -244,13 +260,16 @@ public class ParquetMetadataConverter {
       for (ColumnChunk columnChunk : columns) {
         parquet.format.ColumnMetaData metaData = columnChunk.meta_data;
         String[] path = metaData.path_in_schema.toArray(new String[metaData.path_in_schema.size()]);
-        ColumnChunkMetaData column = new ColumnChunkMetaData(path, messageType.getType(path).asPrimitiveType().getPrimitiveTypeName(), CompressionCodecName.fromParquet(metaData.codec));
+        ColumnChunkMetaData column = new ColumnChunkMetaData(
+            path,
+            messageType.getType(path).asPrimitiveType().getPrimitiveTypeName(),
+            CompressionCodecName.fromParquet(metaData.codec),
+            fromFormatEncodings(metaData.encodings));
         column.setFirstDataPage(metaData.data_page_offset);
         column.setValueCount(metaData.num_values);
         column.setTotalUncompressedSize(metaData.total_uncompressed_size);
         column.setTotalSize(metaData.total_compressed_size);
         // TODO
-        // encodings
         // index_page_offset
         // key_value_metadata
         blockMetaData.addColumn(column);

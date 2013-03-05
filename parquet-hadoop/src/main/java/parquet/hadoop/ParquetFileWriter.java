@@ -22,8 +22,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 
 import org.apache.hadoop.conf.Configuration;
@@ -56,7 +58,6 @@ public class ParquetFileWriter {
   private static final Log LOG = Log.getLog(ParquetFileWriter.class);
 
   public static final String PARQUET_SUMMARY = "_ParquetSummary";
-  // TODO: get the right MAGIC
   public static final byte[] MAGIC = "PAR1".getBytes(Charset.forName("ASCII"));
   public static final int CURRENT_VERSION = 1;
 
@@ -71,6 +72,7 @@ public class ParquetFileWriter {
   private long uncompressedLength;
   private long compressedLength;
   private final ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter();
+  private Set<parquet.column.Encoding> currentEncodings;
 
   /**
    * Captures the order in which methods should be called
@@ -168,7 +170,8 @@ public class ParquetFileWriter {
   public void startColumn(ColumnDescriptor descriptor, long valueCount, CompressionCodecName compressionCodecName) throws IOException {
     state = state.startColumn();
     if (DEBUG) LOG.debug(out.getPos() + ": start column: " + descriptor + " count=" + valueCount);
-    currentColumn = new ColumnChunkMetaData(descriptor.getPath(), descriptor.getType(), compressionCodecName);
+    currentEncodings = new HashSet<parquet.column.Encoding>();
+    currentColumn = new ColumnChunkMetaData(descriptor.getPath(), descriptor.getType(), compressionCodecName, new ArrayList<parquet.column.Encoding>());
     currentColumn.setValueCount(valueCount);
     currentColumn.setFirstDataPage(out.getPos());
     compressedLength = 0;
@@ -183,18 +186,19 @@ public class ParquetFileWriter {
    */
   public void writeDataPage(
       int valueCount, int uncompressedPageSize,
-      BytesInput bytes) throws IOException {
+      BytesInput bytes, parquet.column.Encoding encoding) throws IOException {
     state = state.write();
     if (DEBUG) LOG.debug(out.getPos() + ": write data page: " + valueCount + " values");
     int compressedPageSize = (int)bytes.size();
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedPageSize, compressedPageSize);
     // pageHeader.crc = ...;
-    pageHeader.data_page_header = new DataPageHeader(valueCount, Encoding.PLAIN); // TODO: encoding
+    pageHeader.data_page_header = new DataPageHeader(valueCount, metadataConverter.getEncoding(encoding));
     metadataConverter.writePageHeader(pageHeader, out);
     this.uncompressedLength += uncompressedPageSize;
     this.compressedLength += compressedPageSize;
     if (DEBUG) LOG.debug(out.getPos() + ": write data page content " + compressedPageSize);
     bytes.writeAllTo(out);
+    currentEncodings.add(encoding);
   }
 
   /**
@@ -204,7 +208,7 @@ public class ParquetFileWriter {
    * @param compressedTotalPageSize total compressed size (without page headers)
    * @throws IOException
    */
-   void writeDataPages(BytesInput bytes, long uncompressedTotalPageSize, long compressedTotalPageSize) throws IOException {
+   void writeDataPages(BytesInput bytes, long uncompressedTotalPageSize, long compressedTotalPageSize, List<parquet.column.Encoding> encodings) throws IOException {
     state = state.write();
     if (DEBUG) LOG.debug(out.getPos() + ": write data pages");
 //    int compressedPageSize = (int)bytes.size();
@@ -216,6 +220,7 @@ public class ParquetFileWriter {
     this.compressedLength += compressedTotalPageSize;
     if (DEBUG) LOG.debug(out.getPos() + ": write data pages content");
     bytes.writeAllTo(out);
+    currentEncodings.addAll(encodings);
   }
 
   /**
@@ -227,11 +232,13 @@ public class ParquetFileWriter {
     if (DEBUG) LOG.debug(out.getPos() + ": end column");
     currentColumn.setTotalUncompressedSize(uncompressedLength);
     currentColumn.setTotalSize(compressedLength);
+    currentColumn.getEncodings().addAll(currentEncodings);
     currentBlock.addColumn(currentColumn);
     if (INFO) LOG.info("ended Column chumk: " + currentColumn);
     currentColumn = null;
     this.uncompressedLength = 0;
     this.compressedLength = 0;
+    this.currentEncodings.clear();
   }
 
   /**
