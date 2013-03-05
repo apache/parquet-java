@@ -218,8 +218,8 @@ public class MessageColumnIO extends GroupColumnIO {
     }
 
     @Override
-    public void addBinary(byte[] value) {
-      if (DEBUG) log("addBinary("+value.length+" bytes)");
+    public void addBinary(Binary value) {
+      if (DEBUG) log("addBinary("+value.length()+" bytes)");
       getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
       setRepetitionLevel();

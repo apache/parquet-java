@@ -39,7 +39,7 @@ public class ParquetMetadata {
   private static ObjectMapper objectMapper = new ObjectMapper();
   private static ObjectMapper prettyObjectMapper = new ObjectMapper();
   static {
-    prettyObjectMapper.getSerializationConfig().set(Feature.INDENT_OUTPUT, true);
+    prettyObjectMapper.configure(Feature.INDENT_OUTPUT, true);
   }
 
   /**

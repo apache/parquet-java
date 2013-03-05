@@ -18,6 +18,7 @@ package parquet.column.mem;
 import java.io.IOException;
 
 import parquet.bytes.BytesInput;
+import parquet.column.Encoding;
 
 /**
  * a writer for all the pages of a given column chunk
@@ -33,7 +34,7 @@ public interface PageWriter {
    * @param valueCount the number of values in that page
    * @throws IOException
    */
-  abstract public void writePage(BytesInput bytesInput, int valueCount) throws IOException;
+  abstract public void writePage(BytesInput bytesInput, int valueCount, Encoding encoding) throws IOException;
 
   /**
    *

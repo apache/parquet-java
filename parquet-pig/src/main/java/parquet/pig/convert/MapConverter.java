@@ -32,6 +32,8 @@ import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
+import parquet.io.Binary;
+import parquet.io.convert.Converter;
 import parquet.io.convert.GroupConverter;
 import parquet.io.convert.PrimitiveConverter;
 import parquet.schema.GroupType;
@@ -56,16 +58,11 @@ final class MapConverter extends GroupConverter {
   }
 
   @Override
-  public GroupConverter getGroupConverter(int fieldIndex) {
+  public Converter getConverter(int fieldIndex) {
     if (fieldIndex != 0) {
-      throw new IllegalArgumentException("bags have only one field. can't reach " + fieldIndex);
+      throw new IllegalArgumentException("maps have only one field. can't reach " + fieldIndex);
     }
     return keyValue;
-  }
-
-  @Override
-  public PrimitiveConverter getPrimitiveConverter(int fieldIndex) {
-    throw new UnsupportedOperationException();
   }
 
   /** runtime methods */
@@ -127,19 +124,13 @@ final class MapConverter extends GroupConverter {
     }
 
     @Override
-    public GroupConverter getGroupConverter(int fieldIndex) {
-      if (fieldIndex != 1) {
-        throw new IllegalArgumentException("only the value field at 1 is expected: " + fieldIndex);
+    public Converter getConverter(int fieldIndex) {
+      if (fieldIndex == 0) {
+        return keyConverter;
+      } else if (fieldIndex == 1) {
+        return valueConverter;
       }
-      return valueConverter;
-    }
-
-    @Override
-    public PrimitiveConverter getPrimitiveConverter(int fieldIndex) {
-      if (fieldIndex != 0) {
-        throw new IllegalArgumentException("only the key field at 0 is expected: " + fieldIndex);
-      }
-      return keyConverter;
+      throw new IllegalArgumentException("only the key (0) and value (1) fields expected: " + fieldIndex);
     }
 
     /** runtime methods */
@@ -159,8 +150,8 @@ final class MapConverter extends GroupConverter {
   final class StringKeyConverter extends PrimitiveConverter {
 
     @Override
-    final public void addBinary(byte[] value) {
-      currentKey = new String(value, UTF8);
+    final public void addBinary(Binary value) {
+      currentKey = value.toStringUsingUTF8();
     }
 
   }

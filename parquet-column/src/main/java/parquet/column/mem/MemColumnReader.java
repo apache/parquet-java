@@ -16,6 +16,7 @@
 package parquet.column.mem;
 
 import static parquet.Log.DEBUG;
+import static parquet.column.Encoding.PLAIN;
 
 import java.io.IOException;
 
@@ -27,6 +28,7 @@ import parquet.column.primitive.BooleanPlainColumnReader;
 import parquet.column.primitive.BoundedColumnFactory;
 import parquet.column.primitive.PlainColumnReader;
 import parquet.column.primitive.PrimitiveColumnReader;
+import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
 
 /**
@@ -130,7 +132,7 @@ abstract class MemColumnReader implements ColumnReader {
    * @see parquet.column.ColumnReader#getBinary()
    */
   @Override
-  public byte[] getBinary() {
+  public Binary getBinary() {
     throw new UnsupportedOperationException();
   }
 
@@ -217,9 +219,14 @@ abstract class MemColumnReader implements ColumnReader {
     if (isPageFullyConsumed()) {
       if (DEBUG) LOG.debug("loading page");
       Page page = pageReader.readPage();
+      if (page.getEncoding() != PLAIN) {
+        // TODO: implement more encoding
+        throw new ParquetDecodingException("Unsupported encoding: " + page.getEncoding());
+      }
+
       repetitionLevelColumn = new BitPackingColumnReader(path.getRepetitionLevel());
       definitionLevelColumn = BoundedColumnFactory.getBoundedReader(path.getDefinitionLevel());
-      // TODO: from encoding
+
       switch (path.getType()) {
       case BOOLEAN:
         this.dataColumn = new BooleanPlainColumnReader();
@@ -232,8 +239,11 @@ abstract class MemColumnReader implements ColumnReader {
       try {
         byte[] bytes = page.getBytes().toByteArray();
         if (DEBUG) LOG.debug("page size " + bytes.length + " bytes and " + pageValueCount + " records");
+        if (DEBUG) LOG.debug("reading repetition levels at 0");
         int next = repetitionLevelColumn.initFromPage(pageValueCount, bytes, 0);
+        if (DEBUG) LOG.debug("reading definition levels at " + next);
         next = definitionLevelColumn.initFromPage(pageValueCount, bytes, next);
+        if (DEBUG) LOG.debug("reading data at " + next);
         dataColumn.initFromPage(pageValueCount, bytes, next);
       } catch (IOException e) {
         throw new ParquetDecodingException("could not read page " + page + " in col " + path, e);

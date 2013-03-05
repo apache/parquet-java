@@ -247,4 +247,19 @@ public class GroupType extends Type {
     }
   }
 
+  @Override
+  <T> T convert(List<GroupType> path, TypeConverter<T> converter) {
+    List<GroupType> childrenPath = new ArrayList<GroupType>(path);
+    childrenPath.add(this);
+    final List<T> children = convertChildren(childrenPath, converter);
+    return converter.convertGroupType(path, this, children);
+  }
+
+  protected <T> List<T> convertChildren(List<GroupType> path, TypeConverter<T> converter) {
+    List<T> children = new ArrayList<T>(fields.size());
+    for (Type field : fields) {
+      children.add(field.convert(path, converter));
+    }
+    return children;
+  }
 }

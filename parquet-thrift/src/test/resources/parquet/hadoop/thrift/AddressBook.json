@@ -1,0 +1,96 @@
+{
+  "type" : "STRUCT",
+  "children" : [ {
+    "name" : "persons",
+    "fieldId" : 1,
+    "requirement" : "OPTIONAL",
+    "type" : {
+      "type" : "LIST",
+      "values" : {
+        "name" : "persons",
+        "fieldId" : 1,
+        "requirement" : "OPTIONAL",
+        "type" : {
+          "type" : "STRUCT",
+          "children" : [ {
+            "name" : "name",
+            "fieldId" : 1,
+            "requirement" : "OPTIONAL",
+            "type" : {
+              "type" : "STRUCT",
+              "children" : [ {
+                "name" : "first_name",
+                "fieldId" : 1,
+                "requirement" : "OPTIONAL",
+                "type" : {
+                  "type" : "STRING"
+                }
+              }, {
+                "name" : "last_name",
+                "fieldId" : 2,
+                "requirement" : "OPTIONAL",
+                "type" : {
+                  "type" : "STRING"
+                }
+              } ]
+            }
+          }, {
+            "name" : "id",
+            "fieldId" : 2,
+            "requirement" : "OPTIONAL",
+            "type" : {
+              "type" : "I32"
+            }
+          }, {
+            "name" : "email",
+            "fieldId" : 3,
+            "requirement" : "OPTIONAL",
+            "type" : {
+              "type" : "STRING"
+            }
+          }, {
+            "name" : "phones",
+            "fieldId" : 4,
+            "requirement" : "OPTIONAL",
+            "type" : {
+              "type" : "LIST",
+              "values" : {
+                "name" : "phones",
+                "fieldId" : 1,
+                "requirement" : "OPTIONAL",
+                "type" : {
+                  "type" : "STRUCT",
+                  "children" : [ {
+                    "name" : "number",
+                    "fieldId" : 1,
+                    "requirement" : "OPTIONAL",
+                    "type" : {
+                      "type" : "STRING"
+                    }
+                  }, {
+                    "name" : "type",
+                    "fieldId" : 2,
+                    "requirement" : "OPTIONAL",
+                    "type" : {
+                      "type" : "ENUM",
+                      "values" : [ {
+                        "id" : 0,
+                        "name" : "MOBILE"
+                      }, {
+                        "id" : 1,
+                        "name" : "HOME"
+                      }, {
+                        "id" : 2,
+                        "name" : "WORK"
+                      } ]
+                    }
+                  } ]
+                }
+              }
+            }
+          } ]
+        }
+      }
+    }
+  } ]
+}

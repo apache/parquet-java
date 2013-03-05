@@ -56,7 +56,7 @@ public class PerfTest {
       String message) {
     MessageColumnIO columnIO = newColumnFactory(myschema);
     System.out.println(message);
-    RecordConverter<Object> recordConsumer = new DummyRecordConverter();
+    RecordConverter<Object> recordConsumer = new DummyRecordConverter(myschema);
     RecordReader<Object> recordReader = columnIO.getRecordReader(memPageStore, recordConsumer);
 
     read(recordReader, 2, myschema);

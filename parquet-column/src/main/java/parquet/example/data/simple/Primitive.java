@@ -15,6 +15,7 @@
  */
 package parquet.example.data.simple;
 
+import parquet.io.Binary;
 import parquet.io.RecordConsumer;
 
 public abstract class Primitive {
@@ -35,7 +36,7 @@ public abstract class Primitive {
     throw new UnsupportedOperationException();
   }
 
-  public byte[] getBinary() {
+  public Binary getBinary() {
     throw new UnsupportedOperationException();
   }
 

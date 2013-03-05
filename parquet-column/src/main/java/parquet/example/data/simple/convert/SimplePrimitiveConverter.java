@@ -15,6 +15,7 @@
  */
 package parquet.example.data.simple.convert;
 
+import parquet.io.Binary;
 import parquet.io.convert.PrimitiveConverter;
 
 class SimplePrimitiveConverter extends PrimitiveConverter {
@@ -33,7 +34,7 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
    * @see parquet.io.convert.PrimitiveConverter#addBinary(byte[])
    */
   @Override
-  public void addBinary(byte[] value) {
+  public void addBinary(Binary value) {
     parent.getCurrentRecord().add(index, value);
   }
 

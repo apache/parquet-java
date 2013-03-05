@@ -15,25 +15,27 @@
  */
 package parquet.example.data.simple;
 
+import parquet.bytes.BytesUtils;
+import parquet.io.Binary;
 import parquet.io.RecordConsumer;
 
 
 public class BinaryValue extends Primitive {
 
-  private final byte[] binary;
+  private final Binary binary;
 
-  public BinaryValue(byte[] binary) {
+  public BinaryValue(Binary binary) {
     this.binary = binary;
   }
 
   @Override
-  public byte[] getBinary() {
+  public Binary getBinary() {
     return binary;
   }
 
   @Override
   public String getString() {
-    return new String(binary);
+    return binary.toStringUsingUTF8();
   }
 
   @Override
@@ -43,6 +45,6 @@ public class BinaryValue extends Primitive {
 
   @Override
   public String toString() {
-    return new String(binary);
+    return getString();
   }
 }

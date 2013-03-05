@@ -35,11 +35,14 @@ import org.apache.thrift.transport.TIOStreamTransport;
 
 import parquet.format.ColumnChunk;
 import parquet.format.CompressionCodec;
+import parquet.format.DataPageHeader;
 import parquet.format.Encoding;
+import parquet.format.FieldLevelEncoding;
 import parquet.format.FieldRepetitionType;
 import parquet.format.FileMetaData;
 import parquet.format.KeyValue;
 import parquet.format.PageHeader;
+import parquet.format.PageType;
 import parquet.format.RowGroup;
 import parquet.format.SchemaElement;
 import parquet.format.Type;
@@ -137,7 +140,7 @@ public class ParquetMetadataConverter {
       columnChunk.file_path = null; // same file
       columnChunk.meta_data = new parquet.format.ColumnMetaData(
           getType(columnMetaData.getType()),
-          Arrays.asList(Encoding.PLAIN), // TODO: deal with encodings
+          toFormatEncodings(columnMetaData.getEncodings()),
           Arrays.asList(columnMetaData.getPath()),
           columnMetaData.getCodec().getParquetCompressionCodec(),
           columnMetaData.getValueCount(),
@@ -154,17 +157,37 @@ public class ParquetMetadataConverter {
     rowGroups.add(rowGroup);
   }
 
-  private CompressionCodec getCodec(String codecClassName) {
-    if (codecClassName.equals("org.apache.hadoop.io.compress.GzipCodec")) {
-      return CompressionCodec.GZIP;
-    } else if (codecClassName.equals("com.hadoop.compression.lzo.LzopCodec")) {
-      return CompressionCodec.LZO;
-    } else if (codecClassName.equals("org.apache.hadoop.io.compress.SnappyCodec")) {
-      return CompressionCodec.SNAPPY;
-    } else if (codecClassName.equals("")) {
-      return CompressionCodec.UNCOMPRESSED;
-    } else {
-      throw new RuntimeException("Unknown Codec "+ codecClassName);
+  private List<Encoding> toFormatEncodings(List<parquet.column.Encoding> encodings) {
+    List<Encoding> converted = new ArrayList<Encoding>();
+    for (parquet.column.Encoding encoding : encodings) {
+      converted.add(getEncoding(encoding));
+    }
+    return converted;
+  }
+
+  private List<parquet.column.Encoding> fromFormatEncodings(List<Encoding> encodings) {
+    List<parquet.column.Encoding> converted = new ArrayList<parquet.column.Encoding>();
+    for (Encoding encoding : encodings) {
+      converted.add(getEncoding(encoding));
+    }
+    return converted;
+  }
+
+  public parquet.column.Encoding getEncoding(Encoding encoding) {
+    switch (encoding) {
+    case PLAIN:
+      return parquet.column.Encoding.PLAIN;
+    default:
+      throw new RuntimeException("Unknown encoding " + encoding);
+    }
+  }
+
+  public Encoding getEncoding(parquet.column.Encoding encoding) {
+    switch (encoding) {
+    case PLAIN:
+      return parquet.format.Encoding.PLAIN;
+    default:
+      throw new RuntimeException("Unknown encoding " + encoding);
     }
   }
 
@@ -226,13 +249,16 @@ public class ParquetMetadataConverter {
       for (ColumnChunk columnChunk : columns) {
         parquet.format.ColumnMetaData metaData = columnChunk.meta_data;
         String[] path = metaData.path_in_schema.toArray(new String[metaData.path_in_schema.size()]);
-        ColumnChunkMetaData column = new ColumnChunkMetaData(path, messageType.getType(path).asPrimitiveType().getPrimitiveTypeName(), CompressionCodecName.fromParquet(metaData.codec));
+        ColumnChunkMetaData column = new ColumnChunkMetaData(
+            path,
+            messageType.getType(path).asPrimitiveType().getPrimitiveTypeName(),
+            CompressionCodecName.fromParquet(metaData.codec),
+            fromFormatEncodings(metaData.encodings));
         column.setFirstDataPage(metaData.data_page_offset);
         column.setValueCount(metaData.num_values);
         column.setTotalUncompressedSize(metaData.total_uncompressed_size);
         column.setTotalSize(metaData.total_compressed_size);
         // TODO
-        // encodings
         // index_page_offset
         // key_value_metadata
         blockMetaData.addColumn(column);
@@ -250,6 +276,7 @@ public class ParquetMetadataConverter {
   }
 
   MessageType fromParquetSchema(List<SchemaElement> schema) {
+
     Iterator<SchemaElement> iterator = schema.iterator();
     SchemaElement root = iterator.next();
     return new MessageType(root.getName(), convertChildren(iterator, root.getNum_children()));
@@ -289,7 +316,16 @@ public class ParquetMetadataConverter {
     throw new RuntimeException("unknown repetition: " + repetition);
   }
 
-  public void writePageHeader(PageHeader pageHeader, OutputStream to) throws IOException {
+  public void writeDataPageHeader(
+      int uncompressedSize,
+      int compressedSize,
+      int valueCount,
+      parquet.column.Encoding encoding,
+      OutputStream to) throws IOException {
+    writePageHeader(newDataPageHeader(uncompressedSize, compressedSize, valueCount, encoding), to);
+  }
+
+  protected void writePageHeader(PageHeader pageHeader, OutputStream to) throws IOException {
     write(pageHeader, to);
   }
 
@@ -343,5 +379,20 @@ public class ParquetMetadataConverter {
       throw new IOException("can not write " + tbase, e);
     }
   }
+
+  private PageHeader newDataPageHeader(
+      int uncompressedSize, int compressedSize,
+      int valueCount,
+      parquet.column.Encoding encoding) {
+    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, (int)uncompressedSize, (int)compressedSize);
+    // TODO: pageHeader.crc = ...;
+    pageHeader.data_page_header = new DataPageHeader(
+        valueCount,
+        getEncoding(encoding),
+        FieldLevelEncoding.RLE, // TODO: manage several encodings
+        FieldLevelEncoding.BIT_PACKED);
+    return pageHeader;
+  }
+
 
 }

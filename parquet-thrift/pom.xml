@@ -16,6 +16,7 @@
   <url>https://github.com/julienledem/Parquet/parquet-mr</url>
 
   <properties>
+    <elephant-bird.version>3.0.7</elephant-bird.version>
   </properties>
 
   <dependencies>
@@ -37,12 +38,40 @@
     <dependency>
       <groupId>com.twitter.elephantbird</groupId>
       <artifactId>elephant-bird-core</artifactId>
-      <version>3.0.5</version>
+      <version>${elephant-bird.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.twitter.elephantbird</groupId>
+      <artifactId>elephant-bird-pig</artifactId>
+      <version>${elephant-bird.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-mapper-asl</artifactId>
+      <version>1.9.11</version>
+    </dependency>
+<!--    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-annotations</artifactId>
+      <version>1.9.11</version>
+    </dependency> -->
     <dependency>
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
       <version>1.2.17</version>
+    </dependency>
+    <dependency>
+      <groupId>parquet</groupId>
+      <artifactId>parquet-column</artifactId>
+      <version>${project.version}</version>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>parquet</groupId>
+      <artifactId>parquet-pig</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 </project>

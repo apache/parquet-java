@@ -17,6 +17,7 @@ package parquet.column.mem;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
+import parquet.column.Encoding;
 
 /**
  * one page in a chunk
@@ -33,12 +34,20 @@ public class Page {
   private final BytesInput bytes;
   private final int valueCount;
   private final int uncompressedSize;
+  private final Encoding encoding;
   private final int id;
 
-  public Page(BytesInput bytes, int valueCount, int uncompressedSize) {
+  /**
+   * @param bytes the bytes for this page
+   * @param valueCount count of values in this page
+   * @param uncompressedSize the uncompressed size of the page
+   * @param encoding the encoding for this page
+   */
+  public Page(BytesInput bytes, int valueCount, int uncompressedSize, Encoding encoding) {
     this.bytes = bytes;
     this.valueCount = valueCount;
     this.uncompressedSize = uncompressedSize;
+    this.encoding = encoding;
     this.id = nextId ++;
     if (DEBUG) LOG.debug("new Page #"+id+" : " + bytes.size() + " bytes and " + valueCount + " records");
   }
@@ -67,9 +76,17 @@ public class Page {
     return uncompressedSize;
   }
 
+  /**
+   *
+   * @return the encoding for this page
+   */
+  public Encoding getEncoding() {
+    return encoding;
+  }
+
   @Override
   public String toString() {
-    return "Page [id: " + id + ", bytes.size=" + bytes.size() + ", valueCount=" + valueCount + "]";
+    return "Page [id: " + id + ", bytes.size=" + bytes.size() + ", valueCount=" + valueCount + ", uncompressedSize=" + uncompressedSize + ", encoding=" + encoding + "]";
   }
 
 }

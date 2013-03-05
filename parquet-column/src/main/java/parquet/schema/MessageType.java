@@ -110,4 +110,10 @@ public class MessageType extends GroupType {
     }
     super.checkContains(subType);
   }
+
+  public <T> T convertWith(TypeConverter<T> converter) {
+    final ArrayList<GroupType> path = new ArrayList<GroupType>();
+    path.add(this);
+    return converter.convertMessageType(this, convertChildren(path, converter));
+  }
 }

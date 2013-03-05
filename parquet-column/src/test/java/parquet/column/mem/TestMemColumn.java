@@ -26,6 +26,7 @@ import parquet.column.ColumnWriter;
 import parquet.column.mem.MemColumnReadStore;
 import parquet.column.mem.MemColumnWriteStore;
 import parquet.column.mem.MemPageStore;
+import parquet.io.Binary;
 import parquet.parser.MessageTypeParser;
 import parquet.schema.MessageType;
 
@@ -68,14 +69,14 @@ public class TestMemColumn {
     ColumnDescriptor path = getCol(schema, col);
 
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
-    columnWriter.write("42".getBytes(), 0, 0);
+    columnWriter.write(Binary.fromString("42"), 0, 0);
     columnWriter.flush();
 
     ColumnReader columnReader = new MemColumnReadStore(memPageStore).getColumnReader(path);
     while (!columnReader.isFullyConsumed()) {
       assertEquals(columnReader.getCurrentRepetitionLevel(), 0);
       assertEquals(columnReader.getCurrentDefinitionLevel(), 0);
-      assertEquals(new String(columnReader.getBinary()), "42");
+      assertEquals(columnReader.getBinary().toStringUsingUTF8(), "42");
       columnReader.consume();
     }
   }

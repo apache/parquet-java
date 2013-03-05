@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.pig;
+package parquet.io;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-import parquet.io.RecordConsumer;
 import parquet.io.convert.GroupConverter;
 import parquet.io.convert.PrimitiveConverter;
 import parquet.schema.MessageType;
@@ -58,9 +57,9 @@ public class ConverterConsumer extends RecordConsumer {
     typePath.push(currentType);
     currentType = currentType.asGroupType().getType(index);
     if (currentType.isPrimitive()) {
-      currentPrimitive = current.getPrimitiveConverter(index);
+      currentPrimitive = current.getConverter(index).asPrimitiveConverter();
     } else {
-      current = current.getGroupConverter(index);
+      current = current.getConverter(index).asGroupConverter();
     }
   }
 
@@ -96,7 +95,7 @@ public class ConverterConsumer extends RecordConsumer {
   }
 
   @Override
-  public void addBinary(byte[] value) {
+  public void addBinary(Binary value) {
     currentPrimitive.addBinary(value);
   }
 

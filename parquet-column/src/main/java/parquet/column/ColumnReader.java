@@ -15,6 +15,8 @@
  */
 package parquet.column;
 
+import parquet.io.Binary;
+
 /**
  * reader for (repetition level, definition level, values) triplets
  * each iteration looks at the current definition level and value as well as the next repetition level
@@ -75,7 +77,7 @@ public interface ColumnReader {
    *
    * @return the current value
    */
-  byte[] getBinary();
+  Binary getBinary();
 
   /**
    *

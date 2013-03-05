@@ -302,4 +302,9 @@ public class PrimitiveType extends Type {
     }
 
   }
+
+  @Override
+  public <T> T convert(List<GroupType> path, TypeConverter<T> converter) {
+    return converter.convertPrimitiveType(path, this);
+  }
 }

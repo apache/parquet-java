@@ -22,6 +22,8 @@ import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.bytes.LittleEndianDataOutputStream;
+import parquet.column.Encoding;
+import parquet.io.Binary;
 import parquet.io.ParquetEncodingException;
 
 
@@ -31,7 +33,7 @@ import parquet.io.ParquetEncodingException;
  * @author Julien Le Dem
  *
  */
-public class PlainColumnWriter extends PrimitiveColumnWriter {
+public class PlainColumnWriter extends DataColumnWriter {
   private static final Log LOG = Log.getLog(PlainColumnWriter.class);
 
   public static final Charset CHARSET = Charset.forName("UTF-8");
@@ -45,10 +47,10 @@ public class PlainColumnWriter extends PrimitiveColumnWriter {
   }
 
   @Override
-  public final void writeBytes(byte[] v) {
+  public final void writeBytes(Binary v) {
     try {
-      out.writeInt(v.length);
-      out.write(v);
+      out.writeInt(v.length());
+      v.writeTo(out);
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write bytes", e);
     }
@@ -123,6 +125,11 @@ public class PlainColumnWriter extends PrimitiveColumnWriter {
   @Override
   public long allocatedSize() {
     return arrayOut.getCapacity();
+  }
+
+  @Override
+  public Encoding getEncoding() {
+    return Encoding.PLAIN;
   }
 
 }

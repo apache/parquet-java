@@ -18,61 +18,121 @@ package parquet.io;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Deque;
+import java.util.List;
 
+import parquet.io.convert.Converter;
 import parquet.io.convert.GroupConverter;
 import parquet.io.convert.PrimitiveConverter;
 import parquet.io.convert.RecordConverter;
+import parquet.schema.GroupType;
+import parquet.schema.MessageType;
+import parquet.schema.PrimitiveType;
+import parquet.schema.Type;
+import parquet.schema.TypeConverter;
 
-public class ExpectationValidatingConverter extends ExpectationValidatingGroupConverter {
+public class ExpectationValidatingConverter extends RecordConverter<Void> {
 
-  public ExpectationValidatingConverter(Deque<String> expectations) {
-    super(null, new Validator(expectations));
-  }
+  private GroupConverter root;
 
-  @Override
-  public Void getCurrentRecord() {
-    return null;
-  }
-
-  @Override
-  public void start() {
-    validate("startMessage()");
-  }
-
-  @Override
-  public void end() {
-    validate("endMessage()");
-  }
-
-}
-
-class Validator {
   private final Deque<String> expectations;
   int count = 0;
-
-  public Validator(Deque<String> expectations) {
-    this.expectations = expectations;
-  }
 
   public void validate(String got) {
     assertEquals("event #"+count, expectations.pop(), got);
     ++count;
   }
 
-}
+  public ExpectationValidatingConverter(Deque<String> expectations, MessageType schema) {
+    this.expectations = expectations;
+    this.root = (GroupConverter)schema.convertWith(new TypeConverter<Converter>() {
 
-class ExpectationValidatingGroupConverter extends RecordConverter<Void> {
+      @Override
+      public Converter convertPrimitiveType(final List<GroupType> path, final PrimitiveType primitiveType) {
+        return new PrimitiveConverter() {
 
-  private final String path;
-  private final Validator validator;
+          private void validate(String message) {
+            ExpectationValidatingConverter.this.validate(path(path, primitiveType) + message);
+          }
 
-  public ExpectationValidatingGroupConverter(String path, Validator validator) {
-    this.path = path;
-    this.validator = validator;
-  }
+          @Override
+          public void addBinary(Binary value) {
+            validate("addBinary("+value.toStringUsingUTF8()+")");
+          }
 
-  public void validate(String s) {
-    validator.validate((path == null ? "" : path + ".") + s);
+          @Override
+          public void addBoolean(boolean value) {
+            validate("addBoolean("+value+")");
+          }
+
+          @Override
+          public void addDouble(double value) {
+            validate("addDouble("+value+")");
+          }
+
+          @Override
+          public void addFloat(float value) {
+            validate("addFloat("+value+")");
+          }
+
+          @Override
+          public void addInt(int value) {
+            validate("addInt("+value+")");
+          }
+
+          @Override
+          public void addLong(long value) {
+            validate("addLong("+value+")");
+          }
+        };
+      }
+
+      @Override
+      public Converter convertGroupType(final List<GroupType> path, final GroupType groupType, final List<Converter> children) {
+        return new GroupConverter() {
+
+          private void validate(String message) {
+            ExpectationValidatingConverter.this.validate(path(path, groupType) + message);
+          }
+
+          @Override
+          public void start() {
+            validate("start()");
+          }
+
+          @Override
+          public void end() {
+            validate("end()");
+          }
+
+          @Override
+          public Converter getConverter(int fieldIndex) {
+            return children.get(fieldIndex);
+          }
+
+        };
+      }
+
+      @Override
+      public Converter convertMessageType(MessageType messageType, final List<Converter> children) {
+        return new GroupConverter() {
+
+          @Override
+          public Converter getConverter(int fieldIndex) {
+            return children.get(fieldIndex);
+          }
+
+          @Override
+          public void start() {
+            validate("startMessage()");
+          }
+
+          @Override
+          public void end() {
+            validate("endMessage()");
+          }
+        };
+      }
+    });
   }
 
   @Override
@@ -80,71 +140,20 @@ class ExpectationValidatingGroupConverter extends RecordConverter<Void> {
     return null;
   }
 
-  @Override
-  public GroupConverter getGroupConverter(int fieldIndex) {
-    return new ExpectationValidatingGroupConverter((path == null ? "" : path + ".") + fieldIndex, validator);
+  private String path(List<GroupType> path, Type type) {
+    String pathString = "";
+    if (path.size() > 0) {
+      for (int i = 1; i < path.size(); i++) {
+        pathString += path.get(i).getName() + ".";
+      }
+    }
+    pathString += type.getName() + ".";
+    return pathString;
   }
 
   @Override
-  public PrimitiveConverter getPrimitiveConverter(int fieldIndex) {
-    return new ExpectationValidatingPrimitiveConverter((path == null ? "" : path + ".") + fieldIndex, validator);
-  }
-
-  @Override
-  public void start() {
-    validate("start()");
-  }
-
-  @Override
-  public void end() {
-    validate("end()");
-  }
-
-}
-
-class ExpectationValidatingPrimitiveConverter extends PrimitiveConverter {
-
-  private final String path;
-  private final Validator validator;
-
-  public ExpectationValidatingPrimitiveConverter(String path,
-      Validator validator) {
-        this.path = path;
-        this.validator = validator;
-  }
-
-  public void validate(String s) {
-    validator.validate((path == null ? "" : path + ".") + s);
-  }
-
-  @Override
-  public void addBinary(byte[] value) {
-    validate("addBinary("+new String(value)+")");
-  }
-
-  @Override
-  public void addBoolean(boolean value) {
-    validate("addBoolean("+value+")");
-  }
-
-  @Override
-  public void addDouble(double value) {
-    validate("addDouble("+value+")");
-  }
-
-  @Override
-  public void addFloat(float value) {
-    validate("addFloat("+value+")");
-  }
-
-  @Override
-  public void addInt(int value) {
-    validate("addInt("+value+")");
-  }
-
-  @Override
-  public void addLong(long value) {
-    validate("addLong("+value+")");
+  public GroupConverter getRootConverter() {
+    return root;
   }
 
 }

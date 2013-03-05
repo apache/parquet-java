@@ -28,6 +28,7 @@ import org.apache.hadoop.fs.Path;
 import parquet.Log;
 import parquet.column.mem.MemColumnWriteStore;
 import parquet.column.mem.MemPageStore;
+import parquet.io.Binary;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.io.RecordConsumer;
@@ -98,7 +99,7 @@ public class GenerateTPCH {
       if (value instanceof Integer) {
         recordWriter.addInteger((Integer)value);
       } else if (value instanceof String) {
-        recordWriter.addBinary(((String)value).getBytes());
+        recordWriter.addBinary(Binary.fromString((String)value));
       } else if (value instanceof Double) {
         recordWriter.addDouble((Double)value);
       } else {

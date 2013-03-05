@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import parquet.example.data.Group;
+import parquet.io.Binary;
 import parquet.io.RecordConsumer;
 import parquet.schema.GroupType;
 import parquet.schema.Type;
@@ -111,6 +112,11 @@ public class SimpleGroup extends Group {
   }
 
   @Override
+  public String getValueToString(int fieldIndex, int index) {
+    return String.valueOf(getValue(fieldIndex, index));
+  }
+
+  @Override
   public String getString(int fieldIndex, int index) {
     return ((BinaryValue)getValue(fieldIndex, index)).getString();
   }
@@ -126,7 +132,7 @@ public class SimpleGroup extends Group {
   }
 
   @Override
-  public byte[] getBinary(int fieldIndex, int index) {
+  public Binary getBinary(int fieldIndex, int index) {
     return ((BinaryValue)getValue(fieldIndex, index)).getBinary();
   }
 
@@ -142,7 +148,7 @@ public class SimpleGroup extends Group {
 
   @Override
   public void add(int fieldIndex, String value) {
-    add(fieldIndex, new BinaryValue(value.getBytes()));
+    add(fieldIndex, new BinaryValue(Binary.fromString(value)));
   }
 
   @Override
@@ -151,7 +157,7 @@ public class SimpleGroup extends Group {
   }
 
   @Override
-  public void add(int fieldIndex, byte[] value) {
+  public void add(int fieldIndex, Binary value) {
     add(fieldIndex, new BinaryValue(value));
   }
 

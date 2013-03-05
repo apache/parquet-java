@@ -15,6 +15,8 @@
  */
 package parquet.pig;
 
+import static parquet.column.Encoding.PLAIN;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -27,6 +29,7 @@ import org.apache.hadoop.fs.Path;
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
+import parquet.column.Encoding;
 import parquet.column.mem.MemColumnWriteStore;
 import parquet.column.mem.MemPageStore;
 import parquet.column.mem.Page;
@@ -121,7 +124,7 @@ public class GenerateIntTestFile {
         Page page = pageReader.readPage();
         n += page.getValueCount();
         // TODO: change INTFC
-        w.writeDataPage(page.getValueCount(), (int)page.getBytes().size(), BytesInput.from(page.getBytes().toByteArray()));
+        w.writeDataPage(page.getValueCount(), (int)page.getBytes().size(), BytesInput.from(page.getBytes().toByteArray()), PLAIN);
       } while (n < totalValueCount);
       w.endColumn();
     }

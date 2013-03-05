@@ -82,31 +82,31 @@ public class TestColumnIO {
 
   public static final String[] expectedEventsForR1 = {
     "startMessage()",
-    "0.addLong(10)",
-    "1.start()",
-    "1.1.addLong(20)",
-    "1.1.addLong(40)",
-    "1.1.addLong(60)",
-    "1.end()",
-    "2.start()",
-    "2.0.start()",
-    "2.0.0.addBinary(en-us)",
-    "2.0.1.addBinary(us)",
-    "2.0.end()",
-    "2.0.start()",
-    "2.0.0.addBinary(en)",
-    "2.0.end()",
-    "2.1.addBinary(http://A)",
-    "2.end()",
-    "2.start()",
-    "2.1.addBinary(http://B)",
-    "2.end()",
-    "2.start()",
-    "2.0.start()",
-    "2.0.0.addBinary(en-gb)",
-    "2.0.1.addBinary(gb)",
-    "2.0.end()",
-    "2.end()",
+    "DocId.addLong(10)",
+    "Links.start()",
+    "Links.Forward.addLong(20)",
+    "Links.Forward.addLong(40)",
+    "Links.Forward.addLong(60)",
+    "Links.end()",
+    "Name.start()",
+    "Name.Language.start()",
+    "Name.Language.Code.addBinary(en-us)",
+    "Name.Language.Country.addBinary(us)",
+    "Name.Language.end()",
+    "Name.Language.start()",
+    "Name.Language.Code.addBinary(en)",
+    "Name.Language.end()",
+    "Name.Url.addBinary(http://A)",
+    "Name.end()",
+    "Name.start()",
+    "Name.Url.addBinary(http://B)",
+    "Name.end()",
+    "Name.start()",
+    "Name.Language.start()",
+    "Name.Language.Code.addBinary(en-gb)",
+    "Name.Language.Country.addBinary(gb)",
+    "Name.Language.end()",
+    "Name.end()",
     "endMessage()"
   };
 
@@ -214,7 +214,7 @@ public class TestColumnIO {
       expectations.add(string);
     }
 
-    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectations));
+    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectations, schema));
     recordReader.read();
 
   }
@@ -286,8 +286,8 @@ public class TestColumnIO {
           }
 
           @Override
-          public void write(byte[] value, int repetitionLevel, int definitionLevel) {
-            validate(new String(value), repetitionLevel, definitionLevel);
+          public void write(Binary value, int repetitionLevel, int definitionLevel) {
+            validate(value.toStringUsingUTF8(), repetitionLevel, definitionLevel);
           }
 
           @Override

@@ -15,6 +15,7 @@
  */
 package parquet.example.data;
 
+import parquet.io.Binary;
 import parquet.schema.GroupType;
 
 abstract public class GroupValueSource {
@@ -39,7 +40,7 @@ abstract public class GroupValueSource {
     return getBoolean(getType().getFieldIndex(field), index);
   }
 
-  public byte[] getBinary(String field, int index) {
+  public Binary getBinary(String field, int index) {
     return getBinary(getType().getFieldIndex(field), index);
   }
 
@@ -53,7 +54,9 @@ abstract public class GroupValueSource {
 
   abstract public boolean getBoolean(int fieldIndex, int index);
 
-  abstract public byte[] getBinary(int fieldIndex, int index);
+  abstract public Binary getBinary(int fieldIndex, int index);
+
+  abstract public String getValueToString(int fieldIndex, int index);
 
   abstract public GroupType getType();
 }

@@ -16,32 +16,29 @@
 package parquet.example.data.simple.convert;
 
 import parquet.example.data.Group;
+import parquet.io.convert.Converter;
 import parquet.io.convert.GroupConverter;
-import parquet.io.convert.PrimitiveConverter;
-import parquet.io.convert.RecordConverter;
 import parquet.schema.GroupType;
 import parquet.schema.Type;
 
-class SimpleGroupConverter extends RecordConverter<Group> {
+class SimpleGroupConverter extends GroupConverter {
   private final SimpleGroupConverter parent;
   private final int index;
-  private Group current;
-  private GroupConverter[] groupConverters;
-  private PrimitiveConverter[] primitiveConverters;
+  protected Group current;
+  private Converter[] converters;
 
   SimpleGroupConverter(SimpleGroupConverter parent, int index, GroupType schema) {
     this.parent = parent;
     this.index = index;
 
-    groupConverters = new GroupConverter[schema.getFieldCount()];
-    primitiveConverters = new PrimitiveConverter[schema.getFieldCount()];
+    converters = new Converter[schema.getFieldCount()];
 
-    for (int i = 0; i < groupConverters.length; i++) {
+    for (int i = 0; i < converters.length; i++) {
       final Type type = schema.getType(i);
       if (type.isPrimitive()) {
-        primitiveConverters[i] = new SimplePrimitiveConverter(this, i);
+        converters[i] = new SimplePrimitiveConverter(this, i);
       } else {
-        groupConverters[i] = new SimpleGroupConverter(this, i, type.asGroupType());
+        converters[i] = new SimpleGroupConverter(this, i, type.asGroupType());
       }
 
     }
@@ -53,20 +50,14 @@ class SimpleGroupConverter extends RecordConverter<Group> {
   }
 
   @Override
-  public PrimitiveConverter getPrimitiveConverter(int fieldIndex) {
-    return primitiveConverters[fieldIndex];
-  }
-
-  @Override
-  public GroupConverter getGroupConverter(int fieldIndex) {
-    return groupConverters[fieldIndex];
+  public Converter getConverter(int fieldIndex) {
+    return converters[fieldIndex];
   }
 
   @Override
   public void end() {
   }
 
-  @Override
   public Group getCurrentRecord() {
     return current;
   }

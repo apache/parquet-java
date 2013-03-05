@@ -35,4 +35,8 @@ public class FloatValue extends Primitive {
     recordConsumer.addFloat(value);
   }
 
+  @Override
+  public String toString() {
+    return String.valueOf(value);
+  }
 }

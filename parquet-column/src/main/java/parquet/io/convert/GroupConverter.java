@@ -16,13 +16,12 @@
 package parquet.io.convert;
 
 /**
- * Represent a tree of converters
- * that materializes tuples
+ * converter for group nodes
  *
  * @author Julien Le Dem
  *
  */
-public abstract class GroupConverter {
+abstract public class GroupConverter extends Converter {
 
   /**
    * called at initialization based on schema
@@ -30,25 +29,26 @@ public abstract class GroupConverter {
    * @param fieldIndex index of a group field in this group
    * @return the corresponding converter
    */
-  abstract public GroupConverter getGroupConverter(int fieldIndex);
-
-  /**
-   * called at initialization based on schema
-   * must consistently return the same object
-   * @param fieldIndex index of a primitive field in this group
-   * @return the corresponding converter
-   */
-  abstract public PrimitiveConverter getPrimitiveConverter(int fieldIndex);
-
+  abstract public Converter getConverter(int fieldIndex);
 
   /** runtime calls  **/
 
   /** called at the beginning of the group managed by this converter */
-  public abstract void start();
+  abstract public void start();
 
   /**
    * call at the end of the group
    */
-  public abstract void end();
+  abstract public void end();
 
+
+  @Override
+  public boolean isPrimitive() {
+    return false;
+  }
+
+  @Override
+  public GroupConverter asGroupConverter() {
+    return this;
+  }
 }

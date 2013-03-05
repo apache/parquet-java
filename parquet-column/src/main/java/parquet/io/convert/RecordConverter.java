@@ -16,7 +16,6 @@
 package parquet.io.convert;
 
 /**
- *
  * top level of the conversion.
  * returns the record converted
  *
@@ -24,12 +23,15 @@ package parquet.io.convert;
  *
  * @param <T>
  */
-abstract public class RecordConverter<T> extends GroupConverter {
+abstract public class RecordConverter<T> {
 
   /**
-   *
    * @return the result of the conversion
    */
   abstract public T getCurrentRecord();
 
+  /**
+   * @return the root converter for this tree
+   */
+  abstract public GroupConverter getRootConverter();
 }
