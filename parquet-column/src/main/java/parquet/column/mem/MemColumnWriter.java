@@ -27,6 +27,7 @@ import parquet.column.primitive.BoundedColumnFactory;
 import parquet.column.primitive.DataColumnWriter;
 import parquet.column.primitive.PlainColumnWriter;
 import parquet.column.primitive.PrimitiveColumnWriter;
+import parquet.io.Binary;
 import parquet.io.ParquetEncodingException;
 
 
@@ -110,7 +111,7 @@ final class MemColumnWriter implements ColumnWriter {
   }
 
   @Override
-  public void write(byte[] value, int repetitionLevel, int definitionLevel) {
+  public void write(Binary value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);

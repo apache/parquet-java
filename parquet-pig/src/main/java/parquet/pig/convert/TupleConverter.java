@@ -30,6 +30,7 @@ import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
+import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
 import parquet.io.convert.Converter;
 import parquet.io.convert.GroupConverter;
@@ -129,8 +130,8 @@ public class TupleConverter extends GroupConverter {
     }
 
     @Override
-    final public void addBinary(byte[] value) {
-      set(index, new String(value, UTF8));
+    final public void addBinary(Binary value) {
+      set(index, value.toStringUsingUTF8());
     }
 
   }
@@ -144,8 +145,8 @@ public class TupleConverter extends GroupConverter {
     }
 
     @Override
-    final public void addBinary(byte[] value) {
-      set(index, new DataByteArray(value));
+    final public void addBinary(Binary value) {
+      set(index, new DataByteArray(value.getBytes()));
     }
 
   }

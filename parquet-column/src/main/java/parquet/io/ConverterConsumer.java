@@ -95,7 +95,7 @@ public class ConverterConsumer extends RecordConsumer {
   }
 
   @Override
-  public void addBinary(byte[] value) {
+  public void addBinary(Binary value) {
     currentPrimitive.addBinary(value);
   }
 

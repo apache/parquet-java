@@ -23,6 +23,7 @@ import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.bytes.LittleEndianDataOutputStream;
 import parquet.column.Encoding;
+import parquet.io.Binary;
 import parquet.io.ParquetEncodingException;
 
 
@@ -46,10 +47,10 @@ public class PlainColumnWriter extends DataColumnWriter {
   }
 
   @Override
-  public final void writeBytes(byte[] v) {
+  public final void writeBytes(Binary v) {
     try {
-      out.writeInt(v.length);
-      out.write(v);
+      out.writeInt(v.length());
+      v.writeTo(out);
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write bytes", e);
     }

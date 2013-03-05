@@ -20,6 +20,7 @@ import java.io.IOException;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnReadStore;
 import parquet.column.ColumnReader;
+import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
 
 
@@ -105,14 +106,14 @@ public class MemColumnReadStore implements ColumnReadStore {
   }
 
   private static final class BINARYMemColumnReader extends MemColumnReader {
-    private byte[] current;
+    private Binary current;
 
     public BINARYMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
       super(path, pageReader);
     }
 
     @Override
-    public byte[] getBinary() {
+    public Binary getBinary() {
       checkValueRead();
       return current;
     }

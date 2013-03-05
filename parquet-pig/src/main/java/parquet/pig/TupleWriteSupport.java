@@ -37,6 +37,7 @@ import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
 import parquet.hadoop.WriteSupport;
+import parquet.io.Binary;
 import parquet.io.RecordConsumer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
@@ -153,7 +154,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
           } else {
             throw new UnsupportedOperationException("can not convert from " + DataType.findTypeName(pigType.type) + " to BINARY ");
           }
-          recordConsumer.addBinary(bytes);
+          recordConsumer.addBinary(Binary.fromByteArray(bytes));
           break;
         case BOOLEAN:
           recordConsumer.addBoolean((Boolean)t.get(i));

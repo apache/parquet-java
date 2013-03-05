@@ -107,7 +107,7 @@ abstract public class RecordConsumer {
    * add a binary value in the current field
    * @param value
    */
-  abstract public void addBinary(byte[] value);
+  abstract public void addBinary(Binary value);
 
   /**
    * add a float value in the current field
