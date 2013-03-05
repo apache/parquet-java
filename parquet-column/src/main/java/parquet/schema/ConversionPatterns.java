@@ -19,7 +19,13 @@ import static parquet.schema.OriginalType.*;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type.Repetition;
 
-public class ConversionPatterns {
+/**
+ * Utility functions to convert from Java-like map and list types
+ * to equivalent Parquet types.
+ * 
+ * TODO(julien): this class appears to be unused. Is it dead code?
+ */
+public abstract class ConversionPatterns {
   /**
    * to preserve the difference between empty list and null
    * @param alias

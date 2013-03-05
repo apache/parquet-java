@@ -16,7 +16,7 @@
 package parquet.column.primitive;
 
 import static parquet.bytes.BytesUtils.getWidthFromMaxInt;
-import static parquet.column.primitive.BitPacking.getBitPackingReader;
+import static parquet.column.primitive.BitPacking.createBitPackingReader;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -69,10 +69,11 @@ public class BitPackingColumnReader extends PrimitiveColumnReader {
   public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
     // TODO: int vs long
     int effectiveBitLength = (int)valueCount * bitsPerValue;
+    // TODO: maybe ((effectiveBitLength - 1) / 8 + 1) here? has fewer conditionals and divides
     int length = effectiveBitLength / 8 + (effectiveBitLength % 8 == 0 ? 0 : 1); // ceil
     if (Log.DEBUG) LOG.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitsPerValue + " bits." );
     this.in = new ByteArrayInputStream(in, offset, length);
-    this.bitPackingReader = getBitPackingReader(bitsPerValue, this.in, valueCount);
+    this.bitPackingReader = createBitPackingReader(bitsPerValue, this.in, valueCount);
     return offset + length;
   }
 

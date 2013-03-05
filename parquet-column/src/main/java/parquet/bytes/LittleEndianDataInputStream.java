@@ -339,6 +339,11 @@ public final class LittleEndianDataInputStream extends InputStream {
    * @see        java.io.FilterInputStream#in
    */
   public final int readInt() throws IOException {
+    // TODO: has this been benchmarked against two alternate implementations?
+    // 1) Integer.reverseBytes(in.readInt())
+    // 2) keep a member byte[4], wrapped by an IntBuffer with appropriate endianness set,
+    //    and call IntBuffer.get()
+    // Both seem like they might be faster.
     int ch4 = in.read();
     int ch3 = in.read();
     int ch2 = in.read();
@@ -365,6 +370,7 @@ public final class LittleEndianDataInputStream extends InputStream {
    * @see        java.io.FilterInputStream#in
    */
   public final long readLong() throws IOException {
+    // TODO: see perf question above in readInt
     readFully(readBuffer, 0, 8);
     return (((long)readBuffer[7] << 56) +
         ((long)(readBuffer[6] & 255) << 48) +

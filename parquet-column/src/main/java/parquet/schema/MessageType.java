@@ -70,21 +70,29 @@ public class MessageType extends GroupType {
     sb.append("}\n");
   }
 
-  public int getRepetitionLevel(String[] path) {
-    return getRepetitionLevel(path, 0) - 1;
+  /**
+   * @return the max repetition level that might be needed to encode the
+   * type at 'path'. 
+   */
+  public int getMaxRepetitionLevel(String ... path) {
+    return getMaxRepetitionLevel(path, 0) - 1;
   }
 
-  public int getDefinitionLevel(String[] path) {
-    return getDefinitionLevel(path, 0) - 1;
+  /**
+   * @return the max repetition level that might be needed to encode the
+   * type at 'path'. 
+   */
+  public int getMaxDefinitionLevel(String ... path) {
+    return getMaxDefinitionLevel(path, 0) - 1;
   }
 
-  public Type getType(String[] path) {
+  public Type getType(String ... path) {
     return getType(path, 0);
   }
 
   public ColumnDescriptor getColumnDescription(String[] path) {
-    int maxRep = getRepetitionLevel(path);
-    int maxDef = getDefinitionLevel(path);
+    int maxRep = getMaxRepetitionLevel(path);
+    int maxDef = getMaxDefinitionLevel(path);
     PrimitiveTypeName type = getType(path).asPrimitiveType().getPrimitiveTypeName();
     return new ColumnDescriptor(path, type, maxRep, maxDef);
   }
@@ -98,7 +106,7 @@ public class MessageType extends GroupType {
     List<ColumnDescriptor> columns = new ArrayList<ColumnDescriptor>(paths.size());
     for (String[] path : paths) {
       // TODO: optimize this
-      columns.add(new ColumnDescriptor(path, getType(path).asPrimitiveType().getPrimitiveTypeName(), getRepetitionLevel(path), getDefinitionLevel(path)));
+      columns.add(new ColumnDescriptor(path, getType(path).asPrimitiveType().getPrimitiveTypeName(), getMaxRepetitionLevel(path), getMaxDefinitionLevel(path)));
     }
     return columns;
   }

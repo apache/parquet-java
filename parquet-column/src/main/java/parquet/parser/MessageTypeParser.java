@@ -29,13 +29,10 @@ import parquet.schema.Type;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type.Repetition;
 
-
 /**
- *
- * Parses a schema
+ * Parses a schema from a textual format similar to that described in the Dremel paper.
  *
  * @author Julien Le Dem
- *
  */
 public class MessageTypeParser {
   private static final Log LOG = Log.getLog(MessageTypeParser.class);

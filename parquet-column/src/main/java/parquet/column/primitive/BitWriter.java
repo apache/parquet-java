@@ -18,7 +18,7 @@ package parquet.column.primitive;
 import parquet.Log;
 import parquet.bytes.CapacityByteArrayOutputStream;
 
-public class BitWriter {
+class BitWriter {
   private static final Log LOG = Log.getLog(BitWriter.class);
   private static final boolean DEBUG = false;//Log.DEBUG;
 
@@ -56,7 +56,14 @@ public class BitWriter {
     currentByte >>>= 8;
   }
 
-  public void writeBits(int val, int bitsToWrite) {
+  /**
+   * Write the given integer, serialized using the given number of bits.
+   * It is assumed that the integer can be correctly serialized within
+   * the provided bit size.
+   * @param val the value to serialize
+   * @param bitsToWrite the number of bits to use
+   */
+  public void writeNBitInteger(int val, int bitsToWrite) {
     if (DEBUG) LOG.debug("writing: " + toBinary(val, bitsToWrite) + " (" + val + ")");
     val <<= currentBytePosition;
     int upperByte = currentBytePosition + bitsToWrite;
@@ -101,11 +108,18 @@ public class BitWriter {
     finished = false;
   }
 
-  public static int setBytePosition(int currentByte, int currentBytePosition, boolean bit) {
-    if (bit) {
-      currentByte |= byteToTrueMask[currentBytePosition];
+  /**
+   * Set or clear the given bit position in the given byte.
+   * @param currentByte the byte to mutate
+   * @param bitOffset the bit to set or clear
+   * @param newBitValue whether to set or clear the bit
+   * @return the mutated byte
+   */
+  private static int setBytePosition(int currentByte, int bitOffset, boolean newBitValue) {
+    if (newBitValue) {
+      currentByte |= byteToTrueMask[bitOffset];
     } else {
-      currentByte &= byteToFalseMask[currentBytePosition];
+      currentByte &= byteToFalseMask[bitOffset];
     }
     return currentByte;
   }

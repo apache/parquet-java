@@ -16,12 +16,15 @@
 package parquet.io.convert;
 
 /**
- * top level of the conversion.
- * returns the record converted
+ * Top-level class which should be implemented in order to materialize objects from
+ * a stream of Parquet data.
+ * 
+ * Each record will be wrapped by {@link GroupConverter#start()} and {@link GroupConverter#end()},
+ * between which the appropriate fields will be materialized.
  *
  * @author Julien Le Dem
  *
- * @param <T>
+ * @param <T> the materialized object class
  */
 abstract public class RecordConverter<T> {
 

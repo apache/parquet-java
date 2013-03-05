@@ -18,31 +18,38 @@ package parquet.column.primitive;
 import java.io.IOException;
 
 /**
- * base class to implement an encoding for a given column
+ * Base class to implement an encoding for a given column type.
  *
- * pages are homogeneous (store a single type)
- * Usually only one of the read*() methods is overridden
+ * A PrimitiveColumnReader is provided with a page (byte-array) and is responsible
+ * for deserializing the primitive values stored in that page.
+ * 
+ * Given that pages are homogenous (store only a single type), typical subclasses
+ * will only override one of the read*() methods.
  *
  * @author Julien Le Dem
- *
  */
 public abstract class PrimitiveColumnReader {
 
   /**
-   * Called to initialize the column reader with a new page.
+   * Called to initialize the column reader from a part of a page.
    *
-   * The underlying implementation knows how much data to read
-   * <ul>The page contains the bytes for:
+   * The underlying implementation knows how much data to read, so a length
+   * is not provided.
+   * 
+   * Each page may contain several sections:
+   * <ul>
    *  <li> repetition levels column
    *  <li> definition levels column
    *  <li> data column
    * </ul>
-   * Each column reader knows how much data to read and returns the next offset for the next column
-   * The data column always reads to the end and returns the array size.
+   * 
+   * This function is called with 'offset' pointing to the beginning of one of these sections,
+   * and should return the offset to the section following it.
+   *
    * @param valueCount count of values in this page
    * @param page the array to read from containing the page data (repetition levels, definition levels, data)
    * @param offset where to start reading from in the page
-   * @return the offset to read from the next column (the page length in the case of the data column which is last in the page)
+   * @return the offset of the end of the data for this section of the page
    * @throws IOException
    */
   public abstract int initFromPage(long valueCount, byte[] page, int offset) throws IOException;

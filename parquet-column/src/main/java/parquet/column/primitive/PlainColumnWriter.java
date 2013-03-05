@@ -101,7 +101,7 @@ public class PlainColumnWriter extends DataColumnWriter {
   }
 
   @Override
-  public long getMemSize() {
+  public long getBufferedSize() {
     return arrayOut.size();
   }
 
@@ -122,7 +122,7 @@ public class PlainColumnWriter extends DataColumnWriter {
   }
 
   @Override
-  public long allocatedSize() {
+  public long getAllocatedSize() {
     return arrayOut.getCapacity();
   }
 

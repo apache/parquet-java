@@ -321,7 +321,7 @@ public class TestColumnIO {
           }
 
           @Override
-          public long memSize() {
+          public long getBufferedSizeInMemory() {
             throw new UnsupportedOperationException();
           }
         };

@@ -32,10 +32,8 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
 
   @Override
   public PageWriter getPageWriter(ColumnDescriptor path) {
-    MemPageWriter pageWriter;
-    if (pageWriters.containsKey(path)) {
-      pageWriter = pageWriters.get(path);
-    } else {
+    MemPageWriter pageWriter = pageWriters.get(path);
+    if (pageWriter == null) {
       pageWriter = new MemPageWriter();
       pageWriters.put(path, pageWriter);
     }

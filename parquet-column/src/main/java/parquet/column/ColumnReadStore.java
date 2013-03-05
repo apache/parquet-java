@@ -16,15 +16,14 @@
 package parquet.column;
 
 /**
- * contains all the columns for a given type
+ * Container which can produce a ColumnReader for any given column in a schema.
  *
  * @author Julien Le Dem
- *
  */
 public interface ColumnReadStore {
 
   /**
-   * @param path
+   * @param path the column to read
    * @return the column reader for that descriptor
    */
   abstract public ColumnReader getColumnReader(ColumnDescriptor path);

@@ -196,29 +196,29 @@ public class GroupType extends Type {
   }
 
   @Override
-  protected int getRepetitionLevel(String[] path, int i) {
+  protected int getMaxRepetitionLevel(String[] path, int depth) {
     int myVal = getRepetition() == Repetition.REPEATED ? 1 : 0;
-    if (i == path.length) {
+    if (depth == path.length) {
       return myVal;
     }
-    return myVal + getType(path[i++]).getRepetitionLevel(path, i);
+    return myVal + getType(path[depth]).getMaxRepetitionLevel(path, depth + 1);
   }
 
   @Override
-  protected int getDefinitionLevel(String[] path, int i) {
+  protected int getMaxDefinitionLevel(String[] path, int depth) {
     int myVal = getRepetition() != Repetition.REQUIRED ? 1 : 0;
-    if (i == path.length) {
+    if (depth == path.length) {
       return myVal;
     }
-    return myVal + getType(path[i++]).getDefinitionLevel(path, i);
+    return myVal + getType(path[depth]).getMaxDefinitionLevel(path, depth + 1);
   }
 
   @Override
-  protected Type getType(String[] path, int i) {
-    if (i == path.length) {
+  protected Type getType(String[] path, int depth) {
+    if (depth == path.length) {
       return this;
     }
-    return getType(path[i++]).getType(path, i);
+    return getType(path[depth]).getType(path, depth + 1);
   }
 
   @Override

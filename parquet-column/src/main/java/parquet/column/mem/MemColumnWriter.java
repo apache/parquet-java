@@ -46,8 +46,8 @@ final class MemColumnWriter implements ColumnWriter {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
-    repetitionLevelColumn = new BitPackingColumnWriter(path.getRepetitionLevel());
-    definitionLevelColumn = BoundedColumnFactory.getBoundedWriter(path.getDefinitionLevel());
+    repetitionLevelColumn = new BitPackingColumnWriter(path.getMaxRepetitionLevel());
+    definitionLevelColumn = BoundedColumnFactory.getBoundedWriter(path.getMaxDefinitionLevel());
     switch (path.getType()) {
     case BOOLEAN:
       this.dataColumn = new BooleanPlainColumnWriter(pageSizeThreshold * 11 / 10);
@@ -62,9 +62,9 @@ final class MemColumnWriter implements ColumnWriter {
 
   private void accountForValueWritten() {
     ++ valueCount;
-    long memSize = repetitionLevelColumn.getMemSize()
-        + definitionLevelColumn.getMemSize()
-        + dataColumn.getMemSize();
+    long memSize = repetitionLevelColumn.getBufferedSize()
+        + definitionLevelColumn.getBufferedSize()
+        + dataColumn.getBufferedSize();
     if (memSize > pageSizeThreshold) {
       writePage();
     }
@@ -153,17 +153,17 @@ final class MemColumnWriter implements ColumnWriter {
   }
 
   @Override
-  public long memSize() {
-    return repetitionLevelColumn.getMemSize()
-        + definitionLevelColumn.getMemSize()
-        + dataColumn.getMemSize()
+  public long getBufferedSizeInMemory() {
+    return repetitionLevelColumn.getBufferedSize()
+        + definitionLevelColumn.getBufferedSize()
+        + dataColumn.getBufferedSize()
         + pageWriter.getMemSize();
   }
 
   public long allocatedSize() {
-    return repetitionLevelColumn.allocatedSize()
-    + definitionLevelColumn.allocatedSize()
-    + dataColumn.allocatedSize()
+    return repetitionLevelColumn.getAllocatedSize()
+    + definitionLevelColumn.getAllocatedSize()
+    + dataColumn.getAllocatedSize()
     + pageWriter.allocatedSize();
   }
 }
