@@ -16,6 +16,7 @@
   <url>https://github.com/julienledem/Parquet/parquet-mr</url>
 
   <properties>
+    <elephant-bird.version>3.0.7</elephant-bird.version>
   </properties>
 
   <dependencies>
@@ -37,12 +38,12 @@
     <dependency>
       <groupId>com.twitter.elephantbird</groupId>
       <artifactId>elephant-bird-core</artifactId>
-      <version>3.0.5</version>
+      <version>${elephant-bird.version}</version>
     </dependency>
     <dependency>
       <groupId>com.twitter.elephantbird</groupId>
       <artifactId>elephant-bird-pig</artifactId>
-      <version>3.0.5</version>
+      <version>${elephant-bird.version}</version>
     </dependency>
     <dependency>
       <groupId>org.codehaus.jackson</groupId>
