@@ -95,7 +95,7 @@ public class ThriftSchemaConverter {
     } else if (field.isBuffer()) {
       return new PrimitiveType(rep, BINARY, name);
     } else if (field.isEnum()) {
-      return new PrimitiveType(rep, BINARY, name, ENUM); // TODO: should probably store as an int.
+      return new PrimitiveType(rep, BINARY, name, ENUM);
     } else if (field.isMap()) {
       final Field mapKeyField = field.getMapKeyField();
       if (mapKeyField.getType() != TType.STRING &&
