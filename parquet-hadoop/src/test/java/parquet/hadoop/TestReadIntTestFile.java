@@ -91,7 +91,6 @@ public class TestReadIntTestFile {
           final Type type = schema.getFields().get(j);
           if (j > 0) {
             w.write('|');
-//            System.out.print("|");
           }
           String valueToString = g.getValueToString(j, 0);
           if (type.isPrimitive()

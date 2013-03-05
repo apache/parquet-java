@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -37,10 +36,6 @@ import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
-import parquet.format.DataPageHeader;
-import parquet.format.Encoding;
-import parquet.format.PageHeader;
-import parquet.format.PageType;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -190,10 +185,11 @@ public class ParquetFileWriter {
     state = state.write();
     if (DEBUG) LOG.debug(out.getPos() + ": write data page: " + valueCount + " values");
     int compressedPageSize = (int)bytes.size();
-    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedPageSize, compressedPageSize);
-    // pageHeader.crc = ...;
-    pageHeader.data_page_header = new DataPageHeader(valueCount, metadataConverter.getEncoding(encoding));
-    metadataConverter.writePageHeader(pageHeader, out);
+    metadataConverter.writeDataPageHeader(
+        uncompressedPageSize, compressedPageSize,
+        valueCount,
+        encoding,
+        out);
     this.uncompressedLength += uncompressedPageSize;
     this.compressedLength += compressedPageSize;
     if (DEBUG) LOG.debug(out.getPos() + ": write data page content " + compressedPageSize);

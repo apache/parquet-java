@@ -29,9 +29,6 @@ import parquet.column.ColumnDescriptor;
 import parquet.column.Encoding;
 import parquet.column.mem.PageWriteStore;
 import parquet.column.mem.PageWriter;
-import parquet.format.DataPageHeader;
-import parquet.format.PageHeader;
-import parquet.format.PageType;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.schema.MessageType;
@@ -64,10 +61,12 @@ public class ColumnChunkPageWriteStore implements PageWriteStore {
       long uncompressedSize = bytes.size();
       BytesInput compressedBytes = compressor.compress(bytes);
       long compressedSize = compressedBytes.size();
-      PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, (int)uncompressedSize, (int)compressedSize);
-      // pageHeader.crc = ...;
-      pageHeader.data_page_header = new DataPageHeader(valueCount, parquetMetadataConverter.getEncoding(encoding));
-      parquetMetadataConverter.writePageHeader(pageHeader, buf);
+      parquetMetadataConverter.writeDataPageHeader(
+          (int)uncompressedSize,
+          (int)compressedSize,
+          valueCount,
+          encoding,
+          buf);
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;

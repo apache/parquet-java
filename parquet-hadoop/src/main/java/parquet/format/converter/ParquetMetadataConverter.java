@@ -35,11 +35,14 @@ import org.apache.thrift.transport.TIOStreamTransport;
 
 import parquet.format.ColumnChunk;
 import parquet.format.CompressionCodec;
+import parquet.format.DataPageHeader;
 import parquet.format.Encoding;
+import parquet.format.FieldLevelEncoding;
 import parquet.format.FieldRepetitionType;
 import parquet.format.FileMetaData;
 import parquet.format.KeyValue;
 import parquet.format.PageHeader;
+import parquet.format.PageType;
 import parquet.format.RowGroup;
 import parquet.format.SchemaElement;
 import parquet.format.Type;
@@ -188,20 +191,6 @@ public class ParquetMetadataConverter {
     }
   }
 
-  private CompressionCodec getCodec(String codecClassName) {
-    if (codecClassName.equals("org.apache.hadoop.io.compress.GzipCodec")) {
-      return CompressionCodec.GZIP;
-    } else if (codecClassName.equals("com.hadoop.compression.lzo.LzopCodec")) {
-      return CompressionCodec.LZO;
-    } else if (codecClassName.equals("org.apache.hadoop.io.compress.SnappyCodec")) {
-      return CompressionCodec.SNAPPY;
-    } else if (codecClassName.equals("")) {
-      return CompressionCodec.UNCOMPRESSED;
-    } else {
-      throw new RuntimeException("Unknown Codec "+ codecClassName);
-    }
-  }
-
   private PrimitiveTypeName getPrimitive(Type type) {
     switch (type) {
       case BYTE_ARRAY:
@@ -327,7 +316,16 @@ public class ParquetMetadataConverter {
     throw new RuntimeException("unknown repetition: " + repetition);
   }
 
-  public void writePageHeader(PageHeader pageHeader, OutputStream to) throws IOException {
+  public void writeDataPageHeader(
+      int uncompressedSize,
+      int compressedSize,
+      int valueCount,
+      parquet.column.Encoding encoding,
+      OutputStream to) throws IOException {
+    writePageHeader(newDataPageHeader(uncompressedSize, compressedSize, valueCount, encoding), to);
+  }
+
+  protected void writePageHeader(PageHeader pageHeader, OutputStream to) throws IOException {
     write(pageHeader, to);
   }
 
@@ -380,6 +378,20 @@ public class ParquetMetadataConverter {
     } catch (TException e) {
       throw new IOException("can not write " + tbase, e);
     }
+  }
+
+  private PageHeader newDataPageHeader(
+      int uncompressedSize, int compressedSize,
+      int valueCount,
+      parquet.column.Encoding encoding) {
+    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, (int)uncompressedSize, (int)compressedSize);
+    // TODO: pageHeader.crc = ...;
+    pageHeader.data_page_header = new DataPageHeader(
+        valueCount,
+        getEncoding(encoding),
+        FieldLevelEncoding.RLE, // TODO: manage several encodings
+        FieldLevelEncoding.BIT_PACKED);
+    return pageHeader;
   }
 
 
