@@ -30,6 +30,7 @@ import org.apache.thrift.protocol.TStruct;
 
 import parquet.Log;
 import parquet.bytes.BytesUtils;
+import parquet.io.Binary;
 import parquet.io.ColumnIO;
 import parquet.io.GroupColumnIO;
 import parquet.io.MessageColumnIO;
@@ -606,12 +607,12 @@ public class ParquetWriteProtocol extends ParquetProtocol {
   }
 
   private void writeBinaryToRecordConsumer(ByteBuffer buf) {
-    // TODO: check this
-    recordConsumer.addBinary(buf.array());
+    // TODO: check this => pretty sure this is no good
+    recordConsumer.addBinary(Binary.fromByteArray(buf.array()));
   }
 
   private void writeStringToRecordConsumer(String str) {
-    recordConsumer.addBinary(str.getBytes(BytesUtils.UTF8));
+    recordConsumer.addBinary(Binary.fromString(str));
   }
 
   private TProtocol getProtocol(ThriftField field, ColumnIO columnIO, Events returnClause) {

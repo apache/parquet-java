@@ -17,6 +17,8 @@ package parquet.column.primitive;
 
 import java.io.IOException;
 
+import parquet.io.Binary;
+
 /**
  * Base class to implement an encoding for a given column type.
  *
@@ -78,7 +80,7 @@ public abstract class PrimitiveColumnReader {
   /**
    * @return the next boolean from the page
    */
-  public byte[] readBytes() {
+  public Binary readBytes() {
     throw new UnsupportedOperationException();
   }
 

@@ -15,7 +15,7 @@
  */
 package parquet.hadoop;
 
-import static junit.framework.Assert.assertEquals;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,6 +29,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.junit.Test;
 
+import parquet.column.Encoding;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
@@ -63,7 +64,7 @@ public class TestInputFormat {
 
   private BlockMetaData newBlock(long start) {
     BlockMetaData blockMetaData = new BlockMetaData();
-    ColumnChunkMetaData column = new ColumnChunkMetaData(new String[] {"foo"}, PrimitiveTypeName.BINARY, CompressionCodecName.GZIP);
+    ColumnChunkMetaData column = new ColumnChunkMetaData(new String[] {"foo"}, PrimitiveTypeName.BINARY, CompressionCodecName.GZIP, Arrays.asList(Encoding.PLAIN));
     column.setFirstDataPageOffset(start);
     blockMetaData.addColumn(column);
     return blockMetaData;

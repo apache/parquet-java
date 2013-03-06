@@ -16,6 +16,7 @@
 package parquet.column.primitive;
 
 import java.io.IOException;
+import parquet.io.Binary;
 
 /**
  * ColumnReader which does not read any actual data, but rather simply produces
@@ -28,7 +29,7 @@ public class DevNullColumnReader extends PrimitiveColumnReader {
   private byte defaultByte = 0;
   private float defaultFloat = 0f;
   private double defaultDouble = 0.0;
-  private byte[] defaultBytes = new byte[0];
+  private Binary defaultBytes = Binary.EMPTY;
 
   // TODO(julien): the setDefault* don't seem to be used anywhere. Can we kill them
   // for now, so that this is truly DevNull instead of producing a constant stream of
@@ -57,7 +58,7 @@ public class DevNullColumnReader extends PrimitiveColumnReader {
     this.defaultByte = defaultByte;
   }
 
-  public void setDefaultBytes(byte[] defaultBytes) {
+  public void setDefaultBytes(Binary defaultBytes) {
     this.defaultBytes = defaultBytes;
   }
 
@@ -73,7 +74,7 @@ public class DevNullColumnReader extends PrimitiveColumnReader {
     return defaultFloat;
   }
 
-  public byte[] readBytes() {
+  public Binary readBytes() {
     return defaultBytes;
   }
 

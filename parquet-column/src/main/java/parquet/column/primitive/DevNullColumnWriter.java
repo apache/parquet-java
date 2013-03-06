@@ -16,6 +16,7 @@
 package parquet.column.primitive;
 
 import parquet.bytes.BytesInput;
+import parquet.io.Binary;
 
 /**
  * This is a special writer that doesn't write anything. The idea being that
@@ -45,7 +46,7 @@ public class DevNullColumnWriter extends PrimitiveColumnWriter {
   }
 
   @Override
-  public void writeBytes(byte[] v) {
+  public void writeBytes(Binary v) {
   }
 
   @Override

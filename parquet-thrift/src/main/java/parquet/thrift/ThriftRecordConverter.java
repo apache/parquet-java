@@ -27,24 +27,30 @@ import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
 
-import parquet.bytes.BytesUtils;
+import parquet.io.Binary;
+import parquet.io.ParquetDecodingException;
 import parquet.io.convert.Converter;
 import parquet.io.convert.GroupConverter;
 import parquet.io.convert.PrimitiveConverter;
 import parquet.io.convert.RecordConverter;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
-import parquet.schema.PrimitiveType;
 import parquet.schema.Type;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftField.Requirement;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftType.ListType;
 import parquet.thrift.struct.ThriftType.MapType;
-import parquet.thrift.struct.ThriftType.SetType;
 import parquet.thrift.struct.ThriftType.StructType;
 import parquet.thrift.struct.ThriftTypeID;
 
+/**
+ * converts the columnar events into a Thrift protocol.
+ *
+ * @author Julien Le Dem
+ *
+ * @param <T>
+ */
 public class ThriftRecordConverter<T> extends RecordConverter<T> {
 
   final ParquetProtocol readFieldEnd = new ParquetProtocol("readFieldEnd()") {
@@ -53,7 +59,13 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
     }
   };
 
-  public class PrimitiveFieldHandler extends PrimitiveConverter {
+  /**
+   * Handles field events creation by wrapping the converter for the actual type
+   *
+   * @author Julien Le Dem
+   *
+   */
+  class PrimitiveFieldHandler extends PrimitiveConverter {
 
     private final PrimitiveConverter delegate;
     private final List<TProtocol> events;
@@ -79,7 +91,7 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
     }
 
     @Override
-    public void addBinary(byte[] value) {
+    public void addBinary(Binary value) {
       startField();
       delegate.addBinary(value);
       endField();
@@ -122,7 +134,13 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
 
   }
 
-  public class GroupFieldhandler extends GroupConverter {
+  /**
+   * Handles field events creation by wrapping the converter for the actual type
+   *
+   * @author Julien Le Dem
+   *
+   */
+  class GroupFieldhandler extends GroupConverter {
 
     private final GroupConverter delegate;
     private final List<TProtocol> events;
@@ -165,7 +183,13 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
 
   }
 
-  public class GroupCounter extends GroupConverter implements Counter {
+  /**
+   * counts the instances created to use in List/Set/Map that need to inform of the element count in the protocol
+   *
+   * @author Julien Le Dem
+   *
+   */
+  class GroupCounter extends GroupConverter implements Counter {
 
     private final GroupConverter delegate;
     private int count;
@@ -202,7 +226,13 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
 
   }
 
-  public class PrimitiveCounter extends PrimitiveConverter implements Counter {
+  /**
+   * counts the instances created to use in List/Set/Map that need to inform of the element count in the protocol
+   *
+   * @author Julien Le Dem
+   *
+   */
+  class PrimitiveCounter extends PrimitiveConverter implements Counter {
 
     private final PrimitiveConverter delegate;
     private int count;
@@ -212,7 +242,7 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
     }
 
     @Override
-    public void addBinary(byte[] value) {
+    public void addBinary(Binary value) {
       delegate.addBinary(value);
       ++ count;
     }
@@ -259,7 +289,13 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
 
   }
 
-  public class FieldPrimitiveConverter extends PrimitiveConverter {
+  /**
+   * convert primitive values
+   *
+   * @author Julien Le Dem
+   *
+   */
+  class FieldPrimitiveConverter extends PrimitiveConverter {
 
     private final List<TProtocol> events;
 
@@ -321,7 +357,12 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
 
   }
 
-  public class FieldStringConverter extends PrimitiveConverter {
+  /**
+   * converts Binary into String
+   * @author Julien Le Dem
+   *
+   */
+  class FieldStringConverter extends PrimitiveConverter {
 
     private final List<TProtocol> events;
 
@@ -330,21 +371,25 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
     }
 
     @Override
-    public void addBinary(final byte[] value) {
+    public void addBinary(final Binary value) {
       events.add(new ParquetProtocol() {
         @Override
         public String readString() throws TException {
-          return new String(value, BytesUtils.UTF8);
+          return value.toStringUsingUTF8();
         }
       });
     }
 
   }
 
-  public class MapConverter extends GroupConverter {
+  /**
+   * convert to Maps
+   * @author Julien Le Dem
+   *
+   */
+  class MapConverter extends GroupConverter {
 
     private final GroupCounter child;
-    private final ThriftField field;
     private final List<TProtocol> mapEvents = new ArrayList<TProtocol>();
     private final List<TProtocol> parentEvents;
     private final byte keyType;
@@ -352,7 +397,6 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
 
     MapConverter(List<TProtocol> parentEvents, GroupType parquetSchema, ThriftField field) {
       this.parentEvents = parentEvents;
-      this.field = field;
       if (parquetSchema.getFieldCount() != 1) {
         throw new IllegalArgumentException("maps have only one field. " + parquetSchema + " size = " + parquetSchema.getFieldCount());
       }
@@ -400,7 +444,12 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
 
   }
 
-  public class MapKeyValueConverter extends GroupConverter {
+  /**
+   * converts to a key value pair (in maps)
+   * @author Julien Le Dem
+   *
+   */
+  class MapKeyValueConverter extends GroupConverter {
 
     private Converter keyConverter;
     private Converter valueConverter;
@@ -433,7 +482,12 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
 
   }
 
-  public class SetConverter extends CollectionConverter {
+  /**
+   * converts to a Set
+   * @author Julien Le Dem
+   *
+   */
+  class SetConverter extends CollectionConverter {
 
     final ParquetProtocol readSetEnd = new ParquetProtocol("readSetEnd()") {
       @Override
@@ -465,6 +519,11 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
 
   }
 
+  /**
+   * converts to a List
+   * @author Julien Le Dem
+   *
+   */
   class ListConverter extends CollectionConverter {
 
     final ParquetProtocol readListEnd = new ParquetProtocol("readListEnd()") {
@@ -497,6 +556,11 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
 
   }
 
+  /**
+   * Base class to convert List and Set which basically work the same
+   * @author Julien Le Dem
+   *
+   */
   abstract class CollectionConverter extends GroupConverter {
 
     private final Converter child;
@@ -553,9 +617,13 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
 
   }
 
-  public class StructConverter extends GroupConverter {
+  /**
+   * converts to Struct
+   * @author Julien Le Dem
+   *
+   */
+  class StructConverter extends GroupConverter {
 
-    private final GroupType parquetSchema;
     private final int schemaSize;
 
     private final Converter[] converters;
@@ -568,7 +636,6 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
       this.events = events;
       this.name = field.getName();
       this.tStruct = new TStruct(name);
-      this.parquetSchema = parquetSchema;
       this.thriftType = (StructType)field.getType();
       this.schemaSize = parquetSchema.getFieldCount();
       if (schemaSize != thriftType.getChildren().size()) {
@@ -628,6 +695,13 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
   private final GroupConverter structConverter;
   private List<TProtocol> rootEvents = new ArrayList<TProtocol>();
 
+  /**
+   *
+   * @param thriftReader the class responsible for instantiating the final object and read from the protocol
+   * @param name the name of that type ( the thrift class simple name)
+   * @param parquetSchema the schema for the incoming columnar events
+   * @param thriftType the thrift type descriptor
+   */
   public ThriftRecordConverter(ThriftReader<T> thriftReader, String name, MessageType parquetSchema, ThriftType.StructType thriftType) {
     super();
     this.thriftReader = thriftReader;
@@ -635,6 +709,11 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
     this.structConverter = new StructConverter(rootEvents, parquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.io.convert.RecordConverter#getCurrentRecord()
+   */
   @Override
   public T getCurrentRecord() {
     try {
@@ -642,11 +721,15 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
       rootEvents.clear();
       return thriftReader.readOneRecord(protocol);
     } catch (TException e) {
-      //TODO: cleanup
-      throw new RuntimeException(e);
+      throw new ParquetDecodingException("Could not read thrift object from protocol", e);
     }
   }
 
+  /**
+   *
+   * {@inheritDoc}
+   * @see parquet.io.convert.RecordConverter#getRootConverter()
+   */
   @Override
   public GroupConverter getRootConverter() {
     return structConverter;
@@ -664,9 +747,6 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
       return new StructConverter(events, type.asGroupType(), field);
     case STRING:
       return new FieldStringConverter(events, field);
-//      case BINARY:
-//        primitiveConverters[i] = new FieldByteArrayConverter(i);
-//        break;
     default:
       return new FieldPrimitiveConverter(events, field);
     }

@@ -20,6 +20,7 @@ import static parquet.Log.DEBUG;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
+import parquet.io.Binary;
 import parquet.io.RecordMaterializer;
 
 
@@ -82,7 +83,7 @@ public class GroupRecordConsumer extends RecordMaterializer<Group> {
   }
 
   @Override
-  public void addBinary(byte[] value) {
+  public void addBinary(Binary value) {
     groups.peek().add(fields.peek(), value);
   }
 

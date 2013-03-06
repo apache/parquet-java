@@ -105,8 +105,8 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      * {@inheritDoc}
      */
     @Override
-    public void addBinary(byte[] value) {
-      if (DEBUG) log(new String(value));
+    public void addBinary(Binary value) {
+      if (DEBUG) log(value.toStringUsingUTF8());
       delegate.addBinary(value);
     }
 

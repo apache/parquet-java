@@ -16,19 +16,19 @@
 package parquet.hadoop;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.column.ColumnDescriptor;
+import parquet.column.Encoding;
 import parquet.column.mem.PageWriteStore;
 import parquet.column.mem.PageWriter;
-import parquet.format.DataPageHeader;
-import parquet.format.Encoding;
-import parquet.format.PageHeader;
-import parquet.format.PageType;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.schema.MessageType;
@@ -48,6 +48,8 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private long compressedLength;
     private long totalValueCount;
 
+    private Set<Encoding> encodings = new HashSet<Encoding>();
+
     private ColumnChunkPageWriter(ColumnDescriptor path, BytesCompressor compressor, int initialSize) {
       this.path = path;
       this.compressor = compressor;
@@ -55,18 +57,21 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     }
 
     @Override
-    public void writePage(BytesInput bytes, int valueCount, parquet.column.Encoding encoding) throws IOException {
+    public void writePage(BytesInput bytes, int valueCount, Encoding encoding) throws IOException {
       long uncompressedSize = bytes.size();
       BytesInput compressedBytes = compressor.compress(bytes);
       long compressedSize = compressedBytes.size();
-      PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, (int)uncompressedSize, (int)compressedSize);
-      // pageHeader.crc = ...;
-      pageHeader.data_page_header = new DataPageHeader(valueCount, parquetMetadataConverter.getEncoding(encoding));
-      parquetMetadataConverter.writePageHeader(pageHeader, buf);
+      parquetMetadataConverter.writeDataPageHeader(
+          (int)uncompressedSize,
+          (int)compressedSize,
+          valueCount,
+          encoding,
+          buf);
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
       compressedBytes.writeAllTo(buf);
+      encodings.add(encoding);
     }
 
     @Override
@@ -76,8 +81,9 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
     public void writeToFileWriter(ParquetFileWriter writer) throws IOException {
       writer.startColumn(path, totalValueCount, compressor.getCodecName());
-      writer.writeDataPages(BytesInput.from(buf), uncompressedLength, compressedLength);
+      writer.writeDataPages(BytesInput.from(buf), uncompressedLength, compressedLength, new ArrayList<Encoding>(encodings));
       writer.endColumn();
+      encodings.clear();
     }
 
     @Override

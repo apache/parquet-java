@@ -22,6 +22,7 @@ import java.io.IOException;
 
 import parquet.Log;
 import parquet.bytes.LittleEndianDataInputStream;
+import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
 
 /**
@@ -45,11 +46,12 @@ public class PlainColumnReader extends PrimitiveColumnReader {
   }
 
   @Override
-  public byte[] readBytes() {
+  public Binary readBytes() {
     try {
       byte[] value = new byte[in.readInt()];
       in.readFully(value);
-      return value;
+      // TODO: we don't need to read to an array.
+      return Binary.fromByteArray(value);
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read bytes", e);
     }

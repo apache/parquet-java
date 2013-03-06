@@ -35,6 +35,7 @@ import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
 import parquet.Log;
+import parquet.io.Binary;
 import parquet.io.RecordMaterializer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
@@ -211,8 +212,8 @@ public class TupleRecordConsumer extends RecordMaterializer<Tuple> {
   }
 
   @Override
-  public void addBinary(byte[] value) {
-    setCurrentField(new DataByteArray(value));
+  public void addBinary(Binary value) {
+    setCurrentField(new DataByteArray(value.getBytes()));
   }
 
   @Override

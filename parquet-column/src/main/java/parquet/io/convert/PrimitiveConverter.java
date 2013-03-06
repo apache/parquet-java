@@ -15,6 +15,8 @@
  */
 package parquet.io.convert;
 
+import parquet.io.Binary;
+
 /**
  * converter for leaves of the schema
  *
@@ -27,7 +29,7 @@ abstract public class PrimitiveConverter extends Converter {
    * @param fieldIndex index of the field
    * @param value value to set
    */
-  public void addBinary(byte[] value) {
+  public void addBinary(Binary value) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 

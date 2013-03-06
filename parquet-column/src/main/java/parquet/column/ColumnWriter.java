@@ -15,6 +15,8 @@
  */
 package parquet.column;
 
+import parquet.io.Binary;
+
 /**
  * writer for (repetition level, definition level, values) triplets
  *
@@ -53,7 +55,7 @@ public interface ColumnWriter {
    * @param repetitionLevel
    * @param definitionLevel
    */
-  void write(byte[] value, int repetitionLevel, int definitionLevel);
+  void write(Binary value, int repetitionLevel, int definitionLevel);
 
   /**
    * writes the current value

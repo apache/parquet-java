@@ -286,8 +286,8 @@ public class TestColumnIO {
           }
 
           @Override
-          public void write(byte[] value, int repetitionLevel, int definitionLevel) {
-            validate(new String(value), repetitionLevel, definitionLevel);
+          public void write(Binary value, int repetitionLevel, int definitionLevel) {
+            validate(value.toStringUsingUTF8(), repetitionLevel, definitionLevel);
           }
 
           @Override

@@ -32,6 +32,7 @@ import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
+import parquet.io.Binary;
 import parquet.io.convert.Converter;
 import parquet.io.convert.GroupConverter;
 import parquet.io.convert.PrimitiveConverter;
@@ -149,8 +150,8 @@ final class MapConverter extends GroupConverter {
   final class StringKeyConverter extends PrimitiveConverter {
 
     @Override
-    final public void addBinary(byte[] value) {
-      currentKey = new String(value, UTF8);
+    final public void addBinary(Binary value) {
+      currentKey = value.toStringUsingUTF8();
     }
 
   }

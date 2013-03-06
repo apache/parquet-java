@@ -28,6 +28,7 @@ import parquet.column.primitive.BooleanPlainColumnReader;
 import parquet.column.primitive.BoundedColumnFactory;
 import parquet.column.primitive.PlainColumnReader;
 import parquet.column.primitive.PrimitiveColumnReader;
+import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
 
 /**
@@ -131,7 +132,7 @@ abstract class MemColumnReader implements ColumnReader {
    * @see parquet.column.ColumnReader#getBinary()
    */
   @Override
-  public byte[] getBinary() {
+  public Binary getBinary() {
     throw new UnsupportedOperationException();
   }
 

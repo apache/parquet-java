@@ -15,6 +15,8 @@
  */
 package parquet.column;
 
+import parquet.io.Binary;
+
 /**
  * Reader for (repetition level, definition level, values) triplets.
  * At any given point in time, a ColumnReader points to a single (r, d, v) triplet.
@@ -71,7 +73,7 @@ public interface ColumnReader {
   /**
    * @return the current value
    */
-  byte[] getBinary();
+  Binary getBinary();
 
   /**
    * @return the current value

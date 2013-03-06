@@ -98,7 +98,7 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
     endIndex = index;
   }
 
-  final protected void addPrimitiveBINARY(String field, int index, byte[] value) {
+  final protected void addPrimitiveBINARY(String field, int index, Binary value) {
     startField(field, index);
     if (DEBUG) LOG.debug("addBinary("+value+")");
     recordConsumer.addBinary(value);

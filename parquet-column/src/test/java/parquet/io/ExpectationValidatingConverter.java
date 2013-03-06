@@ -55,8 +55,8 @@ public class ExpectationValidatingConverter extends RecordConverter<Void> {
           }
 
           @Override
-          public void addBinary(byte[] value) {
-            validate("addBinary("+new String(value)+")");
+          public void addBinary(Binary value) {
+            validate("addBinary("+value.toStringUsingUTF8()+")");
           }
 
           @Override
