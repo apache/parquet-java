@@ -141,6 +141,9 @@ public class LittleEndianDataOutputStream extends OutputStream {
    * @see        java.io.FilterOutputStream#out
    */
   public final void writeInt(int v) throws IOException {
+    // TODO: see note in LittleEndianDataInputStream: maybe faster
+    // to use Integer.reverseBytes() and then writeInt, or a ByteBuffer
+    // approach
     out.write((v >>>  0) & 0xFF);
     out.write((v >>>  8) & 0xFF);
     out.write((v >>> 16) & 0xFF);

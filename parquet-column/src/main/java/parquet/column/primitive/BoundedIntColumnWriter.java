@@ -25,8 +25,12 @@ import parquet.io.ParquetEncodingException;
  * repetition and definition levels, since the maximum value that will
  * be written is known a priori based on the schema. Assumption is that
  * the values written are between 0 and the bound, inclusive.
+ * 
+ * This differs from {@link BitPackingColumnWriter} in that this also performs
+ * run-length encoding of the data, so is useful when long runs of repeated
+ * values are expected.
  */
-public class BoundedIntColumnWriter extends PrimitiveColumnWriter {
+class BoundedIntColumnWriter extends PrimitiveColumnWriter {
   private static final Log LOG = Log.getLog(BoundedIntColumnWriter.class);
 
   private int currentValue = -1;
@@ -57,7 +61,7 @@ public class BoundedIntColumnWriter extends PrimitiveColumnWriter {
   }
 
   @Override
-  public long getMemSize() {
+  public long getBufferedSize() {
     // currentValue + currentValueCt = 8 bytes
     // shouldRepeatThreshold + bitsPerValue = 8 bytes
     // bitWriter = 8 bytes
@@ -109,12 +113,12 @@ public class BoundedIntColumnWriter extends PrimitiveColumnWriter {
     if (thereIsABufferedValue) {
       if (currentValueIsRepeated) {
         bitWriter.writeBit(true);
-        bitWriter.writeBits(currentValue, bitsPerValue);
+        bitWriter.writeNBitInteger(currentValue, bitsPerValue);
         bitWriter.writeUnsignedVarint(currentValueCt);
       } else {
         for (int i = 0; i < currentValueCt; i++) {
           bitWriter.writeBit(false);
-          bitWriter.writeBits(currentValue, bitsPerValue);
+          bitWriter.writeNBitInteger(currentValue, bitsPerValue);
         }
       }
     }
@@ -129,7 +133,7 @@ public class BoundedIntColumnWriter extends PrimitiveColumnWriter {
   }
 
   @Override
-  public long allocatedSize() {
+  public long getAllocatedSize() {
     return bitWriter.getCapacity();
   }
 

@@ -32,7 +32,7 @@ import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
 
 /**
- * implementation of the columnReader
+ * ColumnReader implementation 
  *
  * @author Julien Le Dem
  *
@@ -224,9 +224,8 @@ abstract class MemColumnReader implements ColumnReader {
         throw new ParquetDecodingException("Unsupported encoding: " + page.getEncoding());
       }
 
-      repetitionLevelColumn = new BitPackingColumnReader(path.getRepetitionLevel());
-      definitionLevelColumn = BoundedColumnFactory.getBoundedReader(path.getDefinitionLevel());
-
+      repetitionLevelColumn = new BitPackingColumnReader(path.getMaxRepetitionLevel());
+      definitionLevelColumn = BoundedColumnFactory.getBoundedReader(path.getMaxDefinitionLevel());
       switch (path.getType()) {
       case BOOLEAN:
         this.dataColumn = new BooleanPlainColumnReader();

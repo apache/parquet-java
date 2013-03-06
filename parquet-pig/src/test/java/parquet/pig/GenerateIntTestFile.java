@@ -96,7 +96,7 @@ public class GenerateIntTestFile {
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, testFile);
     MessageType schema = readFooter.getFileMetaData().getSchema();
     ParquetFileReader parquetFileReader = new ParquetFileReader(configuration, testFile, readFooter.getBlocks(), schema.getColumns());
-    PageReadStore pages = parquetFileReader.readColumns();
+    PageReadStore pages = parquetFileReader.readNextRowGroup();
     System.out.println(pages.getRowCount());
   }
 

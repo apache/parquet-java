@@ -41,9 +41,9 @@ import parquet.parser.MessageTypeParser;
 import parquet.schema.MessageType;
 
 /**
- * The input format to read a Parquet file
+ * The input format to read a Parquet file.
  *
- * It requires an implementation of {@link ReadSupport} to materialize the records
+ * It requires an implementation of {@link ReadSupport} to materialize the records.
  *
  * The requestedSchema will control how the original records get projected by the loader.
  * It must be a subset of the original schema. Only the columns needed to reconstruct the records with the requestedSchema will be scanned.
@@ -151,7 +151,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       splitGroups.add(new ArrayList<BlockMetaData>());
     }
     for (BlockMetaData block : blocks) {
-      final long firstDataPage = block.getColumns().get(0).getFirstDataPage();
+      final long firstDataPage = block.getColumns().get(0).getFirstDataPageOffset();
       int index = Arrays.binarySearch(hdfsBlocks, new BlockLocation() {@Override
         public long getOffset() {
         return firstDataPage;

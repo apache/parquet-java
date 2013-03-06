@@ -21,11 +21,11 @@ import parquet.io.Binary;
 /**
  * This is a special writer that doesn't write anything. The idea being that
  * some columns will always be the same value, and this will capture that. An
- * example is a schema with no repeated fields.
+ * example is the set of repetition levels for a schema with no repeated fields.
  */
 public class DevNullColumnWriter extends PrimitiveColumnWriter {
   @Override
-  public long getMemSize() {
+  public long getBufferedSize() {
     return 0;
   }
 
@@ -67,7 +67,7 @@ public class DevNullColumnWriter extends PrimitiveColumnWriter {
   }
 
   @Override
-  public long allocatedSize() {
+  public long getAllocatedSize() {
     return 0;
   }
 }

@@ -31,7 +31,7 @@ public abstract class PrimitiveColumnWriter {
    * used to decide if we want to work to the next page
    * @return the size of the currently buffered data
    */
-  public abstract long getMemSize();
+  public abstract long getBufferedSize();
 
   /**
    *
@@ -46,9 +46,10 @@ public abstract class PrimitiveColumnWriter {
 
   /**
    *
-   * @return the allocated size of the buffer ( > getMemSize() )
+   * @return the allocated size of the buffer
+   * ( > {@link #getBufferedMemorySize()() )
    */
-  abstract public long allocatedSize();
+  abstract public long getAllocatedSize();
 
   /**
    * @param value the value to encode

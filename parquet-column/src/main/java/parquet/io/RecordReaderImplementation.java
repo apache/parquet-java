@@ -178,16 +178,16 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     public final int maxRepetitionLevel;
     public final PrimitiveTypeName primitive;
     public final ColumnReader column;
-    public final String[] fieldPath; // indexed on currentLevel
-    public final int[] indexFieldPath; // indexed on currentLevel
+    public final String[] fieldPath; // indexed by currentLevel
+    public final int[] indexFieldPath; // indexed by currentLevel
     public final GroupConverter[] groupConverterPath;
     public final PrimitiveConverter primitiveConverter;
     public final String primitiveField;
     public final int primitiveFieldIndex;
-    public final int[] nextLevel; //indexed on next r
+    public final int[] nextLevel; //indexed by next r
 
-    private int[] definitionLevelToDepth; // indexed on current d
-    private State[] nextState; // indexed on next r
+    private int[] definitionLevelToDepth; // indexed by current d
+    private State[] nextState; // indexed by next r
     private Case[][][] caseLookup;
     private List<Case> definedCases;
     private List<Case> undefinedCases;

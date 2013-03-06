@@ -16,16 +16,14 @@
 package parquet.column;
 
 /**
- * contains all the columns for a given type
+ * Container which can construct writers for multiple columns to be stored
+ * together.
  *
  * @author Julien Le Dem
- *
  */
 public interface ColumnWriteStore {
-
   /**
-   *
-   * @param path
+   * @param path the column for which to create a writer
    * @return the column writer for the given column
    */
   abstract public ColumnWriter getColumnWriter(ColumnDescriptor path);

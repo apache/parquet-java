@@ -33,7 +33,7 @@ import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.schema.MessageType;
 
-public class ColumnChunkPageWriteStore implements PageWriteStore {
+class ColumnChunkPageWriteStore implements PageWriteStore {
 
   private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 

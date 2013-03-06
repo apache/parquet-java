@@ -18,10 +18,9 @@ package parquet.column;
 import parquet.ParquetRuntimeException;
 
 /**
- * Thrown when the column in unknown from the underlying storage
+ * Thrown if the specified column is unknown in the underlying storage
  *
  * @author Julien Le Dem
- *
  */
 public class UnknownColumnException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;
@@ -29,7 +28,7 @@ public class UnknownColumnException extends ParquetRuntimeException {
   private final ColumnDescriptor descriptor;
 
   public UnknownColumnException(ColumnDescriptor descriptor) {
-    super("column not found: " + descriptor.toString());
+    super("Column not found: " + descriptor.toString());
     this.descriptor = descriptor;
   }
 

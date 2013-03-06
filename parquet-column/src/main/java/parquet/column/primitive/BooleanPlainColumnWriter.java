@@ -55,7 +55,7 @@ public class BooleanPlainColumnWriter extends DataColumnWriter {
   }
 
   @Override
-  public long getMemSize() {
+  public long getBufferedSize() {
     return out.size();
   }
 
@@ -77,7 +77,7 @@ public class BooleanPlainColumnWriter extends DataColumnWriter {
   }
 
   @Override
-  public long allocatedSize() {
+  public long getAllocatedSize() {
     return out.getCapacity();
   }
 
