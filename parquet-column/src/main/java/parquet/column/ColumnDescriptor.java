@@ -20,7 +20,7 @@ import java.util.Arrays;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
- * Describes a column
+ * Describes a column's type as well as its position in its containing schema.
  *
  * @author Julien Le Dem
  *
@@ -48,7 +48,6 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
   }
 
   /**
-   *
    * @return the path to the leaf field in the schema
    */
   public String[] getPath() {
@@ -56,56 +55,39 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
   }
 
   /**
-   *
    * @return the maximum repetition level for that path
    */
-  public int getRepetitionLevel() {
+  public int getMaxRepetitionLevel() {
     return maxRep;
   }
 
   /**
-   *
    * @return  the maximum definition level for that path
    */
-  public int getDefinitionLevel() {
+  public int getMaxDefinitionLevel() {
     return maxDef;
   }
 
   /**
-   *
    * @return the type of that column
    */
   public PrimitiveTypeName getType() {
     return type;
   }
 
-  /**
-   *
-   * {@inheritDoc}
-   * @see java.lang.Object#hashCode()
-   */
   @Override
   public int hashCode() {
     return Arrays.hashCode(path);
   }
 
-  /**
-   *
-   * {@inheritDoc}
-   * @see java.lang.Object#equals(java.lang.Object)
-   */
   @Override
   public boolean equals(Object obj) {
     return Arrays.equals(path, ((ColumnDescriptor)obj).path);
   }
 
-  /**
-   *
-   * {@inheritDoc}
-   * @see java.lang.Comparable#compareTo(java.lang.Object)
-   */
   @Override
   public int compareTo(ColumnDescriptor o) {
+    // TODO(julien): this will fail if o.path.length < this.path.length
     for (int i = 0; i < path.length; i++) {
       int compareTo = path[i].compareTo(o.path[i]);
       if (compareTo != 0) {
@@ -114,11 +96,7 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
     }
     return 0;
   }
-  /**
-   *
-   * {@inheritDoc}
-   * @see java.lang.Object#toString()
-   */
+
   @Override
   public String toString() {
     return Arrays.toString(path)+" "+type;

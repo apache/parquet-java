@@ -108,7 +108,7 @@ public class BitPacking {
    * @param inthe stream to read the bytes from
    * @return the correct implementation for the width
    */
-  public static BitPackingReader getBitPackingReader(int bitLength, InputStream in, long valueCount) {
+  public static BitPackingReader createBitPackingReader(int bitLength, InputStream in, long valueCount) {
     switch (bitLength) {
     case 0:
       return new ZeroBitPackingReader();

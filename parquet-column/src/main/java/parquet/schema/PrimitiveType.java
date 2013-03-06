@@ -32,13 +32,12 @@ import parquet.io.convert.PrimitiveConverter;
  *
  */
 public class PrimitiveType extends Type {
+
   /**
    * Supported Primitive types
    *
    * @author Julien Le Dem
-   *
    */
-
   public static enum PrimitiveTypeName {
       INT64("getLong", Long.TYPE) {
       @Override
@@ -262,7 +261,7 @@ public class PrimitiveType extends Type {
   }
 
   @Override
-  public int getRepetitionLevel(String[] path, int i) {
+  public int getMaxRepetitionLevel(String[] path, int i) {
     if (path.length != i) {
       throw new InvalidRecordException("Arrived at primitive node, path invalid");
     }
@@ -270,7 +269,7 @@ public class PrimitiveType extends Type {
   }
 
   @Override
-  public int getDefinitionLevel(String[] path, int i) {
+  public int getMaxDefinitionLevel(String[] path, int i) {
     if (path.length != i) {
       throw new InvalidRecordException("Arrived at primitive node, path invalid");
     }

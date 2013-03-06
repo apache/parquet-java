@@ -25,7 +25,6 @@ import parquet.bytes.LittleEndianDataInputStream;
 import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
 
-
 /**
  * Plain encoding except for booleans
  *

@@ -19,7 +19,7 @@ import java.io.IOException;
 
 import parquet.io.ParquetDecodingException;
 
-public class BitReader {
+class BitReader {
   private int currentByte = 0;
   private int currentPosition = 8;
   private byte[] buf;
@@ -42,6 +42,11 @@ public class BitReader {
     }
   }
 
+  /**
+   * Prepare to deserialize bit-packed integers from the given array.
+   * The array is not copied, so must not be mutated during the course of
+   * reading.
+   */
   public void prepare(byte[] buf, int offset, int length) {
     this.buf = buf;
     this.endBufferPosistion = offset + length;
@@ -50,11 +55,19 @@ public class BitReader {
     currentBufferPosition = offset;
   }
 
-  public static boolean getBytePosition(int val, int position) {
-    return (val & byteGetValueMask[position]) != 0;
+  /**
+   * Extract the given bit index from the given value.
+   */
+  private static boolean extractBit(int val, int bit) {
+    return (val & byteGetValueMask[bit]) != 0;
   }
 
-  public int readBoundedInt(int bitsPerValue) {
+  /**
+   * Read an integer from the stream which is represented by a specified
+   * number of bits.
+   * @param bitsPerValue the number of bits used to represent the integer
+   */
+  public int readNBitInteger(int bitsPerValue) {
     int bits = bitsPerValue + currentPosition;
     int currentValue = currentByte >>> currentPosition;
     int toShift = 8 - currentPosition;
@@ -81,7 +94,7 @@ public class BitReader {
       currentByte = getNextByte();
       currentPosition = 0;
     }
-    return getBytePosition(currentByte, currentPosition++);
+    return extractBit(currentByte, currentPosition++);
   }
 
   public int readByte() {

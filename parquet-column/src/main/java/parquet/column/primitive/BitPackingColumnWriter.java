@@ -68,10 +68,10 @@ public class BitPackingColumnWriter extends PrimitiveColumnWriter {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.PrimitiveColumnWriter#getMemSize()
+   * @see parquet.column.primitive.PrimitiveColumnWriter#getBufferedSize()
    */
   @Override
-  public long getMemSize() {
+  public long getBufferedSize() {
     return out.size();
   }
 
@@ -104,10 +104,10 @@ public class BitPackingColumnWriter extends PrimitiveColumnWriter {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.PrimitiveColumnWriter#allocatedSize()
+   * @see parquet.column.primitive.PrimitiveColumnWriter#getAllocatedSize()
    */
   @Override
-  public long allocatedSize() {
+  public long getAllocatedSize() {
     return out.getCapacity();
   }
 

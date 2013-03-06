@@ -57,7 +57,7 @@ public class MemColumnWriteStore implements ColumnWriteStore {
       StringBuilder sb = new StringBuilder();
       for (Entry<ColumnDescriptor, MemColumnWriter> entry : columns.entrySet()) {
         sb.append(Arrays.toString(entry.getKey().getPath())).append(": ");
-        sb.append(entry.getValue().memSize()).append(" bytes");
+        sb.append(entry.getValue().getBufferedSizeInMemory()).append(" bytes");
         sb.append("\n");
       }
       return sb.toString();
@@ -76,7 +76,7 @@ public class MemColumnWriteStore implements ColumnWriteStore {
     Collection<MemColumnWriter> values = columns.values();
     long total = 0;
     for (MemColumnWriter memColumn : values) {
-      total += memColumn.memSize();
+      total += memColumn.getBufferedSizeInMemory();
     }
     return total;
   }
@@ -85,7 +85,7 @@ public class MemColumnWriteStore implements ColumnWriteStore {
     Collection<MemColumnWriter> values = columns.values();
     long max = 0;
     for (MemColumnWriter memColumn : values) {
-      max = Math.max(max, memColumn.memSize());
+      max = Math.max(max, memColumn.getBufferedSizeInMemory());
     }
     return max;
   }

@@ -15,7 +15,7 @@
  */
 package parquet.column.primitive;
 
-public class BoundedColumnFactory {
+public abstract class BoundedColumnFactory {
   public static PrimitiveColumnReader getBoundedReader(int bound) {
     return bound == 0 ? new DevNullColumnReader() : new BoundedIntColumnReader(bound);
   }

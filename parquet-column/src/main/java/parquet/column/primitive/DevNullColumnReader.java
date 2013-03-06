@@ -16,9 +16,12 @@
 package parquet.column.primitive;
 
 import java.io.IOException;
-
 import parquet.io.Binary;
 
+/**
+ * ColumnReader which does not read any actual data, but rather simply produces
+ * an endless stream of constant values.
+ */
 public class DevNullColumnReader extends PrimitiveColumnReader {
   private boolean defaultBoolean = false;
   private int defaultInt = 0;
@@ -28,6 +31,9 @@ public class DevNullColumnReader extends PrimitiveColumnReader {
   private double defaultDouble = 0.0;
   private Binary defaultBytes = Binary.EMPTY;
 
+  // TODO(julien): the setDefault* don't seem to be used anywhere. Can we kill them
+  // for now, so that this is truly DevNull instead of producing a constant stream of
+  // potentially some other value?
   public void setDefaultBoolean(boolean defaultBoolean) {
     this.defaultBoolean = defaultBoolean;
   }

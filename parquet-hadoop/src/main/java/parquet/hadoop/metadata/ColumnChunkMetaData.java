@@ -82,7 +82,7 @@ public class ColumnChunkMetaData implements Serializable {
    *
    * @param dataStart offset in the file where data starts
    */
-  public void setFirstDataPage(long firstDataPage) {
+  public void setFirstDataPageOffset(long firstDataPage) {
     this.firstDataPage = firstDataPage;
   }
 
@@ -90,7 +90,7 @@ public class ColumnChunkMetaData implements Serializable {
    *
    * @return start of the column data offset
    */
-  public long getFirstDataPage() {
+  public long getFirstDataPageOffset() {
     return firstDataPage;
   }
 

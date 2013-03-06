@@ -65,7 +65,7 @@ public class TestInputFormat {
   private BlockMetaData newBlock(long start) {
     BlockMetaData blockMetaData = new BlockMetaData();
     ColumnChunkMetaData column = new ColumnChunkMetaData(new String[] {"foo"}, PrimitiveTypeName.BINARY, CompressionCodecName.GZIP, Arrays.asList(Encoding.PLAIN));
-    column.setFirstDataPage(start);
+    column.setFirstDataPageOffset(start);
     blockMetaData.addColumn(column);
     return blockMetaData;
   }

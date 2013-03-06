@@ -136,7 +136,7 @@ public class ParquetMetadataConverter {
     List<ColumnChunkMetaData> columns = block.getColumns();
     List<ColumnChunk> parquetColumns = new ArrayList<ColumnChunk>();
     for (ColumnChunkMetaData columnMetaData : columns) {
-      ColumnChunk columnChunk = new ColumnChunk(columnMetaData.getFirstDataPage()); // verify this is the right offset
+      ColumnChunk columnChunk = new ColumnChunk(columnMetaData.getFirstDataPageOffset()); // verify this is the right offset
       columnChunk.file_path = null; // same file
       columnChunk.meta_data = new parquet.format.ColumnMetaData(
           getType(columnMetaData.getType()),
@@ -146,7 +146,7 @@ public class ParquetMetadataConverter {
           columnMetaData.getValueCount(),
           columnMetaData.getTotalUncompressedSize(),
           columnMetaData.getTotalSize(),
-          columnMetaData.getFirstDataPage()
+          columnMetaData.getFirstDataPageOffset()
           );
 //      columnChunk.meta_data.index_page_offset = ;
 //      columnChunk.meta_data.key_value_metadata = ; // nothing yet
@@ -254,7 +254,7 @@ public class ParquetMetadataConverter {
             messageType.getType(path).asPrimitiveType().getPrimitiveTypeName(),
             CompressionCodecName.fromParquet(metaData.codec),
             fromFormatEncodings(metaData.encodings));
-        column.setFirstDataPage(metaData.data_page_offset);
+        column.setFirstDataPageOffset(metaData.data_page_offset);
         column.setValueCount(metaData.num_values);
         column.setTotalUncompressedSize(metaData.total_uncompressed_size);
         column.setTotalSize(metaData.total_compressed_size);

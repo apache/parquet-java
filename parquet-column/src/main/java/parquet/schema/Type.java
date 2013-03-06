@@ -19,6 +19,12 @@ import java.util.List;
 
 import parquet.io.InvalidRecordException;
 
+/**
+ * Represents the declared type for a field in a schema.
+ * The Type object represents both the actual underlying type of the object
+ * (eg a primitive or group) as well as its attributes such as whether it is
+ * repeated, required, or optional.
+ */
 abstract public class Type {
 
   public static enum Repetition {
@@ -71,21 +77,21 @@ abstract public class Type {
   }
 
   /**
-   * writes a string representation to th eprovided StringBuilder
+   * Writes a string representation to the provided StringBuilder
    * @param sb the StringBuilder to write itself to
    * @param current indentation level
    */
   abstract public void writeToStringBuilder(StringBuilder sb, String indent);
 
   /**
-   * to visit this type with the given visitor
+   * Visits this type with the given visitor
    * @param visitor the visitor to visit this type
    */
   abstract public void accept(TypeVisitor visitor);
 
   @Override
   public int hashCode() {
-      return typeHashCode();
+    return typeHashCode();
   }
 
   protected abstract int typeHashCode();
@@ -100,9 +106,9 @@ abstract public class Type {
     return typeEquals((Type)other);
   }
 
-  protected abstract int getRepetitionLevel(String[] path, int i);
+  protected abstract int getMaxRepetitionLevel(String[] path, int i);
 
-  protected abstract int getDefinitionLevel(String[] path, int i);
+  protected abstract int getMaxDefinitionLevel(String[] path, int i);
 
   protected abstract Type getType(String[] path, int i);
 

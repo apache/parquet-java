@@ -40,6 +40,8 @@ public class BytesUtils {
    * @return the number of bits required
    */
   public static int getWidthFromMaxInt(int bound) {
+    // TODO(julien): is this floating point math safe here? maybe it would be better
+    // to use (32 - Integer.numberOfLeadingZeros(bound)) (and almost definitely faster) -todd
     return (int)Math.ceil(Math.log((double)bound + 1)/Math.log(2));
   }
 
@@ -59,6 +61,7 @@ public class BytesUtils {
   }
 
   public static int readIntLittleEndian(InputStream in) throws IOException {
+    // TODO: this is duplicated code in LittleEndianDataInputStream
     int ch1 = in.read();
     int ch2 = in.read();
     int ch3 = in.read();
@@ -70,6 +73,7 @@ public class BytesUtils {
   }
 
   public static void writeIntLittleEndian(OutputStream out, int v) throws IOException {
+    // TODO: this is duplicated code in LittleEndianDataOutputStream
     out.write((v >>>  0) & 0xFF);
     out.write((v >>>  8) & 0xFF);
     out.write((v >>> 16) & 0xFF);

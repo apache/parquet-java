@@ -23,8 +23,10 @@ import parquet.Log;
 import parquet.bytes.BytesUtils;
 import parquet.io.ParquetDecodingException;
 
-
-public class BoundedIntColumnReader extends PrimitiveColumnReader {
+/**
+ * @see BoundedIntColumnWriter
+ */
+class BoundedIntColumnReader extends PrimitiveColumnReader {
   private static final Log LOG = Log.getLog(BoundedIntColumnReader.class);
 
   private int currentValueCt = 0;
@@ -47,10 +49,10 @@ public class BoundedIntColumnReader extends PrimitiveColumnReader {
         return currentValue;
       }
       if (bitReader.readBit()) {
-        currentValue = bitReader.readBoundedInt(bitsPerValue);
+        currentValue = bitReader.readNBitInteger(bitsPerValue);
         currentValueCt = bitReader.readUnsignedVarint() - 1;
       } else {
-        currentValue = bitReader.readBoundedInt(bitsPerValue);
+        currentValue = bitReader.readNBitInteger(bitsPerValue);
       }
       return currentValue;
     } catch (IOException e) {

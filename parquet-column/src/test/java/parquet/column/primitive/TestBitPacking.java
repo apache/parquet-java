@@ -170,7 +170,7 @@ public class TestBitPacking {
     System.out.println("bytes: " + toString(bytes));
     Assert.assertEquals(expected, toString(bytes));
     ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-    BitPackingReader r = BitPacking.getBitPackingReader(bitLength, bais, vals.length);
+    BitPackingReader r = BitPacking.createBitPackingReader(bitLength, bais, vals.length);
     int[] result = new int[vals.length];
     for (int i = 0; i < result.length; i++) {
       result[i] = r.read();
