@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.hadoop.thrift;
+package parquet.thrift;
 
+import static com.twitter.data.proto.tutorial.thrift.PhoneType.MOBILE;
 import static junit.framework.Assert.assertEquals;
 
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
+import com.twitter.data.proto.tutorial.thrift.PhoneType;
 import com.twitter.elephantbird.thrift.test.TestMap;
 import com.twitter.elephantbird.thrift.test.TestName;
 import com.twitter.elephantbird.thrift.test.TestPerson;
@@ -62,12 +64,14 @@ public class TestParquetReadProtocol {
 
   @Test
   public void testRead() throws Exception {
+    final PhoneNumber phoneNumber = new PhoneNumber("5555555555");
+    phoneNumber.type = MOBILE;
     List<Person> persons = Arrays.asList(
         new Person(
             new Name("john", "johson"),
             1,
             "john@johnson.org",
-            Arrays.asList(new PhoneNumber("5555555555"))
+            Arrays.asList(phoneNumber)
             ),
         new Person(
             new Name("jack", "jackson"),

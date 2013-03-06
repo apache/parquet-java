@@ -18,6 +18,9 @@ package parquet.thrift;
 import static parquet.Log.DEBUG;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
@@ -39,6 +42,7 @@ import parquet.io.RecordConsumer;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftType.EnumType;
+import parquet.thrift.struct.ThriftType.EnumValue;
 import parquet.thrift.struct.ThriftType.ListType;
 import parquet.thrift.struct.ThriftType.MapType;
 import parquet.thrift.struct.ThriftType.SetType;
@@ -72,21 +76,33 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   public class EnumWriteProtocol extends FieldBaseWriteProtocol {
 
+    private final Map<Integer, Binary> enumLookup = new HashMap<Integer, Binary>();
+
     public EnumWriteProtocol(PrimitiveColumnIO columnIO, EnumType type, Events returnClause) {
       super(returnClause);
+      for (EnumValue enumValue : type.getValues()) {
+        enumLookup.put(enumValue.getId(), Binary.fromString(enumValue.getName()));
+      }
+    }
+
+    @Override
+    public void writeI32(int i32) throws TException {
+      start();
+      recordConsumer.addBinary(enumLookup.get(i32));
+      end();
     }
 
   }
   public class ListWriteProtocol extends FieldBaseWriteProtocol {
 
-    private GroupColumnIO listContent;
+    private ColumnIO listContent;
     private TProtocol contentProtocol;
     private int size;
 
     public ListWriteProtocol(GroupColumnIO columnIO, ThriftField values, Events returnClause) {
       super(returnClause);
-      this.listContent = (GroupColumnIO)columnIO.getChild(0);
-      this.contentProtocol = getProtocol(values, columnIO.getChild(0), new Events() {
+      this.listContent = columnIO.getChild(0);
+      this.contentProtocol = getProtocol(values, listContent, new Events() {
         int consumedRecords = 0;
         @Override
         public void start() {

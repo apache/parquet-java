@@ -86,10 +86,10 @@ public class ThriftSchemaConverter {
   private Type toSchema(String name, Field field, Type.Repetition rep) {
     if (field.isList()) {
       final Field listElemField = field.getListElemField();
-      return ConversionPatterns.listType(rep, name, toSchema(name + "_tuple", listElemField, OPTIONAL));
+      return ConversionPatterns.listType(rep, name, toSchema(name + "_tuple", listElemField, REPEATED));
     } else if (field.isSet()) {
       final Field setElemField = field.getSetElemField();
-      return ConversionPatterns.listType(rep, name, toSchema(name + "_tuple", setElemField, OPTIONAL));
+      return ConversionPatterns.listType(rep, name, toSchema(name + "_tuple", setElemField, REPEATED));
     } else if (field.isStruct()) {
       return new GroupType(rep, name, toSchema(field.gettStructDescriptor()));
     } else if (field.isBuffer()) {
