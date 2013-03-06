@@ -151,7 +151,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       splitGroups.add(new ArrayList<BlockMetaData>());
     }
     for (BlockMetaData block : blocks) {
-      final long firstDataPage = block.getColumns().get(0).getFirstDataPage();
+      final long firstDataPage = block.getColumns().get(0).getFirstDataPageOffset();
       int index = Arrays.binarySearch(hdfsBlocks, new BlockLocation() {@Override
         public long getOffset() {
         return firstDataPage;

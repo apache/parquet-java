@@ -50,7 +50,7 @@ public class TestReadIntTestFile {
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, testFile);
     MessageType schema = readFooter.getFileMetaData().getSchema();
     ParquetFileReader parquetFileReader = new ParquetFileReader(configuration, testFile, readFooter.getBlocks(), schema.getColumns());
-    PageReadStore pages = parquetFileReader.readColumns();
+    PageReadStore pages = parquetFileReader.readNextRowGroup();
     final long rows = pages.getRowCount();
     LOG.info("rows: "+rows);
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);

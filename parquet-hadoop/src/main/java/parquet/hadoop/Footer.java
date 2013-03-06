@@ -27,7 +27,7 @@ import parquet.hadoop.metadata.ParquetMetadata;
  * @author Julien Le Dem
  *
  */
-public class Footer {
+class Footer {
 
   private final Path file;
 

@@ -97,7 +97,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
       LOG.info("at row " + current + ". reading next block");
       long t0 = System.currentTimeMillis();
-      PageReadStore pages = reader.readColumns();
+      PageReadStore pages = reader.readNextRowGroup();
       if (pages == null) {
         throw new IOException("expecting more rows but reached last block. Read " + current + " out of " + total);
       }

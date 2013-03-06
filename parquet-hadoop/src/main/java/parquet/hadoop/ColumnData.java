@@ -23,7 +23,7 @@ import java.util.Arrays;
  * @author Julien Le Dem
  *
  */
-public class ColumnData {
+class ColumnData {
 
   private final String[] path;
   private final byte[] repetitionLevels;

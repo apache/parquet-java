@@ -34,7 +34,7 @@ import org.apache.hadoop.util.ReflectionUtils;
 import parquet.bytes.BytesInput;
 import parquet.hadoop.metadata.CompressionCodecName;
 
-public class CodecFactory {
+class CodecFactory {
 
   public class BytesDecompressor {
 
@@ -143,34 +143,40 @@ public class CodecFactory {
     String codecClassName = codecName.getHadoopCompressionCodecClass();
     if (codecClassName == null) {
       return null;
-    } else if (codecByName.containsKey(codecClassName)) {
-      return codecByName.get(codecClassName);
-    } else {
-      try {
-        Class<?> codecClass = Class.forName(codecClassName);
-        CompressionCodec codec = (CompressionCodec)ReflectionUtils.newInstance(codecClass, configuration);
-        codecByName.put(codecClassName, codec);
-        return codec;
-      } catch (ClassNotFoundException e) {
-        throw new RuntimeException("Class " + codecClassName + " was not found", e);
-      }
+    }
+    CompressionCodec codec = codecByName.get(codecClassName);
+    if (codec != null) {
+      return codec;
+    }
+  
+    try {
+      Class<?> codecClass = Class.forName(codecClassName);
+      codec = (CompressionCodec)ReflectionUtils.newInstance(codecClass, configuration);
+      codecByName.put(codecClassName, codec);
+      return codec;
+    } catch (ClassNotFoundException e) {
+      throw new RuntimeException("Class " + codecClassName + " was not found", e);
     }
   }
 
   public BytesCompressor getCompressor(CompressionCodecName codecName, int pageSize) {
-    if (!compressors.containsKey(codecName)) {
+    BytesCompressor comp = compressors.get(codecName);
+    if (comp == null) {
       CompressionCodec codec = getCodec(codecName);
-      compressors.put(codecName, new BytesCompressor(codecName, codec, pageSize));
+      comp = new BytesCompressor(codecName, codec, pageSize);
+      compressors.put(codecName, comp);
     }
-    return compressors.get(codecName);
+    return comp;
   }
 
   public BytesDecompressor getDecompressor(CompressionCodecName codecName) {
-    if (!decompressors.containsKey(codecName)) {
+    BytesDecompressor decomp = decompressors.get(codecName);
+    if (decomp == null) {
       CompressionCodec codec = getCodec(codecName);
-      decompressors.put(codecName, new BytesDecompressor(codec));
+      decomp = new BytesDecompressor(codec);
+      decompressors.put(codecName, decomp);
     }
-    return decompressors.get(codecName);
+    return decomp;
   }
 
   public void release() {

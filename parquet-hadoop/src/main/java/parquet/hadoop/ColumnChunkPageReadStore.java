@@ -18,6 +18,7 @@ package parquet.hadoop;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -28,24 +29,36 @@ import parquet.column.mem.PageReadStore;
 import parquet.column.mem.PageReader;
 import parquet.hadoop.CodecFactory.BytesDecompressor;
 
-
-public class ColumnChunkPageReadStore implements PageReadStore {
+/**
+ * TODO: should this actually be called RowGroupImpl or something?
+ * The name is kind of confusing since it references three different "entities"
+ * in our format: columns, chunks, and pages
+ * 
+ */
+class ColumnChunkPageReadStore implements PageReadStore {
   private static final Log LOG = Log.getLog(ColumnChunkPageReadStore.class);
 
+  /**
+   * PageReader for a single column chunk. A column chunk contains
+   * several pages, which are yielded one by one in order.
+   *
+   * This implementation is provided with a list of pages, each of which
+   * is decompressed and passed through. 
+   */
   static final class ColumnChunkPageReader implements PageReader {
 
     private final BytesDecompressor decompressor;
     private final long valueCount;
-    private final List<Page> pages = new ArrayList<Page>();
-    private int currentPage = 0;
+    private final List<Page> compressedPages;
 
-    ColumnChunkPageReader(BytesDecompressor decompressor, long valueCount) {
+    ColumnChunkPageReader(BytesDecompressor decompressor, List<Page> compressedPages) {
       this.decompressor = decompressor;
-      this.valueCount = valueCount;
-    }
-
-    public void addPage(Page page) {
-      pages.add(page);
+      this.compressedPages = new LinkedList<Page>(compressedPages);
+      int count = 0;
+      for (Page p : compressedPages) {
+        count += p.getValueCount();
+      }
+      this.valueCount = count;
     }
 
     @Override
@@ -55,20 +68,18 @@ public class ColumnChunkPageReadStore implements PageReadStore {
 
     @Override
     public Page readPage() {
-      if (currentPage == pages.size()) {
+      if (compressedPages.isEmpty()) {
         return null;
-      } else {
-        try {
-          Page compressedPage= pages.get(currentPage);
-          ++ currentPage;
-          return new Page(
-              decompressor.decompress(compressedPage.getBytes(), compressedPage.getUncompressedSize()),
-              compressedPage.getValueCount(),
-              compressedPage.getUncompressedSize(),
-              compressedPage.getEncoding());
-        } catch (IOException e) {
-          throw new RuntimeException(e); // TODO: cleanup
-        }
+      }
+      Page compressedPage = compressedPages.remove(0); 
+      try {
+        return new Page(
+            decompressor.decompress(compressedPage.getBytes(), compressedPage.getUncompressedSize()),
+            compressedPage.getValueCount(),
+            compressedPage.getUncompressedSize(),
+            compressedPage.getEncoding());
+      } catch (IOException e) {
+        throw new RuntimeException(e); // TODO: cleanup
       }
     }
   }

@@ -112,8 +112,9 @@ public class ParquetFileReader {
     List<Footer> result = new ArrayList<Footer>(partFiles.size());
     List<FileStatus> toRead = new ArrayList<FileStatus>();
     for (FileStatus part : partFiles) {
-      if (cache.containsKey(part.getPath())) {
-        result.add(cache.get(part.getPath()));
+      Footer f = cache.get(part.getPath());
+      if (f != null) {
+        result.add(f);
       } else {
         toRead.add(part);
       }
@@ -262,6 +263,7 @@ public class ParquetFileReader {
 
   private final List<BlockMetaData> blocks;
   private final FSDataInputStream f;
+  private final Path filePath;
   private int currentBlock = 0;
   private Map<String, ColumnDescriptor> paths = new HashMap<String, ColumnDescriptor>();
 
@@ -275,6 +277,7 @@ public class ParquetFileReader {
    */
   public ParquetFileReader(Configuration configuration, Path filePath, List<BlockMetaData> blocks, List<ColumnDescriptor> columns) throws IOException {
     FileSystem fs = FileSystem.get(configuration);
+    this.filePath = filePath;
     this.f = fs.open(filePath);
     this.blocks = blocks;
     for (ColumnDescriptor col : columns) {
@@ -284,12 +287,11 @@ public class ParquetFileReader {
   }
 
   /**
-   * reads all the columns requested in the next block
-   * @return the block data for the next block
+   * Reads all the columns requested from the row group at the current file position.
    * @throws IOException if an error occurs while reading
-   * @return how many records where read or 0 if end reached.
+   * @return the PageReadStore which can provide PageReaders for each column. 
    */
-  public PageReadStore readColumns() throws IOException {
+  public PageReadStore readNextRowGroup() throws IOException {
     if (currentBlock == blocks.size()) {
       return null;
     }
@@ -300,29 +302,52 @@ public class ParquetFileReader {
     ColumnChunkPageReadStore columnChunkPageReadStore = new ColumnChunkPageReadStore(block.getRowCount());
     for (ColumnChunkMetaData mc : block.getColumns()) {
       String pathKey = Arrays.toString(mc.getPath());
-      if (paths.containsKey(pathKey)) {
-        ColumnDescriptor columnDescriptor = paths.get(pathKey);
-        f.seek(mc.getFirstDataPage());
-        if (DEBUG) LOG.debug(f.getPos() + ": start column chunk " + Arrays.toString(mc.getPath()) + " " + mc.getType() + " count=" + mc.getValueCount());
+      ColumnDescriptor columnDescriptor = paths.get(pathKey);
+      if (columnDescriptor != null) {
+        List<Page> pagesInChunk = readColumnChunkPages(columnDescriptor, mc);
         BytesDecompressor decompressor = codecFactory.getDecompressor(mc.getCodec());
-        ColumnChunkPageReader columnChunkPageReader = new ColumnChunkPageReader(decompressor, mc.getValueCount());
-        long valuesCountReadSoFar = 0;
-        while (valuesCountReadSoFar < mc.getValueCount()) {
-          PageHeader pageHeader = readNextDataPageHeader();
-          columnChunkPageReader.addPage(
-              new Page(
-                  BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)),
-                  pageHeader.data_page_header.num_values,
-                  pageHeader.uncompressed_page_size,
-                  parquetMetadataConverter.getEncoding(pageHeader.data_page_header.encoding)
-                  ));
-          valuesCountReadSoFar += pageHeader.data_page_header.num_values;
-        }
+        ColumnChunkPageReader columnChunkPageReader = new ColumnChunkPageReader(decompressor, pagesInChunk);
         columnChunkPageReadStore.addColumn(columnDescriptor, columnChunkPageReader);
       }
     }
     ++currentBlock;
     return columnChunkPageReadStore;
+  }
+
+  /**
+   * Read all of the pages in a given column chunk.
+   * @return the list of pages
+   */
+  private List<Page> readColumnChunkPages(ColumnDescriptor columnDescriptor, ColumnChunkMetaData metadata)
+      throws IOException {
+    f.seek(metadata.getFirstDataPageOffset());
+    if (DEBUG) {
+      LOG.debug(f.getPos() + ": start column chunk " + Arrays.toString(metadata.getPath()) +
+        " " + metadata.getType() + " count=" + metadata.getValueCount());
+    }
+    
+    List<Page> pagesInChunk = new ArrayList<Page>();
+    long valuesCountReadSoFar = 0;
+    while (valuesCountReadSoFar < metadata.getValueCount()) {
+      PageHeader pageHeader = readNextDataPageHeader();
+      pagesInChunk.add(
+          new Page(
+              BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)),
+              pageHeader.data_page_header.num_values,
+              pageHeader.uncompressed_page_size,
+              parquetMetadataConverter.getEncoding(pageHeader.data_page_header.encoding)
+              ));
+      valuesCountReadSoFar += pageHeader.data_page_header.num_values;
+    }
+    if (valuesCountReadSoFar != metadata.getValueCount()) {
+      // Would be nice to have a CorruptParquetFileException or something as a subclass?
+      throw new IOException(
+          "Expected " + metadata.getValueCount() + " values in column chunk at " +
+          filePath + " offset " + metadata.getFirstDataPageOffset() +
+          " but got " + valuesCountReadSoFar + " values instead over " + pagesInChunk.size()
+          + " pages ending at file offset " + f.getPos());
+    }
+    return pagesInChunk;
   }
 
   private PageHeader readNextDataPageHeader() throws IOException {

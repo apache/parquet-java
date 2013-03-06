@@ -170,7 +170,7 @@ public class ParquetFileWriter {
     if (DEBUG) LOG.debug(out.getPos() + ": start column: " + descriptor + " count=" + valueCount);
     currentColumn = new ColumnChunkMetaData(descriptor.getPath(), descriptor.getType(), compressionCodecName);
     currentColumn.setValueCount(valueCount);
-    currentColumn.setFirstDataPage(out.getPos());
+    currentColumn.setFirstDataPageOffset(out.getPos());
     compressedLength = 0;
     uncompressedLength = 0;
   }

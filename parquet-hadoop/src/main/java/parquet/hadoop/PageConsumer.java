@@ -17,7 +17,7 @@ package parquet.hadoop;
 
 import parquet.bytes.BytesInput;
 
-abstract public class PageConsumer {
+abstract class PageConsumer {
 
   abstract public void consumePage(String[] path, int valueCount, BytesInput bytes);
 
