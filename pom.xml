@@ -77,13 +77,13 @@
         <artifactId>cobertura-maven-plugin</artifactId>
         <version>2.5.2</version>
         <configuration>
+          <aggregate>true</aggregate>
           <instrumentation>
             <ignores>
               <ignore>*Exception</ignore>
             </ignores>
             <excludes>
               <exclude>**/*Exception.class</exclude>
-              <exclude>parquet/example/**/*.class</exclude>
             </excludes>
           </instrumentation>
         </configuration>

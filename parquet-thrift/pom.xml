@@ -13,7 +13,7 @@
   <packaging>jar</packaging>
 
   <name>Parquet Thrift</name>
-  <url>https://github.com/julienledem/Parquet/parquet-mr</url>
+  <url>https://github.com/Parquet/parquet-mr</url>
 
   <properties>
     <elephant-bird.version>3.0.7</elephant-bird.version>
