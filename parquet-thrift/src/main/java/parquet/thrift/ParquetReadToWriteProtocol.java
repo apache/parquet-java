@@ -45,10 +45,10 @@ public class ParquetReadToWriteProtocol {
       out.writeBool(in.readBool());
       break;
     case TType.BYTE:
-      out.writeBool(in.readBool());
+      out.writeByte(in.readByte());
       break;
     case TType.DOUBLE:
-      out.writeBool(in.readBool());
+      out.writeDouble(in.readDouble());
       break;
     case TType.I16:
       out.writeI16(in.readI16());

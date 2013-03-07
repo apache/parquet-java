@@ -17,6 +17,7 @@ package parquet.io;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import parquet.bytes.BytesUtils;
@@ -66,6 +67,11 @@ abstract public class Binary {
         return equals(value, offset, length, other, otherOffset, otherLength);
       }
 
+      @Override
+      public ByteBuffer toByteBuffer() {
+        return ByteBuffer.wrap(value, offset, length);
+      }
+
     };
   }
 
@@ -104,6 +110,11 @@ abstract public class Binary {
       @Override
       boolean equals(byte[] other, int otherOffset, int otherLength) {
         return equals(value, 0, value.length, other, otherOffset, otherLength);
+      }
+
+      @Override
+      public ByteBuffer toByteBuffer() {
+        return ByteBuffer.wrap(value);
       }
     };
   }
@@ -172,5 +183,7 @@ abstract public class Binary {
     }
     return false;
   }
+
+  abstract public ByteBuffer toByteBuffer();
 
 }

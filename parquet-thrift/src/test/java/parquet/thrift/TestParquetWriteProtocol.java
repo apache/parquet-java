@@ -15,6 +15,7 @@
  */
 package parquet.thrift;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+
+import thrift.test.OneOfEach;
 
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
@@ -389,6 +392,68 @@ public class TestParquetWriteProtocol {
     expectationsThrift[71] = "endField(phones_tuple, 0)";
     expectationsThrift[75] = "endField(persons_tuple, 0)";
     validateThrift(expectationsThrift, a);
+  }
+
+
+  @Test
+  public void testOneOfEach() throws TException {
+    String[] expectations = {
+        "startMessage()",
+         "startField(im_true, 0)",
+          "addInt(1)",
+         "endField(im_true, 0)",
+         "startField(im_false, 1)",
+          "addInt(0)",
+         "endField(im_false, 1)",
+         "startField(a_bite, 2)",
+          "addInt(8)",
+         "endField(a_bite, 2)",
+         "startField(integer16, 3)",
+          "addInt(16)",
+         "endField(integer16, 3)",
+         "startField(integer32, 4)",
+          "addInt(32)",
+         "endField(integer32, 4)",
+         "startField(integer64, 5)",
+          "addLong(64)",
+         "endField(integer64, 5)",
+         "startField(double_precision, 6)",
+          "addDouble(1234.0)",
+         "endField(double_precision, 6)",
+         "startField(some_characters, 7)",
+          "addBinary(string)",
+         "endField(some_characters, 7)",
+         "startField(zomg_unicode, 8)",
+          "addBinary(å)",
+         "endField(zomg_unicode, 8)",
+         "startField(what_who, 9)",
+          "addInt(0)",
+         "endField(what_who, 9)",
+         "startField(base64, 10)",
+          "addBinary(a)",
+         "endField(base64, 10)",
+         "startField(byte_list, 11)",
+          "startGroup()",
+          "endGroup()",
+         "endField(byte_list, 11)",
+         "startField(i16_list, 12)",
+          "startGroup()",
+          "endGroup()",
+         "endField(i16_list, 12)",
+         "startField(i64_list, 13)",
+          "startGroup()",
+          "endGroup()",
+         "endField(i64_list, 13)",
+        "endMessage()"};
+    OneOfEach a = new OneOfEach(
+        true, false, (byte)8, (short)16, (int)32, (long)64, (double)1234, "string", "å", false,
+        ByteBuffer.wrap("a".getBytes()), new ArrayList<Byte>(), new ArrayList<Short>(), new ArrayList<Long>());
+   validatePig(expectations, a);
+   String[] thriftExpectations = Arrays.copyOf(expectations, expectations.length, String[].class);
+   thriftExpectations[2] = "addBoolean(true)"; // Elephant bird maps booleans to int
+   thriftExpectations[5] = "addBoolean(false)";
+   thriftExpectations[29] = "addBoolean(false)";
+   validateThrift(thriftExpectations, a);
   }
 
   private void validateThrift(String[] expectations, TBase<?, ?> a)

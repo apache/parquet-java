@@ -160,10 +160,6 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   }
 
-  enum MapState {
-    KEY, VALUE
-  }
-
   public class MapWriteProtocol extends FieldBaseWriteProtocol {
 
     private GroupColumnIO mapContent;

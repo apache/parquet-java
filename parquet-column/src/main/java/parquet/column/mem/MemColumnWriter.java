@@ -52,6 +52,7 @@ final class MemColumnWriter implements ColumnWriter {
     switch (path.getType()) {
     case BOOLEAN:
       this.dataColumn = new BooleanPlainColumnWriter(pageSizeThreshold * 11 / 10);
+      break;
     default:
       this.dataColumn = new PlainColumnWriter(pageSizeThreshold * 11 / 10);
     }

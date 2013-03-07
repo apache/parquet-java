@@ -32,7 +32,7 @@ import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
 
 /**
- * ColumnReader implementation 
+ * ColumnReader implementation
  *
  * @author Julien Le Dem
  *
@@ -229,6 +229,7 @@ abstract class MemColumnReader implements ColumnReader {
       switch (path.getType()) {
       case BOOLEAN:
         this.dataColumn = new BooleanPlainColumnReader();
+        break;
       default:
         this.dataColumn = new PlainColumnReader();
       }
