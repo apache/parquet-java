@@ -20,8 +20,8 @@ import java.util.List;
 
 import parquet.column.ColumnReader;
 import parquet.io.InvalidRecordException;
-import parquet.io.RecordConsumer;
-import parquet.io.convert.PrimitiveConverter;
+import parquet.io.api.PrimitiveConverter;
+import parquet.io.api.RecordConsumer;
 
 
 /**

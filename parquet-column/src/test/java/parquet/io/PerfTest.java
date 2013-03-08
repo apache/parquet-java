@@ -28,7 +28,7 @@ import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.mem.MemPageStore;
 import parquet.example.DummyRecordConverter;
 import parquet.example.data.GroupWriter;
-import parquet.io.convert.RecordConverter;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 
 
@@ -56,7 +56,7 @@ public class PerfTest {
       String message) {
     MessageColumnIO columnIO = newColumnFactory(myschema);
     System.out.println(message);
-    RecordConverter<Object> recordConsumer = new DummyRecordConverter(myschema);
+    RecordMaterializer<Object> recordConsumer = new DummyRecordConverter(myschema);
     RecordReader<Object> recordReader = columnIO.getRecordReader(memPageStore, recordConsumer);
 
     read(recordReader, 2, myschema);

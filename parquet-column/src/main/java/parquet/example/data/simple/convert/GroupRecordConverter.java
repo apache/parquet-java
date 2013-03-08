@@ -17,11 +17,11 @@ package parquet.example.data.simple.convert;
 
 import parquet.example.data.Group;
 import parquet.example.data.simple.SimpleGroupFactory;
-import parquet.io.convert.GroupConverter;
-import parquet.io.convert.RecordConverter;
+import parquet.io.api.GroupConverter;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 
-public class GroupRecordConverter extends RecordConverter<Group> {
+public class GroupRecordConverter extends RecordMaterializer<Group> {
 
   private final SimpleGroupFactory simpleGroupFactory;
 

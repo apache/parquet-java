@@ -19,7 +19,7 @@ import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 
-import parquet.io.convert.RecordConverter;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 
 /**
@@ -40,7 +40,7 @@ abstract public class ReadSupport<T> {
    * @param requestedSchema the schema requested by the user
    * @return the recordConsumer that will receive the events
    */
-  abstract public RecordConverter<T> initForRead(
+  abstract public RecordMaterializer<T> initForRead(
       Configuration configuration,
       Map<String, String> keyValueMetaData,
       MessageType fileSchema,

@@ -22,13 +22,13 @@ import org.apache.hadoop.conf.Configuration;
 import parquet.example.data.Group;
 import parquet.example.data.simple.convert.GroupRecordConverter;
 import parquet.hadoop.api.ReadSupport;
-import parquet.io.convert.RecordConverter;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 
 public class GroupReadSupport extends ReadSupport<Group> {
 
   @Override
-  public RecordConverter<Group> initForRead(
+  public RecordMaterializer<Group> initForRead(
       Configuration configuration,
       Map<String, String> keyValueMetaData,
       MessageType fielSchema,

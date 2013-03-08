@@ -17,7 +17,7 @@ package parquet.column.values.boundedint;
 
 import parquet.bytes.BytesInput;
 import parquet.column.values.ValuesWriter;
-import parquet.io.Binary;
+import parquet.io.api.Binary;
 
 /**
  * This is a special writer that doesn't write anything. The idea being that

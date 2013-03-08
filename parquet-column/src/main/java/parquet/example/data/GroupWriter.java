@@ -15,7 +15,7 @@
  */
 package parquet.example.data;
 
-import parquet.io.RecordConsumer;
+import parquet.io.api.RecordConsumer;
 import parquet.schema.GroupType;
 import parquet.schema.Type;
 

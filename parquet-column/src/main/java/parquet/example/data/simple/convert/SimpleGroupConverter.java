@@ -16,8 +16,8 @@
 package parquet.example.data.simple.convert;
 
 import parquet.example.data.Group;
-import parquet.io.convert.Converter;
-import parquet.io.convert.GroupConverter;
+import parquet.io.api.Converter;
+import parquet.io.api.GroupConverter;
 import parquet.schema.GroupType;
 import parquet.schema.Type;
 

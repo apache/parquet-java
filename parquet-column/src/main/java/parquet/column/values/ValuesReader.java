@@ -17,7 +17,7 @@ package parquet.column.values;
 
 import java.io.IOException;
 
-import parquet.io.Binary;
+import parquet.io.api.Binary;
 
 /**
  * Base class to implement an encoding for a given column type.

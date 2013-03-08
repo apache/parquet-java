@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.parser;
+package parquet.schema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,11 +21,6 @@ import java.util.List;
 import java.util.StringTokenizer;
 
 import parquet.Log;
-import parquet.schema.GroupType;
-import parquet.schema.MessageType;
-import parquet.schema.OriginalType;
-import parquet.schema.PrimitiveType;
-import parquet.schema.Type;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type.Repetition;
 

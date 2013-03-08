@@ -24,8 +24,8 @@ import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.bytes.LittleEndianDataOutputStream;
 import parquet.column.Encoding;
 import parquet.column.values.DataValuesWriter;
-import parquet.io.Binary;
 import parquet.io.ParquetEncodingException;
+import parquet.io.api.Binary;
 
 
 /**

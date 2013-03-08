@@ -13,22 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.io;
+package parquet.io.api;
 
 /**
- *
- * materializes records coming from the assembly algorithm
+ * Represent a tree of converters
+ * that materializes tuples
  *
  * @author Julien Le Dem
  *
- * @param <T> the type of the materialized tuple
  */
-abstract public class RecordMaterializer<T> extends RecordConsumer {
+public abstract class Converter {
 
-  /**
-   * called after a call to endMessage()
-   * @return the materialized record
-   */
-  abstract public T getCurrentRecord();
+  abstract public boolean isPrimitive();
+
+  public PrimitiveConverter asPrimitiveConverter() {
+    throw new ClassCastException(getClass().getName());
+  }
+
+  public GroupConverter asGroupConverter() {
+    throw new ClassCastException(getClass().getName());
+  }
 
 }

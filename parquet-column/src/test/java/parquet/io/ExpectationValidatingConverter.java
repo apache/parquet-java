@@ -20,17 +20,18 @@ import static org.junit.Assert.assertEquals;
 import java.util.Deque;
 import java.util.List;
 
-import parquet.io.convert.Converter;
-import parquet.io.convert.GroupConverter;
-import parquet.io.convert.PrimitiveConverter;
-import parquet.io.convert.RecordConverter;
+import parquet.io.api.Binary;
+import parquet.io.api.Converter;
+import parquet.io.api.GroupConverter;
+import parquet.io.api.PrimitiveConverter;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType;
 import parquet.schema.Type;
 import parquet.schema.TypeConverter;
 
-public class ExpectationValidatingConverter extends RecordConverter<Void> {
+public class ExpectationValidatingConverter extends RecordMaterializer<Void> {
 
   private GroupConverter root;
 

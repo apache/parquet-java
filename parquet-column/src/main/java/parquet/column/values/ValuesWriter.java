@@ -16,7 +16,7 @@
 package parquet.column.values;
 
 import parquet.bytes.BytesInput;
-import parquet.io.Binary;
+import parquet.io.api.Binary;
 
 /**
  * base class to implement an encoding for a given column

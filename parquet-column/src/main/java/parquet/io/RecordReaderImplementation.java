@@ -26,10 +26,11 @@ import java.util.Map;
 import parquet.Log;
 import parquet.column.ColumnReader;
 import parquet.column.impl.ColumnReadStoreImpl;
-import parquet.io.convert.Converter;
-import parquet.io.convert.GroupConverter;
-import parquet.io.convert.PrimitiveConverter;
-import parquet.io.convert.RecordConverter;
+import parquet.io.api.Converter;
+import parquet.io.api.GroupConverter;
+import parquet.io.api.PrimitiveConverter;
+import parquet.io.api.RecordConsumer;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -40,10 +41,8 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
  *
  * @param <T> the type of the materialized record
  */
-public class RecordReaderImplementation<T> extends RecordReader<T> {
-
+class RecordReaderImplementation<T> extends RecordReader<T> {
   private static final Log LOG = Log.getLog(RecordReaderImplementation.class);
-  private static final boolean DEBUG = Log.DEBUG;
 
   public static class Case {
 
@@ -226,7 +225,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
   }
 
   private final GroupConverter recordConsumer;
-  private final RecordConverter<T> recordMaterializer;
+  private final RecordMaterializer<T> recordMaterializer;
 
   private State[] states;
 
@@ -237,7 +236,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
    * @param validating
    * @param columns2
    */
-  public RecordReaderImplementation(MessageColumnIO root, RecordConverter<T> recordMaterializer, boolean validating, ColumnReadStoreImpl columnStore) {
+  public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnReadStoreImpl columnStore) {
     this.recordMaterializer = recordMaterializer;
     this.recordConsumer = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer), validating, root.getType());
     PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
@@ -358,6 +357,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     }
   }
 
+  //TODO: have those wrappers for a converter
   private RecordConsumer validator(RecordConsumer recordConsumer, boolean validating, MessageType schema) {
     return validating ? new ValidatingRecordConsumer(recordConsumer, schema) : recordConsumer;
   }
@@ -435,7 +435,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
     return states[i];
   }
 
-  protected RecordConverter<T> getMaterializer() {
+  protected RecordMaterializer<T> getMaterializer() {
     return recordMaterializer;
   }
 

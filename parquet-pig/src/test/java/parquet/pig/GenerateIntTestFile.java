@@ -41,7 +41,7 @@ import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
-import parquet.io.RecordConsumer;
+import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;

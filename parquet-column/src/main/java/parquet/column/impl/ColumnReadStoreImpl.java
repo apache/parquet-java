@@ -22,8 +22,8 @@ import parquet.column.ColumnReadStore;
 import parquet.column.ColumnReader;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
-import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
+import parquet.io.api.Binary;
 
 
 public class ColumnReadStoreImpl implements ColumnReadStore {

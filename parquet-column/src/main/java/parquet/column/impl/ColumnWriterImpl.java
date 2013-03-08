@@ -28,8 +28,8 @@ import parquet.column.values.bitpacking.BitPackingValuesWriter;
 import parquet.column.values.boundedint.BoundedIntValuesFactory;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
-import parquet.io.Binary;
 import parquet.io.ParquetEncodingException;
+import parquet.io.api.Binary;
 
 
 final class ColumnWriterImpl implements ColumnWriter {

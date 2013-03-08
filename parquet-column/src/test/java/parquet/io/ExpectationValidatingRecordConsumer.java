@@ -19,8 +19,11 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Deque;
 
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
+
 final public class ExpectationValidatingRecordConsumer extends
-    RecordMaterializer<Void> {
+    RecordConsumer {
   private final Deque<String> expectations;
   int count = 0;
 
@@ -94,8 +97,4 @@ final public class ExpectationValidatingRecordConsumer extends
     validate("addDouble("+value+")");
   }
 
-  @Override
-  public Void getCurrentRecord() {
-    return null;
-  }
 }

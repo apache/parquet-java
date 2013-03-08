@@ -20,7 +20,6 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import parquet.example.Paper;
-import parquet.parser.MessageTypeParser;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 

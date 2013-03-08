@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.io.convert;
+package parquet.io.api;
 
-import parquet.io.Binary;
 
 /**
  * converter for leaves of the schema
@@ -24,6 +23,18 @@ import parquet.io.Binary;
  *
  */
 abstract public class PrimitiveConverter extends Converter {
+
+  @Override
+  public boolean isPrimitive() {
+    return true;
+  }
+
+  @Override
+  public PrimitiveConverter asPrimitiveConverter() {
+    return this;
+  }
+
+  /** runtime calls  **/
 
   /**
    * @param fieldIndex index of the field
@@ -71,16 +82,6 @@ abstract public class PrimitiveConverter extends Converter {
    */
   public void addLong(long value) {
     throw new UnsupportedOperationException(getClass().getName());
-  }
-
-  @Override
-  public boolean isPrimitive() {
-    return true;
-  }
-
-  @Override
-  public PrimitiveConverter asPrimitiveConverter() {
-    return this;
   }
 
 }

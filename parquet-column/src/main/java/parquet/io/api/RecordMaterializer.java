@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.io.convert;
+package parquet.io.api;
 
 /**
  * Top-level class which should be implemented in order to materialize objects from
@@ -26,7 +26,7 @@ package parquet.io.convert;
  *
  * @param <T> the materialized object class
  */
-abstract public class RecordConverter<T> {
+abstract public class RecordMaterializer<T> {
 
   /**
    * @return the result of the conversion

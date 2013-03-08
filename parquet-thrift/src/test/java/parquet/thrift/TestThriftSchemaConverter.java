@@ -20,8 +20,8 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import parquet.parser.MessageTypeParser;
 import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftType.StructType;

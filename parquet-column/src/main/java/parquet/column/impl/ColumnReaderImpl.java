@@ -30,8 +30,8 @@ import parquet.column.values.bitpacking.BitPackingValuesReader;
 import parquet.column.values.boundedint.BoundedIntValuesFactory;
 import parquet.column.values.plain.BooleanPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader;
-import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
+import parquet.io.api.Binary;
 
 /**
  * ColumnReader implementation

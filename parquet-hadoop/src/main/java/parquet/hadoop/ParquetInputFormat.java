@@ -38,8 +38,8 @@ import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
-import parquet.parser.MessageTypeParser;
 import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 
 /**
  * The input format to read a Parquet file.

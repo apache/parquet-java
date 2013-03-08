@@ -21,9 +21,9 @@ import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
 import org.junit.Test;
 
-import parquet.parser.MessageTypeParser;
 import parquet.pig.PigSchemaConverter;
 import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 
 
 public class TestPigSchemaConverter {

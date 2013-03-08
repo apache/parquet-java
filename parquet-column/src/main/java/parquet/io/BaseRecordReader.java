@@ -19,14 +19,16 @@ import static parquet.Log.DEBUG;
 import parquet.Log;
 import parquet.column.ColumnReadStore;
 import parquet.io.RecordReaderImplementation.State;
-import parquet.io.convert.RecordConverter;
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
+import parquet.io.api.RecordMaterializer;
 
 // TODO(julien): this class appears to be unused -- can it be nuked? - todd
 public abstract class BaseRecordReader<T> extends RecordReader<T> {
   private static final Log LOG = Log.getLog(BaseRecordReader.class);
 
   public RecordConsumer recordConsumer;
-  public RecordConverter<T> recordMaterializer;
+  public RecordMaterializer<T> recordMaterializer;
   public ColumnReadStore columnStore;
   @Override
   public T read() {

@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.io;
+package parquet.io.api;
+
 
 /**
  *
- * Abstraction for writing or consuming records
- * It decouples the striping/assembly algorithm from the actual record model
+ * Abstraction for writing records
+ * It decouples the striping algorithm from the actual record model
  * example:
  * <pre>
  * startMessage()

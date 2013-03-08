@@ -22,9 +22,9 @@ import org.apache.hadoop.conf.Configuration;
 import parquet.example.data.Group;
 import parquet.example.data.GroupWriter;
 import parquet.hadoop.api.WriteSupport;
-import parquet.io.RecordConsumer;
-import parquet.parser.MessageTypeParser;
+import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 
 public class GroupWriteSupport extends WriteSupport<Group> {
 

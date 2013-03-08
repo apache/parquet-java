@@ -15,12 +15,9 @@
  */
 package parquet.pig;
 
-import static parquet.Log.DEBUG;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
-
 
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataBag;
@@ -34,18 +31,10 @@ import parquet.Log;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.mem.MemPageStore;
-import parquet.example.DummyRecordConverter;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
-import parquet.io.RecordConsumer;
-import parquet.io.RecordConsumerLoggingWrapper;
-import parquet.io.RecordMaterializer;
 import parquet.io.RecordReader;
-import parquet.io.convert.RecordConverter;
-import parquet.pig.PigMetaData;
-import parquet.pig.PigSchemaConverter;
-import parquet.pig.TupleReadSupport;
-import parquet.pig.TupleWriteSupport;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 
 /**
@@ -139,7 +128,7 @@ public class TupleConsumerPerfTest {
     MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
     MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchemaString));
-    RecordConverter<Tuple> recordConsumer = tupleReadSupport.initForRead(null, pigMetaData(pigSchemaString), schema, schema);
+    RecordMaterializer<Tuple> recordConsumer = tupleReadSupport.initForRead(null, pigMetaData(pigSchemaString), schema, schema);
     RecordReader<Tuple> recordReader = columnIO.getRecordReader(columns, recordConsumer);
     // TODO: put this back
 //  if (DEBUG) {

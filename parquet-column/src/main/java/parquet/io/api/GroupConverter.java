@@ -13,25 +13,42 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.io.convert;
+package parquet.io.api;
 
 /**
- * Represent a tree of converters
- * that materializes tuples
+ * converter for group nodes
  *
  * @author Julien Le Dem
  *
  */
-public abstract class Converter {
+abstract public class GroupConverter extends Converter {
 
-  abstract public boolean isPrimitive();
-
-  public PrimitiveConverter asPrimitiveConverter() {
-    throw new ClassCastException(getClass().getName());
+  @Override
+  public boolean isPrimitive() {
+    return false;
   }
 
+  @Override
   public GroupConverter asGroupConverter() {
-    throw new ClassCastException(getClass().getName());
+    return this;
   }
+
+  /**
+   * called at initialization based on schema
+   * must consistently return the same object
+   * @param fieldIndex index of a group field in this group
+   * @return the corresponding converter
+   */
+  abstract public Converter getConverter(int fieldIndex);
+
+  /** runtime calls  **/
+
+  /** called at the beginning of the group managed by this converter */
+  abstract public void start();
+
+  /**
+   * call at the end of the group
+   */
+  abstract public void end();
 
 }

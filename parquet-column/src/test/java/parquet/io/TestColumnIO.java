@@ -39,11 +39,11 @@ import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.mem.MemPageStore;
 import parquet.example.data.Group;
-import parquet.example.data.GroupRecordConsumer;
 import parquet.example.data.GroupWriter;
-import parquet.example.data.simple.SimpleGroupFactory;
 import parquet.example.data.simple.convert.GroupRecordConverter;
-import parquet.io.convert.RecordConverter;
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 
 
@@ -177,7 +177,7 @@ public class TestColumnIO {
   }
 
   private RecordReaderImplementation<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, PageReadStore pageReadStore) {
-    RecordConverter<Group> recordConverter = new GroupRecordConverter(schema);
+    RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
 
     return (RecordReaderImplementation<Group>)columnIO.getRecordReader(pageReadStore, recordConverter);
   }
@@ -226,12 +226,13 @@ public class TestColumnIO {
   @Test
   public void testGroupWriter() {
     List<Group> result = new ArrayList<Group>();
-    GroupRecordConsumer groupConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
+    final GroupRecordConverter groupRecordConverter = new GroupRecordConverter(schema);
+    RecordConsumer groupConsumer = new ConverterConsumer(groupRecordConverter.getRootConverter(), schema);
     GroupWriter groupWriter = new GroupWriter(new RecordConsumerLoggingWrapper(groupConsumer), schema);
     groupWriter.write(r1);
-    result.add(groupConsumer.getCurrentRecord());
+    result.add(groupRecordConverter.getCurrentRecord());
     groupWriter.write(r2);
-    result.add(groupConsumer.getCurrentRecord());
+    result.add(groupRecordConverter.getCurrentRecord());
     assertEquals("deserialization does not display the expected result", result.get(0).toString(), r1.toString());
     assertEquals("deserialization does not display the expected result", result.get(1).toString(), r2.toString());
   }

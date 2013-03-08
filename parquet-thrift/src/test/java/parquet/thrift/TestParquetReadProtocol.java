@@ -38,8 +38,8 @@ import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.mem.MemPageStore;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
-import parquet.io.RecordConsumer;
 import parquet.io.RecordReader;
+import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
 import parquet.thrift.struct.ThriftType.StructType;
 

@@ -26,9 +26,9 @@ import parquet.column.ColumnWriter;
 import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.mem.MemPageStore;
-import parquet.io.Binary;
-import parquet.parser.MessageTypeParser;
+import parquet.io.api.Binary;
 import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 
 
 public class TestMemColumn {

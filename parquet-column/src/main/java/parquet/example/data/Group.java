@@ -16,8 +16,8 @@
 package parquet.example.data;
 
 import parquet.Log;
-import parquet.io.Binary;
-import parquet.io.RecordConsumer;
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
 
 abstract public class Group extends GroupValueSource {
   private static final Log logger = Log.getLog(Group.class);
