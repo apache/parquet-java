@@ -23,9 +23,9 @@ import java.util.Map;
 
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
-import parquet.column.mem.Page;
-import parquet.column.mem.PageReadStore;
-import parquet.column.mem.PageReader;
+import parquet.column.page.Page;
+import parquet.column.page.PageReadStore;
+import parquet.column.page.PageReader;
 import parquet.hadoop.CodecFactory.BytesDecompressor;
 
 /**

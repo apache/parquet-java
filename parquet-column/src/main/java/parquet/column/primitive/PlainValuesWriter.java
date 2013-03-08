@@ -33,15 +33,15 @@ import parquet.io.ParquetEncodingException;
  * @author Julien Le Dem
  *
  */
-public class PlainColumnWriter extends DataColumnWriter {
-  private static final Log LOG = Log.getLog(PlainColumnWriter.class);
+public class PlainValuesWriter extends DataValuesWriter {
+  private static final Log LOG = Log.getLog(PlainValuesWriter.class);
 
   public static final Charset CHARSET = Charset.forName("UTF-8");
 
   private CapacityByteArrayOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
 
-  public PlainColumnWriter(int initialSize) {
+  public PlainValuesWriter(int initialSize) {
     arrayOut = new CapacityByteArrayOutputStream(initialSize);
     out = new LittleEndianDataOutputStream(arrayOut);
   }

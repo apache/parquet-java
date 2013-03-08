@@ -21,8 +21,8 @@ import java.util.List;
 import parquet.Log;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
-import parquet.column.mem.MemColumnReadStore;
-import parquet.column.mem.PageReadStore;
+import parquet.column.MemColumnReadStore;
+import parquet.column.page.PageReadStore;
 import parquet.io.convert.RecordConverter;
 import parquet.schema.MessageType;
 

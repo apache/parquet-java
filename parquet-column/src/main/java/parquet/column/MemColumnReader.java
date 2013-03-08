@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.mem;
+package parquet.column;
 
 import static parquet.Log.DEBUG;
 import static parquet.column.Encoding.PLAIN;
@@ -21,13 +21,13 @@ import static parquet.column.Encoding.PLAIN;
 import java.io.IOException;
 
 import parquet.Log;
-import parquet.column.ColumnDescriptor;
-import parquet.column.ColumnReader;
-import parquet.column.primitive.BitPackingColumnReader;
+import parquet.column.page.Page;
+import parquet.column.page.PageReader;
+import parquet.column.primitive.BitPackingValuesReader;
 import parquet.column.primitive.BooleanPlainColumnReader;
-import parquet.column.primitive.BoundedColumnFactory;
-import parquet.column.primitive.PlainColumnReader;
-import parquet.column.primitive.PrimitiveColumnReader;
+import parquet.column.primitive.BoundedIntValuesFactory;
+import parquet.column.primitive.PlainValuesReader;
+import parquet.column.primitive.ValuesReader;
 import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
 
@@ -44,9 +44,9 @@ abstract class MemColumnReader implements ColumnReader {
   private final long totalValueCount;
   private final PageReader pageReader;
 
-  private PrimitiveColumnReader repetitionLevelColumn;
-  private PrimitiveColumnReader definitionLevelColumn;
-  protected PrimitiveColumnReader dataColumn;
+  private ValuesReader repetitionLevelColumn;
+  private ValuesReader definitionLevelColumn;
+  protected ValuesReader dataColumn;
 
   private int repetitionLevel;
   private int definitionLevel;
@@ -224,14 +224,14 @@ abstract class MemColumnReader implements ColumnReader {
         throw new ParquetDecodingException("Unsupported encoding: " + page.getEncoding());
       }
 
-      repetitionLevelColumn = new BitPackingColumnReader(path.getMaxRepetitionLevel());
-      definitionLevelColumn = BoundedColumnFactory.getBoundedReader(path.getMaxDefinitionLevel());
+      repetitionLevelColumn = new BitPackingValuesReader(path.getMaxRepetitionLevel());
+      definitionLevelColumn = BoundedIntValuesFactory.getBoundedReader(path.getMaxDefinitionLevel());
       switch (path.getType()) {
       case BOOLEAN:
         this.dataColumn = new BooleanPlainColumnReader();
         break;
       default:
-        this.dataColumn = new PlainColumnReader();
+        this.dataColumn = new PlainValuesReader();
       }
 
       this.pageValueCount = page.getValueCount();

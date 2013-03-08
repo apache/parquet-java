@@ -31,9 +31,9 @@ import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
 import parquet.Log;
-import parquet.column.mem.MemColumnWriteStore;
-import parquet.column.mem.MemPageStore;
-import parquet.column.mem.PageReadStore;
+import parquet.column.MemColumnWriteStore;
+import parquet.column.page.PageReadStore;
+import parquet.column.page.mem.MemPageStore;
 import parquet.example.DummyRecordConverter;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;

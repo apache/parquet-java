@@ -24,17 +24,17 @@ import parquet.bytes.BytesUtils;
 import parquet.io.ParquetDecodingException;
 
 /**
- * @see BoundedIntColumnWriter
+ * @see BoundedIntValuesWriter
  */
-class BoundedIntColumnReader extends PrimitiveColumnReader {
-  private static final Log LOG = Log.getLog(BoundedIntColumnReader.class);
+class BoundedIntValuesReader extends ValuesReader {
+  private static final Log LOG = Log.getLog(BoundedIntValuesReader.class);
 
   private int currentValueCt = 0;
   private int currentValue = 0;
   private final int bitsPerValue;
   private BitReader bitReader = new BitReader();
 
-  public BoundedIntColumnReader(int bound) {
+  public BoundedIntValuesReader(int bound) {
     if (bound == 0) {
       throw new ParquetDecodingException("Value bound cannot be 0. Use DevNullColumnReader instead.");
     }

@@ -28,7 +28,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
-import parquet.column.mem.PageReadStore;
+import parquet.column.page.PageReadStore;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.io.ColumnIOFactory;

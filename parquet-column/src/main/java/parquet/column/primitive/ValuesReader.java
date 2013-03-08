@@ -30,7 +30,7 @@ import parquet.io.Binary;
  *
  * @author Julien Le Dem
  */
-public abstract class PrimitiveColumnReader {
+public abstract class ValuesReader {
 
   /**
    * Called to initialize the column reader from a part of a page.

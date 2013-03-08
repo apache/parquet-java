@@ -31,7 +31,7 @@ import parquet.io.ParquetEncodingException;
  * @author Julien Le Dem
  *
  */
-public class BitPackingColumnWriter extends PrimitiveColumnWriter {
+public class BitPackingValuesWriter extends ValuesWriter {
 
   private CapacityByteArrayOutputStream out;
   private BitPackingWriter bitPackingWriter;
@@ -41,7 +41,7 @@ public class BitPackingColumnWriter extends PrimitiveColumnWriter {
    *
    * @param bound the maximum value stored by this column
    */
-  public BitPackingColumnWriter(int bound) {
+  public BitPackingValuesWriter(int bound) {
     this.bitsPerValue = getWidthFromMaxInt(bound);
     this.out = new CapacityByteArrayOutputStream(32*1024); // size needed could be small but starting at 32 is really small
     init();
@@ -54,7 +54,7 @@ public class BitPackingColumnWriter extends PrimitiveColumnWriter {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.PrimitiveColumnWriter#writeInteger(int)
+   * @see parquet.column.primitive.ValuesWriter#writeInteger(int)
    */
   @Override
   public void writeInteger(int v) {
@@ -68,7 +68,7 @@ public class BitPackingColumnWriter extends PrimitiveColumnWriter {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.PrimitiveColumnWriter#getBufferedSize()
+   * @see parquet.column.primitive.ValuesWriter#getBufferedSize()
    */
   @Override
   public long getBufferedSize() {
@@ -78,7 +78,7 @@ public class BitPackingColumnWriter extends PrimitiveColumnWriter {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.PrimitiveColumnWriter#getBytes()
+   * @see parquet.column.primitive.ValuesWriter#getBytes()
    */
   @Override
   public BytesInput getBytes() {
@@ -93,7 +93,7 @@ public class BitPackingColumnWriter extends PrimitiveColumnWriter {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.PrimitiveColumnWriter#reset()
+   * @see parquet.column.primitive.ValuesWriter#reset()
    */
   @Override
   public void reset() {
@@ -104,7 +104,7 @@ public class BitPackingColumnWriter extends PrimitiveColumnWriter {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.PrimitiveColumnWriter#getAllocatedSize()
+   * @see parquet.column.primitive.ValuesWriter#getAllocatedSize()
    */
   @Override
   public long getAllocatedSize() {

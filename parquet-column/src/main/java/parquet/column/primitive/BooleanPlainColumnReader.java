@@ -31,7 +31,7 @@ import parquet.io.ParquetDecodingException;
  * @author Julien Le Dem
  *
  */
-public class BooleanPlainColumnReader extends PrimitiveColumnReader {
+public class BooleanPlainColumnReader extends ValuesReader {
   private static final Log LOG = Log.getLog(BooleanPlainColumnReader.class);
 
   private BitPackingReader in;
@@ -39,7 +39,7 @@ public class BooleanPlainColumnReader extends PrimitiveColumnReader {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.PrimitiveColumnReader#readBoolean()
+   * @see parquet.column.primitive.ValuesReader#readBoolean()
    */
   @Override
   public boolean readBoolean() {
@@ -53,7 +53,7 @@ public class BooleanPlainColumnReader extends PrimitiveColumnReader {
 
   /**
    * {@inheritDoc}
-   * @see parquet.column.primitive.PrimitiveColumnReader#initFromPage(byte[], int)
+   * @see parquet.column.primitive.ValuesReader#initFromPage(byte[], int)
    */
   @Override
   public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {

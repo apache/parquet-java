@@ -23,7 +23,7 @@ import parquet.io.Binary;
  * some columns will always be the same value, and this will capture that. An
  * example is the set of repetition levels for a schema with no repeated fields.
  */
-public class DevNullColumnWriter extends PrimitiveColumnWriter {
+public class DevNullValuesWriter extends ValuesWriter {
   @Override
   public long getBufferedSize() {
     return 0;

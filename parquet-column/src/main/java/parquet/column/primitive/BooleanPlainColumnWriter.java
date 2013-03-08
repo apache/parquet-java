@@ -34,7 +34,7 @@ import parquet.io.ParquetEncodingException;
  * @author Julien Le Dem
  *
  */
-public class BooleanPlainColumnWriter extends DataColumnWriter {
+public class BooleanPlainColumnWriter extends DataValuesWriter {
   private static final Log LOG = Log.getLog(BooleanPlainColumnWriter.class);
 
   private CapacityByteArrayOutputStream out;

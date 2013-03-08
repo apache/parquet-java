@@ -24,8 +24,8 @@ import static parquet.example.Paper.schema3;
 import java.util.logging.Level;
 
 import parquet.Log;
-import parquet.column.mem.MemColumnWriteStore;
-import parquet.column.mem.MemPageStore;
+import parquet.column.MemColumnWriteStore;
+import parquet.column.page.mem.MemPageStore;
 import parquet.example.DummyRecordConverter;
 import parquet.example.data.GroupWriter;
 import parquet.io.convert.RecordConverter;

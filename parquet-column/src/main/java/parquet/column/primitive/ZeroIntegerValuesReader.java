@@ -13,25 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.mem;
+package parquet.column.primitive;
+
+import java.io.IOException;
 
 /**
- * Reader for a sequence a page from a given column chunk
- *
- * @author Julien Le Dem
- *
+ * ColumnReader which does not read any actual data, but rather simply produces
+ * an endless stream of constant values.
+ * Mainly used to read definition levels when the only possible value is 0
  */
-public interface PageReader {
+public class ZeroIntegerValuesReader extends ValuesReader {
 
-  /**
-   *
-   * @return the total number of values in the column chunk
-   */
-  abstract public long getTotalValueCount();
+  public int readInteger() {
+    return 0;
+  }
 
-  /**
-   *
-   * @return the next page in that chunk
-   */
-  abstract public Page readPage();
+  @Override
+  public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
+    return offset;
+  }
+
 }

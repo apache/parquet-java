@@ -16,7 +16,6 @@
 package parquet.column.primitive;
 
 import parquet.bytes.BytesInput;
-import parquet.column.Encoding;
 import parquet.io.Binary;
 
 /**
@@ -25,7 +24,7 @@ import parquet.io.Binary;
  * @author Julien Le Dem
  *
  */
-public abstract class PrimitiveColumnWriter {
+public abstract class ValuesWriter {
 
   /**
    * used to decide if we want to work to the next page

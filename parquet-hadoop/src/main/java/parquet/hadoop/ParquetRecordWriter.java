@@ -23,7 +23,7 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 import parquet.Log;
-import parquet.column.mem.MemColumnWriteStore;
+import parquet.column.MemColumnWriteStore;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.hadoop.api.WriteSupport;
 import parquet.io.ColumnIOFactory;

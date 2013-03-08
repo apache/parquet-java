@@ -13,13 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.mem;
+package parquet.column.page.mem;
 
 import static parquet.Log.DEBUG;
 
 import java.util.Iterator;
 
 import parquet.Log;
+import parquet.column.page.Page;
+import parquet.column.page.PageReader;
 import parquet.io.ParquetDecodingException;
 
 

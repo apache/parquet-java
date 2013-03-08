@@ -26,12 +26,12 @@ import parquet.io.ParquetEncodingException;
  * be written is known a priori based on the schema. Assumption is that
  * the values written are between 0 and the bound, inclusive.
  * 
- * This differs from {@link BitPackingColumnWriter} in that this also performs
+ * This differs from {@link BitPackingValuesWriter} in that this also performs
  * run-length encoding of the data, so is useful when long runs of repeated
  * values are expected.
  */
-class BoundedIntColumnWriter extends PrimitiveColumnWriter {
-  private static final Log LOG = Log.getLog(BoundedIntColumnWriter.class);
+class BoundedIntValuesWriter extends ValuesWriter {
+  private static final Log LOG = Log.getLog(BoundedIntValuesWriter.class);
 
   private int currentValue = -1;
   private int currentValueCt = -1;
@@ -51,7 +51,7 @@ class BoundedIntColumnWriter extends PrimitiveColumnWriter {
     }
   }
 
-  public BoundedIntColumnWriter(int bound) {
+  public BoundedIntValuesWriter(int bound) {
     if (bound == 0) {
       throw new ParquetEncodingException("Value bound cannot be 0. Use DevNullColumnWriter instead.");
     }

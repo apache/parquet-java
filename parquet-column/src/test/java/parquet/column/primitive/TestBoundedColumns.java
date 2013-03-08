@@ -25,8 +25,8 @@ import java.util.Random;
 
 import org.junit.Test;
 
-import parquet.column.primitive.BoundedIntColumnReader;
-import parquet.column.primitive.BoundedIntColumnWriter;
+import parquet.column.primitive.BoundedIntValuesReader;
+import parquet.column.primitive.BoundedIntValuesWriter;
 
 public class TestBoundedColumns {
   private final Random r = new Random(42L);
@@ -54,7 +54,7 @@ public class TestBoundedColumns {
   }
 
   private void compareOutput(int bound, int[] ints, String[] result) throws IOException {
-    BoundedIntColumnWriter bicw = new BoundedIntColumnWriter(bound);
+    BoundedIntValuesWriter bicw = new BoundedIntValuesWriter(bound);
     for (int i : ints) {
       bicw.writeInteger(i);
     }
@@ -62,7 +62,7 @@ public class TestBoundedColumns {
     System.out.println(Arrays.toString(result));
     byte[] byteArray = bicw.getBytes().toByteArray();
     assertEquals(concat(result), toBinaryString(byteArray, 4));
-    BoundedIntColumnReader bicr = new BoundedIntColumnReader(bound);
+    BoundedIntValuesReader bicr = new BoundedIntValuesReader(bound);
     bicr.initFromPage(1, byteArray, 0);
     String expected = "";
     String got = "";
@@ -123,7 +123,7 @@ public class TestBoundedColumns {
       ByteArrayOutputStream tmp = new ByteArrayOutputStream();
 
       int[] stream = new int[totalValuesInStream];
-      BoundedIntColumnWriter bicw = new BoundedIntColumnWriter(bound);
+      BoundedIntValuesWriter bicw = new BoundedIntValuesWriter(bound);
       int idx = 0;
       for (int stripeNum = 0; stripeNum < valuesPerStripe.length; stripeNum++) {
         int next = 0;
@@ -151,7 +151,7 @@ public class TestBoundedColumns {
 
       byte[] input = tmp.toByteArray();
 
-      BoundedIntColumnReader bicr = new BoundedIntColumnReader(bound);
+      BoundedIntValuesReader bicr = new BoundedIntValuesReader(bound);
       idx = 0;
       int offset = 0;
       for (int stripeNum = 0; stripeNum < valuesPerStripe.length; stripeNum++) {

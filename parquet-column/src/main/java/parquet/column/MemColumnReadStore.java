@@ -13,13 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.mem;
+package parquet.column;
 
 import java.io.IOException;
 
-import parquet.column.ColumnDescriptor;
-import parquet.column.ColumnReadStore;
-import parquet.column.ColumnReader;
+import parquet.column.page.PageReadStore;
+import parquet.column.page.PageReader;
 import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
 

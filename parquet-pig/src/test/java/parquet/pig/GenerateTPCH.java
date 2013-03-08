@@ -26,8 +26,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
 import parquet.Log;
-import parquet.column.mem.MemColumnWriteStore;
-import parquet.column.mem.MemPageStore;
+import parquet.column.MemColumnWriteStore;
+import parquet.column.page.mem.MemPageStore;
 import parquet.io.Binary;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;

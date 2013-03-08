@@ -31,8 +31,8 @@ import parquet.io.ParquetDecodingException;
  * @author Julien Le Dem
  *
  */
-public class PlainColumnReader extends PrimitiveColumnReader {
-  private static final Log LOG = Log.getLog(PlainColumnReader.class);
+public class PlainValuesReader extends ValuesReader {
+  private static final Log LOG = Log.getLog(PlainValuesReader.class);
 
   private LittleEndianDataInputStream in;
 
@@ -95,7 +95,7 @@ public class PlainColumnReader extends PrimitiveColumnReader {
 
   /**
    * {@inheritDoc}
-   * @see parquet.column.primitive.PrimitiveColumnReader#initFromPage(byte[], int)
+   * @see parquet.column.primitive.ValuesReader#initFromPage(byte[], int)
    */
   @Override
   public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {

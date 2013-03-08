@@ -34,8 +34,8 @@ import org.apache.thrift.TException;
 import org.junit.Test;
 
 import parquet.Log;
-import parquet.column.mem.MemColumnWriteStore;
-import parquet.column.mem.MemPageStore;
+import parquet.column.MemColumnWriteStore;
+import parquet.column.page.mem.MemPageStore;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.io.RecordConsumer;

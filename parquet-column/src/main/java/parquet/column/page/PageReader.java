@@ -13,23 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.mem;
-
-import parquet.column.ColumnDescriptor;
+package parquet.column.page;
 
 /**
- * contains all the writers for the columns in the corresponding row group
+ * Reader for a sequence a page from a given column chunk
  *
  * @author Julien Le Dem
  *
  */
-public interface PageWriteStore {
+public interface PageReader {
 
   /**
    *
-   * @param path the descriptor for the column
-   * @return the corresponding page writer
+   * @return the total number of values in the column chunk
    */
-  PageWriter getPageWriter(ColumnDescriptor path);
+  abstract public long getTotalValueCount();
 
+  /**
+   *
+   * @return the next page in that chunk
+   */
+  abstract public Page readPage();
 }

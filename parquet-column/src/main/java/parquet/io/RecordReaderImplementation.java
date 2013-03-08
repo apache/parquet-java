@@ -25,7 +25,7 @@ import java.util.Map;
 
 import parquet.Log;
 import parquet.column.ColumnReader;
-import parquet.column.mem.MemColumnReadStore;
+import parquet.column.MemColumnReadStore;
 import parquet.io.convert.Converter;
 import parquet.io.convert.GroupConverter;
 import parquet.io.convert.PrimitiveConverter;

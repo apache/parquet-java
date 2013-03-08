@@ -15,12 +15,19 @@
  */
 package parquet.column.primitive;
 
-public abstract class BoundedColumnFactory {
-  public static PrimitiveColumnReader getBoundedReader(int bound) {
-    return bound == 0 ? new DevNullColumnReader() : new BoundedIntColumnReader(bound);
-  }
+import parquet.column.Encoding;
 
-  public static PrimitiveColumnWriter getBoundedWriter(int bound) {
-    return bound == 0 ? new DevNullColumnWriter() : new BoundedIntColumnWriter(bound);
-  }
+/**
+ * The data column controls the encoding
+ *
+ * @author Julien Le Dem
+ *
+ */
+abstract public class DataValuesWriter extends ValuesWriter {
+
+  /**
+   * called after getBytes() and before reset()
+   * @return the encoding that was used to encode the bytes
+   */
+  public abstract Encoding getEncoding();
 }

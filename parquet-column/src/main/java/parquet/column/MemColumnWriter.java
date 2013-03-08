@@ -13,20 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.mem;
+package parquet.column;
 
 import java.io.IOException;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
-import parquet.column.ColumnDescriptor;
-import parquet.column.ColumnWriter;
-import parquet.column.primitive.BitPackingColumnWriter;
+import parquet.column.page.PageWriter;
+import parquet.column.primitive.BitPackingValuesWriter;
 import parquet.column.primitive.BooleanPlainColumnWriter;
-import parquet.column.primitive.BoundedColumnFactory;
-import parquet.column.primitive.DataColumnWriter;
-import parquet.column.primitive.PlainColumnWriter;
-import parquet.column.primitive.PrimitiveColumnWriter;
+import parquet.column.primitive.BoundedIntValuesFactory;
+import parquet.column.primitive.DataValuesWriter;
+import parquet.column.primitive.PlainValuesWriter;
+import parquet.column.primitive.ValuesWriter;
 import parquet.io.Binary;
 import parquet.io.ParquetEncodingException;
 
@@ -38,23 +37,23 @@ final class MemColumnWriter implements ColumnWriter {
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
   private final long pageSizeThreshold;
-  private PrimitiveColumnWriter repetitionLevelColumn;
-  private PrimitiveColumnWriter definitionLevelColumn;
-  private DataColumnWriter dataColumn;
+  private ValuesWriter repetitionLevelColumn;
+  private ValuesWriter definitionLevelColumn;
+  private DataValuesWriter dataColumn;
   private int valueCount;
 
   public MemColumnWriter(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold) {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
-    repetitionLevelColumn = new BitPackingColumnWriter(path.getMaxRepetitionLevel());
-    definitionLevelColumn = BoundedColumnFactory.getBoundedWriter(path.getMaxDefinitionLevel());
+    repetitionLevelColumn = new BitPackingValuesWriter(path.getMaxRepetitionLevel());
+    definitionLevelColumn = BoundedIntValuesFactory.getBoundedWriter(path.getMaxDefinitionLevel());
     switch (path.getType()) {
     case BOOLEAN:
       this.dataColumn = new BooleanPlainColumnWriter(pageSizeThreshold * 11 / 10);
       break;
     default:
-      this.dataColumn = new PlainColumnWriter(pageSizeThreshold * 11 / 10);
+      this.dataColumn = new PlainValuesWriter(pageSizeThreshold * 11 / 10);
     }
   }
 

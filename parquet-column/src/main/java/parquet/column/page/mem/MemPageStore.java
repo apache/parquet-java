@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.mem;
+package parquet.column.page.mem;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,6 +23,11 @@ import java.util.Map;
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.UnknownColumnException;
+import parquet.column.page.Page;
+import parquet.column.page.PageReadStore;
+import parquet.column.page.PageReader;
+import parquet.column.page.PageWriteStore;
+import parquet.column.page.PageWriter;
 
 
 public class MemPageStore implements PageReadStore, PageWriteStore {

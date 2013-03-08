@@ -31,8 +31,8 @@ import parquet.io.ParquetDecodingException;
  * @author Julien Le Dem
  *
  */
-public class BitPackingColumnReader extends PrimitiveColumnReader {
-  private static final Log LOG = Log.getLog(BitPackingColumnReader.class);
+public class BitPackingValuesReader extends ValuesReader {
+  private static final Log LOG = Log.getLog(BitPackingValuesReader.class);
 
   private ByteArrayInputStream in;
   private BitPackingReader bitPackingReader;
@@ -42,14 +42,14 @@ public class BitPackingColumnReader extends PrimitiveColumnReader {
    *
    * @param bound the maximum value stored by this column
    */
-  public BitPackingColumnReader(int bound) {
+  public BitPackingValuesReader(int bound) {
     this.bitsPerValue = getWidthFromMaxInt(bound);
   }
 
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.PrimitiveColumnReader#readInteger()
+   * @see parquet.column.primitive.ValuesReader#readInteger()
    */
   @Override
   public int readInteger() {
@@ -63,7 +63,7 @@ public class BitPackingColumnReader extends PrimitiveColumnReader {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.PrimitiveColumnReader#initFromPage(long, byte[], int)
+   * @see parquet.column.primitive.ValuesReader#initFromPage(long, byte[], int)
    */
   @Override
   public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {

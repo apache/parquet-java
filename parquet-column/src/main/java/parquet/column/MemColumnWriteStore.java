@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.mem;
+package parquet.column;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -21,9 +21,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
-import parquet.column.ColumnDescriptor;
-import parquet.column.ColumnWriteStore;
-import parquet.column.ColumnWriter;
+import parquet.column.page.PageWriteStore;
+import parquet.column.page.PageWriter;
 
 
 public class MemColumnWriteStore implements ColumnWriteStore {
