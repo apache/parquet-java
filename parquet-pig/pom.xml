@@ -30,7 +30,7 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>parquet</groupId>
+      <groupId>com.twitter</groupId>
       <artifactId>parquet-format</artifactId>
       <version>1.0.0-SNAPSHOT</version>
     </dependency>
