@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.primitive;
+package parquet.column.values.boundedint;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -25,8 +25,8 @@ import java.util.Random;
 
 import org.junit.Test;
 
-import parquet.column.primitive.BoundedIntValuesReader;
-import parquet.column.primitive.BoundedIntValuesWriter;
+import parquet.column.values.boundedint.BoundedIntValuesReader;
+import parquet.column.values.boundedint.BoundedIntValuesWriter;
 
 public class TestBoundedColumns {
   private final Random r = new Random(42L);

@@ -13,21 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column;
+package parquet.column.impl;
 
 import java.io.IOException;
 
+import parquet.column.ColumnDescriptor;
+import parquet.column.ColumnReadStore;
+import parquet.column.ColumnReader;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
 import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
 
 
-public class MemColumnReadStore implements ColumnReadStore {
+public class ColumnReadStoreImpl implements ColumnReadStore {
 
   private final PageReadStore pageReadStore;
 
-  public MemColumnReadStore(PageReadStore pageReadStore) {
+  public ColumnReadStoreImpl(PageReadStore pageReadStore) {
     super();
     this.pageReadStore = pageReadStore;
   }
@@ -36,7 +39,7 @@ public class MemColumnReadStore implements ColumnReadStore {
     return newMemColumnReader(path, pageReadStore.getPageReader(path));
   }
 
-  private MemColumnReader newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
+  private ColumnReaderImpl newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
     switch (path.getType()) {
     case INT32:
       return new INT32MemColumnReader(path, pageReader);
@@ -54,7 +57,7 @@ public class MemColumnReadStore implements ColumnReadStore {
     throw new ParquetDecodingException("type "+path.getType()+" not supported");
   }
 
-  private static final class INT32MemColumnReader extends MemColumnReader {
+  private static final class INT32MemColumnReader extends ColumnReaderImpl {
     private int currentInt;
 
     public INT32MemColumnReader(ColumnDescriptor path, PageReader pageReader) {
@@ -79,7 +82,7 @@ public class MemColumnReadStore implements ColumnReadStore {
     }
   }
 
-  private static final class INT64MemColumnReader extends MemColumnReader {
+  private static final class INT64MemColumnReader extends ColumnReaderImpl {
     private long currentLong;
 
     public INT64MemColumnReader(ColumnDescriptor path, PageReader pageReader) {
@@ -104,7 +107,7 @@ public class MemColumnReadStore implements ColumnReadStore {
     }
   }
 
-  private static final class BINARYMemColumnReader extends MemColumnReader {
+  private static final class BINARYMemColumnReader extends ColumnReaderImpl {
     private Binary current;
 
     public BINARYMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
@@ -129,7 +132,7 @@ public class MemColumnReadStore implements ColumnReadStore {
     }
   }
 
-  private static final class BOOLEANMemColumnReader extends MemColumnReader {
+  private static final class BOOLEANMemColumnReader extends ColumnReaderImpl {
     private boolean current;
 
     public BOOLEANMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
@@ -154,7 +157,7 @@ public class MemColumnReadStore implements ColumnReadStore {
     }
   }
 
-  private static final class FLOATMemColumnReader extends MemColumnReader {
+  private static final class FLOATMemColumnReader extends ColumnReaderImpl {
     private float current;
 
     public FLOATMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
@@ -179,7 +182,7 @@ public class MemColumnReadStore implements ColumnReadStore {
     }
   }
 
-  private static final class DOUBLEMemColumnReader extends MemColumnReader {
+  private static final class DOUBLEMemColumnReader extends ColumnReaderImpl {
     private double current;
 
     public DOUBLEMemColumnReader(ColumnDescriptor path, PageReader pageReader) {

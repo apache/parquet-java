@@ -13,16 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.primitive;
+package parquet.column.values.bitpacking;
 
 import static parquet.bytes.BytesUtils.getWidthFromMaxInt;
-import static parquet.column.primitive.BitPacking.getBitPackingWriter;
+import static parquet.column.values.bitpacking.BitPacking.getBitPackingWriter;
 
 import java.io.IOException;
 
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
-import parquet.column.primitive.BitPacking.BitPackingWriter;
+import parquet.column.values.ValuesWriter;
+import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 import parquet.io.ParquetEncodingException;
 
 /**
@@ -54,7 +55,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.ValuesWriter#writeInteger(int)
+   * @see parquet.column.values.ValuesWriter#writeInteger(int)
    */
   @Override
   public void writeInteger(int v) {
@@ -68,7 +69,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.ValuesWriter#getBufferedSize()
+   * @see parquet.column.values.ValuesWriter#getBufferedSize()
    */
   @Override
   public long getBufferedSize() {
@@ -78,7 +79,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.ValuesWriter#getBytes()
+   * @see parquet.column.values.ValuesWriter#getBytes()
    */
   @Override
   public BytesInput getBytes() {
@@ -93,7 +94,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.ValuesWriter#reset()
+   * @see parquet.column.values.ValuesWriter#reset()
    */
   @Override
   public void reset() {
@@ -104,7 +105,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.ValuesWriter#getAllocatedSize()
+   * @see parquet.column.values.ValuesWriter#getAllocatedSize()
    */
   @Override
   public long getAllocatedSize() {

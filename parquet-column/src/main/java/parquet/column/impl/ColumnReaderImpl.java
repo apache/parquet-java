@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column;
+package parquet.column.impl;
 
 import static parquet.Log.DEBUG;
 import static parquet.column.Encoding.PLAIN;
@@ -21,13 +21,15 @@ import static parquet.column.Encoding.PLAIN;
 import java.io.IOException;
 
 import parquet.Log;
+import parquet.column.ColumnDescriptor;
+import parquet.column.ColumnReader;
 import parquet.column.page.Page;
 import parquet.column.page.PageReader;
-import parquet.column.primitive.BitPackingValuesReader;
-import parquet.column.primitive.BooleanPlainColumnReader;
-import parquet.column.primitive.BoundedIntValuesFactory;
-import parquet.column.primitive.PlainValuesReader;
-import parquet.column.primitive.ValuesReader;
+import parquet.column.values.ValuesReader;
+import parquet.column.values.bitpacking.BitPackingValuesReader;
+import parquet.column.values.boundedint.BoundedIntValuesFactory;
+import parquet.column.values.plain.BooleanPlainValuesReader;
+import parquet.column.values.plain.PlainValuesReader;
 import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
 
@@ -37,8 +39,8 @@ import parquet.io.ParquetDecodingException;
  * @author Julien Le Dem
  *
  */
-abstract class MemColumnReader implements ColumnReader {
-  private static final Log LOG = Log.getLog(MemColumnReader.class);
+abstract class ColumnReaderImpl implements ColumnReader {
+  private static final Log LOG = Log.getLog(ColumnReaderImpl.class);
 
   private final ColumnDescriptor path;
   private final long totalValueCount;
@@ -62,7 +64,7 @@ abstract class MemColumnReader implements ColumnReader {
    * @param path the descriptor for the corresponding column
    * @param pageReader the underlying store to read from
    */
-  public MemColumnReader(ColumnDescriptor path, PageReader pageReader) {
+  public ColumnReaderImpl(ColumnDescriptor path, PageReader pageReader) {
     if (path == null) {
       throw new NullPointerException("path");
     }
@@ -228,7 +230,7 @@ abstract class MemColumnReader implements ColumnReader {
       definitionLevelColumn = BoundedIntValuesFactory.getBoundedReader(path.getMaxDefinitionLevel());
       switch (path.getType()) {
       case BOOLEAN:
-        this.dataColumn = new BooleanPlainColumnReader();
+        this.dataColumn = new BooleanPlainValuesReader();
         break;
       default:
         this.dataColumn = new PlainValuesReader();

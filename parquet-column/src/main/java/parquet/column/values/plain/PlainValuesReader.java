@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.primitive;
+package parquet.column.values.plain;
 
 import static parquet.Log.DEBUG;
 
@@ -22,6 +22,7 @@ import java.io.IOException;
 
 import parquet.Log;
 import parquet.bytes.LittleEndianDataInputStream;
+import parquet.column.values.ValuesReader;
 import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
 
@@ -95,7 +96,7 @@ public class PlainValuesReader extends ValuesReader {
 
   /**
    * {@inheritDoc}
-   * @see parquet.column.primitive.ValuesReader#initFromPage(byte[], int)
+   * @see parquet.column.values.ValuesReader#initFromPage(byte[], int)
    */
   @Override
   public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {

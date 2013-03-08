@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.primitive;
+package parquet.column.values.plain;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -23,6 +23,7 @@ import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.bytes.LittleEndianDataOutputStream;
 import parquet.column.Encoding;
+import parquet.column.values.DataValuesWriter;
 import parquet.io.Binary;
 import parquet.io.ParquetEncodingException;
 

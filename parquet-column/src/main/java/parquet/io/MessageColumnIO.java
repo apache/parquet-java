@@ -21,7 +21,7 @@ import java.util.List;
 import parquet.Log;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
-import parquet.column.MemColumnReadStore;
+import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.column.page.PageReadStore;
 import parquet.io.convert.RecordConverter;
 import parquet.schema.MessageType;
@@ -52,7 +52,7 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   public <T> RecordReader<T> getRecordReader(PageReadStore columns, RecordConverter<T> recordMaterializer) {
-    return new RecordReaderImplementation<T>(this, recordMaterializer, validating, new MemColumnReadStore(columns));
+    return new RecordReaderImplementation<T>(this, recordMaterializer, validating, new ColumnReadStoreImpl(columns));
   }
 
   private class MessageColumnIORecordConsumer extends RecordConsumer {

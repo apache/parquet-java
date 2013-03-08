@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.primitive;
+package parquet.column.values.plain;
 
 import static parquet.column.Encoding.PLAIN;
-import static parquet.column.primitive.BitPacking.getBitPackingWriter;
+import static parquet.column.values.bitpacking.BitPacking.getBitPackingWriter;
 
 import java.io.IOException;
 
@@ -24,7 +24,8 @@ import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.column.Encoding;
-import parquet.column.primitive.BitPacking.BitPackingWriter;
+import parquet.column.values.DataValuesWriter;
+import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 import parquet.io.ParquetEncodingException;
 
 
@@ -34,13 +35,13 @@ import parquet.io.ParquetEncodingException;
  * @author Julien Le Dem
  *
  */
-public class BooleanPlainColumnWriter extends DataValuesWriter {
-  private static final Log LOG = Log.getLog(BooleanPlainColumnWriter.class);
+public class BooleanPlainValuesWriter extends DataValuesWriter {
+  private static final Log LOG = Log.getLog(BooleanPlainValuesWriter.class);
 
   private CapacityByteArrayOutputStream out;
   private BitPackingWriter bitPackingWriter;
 
-  public BooleanPlainColumnWriter(int initialSize) {
+  public BooleanPlainValuesWriter(int initialSize) {
     out = new CapacityByteArrayOutputStream(initialSize);
     bitPackingWriter = getBitPackingWriter(1, out);
   }

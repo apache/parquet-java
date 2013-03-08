@@ -13,16 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.primitive;
+package parquet.column.values.bitpacking;
 
 import static parquet.bytes.BytesUtils.getWidthFromMaxInt;
-import static parquet.column.primitive.BitPacking.createBitPackingReader;
+import static parquet.column.values.bitpacking.BitPacking.createBitPackingReader;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 import parquet.Log;
-import parquet.column.primitive.BitPacking.BitPackingReader;
+import parquet.column.values.ValuesReader;
+import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import parquet.io.ParquetDecodingException;
 
 /**
@@ -49,7 +50,7 @@ public class BitPackingValuesReader extends ValuesReader {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.ValuesReader#readInteger()
+   * @see parquet.column.values.ValuesReader#readInteger()
    */
   @Override
   public int readInteger() {
@@ -63,7 +64,7 @@ public class BitPackingValuesReader extends ValuesReader {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.ValuesReader#initFromPage(long, byte[], int)
+   * @see parquet.column.values.ValuesReader#initFromPage(long, byte[], int)
    */
   @Override
   public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {

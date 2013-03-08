@@ -25,9 +25,9 @@ import java.io.IOException;
 import org.junit.Assert;
 import org.junit.Test;
 
-import parquet.column.primitive.BitPacking;
-import parquet.column.primitive.BitPacking.BitPackingReader;
-import parquet.column.primitive.BitPacking.BitPackingWriter;
+import parquet.column.values.bitpacking.BitPacking;
+import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
+import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
 public class TestBitPacking {
 

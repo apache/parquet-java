@@ -23,7 +23,7 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 import parquet.Log;
-import parquet.column.MemColumnWriteStore;
+import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.hadoop.api.WriteSupport;
 import parquet.io.ColumnIOFactory;
@@ -53,7 +53,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
   private long recordCount = 0;
   private long recordCountForNextMemCheck = 100;
 
-  private MemColumnWriteStore store;
+  private ColumnWriteStoreImpl store;
   private ColumnChunkPageWriteStore pageStore;
 
 
@@ -82,7 +82,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
 
   private void initStore() {
     pageStore = new ColumnChunkPageWriteStore(compressor, schema);
-    store = new MemColumnWriteStore(pageStore, pageSize);
+    store = new ColumnWriteStoreImpl(pageStore, pageSize);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     writeSupport.prepareForWrite(columnIO.getRecordWriter(store));
   }

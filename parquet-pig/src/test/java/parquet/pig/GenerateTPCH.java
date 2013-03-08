@@ -26,7 +26,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
 import parquet.Log;
-import parquet.column.MemColumnWriteStore;
+import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.mem.MemPageStore;
 import parquet.io.Binary;
 import parquet.io.ColumnIOFactory;
@@ -61,7 +61,7 @@ public class GenerateTPCH {
         );
 
     MemPageStore pageStore = new MemPageStore();
-    MemColumnWriteStore store = new MemColumnWriteStore(pageStore, 8*1024);
+    ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 8*1024);
     //
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
 

@@ -22,6 +22,9 @@ import java.io.IOException;
 
 import org.junit.Test;
 
+import parquet.column.values.bitpacking.BitPackingValuesReader;
+import parquet.column.values.bitpacking.BitPackingValuesWriter;
+
 public class TestBitPackingColumn {
 
   @Test

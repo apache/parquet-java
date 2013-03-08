@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.primitive;
+package parquet.column.values.boundedint;
 
 import static parquet.Log.DEBUG;
 
@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import parquet.Log;
 import parquet.bytes.BytesUtils;
+import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;
 
 /**

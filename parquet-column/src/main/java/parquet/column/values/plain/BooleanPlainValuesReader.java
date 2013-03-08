@@ -13,16 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.primitive;
+package parquet.column.values.plain;
 
 import static parquet.Log.DEBUG;
-import static parquet.column.primitive.BitPacking.createBitPackingReader;
+import static parquet.column.values.bitpacking.BitPacking.createBitPackingReader;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 import parquet.Log;
-import parquet.column.primitive.BitPacking.BitPackingReader;
+import parquet.column.values.ValuesReader;
+import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import parquet.io.ParquetDecodingException;
 
 /**
@@ -31,15 +32,15 @@ import parquet.io.ParquetDecodingException;
  * @author Julien Le Dem
  *
  */
-public class BooleanPlainColumnReader extends ValuesReader {
-  private static final Log LOG = Log.getLog(BooleanPlainColumnReader.class);
+public class BooleanPlainValuesReader extends ValuesReader {
+  private static final Log LOG = Log.getLog(BooleanPlainValuesReader.class);
 
   private BitPackingReader in;
 
   /**
    *
    * {@inheritDoc}
-   * @see parquet.column.primitive.ValuesReader#readBoolean()
+   * @see parquet.column.values.ValuesReader#readBoolean()
    */
   @Override
   public boolean readBoolean() {
@@ -53,7 +54,7 @@ public class BooleanPlainColumnReader extends ValuesReader {
 
   /**
    * {@inheritDoc}
-   * @see parquet.column.primitive.ValuesReader#initFromPage(byte[], int)
+   * @see parquet.column.values.ValuesReader#initFromPage(byte[], int)
    */
   @Override
   public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {

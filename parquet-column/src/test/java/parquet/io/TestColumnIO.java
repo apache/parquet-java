@@ -35,7 +35,7 @@ import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
-import parquet.column.MemColumnWriteStore;
+import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.mem.MemPageStore;
 import parquet.example.data.Group;
@@ -124,7 +124,7 @@ public class TestColumnIO {
     log(r2);
 
     MemPageStore memPageStore = new MemPageStore();
-    MemColumnWriteStore columns = new MemColumnWriteStore(memPageStore, 800);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     {
@@ -204,7 +204,7 @@ public class TestColumnIO {
   @Test
   public void testPushParser() {
     MemPageStore memPageStore = new MemPageStore();
-    MemColumnWriteStore columns = new MemColumnWriteStore(memPageStore, 800);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
     columns.flush();

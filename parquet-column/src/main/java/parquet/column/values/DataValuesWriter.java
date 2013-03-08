@@ -13,24 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.primitive;
+package parquet.column.values;
 
-import java.io.IOException;
+import parquet.column.Encoding;
 
 /**
- * ColumnReader which does not read any actual data, but rather simply produces
- * an endless stream of constant values.
- * Mainly used to read definition levels when the only possible value is 0
+ * The data column controls the encoding
+ *
+ * @author Julien Le Dem
+ *
  */
-public class ZeroIntegerValuesReader extends ValuesReader {
+abstract public class DataValuesWriter extends ValuesWriter {
 
-  public int readInteger() {
-    return 0;
-  }
-
-  @Override
-  public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
-    return offset;
-  }
-
+  /**
+   * called after getBytes() and before reset()
+   * @return the encoding that was used to encode the bytes
+   */
+  public abstract Encoding getEncoding();
 }

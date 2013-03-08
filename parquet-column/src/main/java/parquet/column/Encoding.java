@@ -15,6 +15,12 @@
  */
 package parquet.column;
 
+/**
+ * endoding of the data
+ *
+ * @author Julien Le Dem
+ *
+ */
 public enum Encoding {
   PLAIN
 }

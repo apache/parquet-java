@@ -31,7 +31,7 @@ import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
 import parquet.Log;
-import parquet.column.MemColumnWriteStore;
+import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.mem.MemPageStore;
 import parquet.example.DummyRecordConverter;
@@ -66,7 +66,7 @@ public class TupleConsumerPerfTest {
     MessageType schema = pigSchemaConverter.convert(Utils.getSchemaFromString(pigSchema));
 
     MemPageStore memPageStore = new MemPageStore();
-    MemColumnWriteStore columns = new MemColumnWriteStore(memPageStore, 50*1024*1024);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 50*1024*1024);
     write(columns, schema, pigSchema);
     columns.flush();
     read(memPageStore, pigSchema, pigSchemaProjected, pigSchemaNoString);
@@ -161,7 +161,7 @@ public class TupleConsumerPerfTest {
     return map;
   }
 
-  private static void write(MemColumnWriteStore columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
+  private static void write(ColumnWriteStoreImpl columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
     MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     TupleWriteSupport tupleWriter = new TupleWriteSupport(schema, Utils.getSchemaFromString(pigSchemaString));
     tupleWriter.init(null);

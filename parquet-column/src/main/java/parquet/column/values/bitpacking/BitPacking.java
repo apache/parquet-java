@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.primitive;
+package parquet.column.values.bitpacking;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import parquet.column.primitive.BitPacking.BitPackingReader;
-import parquet.column.primitive.BitPacking.BitPackingWriter;
+import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
+import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
 // TODO: rework the whole thing. It does not need to use streams at all
 /**

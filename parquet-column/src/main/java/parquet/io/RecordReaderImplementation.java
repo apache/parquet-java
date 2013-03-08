@@ -25,7 +25,7 @@ import java.util.Map;
 
 import parquet.Log;
 import parquet.column.ColumnReader;
-import parquet.column.MemColumnReadStore;
+import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.io.convert.Converter;
 import parquet.io.convert.GroupConverter;
 import parquet.io.convert.PrimitiveConverter;
@@ -237,7 +237,7 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
    * @param validating
    * @param columns2
    */
-  public RecordReaderImplementation(MessageColumnIO root, RecordConverter<T> recordMaterializer, boolean validating, MemColumnReadStore columnStore) {
+  public RecordReaderImplementation(MessageColumnIO root, RecordConverter<T> recordMaterializer, boolean validating, ColumnReadStoreImpl columnStore) {
     this.recordMaterializer = recordMaterializer;
     this.recordConsumer = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer), validating, root.getType());
     PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);

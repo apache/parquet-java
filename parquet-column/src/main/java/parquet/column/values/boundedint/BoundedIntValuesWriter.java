@@ -13,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.primitive;
+package parquet.column.values.boundedint;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
+import parquet.column.values.ValuesWriter;
+import parquet.column.values.bitpacking.BitPackingValuesWriter;
 import parquet.io.ParquetEncodingException;
 
 /**

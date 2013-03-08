@@ -13,25 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column;
+package parquet.column.impl;
 
 import java.io.IOException;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
+import parquet.column.ColumnDescriptor;
+import parquet.column.ColumnWriter;
 import parquet.column.page.PageWriter;
-import parquet.column.primitive.BitPackingValuesWriter;
-import parquet.column.primitive.BooleanPlainColumnWriter;
-import parquet.column.primitive.BoundedIntValuesFactory;
-import parquet.column.primitive.DataValuesWriter;
-import parquet.column.primitive.PlainValuesWriter;
-import parquet.column.primitive.ValuesWriter;
+import parquet.column.values.DataValuesWriter;
+import parquet.column.values.ValuesWriter;
+import parquet.column.values.bitpacking.BitPackingValuesWriter;
+import parquet.column.values.boundedint.BoundedIntValuesFactory;
+import parquet.column.values.plain.BooleanPlainValuesWriter;
+import parquet.column.values.plain.PlainValuesWriter;
 import parquet.io.Binary;
 import parquet.io.ParquetEncodingException;
 
 
-final class MemColumnWriter implements ColumnWriter {
-  private static final Log LOG = Log.getLog(MemColumnWriter.class);
+final class ColumnWriterImpl implements ColumnWriter {
+  private static final Log LOG = Log.getLog(ColumnWriterImpl.class);
   private static final boolean DEBUG = false; //Log.DEBUG;
 
   private final ColumnDescriptor path;
@@ -42,7 +44,7 @@ final class MemColumnWriter implements ColumnWriter {
   private DataValuesWriter dataColumn;
   private int valueCount;
 
-  public MemColumnWriter(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold) {
+  public ColumnWriterImpl(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold) {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
@@ -50,7 +52,7 @@ final class MemColumnWriter implements ColumnWriter {
     definitionLevelColumn = BoundedIntValuesFactory.getBoundedWriter(path.getMaxDefinitionLevel());
     switch (path.getType()) {
     case BOOLEAN:
-      this.dataColumn = new BooleanPlainColumnWriter(pageSizeThreshold * 11 / 10);
+      this.dataColumn = new BooleanPlainValuesWriter(pageSizeThreshold * 11 / 10);
       break;
     default:
       this.dataColumn = new PlainValuesWriter(pageSizeThreshold * 11 / 10);
