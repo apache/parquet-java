@@ -1,3 +1,18 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package parquet.thrift;
 
 import org.apache.thrift.TException;
@@ -9,19 +24,22 @@ import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
 
-public class ParquetReadToWriteProtocol {
+/**
+ * Class to read from one protocol and write to another one
+ *
+ * @author Julien Le Dem
+ *
+ */
+public class ProtocolReadToWrite {
 
+  /**
+   * reads one record from in and writes it to out
+   * @param in input protocol
+   * @param out output protocol
+   * @throws TException
+   */
   public void readOne(TProtocol in, TProtocol out) throws TException {
-    final TStruct struct = in.readStructBegin();
-    out.writeStructBegin(struct);
-    TField field;
-    do {
-      field = in.readFieldBegin();
-      out.writeFieldBegin(field);
-      readOneValue(in, out, field.type);
-    } while (field.type != TType.STOP);
-    in.readStructEnd();
-    out.writeStructEnd();
+    readOneStruct(in, out);
   }
 
   private void readOneValue(TProtocol in, TProtocol out, byte type)
@@ -74,13 +92,13 @@ public class ParquetReadToWriteProtocol {
     final TStruct struct = in.readStructBegin();
     out.writeStructBegin(struct);
     TField field;
-    do {
-      field = in.readFieldBegin();
+    while ((field = in.readFieldBegin()).type != TType.STOP) {
       out.writeFieldBegin(field);
       readOneValue(in, out, field.type);
       in.readFieldEnd();
       out.writeFieldEnd();
-    } while (field.type != TType.STOP);
+    }
+    out.writeFieldStop();
     in.readStructEnd();
     out.writeStructEnd();
   }

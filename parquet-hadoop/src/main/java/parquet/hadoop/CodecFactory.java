@@ -148,14 +148,14 @@ class CodecFactory {
     if (codec != null) {
       return codec;
     }
-  
+
     try {
       Class<?> codecClass = Class.forName(codecClassName);
       codec = (CompressionCodec)ReflectionUtils.newInstance(codecClass, configuration);
       codecByName.put(codecClassName, codec);
       return codec;
     } catch (ClassNotFoundException e) {
-      throw new RuntimeException("Class " + codecClassName + " was not found", e);
+      throw new BadConfigurationException("Class " + codecClassName + " was not found", e);
     }
   }
 

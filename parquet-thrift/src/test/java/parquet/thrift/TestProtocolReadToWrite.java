@@ -1,3 +1,18 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package parquet.thrift;
 
 import static junit.framework.Assert.assertEquals;
@@ -31,19 +46,18 @@ import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
 import com.twitter.data.proto.tutorial.thrift.PhoneType;
 import com.twitter.elephantbird.thrift.test.TestMapInSet;
 
-public class TestParquetReadWriteProtocol {
+public class TestProtocolReadToWrite {
 
   @Test
-  public void testOneOfEach() throws TException {
+  public void testOneOfEach() throws Exception {
     OneOfEach a = new OneOfEach(
         true, false, (byte)8, (short)16, (int)32, (long)64, (double)1234, "string", "å", false,
         ByteBuffer.wrap("a".getBytes()), new ArrayList<Byte>(), new ArrayList<Short>(), new ArrayList<Long>());
-    OneOfEach b = new OneOfEach();
-    writeReadCompare(a, b);
+    writeReadCompare(a);
   }
 
   @Test
-  public void testWriteRead() throws TException {
+  public void testWriteRead() throws Exception {
     ArrayList<Person> persons = new ArrayList<Person>();
     final PhoneNumber phoneNumber = new PhoneNumber("555 999 9998");
     phoneNumber.type = PhoneType.HOME;
@@ -60,28 +74,32 @@ public class TestParquetReadWriteProtocol {
             "dick@richardson.com",
             Arrays.asList(new PhoneNumber("555 999 9997"), new PhoneNumber("555 999 9996"))));
     AddressBook a = new AddressBook(persons);
-    final AddressBook b = new AddressBook();
-
-    writeReadCompare(a, b);
+    writeReadCompare(a);
   }
 
   @Test
-  public void testMapSet() throws TException {
+  public void testEmptyStruct() throws Exception {
+    AddressBook a = new AddressBook();
+    writeReadCompare(a);
+  }
+
+  @Test
+  public void testMapSet() throws Exception {
     final Set<Map<String, String>> set = new HashSet<Map<String,String>>();
     final Map<String, String> map = new HashMap<String, String>();
     map.put("foo", "bar");
     set.add(map);
     TestMapInSet a = new TestMapInSet("top", set);
-    TestMapInSet b = new TestMapInSet();
-    writeReadCompare(a, b);
+    writeReadCompare(a);
   }
 
-  private void writeReadCompare(TBase<?,?> a, TBase<?,?> b)
-      throws TException {
+  private void writeReadCompare(TBase<?,?> a)
+      throws TException, InstantiationException, IllegalAccessException {
     final ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
     final ByteArrayOutputStream baos = baos2;
     a.write(protocol(baos));
-    new ParquetReadToWriteProtocol().readOne(protocol(new ByteArrayInputStream(baos.toByteArray())), protocol(baos2));
+    new ProtocolReadToWrite().readOne(protocol(new ByteArrayInputStream(baos.toByteArray())), protocol(baos2));
+    TBase<?,?> b = a.getClass().newInstance();
     b.read(protocol(new ByteArrayInputStream(baos2.toByteArray())));
 
     assertEquals(a, b);

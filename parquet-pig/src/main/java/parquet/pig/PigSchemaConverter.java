@@ -100,7 +100,7 @@ public class PigSchemaConverter {
         return fieldSchema;
       }
     } catch (FrontendException e) {
-      throw new RuntimeException("can't filter " + fieldSchema, e);
+      throw new SchemaConversionException("can't filter " + fieldSchema, e);
     }
   }
 
@@ -176,9 +176,9 @@ public class PigSchemaConverter {
         throw new RuntimeException("Unknown type "+fieldSchema.type+" "+DataType.findTypeName(fieldSchema.type));
       }
     } catch (FrontendException e) {
-      throw new RuntimeException("can't convert "+fieldSchema, e); // TODO: proper exception
+      throw new SchemaConversionException("can't convert "+fieldSchema, e); // TODO: proper exception
     } catch (RuntimeException e) {
-      throw new RuntimeException("can't convert "+fieldSchema, e);
+      throw new SchemaConversionException("can't convert "+fieldSchema, e);
     }
   }
 

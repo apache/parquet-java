@@ -30,6 +30,7 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.junit.Test;
 
 import parquet.column.Encoding;
+import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;

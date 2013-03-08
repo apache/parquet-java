@@ -21,7 +21,6 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.LinkedList;
-import java.util.List;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
@@ -35,7 +34,7 @@ import org.apache.thrift.protocol.TStruct;
 import parquet.Log;
 
 
-public class ParquetReadProtocol extends ParquetProtocol {
+class ParquetReadProtocol extends ParquetProtocol {
   private static final Log LOG = Log.getLog(ParquetReadProtocol.class);
 
   ParquetReadProtocol() {

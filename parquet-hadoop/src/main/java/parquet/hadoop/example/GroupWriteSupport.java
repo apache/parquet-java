@@ -21,7 +21,7 @@ import org.apache.hadoop.conf.Configuration;
 
 import parquet.example.data.Group;
 import parquet.example.data.GroupWriter;
-import parquet.hadoop.WriteSupport;
+import parquet.hadoop.api.WriteSupport;
 import parquet.io.RecordConsumer;
 import parquet.parser.MessageTypeParser;
 import parquet.schema.MessageType;
@@ -42,7 +42,7 @@ public class GroupWriteSupport extends WriteSupport<Group> {
   private GroupWriter groupWriter;
 
   @Override
-  public parquet.hadoop.WriteSupport.WriteContext init(Configuration configuration) {
+  public parquet.hadoop.api.WriteSupport.WriteContext init(Configuration configuration) {
     schema = getSchema(configuration);
     return new WriteContext(schema, new HashMap<String, String>());
   }

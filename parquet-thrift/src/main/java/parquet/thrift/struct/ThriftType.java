@@ -28,8 +28,6 @@ import static parquet.thrift.struct.ThriftTypeID.SET;
 import static parquet.thrift.struct.ThriftTypeID.STRING;
 import static parquet.thrift.struct.ThriftTypeID.STRUCT;
 
-import java.io.IOException;
-import java.io.StringWriter;
 import java.util.List;
 
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -39,16 +37,14 @@ import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
 import org.codehaus.jackson.annotate.JsonTypeInfo.As;
 import org.codehaus.jackson.annotate.JsonTypeInfo.Id;
-import org.codehaus.jackson.annotate.JsonTypeName;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig.Feature;
-import org.codehaus.jackson.map.annotate.JacksonStdImpl;
-import org.codehaus.jackson.map.annotate.JsonDeserialize;
-import org.codehaus.jackson.map.annotate.JsonTypeIdResolver;
-import org.codehaus.jackson.map.jsontype.TypeIdResolver;
-import org.codehaus.jackson.map.type.SimpleType;
-import org.codehaus.jackson.type.JavaType;
 
+/**
+ * Descriptor for a Thrift class.
+ * Used to persist the thrift schema
+ *
+ * @author Julien Le Dem
+ *
+ */
 @JsonTypeInfo(use = Id.NAME, include = As.PROPERTY, property = "id")
 @JsonSubTypes({
     @JsonSubTypes.Type(value=ThriftType.BoolType.class, name="BOOL"),

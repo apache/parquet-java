@@ -14,20 +14,18 @@
  * limitations under the License.
  */
 package parquet.hadoop.thrift;
+
+import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.thrift.TBase;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.protocol.TProtocolFactory;
 
 import parquet.hadoop.ParquetOutputFormat;
 
-/**
- *
- * @author Julien Le Dem
- *
- * @param <T> the thrift class use for serialization
- */
-public class ParquetThriftOutputFormat<T extends TBase<?,?>> extends ParquetOutputFormat<T> {
+public class ParquetThriftBytesOutputFormat extends ParquetOutputFormat<BytesWritable> {
 
-  public static void setThriftClass(Job job, Class<? extends TBase<?,?>> thriftClass) {
+  public static void setThriftClass(Job job, Class<? extends TBase<?, ?>> thriftClass) {
     ThriftWriteSupport.setThriftClass(job.getConfiguration(), thriftClass);
   }
 
@@ -35,8 +33,16 @@ public class ParquetThriftOutputFormat<T extends TBase<?,?>> extends ParquetOutp
     return ThriftWriteSupport.getThriftClass(job.getConfiguration());
   }
 
-  public ParquetThriftOutputFormat() {
-    super(new ThriftWriteSupport<T>());
+  public static <U extends TProtocol> void setTProtocolClass(Job job, Class<U> tProtocolClass) {
+    ThriftBytesWriteSupport.setTProtocolClass(job.getConfiguration(), tProtocolClass);
+  }
+
+  public ParquetThriftBytesOutputFormat() {
+    super(new ThriftBytesWriteSupport());
+  }
+
+  public ParquetThriftBytesOutputFormat(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass) {
+    super(new ThriftBytesWriteSupport(protocolFactory, thriftClass));
   }
 
 }

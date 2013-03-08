@@ -13,14 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.hadoop.thrift;
+package parquet.pig;
 
-import parquet.hadoop.ParquetInputFormat;
+import parquet.ParquetRuntimeException;
 
-public class ParquetThriftInputFormat<T> extends ParquetInputFormat<T> {
+/**
+ * thrown if the schema can not be converted
+ *
+ * @author Julien Le Dem
+ *
+ */
+public class SchemaConversionException extends ParquetRuntimeException {
+  private static final long serialVersionUID = 1L;
 
-  @SuppressWarnings("unchecked")
-  public ParquetThriftInputFormat() {
-    super(ThriftReadSupport.class);
+  public SchemaConversionException() {
   }
+
+  public SchemaConversionException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public SchemaConversionException(String message) {
+    super(message);
+  }
+
+  public SchemaConversionException(Throwable cause) {
+    super(cause);
+  }
+
 }

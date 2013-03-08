@@ -36,8 +36,9 @@ import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
-import parquet.hadoop.WriteSupport;
+import parquet.hadoop.api.WriteSupport;
 import parquet.io.Binary;
+import parquet.io.ParquetEncodingException;
 import parquet.io.RecordConsumer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
@@ -181,7 +182,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
         recordConsumer.endGroup();
       }
     } catch (Exception e) {
-      throw new RuntimeException("can not write value at " + i + " in tuple " + t + " from type '" + pigType + "' to type '" + type +"'", e);
+      throw new ParquetEncodingException("can not write value at " + i + " in tuple " + t + " from type '" + pigType + "' to type '" + type +"'", e);
     }
   }
 

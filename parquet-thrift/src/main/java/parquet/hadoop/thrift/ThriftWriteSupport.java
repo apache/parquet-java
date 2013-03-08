@@ -20,7 +20,7 @@ import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 
 import parquet.hadoop.BadConfigurationException;
-import parquet.hadoop.WriteSupport;
+import parquet.hadoop.api.WriteSupport;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.io.ParquetEncodingException;
@@ -32,21 +32,21 @@ import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType.StructType;
 
 
-public class ThriftWriteSupport<T extends TBase> extends WriteSupport<T> {
+public class ThriftWriteSupport<T extends TBase<?,?>> extends WriteSupport<T> {
   public static final String PARQUET_THRIFT_CLASS = "parquet.thrift.class";
 
   public static <U extends TBase<?,?>> void setThriftClass(Configuration configuration, Class<U> thriftClass) {
     configuration.set(PARQUET_THRIFT_CLASS, thriftClass.getName());
   }
 
-  public static Class<TBase<?,?>> getThriftClass(Configuration configuration) {
+  public static Class<? extends TBase<?,?>> getThriftClass(Configuration configuration) {
     final String thriftClassName = configuration.get(PARQUET_THRIFT_CLASS);
     if (thriftClassName == null) {
       throw new BadConfigurationException("the thrift class conf is missing in job conf at " + PARQUET_THRIFT_CLASS);
     }
     try {
       @SuppressWarnings("unchecked")
-      Class<TBase<?,?>> thriftClass = (Class<TBase<?,?>>)Class.forName(thriftClassName);
+      Class<? extends TBase<?,?>> thriftClass = (Class<? extends TBase<?,?>>)Class.forName(thriftClassName);
       return thriftClass;
     } catch (ClassNotFoundException e) {
       throw new BadConfigurationException("the class "+thriftClassName+" in job conf at " + PARQUET_THRIFT_CLASS + " could not be found", e);
@@ -59,7 +59,7 @@ public class ThriftWriteSupport<T extends TBase> extends WriteSupport<T> {
 
   @Override
   public WriteContext init(Configuration configuration) {
-    Class<TBase<?,?>> thriftClass = getThriftClass(configuration);
+    Class<? extends TBase<?,?>> thriftClass = getThriftClass(configuration);
     ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter();
     this.thriftStruct = thriftSchemaConverter.toStructType(thriftClass);
     this.schema = thriftSchemaConverter.convert(thriftClass);

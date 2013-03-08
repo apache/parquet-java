@@ -34,6 +34,7 @@ import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
 import parquet.hadoop.ParquetOutputFormat;
+import parquet.io.ParquetEncodingException;
 import parquet.schema.MessageType;
 
 /**
@@ -66,7 +67,7 @@ public class ParquetStorer extends StoreFunc implements StoreMetadata {
     try {
       return Utils.getSchemaFromString(getProperties().getProperty(SCHEMA));
     } catch (ParserException e) {
-      throw new RuntimeException("can not get schema from context", e);
+      throw new ParquetEncodingException("can not get schema from context", e);
     }
   }
 
@@ -118,7 +119,7 @@ public class ParquetStorer extends StoreFunc implements StoreMetadata {
       this.recordWriter.write(null, tuple);
     } catch (InterruptedException e) {
       Thread.interrupted();
-      throw new RuntimeException("Interrupted while writing", e);
+      throw new ParquetEncodingException("Interrupted while writing", e);
     }
   }
 

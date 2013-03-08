@@ -42,6 +42,7 @@ import parquet.column.ColumnDescriptor;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.io.ParquetDecodingException;
 import parquet.schema.MessageType;
 
 /**
@@ -97,7 +98,7 @@ public class PrintFooter {
                 ParquetMetadata footer = ParquetFileReader.readFooter(configuration, currentFile);
                 return footer;
               } catch (Exception e) {
-                throw new RuntimeException("could not read footer", e);
+                throw new ParquetDecodingException("could not read footer", e);
               }
             }
           }));
