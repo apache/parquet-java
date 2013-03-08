@@ -276,8 +276,8 @@ public class ParquetFileReader {
    * @throws IOException if the file can not be opened
    */
   public ParquetFileReader(Configuration configuration, Path filePath, List<BlockMetaData> blocks, List<ColumnDescriptor> columns) throws IOException {
-    FileSystem fs = FileSystem.get(configuration);
     this.filePath = filePath;
+    FileSystem fs = filePath.getFileSystem(configuration);
     this.f = fs.open(filePath);
     this.blocks = blocks;
     for (ColumnDescriptor col : columns) {
@@ -289,7 +289,7 @@ public class ParquetFileReader {
   /**
    * Reads all the columns requested from the row group at the current file position.
    * @throws IOException if an error occurs while reading
-   * @return the PageReadStore which can provide PageReaders for each column. 
+   * @return the PageReadStore which can provide PageReaders for each column.
    */
   public PageReadStore readNextRowGroup() throws IOException {
     if (currentBlock == blocks.size()) {
@@ -325,7 +325,7 @@ public class ParquetFileReader {
       LOG.debug(f.getPos() + ": start column chunk " + Arrays.toString(metadata.getPath()) +
         " " + metadata.getType() + " count=" + metadata.getValueCount());
     }
-    
+
     List<Page> pagesInChunk = new ArrayList<Page>();
     long valuesCountReadSoFar = 0;
     while (valuesCountReadSoFar < metadata.getValueCount()) {
