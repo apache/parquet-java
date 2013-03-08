@@ -28,15 +28,15 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
-import parquet.column.mem.PageReadStore;
+import parquet.column.page.PageReadStore;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
-import parquet.io.convert.RecordConverter;
-import parquet.parser.MessageTypeParser;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 import parquet.schema.Type;
 
 /**
@@ -57,7 +57,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   private final int columnCount;
   private final Class<?> readSupportClass;
 
-  private RecordConverter<T> recordConverter;
+  private RecordMaterializer<T> recordConverter;
 
   private T currentValue;
   private long total;

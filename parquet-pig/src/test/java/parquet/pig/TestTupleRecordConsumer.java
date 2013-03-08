@@ -39,7 +39,7 @@ import parquet.example.data.simple.SimpleGroup;
 import parquet.example.data.simple.convert.GroupRecordConverter;
 import parquet.io.ConverterConsumer;
 import parquet.io.RecordConsumerLoggingWrapper;
-import parquet.io.convert.RecordConverter;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 
 public class TestTupleRecordConsumer {
@@ -115,7 +115,7 @@ public class TestTupleRecordConsumer {
   private void testFromTuple(String pigSchemaString, List<Tuple> input) throws Exception {
     List<Tuple> tuples = new ArrayList<Tuple>();
     MessageType parquetSchema = getMessageType(pigSchemaString);
-    RecordConverter<Tuple> recordConsumer = newPigRecordConsumer(parquetSchema, pigSchemaString);
+    RecordMaterializer<Tuple> recordConsumer = newPigRecordConsumer(parquetSchema, pigSchemaString);
     TupleWriteSupport tupleWriter = newTupleWriter(parquetSchema, pigSchemaString, recordConsumer);
     for (Tuple tuple : input) {
       logger.debug(tuple);
@@ -135,7 +135,7 @@ public class TestTupleRecordConsumer {
   private void testFromGroups(String pigSchemaString, List<Group> input) throws ParserException {
     List<Tuple> tuples = new ArrayList<Tuple>();
     MessageType schema = getMessageType(pigSchemaString);
-    RecordConverter<Tuple> pigRecordConsumer = newPigRecordConsumer(schema, pigSchemaString);
+    RecordMaterializer<Tuple> pigRecordConsumer = newPigRecordConsumer(schema, pigSchemaString);
     GroupWriter groupWriter = new GroupWriter(new RecordConsumerLoggingWrapper(new ConverterConsumer(pigRecordConsumer.getRootConverter(), schema)), schema);
 
     for (Group group : input) {
@@ -163,7 +163,7 @@ public class TestTupleRecordConsumer {
     }
   }
 
-  private <T> TupleWriteSupport newTupleWriter(MessageType parquetSchema, String pigSchemaString, RecordConverter<T> recordConsumer) throws ParserException {
+  private <T> TupleWriteSupport newTupleWriter(MessageType parquetSchema, String pigSchemaString, RecordMaterializer<T> recordConsumer) throws ParserException {
     TupleWriteSupport tupleWriter = new TupleWriteSupport(parquetSchema, Utils.getSchemaFromString(pigSchemaString));
     tupleWriter.init(null);
     tupleWriter.prepareForWrite(
@@ -178,7 +178,7 @@ public class TestTupleRecordConsumer {
     return map;
   }
 
-  private RecordConverter<Tuple> newPigRecordConsumer(MessageType parquetSchema, String pigSchemaString) throws ParserException {
+  private RecordMaterializer<Tuple> newPigRecordConsumer(MessageType parquetSchema, String pigSchemaString) throws ParserException {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
     return tupleReadSupport.initForRead(null, pigMetaData(pigSchemaString), parquetSchema, parquetSchema);
   }

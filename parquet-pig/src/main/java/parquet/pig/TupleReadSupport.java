@@ -25,8 +25,7 @@ import org.apache.pig.parser.ParserException;
 
 import parquet.Log;
 import parquet.hadoop.api.ReadSupport;
-import parquet.io.convert.RecordConverter;
-import parquet.pig.convert.TupleConverter;
+import parquet.io.api.RecordMaterializer;
 import parquet.pig.convert.TupleRecordConverter;
 import parquet.schema.MessageType;
 
@@ -46,7 +45,7 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
    * {@inheritDoc}
    */
   @Override
-  public RecordConverter<Tuple> initForRead(
+  public RecordMaterializer<Tuple> initForRead(
       Configuration configuration,
       Map<String, String> keyValueMetaData,
       MessageType fielSchema,

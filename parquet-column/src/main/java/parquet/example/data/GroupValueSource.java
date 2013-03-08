@@ -15,7 +15,7 @@
  */
 package parquet.example.data;
 
-import parquet.io.Binary;
+import parquet.io.api.Binary;
 import parquet.schema.GroupType;
 
 abstract public class GroupValueSource {

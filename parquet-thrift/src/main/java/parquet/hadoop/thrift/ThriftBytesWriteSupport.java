@@ -30,7 +30,7 @@ import parquet.hadoop.api.WriteSupport;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.io.ParquetEncodingException;
-import parquet.io.RecordConsumer;
+import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
 import parquet.thrift.ParquetWriteProtocol;
 import parquet.thrift.ProtocolReadToWrite;

@@ -18,8 +18,10 @@ package parquet.io;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-import parquet.io.convert.GroupConverter;
-import parquet.io.convert.PrimitiveConverter;
+import parquet.io.api.Binary;
+import parquet.io.api.GroupConverter;
+import parquet.io.api.PrimitiveConverter;
+import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
 

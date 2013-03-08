@@ -19,8 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import parquet.example.data.Group;
-import parquet.io.Binary;
-import parquet.io.RecordConsumer;
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
 import parquet.schema.GroupType;
 import parquet.schema.Type;
 

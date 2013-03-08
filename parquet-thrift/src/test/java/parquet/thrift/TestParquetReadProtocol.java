@@ -34,12 +34,12 @@ import org.apache.thrift.TException;
 import org.junit.Test;
 
 import parquet.Log;
-import parquet.column.mem.MemColumnWriteStore;
-import parquet.column.mem.MemPageStore;
+import parquet.column.impl.ColumnWriteStoreImpl;
+import parquet.column.page.mem.MemPageStore;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
-import parquet.io.RecordConsumer;
 import parquet.io.RecordReader;
+import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
 import parquet.thrift.struct.ThriftType.StructType;
 
@@ -142,7 +142,7 @@ public class TestParquetReadProtocol {
     final MessageType schema = schemaConverter.convert(thriftClass);
     LOG.info(schema);
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
-    final MemColumnWriteStore columns = new MemColumnWriteStore(memPageStore, 10000);
+    final ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 10000);
     final RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
     final StructType thriftType = schemaConverter.toStructType(thriftClass);
     ParquetWriteProtocol parquetWriteProtocol = new ParquetWriteProtocol(recordWriter, columnIO, thriftType);

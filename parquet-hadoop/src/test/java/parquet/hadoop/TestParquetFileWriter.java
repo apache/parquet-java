@@ -32,13 +32,13 @@ import org.junit.Test;
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
-import parquet.column.mem.Page;
-import parquet.column.mem.PageReadStore;
-import parquet.column.mem.PageReader;
+import parquet.column.page.Page;
+import parquet.column.page.PageReadStore;
+import parquet.column.page.PageReader;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.ParquetMetadata;
-import parquet.parser.MessageTypeParser;
 import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 
 public class TestParquetFileWriter {
   private static final Log LOG = Log.getLog(TestParquetFileWriter.class);

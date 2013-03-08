@@ -16,6 +16,8 @@
 package parquet.io;
 
 import parquet.Log;
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
 
 /**
  * This class can be used to wrap an actual RecordConsumer and log all calls

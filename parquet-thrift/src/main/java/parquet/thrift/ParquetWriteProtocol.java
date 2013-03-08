@@ -32,13 +32,13 @@ import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
 
 import parquet.Log;
-import parquet.io.Binary;
 import parquet.io.ColumnIO;
 import parquet.io.GroupColumnIO;
 import parquet.io.MessageColumnIO;
 import parquet.io.ParquetEncodingException;
 import parquet.io.PrimitiveColumnIO;
-import parquet.io.RecordConsumer;
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftType.EnumType;

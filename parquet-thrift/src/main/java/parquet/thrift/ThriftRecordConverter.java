@@ -30,12 +30,12 @@ import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
 
-import parquet.io.Binary;
 import parquet.io.ParquetDecodingException;
-import parquet.io.convert.Converter;
-import parquet.io.convert.GroupConverter;
-import parquet.io.convert.PrimitiveConverter;
-import parquet.io.convert.RecordConverter;
+import parquet.io.api.Binary;
+import parquet.io.api.Converter;
+import parquet.io.api.GroupConverter;
+import parquet.io.api.PrimitiveConverter;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
@@ -57,7 +57,7 @@ import parquet.thrift.struct.ThriftTypeID;
  *
  * @param <T>
  */
-public class ThriftRecordConverter<T> extends RecordConverter<T> {
+public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   final ParquetProtocol readFieldEnd = new ParquetProtocol("readFieldEnd()") {
     @Override
@@ -782,7 +782,7 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.io.convert.RecordConverter#getCurrentRecord()
+   * @see parquet.io.api.RecordMaterializer#getCurrentRecord()
    */
   @Override
   public T getCurrentRecord() {
@@ -798,7 +798,7 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
   /**
    *
    * {@inheritDoc}
-   * @see parquet.io.convert.RecordConverter#getRootConverter()
+   * @see parquet.io.api.RecordMaterializer#getRootConverter()
    */
   @Override
   public GroupConverter getRootConverter() {

@@ -30,18 +30,18 @@ import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.Encoding;
-import parquet.column.mem.MemColumnWriteStore;
-import parquet.column.mem.MemPageStore;
-import parquet.column.mem.Page;
-import parquet.column.mem.PageReadStore;
-import parquet.column.mem.PageReader;
+import parquet.column.impl.ColumnWriteStoreImpl;
+import parquet.column.page.Page;
+import parquet.column.page.PageReadStore;
+import parquet.column.page.PageReader;
+import parquet.column.page.mem.MemPageStore;
 import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.ParquetFileWriter;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
-import parquet.io.RecordConsumer;
+import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -63,7 +63,7 @@ public class GenerateIntTestFile {
       MessageType schema = new MessageType("int_test_file", new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.INT32, "int_col"));
 
       MemPageStore pageStore = new MemPageStore();
-      MemColumnWriteStore store = new MemColumnWriteStore(pageStore, 8*1024);
+      ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 8*1024);
       //
       MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
 

@@ -23,6 +23,10 @@ import org.junit.Test;
 
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
+import parquet.column.page.Page;
+import parquet.column.page.PageReader;
+import parquet.column.page.PageWriter;
+import parquet.column.page.mem.MemPageStore;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 public class TestMemPageStore {

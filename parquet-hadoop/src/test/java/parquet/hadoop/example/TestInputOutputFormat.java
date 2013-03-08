@@ -39,7 +39,7 @@ import parquet.Log;
 import parquet.example.data.Group;
 import parquet.example.data.simple.SimpleGroupFactory;
 import parquet.hadoop.metadata.CompressionCodecName;
-import parquet.parser.MessageTypeParser;
+import parquet.schema.MessageTypeParser;
 
 public class TestInputOutputFormat {
   private static final Log LOG = Log.getLog(TestInputOutputFormat.class);

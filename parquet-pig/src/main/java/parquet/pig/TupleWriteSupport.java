@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataBag;
@@ -33,13 +32,11 @@ import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
-import org.apache.pig.impl.util.Utils;
-import org.apache.pig.parser.ParserException;
 
 import parquet.hadoop.api.WriteSupport;
-import parquet.io.Binary;
 import parquet.io.ParquetEncodingException;
-import parquet.io.RecordConsumer;
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.Type;

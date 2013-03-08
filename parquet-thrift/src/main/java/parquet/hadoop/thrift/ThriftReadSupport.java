@@ -20,7 +20,7 @@ import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 
 import parquet.hadoop.api.ReadSupport;
-import parquet.io.convert.RecordConverter;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 import parquet.thrift.TBaseRecordConverter;
 import parquet.thrift.ThriftMetaData;
@@ -29,7 +29,7 @@ import parquet.thrift.ThriftRecordConverter;
 public class ThriftReadSupport<T> extends ReadSupport<T> {
 
   @Override
-  public RecordConverter<T> initForRead(
+  public RecordMaterializer<T> initForRead(
       Configuration configuration,
       Map<String, String> keyValueMetaData,
       MessageType fileSchema,

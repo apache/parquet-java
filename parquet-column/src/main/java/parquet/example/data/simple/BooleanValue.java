@@ -15,7 +15,7 @@
  */
 package parquet.example.data.simple;
 
-import parquet.io.RecordConsumer;
+import parquet.io.api.RecordConsumer;
 
 public class BooleanValue extends Primitive {
 

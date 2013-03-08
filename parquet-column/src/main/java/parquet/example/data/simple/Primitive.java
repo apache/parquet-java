@@ -15,8 +15,8 @@
  */
 package parquet.example.data.simple;
 
-import parquet.io.Binary;
-import parquet.io.RecordConsumer;
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
 
 public abstract class Primitive {
 

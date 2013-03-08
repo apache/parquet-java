@@ -15,8 +15,8 @@
  */
 package parquet.example.data.simple.convert;
 
-import parquet.io.Binary;
-import parquet.io.convert.PrimitiveConverter;
+import parquet.io.api.Binary;
+import parquet.io.api.PrimitiveConverter;
 
 class SimplePrimitiveConverter extends PrimitiveConverter {
 
@@ -31,7 +31,7 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
 
   /**
    * {@inheritDoc}
-   * @see parquet.io.convert.PrimitiveConverter#addBinary(byte[])
+   * @see parquet.io.api.PrimitiveConverter#addBinary(byte[])
    */
   @Override
   public void addBinary(Binary value) {
@@ -40,7 +40,7 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
 
   /**
    * {@inheritDoc}
-   * @see parquet.io.convert.PrimitiveConverter#addBoolean(boolean)
+   * @see parquet.io.api.PrimitiveConverter#addBoolean(boolean)
    */
   @Override
   public void addBoolean(boolean value) {
@@ -49,7 +49,7 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
 
   /**
    * {@inheritDoc}
-   * @see parquet.io.convert.PrimitiveConverter#addDouble(double)
+   * @see parquet.io.api.PrimitiveConverter#addDouble(double)
    */
   @Override
   public void addDouble(double value) {
@@ -58,7 +58,7 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
 
   /**
    * {@inheritDoc}
-   * @see parquet.io.convert.PrimitiveConverter#addFloat(float)
+   * @see parquet.io.api.PrimitiveConverter#addFloat(float)
    */
   @Override
   public void addFloat(float value) {
@@ -67,7 +67,7 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
 
   /**
    * {@inheritDoc}
-   * @see parquet.io.convert.PrimitiveConverter#addInt(int)
+   * @see parquet.io.api.PrimitiveConverter#addInt(int)
    */
   @Override
   public void addInt(int value) {
@@ -76,7 +76,7 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
 
   /**
    * {@inheritDoc}
-   * @see parquet.io.convert.PrimitiveConverter#addLong(long)
+   * @see parquet.io.api.PrimitiveConverter#addLong(long)
    */
   @Override
   public void addLong(long value) {

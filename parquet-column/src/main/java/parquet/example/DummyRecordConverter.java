@@ -17,10 +17,10 @@ package parquet.example;
 
 import java.util.List;
 
-import parquet.io.convert.Converter;
-import parquet.io.convert.GroupConverter;
-import parquet.io.convert.PrimitiveConverter;
-import parquet.io.convert.RecordConverter;
+import parquet.io.api.Converter;
+import parquet.io.api.GroupConverter;
+import parquet.io.api.PrimitiveConverter;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType;
@@ -32,7 +32,7 @@ import parquet.schema.TypeConverter;
  * @author Julien Le Dem
  *
  */
-public final class DummyRecordConverter extends RecordConverter<Object> {
+public final class DummyRecordConverter extends RecordMaterializer<Object> {
 
   private Object a;
   private GroupConverter root;

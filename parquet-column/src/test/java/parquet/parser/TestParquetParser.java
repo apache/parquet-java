@@ -24,9 +24,9 @@ import static parquet.schema.Type.Repetition.REQUIRED;
 
 import org.junit.Test;
 
-import parquet.parser.MessageTypeParser;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 import parquet.schema.PrimitiveType;
 
 public class TestParquetParser {

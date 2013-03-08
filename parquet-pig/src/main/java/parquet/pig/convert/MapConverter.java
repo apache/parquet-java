@@ -32,10 +32,10 @@ import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
-import parquet.io.Binary;
-import parquet.io.convert.Converter;
-import parquet.io.convert.GroupConverter;
-import parquet.io.convert.PrimitiveConverter;
+import parquet.io.api.Binary;
+import parquet.io.api.Converter;
+import parquet.io.api.GroupConverter;
+import parquet.io.api.PrimitiveConverter;
 import parquet.schema.GroupType;
 
 final class MapConverter extends GroupConverter {

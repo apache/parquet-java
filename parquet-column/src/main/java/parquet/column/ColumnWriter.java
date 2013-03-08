@@ -15,7 +15,7 @@
  */
 package parquet.column;
 
-import parquet.io.Binary;
+import parquet.io.api.Binary;
 
 /**
  * writer for (repetition level, definition level, values) triplets
