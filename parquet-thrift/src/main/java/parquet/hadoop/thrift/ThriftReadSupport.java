@@ -19,7 +19,7 @@ import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 
-import parquet.hadoop.ReadSupport;
+import parquet.hadoop.api.ReadSupport;
 import parquet.io.convert.RecordConverter;
 import parquet.schema.MessageType;
 import parquet.thrift.TBaseRecordConverter;

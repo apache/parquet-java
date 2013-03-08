@@ -35,6 +35,7 @@ import org.apache.pig.parser.ParserException;
 import parquet.Log;
 import parquet.hadoop.Footer;
 import parquet.hadoop.ParquetInputFormat;
+import parquet.io.ParquetDecodingException;
 
 public class ParquetLoader extends LoadFunc implements LoadMetadata {
   private static final Log LOG = Log.getLog(ParquetLoader.class);
@@ -106,7 +107,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata {
       }
     } catch (InterruptedException e) {
       Thread.interrupted();
-      throw new RuntimeException("Interrupted", e);
+      throw new ParquetDecodingException("Interrupted", e);
     }
   }
 

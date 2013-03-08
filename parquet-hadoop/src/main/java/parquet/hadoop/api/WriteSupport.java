@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.hadoop;
+package parquet.hadoop.api;
 
 import java.util.Collections;
 import java.util.Map;
@@ -25,7 +25,7 @@ import parquet.schema.MessageType;
 
 
 /**
- * Abstraction to use with {@link ParquetOutputFormat} to convert incoming records
+ * Abstraction to use with {@link parquet.hadoop.ParquetOutputFormat} to convert incoming records
  *
  * @author Julien Le Dem
  *

@@ -15,8 +15,11 @@
  */
 package parquet.thrift;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
@@ -39,8 +42,11 @@ import parquet.schema.Type;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftField.Requirement;
 import parquet.thrift.struct.ThriftType;
+import parquet.thrift.struct.ThriftType.EnumType;
+import parquet.thrift.struct.ThriftType.EnumValue;
 import parquet.thrift.struct.ThriftType.ListType;
 import parquet.thrift.struct.ThriftType.MapType;
+import parquet.thrift.struct.ThriftType.SetType;
 import parquet.thrift.struct.ThriftType.StructType;
 import parquet.thrift.struct.ThriftTypeID;
 
@@ -82,10 +88,14 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
     public PrimitiveFieldHandler(PrimitiveConverter delegate, final ThriftField field, List<TProtocol> events) {
       this.delegate = delegate;
       this.events = events;
+      final byte thriftType =
+          field.getType().getType() == ThriftTypeID.ENUM ?
+              ThriftTypeID.I32.getThriftType() : // enums are serialized as I32
+              field.getType().getType().getThriftType();
       this.readFieldBegin = new ParquetProtocol("readFieldBegin()") {
         @Override
         public TField readFieldBegin() throws TException {
-          return new TField(field.getName(), field.getType().getType().getThriftType(), field.getFieldId());
+          return new TField(field.getName(), thriftType, field.getFieldId());
         }
       };
     }
@@ -298,14 +308,16 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
   class FieldPrimitiveConverter extends PrimitiveConverter {
 
     private final List<TProtocol> events;
+    private ThriftTypeID type;
 
     public FieldPrimitiveConverter(List<TProtocol> events, ThriftField field) {
       this.events = events;
+      this.type = field.getType().getType();
     }
 
     @Override
     public void addBoolean(final boolean value) {
-      events.add(new ParquetProtocol() {
+      events.add(new ParquetProtocol("readBool()") {
         @Override
         public boolean readBool() throws TException {
           return value;
@@ -315,7 +327,7 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
 
     @Override
     public void addDouble(final double value) {
-      events.add(new ParquetProtocol() {
+      events.add(new ParquetProtocol("readDouble()") {
         @Override
         public double readDouble() throws TException {
           return value;
@@ -326,7 +338,7 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
     @Override
     public void addFloat(final float value) {
       // TODO: check thrift has no float
-      events.add(new ParquetProtocol() {
+      events.add(new ParquetProtocol("readDouble() float") {
         @Override
         public double readDouble() throws TException {
           return value;
@@ -336,18 +348,40 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
 
     @Override
     public void addInt(final int value) {
-      // TODO: check smaller types
-      events.add(new ParquetProtocol() {
-        @Override
-        public int readI32() throws TException {
-          return value;
-        }
-      });
+      // TODO: make subclass per type
+      switch (type) {
+      case BYTE:
+        events.add(new ParquetProtocol("readByte() int") {
+          @Override
+          public byte readByte() throws TException {
+            return (byte)value;
+          }
+        });
+        break;
+      case I16:
+        events.add(new ParquetProtocol("readI16()") {
+          @Override
+          public short readI16() throws TException {
+            return (short)value;
+          }
+        });
+        break;
+      case I32:
+        events.add(new ParquetProtocol("readI32()") {
+          @Override
+          public int readI32() throws TException {
+            return value;
+          }
+        });
+        break;
+        default:
+          throw new UnsupportedOperationException("not convertible type " + type);
+      }
     }
 
     @Override
     public void addLong(final long value) {
-      events.add(new ParquetProtocol() {
+      events.add(new ParquetProtocol("readI64()") {
         @Override
         public long readI64() throws TException {
           return value;
@@ -372,10 +406,46 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
 
     @Override
     public void addBinary(final Binary value) {
-      events.add(new ParquetProtocol() {
+      events.add(new ParquetProtocol("readString() binary") {
         @Override
         public String readString() throws TException {
           return value.toStringUsingUTF8();
+        }
+        @Override
+        public ByteBuffer readBinary() throws TException {
+          return value.toByteBuffer();
+        }
+      });
+    }
+
+  }
+
+  /**
+   * converts Binary into Enum
+   * @author Julien Le Dem
+   *
+   */
+  class FieldEnumConverter extends PrimitiveConverter {
+
+    private final List<TProtocol> events;
+
+    private Map<Binary, Integer> enumLookup = new HashMap<Binary, Integer>();
+
+    public FieldEnumConverter(List<TProtocol> events, ThriftField field) {
+      this.events = events;
+      final List<EnumValue> values = ((EnumType)field.getType()).getValues();
+      for (EnumValue enumValue : values) {
+        enumLookup.put(Binary.fromString(enumValue.getName()), enumValue.getId());
+      }
+    }
+
+    @Override
+    public void addBinary(final Binary value) {
+      final int id = enumLookup.get(value);
+      events.add(new ParquetProtocol("readI32() enum") {
+        @Override
+        public int readI32() throws TException {
+          return id;
         }
       });
     }
@@ -498,7 +568,7 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
     private final List<TProtocol> parentEvents;
 
     public SetConverter(List<TProtocol> parentEvents, GroupType parquetSchema, ThriftField field) {
-      super(parentEvents, parquetSchema, ((ListType)field.getType()).getValues());
+      super(parentEvents, parquetSchema, ((SetType)field.getType()).getValues());
       this.parentEvents = parentEvents;
     }
 
@@ -747,6 +817,8 @@ public class ThriftRecordConverter<T> extends RecordConverter<T> {
       return new StructConverter(events, type.asGroupType(), field);
     case STRING:
       return new FieldStringConverter(events, field);
+    case ENUM:
+      return new FieldEnumConverter(events, field);
     default:
       return new FieldPrimitiveConverter(events, field);
     }

@@ -22,19 +22,23 @@ import parquet.schema.Type.Repetition;
 /**
  * Utility functions to convert from Java-like map and list types
  * to equivalent Parquet types.
- * 
+ *
  * TODO(julien): this class appears to be unused. Is it dead code?
  */
 public abstract class ConversionPatterns {
   /**
-   * to preserve the difference between empty list and null
-   * @param alias
+   * to preserve the difference between empty list and null when optional
+   * @param repetition
+   * @param alias name of the field
    * @param originalType
-   * @param groupType
-   * @return an optional group
+   * @param nested the nested repeated field
+   * @return a group type
    */
-  private static GroupType listWrapper(Repetition repetition, String alias, OriginalType originalType, GroupType groupType) {
-    return new GroupType(repetition, alias, originalType, groupType);
+  private static GroupType listWrapper(Repetition repetition, String alias, OriginalType originalType, Type nested) {
+    if (nested.getRepetition() != Repetition.REPEATED) {
+      throw new IllegalArgumentException("Nested type should be repeated: " + nested);
+    }
+    return new GroupType(repetition, alias, originalType, nested);
   }
 
   public static GroupType mapType(Repetition repetition, String alias, Type valueType) {
@@ -54,25 +58,19 @@ public abstract class ConversionPatterns {
         );
   }
 
+  /**
+   *
+   * @param repetition
+   * @param alias name of the field
+   * @param nestedType
+   * @return
+   */
   public static GroupType listType(Repetition repetition, String alias, Type nestedType) {
-    GroupType repeatedField;
-    if (nestedType.isPrimitive()) {
-      repeatedField = new GroupType(
-          Repetition.REPEATED,
-          "bag",
-          nestedType);
-    } else {
-      final GroupType nestedGroupType = nestedType.asGroupType();
-      repeatedField = new GroupType(
-          Repetition.REPEATED,
-          nestedGroupType.getName(),
-          nestedGroupType.getFields());
-    }
     return listWrapper(
         repetition,
         alias,
         LIST,
-        repeatedField
+        nestedType
         );
   }
 }

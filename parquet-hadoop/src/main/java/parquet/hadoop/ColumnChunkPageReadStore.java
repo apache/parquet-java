@@ -16,7 +16,6 @@
 package parquet.hadoop;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -33,7 +32,7 @@ import parquet.hadoop.CodecFactory.BytesDecompressor;
  * TODO: should this actually be called RowGroupImpl or something?
  * The name is kind of confusing since it references three different "entities"
  * in our format: columns, chunks, and pages
- * 
+ *
  */
 class ColumnChunkPageReadStore implements PageReadStore {
   private static final Log LOG = Log.getLog(ColumnChunkPageReadStore.class);
@@ -43,7 +42,7 @@ class ColumnChunkPageReadStore implements PageReadStore {
    * several pages, which are yielded one by one in order.
    *
    * This implementation is provided with a list of pages, each of which
-   * is decompressed and passed through. 
+   * is decompressed and passed through.
    */
   static final class ColumnChunkPageReader implements PageReader {
 
@@ -71,7 +70,7 @@ class ColumnChunkPageReadStore implements PageReadStore {
       if (compressedPages.isEmpty()) {
         return null;
       }
-      Page compressedPage = compressedPages.remove(0); 
+      Page compressedPage = compressedPages.remove(0);
       try {
         return new Page(
             decompressor.decompress(compressedPage.getBytes(), compressedPage.getUncompressedSize()),

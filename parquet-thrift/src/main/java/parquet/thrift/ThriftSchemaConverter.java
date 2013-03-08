@@ -15,7 +15,8 @@
  */
 package parquet.thrift;
 
-import static parquet.schema.OriginalType.*;
+import static parquet.schema.OriginalType.ENUM;
+import static parquet.schema.OriginalType.UTF8;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
@@ -29,7 +30,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.hadoop.record.meta.StructTypeID;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TEnum;
 import org.apache.thrift.protocol.TType;
@@ -39,11 +39,19 @@ import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType;
 import parquet.schema.Type;
-import parquet.schema.Type.Repetition;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
+import parquet.thrift.struct.ThriftType.BoolType;
+import parquet.thrift.struct.ThriftType.ByteType;
+import parquet.thrift.struct.ThriftType.DoubleType;
+import parquet.thrift.struct.ThriftType.EnumType;
+import parquet.thrift.struct.ThriftType.EnumValue;
+import parquet.thrift.struct.ThriftType.I16Type;
+import parquet.thrift.struct.ThriftType.I32Type;
+import parquet.thrift.struct.ThriftType.I64Type;
+import parquet.thrift.struct.ThriftType.StringType;
+import parquet.thrift.struct.ThriftType.StructType;
 import parquet.thrift.struct.ThriftTypeID;
-import parquet.thrift.struct.ThriftType.*;
 
 import com.twitter.elephantbird.thrift.TStructDescriptor;
 import com.twitter.elephantbird.thrift.TStructDescriptor.Field;
@@ -86,10 +94,10 @@ public class ThriftSchemaConverter {
   private Type toSchema(String name, Field field, Type.Repetition rep) {
     if (field.isList()) {
       final Field listElemField = field.getListElemField();
-      return ConversionPatterns.listType(rep, name, toSchema(name + "_tuple", listElemField, OPTIONAL));
+      return ConversionPatterns.listType(rep, name, toSchema(name + "_tuple", listElemField, REPEATED));
     } else if (field.isSet()) {
       final Field setElemField = field.getSetElemField();
-      return ConversionPatterns.listType(rep, name, toSchema(name + "_tuple", setElemField, OPTIONAL));
+      return ConversionPatterns.listType(rep, name, toSchema(name + "_tuple", setElemField, REPEATED));
     } else if (field.isStruct()) {
       return new GroupType(rep, name, toSchema(field.gettStructDescriptor()));
     } else if (field.isBuffer()) {
@@ -218,6 +226,11 @@ public class ThriftSchemaConverter {
     return new ThriftField(name, field.getId(), requirement, type);
   }
 
+  /**
+   * temporary, waiting for a new release of elephant bird
+   * @param field
+   * @return
+   */
   private Collection<TEnum> getEnumValues(Field field) {
     try {
       java.lang.reflect.Field enumMapField = Field.class.getDeclaredField("enumMap");

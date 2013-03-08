@@ -18,8 +18,6 @@ package parquet.hadoop;
 import static parquet.Log.INFO;
 
 import java.io.IOException;
-import java.util.Map;
-
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -32,10 +30,9 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import parquet.Log;
-import parquet.hadoop.WriteSupport.WriteContext;
+import parquet.hadoop.api.WriteSupport;
+import parquet.hadoop.api.WriteSupport.WriteContext;
 import parquet.hadoop.metadata.CompressionCodecName;
-import parquet.parser.MessageTypeParser;
-import parquet.schema.MessageType;
 
 /**
  * OutputFormat to write to a Parquet file
@@ -142,10 +139,15 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   /**
    * {@inheritDoc}
    */
-  @SuppressWarnings("unchecked") // writeSupport instantiation
   @Override
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
+    return getRecordWriter(taskAttemptContext, null);
+  }
+
+  @SuppressWarnings("unchecked") // writeSupport instantiation
+  public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Path file)
+        throws IOException, InterruptedException {
     final Configuration conf = taskAttemptContext.getConfiguration();
     CodecFactory codecFactory = new CodecFactory(conf);
     int blockSize = getBlockSize(taskAttemptContext);
@@ -179,7 +181,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     }
     if (INFO) LOG.info("Compression: " + codec.name());
     extension += codec.getExtension();
-    Path file = getDefaultWorkFile(taskAttemptContext, extension);
+    if (file == null) {
+      file = getDefaultWorkFile(taskAttemptContext, extension);
+    }
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(conf, init.getSchema(), file);
     w.start();

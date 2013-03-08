@@ -13,18 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.hadoop;
+package parquet.hadoop.api;
 
 import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.mapreduce.RecordReader;
 
 import parquet.io.convert.RecordConverter;
 import parquet.schema.MessageType;
 
 /**
- * Abstraction used by the {@link ParquetInputFormat} to materialize records
+ * Abstraction used by the {@link parquet.hadoop.ParquetInputFormat} to materialize records
  *
  * @author Julien Le Dem
  *
@@ -33,7 +32,7 @@ import parquet.schema.MessageType;
 abstract public class ReadSupport<T> {
 
   /**
-   * called in {@link RecordReader#initialize(org.apache.hadoop.mapreduce.InputSplit, org.apache.hadoop.mapreduce.TaskAttemptContext)}
+   * called in {@link org.apache.hadoop.mapreduce.RecordReader#initialize(org.apache.hadoop.mapreduce.InputSplit, org.apache.hadoop.mapreduce.TaskAttemptContext)}
    * the returned RecordConsumer will materialize the records and add them to the destination
    * @param configuration the job configuration
    * @param keyValueMetaData the app specific metadata from the file

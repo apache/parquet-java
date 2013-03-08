@@ -21,7 +21,7 @@ import org.apache.hadoop.conf.Configuration;
 
 import parquet.example.data.Group;
 import parquet.example.data.simple.convert.GroupRecordConverter;
-import parquet.hadoop.ReadSupport;
+import parquet.hadoop.api.ReadSupport;
 import parquet.io.convert.RecordConverter;
 import parquet.schema.MessageType;
 

@@ -26,6 +26,12 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
 
+/**
+ * Allows simple implementation of partial protocols
+ *
+ * @author Julien Le Dem
+ *
+ */
 abstract class ParquetProtocol extends TProtocol {
 
   private final String message;
@@ -35,6 +41,9 @@ abstract class ParquetProtocol extends TProtocol {
     this.message = getClass().getName();
   }
 
+  /**
+   * @param name a meaningful debugging name for anonymous inner classes
+   */
   ParquetProtocol(String name) {
     super(null);
     this.message = name + " " + getClass().getName();

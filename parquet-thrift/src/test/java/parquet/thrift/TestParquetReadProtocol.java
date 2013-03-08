@@ -13,21 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.hadoop.thrift;
+package parquet.thrift;
 
+import static com.twitter.data.proto.tutorial.thrift.PhoneType.MOBILE;
 import static junit.framework.Assert.assertEquals;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import thrift.test.OneOfEach;
 
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TProtocol;
 import org.junit.Test;
 
+import parquet.Log;
 import parquet.column.mem.MemColumnWriteStore;
 import parquet.column.mem.MemPageStore;
 import parquet.io.ColumnIOFactory;
@@ -35,11 +41,6 @@ import parquet.io.MessageColumnIO;
 import parquet.io.RecordConsumer;
 import parquet.io.RecordReader;
 import parquet.schema.MessageType;
-import parquet.thrift.ParquetWriteProtocol;
-import parquet.thrift.TBaseRecordConverter;
-import parquet.thrift.ThriftReader;
-import parquet.thrift.ThriftRecordConverter;
-import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType.StructType;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
@@ -48,11 +49,32 @@ import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
 import com.twitter.elephantbird.thrift.test.TestMap;
 import com.twitter.elephantbird.thrift.test.TestName;
+import com.twitter.elephantbird.thrift.test.TestNameList;
+import com.twitter.elephantbird.thrift.test.TestNameSet;
 import com.twitter.elephantbird.thrift.test.TestPerson;
 import com.twitter.elephantbird.thrift.test.TestPhoneType;
 import com.twitter.elephantbird.thrift.test.TestStructInMap;
 
 public class TestParquetReadProtocol {
+  private static final Log LOG = Log.getLog(TestParquetReadProtocol.class);
+
+  @Test
+  public void testList() throws TException {
+    final List<String> names = new ArrayList<String>();
+    names.add("John");
+    names.add("Jack");
+    final TestNameList o = new TestNameList("name", names);
+    validate(o);
+  }
+
+  @Test
+  public void testSet() throws TException {
+    final Set<String> names = new HashSet<String>();
+    names.add("John");
+    names.add("Jack");
+    final TestNameSet o = new TestNameSet("name", names);
+    validate(o);
+  }
 
   @Test
   public void testReadEmpty() throws Exception {
@@ -61,13 +83,29 @@ public class TestParquetReadProtocol {
   }
 
   @Test
+  public void testOneOfEach() throws TException {
+    final List<Byte> bytes = new ArrayList<Byte>();
+    bytes.add((byte)1);
+    final List<Short> shorts = new ArrayList<Short>();
+    shorts.add((short)1);
+    final List<Long> longs = new ArrayList<Long>();
+    longs.add((long)1);
+    OneOfEach a = new OneOfEach(
+        true, false, (byte)8, (short)16, (int)32, (long)64, (double)1234, "string", "å", false,
+        ByteBuffer.wrap("a".getBytes()), bytes, shorts, longs);
+   validate(a);
+  }
+
+  @Test
   public void testRead() throws Exception {
+    final PhoneNumber phoneNumber = new PhoneNumber("5555555555");
+    phoneNumber.type = MOBILE;
     List<Person> persons = Arrays.asList(
         new Person(
             new Name("john", "johson"),
             1,
             "john@johnson.org",
-            Arrays.asList(new PhoneNumber("5555555555"))
+            Arrays.asList(phoneNumber)
             ),
         new Person(
             new Name("jack", "jackson"),
@@ -102,6 +140,7 @@ public class TestParquetReadProtocol {
     final MemPageStore memPageStore = new MemPageStore();
     final ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final MessageType schema = schemaConverter.convert(thriftClass);
+    LOG.info(schema);
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     final MemColumnWriteStore columns = new MemColumnWriteStore(memPageStore, 10000);
     final RecordConsumer recordWriter = columnIO.getRecordWriter(columns);

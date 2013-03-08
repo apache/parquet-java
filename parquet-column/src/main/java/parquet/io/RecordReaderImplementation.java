@@ -335,14 +335,11 @@ public class RecordReaderImplementation<T> extends RecordReader<T> {
             Case currentCase = new Case(caseStartLevel, caseDepth, caseNextLevel, getNextReader(state.id, nextR), d == state.maxDefinitionLevel);
             Map<Case, Case> cases = currentCase.isDefined() ? definedCases : undefinedCases;
             if (!cases.containsKey(currentCase)) {
-//              System.out.println("adding "+currentCase);
               currentCase.setID(cases.size());
               cases.put(currentCase, currentCase);
             } else {
-//              System.out.println("not adding "+currentCase);
               currentCase = cases.get(currentCase);
             }
-//            System.out.println(currentLevel+", "+d+", "+nextR);
             caseLookup[currentLevel][d][nextR] = currentCase;
           }
         }

@@ -207,11 +207,6 @@ public class ParquetFileWriter {
    void writeDataPages(BytesInput bytes, long uncompressedTotalPageSize, long compressedTotalPageSize, List<parquet.column.Encoding> encodings) throws IOException {
     state = state.write();
     if (DEBUG) LOG.debug(out.getPos() + ": write data pages");
-//    int compressedPageSize = (int)bytes.size();
-//    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedPageSize, compressedPageSize);
-//    // pageHeader.crc = ...;
-//    pageHeader.data_page = new DataPageHeader(valueCount, Encoding.PLAIN); // TODO: encoding
-//    metadataConverter.writePageHeader(pageHeader, out);
     this.uncompressedLength += uncompressedTotalPageSize;
     this.compressedLength += compressedTotalPageSize;
     if (DEBUG) LOG.debug(out.getPos() + ": write data pages content");

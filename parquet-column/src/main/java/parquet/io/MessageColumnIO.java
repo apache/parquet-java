@@ -247,7 +247,9 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   public RecordConsumer getRecordWriter(ColumnWriteStore columns) {
-    return new MessageColumnIORecordConsumer(columns);
+    RecordConsumer recordWriter = new MessageColumnIORecordConsumer(columns);
+    if (DEBUG) recordWriter = new RecordConsumerLoggingWrapper(recordWriter);
+    return validating ? new ValidatingRecordConsumer(recordWriter, getType()) : recordWriter;
   }
 
   void setLevels() {

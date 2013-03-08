@@ -100,7 +100,7 @@ public class PigSchemaConverter {
         return fieldSchema;
       }
     } catch (FrontendException e) {
-      throw new RuntimeException("can't filter " + fieldSchema, e);
+      throw new SchemaConversionException("can't filter " + fieldSchema, e);
     }
   }
 
@@ -143,8 +143,12 @@ public class PigSchemaConverter {
   }
 
   private Type convert(FieldSchema fieldSchema, String defaultAlias) {
+    String name = name(fieldSchema.alias, defaultAlias);
+    return convertWithName(fieldSchema, name);
+  }
+
+  private Type convertWithName(FieldSchema fieldSchema, String name) {
     try {
-      String name = name(fieldSchema.alias, defaultAlias);
       switch (fieldSchema.type) {
       case DataType.BAG:
         return convertBag(name, fieldSchema);
@@ -172,9 +176,9 @@ public class PigSchemaConverter {
         throw new RuntimeException("Unknown type "+fieldSchema.type+" "+DataType.findTypeName(fieldSchema.type));
       }
     } catch (FrontendException e) {
-      throw new RuntimeException("can't convert "+fieldSchema, e);
+      throw new SchemaConversionException("can't convert "+fieldSchema, e); // TODO: proper exception
     } catch (RuntimeException e) {
-      throw new RuntimeException("can't convert "+fieldSchema, e);
+      throw new SchemaConversionException("can't convert "+fieldSchema, e);
     }
   }
 
@@ -229,35 +233,22 @@ public class PigSchemaConverter {
    * @throws FrontendException
    */
   private GroupType convertMap(String alias, FieldSchema fieldSchema) throws FrontendException {
-    Type[] types = new Type[2];
-    types[0] = new PrimitiveType(Repetition.REQUIRED, PrimitiveTypeName.BINARY, "key");
+    Type convertedKey = new PrimitiveType(Repetition.REQUIRED, PrimitiveTypeName.BINARY, "key");
     Schema innerSchema = fieldSchema.schema;
     if (innerSchema.size() != 1) {
       throw new FrontendException("Invalid map Schema, schema should contain exactly one field: " + fieldSchema);
     }
     FieldSchema innerField = innerSchema.getField(0);
-    switch (innerField.type) {
-    case DataType.TUPLE:
-      types[1] = convertTuple("value", innerField, Repetition.OPTIONAL);
-      break;
-    case DataType.MAP:
-      types[1] = convertMap("value", innerField);
-      break;
-    case DataType.BAG:
-      types[1] = convertBag("value", innerField);
-      break;
-    case DataType.INTEGER:
-    case DataType.LONG:
-    case DataType.BOOLEAN:
-    case DataType.FLOAT:
-    case DataType.DOUBLE:
-    case DataType.CHARARRAY:
-      types[1] = convert(innerField, "value");
-      break;
-    default:
-      throw new FrontendException("Invalid map Schema, field type not recognized: " + fieldSchema);
-    }
-    return listWrapper(alias, OriginalType.MAP, new GroupType(Repetition.REPEATED, name(innerField.alias, "map"), OriginalType.MAP_KEY_VALUE, types));
+    Type convertedValue = convertWithName(innerField, "value");
+    return listWrapper(
+        alias,
+        OriginalType.MAP,
+        new GroupType(
+            Repetition.REPEATED,
+            name(innerField.alias, "map"),
+            OriginalType.MAP_KEY_VALUE,
+            convertedKey,
+            convertedValue));
   }
 
   private GroupType convertTuple(String alias, FieldSchema field, Repetition repetition) {

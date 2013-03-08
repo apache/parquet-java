@@ -25,6 +25,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import parquet.Log;
 import parquet.column.mem.MemColumnWriteStore;
 import parquet.hadoop.CodecFactory.BytesCompressor;
+import parquet.hadoop.api.WriteSupport;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.schema.MessageType;
@@ -65,7 +66,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    * @param blockSize the size of a block in the file (this will be approximate)
    * @param codec the codec used to compress
    */
-  ParquetRecordWriter(ParquetFileWriter w, WriteSupport<T> writeSupport, MessageType schema,  Map<String, String> extraMetaData, int blockSize, int pageSize, BytesCompressor compressor) {
+  public ParquetRecordWriter(ParquetFileWriter w, WriteSupport<T> writeSupport, MessageType schema,  Map<String, String> extraMetaData, int blockSize, int pageSize, BytesCompressor compressor) {
     if (writeSupport == null) {
       throw new NullPointerException("writeSupport");
     }

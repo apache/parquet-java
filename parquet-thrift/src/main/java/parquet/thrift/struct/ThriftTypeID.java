@@ -29,7 +29,12 @@ import parquet.thrift.struct.ThriftType.MapType;
 import parquet.thrift.struct.ThriftType.SetType;
 import parquet.thrift.struct.ThriftType.StringType;
 import parquet.thrift.struct.ThriftType.StructType;
-
+/**
+ * The list of thrift types
+ *
+ * @author Julien Le Dem
+ *
+ */
 public enum ThriftTypeID {
   STOP (TType.STOP),
   VOID (TType.VOID),
