@@ -26,6 +26,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.JobContext;
@@ -200,11 +201,12 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public List<InputSplit> getSplits(JobContext jobContext) throws IOException {
     List<InputSplit> splits = new ArrayList<InputSplit>();
     Configuration configuration = jobContext.getConfiguration();
-    FileSystem fs = FileSystem.get(configuration);
     List<Footer> footers = getFooters(jobContext);
     for (Footer footer : footers) {
-      LOG.debug(footer.getFile());
-      FileStatus fileStatus = fs.getFileStatus(footer.getFile());
+      final Path file = footer.getFile();
+      LOG.debug(file);
+      FileSystem fs = file.getFileSystem(configuration);
+      FileStatus fileStatus = fs.getFileStatus(file);
       ParquetMetadata parquetMetaData = footer.getParquetMetadata();
       List<BlockMetaData> blocks = parquetMetaData.getBlocks();
       BlockLocation[] fileBlockLocations = fs.getFileBlockLocations(fileStatus, 0, fileStatus.getLen());
