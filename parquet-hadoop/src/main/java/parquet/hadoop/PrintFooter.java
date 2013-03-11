@@ -15,7 +15,7 @@
  */
 package parquet.hadoop;
 
-import static parquet.hadoop.ParquetFileWriter.PARQUET_SUMMARY;
+import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -62,7 +62,7 @@ public class PrintFooter {
 
     final FileSystem fs = path.getFileSystem(configuration);
     FileStatus fileStatus = fs.getFileStatus(path);
-    Path summary = new Path(fileStatus.getPath(), PARQUET_SUMMARY);
+    Path summary = new Path(fileStatus.getPath(), PARQUET_METADATA_FILE);
     if (fileStatus.isDir() && fs.exists(summary)) {
       System.out.println("reading summary file");
       FileStatus summaryStatus = fs.getFileStatus(summary);

@@ -27,17 +27,14 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
 
 import parquet.format.ColumnChunk;
-import parquet.format.CompressionCodec;
 import parquet.format.DataPageHeader;
 import parquet.format.Encoding;
-import parquet.format.FieldLevelEncoding;
 import parquet.format.FieldRepetitionType;
 import parquet.format.FileMetaData;
 import parquet.format.KeyValue;
@@ -50,12 +47,13 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.io.ParquetDecodingException;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType;
-import parquet.schema.TypeVisitor;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type.Repetition;
+import parquet.schema.TypeVisitor;
 
 public class ParquetMetadataConverter {
 
@@ -137,7 +135,7 @@ public class ParquetMetadataConverter {
     List<ColumnChunk> parquetColumns = new ArrayList<ColumnChunk>();
     for (ColumnChunkMetaData columnMetaData : columns) {
       ColumnChunk columnChunk = new ColumnChunk(columnMetaData.getFirstDataPageOffset()); // verify this is the right offset
-      columnChunk.file_path = null; // same file
+      columnChunk.file_path = block.getPath(); // they are in the same file for now
       columnChunk.meta_data = new parquet.format.ColumnMetaData(
           getType(columnMetaData.getType()),
           toFormatEncodings(columnMetaData.getEncodings()),
@@ -246,7 +244,12 @@ public class ParquetMetadataConverter {
       blockMetaData.setRowCount(rowGroup.getNum_rows());
       blockMetaData.setTotalByteSize(rowGroup.getTotal_byte_size());
       List<ColumnChunk> columns = rowGroup.getColumns();
+      String filePath = columns.get(0).getFile_path();
       for (ColumnChunk columnChunk : columns) {
+        if ((filePath == null && columnChunk.getFile_path() != null)
+            || (filePath !=null && !filePath.equals(columnChunk.getFile_path()))) {
+          throw new ParquetDecodingException("all column chunks of the same row group must be in the same file for now");
+        }
         parquet.format.ColumnMetaData metaData = columnChunk.meta_data;
         String[] path = metaData.path_in_schema.toArray(new String[metaData.path_in_schema.size()]);
         ColumnChunkMetaData column = new ColumnChunkMetaData(
@@ -263,6 +266,7 @@ public class ParquetMetadataConverter {
         // key_value_metadata
         blockMetaData.addColumn(column);
       }
+      blockMetaData.setPath(filePath);
       blocks.add(blockMetaData);
     }
     Map<String, String> keyValueMetaData = new HashMap<String, String>();
@@ -389,8 +393,8 @@ public class ParquetMetadataConverter {
     pageHeader.data_page_header = new DataPageHeader(
         valueCount,
         getEncoding(encoding),
-        FieldLevelEncoding.RLE, // TODO: manage several encodings
-        FieldLevelEncoding.BIT_PACKED);
+        Encoding.RLE, // TODO: manage several encodings
+        Encoding.BIT_PACKED);
     return pageHeader;
   }
 

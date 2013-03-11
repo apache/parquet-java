@@ -23,8 +23,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
@@ -38,6 +40,9 @@ import org.junit.Test;
 import parquet.Log;
 import parquet.example.data.Group;
 import parquet.example.data.simple.SimpleGroupFactory;
+import parquet.hadoop.Footer;
+import parquet.hadoop.ParquetFileReader;
+import parquet.hadoop.ParquetFileWriter;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.schema.MessageTypeParser;
 
