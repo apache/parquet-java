@@ -1,7 +1,7 @@
 Parquet
 ======
 
-Parquet-mr is the java implementation of the Parquet format to be used in Hadoop. 
+Parquet-mr is the java implementation of the [Parquet format](https://github.com/Parquet/parquet-format) to be used in Hadoop. 
 It uses the [record shredding and assembly algorithm](https://github.com/Parquet/parquet-mr/wiki/The-striping-and-assembly-algorithms-from-the-Dremel-paper) described in the Dremel paper.
 Integration with Pig and Map/Reduce are provided.
 
