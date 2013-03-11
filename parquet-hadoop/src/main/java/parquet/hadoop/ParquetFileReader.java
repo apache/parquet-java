@@ -18,16 +18,18 @@ package parquet.hadoop;
 import static parquet.Log.DEBUG;
 import static parquet.bytes.BytesUtils.readIntLittleEndian;
 import static parquet.hadoop.ParquetFileWriter.MAGIC;
-import static parquet.hadoop.ParquetFileWriter.PARQUET_SUMMARY;
+import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -96,7 +98,7 @@ public class ParquetFileReader {
     Map<Path, Footer> cache = new HashMap<Path, Footer>();
     for (Path path : parents) {
       FileSystem fileSystem = path.getFileSystem(configuration);
-      Path summaryFile = new Path(path, PARQUET_SUMMARY);
+      Path summaryFile = new Path(path, PARQUET_METADATA_FILE);
       if (fileSystem.exists(summaryFile)) {
         if (Log.INFO) LOG.info("reading summary file: " + summaryFile);
         List<Footer> footers = readSummaryFile(configuration, fileSystem.getFileStatus(summaryFile));
@@ -184,7 +186,7 @@ public class ParquetFileReader {
   public static List<Footer> readFooters(Configuration configuration, FileStatus pathStatus) throws IOException {
     try {
       if (pathStatus.isDir()) {
-        Path summaryPath = new Path(pathStatus.getPath(), PARQUET_SUMMARY);
+        Path summaryPath = new Path(pathStatus.getPath(), PARQUET_METADATA_FILE);
         FileSystem fs = summaryPath.getFileSystem(configuration);
         if (fs.exists(summaryPath)) {
           FileStatus summaryStatus = fs.getFileStatus(summaryPath);
@@ -199,16 +201,23 @@ public class ParquetFileReader {
   }
 
   public static List<Footer> readSummaryFile(Configuration configuration, FileStatus summaryStatus) throws IOException {
-    FileSystem fs = summaryStatus.getPath().getFileSystem(configuration);
-    FSDataInputStream summary = fs.open(summaryStatus.getPath());
-    int footerCount = summary.readInt();
-    List<Footer> result = new ArrayList<Footer>(footerCount);
-    for (int i = 0; i < footerCount; i++) {
-      Path file = new Path(summary.readUTF());
-      ParquetMetadata parquetMetaData = parquetMetadataConverter.fromParquetMetadata(parquetMetadataConverter.readFileMetaData(summary));
-      result.add(new Footer(file, parquetMetaData));
+    final Path parent = summaryStatus.getPath().getParent();
+    ParquetMetadata mergedFooters = readFooter(configuration, summaryStatus);
+    Map<Path, ParquetMetadata> footers = new HashMap<Path, ParquetMetadata>();
+    List<BlockMetaData> blocks = mergedFooters.getBlocks();
+    for (BlockMetaData block : blocks) {
+      String path = block.getPath();
+      ParquetMetadata current = footers.get(path);
+      if (current == null) {
+        current = new ParquetMetadata(mergedFooters.getFileMetaData(), new ArrayList<BlockMetaData>(), mergedFooters.getKeyValueMetaData());
+        footers.put(new Path(parent, path), current);
+      }
+      current.getBlocks().add(block);
     }
-    summary.close();
+    List<Footer> result = new ArrayList<Footer>();
+    for (Entry<Path, ParquetMetadata> entry : footers.entrySet()) {
+      result.add(new Footer(entry.getKey(), entry.getValue()));
+    }
     return result;
   }
 

@@ -44,4 +44,12 @@ public final class FileMetaData implements Serializable {
   public String toString() {
     return "FileMetaData{schema: "+schema+"}";
   }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof FileMetaData)) {
+      return false;
+    }
+    return ((FileMetaData)obj).schema.equals(schema);
+  }
 }

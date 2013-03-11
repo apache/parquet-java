@@ -50,6 +50,7 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.io.ParquetDecodingException;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType;
@@ -137,7 +138,7 @@ public class ParquetMetadataConverter {
     List<ColumnChunk> parquetColumns = new ArrayList<ColumnChunk>();
     for (ColumnChunkMetaData columnMetaData : columns) {
       ColumnChunk columnChunk = new ColumnChunk(columnMetaData.getFirstDataPageOffset()); // verify this is the right offset
-      columnChunk.file_path = null; // same file
+      columnChunk.file_path = block.getPath(); // they are in the same file for now
       columnChunk.meta_data = new parquet.format.ColumnMetaData(
           getType(columnMetaData.getType()),
           toFormatEncodings(columnMetaData.getEncodings()),
@@ -246,7 +247,12 @@ public class ParquetMetadataConverter {
       blockMetaData.setRowCount(rowGroup.getNum_rows());
       blockMetaData.setTotalByteSize(rowGroup.getTotal_byte_size());
       List<ColumnChunk> columns = rowGroup.getColumns();
+      String filePath = columns.get(0).getFile_path();
       for (ColumnChunk columnChunk : columns) {
+        if ((filePath == null && columnChunk.getFile_path() != null)
+            || (filePath !=null && !filePath.equals(columnChunk.getFile_path()))) {
+          throw new ParquetDecodingException("all column chunks of the same row group must be in the same file for now");
+        }
         parquet.format.ColumnMetaData metaData = columnChunk.meta_data;
         String[] path = metaData.path_in_schema.toArray(new String[metaData.path_in_schema.size()]);
         ColumnChunkMetaData column = new ColumnChunkMetaData(
@@ -263,6 +269,7 @@ public class ParquetMetadataConverter {
         // key_value_metadata
         blockMetaData.addColumn(column);
       }
+      blockMetaData.setPath(filePath);
       blocks.add(blockMetaData);
     }
     Map<String, String> keyValueMetaData = new HashMap<String, String>();

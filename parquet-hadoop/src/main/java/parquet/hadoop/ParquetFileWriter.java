@@ -22,9 +22,11 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
@@ -42,6 +44,7 @@ import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.io.ParquetEncodingException;
 import parquet.schema.MessageType;
 
 /**
@@ -52,11 +55,11 @@ import parquet.schema.MessageType;
 public class ParquetFileWriter {
   private static final Log LOG = Log.getLog(ParquetFileWriter.class);
 
-  public static final String PARQUET_SUMMARY = "_ParquetSummary";
+  public static final String PARQUET_METADATA_FILE = "_metadata";
   public static final byte[] MAGIC = "PAR1".getBytes(Charset.forName("ASCII"));
   public static final int CURRENT_VERSION = 1;
 
-  private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+  private static final ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter();
 
   private final MessageType schema;
   private final FSDataOutputStream out;
@@ -66,7 +69,6 @@ public class ParquetFileWriter {
   private List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
   private long uncompressedLength;
   private long compressedLength;
-  private final ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter();
   private Set<parquet.column.Encoding> currentEncodings;
 
   /**
@@ -253,31 +255,67 @@ public class ParquetFileWriter {
   public void end(Map<String, String> extraMetaData) throws IOException {
     state = state.end();
     if (DEBUG) LOG.debug(out.getPos() + ": end");
-    long footerIndex = out.getPos();
     ParquetMetadata footer = new ParquetMetadata(new FileMetaData(schema), blocks, extraMetaData);
     serializeFooter(footer, out);
-    if (DEBUG) LOG.debug(out.getPos() + ": footer length = " + (out.getPos() - footerIndex));
-    BytesUtils.writeIntLittleEndian(out, (int)(out.getPos() - footerIndex));
-    out.write(MAGIC);
     out.close();
   }
 
-  private void serializeFooter(ParquetMetadata footer, OutputStream os) throws IOException {
+  private static void serializeFooter(ParquetMetadata footer, FSDataOutputStream out) throws IOException {
+    long footerIndex = out.getPos();
     parquet.format.FileMetaData parquetMetadata = new ParquetMetadataConverter().toParquetMetadata(CURRENT_VERSION, footer);
-    metadataConverter.writeFileMetaData(parquetMetadata, os);
+    metadataConverter.writeFileMetaData(parquetMetadata, out);
+    if (DEBUG) LOG.debug(out.getPos() + ": footer length = " + (out.getPos() - footerIndex));
+    BytesUtils.writeIntLittleEndian(out, (int)(out.getPos() - footerIndex));
+    out.write(MAGIC);
   }
 
   public static void writeSummaryFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
-    Path summaryPath = new Path(outputPath, PARQUET_SUMMARY);
+    Path metaDataPath = new Path(outputPath, PARQUET_METADATA_FILE);
     FileSystem fs = outputPath.getFileSystem(configuration);
-    FSDataOutputStream summary = fs.create(summaryPath);
-    summary.writeInt(footers.size());
+    FSDataOutputStream metadata = fs.create(metaDataPath);
+    metadata.write(MAGIC);
+    ParquetMetadata metadataFooter = mergeFooters(outputPath, footers);
+    serializeFooter(metadataFooter, metadata);
+    metadata.close();
+  }
+
+  private static ParquetMetadata mergeFooters(Path root, List<Footer> footers) {
+    String rootPath = root.toString();
+    FileMetaData fileMetaData = null;
+    Map<String, String> keyValueMetaData = new HashMap<String, String>();
+    List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     for (Footer footer : footers) {
-      summary.writeUTF(footer.getFile().toString());
-      parquet.format.FileMetaData parquetMetadata = parquetMetadataConverter.toParquetMetadata(CURRENT_VERSION, footer.getParquetMetadata());
-      parquetMetadataConverter.writeFileMetaData(parquetMetadata, summary);
+      String path = footer.getFile().toString();
+      if (!path.startsWith(rootPath)) {
+        throw new ParquetEncodingException(path + " invalid: all the files must be contained in the root " + root);
+      }
+      path = path.substring(rootPath.length());
+      while (path.startsWith("/")) {
+        path = path.substring(1);
+      }
+      ParquetMetadata currentMetadata = footer.getParquetMetadata();
+      if (fileMetaData == null){
+        fileMetaData = currentMetadata.getFileMetaData();
+      } else if (!fileMetaData.equals(currentMetadata.getFileMetaData())) {
+        throw new RuntimeException("could not merge metadata when the schema is different");
+      }
+      Map<String, String> currentKeyValues = currentMetadata.getKeyValueMetaData();
+      for (Entry<String, String> entry : currentKeyValues.entrySet()) {
+        final String value = keyValueMetaData.get(entry.getKey());
+        if (value == null) {
+          keyValueMetaData.put(entry.getKey(), entry.getValue());
+        } else if (!value.equals(entry.getValue())) {
+          throw new RuntimeException(
+              "could not merge metadata: key "+entry.getKey()
+              + " has conflicting values " + value + " and " + entry.getValue());
+        }
+      }
+      for (BlockMetaData block : currentMetadata.getBlocks()) {
+        block.setPath(path);
+        blocks.add(block);
+      }
     }
-    summary.close();
+    return new ParquetMetadata(fileMetaData, blocks, keyValueMetaData);
   }
 
 }

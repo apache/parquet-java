@@ -85,6 +85,9 @@
             <excludes>
               <exclude>**/*Exception.class</exclude>
             </excludes>
+            <excludes>
+              <exclude>**/example/*.class</exclude>
+            </excludes>
           </instrumentation>
         </configuration>
         <executions>
