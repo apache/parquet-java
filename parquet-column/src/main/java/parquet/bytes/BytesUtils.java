@@ -40,9 +40,7 @@ public class BytesUtils {
    * @return the number of bits required
    */
   public static int getWidthFromMaxInt(int bound) {
-    // TODO(julien): is this floating point math safe here? maybe it would be better
-    // to use (32 - Integer.numberOfLeadingZeros(bound)) (and almost definitely faster) -todd
-    return (int)Math.ceil(Math.log((double)bound + 1)/Math.log(2));
+    return 32 - Integer.numberOfLeadingZeros(bound);
   }
 
   /**
