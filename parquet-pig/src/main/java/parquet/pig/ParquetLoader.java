@@ -37,6 +37,14 @@ import parquet.hadoop.Footer;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.io.ParquetDecodingException;
 
+/**
+ *
+ * A Pig Loader for the Parquet file format.
+ *
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class ParquetLoader extends LoadFunc implements LoadMetadata {
   private static final Log LOG = Log.getLog(ParquetLoader.class);
 
@@ -47,10 +55,17 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata {
   private ParquetInputFormat<Tuple> parquetInputFormat;
   private String schema;
 
+  /**
+   * To read the content in its original schema
+   */
   public ParquetLoader() {
     this.requestedSchema = null;
   }
 
+  /**
+   * To read only a subset of the columns in the file
+   * @param requestedSchema a subset of the original pig schema in the file
+   */
   public ParquetLoader(String requestedSchema) {
     this.requestedSchema = requestedSchema;
   }
