@@ -123,10 +123,6 @@ public class TestInputOutputFormat {
     assertNull("line " + lineNumber, out.readLine());
     in.close();
     out.close();
-    final Path metadataPath = new Path(parquetPath, ParquetFileWriter.PARQUET_METADATA_FILE);
-    final FileStatus metadataStatus = metadataPath.getFileSystem(conf).getFileStatus(metadataPath);
-    final List<Footer> metadata = ParquetFileReader.readSummaryFile(conf, metadataStatus);
-    System.out.println(metadata);
   }
 
   private void waitForJob(Job job) throws InterruptedException, IOException {
