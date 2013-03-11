@@ -207,10 +207,11 @@ public class ParquetFileReader {
     List<BlockMetaData> blocks = mergedFooters.getBlocks();
     for (BlockMetaData block : blocks) {
       String path = block.getPath();
-      ParquetMetadata current = footers.get(path);
+      Path fullPath = new Path(parent, path);
+      ParquetMetadata current = footers.get(fullPath);
       if (current == null) {
         current = new ParquetMetadata(mergedFooters.getFileMetaData(), new ArrayList<BlockMetaData>(), mergedFooters.getKeyValueMetaData());
-        footers.put(new Path(parent, path), current);
+        footers.put(fullPath, current);
       }
       current.getBlocks().add(block);
     }
