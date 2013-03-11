@@ -32,8 +32,24 @@ public class BlockMetaData implements Serializable {
   private List<ColumnChunkMetaData> columns = new ArrayList<ColumnChunkMetaData>();
   private long rowCount;
   private long totalByteSize;
+  private String path;
 
   public BlockMetaData() {
+  }
+
+
+  /**
+   * @param path the path to the file containing the data. Or null if same file the metadata was found
+   */
+  public void setPath(String path) {
+    this.path = path;
+  }
+
+  /**
+   * @return the path relative to the parent of this file where the data is. Or null if it is in the same file.
+   */
+  public String getPath() {
+    return path;
   }
 
   /**

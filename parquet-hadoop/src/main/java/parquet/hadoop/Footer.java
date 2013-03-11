@@ -47,4 +47,8 @@ public class Footer {
     return parquetMetadata;
   }
 
+  @Override
+  public String toString() {
+    return "Footer{"+file+", "+parquetMetadata+"}";
+  }
 }
