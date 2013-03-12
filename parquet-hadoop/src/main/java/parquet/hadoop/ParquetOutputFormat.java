@@ -37,21 +37,35 @@ import parquet.hadoop.metadata.CompressionCodecName;
 /**
  * OutputFormat to write to a Parquet file
  *
- * it requires a {@link WriteSupport} to convert the actual records to the underlying format
- * it requires the schema of the incoming records
- * it allows storing extra metadata in the footer (for example: for schema compatibility purpose when converting from a different schema language)
+ * It requires a {@link WriteSupport} to convert the actual records to the underlying format.
+ * It requires the schema of the incoming records. (provided by the write support)
+ * It allows storing extra metadata in the footer (for example: for schema compatibility purpose when converting from a different schema language).
  *
- * format config controlled in job conf settings:
+ * The format configuration settings in the job configuration:
  * <pre>
+ * # The block size is the size of a row group being buffered in memory
+ * # this limits the memory usage when writing
+ * # Larger values will improve the IO when reading but consume more memory when writing
  * parquet.block.size=52428800 # in bytes, default = 50 * 1024 * 1024
- * parquet.page.size=8192 # in bytes, default = 8 * 1024
+ *
+ * # The page size is for compression. When reading, each page can be decompressed independently.
+ * # A block is composed of pages. The page is the smallest unit that must be read fully to access a single record.
+ * # If this value is too small, the compression will deteriorate
+ * parquet.page.size=1048576 # in bytes, default = 1 * 1024 * 1024
+ *
+ * # The compression algorithm used to compress pages
  * parquet.compression=UNCOMPRESSED # one of: UNCOMPRESSED, SNAPPY, GZIP, LZO. Default: UNCOMPRESSED. Supersedes mapred.output.compress*
+ *
+ * # The write support class to convert the records written to the OutputFormat into the events accepted by the record consumer
+ * # Usually provided by a specific ParquetOutputFormat subclass
+ * parquet.write.support.class= # fully qualified name
  * </pre>
  *
- * If parquet.compression is not set, the following properties are checked (FileOutputFormat behavior)
+ * If parquet.compression is not set, the following properties are checked (FileOutputFormat behavior).
+ * Note that we explicitely disallow custom Codecs
  * <pre>
  * mapred.output.compress=true
- * mapred.output.compression.codec=org.apache.hadoop.io.compress.SomeCodec
+ * mapred.output.compression.codec=org.apache.hadoop.io.compress.SomeCodec # the codec must be one of Snappy, GZip or LZO
  * </pre>
  *
  * if none of those is set the data is uncompressed.
@@ -105,7 +119,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public static int getPageSize(JobContext jobContext) {
-    return jobContext.getConfiguration().getInt(PAGE_SIZE, 8*1024);
+    return jobContext.getConfiguration().getInt(PAGE_SIZE, 1*1024*1024);
   }
 
   public static CompressionCodecName getCompression(JobContext jobContext) {
