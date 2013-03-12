@@ -1,4 +1,4 @@
-Parquet
+Parquet MR [![Build Status](https://travis-ci.org/Parquet/parquet-mr.png?branch=master)](http://travis-ci.org/Parquet/parquet-mr)
 ======
 
 Parquet-mr is the java implementation of the [Parquet format](https://github.com/Parquet/parquet-format) to be used in Hadoop. 
