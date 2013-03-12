@@ -35,6 +35,10 @@ The build runs in [Travis CI](http://travis-ci.org/Parquet/parquet-mr):
 * Julien Le Dem <http://twitter.com/J_>
 * Jonathan Coveney <http://twitter.com/jco>
 
+## Discussions
+* google group https://groups.google.com/d/forum/parquet-dev
+* the group email address: parquet-dev@googlegroups.com
+
 ## License
 
 Copyright 2012 Twitter, Inc.
