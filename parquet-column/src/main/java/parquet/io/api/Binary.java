@@ -64,7 +64,7 @@ abstract public class Binary {
 
       @Override
       boolean equals(byte[] other, int otherOffset, int otherLength) {
-        return equals(value, offset, length, other, otherOffset, otherLength);
+        return Binary.equals(value, offset, length, other, otherOffset, otherLength);
       }
 
       @Override
@@ -109,7 +109,7 @@ abstract public class Binary {
 
       @Override
       boolean equals(byte[] other, int otherOffset, int otherLength) {
-        return equals(value, 0, value.length, other, otherOffset, otherLength);
+        return Binary.equals(value, 0, value.length, other, otherOffset, otherLength);
       }
 
       @Override
