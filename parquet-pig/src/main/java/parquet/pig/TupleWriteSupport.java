@@ -57,8 +57,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
   @Override
   public WriteContext init(Configuration configuration) {
     Map<String, String> extraMetaData = new HashMap<String, String>();
-    String pigSchemaString = rootPigSchema.toString();
-    new PigMetaData(pigSchemaString.substring(1, pigSchemaString.length() - 1)).addToMetaData(extraMetaData);
+    new PigMetaData(rootPigSchema).addToMetaData(extraMetaData);
     return new WriteContext(rootSchema, extraMetaData);
   }
 

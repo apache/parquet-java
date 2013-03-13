@@ -15,9 +15,13 @@
  */
 package parquet.hadoop.thrift;
 
+import java.util.Map;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
+
+import com.twitter.elephantbird.pig.util.ThriftToPig;
 
 import parquet.hadoop.BadConfigurationException;
 import parquet.hadoop.api.WriteSupport;
@@ -25,6 +29,7 @@ import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.RecordConsumer;
+import parquet.pig.PigMetaData;
 import parquet.schema.MessageType;
 import parquet.thrift.ParquetWriteProtocol;
 import parquet.thrift.ThriftMetaData;
@@ -63,7 +68,10 @@ public class ThriftWriteSupport<T extends TBase<?,?>> extends WriteSupport<T> {
     ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter();
     this.thriftStruct = thriftSchemaConverter.toStructType(thriftClass);
     this.schema = thriftSchemaConverter.convert(thriftClass);
-    return new WriteContext(schema, new ThriftMetaData(thriftClass, thriftStruct).toExtraMetaData());
+    final Map<String, String> extraMetaData = new ThriftMetaData(thriftClass, thriftStruct).toExtraMetaData();
+    // adding the Pig schema as it would have been mapped from thrift
+    new PigMetaData(new ThriftToPig(thriftClass).toSchema()).addToMetaData(extraMetaData);
+    return new WriteContext(schema, extraMetaData);
   }
 
   @Override

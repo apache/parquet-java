@@ -71,7 +71,6 @@
       <groupId>com.twitter</groupId>
       <artifactId>parquet-pig</artifactId>
       <version>${project.version}</version>
-      <scope>test</scope>
     </dependency>
   </dependencies>
 </project>

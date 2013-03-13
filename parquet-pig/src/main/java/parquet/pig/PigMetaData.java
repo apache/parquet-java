@@ -17,6 +17,8 @@ package parquet.pig;
 
 import java.util.Map;
 
+import org.apache.pig.impl.logicalLayer.schema.Schema;
+
 public class PigMetaData {
 
   private static final String PIG_SCHEMA = "pig.schema";
@@ -29,6 +31,11 @@ public class PigMetaData {
   }
 
   private String pigSchema;
+
+  public PigMetaData(Schema pigSchema) {
+    final String pigSchemaString = pigSchema.toString();
+    this.pigSchema = pigSchemaString.substring(1, pigSchemaString.length() - 1);
+  }
 
   public PigMetaData(String pigSchema) {
     this.pigSchema = pigSchema;
