@@ -363,14 +363,17 @@ public class ParquetWriteProtocol extends ParquetProtocol {
       if (field.type == TType.STOP) {
         return;
       }
-      currentType = thriftFieldIdToParquetField[field.id];
-      if (currentType == null) {
+      try {
+        currentType = thriftFieldIdToParquetField[field.id];
+        if (currentType == null) {
+          throw new ParquetEncodingException("field " + field.id + " was not found in " + thriftType + " and " + schema.getType());
+        }
+        final int index = currentType.getIndex();
+        recordConsumer.startField(currentType.getName(), index);
+        currentProtocol = children[index];
+      } catch (ArrayIndexOutOfBoundsException e) {
         throw new ParquetEncodingException("field " + field.id + " was not found in " + thriftType + " and " + schema.getType());
       }
-      final int index = currentType.getIndex();
-      recordConsumer.startField(currentType.getName(), index);
-      currentProtocol = children[index];
-
     }
 
     @Override
