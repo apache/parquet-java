@@ -15,29 +15,18 @@
  */
 package parquet.pig.convert;
 
-import org.apache.pig.data.Tuple;
-import org.apache.pig.impl.logicalLayer.schema.Schema;
+/**
+ * for converters to add their current value to their parent
+ *
+ * @author Julien Le Dem
+ *
+ */
+abstract public class ParentValueContainer {
 
-import parquet.io.api.GroupConverter;
-import parquet.io.api.RecordMaterializer;
-import parquet.schema.GroupType;
-
-public class TupleRecordConverter extends RecordMaterializer<Tuple> {
-
-  private TupleConverter root;
-
-  public TupleRecordConverter(GroupType parquetSchema, Schema pigSchema) {
-    this.root = new TupleConverter(parquetSchema, pigSchema);
-  }
-
-  @Override
-  public Tuple getCurrentRecord() {
-    return root.getCurrentTuple();
-  }
-
-  @Override
-  public GroupConverter getRootConverter() {
-    return root;
-  }
+  /**
+   * will add the value to the parent whether it's a map, a bag or a tuple
+   * @param value
+   */
+  abstract void add(Object value);
 
 }

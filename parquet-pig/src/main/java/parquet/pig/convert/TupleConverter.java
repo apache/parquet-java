@@ -15,8 +15,6 @@
  */
 package parquet.pig.convert;
 
-import static parquet.bytes.BytesUtils.UTF8;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,13 +35,20 @@ import parquet.io.api.GroupConverter;
 import parquet.io.api.PrimitiveConverter;
 import parquet.pig.TupleConversionException;
 import parquet.schema.GroupType;
+import parquet.schema.OriginalType;
 import parquet.schema.Type;
+
+/**
+ * converts a group into a tuple
+ *
+ * @author Julien Le Dem
+ *
+ */
 
 public class TupleConverter extends GroupConverter {
 
   private static final TupleFactory TF = TupleFactory.getInstance();
 
-  private final GroupType parquetSchema;
   private final int schemaSize;
 
   protected Tuple currentTuple;
@@ -51,7 +56,6 @@ public class TupleConverter extends GroupConverter {
 
   public TupleConverter(GroupType parquetSchema, Schema pigSchema) {
     try {
-      this.parquetSchema = parquetSchema;
       this.schemaSize = parquetSchema.getFieldCount();
       if (schemaSize != pigSchema.size()) {
         throw new IllegalArgumentException("schema sizes don't match:\n" + parquetSchema + "\n" + pigSchema);
@@ -60,36 +64,55 @@ public class TupleConverter extends GroupConverter {
       for (int i = 0; i < schemaSize; i++) {
         FieldSchema field = pigSchema.getField(i);
         Type type = parquetSchema.getType(i);
-        switch (field.type) {
-        case DataType.BAG:
-          converters[i] = new BagConverter(type.asGroupType(), field, i);
-          break;
-        case DataType.MAP:
-          converters[i] = new MapConverter(type.asGroupType(), field, this, i);
-          break;
-        case DataType.TUPLE:
-          final int index = i;
-          final TupleConverter parent = this;
-          converters[i] = new TupleConverter(type.asGroupType(), field.schema) {
-            @Override
-            public void end() {
-              super.end();
-              parent.set(index, this.currentTuple);
-            }
-          };
-          break;
-        case DataType.CHARARRAY:
-          converters[i] = new FieldStringConverter(i);
-          break;
-        case DataType.BYTEARRAY:
-          converters[i] = new FieldByteArrayConverter(i);
-          break;
-        default:
-          converters[i] = new FieldPrimitiveConverter(i);
-        }
+        final int index = i;
+        converters[i] = newConverter(field, type, new ParentValueContainer() {
+          @Override
+          void add(Object value) {
+            TupleConverter.this.set(index, value);
+          }
+        });
       }
     } catch (FrontendException e) {
       throw new ParquetDecodingException("can not initialize pig converter from:\n" + parquetSchema + "\n" + pigSchema, e);
+    }
+  }
+
+  static Converter newConverter(FieldSchema pigField, Type type, final ParentValueContainer parent) {
+    try {
+      switch (pigField.type) {
+      case DataType.BAG:
+        return new BagConverter(type.asGroupType(), pigField, parent);
+      case DataType.MAP:
+        return new MapConverter(type.asGroupType(), pigField, parent);
+      case DataType.TUPLE:
+        return new TupleConverter(type.asGroupType(), pigField.schema) {
+          @Override
+          public void end() {
+            super.end();
+            parent.add(this.currentTuple);
+          }
+        };
+      case DataType.CHARARRAY:
+        return new FieldStringConverter(parent);
+      case DataType.BYTEARRAY:
+        return new FieldByteArrayConverter(parent);
+      case DataType.INTEGER:
+        return new FieldIntegerConverter(parent);
+      case DataType.BOOLEAN:
+        return new FieldBooleanConverter(parent);
+      case DataType.FLOAT:
+        return new FieldFloatConverter(parent);
+      case DataType.DOUBLE:
+        return new FieldDoubleConverter(parent);
+      case DataType.LONG:
+        return new FieldLongConverter(parent);
+      default:
+        throw new TupleConversionException("unsupported pig type: " + pigField);
+      }
+    } catch (FrontendException e) {
+      throw new TupleConversionException("error while preparing converter for:\n" + pigField + "\n" + type, e);
+    } catch (RuntimeException e) {
+      throw new TupleConversionException("error while preparing converter for:\n" + pigField + "\n" + type, e);
     }
   }
 
@@ -121,87 +144,196 @@ public class TupleConverter extends GroupConverter {
     return currentTuple;
   }
 
-  final class FieldStringConverter extends PrimitiveConverter {
+  /**
+   * handle string values
+   * @author Julien Le Dem
+   *
+   */
+  static final class FieldStringConverter extends PrimitiveConverter {
 
-    private final int index;
+    private final ParentValueContainer parent;
 
-    public FieldStringConverter(int index) {
-      this.index = index;
+    public FieldStringConverter(ParentValueContainer parent) {
+      this.parent = parent;
     }
 
     @Override
     final public void addBinary(Binary value) {
-      set(index, value.toStringUsingUTF8());
+      parent.add(value.toStringUsingUTF8());
     }
 
   }
 
-  final class FieldByteArrayConverter extends PrimitiveConverter {
+  /**
+   * handles DataByteArrays
+   * @author Julien Le Dem
+   *
+   */
+  static final class FieldByteArrayConverter extends PrimitiveConverter {
 
-    private final int index;
+    private final ParentValueContainer parent;
 
-    public FieldByteArrayConverter(int index) {
-      this.index = index;
+    public FieldByteArrayConverter(ParentValueContainer parent) {
+      this.parent = parent;
     }
 
     @Override
     final public void addBinary(Binary value) {
-      set(index, new DataByteArray(value.getBytes()));
+      parent.add(new DataByteArray(value.getBytes()));
     }
 
   }
 
-  final class FieldPrimitiveConverter extends PrimitiveConverter {
+  /**
+   * Handles doubles
+   * @author Julien Le Dem
+   *
+   */
+  static final class FieldDoubleConverter extends PrimitiveConverter {
 
-    private final int index;
+    private final ParentValueContainer parent;
 
-    public FieldPrimitiveConverter(int index) {
-      this.index = index;
-    }
-
-    @Override
-    final public void addBoolean(boolean value) {
-      set(index, value);
+    public FieldDoubleConverter(ParentValueContainer parent) {
+      this.parent = parent;
     }
 
     @Override
     final public void addDouble(double value) {
-      set(index, value);
+      parent.add(value);
+    }
+
+  }
+
+  /**
+   * handles floats
+   * @author Julien Le Dem
+   *
+   */
+  static final class FieldFloatConverter extends PrimitiveConverter {
+
+    private final ParentValueContainer parent;
+
+    public FieldFloatConverter(ParentValueContainer parent) {
+      this.parent = parent;
     }
 
     @Override
     final public void addFloat(float value) {
-      set(index, value);
+      parent.add(value);
     }
 
-    @Override
-    final public void addInt(int value) {
-      set(index, value);
+  }
+
+  /**
+   * Handles longs
+   *
+   * @author Julien Le Dem
+   *
+   */
+  static final class FieldLongConverter extends PrimitiveConverter {
+
+    private final ParentValueContainer parent;
+
+    public FieldLongConverter(ParentValueContainer parent) {
+      this.parent = parent;
     }
 
     @Override
     final public void addLong(long value) {
-      set(index, value);
+      parent.add(value);
     }
 
   }
-  class BagConverter extends GroupConverter {
+
+  /**
+   * handle integers
+   * @author Julien Le Dem
+   *
+   */
+  static final class FieldIntegerConverter extends PrimitiveConverter {
+
+    private final ParentValueContainer parent;
+
+    public FieldIntegerConverter(ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    final public void addBoolean(boolean value) {
+      parent.add(value ? 1 : 0);
+    }
+
+    @Override
+    final public void addInt(int value) {
+      parent.add(value);
+    }
+
+  }
+
+  /**
+   * handle booleans
+   * @author Julien Le Dem
+   *
+   */
+  static final class FieldBooleanConverter extends PrimitiveConverter {
+
+    private final ParentValueContainer parent;
+
+    public FieldBooleanConverter(ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    final public void addBoolean(boolean value) {
+      parent.add(value);
+    }
+
+    @Override
+    final public void addInt(int value) {
+      parent.add(value != 0);
+    }
+
+  }
+
+  /**
+   * Converts groups into bags
+   *
+   * @author Julien Le Dem
+   *
+   */
+  static class BagConverter extends GroupConverter {
 
     private final List<Tuple> buffer = new ArrayList<Tuple>();
-    private final TupleConverter child;
-    private final int index;
+    private final Converter child;
+    private final ParentValueContainer parent;
 
-    BagConverter(GroupType parquetSchema, FieldSchema pigSchema, int index) throws FrontendException {
-      this.index = index;
+    BagConverter(GroupType parquetSchema, FieldSchema pigSchema, ParentValueContainer parent) throws FrontendException {
+      this.parent = parent;
       if (parquetSchema.getFieldCount() != 1) {
         throw new IllegalArgumentException("bags have only one field. " + parquetSchema + " size = " + parquetSchema.getFieldCount());
       }
-      child = new TupleConverter(parquetSchema.getType(0).asGroupType(), pigSchema.schema.getField(0).schema) {
-        public void end() {
-          super.end();
-          buffer.add(getCurrentTuple());
-        }
-      };
+      Type nestedType = parquetSchema.getType(0);
+
+      ParentValueContainer childsParent;
+      FieldSchema pigField;
+      if (nestedType.isPrimitive() || nestedType.getOriginalType() == OriginalType.MAP) {
+        // Pig bags always contain tuples
+        // In that case we need to wrap the value in an extra tuple
+        childsParent = new ParentValueContainer() {
+          @Override
+          void add(Object value) {
+            buffer.add(TF.newTuple(value));
+          }};
+        pigField = pigSchema.schema.getField(0).schema.getField(0);
+      } else {
+        childsParent = new ParentValueContainer() {
+          @Override
+          void add(Object value) {
+            buffer.add((Tuple)value);
+          }};
+        pigField = pigSchema.schema.getField(0);
+      }
+      child = newConverter(pigField, nestedType, childsParent);
     }
 
     @Override
@@ -212,7 +344,6 @@ public class TupleConverter extends GroupConverter {
       return child;
     }
 
-    /** runtime methods */
 
     @Override
     final public void start() {
@@ -221,7 +352,7 @@ public class TupleConverter extends GroupConverter {
 
     @Override
     public void end() {
-      set(index, new NonSpillableDataBag(new ArrayList<Tuple>(buffer)));
+      parent.add(new NonSpillableDataBag(new ArrayList<Tuple>(buffer)));
     }
 
   }

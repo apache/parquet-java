@@ -235,7 +235,7 @@ public class PigSchemaConverter {
   private GroupType convertMap(String alias, FieldSchema fieldSchema) throws FrontendException {
     Type convertedKey = new PrimitiveType(Repetition.REQUIRED, PrimitiveTypeName.BINARY, "key");
     Schema innerSchema = fieldSchema.schema;
-    if (innerSchema.size() != 1) {
+    if (innerSchema == null || innerSchema.size() != 1) {
       throw new FrontendException("Invalid map Schema, schema should contain exactly one field: " + fieldSchema);
     }
     FieldSchema innerField = innerSchema.getField(0);
