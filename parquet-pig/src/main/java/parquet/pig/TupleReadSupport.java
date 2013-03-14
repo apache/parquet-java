@@ -26,7 +26,7 @@ import org.apache.pig.parser.ParserException;
 import parquet.Log;
 import parquet.hadoop.api.ReadSupport;
 import parquet.io.api.RecordMaterializer;
-import parquet.pig.convert.TupleRecordConverter;
+import parquet.pig.convert.TupleRecordMaterializer;
 import parquet.schema.MessageType;
 
 /**
@@ -55,7 +55,7 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
       Schema pigSchema = schemaConverter.filter(
           Utils.getSchemaFromString(pigMetaData.getPigSchema()),
           requestedSchema);
-      return new TupleRecordConverter(requestedSchema, pigSchema);
+      return new TupleRecordMaterializer(requestedSchema, pigSchema);
     } catch (ParserException e) {
       throw new SchemaConversionException("could not parse Pig schema: " + pigMetaData.getPigSchema(), e);
     }

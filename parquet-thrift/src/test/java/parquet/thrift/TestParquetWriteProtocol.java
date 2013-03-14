@@ -103,6 +103,11 @@ public class TestParquetWriteProtocol {
     validateThrift(expectations, testMap);
   }
 
+
+  /**
+   * @see TestThriftToPigCompatibility
+   * @throws Exception
+   */
   @Test
   public void testMapInSet() throws Exception {
     String[] pigExpectations = {
@@ -142,8 +147,6 @@ public class TestParquetWriteProtocol {
     TestMapInSet o = new TestMapInSet("top", set);
     validatePig(pigExpectations, o);
 
-    // TODO: test that the pig reader can figure out the extra nesting
-
     String[] expectationsThrift = {
         "startMessage()",
          "startField(name, 0)",
@@ -172,14 +175,16 @@ public class TestParquetWriteProtocol {
     validateThrift(expectationsThrift, o);
   }
 
+  /**
+   * @see TestThriftToPigCompatibility
+   * @throws TException
+   */
   @Test
   public void testNameList() throws TException {
     final List<String> names = new ArrayList<String>();
     names.add("John");
     names.add("Jack");
     final TestNameList o = new TestNameList("name", names);
-
-    // TODO: test that the pig reader can figure out the extra nesting
 
     String[] pigExpectations = {
         "startMessage()",
