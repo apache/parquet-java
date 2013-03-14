@@ -70,8 +70,7 @@ public class TupleConverter extends GroupConverter {
     }
   }
 
-  static Converter newConverter(FieldSchema pigField, Type type, final ValueContainer parent)
-      throws FrontendException {
+  static Converter newConverter(FieldSchema pigField, Type type, final ValueContainer parent) {
     try {
       switch (pigField.type) {
       case DataType.BAG:

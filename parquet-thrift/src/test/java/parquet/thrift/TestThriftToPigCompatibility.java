@@ -144,7 +144,6 @@ public class TestThriftToPigCompatibility {
    */
   private <T extends TBase<?,?>> void validateSameTupleAsEB(T o) throws TException {
     final ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter();
-//  System.out.println(a);
     @SuppressWarnings("unchecked")
     final Class<T> class1 = (Class<T>) o.getClass();
     final MessageType schema = thriftSchemaConverter.convert(class1);
@@ -159,7 +158,6 @@ public class TestThriftToPigCompatibility {
     o.write(p);
     final Tuple t = tupleRecordConverter.getCurrentRecord();
     final Tuple expected = thriftToPig.getPigTuple(o);
-    System.out.println(t);
     assertEquals(expected.toString(), t.toString());
   }
 }

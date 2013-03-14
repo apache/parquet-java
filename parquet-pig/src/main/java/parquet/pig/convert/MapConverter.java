@@ -110,7 +110,7 @@ final class MapConverter extends GroupConverter {
     private final StringKeyConverter keyConverter = new StringKeyConverter();
     private final Converter valueConverter;
 
-    MapKeyValueConverter(GroupType parquetSchema, Schema.FieldSchema pigSchema) throws FrontendException {
+    MapKeyValueConverter(GroupType parquetSchema, Schema.FieldSchema pigSchema) {
       if (parquetSchema.getFieldCount() != 2
           || !parquetSchema.getType(0).getName().equals("key")
           || !parquetSchema.getType(1).getName().equals("value")) {
