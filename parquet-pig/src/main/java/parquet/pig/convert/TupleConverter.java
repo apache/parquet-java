@@ -38,6 +38,13 @@ import parquet.schema.GroupType;
 import parquet.schema.OriginalType;
 import parquet.schema.Type;
 
+/**
+ * converts a group into a tuple
+ *
+ * @author Julien Le Dem
+ *
+ */
+
 public class TupleConverter extends GroupConverter {
 
   private static final TupleFactory TF = TupleFactory.getInstance();
@@ -58,7 +65,7 @@ public class TupleConverter extends GroupConverter {
         FieldSchema field = pigSchema.getField(i);
         Type type = parquetSchema.getType(i);
         final int index = i;
-        converters[i] = newConverter(field, type, new ValueContainer() {
+        converters[i] = newConverter(field, type, new ParentValueContainer() {
           @Override
           void add(Object value) {
             TupleConverter.this.set(index, value);
@@ -70,7 +77,7 @@ public class TupleConverter extends GroupConverter {
     }
   }
 
-  static Converter newConverter(FieldSchema pigField, Type type, final ValueContainer parent) {
+  static Converter newConverter(FieldSchema pigField, Type type, final ParentValueContainer parent) {
     try {
       switch (pigField.type) {
       case DataType.BAG:
@@ -137,11 +144,16 @@ public class TupleConverter extends GroupConverter {
     return currentTuple;
   }
 
+  /**
+   * handle string values
+   * @author Julien Le Dem
+   *
+   */
   static final class FieldStringConverter extends PrimitiveConverter {
 
-    private final ValueContainer parent;
+    private final ParentValueContainer parent;
 
-    public FieldStringConverter(ValueContainer parent) {
+    public FieldStringConverter(ParentValueContainer parent) {
       this.parent = parent;
     }
 
@@ -152,11 +164,16 @@ public class TupleConverter extends GroupConverter {
 
   }
 
+  /**
+   * handles DataByteArrays
+   * @author Julien Le Dem
+   *
+   */
   static final class FieldByteArrayConverter extends PrimitiveConverter {
 
-    private final ValueContainer parent;
+    private final ParentValueContainer parent;
 
-    public FieldByteArrayConverter(ValueContainer parent) {
+    public FieldByteArrayConverter(ParentValueContainer parent) {
       this.parent = parent;
     }
 
@@ -167,11 +184,16 @@ public class TupleConverter extends GroupConverter {
 
   }
 
+  /**
+   * Handles doubles
+   * @author Julien Le Dem
+   *
+   */
   static final class FieldDoubleConverter extends PrimitiveConverter {
 
-    private final ValueContainer parent;
+    private final ParentValueContainer parent;
 
-    public FieldDoubleConverter(ValueContainer parent) {
+    public FieldDoubleConverter(ParentValueContainer parent) {
       this.parent = parent;
     }
 
@@ -182,11 +204,16 @@ public class TupleConverter extends GroupConverter {
 
   }
 
+  /**
+   * handles floats
+   * @author Julien Le Dem
+   *
+   */
   static final class FieldFloatConverter extends PrimitiveConverter {
 
-    private final ValueContainer parent;
+    private final ParentValueContainer parent;
 
-    public FieldFloatConverter(ValueContainer parent) {
+    public FieldFloatConverter(ParentValueContainer parent) {
       this.parent = parent;
     }
 
@@ -197,11 +224,17 @@ public class TupleConverter extends GroupConverter {
 
   }
 
+  /**
+   * Handles longs
+   *
+   * @author Julien Le Dem
+   *
+   */
   static final class FieldLongConverter extends PrimitiveConverter {
 
-    private final ValueContainer parent;
+    private final ParentValueContainer parent;
 
-    public FieldLongConverter(ValueContainer parent) {
+    public FieldLongConverter(ParentValueContainer parent) {
       this.parent = parent;
     }
 
@@ -212,11 +245,16 @@ public class TupleConverter extends GroupConverter {
 
   }
 
+  /**
+   * handle integers
+   * @author Julien Le Dem
+   *
+   */
   static final class FieldIntegerConverter extends PrimitiveConverter {
 
-    private final ValueContainer parent;
+    private final ParentValueContainer parent;
 
-    public FieldIntegerConverter(ValueContainer parent) {
+    public FieldIntegerConverter(ParentValueContainer parent) {
       this.parent = parent;
     }
 
@@ -232,11 +270,16 @@ public class TupleConverter extends GroupConverter {
 
   }
 
+  /**
+   * handle booleans
+   * @author Julien Le Dem
+   *
+   */
   static final class FieldBooleanConverter extends PrimitiveConverter {
 
-    private final ValueContainer parent;
+    private final ParentValueContainer parent;
 
-    public FieldBooleanConverter(ValueContainer parent) {
+    public FieldBooleanConverter(ParentValueContainer parent) {
       this.parent = parent;
     }
 
@@ -252,32 +295,38 @@ public class TupleConverter extends GroupConverter {
 
   }
 
+  /**
+   * Converts groups into bags
+   *
+   * @author Julien Le Dem
+   *
+   */
   static class BagConverter extends GroupConverter {
 
     private final List<Tuple> buffer = new ArrayList<Tuple>();
     private final Converter child;
-    private final ValueContainer parent;
+    private final ParentValueContainer parent;
 
-    BagConverter(GroupType parquetSchema, FieldSchema pigSchema, ValueContainer parent) throws FrontendException {
+    BagConverter(GroupType parquetSchema, FieldSchema pigSchema, ParentValueContainer parent) throws FrontendException {
       this.parent = parent;
       if (parquetSchema.getFieldCount() != 1) {
         throw new IllegalArgumentException("bags have only one field. " + parquetSchema + " size = " + parquetSchema.getFieldCount());
       }
       Type nestedType = parquetSchema.getType(0);
 
-      ValueContainer childsParent;
+      ParentValueContainer childsParent;
       FieldSchema pigField;
       if (nestedType.isPrimitive() || nestedType.getOriginalType() == OriginalType.MAP) {
         // Pig bags always contain tuples
         // In that case we need to wrap the value in an extra tuple
-        childsParent = new ValueContainer() {
+        childsParent = new ParentValueContainer() {
           @Override
           void add(Object value) {
             buffer.add(TF.newTuple(value));
           }};
         pigField = pigSchema.schema.getField(0).schema.getField(0);
       } else {
-        childsParent = new ValueContainer() {
+        childsParent = new ParentValueContainer() {
           @Override
           void add(Object value) {
             buffer.add((Tuple)value);
@@ -295,7 +344,6 @@ public class TupleConverter extends GroupConverter {
       return child;
     }
 
-    /** runtime methods */
 
     @Override
     final public void start() {

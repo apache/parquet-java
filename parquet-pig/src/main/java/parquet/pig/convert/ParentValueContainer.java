@@ -21,8 +21,12 @@ package parquet.pig.convert;
  * @author Julien Le Dem
  *
  */
-abstract public class ValueContainer {
+abstract public class ParentValueContainer {
 
+  /**
+   * will add the value to the parent whether it's a map, a bag or a tuple
+   * @param value
+   */
   abstract void add(Object value);
 
 }

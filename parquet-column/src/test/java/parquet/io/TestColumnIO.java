@@ -39,16 +39,29 @@ import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.mem.MemPageStore;
 import parquet.example.data.Group;
+import parquet.example.data.GroupFactory;
 import parquet.example.data.GroupWriter;
+import parquet.example.data.simple.SimpleGroupFactory;
 import parquet.example.data.simple.convert.GroupRecordConverter;
 import parquet.io.api.Binary;
 import parquet.io.api.RecordConsumer;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 
 
 public class TestColumnIO {
   private static final Log LOG = Log.getLog(TestColumnIO.class);
+
+  private static final String oneOfEach =
+    "message Document {\n"
+  + "  required int64 a;\n"
+  + "  required int32 b;\n"
+  + "  required float c;\n"
+  + "  required double d;\n"
+  + "  required boolean e;\n"
+  + "  required binary f;\n"
+  + "}\n";
 
   private static final String schemaString =
       "message Document {\n"
@@ -174,6 +187,34 @@ public class TestColumnIO {
       assertEquals("deserialization does not display the expected result", pr1.toString(), records.get(0).toString());
       assertEquals("deserialization does not display the expected result", pr2.toString(), records.get(1).toString());
     }
+  }
+
+  @Test
+  public void testOneOfEach() {
+
+    MemPageStore memPageStore = new MemPageStore();
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800);
+
+    MessageType oneOfEachSchema = MessageTypeParser.parseMessageType(oneOfEach);
+
+    GroupFactory gf = new SimpleGroupFactory(oneOfEachSchema);
+    Group g1 = gf.newGroup().append("a", 1l).append("b", 2).append("c", 3.0f).append("d", 4.0d).append("e", true).append("f", Binary.fromString("6"));
+
+    ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
+
+    MessageColumnIO columnIO = columnIOFactory.getColumnIO(oneOfEachSchema);
+    log(columnIO);
+    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), oneOfEachSchema);
+    groupWriter.write(g1);
+    columns.flush();
+
+    RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, oneOfEachSchema, memPageStore);
+
+    List<Group> records = new ArrayList<Group>();
+    read(recordReader, oneOfEachSchema, records);
+
+    assertEquals("deserialization does not display the same result", g1.toString(), records.get(0).toString());
+
   }
 
   private RecordReaderImplementation<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, PageReadStore pageReadStore) {

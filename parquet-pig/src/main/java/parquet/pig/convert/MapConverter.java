@@ -35,17 +35,23 @@ import parquet.io.api.GroupConverter;
 import parquet.io.api.PrimitiveConverter;
 import parquet.schema.GroupType;
 
+/**
+ * Converts groups into Pig Maps
+ *
+ * @author Julien Le Dem
+ *
+ */
 final class MapConverter extends GroupConverter {
 
   private final MapKeyValueConverter keyValue;
-  private final ValueContainer parent;
+  private final ParentValueContainer parent;
 
   private Map<String, Object> buffer = new BufferMap();
 
   private String currentKey;
   private Object currentValue;
 
-  MapConverter(GroupType parquetSchema, FieldSchema pigSchema, ValueContainer parent) throws FrontendException {
+  MapConverter(GroupType parquetSchema, FieldSchema pigSchema, ParentValueContainer parent) throws FrontendException {
     if (parquetSchema.getFieldCount() != 1) {
       throw new IllegalArgumentException("maps have only one field. " + parquetSchema);
     }
@@ -73,6 +79,11 @@ final class MapConverter extends GroupConverter {
     parent.add(new HashMap<String, Object>(buffer));
   }
 
+  /**
+   * to contain the values of the Map until we read them all
+   * @author Julien Le Dem
+   *
+   */
   private static final class BufferMap extends AbstractMap<String, Object> {
     private List<Entry<String, Object>> entries = new ArrayList<Entry<String, Object>>();
     private Set<Entry<String, Object>> entrySet = new AbstractSet<Map.Entry<String,Object>>() {
@@ -105,6 +116,12 @@ final class MapConverter extends GroupConverter {
 
   }
 
+  /**
+   * convert Key/Value groups into map entries
+   *
+   * @author Julien Le Dem
+   *
+   */
   final class MapKeyValueConverter extends GroupConverter {
 
     private final StringKeyConverter keyConverter = new StringKeyConverter();
@@ -116,7 +133,7 @@ final class MapConverter extends GroupConverter {
           || !parquetSchema.getType(1).getName().equals("value")) {
         throw new IllegalArgumentException("schema does not match map key/value " + parquetSchema);
       }
-      valueConverter = TupleConverter.newConverter(pigSchema, parquetSchema.getType(1), new ValueContainer() {
+      valueConverter = TupleConverter.newConverter(pigSchema, parquetSchema.getType(1), new ParentValueContainer() {
         void add(Object value) {
           currentValue = value;
         }
@@ -150,6 +167,12 @@ final class MapConverter extends GroupConverter {
 
   }
 
+  /**
+   * convert the key into a string
+   *
+   * @author Julien Le Dem
+   *
+   */
   final class StringKeyConverter extends PrimitiveConverter {
 
     @Override
