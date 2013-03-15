@@ -247,7 +247,7 @@ public class ParquetFileReader {
     long l = file.getLen();
     if (Log.DEBUG) LOG.debug("File length " + l);
     int FOOTER_LENGTH_SIZE = 4;
-    if (l <= MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
+    if (l < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
       throw new RuntimeException(file.getPath() + " is not a Parquet file (too small)");
     }
     long footerLengthIndex = l - FOOTER_LENGTH_SIZE - MAGIC.length;

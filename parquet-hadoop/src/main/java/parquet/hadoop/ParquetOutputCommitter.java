@@ -21,6 +21,7 @@ import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
@@ -42,9 +43,18 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
     super.commitJob(jobContext);
     try {
       Configuration configuration = jobContext.getConfiguration();
-      FileStatus outputStatus = outputPath.getFileSystem(configuration).getFileStatus(outputPath);
+      final FileSystem fileSystem = outputPath.getFileSystem(configuration);
+      FileStatus outputStatus = fileSystem.getFileStatus(outputPath);
       List<Footer> footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus);
-      ParquetFileWriter.writeSummaryFile(configuration, outputPath, footers);
+      try {
+        ParquetFileWriter.writeSummaryFile(configuration, outputPath, footers);
+      } catch (Exception e) {
+        LOG.warn("could not write summary file for " + outputPath, e);
+        final Path metadataPath = new Path(outputPath, ParquetFileWriter.PARQUET_METADATA_FILE);
+        if (fileSystem.exists(metadataPath)) {
+          fileSystem.delete(metadataPath, true);
+        }
+      }
     } catch (Exception e) {
       LOG.warn("could not write summary file for " + outputPath, e);
     }

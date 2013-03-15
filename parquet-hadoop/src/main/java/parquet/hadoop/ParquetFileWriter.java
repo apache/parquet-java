@@ -272,6 +272,7 @@ public class ParquetFileWriter {
   public static void writeSummaryFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
     Path metaDataPath = new Path(outputPath, PARQUET_METADATA_FILE);
     FileSystem fs = outputPath.getFileSystem(configuration);
+    outputPath = outputPath.makeQualified(fs);
     FSDataOutputStream metadata = fs.create(metaDataPath);
     metadata.write(MAGIC);
     ParquetMetadata metadataFooter = mergeFooters(outputPath, footers);

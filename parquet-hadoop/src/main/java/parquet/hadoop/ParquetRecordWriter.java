@@ -110,15 +110,15 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
   private void checkBlockSizeReached() throws IOException {
     if (recordCount >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it for every record.
       long memSize = store.memSize();
-      float recordSize = (float) memSize / recordCount;
-      recordCountForNextMemCheck = (long)(blockSize * 0.9 / recordSize); // -10% so that we don't miss it.
-      if (recordCountForNextMemCheck - recordCount > 1000) {
-        LOG.info("Checked mem at " + recordCount + " will check again at: " + recordCountForNextMemCheck);
-      }
       if (memSize > blockSize) {
         LOG.info("mem size " + memSize + " > " + blockSize + ": flushing " + recordCount + " records to disk.");
         flushStore();
         initStore();
+        recordCountForNextMemCheck = Math.max(100, recordCount / 2);
+      } else {
+        float recordSize = (float) memSize / recordCount;
+        recordCountForNextMemCheck = Math.max(100, (recordCount + (long)(blockSize / recordSize)) / 2); // will check halfway
+        LOG.info("Checked mem at " + recordCount + " will check again at: " + recordCountForNextMemCheck);
       }
     }
   }
