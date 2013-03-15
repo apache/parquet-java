@@ -23,7 +23,7 @@ import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.bytes.LittleEndianDataOutputStream;
 import parquet.column.Encoding;
-import parquet.column.values.DataValuesWriter;
+import parquet.column.values.ValuesWriter;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
 
@@ -34,7 +34,7 @@ import parquet.io.api.Binary;
  * @author Julien Le Dem
  *
  */
-public class PlainValuesWriter extends DataValuesWriter {
+public class PlainValuesWriter extends ValuesWriter {
   private static final Log LOG = Log.getLog(PlainValuesWriter.class);
 
   public static final Charset CHARSET = Charset.forName("UTF-8");

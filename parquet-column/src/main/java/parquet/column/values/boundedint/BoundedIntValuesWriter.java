@@ -15,8 +15,10 @@
  */
 package parquet.column.values.boundedint;
 
+import static parquet.column.Encoding.RLE;
 import parquet.Log;
 import parquet.bytes.BytesInput;
+import parquet.column.Encoding;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.bitpacking.BitPackingValuesWriter;
 import parquet.io.ParquetEncodingException;
@@ -27,7 +29,7 @@ import parquet.io.ParquetEncodingException;
  * repetition and definition levels, since the maximum value that will
  * be written is known a priori based on the schema. Assumption is that
  * the values written are between 0 and the bound, inclusive.
- * 
+ *
  * This differs from {@link BitPackingValuesWriter} in that this also performs
  * run-length encoding of the data, so is useful when long runs of repeated
  * values are expected.
@@ -137,6 +139,11 @@ class BoundedIntValuesWriter extends ValuesWriter {
   @Override
   public long getAllocatedSize() {
     return bitWriter.getCapacity();
+  }
+
+  @Override
+  public Encoding getEncoding() {
+    return RLE;
   }
 
 }

@@ -175,6 +175,10 @@ public class ParquetMetadataConverter {
     switch (encoding) {
     case PLAIN:
       return parquet.column.Encoding.PLAIN;
+    case BIT_PACKED:
+      return parquet.column.Encoding.BIT_PACKED;
+    case RLE:
+      return parquet.column.Encoding.PLAIN;
     default:
       throw new RuntimeException("Unknown encoding " + encoding);
     }
@@ -184,6 +188,10 @@ public class ParquetMetadataConverter {
     switch (encoding) {
     case PLAIN:
       return parquet.format.Encoding.PLAIN;
+    case BIT_PACKED:
+      return parquet.format.Encoding.BIT_PACKED;
+    case RLE:
+      return parquet.format.Encoding.RLE;
     default:
       throw new RuntimeException("Unknown encoding " + encoding);
     }
@@ -324,9 +332,11 @@ public class ParquetMetadataConverter {
       int uncompressedSize,
       int compressedSize,
       int valueCount,
-      parquet.column.Encoding encoding,
+      parquet.column.Encoding rlEncoding,
+      parquet.column.Encoding dlEncoding,
+      parquet.column.Encoding valuesEncoding,
       OutputStream to) throws IOException {
-    writePageHeader(newDataPageHeader(uncompressedSize, compressedSize, valueCount, encoding), to);
+    writePageHeader(newDataPageHeader(uncompressedSize, compressedSize, valueCount, rlEncoding, dlEncoding, valuesEncoding), to);
   }
 
   protected void writePageHeader(PageHeader pageHeader, OutputStream to) throws IOException {
@@ -387,14 +397,16 @@ public class ParquetMetadataConverter {
   private PageHeader newDataPageHeader(
       int uncompressedSize, int compressedSize,
       int valueCount,
-      parquet.column.Encoding encoding) {
+      parquet.column.Encoding rlEncoding,
+      parquet.column.Encoding dlEncoding,
+      parquet.column.Encoding valuesEncoding) {
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, (int)uncompressedSize, (int)compressedSize);
     // TODO: pageHeader.crc = ...;
     pageHeader.data_page_header = new DataPageHeader(
         valueCount,
-        getEncoding(encoding),
-        Encoding.RLE, // TODO: manage several encodings
-        Encoding.BIT_PACKED);
+        getEncoding(valuesEncoding),
+        getEncoding(dlEncoding),
+        getEncoding(rlEncoding));
     return pageHeader;
   }
 

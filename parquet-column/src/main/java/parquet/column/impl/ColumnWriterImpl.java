@@ -22,10 +22,8 @@ import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
 import parquet.column.page.PageWriter;
-import parquet.column.values.DataValuesWriter;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.bitpacking.BitPackingValuesWriter;
-import parquet.column.values.boundedint.BoundedIntValuesFactory;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
 import parquet.io.ParquetEncodingException;
@@ -41,7 +39,7 @@ final class ColumnWriterImpl implements ColumnWriter {
   private final long pageSizeThreshold;
   private ValuesWriter repetitionLevelColumn;
   private ValuesWriter definitionLevelColumn;
-  private DataValuesWriter dataColumn;
+  private ValuesWriter dataColumn;
   private int valueCount;
 
   public ColumnWriterImpl(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold) {
@@ -49,7 +47,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
     repetitionLevelColumn = new BitPackingValuesWriter(path.getMaxRepetitionLevel());
-    definitionLevelColumn = BoundedIntValuesFactory.getBoundedWriter(path.getMaxDefinitionLevel());
+    definitionLevelColumn = new BitPackingValuesWriter(path.getMaxDefinitionLevel());
     switch (path.getType()) {
     case BOOLEAN:
       this.dataColumn = new BooleanPlainValuesWriter(pageSizeThreshold * 11 / 10);
@@ -76,7 +74,12 @@ final class ColumnWriterImpl implements ColumnWriter {
   private void writePage() {
     if (DEBUG) LOG.debug("write page");
     try {
-      pageWriter.writePage(BytesInput.fromSequence(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()), valueCount, dataColumn.getEncoding());
+      pageWriter.writePage(
+          BytesInput.fromSequence(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()),
+          valueCount,
+          repetitionLevelColumn.getEncoding(),
+          definitionLevelColumn.getEncoding(),
+          dataColumn.getEncoding());
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write page for " + path, e);
     }

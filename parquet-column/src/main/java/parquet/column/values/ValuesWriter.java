@@ -16,6 +16,7 @@
 package parquet.column.values;
 
 import parquet.bytes.BytesInput;
+import parquet.column.Encoding;
 import parquet.io.api.Binary;
 
 /**
@@ -37,6 +38,12 @@ public abstract class ValuesWriter {
    * @return the bytes buffered so far to write to the current page
    */
   public abstract BytesInput getBytes();
+
+  /**
+   * called after getBytes() and before reset()
+   * @return the encoding that was used to encode the bytes
+   */
+  public abstract Encoding getEncoding();
 
   /**
    * called after getBytes() to reset the current buffer and start writing the next page

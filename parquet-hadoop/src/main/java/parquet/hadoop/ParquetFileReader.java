@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -345,6 +344,8 @@ public class ParquetFileReader {
               BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)),
               pageHeader.data_page_header.num_values,
               pageHeader.uncompressed_page_size,
+              parquetMetadataConverter.getEncoding(pageHeader.data_page_header.repetition_level_encoding),
+              parquetMetadataConverter.getEncoding(pageHeader.data_page_header.definition_level_encoding),
               parquetMetadataConverter.getEncoding(pageHeader.data_page_header.encoding)
               ));
       valuesCountReadSoFar += pageHeader.data_page_header.num_values;

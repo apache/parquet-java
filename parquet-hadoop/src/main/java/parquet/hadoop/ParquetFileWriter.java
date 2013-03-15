@@ -19,7 +19,6 @@ import static parquet.Log.DEBUG;
 import static parquet.Log.INFO;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -183,20 +182,27 @@ public class ParquetFileWriter {
    */
   public void writeDataPage(
       int valueCount, int uncompressedPageSize,
-      BytesInput bytes, parquet.column.Encoding encoding) throws IOException {
+      BytesInput bytes,
+      parquet.column.Encoding rlEncoding,
+      parquet.column.Encoding dlEncoding,
+      parquet.column.Encoding valuesEncoding) throws IOException {
     state = state.write();
     if (DEBUG) LOG.debug(out.getPos() + ": write data page: " + valueCount + " values");
     int compressedPageSize = (int)bytes.size();
     metadataConverter.writeDataPageHeader(
         uncompressedPageSize, compressedPageSize,
         valueCount,
-        encoding,
+        rlEncoding,
+        dlEncoding,
+        valuesEncoding,
         out);
     this.uncompressedLength += uncompressedPageSize;
     this.compressedLength += compressedPageSize;
     if (DEBUG) LOG.debug(out.getPos() + ": write data page content " + compressedPageSize);
     bytes.writeAllTo(out);
-    currentEncodings.add(encoding);
+    currentEncodings.add(rlEncoding);
+    currentEncodings.add(dlEncoding);
+    currentEncodings.add(valuesEncoding);
   }
 
   /**
