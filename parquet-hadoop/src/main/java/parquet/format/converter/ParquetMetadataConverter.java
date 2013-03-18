@@ -96,10 +96,6 @@ public class ParquetMetadataConverter {
         result.add(element);
       }
 
-      private FieldRepetitionType toParquetRepetition(Repetition repetition) {
-        return FieldRepetitionType.valueOf(repetition.name());
-      }
-
       @Override
       public void visit(MessageType messageType) {
         SchemaElement element = new SchemaElement(messageType.getName());
@@ -174,7 +170,7 @@ public class ParquetMetadataConverter {
     return Encoding.valueOf(encoding.name());
   }
 
-  private PrimitiveTypeName getPrimitive(Type type) {
+  PrimitiveTypeName getPrimitive(Type type) {
     switch (type) {
       case BYTE_ARRAY: // TODO: rename BINARY and remove this switch
         return PrimitiveTypeName.BINARY;
@@ -188,12 +184,16 @@ public class ParquetMetadataConverter {
         return PrimitiveTypeName.FLOAT;
       case DOUBLE:
         return PrimitiveTypeName.DOUBLE;
+      case INT96:
+        return PrimitiveTypeName.INT96;
+      case FIXED_LEN_BYTE_ARRAY:
+        return PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
       default:
         throw new RuntimeException("Unknown type " + type);
     }
   }
 
-  private Type getType(PrimitiveTypeName type) {
+  Type getType(PrimitiveTypeName type) {
     switch (type) {
       case INT64:
         return Type.INT64;
@@ -207,6 +207,10 @@ public class ParquetMetadataConverter {
         return Type.FLOAT;
       case DOUBLE:
         return Type.DOUBLE;
+      case INT96:
+        return Type.INT96;
+      case FIXED_LEN_BYTE_ARRAY:
+        return Type.FIXED_LEN_BYTE_ARRAY;
       default:
         throw new RuntimeException("Unknown type " + type);
     }
@@ -295,7 +299,11 @@ public class ParquetMetadataConverter {
     return result;
   }
 
-  private Repetition fromParquetRepetition(FieldRepetitionType repetition) {
+  FieldRepetitionType toParquetRepetition(Repetition repetition) {
+    return FieldRepetitionType.valueOf(repetition.name());
+  }
+
+  Repetition fromParquetRepetition(FieldRepetitionType repetition) {
     return Repetition.valueOf(repetition.name());
   }
 

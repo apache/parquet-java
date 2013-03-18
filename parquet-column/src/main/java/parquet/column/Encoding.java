@@ -55,6 +55,26 @@ public enum Encoding {
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       return new BitPackingValuesReader(getMaxLevel(descriptor, valuesType));
     }
+  },
+
+  GROUP_VAR_INT {
+
+    @Override // TODO: GROUP VAR INT encoding
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor,
+        ValuesType valuesType) {
+      throw new UnsupportedOperationException("NYI");
+    }
+
+  },
+
+  PLAIN_DICTIONARY {
+
+    @Override // TODO: dictionary encoding
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor,
+        ValuesType valuesType) {
+      throw new UnsupportedOperationException("NYI");
+    }
+
   };
 
   int getMaxLevel(ColumnDescriptor descriptor, ValuesType valuesType) {

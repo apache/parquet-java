@@ -20,6 +20,7 @@ import java.util.List;
 
 import parquet.column.ColumnReader;
 import parquet.io.InvalidRecordException;
+import parquet.io.api.Binary;
 import parquet.io.api.PrimitiveConverter;
 import parquet.io.api.RecordConsumer;
 
@@ -93,8 +94,7 @@ public class PrimitiveType extends Type {
         primitiveConverter.addBoolean(columnReader.getBoolean());
       }
     },
-    // TODO: array type literal?
-    BINARY("getBinary", new byte[]{}.getClass()) {
+    BINARY("getBinary", Binary.class) {
       @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getBinary());
@@ -147,7 +147,43 @@ public class PrimitiveType extends Type {
           PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         primitiveConverter.addDouble(columnReader.getDouble());
       }
-    };
+    },
+    INT96(null, null) { // TODO: support for INT96
+      @Override
+      public String toString(ColumnReader columnReader) {
+        throw new UnsupportedOperationException("NYI");
+      }
+      @Override
+      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
+          ColumnReader columnReader) {
+        throw new UnsupportedOperationException("NYI");
+      }
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        throw new UnsupportedOperationException("NYI");
+      }
+    },
+    FIXED_LEN_BYTE_ARRAY(null, null) { // TODO: support for FIXED_LEN_BYTE_ARRAY
+
+      @Override
+      public String toString(ColumnReader columnReader) {
+        throw new UnsupportedOperationException("NYI");
+      }
+
+      @Override
+      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
+          ColumnReader columnReader) {
+        throw new UnsupportedOperationException("NYI");
+      }
+
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        throw new UnsupportedOperationException("NYI");
+      }
+
+    } ;
 
     public final String getMethod;
     public final Class<?> javaType;
