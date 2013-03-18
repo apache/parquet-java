@@ -24,14 +24,16 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static parquet.schema.Type.Repetition.OPTIONAL;
 import static parquet.schema.Type.Repetition.REPEATED;
+import static parquet.schema.Type.Repetition.REQUIRED;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.thrift.TBase;
 import org.apache.thrift.TEnum;
+import org.apache.thrift.TFieldRequirementType;
+import org.apache.thrift.meta_data.FieldMetaData;
 import org.apache.thrift.protocol.TType;
 
 import parquet.schema.ConversionPatterns;
@@ -41,6 +43,7 @@ import parquet.schema.PrimitiveType;
 import parquet.schema.Type;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
+import parquet.thrift.struct.ThriftField.Requirement;
 import parquet.thrift.struct.ThriftType.BoolType;
 import parquet.thrift.struct.ThriftType.ByteType;
 import parquet.thrift.struct.ThriftType.DoubleType;
@@ -70,25 +73,32 @@ public class ThriftSchemaConverter {
     Type[] result = new Type[fields.size()];
     for (int i = 0; i < result.length; i++) {
       Field field = fields.get(i);
-      Type.Repetition rep = OPTIONAL;
-//      FieldMetaData tField = field.getFieldMetaData();
-//      Type.Repetition rep;
-//      switch (tField.requirementType) {
-//      case TFieldRequirementType.REQUIRED:
-//        rep = REPEATED;
-//        break;
-//      case TFieldRequirementType.OPTIONAL:
-//        rep = OPTIONAL;
-//        break;
-//      case TFieldRequirementType.DEFAULT:
-//        rep = REQUIRED; // ???
-//        break;
-//      default:
-//        throw new IllegalArgumentException("unknown requirement type: " + tField.requirementType);
-//      }
+      FieldMetaData tField = field.getFieldMetaData();
+      Type.Repetition rep = getRepetition(tField);
       result[i] = toSchema(field.getName(), field, rep);
     }
     return result;
+  }
+
+  /**
+   * by default we can make everything optional
+   * @param tField
+   * @return
+   */
+  private Type.Repetition getRepetition(FieldMetaData tField) {
+    if (tField == null) {
+      return OPTIONAL; // TODO: check this
+    }
+    switch (tField.requirementType) {
+    case TFieldRequirementType.REQUIRED:
+      return REQUIRED;
+    case TFieldRequirementType.OPTIONAL:
+      return OPTIONAL;
+    case TFieldRequirementType.DEFAULT:
+      return OPTIONAL; // ??? TODO: check this
+    default:
+      throw new IllegalArgumentException("unknown requirement type: " + tField.requirementType);
+    }
   }
 
   private Type toSchema(String name, Field field, Type.Repetition rep) {
@@ -151,18 +161,10 @@ public class ThriftSchemaConverter {
     List<ThriftField> children = new ArrayList<ThriftField>(fields.size());
     for (int i = 0; i < fields.size(); i++) {
       Field field = fields.get(i);
-      ThriftField.Requirement req = ThriftField.Requirement.OPTIONAL;
-//      FieldMetaData tField = field.getFieldMetaData();
-//      switch (tField.requirementType) {
-//      case TFieldRequirementType.REQUIRED:
-//        break;
-//      case TFieldRequirementType.OPTIONAL:
-//        break;
-//      case TFieldRequirementType.DEFAULT:
-//        break;
-//      default:
-//        throw new IllegalArgumentException("unknown requirement type: " + tField.requirementType);
-//      }
+      Requirement req =
+          field.getFieldMetaData() == null ?
+              Requirement.OPTIONAL :
+                Requirement.fromType(field.getFieldMetaData().requirementType);
       children.add(toThriftField(field.getName(), field, req));
     }
     return new StructType(children);
@@ -215,7 +217,7 @@ public class ThriftSchemaConverter {
       type = new ThriftType.ListType(toThriftField(name, listElemField, requirement));
       break;
     case ENUM:
-      Collection<TEnum> enumValues = getEnumValues(field);
+      Collection<TEnum> enumValues = field.getEnumValues();
       List<EnumValue> values = new ArrayList<ThriftType.EnumValue>();
       for (TEnum tEnum : enumValues) {
         values.add(new EnumValue(tEnum.getValue(), tEnum.toString()));
@@ -224,24 +226,6 @@ public class ThriftSchemaConverter {
       break;
     }
     return new ThriftField(name, field.getId(), requirement, type);
-  }
-
-  /**
-   * temporary, waiting for a new release of elephant bird
-   * @param field
-   * @return
-   */
-  private Collection<TEnum> getEnumValues(Field field) {
-    try {
-      java.lang.reflect.Field enumMapField = Field.class.getDeclaredField("enumMap");
-      enumMapField.setAccessible(true);
-      Map<String, TEnum> map = (Map<String, TEnum>)enumMapField.get(field);
-      return map.values();
-    } catch (NoSuchFieldException e) {
-      throw new RuntimeException(e);
-    } catch (IllegalAccessException e) {
-      throw new RuntimeException(e);
-    }
   }
 
 }

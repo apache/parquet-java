@@ -16,7 +16,7 @@
 package parquet.thrift;
 
 import static com.twitter.data.proto.tutorial.thrift.PhoneType.MOBILE;
-import static junit.framework.Assert.assertEquals;
+import static org.junit.Assert.assertEquals;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;

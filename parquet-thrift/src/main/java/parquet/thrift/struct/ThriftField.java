@@ -34,6 +34,15 @@ public class ThriftField {
     public byte getRequirement() {
       return requirement;
     }
+
+    public static Requirement fromType(byte fieldRequirementType) {
+      for (Requirement req : Requirement.values()) {
+        if (req.requirement == fieldRequirementType) {
+          return req;
+        }
+      }
+      throw new RuntimeException("Unknown requirement " + fieldRequirementType);
+    }
   }
 
   private final String name;
