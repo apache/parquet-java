@@ -97,12 +97,7 @@ public class ParquetMetadataConverter {
       }
 
       private FieldRepetitionType toParquetRepetition(Repetition repetition) {
-        switch (repetition) {
-        case REQUIRED: return FieldRepetitionType.REQUIRED;
-        case OPTIONAL: return FieldRepetitionType.OPTIONAL;
-        case REPEATED: return FieldRepetitionType.REPEATED;
-        }
-        throw new RuntimeException("unknown repetition: " + repetition);
+        return FieldRepetitionType.valueOf(repetition.name());
       }
 
       @Override
@@ -172,34 +167,16 @@ public class ParquetMetadataConverter {
   }
 
   public parquet.column.Encoding getEncoding(Encoding encoding) {
-    switch (encoding) {
-    case PLAIN:
-      return parquet.column.Encoding.PLAIN;
-    case BIT_PACKED:
-      return parquet.column.Encoding.BIT_PACKED;
-    case RLE:
-      return parquet.column.Encoding.PLAIN;
-    default:
-      throw new RuntimeException("Unknown encoding " + encoding);
-    }
+    return parquet.column.Encoding.valueOf(encoding.name());
   }
 
   public Encoding getEncoding(parquet.column.Encoding encoding) {
-    switch (encoding) {
-    case PLAIN:
-      return parquet.format.Encoding.PLAIN;
-    case BIT_PACKED:
-      return parquet.format.Encoding.BIT_PACKED;
-    case RLE:
-      return parquet.format.Encoding.RLE;
-    default:
-      throw new RuntimeException("Unknown encoding " + encoding);
-    }
+    return Encoding.valueOf(encoding.name());
   }
 
   private PrimitiveTypeName getPrimitive(Type type) {
     switch (type) {
-      case BYTE_ARRAY:
+      case BYTE_ARRAY: // TODO: rename BINARY and remove this switch
         return PrimitiveTypeName.BINARY;
       case INT64:
         return PrimitiveTypeName.INT64;
@@ -242,7 +219,6 @@ public class ParquetMetadataConverter {
   }
 
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
-//    List<MetaDataBlock> result = new ArrayList<MetaDataBlock>();
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema());
     parquet.hadoop.metadata.FileMetaData fileMetadata = new parquet.hadoop.metadata.FileMetaData(messageType);
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
@@ -320,12 +296,7 @@ public class ParquetMetadataConverter {
   }
 
   private Repetition fromParquetRepetition(FieldRepetitionType repetition) {
-    switch (repetition) {
-    case REQUIRED: return Repetition.REQUIRED;
-    case OPTIONAL: return Repetition.OPTIONAL;
-    case REPEATED: return Repetition.REPEATED;
-    }
-    throw new RuntimeException("unknown repetition: " + repetition);
+    return Repetition.valueOf(repetition.name());
   }
 
   public void writeDataPageHeader(
