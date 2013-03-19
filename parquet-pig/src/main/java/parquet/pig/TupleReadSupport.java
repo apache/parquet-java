@@ -38,10 +38,12 @@ import parquet.schema.MessageType;
  */
 public class TupleReadSupport extends ReadSupport<Tuple> {
   static final String PARQUET_PIG_REQUESTED_SCHEMA = "parquet.pig.requested.schema";
+  static final String PARQUET_PIG_NUMBERS_DEFAULT_TO_ZERO = "parquet.pig.numbers.default.to.zero";
 
   private static final Log LOG = Log.getLog(TupleReadSupport.class);
 
   private static final PigSchemaConverter schemaConverter = new PigSchemaConverter();
+
 
   /**
    * @param configuration the configuration for the current job
@@ -87,15 +89,21 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
   }
 
   @Override
-  public RecordMaterializer<Tuple> prepareForRead(Configuration configuration,
-      Map<String, String> keyValueMetaData, MessageType fileSchema,
-      parquet.hadoop.api.ReadSupport.ReadContext readContext) {
+  public RecordMaterializer<Tuple> prepareForRead(
+      Configuration configuration,
+      Map<String, String> keyValueMetaData,
+      MessageType fileSchema,
+      ReadContext readContext) {
     MessageType requestedSchema = readContext.getRequestedSchema();
     Schema requestedPigSchema = getRequestedPigSchema(configuration);
     if (requestedPigSchema == null) {
       requestedPigSchema = getPigSchemaFromFile(fileSchema, keyValueMetaData);
     }
-    return new TupleRecordMaterializer(requestedSchema, requestedPigSchema);
+    boolean numbersDefaultToZero = configuration.getBoolean(PARQUET_PIG_NUMBERS_DEFAULT_TO_ZERO, false);
+    if (numbersDefaultToZero) {
+      LOG.info("Numbers will default to 0 instead of NULL");
+    }
+    return new TupleRecordMaterializer(requestedSchema, requestedPigSchema, numbersDefaultToZero);
   }
 
 }
