@@ -15,7 +15,7 @@
  */
 package parquet.column.mem;
 
-import static parquet.column.Encoding.PLAIN;
+import static parquet.column.Encoding.*;
 
 import java.io.IOException;
 
@@ -38,10 +38,10 @@ public class TestMemPageStore {
     MemPageStore memPageStore = new MemPageStore();
     ColumnDescriptor col = new ColumnDescriptor(path , PrimitiveTypeName.INT64, 2, 2);
     PageWriter pageWriter = memPageStore.getPageWriter(col);
-    pageWriter.writePage(BytesInput.from(new byte[735]), 209, PLAIN);
-    pageWriter.writePage(BytesInput.from(new byte[743]), 209, PLAIN);
-    pageWriter.writePage(BytesInput.from(new byte[743]), 209, PLAIN);
-    pageWriter.writePage(BytesInput.from(new byte[735]), 209, PLAIN);
+    pageWriter.writePage(BytesInput.from(new byte[735]), 209, BIT_PACKED, BIT_PACKED, PLAIN);
+    pageWriter.writePage(BytesInput.from(new byte[743]), 209, BIT_PACKED, BIT_PACKED, PLAIN);
+    pageWriter.writePage(BytesInput.from(new byte[743]), 209, BIT_PACKED, BIT_PACKED, PLAIN);
+    pageWriter.writePage(BytesInput.from(new byte[735]), 209, BIT_PACKED, BIT_PACKED, PLAIN);
     PageReader pageReader = memPageStore.getPageReader(col);
     long totalValueCount = pageReader.getTotalValueCount();
     System.out.println(totalValueCount);

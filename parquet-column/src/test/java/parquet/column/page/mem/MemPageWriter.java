@@ -38,12 +38,13 @@ public class MemPageWriter implements PageWriter {
 
 
   @Override
-  public void writePage(BytesInput bytesInput, int valueCount, Encoding encoding) throws IOException {
+  public void writePage(BytesInput bytesInput, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding)
+      throws IOException {
     if (valueCount == 0) {
       throw new ParquetEncodingException("illegal page of 0 values");
     }
     memSize += bytesInput.size();
-    pages.add(new Page(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), encoding));
+    pages.add(new Page(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), rlEncoding, dlEncoding, valuesEncoding));
     totalValueCount += valueCount;
     if (DEBUG) LOG.debug("page written for " + bytesInput.size() + " bytes and " + valueCount + " records");
   }

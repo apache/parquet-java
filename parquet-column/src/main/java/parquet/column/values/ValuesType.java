@@ -15,19 +15,12 @@
  */
 package parquet.column.values;
 
-import parquet.column.Encoding;
-
 /**
- * The data column controls the encoding
+ * The different type of values we can store in columns
  *
  * @author Julien Le Dem
  *
  */
-abstract public class DataValuesWriter extends ValuesWriter {
-
-  /**
-   * called after getBytes() and before reset()
-   * @return the encoding that was used to encode the bytes
-   */
-  public abstract Encoding getEncoding();
+public enum ValuesType {
+  REPETITION_LEVEL, DEFINITION_LEVEL, VALUES;
 }

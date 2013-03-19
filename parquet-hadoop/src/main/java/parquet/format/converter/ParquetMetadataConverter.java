@@ -96,15 +96,6 @@ public class ParquetMetadataConverter {
         result.add(element);
       }
 
-      private FieldRepetitionType toParquetRepetition(Repetition repetition) {
-        switch (repetition) {
-        case REQUIRED: return FieldRepetitionType.REQUIRED;
-        case OPTIONAL: return FieldRepetitionType.OPTIONAL;
-        case REPEATED: return FieldRepetitionType.REPEATED;
-        }
-        throw new RuntimeException("unknown repetition: " + repetition);
-      }
-
       @Override
       public void visit(MessageType messageType) {
         SchemaElement element = new SchemaElement(messageType.getName());
@@ -172,26 +163,16 @@ public class ParquetMetadataConverter {
   }
 
   public parquet.column.Encoding getEncoding(Encoding encoding) {
-    switch (encoding) {
-    case PLAIN:
-      return parquet.column.Encoding.PLAIN;
-    default:
-      throw new RuntimeException("Unknown encoding " + encoding);
-    }
+    return parquet.column.Encoding.valueOf(encoding.name());
   }
 
   public Encoding getEncoding(parquet.column.Encoding encoding) {
-    switch (encoding) {
-    case PLAIN:
-      return parquet.format.Encoding.PLAIN;
-    default:
-      throw new RuntimeException("Unknown encoding " + encoding);
-    }
+    return Encoding.valueOf(encoding.name());
   }
 
-  private PrimitiveTypeName getPrimitive(Type type) {
+  PrimitiveTypeName getPrimitive(Type type) {
     switch (type) {
-      case BYTE_ARRAY:
+      case BYTE_ARRAY: // TODO: rename BINARY and remove this switch
         return PrimitiveTypeName.BINARY;
       case INT64:
         return PrimitiveTypeName.INT64;
@@ -203,12 +184,16 @@ public class ParquetMetadataConverter {
         return PrimitiveTypeName.FLOAT;
       case DOUBLE:
         return PrimitiveTypeName.DOUBLE;
+      case INT96:
+        return PrimitiveTypeName.INT96;
+      case FIXED_LEN_BYTE_ARRAY:
+        return PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
       default:
         throw new RuntimeException("Unknown type " + type);
     }
   }
 
-  private Type getType(PrimitiveTypeName type) {
+  Type getType(PrimitiveTypeName type) {
     switch (type) {
       case INT64:
         return Type.INT64;
@@ -222,6 +207,10 @@ public class ParquetMetadataConverter {
         return Type.FLOAT;
       case DOUBLE:
         return Type.DOUBLE;
+      case INT96:
+        return Type.INT96;
+      case FIXED_LEN_BYTE_ARRAY:
+        return Type.FIXED_LEN_BYTE_ARRAY;
       default:
         throw new RuntimeException("Unknown type " + type);
     }
@@ -234,7 +223,6 @@ public class ParquetMetadataConverter {
   }
 
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
-//    List<MetaDataBlock> result = new ArrayList<MetaDataBlock>();
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema());
     parquet.hadoop.metadata.FileMetaData fileMetadata = new parquet.hadoop.metadata.FileMetaData(messageType);
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
@@ -311,22 +299,23 @@ public class ParquetMetadataConverter {
     return result;
   }
 
-  private Repetition fromParquetRepetition(FieldRepetitionType repetition) {
-    switch (repetition) {
-    case REQUIRED: return Repetition.REQUIRED;
-    case OPTIONAL: return Repetition.OPTIONAL;
-    case REPEATED: return Repetition.REPEATED;
-    }
-    throw new RuntimeException("unknown repetition: " + repetition);
+  FieldRepetitionType toParquetRepetition(Repetition repetition) {
+    return FieldRepetitionType.valueOf(repetition.name());
+  }
+
+  Repetition fromParquetRepetition(FieldRepetitionType repetition) {
+    return Repetition.valueOf(repetition.name());
   }
 
   public void writeDataPageHeader(
       int uncompressedSize,
       int compressedSize,
       int valueCount,
-      parquet.column.Encoding encoding,
+      parquet.column.Encoding rlEncoding,
+      parquet.column.Encoding dlEncoding,
+      parquet.column.Encoding valuesEncoding,
       OutputStream to) throws IOException {
-    writePageHeader(newDataPageHeader(uncompressedSize, compressedSize, valueCount, encoding), to);
+    writePageHeader(newDataPageHeader(uncompressedSize, compressedSize, valueCount, rlEncoding, dlEncoding, valuesEncoding), to);
   }
 
   protected void writePageHeader(PageHeader pageHeader, OutputStream to) throws IOException {
@@ -387,14 +376,16 @@ public class ParquetMetadataConverter {
   private PageHeader newDataPageHeader(
       int uncompressedSize, int compressedSize,
       int valueCount,
-      parquet.column.Encoding encoding) {
+      parquet.column.Encoding rlEncoding,
+      parquet.column.Encoding dlEncoding,
+      parquet.column.Encoding valuesEncoding) {
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, (int)uncompressedSize, (int)compressedSize);
     // TODO: pageHeader.crc = ...;
     pageHeader.data_page_header = new DataPageHeader(
         valueCount,
-        getEncoding(encoding),
-        Encoding.RLE, // TODO: manage several encodings
-        Encoding.BIT_PACKED);
+        getEncoding(valuesEncoding),
+        getEncoding(dlEncoding),
+        getEncoding(rlEncoding));
     return pageHeader;
   }
 

@@ -15,8 +15,7 @@
  */
 package parquet.thrift;
 
-import static junit.framework.Assert.assertEquals;
-import junit.framework.Assert;
+import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
@@ -36,7 +35,7 @@ public class TestThriftSchemaConverter {
     "message AddressBook {\n" +
     "  optional group persons (LIST) {\n" +
     "    repeated group persons_tuple {\n" +
-    "      optional group name {\n" +
+    "      required group name {\n" +
     "        optional binary first_name (UTF8);\n" +
     "        optional binary last_name (UTF8);\n" +
     "      }\n" +

@@ -15,6 +15,7 @@
  */
 package parquet.pig;
 
+import static parquet.column.Encoding.BIT_PACKED;
 import static parquet.column.Encoding.PLAIN;
 
 import java.io.File;
@@ -124,7 +125,13 @@ public class GenerateIntTestFile {
         Page page = pageReader.readPage();
         n += page.getValueCount();
         // TODO: change INTFC
-        w.writeDataPage(page.getValueCount(), (int)page.getBytes().size(), BytesInput.from(page.getBytes().toByteArray()), PLAIN);
+        w.writeDataPage(
+            page.getValueCount(),
+            (int)page.getBytes().size(),
+            BytesInput.from(page.getBytes().toByteArray()),
+            page.getRlEncoding(),
+            page.getDlEncoding(),
+            page.getValueEncoding());
       } while (n < totalValueCount);
       w.endColumn();
     }

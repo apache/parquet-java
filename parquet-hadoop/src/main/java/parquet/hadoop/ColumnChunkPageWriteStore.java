@@ -57,7 +57,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     }
 
     @Override
-    public void writePage(BytesInput bytes, int valueCount, Encoding encoding) throws IOException {
+    public void writePage(BytesInput bytes, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException {
       long uncompressedSize = bytes.size();
       BytesInput compressedBytes = compressor.compress(bytes);
       long compressedSize = compressedBytes.size();
@@ -65,13 +65,17 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
           (int)uncompressedSize,
           (int)compressedSize,
           valueCount,
-          encoding,
+          rlEncoding,
+          dlEncoding,
+          valuesEncoding,
           buf);
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
       compressedBytes.writeAllTo(buf);
-      encodings.add(encoding);
+      encodings.add(rlEncoding);
+      encodings.add(dlEncoding);
+      encodings.add(valuesEncoding);
     }
 
     @Override

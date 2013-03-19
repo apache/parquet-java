@@ -16,7 +16,6 @@
 package parquet.column.impl;
 
 import static parquet.Log.DEBUG;
-import static parquet.column.Encoding.PLAIN;
 
 import java.io.IOException;
 
@@ -26,10 +25,7 @@ import parquet.column.ColumnReader;
 import parquet.column.page.Page;
 import parquet.column.page.PageReader;
 import parquet.column.values.ValuesReader;
-import parquet.column.values.bitpacking.BitPackingValuesReader;
-import parquet.column.values.boundedint.BoundedIntValuesFactory;
-import parquet.column.values.plain.BooleanPlainValuesReader;
-import parquet.column.values.plain.PlainValuesReader;
+import parquet.column.values.ValuesType;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
 
@@ -221,20 +217,10 @@ abstract class ColumnReaderImpl implements ColumnReader {
     if (isPageFullyConsumed()) {
       if (DEBUG) LOG.debug("loading page");
       Page page = pageReader.readPage();
-      if (page.getEncoding() != PLAIN) {
-        // TODO: implement more encoding
-        throw new ParquetDecodingException("Unsupported encoding: " + page.getEncoding());
-      }
 
-      repetitionLevelColumn = new BitPackingValuesReader(path.getMaxRepetitionLevel());
-      definitionLevelColumn = BoundedIntValuesFactory.getBoundedReader(path.getMaxDefinitionLevel());
-      switch (path.getType()) {
-      case BOOLEAN:
-        this.dataColumn = new BooleanPlainValuesReader();
-        break;
-      default:
-        this.dataColumn = new PlainValuesReader();
-      }
+      this.repetitionLevelColumn = page.getRlEncoding().getValuesReader(path, ValuesType.REPETITION_LEVEL);
+      this.definitionLevelColumn = page.getDlEncoding().getValuesReader(path, ValuesType.DEFINITION_LEVEL);
+      this.dataColumn = page.getValueEncoding().getValuesReader(path, ValuesType.VALUES);
 
       this.pageValueCount = page.getValueCount();
       this.readValuesInPage = 0;

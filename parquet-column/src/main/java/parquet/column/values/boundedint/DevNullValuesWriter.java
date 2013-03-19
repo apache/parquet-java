@@ -15,7 +15,9 @@
  */
 package parquet.column.values.boundedint;
 
+import static parquet.column.Encoding.BIT_PACKED;
 import parquet.bytes.BytesInput;
+import parquet.column.Encoding;
 import parquet.column.values.ValuesWriter;
 import parquet.io.api.Binary;
 
@@ -70,5 +72,10 @@ public class DevNullValuesWriter extends ValuesWriter {
   @Override
   public long getAllocatedSize() {
     return 0;
+  }
+
+  @Override
+  public Encoding getEncoding() {
+    return BIT_PACKED;
   }
 }

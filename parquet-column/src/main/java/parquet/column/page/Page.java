@@ -34,20 +34,27 @@ public class Page {
   private final BytesInput bytes;
   private final int valueCount;
   private final int uncompressedSize;
-  private final Encoding encoding;
+  private final Encoding rlEncoding;
+  private final Encoding dlEncoding;
+  private final Encoding valuesEncoding;
   private final int id;
 
   /**
    * @param bytes the bytes for this page
    * @param valueCount count of values in this page
    * @param uncompressedSize the uncompressed size of the page
-   * @param encoding the encoding for this page
+   * @param rlEncoding the repetition level encoding for this page
+   * @param dlEncoding the definition level encoding for this page
+   * @param valuesEncoding the values encoding for this page
+   * @param dlEncoding
    */
-  public Page(BytesInput bytes, int valueCount, int uncompressedSize, Encoding encoding) {
+  public Page(BytesInput bytes, int valueCount, int uncompressedSize, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
     this.bytes = bytes;
     this.valueCount = valueCount;
     this.uncompressedSize = uncompressedSize;
-    this.encoding = encoding;
+    this.rlEncoding = rlEncoding;
+    this.dlEncoding = dlEncoding;
+    this.valuesEncoding = valuesEncoding;
     this.id = nextId ++;
     if (DEBUG) LOG.debug("new Page #"+id+" : " + bytes.size() + " bytes and " + valueCount + " records");
   }
@@ -77,16 +84,29 @@ public class Page {
   }
 
   /**
-   *
-   * @return the encoding for this page
+   * @return the definition level encoding for this page
    */
-  public Encoding getEncoding() {
-    return encoding;
+  public Encoding getDlEncoding() {
+    return dlEncoding;
+  }
+
+  /**
+   * @return the repetition level encoding for this page
+   */
+  public Encoding getRlEncoding() {
+    return rlEncoding;
+  }
+
+  /**
+   * @return the values encoding for this page
+   */
+  public Encoding getValueEncoding() {
+    return valuesEncoding;
   }
 
   @Override
   public String toString() {
-    return "Page [id: " + id + ", bytes.size=" + bytes.size() + ", valueCount=" + valueCount + ", uncompressedSize=" + uncompressedSize + ", encoding=" + encoding + "]";
+    return "Page [id: " + id + ", bytes.size=" + bytes.size() + ", valueCount=" + valueCount + ", uncompressedSize=" + uncompressedSize + "]";
   }
 
 }

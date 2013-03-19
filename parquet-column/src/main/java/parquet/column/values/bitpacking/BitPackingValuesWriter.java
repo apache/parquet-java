@@ -16,12 +16,14 @@
 package parquet.column.values.bitpacking;
 
 import static parquet.bytes.BytesUtils.getWidthFromMaxInt;
+import static parquet.column.Encoding.BIT_PACKED;
 import static parquet.column.values.bitpacking.BitPacking.getBitPackingWriter;
 
 import java.io.IOException;
 
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
+import parquet.column.Encoding;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 import parquet.io.ParquetEncodingException;
@@ -110,6 +112,11 @@ public class BitPackingValuesWriter extends ValuesWriter {
   @Override
   public long getAllocatedSize() {
     return out.getCapacity();
+  }
+
+  @Override
+  public Encoding getEncoding() {
+    return BIT_PACKED;
   }
 
 

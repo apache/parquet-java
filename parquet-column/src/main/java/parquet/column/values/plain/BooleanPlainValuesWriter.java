@@ -24,7 +24,7 @@ import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.column.Encoding;
-import parquet.column.values.DataValuesWriter;
+import parquet.column.values.ValuesWriter;
 import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 import parquet.io.ParquetEncodingException;
 
@@ -35,7 +35,7 @@ import parquet.io.ParquetEncodingException;
  * @author Julien Le Dem
  *
  */
-public class BooleanPlainValuesWriter extends DataValuesWriter {
+public class BooleanPlainValuesWriter extends ValuesWriter {
   private static final Log LOG = Log.getLog(BooleanPlainValuesWriter.class);
 
   private CapacityByteArrayOutputStream out;

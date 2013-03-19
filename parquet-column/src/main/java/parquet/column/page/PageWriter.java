@@ -32,9 +32,12 @@ public interface PageWriter {
    * writes a single page
    * @param bytesInput the bytes for the page
    * @param valueCount the number of values in that page
+   * @param rlEncoding repetition level encoding
+   * @param dlEncoding definition level encoding
+   * @param valuesEncoding values encoding
    * @throws IOException
    */
-  abstract public void writePage(BytesInput bytesInput, int valueCount, Encoding encoding) throws IOException;
+  abstract public void writePage(BytesInput bytesInput, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
 
   /**
    *
