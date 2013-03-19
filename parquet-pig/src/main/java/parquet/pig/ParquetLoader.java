@@ -15,6 +15,8 @@
  */
 package parquet.pig;
 
+import static parquet.pig.TupleReadSupport.PARQUET_PIG_REQUESTED_SCHEMA;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -78,7 +80,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata {
     LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
     setInput(location, job);
     if (requestedSchema != null) {
-      job.getConfiguration().set("parquet.pig.requested.schema", requestedSchema);
+      job.getConfiguration().set(PARQUET_PIG_REQUESTED_SCHEMA, requestedSchema);
     }
   }
 
