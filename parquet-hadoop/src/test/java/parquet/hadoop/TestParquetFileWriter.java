@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -147,7 +148,7 @@ public class TestParquetFileWriter {
     FileStatus outputStatus = fs.getFileStatus(testDirPath);
     List<Footer> footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus);
     validateFooters(footers);
-    ParquetFileWriter.writeSummaryFile(configuration, testDirPath, footers);
+    ParquetFileWriter.writeMetadataFile(configuration, testDirPath, footers);
 
     footers = ParquetFileReader.readFooters(configuration, outputStatus);
     validateFooters(footers);
@@ -178,13 +179,14 @@ public class TestParquetFileWriter {
     LOG.debug(metadata);
     assertEquals(3, metadata.size());
     for (Footer footer : metadata) {
-     final File file = new File(footer.getFile().toUri());
-     assertTrue(file.getName(), file.getName().startsWith("part"));
-     assertTrue(file.getPath(), file.exists());
-     final ParquetMetadata parquetMetadata = footer.getParquetMetadata();
-     assertEquals(2, parquetMetadata.getBlocks().size());
-     assertEquals("bar", parquetMetadata.getKeyValueMetaData().get("foo"));
-     assertEquals(footer.getFile().getName(), parquetMetadata.getKeyValueMetaData().get(footer.getFile().getName()));
+      final File file = new File(footer.getFile().toUri());
+      assertTrue(file.getName(), file.getName().startsWith("part"));
+      assertTrue(file.getPath(), file.exists());
+      final ParquetMetadata parquetMetadata = footer.getParquetMetadata();
+      assertEquals(2, parquetMetadata.getBlocks().size());
+      final Map<String, String> keyValueMetaData = parquetMetadata.getFileMetaData().getKeyValueMetaData();
+      assertEquals("bar", keyValueMetaData.get("foo"));
+      assertEquals(footer.getFile().getName(), keyValueMetaData.get(footer.getFile().getName()));
     }
   }
 

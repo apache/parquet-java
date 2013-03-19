@@ -16,6 +16,7 @@
 package parquet.hadoop.metadata;
 
 import java.io.Serializable;
+import java.util.Map;
 
 import parquet.schema.MessageType;
 
@@ -31,25 +32,41 @@ public final class FileMetaData implements Serializable {
 
   private final MessageType schema;
 
-  public FileMetaData(MessageType schema) {
+  private final Map<String, String> keyValueMetaData;
+
+  /**
+   * @param schema the schema for the file
+   * @param keyValueMetaData the app specific metadata
+   */
+  public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData) {
     super();
+    if (schema == null) {
+      throw new NullPointerException("schema");
+    }
+    if (keyValueMetaData == null) {
+      throw new NullPointerException("keyValueMetaData");
+    }
     this.schema = schema;
+    this.keyValueMetaData = keyValueMetaData;
   }
 
+  /**
+   * @return the schema for the file
+   */
   public MessageType getSchema() {
     return schema;
   }
 
   @Override
   public String toString() {
-    return "FileMetaData{schema: "+schema+"}";
+    return "FileMetaData{schema: "+schema+ ", metadata: " + keyValueMetaData + "}";
   }
 
-  @Override
-  public boolean equals(Object obj) {
-    if (!(obj instanceof FileMetaData)) {
-      return false;
-    }
-    return ((FileMetaData)obj).schema.equals(schema);
+  /**
+   * @return meta data for extensions
+   */
+  public Map<String, String> getKeyValueMetaData() {
+    return keyValueMetaData;
   }
+
 }

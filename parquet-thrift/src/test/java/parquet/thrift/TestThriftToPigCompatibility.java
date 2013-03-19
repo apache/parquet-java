@@ -40,6 +40,7 @@ import parquet.io.ConverterConsumer;
 import parquet.io.MessageColumnIO;
 import parquet.io.RecordConsumerLoggingWrapper;
 import parquet.io.api.RecordConsumer;
+import parquet.pig.PigSchemaConverter;
 import parquet.pig.convert.TupleRecordMaterializer;
 import parquet.schema.MessageType;
 import parquet.thrift.struct.ThriftType.StructType;
@@ -159,5 +160,7 @@ public class TestThriftToPigCompatibility {
     final Tuple t = tupleRecordConverter.getCurrentRecord();
     final Tuple expected = thriftToPig.getPigTuple(o);
     assertEquals(expected.toString(), t.toString());
+    final MessageType filtered = new PigSchemaConverter().filter(schema, pigSchema);
+    assertEquals(schema.toString(), filtered.toString());
   }
 }

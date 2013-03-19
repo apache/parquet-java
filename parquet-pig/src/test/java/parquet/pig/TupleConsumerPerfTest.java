@@ -31,6 +31,7 @@ import parquet.Log;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.mem.MemPageStore;
+import parquet.hadoop.api.ReadSupport.ReadContext;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.io.RecordReader;
@@ -127,8 +128,10 @@ public class TupleConsumerPerfTest {
     System.out.println(message);
     MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
+    Map<String, String> pigMetaData = pigMetaData(pigSchemaString);
     MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchemaString));
-    RecordMaterializer<Tuple> recordConsumer = tupleReadSupport.initForRead(null, pigMetaData(pigSchemaString), schema, schema);
+    ReadContext init = tupleReadSupport.init(null, pigMetaData, schema);
+    RecordMaterializer<Tuple> recordConsumer = tupleReadSupport.prepareForRead(null, pigMetaData, schema, init);
     RecordReader<Tuple> recordReader = columnIO.getRecordReader(columns, recordConsumer);
     // TODO: put this back
 //  if (DEBUG) {

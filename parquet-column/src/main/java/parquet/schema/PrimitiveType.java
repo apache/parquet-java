@@ -32,7 +32,7 @@ import parquet.io.api.RecordConsumer;
  * @author Julien Le Dem
  *
  */
-public class PrimitiveType extends Type {
+public final class PrimitiveType extends Type {
 
   /**
    * Supported Primitive types

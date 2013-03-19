@@ -29,7 +29,7 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
  * @author Julien Le Dem
  *
  */
-public class MessageType extends GroupType {
+public final class MessageType extends GroupType {
 
   /**
    *
@@ -72,7 +72,7 @@ public class MessageType extends GroupType {
 
   /**
    * @return the max repetition level that might be needed to encode the
-   * type at 'path'. 
+   * type at 'path'.
    */
   public int getMaxRepetitionLevel(String ... path) {
     return getMaxRepetitionLevel(path, 0) - 1;
@@ -80,7 +80,7 @@ public class MessageType extends GroupType {
 
   /**
    * @return the max repetition level that might be needed to encode the
-   * type at 'path'. 
+   * type at 'path'.
    */
   public int getMaxDefinitionLevel(String ... path) {
     return getMaxDefinitionLevel(path, 0) - 1;

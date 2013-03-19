@@ -40,10 +40,8 @@ import parquet.hadoop.metadata.BlockMetaData;
  * It contains the information to read one block of the file.
  *
  * @author Julien Le Dem
- *
- * @param <T> the type of the materialized tuples
  */
-public class ParquetInputSplit<T> extends InputSplit implements Serializable, Writable {
+public class ParquetInputSplit extends InputSplit implements Serializable, Writable {
   private static final long serialVersionUID = 1L;
 
   private String path;
@@ -52,7 +50,9 @@ public class ParquetInputSplit<T> extends InputSplit implements Serializable, Wr
   private String[] hosts;
   private List<BlockMetaData> blocks;
   private String schema;
+  private String requestedSchema;
   private Map<String, String> extraMetadata;
+
 
   /**
    * Writables must have a parameterless constructor
@@ -79,7 +79,6 @@ public class ParquetInputSplit<T> extends InputSplit implements Serializable, Wr
       String[] hosts,
       List<BlockMetaData> blocks,
       String schema,
-      Class<?> readSupportClass,
       String requestedSchema,
       Map<String, String> extraMetadata) {
     this.path = path.toUri().toString();
@@ -88,11 +87,11 @@ public class ParquetInputSplit<T> extends InputSplit implements Serializable, Wr
     this.hosts = hosts;
     this.blocks = blocks;
     this.schema = schema;
+    this.requestedSchema = requestedSchema;
     this.extraMetadata = extraMetadata;
   }
 
   /**
-   *
    * @return the block meta data
    */
   public List<BlockMetaData> getBlocks() {
@@ -116,7 +115,6 @@ public class ParquetInputSplit<T> extends InputSplit implements Serializable, Wr
   }
 
   /**
-   *
    * @return the offset of the block in the file
    */
   public long getStart() {
@@ -124,7 +122,6 @@ public class ParquetInputSplit<T> extends InputSplit implements Serializable, Wr
   }
 
   /**
-   *
    * @return the path of the file containing the block
    */
   public Path getPath() {
@@ -136,7 +133,6 @@ public class ParquetInputSplit<T> extends InputSplit implements Serializable, Wr
   }
 
   /**
-   *
    * @return the schema to read
    */
   public String getSchema() {
@@ -144,12 +140,19 @@ public class ParquetInputSplit<T> extends InputSplit implements Serializable, Wr
   }
 
   /**
-   *
+   * @return the requested schema
+   */
+  public String getRequestedSchema() {
+    return requestedSchema;
+  }
+
+  /**
    * @return app specific metadata
    */
   public Map<String, String> getExtraMetadata() {
     return extraMetadata;
   }
+
 
   /**
    * {@inheritDoc}
@@ -160,16 +163,14 @@ public class ParquetInputSplit<T> extends InputSplit implements Serializable, Wr
     byte[] b = new byte[l];
     in.readFully(b);
     try {
-      @SuppressWarnings("unchecked") // I know
-      ParquetInputSplit<T> other = (ParquetInputSplit<T>)
-          new ObjectInputStream(new ByteArrayInputStream(b))
-      .readObject();
+      ParquetInputSplit other = (ParquetInputSplit)new ObjectInputStream(new ByteArrayInputStream(b)).readObject();
       this.path = other.path;
       this.start = other.start;
       this.length = other.length;
       this.hosts = other.hosts;
       this.blocks = other.blocks;
       this.schema = other.schema;
+      this.requestedSchema = other.requestedSchema;
       this.extraMetadata = other.extraMetadata;
     } catch (ClassNotFoundException e) {
       throw new IOException("wrong class serialized", e);
@@ -197,6 +198,7 @@ public class ParquetInputSplit<T> extends InputSplit implements Serializable, Wr
         + " hosts: " + Arrays.toString(hosts)
         + " blocks: " + blocks.size()
         + " schema: " + schema
+        + " requestedSchema: " + requestedSchema
         + " extraMetadata: " + extraMetadata
         + "}";
   }

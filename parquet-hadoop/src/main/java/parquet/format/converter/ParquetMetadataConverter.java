@@ -72,7 +72,7 @@ public class ParquetMetadataConverter {
         rowGroups
         );
 
-    Set<Entry<String, String>> keyValues = parquetMetadata.getKeyValueMetaData().entrySet();
+    Set<Entry<String, String>> keyValues = parquetMetadata.getFileMetaData().getKeyValueMetaData().entrySet();
     for (Entry<String, String> keyValue : keyValues) {
       addKeyValue(fileMetaData, keyValue.getKey(), keyValue.getValue());
     }
@@ -224,7 +224,6 @@ public class ParquetMetadataConverter {
 
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema());
-    parquet.hadoop.metadata.FileMetaData fileMetadata = new parquet.hadoop.metadata.FileMetaData(messageType);
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
     for (RowGroup rowGroup : row_groups) {
@@ -264,7 +263,9 @@ public class ParquetMetadataConverter {
         keyValueMetaData.put(keyValue.key, keyValue.value);
       }
     }
-    return new ParquetMetadata(fileMetadata, blocks, keyValueMetaData);
+    return new ParquetMetadata(
+        new parquet.hadoop.metadata.FileMetaData(messageType, keyValueMetaData),
+        blocks);
   }
 
   MessageType fromParquetSchema(List<SchemaElement> schema) {

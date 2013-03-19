@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.List;
-import java.util.Map;
 
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.JsonParseException;
@@ -93,7 +92,6 @@ public class ParquetMetadata {
 
   private final FileMetaData fileMetaData;
   private final List<BlockMetaData> blocks;
-  private final Map<String, String> keyValueMetaData;
 
   /**
    *
@@ -101,10 +99,9 @@ public class ParquetMetadata {
    * @param blocks block level metadata
    * @param keyValueMetaData
    */
-  public ParquetMetadata(FileMetaData fileMetaData, List<BlockMetaData> blocks, Map<String, String> keyValueMetaData) {
+  public ParquetMetadata(FileMetaData fileMetaData, List<BlockMetaData> blocks) {
     this.fileMetaData = fileMetaData;
     this.blocks = blocks;
-    this.keyValueMetaData = keyValueMetaData;
   }
 
   /**
@@ -123,13 +120,6 @@ public class ParquetMetadata {
     return fileMetaData;
   }
 
-  /**
-   *
-   * @return meta data for extensions
-   */
-  public Map<String, String> getKeyValueMetaData() {
-    return keyValueMetaData;
-  }
 
   @Override
   public String toString() {

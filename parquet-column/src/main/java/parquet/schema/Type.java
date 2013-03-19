@@ -64,14 +64,14 @@ abstract public class Type {
 
   public GroupType asGroupType() {
     if (isPrimitive()) {
-      throw new ClassCastException(this.getName() + " is not a group");
+      throw new ClassCastException(this + " is not a group");
     }
     return (GroupType)this;
   }
 
   public PrimitiveType asPrimitiveType() {
     if (!isPrimitive()) {
-      throw new ClassCastException(this.getName() + " is not a primititve");
+      throw new ClassCastException(this + " is not a primititve");
     }
     return (PrimitiveType)this;
   }
