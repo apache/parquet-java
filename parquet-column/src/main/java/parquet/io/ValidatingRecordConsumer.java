@@ -19,6 +19,8 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 
 import parquet.Log;
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -27,7 +29,7 @@ import parquet.schema.Type.Repetition;
 
 /**
  * Wraps a record consumer
- * Validates the record written aainst the schema and pass down the event to the wrapped consumer
+ * Validates the record written against the schema and pass down the event to the wrapped consumer
  *
  * @author Julien Le Dem
  *
@@ -169,7 +171,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   /**
    * {@inheritDoc}
    */
-  public void addBinary(byte[] value) {
+  public void addBinary(Binary value) {
     validate(PrimitiveTypeName.BINARY);
     delegate.addBinary(value);
   }

@@ -19,16 +19,20 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Deque;
 
-final class ExpectationValidatingRecordConsumer extends
-    RecordMaterializer<Void> {
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
+
+final public class ExpectationValidatingRecordConsumer extends
+    RecordConsumer {
   private final Deque<String> expectations;
   int count = 0;
 
-  ExpectationValidatingRecordConsumer(Deque<String> expectations) {
+  public ExpectationValidatingRecordConsumer(Deque<String> expectations) {
     this.expectations = expectations;
   }
 
   private void validate(String got) {
+//    System.out.println("  \"" + got + "\";");
     assertEquals("event #"+count, expectations.pop(), got);
     ++count;
   }
@@ -79,8 +83,8 @@ final class ExpectationValidatingRecordConsumer extends
   }
 
   @Override
-  public void addBinary(byte[] value) {
-    validate("addBinary("+new String(value)+")");
+  public void addBinary(Binary value) {
+    validate("addBinary("+value.toStringUsingUTF8()+")");
   }
 
   @Override
@@ -93,8 +97,4 @@ final class ExpectationValidatingRecordConsumer extends
     validate("addDouble("+value+")");
   }
 
-  @Override
-  public Void getCurrentRecord() {
-    return null;
-  }
 }

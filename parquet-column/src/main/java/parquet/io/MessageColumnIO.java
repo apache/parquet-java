@@ -21,11 +21,20 @@ import java.util.List;
 import parquet.Log;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
-import parquet.column.mem.MemColumnReadStore;
-import parquet.column.mem.PageReadStore;
-import parquet.column.mem.ParquetEncodingException;
+import parquet.column.impl.ColumnReadStoreImpl;
+import parquet.column.page.PageReadStore;
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 
+/**
+ * Message level of the IO structure
+ *
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class MessageColumnIO extends GroupColumnIO {
   private static final Log logger = Log.getLog(MessageColumnIO.class);
 
@@ -36,7 +45,7 @@ public class MessageColumnIO extends GroupColumnIO {
   private final boolean validating;
 
   MessageColumnIO(MessageType messageType, boolean validating) {
-    super(messageType, null);
+    super(messageType, null, 0);
     this.validating = validating;
   }
 
@@ -45,7 +54,7 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   public <T> RecordReader<T> getRecordReader(PageReadStore columns, RecordMaterializer<T> recordMaterializer) {
-    return new RecordReaderImplementation<T>(this, recordMaterializer, validating, new MemColumnReadStore(columns));
+    return new RecordReaderImplementation<T>(this, recordMaterializer, validating, new ColumnReadStoreImpl(columns));
   }
 
   private class MessageColumnIORecordConsumer extends RecordConsumer {
@@ -211,8 +220,8 @@ public class MessageColumnIO extends GroupColumnIO {
     }
 
     @Override
-    public void addBinary(byte[] value) {
-      if (DEBUG) log("addBinary("+value.length+" bytes)");
+    public void addBinary(Binary value) {
+      if (DEBUG) log("addBinary("+value.length()+" bytes)");
       getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
       setRepetitionLevel();
@@ -240,7 +249,9 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   public RecordConsumer getRecordWriter(ColumnWriteStore columns) {
-    return new MessageColumnIORecordConsumer(columns);
+    RecordConsumer recordWriter = new MessageColumnIORecordConsumer(columns);
+    if (DEBUG) recordWriter = new RecordConsumerLoggingWrapper(recordWriter);
+    return validating ? new ValidatingRecordConsumer(recordWriter, getType()) : recordWriter;
   }
 
   void setLevels() {
@@ -256,7 +267,7 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   @Override
-  MessageType getType() {
+  public MessageType getType() {
     return (MessageType)super.getType();
   }
 }

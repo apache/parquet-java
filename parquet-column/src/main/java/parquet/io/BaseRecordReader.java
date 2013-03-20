@@ -18,9 +18,12 @@ package parquet.io;
 import static parquet.Log.DEBUG;
 import parquet.Log;
 import parquet.column.ColumnReadStore;
-import parquet.column.mem.ParquetDecodingException;
 import parquet.io.RecordReaderImplementation.State;
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
+import parquet.io.api.RecordMaterializer;
 
+// TODO(julien): this class appears to be unused -- can it be nuked? - todd
 public abstract class BaseRecordReader<T> extends RecordReader<T> {
   private static final Log LOG = Log.getLog(BaseRecordReader.class);
 
@@ -97,7 +100,7 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
     endIndex = index;
   }
 
-  final protected void addPrimitiveBINARY(String field, int index, byte[] value) {
+  final protected void addPrimitiveBINARY(String field, int index, Binary value) {
     startField(field, index);
     if (DEBUG) LOG.debug("addBinary("+value+")");
     recordConsumer.addBinary(value);

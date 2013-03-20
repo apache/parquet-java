@@ -29,7 +29,7 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
  * @author Julien Le Dem
  *
  */
-public class MessageType extends GroupType {
+public final class MessageType extends GroupType {
 
   /**
    *
@@ -64,27 +64,35 @@ public class MessageType extends GroupType {
   public void writeToStringBuilder(StringBuilder sb, String indent) {
     sb.append("message ")
         .append(getName())
+        .append(getOriginalType() == null ? "" : " (" + getOriginalType() +")")
         .append(" {\n");
-    membersDisplayString(sb
-        , "  ");
+    membersDisplayString(sb, "  ");
     sb.append("}\n");
   }
 
-  public int getRepetitionLevel(String[] path) {
-    return getRepetitionLevel(path, 0) - 1;
+  /**
+   * @return the max repetition level that might be needed to encode the
+   * type at 'path'.
+   */
+  public int getMaxRepetitionLevel(String ... path) {
+    return getMaxRepetitionLevel(path, 0) - 1;
   }
 
-  public int getDefinitionLevel(String[] path) {
-    return getDefinitionLevel(path, 0) - 1;
+  /**
+   * @return the max repetition level that might be needed to encode the
+   * type at 'path'.
+   */
+  public int getMaxDefinitionLevel(String ... path) {
+    return getMaxDefinitionLevel(path, 0) - 1;
   }
 
-  public Type getType(String[] path) {
+  public Type getType(String ... path) {
     return getType(path, 0);
   }
 
   public ColumnDescriptor getColumnDescription(String[] path) {
-    int maxRep = getRepetitionLevel(path);
-    int maxDef = getDefinitionLevel(path);
+    int maxRep = getMaxRepetitionLevel(path);
+    int maxDef = getMaxDefinitionLevel(path);
     PrimitiveTypeName type = getType(path).asPrimitiveType().getPrimitiveTypeName();
     return new ColumnDescriptor(path, type, maxRep, maxDef);
   }
@@ -98,7 +106,7 @@ public class MessageType extends GroupType {
     List<ColumnDescriptor> columns = new ArrayList<ColumnDescriptor>(paths.size());
     for (String[] path : paths) {
       // TODO: optimize this
-      columns.add(new ColumnDescriptor(path, getType(path).asPrimitiveType().getPrimitiveTypeName(), getRepetitionLevel(path), getDefinitionLevel(path)));
+      columns.add(new ColumnDescriptor(path, getType(path).asPrimitiveType().getPrimitiveTypeName(), getMaxRepetitionLevel(path), getMaxDefinitionLevel(path)));
     }
     return columns;
   }
@@ -109,5 +117,11 @@ public class MessageType extends GroupType {
       throw new InvalidRecordException(subType + " found: expected " + this);
     }
     super.checkContains(subType);
+  }
+
+  public <T> T convertWith(TypeConverter<T> converter) {
+    final ArrayList<GroupType> path = new ArrayList<GroupType>();
+    path.add(this);
+    return converter.convertMessageType(this, convertChildren(path, converter));
   }
 }

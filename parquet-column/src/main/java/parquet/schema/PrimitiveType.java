@@ -20,7 +20,9 @@ import java.util.List;
 
 import parquet.column.ColumnReader;
 import parquet.io.InvalidRecordException;
-import parquet.io.RecordConsumer;
+import parquet.io.api.Binary;
+import parquet.io.api.PrimitiveConverter;
+import parquet.io.api.RecordConsumer;
 
 
 /**
@@ -30,14 +32,13 @@ import parquet.io.RecordConsumer;
  * @author Julien Le Dem
  *
  */
-public class PrimitiveType extends Type {
+public final class PrimitiveType extends Type {
+
   /**
    * Supported Primitive types
    *
    * @author Julien Le Dem
-   *
    */
-
   public static enum PrimitiveTypeName {
       INT64("getLong", Long.TYPE) {
       @Override
@@ -49,6 +50,12 @@ public class PrimitiveType extends Type {
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
         recordConsumer.addLong(columnReader.getLong());
+      }
+
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        primitiveConverter.addLong(columnReader.getLong());
       }
     },
     INT32("getInteger", Integer.TYPE) {
@@ -62,6 +69,12 @@ public class PrimitiveType extends Type {
           ColumnReader columnReader) {
         recordConsumer.addInteger(columnReader.getInteger());
       }
+
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        primitiveConverter.addInt(columnReader.getInteger());
+      }
     },
     BOOLEAN("getBoolean", Boolean.TYPE) {
       @Override
@@ -74,9 +87,14 @@ public class PrimitiveType extends Type {
           ColumnReader columnReader) {
         recordConsumer.addBoolean(columnReader.getBoolean());
       }
+
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        primitiveConverter.addBoolean(columnReader.getBoolean());
+      }
     },
-    // TODO: array type literal?
-    BINARY("getBinary", new byte[]{}.getClass()) {
+    BINARY("getBinary", Binary.class) {
       @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getBinary());
@@ -86,6 +104,12 @@ public class PrimitiveType extends Type {
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
         recordConsumer.addBinary(columnReader.getBinary());
+      }
+
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        primitiveConverter.addBinary(columnReader.getBinary());
       }
     },
     FLOAT("getFloat", Float.TYPE) {
@@ -99,6 +123,12 @@ public class PrimitiveType extends Type {
           ColumnReader columnReader) {
         recordConsumer.addFloat(columnReader.getFloat());
       }
+
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        primitiveConverter.addFloat(columnReader.getFloat());
+      }
     },
     DOUBLE("getDouble", Double.TYPE) {
       @Override
@@ -111,7 +141,49 @@ public class PrimitiveType extends Type {
           ColumnReader columnReader) {
         recordConsumer.addDouble(columnReader.getDouble());
       }
-    };
+
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        primitiveConverter.addDouble(columnReader.getDouble());
+      }
+    },
+    INT96(null, null) { // TODO: support for INT96
+      @Override
+      public String toString(ColumnReader columnReader) {
+        throw new UnsupportedOperationException("NYI");
+      }
+      @Override
+      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
+          ColumnReader columnReader) {
+        throw new UnsupportedOperationException("NYI");
+      }
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        throw new UnsupportedOperationException("NYI");
+      }
+    },
+    FIXED_LEN_BYTE_ARRAY(null, null) { // TODO: support for FIXED_LEN_BYTE_ARRAY
+
+      @Override
+      public String toString(ColumnReader columnReader) {
+        throw new UnsupportedOperationException("NYI");
+      }
+
+      @Override
+      public void addValueToRecordConsumer(RecordConsumer recordConsumer,
+          ColumnReader columnReader) {
+        throw new UnsupportedOperationException("NYI");
+      }
+
+      @Override
+      public void addValueToPrimitiveConverter(
+          PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
+        throw new UnsupportedOperationException("NYI");
+      }
+
+    } ;
 
     public final String getMethod;
     public final Class<?> javaType;
@@ -136,6 +208,9 @@ public class PrimitiveType extends Type {
     abstract public void addValueToRecordConsumer(RecordConsumer recordConsumer,
         ColumnReader columnReader);
 
+    abstract public void addValueToPrimitiveConverter(
+        PrimitiveConverter primitiveConverter, ColumnReader columnReader);
+
   }
 
   private final PrimitiveTypeName primitive;
@@ -147,7 +222,11 @@ public class PrimitiveType extends Type {
    * @param name the name of the type
    */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, String name) {
-    super(name, repetition);
+    this(repetition, primitive, name, null);
+  }
+
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, String name, OriginalType originalType) {
+    super(name, repetition, originalType);
     this.primitive = primitive;
   }
 
@@ -185,6 +264,9 @@ public class PrimitiveType extends Type {
         .append(primitive.name().toLowerCase())
         .append(" ")
         .append(getName());
+    if (getOriginalType() != null) {
+      sb.append(" (").append(getOriginalType()).append(")");
+    }
   }
 
   /**
@@ -215,7 +297,7 @@ public class PrimitiveType extends Type {
   }
 
   @Override
-  public int getRepetitionLevel(String[] path, int i) {
+  public int getMaxRepetitionLevel(String[] path, int i) {
     if (path.length != i) {
       throw new InvalidRecordException("Arrived at primitive node, path invalid");
     }
@@ -223,7 +305,7 @@ public class PrimitiveType extends Type {
   }
 
   @Override
-  public int getDefinitionLevel(String[] path, int i) {
+  public int getMaxDefinitionLevel(String[] path, int i) {
     if (path.length != i) {
       throw new InvalidRecordException("Arrived at primitive node, path invalid");
     }
@@ -254,5 +336,10 @@ public class PrimitiveType extends Type {
       throw new InvalidRecordException(subType + " found: expected " + this);
     }
 
+  }
+
+  @Override
+  public <T> T convert(List<GroupType> path, TypeConverter<T> converter) {
+    return converter.convertPrimitiveType(path, this);
   }
 }

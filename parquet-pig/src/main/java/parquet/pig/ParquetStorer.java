@@ -16,8 +16,6 @@
 package parquet.pig;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
 
 import org.apache.hadoop.fs.Path;
@@ -36,6 +34,7 @@ import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
 import parquet.hadoop.ParquetOutputFormat;
+import parquet.io.ParquetEncodingException;
 import parquet.schema.MessageType;
 
 /**
@@ -68,7 +67,7 @@ public class ParquetStorer extends StoreFunc implements StoreMetadata {
     try {
       return Utils.getSchemaFromString(getProperties().getProperty(SCHEMA));
     } catch (ParserException e) {
-      throw new RuntimeException("can not get schema from context", e);
+      throw new ParquetEncodingException("can not get schema from context", e);
     }
   }
 
@@ -99,14 +98,7 @@ public class ParquetStorer extends StoreFunc implements StoreMetadata {
   public OutputFormat<Void, Tuple> getOutputFormat() throws IOException {
     Schema pigSchema = getSchema();
     MessageType schema = new PigSchemaConverter().convert(pigSchema);
-
-    String pigSchemaString = pigSchema.toString();
-    Map<String, String> extraMetaData = new HashMap<String, String>();
-    new PigMetaData(pigSchemaString.substring(1, pigSchemaString.length() - 1)).addToMetaData(extraMetaData);
-    return new ParquetOutputFormat<Tuple>(
-        TupleWriteSupport.class,
-        schema,
-        extraMetaData);
+    return new ParquetOutputFormat<Tuple>(new TupleWriteSupport(schema, pigSchema));
   }
 
   /**
@@ -127,7 +119,7 @@ public class ParquetStorer extends StoreFunc implements StoreMetadata {
       this.recordWriter.write(null, tuple);
     } catch (InterruptedException e) {
       Thread.interrupted();
-      throw new RuntimeException("Interrupted while writing", e);
+      throw new ParquetEncodingException("Interrupted while writing", e);
     }
   }
 

@@ -15,25 +15,81 @@
  */
 package parquet.column;
 
+import parquet.io.api.Binary;
 
+/**
+ * writer for (repetition level, definition level, values) triplets
+ *
+ * @author Julien Le Dem
+ *
+ */
 public interface ColumnWriter {
 
+  /**
+   * writes the current value
+   * @param value
+   * @param repetitionLevel
+   * @param definitionLevel
+   */
   void write(int value, int repetitionLevel, int definitionLevel);
 
+  /**
+   * writes the current value
+   * @param value
+   * @param repetitionLevel
+   * @param definitionLevel
+   */
   void write(long value, int repetitionLevel, int definitionLevel);
 
+  /**
+   * writes the current value
+   * @param value
+   * @param repetitionLevel
+   * @param definitionLevel
+   */
   void write(boolean value, int repetitionLevel, int definitionLevel);
 
-  void write(byte[] value, int repetitionLevel, int definitionLevel);
+  /**
+   * writes the current value
+   * @param value
+   * @param repetitionLevel
+   * @param definitionLevel
+   */
+  void write(Binary value, int repetitionLevel, int definitionLevel);
 
+  /**
+   * writes the current value
+   * @param value
+   * @param repetitionLevel
+   * @param definitionLevel
+   */
   void write(float value, int repetitionLevel, int definitionLevel);
 
+  /**
+   * writes the current value
+   * @param value
+   * @param repetitionLevel
+   * @param definitionLevel
+   */
   void write(double value, int repetitionLevel, int definitionLevel);
 
+  /**
+   * writes the current null value
+   * @param repetitionLevel
+   * @param definitionLevel
+   */
   void writeNull(int repetitionLevel, int definitionLevel);
 
+  /**
+   * Flushes the underlying store. This should be called when there are no
+   * remaining triplets to be written.
+   */
   void flush();
 
-  long memSize();
+  /**
+   * used to decide when to write a page or row group
+   * @return the number of bytes of memory used to buffer the current data
+   */
+  long getBufferedSizeInMemory();
 
 }

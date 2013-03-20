@@ -22,6 +22,9 @@ import java.io.IOException;
 
 import org.junit.Test;
 
+import parquet.column.values.bitpacking.BitPackingValuesReader;
+import parquet.column.values.bitpacking.BitPackingValuesWriter;
+
 public class TestBitPackingColumn {
 
   @Test
@@ -152,7 +155,7 @@ public class TestBitPackingColumn {
 
   private void validateEncodeDecode(int bitLength, int[] vals, String expected) throws IOException {
     final int bound = (int)Math.pow(2, bitLength) - 1;
-    BitPackingColumnWriter w = new BitPackingColumnWriter(bound);
+    BitPackingValuesWriter w = new BitPackingValuesWriter(bound);
     for (int i : vals) {
       w.writeInteger(i);
     }
@@ -160,7 +163,7 @@ public class TestBitPackingColumn {
     System.out.println("vals ("+bitLength+"): " + TestBitPacking.toString(vals));
     System.out.println("bytes: " + TestBitPacking.toString(bytes));
     assertEquals(expected, TestBitPacking.toString(bytes));
-    BitPackingColumnReader r = new BitPackingColumnReader(bound);
+    BitPackingValuesReader r = new BitPackingValuesReader(bound);
     r.initFromPage(vals.length, bytes, 0);
     int[] result = new int[vals.length];
     for (int i = 0; i < result.length; i++) {

@@ -40,12 +40,7 @@ public class GroupType extends Type {
    * @param fields the contained fields
    */
   public GroupType(Repetition repetition, String name, List<Type> fields) {
-    super(name, repetition);
-    this.fields = fields;
-    this.indexByName = new HashMap<String, Integer>();
-    for (int i = 0; i < fields.size(); i++) {
-      indexByName.put(fields.get(i).getName(), i);
-    }
+    this(repetition, name, null, fields);
   }
 
   /**
@@ -54,8 +49,21 @@ public class GroupType extends Type {
    * @param name
    * @param fields
    */
-  public GroupType(Repetition required, String name, Type... fields) {
-    this(required, name, Arrays.asList(fields));
+  public GroupType(Repetition repetition, String name, Type... fields) {
+    this(repetition, name, null, fields);
+  }
+
+  public GroupType(Repetition repetition, String name, OriginalType originalType, Type... fields) {
+    this(repetition, name, originalType, Arrays.asList(fields));
+  }
+
+  public GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields) {
+    super(name, repetition, originalType);
+    this.fields = fields;
+    this.indexByName = new HashMap<String, Integer>();
+    for (int i = 0; i < fields.size(); i++) {
+      indexByName.put(fields.get(i).getName(), i);
+    }
   }
 
   /**
@@ -144,6 +152,7 @@ public class GroupType extends Type {
         .append(getRepetition().name().toLowerCase())
         .append(" group ")
         .append(getName())
+        .append(getOriginalType() == null ? "" : " (" + getOriginalType() +")")
         .append(" {\n");
     membersDisplayString(sb, indent + "  ");
     sb.append(indent)
@@ -187,29 +196,29 @@ public class GroupType extends Type {
   }
 
   @Override
-  protected int getRepetitionLevel(String[] path, int i) {
+  protected int getMaxRepetitionLevel(String[] path, int depth) {
     int myVal = getRepetition() == Repetition.REPEATED ? 1 : 0;
-    if (i == path.length) {
+    if (depth == path.length) {
       return myVal;
     }
-    return myVal + getType(path[i++]).getRepetitionLevel(path, i);
+    return myVal + getType(path[depth]).getMaxRepetitionLevel(path, depth + 1);
   }
 
   @Override
-  protected int getDefinitionLevel(String[] path, int i) {
+  protected int getMaxDefinitionLevel(String[] path, int depth) {
     int myVal = getRepetition() != Repetition.REQUIRED ? 1 : 0;
-    if (i == path.length) {
+    if (depth == path.length) {
       return myVal;
     }
-    return myVal + getType(path[i++]).getDefinitionLevel(path, i);
+    return myVal + getType(path[depth]).getMaxDefinitionLevel(path, depth + 1);
   }
 
   @Override
-  protected Type getType(String[] path, int i) {
-    if (i == path.length) {
+  protected Type getType(String[] path, int depth) {
+    if (depth == path.length) {
       return this;
     }
-    return getType(path[i++]).getType(path, i);
+    return getType(path[depth]).getType(path, depth + 1);
   }
 
   @Override
@@ -238,4 +247,19 @@ public class GroupType extends Type {
     }
   }
 
+  @Override
+  <T> T convert(List<GroupType> path, TypeConverter<T> converter) {
+    List<GroupType> childrenPath = new ArrayList<GroupType>(path);
+    childrenPath.add(this);
+    final List<T> children = convertChildren(childrenPath, converter);
+    return converter.convertGroupType(path, this, children);
+  }
+
+  protected <T> List<T> convertChildren(List<GroupType> path, TypeConverter<T> converter) {
+    List<T> children = new ArrayList<T>(fields.size());
+    for (Type field : fields) {
+      children.add(field.convert(path, converter));
+    }
+    return children;
+  }
 }

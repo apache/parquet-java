@@ -16,12 +16,12 @@
 package parquet.io;
 
 import static org.junit.Assert.assertEquals;
-import static parquet.data.simple.example.Paper.pr1;
-import static parquet.data.simple.example.Paper.pr2;
-import static parquet.data.simple.example.Paper.r1;
-import static parquet.data.simple.example.Paper.r2;
-import static parquet.data.simple.example.Paper.schema;
-import static parquet.data.simple.example.Paper.schema2;
+import static parquet.example.Paper.pr1;
+import static parquet.example.Paper.pr2;
+import static parquet.example.Paper.r1;
+import static parquet.example.Paper.r2;
+import static parquet.example.Paper.schema;
+import static parquet.example.Paper.schema2;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -35,18 +35,33 @@ import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
-import parquet.column.mem.MemColumnWriteStore;
-import parquet.column.mem.MemPageStore;
-import parquet.column.mem.PageReadStore;
-import parquet.data.Group;
-import parquet.data.GroupRecordConsumer;
-import parquet.data.GroupWriter;
-import parquet.data.simple.SimpleGroupFactory;
+import parquet.column.impl.ColumnWriteStoreImpl;
+import parquet.column.page.PageReadStore;
+import parquet.column.page.mem.MemPageStore;
+import parquet.example.data.Group;
+import parquet.example.data.GroupFactory;
+import parquet.example.data.GroupWriter;
+import parquet.example.data.simple.SimpleGroupFactory;
+import parquet.example.data.simple.convert.GroupRecordConverter;
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 
 
 public class TestColumnIO {
   private static final Log LOG = Log.getLog(TestColumnIO.class);
+
+  private static final String oneOfEach =
+    "message Document {\n"
+  + "  required int64 a;\n"
+  + "  required int32 b;\n"
+  + "  required float c;\n"
+  + "  required double d;\n"
+  + "  required boolean e;\n"
+  + "  required binary f;\n"
+  + "}\n";
 
   private static final String schemaString =
       "message Document {\n"
@@ -79,60 +94,34 @@ public class TestColumnIO {
   };
 
   public static final String[] expectedEventsForR1 = {
-      "startMessage()",
-       "startField(DocId, 0)",
-        "addLong(10)",
-       "endField(DocId, 0)",
-       "startField(Links, 1)",
-        "startGroup()",
-         "startField(Forward, 1)",
-          "addLong(20)",
-          "addLong(40)",
-          "addLong(60)",
-         "endField(Forward, 1)",
-        "endGroup()",
-       "endField(Links, 1)",
-       "startField(Name, 2)",
-        "startGroup()",
-         "startField(Language, 0)",
-          "startGroup()",
-           "startField(Code, 0)",
-            "addBinary(en-us)",
-           "endField(Code, 0)",
-           "startField(Country, 1)",
-            "addBinary(us)",
-           "endField(Country, 1)",
-          "endGroup()",
-          "startGroup()",
-           "startField(Code, 0)",
-            "addBinary(en)",
-           "endField(Code, 0)",
-          "endGroup()",
-         "endField(Language, 0)",
-         "startField(Url, 1)",
-          "addBinary(http://A)",
-         "endField(Url, 1)",
-        "endGroup()",
-        "startGroup()",
-         "startField(Url, 1)",
-          "addBinary(http://B)",
-         "endField(Url, 1)",
-        "endGroup()",
-        "startGroup()",
-         "startField(Language, 0)",
-          "startGroup()",
-           "startField(Code, 0)",
-            "addBinary(en-gb)",
-           "endField(Code, 0)",
-           "startField(Country, 1)",
-            "addBinary(gb)",
-           "endField(Country, 1)",
-          "endGroup()",
-         "endField(Language, 0)",
-        "endGroup()",
-       "endField(Name, 2)",
-      "endMessage()"
-      };
+    "startMessage()",
+    "DocId.addLong(10)",
+    "Links.start()",
+    "Links.Forward.addLong(20)",
+    "Links.Forward.addLong(40)",
+    "Links.Forward.addLong(60)",
+    "Links.end()",
+    "Name.start()",
+    "Name.Language.start()",
+    "Name.Language.Code.addBinary(en-us)",
+    "Name.Language.Country.addBinary(us)",
+    "Name.Language.end()",
+    "Name.Language.start()",
+    "Name.Language.Code.addBinary(en)",
+    "Name.Language.end()",
+    "Name.Url.addBinary(http://A)",
+    "Name.end()",
+    "Name.start()",
+    "Name.Url.addBinary(http://B)",
+    "Name.end()",
+    "Name.start()",
+    "Name.Language.start()",
+    "Name.Language.Code.addBinary(en-gb)",
+    "Name.Language.Country.addBinary(gb)",
+    "Name.Language.end()",
+    "Name.end()",
+    "endMessage()"
+  };
 
   @Test
   public void testSchema() {
@@ -148,7 +137,7 @@ public class TestColumnIO {
     log(r2);
 
     MemPageStore memPageStore = new MemPageStore();
-    MemColumnWriteStore columns = new MemColumnWriteStore(memPageStore, 800);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     {
@@ -200,9 +189,38 @@ public class TestColumnIO {
     }
   }
 
+  @Test
+  public void testOneOfEach() {
+
+    MemPageStore memPageStore = new MemPageStore();
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800);
+
+    MessageType oneOfEachSchema = MessageTypeParser.parseMessageType(oneOfEach);
+
+    GroupFactory gf = new SimpleGroupFactory(oneOfEachSchema);
+    Group g1 = gf.newGroup().append("a", 1l).append("b", 2).append("c", 3.0f).append("d", 4.0d).append("e", true).append("f", Binary.fromString("6"));
+
+    ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
+
+    MessageColumnIO columnIO = columnIOFactory.getColumnIO(oneOfEachSchema);
+    log(columnIO);
+    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), oneOfEachSchema);
+    groupWriter.write(g1);
+    columns.flush();
+
+    RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, oneOfEachSchema, memPageStore);
+
+    List<Group> records = new ArrayList<Group>();
+    read(recordReader, oneOfEachSchema, records);
+
+    assertEquals("deserialization does not display the same result", g1.toString(), records.get(0).toString());
+
+  }
+
   private RecordReaderImplementation<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, PageReadStore pageReadStore) {
-    RecordMaterializer<Group> recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
-    return (RecordReaderImplementation<Group>)columnIO.getRecordReader(pageReadStore, recordConsumer);
+    RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
+
+    return (RecordReaderImplementation<Group>)columnIO.getRecordReader(pageReadStore, recordConverter);
   }
 
   private void log(Object o) {
@@ -227,7 +245,7 @@ public class TestColumnIO {
   @Test
   public void testPushParser() {
     MemPageStore memPageStore = new MemPageStore();
-    MemColumnWriteStore columns = new MemColumnWriteStore(memPageStore, 800);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
     columns.flush();
@@ -237,7 +255,7 @@ public class TestColumnIO {
       expectations.add(string);
     }
 
-    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingRecordConsumer(expectations));
+    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectations, schema));
     recordReader.read();
 
   }
@@ -249,12 +267,13 @@ public class TestColumnIO {
   @Test
   public void testGroupWriter() {
     List<Group> result = new ArrayList<Group>();
-    GroupRecordConsumer groupConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
+    final GroupRecordConverter groupRecordConverter = new GroupRecordConverter(schema);
+    RecordConsumer groupConsumer = new ConverterConsumer(groupRecordConverter.getRootConverter(), schema);
     GroupWriter groupWriter = new GroupWriter(new RecordConsumerLoggingWrapper(groupConsumer), schema);
     groupWriter.write(r1);
-    result.add(groupConsumer.getCurrentRecord());
+    result.add(groupRecordConverter.getCurrentRecord());
     groupWriter.write(r2);
-    result.add(groupConsumer.getCurrentRecord());
+    result.add(groupRecordConverter.getCurrentRecord());
     assertEquals("deserialization does not display the expected result", result.get(0).toString(), r1.toString());
     assertEquals("deserialization does not display the expected result", result.get(1).toString(), r2.toString());
   }
@@ -309,8 +328,8 @@ public class TestColumnIO {
           }
 
           @Override
-          public void write(byte[] value, int repetitionLevel, int definitionLevel) {
-            validate(new String(value), repetitionLevel, definitionLevel);
+          public void write(Binary value, int repetitionLevel, int definitionLevel) {
+            validate(value.toStringUsingUTF8(), repetitionLevel, definitionLevel);
           }
 
           @Override
@@ -344,7 +363,7 @@ public class TestColumnIO {
           }
 
           @Override
-          public long memSize() {
+          public long getBufferedSizeInMemory() {
             throw new UnsupportedOperationException();
           }
         };

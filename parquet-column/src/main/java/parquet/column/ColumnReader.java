@@ -15,33 +15,73 @@
  */
 package parquet.column;
 
+import parquet.io.api.Binary;
 
+/**
+ * Reader for (repetition level, definition level, values) triplets.
+ * At any given point in time, a ColumnReader points to a single (r, d, v) triplet.
+ * In order to move to the next triplet, call {@link #consume()}.
+ * 
+ * Each iteration looks at the current definition level and value as well as the next
+ * repetition level. TODO(julien): what does this mean? It's not clear. -todd
+ *
+ * @author Julien Le Dem
+  */
 public interface ColumnReader {
 
+  /**
+   * @return true if the data has been fully consumed
+   */
   boolean isFullyConsumed();
 
+  /**
+   * Consume the current triplet, moving to the next value.
+   */
   void consume();
 
   /**
    * must return 0 when isFullyConsumed() == true
-   * @return
+   * @return the repetition level for the current value
    */
   int getCurrentRepetitionLevel();
 
+  /**
+   * @return the definition level for the current value
+   */
   int getCurrentDefinitionLevel();
 
+  /**
+   * @return the current value
+   */
   String getString();
 
+  /**
+   * @return the current value
+   */
   int getInteger();
 
+  /**
+   * @return the current value
+   */
   boolean getBoolean();
 
+  /**
+   * @return the current value
+   */
   long getLong();
 
-  byte[] getBinary();
+  /**
+   * @return the current value
+   */
+  Binary getBinary();
 
+  /**
+   * @return the current value
+   */
   float getFloat();
 
+  /**
+   * @return the current value
+   */
   double getDouble();
-
 }

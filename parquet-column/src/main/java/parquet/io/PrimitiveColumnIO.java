@@ -24,7 +24,13 @@ import parquet.schema.Type;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 
-
+/**
+ * Primitive level of the IO structure
+ *
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class PrimitiveColumnIO extends ColumnIO {
 //  private static final Logger logger = Logger.getLogger(PrimitiveColumnIO.class.getName());
 
@@ -32,8 +38,8 @@ public class PrimitiveColumnIO extends ColumnIO {
   private ColumnDescriptor columnDescriptor;
   private final int id;
 
-  PrimitiveColumnIO(Type type, GroupColumnIO parent, int id) {
-    super(type, parent);
+  PrimitiveColumnIO(Type type, GroupColumnIO parent, int index, int id) {
+    super(type, parent, index);
     this.id = id;
   }
 

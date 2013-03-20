@@ -23,25 +23,43 @@ import java.nio.charset.Charset;
 
 import parquet.Log;
 
-
+/**
+ * utility methods to deal with bytes
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class BytesUtils {
   private static final Log LOG = Log.getLog(BytesUtils.class);
 
   public static final Charset UTF8 = Charset.forName("UTF-8");
 
+  /**
+   * give the number of bits needed to encode an int given the max value
+   * @param bound max int that we want to encode
+   * @return the number of bits required
+   */
   public static int getWidthFromMaxInt(int bound) {
-    return (int)Math.ceil(Math.log(bound + 1)/Math.log(2));
+    return 32 - Integer.numberOfLeadingZeros(bound);
   }
 
-  public static int readIntBigEndian(byte[] in, int offset) throws IOException {
-    int ch1 = in[offset] & 0xff;
-    int ch2 = in[offset + 1] & 0xff;
-    int ch3 = in[offset + 2] & 0xff;
-    int ch4 = in[offset + 3] & 0xff;
+  /**
+   * reads an int in little endian at the given position
+   * @param in
+   * @param offset
+   * @return
+   * @throws IOException
+   */
+  public static int readIntLittleEndian(byte[] in, int offset) throws IOException {
+    int ch4 = in[offset] & 0xff;
+    int ch3 = in[offset + 1] & 0xff;
+    int ch2 = in[offset + 2] & 0xff;
+    int ch1 = in[offset + 3] & 0xff;
     return ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
   }
 
   public static int readIntLittleEndian(InputStream in) throws IOException {
+    // TODO: this is duplicated code in LittleEndianDataInputStream
     int ch1 = in.read();
     int ch2 = in.read();
     int ch3 = in.read();
@@ -50,16 +68,10 @@ public class BytesUtils {
         throw new EOFException();
     if (Log.DEBUG) LOG.debug("read le int: " + ch1 + " " + ch2 + " " + ch3 + " " + ch4 + " => " + ((ch4 << 24) + (ch3 << 16) + (ch2 << 8) + (ch1 << 0)));
     return ((ch4 << 24) + (ch3 << 16) + (ch2 << 8) + (ch1 << 0));
-}
-
-  public static void writeIntBigEndian(OutputStream out, int v) throws IOException {
-    out.write((v >>> 24) & 0xFF);
-    out.write((v >>> 16) & 0xFF);
-    out.write((v >>>  8) & 0xFF);
-    out.write((v >>>  0) & 0xFF);
   }
 
   public static void writeIntLittleEndian(OutputStream out, int v) throws IOException {
+    // TODO: this is duplicated code in LittleEndianDataOutputStream
     out.write((v >>>  0) & 0xFF);
     out.write((v >>>  8) & 0xFF);
     out.write((v >>> 16) & 0xFF);

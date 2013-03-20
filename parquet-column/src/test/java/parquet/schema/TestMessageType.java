@@ -19,9 +19,9 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import parquet.data.simple.example.Paper;
-import parquet.parser.MessageTypeParser;
+import parquet.example.Paper;
 import parquet.schema.MessageType;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 
 public class TestMessageType {
@@ -31,5 +31,19 @@ public class TestMessageType {
     MessageType schema = MessageTypeParser.parseMessageType(Paper.schema.toString());
     assertEquals(Paper.schema, schema);
     assertEquals(schema.toString(), Paper.schema.toString());
+  }
+  
+  @Test
+  public void testNestedTypes() {
+    MessageType schema = MessageTypeParser.parseMessageType(Paper.schema.toString());
+    Type type = schema.getType("Links", "Backward");
+    assertEquals(PrimitiveTypeName.INT64,
+        type.asPrimitiveType().getPrimitiveTypeName());
+    assertEquals(0, schema.getMaxRepetitionLevel("DocId"));
+    assertEquals(1, schema.getMaxRepetitionLevel("Name"));
+    assertEquals(2, schema.getMaxRepetitionLevel("Name", "Language"));
+    assertEquals(0, schema.getMaxDefinitionLevel("DocId"));
+    assertEquals(1, schema.getMaxDefinitionLevel("Links"));
+    assertEquals(2, schema.getMaxDefinitionLevel("Links", "Backward"));
   }
 }

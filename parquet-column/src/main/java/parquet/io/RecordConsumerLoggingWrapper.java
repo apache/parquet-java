@@ -16,6 +16,8 @@
 package parquet.io;
 
 import parquet.Log;
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
 
 /**
  * This class can be used to wrap an actual RecordConsumer and log all calls
@@ -105,8 +107,8 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      * {@inheritDoc}
      */
     @Override
-    public void addBinary(byte[] value) {
-      if (DEBUG) log(value);
+    public void addBinary(Binary value) {
+      if (DEBUG) log(value.toStringUsingUTF8());
       delegate.addBinary(value);
     }
 

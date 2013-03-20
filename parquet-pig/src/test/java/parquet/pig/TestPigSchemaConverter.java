@@ -21,9 +21,9 @@ import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
 import org.junit.Test;
 
-import parquet.parser.MessageTypeParser;
 import parquet.pig.PigSchemaConverter;
 import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 
 
 public class TestPigSchemaConverter {
@@ -35,8 +35,8 @@ public class TestPigSchemaConverter {
     MessageType expectedMT = MessageTypeParser.parseMessageType(schemaString);
     assertEquals("converting "+pigSchemaString+" to "+schemaString, expectedMT, schema);
 
-    Schema filtered = pigSchemaConverter.filter(pigSchema, schema);
-    assertEquals("converting "+pigSchemaString+" to "+schemaString+" and filtering", pigSchema.toString(), filtered.toString());
+    MessageType filtered = pigSchemaConverter.filter(schema, pigSchema);
+    assertEquals("converting "+pigSchemaString+" to "+schemaString+" and filtering", schema.toString(), filtered.toString());
   }
 
   @Test

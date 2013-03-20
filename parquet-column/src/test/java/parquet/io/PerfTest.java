@@ -15,18 +15,20 @@
  */
 package parquet.io;
 
-import static parquet.data.simple.example.Paper.r1;
-import static parquet.data.simple.example.Paper.r2;
-import static parquet.data.simple.example.Paper.schema;
-import static parquet.data.simple.example.Paper.schema2;
-import static parquet.data.simple.example.Paper.schema3;
+import static parquet.example.Paper.r1;
+import static parquet.example.Paper.r2;
+import static parquet.example.Paper.schema;
+import static parquet.example.Paper.schema2;
+import static parquet.example.Paper.schema3;
 
 import java.util.logging.Level;
 
 import parquet.Log;
-import parquet.column.mem.MemColumnWriteStore;
-import parquet.column.mem.MemPageStore;
-import parquet.data.GroupWriter;
+import parquet.column.impl.ColumnWriteStoreImpl;
+import parquet.column.page.mem.MemPageStore;
+import parquet.example.DummyRecordConverter;
+import parquet.example.data.GroupWriter;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 
 
@@ -58,23 +60,10 @@ public class PerfTest {
   private static void read(MemPageStore memPageStore, MessageType myschema,
       String message, boolean compiled) {
     MessageColumnIO columnIO = newColumnFactory(myschema);
+
     System.out.println(message + (compiled ? " compiled" : ""));
-    RecordMaterializer<Object> recordConsumer = new RecordMaterializer<Object>() {
-      Object a;
-      public void startMessage() { a = "startmessage";}
-      public void startGroup() { a = "startgroup";}
-      public void startField(String field, int index) { a = field;}
-      public void endMessage() { a = "endmessage";}
-      public void endGroup() { a = "endgroup";}
-      public void endField(String field, int index) { a = field;}
-      public void addInteger(int value) { a = "int";}
-      public void addLong(long value) { a = "long";}
-      public void addFloat(float value) { a = "float";}
-      public void addDouble(double value) { a = "double";}
-      public void addBoolean(boolean value) { a = "boolean";}
-      public void addBinary(byte[] value) { a = value;}
-      public Object getCurrentRecord() { return a; }
-    };
+    RecordMaterializer<Object> recordConsumer = new DummyRecordConverter(myschema);
+
     RecordReader<Object> recordReader = columnIO.getRecordReader(memPageStore, recordConsumer);
     if (compiled) {
       recordReader = new RecordReaderCompiler().compile((RecordReaderImplementation<Object>)recordReader);
@@ -93,7 +82,7 @@ public class PerfTest {
 
 
   private static void write(MemPageStore memPageStore) {
-    MemColumnWriteStore columns = new MemColumnWriteStore(memPageStore, 50*1024*1024);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 50*1024*1024);
     MessageColumnIO columnIO = newColumnFactory(schema);
 
     GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
@@ -129,8 +118,8 @@ public class PerfTest {
     long t = t1-t0;
     float err = (float)100 * 2 / t; // (+/- 1 ms)
     System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s err: %3.2f%%\n", count , t, t == 0 ? 0 : count * 1000 / t, err);
-    if (!records[0].equals("endmessage")) {
-      throw new RuntimeException();
+    if (!records[0].equals("end()")) {
+      throw new RuntimeException(""+records[0]);
     }
   }
 

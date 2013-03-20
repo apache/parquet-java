@@ -19,7 +19,12 @@ import java.util.Arrays;
 
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
-
+/**
+ * Describes a column's type as well as its position in its containing schema.
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
 
   private final String[] path;
@@ -27,6 +32,13 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
   private final int maxRep;
   private final int maxDef;
 
+  /**
+   *
+   * @param path the path to the leaf field in the schema
+   * @param type the type of the field
+   * @param maxRep the maximum repetition level for that path
+   * @param maxDef the maximum definition level for that path
+   */
   public ColumnDescriptor(String[] path, PrimitiveTypeName type, int maxRep, int maxDef) {
     super();
     this.path = path;
@@ -35,18 +47,30 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
     this.maxDef = maxDef;
   }
 
+  /**
+   * @return the path to the leaf field in the schema
+   */
   public String[] getPath() {
     return path;
   }
 
-  public int getRepetitionLevel() {
+  /**
+   * @return the maximum repetition level for that path
+   */
+  public int getMaxRepetitionLevel() {
     return maxRep;
   }
 
-  public int getDefinitionLevel() {
+  /**
+   * @return  the maximum definition level for that path
+   */
+  public int getMaxDefinitionLevel() {
     return maxDef;
   }
 
+  /**
+   * @return the type of that column
+   */
   public PrimitiveTypeName getType() {
     return type;
   }
@@ -63,6 +87,7 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
 
   @Override
   public int compareTo(ColumnDescriptor o) {
+    // TODO(julien): this will fail if o.path.length < this.path.length
     for (int i = 0; i < path.length; i++) {
       int compareTo = path[i].compareTo(o.path[i]);
       if (compareTo != 0) {

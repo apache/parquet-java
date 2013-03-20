@@ -55,6 +55,7 @@ public class Log {
     Logger logger = Logger.getLogger(Log.class.getPackage().getName());
     Handler[] handlers = logger.getHandlers();
     if (handlers == null || handlers.length == 0) {
+      logger.setUseParentHandlers(false);
       StreamHandler handler = new StreamHandler(System.out, new Formatter() {
         Date dat = new Date();
         private final static String format = "{0,date} {0,time}";
@@ -100,6 +101,11 @@ public class Log {
     logger.setLevel(LEVEL);
   }
 
+  /**
+   *
+   * @param c the current class
+   * @return the corresponding logger
+   */
   public static Log getLog(Class<?> c) {
     return new Log(c);
   }
@@ -110,6 +116,10 @@ public class Log {
     this.logger = Logger.getLogger(c.getName());
   }
 
+  /**
+   * prints a debug message
+   * @param m
+   */
   public void debug(Object m) {
     if (m instanceof Throwable) {
       logger.log(Level.FINE, "", (Throwable)m);
@@ -118,10 +128,19 @@ public class Log {
     }
   }
 
+  /**
+   * prints a debug message
+   * @param m
+   * @param t
+   */
   public void debug(Object m, Throwable t) {
     logger.log(Level.FINE, String.valueOf(m), t);
   }
 
+  /**
+   * prints an info message
+   * @param m
+   */
   public void info(Object m) {
     if (m instanceof Throwable) {
       logger.log(Level.INFO, "", (Throwable)m);
@@ -130,10 +149,19 @@ public class Log {
     }
   }
 
+  /**
+   * prints an info message
+   * @param m
+   * @param t
+   */
   public void info(Object m, Throwable t) {
     logger.log(Level.INFO, String.valueOf(m), t);
   }
 
+  /**
+   * prints a warn message
+   * @param m
+   */
   public void warn(Object m) {
     if (m instanceof Throwable) {
       logger.log(Level.WARNING, "", (Throwable)m);
@@ -142,10 +170,19 @@ public class Log {
     }
   }
 
+  /**
+   * prints a warn message
+   * @param m
+   * @param t
+   */
   public void warn(Object m, Throwable t) {
     logger.log(Level.WARNING, String.valueOf(m), t);
   }
 
+  /**
+   * prints an error message
+   * @param m
+   */
   public void error(Object m) {
     if (m instanceof Throwable) {
       logger.log(Level.SEVERE, "", (Throwable)m);
@@ -154,6 +191,11 @@ public class Log {
     }
   }
 
+  /**
+   * prints an error message
+   * @param m
+   * @param t
+   */
   public void error(Object m, Throwable t) {
     logger.log(Level.SEVERE, String.valueOf(m), t);
   }

@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
-    <groupId>parquet</groupId>
+    <groupId>com.twitter</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
     <version>1.0.0-SNAPSHOT</version>
@@ -13,28 +13,31 @@
   <packaging>jar</packaging>
 
   <name>Parquet Pig</name>
-  <url>https://github.com/julienledem/Parquet/parquet-mr</url>
+  <url>https://github.com/Parquet/parquet-mr</url>
 
   <properties>
   </properties>
 
   <dependencies>
     <dependency>
-      <groupId>parquet</groupId>
+      <groupId>com.twitter</groupId>
       <artifactId>parquet-column</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>parquet</groupId>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-hadoop</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
       <artifactId>parquet-format</artifactId>
       <version>1.0.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.apache.pig</groupId>
       <artifactId>pig</artifactId>
-      <version>0.11.0-SNAPSHOT</version>
-      <scope>system</scope>
-      <systemPath>${basedir}/lib/pig-0.11.0-SNAPSHOT.jar</systemPath>
+      <version>0.11.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
@@ -45,6 +48,13 @@
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
       <version>1.2.17</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-column</artifactId>
+      <version>${project.version}</version>
+      <type>test-jar</type>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>joda-time</groupId>
@@ -64,6 +74,22 @@
       <version>11.0</version>
       <scope>test</scope>
     </dependency>
-
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
 </project>

@@ -25,9 +25,9 @@ import java.io.IOException;
 import org.junit.Assert;
 import org.junit.Test;
 
-import parquet.column.primitive.BitPacking;
-import parquet.column.primitive.BitPacking.BitPackingReader;
-import parquet.column.primitive.BitPacking.BitPackingWriter;
+import parquet.column.values.bitpacking.BitPacking;
+import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
+import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
 public class TestBitPacking {
 
@@ -170,7 +170,7 @@ public class TestBitPacking {
     System.out.println("bytes: " + toString(bytes));
     Assert.assertEquals(expected, toString(bytes));
     ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-    BitPackingReader r = BitPacking.getBitPackingReader(bitLength, bais, vals.length);
+    BitPackingReader r = BitPacking.createBitPackingReader(bitLength, bais, vals.length);
     int[] result = new int[vals.length];
     for (int i = 0; i < result.length; i++) {
       result[i] = r.read();

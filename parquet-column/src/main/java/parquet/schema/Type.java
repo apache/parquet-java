@@ -19,6 +19,12 @@ import java.util.List;
 
 import parquet.io.InvalidRecordException;
 
+/**
+ * Represents the declared type for a field in a schema.
+ * The Type object represents both the actual underlying type of the object
+ * (eg a primitive or group) as well as its attributes such as whether it is
+ * repeated, required, or optional.
+ */
 abstract public class Type {
 
   public static enum Repetition {
@@ -29,11 +35,17 @@ abstract public class Type {
 
   private final String name;
   private final Repetition repetition;
+  private final OriginalType originalType;
 
   public Type(String name, Repetition repetition) {
+    this(name, repetition, null);
+  }
+
+  public Type(String name, Repetition repetition, OriginalType originalType) {
     super();
     this.name = name;
     this.repetition = repetition;
+    this.originalType = originalType;
   }
 
   public String getName() {
@@ -44,38 +56,42 @@ abstract public class Type {
     return repetition;
   }
 
+  public OriginalType getOriginalType() {
+    return originalType;
+  }
+
   abstract public boolean isPrimitive();
 
   public GroupType asGroupType() {
     if (isPrimitive()) {
-      throw new ClassCastException(this.getName() + " is not a group");
+      throw new ClassCastException(this + " is not a group");
     }
     return (GroupType)this;
   }
 
   public PrimitiveType asPrimitiveType() {
     if (!isPrimitive()) {
-      throw new ClassCastException(this.getName() + " is not a primititve");
+      throw new ClassCastException(this + " is not a primititve");
     }
     return (PrimitiveType)this;
   }
 
   /**
-   * writes a string representation to th eprovided StringBuilder
+   * Writes a string representation to the provided StringBuilder
    * @param sb the StringBuilder to write itself to
    * @param current indentation level
    */
   abstract public void writeToStringBuilder(StringBuilder sb, String indent);
 
   /**
-   * to visit this type with the given visitor
+   * Visits this type with the given visitor
    * @param visitor the visitor to visit this type
    */
   abstract public void accept(TypeVisitor visitor);
 
   @Override
   public int hashCode() {
-      return typeHashCode();
+    return typeHashCode();
   }
 
   protected abstract int typeHashCode();
@@ -90,9 +106,9 @@ abstract public class Type {
     return typeEquals((Type)other);
   }
 
-  protected abstract int getRepetitionLevel(String[] path, int i);
+  protected abstract int getMaxRepetitionLevel(String[] path, int i);
 
-  protected abstract int getDefinitionLevel(String[] path, int i);
+  protected abstract int getMaxDefinitionLevel(String[] path, int i);
 
   protected abstract Type getType(String[] path, int i);
 
@@ -114,4 +130,12 @@ abstract public class Type {
       throw new InvalidRecordException(subType + " found: expected " + this);
     }
   }
+
+  /**
+   *
+   * @param converter logic to convert the tree
+   * @return the converted tree
+   */
+   abstract <T> T convert(List<GroupType> path, TypeConverter<T> converter);
+
 }

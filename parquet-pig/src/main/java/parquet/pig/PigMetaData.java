@@ -15,70 +15,26 @@
  */
 package parquet.pig;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.StringWriter;
 import java.util.Map;
 
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.map.JsonMappingException;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig.Feature;
+import org.apache.pig.impl.logicalLayer.schema.Schema;
 
 public class PigMetaData {
 
-  private static final String META_DATA_BLOCK_NAME = "Pig";
-  private static ObjectMapper objectMapper = new ObjectMapper();
-  private static ObjectMapper prettyObjectMapper = new ObjectMapper();
-  static {
-    prettyObjectMapper.getSerializationConfig().set(Feature.INDENT_OUTPUT, true);
-  }
+  private static final String PIG_SCHEMA = "pig.schema";
 
-  public String toJSON() {
-    return toJSON(this, objectMapper);
-  }
-
-  public String toPrettyJSON() {
-    return toJSON(this, prettyObjectMapper);
-  }
-
-  private static String toJSON(PigMetaData metaData, ObjectMapper mapper) {
-    StringWriter stringWriter = new StringWriter();
-    try {
-      mapper.writeValue(stringWriter, metaData);
-    } catch (JsonGenerationException e) {
-      throw new RuntimeException(e);
-    } catch (JsonMappingException e) {
-      throw new RuntimeException(e);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-    return stringWriter.toString();
-  }
-
-  public static PigMetaData fromJSON(String json) {
-    try {
-      return objectMapper.readValue(new StringReader(json), PigMetaData.class);
-    } catch (JsonParseException e) {
-      throw new RuntimeException(json, e);
-    } catch (JsonMappingException e) {
-      throw new RuntimeException(json, e);
-    } catch (IOException e) {
-      throw new RuntimeException(json, e);
-    }
-  }
-
-  public static PigMetaData fromMetaDataBlocks(Map<String, String> keyValueMetaData) {
-    if (keyValueMetaData.containsKey(META_DATA_BLOCK_NAME)) {
-      return fromJSON(keyValueMetaData.get(META_DATA_BLOCK_NAME));
+  public static PigMetaData fromMetaData(Map<String, String> keyValueMetaData) {
+    if (keyValueMetaData.containsKey(PIG_SCHEMA)) {
+      return new PigMetaData(keyValueMetaData.get(PIG_SCHEMA));
     }
     return null;
   }
 
   private String pigSchema;
 
-  public PigMetaData() {
+  public PigMetaData(Schema pigSchema) {
+    final String pigSchemaString = pigSchema.toString();
+    this.pigSchema = pigSchemaString.substring(1, pigSchemaString.length() - 1);
   }
 
   public PigMetaData(String pigSchema) {
@@ -94,7 +50,7 @@ public class PigMetaData {
   }
 
   public void addToMetaData(Map<String, String> map) {
-    map.put(META_DATA_BLOCK_NAME, toJSON());
+    map.put(PIG_SCHEMA, pigSchema);
   }
 
 }

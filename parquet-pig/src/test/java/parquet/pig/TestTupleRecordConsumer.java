@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
@@ -33,12 +34,14 @@ import org.apache.pig.parser.ParserException;
 import org.junit.Test;
 
 import parquet.Log;
-import parquet.data.Group;
-import parquet.data.GroupRecordConsumer;
-import parquet.data.GroupWriter;
-import parquet.data.simple.SimpleGroup;
-import parquet.data.simple.SimpleGroupFactory;
-import parquet.io.RecordMaterializer;
+import parquet.example.data.Group;
+import parquet.example.data.GroupWriter;
+import parquet.example.data.simple.SimpleGroup;
+import parquet.example.data.simple.convert.GroupRecordConverter;
+import parquet.hadoop.api.ReadSupport.ReadContext;
+import parquet.io.ConverterConsumer;
+import parquet.io.RecordConsumerLoggingWrapper;
+import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 
 public class TestTupleRecordConsumer {
@@ -135,15 +138,17 @@ public class TestTupleRecordConsumer {
     List<Tuple> tuples = new ArrayList<Tuple>();
     MessageType schema = getMessageType(pigSchemaString);
     RecordMaterializer<Tuple> pigRecordConsumer = newPigRecordConsumer(schema, pigSchemaString);
-    GroupWriter groupWriter = new GroupWriter(pigRecordConsumer, schema);
+    GroupWriter groupWriter = new GroupWriter(new RecordConsumerLoggingWrapper(new ConverterConsumer(pigRecordConsumer.getRootConverter(), schema)), schema);
 
     for (Group group : input) {
       groupWriter.write(group);
-      tuples.add(pigRecordConsumer.getCurrentRecord());
+      final Tuple tuple = pigRecordConsumer.getCurrentRecord();
+      tuples.add(tuple);
+      logger.debug("in: "+group+"\nout:"+tuple);
     }
 
     List<Group> groups = new ArrayList<Group>();
-    GroupRecordConsumer recordConsumer = new GroupRecordConsumer(new SimpleGroupFactory(schema));
+    GroupRecordConverter recordConsumer = new GroupRecordConverter(schema);
     TupleWriteSupport tupleWriter = newTupleWriter(schema, pigSchemaString, recordConsumer);
     for (Tuple t : tuples) {
       logger.debug(t);
@@ -154,17 +159,17 @@ public class TestTupleRecordConsumer {
     assertEquals(input.size(), groups.size());
     for (int i = 0; i < input.size(); i++) {
       Group in = input.get(i);
+      logger.debug(in);
       Group out = groups.get(i);
       assertEquals(in.toString(), out.toString());
     }
   }
 
-  private <T> TupleWriteSupport newTupleWriter(MessageType parquetSchema, String pigSchemaString, RecordMaterializer<T> recordConsumer) {
-    TupleWriteSupport tupleWriter = new TupleWriteSupport();
-    tupleWriter.initForWrite(
-        recordConsumer,
-        parquetSchema,
-        pigMetaData(pigSchemaString)
+  private <T> TupleWriteSupport newTupleWriter(MessageType parquetSchema, String pigSchemaString, RecordMaterializer<T> recordConsumer) throws ParserException {
+    TupleWriteSupport tupleWriter = new TupleWriteSupport(parquetSchema, Utils.getSchemaFromString(pigSchemaString));
+    tupleWriter.init(null);
+    tupleWriter.prepareForWrite(
+        new ConverterConsumer(recordConsumer.getRootConverter(), parquetSchema)
         );
     return tupleWriter;
   }
@@ -177,8 +182,10 @@ public class TestTupleRecordConsumer {
 
   private RecordMaterializer<Tuple> newPigRecordConsumer(MessageType parquetSchema, String pigSchemaString) throws ParserException {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
-    tupleReadSupport.initForRead(pigMetaData(pigSchemaString), parquetSchema.toString());
-    return tupleReadSupport.newRecordConsumer();
+    final Configuration configuration = new Configuration(false);
+    final Map<String, String> pigMetaData = pigMetaData(pigSchemaString);
+    final ReadContext init = tupleReadSupport.init(configuration, pigMetaData, parquetSchema);
+    return tupleReadSupport.prepareForRead(configuration, pigMetaData, parquetSchema, init);
   }
 
   private MessageType getMessageType(String pigSchemaString) throws ParserException {

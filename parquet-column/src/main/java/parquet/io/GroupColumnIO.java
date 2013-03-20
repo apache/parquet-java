@@ -27,16 +27,22 @@ import java.util.Map;
 import parquet.Log;
 import parquet.schema.GroupType;
 
-
+/**
+ * Group level of the IO structure
+ *
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class GroupColumnIO extends ColumnIO {
-  private static final Log logger = Log.getLog(GroupColumnIO.class);
+  private static final Log LOG = Log.getLog(GroupColumnIO.class);
 
   private final Map<String, ColumnIO> childrenByName = new HashMap<String, ColumnIO>();
   private final List<ColumnIO> children = new ArrayList<ColumnIO>();
   private int childrenSize = 0;
 
-  GroupColumnIO(GroupType groupType, GroupColumnIO parent) {
-    super(groupType, parent);
+  GroupColumnIO(GroupType groupType, GroupColumnIO parent, int index) {
+    super(groupType, parent, index);
   }
 
   void add(ColumnIO child) {

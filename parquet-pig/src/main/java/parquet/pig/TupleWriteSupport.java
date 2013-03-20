@@ -16,12 +16,13 @@
 package parquet.pig;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-
+import org.apache.hadoop.conf.Configuration;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataByteArray;
@@ -31,11 +32,11 @@ import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
-import org.apache.pig.impl.util.Utils;
-import org.apache.pig.parser.ParserException;
 
-import parquet.hadoop.WriteSupport;
-import parquet.io.RecordConsumer;
+import parquet.hadoop.api.WriteSupport;
+import parquet.io.ParquetEncodingException;
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
@@ -47,17 +48,22 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
   private MessageType rootSchema;
   private Schema rootPigSchema;
 
+  public TupleWriteSupport(MessageType schema, Schema pigSchema) {
+    super();
+    this.rootSchema = schema;
+    this.rootPigSchema = pigSchema;
+  }
 
   @Override
-  public void initForWrite(RecordConsumer recordConsumer, MessageType schema, Map<String, String> extraMetaData) {
+  public WriteContext init(Configuration configuration) {
+    Map<String, String> extraMetaData = new HashMap<String, String>();
+    new PigMetaData(rootPigSchema).addToMetaData(extraMetaData);
+    return new WriteContext(rootSchema, extraMetaData);
+  }
+
+  @Override
+  public void prepareForWrite(RecordConsumer recordConsumer) {
     this.recordConsumer = recordConsumer;
-    this.rootSchema = schema;
-    PigMetaData pigMetaData = PigMetaData.fromMetaDataBlocks(extraMetaData);
-    try {
-      this.rootPigSchema = Utils.getSchemaFromString(pigMetaData.getPigSchema());
-    } catch (ParserException e) {
-      throw new RuntimeException("Could not parse pig Schema: "+pigMetaData.getPigSchema(), e);
-    }
   }
 
   public void write(Tuple t) {
@@ -115,7 +121,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
           Set<Entry<String, Object>> entrySet = map.entrySet();
           for (Entry<String, Object> entry : entrySet) {
             recordConsumer.startGroup();
-            Schema keyValueSchema = new Schema(Arrays.asList(new FieldSchema("key", DataType.CHARARRAY), new FieldSchema("value", pigMapInnerType.schema, DataType.TUPLE)));
+            Schema keyValueSchema = new Schema(Arrays.asList(new FieldSchema("key", DataType.CHARARRAY), new FieldSchema("value", pigMapInnerType.schema, pigMapInnerType.type)));
             writeTuple(mapType.asGroupType(), keyValueSchema, TF.newTuple(Arrays.asList(entry.getKey(), entry.getValue())));
             recordConsumer.endGroup();
           }
@@ -145,7 +151,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
           } else {
             throw new UnsupportedOperationException("can not convert from " + DataType.findTypeName(pigType.type) + " to BINARY ");
           }
-          recordConsumer.addBinary(bytes);
+          recordConsumer.addBinary(Binary.fromByteArray(bytes));
           break;
         case BOOLEAN:
           recordConsumer.addBoolean((Boolean)t.get(i));
@@ -172,7 +178,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
         recordConsumer.endGroup();
       }
     } catch (Exception e) {
-      throw new RuntimeException("can not write value at "+i+" for type "+type+" in tuple "+t, e);
+      throw new ParquetEncodingException("can not write value at " + i + " in tuple " + t + " from type '" + pigType + "' to type '" + type +"'", e);
     }
   }
 
