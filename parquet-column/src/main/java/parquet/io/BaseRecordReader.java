@@ -20,6 +20,8 @@ import parquet.Log;
 import parquet.column.ColumnReadStore;
 import parquet.io.RecordReaderImplementation.State;
 import parquet.io.api.Binary;
+import parquet.io.api.Converter;
+import parquet.io.api.GroupConverter;
 import parquet.io.api.RecordConsumer;
 import parquet.io.api.RecordMaterializer;
 
@@ -27,7 +29,6 @@ import parquet.io.api.RecordMaterializer;
 public abstract class BaseRecordReader<T> extends RecordReader<T> {
   private static final Log LOG = Log.getLog(BaseRecordReader.class);
 
-  public RecordConsumer recordConsumer;
   public RecordMaterializer<T> recordMaterializer;
   public ColumnReadStore columnStore;
   @Override
@@ -40,10 +41,6 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
 
   State[] caseLookup;
 
-  private String endField;
-
-  private int endIndex;
-
   protected void currentLevel(int currentLevel) {
     if (DEBUG) LOG.debug("currentLevel: "+currentLevel);
   }
@@ -54,85 +51,6 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
 
   final protected int getCaseId(int state, int currentLevel, int d, int nextR) {
     return caseLookup[state].getCase(currentLevel, d, nextR).getID();
-  }
-
-  final protected void startMessage() {
-    // reset state
-    endField = null;
-    if (DEBUG) LOG.debug("startMessage()");
-    recordConsumer.startMessage();
-  }
-
-  final protected void startGroup(String field, int index) {
-    startField(field, index);
-    if (DEBUG) LOG.debug("startGroup()");
-    recordConsumer.startGroup();
-  }
-
-  private void startField(String field, int index) {
-    if (DEBUG) LOG.debug("startField("+field+","+index+")");
-    if (endField != null && index == endIndex) {
-      // skip the close/open tag
-      endField = null;
-    } else {
-      if (endField != null) {
-        // close the previous field
-        recordConsumer.endField(endField, endIndex);
-        endField = null;
-      }
-      recordConsumer.startField(field, index);
-    }
-  }
-
-  final protected void addPrimitiveINT64(String field, int index, long value) {
-    startField(field, index);
-    if (DEBUG) LOG.debug("addLong("+value+")");
-    recordConsumer.addLong(value);
-    endField(field, index);
-  }
-
-  private void endField(String field, int index) {
-    if (DEBUG) LOG.debug("endField("+field+","+index+")");
-    if (endField != null) {
-      recordConsumer.endField(endField, endIndex);
-    }
-    endField = field;
-    endIndex = index;
-  }
-
-  final protected void addPrimitiveBINARY(String field, int index, Binary value) {
-    startField(field, index);
-    if (DEBUG) LOG.debug("addBinary("+value+")");
-    recordConsumer.addBinary(value);
-    endField(field, index);
-  }
-
-  final protected void addPrimitiveINT32(String field, int index, int value) {
-    startField(field, index);
-    if (DEBUG) LOG.debug("addInteger("+value+")");
-    recordConsumer.addInteger(value);
-    endField(field, index);
-  }
-
-  final protected void endGroup(String field, int index) {
-    if (endField != null) {
-      // close the previous field
-      recordConsumer.endField(endField, endIndex);
-      endField = null;
-    }
-    if (DEBUG) LOG.debug("endGroup()");
-    recordConsumer.endGroup();
-    endField(field, index);
-  }
-
-  final protected void endMessage() {
-    if (endField != null) {
-      // close the previous field
-      recordConsumer.endField(endField, endIndex);
-      endField = null;
-    }
-    if (DEBUG) LOG.debug("endMessage()");
-    recordConsumer.endMessage();
   }
 
   protected void error(String message) {

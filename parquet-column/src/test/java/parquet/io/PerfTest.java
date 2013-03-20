@@ -47,16 +47,24 @@ public class PerfTest {
   }
 
   private static void read(MemPageStore memPageStore) {
-    read(memPageStore, schema, "read all", false);
-    read(memPageStore, schema, "read all", false);
-    read(memPageStore, schema, "read all", true);
-    read(memPageStore, schema, "read all", true);
-    read(memPageStore, schema2, "read projected", false);
-    read(memPageStore, schema2, "read projected", true);
-    read(memPageStore, schema3, "read projected no Strings", false);
-    read(memPageStore, schema3, "read projected no Strings", true);
+    readDynamic(memPageStore, schema, "read all");
+    readDynamic(memPageStore, schema, "read all");
+    readCompiled(memPageStore, schema, "read all");
+    readCompiled(memPageStore, schema, "read all");
+    readDynamic(memPageStore, schema2, "read projected");
+    readCompiled(memPageStore, schema2, "read projected");
+    readCompiled(memPageStore, schema2, "read projected");
+    readDynamic(memPageStore, schema3, "read projected no Strings");
+    readCompiled(memPageStore, schema3, "read projected no Strings");
+    readCompiled(memPageStore, schema3, "read projected no Strings");
   }
 
+  static void readDynamic(MemPageStore memPageStore, MessageType schema, String message) {
+    read(memPageStore, schema, message, false);
+  }
+  static void readCompiled(MemPageStore memPageStore, MessageType schema, String message) {
+    read(memPageStore, schema, message, true);
+  }
   private static void read(MemPageStore memPageStore, MessageType myschema,
       String message, boolean compiled) {
     MessageColumnIO columnIO = newColumnFactory(myschema);
@@ -108,13 +116,13 @@ public class PerfTest {
   private static void read(RecordReader<Object> recordReader, int count, MessageType schema) {
     Object[] records = new Object[count];
     System.gc();
-    System.out.println("<<<");
+    System.out.print("<<<");
     long t0 = System.currentTimeMillis();
     for (int i = 0; i < records.length; i++) {
       records[i] = recordReader.read();
     }
     long t1 = System.currentTimeMillis();
-    System.out.println(">>>");
+    System.out.print(">>>");
     long t = t1-t0;
     float err = (float)100 * 2 / t; // (+/- 1 ms)
     System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s err: %3.2f%%\n", count , t, t == 0 ? 0 : count * 1000 / t, err);

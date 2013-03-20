@@ -40,7 +40,7 @@ public final class PrimitiveType extends Type {
    * @author Julien Le Dem
    */
   public static enum PrimitiveTypeName {
-      INT64("getLong", Long.TYPE) {
+      INT64("Long", Long.TYPE) {
       @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getLong());
@@ -58,7 +58,7 @@ public final class PrimitiveType extends Type {
         primitiveConverter.addLong(columnReader.getLong());
       }
     },
-    INT32("getInteger", Integer.TYPE) {
+    INT32("Integer", Integer.TYPE) {
       @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getInteger());
@@ -76,7 +76,7 @@ public final class PrimitiveType extends Type {
         primitiveConverter.addInt(columnReader.getInteger());
       }
     },
-    BOOLEAN("getBoolean", Boolean.TYPE) {
+    BOOLEAN("Boolean", Boolean.TYPE) {
       @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getBoolean());
@@ -94,7 +94,7 @@ public final class PrimitiveType extends Type {
         primitiveConverter.addBoolean(columnReader.getBoolean());
       }
     },
-    BINARY("getBinary", Binary.class) {
+    BINARY("Binary", Binary.class) {
       @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getBinary());
@@ -112,7 +112,7 @@ public final class PrimitiveType extends Type {
         primitiveConverter.addBinary(columnReader.getBinary());
       }
     },
-    FLOAT("getFloat", Float.TYPE) {
+    FLOAT("Float", Float.TYPE) {
       @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getFloat());
@@ -130,7 +130,7 @@ public final class PrimitiveType extends Type {
         primitiveConverter.addFloat(columnReader.getFloat());
       }
     },
-    DOUBLE("getDouble", Double.TYPE) {
+    DOUBLE("Double", Double.TYPE) {
       @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getDouble());
@@ -185,13 +185,22 @@ public final class PrimitiveType extends Type {
 
     } ;
 
-    public final String getMethod;
+    private final String internalName;
     public final Class<?> javaType;
 
-    private PrimitiveTypeName(String getMethod, Class<?> javaType) {
-      this.getMethod = getMethod;
+    private PrimitiveTypeName(String internalName, Class<?> javaType) {
+      this.internalName = internalName;
       this.javaType = javaType;
     }
+
+    public String getMethod() {
+      return "get" + internalName;
+    }
+
+    public String addMethod() {
+      return "add" + internalName;
+    }
+
 
     /**
      * reads the value from the columnReader with the appropriate accessor and returns a String representation

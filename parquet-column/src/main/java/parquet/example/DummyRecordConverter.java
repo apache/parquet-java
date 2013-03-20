@@ -17,6 +17,7 @@ package parquet.example;
 
 import java.util.List;
 
+import parquet.io.api.Binary;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
 import parquet.io.api.PrimitiveConverter;
@@ -43,22 +44,27 @@ public final class DummyRecordConverter extends RecordMaterializer<Object> {
       @Override
       public Converter convertPrimitiveType(List<GroupType> path, PrimitiveType primitiveType) {
         return new PrimitiveConverter() {
-
-          public void addBinary(byte[] value) {
+          @Override
+          public void addBinary(Binary value) {
             a = value;
           }
+          @Override
           public void addBoolean(boolean value) {
             a = value;
           }
+          @Override
           public void addDouble(double value) {
             a = value;
           }
+          @Override
           public void addFloat(float value) {
             a = value;
           }
+          @Override
           public void addInt(int value) {
             a = value;
           }
+          @Override
           public void addLong(long value) {
             a = value;
           }

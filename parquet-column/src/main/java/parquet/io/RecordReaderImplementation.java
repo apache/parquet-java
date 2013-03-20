@@ -439,7 +439,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     return recordMaterializer;
   }
 
-  protected Converter getRecordConsumer() {
+  protected GroupConverter getRecordConsumer() {
     return recordConsumer;
   }
 

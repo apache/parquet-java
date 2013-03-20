@@ -27,6 +27,8 @@ import java.util.List;
 import parquet.column.ColumnReader;
 import parquet.io.RecordReaderImplementation.Case;
 import parquet.io.RecordReaderImplementation.State;
+import parquet.io.api.GroupConverter;
+import parquet.io.api.PrimitiveConverter;
 
 import brennus.Builder;
 import brennus.ClassBuilder;
@@ -59,33 +61,31 @@ public class RecordReaderCompiler {
 
   private <S extends StatementBuilder<S>> S generateCase(boolean addPrimitive, State state, Case currentCase, S builder, int stateCount) {
     if (currentCase.isGoingUp()) {
-      // Generating the following loop
+      // Generating the following loop:
       //  for (; currentLevel <= depth; ++currentLevel) {
-      //    startGroup(currentState, currentLevel);
+      //    currentState.groupConverterPath[currentLevel].start();
       //  }
       for (int i = currentCase.getStartLevel(); i <= currentCase.getDepth(); i++) {
-        String field = state.fieldPath[i];
-        int index = state.indexFieldPath[i];
-        builder = builder.exec().callOnThis("startGroup").literal(field).nextParam().literal(index).endCall().endExec();
+        // Generating the following call:
+        // currentState.groupConverterPath[currentLevel].start();
+        builder = builder.exec().get(groupConverterName(state.id, i)).callNoParam("start").endExec();
       }
     }
     if (addPrimitive) {
-      // Generating the following call
-      //  addPrimitive(currentState, currentLevel, columnReader);
-      builder =
-          builder.exec().callOnThis("addPrimitive"+state.primitive.name())
-            .literal(state.primitiveField).nextParam().literal(state.primitiveFieldIndex).nextParam().get("value_"+state.id)
-          .endCall().endExec();
+      // Generating the following call:
+      // currentState.primitive.addValueToPrimitiveConverter(currentState.primitiveConverter, columnReader);
+        builder = builder.exec().get(primitiveConverterName(state.id))
+            .call(state.primitive.addMethod())
+              .get("value_"+state.id)
+            .endCall().endExec();
     }
     if (currentCase.isGoingDown()) {
       // Generating the following loop
       //  for (; currentLevel > next; currentLevel--) {
-      //    endGroup(currentState, currentLevel - 1);
+      //    currentState.groupConverterPath[currentLevel - 1].end();
       //  }
       for (int i = currentCase.getDepth() + 1; i > currentCase.getNextLevel(); i--) {
-        String field = state.fieldPath[i - 1];
-        int index = state.indexFieldPath[i - 1];
-        builder = builder.exec().callOnThis("endGroup").literal(field).nextParam().literal(index).endCall().endExec();
+        builder = builder.exec().get(groupConverterName(state.id, i - 1)).callNoParam("end").endExec();
       }
     }
     // set currentLevel to its new value
@@ -115,7 +115,7 @@ public class RecordReaderCompiler {
       // if defined we need to save the current value
       builder = builder
           .var(existing(state.primitive.javaType), "value_"+state.id)
-          .set("value_"+state.id).get(columnReader).callNoParam(state.primitive.getMethod).endSet();
+          .set("value_"+state.id).get(columnReader).callNoParam(state.primitive.getMethod()).endSet();
     }
     builder = builder
         .exec().get(columnReader).callNoParam("consume").endExec();
@@ -166,11 +166,21 @@ public class RecordReaderCompiler {
     // create a unique class name
     String className = this.getClass().getName()+"$CompiledRecordReader"+(++id);
     ClassBuilder classBuilder = new Builder(false)
-        .startClass(className, existing(BaseRecordReader.class));
+        .startClass(className, existing(BaseRecordReader.class))
+        .field(PUBLIC, existing(GroupConverter.class), "recordConsumer"); // converters root
     for (int i = 0; i < stateCount; i++) {
+      State state = recordReader.getState(i);
+      // TODO: look into using the actual class. It fails when the class is private. maybe setAccessible?
       // create a field for each column reader
       classBuilder = classBuilder
-        .field(PUBLIC, existing(ColumnReader.class), "state_"+i+"_column");
+        .field(PUBLIC, existing(ColumnReader.class), "state_"+ i +"_column")
+        .field(PUBLIC, existing(PrimitiveConverter.class), primitiveConverterName(i)); // primitiveConverter
+
+      for (int j = 0; j < state.groupConverterPath.length; j++) {
+        classBuilder = classBuilder
+            .field(PUBLIC, existing(GroupConverter.class), groupConverterName(i, j)); // groupConverters
+      }
+
     }
 
     MethodBuilder readMethodBuilder = classBuilder
@@ -182,7 +192,7 @@ public class RecordReaderCompiler {
           // debug statement
           .transform(this.<MethodBuilder>debug("startMessage"))
           //  generating: startMessage();
-          .exec().callOnThisNoParam("startMessage").endExec()
+          .exec().get("recordConsumer").callNoParam("start").endExec()
           // initially: currentLevel = 0;
           .set("currentLevel").literal(0).endSet();
     for (int i = 0; i < stateCount; i++) {
@@ -223,7 +233,7 @@ public class RecordReaderCompiler {
     FutureType testClass = readMethodBuilder
             .label(END_RECORD)
             //  endMessage();
-            .exec().callOnThisNoParam("endMessage").endExec()
+            .exec().get("recordConsumer").callNoParam("end").endExec()
           .endMethod()
         .endClass();
 
@@ -231,18 +241,22 @@ public class RecordReaderCompiler {
     try {
       Class<?> generated = (Class<?>)cl.loadClass(className);
       BaseRecordReader<T> compiledRecordReader = (BaseRecordReader<T>)generated.getConstructor().newInstance();
+      try {
+      generated.getField("recordConsumer").set(compiledRecordReader, recordReader.getRecordConsumer());
       compiledRecordReader.caseLookup = new State[stateCount];
       for (int i = 0; i < stateCount; i++) {
         State state = recordReader.getState(i);
-        try {
           generated.getField("state_"+i+"_column").set(compiledRecordReader, state.column);
-        } catch (NoSuchFieldException e) {
-          throw new CompilationException("bug: can't find field for state " + i, e);
-        }
+          generated.getField(primitiveConverterName(i)).set(compiledRecordReader, state.primitiveConverter);
+          for (int j = 0; j < state.groupConverterPath.length; j++) {
+            generated.getField(groupConverterName(i, j)).set(compiledRecordReader, state.groupConverterPath[j]);
+          }
         compiledRecordReader.caseLookup[i] = state;
       }
+      } catch (NoSuchFieldException e) {
+        throw new CompilationException("bug: can't find field", e);
+      }
       compiledRecordReader.recordMaterializer = recordReader.getMaterializer();
-      compiledRecordReader.recordConsumer = recordReader.getRecordConsumer();
       return compiledRecordReader;
     } catch (ClassNotFoundException e) {
       throw new CompilationException("generated class "+className+" could not be loaded", e);
@@ -259,6 +273,14 @@ public class RecordReaderCompiler {
     } catch (NoSuchMethodException e) {
       throw new CompilationException("generated class "+className+" could not be instantiated", e);
     }
+  }
+
+  String groupConverterName(int state, int level) {
+    return "state_" + state + "_groupConverterPath_" + level;
+  }
+
+  String primitiveConverterName(int state) {
+    return "state_"+ state + "_primitive";
   }
 
   private <S extends StatementBuilder<S>> Function<S, S> debug(final String message) {

@@ -15,8 +15,8 @@
  */
 package parquet.io;
 
-import static parquet.data.simple.example.Paper.r1;
-import static parquet.data.simple.example.Paper.schema;
+import static parquet.example.Paper.r1;
+import static parquet.example.Paper.schema;
 import static parquet.io.TestColumnIO.expectedEventsForR1;
 
 import java.util.ArrayDeque;
@@ -29,9 +29,10 @@ import java.util.logging.Logger;
 
 import org.junit.Test;
 
-import parquet.column.mem.MemColumnWriteStore;
-import parquet.column.mem.MemPageStore;
-import parquet.data.GroupWriter;
+import parquet.column.ColumnWriteStore;
+import parquet.column.impl.ColumnWriteStoreImpl;
+import parquet.column.page.mem.MemPageStore;
+import parquet.example.data.GroupWriter;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.io.RecordReader;
@@ -42,7 +43,6 @@ public class TestRecordReaderCompiler {
 
   @Test
   public void testRecordReaderCompiler() {
-
 
     Logger.getLogger("brennus").setLevel(Level.FINEST);
     Logger.getLogger("brennus").addHandler(new Handler() {
@@ -58,7 +58,7 @@ public class TestRecordReaderCompiler {
     });
 
     MemPageStore memPageStore = new MemPageStore();
-    MemColumnWriteStore writeStore = new MemColumnWriteStore(memPageStore, 1024*1024*1);
+    ColumnWriteStore writeStore = new ColumnWriteStoreImpl(memPageStore, 1024*1024*1);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     new GroupWriter(columnIO.getRecordWriter(writeStore), schema).write(r1);
     writeStore.flush();
@@ -67,8 +67,8 @@ public class TestRecordReaderCompiler {
     System.out.println("compile");
     RecordReader<Void> recordReader = columnIO.getRecordReader(
         memPageStore,
-        new ExpectationValidatingRecordConsumer(
-            new ArrayDeque<String>(Arrays.asList(expectedEventsForR1))));
+        new ExpectationValidatingConverter(
+            new ArrayDeque<String>(Arrays.asList(expectedEventsForR1)), schema));
     recordReader = new RecordReaderCompiler().compile((RecordReaderImplementation<Void>)recordReader);
 
     Logger.getLogger("brennus").info("read");
