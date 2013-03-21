@@ -79,7 +79,7 @@ public class ProtocolReadToWrite {
       out.writeI64(in.readI64());
       break;
     case TType.STRING:
-      out.writeString(in.readString());
+      out.writeBinary(in.readBinary());
       break;
     case TType.VOID:
       break;
