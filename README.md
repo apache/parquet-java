@@ -28,7 +28,7 @@ to run the unit tests:
 mvn test
 
 The build runs in [Travis CI](http://travis-ci.org/Parquet/parquet-mr):
-[![Build Status](https://secure.travis-ci.org/Parquet/parquet-mr.png)](http://travis-ci.org/Parquet/parquet-mr)
+[![Build Status](https://secure.travis-ci.org/Parquet/parquet-mr.png?branch=master)](http://travis-ci.org/Parquet/parquet-mr)
 
 ## Authors and contributors
 
