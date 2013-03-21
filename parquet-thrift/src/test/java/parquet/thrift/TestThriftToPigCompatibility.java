@@ -40,6 +40,7 @@ import parquet.io.ConverterConsumer;
 import parquet.io.MessageColumnIO;
 import parquet.io.RecordConsumerLoggingWrapper;
 import parquet.io.api.RecordConsumer;
+import parquet.pig.PigSchemaConverter;
 import parquet.pig.convert.TupleRecordMaterializer;
 import parquet.schema.MessageType;
 import parquet.thrift.struct.ThriftType.StructType;
@@ -142,7 +143,7 @@ public class TestThriftToPigCompatibility {
    * @param o the object to convert
    * @throws TException
    */
-  private <T extends TBase<?,?>> void validateSameTupleAsEB(T o) throws TException {
+  public static <T extends TBase<?,?>> void validateSameTupleAsEB(T o) throws TException {
     final ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter();
     @SuppressWarnings("unchecked")
     final Class<T> class1 = (Class<T>) o.getClass();
@@ -151,7 +152,7 @@ public class TestThriftToPigCompatibility {
     final StructType structType = thriftSchemaConverter.toStructType(class1);
     final ThriftToPig<T> thriftToPig = new ThriftToPig<T>(class1);
     final Schema pigSchema = thriftToPig.toSchema();
-    final TupleRecordMaterializer tupleRecordConverter = new TupleRecordMaterializer(schema, pigSchema);
+    final TupleRecordMaterializer tupleRecordConverter = new TupleRecordMaterializer(schema, pigSchema, true);
     RecordConsumer recordConsumer = new ConverterConsumer(tupleRecordConverter.getRootConverter(), schema);
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     ParquetWriteProtocol p = new ParquetWriteProtocol(new RecordConsumerLoggingWrapper(recordConsumer), columnIO, structType);
@@ -159,5 +160,7 @@ public class TestThriftToPigCompatibility {
     final Tuple t = tupleRecordConverter.getCurrentRecord();
     final Tuple expected = thriftToPig.getPigTuple(o);
     assertEquals(expected.toString(), t.toString());
+    final MessageType filtered = new PigSchemaConverter().filter(schema, pigSchema);
+    assertEquals(schema.toString(), filtered.toString());
   }
 }

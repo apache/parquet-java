@@ -53,9 +53,9 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
   private final ColumnIOFactory columnIOFactory = new ColumnIOFactory();
 
-  private final MessageType requestedSchema;
-  private final int columnCount;
-  private final Class<?> readSupportClass;
+  private MessageType requestedSchema;
+  private int columnCount;
+  private final ReadSupport<T> readSupport;
 
   private RecordMaterializer<T> recordConverter;
 
@@ -78,10 +78,8 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
    * @param requestedSchema the requested schema (a subset of the original schema) for record projection
    * @param readSupportClass
    */
-  ParquetRecordReader(String requestedSchema, Class<?> readSupportClass) {
-    this.requestedSchema = MessageTypeParser.parseMessageType(requestedSchema);
-    this.columnCount = this.requestedSchema.getPaths().size();
-    this.readSupportClass = readSupportClass;
+  ParquetRecordReader(ReadSupport<T> readSupport) {
+    this.readSupport = readSupport;
   }
 
   private void checkRead() throws IOException {
@@ -153,21 +151,15 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
     Configuration configuration = taskAttemptContext.getConfiguration();
-    @SuppressWarnings("unchecked") // I know
-    ParquetInputSplit<T> parquetInputSplit = (ParquetInputSplit<T>)inputSplit;
-    try {
-      @SuppressWarnings("unchecked") // I know
-      ReadSupport<T> readSupport = (ReadSupport<T>)readSupportClass.newInstance();
-      this.recordConverter = readSupport.initForRead(
-          configuration,
-          parquetInputSplit.getExtraMetadata(),
-          MessageTypeParser.parseMessageType(parquetInputSplit.getSchema()),
-          requestedSchema);
-    } catch (InstantiationException e) {
-      throw new BadConfigurationException("could not instanciate read support class", e);
-    } catch (IllegalAccessException e) {
-      throw new BadConfigurationException("could not instanciate read support class", e);
-    }
+    ParquetInputSplit parquetInputSplit = (ParquetInputSplit)inputSplit;
+    this.requestedSchema = MessageTypeParser.parseMessageType(parquetInputSplit.getRequestedSchema());
+    this.columnCount = this.requestedSchema.getPaths().size();
+    this.recordConverter = readSupport.prepareForRead(
+        configuration,
+        parquetInputSplit.getExtraMetadata(),
+        MessageTypeParser.parseMessageType(parquetInputSplit.getSchema()),
+        new ReadSupport.ReadContext(requestedSchema));
+
     Path path = parquetInputSplit.getPath();
     List<BlockMetaData> blocks = parquetInputSplit.getBlocks();
     List<ColumnDescriptor> columns = requestedSchema.getColumns();

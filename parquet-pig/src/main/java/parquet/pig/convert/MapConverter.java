@@ -51,12 +51,12 @@ final class MapConverter extends GroupConverter {
   private String currentKey;
   private Object currentValue;
 
-  MapConverter(GroupType parquetSchema, FieldSchema pigSchema, ParentValueContainer parent) throws FrontendException {
+  MapConverter(GroupType parquetSchema, FieldSchema pigSchema, ParentValueContainer parent, boolean numbersDefaultToZero) throws FrontendException {
     if (parquetSchema.getFieldCount() != 1) {
       throw new IllegalArgumentException("maps have only one field. " + parquetSchema);
     }
     this.parent = parent;
-    keyValue = new MapKeyValueConverter(parquetSchema.getType(0).asGroupType(), pigSchema.schema.getField(0));
+    keyValue = new MapKeyValueConverter(parquetSchema.getType(0).asGroupType(), pigSchema.schema.getField(0), numbersDefaultToZero);
   }
 
   @Override
@@ -127,7 +127,7 @@ final class MapConverter extends GroupConverter {
     private final StringKeyConverter keyConverter = new StringKeyConverter();
     private final Converter valueConverter;
 
-    MapKeyValueConverter(GroupType parquetSchema, Schema.FieldSchema pigSchema) {
+    MapKeyValueConverter(GroupType parquetSchema, Schema.FieldSchema pigSchema, boolean numbersDefaultToZero) {
       if (parquetSchema.getFieldCount() != 2
           || !parquetSchema.getType(0).getName().equals("key")
           || !parquetSchema.getType(1).getName().equals("value")) {
@@ -137,7 +137,7 @@ final class MapConverter extends GroupConverter {
         void add(Object value) {
           currentValue = value;
         }
-      });
+      }, numbersDefaultToZero);
     }
 
     @Override

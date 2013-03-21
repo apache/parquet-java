@@ -37,28 +37,73 @@ import parquet.schema.MessageType;
  *
  */
 public class TupleReadSupport extends ReadSupport<Tuple> {
+  static final String PARQUET_PIG_REQUESTED_SCHEMA = "parquet.pig.requested.schema";
+  static final String PARQUET_PIG_NUMBERS_DEFAULT_TO_ZERO = "parquet.pig.numbers.default.to.zero";
+
   private static final Log LOG = Log.getLog(TupleReadSupport.class);
 
   private static final PigSchemaConverter schemaConverter = new PigSchemaConverter();
 
+
   /**
-   * {@inheritDoc}
+   * @param configuration the configuration for the current job
+   * @return the pig schema requested by the user or null if none.
    */
+  static Schema getRequestedPigSchema(Configuration configuration) {
+    String pigSchemaString = configuration.get(PARQUET_PIG_REQUESTED_SCHEMA);
+    return parsePigSchema(pigSchemaString);
+  }
+
+  static Schema parsePigSchema(String pigSchemaString) {
+    try {
+      return pigSchemaString == null ? null : Utils.getSchemaFromString(pigSchemaString);
+    } catch (ParserException e) {
+      throw new SchemaConversionException("could not parse Pig schema: " + pigSchemaString, e);
+    }
+  }
+
+  /**
+   * @param fileSchema the parquet schema from the file
+   * @param keyValueMetaData the extra meta data from the file
+   * @return the pig schema according to the file
+   */
+  static Schema getPigSchemaFromFile(MessageType fileSchema, Map<String, String> keyValueMetaData) {
+    PigMetaData pigMetaData = PigMetaData.fromMetaData(keyValueMetaData);
+    // TODO: if no Pig schema in file: generate one from the Parquet schema
+    return parsePigSchema(pigMetaData.getPigSchema());
+  }
+
   @Override
-  public RecordMaterializer<Tuple> initForRead(
+  public ReadContext init(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
+    Schema requestedPigSchema = getRequestedPigSchema(configuration);
+    if (requestedPigSchema == null) {
+      return new ReadContext(fileSchema);
+    } else {
+      // project the file schema according to the requested Pig schema
+      MessageType parquetRequestedSchema =
+          schemaConverter.filter(
+          fileSchema,
+          requestedPigSchema);
+      return new ReadContext(parquetRequestedSchema);
+    }
+  }
+
+  @Override
+  public RecordMaterializer<Tuple> prepareForRead(
       Configuration configuration,
       Map<String, String> keyValueMetaData,
-      MessageType fielSchema,
-      MessageType requestedSchema) {
-    PigMetaData pigMetaData = PigMetaData.fromMetaData(keyValueMetaData);
-    try {
-      Schema pigSchema = schemaConverter.filter(
-          Utils.getSchemaFromString(pigMetaData.getPigSchema()),
-          requestedSchema);
-      return new TupleRecordMaterializer(requestedSchema, pigSchema);
-    } catch (ParserException e) {
-      throw new SchemaConversionException("could not parse Pig schema: " + pigMetaData.getPigSchema(), e);
+      MessageType fileSchema,
+      ReadContext readContext) {
+    MessageType requestedSchema = readContext.getRequestedSchema();
+    Schema requestedPigSchema = getRequestedPigSchema(configuration);
+    if (requestedPigSchema == null) {
+      requestedPigSchema = getPigSchemaFromFile(fileSchema, keyValueMetaData);
     }
+    boolean numbersDefaultToZero = configuration.getBoolean(PARQUET_PIG_NUMBERS_DEFAULT_TO_ZERO, false);
+    if (numbersDefaultToZero) {
+      LOG.info("Numbers will default to 0 instead of NULL");
+    }
+    return new TupleRecordMaterializer(requestedSchema, requestedPigSchema, numbersDefaultToZero);
   }
 
 }

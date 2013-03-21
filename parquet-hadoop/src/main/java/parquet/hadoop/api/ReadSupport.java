@@ -32,18 +32,56 @@ import parquet.schema.MessageType;
 abstract public class ReadSupport<T> {
 
   /**
-   * called in {@link org.apache.hadoop.mapreduce.RecordReader#initialize(org.apache.hadoop.mapreduce.InputSplit, org.apache.hadoop.mapreduce.TaskAttemptContext)}
-   * the returned RecordConsumer will materialize the records and add them to the destination
+   * information to read the file
+   *
+   * @author Julien Le Dem
+   *
+   */
+  public static final class ReadContext {
+    private final MessageType requestedSchema;
+
+    public ReadContext(MessageType requestedSchema) {
+      super();
+      if (requestedSchema == null) {
+        throw new NullPointerException("requestedSchema");
+      }
+      this.requestedSchema = requestedSchema;
+    }
+    /**
+     * @return the schema of the file
+     */
+    public MessageType getRequestedSchema() {
+      return requestedSchema;
+    }
+  }
+
+  /**
+   * called in {@link org.apache.hadoop.mapreduce.InputFormat#getSplits(org.apache.hadoop.mapreduce.JobContext)} in the front end
+   *
    * @param configuration the job configuration
    * @param keyValueMetaData the app specific metadata from the file
    * @param fileSchema the schema of the file
    * @param requestedSchema the schema requested by the user
+   * @return the readContext that defines how to read the file
+   */
+  abstract public ReadContext init(
+      Configuration configuration,
+      Map<String, String> keyValueMetaData,
+      MessageType fileSchema);
+
+  /**
+   * called in {@link org.apache.hadoop.mapreduce.RecordReader#initialize(org.apache.hadoop.mapreduce.InputSplit, org.apache.hadoop.mapreduce.TaskAttemptContext)} in the back end
+   * the returned RecordConsumer will materialize the records and add them to the destination
+   * @param configuration the job configuration
+   * @param keyValueMetaData the app specific metadata from the file
+   * @param fileSchema the schema of the file
+   * @param readContext returned by the init method
    * @return the recordConsumer that will receive the events
    */
-  abstract public RecordMaterializer<T> initForRead(
+  abstract public RecordMaterializer<T> prepareForRead(
       Configuration configuration,
       Map<String, String> keyValueMetaData,
       MessageType fileSchema,
-      MessageType requestedSchema);
+      ReadContext readContext);
 
 }

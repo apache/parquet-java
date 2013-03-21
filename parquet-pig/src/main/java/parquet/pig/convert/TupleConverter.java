@@ -36,7 +36,10 @@ import parquet.io.api.PrimitiveConverter;
 import parquet.pig.TupleConversionException;
 import parquet.schema.GroupType;
 import parquet.schema.OriginalType;
+import parquet.schema.PrimitiveType;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type;
+import parquet.schema.Type.Repetition;
 
 /**
  * converts a group into a tuple
@@ -54,7 +57,13 @@ public class TupleConverter extends GroupConverter {
   protected Tuple currentTuple;
   private final Converter[] converters;
 
-  public TupleConverter(GroupType parquetSchema, Schema pigSchema) {
+  private final GroupType parquetSchema;
+
+  private final boolean numbersDefaultToZero;
+
+  public TupleConverter(GroupType parquetSchema, Schema pigSchema, boolean numbersDefaultToZero) {
+    this.parquetSchema = parquetSchema;
+    this.numbersDefaultToZero = numbersDefaultToZero;
     try {
       this.schemaSize = parquetSchema.getFieldCount();
       if (schemaSize != pigSchema.size()) {
@@ -70,22 +79,22 @@ public class TupleConverter extends GroupConverter {
           void add(Object value) {
             TupleConverter.this.set(index, value);
           }
-        });
+        }, numbersDefaultToZero);
       }
     } catch (FrontendException e) {
       throw new ParquetDecodingException("can not initialize pig converter from:\n" + parquetSchema + "\n" + pigSchema, e);
     }
   }
 
-  static Converter newConverter(FieldSchema pigField, Type type, final ParentValueContainer parent) {
+  static Converter newConverter(FieldSchema pigField, Type type, final ParentValueContainer parent, boolean numbersDefaultToZero) {
     try {
       switch (pigField.type) {
       case DataType.BAG:
-        return new BagConverter(type.asGroupType(), pigField, parent);
+        return new BagConverter(type.asGroupType(), pigField, parent, numbersDefaultToZero);
       case DataType.MAP:
-        return new MapConverter(type.asGroupType(), pigField, parent);
+        return new MapConverter(type.asGroupType(), pigField, parent, numbersDefaultToZero);
       case DataType.TUPLE:
-        return new TupleConverter(type.asGroupType(), pigField.schema) {
+        return new TupleConverter(type.asGroupType(), pigField.schema, numbersDefaultToZero) {
           @Override
           public void end() {
             super.end();
@@ -121,9 +130,41 @@ public class TupleConverter extends GroupConverter {
     return converters[fieldIndex];
   }
 
+  private static final Integer I32_ZERO = Integer.valueOf(0);
+  private static final Long I64_ZERO = Long.valueOf(0);
+  private static final Float FLOAT_ZERO = Float.valueOf(0);
+  private static final Double DOUBLE_ZERO = Double.valueOf(0);
+
   @Override
   final public void start() {
     currentTuple = TF.newTuple(schemaSize);
+    if (numbersDefaultToZero) {
+      try {
+        int i = 0;
+        for (Type field : parquetSchema.getFields()) {
+          if (field.isPrimitive() && field.getRepetition() == Repetition.OPTIONAL) {
+            PrimitiveType primitiveType = field.asPrimitiveType();
+            switch (primitiveType.getPrimitiveTypeName()) {
+            case INT32:
+              currentTuple.set(i, I32_ZERO);
+              break;
+            case INT64:
+              currentTuple.set(i, I64_ZERO);
+              break;
+            case FLOAT:
+              currentTuple.set(i, FLOAT_ZERO);
+              break;
+            case DOUBLE:
+              currentTuple.set(i, DOUBLE_ZERO);
+              break;
+            }
+          }
+          ++ i;
+        }
+      } catch (ExecException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   final void set(int fieldIndex, Object value) {
@@ -307,7 +348,7 @@ public class TupleConverter extends GroupConverter {
     private final Converter child;
     private final ParentValueContainer parent;
 
-    BagConverter(GroupType parquetSchema, FieldSchema pigSchema, ParentValueContainer parent) throws FrontendException {
+    BagConverter(GroupType parquetSchema, FieldSchema pigSchema, ParentValueContainer parent, boolean numbersDefaultToZero) throws FrontendException {
       this.parent = parent;
       if (parquetSchema.getFieldCount() != 1) {
         throw new IllegalArgumentException("bags have only one field. " + parquetSchema + " size = " + parquetSchema.getFieldCount());
@@ -316,7 +357,7 @@ public class TupleConverter extends GroupConverter {
 
       ParentValueContainer childsParent;
       FieldSchema pigField;
-      if (nestedType.isPrimitive() || nestedType.getOriginalType() == OriginalType.MAP) {
+      if (nestedType.isPrimitive() || nestedType.getOriginalType() == OriginalType.MAP || nestedType.getOriginalType() == OriginalType.LIST) {
         // Pig bags always contain tuples
         // In that case we need to wrap the value in an extra tuple
         childsParent = new ParentValueContainer() {
@@ -333,7 +374,7 @@ public class TupleConverter extends GroupConverter {
           }};
         pigField = pigSchema.schema.getField(0);
       }
-      child = newConverter(pigField, nestedType, childsParent);
+      child = newConverter(pigField, nestedType, childsParent, numbersDefaultToZero);
     }
 
     @Override

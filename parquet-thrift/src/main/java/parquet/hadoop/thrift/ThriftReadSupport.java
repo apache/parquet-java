@@ -29,11 +29,17 @@ import parquet.thrift.ThriftRecordConverter;
 public class ThriftReadSupport<T> extends ReadSupport<T> {
 
   @Override
-  public RecordMaterializer<T> initForRead(
-      Configuration configuration,
-      Map<String, String> keyValueMetaData,
-      MessageType fileSchema,
-      MessageType requestedSchema) {
+  public parquet.hadoop.api.ReadSupport.ReadContext init(
+      Configuration configuration, Map<String, String> keyValueMetaData,
+      MessageType fileSchema) {
+    // TODO: handle the requested schema
+    return new ReadContext(fileSchema);
+  }
+
+  @Override
+  public RecordMaterializer<T> prepareForRead(Configuration configuration,
+      Map<String, String> keyValueMetaData, MessageType fileSchema,
+      parquet.hadoop.api.ReadSupport.ReadContext readContext) {
     final ThriftMetaData thriftMetaData = ThriftMetaData.fromExtraMetaData(keyValueMetaData);
     final Class<T> thriftClass = (Class<T>)thriftMetaData.getThriftClass();
     // TODO: handle the requested schema

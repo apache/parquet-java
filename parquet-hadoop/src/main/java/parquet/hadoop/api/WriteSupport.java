@@ -39,12 +39,18 @@ abstract public class WriteSupport<T> {
    * @author Julien Le Dem
    *
    */
-  public static class WriteContext {
+  public static final class WriteContext {
     private final MessageType schema;
     private final Map<String, String> extraMetaData;
 
     public WriteContext(MessageType schema, Map<String, String> extraMetaData) {
       super();
+      if (schema == null) {
+        throw new NullPointerException("schema");
+      }
+      if (extraMetaData == null) {
+        throw new NullPointerException("extraMetaData");
+      }
       this.schema = schema;
       this.extraMetaData = Collections.unmodifiableMap(extraMetaData);
     }

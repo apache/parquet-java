@@ -47,7 +47,7 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
       FileStatus outputStatus = fileSystem.getFileStatus(outputPath);
       List<Footer> footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus);
       try {
-        ParquetFileWriter.writeSummaryFile(configuration, outputPath, footers);
+        ParquetFileWriter.writeMetadataFile(configuration, outputPath, footers);
       } catch (Exception e) {
         LOG.warn("could not write summary file for " + outputPath, e);
         final Path metadataPath = new Path(outputPath, ParquetFileWriter.PARQUET_METADATA_FILE);

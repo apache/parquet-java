@@ -26,8 +26,8 @@ public class TupleRecordMaterializer extends RecordMaterializer<Tuple> {
 
   private TupleConverter root;
 
-  public TupleRecordMaterializer(GroupType parquetSchema, Schema pigSchema) {
-    this.root = new TupleConverter(parquetSchema, pigSchema);
+  public TupleRecordMaterializer(GroupType parquetSchema, Schema pigSchema, boolean numbersDefaultToZero) {
+    this.root = new TupleConverter(parquetSchema, pigSchema, numbersDefaultToZero);
   }
 
   @Override

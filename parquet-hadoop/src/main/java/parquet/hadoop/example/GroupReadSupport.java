@@ -28,12 +28,18 @@ import parquet.schema.MessageType;
 public class GroupReadSupport extends ReadSupport<Group> {
 
   @Override
-  public RecordMaterializer<Group> initForRead(
-      Configuration configuration,
-      Map<String, String> keyValueMetaData,
-      MessageType fielSchema,
-      MessageType requestedSchema) {
-    return new GroupRecordConverter(requestedSchema);
+  public parquet.hadoop.api.ReadSupport.ReadContext init(
+      Configuration configuration, Map<String, String> keyValueMetaData,
+      MessageType fileSchema) {
+    // TODO: support requestedSchema
+    return new ReadContext(fileSchema);
+  }
+
+  @Override
+  public RecordMaterializer<Group> prepareForRead(Configuration configuration,
+      Map<String, String> keyValueMetaData, MessageType fileSchema,
+      parquet.hadoop.api.ReadSupport.ReadContext readContext) {
+    return new GroupRecordConverter(readContext.getRequestedSchema());
   }
 
 }

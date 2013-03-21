@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
@@ -37,6 +38,7 @@ import parquet.example.data.Group;
 import parquet.example.data.GroupWriter;
 import parquet.example.data.simple.SimpleGroup;
 import parquet.example.data.simple.convert.GroupRecordConverter;
+import parquet.hadoop.api.ReadSupport.ReadContext;
 import parquet.io.ConverterConsumer;
 import parquet.io.RecordConsumerLoggingWrapper;
 import parquet.io.api.RecordMaterializer;
@@ -180,7 +182,10 @@ public class TestTupleRecordConsumer {
 
   private RecordMaterializer<Tuple> newPigRecordConsumer(MessageType parquetSchema, String pigSchemaString) throws ParserException {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
-    return tupleReadSupport.initForRead(null, pigMetaData(pigSchemaString), parquetSchema, parquetSchema);
+    final Configuration configuration = new Configuration(false);
+    final Map<String, String> pigMetaData = pigMetaData(pigSchemaString);
+    final ReadContext init = tupleReadSupport.init(configuration, pigMetaData, parquetSchema);
+    return tupleReadSupport.prepareForRead(configuration, pigMetaData, parquetSchema, init);
   }
 
   private MessageType getMessageType(String pigSchemaString) throws ParserException {

@@ -261,7 +261,7 @@ public class ParquetFileWriter {
   public void end(Map<String, String> extraMetaData) throws IOException {
     state = state.end();
     if (DEBUG) LOG.debug(out.getPos() + ": end");
-    ParquetMetadata footer = new ParquetMetadata(new FileMetaData(schema), blocks, extraMetaData);
+    ParquetMetadata footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData), blocks);
     serializeFooter(footer, out);
     out.close();
   }
@@ -275,7 +275,7 @@ public class ParquetFileWriter {
     out.write(MAGIC);
   }
 
-  public static void writeSummaryFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
+  public static void writeMetadataFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
     Path metaDataPath = new Path(outputPath, PARQUET_METADATA_FILE);
     FileSystem fs = outputPath.getFileSystem(configuration);
     outputPath = outputPath.makeQualified(fs);
@@ -289,7 +289,6 @@ public class ParquetFileWriter {
   private static ParquetMetadata mergeFooters(Path root, List<Footer> footers) {
     String rootPath = root.toString();
     FileMetaData fileMetaData = null;
-    Map<String, String> keyValueMetaData = new HashMap<String, String>();
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     for (Footer footer : footers) {
       String path = footer.getFile().toString();
@@ -300,29 +299,40 @@ public class ParquetFileWriter {
       while (path.startsWith("/")) {
         path = path.substring(1);
       }
-      ParquetMetadata currentMetadata = footer.getParquetMetadata();
-      if (fileMetaData == null){
-        fileMetaData = currentMetadata.getFileMetaData();
-      } else if (!fileMetaData.equals(currentMetadata.getFileMetaData())) {
-        throw new RuntimeException("could not merge metadata when the schema is different");
+      fileMetaData = mergeInto(footer.getParquetMetadata().getFileMetaData(), fileMetaData);
+      for (BlockMetaData block : footer.getParquetMetadata().getBlocks()) {
+        block.setPath(path);
+        blocks.add(block);
       }
-      Map<String, String> currentKeyValues = currentMetadata.getKeyValueMetaData();
-      for (Entry<String, String> entry : currentKeyValues.entrySet()) {
-        final String value = keyValueMetaData.get(entry.getKey());
+    }
+    return new ParquetMetadata(fileMetaData, blocks);
+  }
+
+  static FileMetaData mergeInto(
+      FileMetaData toMerge,
+      FileMetaData mergedMetadata) {
+    if (mergedMetadata == null) {
+      return new FileMetaData(
+          toMerge.getSchema(),
+          new HashMap<String, String>(toMerge.getKeyValueMetaData()));
+    } else if (
+        (mergedMetadata.getSchema() == null && toMerge.getSchema() != null)
+        || (mergedMetadata.getSchema() != null && !mergedMetadata.getSchema().equals(toMerge.getSchema()))) {
+      throw new RuntimeException("could not merge metadata when the schema is different:"
+          + mergedMetadata.getSchema() + " != " + toMerge.getSchema());
+    } else {
+      for (Entry<String, String> entry : toMerge.getKeyValueMetaData().entrySet()) {
+        final String value = mergedMetadata.getKeyValueMetaData().get(entry.getKey());
         if (value == null) {
-          keyValueMetaData.put(entry.getKey(), entry.getValue());
+          mergedMetadata.getKeyValueMetaData().put(entry.getKey(), entry.getValue());
         } else if (!value.equals(entry.getValue())) {
           throw new RuntimeException(
               "could not merge metadata: key "+entry.getKey()
               + " has conflicting values " + value + " and " + entry.getValue());
         }
       }
-      for (BlockMetaData block : currentMetadata.getBlocks()) {
-        block.setPath(path);
-        blocks.add(block);
-      }
     }
-    return new ParquetMetadata(fileMetaData, blocks, keyValueMetaData);
+    return mergedMetadata;
   }
 
 }

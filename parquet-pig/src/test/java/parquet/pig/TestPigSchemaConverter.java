@@ -35,8 +35,8 @@ public class TestPigSchemaConverter {
     MessageType expectedMT = MessageTypeParser.parseMessageType(schemaString);
     assertEquals("converting "+pigSchemaString+" to "+schemaString, expectedMT, schema);
 
-    Schema filtered = pigSchemaConverter.filter(pigSchema, schema);
-    assertEquals("converting "+pigSchemaString+" to "+schemaString+" and filtering", pigSchema.toString(), filtered.toString());
+    MessageType filtered = pigSchemaConverter.filter(schema, pigSchema);
+    assertEquals("converting "+pigSchemaString+" to "+schemaString+" and filtering", schema.toString(), filtered.toString());
   }
 
   @Test
