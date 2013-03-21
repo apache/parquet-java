@@ -35,6 +35,9 @@ import parquet.schema.MessageType;
 /**
  * make sure {@link Log#LEVEL} is set to {@link Level#OFF}
  *
+ * run with -verbose:gc -Xmx2g -Xms2g
+ * There should be no gc logs in between <<<>>>
+ *
  * @author Julien Le Dem
  *
  */
@@ -47,15 +50,15 @@ public class PerfTest {
   }
 
   private static void read(MemPageStore memPageStore) {
+//    readDynamic(memPageStore, schema, "read all");
     readDynamic(memPageStore, schema, "read all");
-    readDynamic(memPageStore, schema, "read all");
-    readCompiled(memPageStore, schema, "read all");
+//    readCompiled(memPageStore, schema, "read all");
     readCompiled(memPageStore, schema, "read all");
     readDynamic(memPageStore, schema2, "read projected");
-    readCompiled(memPageStore, schema2, "read projected");
+//    readCompiled(memPageStore, schema2, "read projected");
     readCompiled(memPageStore, schema2, "read projected");
     readDynamic(memPageStore, schema3, "read projected no Strings");
-    readCompiled(memPageStore, schema3, "read projected no Strings");
+//    readCompiled(memPageStore, schema3, "read projected no Strings");
     readCompiled(memPageStore, schema3, "read projected no Strings");
   }
 
@@ -115,8 +118,10 @@ public class PerfTest {
   }
   private static void read(RecordReader<Object> recordReader, int count, MessageType schema) {
     Object[] records = new Object[count];
+    System.out.print("Trigger full gc [[[");
     System.gc();
-    System.out.print("<<<");
+    System.out.print("]]]");
+    System.out.print("No gc please <<<");
     long t0 = System.currentTimeMillis();
     for (int i = 0; i < records.length; i++) {
       records[i] = recordReader.read();
@@ -125,7 +130,8 @@ public class PerfTest {
     System.out.print(">>>");
     long t = t1-t0;
     float err = (float)100 * 2 / t; // (+/- 1 ms)
-    System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s err: %3.2f%%\n", count , t, t == 0 ? 0 : count * 1000 / t, err);
+    System.out.printf("                                                          " +
+    		"read %,9d recs in %,5d ms at %,9d rec/s err: %3.2f%%\n", count , t, t == 0 ? 0 : count * 1000 / t, err);
     if (!records[0].equals("end()")) {
       throw new RuntimeException(""+records[0]);
     }
