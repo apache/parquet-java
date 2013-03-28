@@ -19,8 +19,9 @@ public class BinaryPlainValuesReader extends ValuesReader {
   public Binary readBytes() {
     try {
       int length = BytesUtils.readIntLittleEndian(in, offset);
-      offset += 4;
-      return Binary.fromByteArray(in, offset, length);
+      int start = offset + 4;
+      offset = start + length;
+      return Binary.fromByteArray(in, start, length);
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read bytes at offset " + offset, e);
     }
