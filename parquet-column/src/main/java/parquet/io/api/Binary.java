@@ -15,6 +15,8 @@
  */
 package parquet.io.api;
 
+import static parquet.bytes.BytesUtils.UTF8;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -34,7 +36,9 @@ abstract public class Binary {
     return new Binary() {
       @Override
       public String toStringUsingUTF8() {
-        return new String(value, offset, length, BytesUtils.UTF8);
+        return UTF8.decode(ByteBuffer.wrap(value, offset, length)).toString();
+        // TODO: figure out why the following line was much slower
+        // return new String(value, offset, length, BytesUtils.UTF8);
       }
 
       @Override
