@@ -149,9 +149,14 @@ abstract public class BytesInput {
     public void writeAllTo(OutputStream out) throws IOException {
       if (DEBUG) LOG.debug("write All "+ byteCount + " bytes");
       // TODO: more efficient
+      out.write(this.toByteArray());
+    }
+
+    public byte[] toByteArray() throws IOException {
+      if (DEBUG) LOG.debug("read all "+ byteCount + " bytes");
       byte[] buf = new byte[byteCount];
       new DataInputStream(in).readFully(buf);
-      out.write(buf);
+      return buf;
     }
 
     @Override
