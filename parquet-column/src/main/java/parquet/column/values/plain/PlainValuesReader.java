@@ -47,18 +47,6 @@ public class PlainValuesReader extends ValuesReader {
   }
 
   @Override
-  public Binary readBytes() {
-    try {
-      byte[] value = new byte[in.readInt()];
-      in.readFully(value);
-      // TODO: we don't need to read to an array.
-      return Binary.fromByteArray(value);
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not read bytes", e);
-    }
-  }
-
-  @Override
   public double readDouble() {
     try {
       return in.readDouble();
