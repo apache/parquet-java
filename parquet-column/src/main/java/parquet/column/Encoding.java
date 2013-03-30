@@ -19,6 +19,7 @@ import parquet.column.values.ValuesReader;
 import parquet.column.values.ValuesType;
 import parquet.column.values.bitpacking.BitPackingValuesReader;
 import parquet.column.values.boundedint.BoundedIntValuesFactory;
+import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.BooleanPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader;
 import parquet.io.ParquetDecodingException;
@@ -37,6 +38,8 @@ public enum Encoding {
       switch (descriptor.getType()) {
       case BOOLEAN:
         return new BooleanPlainValuesReader();
+      case BINARY:
+        return new BinaryPlainValuesReader();
       default:
         return new PlainValuesReader();
       }
