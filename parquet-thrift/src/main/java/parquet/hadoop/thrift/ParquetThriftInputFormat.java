@@ -15,6 +15,9 @@
  */
 package parquet.hadoop.thrift;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.mapred.JobConf;
+
 import parquet.hadoop.ParquetInputFormat;
 
 public class ParquetThriftInputFormat<T> extends ParquetInputFormat<T> {
@@ -22,5 +25,29 @@ public class ParquetThriftInputFormat<T> extends ParquetInputFormat<T> {
   @SuppressWarnings("unchecked")
   public ParquetThriftInputFormat() {
     super(ThriftReadSupport.class);
+  }
+
+  /**
+   * Call this method when setting up your Hadoop job if reading into a Thrift object
+   * that is not encoded into the parquet-serialized thrift metadata (for example,
+   * writing with Apache Thrift, but reading back into Twitter Scrooge version of
+   * the same thrift definition, or a different but compatible Apache Thrift class).
+   * @param conf
+   * @param klass
+   */
+  public static <T> void setThriftClass(JobConf conf, Class<T> klass) {
+    conf.set(ThriftReadSupport.THRIFT_READ_CLASS_KEY, klass.getName());
+  }
+
+  /**
+   * Call this method when setting up your Hadoop job if reading into a Thrift object
+   * that is not encoded into the parquet-serialized thrift metadata (for example,
+   * writing with Apache Thrift, but reading back into Twitter Scrooge version of
+   * the same thrift definition, or a different but compatible Apache Thrift class).
+   * @param conf
+   * @param klass
+   */
+  public static  <T> void setThriftClass(Configuration conf, Class<T> klass) {
+    conf.set(ThriftReadSupport.THRIFT_READ_CLASS_KEY, klass.getName());
   }
 }

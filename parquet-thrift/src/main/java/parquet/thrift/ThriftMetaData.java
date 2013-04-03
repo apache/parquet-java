@@ -19,24 +19,43 @@ import java.util.Map;
 
 import org.apache.thrift.TBase;
 
+import parquet.Log;
 import parquet.hadoop.BadConfigurationException;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftType.StructType;
 
 
 public class ThriftMetaData {
+  private static final Log LOG = Log.getLog(ThriftMetaData.class);
 
   private static final String THRIFT_CLASS = "thrift.class";
   private static final String THRIFT_DESCRIPTOR = "thrift.descriptor";
-  private final Class<?> thriftClass;
+  private Class<?> thriftClass;
+  private final String thriftClassName;
   private final StructType descriptor;
 
-  public ThriftMetaData(Class<?> thriftClass, StructType descriptor) {
-    this.thriftClass = thriftClass;
+  public ThriftMetaData(String thriftClassName, StructType descriptor) {
+    this.thriftClassName = thriftClassName;
     this.descriptor = descriptor;
   }
 
+  /**
+   * Get the Thrift Class encoded in the metadata.
+   * @return Thrift Class encoded in the metadata.
+   * @throws BadConfigurationException if the encoded class does not
+   * extend TBase or is not available in the current classloader.
+   */
   public Class<?> getThriftClass() {
+    if (thriftClass == null) {
+      try {
+        thriftClass = Class.forName(thriftClassName);
+        if (!TBase.class.isAssignableFrom(thriftClass)) {
+          throw new BadConfigurationException("Provided class " + thriftClassName + " does not extend TBase");
+        }
+      } catch (ClassNotFoundException e) {
+        throw new BadConfigurationException("Could not instantiate thrift class " + thriftClassName, e);
+      }
+    }
     return thriftClass;
   }
 
@@ -44,6 +63,13 @@ public class ThriftMetaData {
     return descriptor;
   }
 
+  /**
+   * Reads ThriftMetadata from the parquet file footer.
+   *
+   *
+   * @param extraMetaData  extraMetaData field of the parquet footer
+   * @return
+   */
   public static ThriftMetaData fromExtraMetaData(
       Map<String, String> extraMetaData) {
     final String thriftClassName = extraMetaData.get(THRIFT_CLASS);
@@ -51,22 +77,13 @@ public class ThriftMetaData {
     if (thriftClassName == null && thriftDescriptorString == null) {
       return null;
     }
-    Class<?> thriftClass;
-    try {
-      thriftClass = Class.forName(thriftClassName);
-      if (!TBase.class.isAssignableFrom(thriftClass)) {
-        throw new BadConfigurationException("Provided class " + thriftClassName + " does not extend TBase");
-      }
-    } catch (ClassNotFoundException e) {
-      throw new BadConfigurationException("Could not instanciate thrift class " + thriftClassName, e);
-    }
     final StructType descriptor;
     try {
       descriptor = (StructType)ThriftType.fromJSON(thriftDescriptorString);
     } catch (RuntimeException e) {
       throw new BadConfigurationException("Could not read the thrift descriptor " + thriftDescriptorString, e);
     }
-    return new ThriftMetaData(thriftClass, descriptor);
+    return new ThriftMetaData(thriftClassName, descriptor);
   }
 
   public Map<String, String> toExtraMetaData() {

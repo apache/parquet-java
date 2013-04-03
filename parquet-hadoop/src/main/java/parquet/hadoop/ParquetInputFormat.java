@@ -28,6 +28,7 @@ import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.JobContext;
@@ -64,6 +65,10 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   public static void setReadSupportClass(Job job,  Class<?> readSupportClass) {
     job.getConfiguration().set(READ_SUPPORT_CLASS, readSupportClass.getName());
+  }
+
+  public static void setReadSupportClass(JobConf conf, Class<?> readSupportClass) {
+    conf.set(READ_SUPPORT_CLASS, readSupportClass.getName());
   }
 
   public static Class<?> getReadSupportClass(Configuration configuration) {

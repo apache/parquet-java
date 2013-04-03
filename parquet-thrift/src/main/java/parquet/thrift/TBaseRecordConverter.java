@@ -32,9 +32,7 @@ public class TBaseRecordConverter<T extends TBase<?,?>> extends ThriftRecordConv
           T thriftObject = thriftClass.newInstance();
           thriftObject.read(protocol);
           return thriftObject;
-        } catch (InstantiationException e) {
-          throw new RuntimeException(e);
-        } catch (IllegalAccessException e) {
+        } catch (Throwable e) {
           throw new RuntimeException(e);
         }
       }
