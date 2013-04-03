@@ -23,6 +23,7 @@ import java.util.Map;
 
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
+import parquet.column.page.DictionaryPage;
 import parquet.column.page.Page;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
@@ -49,10 +50,12 @@ class ColumnChunkPageReadStore implements PageReadStore {
     private final BytesDecompressor decompressor;
     private final long valueCount;
     private final List<Page> compressedPages;
+    private final List<DictionaryPage> compressedDictionaryPages;
 
-    ColumnChunkPageReader(BytesDecompressor decompressor, List<Page> compressedPages) {
+    ColumnChunkPageReader(BytesDecompressor decompressor, List<Page> compressedPages, List<DictionaryPage> compressedDictionaryPages) {
       this.decompressor = decompressor;
       this.compressedPages = new LinkedList<Page>(compressedPages);
+      this.compressedDictionaryPages = new LinkedList<DictionaryPage>(compressedDictionaryPages);
       int count = 0;
       for (Page p : compressedPages) {
         count += p.getValueCount();
@@ -79,6 +82,23 @@ class ColumnChunkPageReadStore implements PageReadStore {
             compressedPage.getRlEncoding(),
             compressedPage.getDlEncoding(),
             compressedPage.getValueEncoding());
+      } catch (IOException e) {
+        throw new RuntimeException(e); // TODO: cleanup
+      }
+    }
+
+    @Override
+    public DictionaryPage readDictionaryPage() {
+      if (compressedDictionaryPages.isEmpty()) {
+        return null;
+      }
+      DictionaryPage compressedPage = compressedDictionaryPages.remove(0);
+      try {
+        return new DictionaryPage(
+            decompressor.decompress(compressedPage.getBytes(), compressedPage.getUncompressedSize()),
+            compressedPage.getDictionarySize(),
+            compressedPage.getUncompressedSize(),
+            compressedPage.getEncoding());
       } catch (IOException e) {
         throw new RuntimeException(e); // TODO: cleanup
       }

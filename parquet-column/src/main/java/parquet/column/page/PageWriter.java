@@ -40,15 +40,19 @@ public interface PageWriter {
   abstract public void writePage(BytesInput bytesInput, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
 
   /**
-   *
    * @return the current size used in the memory buffer for that column chunk
    */
   abstract public long getMemSize();
 
   /**
-   *
    * @return the allocated size for the buffer ( > getMemSize() )
    */
   public abstract long allocatedSize();
+
+  /**
+   * writes a dictionary page
+   * @param dictionaryPage the dictionary page containing the dictionary data
+   */
+  public abstract void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException;
 
 }

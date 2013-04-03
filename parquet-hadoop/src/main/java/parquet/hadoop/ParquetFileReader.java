@@ -46,10 +46,10 @@ import org.apache.hadoop.mapred.Utils;
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
+import parquet.column.page.DictionaryPage;
 import parquet.column.page.Page;
 import parquet.column.page.PageReadStore;
 import parquet.format.PageHeader;
-import parquet.format.PageType;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.CodecFactory.BytesDecompressor;
 import parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
@@ -313,9 +313,11 @@ public class ParquetFileReader {
       String pathKey = Arrays.toString(mc.getPath());
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
       if (columnDescriptor != null) {
-        List<Page> pagesInChunk = readColumnChunkPages(columnDescriptor, mc);
+        List<Page> pagesInChunk = new ArrayList<Page>();
+        List<DictionaryPage> dictionaryPagesInChunk = new ArrayList<DictionaryPage>();
+        readColumnChunkPages(columnDescriptor, mc, pagesInChunk, dictionaryPagesInChunk);
         BytesDecompressor decompressor = codecFactory.getDecompressor(mc.getCodec());
-        ColumnChunkPageReader columnChunkPageReader = new ColumnChunkPageReader(decompressor, pagesInChunk);
+        ColumnChunkPageReader columnChunkPageReader = new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPagesInChunk);
         columnChunkPageReadStore.addColumn(columnDescriptor, columnChunkPageReader);
       }
     }
@@ -327,28 +329,43 @@ public class ParquetFileReader {
    * Read all of the pages in a given column chunk.
    * @return the list of pages
    */
-  private List<Page> readColumnChunkPages(ColumnDescriptor columnDescriptor, ColumnChunkMetaData metadata)
+  private List<Page> readColumnChunkPages(ColumnDescriptor columnDescriptor, ColumnChunkMetaData metadata, List<Page> pagesInChunk, List<DictionaryPage> dictionaryPagesInChunk)
       throws IOException {
     f.seek(metadata.getFirstDataPageOffset());
     if (DEBUG) {
       LOG.debug(f.getPos() + ": start column chunk " + Arrays.toString(metadata.getPath()) +
         " " + metadata.getType() + " count=" + metadata.getValueCount());
     }
-
-    List<Page> pagesInChunk = new ArrayList<Page>();
     long valuesCountReadSoFar = 0;
     while (valuesCountReadSoFar < metadata.getValueCount()) {
-      PageHeader pageHeader = readNextDataPageHeader();
-      pagesInChunk.add(
-          new Page(
-              BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)),
-              pageHeader.data_page_header.num_values,
-              pageHeader.uncompressed_page_size,
-              parquetMetadataConverter.getEncoding(pageHeader.data_page_header.repetition_level_encoding),
-              parquetMetadataConverter.getEncoding(pageHeader.data_page_header.definition_level_encoding),
-              parquetMetadataConverter.getEncoding(pageHeader.data_page_header.encoding)
-              ));
-      valuesCountReadSoFar += pageHeader.data_page_header.num_values;
+      PageHeader pageHeader = parquetMetadataConverter.readPageHeader(f);
+      switch (pageHeader.type) {
+        case DICTIONARY_PAGE:
+          dictionaryPagesInChunk.add(
+              new DictionaryPage(
+                  BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)),
+                  pageHeader.uncompressed_page_size,
+                  pageHeader.dictionary_page_header.num_values,
+                  parquetMetadataConverter.getEncoding(pageHeader.dictionary_page_header.encoding)
+                  ));
+          break;
+        case DATA_PAGE:
+          pagesInChunk.add(
+              new Page(
+                  BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)),
+                  pageHeader.data_page_header.num_values,
+                  pageHeader.uncompressed_page_size,
+                  parquetMetadataConverter.getEncoding(pageHeader.data_page_header.repetition_level_encoding),
+                  parquetMetadataConverter.getEncoding(pageHeader.data_page_header.definition_level_encoding),
+                  parquetMetadataConverter.getEncoding(pageHeader.data_page_header.encoding)
+                  ));
+          valuesCountReadSoFar += pageHeader.data_page_header.num_values;
+          break;
+        default:
+          if (DEBUG) LOG.debug("skipping page of type " + pageHeader.type + " of size " + pageHeader.compressed_page_size);
+          f.skip(pageHeader.compressed_page_size);
+          break;
+      }
     }
     if (valuesCountReadSoFar != metadata.getValueCount()) {
       // Would be nice to have a CorruptParquetFileException or something as a subclass?
@@ -359,24 +376,6 @@ public class ParquetFileReader {
           + " pages ending at file offset " + f.getPos());
     }
     return pagesInChunk;
-  }
-
-  private PageHeader readNextDataPageHeader() throws IOException {
-    PageHeader pageHeader;
-    do {
-      long pos = f.getPos();
-      if (DEBUG) LOG.debug(pos + ": reading page");
-      try {
-        pageHeader = parquetMetadataConverter.readPageHeader(f);
-        if (pageHeader.type != PageType.DATA_PAGE) {
-          if (DEBUG) LOG.debug("not a data page, skipping " + pageHeader.compressed_page_size);
-          f.skip(pageHeader.compressed_page_size);
-        }
-      } catch (IOException e) {
-        throw new IOException("could not read page header at position " + pos, e);
-      }
-    } while (pageHeader.type != PageType.DATA_PAGE);
-    return pageHeader;
   }
 
   public void close() throws IOException {

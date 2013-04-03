@@ -27,6 +27,7 @@ import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.column.ColumnDescriptor;
 import parquet.column.Encoding;
+import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriteStore;
 import parquet.column.page.PageWriter;
 import parquet.format.converter.ParquetMetadataConverter;
@@ -43,6 +44,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private final BytesCompressor compressor;
 
     private final CapacityByteArrayOutputStream buf;
+    private final List<DictionaryPage> dictionaryPages;
 
     private long uncompressedLength;
     private long compressedLength;
@@ -54,6 +56,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       this.path = path;
       this.compressor = compressor;
       this.buf = new CapacityByteArrayOutputStream(initialSize);
+      this.dictionaryPages = new ArrayList<DictionaryPage>();
     }
 
     @Override
@@ -85,6 +88,9 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
     public void writeToFileWriter(ParquetFileWriter writer) throws IOException {
       writer.startColumn(path, totalValueCount, compressor.getCodecName());
+      for (DictionaryPage dictionaryPage : dictionaryPages) {
+        writer.writeDictionaryPage(dictionaryPage);
+      }
       writer.writeDataPages(BytesInput.from(buf), uncompressedLength, compressedLength, new ArrayList<Encoding>(encodings));
       writer.endColumn();
       encodings.clear();
@@ -93,6 +99,14 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     @Override
     public long allocatedSize() {
       return buf.getCapacity();
+    }
+
+    @Override
+    public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
+      BytesInput dictionaryBytes = dictionaryPage.getBytes();
+      int uncompressedSize = (int)dictionaryBytes.size();
+      BytesInput compressedBytes = compressor.compress(dictionaryBytes);
+      dictionaryPages.add(new DictionaryPage(BytesInput.copy(compressedBytes), uncompressedSize, dictionaryPage.getDictionarySize(), dictionaryPage.getEncoding()));
     }
   }
 

@@ -17,6 +17,7 @@ package parquet.column.values;
 
 import java.io.IOException;
 
+import parquet.column.Dictionary;
 import parquet.io.api.Binary;
 
 /**
@@ -24,7 +25,7 @@ import parquet.io.api.Binary;
  *
  * A PrimitiveColumnReader is provided with a page (byte-array) and is responsible
  * for deserializing the primitive values stored in that page.
- * 
+ *
  * Given that pages are homogenous (store only a single type), typical subclasses
  * will only override one of the read*() methods.
  *
@@ -37,14 +38,14 @@ public abstract class ValuesReader {
    *
    * The underlying implementation knows how much data to read, so a length
    * is not provided.
-   * 
+   *
    * Each page may contain several sections:
    * <ul>
    *  <li> repetition levels column
    *  <li> definition levels column
    *  <li> data column
    * </ul>
-   * 
+   *
    * This function is called with 'offset' pointing to the beginning of one of these sections,
    * and should return the offset to the section following it.
    *
@@ -55,6 +56,14 @@ public abstract class ValuesReader {
    * @throws IOException
    */
   public abstract int initFromPage(long valueCount, byte[] page, int offset) throws IOException;
+
+  /**
+   * called to initialize the dictionary when one is used
+   * @param dictionary the dictionary for this column chunk
+   */
+  public void setDictionary(Dictionary dictionary) {
+    throw new UnsupportedOperationException("NYI");
+  }
 
   /**
    * @return the next boolean from the page
@@ -104,4 +113,5 @@ public abstract class ValuesReader {
   public long readLong() {
     throw new UnsupportedOperationException();
   }
+
 }

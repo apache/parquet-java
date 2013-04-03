@@ -23,14 +23,17 @@ package parquet.column.page;
  */
 public interface PageReader {
 
+ /**
+  * @return the next dictionary page in that chunk
+  */
+ abstract public DictionaryPage readDictionaryPage();
+
   /**
-   *
    * @return the total number of values in the column chunk
    */
   abstract public long getTotalValueCount();
 
   /**
-   *
    * @return the next page in that chunk
    */
   abstract public Page readPage();

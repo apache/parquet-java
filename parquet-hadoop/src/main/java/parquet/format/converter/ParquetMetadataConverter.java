@@ -34,6 +34,7 @@ import org.apache.thrift.transport.TIOStreamTransport;
 
 import parquet.format.ColumnChunk;
 import parquet.format.DataPageHeader;
+import parquet.format.DictionaryPageHeader;
 import parquet.format.Encoding;
 import parquet.format.FieldRepetitionType;
 import parquet.format.FileMetaData;
@@ -380,7 +381,7 @@ public class ParquetMetadataConverter {
       parquet.column.Encoding rlEncoding,
       parquet.column.Encoding dlEncoding,
       parquet.column.Encoding valuesEncoding) {
-    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, (int)uncompressedSize, (int)compressedSize);
+    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedSize, compressedSize);
     // TODO: pageHeader.crc = ...;
     pageHeader.data_page_header = new DataPageHeader(
         valueCount,
@@ -388,6 +389,14 @@ public class ParquetMetadataConverter {
         getEncoding(dlEncoding),
         getEncoding(rlEncoding));
     return pageHeader;
+  }
+
+  public void writeDictionaryPageHeader(
+      int uncompressedSize, int compressedSize, int valueCount,
+      parquet.column.Encoding valuesEncoding, OutputStream to) throws IOException {
+    PageHeader pageHeader = new PageHeader(PageType.DICTIONARY_PAGE, uncompressedSize, compressedSize);
+    pageHeader.dictionary_page_header = new DictionaryPageHeader(valueCount, getEncoding(valuesEncoding));
+    writePageHeader(pageHeader, to);
   }
 
 

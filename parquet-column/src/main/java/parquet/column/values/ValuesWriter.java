@@ -106,4 +106,18 @@ public abstract class ValuesWriter {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
+  /**
+   * @return data for the dictionary
+   */
+  public BytesInput getDictionaryBytes() {
+    return BytesInput.empty();
+  }
+
+  /**
+   * @return value count in the dictionary
+   */
+  public int getDictionarySize() {
+    return 0;
+  }
+
 }

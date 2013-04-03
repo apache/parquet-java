@@ -15,16 +15,21 @@
  */
 package parquet.column;
 
+import java.io.IOException;
+
+import parquet.column.page.DictionaryPage;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.ValuesType;
 import parquet.column.values.bitpacking.BitPackingValuesReader;
 import parquet.column.values.boundedint.BoundedIntValuesFactory;
+import parquet.column.values.dictionary.DictionaryValuesReader;
+import parquet.column.values.dictionary.PlainDictionary;
 import parquet.column.values.plain.BooleanPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader;
 import parquet.io.ParquetDecodingException;
 
 /**
- * endoding of the data
+ * encoding of the data
  *
  * @author Julien Le Dem
  *
@@ -43,6 +48,10 @@ public enum Encoding {
     }
   },
 
+  /**
+   * this is not used anymore and will be removed
+   */
+  @Deprecated
   RLE {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
@@ -58,21 +67,26 @@ public enum Encoding {
   },
 
   GROUP_VAR_INT {
-
     @Override // TODO: GROUP VAR INT encoding
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor,
-        ValuesType valuesType) {
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       throw new UnsupportedOperationException("NYI");
     }
-
   },
 
   PLAIN_DICTIONARY {
+    @Override
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+      switch (descriptor.getType()) {
+      case BINARY:
+        return new DictionaryValuesReader();
+      default:
+        throw new ParquetDecodingException("Dictionary encoding not supported for type: " + descriptor.getType());
+      }
+    }
 
-    @Override // TODO: dictionary encoding
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor,
-        ValuesType valuesType) {
-      throw new UnsupportedOperationException("NYI");
+    @Override
+    public Dictionary initDictionary(DictionaryPage dictionaryPage) throws IOException {
+      return new PlainDictionary(dictionaryPage);
     }
 
   };
@@ -93,9 +107,19 @@ public enum Encoding {
   }
 
   /**
+   * initializes a dictionary from a page
+   * @param dictionaryPage
+   * @return the corresponding dictionary
+   */
+  public Dictionary initDictionary(DictionaryPage dictionaryPage) throws IOException {
+    throw new UnsupportedOperationException(this.name() + " does not support dictionary");
+  }
+
+  /**
    * @param descriptor the column to read
    * @param valuesType the type of values
    * @return the proper values reader for the given column
    */
   abstract public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType);
+
 }

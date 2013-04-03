@@ -37,6 +37,7 @@ import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
+import parquet.column.page.DictionaryPage;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -175,10 +176,35 @@ public class ParquetFileWriter {
   }
 
   /**
+   * writes a dictionary page page
+   * @param valueCount count of values
+   * @param uncompressedPageSize the size of the data once uncompressed
+   * @param bytes the compressed data for the page without header
+   */
+  public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
+    state = state.write();
+    if (DEBUG) LOG.debug(out.getPos() + ": write dictionary page: " + dictionaryPage.getDictionarySize() + " values");
+    int compressedPageSize = (int)dictionaryPage.getBytes().size();
+    metadataConverter.writeDictionaryPageHeader(
+        dictionaryPage.getUncompressedSize(), compressedPageSize,
+        dictionaryPage.getDictionarySize(),
+        dictionaryPage.getEncoding(),
+        out);
+    this.uncompressedLength += dictionaryPage.getUncompressedSize();
+    this.compressedLength += compressedPageSize;
+    if (DEBUG) LOG.debug(out.getPos() + ": write dictionary page content " + compressedPageSize);
+    dictionaryPage.getBytes().writeAllTo(out);
+    currentEncodings.add(dictionaryPage.getEncoding());
+  }
+
+  /**
    * writes a single page
    * @param valueCount count of values
    * @param uncompressedPageSize the size of the data once uncompressed
    * @param bytes the compressed data for the page without header
+   * @param rlEncoding encoding of the repetition level
+   * @param dlEncoding encoding of the definition level
+   * @param valuesEncoding encoding of values
    */
   public void writeDataPage(
       int valueCount, int uncompressedPageSize,

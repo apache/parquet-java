@@ -18,10 +18,15 @@ package parquet.column.impl;
 import static parquet.Log.DEBUG;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnReader;
+import parquet.column.Dictionary;
+import parquet.column.Encoding;
+import parquet.column.page.DictionaryPage;
 import parquet.column.page.Page;
 import parquet.column.page.PageReader;
 import parquet.column.values.ValuesReader;
@@ -41,6 +46,7 @@ abstract class ColumnReaderImpl implements ColumnReader {
   private final ColumnDescriptor path;
   private final long totalValueCount;
   private final PageReader pageReader;
+  private Map<Encoding, Dictionary> dictionaries = new HashMap<Encoding, Dictionary>();
 
   private ValuesReader repetitionLevelColumn;
   private ValuesReader definitionLevelColumn;
@@ -55,8 +61,9 @@ abstract class ColumnReaderImpl implements ColumnReader {
   private int readValuesInPage;
   private long pageValueCount;
 
+
   /**
-   *
+   * creates a reader for triplets
    * @param path the descriptor for the corresponding column
    * @param pageReader the underlying store to read from
    */
@@ -69,6 +76,15 @@ abstract class ColumnReaderImpl implements ColumnReader {
     }
     this.path = path;
     this.pageReader = pageReader;
+    DictionaryPage dictionaryPage;
+    while ((dictionaryPage = pageReader.readDictionaryPage()) != null) {
+      try {
+        Dictionary dictionary = dictionaryPage.getEncoding().initDictionary(dictionaryPage);
+        dictionaries.put(dictionary.getEncoding(), dictionary);
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not decode the dictionary for " + path, e);
+      }
+    }
     this.totalValueCount = pageReader.getTotalValueCount();
     if (totalValueCount == 0) {
       throw new ParquetDecodingException("totalValueCount == 0");
@@ -76,7 +92,6 @@ abstract class ColumnReaderImpl implements ColumnReader {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#isFullyConsumed()
    */
@@ -86,7 +101,6 @@ abstract class ColumnReaderImpl implements ColumnReader {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#getString()
    */
@@ -96,7 +110,6 @@ abstract class ColumnReaderImpl implements ColumnReader {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#getInteger()
    */
@@ -106,7 +119,6 @@ abstract class ColumnReaderImpl implements ColumnReader {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#getBoolean()
    */
@@ -116,7 +128,6 @@ abstract class ColumnReaderImpl implements ColumnReader {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#getLong()
    */
@@ -125,7 +136,6 @@ abstract class ColumnReaderImpl implements ColumnReader {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#getBinary()
    */
@@ -135,7 +145,6 @@ abstract class ColumnReaderImpl implements ColumnReader {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#getFloat()
    */
@@ -145,7 +154,6 @@ abstract class ColumnReaderImpl implements ColumnReader {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#getDouble()
    */
@@ -155,7 +163,6 @@ abstract class ColumnReaderImpl implements ColumnReader {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#getCurrentRepetitionLevel()
    */
@@ -186,7 +193,6 @@ abstract class ColumnReaderImpl implements ColumnReader {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#getCurrentDefinitionLevel()
    */
@@ -221,7 +227,10 @@ abstract class ColumnReaderImpl implements ColumnReader {
       this.repetitionLevelColumn = page.getRlEncoding().getValuesReader(path, ValuesType.REPETITION_LEVEL);
       this.definitionLevelColumn = page.getDlEncoding().getValuesReader(path, ValuesType.DEFINITION_LEVEL);
       this.dataColumn = page.getValueEncoding().getValuesReader(path, ValuesType.VALUES);
-
+      final Dictionary dictionary = dictionaries.get(page.getValueEncoding());
+      if (dictionary != null) {
+        dataColumn.setDictionary(dictionary);
+      }
       this.pageValueCount = page.getValueCount();
       this.readValuesInPage = 0;
       try {
