@@ -97,7 +97,6 @@ class ColumnChunkPageReadStore implements PageReadStore {
         return new DictionaryPage(
             decompressor.decompress(compressedPage.getBytes(), compressedPage.getUncompressedSize()),
             compressedPage.getDictionarySize(),
-            compressedPage.getUncompressedSize(),
             compressedPage.getEncoding());
       } catch (IOException e) {
         throw new RuntimeException(e); // TODO: cleanup

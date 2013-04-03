@@ -18,6 +18,23 @@ public class DictionaryPage {
   private final int dictionarySize;
   private final Encoding encoding;
 
+  /**
+   * creates an uncompressed page
+   * @param bytes the content of the page
+   * @param dictionarySize the value count in the dictionary
+   * @param encoding the encoding used
+   */
+  public DictionaryPage(BytesInput bytes, int dictionarySize, Encoding encoding) {
+    this(bytes, (int)bytes.size(), dictionarySize, encoding); // TODO: fix sizes long or int
+  }
+
+  /**
+   * creates a dictionary page
+   * @param bytes the (possibly compressed) content of the page
+   * @param uncompressedSize the size uncompressed
+   * @param dictionarySize the value count in the dictionary
+   * @param encoding the encoding used
+   */
   public DictionaryPage(BytesInput bytes, int uncompressedSize, int dictionarySize, Encoding encoding) {
     if (bytes == null) {
       throw new NullPointerException("bytes");

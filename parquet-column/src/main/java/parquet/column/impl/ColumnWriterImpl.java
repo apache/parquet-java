@@ -168,7 +168,6 @@ final class ColumnWriterImpl implements ColumnWriter {
         final BytesInput dictionaryBytes = dataColumn.getDictionaryBytes();
         DictionaryPage dictionaryPage = new DictionaryPage(
             dictionaryBytes,
-            (int)dictionaryBytes.size(), // TODO: fix this cast
             dictionarySize,
             dataColumn.getEncoding());
         pageWriter.writeDictionaryPage(dictionaryPage);

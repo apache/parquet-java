@@ -32,7 +32,7 @@ public class TestDictionary {
     final BytesInput dictionaryBytes = BytesInput.copy(cw.getDictionaryBytes());
     final DictionaryValuesReader cr = new DictionaryValuesReader();
     final Dictionary dictionary = Encoding.PLAIN_DICTIONARY.initDictionary(
-        new DictionaryPage(dictionaryBytes, (int)dictionaryBytes.size(), dictionarySize, Encoding.PLAIN_DICTIONARY));
+        new DictionaryPage(dictionaryBytes, dictionarySize, Encoding.PLAIN_DICTIONARY));
     System.out.println(dictionary);
     cr.setDictionary(dictionary);
 

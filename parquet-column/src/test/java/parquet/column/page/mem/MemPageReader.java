@@ -29,14 +29,17 @@ import parquet.io.ParquetDecodingException;
 public class MemPageReader implements PageReader {
   private static final Log LOG = Log.getLog(MemPageReader.class);
 
-  private long totalValueCount;
-  private Iterator<Page> pages;
+  private final long totalValueCount;
+  private final Iterator<Page> pages;
   private final Iterator<DictionaryPage> dictionaryPages;
 
   public MemPageReader(long totalValueCount, Iterator<Page> pages, Iterator<DictionaryPage> dictionaryPages) {
     super();
     if (pages == null) {
       throw new NullPointerException("pages");
+    }
+    if (dictionaryPages == null) {
+      throw new NullPointerException("dictionaryPages");
     }
     this.totalValueCount = totalValueCount;
     this.pages = pages;
@@ -66,7 +69,7 @@ public class MemPageReader implements PageReader {
       if (DEBUG) LOG.debug("read page " + next);
       return next;
     } else {
-     return null;
+     return null; // TODO: inconsistent
     }
   }
 

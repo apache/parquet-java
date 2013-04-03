@@ -62,7 +62,7 @@ public abstract class ValuesReader {
    * @param dictionary the dictionary for this column chunk
    */
   public void setDictionary(Dictionary dictionary) {
-    throw new UnsupportedOperationException("NYI");
+    throw new UnsupportedOperationException("This encoding does not use a dictionary");
   }
 
   /**
