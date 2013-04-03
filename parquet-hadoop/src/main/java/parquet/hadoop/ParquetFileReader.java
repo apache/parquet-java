@@ -331,7 +331,12 @@ public class ParquetFileReader {
    */
   private List<Page> readColumnChunkPages(ColumnDescriptor columnDescriptor, ColumnChunkMetaData metadata, List<Page> pagesInChunk, List<DictionaryPage> dictionaryPagesInChunk)
       throws IOException {
-    f.seek(metadata.getFirstDataPageOffset());
+    long startingPos = metadata.getFirstDataPageOffset();
+    if (metadata.getDictionaryPageOffset() > 0 && metadata.getDictionaryPageOffset() < startingPos) {
+      // if there's a dictionary and it's before the first data page, start from there
+      startingPos = metadata.getDictionaryPageOffset();
+    }
+    f.seek(startingPos);
     if (DEBUG) {
       LOG.debug(f.getPos() + ": start column chunk " + Arrays.toString(metadata.getPath()) +
         " " + metadata.getType() + " count=" + metadata.getValueCount());

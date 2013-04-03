@@ -118,7 +118,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       } else {
         float recordSize = (float) memSize / recordCount;
         recordCountForNextMemCheck = Math.max(100, (recordCount + (long)(blockSize / recordSize)) / 2); // will check halfway
-        LOG.info("Checked mem at " + recordCount + " will check again at: " + recordCountForNextMemCheck);
+        LOG.debug("Checked mem at " + recordCount + " will check again at: " + recordCountForNextMemCheck);
       }
     }
   }

@@ -79,4 +79,8 @@ public class DictionaryValuesWriter extends ValuesWriter {
   public int getDictionarySize() {
     return dict.size();
   }
+
+  public int getDictionaryByteSize() {
+    return dictionaryByteSize;
+  }
 }

@@ -33,6 +33,8 @@ public abstract class ValuesWriter {
    */
   public abstract long getBufferedSize();
 
+
+  // TODO: consolidate into a getPage
   /**
    *
    * @return the bytes buffered so far to write to the current page
@@ -106,6 +108,8 @@ public abstract class ValuesWriter {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
+  // TODO: consolidate into a getDictionaryPage
+
   /**
    * @return data for the dictionary
    */
@@ -118,6 +122,13 @@ public abstract class ValuesWriter {
    */
   public int getDictionarySize() {
     return 0;
+  }
+
+  /**
+   * @return the encoding of the dictionary
+   */
+  public Encoding getDictionaryEncoding() {
+    throw new UnsupportedOperationException(getClass().getName());
   }
 
 }

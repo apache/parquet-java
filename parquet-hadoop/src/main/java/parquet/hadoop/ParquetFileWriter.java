@@ -184,6 +184,7 @@ public class ParquetFileWriter {
   public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
     state = state.write();
     if (DEBUG) LOG.debug(out.getPos() + ": write dictionary page: " + dictionaryPage.getDictionarySize() + " values");
+    currentColumn.setDictionaryPageOffset(out.getPos());
     int uncompressedSize = dictionaryPage.getUncompressedSize();
     int compressedPageSize = (int)dictionaryPage.getBytes().size(); // TODO: fix casts
     metadataConverter.writeDictionaryPageHeader(
@@ -261,7 +262,7 @@ public class ParquetFileWriter {
     currentColumn.setTotalSize(compressedLength);
     currentColumn.getEncodings().addAll(currentEncodings);
     currentBlock.addColumn(currentColumn);
-    if (INFO) LOG.info("ended Column chumk: " + currentColumn);
+    if (DEBUG) LOG.info("ended Column chumk: " + currentColumn);
     currentColumn = null;
     this.uncompressedLength = 0;
     this.compressedLength = 0;

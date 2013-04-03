@@ -15,6 +15,8 @@
  */
 package parquet.hadoop;
 
+import static parquet.Log.DEBUG;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.column.ColumnDescriptor;
@@ -35,6 +38,7 @@ import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.schema.MessageType;
 
 class ColumnChunkPageWriteStore implements PageWriteStore {
+  private static final Log LOG = Log.getLog(ColumnChunkPageWriteStore.class);
 
   private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
@@ -49,6 +53,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private long uncompressedLength;
     private long compressedLength;
     private long totalValueCount;
+    private int pageCount;
 
     private Set<Encoding> encodings = new HashSet<Encoding>();
 
@@ -75,6 +80,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
+      this.pageCount += 1;
       compressedBytes.writeAllTo(buf);
       encodings.add(rlEncoding);
       encodings.add(dlEncoding);
@@ -87,6 +93,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     }
 
     public void writeToFileWriter(ParquetFileWriter writer) throws IOException {
+      if (DEBUG) LOG.info("writing Column chumk " + path + ": " + totalValueCount + " values, " + uncompressedLength + "B raw, " + compressedLength + "B compressed, " + pageCount + " pages, encodings: " + encodings + ", totalSize:" + buf.size());
       writer.startColumn(path, totalValueCount, compressor.getCodecName());
       for (DictionaryPage dictionaryPage : dictionaryPages) {
         writer.writeDictionaryPage(dictionaryPage);
@@ -94,6 +101,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       writer.writeDataPages(BytesInput.from(buf), uncompressedLength, compressedLength, new ArrayList<Encoding>(encodings));
       writer.endColumn();
       encodings.clear();
+      pageCount = 0;
     }
 
     @Override

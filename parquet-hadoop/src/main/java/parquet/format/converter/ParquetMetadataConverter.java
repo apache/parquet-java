@@ -138,6 +138,7 @@ public class ParquetMetadataConverter {
           columnMetaData.getTotalSize(),
           columnMetaData.getFirstDataPageOffset()
           );
+      columnChunk.meta_data.dictionary_page_offset = columnMetaData.getDictionaryPageOffset();
 //      columnChunk.meta_data.index_page_offset = ;
 //      columnChunk.meta_data.key_value_metadata = ; // nothing yet
 
@@ -246,6 +247,7 @@ public class ParquetMetadataConverter {
             CompressionCodecName.fromParquet(metaData.codec),
             fromFormatEncodings(metaData.encodings));
         column.setFirstDataPageOffset(metaData.data_page_offset);
+        column.setDictionaryPageOffset(metaData.dictionary_page_offset);
         column.setValueCount(metaData.num_values);
         column.setTotalUncompressedSize(metaData.total_uncompressed_size);
         column.setTotalSize(metaData.total_compressed_size);

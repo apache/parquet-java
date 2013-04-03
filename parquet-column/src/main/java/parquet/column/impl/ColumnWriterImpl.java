@@ -23,6 +23,7 @@ import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
+import parquet.column.values.BinaryEncodingPickerValuesWriter;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.bitpacking.BitPackingValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter;
@@ -55,7 +56,7 @@ final class ColumnWriterImpl implements ColumnWriter {
       this.dataColumn = new BooleanPlainValuesWriter(pageSizeThreshold * 11 / 10);
       break;
     case BINARY:
-      this.dataColumn = new DictionaryValuesWriter();
+      this.dataColumn = new BinaryEncodingPickerValuesWriter(pageSizeThreshold, pageSizeThreshold);
       break;
     default:
       this.dataColumn = new PlainValuesWriter(pageSizeThreshold * 11 / 10);
@@ -169,7 +170,7 @@ final class ColumnWriterImpl implements ColumnWriter {
         DictionaryPage dictionaryPage = new DictionaryPage(
             dictionaryBytes,
             dictionarySize,
-            dataColumn.getEncoding());
+            dataColumn.getDictionaryEncoding());
         pageWriter.writeDictionaryPage(dictionaryPage);
       } catch (IOException e) {
         throw new ParquetEncodingException("could not write dictionary page for " + path, e);
