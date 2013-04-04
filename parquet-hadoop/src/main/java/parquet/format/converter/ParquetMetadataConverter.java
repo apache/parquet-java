@@ -15,6 +15,9 @@
  */
 package parquet.format.converter;
 
+import static parquet.format.Util.readFileMetaData;
+import static parquet.format.Util.writePageHeader;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -27,11 +30,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.apache.thrift.TBase;
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.transport.TIOStreamTransport;
-
+import parquet.Log;
 import parquet.format.ColumnChunk;
 import parquet.format.DataPageHeader;
 import parquet.format.Encoding;
@@ -56,6 +55,7 @@ import parquet.schema.Type.Repetition;
 import parquet.schema.TypeVisitor;
 
 public class ParquetMetadataConverter {
+  private static final Log LOG = Log.getLog(ParquetMetadataConverter.class);
 
   public FileMetaData toParquetMetadata(int currentVersion, ParquetMetadata parquetMetadata) {
     List<BlockMetaData> blocks = parquetMetadata.getBlocks();
@@ -222,6 +222,14 @@ public class ParquetMetadataConverter {
     fileMetaData.addToKey_value_metadata(keyValue);
   }
 
+  public ParquetMetadata readParquetMetadata(InputStream from) throws IOException {
+    FileMetaData fileMetaData = readFileMetaData(from);
+    if (Log.DEBUG) LOG.debug(fileMetaData);
+    ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData);
+    if (Log.DEBUG) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
+    return parquetMetadata;
+  }
+
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema());
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
@@ -317,61 +325,6 @@ public class ParquetMetadataConverter {
       parquet.column.Encoding valuesEncoding,
       OutputStream to) throws IOException {
     writePageHeader(newDataPageHeader(uncompressedSize, compressedSize, valueCount, rlEncoding, dlEncoding, valuesEncoding), to);
-  }
-
-  protected void writePageHeader(PageHeader pageHeader, OutputStream to) throws IOException {
-    write(pageHeader, to);
-  }
-
-  public PageHeader readPageHeader(InputStream from) throws IOException {
-    return read(from, new PageHeader());
-  }
-
-  public void writeFileMetaData(parquet.format.FileMetaData fileMetadata, OutputStream to) throws IOException {
-    write(fileMetadata, to);
-  }
-
-  public parquet.format.FileMetaData readFileMetaData(InputStream from) throws IOException {
-    return read(from, new parquet.format.FileMetaData());
-  }
-
-  public String toString(TBase<?, ?> tbase) {
-    return tbase.toString();
-//    TMemoryBuffer trans = new TMemoryBuffer(1024);
-//    try {
-//      TSimpleJSONProtocol jsonProt = new TSimpleJSONProtocol(trans);
-//      tbase.write(jsonProt);
-//      return trans.toString("UTF-8");
-//    } catch (Exception e) { // TODO: cleanup exceptions
-//      throw new RuntimeException(e);
-//    }
-  }
-
-  private TCompactProtocol protocol(OutputStream to) {
-    return new TCompactProtocol(new TIOStreamTransport(to));
-  }
-
-  private TCompactProtocol protocol(InputStream from) {
-    return new TCompactProtocol(new TIOStreamTransport(from));
-  }
-
-  private <T extends TBase<?,?>> T read(InputStream from, T tbase)
-      throws IOException {
-    try {
-      tbase.read(protocol(from));
-      return tbase;
-    } catch (TException e) {
-      throw new IOException("can not read " + tbase.getClass() + ": " + e.getMessage(), e);
-    }
-  }
-
-  private void write(TBase<?, ?> tbase, OutputStream to)
-      throws IOException {
-    try {
-      tbase.write(protocol(to));
-    } catch (TException e) {
-      throw new IOException("can not write " + tbase, e);
-    }
   }
 
   private PageHeader newDataPageHeader(

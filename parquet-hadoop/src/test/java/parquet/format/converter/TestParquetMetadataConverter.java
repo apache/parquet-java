@@ -15,7 +15,9 @@
  */
 package parquet.format.converter;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static parquet.format.Util.readPageHeader;
+import static parquet.format.Util.writePageHeader;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -31,7 +33,6 @@ import parquet.format.PageHeader;
 import parquet.format.PageType;
 import parquet.format.SchemaElement;
 import parquet.format.Type;
-import parquet.format.converter.ParquetMetadataConverter;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type.Repetition;
@@ -40,14 +41,13 @@ public class TestParquetMetadataConverter {
 
   @Test
   public void testPageHeader() throws IOException {
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     PageType type = PageType.DATA_PAGE;
     int compSize = 10;
     int uncSize = 20;
     PageHeader pageHeader = new PageHeader(type, uncSize, compSize);
-    parquetMetadataConverter.writePageHeader(pageHeader, out);
-    PageHeader readPageHeader = parquetMetadataConverter.readPageHeader(new ByteArrayInputStream(out.toByteArray()));
+    writePageHeader(pageHeader, out);
+    PageHeader readPageHeader = readPageHeader(new ByteArrayInputStream(out.toByteArray()));
     assertEquals(pageHeader, readPageHeader);
   }
 
