@@ -16,6 +16,7 @@
 package parquet.hadoop;
 
 import static parquet.Log.DEBUG;
+import static parquet.Log.INFO;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -93,13 +94,24 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     }
 
     public void writeToFileWriter(ParquetFileWriter writer) throws IOException {
-      if (DEBUG) LOG.info("writing Column chumk " + path + ": " + totalValueCount + " values, " + uncompressedLength + "B raw, " + compressedLength + "B compressed, " + pageCount + " pages, encodings: " + encodings + ", totalSize:" + buf.size());
       writer.startColumn(path, totalValueCount, compressor.getCodecName());
       for (DictionaryPage dictionaryPage : dictionaryPages) {
         writer.writeDictionaryPage(dictionaryPage);
+        encodings.add(dictionaryPage.getEncoding());
       }
       writer.writeDataPages(BytesInput.from(buf), uncompressedLength, compressedLength, new ArrayList<Encoding>(encodings));
       writer.endColumn();
+      if (INFO) {
+        LOG.info("written Column chumk " + path + ": "
+            + totalValueCount + " values, "
+            + uncompressedLength + "B raw, "
+            + compressedLength + "B compressed, "
+            + pageCount + " pages, "
+            + "encodings: " + encodings + ", "
+            + dictionaryPages.size() + " dic pages, "
+
+            + "totalSize:" + buf.size());
+      }
       encodings.clear();
       pageCount = 0;
     }

@@ -34,7 +34,7 @@ public class TestDictionary {
     final DictionaryValuesReader cr = new DictionaryValuesReader();
     final Dictionary dictionary = Encoding.PLAIN_DICTIONARY.initDictionary(
         new DictionaryPage(dictionaryBytes, dictionarySize, Encoding.PLAIN_DICTIONARY));
-    System.out.println(dictionary);
+//    System.out.println(dictionary);
     cr.setDictionary(dictionary);
 
     cr.initFromPage(COUNT, bytes1.toByteArray(), 0);
