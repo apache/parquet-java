@@ -59,6 +59,7 @@
     <maven.compiler.source>1.6</maven.compiler.source>
     <maven.compiler.target>1.6</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <jackson.version>1.9.11</jackson.version>
   </properties>
 
   <modules>
