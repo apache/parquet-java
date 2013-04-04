@@ -71,7 +71,7 @@ public class ParquetFileReader {
 
   private static ParquetMetadata deserializeFooter(InputStream is) throws IOException {
     parquet.format.FileMetaData parquetMetadata = parquetMetadataConverter.readFileMetaData(is);
-    if (Log.DEBUG) LOG.debug(parquetMetadataConverter.toString(parquetMetadata));
+    if (Log.DEBUG) LOG.debug(parquetMetadata);
     ParquetMetadata metadata = parquetMetadataConverter.fromParquetMetadata(parquetMetadata);
     if (Log.DEBUG) LOG.debug(ParquetMetadata.toPrettyJSON(metadata));
     return metadata;
