@@ -15,6 +15,9 @@
  */
 package parquet.format.converter;
 
+import static parquet.format.Util.readFileMetaData;
+import static parquet.format.Util.writePageHeader;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -27,6 +30,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import parquet.Log;
 import parquet.format.ColumnChunk;
 import parquet.format.DataPageHeader;
 import parquet.format.Encoding;
@@ -38,7 +42,6 @@ import parquet.format.PageType;
 import parquet.format.RowGroup;
 import parquet.format.SchemaElement;
 import parquet.format.Type;
-import parquet.format.Util;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
@@ -52,6 +55,7 @@ import parquet.schema.Type.Repetition;
 import parquet.schema.TypeVisitor;
 
 public class ParquetMetadataConverter {
+  private static final Log LOG = Log.getLog(ParquetMetadataConverter.class);
 
   public FileMetaData toParquetMetadata(int currentVersion, ParquetMetadata parquetMetadata) {
     List<BlockMetaData> blocks = parquetMetadata.getBlocks();
@@ -218,6 +222,14 @@ public class ParquetMetadataConverter {
     fileMetaData.addToKey_value_metadata(keyValue);
   }
 
+  public ParquetMetadata readParquetMetadata(InputStream from) throws IOException {
+    FileMetaData fileMetaData = readFileMetaData(from);
+    if (Log.DEBUG) LOG.debug(fileMetaData);
+    ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData);
+    if (Log.DEBUG) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
+    return parquetMetadata;
+  }
+
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema());
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
@@ -329,22 +341,6 @@ public class ParquetMetadataConverter {
         getEncoding(dlEncoding),
         getEncoding(rlEncoding));
     return pageHeader;
-  }
-
-  public FileMetaData readFileMetaData(InputStream in) throws IOException {
-    return Util.readFileMetaData(in);
-  }
-
-  public PageHeader readPageHeader(InputStream in) throws IOException {
-    return Util.readPageHeader(in);
-  }
-
-  public void writeFileMetaData(parquet.format.FileMetaData parquetMetadata, OutputStream out) throws IOException {
-    Util.writeFileMetaData(parquetMetadata, out);
-  }
-
-  public void writePageHeader(PageHeader pageHeader, OutputStream out) throws IOException {
-    Util.writePageHeader(pageHeader, out);
   }
 
 
