@@ -17,11 +17,11 @@ package parquet.hadoop;
 
 import static parquet.Log.DEBUG;
 import static parquet.bytes.BytesUtils.readIntLittleEndian;
+import static parquet.format.Util.readPageHeader;
 import static parquet.hadoop.ParquetFileWriter.MAGIC;
 import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -68,14 +68,6 @@ public class ParquetFileReader {
   private static final Log LOG = Log.getLog(ParquetFileReader.class);
 
   private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-
-  private static ParquetMetadata deserializeFooter(InputStream is) throws IOException {
-    parquet.format.FileMetaData parquetMetadata = parquetMetadataConverter.readFileMetaData(is);
-    if (Log.DEBUG) LOG.debug(parquetMetadataConverter.toString(parquetMetadata));
-    ParquetMetadata metadata = parquetMetadataConverter.fromParquetMetadata(parquetMetadata);
-    if (Log.DEBUG) LOG.debug(ParquetMetadata.toPrettyJSON(metadata));
-    return metadata;
-  }
 
   /**
    * for files provided, check if there's a summary file.
@@ -265,7 +257,7 @@ public class ParquetFileReader {
       throw new RuntimeException("corrupted file: the footer index is not within the file");
     }
     f.seek(footerIndex);
-    return deserializeFooter(f);
+    return parquetMetadataConverter.readParquetMetadata(f);
 
   }
   private CodecFactory codecFactory;
@@ -343,7 +335,7 @@ public class ParquetFileReader {
     }
     long valuesCountReadSoFar = 0;
     while (valuesCountReadSoFar < metadata.getValueCount()) {
-      PageHeader pageHeader = parquetMetadataConverter.readPageHeader(f);
+      PageHeader pageHeader = readPageHeader(f);
       switch (pageHeader.type) {
         case DICTIONARY_PAGE:
           dictionaryPagesInChunk.add(

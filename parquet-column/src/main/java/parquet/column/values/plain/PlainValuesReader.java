@@ -24,7 +24,6 @@ import parquet.Log;
 import parquet.bytes.LittleEndianDataInputStream;
 import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;
-import parquet.io.api.Binary;
 
 /**
  * Plain encoding except for booleans
@@ -43,18 +42,6 @@ public class PlainValuesReader extends ValuesReader {
       return in.readFloat();
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read float", e);
-    }
-  }
-
-  @Override
-  public Binary readBytes() {
-    try {
-      byte[] value = new byte[in.readInt()];
-      in.readFully(value);
-      // TODO: we don't need to read to an array.
-      return Binary.fromByteArray(value);
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not read bytes", e);
     }
   }
 
