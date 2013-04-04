@@ -110,6 +110,37 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.0</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <artifactSet>
+                <includes>
+                  <include>org.apache.thrift:libthrift</include>
+                  <include>org.slf4j:slf4j-api</include>
+                </includes>
+              </artifactSet>
+              <relocations>
+                <relocation>
+                  <pattern>org.apache.thrift</pattern>
+                  <shadedPattern>parquet.org.apache.thrift</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.slf4j</pattern>
+                  <shadedPattern>parquet.org.slf4j</shadedPattern>
+                </relocation>
+              </relocations>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 
