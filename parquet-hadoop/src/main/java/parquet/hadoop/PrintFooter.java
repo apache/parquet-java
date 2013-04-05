@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -39,6 +40,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 
 import parquet.column.ColumnDescriptor;
+import parquet.column.Encoding;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
@@ -168,7 +170,8 @@ public class PrintFooter {
             desc,
             columnMetaData.getValueCount(),
             columnMetaData.getTotalSize(),
-            columnMetaData.getTotalUncompressedSize());
+            columnMetaData.getTotalUncompressedSize(),
+            columnMetaData.getEncodings());
       }
     }
   }
@@ -230,32 +233,34 @@ public class PrintFooter {
     Stats valueCountStats = new Stats();
     Stats allStats = new Stats();
     Stats uncStats = new Stats();
+    Set<Encoding> encodings = new TreeSet<Encoding>();
     int blocks = 0;
 
-    public void add(long valueCount, long size, long uncSize) {
+    public void add(long valueCount, long size, long uncSize, List<Encoding> encodings) {
       ++blocks;
       valueCountStats.add(valueCount);
       allStats.add(size);
       uncStats.add(uncSize);
+      this.encodings.addAll(encodings);
     }
 
     @Override
     public String toString() {
       long raw = uncStats.total;
       long compressed = allStats.total;
-      return allStats.toString(blocks) + " (raw data: " + humanReadable(raw) + (raw == 0 ? "" : " saving " + (raw - compressed)*100/raw + "%") + ")\n"
+      return encodings + " " + allStats.toString(blocks) + " (raw data: " + humanReadable(raw) + (raw == 0 ? "" : " saving " + (raw - compressed)*100/raw + "%") + ")\n"
       + "  values: "+valueCountStats.toString(blocks) + "\n"
       + "  uncompressed: "+uncStats.toString(blocks);
     }
 
   }
 
-  private static void add(ColumnDescriptor desc, long valueCount, long size, long uncSize) {
+  private static void add(ColumnDescriptor desc, long valueCount, long size, long uncSize, List<Encoding> encodings) {
     ColStats colStats = stats.get(desc);
     if (colStats == null) {
       colStats = new ColStats();
       stats.put(desc, colStats);
     }
-    colStats.add(valueCount, size, uncSize);
+    colStats.add(valueCount, size, uncSize, encodings);
   }
 }

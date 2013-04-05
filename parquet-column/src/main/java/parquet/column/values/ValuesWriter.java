@@ -35,7 +35,7 @@ public abstract class ValuesWriter {
   public abstract long getBufferedSize();
 
 
-  // TODO: consolidate into a getPage
+  // TODO: maybe consolidate into a getPage
   /**
    *
    * @return the bytes buffered so far to write to the current page
@@ -52,6 +52,19 @@ public abstract class ValuesWriter {
    * called after getBytes() to reset the current buffer and start writing the next page
    */
   public abstract void reset();
+
+  /**
+   * @return the dictionary page or null if not dictionary based
+   */
+  public DictionaryPage createDictionaryPage() {
+    return null;
+  }
+
+  /**
+   * reset the dictionary when a new block starts
+   */
+  public void resetDictionary() {
+  }
 
   /**
    *
@@ -107,20 +120,6 @@ public abstract class ValuesWriter {
    */
   public void writeFloat(float v) {
     throw new UnsupportedOperationException(getClass().getName());
-  }
-
-  /**
-   * @return the dictionary page or null if not dictionary based
-   */
-  public DictionaryPage createDictionaryPage() {
-    return null;
-  }
-
-
-  /**
-   * reset the dictionary when a new block starts
-   */
-  public void resetDictionary() {
   }
 
 }

@@ -107,7 +107,7 @@ public class DictionaryValuesWriter extends ValuesWriter {
   public long getBufferedSize() {
     // size that will be written to a page
     // not including the dictionary size
-    return (out == null ? 0 : out.size()) + plainValuesWriter.getBufferedSize();
+    return dictionaryTooBig ? plainValuesWriter.getBufferedSize() : out.size();
   }
 
   @Override

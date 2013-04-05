@@ -108,18 +108,14 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       writer.writeDataPages(BytesInput.from(buf), uncompressedLength, compressedLength, new ArrayList<Encoding>(encodings));
       writer.endColumn();
       if (INFO) {
-        LOG.info("written Column chunk " + path + ": "
-            + totalValueCount + " values, "
-            + uncompressedLength + "B raw, "
-            + compressedLength + "B comp, "
-            + pageCount + " pages, "
-            + "encodings: " + encodings + ", "
-            + (dictionaryPages.size() > 0 ? "dic { "
-            + dictionaryPages.size() + " pages, "
-            + dicEntriesTotal + " entries, "
-            + dicByteSizeUncTotal + "B raw, " +
-            + dicByteSizeTotal + "B comp}, " : "")
-            + "totalSize: " + buf.size() + "B");
+        LOG.info(
+            String.format(
+                "written %,dB for Column %s: %,d values, %,dB raw, %,dB comp, %d pages, encodings: %s",
+                buf.size(), path, totalValueCount, uncompressedLength, compressedLength, pageCount, encodings)
+            + (dictionaryPages.size() > 0 ? String.format(
+                    ", dic { %d pages, %,d entries, %,dB raw, %,dB comp}",
+                    dictionaryPages.size(), dicEntriesTotal, dicByteSizeUncTotal, dicByteSizeTotal)
+                    : ""));
       }
       encodings.clear();
       pageCount = 0;
