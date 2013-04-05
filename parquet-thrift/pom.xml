@@ -16,7 +16,7 @@
   <url>https://github.com/Parquet/parquet-mr</url>
 
   <properties>
-    <elephant-bird.version>3.0.8</elephant-bird.version>
+    <elephant-bird.version>3.0.9-SNAPSHOT</elephant-bird.version>
   </properties>
 
   <dependencies>

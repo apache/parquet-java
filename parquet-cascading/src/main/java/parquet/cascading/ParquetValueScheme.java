@@ -1,3 +1,18 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package parquet.cascading;
 
 import java.io.IOException;
@@ -5,6 +20,8 @@ import java.io.IOException;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.RecordReader;
+
+import parquet.hadoop.thrift.Container;
 
 import cascading.flow.FlowProcess;
 import cascading.scheme.Scheme;
@@ -26,15 +43,14 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
   @Override
   public boolean source(FlowProcess<JobConf> fp, SourceCall<Object[], RecordReader> sc)
       throws IOException {
-    Object key = sc.getContext()[0];
-    Object value = sc.getContext()[1];
-    boolean hasNext = sc.getInput().next(key, value);
+    Container<T> value = (Container<T>) sc.getInput().createValue();
+    boolean hasNext = sc.getInput().next(null, value);
     if (!hasNext) { return false; }
 
     // Skip nulls
     if (value == null) { return true; }
 
-    sc.getIncomingEntry().setTuple(new Tuple(value));
+    sc.getIncomingEntry().setTuple(new Tuple(value.get()));
     return true;
   }
 
