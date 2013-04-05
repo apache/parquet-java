@@ -18,8 +18,6 @@ package parquet.pig;
 import static parquet.pig.TupleReadSupport.PARQUET_PIG_REQUESTED_SCHEMA;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
@@ -37,7 +35,6 @@ import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
 import parquet.Log;
-import parquet.hadoop.Footer;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.io.ParquetDecodingException;
