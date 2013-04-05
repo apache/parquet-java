@@ -17,6 +17,7 @@ package parquet.column.values;
 
 import parquet.bytes.BytesInput;
 import parquet.column.Encoding;
+import parquet.column.page.DictionaryPage;
 import parquet.io.api.Binary;
 
 /**
@@ -108,27 +109,18 @@ public abstract class ValuesWriter {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  // TODO: consolidate into a getDictionaryPage
-
   /**
-   * @return data for the dictionary
+   * @return the dictionary page or null if not dictionary based
    */
-  public BytesInput getDictionaryBytes() {
-    return BytesInput.empty();
+  public DictionaryPage createDictionaryPage() {
+    return null;
   }
 
-  /**
-   * @return value count in the dictionary
-   */
-  public int getDictionarySize() {
-    return 0;
-  }
 
   /**
-   * @return the encoding of the dictionary
+   * reset the dictionary when a new block starts
    */
-  public Encoding getDictionaryEncoding() {
-    throw new UnsupportedOperationException(getClass().getName());
+  public void resetDictionary() {
   }
 
 }

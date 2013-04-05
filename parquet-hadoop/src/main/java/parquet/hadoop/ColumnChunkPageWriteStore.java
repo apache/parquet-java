@@ -95,22 +95,31 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
     public void writeToFileWriter(ParquetFileWriter writer) throws IOException {
       writer.startColumn(path, totalValueCount, compressor.getCodecName());
+      int dicEntriesTotal = 0;
+      int dicByteSizeTotal = 0;
+      int dicByteSizeUncTotal = 0;
       for (DictionaryPage dictionaryPage : dictionaryPages) {
         writer.writeDictionaryPage(dictionaryPage);
         encodings.add(dictionaryPage.getEncoding());
+        dicEntriesTotal += dictionaryPage.getDictionarySize();
+        dicByteSizeTotal += dictionaryPage.getBytes().size();
+        dicByteSizeUncTotal += dictionaryPage.getUncompressedSize();
       }
       writer.writeDataPages(BytesInput.from(buf), uncompressedLength, compressedLength, new ArrayList<Encoding>(encodings));
       writer.endColumn();
       if (INFO) {
-        LOG.info("written Column chumk " + path + ": "
+        LOG.info("written Column chunk " + path + ": "
             + totalValueCount + " values, "
             + uncompressedLength + "B raw, "
-            + compressedLength + "B compressed, "
+            + compressedLength + "B comp, "
             + pageCount + " pages, "
             + "encodings: " + encodings + ", "
-            + dictionaryPages.size() + " dic pages, "
-
-            + "totalSize:" + buf.size());
+            + (dictionaryPages.size() > 0 ? "dic { "
+            + dictionaryPages.size() + " pages, "
+            + dicEntriesTotal + " entries, "
+            + dicByteSizeUncTotal + "B raw, " +
+            + dicByteSizeTotal + "B comp}, " : "")
+            + "totalSize: " + buf.size() + "B");
       }
       encodings.clear();
       pageCount = 0;

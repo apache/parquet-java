@@ -23,7 +23,6 @@ import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
-import parquet.column.values.BinaryEncodingPickerValuesWriter;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.bitpacking.BitPackingValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter;
@@ -56,7 +55,7 @@ final class ColumnWriterImpl implements ColumnWriter {
       this.dataColumn = new BooleanPlainValuesWriter(pageSizeThreshold * 11 / 10);
       break;
     case BINARY:
-      this.dataColumn = new BinaryEncodingPickerValuesWriter(pageSizeThreshold, pageSizeThreshold);
+      this.dataColumn = new DictionaryValuesWriter(pageSizeThreshold / 5, pageSizeThreshold);
       break;
     default:
       this.dataColumn = new PlainValuesWriter(pageSizeThreshold * 11 / 10);
@@ -162,23 +161,15 @@ final class ColumnWriterImpl implements ColumnWriter {
     if (valueCount > 0) {
       writePage();
     }
-    final int dictionarySize = dataColumn.getDictionarySize();
-    if (dictionarySize > 0) {
+    final DictionaryPage dictionaryPage = dataColumn.createDictionaryPage();
+    if (dictionaryPage != null) {
       if (DEBUG) LOG.debug("write dictionary");
       try {
-        final BytesInput dictionaryBytes = dataColumn.getDictionaryBytes();
-        DictionaryPage dictionaryPage = new DictionaryPage(
-            dictionaryBytes,
-            dictionarySize,
-            dataColumn.getDictionaryEncoding());
         pageWriter.writeDictionaryPage(dictionaryPage);
       } catch (IOException e) {
         throw new ParquetEncodingException("could not write dictionary page for " + path, e);
       }
-      repetitionLevelColumn.reset();
-      definitionLevelColumn.reset();
-      dataColumn.reset();
-      valueCount = 0;
+      dataColumn.resetDictionary();
     }
   }
 
