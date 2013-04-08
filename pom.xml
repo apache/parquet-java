@@ -63,6 +63,7 @@
   </properties>
 
   <modules>
+    <module>parquet-avro</module>
     <module>parquet-cascading</module>
     <module>parquet-column</module>
     <module>parquet-hadoop</module>
