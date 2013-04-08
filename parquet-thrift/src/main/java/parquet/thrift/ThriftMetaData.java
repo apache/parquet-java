@@ -88,7 +88,7 @@ public class ThriftMetaData {
 
   public Map<String, String> toExtraMetaData() {
     final Map<String, String> map = new HashMap<String, String>();
-    map.put(THRIFT_CLASS, thriftClass.getName());
+    map.put(THRIFT_CLASS, getThriftClass().getName());
     map.put(THRIFT_DESCRIPTOR, descriptor.toJSON());
     return map;
   }
