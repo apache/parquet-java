@@ -110,7 +110,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       if (INFO) {
         LOG.info(
             String.format(
-                "written %,dB for Column %s: %,d values, %,dB raw, %,dB comp, %d pages, encodings: %s",
+                "written %,dB for %s: %,d values, %,dB raw, %,dB comp, %d pages, encodings: %s",
                 buf.size(), path, totalValueCount, uncompressedLength, compressedLength, pageCount, encodings)
             + (dictionaryPages.size() > 0 ? String.format(
                     ", dic { %d pages, %,d entries, %,dB raw, %,dB comp}",
