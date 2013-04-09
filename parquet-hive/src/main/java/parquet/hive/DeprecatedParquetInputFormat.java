@@ -23,6 +23,7 @@ import java.util.List;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
 import org.apache.hadoop.mapred.Counters;
@@ -54,16 +55,16 @@ import parquet.hive.read.MapWritableReadSupport;
 *
 */
 @SuppressWarnings({ "unchecked", "rawtypes" })
-public class DeprecatedParquetInputFormat<V> extends FileInputFormat<Void, V> {
+public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWritable> {
 
-    protected ParquetInputFormat<MapWritableReadSupport> realInput;
+    protected ParquetInputFormat<MapWritable> realInput;
 
     public DeprecatedParquetInputFormat() {
-        this.realInput = new ParquetInputFormat(MapWritableReadSupport.class);
+        this.realInput = new ParquetInputFormat<MapWritable>(MapWritableReadSupport.class);
     }
 
-    public DeprecatedParquetInputFormat(InputFormat<Void, V> realInputFormat) {
-        this.realInput = (ParquetInputFormat<MapWritableReadSupport>) realInputFormat;
+    public DeprecatedParquetInputFormat(InputFormat<Void, MapWritable> realInputFormat) {
+        this.realInput = (ParquetInputFormat<MapWritable>) realInputFormat;
     }
 
     @Override
@@ -95,15 +96,15 @@ public class DeprecatedParquetInputFormat<V> extends FileInputFormat<Void, V> {
     }
 
     @Override
-    public org.apache.hadoop.mapred.RecordReader<Void, V> getRecordReader(org.apache.hadoop.mapred.InputSplit split, org.apache.hadoop.mapred.JobConf job,
+    public org.apache.hadoop.mapred.RecordReader<Void, MapWritable> getRecordReader(org.apache.hadoop.mapred.InputSplit split, org.apache.hadoop.mapred.JobConf job,
             org.apache.hadoop.mapred.Reporter reporter) throws IOException {
         initInputFormat(job);
-        return (RecordReader<Void, V>) new RecordReaderWrapper<MapWritableReadSupport>(realInput, split, job, reporter);
+        return (RecordReader<Void, MapWritable>) new RecordReaderWrapper(realInput, split, job, reporter);
     }
 
     private void initInputFormat(JobConf conf) {
         if (realInput == null) {
-            realInput = new ParquetInputFormat(MapWritableReadSupport.class);
+            realInput = new ParquetInputFormat<MapWritable>(MapWritableReadSupport.class);
         }
     }
 
@@ -177,19 +178,19 @@ public class DeprecatedParquetInputFormat<V> extends FileInputFormat<Void, V> {
         }
     }
 
-    private static class RecordReaderWrapper<V> implements RecordReader<Void, V> {
+    private static class RecordReaderWrapper implements RecordReader<Void, MapWritable> {
 
-        private org.apache.hadoop.mapreduce.RecordReader<Void, V> realReader;
+        private org.apache.hadoop.mapreduce.RecordReader<Void, MapWritable> realReader;
         private long splitLen; // for getPos()
 
         // expect readReader return same Key & Value objects (common case)
         // this avoids extra serialization & deserialization of these objects
-        private V valueObj = null;
+        private MapWritable valueObj = null;
 
         private boolean firstRecord = false;
         private boolean eof = false;
 
-        public RecordReaderWrapper(ParquetInputFormat<V> newInputFormat, InputSplit oldSplit, JobConf oldJobConf, Reporter reporter) throws IOException {
+        public RecordReaderWrapper(ParquetInputFormat<MapWritable> newInputFormat, InputSplit oldSplit, JobConf oldJobConf, Reporter reporter) throws IOException {
 
             splitLen = oldSplit.getLength();
 
@@ -250,7 +251,7 @@ public class DeprecatedParquetInputFormat<V> extends FileInputFormat<Void, V> {
         }
 
         @Override
-        public V createValue() {
+        public MapWritable createValue() {
             return valueObj;
         }
 
@@ -269,7 +270,7 @@ public class DeprecatedParquetInputFormat<V> extends FileInputFormat<Void, V> {
         }
 
         @Override
-        public boolean next(Void key, V value) throws IOException {
+        public boolean next(Void key, MapWritable value) throws IOException {
             if (eof) {
                 return false;
             }

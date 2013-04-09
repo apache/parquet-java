@@ -26,6 +26,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.io.HiveOutputFormat;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
+import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.FileOutputFormat;
@@ -54,40 +55,31 @@ import parquet.hive.write.MapWritableWriteSupport;
 *
 */
 @SuppressWarnings({ "unchecked", "rawtypes" })
-public class DeprecatedParquetOutputFormat<V extends Writable> extends FileOutputFormat<Void, V> implements HiveOutputFormat<NullWritable, V> {
+public class DeprecatedParquetOutputFormat extends FileOutputFormat<Void, MapWritable> implements HiveOutputFormat<NullWritable, MapWritable> {
 
-    protected ParquetOutputFormat<V> realOutputFormat;
+    protected ParquetOutputFormat<MapWritable> realOutputFormat;
 
     public DeprecatedParquetOutputFormat() {
+        realOutputFormat = new ParquetOutputFormat<MapWritable>(new MapWritableWriteSupport());
     }
 
-    public DeprecatedParquetOutputFormat(OutputFormat<Void, V> mapreduceOutputFormat) {
-        realOutputFormat = (ParquetOutputFormat<V>) mapreduceOutputFormat;
-    }
-
-    private void initOutputFormat(JobConf conf) {
-        if (realOutputFormat == null) {
-            realOutputFormat = new ParquetOutputFormat<V>();
-            conf.set(ParquetOutputFormat.WRITE_SUPPORT_CLASS, MapWritableWriteSupport.class.getName());
-        }
+    public DeprecatedParquetOutputFormat(OutputFormat<Void, MapWritable> mapreduceOutputFormat) {
+        realOutputFormat = (ParquetOutputFormat<MapWritable>) mapreduceOutputFormat;
     }
 
     @Override
     public void checkOutputSpecs(FileSystem ignored, JobConf job) throws IOException {
-        initOutputFormat(job);
         realOutputFormat.checkOutputSpecs(new JobContext(job, null));
     }
 
     @Override
-    public RecordWriter<Void, V> getRecordWriter(FileSystem ignored, JobConf job, String name, Progressable progress) throws IOException {
-        initOutputFormat(job);
-        return new RecordWriterWrapper<Void, V>(realOutputFormat, job, name, progress);
+    public RecordWriter<Void, MapWritable> getRecordWriter(FileSystem ignored, JobConf job, String name, Progressable progress) throws IOException {
+        return new RecordWriterWrapper(realOutputFormat, job, name, progress);
     }
 
     @Override
     public org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter getHiveRecordWriter(JobConf jc, Path finalOutPath, Class<? extends Writable> valueClass,
             boolean isCompressed, Properties tableProperties, Progressable progress) throws IOException {
-        initOutputFormat(jc);
         String columnNameProperty = tableProperties.getProperty("columns");
         String columnTypeProperty = tableProperties.getProperty("columns.types");
         List<String> columnNames;
@@ -106,15 +98,15 @@ public class DeprecatedParquetOutputFormat<V extends Writable> extends FileOutpu
         }
 
         MapWritableWriteSupport.setSchema(new HiveSchemaConverter().convert(columnNames, columnTypes), jc);
-        return new RecordWriterWrapper<Void, V>(realOutputFormat, jc, finalOutPath.toString(), progress);
+        return new RecordWriterWrapper(realOutputFormat, jc, finalOutPath.toString(), progress);
     }
 
-    private static class RecordWriterWrapper<K, V> implements RecordWriter<K, V>, org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter {
+    private static class RecordWriterWrapper implements RecordWriter<Void, MapWritable>, org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter {
 
-        private org.apache.hadoop.mapreduce.RecordWriter<K, V> realWriter;
+        private org.apache.hadoop.mapreduce.RecordWriter<Void, MapWritable> realWriter;
         private TaskAttemptContext taskContext;
 
-        RecordWriterWrapper(OutputFormat<Void, V> realOutputFormat, JobConf jobConf, String name, Progressable progress) throws IOException {
+        RecordWriterWrapper(OutputFormat<Void, MapWritable> realOutputFormat, JobConf jobConf, String name, Progressable progress) throws IOException {
             try {
                 // create a TaskInputOutputContext
                 taskContext = new TaskInputOutputContext(jobConf, TaskAttemptID.forName(jobConf.get("mapred.task.id")), null, null, (StatusReporter) progress) {
@@ -131,7 +123,7 @@ public class DeprecatedParquetOutputFormat<V extends Writable> extends FileOutpu
                     }
                 };
 
-                realWriter = (org.apache.hadoop.mapreduce.RecordWriter<K, V>) ((ParquetOutputFormat) realOutputFormat).getRecordWriter(taskContext, new Path(name));
+                realWriter = (org.apache.hadoop.mapreduce.RecordWriter<Void, MapWritable>) ((ParquetOutputFormat) realOutputFormat).getRecordWriter(taskContext, new Path(name));
             } catch (InterruptedException e) {
                 throw new IOException(e);
             }
@@ -148,7 +140,7 @@ public class DeprecatedParquetOutputFormat<V extends Writable> extends FileOutpu
         }
 
         @Override
-        public void write(K key, V value) throws IOException {
+        public void write(Void key, MapWritable value) throws IOException {
             try {
                 realWriter.write(key, value);
             } catch (InterruptedException e) {
@@ -168,7 +160,7 @@ public class DeprecatedParquetOutputFormat<V extends Writable> extends FileOutpu
         @Override
         public void write(Writable w) throws IOException {
             try {
-                realWriter.write(null, (V) w);
+                realWriter.write(null, (MapWritable) w);
             } catch (InterruptedException e) {
                 throw new IOException(e);
             }
