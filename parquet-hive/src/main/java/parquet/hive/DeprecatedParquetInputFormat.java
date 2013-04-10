@@ -41,19 +41,23 @@ import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 import org.apache.hadoop.util.ReflectionUtils;
 
+import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.ParquetInputSplit;
+import parquet.hadoop.metadata.BlockMetaData;
+import parquet.hadoop.metadata.FileMetaData;
+import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hive.read.MapWritableReadSupport;
 
 /**
-*
-* A Parquet InputFormat for Hive (with the deprecated package mapred)
-*
-*
-* @author Mickaël Lacour <m.lacour@criteo.com>
-* @author Rémy Pecqueur <r.pecqueur@criteo.com>
-*
-*/
+ *
+ * A Parquet InputFormat for Hive (with the deprecated package mapred)
+ *
+ *
+ * @author Mickaël Lacour <m.lacour@criteo.com>
+ * @author Rémy Pecqueur <r.pecqueur@criteo.com>
+ *
+ */
 @SuppressWarnings({ "unchecked", "rawtypes" })
 public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWritable> {
 
@@ -98,21 +102,14 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
     @Override
     public org.apache.hadoop.mapred.RecordReader<Void, MapWritable> getRecordReader(org.apache.hadoop.mapred.InputSplit split, org.apache.hadoop.mapred.JobConf job,
             org.apache.hadoop.mapred.Reporter reporter) throws IOException {
-        initInputFormat(job);
         return (RecordReader<Void, MapWritable>) new RecordReaderWrapper(realInput, split, job, reporter);
-    }
-
-    private void initInputFormat(JobConf conf) {
-        if (realInput == null) {
-            realInput = new ParquetInputFormat<MapWritable>(MapWritableReadSupport.class);
-        }
     }
 
     private static class InputSplitWrapper extends FileSplit implements InputSplit {
 
         private ParquetInputSplit realSplit;
 
-        public org.apache.hadoop.mapreduce.InputSplit getRealSplit() {
+        public ParquetInputSplit getRealSplit() {
             return realSplit;
         }
 
@@ -197,9 +194,15 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
             ParquetInputSplit split;
 
             if (oldSplit instanceof InputSplitWrapper)
-                split = (ParquetInputSplit) ((InputSplitWrapper) oldSplit).getRealSplit();
+                split = ((InputSplitWrapper) oldSplit).getRealSplit();
             else if (oldSplit instanceof FileSplit) {
-                throw new NotImplementedException("Use 'set hive.input.format=org.apache.hadoop.hive.ql.io.HiveInputFormat' for now");
+                ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(oldJobConf, ((FileSplit) oldSplit).getPath());
+                List<BlockMetaData> blocks = parquetMetadata.getBlocks();
+                FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
+
+                // TODO: use requestedSchema from Hive
+                split = new ParquetInputSplit(((FileSplit) oldSplit).getPath(), ((FileSplit) oldSplit).getStart(), oldSplit.getLength(), oldSplit.getLocations(), blocks,
+                        fileMetaData.getSchema().toString(), fileMetaData.getSchema().toString(), fileMetaData.getKeyValueMetaData());
             } else
                 throw new RuntimeException("Unknown split type");
 
