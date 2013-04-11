@@ -1,8 +1,10 @@
 package parquet.column.values.rle;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 
+import parquet.Log;
 import parquet.bytes.BytesUtils;
 import parquet.column.values.bitpacking.BitPacking;
 import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
@@ -13,6 +15,7 @@ public class RLEDecoder {
   private static enum MODE { RLE, PACKED }
 
   private final int bitWidth;
+  private final int bytesWidth;
   private final InputStream in;
 
   private MODE mode;
@@ -23,6 +26,8 @@ public class RLEDecoder {
 
   public RLEDecoder(int bitWidth, InputStream in) throws IOException {
     this.bitWidth = bitWidth;
+    // number of bytes needed when padding to the next byte
+    this.bytesWidth = (bitWidth + 7) / 8;
     this.in = in;
     readNext();
   }
@@ -52,7 +57,22 @@ public class RLEDecoder {
     currentCount = header >> 1;
     switch (mode) {
     case RLE:
-      currentValue = BytesUtils.readIntLittleEndian(in);
+      switch (bytesWidth) {
+        case 1:
+          currentValue = BytesUtils.readIntLittleEndianOnOneByte(in);
+          break;
+        case 2:
+          currentValue = BytesUtils.readIntLittleEndianOnTwoBytes(in);
+          break;
+        case 3:
+          currentValue = BytesUtils.readIntLittleEndianOnThreeBytes(in);
+          break;
+        case 4:
+          currentValue = BytesUtils.readIntLittleEndian(in);
+          break;
+        default:
+          throw new ParquetDecodingException("can not store values on more than 4 bytes: " + bytesWidth + " Bytes, " + bitWidth + " bits");
+      }
       break;
     case PACKED:
       currentCount *= 8;
@@ -60,7 +80,7 @@ public class RLEDecoder {
       if (currentBuffer == null || currentBuffer.length < currentCount) {
         currentBuffer = new int[currentCount];
       }
-      // TODO: change the bitpacking intface instead
+      // TODO: change the bitpacking interface instead
       for (int i = 0; i < currentCount; i++) {
         currentBuffer[currentCount - i - 1] = reader.read();
       }

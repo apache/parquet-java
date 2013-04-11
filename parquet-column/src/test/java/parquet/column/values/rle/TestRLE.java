@@ -20,6 +20,12 @@ public class TestRLE {
     verify(in, 2);
   }
 
+  @Test
+  public void testThree() throws IOException {
+    int[] in = {0,4,1,0,2,2,1,0,3,0,1,5,1,6,7};
+    verify(in, 3);
+  }
+
   private void verify(int[] in, int width) throws IOException {
     final RLESimpleEncoder rleSimpleEncoder = new RLESimpleEncoder(width);
     for (int i : in) {
