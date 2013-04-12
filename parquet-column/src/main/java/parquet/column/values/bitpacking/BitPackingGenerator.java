@@ -36,6 +36,12 @@ public class BitPackingGenerator {
   public static void main(String[] args) throws Exception {
     final File file = new File("src/main/java/parquet/column/values/bitpacking/" + className + ".java");
     FileWriter fw = new FileWriter(file);
+    fw.append("/**\n");
+    fw.append(" * This is code is released under the\n");
+    fw.append(" * Apache License Version 2.0 http://www.apache.org/licenses/.\n");
+    fw.append(" *\n");
+    fw.append(" * (c) Daniel Lemire, http://lemire.me/en/\n");
+    fw.append(" */\n");
     fw.append("package parquet.column.values.bitpacking;\n");
     fw.append("\n");
     fw.append("/**\n");

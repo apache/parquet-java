@@ -13,6 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ * This is code is released under the
+ * Apache License Version 2.0 http://www.apache.org/licenses/.
+ *
+ * (c) Daniel Lemire, http://lemire.me/en/
+ */
 package parquet.column.values.bitpacking;
 
 /**
