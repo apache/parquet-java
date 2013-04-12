@@ -7,6 +7,10 @@ import java.io.IOException;
 /**
  * Scheme designed by D. Lemire
  *
+ * This is a re-implementation of The scheme released under Apache License Version 2.0
+ * at https://github.com/lemire/JavaFastPFOR/blob/master/src/integercompression/BitPacking.java
+ * The order of values is modified to match our existing implementation.
+ *
  * @author Julien Le Dem
  *
  */
@@ -66,19 +70,25 @@ public class BitPackingGenerator {
       int startIndex = (i * 32) / bitWidth;
       int endIndex = ((i + 1) * 32 + bitWidth - 1) / bitWidth;
       for (int j = startIndex; j < endIndex; j++) {
-        String shift;
+        String shiftString;
+        int regularShift = (j * bitWidth) % 32;
+        int shift = 32 - (regularShift + bitWidth);
         if (j == startIndex) {
           fw.append("          ");
           if ((i * 32) % bitWidth != 0) {
-            shift = " >>> " + align(32 - (j * bitWidth) % 32, 2);
+            shiftString = " <<  " + align(32 - (((j + 1) * bitWidth) % 32), 2); // end of last value from previous int
           } else {
-            shift = " <<  " + align((j * bitWidth) % 32, 2);
+            shiftString = " <<  " + align(shift, 2);
           }
         } else {
           fw.append("\n        | ");
-          shift = " <<  " + align((j * bitWidth) % 32, 2);
+          if (shift < 0) {
+            shiftString = " >>> " + align(-shift, 2);
+          } else {
+            shiftString = " <<  " + align(shift, 2);
+          }
         }
-        fw.append("((in[" + align(j, 2) + " + inPos] & " + mask + ")" + shift + ")");
+        fw.append("((in[" + align(j, 2) + " + inPos] & " + mask + ")" + shiftString + ")");
       }
       fw.append(";\n");
     }
@@ -90,15 +100,18 @@ public class BitPackingGenerator {
       for (int i = 0; i < 32; ++i) {
         fw.append("      out[" + align(i, 2) + " + outPos] =");
         int byteIndex = i * bitWidth / 32;
-        fw.append(" ((in[" + align(byteIndex, 2) + " + inPos] >>> " + align((i * bitWidth % 32), 2) + ") & " + mask + ")");
+        final int regularShift = i * bitWidth % 32;
+        int shift = 32 - (regularShift + bitWidth);
+        String shiftString;
+        if (shift < 0) {
+          shiftString = "<<  " + align(-shift, 2);
+        } else {
+          shiftString = ">>> " + align(shift, 2);
+        }
+        fw.append(" ((in[" + align(byteIndex, 2) + " + inPos] " + shiftString + ") & " + mask + ")");
         if (((i + 1) * bitWidth - 1 ) / 32 != byteIndex) {
           int bitsRead = ((i + 1) * bitWidth - 1) % 32 + 1;
-          int lowerMask = 0;
-          for (int j = 0; j < bitsRead; j++) {
-            lowerMask <<= 1;
-            lowerMask |= 1;
-          }
-          fw.append(" | ((in[" + align(byteIndex + 1, 2) + " + inPos] & " + lowerMask + ") << " + align(bitWidth - bitsRead, 2) + ")");
+          fw.append(" | ((in[" + align(byteIndex + 1, 2) + " + inPos]) >>> " + align(32 - bitsRead, 2) + ")");
         }
         fw.append(";\n");
       }

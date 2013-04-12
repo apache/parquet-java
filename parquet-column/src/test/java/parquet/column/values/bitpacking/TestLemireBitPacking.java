@@ -32,7 +32,7 @@ public class TestLemireBitPacking {
       packer.pack32Values(values, 0, packed, 0);
       packer.unpack32Values(packed, 0, unpacked, 0);
       System.out.println("Output: " + TestBitPacking.toString(unpacked));
-      Assert.assertArrayEquals(values, unpacked);
+      Assert.assertArrayEquals("width "+i, values, unpacked);
     }
   }
 
