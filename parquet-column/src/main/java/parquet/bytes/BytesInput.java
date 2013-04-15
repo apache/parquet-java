@@ -20,6 +20,8 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.List;
 
 import parquet.Log;
 
@@ -38,10 +40,19 @@ abstract public class BytesInput {
 
   /**
    * logically concatenate the provided inputs
-   * @param inputs the concatenated inputs
+   * @param inputs the inputs to concatenate
    * @return a concatenated input
    */
   public static BytesInput fromSequence(BytesInput... inputs) {
+    return new SequenceBytesIn(Arrays.asList(inputs));
+  }
+
+  /**
+   * logically concatenate the provided inputs
+   * @param inputs the inputs to concatenate
+   * @return a concatenated input
+   */
+  public static BytesInput fromSequence(List<BytesInput> inputs) {
     return new SequenceBytesIn(inputs);
   }
 
@@ -65,7 +76,6 @@ abstract public class BytesInput {
   }
 
   /**
-   *
    * @param intValue the int to write
    * @return a BytesInput that will write 4 bytes in little endian
    */
@@ -74,7 +84,6 @@ abstract public class BytesInput {
   }
 
   /**
-   *
    * @param arrayOut
    * @return a BytesInput that will write the content of the buffer
    */
@@ -169,10 +178,10 @@ abstract public class BytesInput {
   private static class SequenceBytesIn extends BytesInput {
     private static final Log LOG = Log.getLog(BytesInput.SequenceBytesIn.class);
 
-    public final BytesInput[] inputs;
+    public final List<BytesInput> inputs;
     private final long size;
 
-    private SequenceBytesIn(BytesInput[] inputs) {
+    private SequenceBytesIn(List<BytesInput> inputs) {
       this.inputs = inputs;
       long total = 0;
       for (BytesInput input : inputs) {
@@ -270,4 +279,5 @@ abstract public class BytesInput {
     }
 
   }
+
 }

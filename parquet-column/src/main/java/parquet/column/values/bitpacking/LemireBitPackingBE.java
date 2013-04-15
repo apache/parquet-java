@@ -1,19 +1,4 @@
 /**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/**
  * This is code is released under the
  * Apache License Version 2.0 http://www.apache.org/licenses/.
  *
@@ -23,14 +8,15 @@ package parquet.column.values.bitpacking;
 
 /**
  * Scheme designed by D. Lemire
+ * Adapted to pack from the Most Significant Bit first
  * 
  * @author automatically generated
  * @see BitPackingGenerator
  *
  */
-public abstract class LemireBitPacking {
+abstract class LemireBitPackingBE {
 
-  private static final LemireBitPacking[] packers = new LemireBitPacking[32];
+  private static final IntPacker[] packers = new IntPacker[32];
   static {
     packers[0] = new Packer0();
     packers[1] = new Packer1();
@@ -66,22 +52,28 @@ public abstract class LemireBitPacking {
     packers[31] = new Packer31();
   }
 
-  public static final LemireBitPacking getPacker(int bitWidth) {
+  public static final IntPacker getPacker(int bitWidth) {
     return packers[bitWidth];
   }
 
-public abstract void pack32Values(int[] in, int inPos, int[] out, int outPos);
+  private static final class Packer0 extends IntPacker {
 
-public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
+    private Packer0() {
+      super(0);
+    }
 
-  private static final class Packer0 extends LemireBitPacking {
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
     }
     public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
     }
   }
 
-  private static final class Packer1 extends LemireBitPacking {
+  private static final class Packer1 extends IntPacker {
+
+    private Packer1() {
+      super(1);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 1) <<  31)
@@ -153,7 +145,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer2 extends LemireBitPacking {
+  private static final class Packer2 extends IntPacker {
+
+    private Packer2() {
+      super(2);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 3) <<  30)
@@ -226,7 +223,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer3 extends LemireBitPacking {
+  private static final class Packer3 extends IntPacker {
+
+    private Packer3() {
+      super(3);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 7) <<  29)
@@ -302,7 +304,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer4 extends LemireBitPacking {
+  private static final class Packer4 extends IntPacker {
+
+    private Packer4() {
+      super(4);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 15) <<  28)
@@ -377,7 +384,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer5 extends LemireBitPacking {
+  private static final class Packer5 extends IntPacker {
+
+    private Packer5() {
+      super(5);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 31) <<  27)
@@ -457,7 +469,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer6 extends LemireBitPacking {
+  private static final class Packer6 extends IntPacker {
+
+    private Packer6() {
+      super(6);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 63) <<  26)
@@ -538,7 +555,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer7 extends LemireBitPacking {
+  private static final class Packer7 extends IntPacker {
+
+    private Packer7() {
+      super(7);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 127) <<  25)
@@ -622,7 +644,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer8 extends LemireBitPacking {
+  private static final class Packer8 extends IntPacker {
+
+    private Packer8() {
+      super(8);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 255) <<  24)
@@ -701,7 +728,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer9 extends LemireBitPacking {
+  private static final class Packer9 extends IntPacker {
+
+    private Packer9() {
+      super(9);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 511) <<  23)
@@ -789,7 +821,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer10 extends LemireBitPacking {
+  private static final class Packer10 extends IntPacker {
+
+    private Packer10() {
+      super(10);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 1023) <<  22)
@@ -878,7 +915,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer11 extends LemireBitPacking {
+  private static final class Packer11 extends IntPacker {
+
+    private Packer11() {
+      super(11);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 2047) <<  21)
@@ -970,7 +1012,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer12 extends LemireBitPacking {
+  private static final class Packer12 extends IntPacker {
+
+    private Packer12() {
+      super(12);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 4095) <<  20)
@@ -1061,7 +1108,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer13 extends LemireBitPacking {
+  private static final class Packer13 extends IntPacker {
+
+    private Packer13() {
+      super(13);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 8191) <<  19)
@@ -1157,7 +1209,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer14 extends LemireBitPacking {
+  private static final class Packer14 extends IntPacker {
+
+    private Packer14() {
+      super(14);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 16383) <<  18)
@@ -1254,7 +1311,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer15 extends LemireBitPacking {
+  private static final class Packer15 extends IntPacker {
+
+    private Packer15() {
+      super(15);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 32767) <<  17)
@@ -1354,7 +1416,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer16 extends LemireBitPacking {
+  private static final class Packer16 extends IntPacker {
+
+    private Packer16() {
+      super(16);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 65535) <<  16)
@@ -1441,7 +1508,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer17 extends LemireBitPacking {
+  private static final class Packer17 extends IntPacker {
+
+    private Packer17() {
+      super(17);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 131071) <<  15)
@@ -1545,7 +1617,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer18 extends LemireBitPacking {
+  private static final class Packer18 extends IntPacker {
+
+    private Packer18() {
+      super(18);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 262143) <<  14)
@@ -1650,7 +1727,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer19 extends LemireBitPacking {
+  private static final class Packer19 extends IntPacker {
+
+    private Packer19() {
+      super(19);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 524287) <<  13)
@@ -1758,7 +1840,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer20 extends LemireBitPacking {
+  private static final class Packer20 extends IntPacker {
+
+    private Packer20() {
+      super(20);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 1048575) <<  12)
@@ -1865,7 +1952,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer21 extends LemireBitPacking {
+  private static final class Packer21 extends IntPacker {
+
+    private Packer21() {
+      super(21);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 2097151) <<  11)
@@ -1977,7 +2069,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer22 extends LemireBitPacking {
+  private static final class Packer22 extends IntPacker {
+
+    private Packer22() {
+      super(22);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 4194303) <<  10)
@@ -2090,7 +2187,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer23 extends LemireBitPacking {
+  private static final class Packer23 extends IntPacker {
+
+    private Packer23() {
+      super(23);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 8388607) <<   9)
@@ -2206,7 +2308,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer24 extends LemireBitPacking {
+  private static final class Packer24 extends IntPacker {
+
+    private Packer24() {
+      super(24);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 16777215) <<   8)
@@ -2317,7 +2424,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer25 extends LemireBitPacking {
+  private static final class Packer25 extends IntPacker {
+
+    private Packer25() {
+      super(25);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 33554431) <<   7)
@@ -2437,7 +2549,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer26 extends LemireBitPacking {
+  private static final class Packer26 extends IntPacker {
+
+    private Packer26() {
+      super(26);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 67108863) <<   6)
@@ -2558,7 +2675,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer27 extends LemireBitPacking {
+  private static final class Packer27 extends IntPacker {
+
+    private Packer27() {
+      super(27);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 134217727) <<   5)
@@ -2682,7 +2804,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer28 extends LemireBitPacking {
+  private static final class Packer28 extends IntPacker {
+
+    private Packer28() {
+      super(28);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 268435455) <<   4)
@@ -2805,7 +2932,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer29 extends LemireBitPacking {
+  private static final class Packer29 extends IntPacker {
+
+    private Packer29() {
+      super(29);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 536870911) <<   3)
@@ -2933,7 +3065,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer30 extends LemireBitPacking {
+  private static final class Packer30 extends IntPacker {
+
+    private Packer30() {
+      super(30);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 1073741823) <<   2)
@@ -3062,7 +3199,12 @@ public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);
     }
   }
 
-  private static final class Packer31 extends LemireBitPacking {
+  private static final class Packer31 extends IntPacker {
+
+    private Packer31() {
+      super(31);
+    }
+
     public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 2147483647) <<   1)

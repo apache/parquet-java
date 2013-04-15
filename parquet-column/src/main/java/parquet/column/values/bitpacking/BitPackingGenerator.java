@@ -31,9 +31,14 @@ import java.io.IOException;
  */
 public class BitPackingGenerator {
 
-  private static final String className = "LemireBitPacking";
+  private static final String classNamePrefix = "LemireBitPacking";
 
   public static void main(String[] args) throws Exception {
+    generateScheme(classNamePrefix + "BE", true);
+//    generateScheme(classNamePrefix + "LE", false); ?? TODO
+  }
+
+  private static void generateScheme(String className, boolean msbFirst) throws IOException {
     final File file = new File("src/main/java/parquet/column/values/bitpacking/" + className + ".java");
     FileWriter fw = new FileWriter(file);
     fw.append("/**\n");
@@ -46,44 +51,47 @@ public class BitPackingGenerator {
     fw.append("\n");
     fw.append("/**\n");
     fw.append(" * Scheme designed by D. Lemire\n");
+    if (msbFirst) {
+      fw.append(" * Adapted to pack from the Most Significant Bit first\n");
+    }
     fw.append(" * \n");
     fw.append(" * @author automatically generated\n");
     fw.append(" * @see BitPackingGenerator\n");
     fw.append(" *\n");
     fw.append(" */\n");
-    fw.append("public abstract class LemireBitPacking {\n");
+    fw.append("abstract class " + className + " {\n");
     fw.append("\n");
-    fw.append("  private static final " + className + "[] packers = new " + className + "[32];\n");
+    fw.append("  private static final IntPacker[] packers = new IntPacker[32];\n");
     fw.append("  static {\n");
     for (int i = 0; i < 32; i++) {
       fw.append("    packers[" + i + "] = new Packer" + i + "();\n");
     }
     fw.append("  }\n");
     fw.append("\n");
-    fw.append("  public static final " + className + " getPacker(int bitWidth) {\n");
+    fw.append("  public static final IntPacker getPacker(int bitWidth) {\n");
     fw.append("    return packers[bitWidth];\n");
     fw.append("  }\n");
     fw.append("\n");
-    fw.append("public abstract void pack32Values(int[] in, int inPos, int[] out, int outPos);\n");
-    fw.append("\n");
-    fw.append("public abstract void unpack32Values(int[] in, int inPos, int[] out, int outPos);\n");
-    fw.append("\n");
     for (int i = 0; i < 32; i++) {
-      generateClass(fw, i);
+      generateClass(fw, i, msbFirst);
       fw.append("\n");
     }
     fw.append("}\n");
     fw.close();
   }
 
-  private static void generateClass(FileWriter fw, int bitWidth) throws IOException {
+  private static void generateClass(FileWriter fw, int bitWidth, boolean msbFirst) throws IOException {
     int mask = 0;
     for (int i = 0; i < bitWidth; i++) {
       mask <<= 1;
       mask |= 1;
     }
-    fw.append("  private static final class Packer" + bitWidth + " extends " + className + " {\n");
-
+    fw.append("  private static final class Packer" + bitWidth + " extends IntPacker {\n");
+    fw.append("\n");
+    fw.append("    private Packer" + bitWidth + "() {\n");
+    fw.append("      super("+bitWidth+");\n");
+    fw.append("    }\n");
+    fw.append("\n");
     // Packing
     fw.append("    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){\n");
     for (int i = 0; i < bitWidth; ++i) {

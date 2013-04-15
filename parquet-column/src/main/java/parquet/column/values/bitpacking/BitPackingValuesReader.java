@@ -40,7 +40,6 @@ public class BitPackingValuesReader extends ValuesReader {
   private final int bitsPerValue;
 
   /**
-   *
    * @param bound the maximum value stored by this column
    */
   public BitPackingValuesReader(int bound) {
@@ -48,7 +47,6 @@ public class BitPackingValuesReader extends ValuesReader {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.values.ValuesReader#readInteger()
    */
@@ -62,7 +60,6 @@ public class BitPackingValuesReader extends ValuesReader {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.values.ValuesReader#initFromPage(long, byte[], int)
    */

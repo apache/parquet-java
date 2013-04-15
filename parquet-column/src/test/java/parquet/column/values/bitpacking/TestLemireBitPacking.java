@@ -17,13 +17,11 @@ package parquet.column.values.bitpacking;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import parquet.bytes.LittleEndianDataOutputStream;
 import parquet.column.primitive.TestBitPacking;
 import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
@@ -43,7 +41,7 @@ public class TestLemireBitPacking {
         values[j] = (int)(Math.random() * 100000) % (int)Math.pow(2, i); // 67 is prime
       }
       System.out.println("Input:  " + TestBitPacking.toString(values));
-      final LemireBitPacking packer = LemireBitPacking.getPacker(i);
+      final IntPacker packer = LemireBitPackingBE.getPacker(i);
       packer.pack32Values(values, 0, packed, 0);
       packer.unpack32Values(packed, 0, unpacked, 0);
       System.out.println("Output: " + TestBitPacking.toString(unpacked));
@@ -66,7 +64,7 @@ public class TestLemireBitPacking {
       System.out.println("Input:  " + TestBitPacking.toString(values));
 
       // pack lemire
-      final LemireBitPacking packer = LemireBitPacking.getPacker(i);
+      final IntPacker packer = LemireBitPackingBE.getPacker(i);
       packer.pack32Values(values, 0, packed, 0);
       // convert to ints
       final ByteArrayOutputStream lemireOut = new ByteArrayOutputStream();
