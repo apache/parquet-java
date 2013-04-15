@@ -67,10 +67,11 @@ public class MapWritableGroupConverter extends GroupConverter {
 
         if (type.isPrimitive()) {
             return ETypeConverter.getNewConverter(type.asPrimitiveType().getPrimitiveTypeName().javaType, fieldName, this);
-        } else {
-            //throw new NotImplementedException("Non primitive converters not implemented");
-            return null;
+        else {
+            // TODO
         }
+        return null;
+
     }
 
     final public MapWritable getCurrentMap() {

@@ -24,6 +24,7 @@ import parquet.hadoop.api.WriteSupport;
 import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
+
 /**
  *
  * A MapWritableWriteSupport

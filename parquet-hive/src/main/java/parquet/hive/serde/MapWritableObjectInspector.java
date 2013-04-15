@@ -20,16 +20,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.AbstractPrimitiveJavaObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspector;
+import org.apache.hadoop.hive.serde2.typeinfo.ListTypeInfo;
+import org.apache.hadoop.hive.serde2.typeinfo.MapTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
@@ -37,6 +39,7 @@ import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Text;
 
 import parquet.hive.writable.BinaryWritable;
+
 /**
  *
  * A MapWritableObjectInspector for Hive (with the deprecated package mapred)
@@ -65,29 +68,38 @@ public class MapWritableObjectInspector extends StructObjectInspector {
             final String name = fieldNames.get(i);
             final TypeInfo fieldInfo = fieldInfos.get(i);
 
-            StructFieldImpl field;
-
-            if (fieldInfo.equals(TypeInfoFactory.doubleTypeInfo)) {
-                field = new StructFieldImpl(name, PrimitiveObjectInspectorFactory.writableDoubleObjectInspector);
-            } else if (fieldInfo.equals(TypeInfoFactory.booleanTypeInfo)) {
-                field = new StructFieldImpl(name, PrimitiveObjectInspectorFactory.writableBooleanObjectInspector);
-            } else if (fieldInfo.equals(TypeInfoFactory.floatTypeInfo)) {
-                field = new StructFieldImpl(name, PrimitiveObjectInspectorFactory.writableFloatObjectInspector);
-            } else if (fieldInfo.equals(TypeInfoFactory.intTypeInfo)) {
-                field = new StructFieldImpl(name, PrimitiveObjectInspectorFactory.writableIntObjectInspector);
-            } else if (fieldInfo.equals(TypeInfoFactory.longTypeInfo)) {
-                field = new StructFieldImpl(name, PrimitiveObjectInspectorFactory.writableLongObjectInspector);
-            } else if (fieldInfo.equals(TypeInfoFactory.stringTypeInfo)) {
-                field = new StructFieldImpl(name, new JavaStringBinaryObjectInspector());
-            } else if (fieldInfo.getCategory().equals(Category.STRUCT)) {
-                field = new StructFieldImpl(name, new MapWritableObjectInspector((StructTypeInfo) fieldInfo));
-            } else {
-                throw new NotImplementedException("Type : " + fieldInfo.getTypeName() + " is not implemented");
-            }
+            StructFieldImpl field = new StructFieldImpl(name, getObjectInspector(fieldInfo));
 
             fields.add(field);
             fieldsByName.put(name, field);
         }
+    }
+
+    private ObjectInspector getObjectInspector(TypeInfo typeInfo) {
+        if (typeInfo.equals(TypeInfoFactory.doubleTypeInfo)) {
+            return PrimitiveObjectInspectorFactory.writableDoubleObjectInspector;
+        } else if (typeInfo.equals(TypeInfoFactory.booleanTypeInfo)) {
+            return PrimitiveObjectInspectorFactory.writableBooleanObjectInspector;
+        } else if (typeInfo.equals(TypeInfoFactory.floatTypeInfo)) {
+            return PrimitiveObjectInspectorFactory.writableFloatObjectInspector;
+        } else if (typeInfo.equals(TypeInfoFactory.intTypeInfo)) {
+            return PrimitiveObjectInspectorFactory.writableIntObjectInspector;
+        } else if (typeInfo.equals(TypeInfoFactory.longTypeInfo)) {
+            return PrimitiveObjectInspectorFactory.writableLongObjectInspector;
+        } else if (typeInfo.equals(TypeInfoFactory.stringTypeInfo)) {
+            return new JavaStringBinaryObjectInspector();
+        } else if (typeInfo.getCategory().equals(Category.STRUCT)) {
+            return new MapWritableObjectInspector((StructTypeInfo) typeInfo);
+        } else if (typeInfo.getCategory().equals(Category.LIST)) {
+            TypeInfo subTypeInfo = ((ListTypeInfo) typeInfo).getListElementTypeInfo();
+            return ObjectInspectorFactory.getStandardListObjectInspector(getObjectInspector(subTypeInfo));
+        } else if (typeInfo.getCategory().equals(Category.MAP)) {
+            TypeInfo keyTypeInfo = ((MapTypeInfo) typeInfo).getMapKeyTypeInfo();
+            TypeInfo valueTypeInfo = ((MapTypeInfo) typeInfo).getMapValueTypeInfo();
+            return ObjectInspectorFactory.getStandardMapObjectInspector(getObjectInspector(keyTypeInfo), getObjectInspector(valueTypeInfo));
+        } else
+            throw new RuntimeException("Unknown field info: " + typeInfo);
+
     }
 
     @Override

@@ -15,8 +15,8 @@
  */
 package parquet.hive.write;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.hadoop.hive.serde2.io.DoubleWritable;
+import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.BooleanWritable;
 import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
@@ -24,11 +24,13 @@ import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 
+import parquet.Log;
 import parquet.hive.writable.BinaryWritable;
 import parquet.io.api.Binary;
 import parquet.io.api.RecordConsumer;
 import parquet.schema.GroupType;
 import parquet.schema.Type;
+
 /**
  *
  * A MapWritableWriter
@@ -39,6 +41,7 @@ import parquet.schema.Type;
  *
  */
 public class MapWritableWriter {
+    private static final Log LOG = Log.getLog(MapWritableWriter.class);
 
     private final RecordConsumer recordConsumer;
     private final GroupType schema;
@@ -48,35 +51,97 @@ public class MapWritableWriter {
         this.schema = schema;
     }
 
-    public void write(final MapWritable map) {
+    public void write(MapWritable map) {
+        if (map == null)
+            return;
+
         recordConsumer.startMessage();
         writeMap(map, schema);
         recordConsumer.endMessage();
     }
 
-    private void writeMap(final MapWritable map, final GroupType type) {
-        final int fieldCount = type.getFieldCount();
+    private void writeMap(MapWritable map, GroupType type) {
+        if (map == null)
+            return;
+
+        // LOG.info("WRITING MAP (" + type + ") " + map.entrySet());
+
+        int fieldCount = type.getFieldCount();
         for (int field = 0; field < fieldCount; ++field) {
             final Type fieldType = type.getType(field);
             final String fieldName = fieldType.getName();
             recordConsumer.startField(fieldName, field);
+            Writable value = map.get(new Text(fieldName));
+
             if (fieldType.isPrimitive()) {
-                final Writable value = map.get(new Text(fieldName));
-                if (value instanceof DoubleWritable) {
-                    recordConsumer.addDouble(((DoubleWritable) value).get());
-                } else if (value instanceof BooleanWritable) {
-                    recordConsumer.addBoolean(((BooleanWritable) value).get());
-                } else if (value instanceof FloatWritable) {
-                    recordConsumer.addFloat(((FloatWritable) value).get());
-                } else if (value instanceof IntWritable) {
-                    recordConsumer.addInteger(((IntWritable) value).get());
-                } else if (value instanceof BinaryWritable) {
-                    recordConsumer.addBinary(Binary.fromByteArray(((BinaryWritable) value).getBytes()));
-                }
+                // LOG.info("WRITING PRIMITIVE (" + fieldType + ") " + value);
+                writePrimitive(value);
             } else {
-                throw new NotImplementedException("Non primitive writing not implemented");
+                recordConsumer.startGroup();
+
+                if (value instanceof MapWritable)
+                    writeMap((MapWritable) value, fieldType.asGroupType());
+                else if (value instanceof ArrayWritable)
+                    writeArray((ArrayWritable) value, fieldType.asGroupType());
+                else if (value != null)
+                    throw new RuntimeException("This should be an ArrayWritable or MapWritable: " + value);
+
+                recordConsumer.endGroup();
             }
+
             recordConsumer.endField(fieldName, field);
         }
+    }
+
+    private void writeArray(ArrayWritable array, GroupType type) {
+        if (array == null)
+            return;
+
+        // LOG.info("WRITING ARRAY (" + type + ") " + array);
+
+        Writable[] subValues = array.get();
+
+        int fieldCount = type.getFieldCount();
+        for (int field = 0; field < fieldCount; ++field) {
+            Type subType = type.getType(field);
+            recordConsumer.startField(subType.getName(), field);
+            for (int i = 0; i < subValues.length; ++i) {
+                Writable subValue = subValues[i];
+                if (subValue != null) {
+                    MapWritable subMap = (MapWritable) subValue;
+                    if (!(subValue instanceof MapWritable))
+                        throw new RuntimeException("This should be a MapWritable: " + subValue);
+
+                    if (subType.isPrimitive()) {
+                        // LOG.info("WRITING PRIMITIVE (" + subType + ") " +
+                        // subValue);
+                        writePrimitive(subMap.get(new Text(subType.getName())));
+                    } else {
+                        recordConsumer.startGroup();
+                        writeMap(subMap, subType.asGroupType());
+                        recordConsumer.endGroup();
+                    }
+                }
+            }
+            recordConsumer.endField(subType.getName(), field);
+        }
+
+    }
+
+    private void writePrimitive(Writable value) {
+        if (value == null)
+            return;
+        if (value instanceof DoubleWritable)
+            recordConsumer.addDouble(((DoubleWritable) value).get());
+        else if (value instanceof BooleanWritable)
+            recordConsumer.addBoolean(((BooleanWritable) value).get());
+        else if (value instanceof FloatWritable)
+            recordConsumer.addFloat(((FloatWritable) value).get());
+        else if (value instanceof IntWritable)
+            recordConsumer.addInteger(((IntWritable) value).get());
+        else if (value instanceof BinaryWritable)
+            recordConsumer.addBinary(Binary.fromByteArray(((BinaryWritable) value).getBytes()));
+        else
+            throw new RuntimeException("Unknown value type: " + value + " " + value.getClass());
     }
 }

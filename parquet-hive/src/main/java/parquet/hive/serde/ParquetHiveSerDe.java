@@ -18,6 +18,8 @@ package parquet.hive.serde;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 
 import org.apache.commons.lang.NotImplementedException;
@@ -28,6 +30,9 @@ import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.hive.serde2.SerDe;
 import org.apache.hadoop.hive.serde2.SerDeException;
 import org.apache.hadoop.hive.serde2.SerDeStats;
+import org.apache.hadoop.hive.serde2.io.DoubleWritable;
+import org.apache.hadoop.hive.serde2.objectinspector.ListObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.MapObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
@@ -45,10 +50,9 @@ import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
+import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.BooleanWritable;
 import org.apache.hadoop.io.ByteWritable;
-import org.apache.hadoop.io.BytesWritable;
-import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
@@ -57,6 +61,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 
 import parquet.hive.writable.BinaryWritable;
+
 /**
  *
  * A ParquetHiveSerDe for Hive (with the deprecated package mapred)
@@ -70,6 +75,11 @@ public class ParquetHiveSerDe implements SerDe {
 
     private List<String> columnNames;
     private List<TypeInfo> columnTypes;
+
+    public static Text MAP_KEY = new Text("key");
+    public static Text MAP_VALUE = new Text("value");
+    public static Text MAP = new Text("map");
+    public static Text ARRAY = new Text("bag");
 
     ObjectInspector objInspector;
 
@@ -123,7 +133,7 @@ public class ParquetHiveSerDe implements SerDe {
 
     @Override
     public Class<? extends Writable> getSerializedClass() {
-        return BytesWritable.class;
+        return MapWritable.class;
     }
 
     @Override
@@ -132,34 +142,20 @@ public class ParquetHiveSerDe implements SerDe {
             throw new SerDeException("Can only serialize a struct");
         }
 
-        return createMapWritableFromRaw(obj, (StructObjectInspector) objInspector, columnNames);
+        return createStruct(obj, (StructObjectInspector) objInspector, columnNames);
     }
 
-    private MapWritable createMapWritableFromRaw(final Object obj, final StructObjectInspector objInspector, final List<String> colNames) throws SerDeException {
-        final MapWritable result = new MapWritable();
-        final List<? extends StructField> fields = objInspector.getAllStructFieldRefs();
+    private MapWritable createStruct(Object obj, StructObjectInspector inspector, List<String> colNames) throws SerDeException {
+        MapWritable result = new MapWritable();
+        List<? extends StructField> fields = inspector.getAllStructFieldRefs();
         int i = 0;
 
         for (final StructField field : fields) {
 
-            final Object subObj = objInspector.getStructFieldData(obj, field);
-            final ObjectInspector inspector = field.getFieldObjectInspector();
-            final Category cat = inspector.getCategory();
+            Object subObj = inspector.getStructFieldData(obj, field);
+            ObjectInspector subInspector = field.getFieldObjectInspector();
 
-            Writable subResult = null;
-            switch (cat) {
-            case STRUCT:
-                subResult = createMapWritableFromRaw(subObj, (StructObjectInspector) inspector, null);
-                break;
-            case LIST:
-            case MAP:
-                throw new NotImplementedException("Array/map serialization not implemented");
-            case PRIMITIVE:
-                subResult = createPrimitiveWritableFromRaw(subObj, (PrimitiveObjectInspector) inspector);
-                break;
-            default:
-                throw new RuntimeException("Unknown data type");
-            }
+            Writable subResult = createObject(subObj, subInspector);
 
             // for the 1st lvl, the field names are "_col0" ... and we want the
             // real names
@@ -173,11 +169,62 @@ public class ParquetHiveSerDe implements SerDe {
 
     }
 
-    private Writable createPrimitiveWritableFromRaw(final Object obj, final PrimitiveObjectInspector inspector) throws SerDeException {
+    private Writable createMap(Object obj, MapObjectInspector inspector) throws SerDeException {
+        Map<?, ?> sourceMap = inspector.getMap(obj);
+        ObjectInspector keyInspector = inspector.getMapKeyObjectInspector();
+        ObjectInspector valueInspector = inspector.getMapValueObjectInspector();
+        List<MapWritable> array = new ArrayList<MapWritable>();
 
-        if (obj == null) {
-            return null;
+        if (sourceMap != null) {
+            for (Entry<?, ?> keyValue : sourceMap.entrySet()) {
+                Writable key = createObject(keyValue.getKey(), keyInspector);
+                Writable value = createObject(keyValue.getValue(), valueInspector);
+
+                if (key != null) {
+                    MapWritable keyValueWritable = new MapWritable();
+                    keyValueWritable.put(MAP_KEY, key);
+                    keyValueWritable.put(MAP_VALUE, value);
+                    array.add(keyValueWritable);
+                }
+
+            }
         }
+
+        if (array.size() > 0) {
+            ArrayWritable subArray = new ArrayWritable(MapWritable.class, array.toArray(new MapWritable[array.size()]));
+            MapWritable map = new MapWritable();
+            map.put(MAP, subArray);
+            return map;
+        } else
+            return null;
+    }
+
+    private MapWritable createArray(Object obj, ListObjectInspector inspector) throws SerDeException {
+        List<?> sourceArray = inspector.getList(obj);
+        ObjectInspector subInspector = inspector.getListElementObjectInspector();
+        List<Writable> array = new ArrayList<Writable>();
+
+        if (sourceArray != null) {
+            for (Object curObj : sourceArray) {
+                Writable newObj = createObject(curObj, subInspector);
+                if (newObj != null)
+                    array.add(newObj);
+            }
+        }
+
+        if (array.size() > 0) {
+            ArrayWritable subArray = new ArrayWritable(array.get(0).getClass(), array.toArray(new Writable[array.size()]));
+            MapWritable map = new MapWritable();
+            map.put(ARRAY, subArray);
+            return map;
+        } else
+            return null;
+    }
+
+    private Writable createPrimitive(Object obj, PrimitiveObjectInspector inspector) throws SerDeException {
+
+        if (obj == null)
+            return null;
 
         switch (inspector.getPrimitiveCategory()) {
         case VOID:
@@ -200,6 +247,21 @@ public class ParquetHiveSerDe implements SerDe {
             return new BinaryWritable(((StringObjectInspector) inspector).getPrimitiveJavaObject(obj));
         default:
             throw new SerDeException("Unknown primitive");
+        }
+    }
+
+    private Writable createObject(Object obj, ObjectInspector inspector) throws SerDeException {
+        switch (inspector.getCategory()) {
+        case STRUCT:
+            return createStruct(obj, (StructObjectInspector) inspector, null);
+        case LIST:
+            return createArray(obj, (ListObjectInspector) inspector);
+        case MAP:
+            return createMap(obj, (MapObjectInspector) inspector);
+        case PRIMITIVE:
+            return createPrimitive(obj, (PrimitiveObjectInspector) inspector);
+        default:
+            throw new SerDeException("Unknown data type" + inspector.getCategory());
         }
     }
 
