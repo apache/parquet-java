@@ -24,6 +24,10 @@ import java.io.IOException;
  *
  * This is a re-implementation of The scheme released under Apache License Version 2.0
  * at https://github.com/lemire/JavaFastPFOR/blob/master/src/integercompression/BitPacking.java
+ *
+ * It generate two classes:
+ * - LemireBitPackingLE, the original scheme, filling the LSB first
+ * - LemireBitPackingBE, the scheme modified to fill the MSB first
  * The order of values is modified to match our existing implementation.
  *
  * @author Julien Le Dem
@@ -35,7 +39,7 @@ public class BitPackingGenerator {
 
   public static void main(String[] args) throws Exception {
     generateScheme(classNamePrefix + "BE", true);
-//    generateScheme(classNamePrefix + "LE", false); ?? TODO
+    generateScheme(classNamePrefix + "LE", false);
   }
 
   private static void generateScheme(String className, boolean msbFirst) throws IOException {
@@ -99,24 +103,12 @@ public class BitPackingGenerator {
       int startIndex = (i * 32) / bitWidth;
       int endIndex = ((i + 1) * 32 + bitWidth - 1) / bitWidth;
       for (int j = startIndex; j < endIndex; j++) {
-        String shiftString;
-        int regularShift = (j * bitWidth) % 32;
-        int shift = 32 - (regularShift + bitWidth);
         if (j == startIndex) {
           fw.append("          ");
-          if ((i * 32) % bitWidth != 0) {
-            shiftString = " <<  " + align(32 - (((j + 1) * bitWidth) % 32), 2); // end of last value from previous int
-          } else {
-            shiftString = " <<  " + align(shift, 2);
-          }
         } else {
           fw.append("\n        | ");
-          if (shift < 0) {
-            shiftString = " >>> " + align(-shift, 2);
-          } else {
-            shiftString = " <<  " + align(shift, 2);
-          }
         }
+        String shiftString = getPackShiftString(bitWidth, i, startIndex, j, msbFirst);
         fw.append("((in[" + align(j, 2) + " + inPos] & " + mask + ")" + shiftString + ")");
       }
       fw.append(";\n");
@@ -129,24 +121,69 @@ public class BitPackingGenerator {
       for (int i = 0; i < 32; ++i) {
         fw.append("      out[" + align(i, 2) + " + outPos] =");
         int byteIndex = i * bitWidth / 32;
-        final int regularShift = i * bitWidth % 32;
-        int shift = 32 - (regularShift + bitWidth);
-        String shiftString;
-        if (shift < 0) {
-          shiftString = "<<  " + align(-shift, 2);
-        } else {
-          shiftString = ">>> " + align(shift, 2);
-        }
+        String shiftString = getUnpackShiftString(bitWidth, i, msbFirst);
         fw.append(" ((in[" + align(byteIndex, 2) + " + inPos] " + shiftString + ") & " + mask + ")");
         if (((i + 1) * bitWidth - 1 ) / 32 != byteIndex) {
+          // reading the end of the value from next int
           int bitsRead = ((i + 1) * bitWidth - 1) % 32 + 1;
-          fw.append(" | ((in[" + align(byteIndex + 1, 2) + " + inPos]) >>> " + align(32 - bitsRead, 2) + ")");
+          fw.append(" | ((in[" + align(byteIndex + 1, 2) + " + inPos]");
+          if (msbFirst) {
+            fw.append(") >>> " + align(32 - bitsRead, 2) + ")");
+          } else {
+            int lowerMask = 0;
+            for (int j = 0; j < bitsRead; j++) {
+              lowerMask <<= 1;
+              lowerMask |= 1;
+            }
+            fw.append(" & " + lowerMask + ") << " + align(bitWidth - bitsRead, 2) + ")");
+          }
         }
         fw.append(";\n");
       }
     }
     fw.append("    }\n");
     fw.append("  }\n");
+  }
+
+  private static String getUnpackShiftString(int bitWidth, int i, boolean msbFirst) {
+    final int regularShift = i * bitWidth % 32;
+    String shiftString;
+    if (msbFirst) {
+      int shift = 32 - (regularShift + bitWidth);
+      if (shift < 0) {
+        shiftString = "<<  " + align(-shift, 2);
+      } else {
+        shiftString = ">>> " + align(shift, 2);
+      }
+    } else {
+      shiftString = ">>> " + align(regularShift, 2);
+    }
+    return shiftString;
+  }
+
+  private static String getPackShiftString(int bitWidth, int integerIndex, int startIndex, int valueIndex, boolean msbFirst) {
+    String shiftString;
+    int regularShift = (valueIndex * bitWidth) % 32;
+    if (msbFirst) { // filling most significant bit first
+      int shift = 32 - (regularShift + bitWidth);
+      if (valueIndex == startIndex && (integerIndex * 32) % bitWidth != 0) {
+        // end of last value from previous int
+          shiftString = " <<  " + align(32 - (((valueIndex + 1) * bitWidth) % 32), 2);
+      } else if (shift < 0) {
+        // partial last value
+          shiftString = " >>> " + align(-shift, 2);
+      } else {
+        shiftString = " <<  " + align(shift, 2);
+      }
+    } else { // filling least significant bit first
+      if (valueIndex == startIndex && (integerIndex * 32) % bitWidth != 0) {
+        // end of last value from previous int
+        shiftString = " >>> " + align(32 - regularShift, 2);
+      } else {
+        shiftString = " <<  " + align(regularShift, 2);
+      }
+    }
+    return shiftString;
   }
 
   private static String align(int value, int digits) {

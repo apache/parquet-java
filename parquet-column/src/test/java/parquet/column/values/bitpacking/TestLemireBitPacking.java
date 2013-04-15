@@ -41,11 +41,20 @@ public class TestLemireBitPacking {
         values[j] = (int)(Math.random() * 100000) % (int)Math.pow(2, i); // 67 is prime
       }
       System.out.println("Input:  " + TestBitPacking.toString(values));
-      final IntPacker packer = LemireBitPackingBE.getPacker(i);
-      packer.pack32Values(values, 0, packed, 0);
-      packer.unpack32Values(packed, 0, unpacked, 0);
-      System.out.println("Output: " + TestBitPacking.toString(unpacked));
-      Assert.assertArrayEquals("width "+i, values, unpacked);
+      {
+        final IntPacker packer = LemireBitPackingBE.getPacker(i);
+        packer.pack32Values(values, 0, packed, 0);
+        packer.unpack32Values(packed, 0, unpacked, 0);
+        System.out.println("Output BE: " + TestBitPacking.toString(unpacked));
+        Assert.assertArrayEquals("BE width "+i, values, unpacked);
+      }
+      {
+        final IntPacker packer = LemireBitPackingLE.getPacker(i);
+        packer.pack32Values(values, 0, packed, 0);
+        packer.unpack32Values(packed, 0, unpacked, 0);
+        System.out.println("Output LE: " + TestBitPacking.toString(unpacked));
+        Assert.assertArrayEquals("LE width "+i, values, unpacked);
+      }
     }
   }
 
