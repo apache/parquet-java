@@ -21,7 +21,10 @@ import java.util.List;
 import java.util.Properties;
 
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.hive.serde2.SerDe;
 import org.apache.hadoop.hive.serde2.SerDeException;
 import org.apache.hadoop.hive.serde2.SerDeStats;
@@ -55,14 +58,14 @@ import org.apache.hadoop.io.Writable;
 
 import parquet.hive.writable.BinaryWritable;
 /**
-*
-* A ParquetHiveSerDe for Hive (with the deprecated package mapred)
-*
-*
-* @author Mickaël Lacour <m.lacour@criteo.com>
-* @author Rémy Pecqueur <r.pecqueur@criteo.com>
-*
-*/
+ *
+ * A ParquetHiveSerDe for Hive (with the deprecated package mapred)
+ *
+ *
+ * @author Mickaël Lacour <m.lacour@criteo.com>
+ * @author Rémy Pecqueur <r.pecqueur@criteo.com>
+ *
+ */
 public class ParquetHiveSerDe implements SerDe {
 
     private List<String> columnNames;
@@ -70,14 +73,16 @@ public class ParquetHiveSerDe implements SerDe {
 
     ObjectInspector objInspector;
 
+    static final Log LOG = LogFactory.getLog(MapWritableObjectInspector.class);
+
     @Override
-    final public void initialize(Configuration conf, Properties tbl) throws SerDeException {
+    final public void initialize(final Configuration conf, final Properties tbl) throws SerDeException {
 
         final TypeInfo rowTypeInfo;
 
         // Get column names and sort order
-        String columnNameProperty = tbl.getProperty("columns");
-        String columnTypeProperty = tbl.getProperty("columns.types");
+        final String columnNameProperty = tbl.getProperty("columns");
+        final String columnTypeProperty = tbl.getProperty("columns.types");
 
         if (columnNameProperty.length() == 0) {
             columnNames = new ArrayList<String>();
@@ -97,11 +102,13 @@ public class ParquetHiveSerDe implements SerDe {
 
         // Create row related objects
         rowTypeInfo = TypeInfoFactory.getStructTypeInfo(columnNames, columnTypes);
+
+        LOG.error(ColumnProjectionUtils.getReadColumnIDs(conf));
         this.objInspector = new MapWritableObjectInspector((StructTypeInfo) rowTypeInfo);
     }
 
     @Override
-    public Object deserialize(Writable blob) throws SerDeException {
+    public Object deserialize(final Writable blob) throws SerDeException {
         if (blob instanceof MapWritable) {
             return blob;
         } else {
@@ -120,23 +127,24 @@ public class ParquetHiveSerDe implements SerDe {
     }
 
     @Override
-    public Writable serialize(Object obj, ObjectInspector objInspector) throws SerDeException {
-        if (!objInspector.getCategory().equals(Category.STRUCT))
+    public Writable serialize(final Object obj, final ObjectInspector objInspector) throws SerDeException {
+        if (!objInspector.getCategory().equals(Category.STRUCT)) {
             throw new SerDeException("Can only serialize a struct");
+        }
 
         return createMapWritableFromRaw(obj, (StructObjectInspector) objInspector, columnNames);
     }
 
-    private MapWritable createMapWritableFromRaw(Object obj, StructObjectInspector objInspector, List<String> colNames) throws SerDeException {
-        MapWritable result = new MapWritable();
-        List<? extends StructField> fields = objInspector.getAllStructFieldRefs();
+    private MapWritable createMapWritableFromRaw(final Object obj, final StructObjectInspector objInspector, final List<String> colNames) throws SerDeException {
+        final MapWritable result = new MapWritable();
+        final List<? extends StructField> fields = objInspector.getAllStructFieldRefs();
         int i = 0;
 
-        for (StructField field : fields) {
+        for (final StructField field : fields) {
 
-            Object subObj = objInspector.getStructFieldData(obj, field);
-            ObjectInspector inspector = field.getFieldObjectInspector();
-            Category cat = inspector.getCategory();
+            final Object subObj = objInspector.getStructFieldData(obj, field);
+            final ObjectInspector inspector = field.getFieldObjectInspector();
+            final Category cat = inspector.getCategory();
 
             Writable subResult = null;
             switch (cat) {
@@ -155,7 +163,7 @@ public class ParquetHiveSerDe implements SerDe {
 
             // for the 1st lvl, the field names are "_col0" ... and we want the
             // real names
-            String colName = (colNames != null) ? colNames.get(i++) : field.getFieldName();
+            final String colName = (colNames != null) ? colNames.get(i++) : field.getFieldName();
             if (subResult != null) {
                 result.put(new Text(colName), subResult);
             }
@@ -165,10 +173,11 @@ public class ParquetHiveSerDe implements SerDe {
 
     }
 
-    private Writable createPrimitiveWritableFromRaw(Object obj, PrimitiveObjectInspector inspector) throws SerDeException {
+    private Writable createPrimitiveWritableFromRaw(final Object obj, final PrimitiveObjectInspector inspector) throws SerDeException {
 
-        if (obj == null)
+        if (obj == null) {
             return null;
+        }
 
         switch (inspector.getPrimitiveCategory()) {
         case VOID:

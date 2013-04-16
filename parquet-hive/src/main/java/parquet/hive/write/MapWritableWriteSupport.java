@@ -25,23 +25,23 @@ import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 /**
-*
-* A MapWritableWriteSupport 
-* TODO
-*
-*
-* @author Rémy Pecqueur <r.pecqueur@criteo.com>
-*
-*/
+ *
+ * A MapWritableWriteSupport
+ * TODO
+ *
+ *
+ * @author Rémy Pecqueur <r.pecqueur@criteo.com>
+ *
+ */
 public class MapWritableWriteSupport extends WriteSupport<MapWritable> {
 
     public static final String PARQUET_HIVE_SCHEMA = "parquet.hive.schema";
 
-    public static void setSchema(MessageType schema, Configuration configuration) {
+    public static void setSchema(final MessageType schema, final Configuration configuration) {
         configuration.set(PARQUET_HIVE_SCHEMA, schema.toString());
     }
 
-    public static MessageType getSchema(Configuration configuration) {
+    public static MessageType getSchema(final Configuration configuration) {
         return MessageTypeParser.parseMessageType(configuration.get(PARQUET_HIVE_SCHEMA));
     }
 
@@ -49,18 +49,18 @@ public class MapWritableWriteSupport extends WriteSupport<MapWritable> {
     private MessageType schema;
 
     @Override
-    public WriteContext init(Configuration configuration) {
+    public WriteContext init(final Configuration configuration) {
         schema = getSchema(configuration);
         return new WriteContext(schema, new HashMap<String, String>());
     }
 
     @Override
-    public void prepareForWrite(RecordConsumer recordConsumer) {
+    public void prepareForWrite(final RecordConsumer recordConsumer) {
         writer = new MapWritableWriter(recordConsumer, schema);
     }
 
     @Override
-    public void write(MapWritable record) {
+    public void write(final MapWritable record) {
         writer.write(record);
     }
 

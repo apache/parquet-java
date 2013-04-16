@@ -29,13 +29,13 @@ import parquet.io.api.Binary;
 import parquet.io.api.Converter;
 import parquet.io.api.PrimitiveConverter;
 /**
-*
-* TODO : doc + see classes below (duplicated code from julien)
-*
-*
-* @author Mickaël Lacour <m.lacour@criteo.com>
-*
-*/
+ *
+ * TODO : doc + see classes below (duplicated code from julien)
+ *
+ *
+ * @author Mickaël Lacour <m.lacour@criteo.com>
+ *
+ */
 public enum ETypeConverter {
 
     EDOUBLE_CONVERTER(Double.TYPE) {
@@ -43,7 +43,7 @@ public enum ETypeConverter {
         Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
             return new FieldDoubleConverter(new ParentValueContainer() {
                 @Override
-                void add(Object value) {
+                void add(final Object value) {
                     writableGroupConv.set(fieldName, new DoubleWritable((Double) value));
                 }
             });
@@ -54,7 +54,7 @@ public enum ETypeConverter {
         Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
             return new FieldBooleanConverter(new ParentValueContainer() {
                 @Override
-                void add(Object value) {
+                void add(final Object value) {
                     writableGroupConv.set(fieldName, new BooleanWritable((Boolean) value));
                 }
             });
@@ -65,7 +65,7 @@ public enum ETypeConverter {
         Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
             return new FieldFloatConverter(new ParentValueContainer() {
                 @Override
-                void add(Object value) {
+                void add(final Object value) {
                     writableGroupConv.set(fieldName, new FloatWritable((Float) value));
                 }
             });
@@ -76,7 +76,7 @@ public enum ETypeConverter {
         Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
             return new FieldIntegerConverter(new ParentValueContainer() {
                 @Override
-                void add(Object value) {
+                void add(final Object value) {
                     writableGroupConv.set(fieldName, new IntWritable((Integer) value));
                 }
             });
@@ -87,7 +87,7 @@ public enum ETypeConverter {
         Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
             return new FieldLongConverter(new ParentValueContainer() {
                 @Override
-                void add(Object value) {
+                void add(final Object value) {
                     writableGroupConv.set(fieldName, new LongWritable((Long) value));
                 }
             });
@@ -98,7 +98,7 @@ public enum ETypeConverter {
         Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
             return new FieldBigDecimalConverter(new ParentValueContainer() {
                 @Override
-                void add(Object value) {
+                void add(final Object value) {
                     writableGroupConv.set(fieldName, new BigDecimalWritable((BigDecimal) value));
                 }
             });
@@ -110,7 +110,7 @@ public enum ETypeConverter {
         Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
             return new FieldBinaryConverter(new ParentValueContainer() {
                 @Override
-                void add(Object value) {
+                void add(final Object value) {
                     writableGroupConv.set(fieldName, new BinaryWritable((Binary) value));
                 }
             });
@@ -131,7 +131,7 @@ public enum ETypeConverter {
     abstract Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv);
 
     static public Converter getNewConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
-        for (ETypeConverter eConverter : values()) {
+        for (final ETypeConverter eConverter : values()) {
             if (eConverter.getType() == type) {
                 return eConverter.getConverter(type, fieldName, writableGroupConv);
             }
@@ -150,12 +150,12 @@ public enum ETypeConverter {
 
         private final ParentValueContainer parent;
 
-        public FieldBinaryConverter(ParentValueContainer parent) {
+        public FieldBinaryConverter(final ParentValueContainer parent) {
             this.parent = parent;
         }
 
         @Override
-        final public void addBinary(Binary value) {
+        final public void addBinary(final Binary value) {
             parent.add(value);
         }
 
@@ -171,12 +171,12 @@ public enum ETypeConverter {
 
         private final ParentValueContainer parent;
 
-        public FieldDoubleConverter(ParentValueContainer parent) {
+        public FieldDoubleConverter(final ParentValueContainer parent) {
             this.parent = parent;
         }
 
         @Override
-        final public void addDouble(double value) {
+        final public void addDouble(final double value) {
             parent.add(value);
         }
 
@@ -186,12 +186,12 @@ public enum ETypeConverter {
 
         private final ParentValueContainer parent;
 
-        public FieldIntegerConverter(ParentValueContainer parent) {
+        public FieldIntegerConverter(final ParentValueContainer parent) {
             this.parent = parent;
         }
 
         @Override
-        public void addInt(int value) {
+        public void addInt(final int value) {
             parent.add(value);
         }
     }
@@ -200,12 +200,12 @@ public enum ETypeConverter {
 
         private final ParentValueContainer parent;
 
-        public FieldFloatConverter(ParentValueContainer parent) {
+        public FieldFloatConverter(final ParentValueContainer parent) {
             this.parent = parent;
         }
 
         @Override
-        public void addFloat(float value) {
+        public void addFloat(final float value) {
             parent.add(value);
         }
 
@@ -215,12 +215,12 @@ public enum ETypeConverter {
 
         private final ParentValueContainer parent;
 
-        public FieldLongConverter(ParentValueContainer parent) {
+        public FieldLongConverter(final ParentValueContainer parent) {
             this.parent = parent;
         }
 
         @Override
-        public void addLong(long value) {
+        public void addLong(final long value) {
             parent.add(value);
         }
 
@@ -230,12 +230,12 @@ public enum ETypeConverter {
 
         private final ParentValueContainer parent;
 
-        public FieldBooleanConverter(ParentValueContainer parent) {
+        public FieldBooleanConverter(final ParentValueContainer parent) {
             this.parent = parent;
         }
 
         @Override
-        public void addBoolean(boolean value) {
+        public void addBoolean(final boolean value) {
             parent.add(value);
         }
 
@@ -246,12 +246,12 @@ public enum ETypeConverter {
 
         private final ParentValueContainer parent;
 
-        public FieldBigDecimalConverter(ParentValueContainer parent) {
+        public FieldBigDecimalConverter(final ParentValueContainer parent) {
             this.parent = parent;
         }
 
         @Override
-        public void addLong(long value) {
+        public void addLong(final long value) {
             parent.add(value);
         }
 

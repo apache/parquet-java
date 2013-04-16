@@ -46,14 +46,14 @@ import parquet.hive.convert.HiveSchemaConverter;
 import parquet.hive.write.MapWritableWriteSupport;
 
 /**
-*
-* A Parquet OutputFormat for Hive (with the deprecated package mapred)
-*
-*
-* @author Mickaël Lacour <m.lacour@criteo.com>
-* @author Rémy Pecqueur <r.pecqueur@criteo.com>
-*
-*/
+ *
+ * A Parquet OutputFormat for Hive (with the deprecated package mapred)
+ *
+ *
+ * @author Mickaël Lacour <m.lacour@criteo.com>
+ * @author Rémy Pecqueur <r.pecqueur@criteo.com>
+ *
+ */
 @SuppressWarnings({ "unchecked", "rawtypes" })
 public class DeprecatedParquetOutputFormat extends FileOutputFormat<Void, MapWritable> implements HiveOutputFormat<NullWritable, MapWritable> {
 
@@ -63,25 +63,25 @@ public class DeprecatedParquetOutputFormat extends FileOutputFormat<Void, MapWri
         realOutputFormat = new ParquetOutputFormat<MapWritable>(new MapWritableWriteSupport());
     }
 
-    public DeprecatedParquetOutputFormat(OutputFormat<Void, MapWritable> mapreduceOutputFormat) {
+    public DeprecatedParquetOutputFormat(final OutputFormat<Void, MapWritable> mapreduceOutputFormat) {
         realOutputFormat = (ParquetOutputFormat<MapWritable>) mapreduceOutputFormat;
     }
 
     @Override
-    public void checkOutputSpecs(FileSystem ignored, JobConf job) throws IOException {
+    public void checkOutputSpecs(final FileSystem ignored, final JobConf job) throws IOException {
         realOutputFormat.checkOutputSpecs(new JobContext(job, null));
     }
 
     @Override
-    public RecordWriter<Void, MapWritable> getRecordWriter(FileSystem ignored, JobConf job, String name, Progressable progress) throws IOException {
+    public RecordWriter<Void, MapWritable> getRecordWriter(final FileSystem ignored, final JobConf job, final String name, final Progressable progress) throws IOException {
         return new RecordWriterWrapper(realOutputFormat, job, name, progress);
     }
 
     @Override
-    public org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter getHiveRecordWriter(JobConf jc, Path finalOutPath, Class<? extends Writable> valueClass,
-            boolean isCompressed, Properties tableProperties, Progressable progress) throws IOException {
-        String columnNameProperty = tableProperties.getProperty("columns");
-        String columnTypeProperty = tableProperties.getProperty("columns.types");
+    public org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter getHiveRecordWriter(final JobConf jc, final Path finalOutPath, final Class<? extends Writable> valueClass,
+            final boolean isCompressed, final Properties tableProperties, final Progressable progress) throws IOException {
+        final String columnNameProperty = tableProperties.getProperty("columns");
+        final String columnTypeProperty = tableProperties.getProperty("columns.types");
         List<String> columnNames;
         List<TypeInfo> columnTypes;
 
@@ -106,62 +106,65 @@ public class DeprecatedParquetOutputFormat extends FileOutputFormat<Void, MapWri
         private org.apache.hadoop.mapreduce.RecordWriter<Void, MapWritable> realWriter;
         private TaskAttemptContext taskContext;
 
-        RecordWriterWrapper(OutputFormat<Void, MapWritable> realOutputFormat, JobConf jobConf, String name, Progressable progress) throws IOException {
+        RecordWriterWrapper(final OutputFormat<Void, MapWritable> realOutputFormat, final JobConf jobConf, final String name, final Progressable progress) throws IOException {
             try {
                 // create a TaskInputOutputContext
                 taskContext = new TaskInputOutputContext(jobConf, TaskAttemptID.forName(jobConf.get("mapred.task.id")), null, null, (StatusReporter) progress) {
+                    @Override
                     public Object getCurrentKey() throws IOException, InterruptedException {
                         throw new RuntimeException("not implemented");
                     }
 
+                    @Override
                     public Object getCurrentValue() throws IOException, InterruptedException {
                         throw new RuntimeException("not implemented");
                     }
 
+                    @Override
                     public boolean nextKeyValue() throws IOException, InterruptedException {
                         throw new RuntimeException("not implemented");
                     }
                 };
 
                 realWriter = (org.apache.hadoop.mapreduce.RecordWriter<Void, MapWritable>) ((ParquetOutputFormat) realOutputFormat).getRecordWriter(taskContext, new Path(name));
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
                 throw new IOException(e);
             }
         }
 
         @Override
-        public void close(Reporter reporter) throws IOException {
+        public void close(final Reporter reporter) throws IOException {
             try {
                 // create a context just to pass reporter
                 realWriter.close(taskContext);
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
                 throw new IOException(e);
             }
         }
 
         @Override
-        public void write(Void key, MapWritable value) throws IOException {
+        public void write(final Void key, final MapWritable value) throws IOException {
             try {
                 realWriter.write(key, value);
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
                 throw new IOException(e);
             }
         }
 
         @Override
-        public void close(boolean abort) throws IOException {
+        public void close(final boolean abort) throws IOException {
             try {
                 realWriter.close(taskContext);
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
                 throw new IOException(e);
             }
         }
 
         @Override
-        public void write(Writable w) throws IOException {
+        public void write(final Writable w) throws IOException {
             try {
                 realWriter.write(null, (MapWritable) w);
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
                 throw new IOException(e);
             }
         }

@@ -29,53 +29,57 @@ import parquet.schema.Type;
 import parquet.schema.Type.Repetition;
 
 /**
-*
-* A HiveSchemaConverter
-*
-*
-* @author Rémy Pecqueur <r.pecqueur@criteo.com>
-*
-*/
+ *
+ * A HiveSchemaConverter
+ *
+ *
+ * @author Rémy Pecqueur <r.pecqueur@criteo.com>
+ *
+ */
 public class HiveSchemaConverter {
-    public MessageType convert(List<String> columnNames, List<TypeInfo> columnTypes) {
+    static public MessageType convert(final List<String> columnNames, final List<TypeInfo> columnTypes) {
         return new MessageType("hive_schema", convertTypes(columnNames, columnTypes));
     }
 
-    private Type[] convertTypes(List<String> columnNames, List<TypeInfo> columnTypes) {
-        if (columnNames.size() != columnTypes.size())
+    static private Type[] convertTypes(final List<String> columnNames, final List<TypeInfo> columnTypes) {
+        if (columnNames.size() != columnTypes.size()) {
             throw new RuntimeException("Mismatched Hive columns and types");
+        }
 
-        Type[] types = new Type[columnNames.size()];
+        final Type[] types = new Type[columnNames.size()];
 
-        for (int i = 0; i < columnNames.size(); ++i)
+        for (int i = 0; i < columnNames.size(); ++i) {
             types[i] = convertType(columnNames.get(i), columnTypes.get(i));
+        }
 
         return types;
     }
 
-    private Type convertType(String name, TypeInfo typeInfo) {
+    static private Type convertType(final String name, final TypeInfo typeInfo) {
         if (typeInfo.getCategory().equals(Category.PRIMITIVE)) {
-            if (typeInfo.equals(TypeInfoFactory.stringTypeInfo))
+            if (typeInfo.equals(TypeInfoFactory.stringTypeInfo)) {
                 return new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, name);
-            else if (typeInfo.equals(TypeInfoFactory.intTypeInfo) || typeInfo.equals(TypeInfoFactory.shortTypeInfo) || typeInfo.equals(TypeInfoFactory.byteTypeInfo))
+            } else if (typeInfo.equals(TypeInfoFactory.intTypeInfo) || typeInfo.equals(TypeInfoFactory.shortTypeInfo) || typeInfo.equals(TypeInfoFactory.byteTypeInfo)) {
                 return new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.INT32, name);
-            else if (typeInfo.equals(TypeInfoFactory.longTypeInfo))
+            } else if (typeInfo.equals(TypeInfoFactory.longTypeInfo)) {
                 return new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.INT64, name);
-            else if (typeInfo.equals(TypeInfoFactory.doubleTypeInfo))
+            } else if (typeInfo.equals(TypeInfoFactory.doubleTypeInfo)) {
                 return new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.DOUBLE, name);
-            else if (typeInfo.equals(TypeInfoFactory.floatTypeInfo))
+            } else if (typeInfo.equals(TypeInfoFactory.floatTypeInfo)) {
                 return new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.FLOAT, name);
-            else if (typeInfo.equals(TypeInfoFactory.booleanTypeInfo))
+            } else if (typeInfo.equals(TypeInfoFactory.booleanTypeInfo)) {
                 return new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BOOLEAN, name);
-            else
+            } else {
                 throw new RuntimeException();
+            }
         } else if (typeInfo.getCategory().equals(Category.LIST)) {
             throw new NotImplementedException("Array hive conversion not implemented");
         } else if (typeInfo.getCategory().equals(Category.STRUCT)) {
             throw new NotImplementedException("Struct hive conversion not implemented");
         } else if (typeInfo.getCategory().equals(Category.MAP)) {
             throw new NotImplementedException("Map hive conversion not implemented");
-        } else
+        } else {
             throw new RuntimeException("Unknown type: " + typeInfo);
+        }
     }
 }

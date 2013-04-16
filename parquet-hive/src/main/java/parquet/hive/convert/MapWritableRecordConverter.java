@@ -25,18 +25,18 @@ import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 
 /**
-*
-* A MapWritableReadSupport
-*
-*
-* @author Mickaël Lacour <m.lacour@criteo.com>
-*
-*/
+ *
+ * A MapWritableReadSupport
+ *
+ *
+ * @author Mickaël Lacour <m.lacour@criteo.com>
+ *
+ */
 public class MapWritableRecordConverter extends RecordMaterializer<MapWritable> {
 
-    private MapWritableGroupConverter root;
+    private final MapWritableGroupConverter root;
 
-    public MapWritableRecordConverter(GroupType parquetSchema, Map<String, String> keyValueMetaData, MessageType fileSchema) {
+    public MapWritableRecordConverter(final GroupType parquetSchema, final Map<String, String> keyValueMetaData, final MessageType fileSchema) {
         this.root = new MapWritableGroupConverter(parquetSchema, keyValueMetaData, fileSchema);
 
     }

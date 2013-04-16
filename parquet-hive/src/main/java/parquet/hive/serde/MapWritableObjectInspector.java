@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
@@ -36,22 +38,23 @@ import org.apache.hadoop.io.Text;
 
 import parquet.hive.writable.BinaryWritable;
 /**
-*
-* A MapWritableObjectInspector for Hive (with the deprecated package mapred)
-*
-*
-* @author Mickaël Lacour <m.lacour@criteo.com>
-* @author Rémy Pecqueur <r.pecqueur@criteo.com>
-*
-*/
+ *
+ * A MapWritableObjectInspector for Hive (with the deprecated package mapred)
+ *
+ *
+ * @author Mickaël Lacour <m.lacour@criteo.com>
+ * @author Rémy Pecqueur <r.pecqueur@criteo.com>
+ *
+ */
 public class MapWritableObjectInspector extends StructObjectInspector {
-    private TypeInfo typeInfo;
-    private List<TypeInfo> fieldInfos;
-    private List<String> fieldNames;
-    private List<StructField> fields;
-    private HashMap<String, StructFieldImpl> fieldsByName;
-
-    public MapWritableObjectInspector(StructTypeInfo rowTypeInfo) {
+    private final TypeInfo typeInfo;
+    private final List<TypeInfo> fieldInfos;
+    private final List<String> fieldNames;
+    private final List<StructField> fields;
+    private final HashMap<String, StructFieldImpl> fieldsByName;
+    static final Log LOG = LogFactory.getLog(MapWritableObjectInspector.class);
+    public MapWritableObjectInspector(final StructTypeInfo rowTypeInfo) {
+        LOG.error("Mickael MapWritableObjectInspector " + rowTypeInfo);
         typeInfo = rowTypeInfo;
         fieldNames = rowTypeInfo.getAllStructFieldNames();
         fieldInfos = rowTypeInfo.getAllStructFieldTypeInfos();
@@ -59,8 +62,8 @@ public class MapWritableObjectInspector extends StructObjectInspector {
         fieldsByName = new HashMap<String, StructFieldImpl>();
 
         for (int i = 0; i < fieldNames.size(); ++i) {
-            String name = fieldNames.get(i);
-            TypeInfo fieldInfo = fieldInfos.get(i);
+            final String name = fieldNames.get(i);
+            final TypeInfo fieldInfo = fieldInfos.get(i);
 
             StructFieldImpl field;
 
@@ -103,9 +106,9 @@ public class MapWritableObjectInspector extends StructObjectInspector {
     }
 
     @Override
-    public Object getStructFieldData(Object data, StructField fieldRef) {
+    public Object getStructFieldData(final Object data, final StructField fieldRef) {
         if (data != null && data instanceof MapWritable) {
-            MapWritable arr = (MapWritable) data;
+            final MapWritable arr = (MapWritable) data;
             final Text fieldName = new Text(((StructFieldImpl) fieldRef).getFieldName());
             return arr.get(fieldName);
         }
@@ -113,7 +116,7 @@ public class MapWritableObjectInspector extends StructObjectInspector {
     }
 
     @Override
-    public StructField getStructFieldRef(String name) {
+    public StructField getStructFieldRef(final String name) {
         return fieldsByName.get(name);
     }
 
@@ -122,10 +125,10 @@ public class MapWritableObjectInspector extends StructObjectInspector {
         ArrayList<Object> result = null;
 
         if (data != null && data instanceof MapWritable) {
-            MapWritable arr = (MapWritable) data;
+            final MapWritable arr = (MapWritable) data;
             result = new ArrayList<Object>(fieldNames.size());
 
-            for (String field : fieldNames) {
+            for (final String field : fieldNames) {
                 result.add(arr.get(new Text(field)));
             }
         }
@@ -134,10 +137,10 @@ public class MapWritableObjectInspector extends StructObjectInspector {
 
     class StructFieldImpl implements StructField {
 
-        private String name;
-        private ObjectInspector inspector;
+        private final String name;
+        private final ObjectInspector inspector;
 
-        public StructFieldImpl(String name, ObjectInspector inspector) {
+        public StructFieldImpl(final String name, final ObjectInspector inspector) {
             this.name = name;
             this.inspector = inspector;
         }
@@ -168,15 +171,15 @@ public class MapWritableObjectInspector extends StructObjectInspector {
         }
 
         @Override
-        public Text getPrimitiveWritableObject(Object o) {
+        public Text getPrimitiveWritableObject(final Object o) {
             return o == null ? null : new Text(((BinaryWritable) o).getBytes());
         }
 
         @Override
-        public String getPrimitiveJavaObject(Object o) {
+        public String getPrimitiveJavaObject(final Object o) {
             try {
                 return new String(((BinaryWritable) o).getBytes(), "UTF-8");
-            } catch (UnsupportedEncodingException e) {
+            } catch (final UnsupportedEncodingException e) {
                 return null;
             }
         }

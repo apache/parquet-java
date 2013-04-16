@@ -30,10 +30,10 @@ import org.apache.hadoop.hive.serde2.lazybinary.LazyBinaryUtils.VInt;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.io.WritableUtils;
 /**
-*
-* From HIVE 0.9 !!!!
-*
-*/
+ *
+ * From HIVE 0.9 !!!!
+ *
+ */
 public class BigDecimalWritable implements WritableComparable<BigDecimalWritable> {
 
     private byte[] internalStorage = new byte[0];
@@ -44,15 +44,15 @@ public class BigDecimalWritable implements WritableComparable<BigDecimalWritable
     public BigDecimalWritable() {
     }
 
-    public BigDecimalWritable(byte[] bytes, int scale) {
+    public BigDecimalWritable(final byte[] bytes, final int scale) {
         set(bytes, scale);
     }
 
-    public BigDecimalWritable(BigDecimalWritable writable) {
+    public BigDecimalWritable(final BigDecimalWritable writable) {
         set(writable.getBigDecimal());
     }
 
-    public BigDecimalWritable(BigDecimal value) {
+    public BigDecimalWritable(final BigDecimal value) {
         set(value);
     }
 
@@ -66,16 +66,16 @@ public class BigDecimalWritable implements WritableComparable<BigDecimalWritable
         set(value.unscaledValue().toByteArray(), value.scale());
     }
 
-    public void set(BigDecimalWritable writable) {
+    public void set(final BigDecimalWritable writable) {
         set(writable.getBigDecimal());
     }
 
-    public void set(byte[] bytes, int scale) {
+    public void set(final byte[] bytes, final int scale) {
         this.internalStorage = bytes;
         this.scale = scale;
     }
 
-    public void setFromBytes(byte[] bytes, int offset, int length) {
+    public void setFromBytes(final byte[] bytes, int offset, final int length) {
         LazyBinaryUtils.readVInt(bytes, offset, vInt);
         scale = vInt.value;
         offset += vInt.length;
@@ -92,9 +92,9 @@ public class BigDecimalWritable implements WritableComparable<BigDecimalWritable
     }
 
     @Override
-    public void readFields(DataInput in) throws IOException {
+    public void readFields(final DataInput in) throws IOException {
         scale = WritableUtils.readVInt(in);
-        int byteArrayLen = WritableUtils.readVInt(in);
+        final int byteArrayLen = WritableUtils.readVInt(in);
         if (internalStorage.length != byteArrayLen) {
             internalStorage = new byte[byteArrayLen];
         }
@@ -102,18 +102,18 @@ public class BigDecimalWritable implements WritableComparable<BigDecimalWritable
     }
 
     @Override
-    public void write(DataOutput out) throws IOException {
+    public void write(final DataOutput out) throws IOException {
         WritableUtils.writeVInt(out, scale);
         WritableUtils.writeVInt(out, internalStorage.length);
         out.write(internalStorage);
     }
 
     @Override
-    public int compareTo(BigDecimalWritable that) {
+    public int compareTo(final BigDecimalWritable that) {
         return getBigDecimal().compareTo(that.getBigDecimal());
     }
 
-    public void writeToByteStream(Output byteStream) {
+    public void writeToByteStream(final Output byteStream) {
         LazyBinaryUtils.writeVInt(byteStream, scale);
         LazyBinaryUtils.writeVInt(byteStream, internalStorage.length);
         byteStream.write(internalStorage, 0, internalStorage.length);
@@ -125,11 +125,11 @@ public class BigDecimalWritable implements WritableComparable<BigDecimalWritable
     }
 
     @Override
-    public boolean equals(Object other) {
+    public boolean equals(final Object other) {
         if (other == null || !(other instanceof BigDecimalWritable)) {
             return false;
         }
-        BigDecimalWritable bdw = (BigDecimalWritable) other;
+        final BigDecimalWritable bdw = (BigDecimalWritable) other;
 
         // 'equals' and 'compareTo' are not compatible with BigDecimals. We want
         // compareTo which returns true iff the numbers are equal (e.g.: 3.14 is

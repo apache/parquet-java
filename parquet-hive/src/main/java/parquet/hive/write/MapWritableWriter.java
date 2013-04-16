@@ -30,48 +30,49 @@ import parquet.io.api.RecordConsumer;
 import parquet.schema.GroupType;
 import parquet.schema.Type;
 /**
-*
-* A MapWritableWriter 
-* TODO
-*
-*
-* @author Rémy Pecqueur <r.pecqueur@criteo.com>
-*
-*/
+ *
+ * A MapWritableWriter
+ * TODO
+ *
+ *
+ * @author Rémy Pecqueur <r.pecqueur@criteo.com>
+ *
+ */
 public class MapWritableWriter {
 
     private final RecordConsumer recordConsumer;
     private final GroupType schema;
 
-    public MapWritableWriter(RecordConsumer recordConsumer, GroupType schema) {
+    public MapWritableWriter(final RecordConsumer recordConsumer, final GroupType schema) {
         this.recordConsumer = recordConsumer;
         this.schema = schema;
     }
 
-    public void write(MapWritable map) {
+    public void write(final MapWritable map) {
         recordConsumer.startMessage();
         writeMap(map, schema);
         recordConsumer.endMessage();
     }
 
-    private void writeMap(MapWritable map, GroupType type) {
-        int fieldCount = type.getFieldCount();
+    private void writeMap(final MapWritable map, final GroupType type) {
+        final int fieldCount = type.getFieldCount();
         for (int field = 0; field < fieldCount; ++field) {
-            Type fieldType = type.getType(field);
-            String fieldName = fieldType.getName();
+            final Type fieldType = type.getType(field);
+            final String fieldName = fieldType.getName();
             recordConsumer.startField(fieldName, field);
             if (fieldType.isPrimitive()) {
-                Writable value = map.get(new Text(fieldName));
-                if (value instanceof DoubleWritable)
+                final Writable value = map.get(new Text(fieldName));
+                if (value instanceof DoubleWritable) {
                     recordConsumer.addDouble(((DoubleWritable) value).get());
-                else if (value instanceof BooleanWritable)
+                } else if (value instanceof BooleanWritable) {
                     recordConsumer.addBoolean(((BooleanWritable) value).get());
-                else if (value instanceof FloatWritable)
+                } else if (value instanceof FloatWritable) {
                     recordConsumer.addFloat(((FloatWritable) value).get());
-                else if (value instanceof IntWritable)
+                } else if (value instanceof IntWritable) {
                     recordConsumer.addInteger(((IntWritable) value).get());
-                else if (value instanceof BinaryWritable)
+                } else if (value instanceof BinaryWritable) {
                     recordConsumer.addBinary(Binary.fromByteArray(((BinaryWritable) value).getBytes()));
+                }
             } else {
                 throw new NotImplementedException("Non primitive writing not implemented");
             }

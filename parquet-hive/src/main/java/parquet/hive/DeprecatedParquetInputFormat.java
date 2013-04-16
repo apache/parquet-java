@@ -18,11 +18,15 @@ package parquet.hive;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
@@ -40,6 +44,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.hadoop.util.StringUtils;
 
 import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.ParquetInputFormat;
@@ -48,6 +53,8 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hive.read.MapWritableReadSupport;
+import parquet.schema.MessageType;
+import parquet.schema.Type;
 
 /**
  *
@@ -67,31 +74,36 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
         this.realInput = new ParquetInputFormat<MapWritable>(MapWritableReadSupport.class);
     }
 
-    public DeprecatedParquetInputFormat(InputFormat<Void, MapWritable> realInputFormat) {
+    public DeprecatedParquetInputFormat(final InputFormat<Void, MapWritable> realInputFormat) {
         this.realInput = (ParquetInputFormat<MapWritable>) realInputFormat;
     }
 
     @Override
-    protected boolean isSplitable(FileSystem fs, Path filename) {
+    protected boolean isSplitable(final FileSystem fs, final Path filename) {
         return false;
     }
 
-    @Override
-    public org.apache.hadoop.mapred.InputSplit[] getSplits(org.apache.hadoop.mapred.JobConf job, int numSplits) throws IOException {
+    private final ManageJobConfig manageJob = new ManageJobConfig();
 
-        List<org.apache.hadoop.mapreduce.InputSplit> splits = realInput.getSplits(new JobContext(job, null));
+    @Override
+    public org.apache.hadoop.mapred.InputSplit[] getSplits(final org.apache.hadoop.mapred.JobConf job, final int numSplits) throws IOException {
+        //        configuration.get(HiveSchemaConverter.)
+        final Iterator<Entry<String, String>> next  = job.iterator();
+        final JobConf cloneJobConf = manageJob.cloneJobAndInit(job);
+
+        final List<org.apache.hadoop.mapreduce.InputSplit> splits = realInput.getSplits(new JobContext(cloneJobConf, null));
 
         if (splits == null) {
             return null;
         }
 
-        InputSplit[] resultSplits = new InputSplit[splits.size()];
+        final InputSplit[] resultSplits = new InputSplit[splits.size()];
         int i = 0;
 
-        for (org.apache.hadoop.mapreduce.InputSplit split : splits) {
+        for (final org.apache.hadoop.mapreduce.InputSplit split : splits) {
             try {
                 resultSplits[i++] = new InputSplitWrapper((ParquetInputSplit) split);
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
                 return null;
             }
         }
@@ -100,9 +112,10 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
     }
 
     @Override
-    public org.apache.hadoop.mapred.RecordReader<Void, MapWritable> getRecordReader(org.apache.hadoop.mapred.InputSplit split, org.apache.hadoop.mapred.JobConf job,
-            org.apache.hadoop.mapred.Reporter reporter) throws IOException {
-        return (RecordReader<Void, MapWritable>) new RecordReaderWrapper(realInput, split, job, reporter);
+    public org.apache.hadoop.mapred.RecordReader<Void, MapWritable> getRecordReader(final org.apache.hadoop.mapred.InputSplit split, final org.apache.hadoop.mapred.JobConf job,
+            final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
+        final JobConf cloneJobConf = manageJob.cloneJobAndInit(job);
+        return (RecordReader<Void, MapWritable>) new RecordReaderWrapper(realInput, split, cloneJobConf, reporter);
     }
 
     private static class InputSplitWrapper extends FileSplit implements InputSplit {
@@ -118,7 +131,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
             super((Path) null, 0, 0, (String[]) null);
         }
 
-        public InputSplitWrapper(ParquetInputSplit realSplit) throws IOException, InterruptedException {
+        public InputSplitWrapper(final ParquetInputSplit realSplit) throws IOException, InterruptedException {
             super(realSplit.getPath(), realSplit.getStart(), realSplit.getLength(), realSplit.getLocations());
             this.realSplit = realSplit;
         }
@@ -127,9 +140,9 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
         public long getLength() {
             try {
                 return realSplit.getLength();
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
                 return 0;
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 return 0;
             }
         }
@@ -138,19 +151,19 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
         public String[] getLocations() throws IOException {
             try {
                 return realSplit.getLocations();
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
                 throw new IOException(e);
             }
         }
 
         @Override
-        public void readFields(DataInput in) throws IOException {
-            String className = WritableUtils.readString(in);
+        public void readFields(final DataInput in) throws IOException {
+            final String className = WritableUtils.readString(in);
             Class<?> splitClass;
 
             try {
                 splitClass = Class.forName(className);
-            } catch (ClassNotFoundException e) {
+            } catch (final ClassNotFoundException e) {
                 throw new IOException(e);
             }
 
@@ -159,7 +172,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
         }
 
         @Override
-        public void write(DataOutput out) throws IOException {
+        public void write(final DataOutput out) throws IOException {
             WritableUtils.writeString(out, realSplit.getClass().getName());
             ((Writable) realSplit).write(out);
         }
@@ -178,7 +191,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
     private static class RecordReaderWrapper implements RecordReader<Void, MapWritable> {
 
         private org.apache.hadoop.mapreduce.RecordReader<Void, MapWritable> realReader;
-        private long splitLen; // for getPos()
+        private final long splitLen; // for getPos()
 
         // expect readReader return same Key & Value objects (common case)
         // this avoids extra serialization & deserialization of these objects
@@ -187,24 +200,41 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
         private boolean firstRecord = false;
         private boolean eof = false;
 
-        public RecordReaderWrapper(ParquetInputFormat<MapWritable> newInputFormat, InputSplit oldSplit, JobConf oldJobConf, Reporter reporter) throws IOException {
-
+        public RecordReaderWrapper(final ParquetInputFormat<MapWritable> newInputFormat, final InputSplit oldSplit, final JobConf oldJobConf, final Reporter reporter) throws IOException {
+            LOG.error("Mickael RecordReaderWrapper : oldJobConf : " + oldJobConf.toString());
             splitLen = oldSplit.getLength();
-
+            final ManageJobConfig lol = new ManageJobConfig();
+            lol.cloneJobAndInit(oldJobConf);
             ParquetInputSplit split;
 
-            if (oldSplit instanceof InputSplitWrapper)
+            if (oldSplit instanceof InputSplitWrapper) {
                 split = ((InputSplitWrapper) oldSplit).getRealSplit();
-            else if (oldSplit instanceof FileSplit) {
-                ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(oldJobConf, ((FileSplit) oldSplit).getPath());
-                List<BlockMetaData> blocks = parquetMetadata.getBlocks();
-                FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
+            } else if (oldSplit instanceof FileSplit) {
+                final ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(oldJobConf, ((FileSplit) oldSplit).getPath());
+                final List<BlockMetaData> blocks = parquetMetadata.getBlocks();
+                final FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
+
+                final List<String>  listColumns = (List<String>) StringUtils.getStringCollection(oldJobConf.get("columns"));
+
+                LOG.error("Mickael : listColumns : " + listColumns.toString() );
+                final MessageType fileSchema = fileMetaData.getSchema();
+                MessageType requestedSchemaByUser = fileSchema;
+                final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(oldJobConf);
+                LOG.error("Mickael : indexColumnsWanted : " + indexColumnsWanted );
+                if (indexColumnsWanted.isEmpty() == false) {
+                    final List<Type> typeList = new ArrayList<Type>();
+                    for(final Integer idx : indexColumnsWanted) {
+                        typeList.add(fileSchema.getType(listColumns.get(idx)));
+                    }
+                    requestedSchemaByUser = new MessageType(fileSchema.getName(), typeList);
+                }
 
                 // TODO: use requestedSchema from Hive
                 split = new ParquetInputSplit(((FileSplit) oldSplit).getPath(), ((FileSplit) oldSplit).getStart(), oldSplit.getLength(), oldSplit.getLocations(), blocks,
-                        fileMetaData.getSchema().toString(), fileMetaData.getSchema().toString(), fileMetaData.getKeyValueMetaData());
-            } else
+                        fileSchema.toString() , requestedSchemaByUser.toString(), fileMetaData.getKeyValueMetaData());
+            } else {
                 throw new RuntimeException("Unknown split type");
+            }
 
             TaskAttemptID taskAttemptID = TaskAttemptID.forName(oldJobConf.get("mapred.task.id"));
             if (taskAttemptID == null) {
@@ -212,22 +242,34 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
             }
 
             // create a TaskInputOutputContext
-            TaskAttemptContext taskContext = new TaskInputOutputContext(oldJobConf, taskAttemptID, null, null, new ReporterWrapper(reporter)) {
+            final TaskAttemptContext taskContext = new TaskInputOutputContext(oldJobConf, taskAttemptID, null, null, new ReporterWrapper(reporter)) {
 
+                @Override
                 public Object getCurrentKey() throws IOException, InterruptedException {
                     throw new NotImplementedException();
                 }
 
+                @Override
                 public Object getCurrentValue() throws IOException, InterruptedException {
                     throw new NotImplementedException();
                 }
 
+                @Override
                 public boolean nextKeyValue() throws IOException, InterruptedException {
                     throw new NotImplementedException();
                 }
+
+
             };
 
             try {
+
+                LOG.error("Mickael Reader wrapper newInputFormat: " + newInputFormat);
+                LOG.error("Mickael Reader wrapper oldSplit: " + oldSplit);
+                LOG.error("Mickael Reader wrapper oldJobConf: " + oldJobConf);
+                LOG.error("Mickael Reader wrapper taskContextgetConfiguration: " + taskContext.getConfiguration());
+                LOG.error("Mickael Reader wrapper getReadColumnIDs oldJobConf: " + ColumnProjectionUtils.getReadColumnIDs(oldJobConf));
+                LOG.error("Mickael Reader wrapper getReadColumnIDs taskContext: " + ColumnProjectionUtils.getReadColumnIDs(taskContext.getConfiguration()));
                 realReader = newInputFormat.createRecordReader(split, taskContext);
                 realReader.initialize(split, taskContext);
 
@@ -238,7 +280,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
                 } else {
                     eof = true;
                 }
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
                 throw new IOException(e);
             }
         }
@@ -267,13 +309,13 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
         public float getProgress() throws IOException {
             try {
                 return realReader.getProgress();
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
                 throw new IOException(e);
             }
         }
 
         @Override
-        public boolean next(Void key, MapWritable value) throws IOException {
+        public boolean next(final Void key, final MapWritable value) throws IOException {
             if (eof) {
                 return false;
             }
@@ -293,7 +335,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
 
                     return true;
                 }
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
                 throw new IOException(e);
             }
 
@@ -306,29 +348,29 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
      * A reporter that works with both mapred and mapreduce APIs.
      */
     private static class ReporterWrapper extends StatusReporter implements Reporter {
-        private Reporter wrappedReporter;
+        private final Reporter wrappedReporter;
 
-        public ReporterWrapper(Reporter reporter) {
+        public ReporterWrapper(final Reporter reporter) {
             wrappedReporter = reporter;
         }
 
         @Override
-        public Counters.Counter getCounter(Enum<?> anEnum) {
+        public Counters.Counter getCounter(final Enum<?> anEnum) {
             return wrappedReporter.getCounter(anEnum);
         }
 
         @Override
-        public Counters.Counter getCounter(String s, String s1) {
+        public Counters.Counter getCounter(final String s, final String s1) {
             return wrappedReporter.getCounter(s, s1);
         }
 
         @Override
-        public void incrCounter(Enum<?> anEnum, long l) {
+        public void incrCounter(final Enum<?> anEnum, final long l) {
             wrappedReporter.incrCounter(anEnum, l);
         }
 
         @Override
-        public void incrCounter(String s, String s1, long l) {
+        public void incrCounter(final String s, final String s1, final long l) {
             wrappedReporter.incrCounter(s, s1, l);
         }
 
@@ -343,7 +385,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
         }
 
         @Override
-        public void setStatus(String s) {
+        public void setStatus(final String s) {
             wrappedReporter.setStatus(s);
         }
     }

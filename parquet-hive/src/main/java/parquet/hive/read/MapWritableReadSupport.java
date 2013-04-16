@@ -15,34 +15,79 @@
  */
 package parquet.hive.read;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.io.MapWritable;
+import org.apache.hadoop.util.StringUtils;
 
 import parquet.hadoop.api.ReadSupport;
 import parquet.hive.convert.MapWritableRecordConverter;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
+import parquet.schema.Type;
 
 /**
-*
-* A MapWritableReadSupport
-*
-*
-* @author Mickaël Lacour <m.lacour@criteo.com>
-*
-*/
+ *
+ * A MapWritableReadSupport
+ *
+ *
+ * @author Mickaël Lacour <m.lacour@criteo.com>
+ *
+ */
 public class MapWritableReadSupport extends ReadSupport<MapWritable> {
+    static final Log LOG = LogFactory.getLog(MapWritableReadSupport.class);
 
     @Override
-    public parquet.hadoop.api.ReadSupport.ReadContext init(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
-        return new ReadContext(fileSchema);
+    public parquet.hadoop.api.ReadSupport.ReadContext init(final Configuration configuration, final Map<String, String> keyValueMetaData, final MessageType fileSchema) {
+
+        for (final StackTraceElement ste : Thread.currentThread().getStackTrace()) {
+            LOG.error("Mickael : ste : " + ste.toString());
+        }
+
+        LOG.error("Mickael : KeyValueMetaDAta : " + keyValueMetaData.toString());
+        LOG.error("Mickael : configuration : " + configuration );
+        LOG.error("Mickael : fileschema : " + fileSchema );
+
+        //        configuration.get(HiveSchemaConverter.)
+        final Iterator<Entry<String, String>> next  = configuration.iterator();
+
+
+        while (next.hasNext()) {
+            final Entry<String,String> obj = next.next();
+            LOG.error("Mickael : next : " + obj.getKey() + " : " + obj.getValue() );
+
+        }
+
+        final List<String>  listColumns = (List<String>) StringUtils.getStringCollection(configuration.get("columns"));
+
+        LOG.error("Mickael : listColumns : " + listColumns.toString() );
+
+        MessageType requestedSchemaByUser = fileSchema;
+        final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(configuration);
+        LOG.error("Mickael : indexColumnsWanted : " + indexColumnsWanted );
+        if (indexColumnsWanted.isEmpty() == false) {
+            final List<Type> typeList = new ArrayList<Type>();
+            for(final Integer idx : indexColumnsWanted) {
+                typeList.add(fileSchema.getType(listColumns.get(idx)));
+            }
+            requestedSchemaByUser = new MessageType(fileSchema.getName(), typeList);
+        }
+        LOG.error("Mickael : parquetRequestedSchema : " + requestedSchemaByUser );
+        return new ReadContext(requestedSchemaByUser);
     }
 
     @Override
-    public RecordMaterializer<MapWritable> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema,
-            parquet.hadoop.api.ReadSupport.ReadContext readContext) {
+    public RecordMaterializer<MapWritable> prepareForRead(final Configuration configuration, final Map<String, String> keyValueMetaData, final MessageType fileSchema,
+            final parquet.hadoop.api.ReadSupport.ReadContext readContext) {
+        LOG.error("Mickael Prerpare for read : ColumnProjectionUtils : " + ColumnProjectionUtils.getReadColumnIDs(configuration));
         return new MapWritableRecordConverter(readContext.getRequestedSchema(), keyValueMetaData, fileSchema);
     }
 }

@@ -23,37 +23,37 @@ import org.apache.hadoop.io.Writable;
 
 import parquet.io.api.Binary;
 /**
-*
-* A Parquet InputFormat for Hive (with the deprecated package mapred)
-*
-*
-* @author Mickaël Lacour <m.lacour@criteo.com>
-* @author Rémy Pecqueur <r.pecqueur@criteo.com>
-*
-*/
+ *
+ * A Parquet InputFormat for Hive (with the deprecated package mapred)
+ *
+ *
+ * @author Mickaël Lacour <m.lacour@criteo.com>
+ * @author Rémy Pecqueur <r.pecqueur@criteo.com>
+ *
+ */
 public class BinaryWritable implements Writable {
 
     private byte[] bytes;
 
-    public BinaryWritable(Binary binary) {
+    public BinaryWritable(final Binary binary) {
         bytes = binary.getBytes();
     }
 
-    public BinaryWritable(String string) {
+    public BinaryWritable(final String string) {
         bytes = string.getBytes();
     }
 
     @Override
-    public void readFields(DataInput input) throws IOException {
-        int size = input.readInt();
+    public void readFields(final DataInput input) throws IOException {
+        final int size = input.readInt();
 
         // Define a new byte of array of the exact size of the payload
-        byte[] bytes = new byte[size];
+        final byte[] bytes = new byte[size];
         input.readFully(bytes);
     }
 
     @Override
-    public void write(DataOutput output) throws IOException {
+    public void write(final DataOutput output) throws IOException {
         if (bytes != null) {
             output.writeInt(bytes.length);
             output.write(bytes);
@@ -64,7 +64,7 @@ public class BinaryWritable implements Writable {
         return bytes;
     }
 
-    public void setBytes(byte[] bytes) {
+    public void setBytes(final byte[] bytes) {
         this.bytes = bytes;
     }
 }

@@ -18,7 +18,8 @@ package parquet.hive.convert;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
@@ -30,13 +31,13 @@ import parquet.schema.MessageType;
 import parquet.schema.Type;
 
 /**
-*
-* A MapWritableGroupConverter
-*
-*
-* @author Mickaël Lacour <m.lacour@criteo.com>
-*
-*/
+ *
+ * A MapWritableGroupConverter
+ *
+ *
+ * @author Mickaël Lacour <m.lacour@criteo.com>
+ *
+ */
 public class MapWritableGroupConverter extends GroupConverter {
     @SuppressWarnings("unused")
     private final GroupType parquetSchema;
@@ -44,42 +45,49 @@ public class MapWritableGroupConverter extends GroupConverter {
     private MapWritable mapWritable = null;
     private final Converter[] converters;
     private Map<Writable, Writable> currentMap;
-
-    public MapWritableGroupConverter(final GroupType parquetSchema, Map<String, String> keyValueMetaData, MessageType fileSchema) {
-        this.parquetSchema = parquetSchema;
-        converters = new Converter[fileSchema.getFieldCount()];
+    static final Log LOG = LogFactory.getLog(MapWritableGroupConverter.class);
+    public MapWritableGroupConverter(final GroupType requestedSchema, final Map<String, String> keyValueMetaData, final MessageType fileSchema) {
+        LOG.error("Group Converter");
+        LOG.error("Group Converter : fileschema " + fileSchema);
+        LOG.error("Group Converter + parquetSchema " + requestedSchema);
+        this.parquetSchema = requestedSchema;
+        converters = new Converter[requestedSchema.getFieldCount()];
 
         int i = 0;
-        for (Type type : fileSchema.getFields()) {
-            converters[i] = getConverterFromDescription(type, fileSchema.getFieldName(i));
+        for (final Type type : requestedSchema.getFields()) {
+            converters[i] = getConverterFromDescription(type, requestedSchema.getFieldName(i));
             ++i;
         }
     }
 
     private Converter getConverterFromDescription(final Type type, final String fieldName) {
-        if (type == null)
+        if (type == null) {
             return null;
+        }
 
-        if (type.isPrimitive())
+        if (type.isPrimitive()) {
             return ETypeConverter.getNewConverter(type.asPrimitiveType().getPrimitiveTypeName().javaType, fieldName, this);
-        else
-            throw new NotImplementedException("Non primitive converters not implemented");
+        } else {
+            //throw new NotImplementedException("Non primitive converters not implemented");
+            return null;
+        }
     }
 
     final public MapWritable getCurrentMap() {
-        if (mapWritable == null)
+        if (mapWritable == null) {
             mapWritable = new MapWritable();
+        }
         mapWritable.clear();
         mapWritable.putAll(currentMap);
         return mapWritable;
     }
 
-    final protected void set(final String fieldName, Writable value) {
+    final protected void set(final String fieldName, final Writable value) {
         currentMap.put(new Text(fieldName), value);
     }
 
     @Override
-    public Converter getConverter(int fieldIndex) {
+    public Converter getConverter(final int fieldIndex) {
         return converters[fieldIndex];
     }
 
