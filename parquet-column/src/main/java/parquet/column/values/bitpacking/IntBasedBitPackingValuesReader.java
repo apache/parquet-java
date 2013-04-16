@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import parquet.Log;
+import parquet.bytes.BytesUtils;
 import parquet.column.values.ValuesReader;
 
 public class IntBasedBitPackingValuesReader extends ValuesReader {
@@ -38,7 +39,8 @@ public class IntBasedBitPackingValuesReader extends ValuesReader {
    */
   public IntBasedBitPackingValuesReader(int bound) {
     this.bitsPerValue = getWidthFromMaxInt(bound);
-    packer = LemireBitPackingBE.getPacker(bitsPerValue);
+    this.packer = LemireBitPackingBE.getPacker(bitsPerValue);
+    this.encoded = new int[bitsPerValue];
     decode();
   }
 
@@ -66,11 +68,34 @@ public class IntBasedBitPackingValuesReader extends ValuesReader {
       throws IOException {
     // TODO: int vs long
     int effectiveBitLength = (int)valueCount * bitsPerValue;
-    // TODO: maybe ((effectiveBitLength - 1) / 8 + 1) here? has fewer conditionals and divides
-    int length = effectiveBitLength / 8 + (effectiveBitLength % 8 == 0 ? 0 : 1); // ceil
+    int length = (effectiveBitLength + 7) / 8; // ceil
     int intLength = (int)(valueCount + 63) / 64 * bitsPerValue; // We write bitsPerValue ints for every 64 values (rounded up to the next 64th value)
     this.encoded = new int[intLength];
-    ByteBuffer.wrap(page, offset, (length + 3) / 4).asIntBuffer().get(encoded);
+    // TODO: :( generate a byte boundary version instead
+    for (int i = 0, j = offset; i < page.length / 4; ++i, j += 4) {
+      int ch4 = page[j] & 0xff;
+      int ch3 = page[j + 1] & 0xff;
+      int ch2 = page[j + 2] & 0xff;
+      int ch1 = page[j + 3] & 0xff;
+      this.encoded[i] = ((ch4 << 24) + (ch3 << 16) + (ch2 << 8) + (ch1 << 0));
+    }
+    if (page.length % 4 > 0) {
+      int ch4 = 0;
+      int ch3 = 0;
+      int ch2 = 0;
+      int ch1 = 0;
+      int j = offset + page.length / 4 * 4;
+      switch (page.length % 4) {
+      case 3:
+        ch2 = page[j + 2] & 0xff;
+      case 2:
+        ch3 = page[j + 1] & 0xff;
+      case 1:
+        ch4 = page[j + 0] & 0xff;
+      }
+      this.encoded[this.encoded.length - 1] = ((ch4 << 24) + (ch3 << 16) + (ch2 << 8) + (ch1 << 0));
+    }
+
     if (Log.DEBUG) LOG.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitsPerValue + " bits." );
     return offset + length;
   }

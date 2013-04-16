@@ -37,8 +37,9 @@ public class IntBasedBitPackingValuesWriter extends ValuesWriter {
   private int bufferedCount = 0;
   private int[] packed;
   private int packedCount;
+  private int totalValues = 0;
 
-  private IntBasedBitPackingValuesWriter(int bitWidth) {
+  public IntBasedBitPackingValuesWriter(int bitWidth) {
     super();
     this.bitWidth = bitWidth;
     this.packer = LemireBitPackingBE.getPacker(bitWidth);
@@ -53,26 +54,32 @@ public class IntBasedBitPackingValuesWriter extends ValuesWriter {
 
   @Override
   public void writeInteger(int v) {
+    ++ totalValues;
     inputBuffer[bufferedCount] = v;
     ++ bufferedCount;
     if (bufferedCount == 32) {
-      packer.pack32Values(inputBuffer, 0, packed, packedCount);
-      bufferedCount = 0;
-      packedCount += bitWidth;
-      if (packedCount == packed.length) {
-        bytes.add(packed);
-        initPacked();
-      }
+      pack();
+    }
+  }
+
+  private void pack() {
+    packer.pack32Values(inputBuffer, 0, packed, packedCount);
+    bufferedCount = 0;
+    packedCount += bitWidth;
+    if (packedCount == packed.length) {
+      bytes.add(packed);
+      initPacked();
     }
   }
 
   @Override
-  public long getBufferedSize() {
-    return (packedCount + bytes.size() * packedArraySize) * 4;
-  }
-
-  @Override
   public BytesInput getBytes() {
+    if (bufferedCount > 0) {
+      for (int i = bufferedCount; i < inputBuffer.length; i++) {
+        inputBuffer[i] = 0;
+      }
+      pack();
+    }
     // TODO: rework this I may lose all the benefit of working on ints right here
     int size = (packedCount + bytes.size() * packedArraySize) * 4;
     final ByteBuffer buffer = ByteBuffer.allocate(size);
@@ -83,7 +90,7 @@ public class IntBasedBitPackingValuesWriter extends ValuesWriter {
     }
     intBuffer.put(packed, 0, packedCount);
     packedCount = 0;
-    return BytesInput.from(buffer.array());
+    return BytesInput.from(buffer.array(), 0, (totalValues * bitWidth + 7) / 8 );
   }
 
   @Override
@@ -95,6 +102,11 @@ public class IntBasedBitPackingValuesWriter extends ValuesWriter {
   public void reset() {
     bufferedCount = 0;
     initPacked();
+  }
+
+  @Override
+  public long getBufferedSize() {
+    return (packedCount + bytes.size() * packedArraySize) * 4;
   }
 
   @Override

@@ -72,7 +72,12 @@ abstract public class BytesInput {
    */
   public static BytesInput from(byte[] in) {
     if (DEBUG) LOG.debug("BytesInput from array of " + in.length + " bytes");
-    return new ByteArrayBytesInput(in);
+    return new ByteArrayBytesInput(in, 0 , in.length);
+  }
+
+  public static BytesInput from(byte[] in, int offset, int length) {
+    if (DEBUG) LOG.debug("BytesInput from array of " + length + " bytes");
+    return new ByteArrayBytesInput(in, offset, length);
   }
 
   /**
@@ -263,19 +268,23 @@ abstract public class BytesInput {
   private static class ByteArrayBytesInput extends BytesInput {
 
     private final byte[] in;
+    private final int offset;
+    private final int length;
 
-    private ByteArrayBytesInput(byte[] in) {
+    private ByteArrayBytesInput(byte[] in, int offset, int length) {
       this.in = in;
+      this.offset = offset;
+      this.length = length;
     }
 
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
-      out.write(in);
+      out.write(in, offset, length);
     }
 
     @Override
     public long size() {
-      return in.length;
+      return length;
     }
 
   }

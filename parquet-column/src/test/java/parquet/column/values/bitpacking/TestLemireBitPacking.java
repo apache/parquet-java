@@ -22,7 +22,6 @@ import java.io.IOException;
 import org.junit.Assert;
 import org.junit.Test;
 
-import parquet.column.primitive.TestBitPacking;
 import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
@@ -34,28 +33,34 @@ public class TestLemireBitPacking {
     System.out.println("testPackUnPack");
     for (int i = 1; i < 32; i++) {
       System.out.println("Width: " + i);
-      int[] values = new int[32];
-      int[] packed = new int[i];
       int[] unpacked = new int[32];
-      for (int j = 0; j < values.length; j++) {
-        values[j] = (int)(Math.random() * 100000) % (int)Math.pow(2, i); // 67 is prime
-      }
-      System.out.println("Input:  " + TestBitPacking.toString(values));
+      int[] values = generateValues(i);
       {
-        final IntPacker packer = LemireBitPackingBE.getPacker(i);
-        packer.pack32Values(values, 0, packed, 0);
-        packer.unpack32Values(packed, 0, unpacked, 0);
+        packUnpack(LemireBitPackingBE.getPacker(i), values, unpacked);
         System.out.println("Output BE: " + TestBitPacking.toString(unpacked));
         Assert.assertArrayEquals("BE width "+i, values, unpacked);
       }
       {
-        final IntPacker packer = LemireBitPackingLE.getPacker(i);
-        packer.pack32Values(values, 0, packed, 0);
-        packer.unpack32Values(packed, 0, unpacked, 0);
+        packUnpack(LemireBitPackingLE.getPacker(i), values, unpacked);
         System.out.println("Output LE: " + TestBitPacking.toString(unpacked));
         Assert.assertArrayEquals("LE width "+i, values, unpacked);
       }
     }
+  }
+
+  private void packUnpack(IntPacker packer, int[] values, int[] unpacked) {
+    int[] packed = new int[packer.getBitWidth()];
+    packer.pack32Values(values, 0, packed, 0);
+    packer.unpack32Values(packed, 0, unpacked, 0);
+  }
+
+  private int[] generateValues(int bitWidth) {
+    int[] values = new int[32];
+    for (int j = 0; j < values.length; j++) {
+      values[j] = (int)(Math.random() * 100000) % (int)Math.pow(2, bitWidth);
+    }
+    System.out.println("Input:  " + TestBitPacking.toString(values));
+    return values;
   }
 
   @Test
@@ -64,13 +69,9 @@ public class TestLemireBitPacking {
     System.out.println("testPackUnPackAgainstHandWritten");
     for (int i = 1; i < 8; i++) {
       System.out.println("Width: " + i);
-      int[] values = new int[32];
       int[] packed = new int[i];
       int[] unpacked = new int[32];
-      for (int j = 0; j < values.length; j++) {
-        values[j] = (int)(Math.random() * 100000) % (int)Math.pow(2, i); // 67 is prime
-      }
-      System.out.println("Input:  " + TestBitPacking.toString(values));
+      int[] values = generateValues(i);
 
       // pack lemire
       final IntPacker packer = LemireBitPackingBE.getPacker(i);

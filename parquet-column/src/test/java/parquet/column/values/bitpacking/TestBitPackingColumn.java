@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.primitive;
+package parquet.column.values.bitpacking;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -22,8 +22,8 @@ import java.io.IOException;
 
 import org.junit.Test;
 
-import parquet.column.values.bitpacking.BitPackingValuesReader;
-import parquet.column.values.bitpacking.BitPackingValuesWriter;
+import parquet.column.values.ValuesReader;
+import parquet.column.values.ValuesWriter;
 
 public class TestBitPackingColumn {
 
@@ -154,23 +154,47 @@ public class TestBitPackingColumn {
   }
 
   private void validateEncodeDecode(int bitLength, int[] vals, String expected) throws IOException {
-    final int bound = (int)Math.pow(2, bitLength) - 1;
-    BitPackingValuesWriter w = new BitPackingValuesWriter(bound);
-    for (int i : vals) {
-      w.writeInteger(i);
+    for (PACKING_TYPE type : PACKING_TYPE.values()) {
+      System.out.println(type);
+      final int bound = (int)Math.pow(2, bitLength) - 1;
+      ValuesWriter w = type.getWriter(bound);
+      for (int i : vals) {
+        w.writeInteger(i);
+      }
+      byte[] bytes = w.getBytes().toByteArray();
+      System.out.println("vals ("+bitLength+"): " + TestBitPacking.toString(vals));
+      System.out.println("bytes: " + TestBitPacking.toString(bytes));
+      assertEquals(type.toString(), expected, TestBitPacking.toString(bytes));
+      ValuesReader r = type.getReader(bound);
+      r.initFromPage(vals.length, bytes, 0);
+      int[] result = new int[vals.length];
+      for (int i = 0; i < result.length; i++) {
+        result[i] = r.readInteger();
+      }
+      System.out.println("result: " + TestBitPacking.toString(result));
+      assertArrayEquals("result: " + TestBitPacking.toString(result), vals, result);
     }
-    byte[] bytes = w.getBytes().toByteArray();
-    System.out.println("vals ("+bitLength+"): " + TestBitPacking.toString(vals));
-    System.out.println("bytes: " + TestBitPacking.toString(bytes));
-    assertEquals(expected, TestBitPacking.toString(bytes));
-    BitPackingValuesReader r = new BitPackingValuesReader(bound);
-    r.initFromPage(vals.length, bytes, 0);
-    int[] result = new int[vals.length];
-    for (int i = 0; i < result.length; i++) {
-      result[i] = r.readInteger();
-    }
-    System.out.println("result: " + TestBitPacking.toString(result));
-    assertArrayEquals("result: " + TestBitPacking.toString(result), vals, result);
+  }
+
+  private static enum PACKING_TYPE {
+    BYTE_BASED {
+      public ValuesReader getReader(final int bound) {
+        return new BitPackingValuesReader(bound);
+      }
+      public ValuesWriter getWriter(final int bound) {
+        return new BitPackingValuesWriter(bound);
+      }
+    },
+    INT_BASED {
+      public ValuesReader getReader(final int bound) {
+        return new IntBasedBitPackingValuesReader(bound);
+      }
+      public ValuesWriter getWriter(final int bound) {
+        return new IntBasedBitPackingValuesWriter(bound);
+      }
+    };
+    abstract public ValuesReader getReader(final int bound);
+    abstract public ValuesWriter getWriter(final int bound);
   }
 
 }
