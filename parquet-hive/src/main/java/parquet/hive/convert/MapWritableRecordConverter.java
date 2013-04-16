@@ -36,8 +36,8 @@ public class MapWritableRecordConverter extends RecordMaterializer<MapWritable> 
 
     private final MapWritableGroupConverter root;
 
-    public MapWritableRecordConverter(final GroupType parquetSchema, final Map<String, String> keyValueMetaData, final MessageType fileSchema) {
-        this.root = new MapWritableGroupConverter(parquetSchema);
+    public MapWritableRecordConverter(final GroupType requestedSchema, final Map<String, String> keyValueMetaData, final MessageType fileSchema) {
+        this.root = new MapWritableGroupConverter(requestedSchema);
 
     }
 
