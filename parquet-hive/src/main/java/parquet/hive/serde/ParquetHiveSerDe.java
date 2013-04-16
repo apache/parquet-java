@@ -145,17 +145,17 @@ public class ParquetHiveSerDe implements SerDe {
         return createStruct(obj, (StructObjectInspector) objInspector, columnNames);
     }
 
-    private MapWritable createStruct(Object obj, StructObjectInspector inspector, List<String> colNames) throws SerDeException {
-        MapWritable result = new MapWritable();
-        List<? extends StructField> fields = inspector.getAllStructFieldRefs();
+    private MapWritable createStruct(final Object obj, final StructObjectInspector inspector, final List<String> colNames) throws SerDeException {
+        final MapWritable result = new MapWritable();
+        final List<? extends StructField> fields = inspector.getAllStructFieldRefs();
         int i = 0;
 
         for (final StructField field : fields) {
 
-            Object subObj = inspector.getStructFieldData(obj, field);
-            ObjectInspector subInspector = field.getFieldObjectInspector();
+            final Object subObj = inspector.getStructFieldData(obj, field);
+            final ObjectInspector subInspector = field.getFieldObjectInspector();
 
-            Writable subResult = createObject(subObj, subInspector);
+            final Writable subResult = createObject(subObj, subInspector);
 
             // for the 1st lvl, the field names are "_col0" ... and we want the
             // real names
@@ -169,19 +169,19 @@ public class ParquetHiveSerDe implements SerDe {
 
     }
 
-    private Writable createMap(Object obj, MapObjectInspector inspector) throws SerDeException {
-        Map<?, ?> sourceMap = inspector.getMap(obj);
-        ObjectInspector keyInspector = inspector.getMapKeyObjectInspector();
-        ObjectInspector valueInspector = inspector.getMapValueObjectInspector();
-        List<MapWritable> array = new ArrayList<MapWritable>();
+    private Writable createMap(final Object obj, final MapObjectInspector inspector) throws SerDeException {
+        final Map<?, ?> sourceMap = inspector.getMap(obj);
+        final ObjectInspector keyInspector = inspector.getMapKeyObjectInspector();
+        final ObjectInspector valueInspector = inspector.getMapValueObjectInspector();
+        final List<MapWritable> array = new ArrayList<MapWritable>();
 
         if (sourceMap != null) {
-            for (Entry<?, ?> keyValue : sourceMap.entrySet()) {
-                Writable key = createObject(keyValue.getKey(), keyInspector);
-                Writable value = createObject(keyValue.getValue(), valueInspector);
+            for (final Entry<?, ?> keyValue : sourceMap.entrySet()) {
+                final Writable key = createObject(keyValue.getKey(), keyInspector);
+                final Writable value = createObject(keyValue.getValue(), valueInspector);
 
                 if (key != null) {
-                    MapWritable keyValueWritable = new MapWritable();
+                    final MapWritable keyValueWritable = new MapWritable();
                     keyValueWritable.put(MAP_KEY, key);
                     keyValueWritable.put(MAP_VALUE, value);
                     array.add(keyValueWritable);
@@ -191,40 +191,44 @@ public class ParquetHiveSerDe implements SerDe {
         }
 
         if (array.size() > 0) {
-            ArrayWritable subArray = new ArrayWritable(MapWritable.class, array.toArray(new MapWritable[array.size()]));
-            MapWritable map = new MapWritable();
+            final ArrayWritable subArray = new ArrayWritable(MapWritable.class, array.toArray(new MapWritable[array.size()]));
+            final MapWritable map = new MapWritable();
             map.put(MAP, subArray);
             return map;
-        } else
+        } else {
             return null;
+        }
     }
 
-    private MapWritable createArray(Object obj, ListObjectInspector inspector) throws SerDeException {
-        List<?> sourceArray = inspector.getList(obj);
-        ObjectInspector subInspector = inspector.getListElementObjectInspector();
-        List<Writable> array = new ArrayList<Writable>();
+    private MapWritable createArray(final Object obj, final ListObjectInspector inspector) throws SerDeException {
+        final List<?> sourceArray = inspector.getList(obj);
+        final ObjectInspector subInspector = inspector.getListElementObjectInspector();
+        final List<Writable> array = new ArrayList<Writable>();
 
         if (sourceArray != null) {
-            for (Object curObj : sourceArray) {
-                Writable newObj = createObject(curObj, subInspector);
-                if (newObj != null)
+            for (final Object curObj : sourceArray) {
+                final Writable newObj = createObject(curObj, subInspector);
+                if (newObj != null) {
                     array.add(newObj);
+                }
             }
         }
 
         if (array.size() > 0) {
-            ArrayWritable subArray = new ArrayWritable(array.get(0).getClass(), array.toArray(new Writable[array.size()]));
-            MapWritable map = new MapWritable();
+            final ArrayWritable subArray = new ArrayWritable(array.get(0).getClass(), array.toArray(new Writable[array.size()]));
+            final MapWritable map = new MapWritable();
             map.put(ARRAY, subArray);
             return map;
-        } else
+        } else {
             return null;
+        }
     }
 
-    private Writable createPrimitive(Object obj, PrimitiveObjectInspector inspector) throws SerDeException {
+    private Writable createPrimitive(final Object obj, final PrimitiveObjectInspector inspector) throws SerDeException {
 
-        if (obj == null)
+        if (obj == null) {
             return null;
+        }
 
         switch (inspector.getPrimitiveCategory()) {
         case VOID:
@@ -250,7 +254,7 @@ public class ParquetHiveSerDe implements SerDe {
         }
     }
 
-    private Writable createObject(Object obj, ObjectInspector inspector) throws SerDeException {
+    private Writable createObject(final Object obj, final ObjectInspector inspector) throws SerDeException {
         switch (inspector.getCategory()) {
         case STRUCT:
             return createStruct(obj, (StructObjectInspector) inspector, null);

@@ -23,7 +23,6 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.AbstractPrimitiveJavaObjectInspector;
@@ -68,14 +67,14 @@ public class MapWritableObjectInspector extends StructObjectInspector {
             final String name = fieldNames.get(i);
             final TypeInfo fieldInfo = fieldInfos.get(i);
 
-            StructFieldImpl field = new StructFieldImpl(name, getObjectInspector(fieldInfo));
+            final StructFieldImpl field = new StructFieldImpl(name, getObjectInspector(fieldInfo));
 
             fields.add(field);
             fieldsByName.put(name, field);
         }
     }
 
-    private ObjectInspector getObjectInspector(TypeInfo typeInfo) {
+    private ObjectInspector getObjectInspector(final TypeInfo typeInfo) {
         if (typeInfo.equals(TypeInfoFactory.doubleTypeInfo)) {
             return PrimitiveObjectInspectorFactory.writableDoubleObjectInspector;
         } else if (typeInfo.equals(TypeInfoFactory.booleanTypeInfo)) {
@@ -91,14 +90,15 @@ public class MapWritableObjectInspector extends StructObjectInspector {
         } else if (typeInfo.getCategory().equals(Category.STRUCT)) {
             return new MapWritableObjectInspector((StructTypeInfo) typeInfo);
         } else if (typeInfo.getCategory().equals(Category.LIST)) {
-            TypeInfo subTypeInfo = ((ListTypeInfo) typeInfo).getListElementTypeInfo();
-            return ObjectInspectorFactory.getStandardListObjectInspector(getObjectInspector(subTypeInfo));
+            final TypeInfo subTypeInfo = ((ListTypeInfo) typeInfo).getListElementTypeInfo();
+            return new ParquetHiveArrayInspector(getObjectInspector(subTypeInfo));
         } else if (typeInfo.getCategory().equals(Category.MAP)) {
-            TypeInfo keyTypeInfo = ((MapTypeInfo) typeInfo).getMapKeyTypeInfo();
-            TypeInfo valueTypeInfo = ((MapTypeInfo) typeInfo).getMapValueTypeInfo();
-            return ObjectInspectorFactory.getStandardMapObjectInspector(getObjectInspector(keyTypeInfo), getObjectInspector(valueTypeInfo));
-        } else
+            final TypeInfo keyTypeInfo = ((MapTypeInfo) typeInfo).getMapKeyTypeInfo();
+            final TypeInfo valueTypeInfo = ((MapTypeInfo) typeInfo).getMapValueTypeInfo();
+            return new ParquetHiveMapInspector(getObjectInspector(keyTypeInfo), getObjectInspector(valueTypeInfo));
+        } else {
             throw new RuntimeException("Unknown field info: " + typeInfo);
+        }
 
     }
 

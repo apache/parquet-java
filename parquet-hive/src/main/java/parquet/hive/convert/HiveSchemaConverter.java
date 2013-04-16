@@ -24,6 +24,7 @@ import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 
+import parquet.Log;
 import parquet.hive.serde.ParquetHiveSerDe;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
@@ -42,7 +43,10 @@ import parquet.schema.Type.Repetition;
  *
  */
 public class HiveSchemaConverter {
+    private static final Log LOG = Log.getLog(HiveSchemaConverter.class);
+
     static public MessageType convert(final List<String> columnNames, final List<TypeInfo> columnTypes) {
+        LOG.info(new MessageType("hive_schema", convertTypes(columnNames, columnTypes)));
         return new MessageType("hive_schema", convertTypes(columnNames, columnTypes));
     }
 
@@ -64,21 +68,21 @@ public class HiveSchemaConverter {
         return convertType(name, typeInfo, Repetition.OPTIONAL);
     }
 
-    static private Type convertType(String name, TypeInfo typeInfo, Repetition repetition) {
+    static private Type convertType(final String name, final TypeInfo typeInfo, final Repetition repetition) {
         if (typeInfo.getCategory().equals(Category.PRIMITIVE)) {
-            if (typeInfo.equals(TypeInfoFactory.stringTypeInfo))
+            if (typeInfo.equals(TypeInfoFactory.stringTypeInfo)) {
                 return new PrimitiveType(repetition, PrimitiveTypeName.BINARY, name);
-            else if (typeInfo.equals(TypeInfoFactory.intTypeInfo) || typeInfo.equals(TypeInfoFactory.shortTypeInfo) || typeInfo.equals(TypeInfoFactory.byteTypeInfo))
+            } else if (typeInfo.equals(TypeInfoFactory.intTypeInfo) || typeInfo.equals(TypeInfoFactory.shortTypeInfo) || typeInfo.equals(TypeInfoFactory.byteTypeInfo)) {
                 return new PrimitiveType(repetition, PrimitiveTypeName.INT32, name);
-            else if (typeInfo.equals(TypeInfoFactory.longTypeInfo))
+            } else if (typeInfo.equals(TypeInfoFactory.longTypeInfo)) {
                 return new PrimitiveType(repetition, PrimitiveTypeName.INT64, name);
-            else if (typeInfo.equals(TypeInfoFactory.doubleTypeInfo))
+            } else if (typeInfo.equals(TypeInfoFactory.doubleTypeInfo)) {
                 return new PrimitiveType(repetition, PrimitiveTypeName.DOUBLE, name);
-            else if (typeInfo.equals(TypeInfoFactory.floatTypeInfo))
+            } else if (typeInfo.equals(TypeInfoFactory.floatTypeInfo)) {
                 return new PrimitiveType(repetition, PrimitiveTypeName.FLOAT, name);
-            else if (typeInfo.equals(TypeInfoFactory.booleanTypeInfo))
+            } else if (typeInfo.equals(TypeInfoFactory.booleanTypeInfo)) {
                 return new PrimitiveType(repetition, PrimitiveTypeName.BOOLEAN, name);
-            else
+            } else {
                 throw new RuntimeException();
             }
         } else if (typeInfo.getCategory().equals(Category.LIST)) {
@@ -86,25 +90,23 @@ public class HiveSchemaConverter {
         } else if (typeInfo.getCategory().equals(Category.STRUCT)) {
             return convertStructType(name, (StructTypeInfo) typeInfo);
         } else if (typeInfo.getCategory().equals(Category.MAP)) {
-            throw new NotImplementedException("Map hive conversion not implemented");
-        } else {
             return convertMapType(name, (MapTypeInfo) typeInfo);
-        } else
+        } else {
             throw new RuntimeException("Unknown type: " + typeInfo);
         }
     }
 
     // An optional group containing a repeated anonymous group "bag", containing
     // 1 anonymous element "array_element"
-    static private GroupType convertArrayType(String name, ListTypeInfo typeInfo) {
-        TypeInfo subType = typeInfo.getListElementTypeInfo();
+    static private GroupType convertArrayType(final String name, final ListTypeInfo typeInfo) {
+        final TypeInfo subType = typeInfo.getListElementTypeInfo();
         return listWrapper(name, OriginalType.LIST, new GroupType(Repetition.REPEATED, ParquetHiveSerDe.ARRAY.toString(), convertType("array_element", subType)));
     }
 
     // An optional group containing multiple elements
-    static private GroupType convertStructType(String name, StructTypeInfo typeInfo) {
-        List<String> columnNames = typeInfo.getAllStructFieldNames();
-        List<TypeInfo> columnTypes = typeInfo.getAllStructFieldTypeInfos();
+    static private GroupType convertStructType(final String name, final StructTypeInfo typeInfo) {
+        final List<String> columnNames = typeInfo.getAllStructFieldNames();
+        final List<TypeInfo> columnTypes = typeInfo.getAllStructFieldTypeInfos();
         return new GroupType(Repetition.OPTIONAL, name, convertTypes(columnNames, columnTypes));
 
     }
@@ -112,8 +114,8 @@ public class HiveSchemaConverter {
     // An optional group containing a repeated anonymous group "map", containing
     // 2 elements: "key", "value"
     static private GroupType convertMapType(String name, MapTypeInfo typeInfo) {
-        Type keyType = convertType(ParquetHiveSerDe.MAP_KEY.toString(), typeInfo.getMapKeyTypeInfo(), Repetition.REQUIRED);
-        Type valueType = convertType(ParquetHiveSerDe.MAP_VALUE.toString(), typeInfo.getMapValueTypeInfo());
+        final Type keyType = convertType(ParquetHiveSerDe.MAP_KEY.toString(), typeInfo.getMapKeyTypeInfo(), Repetition.REQUIRED);
+        final Type valueType = convertType(ParquetHiveSerDe.MAP_VALUE.toString(), typeInfo.getMapValueTypeInfo());
         return listWrapper(name, OriginalType.MAP_KEY_VALUE, new GroupType(Repetition.REPEATED, ParquetHiveSerDe.MAP.toString(), keyType, valueType));
     }
 

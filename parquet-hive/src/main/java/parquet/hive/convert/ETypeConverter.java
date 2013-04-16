@@ -23,11 +23,13 @@ import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 
+import parquet.Log;
 import parquet.hive.writable.BigDecimalWritable;
 import parquet.hive.writable.BinaryWritable;
 import parquet.io.api.Binary;
 import parquet.io.api.Converter;
 import parquet.io.api.PrimitiveConverter;
+
 /**
  *
  * TODO : doc + see classes below (duplicated code from julien)
@@ -40,66 +42,72 @@ public enum ETypeConverter {
 
     EDOUBLE_CONVERTER(Double.TYPE) {
         @Override
-        Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
+        Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
             return new FieldDoubleConverter(new ParentValueContainer() {
                 @Override
                 void add(final Object value) {
-                    writableGroupConv.set(fieldName, new DoubleWritable((Double) value));
+                    LOG.info("adding value " + value + " at index " + index);
+                    parent.set(index, new DoubleWritable((Double) value));
                 }
             });
         }
     },
     EBOOLEAN_CONVERTER(Boolean.TYPE) {
         @Override
-        Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
+        Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
             return new FieldBooleanConverter(new ParentValueContainer() {
                 @Override
                 void add(final Object value) {
-                    writableGroupConv.set(fieldName, new BooleanWritable((Boolean) value));
+                    LOG.info("adding value " + value + " at index " + index);
+                    parent.set(index, new BooleanWritable((Boolean) value));
                 }
             });
         }
     },
     EFLOAT_CONVERTER(Float.TYPE) {
         @Override
-        Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
+        Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
             return new FieldFloatConverter(new ParentValueContainer() {
                 @Override
                 void add(final Object value) {
-                    writableGroupConv.set(fieldName, new FloatWritable((Float) value));
+                    LOG.info("adding value " + value + " at index " + index);
+                    parent.set(index, new FloatWritable((Float) value));
                 }
             });
         }
     },
     EINT32_CONVERTER(Integer.TYPE) {
         @Override
-        Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
+        Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
             return new FieldIntegerConverter(new ParentValueContainer() {
                 @Override
                 void add(final Object value) {
-                    writableGroupConv.set(fieldName, new IntWritable((Integer) value));
+                    LOG.info("adding value " + value + " at index " + index);
+                    parent.set(index, new IntWritable((Integer) value));
                 }
             });
         }
     },
     EINT64_CONVERTER(Long.TYPE) {
         @Override
-        Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
+        Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
             return new FieldLongConverter(new ParentValueContainer() {
                 @Override
                 void add(final Object value) {
-                    writableGroupConv.set(fieldName, new LongWritable((Long) value));
+                    LOG.info("adding value " + value + " at index " + index);
+                    parent.set(index, new LongWritable((Long) value));
                 }
             });
         }
     },
     EINT96_CONVERTER(BigDecimal.class) {
         @Override
-        Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
+        Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
             return new FieldBigDecimalConverter(new ParentValueContainer() {
                 @Override
                 void add(final Object value) {
-                    writableGroupConv.set(fieldName, new BigDecimalWritable((BigDecimal) value));
+                    LOG.info("adding value " + value + " at index " + index);
+                    parent.set(index, new BigDecimalWritable((BigDecimal) value));
                 }
             });
         }
@@ -107,16 +115,18 @@ public enum ETypeConverter {
     EBINARY_CONVERTER(Binary.class) {
 
         @Override
-        Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
+        Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
             return new FieldBinaryConverter(new ParentValueContainer() {
                 @Override
                 void add(final Object value) {
-                    writableGroupConv.set(fieldName, new BinaryWritable((Binary) value));
+                    LOG.info("adding value " + value + " at index " + index);
+                    parent.set(index, new BinaryWritable((Binary) value));
                 }
             });
         }
 
     };
+    private static final Log LOG = Log.getLog(ETypeConverter.class);
 
     final Class<?> _type;
 
@@ -128,12 +138,12 @@ public enum ETypeConverter {
         return _type;
     }
 
-    abstract Converter getConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv);
+    abstract Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent);
 
-    static public Converter getNewConverter(final Class<?> type, final String fieldName, final MapWritableGroupConverter writableGroupConv) {
+    static public Converter getNewConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
         for (final ETypeConverter eConverter : values()) {
             if (eConverter.getType() == type) {
-                return eConverter.getConverter(type, fieldName, writableGroupConv);
+                return eConverter.getConverter(type, index, parent);
             }
         }
         throw new RuntimeException("Converter not found ... for type : " + type);
@@ -142,9 +152,9 @@ public enum ETypeConverter {
     // TODO : Duplicate code with Julien, need to take a look after it works
     /**
      * handle string values
-     * 
+     *
      * @author Julien Le Dem
-     * 
+     *
      */
     final class FieldBinaryConverter extends PrimitiveConverter {
 
@@ -163,9 +173,9 @@ public enum ETypeConverter {
 
     /**
      * Handles doubles
-     * 
+     *
      * @author Julien Le Dem
-     * 
+     *
      */
     final class FieldDoubleConverter extends PrimitiveConverter {
 
@@ -259,15 +269,15 @@ public enum ETypeConverter {
 
     /**
      * for converters to add their current value to their parent
-     * 
+     *
      * @author Julien Le Dem
-     * 
+     *
      */
     abstract public class ParentValueContainer {
 
         /**
          * will add the value to the parent whether it's a map, a bag or a tuple
-         * 
+         *
          * @param value
          */
         abstract void add(Object value);

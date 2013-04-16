@@ -87,11 +87,8 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
 
     @Override
     public org.apache.hadoop.mapred.InputSplit[] getSplits(final org.apache.hadoop.mapred.JobConf job, final int numSplits) throws IOException {
-        //        configuration.get(HiveSchemaConverter.)
-        final Iterator<Entry<String, String>> next  = job.iterator();
-        final JobConf cloneJobConf = manageJob.cloneJobAndInit(job);
 
-        final List<org.apache.hadoop.mapreduce.InputSplit> splits = realInput.getSplits(new JobContext(cloneJobConf, null));
+        final List<org.apache.hadoop.mapreduce.InputSplit> splits = realInput.getSplits(new JobContext(job, null));
 
         if (splits == null) {
             return null;
@@ -114,8 +111,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
     @Override
     public org.apache.hadoop.mapred.RecordReader<Void, MapWritable> getRecordReader(final org.apache.hadoop.mapred.InputSplit split, final org.apache.hadoop.mapred.JobConf job,
             final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
-        final JobConf cloneJobConf = manageJob.cloneJobAndInit(job);
-        return (RecordReader<Void, MapWritable>) new RecordReaderWrapper(realInput, split, cloneJobConf, reporter);
+        return (RecordReader<Void, MapWritable>) new RecordReaderWrapper(realInput, split, job, reporter);
     }
 
     private static class InputSplitWrapper extends FileSplit implements InputSplit {
@@ -201,7 +197,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
         private boolean eof = false;
 
         public RecordReaderWrapper(final ParquetInputFormat<MapWritable> newInputFormat, final InputSplit oldSplit, final JobConf oldJobConf, final Reporter reporter) throws IOException {
-            LOG.error("Mickael RecordReaderWrapper : oldJobConf : " + oldJobConf.toString());
+
             splitLen = oldSplit.getLength();
             final ManageJobConfig lol = new ManageJobConfig();
             lol.cloneJobAndInit(oldJobConf);
@@ -214,24 +210,9 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
                 final List<BlockMetaData> blocks = parquetMetadata.getBlocks();
                 final FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
 
-                final List<String>  listColumns = (List<String>) StringUtils.getStringCollection(oldJobConf.get("columns"));
-
-                LOG.error("Mickael : listColumns : " + listColumns.toString() );
-                final MessageType fileSchema = fileMetaData.getSchema();
-                MessageType requestedSchemaByUser = fileSchema;
-                final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(oldJobConf);
-                LOG.error("Mickael : indexColumnsWanted : " + indexColumnsWanted );
-                if (indexColumnsWanted.isEmpty() == false) {
-                    final List<Type> typeList = new ArrayList<Type>();
-                    for(final Integer idx : indexColumnsWanted) {
-                        typeList.add(fileSchema.getType(listColumns.get(idx)));
-                    }
-                    requestedSchemaByUser = new MessageType(fileSchema.getName(), typeList);
-                }
-
                 // TODO: use requestedSchema from Hive
                 split = new ParquetInputSplit(((FileSplit) oldSplit).getPath(), ((FileSplit) oldSplit).getStart(), oldSplit.getLength(), oldSplit.getLocations(), blocks,
-                        fileSchema.toString() , requestedSchemaByUser.toString(), fileMetaData.getKeyValueMetaData());
+                        fileMetaData.getSchema().toString(), fileMetaData.getSchema().toString(), fileMetaData.getKeyValueMetaData());
             } else {
                 throw new RuntimeException("Unknown split type");
             }

@@ -51,40 +51,40 @@ public class MapWritableWriter {
         this.schema = schema;
     }
 
-    public void write(MapWritable map) {
-        if (map == null)
+    public void write(final MapWritable map) {
+        if (map == null) {
             return;
+        }
 
         recordConsumer.startMessage();
         writeMap(map, schema);
         recordConsumer.endMessage();
     }
 
-    private void writeMap(MapWritable map, GroupType type) {
-        if (map == null)
+    private void writeMap(final MapWritable map, final GroupType type) {
+        if (map == null) {
             return;
+        }
 
-        // LOG.info("WRITING MAP (" + type + ") " + map.entrySet());
-
-        int fieldCount = type.getFieldCount();
+        final int fieldCount = type.getFieldCount();
         for (int field = 0; field < fieldCount; ++field) {
             final Type fieldType = type.getType(field);
             final String fieldName = fieldType.getName();
             recordConsumer.startField(fieldName, field);
-            Writable value = map.get(new Text(fieldName));
+            final Writable value = map.get(new Text(fieldName));
 
             if (fieldType.isPrimitive()) {
-                // LOG.info("WRITING PRIMITIVE (" + fieldType + ") " + value);
                 writePrimitive(value);
             } else {
                 recordConsumer.startGroup();
 
-                if (value instanceof MapWritable)
+                if (value instanceof MapWritable) {
                     writeMap((MapWritable) value, fieldType.asGroupType());
-                else if (value instanceof ArrayWritable)
+                } else if (value instanceof ArrayWritable) {
                     writeArray((ArrayWritable) value, fieldType.asGroupType());
-                else if (value != null)
+                } else if (value != null) {
                     throw new RuntimeException("This should be an ArrayWritable or MapWritable: " + value);
+                }
 
                 recordConsumer.endGroup();
             }
@@ -93,33 +93,36 @@ public class MapWritableWriter {
         }
     }
 
-    private void writeArray(ArrayWritable array, GroupType type) {
-        if (array == null)
+    private void writeArray(final ArrayWritable array, final GroupType type) {
+        if (array == null) {
             return;
+        }
 
-        // LOG.info("WRITING ARRAY (" + type + ") " + array);
+        final Writable[] subValues = array.get();
 
-        Writable[] subValues = array.get();
-
-        int fieldCount = type.getFieldCount();
+        final int fieldCount = type.getFieldCount();
         for (int field = 0; field < fieldCount; ++field) {
-            Type subType = type.getType(field);
+            final Type subType = type.getType(field);
             recordConsumer.startField(subType.getName(), field);
+            //            LOG.info("writing " + subValues.length + " values for " + type.getName());
             for (int i = 0; i < subValues.length; ++i) {
-                Writable subValue = subValues[i];
+                final Writable subValue = subValues[i];
                 if (subValue != null) {
-                    MapWritable subMap = (MapWritable) subValue;
-                    if (!(subValue instanceof MapWritable))
-                        throw new RuntimeException("This should be a MapWritable: " + subValue);
 
                     if (subType.isPrimitive()) {
-                        // LOG.info("WRITING PRIMITIVE (" + subType + ") " +
-                        // subValue);
-                        writePrimitive(subMap.get(new Text(subType.getName())));
+                        if (subValue instanceof MapWritable) {
+                            writePrimitive(((MapWritable) subValue).get(new Text(subType.getName())));
+                        } else {
+                            writePrimitive(subValue);
+                        }
                     } else {
-                        recordConsumer.startGroup();
-                        writeMap(subMap, subType.asGroupType());
-                        recordConsumer.endGroup();
+                        if (!(subValue instanceof MapWritable)) {
+                            throw new RuntimeException("This should be a MapWritable: " + subValue);
+                        } else {
+                            recordConsumer.startGroup();
+                            writeMap((MapWritable) subValue, subType.asGroupType());
+                            recordConsumer.endGroup();
+                        }
                     }
                 }
             }
@@ -128,20 +131,22 @@ public class MapWritableWriter {
 
     }
 
-    private void writePrimitive(Writable value) {
-        if (value == null)
+    private void writePrimitive(final Writable value) {
+        if (value == null) {
             return;
-        if (value instanceof DoubleWritable)
+        }
+        if (value instanceof DoubleWritable) {
             recordConsumer.addDouble(((DoubleWritable) value).get());
-        else if (value instanceof BooleanWritable)
+        } else if (value instanceof BooleanWritable) {
             recordConsumer.addBoolean(((BooleanWritable) value).get());
-        else if (value instanceof FloatWritable)
+        } else if (value instanceof FloatWritable) {
             recordConsumer.addFloat(((FloatWritable) value).get());
-        else if (value instanceof IntWritable)
+        } else if (value instanceof IntWritable) {
             recordConsumer.addInteger(((IntWritable) value).get());
-        else if (value instanceof BinaryWritable)
+        } else if (value instanceof BinaryWritable) {
             recordConsumer.addBinary(Binary.fromByteArray(((BinaryWritable) value).getBytes()));
-        else
+        } else {
             throw new RuntimeException("Unknown value type: " + value + " " + value.getClass());
+        }
     }
 }
