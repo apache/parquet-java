@@ -143,10 +143,7 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
     } else if (avroType.equals(Schema.Type.DOUBLE)) {
       recordConsumer.addDouble(((Number) value).doubleValue());
     } else if (avroType.equals(Schema.Type.BYTES)) {
-      ByteBuffer buffer = (ByteBuffer) value;
-      byte[] bytes = new byte[buffer.remaining()];
-      buffer.get(bytes);
-      recordConsumer.addBinary(Binary.fromByteArray(bytes));
+      recordConsumer.addBinary(Binary.fromByteBuffer((ByteBuffer) value));
     } else if (avroType.equals(Schema.Type.STRING)) {
       recordConsumer.addBinary(Binary.fromString(value.toString())); // Utf8 or String
     } else if (avroType.equals(Schema.Type.RECORD)) {

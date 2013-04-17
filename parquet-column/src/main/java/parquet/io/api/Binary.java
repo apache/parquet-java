@@ -123,6 +123,55 @@ abstract public class Binary {
     };
   }
 
+  public static Binary fromByteBuffer(final ByteBuffer value) {
+    return new Binary() {
+      @Override
+      public String toStringUsingUTF8() {
+        return new String(getBytes(), BytesUtils.UTF8);
+      }
+
+      @Override
+      public int length() {
+        return value.remaining();
+      }
+
+      @Override
+      public void writeTo(OutputStream out) throws IOException {
+        out.write(getBytes());
+      }
+
+      @Override
+      public byte[] getBytes() {
+        byte[] bytes = new byte[value.remaining()];
+        value.get(bytes);
+        return bytes;
+      }
+
+      @Override
+      public int hashCode() {
+        byte[] bytes = getBytes();
+        return Binary.hashCode(bytes, 0, bytes.length);
+      }
+
+      @Override
+      boolean equals(Binary other) {
+        byte[] bytes = getBytes();
+        return other.equals(bytes, 0, bytes.length);
+      }
+
+      @Override
+      boolean equals(byte[] other, int otherOffset, int otherLength) {
+        byte[] bytes = getBytes();
+        return Binary.equals(bytes, 0, bytes.length, other, otherOffset, otherLength);
+      }
+
+      @Override
+      public ByteBuffer toByteBuffer() {
+        return value;
+      }
+    };
+  }
+
   public static Binary fromString(final String value) {
     return fromByteArray(value.getBytes(BytesUtils.UTF8));
   }
