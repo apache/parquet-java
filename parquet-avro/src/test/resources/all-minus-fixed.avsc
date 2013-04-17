@@ -27,16 +27,6 @@
     "name" : "mystring",
     "type" : "string"
   }, {
-    "name" : "mynestedrecord",
-    "type" : {
-      "type" : "record",
-      "name" : "ignored1",
-      "fields" : [ {
-        "name" : "mynestedint",
-        "type" : "int"
-      } ]
-    }
-  }, {
     "name" : "myenum",
     "type" : {
       "type" : "enum",

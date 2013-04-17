@@ -51,7 +51,6 @@ class AvroGenericRecordConverter extends GroupConverter {
       });
       index++;
     }
-    this.currentRecord = new GenericData.Record(avroSchema);
   }
 
   private static Converter newConverter(Schema schema, Type type,
