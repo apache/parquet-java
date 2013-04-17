@@ -19,9 +19,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map.Entry;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.hadoop.fs.FileSystem;
@@ -87,8 +85,13 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
 
     @Override
     public org.apache.hadoop.mapred.InputSplit[] getSplits(final org.apache.hadoop.mapred.JobConf job, final int numSplits) throws IOException {
+        final Path[] dirs = FileInputFormat.getInputPaths(job);
+        if (dirs.length == 0) {
+            throw new IOException("No input paths specified in job");
+        }
+        final JobConf cloneJobConf = manageJob.cloneJobAndInit(job, dirs[dirs.length - 1]);
 
-        final List<org.apache.hadoop.mapreduce.InputSplit> splits = realInput.getSplits(new JobContext(job, null));
+        final List<org.apache.hadoop.mapreduce.InputSplit> splits = realInput.getSplits(new JobContext(cloneJobConf, null));
 
         if (splits == null) {
             return null;
@@ -111,7 +114,12 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
     @Override
     public org.apache.hadoop.mapred.RecordReader<Void, MapWritable> getRecordReader(final org.apache.hadoop.mapred.InputSplit split, final org.apache.hadoop.mapred.JobConf job,
             final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
-        return (RecordReader<Void, MapWritable>) new RecordReaderWrapper(realInput, split, job, reporter);
+        final Path[] dirs = FileInputFormat.getInputPaths(job);
+        if (dirs.length == 0) {
+            throw new IOException("No input paths specified in job");
+        }
+        final JobConf cloneJobConf = manageJob.cloneJobAndInit(job, dirs[dirs.length - 1]); // Not necessary, just a test, need to be deleted
+        return (RecordReader<Void, MapWritable>) new RecordReaderWrapper(realInput, split, cloneJobConf, reporter);
     }
 
     private static class InputSplitWrapper extends FileSplit implements InputSplit {
@@ -199,8 +207,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
         public RecordReaderWrapper(final ParquetInputFormat<MapWritable> newInputFormat, final InputSplit oldSplit, final JobConf oldJobConf, final Reporter reporter) throws IOException {
 
             splitLen = oldSplit.getLength();
-            final ManageJobConfig lol = new ManageJobConfig();
-            lol.cloneJobAndInit(oldJobConf);
+
             ParquetInputSplit split;
 
             if (oldSplit instanceof InputSplitWrapper) {
@@ -209,8 +216,18 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
                 final ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(oldJobConf, ((FileSplit) oldSplit).getPath());
                 final List<BlockMetaData> blocks = parquetMetadata.getBlocks();
                 final FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
+                final List<String>  listColumns = (List<String>) StringUtils.getStringCollection(oldJobConf.get("columns"));
 
-                // TODO: use requestedSchema from Hive
+                final MessageType fileSchema = fileMetaData.getSchema();
+                MessageType requestedSchemaByUser = fileSchema;
+                final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(oldJobConf);
+                if (indexColumnsWanted.isEmpty() == false) {
+                    final List<Type> typeList = new ArrayList<Type>();
+                    for(final Integer idx : indexColumnsWanted) {
+                        typeList.add(fileSchema.getType(listColumns.get(idx)));
+                    }
+                    requestedSchemaByUser = new MessageType(fileSchema.getName(), typeList);
+                }
                 split = new ParquetInputSplit(((FileSplit) oldSplit).getPath(), ((FileSplit) oldSplit).getStart(), oldSplit.getLength(), oldSplit.getLocations(), blocks,
                         fileMetaData.getSchema().toString(), fileMetaData.getSchema().toString(), fileMetaData.getKeyValueMetaData());
             } else {
@@ -244,13 +261,6 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
             };
 
             try {
-
-                LOG.error("Mickael Reader wrapper newInputFormat: " + newInputFormat);
-                LOG.error("Mickael Reader wrapper oldSplit: " + oldSplit);
-                LOG.error("Mickael Reader wrapper oldJobConf: " + oldJobConf);
-                LOG.error("Mickael Reader wrapper taskContextgetConfiguration: " + taskContext.getConfiguration());
-                LOG.error("Mickael Reader wrapper getReadColumnIDs oldJobConf: " + ColumnProjectionUtils.getReadColumnIDs(oldJobConf));
-                LOG.error("Mickael Reader wrapper getReadColumnIDs taskContext: " + ColumnProjectionUtils.getReadColumnIDs(taskContext.getConfiguration()));
                 realReader = newInputFormat.createRecordReader(split, taskContext);
                 realReader.initialize(split, taskContext);
 

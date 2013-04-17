@@ -1,5 +1,21 @@
+/**
+ * Copyright 2013 Criteo.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package parquet.hive;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -7,8 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.exec.TableScanOperator;
@@ -19,11 +34,17 @@ import org.apache.hadoop.hive.ql.plan.PartitionDesc;
 import org.apache.hadoop.hive.ql.plan.TableScanDesc;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.mapred.JobConf;
-
+/**
+ *
+ * ManageJobConfig (from Hive file, need to be deleted after) quick workaround to init the job with column needed
+ *
+ *
+ * @author Mickaël Lacour <m.lacour@criteo.com>
+ *
+ */
 public class ManageJobConfig {
     MapredWork mrwork;
     private Map<String, PartitionDesc> pathToPartitionInfo;
-    static final Log LOG = LogFactory.getLog(ManageJobConfig.class);
 
     private void init(final JobConf job) {
         if (mrwork == null) {
@@ -32,7 +53,6 @@ public class ManageJobConfig {
             pathToPartitionInfo = new LinkedHashMap<String, PartitionDesc>();
 
             for (final Map.Entry<String, PartitionDesc> entry : mrwork.getPathToPartitionInfo().entrySet()) {
-                LOG.error("put into Partition DEsc " + new Path(entry.getKey()).toUri().getPath().toString());
                 pathToPartitionInfo.put(new Path(entry.getKey()).toUri().getPath().toString(), entry.getValue());
             }
         }
@@ -49,8 +69,6 @@ public class ManageJobConfig {
             final String splitPath, final String splitPathWithNoSchema, final boolean nonNative) {
 
         init(jobConf);
-
-        LOG.error("this.mrwork.getPathToAliases() :  " + this.mrwork.getPathToAliases() );
         if(this.mrwork.getPathToAliases() == null) {
             return;
         }
@@ -62,10 +80,6 @@ public class ManageJobConfig {
             final Entry<String, ArrayList<String>> entry = iterator.next();
             final String key = new Path(entry.getKey()).toUri().getPath().toString();
             boolean match;
-            LOG.error("non native :  " + nonNative);
-            LOG.error("key " + key);
-            LOG.error("splitPath" +   splitPath + " splutwithnoshcema " + splitPathWithNoSchema);
-
             if (nonNative) {
                 // For non-native tables, we need to do an exact match to avoid
                 // HIVE-1903.  (The table location contains no files, and the string
@@ -87,7 +101,6 @@ public class ManageJobConfig {
                 }
             }
         }
-        LOG.error("aliases szie " + aliases.size());
         for (final String alias : aliases) {
             final Operator<? extends Serializable> op = this.mrwork.getAliasToWork().get(
                     alias);
@@ -98,10 +111,8 @@ public class ManageJobConfig {
                 final ArrayList<Integer> list = tableScan.getNeededColumnIDs();
 
                 if (list != null) {
-                    LOG.error("tableScan.getNeededColumnIDs() :  " + list.toString() );
                     ColumnProjectionUtils.appendReadColumnIDs(jobConf, list);
                 } else {
-                    LOG.error("olumnProjectionUtils.setFullyReadColumns(jobConf);:  ");
                     ColumnProjectionUtils.setFullyReadColumns(jobConf);
                 }
 
@@ -113,7 +124,6 @@ public class ManageJobConfig {
     private void pushFilters(final JobConf jobConf, final TableScanOperator tableScan) {
 
         final TableScanDesc scanDesc = tableScan.getConf();
-        LOG.error("scanDesc " + scanDesc );
         if (scanDesc == null) {
             return;
         }
@@ -129,10 +139,6 @@ public class ManageJobConfig {
 
         final String filterText = filterExpr.getExprString();
         final String filterExprSerialized = Utilities.serializeExpression(filterExpr);
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Filter text = " + filterText);
-            LOG.debug("Filter expression = " + filterExprSerialized);
-        }
         jobConf.set(
                 TableScanDesc.FILTER_TEXT_CONF_STR,
                 filterText);
@@ -141,25 +147,32 @@ public class ManageJobConfig {
                 filterExprSerialized);
     }
 
-    public JobConf cloneJobAndInit(final JobConf jobConf) {
+    public JobConf cloneJobAndInit(final JobConf jobConf, final Path path) {
         init(jobConf);
         final JobConf cloneJobConf = new JobConf(jobConf);
+        try {
+            // TODO FIX ME
+            final Path tmpPath;
 
-        // TODO FIX ME
-        final Path tmpPath = new Path("/user/r.pecqueur/parquet");//((FileSplit) split).getPath().getParent().makeQualified(FileSystem.get(cloneJobConf)).toUri().getPath());
+            if (path == null) { // FIX ME BIG FAIL RIGHT NOW
+                tmpPath = new Path("/user/username/parquet");//((FileSplit) split).getPath().getParent().makeQualified(FileSystem.get(cloneJobConf)).toUri().getPath());
+            } else {
+                tmpPath = new Path(path.getParent().makeQualified(FileSystem.get(cloneJobConf)).toUri().getPath());
+            }
 
-        final PartitionDesc part = getPartition(tmpPath.toString());
-        LOG.error("bob part = " + part);
-        Boolean nonNative = false;
+            final PartitionDesc part = getPartition(tmpPath.toString());
+            Boolean nonNative = false;
 
-        if ((part != null) && (part.getTableDesc() != null)) {
-            LOG.error("bob part =  copyTableJobPropertiesToConf");
-            Utilities.copyTableJobPropertiesToConf(part.getTableDesc(), cloneJobConf);
-            nonNative = part.getTableDesc().isNonNative();
+            if ((part != null) && (part.getTableDesc() != null)) {
+                Utilities.copyTableJobPropertiesToConf(part.getTableDesc(), cloneJobConf);
+                nonNative = part.getTableDesc().isNonNative();
+            }
+
+            pushProjectionsAndFilters(cloneJobConf, tmpPath.toString(), tmpPath.toUri().toString(), nonNative);
+        } catch (final IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
         }
-
-        pushProjectionsAndFilters(cloneJobConf, tmpPath.toString(), tmpPath.toUri().toString(), nonNative);
-
         return jobConf;
     }
 }

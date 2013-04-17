@@ -20,8 +20,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
@@ -54,9 +52,9 @@ public class MapWritableObjectInspector extends StructObjectInspector {
     private final List<String> fieldNames;
     private final List<StructField> fields;
     private final HashMap<String, StructFieldImpl> fieldsByName;
-    static final Log LOG = LogFactory.getLog(MapWritableObjectInspector.class);
+
     public MapWritableObjectInspector(final StructTypeInfo rowTypeInfo) {
-        LOG.error("Mickael MapWritableObjectInspector " + rowTypeInfo);
+
         typeInfo = rowTypeInfo;
         fieldNames = rowTypeInfo.getAllStructFieldNames();
         fieldInfos = rowTypeInfo.getAllStructFieldTypeInfos();

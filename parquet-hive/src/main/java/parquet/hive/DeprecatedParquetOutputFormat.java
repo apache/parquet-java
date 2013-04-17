@@ -97,7 +97,7 @@ public class DeprecatedParquetOutputFormat extends FileOutputFormat<Void, MapWri
             columnTypes = TypeInfoUtils.getTypeInfosFromTypeString(columnTypeProperty);
         }
 
-        MapWritableWriteSupport.setSchema(new HiveSchemaConverter().convert(columnNames, columnTypes), jc);
+        MapWritableWriteSupport.setSchema(HiveSchemaConverter.convert(columnNames, columnTypes), jc);
         return new RecordWriterWrapper(realOutputFormat, jc, finalOutPath.toString(), progress);
     }
 

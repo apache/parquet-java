@@ -1,18 +1,37 @@
+/**
+ * Copyright 2013 Criteo.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package parquet.hive.convert;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.hadoop.io.ArrayWritable;
-import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Writable;
 
-import parquet.Log;
 import parquet.io.api.Converter;
 import parquet.schema.GroupType;
-
+/**
+ *
+ * A ArrayWritableGroupConverter
+ *
+ *
+ * @author Rémy Pecqueur <r.pecqueur@criteo.com>
+ *
+ */
 public class ArrayWritableGroupConverter extends HiveGroupConverter {
-    private static final Log LOG = Log.getLog(ArrayWritableGroupConverter.class);
 
     private final GroupType groupType;
     private final Converter[] converters;
@@ -46,14 +65,6 @@ public class ArrayWritableGroupConverter extends HiveGroupConverter {
             arrayWritable = new ArrayWritable(Writable.class);
         }
         arrayWritable.set(currentList.toArray(new Writable[currentList.size()]));
-        LOG.info("current array: ");
-        for (final Writable a : currentList) {
-            if (a instanceof MapWritable) {
-                LOG.info("        " + ((MapWritable) a).entrySet());
-            } else {
-                LOG.info("        " +  a);
-            }
-        }
         return arrayWritable;
     }
 
@@ -64,20 +75,16 @@ public class ArrayWritableGroupConverter extends HiveGroupConverter {
 
     @Override
     public void start() {
-        LOG.info("starting for array: " + groupType.getName());
         currentList.clear();
     }
 
     @Override
     public void end() {
-        LOG.info("ending for array: " + groupType.getName());
         parent.set(index, getCurrentArray());
     }
 
     @Override
     protected void set(final int index, final Writable value) {
-        LOG.info("current group name: " + groupType.getName());
-        LOG.info("setting " + value + " at index " + index + " in list " + currentList);
         if (index != 0) {
             throw new RuntimeException("weee" + index);
         }

@@ -16,10 +16,8 @@
 package parquet.hive.read;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -48,31 +46,17 @@ public class MapWritableReadSupport extends ReadSupport<MapWritable> {
     @Override
     public parquet.hadoop.api.ReadSupport.ReadContext init(final Configuration configuration, final Map<String, String> keyValueMetaData, final MessageType fileSchema) {
 
-        for (final StackTraceElement ste : Thread.currentThread().getStackTrace()) {
-            LOG.error("Mickael : ste : " + ste.toString());
-        }
-
-        LOG.error("Mickael : KeyValueMetaDAta : " + keyValueMetaData.toString());
-        LOG.error("Mickael : configuration : " + configuration );
-        LOG.error("Mickael : fileschema : " + fileSchema );
-
-        //        configuration.get(HiveSchemaConverter.)
-        final Iterator<Entry<String, String>> next  = configuration.iterator();
-
-
-        while (next.hasNext()) {
-            final Entry<String,String> obj = next.next();
-            LOG.error("Mickael : next : " + obj.getKey() + " : " + obj.getValue() );
-
-        }
+        //        final Iterator<Entry<String, String>> next  = configuration.iterator();
+        //        while (next.hasNext()) {
+        //            final Entry<String,String> obj = next.next();
+        //            LOG.error("JobConf Hive : next : " + obj.getKey() + " : " + obj.getValue() );
+        //
+        //        }
 
         final List<String>  listColumns = (List<String>) StringUtils.getStringCollection(configuration.get("columns"));
 
-        LOG.error("Mickael : listColumns : " + listColumns.toString() );
-
         MessageType requestedSchemaByUser = fileSchema;
         final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(configuration);
-        LOG.error("Mickael : indexColumnsWanted : " + indexColumnsWanted );
         if (indexColumnsWanted.isEmpty() == false) {
             final List<Type> typeList = new ArrayList<Type>();
             for(final Integer idx : indexColumnsWanted) {
@@ -80,14 +64,12 @@ public class MapWritableReadSupport extends ReadSupport<MapWritable> {
             }
             requestedSchemaByUser = new MessageType(fileSchema.getName(), typeList);
         }
-        LOG.error("Mickael : parquetRequestedSchema : " + requestedSchemaByUser );
         return new ReadContext(requestedSchemaByUser);
     }
 
     @Override
     public RecordMaterializer<MapWritable> prepareForRead(final Configuration configuration, final Map<String, String> keyValueMetaData, final MessageType fileSchema,
             final parquet.hadoop.api.ReadSupport.ReadContext readContext) {
-        LOG.error("Mickael Prerpare for read : ColumnProjectionUtils : " + ColumnProjectionUtils.getReadColumnIDs(configuration));
         return new MapWritableRecordConverter(readContext.getRequestedSchema(), keyValueMetaData, fileSchema);
     }
 }
