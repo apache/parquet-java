@@ -24,7 +24,7 @@ import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType;
 import parquet.schema.Type;
 
-import static parquet.schema.OriginalType.LIST;
+import static parquet.schema.OriginalType.*;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 
 /**
@@ -72,33 +72,20 @@ class AvroSchemaConverter {
     } else if (type.equals(Schema.Type.BYTES)) {
       return primitive(fieldName, BINARY, repetition);
     } else if (type.equals(Schema.Type.STRING)) {
-      return primitive(fieldName, BINARY, repetition, OriginalType.UTF8);
+      return primitive(fieldName, BINARY, repetition, UTF8);
     } else if (type.equals(Schema.Type.RECORD)) {
-      List<Type> convertedTypes = new ArrayList<Type>();
-      for (Schema.Field nestedField : schema.getFields()) {
-        convertedTypes.add(convertField(nestedField));
-      }
-      return new GroupType(Type.Repetition.REQUIRED, fieldName, convertedTypes);
+      return new GroupType(repetition, fieldName, convertFields(schema.getFields()));
     } else if (type.equals(Schema.Type.ENUM)) {
-      return primitive(fieldName, BINARY, repetition, OriginalType.ENUM);
+      return primitive(fieldName, BINARY, repetition, ENUM);
     } else if (type.equals(Schema.Type.ARRAY)) {
       Type arrayType = convertField("item", schema.getElementType());
-      return listWrapper(
-          fieldName,
-          LIST,
+      return new GroupType(repetition, fieldName, LIST,
           new GroupType(Type.Repetition.REPEATED, "array", arrayType));
     } else if (type.equals(Schema.Type.MAP)) {
       Type keyType = convertField("key", Schema.create(Schema.Type.STRING));
-      Type valueType = convertField("value", schema.getValueType());
-      return listWrapper(
-          fieldName,
-          OriginalType.MAP,
-          new GroupType(
-              Type.Repetition.REPEATED,
-              "map",
-              OriginalType.MAP_KEY_VALUE,
-              keyType,
-              valueType));
+      Type valType = convertField("value", schema.getValueType());
+      return new GroupType(repetition, fieldName, MAP,
+          new GroupType(Type.Repetition.REPEATED, "map", MAP_KEY_VALUE, keyType, valType));
     } else if (type.equals(Schema.Type.FIXED)) {
       return primitive(fieldName, FIXED_LEN_BYTE_ARRAY, repetition);
     } else if (type.equals(Schema.Type.UNION)) {
@@ -127,10 +114,6 @@ class AvroSchemaConverter {
   private PrimitiveType primitive(String name, PrimitiveType.PrimitiveTypeName
       primitive, Type.Repetition repetition) {
     return new PrimitiveType(repetition, primitive, name, null);
-  }
-
-  private GroupType listWrapper(String alias, OriginalType originalType, GroupType groupType) {
-    return new GroupType(Type.Repetition.REQUIRED, alias, originalType, groupType);
   }
 
 }
