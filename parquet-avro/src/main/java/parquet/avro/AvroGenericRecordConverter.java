@@ -81,7 +81,8 @@ class AvroGenericRecordConverter extends GroupConverter {
     } else if (schema.getType().equals(Schema.Type.FIXED)) {
       return new FieldFixedConverter(parent, schema);
     }
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException(String.format("Cannot convert Avro type: %s" +
+        " (Parquet type: %s) ", schema, type));
   }
 
   private void set(int index, Object value) {
@@ -243,13 +244,14 @@ class AvroGenericRecordConverter extends GroupConverter {
   static final class GenericArrayConverter<T> extends GroupConverter {
 
     private final ParentValueContainer parent;
-    private GenericArray<T> array;
+    private final Schema avroSchema;
     private final Converter converter;
+    private GenericArray<T> array;
 
     public GenericArrayConverter(ParentValueContainer parent, Type parquetSchema,
         Schema avroSchema) {
       this.parent = parent;
-      array = new GenericData.Array<T>(0, avroSchema);
+      this.avroSchema = avroSchema;
       Type elementType = parquetSchema.asGroupType().getType(0);
       Schema elementSchema = avroSchema.getElementType();
       converter = newConverter(elementSchema, elementType, new ParentValueContainer() {
@@ -266,7 +268,10 @@ class AvroGenericRecordConverter extends GroupConverter {
       return converter;
     }
 
-    @Override public void start() { }
+    @Override
+    public void start() {
+      array = new GenericData.Array<T>(0, avroSchema);
+    }
 
     @Override
     public void end() {
@@ -277,13 +282,12 @@ class AvroGenericRecordConverter extends GroupConverter {
   static final class MapConverter<V> extends GroupConverter {
 
     private final ParentValueContainer parent;
-    private Map<String, V> map;
     private final Converter keyValueConverter;
+    private Map<String, V> map;
 
     public MapConverter(ParentValueContainer parent, Type parquetSchema,
         Schema avroSchema) {
       this.parent = parent;
-      this.map = new HashMap<String, V>();
       this.keyValueConverter = new MapKeyValueConverter(parquetSchema, avroSchema);
     }
 
@@ -292,7 +296,10 @@ class AvroGenericRecordConverter extends GroupConverter {
       return keyValueConverter;
     }
 
-    @Override public void start() { }
+    @Override
+    public void start() {
+      this.map = new HashMap<String, V>();
+    }
 
     @Override
     public void end() {
