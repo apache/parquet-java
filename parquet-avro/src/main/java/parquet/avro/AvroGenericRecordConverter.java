@@ -250,7 +250,7 @@ class AvroGenericRecordConverter extends GroupConverter {
         Schema avroSchema) {
       this.parent = parent;
       array = new GenericData.Array<T>(0, avroSchema);
-      Type elementType = parquetSchema.asGroupType().getType(0).asGroupType().getType(0);
+      Type elementType = parquetSchema.asGroupType().getType(0);
       Schema elementSchema = avroSchema.getElementType();
       converter = newConverter(elementSchema, elementType, new ParentValueContainer() {
         @Override
@@ -263,15 +263,7 @@ class AvroGenericRecordConverter extends GroupConverter {
 
     @Override
     public Converter getConverter(int fieldIndex) {
-      // we have two levels of grouping, so we need to have another converter here
-      return new GroupConverter() {
-        @Override
-        public Converter getConverter(int fieldIndex) {
-          return converter;
-        }
-        @Override public void start() { }
-        @Override public void end() { }
-      };
+      return converter;
     }
 
     @Override public void start() { }

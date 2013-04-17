@@ -46,9 +46,7 @@ public class TestAvroSchemaConverter {
         "  }\n" +
         "  required binary myenum (ENUM);\n" +
         "  required group myarray (LIST) {\n" +
-        "    repeated group array {\n" +
-        "      required int32 item;\n" +
-        "    }\n" +
+        "    repeated int32 array;\n" +
         "  }\n" +
         "  required group mymap (MAP) {\n" +
         "    repeated group map (MAP_KEY_VALUE) {\n" +

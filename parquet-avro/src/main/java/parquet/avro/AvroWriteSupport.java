@@ -89,18 +89,11 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
 
   private <T> void writeArray(GroupType schema, Schema avroSchema,
       GenericArray<T> array) {
-    GroupType innerGroup = schema.getType(0).asGroupType();
-    Type elementType = innerGroup.getType(0);
-
     recordConsumer.startGroup(); // group wrapper (original type LIST)
     recordConsumer.startField("array", 0);
-    recordConsumer.startGroup(); // "repeated" group wrapper
-    recordConsumer.startField("item", 0);
     for (T elt : array) {
-      writeValue(elementType, avroSchema.getElementType(), elt);
+      writeValue(schema.getType(0), avroSchema.getElementType(), elt);
     }
-    recordConsumer.endField("item", 0);
-    recordConsumer.endGroup();
     recordConsumer.endField("array", 0);
     recordConsumer.endGroup();
   }
