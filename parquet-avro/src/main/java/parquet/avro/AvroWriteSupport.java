@@ -87,7 +87,8 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
     }
   }
 
-  private void writeArray(GroupType schema, Schema avroSchema, GenericArray array) {
+  private <T> void writeArray(GroupType schema, Schema avroSchema,
+      GenericArray<T> array) {
     GroupType innerGroup = schema.getType(0).asGroupType();
     Type elementType = innerGroup.getType(0);
 
@@ -95,7 +96,7 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
     recordConsumer.startField("array", 0);
     recordConsumer.startGroup(); // "repeated" group wrapper
     recordConsumer.startField("item", 0);
-    for (Object elt : array) {
+    for (T elt : array) {
       writeValue(elementType, avroSchema.getElementType(), elt);
     }
     recordConsumer.endField("item", 0);
@@ -104,7 +105,7 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
     recordConsumer.endGroup();
   }
 
-  private <String, Object> void writeMap(GroupType schema, Schema avroSchema, Map<String, Object> map) {
+  private <V> void writeMap(GroupType schema, Schema avroSchema, Map<String, V> map) {
     GroupType innerGroup = schema.getType(0).asGroupType();
     Type keyType = innerGroup.getType(0);
     Type valueType = innerGroup.getType(1);
@@ -119,7 +120,7 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
     }
     recordConsumer.endField("key", 0);
     recordConsumer.startField("value", 1);
-    for (Object value : map.values()) {
+    for (V value : map.values()) {
       writeValue(valueType, avroSchema.getValueType(), value);
     }
     recordConsumer.endField("value", 1);
@@ -128,6 +129,7 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
     recordConsumer.endGroup();
   }
 
+  @SuppressWarnings("unchecked")
   private void writeValue(Type type, Schema avroSchema, Object value) {
     Schema.Type avroType = avroSchema.getType();
     if (avroType.equals(Schema.Type.BOOLEAN)) {
@@ -152,9 +154,9 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
     } else if (avroType.equals(Schema.Type.ENUM)) {
       recordConsumer.addBinary(Binary.fromString(value.toString()));
     } else if (avroType.equals(Schema.Type.ARRAY)) {
-      writeArray((GroupType) type, avroSchema, (GenericArray) value);
+      writeArray((GroupType) type, avroSchema, (GenericArray<?>) value);
     } else if (avroType.equals(Schema.Type.MAP)) {
-      writeMap((GroupType) type, avroSchema, (Map) value);
+      writeMap((GroupType) type, avroSchema, (Map<String, ?>) value);
     } else if (avroType.equals(Schema.Type.FIXED)) {
       recordConsumer.addBinary(Binary.fromByteArray(((GenericFixed) value).bytes()));
     }

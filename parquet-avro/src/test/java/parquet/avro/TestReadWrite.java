@@ -46,8 +46,8 @@ public class TestReadWrite {
         .set("mystring", "hello")
         .set("mynestedrecord", nestedRecord)
         .set("myenum", "a")
-        .set("myarray", new GenericData.Array(Schema.createArray(Schema.create(Schema.Type.INT)),
-            Arrays.asList(1, 2)))
+        .set("myarray", new GenericData.Array<Integer>(
+            Schema.createArray(Schema.create(Schema.Type.INT)), Arrays.asList(1, 2)))
         .set("mymap", ImmutableMap.of("a", 1, "b", 2))
         // TODO: support fixed encoding by plumbing in FIXED_LEN_BYTE_ARRAY
         //.set("myfixed", new GenericData.Fixed(Schema.createFixed("ignored", null, null, 1),

@@ -112,8 +112,7 @@ class AvroGenericRecordConverter extends GroupConverter {
   static abstract class ParentValueContainer {
 
     /**
-     * will add the value to the parent whether it's a map, a bag or a tuple
-     * @param value
+     * Adds the value to the parent.
      */
     abstract void add(Object value);
 
@@ -241,22 +240,23 @@ class AvroGenericRecordConverter extends GroupConverter {
 
   }
 
-  static final class GenericArrayConverter extends GroupConverter {
+  static final class GenericArrayConverter<T> extends GroupConverter {
 
     private final ParentValueContainer parent;
-    private GenericArray array;
+    private GenericArray<T> array;
     private final Converter converter;
 
     public GenericArrayConverter(ParentValueContainer parent, Type parquetSchema,
         Schema avroSchema) {
       this.parent = parent;
-      array = new GenericData.Array(0, avroSchema);
+      array = new GenericData.Array<T>(0, avroSchema);
       Type elementType = parquetSchema.asGroupType().getType(0).asGroupType().getType(0);
       Schema elementSchema = avroSchema.getElementType();
       converter = newConverter(elementSchema, elementType, new ParentValueContainer() {
         @Override
+        @SuppressWarnings("unchecked")
         void add(Object value) {
-          array.add(value);
+          array.add((T) value);
         }
       });
     }
@@ -282,16 +282,16 @@ class AvroGenericRecordConverter extends GroupConverter {
     }
   }
 
-  static final class MapConverter extends GroupConverter {
+  static final class MapConverter<V> extends GroupConverter {
 
     private final ParentValueContainer parent;
-    private Map map;
+    private Map<String, V> map;
     private final Converter keyValueConverter;
 
     public MapConverter(ParentValueContainer parent, Type parquetSchema,
         Schema avroSchema) {
       this.parent = parent;
-      this.map = new HashMap();
+      this.map = new HashMap<String, V>();
       this.keyValueConverter = new MapKeyValueConverter(parquetSchema, avroSchema);
     }
 
@@ -310,7 +310,7 @@ class AvroGenericRecordConverter extends GroupConverter {
     final class MapKeyValueConverter extends GroupConverter {
 
       private String key;
-      private Object value;
+      private V value;
       private Converter keyConverter;
       private Converter valueConverter;
 
@@ -326,8 +326,9 @@ class AvroGenericRecordConverter extends GroupConverter {
         Schema valueSchema = avroSchema.getValueType();
         valueConverter = newConverter(valueSchema, valueType, new ParentValueContainer() {
           @Override
+          @SuppressWarnings("unchecked")
           void add(Object value) {
-            MapKeyValueConverter.this.value = value;
+            MapKeyValueConverter.this.value = (V) value;
           }
         });
       }
