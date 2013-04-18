@@ -26,77 +26,77 @@ import org.apache.hadoop.io.Writable;
 
 public class ParquetHiveArrayInspector implements ListObjectInspector {
 
-    ObjectInspector arrayElementInspector;
+  ObjectInspector arrayElementInspector;
 
-    public ParquetHiveArrayInspector(final ObjectInspector arrayElementInspector) {
-        this.arrayElementInspector = arrayElementInspector;
+  public ParquetHiveArrayInspector(final ObjectInspector arrayElementInspector) {
+    this.arrayElementInspector = arrayElementInspector;
+  }
+
+  @Override
+  public String getTypeName() {
+    return "ParquetHiveArray<" + arrayElementInspector.getTypeName() + ">";
+  }
+
+  @Override
+  public Category getCategory() {
+    return Category.LIST;
+  }
+
+  @Override
+  public ObjectInspector getListElementObjectInspector() {
+    return arrayElementInspector;
+  }
+
+  @Override
+  public Object getListElement(final Object data, final int index) {
+    if (data == null) {
+      return null;
     }
 
-    @Override
-    public String getTypeName() {
-        return "ParquetHiveArray<" + arrayElementInspector.getTypeName() + ">";
+    final Writable subObj = ((MapWritable) data).get(ParquetHiveSerDe.ARRAY);
+
+    if (subObj == null) {
+      return null;
     }
 
-    @Override
-    public Category getCategory() {
-        return Category.LIST;
+    return ((ArrayWritable) subObj).get()[index];
+  }
+
+  @Override
+  public int getListLength(final Object data) {
+    if (data == null) {
+      return 0;
     }
 
-    @Override
-    public ObjectInspector getListElementObjectInspector() {
-        return arrayElementInspector;
+    final Writable subObj = ((MapWritable) data).get(ParquetHiveSerDe.ARRAY);
+
+    if (subObj == null) {
+      return 0;
     }
 
-    @Override
-    public Object getListElement(final Object data, final int index) {
-        if (data == null) {
-            return null;
-        }
+    return ((ArrayWritable) subObj).get().length;
+  }
 
-        final Writable subObj = ((MapWritable) data).get(ParquetHiveSerDe.ARRAY);
-
-        if (subObj == null) {
-            return null;
-        }
-
-        return ((ArrayWritable) subObj).get()[index];
+  @Override
+  public List<?> getList(final Object data) {
+    if (data == null) {
+      return null;
     }
 
-    @Override
-    public int getListLength(final Object data) {
-        if (data == null) {
-            return 0;
-        }
+    final Writable subObj = ((MapWritable) data).get(ParquetHiveSerDe.ARRAY);
 
-        final Writable subObj = ((MapWritable) data).get(ParquetHiveSerDe.ARRAY);
-
-        if (subObj == null) {
-            return 0;
-        }
-
-        return ((ArrayWritable) subObj).get().length;
+    if (subObj == null) {
+      return null;
     }
 
-    @Override
-    public List<?> getList(final Object data) {
-        if (data == null) {
-            return null;
-        }
+    final Writable[] array = ((ArrayWritable) subObj).get();
+    final List<Writable> list = new ArrayList<Writable>();
 
-        final Writable subObj = ((MapWritable) data).get(ParquetHiveSerDe.ARRAY);
-
-        if (subObj == null) {
-            return null;
-        }
-
-        final Writable[] array = ((ArrayWritable) subObj).get();
-        final List<Writable> list = new ArrayList<Writable>();
-
-        for (final Writable obj : array) {
-            list.add(obj);
-        }
-
-        return list;
+    for (final Writable obj : array) {
+      list.add(obj);
     }
+
+    return list;
+  }
 
 }

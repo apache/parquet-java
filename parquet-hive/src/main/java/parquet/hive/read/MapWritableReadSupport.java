@@ -41,35 +41,35 @@ import parquet.schema.Type;
  *
  */
 public class MapWritableReadSupport extends ReadSupport<MapWritable> {
-    static final Log LOG = LogFactory.getLog(MapWritableReadSupport.class);
+  static final Log LOG = LogFactory.getLog(MapWritableReadSupport.class);
 
-    @Override
-    public parquet.hadoop.api.ReadSupport.ReadContext init(final Configuration configuration, final Map<String, String> keyValueMetaData, final MessageType fileSchema) {
+  @Override
+  public parquet.hadoop.api.ReadSupport.ReadContext init(final Configuration configuration, final Map<String, String> keyValueMetaData, final MessageType fileSchema) {
 
-        //        final Iterator<Entry<String, String>> next  = configuration.iterator();
-        //        while (next.hasNext()) {
-        //            final Entry<String,String> obj = next.next();
-        //            LOG.error("JobConf Hive : next : " + obj.getKey() + " : " + obj.getValue() );
-        //
-        //        }
+    //        final Iterator<Entry<String, String>> next  = configuration.iterator();
+    //        while (next.hasNext()) {
+    //            final Entry<String,String> obj = next.next();
+    //            LOG.error("JobConf Hive : next : " + obj.getKey() + " : " + obj.getValue() );
+    //
+    //        }
 
-        final List<String>  listColumns = (List<String>) StringUtils.getStringCollection(configuration.get("columns"));
+    final List<String>  listColumns = (List<String>) StringUtils.getStringCollection(configuration.get("columns"));
 
-        MessageType requestedSchemaByUser = fileSchema;
-        final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(configuration);
-        if (indexColumnsWanted.isEmpty() == false) {
-            final List<Type> typeList = new ArrayList<Type>();
-            for(final Integer idx : indexColumnsWanted) {
-                typeList.add(fileSchema.getType(listColumns.get(idx)));
-            }
-            requestedSchemaByUser = new MessageType(fileSchema.getName(), typeList);
-        }
-        return new ReadContext(requestedSchemaByUser);
+    MessageType requestedSchemaByUser = fileSchema;
+    final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(configuration);
+    if (indexColumnsWanted.isEmpty() == false) {
+      final List<Type> typeList = new ArrayList<Type>();
+      for(final Integer idx : indexColumnsWanted) {
+        typeList.add(fileSchema.getType(listColumns.get(idx)));
+      }
+      requestedSchemaByUser = new MessageType(fileSchema.getName(), typeList);
     }
+    return new ReadContext(requestedSchemaByUser);
+  }
 
-    @Override
-    public RecordMaterializer<MapWritable> prepareForRead(final Configuration configuration, final Map<String, String> keyValueMetaData, final MessageType fileSchema,
-            final parquet.hadoop.api.ReadSupport.ReadContext readContext) {
-        return new MapWritableRecordConverter(readContext.getRequestedSchema(), keyValueMetaData, fileSchema);
-    }
+  @Override
+  public RecordMaterializer<MapWritable> prepareForRead(final Configuration configuration, final Map<String, String> keyValueMetaData, final MessageType fileSchema,
+      final parquet.hadoop.api.ReadSupport.ReadContext readContext) {
+    return new MapWritableRecordConverter(readContext.getRequestedSchema(), keyValueMetaData, fileSchema);
+  }
 }

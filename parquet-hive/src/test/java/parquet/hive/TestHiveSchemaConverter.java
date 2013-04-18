@@ -39,49 +39,49 @@ import parquet.schema.MessageTypeParser;
  */
 public class TestHiveSchemaConverter {
 
-    private List<String> createHiveColumnsFrom(final String columnNamesStr) {
-        List<String> columnNames;
-        if (columnNamesStr.length() == 0) {
-            columnNames = new ArrayList<String>();
-        } else {
-            columnNames = Arrays.asList(columnNamesStr.split(","));
-        }
-
-        return columnNames;
+  private List<String> createHiveColumnsFrom(final String columnNamesStr) {
+    List<String> columnNames;
+    if (columnNamesStr.length() == 0) {
+      columnNames = new ArrayList<String>();
+    } else {
+      columnNames = Arrays.asList(columnNamesStr.split(","));
     }
 
-    private List<TypeInfo> createHiveTypeInfoFrom(final String columnsTypeStr) {
-        List<TypeInfo> columnTypes;
+    return columnNames;
+  }
 
-        if (columnsTypeStr.length() == 0) {
-            columnTypes = new ArrayList<TypeInfo>();
-        } else {
-            columnTypes = TypeInfoUtils.getTypeInfosFromTypeString(columnsTypeStr);
-        }
+  private List<TypeInfo> createHiveTypeInfoFrom(final String columnsTypeStr) {
+    List<TypeInfo> columnTypes;
 
-        return columnTypes;
+    if (columnsTypeStr.length() == 0) {
+      columnTypes = new ArrayList<TypeInfo>();
+    } else {
+      columnTypes = TypeInfoUtils.getTypeInfosFromTypeString(columnsTypeStr);
     }
 
-    private void testConversion(final String columnNamesStr, final String columnsTypeStr, final String expectedSchema) throws Exception {
-        final List<String> columnNames = createHiveColumnsFrom(columnNamesStr);
-        final List<TypeInfo> columnTypes = createHiveTypeInfoFrom(columnsTypeStr);
-        final MessageType messageTypeFound = HiveSchemaConverter.convert(columnNames, columnTypes);
-        final MessageType expectedMT = MessageTypeParser.parseMessageType(expectedSchema);
-        assertEquals("converting " + columnNamesStr + ": " + columnsTypeStr + " to " + expectedSchema, expectedMT, messageTypeFound);
-    }
+    return columnTypes;
+  }
 
-    @Test
-    public void testSimpleType() throws Exception {
-        testConversion(
-                "a,b,c",
-                "int,double,boolean",
-                "message hive_schema {\n" +
-                        "  optional int32 a;\n" +
-                        "  optional double b;\n" +
-                        "  optional boolean c;\n" +
-                        "  }\n" +
-                "}\n");
-    }
+  private void testConversion(final String columnNamesStr, final String columnsTypeStr, final String expectedSchema) throws Exception {
+    final List<String> columnNames = createHiveColumnsFrom(columnNamesStr);
+    final List<TypeInfo> columnTypes = createHiveTypeInfoFrom(columnsTypeStr);
+    final MessageType messageTypeFound = HiveSchemaConverter.convert(columnNames, columnTypes);
+    final MessageType expectedMT = MessageTypeParser.parseMessageType(expectedSchema);
+    assertEquals("converting " + columnNamesStr + ": " + columnsTypeStr + " to " + expectedSchema, expectedMT, messageTypeFound);
+  }
 
-    // TODO : To be completed
+  @Test
+  public void testSimpleType() throws Exception {
+    testConversion(
+        "a,b,c",
+        "int,double,boolean",
+        "message hive_schema {\n" +
+            "  optional int32 a;\n" +
+            "  optional double b;\n" +
+            "  optional boolean c;\n" +
+            "  }\n" +
+        "}\n");
+  }
+
+  // TODO : To be completed
 }

@@ -36,112 +36,112 @@ import org.apache.hadoop.io.WritableUtils;
  */
 public class BigDecimalWritable implements WritableComparable<BigDecimalWritable> {
 
-    private byte[] internalStorage = new byte[0];
-    private int scale;
+  private byte[] internalStorage = new byte[0];
+  private int scale;
 
-    private final VInt vInt = new VInt(); // reusable integer
+  private final VInt vInt = new VInt(); // reusable integer
 
-    public BigDecimalWritable() {
+  public BigDecimalWritable() {
+  }
+
+  public BigDecimalWritable(final byte[] bytes, final int scale) {
+    set(bytes, scale);
+  }
+
+  public BigDecimalWritable(final BigDecimalWritable writable) {
+    set(writable.getBigDecimal());
+  }
+
+  public BigDecimalWritable(final BigDecimal value) {
+    set(value);
+  }
+
+  public void set(BigDecimal value) {
+    value = value.stripTrailingZeros();
+    if (value.compareTo(BigDecimal.ZERO) == 0) {
+      // Special case for 0, because java doesn't strip zeros correctly on
+      // that number.
+      value = BigDecimal.ZERO;
     }
+    set(value.unscaledValue().toByteArray(), value.scale());
+  }
 
-    public BigDecimalWritable(final byte[] bytes, final int scale) {
-        set(bytes, scale);
+  public void set(final BigDecimalWritable writable) {
+    set(writable.getBigDecimal());
+  }
+
+  public void set(final byte[] bytes, final int scale) {
+    this.internalStorage = bytes;
+    this.scale = scale;
+  }
+
+  public void setFromBytes(final byte[] bytes, int offset, final int length) {
+    LazyBinaryUtils.readVInt(bytes, offset, vInt);
+    scale = vInt.value;
+    offset += vInt.length;
+    LazyBinaryUtils.readVInt(bytes, offset, vInt);
+    offset += vInt.length;
+    if (internalStorage.length != vInt.value) {
+      internalStorage = new byte[vInt.value];
     }
+    System.arraycopy(bytes, offset, internalStorage, 0, vInt.value);
+  }
 
-    public BigDecimalWritable(final BigDecimalWritable writable) {
-        set(writable.getBigDecimal());
+  public BigDecimal getBigDecimal() {
+    return new BigDecimal(new BigInteger(internalStorage), scale);
+  }
+
+  @Override
+  public void readFields(final DataInput in) throws IOException {
+    scale = WritableUtils.readVInt(in);
+    final int byteArrayLen = WritableUtils.readVInt(in);
+    if (internalStorage.length != byteArrayLen) {
+      internalStorage = new byte[byteArrayLen];
     }
+    in.readFully(internalStorage);
+  }
 
-    public BigDecimalWritable(final BigDecimal value) {
-        set(value);
+  @Override
+  public void write(final DataOutput out) throws IOException {
+    WritableUtils.writeVInt(out, scale);
+    WritableUtils.writeVInt(out, internalStorage.length);
+    out.write(internalStorage);
+  }
+
+  @Override
+  public int compareTo(final BigDecimalWritable that) {
+    return getBigDecimal().compareTo(that.getBigDecimal());
+  }
+
+  public void writeToByteStream(final Output byteStream) {
+    LazyBinaryUtils.writeVInt(byteStream, scale);
+    LazyBinaryUtils.writeVInt(byteStream, internalStorage.length);
+    byteStream.write(internalStorage, 0, internalStorage.length);
+  }
+
+  @Override
+  public String toString() {
+    return getBigDecimal().toString();
+  }
+
+  @Override
+  public boolean equals(final Object other) {
+    if (other == null || !(other instanceof BigDecimalWritable)) {
+      return false;
     }
+    final BigDecimalWritable bdw = (BigDecimalWritable) other;
 
-    public void set(BigDecimal value) {
-        value = value.stripTrailingZeros();
-        if (value.compareTo(BigDecimal.ZERO) == 0) {
-            // Special case for 0, because java doesn't strip zeros correctly on
-            // that number.
-            value = BigDecimal.ZERO;
-        }
-        set(value.unscaledValue().toByteArray(), value.scale());
-    }
-
-    public void set(final BigDecimalWritable writable) {
-        set(writable.getBigDecimal());
-    }
-
-    public void set(final byte[] bytes, final int scale) {
-        this.internalStorage = bytes;
-        this.scale = scale;
-    }
-
-    public void setFromBytes(final byte[] bytes, int offset, final int length) {
-        LazyBinaryUtils.readVInt(bytes, offset, vInt);
-        scale = vInt.value;
-        offset += vInt.length;
-        LazyBinaryUtils.readVInt(bytes, offset, vInt);
-        offset += vInt.length;
-        if (internalStorage.length != vInt.value) {
-            internalStorage = new byte[vInt.value];
-        }
-        System.arraycopy(bytes, offset, internalStorage, 0, vInt.value);
-    }
-
-    public BigDecimal getBigDecimal() {
-        return new BigDecimal(new BigInteger(internalStorage), scale);
-    }
-
-    @Override
-    public void readFields(final DataInput in) throws IOException {
-        scale = WritableUtils.readVInt(in);
-        final int byteArrayLen = WritableUtils.readVInt(in);
-        if (internalStorage.length != byteArrayLen) {
-            internalStorage = new byte[byteArrayLen];
-        }
-        in.readFully(internalStorage);
-    }
-
-    @Override
-    public void write(final DataOutput out) throws IOException {
-        WritableUtils.writeVInt(out, scale);
-        WritableUtils.writeVInt(out, internalStorage.length);
-        out.write(internalStorage);
-    }
-
-    @Override
-    public int compareTo(final BigDecimalWritable that) {
-        return getBigDecimal().compareTo(that.getBigDecimal());
-    }
-
-    public void writeToByteStream(final Output byteStream) {
-        LazyBinaryUtils.writeVInt(byteStream, scale);
-        LazyBinaryUtils.writeVInt(byteStream, internalStorage.length);
-        byteStream.write(internalStorage, 0, internalStorage.length);
-    }
-
-    @Override
-    public String toString() {
-        return getBigDecimal().toString();
-    }
-
-    @Override
-    public boolean equals(final Object other) {
-        if (other == null || !(other instanceof BigDecimalWritable)) {
-            return false;
-        }
-        final BigDecimalWritable bdw = (BigDecimalWritable) other;
-
-        // 'equals' and 'compareTo' are not compatible with BigDecimals. We want
-        // compareTo which returns true iff the numbers are equal (e.g.: 3.14 is
+    // 'equals' and 'compareTo' are not compatible with BigDecimals. We want
+    // compareTo which returns true iff the numbers are equal (e.g.: 3.14 is
         // the same as 3.140). 'Equals' returns true iff equal and the same
-        // scale
-        // is set in the decimals (e.g.: 3.14 is not the same as 3.140)
-        return getBigDecimal().compareTo(bdw.getBigDecimal()) == 0;
-    }
+    // scale
+    // is set in the decimals (e.g.: 3.14 is not the same as 3.140)
+    return getBigDecimal().compareTo(bdw.getBigDecimal()) == 0;
+  }
 
-    @Override
-    public int hashCode() {
-        return getBigDecimal().hashCode();
-    }
+  @Override
+  public int hashCode() {
+    return getBigDecimal().hashCode();
+  }
 
 }

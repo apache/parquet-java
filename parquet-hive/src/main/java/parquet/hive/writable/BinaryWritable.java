@@ -33,38 +33,38 @@ import parquet.io.api.Binary;
  */
 public class BinaryWritable implements Writable {
 
-    private byte[] bytes;
+  private byte[] bytes;
 
-    public BinaryWritable(final Binary binary) {
-        bytes = binary.getBytes();
+  public BinaryWritable(final Binary binary) {
+    bytes = binary.getBytes();
+  }
+
+  public BinaryWritable(final String string) {
+    bytes = string.getBytes();
+  }
+
+  @Override
+  public void readFields(final DataInput input) throws IOException {
+    final int size = input.readInt();
+
+    // Define a new byte of array of the exact size of the payload
+    final byte[] bytes = new byte[size];
+    input.readFully(bytes);
+  }
+
+  @Override
+  public void write(final DataOutput output) throws IOException {
+    if (bytes != null) {
+      output.writeInt(bytes.length);
+      output.write(bytes);
     }
+  }
 
-    public BinaryWritable(final String string) {
-        bytes = string.getBytes();
-    }
+  public byte[] getBytes() {
+    return bytes;
+  }
 
-    @Override
-    public void readFields(final DataInput input) throws IOException {
-        final int size = input.readInt();
-
-        // Define a new byte of array of the exact size of the payload
-        final byte[] bytes = new byte[size];
-        input.readFully(bytes);
-    }
-
-    @Override
-    public void write(final DataOutput output) throws IOException {
-        if (bytes != null) {
-            output.writeInt(bytes.length);
-            output.write(bytes);
-        }
-    }
-
-    public byte[] getBytes() {
-        return bytes;
-    }
-
-    public void setBytes(final byte[] bytes) {
-        this.bytes = bytes;
-    }
+  public void setBytes(final byte[] bytes) {
+    this.bytes = bytes;
+  }
 }

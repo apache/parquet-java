@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -73,204 +72,207 @@ import parquet.hive.writable.BinaryWritable;
  */
 public class ParquetHiveSerDe implements SerDe {
 
-    private List<String> columnNames;
-    private List<TypeInfo> columnTypes;
+  private List<String> columnNames;
+  private List<TypeInfo> columnTypes;
 
-    public static Text MAP_KEY = new Text("key");
-    public static Text MAP_VALUE = new Text("value");
-    public static Text MAP = new Text("map");
-    public static Text ARRAY = new Text("bag");
+  public static Text MAP_KEY = new Text("key");
+  public static Text MAP_VALUE = new Text("value");
+  public static Text MAP = new Text("map");
+  public static Text ARRAY = new Text("bag");
 
-    ObjectInspector objInspector;
+  ObjectInspector objInspector;
 
-    static final Log LOG = LogFactory.getLog(MapWritableObjectInspector.class);
+  static final Log LOG = LogFactory.getLog(MapWritableObjectInspector.class);
 
-    @Override
-    final public void initialize(final Configuration conf, final Properties tbl) throws SerDeException {
+  @Override
+  final public void initialize(final Configuration conf, final Properties tbl) throws SerDeException {
 
-        final TypeInfo rowTypeInfo;
+    final TypeInfo rowTypeInfo;
 
-        // Get column names and sort order
-        final String columnNameProperty = tbl.getProperty("columns");
-        final String columnTypeProperty = tbl.getProperty("columns.types");
+    // Get column names and sort order
+    final String columnNameProperty = tbl.getProperty("columns");
+    final String columnTypeProperty = tbl.getProperty("columns.types");
 
-        if (columnNameProperty.length() == 0) {
-            columnNames = new ArrayList<String>();
-        } else {
-            columnNames = Arrays.asList(columnNameProperty.split(","));
-        }
-
-        if (columnTypeProperty.length() == 0) {
-            columnTypes = new ArrayList<TypeInfo>();
-        } else {
-            columnTypes = TypeInfoUtils.getTypeInfosFromTypeString(columnTypeProperty);
-        }
-
-        if (columnNames.size() != columnTypes.size()) {
-            throw new RuntimeException("ParquetHiveSerde initialization failed. Number of column name and column type differs.");
-        }
-
-        // Create row related objects
-        rowTypeInfo = TypeInfoFactory.getStructTypeInfo(columnNames, columnTypes);
-
-        LOG.error(ColumnProjectionUtils.getReadColumnIDs(conf));
-        this.objInspector = new MapWritableObjectInspector((StructTypeInfo) rowTypeInfo);
+    if (columnNameProperty.length() == 0) {
+      columnNames = new ArrayList<String>();
+    } else {
+      columnNames = Arrays.asList(columnNameProperty.split(","));
     }
 
-    @Override
-    public Object deserialize(final Writable blob) throws SerDeException {
-        if (blob instanceof MapWritable) {
-            return blob;
-        } else {
-            return null;
-        }
+    if (columnTypeProperty.length() == 0) {
+      columnTypes = new ArrayList<TypeInfo>();
+    } else {
+      columnTypes = TypeInfoUtils.getTypeInfosFromTypeString(columnTypeProperty);
     }
 
-    @Override
-    public ObjectInspector getObjectInspector() throws SerDeException {
-        return objInspector;
+    if (columnNames.size() != columnTypes.size()) {
+      throw new RuntimeException("ParquetHiveSerde initialization failed. Number of column name and column type differs.");
     }
 
-    @Override
-    public Class<? extends Writable> getSerializedClass() {
-        return MapWritable.class;
+    // Create row related objects
+    rowTypeInfo = TypeInfoFactory.getStructTypeInfo(columnNames, columnTypes);
+
+    LOG.error(ColumnProjectionUtils.getReadColumnIDs(conf));
+    this.objInspector = new MapWritableObjectInspector((StructTypeInfo) rowTypeInfo);
+  }
+
+  @Override
+  public Object deserialize(final Writable blob) throws SerDeException {
+    if (blob instanceof MapWritable) {
+      return blob;
+    } else {
+      return null;
+    }
+  }
+
+  @Override
+  public ObjectInspector getObjectInspector() throws SerDeException {
+    return objInspector;
+  }
+
+  @Override
+  public Class<? extends Writable> getSerializedClass() {
+    return MapWritable.class;
+  }
+
+  @Override
+  public Writable serialize(final Object obj, final ObjectInspector objInspector) throws SerDeException {
+    if (!objInspector.getCategory().equals(Category.STRUCT)) {
+      throw new SerDeException("Can only serialize a struct");
     }
 
-    @Override
-    public Writable serialize(final Object obj, final ObjectInspector objInspector) throws SerDeException {
-        if (!objInspector.getCategory().equals(Category.STRUCT)) {
-            throw new SerDeException("Can only serialize a struct");
-        }
+    return createStruct(obj, (StructObjectInspector) objInspector, columnNames);
+  }
 
-        return createStruct(obj, (StructObjectInspector) objInspector, columnNames);
+
+  private MapWritable createStruct(final Object obj, final StructObjectInspector inspector, final List<String> colNames) throws SerDeException {
+    final MapWritable result = new MapWritable();
+    final List<? extends StructField> fields = inspector.getAllStructFieldRefs();
+
+    int i = 0;
+
+    for (final StructField field : fields) {
+
+
+      final Object subObj = inspector.getStructFieldData(obj, field);
+      final ObjectInspector subInspector = field.getFieldObjectInspector();
+
+      final Writable subResult = createObject(subObj, subInspector);
+
+      // for the 1st lvl, the field names are "_col0" ... and we want the
+      // real names
+      final String colName = (colNames != null) ? colNames.get(i++) : field.getFieldName();
+      if (subResult != null) {
+        result.put(new Text(colName), subResult);
+      }
     }
 
-    private MapWritable createStruct(final Object obj, final StructObjectInspector inspector, final List<String> colNames) throws SerDeException {
-        final MapWritable result = new MapWritable();
-        final List<? extends StructField> fields = inspector.getAllStructFieldRefs();
-        int i = 0;
+    return result;
 
-        for (final StructField field : fields) {
+  }
 
-            final Object subObj = inspector.getStructFieldData(obj, field);
-            final ObjectInspector subInspector = field.getFieldObjectInspector();
+  private Writable createMap(final Object obj, final MapObjectInspector inspector) throws SerDeException {
+    final Map<?, ?> sourceMap = inspector.getMap(obj);
+    final ObjectInspector keyInspector = inspector.getMapKeyObjectInspector();
+    final ObjectInspector valueInspector = inspector.getMapValueObjectInspector();
+    final List<MapWritable> array = new ArrayList<MapWritable>();
 
-            final Writable subResult = createObject(subObj, subInspector);
+    if (sourceMap != null) {
+      for (final Entry<?, ?> keyValue : sourceMap.entrySet()) {
+        final Writable key = createObject(keyValue.getKey(), keyInspector);
+        final Writable value = createObject(keyValue.getValue(), valueInspector);
 
-            // for the 1st lvl, the field names are "_col0" ... and we want the
-            // real names
-            final String colName = (colNames != null) ? colNames.get(i++) : field.getFieldName();
-            if (subResult != null) {
-                result.put(new Text(colName), subResult);
-            }
+        if (key != null) {
+          final MapWritable keyValueWritable = new MapWritable();
+          keyValueWritable.put(MAP_KEY, key);
+          keyValueWritable.put(MAP_VALUE, value);
+          array.add(keyValueWritable);
         }
 
-        return result;
-
+      }
     }
 
-    private Writable createMap(final Object obj, final MapObjectInspector inspector) throws SerDeException {
-        final Map<?, ?> sourceMap = inspector.getMap(obj);
-        final ObjectInspector keyInspector = inspector.getMapKeyObjectInspector();
-        final ObjectInspector valueInspector = inspector.getMapValueObjectInspector();
-        final List<MapWritable> array = new ArrayList<MapWritable>();
+    if (array.size() > 0) {
+      final ArrayWritable subArray = new ArrayWritable(MapWritable.class, array.toArray(new MapWritable[array.size()]));
+      final MapWritable map = new MapWritable();
+      map.put(MAP, subArray);
+      return map;
+    } else {
+      return null;
+    }
+  }
 
-        if (sourceMap != null) {
-            for (final Entry<?, ?> keyValue : sourceMap.entrySet()) {
-                final Writable key = createObject(keyValue.getKey(), keyInspector);
-                final Writable value = createObject(keyValue.getValue(), valueInspector);
+  private MapWritable createArray(final Object obj, final ListObjectInspector inspector) throws SerDeException {
+    final List<?> sourceArray = inspector.getList(obj);
+    final ObjectInspector subInspector = inspector.getListElementObjectInspector();
+    final List<Writable> array = new ArrayList<Writable>();
 
-                if (key != null) {
-                    final MapWritable keyValueWritable = new MapWritable();
-                    keyValueWritable.put(MAP_KEY, key);
-                    keyValueWritable.put(MAP_VALUE, value);
-                    array.add(keyValueWritable);
-                }
-
-            }
+    if (sourceArray != null) {
+      for (final Object curObj : sourceArray) {
+        final Writable newObj = createObject(curObj, subInspector);
+        if (newObj != null) {
+          array.add(newObj);
         }
-
-        if (array.size() > 0) {
-            final ArrayWritable subArray = new ArrayWritable(MapWritable.class, array.toArray(new MapWritable[array.size()]));
-            final MapWritable map = new MapWritable();
-            map.put(MAP, subArray);
-            return map;
-        } else {
-            return null;
-        }
+      }
     }
 
-    private MapWritable createArray(final Object obj, final ListObjectInspector inspector) throws SerDeException {
-        final List<?> sourceArray = inspector.getList(obj);
-        final ObjectInspector subInspector = inspector.getListElementObjectInspector();
-        final List<Writable> array = new ArrayList<Writable>();
+    if (array.size() > 0) {
+      final ArrayWritable subArray = new ArrayWritable(array.get(0).getClass(), array.toArray(new Writable[array.size()]));
+      final MapWritable map = new MapWritable();
+      map.put(ARRAY, subArray);
+      return map;
+    } else {
+      return null;
+    }
+  }
 
-        if (sourceArray != null) {
-            for (final Object curObj : sourceArray) {
-                final Writable newObj = createObject(curObj, subInspector);
-                if (newObj != null) {
-                    array.add(newObj);
-                }
-            }
-        }
+  private Writable createPrimitive(final Object obj, final PrimitiveObjectInspector inspector) throws SerDeException {
 
-        if (array.size() > 0) {
-            final ArrayWritable subArray = new ArrayWritable(array.get(0).getClass(), array.toArray(new Writable[array.size()]));
-            final MapWritable map = new MapWritable();
-            map.put(ARRAY, subArray);
-            return map;
-        } else {
-            return null;
-        }
+    if (obj == null) {
+      return null;
     }
 
-    private Writable createPrimitive(final Object obj, final PrimitiveObjectInspector inspector) throws SerDeException {
-
-        if (obj == null) {
-            return null;
-        }
-
-        switch (inspector.getPrimitiveCategory()) {
-        case VOID:
-            return null;
-        case BOOLEAN:
-            return new BooleanWritable(((BooleanObjectInspector) inspector).get(obj) ? Boolean.TRUE : Boolean.FALSE);
-        case BYTE:
-            return new ByteWritable((byte) ((ByteObjectInspector) inspector).get(obj));
-        case DOUBLE:
-            return new DoubleWritable(((DoubleObjectInspector) inspector).get(obj));
-        case FLOAT:
-            return new FloatWritable(((FloatObjectInspector) inspector).get(obj));
-        case INT:
-            return new IntWritable(((IntObjectInspector) inspector).get(obj));
-        case LONG:
-            return new LongWritable(((LongObjectInspector) inspector).get(obj));
-        case SHORT:
-            return new ByteWritable((byte) ((ShortObjectInspector) inspector).get(obj));
-        case STRING:
-            return new BinaryWritable(((StringObjectInspector) inspector).getPrimitiveJavaObject(obj));
-        default:
-            throw new SerDeException("Unknown primitive");
-        }
+    switch (inspector.getPrimitiveCategory()) {
+    case VOID:
+      return null;
+    case BOOLEAN:
+      return new BooleanWritable(((BooleanObjectInspector) inspector).get(obj) ? Boolean.TRUE : Boolean.FALSE);
+    case BYTE:
+      return new ByteWritable((byte) ((ByteObjectInspector) inspector).get(obj));
+    case DOUBLE:
+      return new DoubleWritable(((DoubleObjectInspector) inspector).get(obj));
+    case FLOAT:
+      return new FloatWritable(((FloatObjectInspector) inspector).get(obj));
+    case INT:
+      return new IntWritable(((IntObjectInspector) inspector).get(obj));
+    case LONG:
+      return new LongWritable(((LongObjectInspector) inspector).get(obj));
+    case SHORT:
+      return new ByteWritable((byte) ((ShortObjectInspector) inspector).get(obj));
+    case STRING:
+      return new BinaryWritable(((StringObjectInspector) inspector).getPrimitiveJavaObject(obj));
+    default:
+      throw new SerDeException("Unknown primitive");
     }
+  }
 
-    private Writable createObject(final Object obj, final ObjectInspector inspector) throws SerDeException {
-        switch (inspector.getCategory()) {
-        case STRUCT:
-            return createStruct(obj, (StructObjectInspector) inspector, null);
-        case LIST:
-            return createArray(obj, (ListObjectInspector) inspector);
-        case MAP:
-            return createMap(obj, (MapObjectInspector) inspector);
-        case PRIMITIVE:
-            return createPrimitive(obj, (PrimitiveObjectInspector) inspector);
-        default:
-            throw new SerDeException("Unknown data type" + inspector.getCategory());
-        }
+  private Writable createObject(final Object obj, final ObjectInspector inspector) throws SerDeException {
+    switch (inspector.getCategory()) {
+    case STRUCT:
+      return createStruct(obj, (StructObjectInspector) inspector, null);
+    case LIST:
+      return createArray(obj, (ListObjectInspector) inspector);
+    case MAP:
+      return createMap(obj, (MapObjectInspector) inspector);
+    case PRIMITIVE:
+      return createPrimitive(obj, (PrimitiveObjectInspector) inspector);
+    default:
+      throw new SerDeException("Unknown data type" + inspector.getCategory());
     }
+  }
 
-    @Override
-    public SerDeStats getSerDeStats() {
-        return null;
-    }
+  @Override
+  public SerDeStats getSerDeStats() {
+    return null;
+  }
 }

@@ -24,6 +24,7 @@ import parquet.io.api.RecordMaterializer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 
+
 /**
  *
  * A MapWritableReadSupport
@@ -34,21 +35,21 @@ import parquet.schema.MessageType;
  */
 public class MapWritableRecordConverter extends RecordMaterializer<MapWritable> {
 
-    private final MapWritableGroupConverter root;
+  private final MapWritableGroupConverter root;
 
-    public MapWritableRecordConverter(final GroupType requestedSchema, final Map<String, String> keyValueMetaData, final MessageType fileSchema) {
-        this.root = new MapWritableGroupConverter(requestedSchema);
+  public MapWritableRecordConverter(final GroupType requestedSchema, final Map<String, String> keyValueMetaData, final MessageType fileSchema) {
+    this.root = new MapWritableGroupConverter(requestedSchema);
 
-    }
+  }
 
-    @Override
-    public MapWritable getCurrentRecord() {
-        return root.getCurrentMap();
-    }
+  @Override
+  public MapWritable getCurrentRecord() {
+    return root.getCurrentMap();
+  }
 
-    @Override
-    public GroupConverter getRootConverter() {
-        return root;
-    }
+  @Override
+  public GroupConverter getRootConverter() {
+    return root;
+  }
 
 }

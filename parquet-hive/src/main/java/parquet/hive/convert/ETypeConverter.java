@@ -40,248 +40,248 @@ import parquet.io.api.PrimitiveConverter;
  */
 public enum ETypeConverter {
 
-    EDOUBLE_CONVERTER(Double.TYPE) {
+  EDOUBLE_CONVERTER(Double.TYPE) {
+    @Override
+    Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
+      return new FieldDoubleConverter(new ParentValueContainer() {
         @Override
-        Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
-            return new FieldDoubleConverter(new ParentValueContainer() {
-                @Override
-                void add(final Object value) {
-                    LOG.info("adding value " + value + " at index " + index);
-                    parent.set(index, new DoubleWritable((Double) value));
-                }
-            });
+        void add(final Object value) {
+          LOG.info("adding value " + value + " at index " + index);
+          parent.set(index, new DoubleWritable((Double) value));
         }
-    },
-    EBOOLEAN_CONVERTER(Boolean.TYPE) {
+      });
+    }
+  },
+  EBOOLEAN_CONVERTER(Boolean.TYPE) {
+    @Override
+    Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
+      return new FieldBooleanConverter(new ParentValueContainer() {
         @Override
-        Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
-            return new FieldBooleanConverter(new ParentValueContainer() {
-                @Override
-                void add(final Object value) {
-                    LOG.info("adding value " + value + " at index " + index);
-                    parent.set(index, new BooleanWritable((Boolean) value));
-                }
-            });
+        void add(final Object value) {
+          LOG.info("adding value " + value + " at index " + index);
+          parent.set(index, new BooleanWritable((Boolean) value));
         }
-    },
-    EFLOAT_CONVERTER(Float.TYPE) {
+      });
+    }
+  },
+  EFLOAT_CONVERTER(Float.TYPE) {
+    @Override
+    Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
+      return new FieldFloatConverter(new ParentValueContainer() {
         @Override
-        Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
-            return new FieldFloatConverter(new ParentValueContainer() {
-                @Override
-                void add(final Object value) {
-                    LOG.info("adding value " + value + " at index " + index);
-                    parent.set(index, new FloatWritable((Float) value));
-                }
-            });
+        void add(final Object value) {
+          LOG.info("adding value " + value + " at index " + index);
+          parent.set(index, new FloatWritable((Float) value));
         }
-    },
-    EINT32_CONVERTER(Integer.TYPE) {
+      });
+    }
+  },
+  EINT32_CONVERTER(Integer.TYPE) {
+    @Override
+    Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
+      return new FieldIntegerConverter(new ParentValueContainer() {
         @Override
-        Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
-            return new FieldIntegerConverter(new ParentValueContainer() {
-                @Override
-                void add(final Object value) {
-                    LOG.info("adding value " + value + " at index " + index);
-                    parent.set(index, new IntWritable((Integer) value));
-                }
-            });
+        void add(final Object value) {
+          LOG.info("adding value " + value + " at index " + index);
+          parent.set(index, new IntWritable((Integer) value));
         }
-    },
-    EINT64_CONVERTER(Long.TYPE) {
+      });
+    }
+  },
+  EINT64_CONVERTER(Long.TYPE) {
+    @Override
+    Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
+      return new FieldLongConverter(new ParentValueContainer() {
         @Override
-        Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
-            return new FieldLongConverter(new ParentValueContainer() {
-                @Override
-                void add(final Object value) {
-                    LOG.info("adding value " + value + " at index " + index);
-                    parent.set(index, new LongWritable((Long) value));
-                }
-            });
+        void add(final Object value) {
+          LOG.info("adding value " + value + " at index " + index);
+          parent.set(index, new LongWritable((Long) value));
         }
-    },
-    EINT96_CONVERTER(BigDecimal.class) {
+      });
+    }
+  },
+  EINT96_CONVERTER(BigDecimal.class) {
+    @Override
+    Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
+      return new FieldBigDecimalConverter(new ParentValueContainer() {
         @Override
-        Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
-            return new FieldBigDecimalConverter(new ParentValueContainer() {
-                @Override
-                void add(final Object value) {
-                    LOG.info("adding value " + value + " at index " + index);
-                    parent.set(index, new BigDecimalWritable((BigDecimal) value));
-                }
-            });
+        void add(final Object value) {
+          LOG.info("adding value " + value + " at index " + index);
+          parent.set(index, new BigDecimalWritable((BigDecimal) value));
         }
-    },
-    EBINARY_CONVERTER(Binary.class) {
+      });
+    }
+  },
+  EBINARY_CONVERTER(Binary.class) {
 
+    @Override
+    Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
+      return new FieldBinaryConverter(new ParentValueContainer() {
         @Override
-        Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
-            return new FieldBinaryConverter(new ParentValueContainer() {
-                @Override
-                void add(final Object value) {
-                    LOG.info("adding value " + value + " at index " + index);
-                    parent.set(index, new BinaryWritable((Binary) value));
-                }
-            });
+        void add(final Object value) {
+          LOG.info("adding value " + value + " at index " + index);
+          parent.set(index, new BinaryWritable((Binary) value));
         }
-
-    };
-    private static final Log LOG = Log.getLog(ETypeConverter.class);
-
-    final Class<?> _type;
-
-    private ETypeConverter(final Class<?> type) {
-        this._type = type;
+      });
     }
 
-    private Class<?> getType() {
-        return _type;
+  };
+  private static final Log LOG = Log.getLog(ETypeConverter.class);
+
+  final Class<?> _type;
+
+  private ETypeConverter(final Class<?> type) {
+    this._type = type;
+  }
+
+  private Class<?> getType() {
+    return _type;
+  }
+
+  abstract Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent);
+
+  static public Converter getNewConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
+    for (final ETypeConverter eConverter : values()) {
+      if (eConverter.getType() == type) {
+        return eConverter.getConverter(type, index, parent);
+      }
+    }
+    throw new RuntimeException("Converter not found ... for type : " + type);
+  }
+
+  // TODO : Duplicate code with Julien, need to take a look after it works
+  /**
+   * handle string values
+   *
+   * @author Julien Le Dem
+   *
+   */
+  final class FieldBinaryConverter extends PrimitiveConverter {
+
+    private final ParentValueContainer parent;
+
+    public FieldBinaryConverter(final ParentValueContainer parent) {
+      this.parent = parent;
     }
 
-    abstract Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent);
-
-    static public Converter getNewConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
-        for (final ETypeConverter eConverter : values()) {
-            if (eConverter.getType() == type) {
-                return eConverter.getConverter(type, index, parent);
-            }
-        }
-        throw new RuntimeException("Converter not found ... for type : " + type);
+    @Override
+    final public void addBinary(final Binary value) {
+      parent.add(value);
     }
 
-    // TODO : Duplicate code with Julien, need to take a look after it works
+  }
+
+  /**
+   * Handles doubles
+   *
+   * @author Julien Le Dem
+   *
+   */
+  final class FieldDoubleConverter extends PrimitiveConverter {
+
+    private final ParentValueContainer parent;
+
+    public FieldDoubleConverter(final ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    final public void addDouble(final double value) {
+      parent.add(value);
+    }
+
+  }
+
+  final class FieldIntegerConverter extends PrimitiveConverter {
+
+    private final ParentValueContainer parent;
+
+    public FieldIntegerConverter(final ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public void addInt(final int value) {
+      parent.add(value);
+    }
+  }
+
+  final class FieldFloatConverter extends PrimitiveConverter {
+
+    private final ParentValueContainer parent;
+
+    public FieldFloatConverter(final ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public void addFloat(final float value) {
+      parent.add(value);
+    }
+
+  }
+
+  final class FieldLongConverter extends PrimitiveConverter {
+
+    private final ParentValueContainer parent;
+
+    public FieldLongConverter(final ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public void addLong(final long value) {
+      parent.add(value);
+    }
+
+  }
+
+  final class FieldBooleanConverter extends PrimitiveConverter {
+
+    private final ParentValueContainer parent;
+
+    public FieldBooleanConverter(final ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public void addBoolean(final boolean value) {
+      parent.add(value);
+    }
+
+  }
+
+  // TODO NOT IMPLEMENTED YET !!!
+  final class FieldBigDecimalConverter extends PrimitiveConverter {
+
+    private final ParentValueContainer parent;
+
+    public FieldBigDecimalConverter(final ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public void addLong(final long value) {
+      parent.add(value);
+    }
+
+  }
+
+  /**
+   * for converters to add their current value to their parent
+   *
+   * @author Julien Le Dem
+   *
+   */
+  abstract public class ParentValueContainer {
+
     /**
-     * handle string values
+     * will add the value to the parent whether it's a map, a bag or a tuple
      *
-     * @author Julien Le Dem
-     *
+     * @param value
      */
-    final class FieldBinaryConverter extends PrimitiveConverter {
+    abstract void add(Object value);
 
-        private final ParentValueContainer parent;
-
-        public FieldBinaryConverter(final ParentValueContainer parent) {
-            this.parent = parent;
-        }
-
-        @Override
-        final public void addBinary(final Binary value) {
-            parent.add(value);
-        }
-
-    }
-
-    /**
-     * Handles doubles
-     *
-     * @author Julien Le Dem
-     *
-     */
-    final class FieldDoubleConverter extends PrimitiveConverter {
-
-        private final ParentValueContainer parent;
-
-        public FieldDoubleConverter(final ParentValueContainer parent) {
-            this.parent = parent;
-        }
-
-        @Override
-        final public void addDouble(final double value) {
-            parent.add(value);
-        }
-
-    }
-
-    final class FieldIntegerConverter extends PrimitiveConverter {
-
-        private final ParentValueContainer parent;
-
-        public FieldIntegerConverter(final ParentValueContainer parent) {
-            this.parent = parent;
-        }
-
-        @Override
-        public void addInt(final int value) {
-            parent.add(value);
-        }
-    }
-
-    final class FieldFloatConverter extends PrimitiveConverter {
-
-        private final ParentValueContainer parent;
-
-        public FieldFloatConverter(final ParentValueContainer parent) {
-            this.parent = parent;
-        }
-
-        @Override
-        public void addFloat(final float value) {
-            parent.add(value);
-        }
-
-    }
-
-    final class FieldLongConverter extends PrimitiveConverter {
-
-        private final ParentValueContainer parent;
-
-        public FieldLongConverter(final ParentValueContainer parent) {
-            this.parent = parent;
-        }
-
-        @Override
-        public void addLong(final long value) {
-            parent.add(value);
-        }
-
-    }
-
-    final class FieldBooleanConverter extends PrimitiveConverter {
-
-        private final ParentValueContainer parent;
-
-        public FieldBooleanConverter(final ParentValueContainer parent) {
-            this.parent = parent;
-        }
-
-        @Override
-        public void addBoolean(final boolean value) {
-            parent.add(value);
-        }
-
-    }
-
-    // TODO NOT IMPLEMENTED YET !!!
-    final class FieldBigDecimalConverter extends PrimitiveConverter {
-
-        private final ParentValueContainer parent;
-
-        public FieldBigDecimalConverter(final ParentValueContainer parent) {
-            this.parent = parent;
-        }
-
-        @Override
-        public void addLong(final long value) {
-            parent.add(value);
-        }
-
-    }
-
-    /**
-     * for converters to add their current value to their parent
-     *
-     * @author Julien Le Dem
-     *
-     */
-    abstract public class ParentValueContainer {
-
-        /**
-         * will add the value to the parent whether it's a map, a bag or a tuple
-         *
-         * @param value
-         */
-        abstract void add(Object value);
-
-    }
+  }
 
 }
