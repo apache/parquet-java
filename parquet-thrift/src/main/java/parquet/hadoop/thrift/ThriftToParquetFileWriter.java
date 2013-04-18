@@ -15,6 +15,7 @@
  */
 package parquet.hadoop.thrift;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 import org.apache.hadoop.fs.Path;
@@ -30,7 +31,7 @@ import org.apache.thrift.protocol.TProtocolFactory;
  * @author Julien Le Dem
  *
  */
-public class ThriftToParquetFileWriter {
+public class ThriftToParquetFileWriter implements Closeable {
 
   private final RecordWriter<Void, BytesWritable> recordWriter;
   private final TaskAttemptContext taskAttemptContext;
@@ -52,7 +53,13 @@ public class ThriftToParquetFileWriter {
     recordWriter.write(null, bytes);
   }
 
-  public void close() throws IOException, InterruptedException {
-    recordWriter.close(taskAttemptContext);
+  @Override
+  public void close() throws IOException {
+    try {
+      recordWriter.close(taskAttemptContext);
+    } catch (InterruptedException e) {
+      Thread.interrupted();
+      throw new IOException("The thread was interrupted", e);
+    }
   }
 }
