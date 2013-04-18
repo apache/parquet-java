@@ -22,7 +22,6 @@ import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 
-import parquet.Log;
 import parquet.io.api.Converter;
 import parquet.schema.GroupType;
 import parquet.schema.Type;
@@ -37,7 +36,7 @@ import parquet.schema.Type;
  */
 
 public class MapWritableGroupConverter extends HiveGroupConverter {
-  private static final Log LOG = Log.getLog(MapWritableGroupConverter.class);
+  //  private static final Log LOG = Log.getLog(MapWritableGroupConverter.class);
 
   private final GroupType groupType;
   private final Converter[] converters;
@@ -76,8 +75,8 @@ public class MapWritableGroupConverter extends HiveGroupConverter {
 
   @Override
   final protected void set(final int index, final Writable value) {
-    LOG.info("current group name: " + groupType.getName());
-    LOG.info("setting " + value + " at index " + index + " in map " + currentMap);
+    //    LOG.info("current group name: " + groupType.getName());
+    //    LOG.info("setting " + value + " at index " + index + " in map " + currentMap);
     currentMap.put(new Text(groupType.getFieldName(index)), value);
   }
 

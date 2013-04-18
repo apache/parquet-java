@@ -23,7 +23,6 @@ import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 
-import parquet.Log;
 import parquet.hive.writable.BigDecimalWritable;
 import parquet.hive.writable.BinaryWritable;
 import parquet.io.api.Binary;
@@ -46,7 +45,7 @@ public enum ETypeConverter {
       return new FieldDoubleConverter(new ParentValueContainer() {
         @Override
         void add(final Object value) {
-          LOG.info("adding value " + value + " at index " + index);
+          //          LOG.info("adding value " + value + " at index " + index);
           parent.set(index, new DoubleWritable((Double) value));
         }
       });
@@ -58,7 +57,7 @@ public enum ETypeConverter {
       return new FieldBooleanConverter(new ParentValueContainer() {
         @Override
         void add(final Object value) {
-          LOG.info("adding value " + value + " at index " + index);
+          //          LOG.info("adding value " + value + " at index " + index);
           parent.set(index, new BooleanWritable((Boolean) value));
         }
       });
@@ -70,7 +69,7 @@ public enum ETypeConverter {
       return new FieldFloatConverter(new ParentValueContainer() {
         @Override
         void add(final Object value) {
-          LOG.info("adding value " + value + " at index " + index);
+          //          LOG.info("adding value " + value + " at index " + index);
           parent.set(index, new FloatWritable((Float) value));
         }
       });
@@ -82,7 +81,7 @@ public enum ETypeConverter {
       return new FieldIntegerConverter(new ParentValueContainer() {
         @Override
         void add(final Object value) {
-          LOG.info("adding value " + value + " at index " + index);
+          //          LOG.info("adding value " + value + " at index " + index);
           parent.set(index, new IntWritable((Integer) value));
         }
       });
@@ -94,7 +93,7 @@ public enum ETypeConverter {
       return new FieldLongConverter(new ParentValueContainer() {
         @Override
         void add(final Object value) {
-          LOG.info("adding value " + value + " at index " + index);
+          //          LOG.info("adding value " + value + " at index " + index);
           parent.set(index, new LongWritable((Long) value));
         }
       });
@@ -106,7 +105,7 @@ public enum ETypeConverter {
       return new FieldBigDecimalConverter(new ParentValueContainer() {
         @Override
         void add(final Object value) {
-          LOG.info("adding value " + value + " at index " + index);
+          //          LOG.info("adding value " + value + " at index " + index);
           parent.set(index, new BigDecimalWritable((BigDecimal) value));
         }
       });
@@ -119,14 +118,14 @@ public enum ETypeConverter {
       return new FieldBinaryConverter(new ParentValueContainer() {
         @Override
         void add(final Object value) {
-          LOG.info("adding value " + value + " at index " + index);
+          //          LOG.info("adding value " + value + " at index " + index);
           parent.set(index, new BinaryWritable((Binary) value));
         }
       });
     }
 
   };
-  private static final Log LOG = Log.getLog(ETypeConverter.class);
+  //  private static final Log LOG = Log.getLog(ETypeConverter.class);
 
   final Class<?> _type;
 

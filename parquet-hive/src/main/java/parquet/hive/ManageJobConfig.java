@@ -23,7 +23,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.exec.TableScanOperator;
@@ -45,13 +44,10 @@ import org.apache.hadoop.mapred.JobConf;
 public class ManageJobConfig {
   MapredWork mrwork;
   private Map<String, PartitionDesc> pathToPartitionInfo;
-
   private void init(final JobConf job) {
     if (mrwork == null) {
       mrwork = Utilities.getMapRedWork(job);
-
       pathToPartitionInfo = new LinkedHashMap<String, PartitionDesc>();
-
       for (final Map.Entry<String, PartitionDesc> entry : mrwork.getPathToPartitionInfo().entrySet()) {
         pathToPartitionInfo.put(new Path(entry.getKey()).toUri().getPath().toString(), entry.getValue());
       }
@@ -65,10 +61,8 @@ public class ManageJobConfig {
     return pathToPartitionInfo.get(path);
   }
 
-  private void pushProjectionsAndFilters(final JobConf jobConf,
-      final String splitPath, final String splitPathWithNoSchema, final boolean nonNative) {
+  private void pushProjectionsAndFilters(final JobConf jobConf, final String splitPath, final String splitPathWithNoSchema) {
 
-    init(jobConf);
     if(this.mrwork.getPathToAliases() == null) {
       return;
     }
@@ -78,29 +72,16 @@ public class ManageJobConfig {
 
     while (iterator.hasNext()) {
       final Entry<String, ArrayList<String>> entry = iterator.next();
-      final String key = new Path(entry.getKey()).toUri().getPath().toString();
-      boolean match;
-      if (nonNative) {
-        // For non-native tables, we need to do an exact match to avoid
-        // HIVE-1903.  (The table location contains no files, and the string
-        // representation of its path does not have a trailing slash.)
-        match =
-            splitPath.equals(key) || splitPathWithNoSchema.equals(key);
-      } else {
-        // But for native tables, we need to do a prefix match for
-        // subdirectories.  (Unlike non-native tables, prefix mixups don't seem
-        // to be a potential problem here since we are always dealing with the
-        // path to something deeper than the table location.)
-        match =
-            splitPath.startsWith(key) || splitPathWithNoSchema.startsWith(key);
-      }
-      if (match) {
+      final String key = new Path(entry.getKey()).toUri().getPath();
+
+      if (splitPath.equals(key) || splitPathWithNoSchema.equals(key)) {
         final ArrayList<String> list = entry.getValue();
         for (final String val : list) {
           aliases.add(val);
         }
       }
     }
+
     for (final String alias : aliases) {
       final Operator<? extends Serializable> op = this.mrwork.getAliasToWork().get(
           alias);
@@ -147,32 +128,16 @@ public class ManageJobConfig {
         filterExprSerialized);
   }
 
-  public JobConf cloneJobAndInit(final JobConf jobConf, final Path path) {
+  public JobConf cloneJobAndInit(final JobConf jobConf, final Path path) throws IOException {
     init(jobConf);
     final JobConf cloneJobConf = new JobConf(jobConf);
-    try {
-      // TODO FIX ME
-      final Path tmpPath;
+    final PartitionDesc part = getPartition(path.toString());
 
-      if (path == null) { // FIX ME BIG FAIL RIGHT NOW
-        tmpPath = new Path("/user/username/parquet");//((FileSplit) split).getPath().getParent().makeQualified(FileSystem.get(cloneJobConf)).toUri().getPath());
-      } else {
-        tmpPath = new Path(path.getParent().makeQualified(FileSystem.get(cloneJobConf)).toUri().getPath());
-      }
-
-      final PartitionDesc part = getPartition(tmpPath.toString());
-      Boolean nonNative = false;
-
-      if ((part != null) && (part.getTableDesc() != null)) {
-        Utilities.copyTableJobPropertiesToConf(part.getTableDesc(), cloneJobConf);
-        nonNative = part.getTableDesc().isNonNative();
-      }
-
-      pushProjectionsAndFilters(cloneJobConf, tmpPath.toString(), tmpPath.toUri().toString(), nonNative);
-    } catch (final IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
+    if ((part != null) && (part.getTableDesc() != null)) {
+      Utilities.copyTableJobPropertiesToConf(part.getTableDesc(), cloneJobConf);
     }
-    return jobConf;
+
+    pushProjectionsAndFilters(cloneJobConf, path.toString(), path.toUri().toString());
+    return cloneJobConf;
   }
 }

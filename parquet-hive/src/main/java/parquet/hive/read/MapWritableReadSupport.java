@@ -19,8 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.io.MapWritable;
@@ -41,22 +39,15 @@ import parquet.schema.Type;
  *
  */
 public class MapWritableReadSupport extends ReadSupport<MapWritable> {
-  static final Log LOG = LogFactory.getLog(MapWritableReadSupport.class);
+  //  static final Log LOG = LogFactory.getLog(MapWritableReadSupport.class);
 
   @Override
   public parquet.hadoop.api.ReadSupport.ReadContext init(final Configuration configuration, final Map<String, String> keyValueMetaData, final MessageType fileSchema) {
-
-    //        final Iterator<Entry<String, String>> next  = configuration.iterator();
-    //        while (next.hasNext()) {
-    //            final Entry<String,String> obj = next.next();
-    //            LOG.error("JobConf Hive : next : " + obj.getKey() + " : " + obj.getValue() );
-    //
-    //        }
-
     final List<String>  listColumns = (List<String>) StringUtils.getStringCollection(configuration.get("columns"));
 
     MessageType requestedSchemaByUser = fileSchema;
     final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(configuration);
+
     if (indexColumnsWanted.isEmpty() == false) {
       final List<Type> typeList = new ArrayList<Type>();
       for(final Integer idx : indexColumnsWanted) {

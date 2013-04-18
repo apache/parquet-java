@@ -25,7 +25,6 @@ import java.util.Properties;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.hive.serde2.SerDe;
 import org.apache.hadoop.hive.serde2.SerDeException;
 import org.apache.hadoop.hive.serde2.SerDeStats;
@@ -82,7 +81,7 @@ public class ParquetHiveSerDe implements SerDe {
 
   ObjectInspector objInspector;
 
-  static final Log LOG = LogFactory.getLog(MapWritableObjectInspector.class);
+  static final Log LOG = LogFactory.getLog(ParquetHiveSerDe.class);
 
   @Override
   final public void initialize(final Configuration conf, final Properties tbl) throws SerDeException {
@@ -112,7 +111,6 @@ public class ParquetHiveSerDe implements SerDe {
     // Create row related objects
     rowTypeInfo = TypeInfoFactory.getStructTypeInfo(columnNames, columnTypes);
 
-    LOG.error(ColumnProjectionUtils.getReadColumnIDs(conf));
     this.objInspector = new MapWritableObjectInspector((StructTypeInfo) rowTypeInfo);
   }
 
