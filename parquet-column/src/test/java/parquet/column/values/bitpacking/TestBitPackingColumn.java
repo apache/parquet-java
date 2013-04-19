@@ -177,7 +177,7 @@ public class TestBitPackingColumn {
   }
 
   private static enum PACKING_TYPE {
-    BYTE_BASED {
+    BYTE_BASED_MANUAL {
       public ValuesReader getReader(final int bound) {
         return new BitPackingValuesReader(bound);
       }
@@ -185,13 +185,14 @@ public class TestBitPackingColumn {
         return new BitPackingValuesWriter(bound);
       }
     }
-//    ,
-//    INT_BASED {
+    // TODO
+    //,
+//    BYTE_BASED_GENERATED {
 //      public ValuesReader getReader(final int bound) {
-//        return new IntBasedBitPackingValuesReader(bound);
+//        return new ByteBitPackingValuesReader(bound);
 //      }
 //      public ValuesWriter getWriter(final int bound) {
-//        return new IntBasedBitPackingValuesWriter(bound);
+//        return new ByteBitPackingValuesWriter(bound);
 //      }
 //    }
     ;
