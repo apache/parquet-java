@@ -36,7 +36,7 @@ public class ParquetTBaseScheme<T extends TBase> extends ParquetValueScheme<T> {
   @Override
   public void sinkConfInit(FlowProcess<JobConf> arg0,
       Tap<JobConf, RecordReader, OutputCollector> arg1, JobConf arg2) {
-    throw new RuntimeException("ParquetTBaseScheme does not support Sinks");
+    throw new UnsupportedOperationException("ParquetTBaseScheme does not support Sinks");
 
   }
 
@@ -48,11 +48,12 @@ public class ParquetTBaseScheme<T extends TBase> extends ParquetValueScheme<T> {
   public boolean isSink() { return false; }
 
 
+  @SuppressWarnings("rawtypes")
   @Override
   public void sourceConfInit(FlowProcess<JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
     DeprecatedContainerInputFormat.setInputFormat(ParquetThriftInputFormat.class, jobConf);
-    ParquetThriftInputFormat.setReadSupportClass(jobConf, ThriftReadSupport.class);
+    ParquetThriftInputFormat.<ThriftReadSupport>setReadSupportClass(jobConf, ThriftReadSupport.class);
     ThriftReadSupport.setRecordConverterClass(jobConf, ThriftRecordConverter.class);
 
   }
@@ -61,7 +62,6 @@ public class ParquetTBaseScheme<T extends TBase> extends ParquetValueScheme<T> {
   @Override
   public void sink(FlowProcess<JobConf> arg0, SinkCall<Object[], OutputCollector> arg1)
       throws IOException {
-    // TODO Auto-generated method stub
-
+    throw new UnsupportedOperationException("ParquetTBaseScheme does not support Sinks");
   }
 }

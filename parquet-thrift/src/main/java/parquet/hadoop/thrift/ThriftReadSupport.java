@@ -89,7 +89,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
       // TODO: handle the requested schema
       ThriftRecordConverter<T> converter = constructor.newInstance(thriftClass, fileSchema, thriftMetaData.getDescriptor());
       return converter;
-    } catch (Throwable t) {
+    } catch (Exception t) {
       throw new RuntimeException("Unable to create Thrift Converter: ", t);
     }
   }
