@@ -21,6 +21,8 @@ import java.io.IOException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import parquet.column.values.bitpacking.TestBitPacking;
+
 public class TestRLE {
 
   @Test
@@ -42,13 +44,19 @@ public class TestRLE {
   }
 
   private void verify(int[] in, int width) throws IOException {
+    System.out.println("input: " + TestBitPacking.toString(in));
     final RLESimpleEncoder rleSimpleEncoder = new RLESimpleEncoder(width);
     for (int i : in) {
       rleSimpleEncoder.writeInt(i);
     }
-    final RLEDecoder rleDecoder = new RLEDecoder(width, new ByteArrayInputStream(rleSimpleEncoder.toBytes().toByteArray()));
+    final byte[] byteArray = rleSimpleEncoder.toBytes().toByteArray();
+    System.out.println("encoded: " + TestBitPacking.toString(byteArray));
+    final RLEDecoder rleDecoder = new RLEDecoder(width, new ByteArrayInputStream(byteArray));
+    int[] decoded = new int[in.length];
     for (int i = 0; i < in.length; i++) {
-      Assert.assertEquals(in[i], rleDecoder.readInt());
+      decoded[i] = rleDecoder.readInt();
     }
+    System.out.println("decoded: " + TestBitPacking.toString(decoded));
+    Assert.assertArrayEquals(in, decoded);
   }
 }

@@ -44,7 +44,7 @@ public class ByteBasedBitPackingGenerator {
     fw.append(" * @see ByteBasedBitPackingGenerator\n");
     fw.append(" *\n");
     fw.append(" */\n");
-    fw.append("abstract class " + className + " {\n");
+    fw.append("public abstract class " + className + " {\n");
     fw.append("\n");
     fw.append("  private static final BytePacker[] packers = new BytePacker[33];\n");
     fw.append("  static {\n");

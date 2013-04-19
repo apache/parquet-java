@@ -172,7 +172,7 @@ public class TestBitPackingColumn {
         result[i] = r.readInteger();
       }
       System.out.println("result: " + TestBitPacking.toString(result));
-      assertArrayEquals("result: " + TestBitPacking.toString(result), vals, result);
+      assertArrayEquals(type + " result: " + TestBitPacking.toString(result), vals, result);
     }
   }
 
@@ -184,15 +184,17 @@ public class TestBitPackingColumn {
       public ValuesWriter getWriter(final int bound) {
         return new BitPackingValuesWriter(bound);
       }
-    },
-    INT_BASED {
-      public ValuesReader getReader(final int bound) {
-        return new IntBasedBitPackingValuesReader(bound);
-      }
-      public ValuesWriter getWriter(final int bound) {
-        return new IntBasedBitPackingValuesWriter(bound);
-      }
-    };
+    }
+//    ,
+//    INT_BASED {
+//      public ValuesReader getReader(final int bound) {
+//        return new IntBasedBitPackingValuesReader(bound);
+//      }
+//      public ValuesWriter getWriter(final int bound) {
+//        return new IntBasedBitPackingValuesWriter(bound);
+//      }
+//    }
+    ;
     abstract public ValuesReader getReader(final int bound);
     abstract public ValuesWriter getWriter(final int bound);
   }

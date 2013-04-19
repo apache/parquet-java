@@ -20,7 +20,7 @@ import java.io.IOException;
 
 import parquet.bytes.BytesInput;
 import parquet.bytes.BytesUtils;
-import parquet.column.values.bitpacking.BitPacking;
+import parquet.column.values.bitpacking.ByteBasedBitPackingEncoder;
 
 /**
  * Simple RLE Encoder that does only bitpacking
@@ -30,27 +30,25 @@ import parquet.column.values.bitpacking.BitPacking;
  */
 public class RLESimpleEncoder {
 
-  private final int bitWidth;
-  private final BitPacking.BitPackingWriter out;
-  private final ByteArrayOutputStream buffer;
+  private ByteBasedBitPackingEncoder bitPackingEncoder;
+  private int totalValues = 0;
 
   public RLESimpleEncoder(int bitWidth) {
-    this.bitWidth = bitWidth;
-    buffer = new ByteArrayOutputStream(64 * 1024);
-    out = BitPacking.getBitPackingWriter(bitWidth, buffer);
+    this.bitPackingEncoder = new ByteBasedBitPackingEncoder(bitWidth);
   }
 
   public void writeInt(int value) throws IOException {
-    out.write(value);
+    bitPackingEncoder.writeInt(value);
+    ++ totalValues;
   }
 
   public BytesInput toBytes() throws IOException {
-    out.finish();
-    final BytesInput bytes = BytesInput.from(buffer);
     ByteArrayOutputStream size = new ByteArrayOutputStream(4);
-    int header = (int)(bytes.size()/bitWidth) << 1 | 1; // TODO: fix int vs long
+    int header = (totalValues + 7) / 8 << 1 | 1;
     BytesUtils.writeUnsignedVarInt(header, size);
-    return BytesInput.fromSequence(BytesInput.from(size), bytes);
+    return BytesInput.fromSequence(
+        BytesInput.from(size),
+        bitPackingEncoder.toBytes()
+        );
   }
-
 }

@@ -15,14 +15,13 @@
  */
 package parquet.column.values.rle;
 
-import java.io.EOFException;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import parquet.Log;
 import parquet.bytes.BytesUtils;
-import parquet.column.values.bitpacking.BitPacking;
-import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
+import parquet.column.values.bitpacking.ByteBitPacking;
+import parquet.column.values.bitpacking.BytePacker;
 import parquet.io.ParquetDecodingException;
 
 public class RLEDecoder {
@@ -30,6 +29,7 @@ public class RLEDecoder {
   private static enum MODE { RLE, PACKED }
 
   private final int bitWidth;
+  private final BytePacker packer;
   private final int bytesWidth;
   private final InputStream in;
 
@@ -39,15 +39,18 @@ public class RLEDecoder {
   private int currentValue;
   private int[] currentBuffer;
 
-  public RLEDecoder(int bitWidth, InputStream in) throws IOException {
+  public RLEDecoder(int bitWidth, InputStream in) {
     this.bitWidth = bitWidth;
+    this.packer = ByteBitPacking.getPacker(bitWidth);
     // number of bytes needed when padding to the next byte
     this.bytesWidth = (bitWidth + 7) / 8;
     this.in = in;
-    readNext();
   }
 
   public int readInt() throws IOException {
+    if (currentCount == 0) {
+      readNext();
+    }
     -- currentCount;
     int result;
     switch (mode) {
@@ -55,13 +58,10 @@ public class RLEDecoder {
       result = currentValue;
       break;
     case PACKED:
-      result = currentBuffer[currentCount];
+      result = currentBuffer[currentBuffer.length - 1 - currentCount];
       break;
     default:
       throw new ParquetDecodingException("not a valid mode " + mode);
-    }
-    if (currentCount == 0) {
-      readNext();
     }
     return result;
   }
@@ -69,9 +69,9 @@ public class RLEDecoder {
   private void readNext() throws IOException {
     final int header = BytesUtils.readUnsignedVarInt(in);
     mode = (header | 1) == 0 ? MODE.RLE : MODE.PACKED;
-    currentCount = header >> 1;
     switch (mode) {
-    case RLE:
+    case RLE: // TODO: test this
+      currentCount = header >>> 1;
       switch (bytesWidth) {
         case 1:
           currentValue = BytesUtils.readIntLittleEndianOnOneByte(in);
@@ -90,14 +90,13 @@ public class RLEDecoder {
       }
       break;
     case PACKED:
-      currentCount *= 8;
-      final BitPackingReader reader = BitPacking.createBitPackingReader(bitWidth, in, currentCount);
-      if (currentBuffer == null || currentBuffer.length < currentCount) {
-        currentBuffer = new int[currentCount];
-      }
-      // TODO: change the bitpacking interface instead
-      for (int i = 0; i < currentCount; i++) {
-        currentBuffer[currentCount - i - 1] = reader.read();
+      int blocks = header >>> 1;
+      currentCount = blocks * 8;
+      currentBuffer = new int[currentCount]; // TODO: reuse a buffer
+      byte[] bytes = new byte[blocks * bitWidth];
+      new DataInputStream(in).readFully(bytes);
+      for (int valueIndex = 0, byteIndex = 0; valueIndex < currentCount; valueIndex += 8, byteIndex += bitWidth) {
+        packer.unpack8Values(bytes, byteIndex, currentBuffer, valueIndex);
       }
       break;
     }

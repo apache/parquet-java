@@ -22,7 +22,7 @@ package parquet.column.values.bitpacking;
  * @see ByteBasedBitPackingGenerator
  *
  */
-abstract class ByteBitPacking {
+public abstract class ByteBitPacking {
 
   private static final BytePacker[] packers = new BytePacker[33];
   static {
