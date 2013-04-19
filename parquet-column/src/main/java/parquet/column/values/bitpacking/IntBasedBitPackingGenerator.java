@@ -33,7 +33,7 @@ import java.io.IOException;
  * @author Julien Le Dem
  *
  */
-public class BitPackingGenerator {
+public class IntBasedBitPackingGenerator {
 
   private static final String classNamePrefix = "LemireBitPacking";
 
@@ -60,7 +60,7 @@ public class BitPackingGenerator {
     }
     fw.append(" * \n");
     fw.append(" * @author automatically generated\n");
-    fw.append(" * @see BitPackingGenerator\n");
+    fw.append(" * @see IntBasedBitPackingGenerator\n");
     fw.append(" *\n");
     fw.append(" */\n");
     fw.append("abstract class " + className + " {\n");
