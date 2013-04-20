@@ -217,6 +217,40 @@ public class TestColumnIO {
 
   }
 
+  @Test
+  public void testRequiredOfRequired() {
+
+    MemPageStore memPageStore = new MemPageStore();
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800);
+
+    MessageType reqreqSchema = MessageTypeParser.parseMessageType(
+          "message Document {\n"
+        + "  required group foo {\n"
+        + "    required int64 bar;\n"
+        + "  }\n"
+        + "}\n");
+
+    GroupFactory gf = new SimpleGroupFactory(reqreqSchema);
+    Group g1 = gf.newGroup();
+    g1.addGroup("foo").append("bar", 2l);
+System.out.println(g1);
+    ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
+
+    MessageColumnIO columnIO = columnIOFactory.getColumnIO(reqreqSchema);
+    log(columnIO);
+    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), reqreqSchema);
+    groupWriter.write(g1);
+    columns.flush();
+
+    RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, reqreqSchema, memPageStore);
+
+    List<Group> records = new ArrayList<Group>();
+    read(recordReader, reqreqSchema, records);
+
+    assertEquals("deserialization does not display the same result", g1.toString(), records.get(0).toString());
+
+  }
+
   private RecordReaderImplementation<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, PageReadStore pageReadStore) {
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
 
