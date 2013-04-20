@@ -129,6 +129,7 @@ public class DeprecatedContainerInputFormat<K, V> implements org.apache.hadoop.m
       return resultSplits;
 
     } catch (InterruptedException e) {
+      Thread.interrupted();
       throw new IOException(e);
     }
   }
@@ -251,6 +252,7 @@ public class DeprecatedContainerInputFormat<K, V> implements org.apache.hadoop.m
           eof = true;
         }
       } catch (InterruptedException e) {
+        Thread.interrupted();
         throw new IOException(e);
       }
     }
@@ -280,6 +282,7 @@ public class DeprecatedContainerInputFormat<K, V> implements org.apache.hadoop.m
       try {
         return realReader.getProgress();
       } catch (InterruptedException e) {
+        Thread.interrupted();
         throw new IOException(e);
       }
     }
@@ -329,6 +332,7 @@ public class DeprecatedContainerInputFormat<K, V> implements org.apache.hadoop.m
       try {
         return realSplit.getLength();
       } catch (InterruptedException e) {
+        Thread.interrupted();
         throw new IOException(e);
       }
     }
@@ -338,6 +342,7 @@ public class DeprecatedContainerInputFormat<K, V> implements org.apache.hadoop.m
       try {
         return realSplit.getLocations();
       } catch (InterruptedException e) {
+        Thread.interrupted();
         throw new IOException(e);
       }
     }

@@ -15,9 +15,6 @@
   <name>Parquet Scrooge</name>
   <url>https://github.com/Parquet/parquet-mr</url>
 
-  <properties>
-    <elephant-bird.version>3.0.8</elephant-bird.version>
-  </properties>
   <repositories>
     <repository>
      <id>conjars.org</id>
@@ -42,19 +39,9 @@
       <version>1.0.0</version>
     </dependency>
     <dependency>
-      <groupId>com.twitter.elephantbird</groupId>
-      <artifactId>elephant-bird-core</artifactId>
-      <version>${elephant-bird.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.twitter.elephantbird</groupId>
-      <artifactId>elephant-bird-pig</artifactId>
-      <version>${elephant-bird.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.codehaus.jackson</groupId>
       <artifactId>jackson-mapper-asl</artifactId>
-      <version>1.9.11</version>
+      <version>${jackson.version}</version>
     </dependency>
     <dependency>
       <groupId>log4j</groupId>

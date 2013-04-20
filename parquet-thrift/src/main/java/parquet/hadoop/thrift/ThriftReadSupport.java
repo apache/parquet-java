@@ -90,7 +90,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
       ThriftRecordConverter<T> converter = constructor.newInstance(thriftClass, fileSchema, thriftMetaData.getDescriptor());
       return converter;
     } catch (Exception t) {
-      throw new RuntimeException("Unable to create Thrift Converter: ", t);
+      throw new RuntimeException("Unable to create Thrift Converter for Thrift metadata " + thriftMetaData, t);
     }
   }
 

@@ -47,6 +47,7 @@ public class ScroogeRecordConverter<T extends ThriftStruct> extends ThriftRecord
       Object companionObject = companionClass.getField("MODULE$").get(null);
       return (ThriftStructCodec<?>) companionObject;
     } catch (Exception t) {
+      if (t instanceof InterruptedException) Thread.currentThread().interrupt();
       throw new RuntimeException("Unable to create ThriftStructCodec", t);
     }
   }
