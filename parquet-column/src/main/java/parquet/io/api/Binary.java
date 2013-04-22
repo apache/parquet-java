@@ -149,18 +149,30 @@ abstract public class Binary {
 
       @Override
       public int hashCode() {
+        if (value.hasArray()) {
+          return Binary.hashCode(value.array(), value.arrayOffset() + value.position(),
+              value.arrayOffset() + value.remaining());
+        }
         byte[] bytes = getBytes();
         return Binary.hashCode(bytes, 0, bytes.length);
       }
 
       @Override
       boolean equals(Binary other) {
+        if (value.hasArray()) {
+          return other.equals(value.array(), value.arrayOffset() + value.position(),
+              value.arrayOffset() + value.remaining());
+        }
         byte[] bytes = getBytes();
         return other.equals(bytes, 0, bytes.length);
       }
 
       @Override
       boolean equals(byte[] other, int otherOffset, int otherLength) {
+        if (value.hasArray()) {
+          return Binary.equals(value.array(), value.arrayOffset() + value.position(),
+              value.arrayOffset() + value.remaining(), other, otherOffset, otherLength);
+        }
         byte[] bytes = getBytes();
         return Binary.equals(bytes, 0, bytes.length, other, otherOffset, otherLength);
       }
