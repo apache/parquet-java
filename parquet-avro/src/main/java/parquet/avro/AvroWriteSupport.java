@@ -8,6 +8,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import parquet.hadoop.api.WriteSupport;
 import parquet.io.api.Binary;
@@ -138,7 +139,7 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
     } else if (avroType.equals(Schema.Type.BYTES)) {
       recordConsumer.addBinary(Binary.fromByteBuffer((ByteBuffer) value));
     } else if (avroType.equals(Schema.Type.STRING)) {
-      recordConsumer.addBinary(Binary.fromString(value.toString())); // Utf8 or String
+      recordConsumer.addBinary(fromAvroString(value));
     } else if (avroType.equals(Schema.Type.RECORD)) {
       writeRecord((GroupType) type, avroSchema, (GenericRecord) value);
     } else if (avroType.equals(Schema.Type.ENUM)) {
@@ -150,6 +151,14 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
     } else if (avroType.equals(Schema.Type.FIXED)) {
       recordConsumer.addBinary(Binary.fromByteArray(((GenericFixed) value).bytes()));
     }
+  }
+
+  private Binary fromAvroString(Object value) {
+    if (value instanceof Utf8) {
+      Utf8 utf8 = (Utf8) value;
+      return Binary.fromByteArray(utf8.getBytes(), 0, utf8.getByteLength());
+    }
+    return Binary.fromString(value.toString());
   }
 
 }
