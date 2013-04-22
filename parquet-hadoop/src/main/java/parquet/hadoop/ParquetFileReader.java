@@ -21,6 +21,7 @@ import static parquet.format.Util.readPageHeader;
 import static parquet.hadoop.ParquetFileWriter.MAGIC;
 import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,7 +64,7 @@ import parquet.hadoop.metadata.ParquetMetadata;
  * @author Julien Le Dem
  *
  */
-public class ParquetFileReader {
+public class ParquetFileReader implements Closeable {
 
   private static final Log LOG = Log.getLog(ParquetFileReader.class);
 
@@ -375,6 +376,7 @@ public class ParquetFileReader {
     return pagesInChunk;
   }
 
+  @Override
   public void close() throws IOException {
     f.close();
     this.codecFactory.release();
