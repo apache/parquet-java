@@ -31,9 +31,9 @@ public class TestReadWrite {
     AvroParquetWriter<GenericRecord> writer = new
         AvroParquetWriter<GenericRecord>(file, schema);
 
-//    GenericData.Record nestedRecord = new GenericRecordBuilder(
-//          schema.getField("mynestedrecord").schema())
-//        .set("mynestedint", 1).build();
+    GenericData.Record nestedRecord = new GenericRecordBuilder(
+          schema.getField("mynestedrecord").schema())
+        .set("mynestedint", 1).build();
 
     GenericData.Record record = new GenericRecordBuilder(schema)
         .set("mynull", null)
@@ -44,8 +44,7 @@ public class TestReadWrite {
         .set("mydouble", 4.1)
         .set("mybytes", ByteBuffer.wrap("hello".getBytes(Charsets.UTF_8)))
         .set("mystring", "hello")
-        // TODO: fix nested records. AvroGenericRecordConverter.start() is not being called
-        //.set("mynestedrecord", nestedRecord)
+        .set("mynestedrecord", nestedRecord)
         .set("myenum", "a")
         .set("myarray", new GenericData.Array<Integer>(
             Schema.createArray(Schema.create(Schema.Type.INT)), Arrays.asList(1, 2)))
@@ -70,7 +69,7 @@ public class TestReadWrite {
     assertEquals(ByteBuffer.wrap("hello".getBytes(Charsets.UTF_8)), nextRecord.get("mybytes"));
     assertEquals("hello", nextRecord.get("mystring"));
     assertEquals("a", nextRecord.get("myenum"));
-    //assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
+    assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
     assertEquals(Arrays.asList(1, 2), nextRecord.get("myarray"));
     assertEquals(ImmutableMap.of("a", 1, "b", 2), nextRecord.get("mymap"));
     //assertEquals(new byte[] { (byte) 65 }, nextRecord.get("myfixed"));
