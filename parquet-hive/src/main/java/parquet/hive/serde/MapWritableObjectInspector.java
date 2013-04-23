@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
@@ -96,6 +97,12 @@ public class MapWritableObjectInspector extends StructObjectInspector {
       final TypeInfo keyTypeInfo = ((MapTypeInfo) typeInfo).getMapKeyTypeInfo();
       final TypeInfo valueTypeInfo = ((MapTypeInfo) typeInfo).getMapValueTypeInfo();
       return new ParquetHiveMapInspector(getObjectInspector(keyTypeInfo), getObjectInspector(valueTypeInfo));
+    } else if (typeInfo.equals(TypeInfoFactory.timestampTypeInfo)) {
+      throw new NotImplementedException("timestamp not implemented yet");
+    } else if (typeInfo.equals(TypeInfoFactory.byteTypeInfo)) {
+      return PrimitiveObjectInspectorFactory.writableByteObjectInspector;
+    } else if (typeInfo.equals(TypeInfoFactory.shortTypeInfo)) {
+      return PrimitiveObjectInspectorFactory.writableShortObjectInspector;
     } else {
       throw new RuntimeException("Unknown field info: " + typeInfo);
     }
