@@ -41,7 +41,7 @@ public class DictionaryValuesReader extends ValuesReader {
       if ((ch3 | ch4) < 0)
         throw new EOFException();
       int id = ((ch3 << 8) + (ch4 << 0));
-      return dictionary.decode(id);
+      return dictionary.decodeToBinary(id);
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read bytes", e);
     }

@@ -24,15 +24,25 @@ import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
+import parquet.io.api.Converter;
+import parquet.io.api.GroupConverter;
+import parquet.io.api.PrimitiveConverter;
+import parquet.schema.GroupType;
+import parquet.schema.MessageType;
+import parquet.schema.Type;
 
 
 public class ColumnReadStoreImpl implements ColumnReadStore {
 
   private final PageReadStore pageReadStore;
+  private final GroupConverter recordConverter;
+  private final MessageType schema;
 
-  public ColumnReadStoreImpl(PageReadStore pageReadStore) {
+  public ColumnReadStoreImpl(PageReadStore pageReadStore, GroupConverter recordConverter, MessageType schema) {
     super();
     this.pageReadStore = pageReadStore;
+    this.recordConverter = recordConverter;
+    this.schema = schema;
   }
 
   public ColumnReader getColumnReader(ColumnDescriptor path) {
@@ -40,28 +50,42 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
   }
 
   private ColumnReaderImpl newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
+    PrimitiveConverter converter = getPrimitiveConverter(path);
     switch (path.getType()) {
     case INT32:
-      return new INT32MemColumnReader(path, pageReader);
+      return new INT32MemColumnReader(path, pageReader, converter);
     case INT64:
-      return new INT64MemColumnReader(path, pageReader);
+      return new INT64MemColumnReader(path, pageReader, converter);
     case BOOLEAN:
-      return new BOOLEANMemColumnReader(path, pageReader);
+      return new BOOLEANMemColumnReader(path, pageReader, converter);
     case BINARY:
-      return new BINARYMemColumnReader(path, pageReader);
+      return new BINARYMemColumnReader(path, pageReader, converter);
     case FLOAT:
-      return new FLOATMemColumnReader(path, pageReader);
+      return new FLOATMemColumnReader(path, pageReader, converter);
     case DOUBLE:
-      return new DOUBLEMemColumnReader(path, pageReader);
+      return new DOUBLEMemColumnReader(path, pageReader, converter);
     }
     throw new ParquetDecodingException("type "+path.getType()+" not supported");
+  }
+
+  private PrimitiveConverter getPrimitiveConverter(ColumnDescriptor path) {
+    Type currentType = schema;
+    Converter currentConverter = recordConverter;
+    for (String fieldName : path.getPath()) {
+      final GroupType groupType = currentType.asGroupType();
+      int fieldIndex = groupType.getFieldIndex(fieldName);
+      currentType = groupType.getType(fieldName);
+      currentConverter = currentConverter.asGroupConverter().getConverter(fieldIndex);
+    }
+    PrimitiveConverter converter = currentConverter.asPrimitiveConverter();
+    return converter;
   }
 
   private static final class INT32MemColumnReader extends ColumnReaderImpl {
     private int currentInt;
 
-    public INT32MemColumnReader(ColumnDescriptor path, PageReader pageReader) {
-      super(path, pageReader);
+    public INT32MemColumnReader(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter) {
+      super(path, pageReader, converter);
     }
 
     @Override
@@ -80,13 +104,18 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
       checkRead();
       return String.valueOf(currentInt);
     }
+
+    @Override
+    public void writeNextValueToConverter() {
+      converter.addInt(getInteger());
+    }
   }
 
   private static final class INT64MemColumnReader extends ColumnReaderImpl {
     private long currentLong;
 
-    public INT64MemColumnReader(ColumnDescriptor path, PageReader pageReader) {
-      super(path, pageReader);
+    public INT64MemColumnReader(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter) {
+      super(path, pageReader, converter);
     }
 
     @Override
@@ -105,13 +134,18 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
       checkRead();
       return String.valueOf(currentLong);
     }
+
+    @Override
+    public void writeNextValueToConverter() {
+      converter.addLong(getLong());
+    }
   }
 
   private static final class BINARYMemColumnReader extends ColumnReaderImpl {
     private Binary current;
 
-    public BINARYMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
-      super(path, pageReader);
+    public BINARYMemColumnReader(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter) {
+      super(path, pageReader, converter);
     }
 
     @Override
@@ -130,13 +164,18 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
       checkRead();
       return String.valueOf(current);
     }
+
+    @Override
+    public void writeNextValueToConverter() {
+      converter.addBinary(getBinary());
+    }
   }
 
   private static final class BOOLEANMemColumnReader extends ColumnReaderImpl {
     private boolean current;
 
-    public BOOLEANMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
-      super(path, pageReader);
+    public BOOLEANMemColumnReader(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter) {
+      super(path, pageReader, converter);
     }
 
     @Override
@@ -155,13 +194,18 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
       checkRead();
       return String.valueOf(current);
     }
+
+    @Override
+    public void writeNextValueToConverter() {
+      converter.addBoolean(getBoolean());
+    }
   }
 
   private static final class FLOATMemColumnReader extends ColumnReaderImpl {
     private float current;
 
-    public FLOATMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
-      super(path, pageReader);
+    public FLOATMemColumnReader(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter) {
+      super(path, pageReader, converter);
     }
 
     @Override
@@ -180,13 +224,18 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
       checkRead();
       return String.valueOf(current);
     }
+
+    @Override
+    public void writeNextValueToConverter() {
+      converter.addFloat(getFloat());
+    }
   }
 
   private static final class DOUBLEMemColumnReader extends ColumnReaderImpl {
     private double current;
 
-    public DOUBLEMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
-      super(path, pageReader);
+    public DOUBLEMemColumnReader(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter) {
+      super(path, pageReader, converter);
     }
 
     @Override
@@ -204,6 +253,11 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
     public String getCurrentValueToString() throws IOException {
       checkRead();
       return String.valueOf(current);
+    }
+
+    @Override
+    public void writeNextValueToConverter() {
+      converter.addDouble(getDouble());
     }
   }
 }

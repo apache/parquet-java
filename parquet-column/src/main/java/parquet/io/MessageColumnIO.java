@@ -54,7 +54,12 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   public <T> RecordReader<T> getRecordReader(PageReadStore columns, RecordMaterializer<T> recordMaterializer) {
-    return new RecordReaderImplementation<T>(this, recordMaterializer, validating, new ColumnReadStoreImpl(columns));
+    return new RecordReaderImplementation<T>(
+        this,
+        recordMaterializer,
+        validating,
+        new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType())
+        );
   }
 
   private class MessageColumnIORecordConsumer extends RecordConsumer {

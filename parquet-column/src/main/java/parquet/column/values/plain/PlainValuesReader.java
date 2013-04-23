@@ -72,15 +72,6 @@ public class PlainValuesReader extends ValuesReader {
     }
   }
 
-  @Override
-  public int readByte() {
-    try {
-      return in.read();
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not read byte", e);
-    }
-  }
-
   /**
    * {@inheritDoc}
    * @see parquet.column.values.ValuesReader#initFromPage(byte[], int)

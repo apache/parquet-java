@@ -73,42 +73,35 @@ public abstract class ValuesReader {
   }
 
   /**
-   * @return the next boolean from the page
-   */
-  public int readByte() {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * @return the next boolean from the page
-   */
-  public float readFloat() {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * @return the next boolean from the page
+   * @return the next Binary from the page
    */
   public Binary readBytes() {
     throw new UnsupportedOperationException();
   }
 
   /**
-   * @return the next boolean from the page
+   * @return the next float from the page
+   */
+  public float readFloat() {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * @return the next double from the page
    */
   public double readDouble() {
     throw new UnsupportedOperationException();
   }
 
   /**
-   * @return the next boolean from the page
+   * @return the next integer from the page
    */
   public int readInteger() {
     throw new UnsupportedOperationException();
   }
 
   /**
-   * @return the next boolean from the page
+   * @return the next long from the page
    */
   public long readLong() {
     throw new UnsupportedOperationException();

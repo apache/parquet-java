@@ -33,6 +33,7 @@ import parquet.column.values.ValuesReader;
 import parquet.column.values.ValuesType;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
+import parquet.io.api.PrimitiveConverter;
 
 /**
  * ColumnReader implementation
@@ -61,13 +62,16 @@ abstract class ColumnReaderImpl implements ColumnReader {
   private int readValuesInPage;
   private long pageValueCount;
 
+  final PrimitiveConverter converter;
+
 
   /**
    * creates a reader for triplets
    * @param path the descriptor for the corresponding column
    * @param pageReader the underlying store to read from
    */
-  public ColumnReaderImpl(ColumnDescriptor path, PageReader pageReader) {
+  public ColumnReaderImpl(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter) {
+    this.converter = converter;
     if (path == null) {
       throw new NullPointerException("path");
     }
@@ -79,7 +83,7 @@ abstract class ColumnReaderImpl implements ColumnReader {
     DictionaryPage dictionaryPage;
     while ((dictionaryPage = pageReader.readDictionaryPage()) != null) {
       try {
-        Dictionary dictionary = dictionaryPage.getEncoding().initDictionary(dictionaryPage);
+        Dictionary dictionary = dictionaryPage.getEncoding().initDictionary(path, dictionaryPage);
         dictionaries.put(dictionary.getEncoding(), dictionary);
       } catch (IOException e) {
         throw new ParquetDecodingException("could not decode the dictionary for " + path, e);
@@ -99,6 +103,8 @@ abstract class ColumnReaderImpl implements ColumnReader {
   public boolean isFullyConsumed() {
     return readValues >= totalValueCount;
   }
+
+  public abstract void writeNextValueToConverter();
 
   /**
    * {@inheritDoc}

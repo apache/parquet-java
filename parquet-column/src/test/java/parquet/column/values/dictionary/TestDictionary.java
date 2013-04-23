@@ -6,6 +6,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import parquet.bytes.BytesInput;
+import parquet.column.ColumnDescriptor;
 import parquet.column.Dictionary;
 import parquet.column.Encoding;
 import parquet.column.page.DictionaryPage;
@@ -13,6 +14,7 @@ import parquet.column.values.ValuesReader;
 import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader;
 import parquet.io.api.Binary;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 public class TestDictionary {
 
@@ -33,7 +35,8 @@ public class TestDictionary {
 
     final DictionaryPage dictionaryPage = cw.createDictionaryPage().copy();
     final DictionaryValuesReader cr = new DictionaryValuesReader();
-    final Dictionary dictionary = Encoding.PLAIN_DICTIONARY.initDictionary(dictionaryPage);
+    final ColumnDescriptor descriptor = new ColumnDescriptor(new String[] {"foo"}, PrimitiveTypeName.BINARY, 0, 0);
+    final Dictionary dictionary = Encoding.PLAIN_DICTIONARY.initDictionary(descriptor, dictionaryPage);
 //    System.out.println(dictionary);
     cr.setDictionary(dictionary);
 
@@ -75,7 +78,8 @@ public class TestDictionary {
     ValuesReader cr;
     if (dictionaryPage != null) {
       System.out.println("dict byte size: " + dictionaryPage.getBytes().size());
-      dictionary = Encoding.PLAIN_DICTIONARY.initDictionary(dictionaryPage);
+      final ColumnDescriptor descriptor = new ColumnDescriptor(new String[] {"foo"}, PrimitiveTypeName.BINARY, 0, 0);
+      dictionary = Encoding.PLAIN_DICTIONARY.initDictionary(descriptor, dictionaryPage);
 
       cr = new DictionaryValuesReader();
       cr.setDictionary(dictionary);

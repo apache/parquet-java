@@ -23,11 +23,12 @@ import parquet.column.values.ValuesType;
 import parquet.column.values.bitpacking.BitPackingValuesReader;
 import parquet.column.values.boundedint.BoundedIntValuesFactory;
 import parquet.column.values.dictionary.DictionaryValuesReader;
-import parquet.column.values.dictionary.PlainDictionary;
+import parquet.column.values.dictionary.PlainBinaryDictionary;
 import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.BooleanPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader;
 import parquet.io.ParquetDecodingException;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * encoding of the data
@@ -88,8 +89,11 @@ public enum Encoding {
     }
 
     @Override
-    public Dictionary initDictionary(DictionaryPage dictionaryPage) throws IOException {
-      return new PlainDictionary(dictionaryPage);
+    public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage) throws IOException {
+      if (descriptor.getType() != PrimitiveTypeName.BINARY) {
+        throw new UnsupportedOperationException("only Binary dictionaries are supported for now");
+      }
+      return new PlainBinaryDictionary(dictionaryPage);
     }
 
   };
@@ -114,7 +118,7 @@ public enum Encoding {
    * @param dictionaryPage
    * @return the corresponding dictionary
    */
-  public Dictionary initDictionary(DictionaryPage dictionaryPage) throws IOException {
+  public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage) throws IOException {
     throw new UnsupportedOperationException(this.name() + " does not support dictionary");
   }
 

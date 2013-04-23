@@ -7,11 +7,11 @@ import parquet.column.Dictionary;
 import parquet.column.page.DictionaryPage;
 import parquet.io.api.Binary;
 
-public class PlainDictionary extends Dictionary {
+public class PlainBinaryDictionary extends Dictionary {
 
   private final Binary[] dictionaryData;
 
-  public PlainDictionary(DictionaryPage dictionaryPage) throws IOException {
+  public PlainBinaryDictionary(DictionaryPage dictionaryPage) throws IOException {
     super(dictionaryPage.getEncoding());
     final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
     dictionaryData = new Binary[dictionaryPage.getDictionarySize()];
@@ -25,7 +25,7 @@ public class PlainDictionary extends Dictionary {
   }
 
   @Override
-  public Binary decode(int id) {
+  public Binary decodeToBinary(int id) {
     return dictionaryData[id];
   }
 
@@ -37,6 +37,11 @@ public class PlainDictionary extends Dictionary {
       sb.append(i).append(" => ").append(element.toStringUsingUTF8()).append("\n");
     }
     return sb.append("}").toString();
+  }
+
+  @Override
+  public int getMaxId() {
+    return dictionaryData.length - 1;
   }
 
 }

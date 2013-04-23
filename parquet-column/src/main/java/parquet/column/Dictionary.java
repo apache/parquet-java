@@ -20,6 +20,29 @@ abstract public class Dictionary {
     return encoding;
   }
 
-  abstract public Binary decode(int id);
+  abstract public int getMaxId();
 
+  public Binary decodeToBinary(int id) {
+    throw new UnsupportedOperationException(this.getClass().getName());
+  }
+
+  public int decodeToInt(int id) {
+    throw new UnsupportedOperationException(this.getClass().getName());
+  }
+
+  public long decodeToLong(int id) {
+    throw new UnsupportedOperationException(this.getClass().getName());
+  }
+
+  public float decodeToFloat(int id) {
+    throw new UnsupportedOperationException(this.getClass().getName());
+  }
+
+  public double decodeToDouble(int id) {
+    throw new UnsupportedOperationException(this.getClass().getName());
+  }
+
+  public double decodeToBoolean(int id) {
+    throw new UnsupportedOperationException(this.getClass().getName());
+  }
 }
