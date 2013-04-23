@@ -27,33 +27,36 @@ import java.io.IOException;
  *
  * It generate two classes:
  * - LemireBitPackingLE, the original scheme, filling the LSB first
- * - LemireBitPackingBE, the scheme modified to fill the MSB first
- * The order of values is modified to match our existing implementation.
+ * - LemireBitPackingBE, the scheme modified to fill the MSB first (and match our existing bit packing)
+ *
+ * The result of the generation is checked in. To regenerate the code run this class and check in the result.
+ *
+ * The generated classes pack the values into arrays of ints (as opposed to arrays of bytes) based on a given bit width.
+ *
  *
  * @author Julien Le Dem
  *
  */
 public class IntBasedBitPackingGenerator {
 
-  private static final String classNamePrefix = "LemireBitPacking";
+  private static final String CLASS_NAME_PREFIX = "LemireBitPacking";
 
   public static void main(String[] args) throws Exception {
-    generateScheme(classNamePrefix + "BE", true);
-    generateScheme(classNamePrefix + "LE", false);
+    generateScheme(CLASS_NAME_PREFIX + "BE", true);
+    generateScheme(CLASS_NAME_PREFIX + "LE", false);
   }
 
   private static void generateScheme(String className, boolean msbFirst) throws IOException {
     final File file = new File("src/main/java/parquet/column/values/bitpacking/" + className + ".java");
     FileWriter fw = new FileWriter(file);
-    fw.append("/**\n");
-    fw.append(" * This is code is released under the\n");
-    fw.append(" * Apache License Version 2.0 http://www.apache.org/licenses/.\n");
-    fw.append(" *\n");
-    fw.append(" * (c) Daniel Lemire, http://lemire.me/en/\n");
-    fw.append(" */\n");
     fw.append("package parquet.column.values.bitpacking;\n");
     fw.append("\n");
     fw.append("/**\n");
+    fw.append(" * Based on the original implementation at at https://github.com/lemire/JavaFastPFOR/blob/master/src/integercompression/BitPacking.java\n");
+    fw.append(" * Which is released under the\n");
+    fw.append(" * Apache License Version 2.0 http://www.apache.org/licenses/.\n");
+    fw.append(" * By Daniel Lemire, http://lemire.me/en/\n");
+    fw.append(" * \n");
     fw.append(" * Scheme designed by D. Lemire\n");
     if (msbFirst) {
       fw.append(" * Adapted to pack from the Most Significant Bit first\n");
@@ -93,11 +96,11 @@ public class IntBasedBitPackingGenerator {
     fw.append("  private static final class Packer" + bitWidth + " extends IntPacker {\n");
     fw.append("\n");
     fw.append("    private Packer" + bitWidth + "() {\n");
-    fw.append("      super("+bitWidth+");\n");
+    fw.append("      super(" + bitWidth + ");\n");
     fw.append("    }\n");
     fw.append("\n");
     // Packing
-    fw.append("    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){\n");
+    fw.append("    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {\n");
     for (int i = 0; i < bitWidth; ++i) {
       fw.append("      out[" + align(i, 2) + " + outPos] =\n");
       int startIndex = (i * 32) / bitWidth;
@@ -116,7 +119,7 @@ public class IntBasedBitPackingGenerator {
     fw.append("    }\n");
 
     // Unpacking
-    fw.append("    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){\n");
+    fw.append("    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {\n");
     if (bitWidth > 0) {
       for (int i = 0; i < 32; ++i) {
         fw.append("      out[" + align(i, 2) + " + outPos] =");

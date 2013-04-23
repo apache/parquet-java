@@ -13,15 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * This is code is released under the
- * Apache License Version 2.0 http://www.apache.org/licenses/.
- *
- * (c) Daniel Lemire, http://lemire.me/en/
- */
 package parquet.column.values.bitpacking;
 
 /**
+ * Based on the original implementation at at https://github.com/lemire/JavaFastPFOR/blob/master/src/integercompression/BitPacking.java
+ * Which is released under the
+ * Apache License Version 2.0 http://www.apache.org/licenses/.
+ * By Daniel Lemire, http://lemire.me/en/
+ * 
  * Scheme designed by D. Lemire
  * 
  * @author automatically generated
@@ -76,9 +75,9 @@ abstract class LemireBitPackingLE {
       super(0);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
     }
   }
 
@@ -88,7 +87,7 @@ abstract class LemireBitPackingLE {
       super(1);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 1) <<   0)
         | ((in[ 1 + inPos] & 1) <<   1)
@@ -123,7 +122,7 @@ abstract class LemireBitPackingLE {
         | ((in[30 + inPos] & 1) <<  30)
         | ((in[31 + inPos] & 1) <<  31);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 1);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>>  1) & 1);
       out[ 2 + outPos] = ((in[ 0 + inPos] >>>  2) & 1);
@@ -165,7 +164,7 @@ abstract class LemireBitPackingLE {
       super(2);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 3) <<   0)
         | ((in[ 1 + inPos] & 3) <<   2)
@@ -201,7 +200,7 @@ abstract class LemireBitPackingLE {
         | ((in[30 + inPos] & 3) <<  28)
         | ((in[31 + inPos] & 3) <<  30);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 3);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>>  2) & 3);
       out[ 2 + outPos] = ((in[ 0 + inPos] >>>  4) & 3);
@@ -243,7 +242,7 @@ abstract class LemireBitPackingLE {
       super(3);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 7) <<   0)
         | ((in[ 1 + inPos] & 7) <<   3)
@@ -282,7 +281,7 @@ abstract class LemireBitPackingLE {
         | ((in[30 + inPos] & 7) <<  26)
         | ((in[31 + inPos] & 7) <<  29);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 7);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>>  3) & 7);
       out[ 2 + outPos] = ((in[ 0 + inPos] >>>  6) & 7);
@@ -324,7 +323,7 @@ abstract class LemireBitPackingLE {
       super(4);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 15) <<   0)
         | ((in[ 1 + inPos] & 15) <<   4)
@@ -362,7 +361,7 @@ abstract class LemireBitPackingLE {
         | ((in[30 + inPos] & 15) <<  24)
         | ((in[31 + inPos] & 15) <<  28);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 15);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>>  4) & 15);
       out[ 2 + outPos] = ((in[ 0 + inPos] >>>  8) & 15);
@@ -404,7 +403,7 @@ abstract class LemireBitPackingLE {
       super(5);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 31) <<   0)
         | ((in[ 1 + inPos] & 31) <<   5)
@@ -447,7 +446,7 @@ abstract class LemireBitPackingLE {
         | ((in[30 + inPos] & 31) <<  22)
         | ((in[31 + inPos] & 31) <<  27);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 31);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>>  5) & 31);
       out[ 2 + outPos] = ((in[ 0 + inPos] >>> 10) & 31);
@@ -489,7 +488,7 @@ abstract class LemireBitPackingLE {
       super(6);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 63) <<   0)
         | ((in[ 1 + inPos] & 63) <<   6)
@@ -533,7 +532,7 @@ abstract class LemireBitPackingLE {
         | ((in[30 + inPos] & 63) <<  20)
         | ((in[31 + inPos] & 63) <<  26);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 63);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>>  6) & 63);
       out[ 2 + outPos] = ((in[ 0 + inPos] >>> 12) & 63);
@@ -575,7 +574,7 @@ abstract class LemireBitPackingLE {
       super(7);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 127) <<   0)
         | ((in[ 1 + inPos] & 127) <<   7)
@@ -622,7 +621,7 @@ abstract class LemireBitPackingLE {
         | ((in[30 + inPos] & 127) <<  18)
         | ((in[31 + inPos] & 127) <<  25);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 127);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>>  7) & 127);
       out[ 2 + outPos] = ((in[ 0 + inPos] >>> 14) & 127);
@@ -664,7 +663,7 @@ abstract class LemireBitPackingLE {
       super(8);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 255) <<   0)
         | ((in[ 1 + inPos] & 255) <<   8)
@@ -706,7 +705,7 @@ abstract class LemireBitPackingLE {
         | ((in[30 + inPos] & 255) <<  16)
         | ((in[31 + inPos] & 255) <<  24);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 255);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>>  8) & 255);
       out[ 2 + outPos] = ((in[ 0 + inPos] >>> 16) & 255);
@@ -748,7 +747,7 @@ abstract class LemireBitPackingLE {
       super(9);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 511) <<   0)
         | ((in[ 1 + inPos] & 511) <<   9)
@@ -799,7 +798,7 @@ abstract class LemireBitPackingLE {
         | ((in[30 + inPos] & 511) <<  14)
         | ((in[31 + inPos] & 511) <<  23);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 511);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>>  9) & 511);
       out[ 2 + outPos] = ((in[ 0 + inPos] >>> 18) & 511);
@@ -841,7 +840,7 @@ abstract class LemireBitPackingLE {
       super(10);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 1023) <<   0)
         | ((in[ 1 + inPos] & 1023) <<  10)
@@ -893,7 +892,7 @@ abstract class LemireBitPackingLE {
         | ((in[30 + inPos] & 1023) <<  12)
         | ((in[31 + inPos] & 1023) <<  22);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 1023);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 10) & 1023);
       out[ 2 + outPos] = ((in[ 0 + inPos] >>> 20) & 1023);
@@ -935,7 +934,7 @@ abstract class LemireBitPackingLE {
       super(11);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 2047) <<   0)
         | ((in[ 1 + inPos] & 2047) <<  11)
@@ -990,7 +989,7 @@ abstract class LemireBitPackingLE {
         | ((in[30 + inPos] & 2047) <<  10)
         | ((in[31 + inPos] & 2047) <<  21);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 2047);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 11) & 2047);
       out[ 2 + outPos] = ((in[ 0 + inPos] >>> 22) & 2047) | ((in[ 1 + inPos] & 1) << 10);
@@ -1032,7 +1031,7 @@ abstract class LemireBitPackingLE {
       super(12);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 4095) <<   0)
         | ((in[ 1 + inPos] & 4095) <<  12)
@@ -1086,7 +1085,7 @@ abstract class LemireBitPackingLE {
         | ((in[30 + inPos] & 4095) <<   8)
         | ((in[31 + inPos] & 4095) <<  20);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 4095);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 12) & 4095);
       out[ 2 + outPos] = ((in[ 0 + inPos] >>> 24) & 4095) | ((in[ 1 + inPos] & 15) <<  8);
@@ -1128,7 +1127,7 @@ abstract class LemireBitPackingLE {
       super(13);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 8191) <<   0)
         | ((in[ 1 + inPos] & 8191) <<  13)
@@ -1187,7 +1186,7 @@ abstract class LemireBitPackingLE {
         | ((in[30 + inPos] & 8191) <<   6)
         | ((in[31 + inPos] & 8191) <<  19);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 8191);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 13) & 8191);
       out[ 2 + outPos] = ((in[ 0 + inPos] >>> 26) & 8191) | ((in[ 1 + inPos] & 127) <<  6);
@@ -1229,7 +1228,7 @@ abstract class LemireBitPackingLE {
       super(14);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 16383) <<   0)
         | ((in[ 1 + inPos] & 16383) <<  14)
@@ -1289,7 +1288,7 @@ abstract class LemireBitPackingLE {
         | ((in[30 + inPos] & 16383) <<   4)
         | ((in[31 + inPos] & 16383) <<  18);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 16383);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 14) & 16383);
       out[ 2 + outPos] = ((in[ 0 + inPos] >>> 28) & 16383) | ((in[ 1 + inPos] & 1023) <<  4);
@@ -1331,7 +1330,7 @@ abstract class LemireBitPackingLE {
       super(15);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 32767) <<   0)
         | ((in[ 1 + inPos] & 32767) <<  15)
@@ -1394,7 +1393,7 @@ abstract class LemireBitPackingLE {
         | ((in[30 + inPos] & 32767) <<   2)
         | ((in[31 + inPos] & 32767) <<  17);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 32767);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 15) & 32767);
       out[ 2 + outPos] = ((in[ 0 + inPos] >>> 30) & 32767) | ((in[ 1 + inPos] & 8191) <<  2);
@@ -1436,7 +1435,7 @@ abstract class LemireBitPackingLE {
       super(16);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 65535) <<   0)
         | ((in[ 1 + inPos] & 65535) <<  16);
@@ -1486,7 +1485,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 65535) <<   0)
         | ((in[31 + inPos] & 65535) <<  16);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 65535);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 16) & 65535);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>>  0) & 65535);
@@ -1528,7 +1527,7 @@ abstract class LemireBitPackingLE {
       super(17);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 131071) <<   0)
         | ((in[ 1 + inPos] & 131071) <<  17);
@@ -1595,7 +1594,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 131071) >>>  2)
         | ((in[31 + inPos] & 131071) <<  15);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 131071);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 17) & 131071) | ((in[ 1 + inPos] & 3) << 15);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>>  2) & 131071);
@@ -1637,7 +1636,7 @@ abstract class LemireBitPackingLE {
       super(18);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 262143) <<   0)
         | ((in[ 1 + inPos] & 262143) <<  18);
@@ -1705,7 +1704,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 262143) >>>  4)
         | ((in[31 + inPos] & 262143) <<  14);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 262143);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 18) & 262143) | ((in[ 1 + inPos] & 15) << 14);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>>  4) & 262143);
@@ -1747,7 +1746,7 @@ abstract class LemireBitPackingLE {
       super(19);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 524287) <<   0)
         | ((in[ 1 + inPos] & 524287) <<  19);
@@ -1818,7 +1817,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 524287) >>>  6)
         | ((in[31 + inPos] & 524287) <<  13);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 524287);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 19) & 524287) | ((in[ 1 + inPos] & 63) << 13);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>>  6) & 524287);
@@ -1860,7 +1859,7 @@ abstract class LemireBitPackingLE {
       super(20);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 1048575) <<   0)
         | ((in[ 1 + inPos] & 1048575) <<  20);
@@ -1930,7 +1929,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 1048575) >>>  8)
         | ((in[31 + inPos] & 1048575) <<  12);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 1048575);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 20) & 1048575) | ((in[ 1 + inPos] & 255) << 12);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>>  8) & 1048575);
@@ -1972,7 +1971,7 @@ abstract class LemireBitPackingLE {
       super(21);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 2097151) <<   0)
         | ((in[ 1 + inPos] & 2097151) <<  21);
@@ -2047,7 +2046,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 2097151) >>> 10)
         | ((in[31 + inPos] & 2097151) <<  11);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 2097151);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 21) & 2097151) | ((in[ 1 + inPos] & 1023) << 11);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>> 10) & 2097151);
@@ -2089,7 +2088,7 @@ abstract class LemireBitPackingLE {
       super(22);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 4194303) <<   0)
         | ((in[ 1 + inPos] & 4194303) <<  22);
@@ -2165,7 +2164,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 4194303) >>> 12)
         | ((in[31 + inPos] & 4194303) <<  10);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 4194303);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 22) & 4194303) | ((in[ 1 + inPos] & 4095) << 10);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>> 12) & 4194303) | ((in[ 2 + inPos] & 3) << 20);
@@ -2207,7 +2206,7 @@ abstract class LemireBitPackingLE {
       super(23);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 8388607) <<   0)
         | ((in[ 1 + inPos] & 8388607) <<  23);
@@ -2286,7 +2285,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 8388607) >>> 14)
         | ((in[31 + inPos] & 8388607) <<   9);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 8388607);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 23) & 8388607) | ((in[ 1 + inPos] & 16383) <<  9);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>> 14) & 8388607) | ((in[ 2 + inPos] & 31) << 18);
@@ -2328,7 +2327,7 @@ abstract class LemireBitPackingLE {
       super(24);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 16777215) <<   0)
         | ((in[ 1 + inPos] & 16777215) <<  24);
@@ -2402,7 +2401,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 16777215) >>> 16)
         | ((in[31 + inPos] & 16777215) <<   8);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 16777215);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 24) & 16777215) | ((in[ 1 + inPos] & 65535) <<  8);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>> 16) & 16777215) | ((in[ 2 + inPos] & 255) << 16);
@@ -2444,7 +2443,7 @@ abstract class LemireBitPackingLE {
       super(25);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 33554431) <<   0)
         | ((in[ 1 + inPos] & 33554431) <<  25);
@@ -2527,7 +2526,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 33554431) >>> 18)
         | ((in[31 + inPos] & 33554431) <<   7);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 33554431);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 25) & 33554431) | ((in[ 1 + inPos] & 262143) <<  7);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>> 18) & 33554431) | ((in[ 2 + inPos] & 2047) << 14);
@@ -2569,7 +2568,7 @@ abstract class LemireBitPackingLE {
       super(26);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 67108863) <<   0)
         | ((in[ 1 + inPos] & 67108863) <<  26);
@@ -2653,7 +2652,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 67108863) >>> 20)
         | ((in[31 + inPos] & 67108863) <<   6);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 67108863);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 26) & 67108863) | ((in[ 1 + inPos] & 1048575) <<  6);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>> 20) & 67108863) | ((in[ 2 + inPos] & 16383) << 12);
@@ -2695,7 +2694,7 @@ abstract class LemireBitPackingLE {
       super(27);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 134217727) <<   0)
         | ((in[ 1 + inPos] & 134217727) <<  27);
@@ -2782,7 +2781,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 134217727) >>> 22)
         | ((in[31 + inPos] & 134217727) <<   5);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 134217727);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 27) & 134217727) | ((in[ 1 + inPos] & 4194303) <<  5);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>> 22) & 134217727) | ((in[ 2 + inPos] & 131071) << 10);
@@ -2824,7 +2823,7 @@ abstract class LemireBitPackingLE {
       super(28);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 268435455) <<   0)
         | ((in[ 1 + inPos] & 268435455) <<  28);
@@ -2910,7 +2909,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 268435455) >>> 24)
         | ((in[31 + inPos] & 268435455) <<   4);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 268435455);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 28) & 268435455) | ((in[ 1 + inPos] & 16777215) <<  4);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>> 24) & 268435455) | ((in[ 2 + inPos] & 1048575) <<  8);
@@ -2952,7 +2951,7 @@ abstract class LemireBitPackingLE {
       super(29);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 536870911) <<   0)
         | ((in[ 1 + inPos] & 536870911) <<  29);
@@ -3043,7 +3042,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 536870911) >>> 26)
         | ((in[31 + inPos] & 536870911) <<   3);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 536870911);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 29) & 536870911) | ((in[ 1 + inPos] & 67108863) <<  3);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>> 26) & 536870911) | ((in[ 2 + inPos] & 8388607) <<  6);
@@ -3085,7 +3084,7 @@ abstract class LemireBitPackingLE {
       super(30);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 1073741823) <<   0)
         | ((in[ 1 + inPos] & 1073741823) <<  30);
@@ -3177,7 +3176,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 1073741823) >>> 28)
         | ((in[31 + inPos] & 1073741823) <<   2);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 1073741823);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 30) & 1073741823) | ((in[ 1 + inPos] & 268435455) <<  2);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>> 28) & 1073741823) | ((in[ 2 + inPos] & 67108863) <<  4);
@@ -3219,7 +3218,7 @@ abstract class LemireBitPackingLE {
       super(31);
     }
 
-    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           ((in[ 0 + inPos] & 2147483647) <<   0)
         | ((in[ 1 + inPos] & 2147483647) <<  31);
@@ -3314,7 +3313,7 @@ abstract class LemireBitPackingLE {
           ((in[30 + inPos] & 2147483647) >>> 30)
         | ((in[31 + inPos] & 2147483647) <<   1);
     }
-    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final int[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] = ((in[ 0 + inPos] >>>  0) & 2147483647);
       out[ 1 + outPos] = ((in[ 0 + inPos] >>> 31) & 2147483647) | ((in[ 1 + inPos] & 1073741823) <<  1);
       out[ 2 + outPos] = ((in[ 1 + inPos] >>> 30) & 2147483647) | ((in[ 2 + inPos] & 536870911) <<  2);
