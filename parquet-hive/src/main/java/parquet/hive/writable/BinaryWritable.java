@@ -18,7 +18,9 @@ package parquet.hive.writable;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.Arrays;
 
+import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.Writable;
 
 import parquet.io.api.Binary;
@@ -47,16 +49,20 @@ public class BinaryWritable implements Writable {
   public void readFields(final DataInput input) throws IOException {
     final int size = input.readInt();
 
-    // Define a new byte of array of the exact size of the payload
-    final byte[] bytes = new byte[size];
-    input.readFully(bytes);
+    if (size > 0) {
+      // Define a new byte of array of the exact size of the payload
+      final byte[] bytes = new byte[size];
+      input.readFully(bytes, 0, size);
+    }
   }
 
   @Override
   public void write(final DataOutput output) throws IOException {
     if (bytes != null) {
       output.writeInt(bytes.length);
-      output.write(bytes);
+      output.write(bytes, 0, bytes.length);
+    } else {
+      output.writeInt(0);
     }
   }
 
@@ -67,4 +73,32 @@ public class BinaryWritable implements Writable {
   public void setBytes(final byte[] bytes) {
     this.bytes = bytes;
   }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (obj == null) {
+      return false;
+    }
+
+    if (this == obj) {
+      return true;
+    }
+
+    if (obj instanceof BinaryWritable) {
+      final BinaryWritable bWrit = (BinaryWritable) obj;
+      final byte[] otherBytes = bWrit.getBytes();
+      final int thisLen = bytes == null ? 0 : bytes.length;
+      final int otherLen = otherBytes == null ? 0 : otherBytes.length;
+      return BytesWritable.Comparator.compareBytes(bytes, 0, thisLen,
+          otherBytes, 0, otherLen) == 0;
+    }
+
+    return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return (bytes == null) ? 31 : Arrays.hashCode(bytes);
+  }
+
 }
