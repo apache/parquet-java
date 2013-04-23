@@ -78,9 +78,12 @@ public class ParquetHiveSerDe implements SerDe {
   public static Text MAP_VALUE = new Text("value");
   public static Text MAP = new Text("map");
   public static Text ARRAY = new Text("bag");
-
+  private SerDeStats stats;
   ObjectInspector objInspector;
-
+  boolean lastOperationSerialize;
+  boolean lastOperationDeserialize;
+  private long serializedSize;
+  private long deserializedSize;
   static final Log LOG = LogFactory.getLog(ParquetHiveSerDe.class);
 
   @Override
@@ -110,13 +113,23 @@ public class ParquetHiveSerDe implements SerDe {
 
     // Create row related objects
     rowTypeInfo = TypeInfoFactory.getStructTypeInfo(columnNames, columnTypes);
-
     this.objInspector = new MapWritableObjectInspector((StructTypeInfo) rowTypeInfo);
+
+    // Stats part
+    stats = new SerDeStats();
+    serializedSize = 0;
+    deserializedSize = 0;
+    lastOperationSerialize = false;
+    lastOperationDeserialize = false;
   }
 
   @Override
   public Object deserialize(final Writable blob) throws SerDeException {
+    lastOperationSerialize = false;
+    lastOperationDeserialize = true;
+    deserializedSize = 0;
     if (blob instanceof MapWritable) {
+      deserializedSize = ((MapWritable) blob).size();
       return blob;
     } else {
       return null;
@@ -139,7 +152,13 @@ public class ParquetHiveSerDe implements SerDe {
       throw new SerDeException("Can only serialize a struct");
     }
 
-    return createStruct(obj, (StructObjectInspector) objInspector, columnNames);
+    final MapWritable serializeData = createStruct(obj, (StructObjectInspector) objInspector, columnNames);
+
+    serializedSize = serializeData.size();
+    lastOperationSerialize = true;
+    lastOperationDeserialize = false;
+
+    return serializeData;
   }
 
 
@@ -271,6 +290,14 @@ public class ParquetHiveSerDe implements SerDe {
 
   @Override
   public SerDeStats getSerDeStats() {
-    return null;
+    // must be different
+    assert (lastOperationSerialize != lastOperationDeserialize);
+
+    if (lastOperationSerialize) {
+      stats.setRawDataSize(serializedSize);
+    } else {
+      stats.setRawDataSize(deserializedSize);
+    }
+    return stats;
   }
 }
