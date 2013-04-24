@@ -63,22 +63,21 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   public static final String READ_SUPPORT_CLASS = "parquet.read.support.class";
 
-  public static <C extends ReadSupport<?>> void setReadSupportClass(Job job,  Class<C> readSupportClass) {
+  public static void setReadSupportClass(Job job,  Class<?> readSupportClass) {
     job.getConfiguration().set(READ_SUPPORT_CLASS, readSupportClass.getName());
   }
 
-  public static <C extends ReadSupport<?>> void setReadSupportClass(JobConf conf, Class<C> readSupportClass) {
+  public static void setReadSupportClass(JobConf conf, Class<?> readSupportClass) {
     conf.set(READ_SUPPORT_CLASS, readSupportClass.getName());
   }
 
-  public static <C extends ReadSupport<?>> Class<C> getReadSupportClass(Configuration configuration) {
+  public static Class<?> getReadSupportClass(Configuration configuration) {
     final String className = configuration.get(READ_SUPPORT_CLASS);
     if (className == null) {
       return null;
     }
     try {
-      @SuppressWarnings("unchecked")
-      final Class<C> readSupportClass = (Class<C>) Class.forName(className);
+      final Class<?> readSupportClass = Class.forName(className);
       if (!ReadSupport.class.isAssignableFrom(readSupportClass)) {
         throw new BadConfigurationException("class " + className + " set in job conf at " + READ_SUPPORT_CLASS + " is not a subclass of ReadSupport");
       }
