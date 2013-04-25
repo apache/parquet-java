@@ -63,9 +63,11 @@
   </properties>
 
   <modules>
+    <module>parquet-cascading</module>
     <module>parquet-column</module>
     <module>parquet-hadoop</module>
     <module>parquet-pig</module>
+    <module>parquet-scrooge</module>
     <module>parquet-thrift</module>
   </modules>
 

@@ -46,8 +46,13 @@ import parquet.example.data.simple.convert.GroupRecordConverter;
 import parquet.io.api.Binary;
 import parquet.io.api.RecordConsumer;
 import parquet.io.api.RecordMaterializer;
+import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
+import parquet.schema.PrimitiveType;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.schema.Type;
+import parquet.schema.Type.Repetition;
 
 
 public class TestColumnIO {
@@ -155,8 +160,8 @@ public class TestColumnIO {
       validateFSA(expectedFSA, columnIO, recordReader);
 
       List<Group> records = new ArrayList<Group>();
-      read(recordReader, schema, records);
-      read(recordReader, schema, records);
+      records.add(recordReader.read());
+      records.add(recordReader.read());
 
       int i = 0;
       for (Group record : records) {
@@ -176,8 +181,8 @@ public class TestColumnIO {
 
       validateFSA(expectedFSA2, columnIO2, recordReader);
 
-      read(recordReader, schema2, records);
-      read(recordReader, schema2, records);
+      records.add(recordReader.read());
+      records.add(recordReader.read());
 
       int i = 0;
       for (Group record : records) {
@@ -191,30 +196,116 @@ public class TestColumnIO {
 
   @Test
   public void testOneOfEach() {
-
-    MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800);
-
     MessageType oneOfEachSchema = MessageTypeParser.parseMessageType(oneOfEach);
-
     GroupFactory gf = new SimpleGroupFactory(oneOfEachSchema);
     Group g1 = gf.newGroup().append("a", 1l).append("b", 2).append("c", 3.0f).append("d", 4.0d).append("e", true).append("f", Binary.fromString("6"));
 
+    testSchema(oneOfEachSchema, Arrays.asList(g1));
+  }
+
+  @Test
+  public void testRequiredOfRequired() {
+
+
+    MessageType reqreqSchema = MessageTypeParser.parseMessageType(
+          "message Document {\n"
+        + "  required group foo {\n"
+        + "    required int64 bar;\n"
+        + "  }\n"
+        + "}\n");
+
+    GroupFactory gf = new SimpleGroupFactory(reqreqSchema);
+    Group g1 = gf.newGroup();
+    g1.addGroup("foo").append("bar", 2l);
+
+    testSchema(reqreqSchema, Arrays.asList(g1));
+  }
+
+  @Test
+  public void testOptionalRequiredInteraction() {
+    for (int i = 0; i < 6; i++) {
+      Type current = new PrimitiveType(Repetition.REQUIRED, PrimitiveTypeName.BINARY, "primitive");
+      for (int j = 0; j < i; j++) {
+        current = new GroupType(Repetition.REQUIRED, "req" + j, current);
+      }
+      MessageType groupSchema = new MessageType("schema"+i, current);
+      GroupFactory gf = new SimpleGroupFactory(groupSchema);
+      List<Group> groups = new ArrayList<Group>();
+      Group root = gf.newGroup();
+      Group currentGroup = root;
+      for (int j = 0; j < i; j++) {
+        currentGroup = currentGroup.addGroup(0);
+      }
+      currentGroup.add(0, Binary.fromString("foo"));
+      groups.add(root);
+      testSchema(groupSchema, groups);
+    }
+    for (int i = 0; i < 6; i++) {
+      Type current = new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "primitive");
+      for (int j = 0; j < i; j++) {
+        current = new GroupType(Repetition.REQUIRED, "req" + j, current);
+      }
+      MessageType groupSchema = new MessageType("schema"+(i+6), current);
+      GroupFactory gf = new SimpleGroupFactory(groupSchema);
+      List<Group> groups = new ArrayList<Group>();
+      Group rootDefined = gf.newGroup();
+      Group rootUndefined = gf.newGroup();
+      Group currentDefinedGroup = rootDefined;
+      Group currentUndefinedGroup = rootUndefined;
+      for (int j = 0; j < i; j++) {
+        currentDefinedGroup = currentDefinedGroup.addGroup(0);
+        currentUndefinedGroup = currentUndefinedGroup.addGroup(0);
+      }
+      currentDefinedGroup.add(0, Binary.fromString("foo"));
+      groups.add(rootDefined);
+      groups.add(rootUndefined);
+      testSchema(groupSchema, groups);
+    }
+    for (int i = 0; i < 6; i++) {
+      Type current = new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "primitive");
+      for (int j = 0; j < 6; j++) {
+        current = new GroupType(i==j ? Repetition.OPTIONAL : Repetition.REQUIRED, "req" + j, current);
+      }
+      MessageType groupSchema = new MessageType("schema"+(i+12), current);
+      GroupFactory gf = new SimpleGroupFactory(groupSchema);
+      List<Group> groups = new ArrayList<Group>();
+      Group rootDefined = gf.newGroup();
+      Group rootUndefined = gf.newGroup();
+      Group currentDefinedGroup = rootDefined;
+      Group currentUndefinedGroup = rootUndefined;
+      for (int j = 0; j < 6; j++) {
+        currentDefinedGroup = currentDefinedGroup.addGroup(0);
+        if (i < j) {
+          currentUndefinedGroup = currentUndefinedGroup.addGroup(0);
+        }
+      }
+      currentDefinedGroup.add(0, Binary.fromString("foo"));
+      groups.add(rootDefined);
+      groups.add(rootUndefined);
+      testSchema(groupSchema, groups);
+    }
+  }
+
+  private void testSchema(MessageType messageSchema, List<Group> groups) {
+    MemPageStore memPageStore = new MemPageStore();
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800);
+
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
 
-    MessageColumnIO columnIO = columnIOFactory.getColumnIO(oneOfEachSchema);
+    MessageColumnIO columnIO = columnIOFactory.getColumnIO(messageSchema);
     log(columnIO);
-    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), oneOfEachSchema);
-    groupWriter.write(g1);
+    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), messageSchema);
+    for (Group group : groups) {
+      groupWriter.write(group);
+    }
     columns.flush();
 
-    RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, oneOfEachSchema, memPageStore);
+    RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, messageSchema, memPageStore);
 
-    List<Group> records = new ArrayList<Group>();
-    read(recordReader, oneOfEachSchema, records);
-
-    assertEquals("deserialization does not display the same result", g1.toString(), records.get(0).toString());
-
+    for (Group group : groups) {
+      final Group got = recordReader.read();
+      assertEquals("deserialization does not display the same result", group.toString(), got.toString());
+    }
   }
 
   private RecordReaderImplementation<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, PageReadStore pageReadStore) {
@@ -258,10 +349,6 @@ public class TestColumnIO {
     RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectations, schema));
     recordReader.read();
 
-  }
-
-  public void read(RecordReader<Group> recordReader, MessageType schema, List<Group> records) {
-    records.add(recordReader.read());
   }
 
   @Test
