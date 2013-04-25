@@ -23,12 +23,14 @@ import parquet.bytes.BytesUtils;
 import parquet.column.values.ValuesReader;
 
 public class ByteBitPackingValuesReader extends ValuesReader {
+  private static final int VALUES_AT_A_TIME = 8; // because we're using unpack8Values()
+
   private static final Log LOG = Log.getLog(ByteBitPackingValuesReader.class);
 
   private final int bitWidth;
   private final BytePacker packer;
-  private final int[] decoded = new int[8];
-  private int decodedPosition = 7;
+  private final int[] decoded = new int[VALUES_AT_A_TIME];
+  private int decodedPosition = VALUES_AT_A_TIME - 1;
   private byte[] encoded;
   private int encodedPos;
 
@@ -42,7 +44,6 @@ public class ByteBitPackingValuesReader extends ValuesReader {
     ++ decodedPosition;
     if (decodedPosition == decoded.length) {
       if (encodedPos + bitWidth > encoded.length) {
-        System.out.println(encodedPos + " + " + bitWidth + " > " + encoded.length);
         packer.unpack8Values(Arrays.copyOfRange(encoded, encodedPos, encodedPos + bitWidth), 0, decoded, 0);
       } else {
         packer.unpack8Values(encoded, encodedPos, decoded, 0);
@@ -62,7 +63,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
     if (Log.DEBUG) LOG.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitWidth + " bits." );
     this.encoded = page;
     this.encodedPos = offset;
-    this.decodedPosition = 7;
+    this.decodedPosition = VALUES_AT_A_TIME - 1;
     return offset + length;
   }
 
