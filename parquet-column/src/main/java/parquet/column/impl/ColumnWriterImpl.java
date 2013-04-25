@@ -24,7 +24,7 @@ import parquet.column.ColumnWriter;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
 import parquet.column.values.ValuesWriter;
-import parquet.column.values.bitpacking.BitPackingValuesWriter;
+import parquet.column.values.bitpacking.ByteBitPackingValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
@@ -48,8 +48,8 @@ final class ColumnWriterImpl implements ColumnWriter {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
-    repetitionLevelColumn = new BitPackingValuesWriter(path.getMaxRepetitionLevel());
-    definitionLevelColumn = new BitPackingValuesWriter(path.getMaxDefinitionLevel());
+    repetitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxRepetitionLevel());
+    definitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxDefinitionLevel());
     switch (path.getType()) {
     case BOOLEAN:
       this.dataColumn = new BooleanPlainValuesWriter(pageSizeThreshold * 11 / 10);

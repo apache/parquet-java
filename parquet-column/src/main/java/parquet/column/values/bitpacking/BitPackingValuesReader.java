@@ -40,7 +40,6 @@ public class BitPackingValuesReader extends ValuesReader {
   private final int bitsPerValue;
 
   /**
-   *
    * @param bound the maximum value stored by this column
    */
   public BitPackingValuesReader(int bound) {
@@ -48,7 +47,6 @@ public class BitPackingValuesReader extends ValuesReader {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.values.ValuesReader#readInteger()
    */
@@ -62,7 +60,6 @@ public class BitPackingValuesReader extends ValuesReader {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.values.ValuesReader#initFromPage(long, byte[], int)
    */
@@ -70,8 +67,7 @@ public class BitPackingValuesReader extends ValuesReader {
   public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
     // TODO: int vs long
     int effectiveBitLength = (int)valueCount * bitsPerValue;
-    // TODO: maybe ((effectiveBitLength - 1) / 8 + 1) here? has fewer conditionals and divides
-    int length = effectiveBitLength / 8 + (effectiveBitLength % 8 == 0 ? 0 : 1); // ceil
+    int length = (effectiveBitLength + 7) / 8; // ceil
     if (Log.DEBUG) LOG.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitsPerValue + " bits." );
     this.in = new ByteArrayInputStream(in, offset, length);
     this.bitPackingReader = createBitPackingReader(bitsPerValue, this.in, valueCount);

@@ -28,6 +28,7 @@ import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.JobContext;
@@ -62,17 +63,22 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   public static final String READ_SUPPORT_CLASS = "parquet.read.support.class";
 
-  public static void setReadSupportClass(Job job,  Class<?> readSupportClass) {
+  public static <C extends ReadSupport<?>> void setReadSupportClass(Job job,  Class<C> readSupportClass) {
     job.getConfiguration().set(READ_SUPPORT_CLASS, readSupportClass.getName());
   }
 
-  public static Class<?> getReadSupportClass(Configuration configuration) {
+  public static <C extends ReadSupport<?>> void setReadSupportClass(JobConf conf, Class<C> readSupportClass) {
+    conf.set(READ_SUPPORT_CLASS, readSupportClass.getName());
+  }
+
+  public static <C extends ReadSupport<?>> Class<C> getReadSupportClass(Configuration configuration) {
     final String className = configuration.get(READ_SUPPORT_CLASS);
     if (className == null) {
       return null;
     }
     try {
-      final Class<?> readSupportClass = Class.forName(className);
+      @SuppressWarnings("unchecked")
+      final Class<C> readSupportClass = (Class<C>) Class.forName(className);
       if (!ReadSupport.class.isAssignableFrom(readSupportClass)) {
         throw new BadConfigurationException("class " + className + " set in job conf at " + READ_SUPPORT_CLASS + " is not a subclass of ReadSupport");
       }
@@ -87,7 +93,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   private List<Footer> footers;
 
   /**
-   * Hadoop will instanciate using this constructor
+   * Hadoop will instantiate using this constructor
    */
   public ParquetInputFormat() {
   }

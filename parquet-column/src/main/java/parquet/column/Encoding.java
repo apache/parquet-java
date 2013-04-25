@@ -20,7 +20,7 @@ import java.io.IOException;
 import parquet.column.page.DictionaryPage;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.ValuesType;
-import parquet.column.values.bitpacking.BitPackingValuesReader;
+import parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 import parquet.column.values.boundedint.BoundedIntValuesFactory;
 import parquet.column.values.dictionary.DictionaryValuesReader;
 import parquet.column.values.dictionary.PlainBinaryDictionary;
@@ -66,7 +66,7 @@ public enum Encoding {
   BIT_PACKED {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      return new BitPackingValuesReader(getMaxLevel(descriptor, valuesType));
+      return new ByteBitPackingValuesReader(getMaxLevel(descriptor, valuesType));
     }
   },
 

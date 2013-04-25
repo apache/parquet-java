@@ -10,3 +10,8 @@ http://pig.apache.org
 Hadoop 0.20.2
 Apache Public License 2.0
 http://hadoop.apache.org
+
+This project includes code from https://github.com/lemire/JavaFastPFOR
+parquet-column/src/main/java/parquet/column/values/bitpacking/LemireBitPacking.java
+Apache License Version 2.0 http://www.apache.org/licenses/.
+(c) Daniel Lemire, http://lemire.me/en/
