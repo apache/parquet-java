@@ -183,7 +183,7 @@ abstract public class BytesInput {
   private static class SequenceBytesIn extends BytesInput {
     private static final Log LOG = Log.getLog(BytesInput.SequenceBytesIn.class);
 
-    public final List<BytesInput> inputs;
+    private final List<BytesInput> inputs;
     private final long size;
 
     private SequenceBytesIn(List<BytesInput> inputs) {
