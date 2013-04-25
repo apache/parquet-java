@@ -17,16 +17,15 @@ package parquet.column.values;
 
 import java.io.IOException;
 
-import parquet.column.Dictionary;
 import parquet.io.api.Binary;
 
 /**
  * Base class to implement an encoding for a given column type.
  *
- * A PrimitiveColumnReader is provided with a page (byte-array) and is responsible
+ * A ValuesReader is provided with a page (byte-array) and is responsible
  * for deserializing the primitive values stored in that page.
  *
- * Given that pages are homogenous (store only a single type), typical subclasses
+ * Given that pages are homogeneous (store only a single type), typical subclasses
  * will only override one of the read*() methods.
  *
  * @author Julien Le Dem
@@ -58,11 +57,11 @@ public abstract class ValuesReader {
   public abstract int initFromPage(long valueCount, byte[] page, int offset) throws IOException;
 
   /**
-   * called to initialize the dictionary when one is used
-   * @param dictionary the dictionary for this column chunk
+   * usable when the encoding is doctionary based
+   * @return the id of the next value from the page
    */
-  public void setDictionary(Dictionary dictionary) {
-    throw new UnsupportedOperationException("This encoding does not use a dictionary");
+  public int readValueDictionaryId() {
+    throw new UnsupportedOperationException();
   }
 
   /**

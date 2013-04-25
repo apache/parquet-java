@@ -57,6 +57,7 @@ import parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.io.ParquetDecodingException;
 
 /**
  * Reads a Parquet file
@@ -309,8 +310,11 @@ public class ParquetFileReader implements Closeable {
         List<Page> pagesInChunk = new ArrayList<Page>();
         List<DictionaryPage> dictionaryPagesInChunk = new ArrayList<DictionaryPage>();
         readColumnChunkPages(columnDescriptor, mc, pagesInChunk, dictionaryPagesInChunk);
+        if (dictionaryPagesInChunk.size() > 1) {
+          throw new ParquetDecodingException("more than one dictionary page: " + dictionaryPagesInChunk);
+        }
         BytesDecompressor decompressor = codecFactory.getDecompressor(mc.getCodec());
-        ColumnChunkPageReader columnChunkPageReader = new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPagesInChunk);
+        ColumnChunkPageReader columnChunkPageReader = new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPagesInChunk.size() == 0 ? null : dictionaryPagesInChunk.get(0));
         columnChunkPageReadStore.addColumn(columnDescriptor, columnChunkPageReader);
       }
     }
@@ -322,7 +326,7 @@ public class ParquetFileReader implements Closeable {
    * Read all of the pages in a given column chunk.
    * @return the list of pages
    */
-  private List<Page> readColumnChunkPages(ColumnDescriptor columnDescriptor, ColumnChunkMetaData metadata, List<Page> pagesInChunk, List<DictionaryPage> dictionaryPagesInChunk)
+  private void readColumnChunkPages(ColumnDescriptor columnDescriptor, ColumnChunkMetaData metadata, List<Page> pagesInChunk, List<DictionaryPage> dictionaryPagesInChunk)
       throws IOException {
     long startingPos = metadata.getFirstDataPageOffset();
     if (metadata.getDictionaryPageOffset() > 0 && metadata.getDictionaryPageOffset() < startingPos) {
@@ -373,7 +377,6 @@ public class ParquetFileReader implements Closeable {
           " but got " + valuesCountReadSoFar + " values instead over " + pagesInChunk.size()
           + " pages ending at file offset " + f.getPos());
     }
-    return pagesInChunk;
   }
 
   @Override

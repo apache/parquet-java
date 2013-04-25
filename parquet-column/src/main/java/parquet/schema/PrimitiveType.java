@@ -34,13 +34,33 @@ import parquet.io.api.RecordConsumer;
  */
 public final class PrimitiveType extends Type {
 
+  public static interface PrimitiveTypeNameConverter<T> {
+
+    T convertFLOAT(PrimitiveTypeName primitiveTypeName);
+
+    T convertDOUBLE(PrimitiveTypeName primitiveTypeName);
+
+    T convertINT32(PrimitiveTypeName primitiveTypeName);
+
+    T convertINT64(PrimitiveTypeName primitiveTypeName);
+
+    T convertINT96(PrimitiveTypeName primitiveTypeName);
+
+    T convertFIXED_LEN_BYTE_ARRAY(PrimitiveTypeName primitiveTypeName);
+
+    T convertBOOLEAN(PrimitiveTypeName primitiveTypeName);
+
+    T convertBINARY(PrimitiveTypeName primitiveTypeName);
+
+  }
+
   /**
    * Supported Primitive types
    *
    * @author Julien Le Dem
    */
   public static enum PrimitiveTypeName {
-      INT64("getLong", Long.TYPE) {
+    INT64("getLong", Long.TYPE) {
       @Override
       public String toString(ColumnReader columnReader) {
         return String.valueOf(columnReader.getLong());
@@ -56,6 +76,11 @@ public final class PrimitiveType extends Type {
       public void addValueToPrimitiveConverter(
           PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         primitiveConverter.addLong(columnReader.getLong());
+      }
+
+      @Override
+      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+        return converter.convertINT64(this);
       }
     },
     INT32("getInteger", Integer.TYPE) {
@@ -75,6 +100,11 @@ public final class PrimitiveType extends Type {
           PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         primitiveConverter.addInt(columnReader.getInteger());
       }
+
+      @Override
+      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+        return converter.convertINT32(this);
+      }
     },
     BOOLEAN("getBoolean", Boolean.TYPE) {
       @Override
@@ -92,6 +122,11 @@ public final class PrimitiveType extends Type {
       public void addValueToPrimitiveConverter(
           PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         primitiveConverter.addBoolean(columnReader.getBoolean());
+      }
+
+      @Override
+      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+        return converter.convertBOOLEAN(this);
       }
     },
     BINARY("getBinary", Binary.class) {
@@ -111,6 +146,11 @@ public final class PrimitiveType extends Type {
           PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         primitiveConverter.addBinary(columnReader.getBinary());
       }
+
+      @Override
+      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+        return converter.convertBINARY(this);
+      }
     },
     FLOAT("getFloat", Float.TYPE) {
       @Override
@@ -128,6 +168,11 @@ public final class PrimitiveType extends Type {
       public void addValueToPrimitiveConverter(
           PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         primitiveConverter.addFloat(columnReader.getFloat());
+      }
+
+      @Override
+      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+        return converter.convertFLOAT(this);
       }
     },
     DOUBLE("getDouble", Double.TYPE) {
@@ -147,6 +192,11 @@ public final class PrimitiveType extends Type {
           PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         primitiveConverter.addDouble(columnReader.getDouble());
       }
+
+      @Override
+      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+        return converter.convertDOUBLE(this);
+      }
     },
     INT96(null, null) { // TODO: support for INT96
       @Override
@@ -162,6 +212,11 @@ public final class PrimitiveType extends Type {
       public void addValueToPrimitiveConverter(
           PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
         throw new UnsupportedOperationException("NYI");
+      }
+
+      @Override
+      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+        return converter.convertINT96(this);
       }
     },
     FIXED_LEN_BYTE_ARRAY(null, null) { // TODO: support for FIXED_LEN_BYTE_ARRAY
@@ -183,7 +238,11 @@ public final class PrimitiveType extends Type {
         throw new UnsupportedOperationException("NYI");
       }
 
-    } ;
+      @Override
+      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+        return converter.convertFIXED_LEN_BYTE_ARRAY(this);
+      }
+    };
 
     public final String getMethod;
     public final Class<?> javaType;
@@ -210,6 +269,8 @@ public final class PrimitiveType extends Type {
 
     abstract public void addValueToPrimitiveConverter(
         PrimitiveConverter primitiveConverter, ColumnReader columnReader);
+
+    abstract public <T> T convert(PrimitiveTypeNameConverter<T> converter);
 
   }
 
@@ -259,11 +320,11 @@ public final class PrimitiveType extends Type {
   @Override
   public void writeToStringBuilder(StringBuilder sb, String indent) {
     sb.append(indent)
-        .append(getRepetition().name().toLowerCase())
-        .append(" ")
-        .append(primitive.name().toLowerCase())
-        .append(" ")
-        .append(getName());
+    .append(getRepetition().name().toLowerCase())
+    .append(" ")
+    .append(primitive.name().toLowerCase())
+    .append(" ")
+    .append(getName());
     if (getOriginalType() != null) {
       sb.append(" (").append(getOriginalType()).append(")");
     }

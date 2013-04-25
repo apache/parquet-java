@@ -1,5 +1,6 @@
 package parquet.column.values.dictionary;
 
+import static parquet.Log.DEBUG;
 import static parquet.column.Encoding.PLAIN_DICTIONARY;
 
 import java.io.IOException;
@@ -7,6 +8,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.bytes.LittleEndianDataOutputStream;
@@ -18,6 +20,7 @@ import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
 
 public class DictionaryValuesWriter extends ValuesWriter {
+  private static final Log LOG = Log.getLog(DictionaryValuesWriter.class);
 
   /**
    * maximum size in bytes allowed for the dictionary
@@ -72,6 +75,7 @@ public class DictionaryValuesWriter extends ValuesWriter {
       writeBytesUsingDict(v);
       if (dictionaryByteSize > maxDictionaryByteSize || dict.size() > 65535 /* 2^16 - 1 */) {
         // if the dictionary reach the max byte size or the values can not be encoded on two bytes anymore.
+        if (DEBUG) LOG.debug("dictionary is now too big, falling back to plain: " + dictionaryByteSize + "B and " + dict.size() + " entries");
         dictionaryTooBig = true;
         if (lastUsedDictionarySize == 0) {
           // if we never used the dictionary
@@ -83,6 +87,7 @@ public class DictionaryValuesWriter extends ValuesWriter {
       }
     }
     // write also to plain encoding if we need to fall back
+    if (DEBUG) LOG.debug("writing in plain encoding");
     plainValuesWriter.writeBytes(v);
   }
 
@@ -91,6 +96,7 @@ public class DictionaryValuesWriter extends ValuesWriter {
    * @param v the value to dictionary encode
    */
   private void writeBytesUsingDict(Binary v) {
+    if (DEBUG) LOG.debug("writing using dictionary");
     Integer id = dict.get(v);
     if (id == null) {
       id = dict.size();
@@ -118,7 +124,7 @@ public class DictionaryValuesWriter extends ValuesWriter {
 
   @Override
   public BytesInput getBytes() {
-    if (!dictionaryTooBig) {
+    if (!dictionaryTooBig && dict.size() > 0) {
       // remember size of dictionary when we last wrote a page
       lastUsedDictionarySize = dict.size();
       lastUsedDictionaryByteSize = dictionaryByteSize;
@@ -129,7 +135,7 @@ public class DictionaryValuesWriter extends ValuesWriter {
 
   @Override
   public Encoding getEncoding() {
-    if (!dictionaryTooBig) {
+    if (!dictionaryTooBig && dict.size() > 0) {
       return PLAIN_DICTIONARY;
     }
     return plainValuesWriter.getEncoding();

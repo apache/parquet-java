@@ -1,5 +1,8 @@
 package parquet.column.values.dictionary;
 
+import static org.junit.Assert.assertEquals;
+import static parquet.column.Encoding.PLAIN_DICTIONARY;
+
 import java.io.IOException;
 
 import org.junit.Assert;
@@ -12,7 +15,6 @@ import parquet.column.Encoding;
 import parquet.column.page.DictionaryPage;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.plain.BinaryPlainValuesReader;
-import parquet.column.values.plain.PlainValuesReader;
 import parquet.io.api.Binary;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -25,20 +27,21 @@ public class TestDictionary {
     for (int i = 0; i < COUNT; i++) {
       cw.writeBytes(Binary.fromString("a" + i % 10));
     }
+    assertEquals(PLAIN_DICTIONARY, cw.getEncoding());
     final BytesInput bytes1 = BytesInput.copy(cw.getBytes());
     cw.reset();
     for (int i = 0; i < COUNT; i++) {
       cw.writeBytes(Binary.fromString("b" + i % 10));
     }
+    assertEquals(PLAIN_DICTIONARY, cw.getEncoding());
     final BytesInput bytes2 = BytesInput.copy(cw.getBytes());
     cw.reset();
 
     final DictionaryPage dictionaryPage = cw.createDictionaryPage().copy();
-    final DictionaryValuesReader cr = new DictionaryValuesReader();
     final ColumnDescriptor descriptor = new ColumnDescriptor(new String[] {"foo"}, PrimitiveTypeName.BINARY, 0, 0);
-    final Dictionary dictionary = Encoding.PLAIN_DICTIONARY.initDictionary(descriptor, dictionaryPage);
+    final Dictionary dictionary = PLAIN_DICTIONARY.initDictionary(descriptor, dictionaryPage);
 //    System.out.println(dictionary);
-    cr.setDictionary(dictionary);
+    final DictionaryValuesReader cr = new DictionaryValuesReader(dictionary);
 
     cr.initFromPage(COUNT, bytes1.toByteArray(), 0);
     for (int i = 0; i < COUNT; i++) {
@@ -81,15 +84,13 @@ public class TestDictionary {
       final ColumnDescriptor descriptor = new ColumnDescriptor(new String[] {"foo"}, PrimitiveTypeName.BINARY, 0, 0);
       dictionary = Encoding.PLAIN_DICTIONARY.initDictionary(descriptor, dictionaryPage);
 
-      cr = new DictionaryValuesReader();
-      cr.setDictionary(dictionary);
+      cr = new DictionaryValuesReader(dictionary);
     } else {
       cr = new BinaryPlainValuesReader();
     }
 
     if (dictionary != null && encoding1 == Encoding.PLAIN_DICTIONARY) {
-      cr = new DictionaryValuesReader();
-      cr.setDictionary(dictionary);
+      cr = new DictionaryValuesReader(dictionary);
     } else {
       cr = new BinaryPlainValuesReader();
     }
@@ -101,8 +102,7 @@ public class TestDictionary {
     }
 
     if (dictionary != null && encoding2 == Encoding.PLAIN_DICTIONARY) {
-      cr = new DictionaryValuesReader();
-      cr.setDictionary(dictionary);
+      cr = new DictionaryValuesReader(dictionary);
     } else {
       cr = new BinaryPlainValuesReader();
     }

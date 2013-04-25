@@ -31,19 +31,16 @@ public class MemPageReader implements PageReader {
 
   private final long totalValueCount;
   private final Iterator<Page> pages;
-  private final Iterator<DictionaryPage> dictionaryPages;
+  private final DictionaryPage dictionaryPage;
 
-  public MemPageReader(long totalValueCount, Iterator<Page> pages, Iterator<DictionaryPage> dictionaryPages) {
+  public MemPageReader(long totalValueCount, Iterator<Page> pages, DictionaryPage dictionaryPage) {
     super();
     if (pages == null) {
       throw new NullPointerException("pages");
     }
-    if (dictionaryPages == null) {
-      throw new NullPointerException("dictionaryPages");
-    }
     this.totalValueCount = totalValueCount;
     this.pages = pages;
-    this.dictionaryPages = dictionaryPages;
+    this.dictionaryPage = dictionaryPage;
   }
 
   @Override
@@ -63,14 +60,8 @@ public class MemPageReader implements PageReader {
   }
 
   @Override
-  public DictionaryPage readDictionaryPage() { // TODO: better API
-    if (dictionaryPages.hasNext()) {
-      DictionaryPage next = dictionaryPages.next();
-      if (DEBUG) LOG.debug("read page " + next);
-      return next;
-    } else {
-     return null; // TODO: inconsistent
-    }
+  public DictionaryPage readDictionaryPage() {
+    return dictionaryPage;
   }
 
 }

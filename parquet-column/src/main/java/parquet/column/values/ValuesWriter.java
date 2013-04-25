@@ -37,7 +37,6 @@ public abstract class ValuesWriter {
 
   // TODO: maybe consolidate into a getPage
   /**
-   *
    * @return the bytes buffered so far to write to the current page
    */
   public abstract BytesInput getBytes();

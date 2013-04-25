@@ -13,6 +13,12 @@ import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
 
+/**
+ * Reads values that have been dictionary encoded
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class DictionaryValuesReader extends ValuesReader {
   private static final Log LOG = Log.getLog(DictionaryValuesReader.class);
 
@@ -20,8 +26,7 @@ public class DictionaryValuesReader extends ValuesReader {
 
   private Dictionary dictionary;
 
-  @Override
-  public void setDictionary(Dictionary dictionary) {
+  public DictionaryValuesReader(Dictionary dictionary) {
     this.dictionary = dictionary;
   }
 
@@ -34,14 +39,24 @@ public class DictionaryValuesReader extends ValuesReader {
   }
 
   @Override
+  public int readValueDictionaryId() {
+    return readIntOnTwoBytes();
+  }
+
+  @Override
   public Binary readBytes() {
+    int id = readIntOnTwoBytes();
+    return dictionary.decodeToBinary(id);
+  }
+
+  private int readIntOnTwoBytes() {
     try {
       int ch4 = in.read();
       int ch3 = in.read();
       if ((ch3 | ch4) < 0)
         throw new EOFException();
       int id = ((ch3 << 8) + (ch4 << 0));
-      return dictionary.decodeToBinary(id);
+      return id;
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read bytes", e);
     }

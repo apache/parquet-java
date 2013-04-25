@@ -68,4 +68,11 @@ public class DictionaryPage {
     return new DictionaryPage(BytesInput.copy(bytes), uncompressedSize, dictionarySize, encoding);
   }
 
+
+  @Override
+  public String toString() {
+    return "Page [bytes.size=" + bytes.size() + ", entryCount=" + dictionarySize + ", uncompressedSize=" + uncompressedSize + ", encoding=" + encoding + "]";
+  }
+
+
 }

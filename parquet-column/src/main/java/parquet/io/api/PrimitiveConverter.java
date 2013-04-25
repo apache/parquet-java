@@ -15,7 +15,7 @@
  */
 package parquet.io.api;
 
-
+import parquet.column.Dictionary;
 
 /**
  * converter for leaves of the schema
@@ -35,10 +35,35 @@ abstract public class PrimitiveConverter extends Converter {
     return this;
   }
 
+  /**
+   * if it returns true we will attempt to use dictionary based conversion instead
+   * @param fieldIndex index of the field in this group
+   * @return the corresponding converter
+   */
+  public boolean hasDictionarySupport() {
+    return false;
+  }
+
+  /**
+   * if the converter hasDictionarySupport() and the data was encoded using a dictionary, will pass the dictionary
+   * @param dictionary the dictionary to use for conversion
+   */
+  public void setDictionary(Dictionary dictionary) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
   /** runtime calls  **/
 
   /**
-   * @param fieldIndex index of the field
+   * add a value based on the dictionary set with setDictionary()
+   * Will be used if the Converter has dictionary support and the data was encoded using a dictionary
+   * @param dictionaryId the id in the dictionary of the value to add
+   */
+  public void addValueFromDictionary(int dictionaryId) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /**
    * @param value value to set
    */
   public void addBinary(Binary value) {
@@ -46,7 +71,6 @@ abstract public class PrimitiveConverter extends Converter {
   }
 
   /**
-   * @param fieldIndex index of the field
    * @param value value to set
    */
   public void addBoolean(boolean value) {
@@ -54,7 +78,6 @@ abstract public class PrimitiveConverter extends Converter {
   }
 
   /**
-   * @param fieldIndex index of the field
    * @param value value to set
    */
   public void addDouble(double value) {
@@ -62,7 +85,6 @@ abstract public class PrimitiveConverter extends Converter {
   }
 
   /**
-   * @param fieldIndex index of the field
    * @param value value to set
    */
   public void addFloat(float value) {
@@ -70,7 +92,6 @@ abstract public class PrimitiveConverter extends Converter {
   }
 
   /**
-   * @param fieldIndex index of the field
    * @param value value to set
    */
   public void addInt(int value) {
@@ -78,7 +99,6 @@ abstract public class PrimitiveConverter extends Converter {
   }
 
   /**
-   * @param fieldIndex index of the field
    * @param value value to set
    */
   public void addLong(long value) {

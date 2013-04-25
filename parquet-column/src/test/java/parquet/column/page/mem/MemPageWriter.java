@@ -34,7 +34,7 @@ public class MemPageWriter implements PageWriter {
   private static final Log LOG = Log.getLog(MemPageWriter.class);
 
   private final List<Page> pages = new ArrayList<Page>();
-  private final List<DictionaryPage> dictionaryPages = new ArrayList<DictionaryPage>();
+  private DictionaryPage dictionaryPage;
   private long memSize = 0;
   private long totalValueCount = 0;
 
@@ -60,8 +60,8 @@ public class MemPageWriter implements PageWriter {
     return pages;
   }
 
-  public List<DictionaryPage> getDictionaryPages() {
-    return dictionaryPages;
+  public DictionaryPage getDictionaryPage() {
+    return dictionaryPage;
   }
 
   public long getTotalValueCount() {
@@ -76,8 +76,11 @@ public class MemPageWriter implements PageWriter {
 
   @Override
   public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
-    memSize += dictionaryPage.getBytes().size();
-    dictionaryPages.add(dictionaryPage.copy());
+    if (this.dictionaryPage != null) {
+      throw new ParquetEncodingException("Only one dictionary page per block");
+    }
+    this.memSize += dictionaryPage.getBytes().size();
+    this.dictionaryPage = dictionaryPage.copy();
     if (DEBUG) LOG.debug("dictionary page written for " + dictionaryPage.getBytes().size() + " bytes and " + dictionaryPage.getDictionarySize() + " records");
   }
 

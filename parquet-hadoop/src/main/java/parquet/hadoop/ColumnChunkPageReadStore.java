@@ -50,12 +50,12 @@ class ColumnChunkPageReadStore implements PageReadStore {
     private final BytesDecompressor decompressor;
     private final long valueCount;
     private final List<Page> compressedPages;
-    private final List<DictionaryPage> compressedDictionaryPages;
+    private final DictionaryPage compressedDictionaryPage;
 
-    ColumnChunkPageReader(BytesDecompressor decompressor, List<Page> compressedPages, List<DictionaryPage> compressedDictionaryPages) {
+    ColumnChunkPageReader(BytesDecompressor decompressor, List<Page> compressedPages, DictionaryPage compressedDictionaryPage) {
       this.decompressor = decompressor;
       this.compressedPages = new LinkedList<Page>(compressedPages);
-      this.compressedDictionaryPages = new LinkedList<DictionaryPage>(compressedDictionaryPages);
+      this.compressedDictionaryPage = compressedDictionaryPage;
       int count = 0;
       for (Page p : compressedPages) {
         count += p.getValueCount();
@@ -89,15 +89,14 @@ class ColumnChunkPageReadStore implements PageReadStore {
 
     @Override
     public DictionaryPage readDictionaryPage() {
-      if (compressedDictionaryPages.isEmpty()) {
+      if (compressedDictionaryPage == null) {
         return null;
       }
-      DictionaryPage compressedPage = compressedDictionaryPages.remove(0);
       try {
         return new DictionaryPage(
-            decompressor.decompress(compressedPage.getBytes(), compressedPage.getUncompressedSize()),
-            compressedPage.getDictionarySize(),
-            compressedPage.getEncoding());
+            decompressor.decompress(compressedDictionaryPage.getBytes(), compressedDictionaryPage.getUncompressedSize()),
+            compressedDictionaryPage.getDictionarySize(),
+            compressedDictionaryPage.getEncoding());
       } catch (IOException e) {
         throw new RuntimeException(e); // TODO: cleanup
       }

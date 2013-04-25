@@ -42,7 +42,7 @@ abstract public class Dictionary {
     throw new UnsupportedOperationException(this.getClass().getName());
   }
 
-  public double decodeToBoolean(int id) {
+  public boolean decodeToBoolean(int id) {
     throw new UnsupportedOperationException(this.getClass().getName());
   }
 }

@@ -15,7 +15,6 @@
  */
 package parquet.io.api;
 
-import parquet.column.Dictionary;
 
 /**
  * converter for group nodes
@@ -42,25 +41,6 @@ abstract public class GroupConverter extends Converter {
    * @return the corresponding converter
    */
   abstract public Converter getConverter(int fieldIndex);
-
-  /**
-   * if it returns true we will attempt to use the dictionary based converter instead of the plain converter
-   * @param fieldIndex index of the field in this group
-   * @return the corresponding converter
-   */
-  public boolean hasDictionarySupport(int fieldIndex) {
-    return false;
-  }
-
-  /**
-   * Will be called only if hasDictionarySupport(fieldIndex) returns true.
-   * @param dictionary the dictionary to use
-   * @param fieldIndex the index of the field in this group
-   * @return the corresponding dictionary based converter
-   */
-  public PrimitiveConverter getDictionaryBasedConverter(int fieldIndex, Dictionary dictionary) {
-    throw new UnsupportedOperationException(getClass().getName());
-  }
 
   /** runtime calls  **/
 

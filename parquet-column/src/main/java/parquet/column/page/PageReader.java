@@ -24,7 +24,7 @@ package parquet.column.page;
 public interface PageReader {
 
  /**
-  * @return the next dictionary page in that chunk
+  * @return the dictionary page in that chunk
   */
  abstract public DictionaryPage readDictionaryPage();
 

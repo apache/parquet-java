@@ -79,10 +79,10 @@ public enum Encoding {
 
   PLAIN_DICTIONARY {
     @Override
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+    public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
       switch (descriptor.getType()) {
       case BINARY:
-        return new DictionaryValuesReader();
+        return new DictionaryValuesReader(dictionary);
       default:
         throw new ParquetDecodingException("Dictionary encoding not supported for type: " + descriptor.getType());
       }
@@ -123,10 +123,28 @@ public enum Encoding {
   }
 
   /**
+   * To read decoded values that don't require a dictionary
+   *
    * @param descriptor the column to read
    * @param valuesType the type of values
    * @return the proper values reader for the given column
+   * @throw {@link UnsupportedOperationException} if the encoding is dictionary based
    */
-  abstract public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType);
+  public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+    throw new UnsupportedOperationException("Error decoding " + descriptor + ". " + this.name() + " is dictionary based");
+  }
+
+  /**
+   * To read decoded values that require a dictionary
+   *
+   * @param descriptor the column to read
+   * @param valuesType the type of values
+   * @param dictionary the dictionary
+   * @return the proper values reader for the given column
+   * @throw {@link UnsupportedOperationException} if the encoding is not dictionary based
+   */
+  public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
+    throw new UnsupportedOperationException(this.name() + " is not dictionary based");
+  }
 
 }

@@ -21,7 +21,7 @@ import parquet.io.api.Binary;
  * Reader for (repetition level, definition level, values) triplets.
  * At any given point in time, a ColumnReader points to a single (r, d, v) triplet.
  * In order to move to the next triplet, call {@link #consume()}.
- * 
+ *
  * Each iteration looks at the current definition level and value as well as the next
  * repetition level. TODO(julien): what does this mean? It's not clear. -todd
  *
@@ -51,9 +51,14 @@ public interface ColumnReader {
   int getCurrentDefinitionLevel();
 
   /**
-   * @return the current value
+   * writes the current value to the converter
    */
-  String getString();
+  void writeCurrentValueToConverter();
+
+  /**
+   * @return the dictionary id for the current value
+   */
+  int getCurrentValueDictionaryID();
 
   /**
    * @return the current value
