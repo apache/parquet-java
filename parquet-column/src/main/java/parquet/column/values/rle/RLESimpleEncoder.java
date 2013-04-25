@@ -44,7 +44,7 @@ public class RLESimpleEncoder {
 
   public BytesInput toBytes() throws IOException {
     ByteArrayOutputStream size = new ByteArrayOutputStream(4);
-    int header = (totalValues + 7) / 8 << 1 | 1;
+    int header = BytesUtils.paddedByteCountFromBits(totalValues) << 1 | 1;
     BytesUtils.writeUnsignedVarInt(header, size);
     return BytesInput.fromSequence(
         BytesInput.from(size),

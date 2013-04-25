@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 import parquet.Log;
+import parquet.bytes.BytesUtils;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import parquet.io.ParquetDecodingException;
@@ -67,7 +68,7 @@ public class BitPackingValuesReader extends ValuesReader {
   public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
     // TODO: int vs long
     int effectiveBitLength = (int)valueCount * bitsPerValue;
-    int length = (effectiveBitLength + 7) / 8; // ceil
+    int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength);
     if (Log.DEBUG) LOG.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitsPerValue + " bits." );
     this.in = new ByteArrayInputStream(in, offset, length);
     this.bitPackingReader = createBitPackingReader(bitsPerValue, this.in, valueCount);

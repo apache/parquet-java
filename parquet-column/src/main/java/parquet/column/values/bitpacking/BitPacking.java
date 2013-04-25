@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import parquet.bytes.BytesUtils;
 import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
@@ -157,7 +158,7 @@ abstract class BaseBitPackingWriter extends BitPackingWriter {
 abstract class BaseBitPackingReader extends BitPackingReader {
 
   int alignToBytes(int bitsCount) {
-    return bitsCount / 8 + (bitsCount % 8 == 0 ? 0 : 1);
+    return BytesUtils.paddedByteCountFromBits(bitsCount);
   }
 
 }
