@@ -34,7 +34,7 @@ public abstract class BytePacker {
   }
 
   /**
-   * @return the width in bits used for encoding, also how many ints are packed/unpacked at a time
+   * @return the width in bits used for encoding, also how many bytes are packed/unpacked at a time by pack8Values/unpack8Values
    */
   public final int getBitWidth() {
     return bitWidth;

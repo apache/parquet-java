@@ -185,16 +185,15 @@ public class TestBitPackingColumn {
         return new BitPackingValuesWriter(bound);
       }
     }
-    // TODO
-    //,
-//    BYTE_BASED_GENERATED {
-//      public ValuesReader getReader(final int bound) {
-//        return new ByteBitPackingValuesReader(bound);
-//      }
-//      public ValuesWriter getWriter(final int bound) {
-//        return new ByteBitPackingValuesWriter(bound);
-//      }
-//    }
+    ,
+    BYTE_BASED_GENERATED {
+      public ValuesReader getReader(final int bound) {
+        return new ByteBitPackingValuesReader(bound);
+      }
+      public ValuesWriter getWriter(final int bound) {
+        return new ByteBitPackingValuesWriter(bound);
+      }
+    }
     ;
     abstract public ValuesReader getReader(final int bound);
     abstract public ValuesWriter getWriter(final int bound);

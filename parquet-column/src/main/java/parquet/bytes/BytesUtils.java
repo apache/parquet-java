@@ -120,4 +120,12 @@ public class BytesUtils {
     }
     out.write(value & 0x7F);
   }
+
+  /**
+   * @param bitLength a count of bits
+   * @return the corresponding byte count padded to the next byte
+   */
+  public static int paddedByteCountFromBits(int bitLength) {
+    return (bitLength + 7) / 8;
+  }
 }

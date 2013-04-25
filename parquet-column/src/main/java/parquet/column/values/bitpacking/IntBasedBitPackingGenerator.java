@@ -33,6 +33,7 @@ import java.io.IOException;
  *
  * The generated classes pack the values into arrays of ints (as opposed to arrays of bytes) based on a given bit width.
  *
+ * Note: This is not really used for now as the hadoop API does not really let write int[]. We need to revisit this
  *
  * @author Julien Le Dem
  *

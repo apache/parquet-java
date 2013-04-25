@@ -21,7 +21,8 @@ import java.io.IOException;
 
 /**
  *
- * This generate bit packers that pack the most significant bit first
+ * This class generates bit packers that pack the most significant bit first.
+ * The result of the generation is checked in. To regenerate the code run this class and check in the result.
  *
  * TODO: remove the unnecessary masks for perf
  *
