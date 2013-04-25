@@ -36,6 +36,8 @@ import parquet.io.ParquetEncodingException;
  */
 public class BitPackingValuesWriter extends ValuesWriter {
 
+  private static final int INITIAL_CAPACITY = 32*1024;
+
   private CapacityByteArrayOutputStream out;
   private BitPackingWriter bitPackingWriter;
   private int bitsPerValue;
@@ -45,7 +47,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
    */
   public BitPackingValuesWriter(int bound) {
     this.bitsPerValue = getWidthFromMaxInt(bound);
-    this.out = new CapacityByteArrayOutputStream(32*1024); // TODO: size needed could be small but starting at 32 is really small
+    this.out = new CapacityByteArrayOutputStream(INITIAL_CAPACITY);
     init();
   }
 
