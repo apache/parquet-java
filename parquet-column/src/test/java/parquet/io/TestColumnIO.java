@@ -22,6 +22,11 @@ import static parquet.example.Paper.r1;
 import static parquet.example.Paper.r2;
 import static parquet.example.Paper.schema;
 import static parquet.example.Paper.schema2;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static parquet.schema.Type.Repetition.OPTIONAL;
+import static parquet.schema.Type.Repetition.REPEATED;
+import static parquet.schema.Type.Repetition.REQUIRED;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -341,12 +346,35 @@ public class TestColumnIO {
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
     columns.flush();
 
-    final Deque<String> expectations = new ArrayDeque<String>();
-    for (String string : expectedEventsForR1) {
-      expectations.add(string);
-    }
+    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectedEventsForR1, schema));
+    recordReader.read();
 
-    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectations, schema));
+  }
+
+  @Test
+  public void testEmptyField() {
+    MemPageStore memPageStore = new MemPageStore();
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800);
+    MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
+    final RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
+    recordWriter.startMessage();
+    recordWriter.startField("DocId", 0);
+    recordWriter.addLong(0);
+    recordWriter.endField("DocId", 0);
+    recordWriter.startField("Links", 1);
+    recordWriter.endField("Links", 1);
+    recordWriter.startField("Name", 2);
+    recordWriter.endField("Name", 2);
+    recordWriter.endMessage();
+    columns.flush();
+
+    String[] expected = {
+        "startMessage()",
+        "DocId.addLong(0)",
+        "endMessage()"
+    };
+
+    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expected, schema));
     recordReader.read();
 
   }
