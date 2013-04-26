@@ -43,7 +43,7 @@ abstract public class BytesInput {
    * @param inputs the inputs to concatenate
    * @return a concatenated input
    */
-  public static BytesInput fromSequence(BytesInput... inputs) {
+  public static BytesInput concat(BytesInput... inputs) {
     return new SequenceBytesIn(Arrays.asList(inputs));
   }
 
@@ -52,7 +52,7 @@ abstract public class BytesInput {
    * @param inputs the inputs to concatenate
    * @return a concatenated input
    */
-  public static BytesInput fromSequence(List<BytesInput> inputs) {
+  public static BytesInput concat(List<BytesInput> inputs) {
     return new SequenceBytesIn(inputs);
   }
 

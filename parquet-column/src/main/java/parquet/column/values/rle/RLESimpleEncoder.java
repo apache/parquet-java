@@ -15,6 +15,8 @@
  */
 package parquet.column.values.rle;
 
+import static parquet.bytes.BytesInput.concat;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
@@ -46,9 +48,6 @@ public class RLESimpleEncoder {
     ByteArrayOutputStream size = new ByteArrayOutputStream(4);
     int header = BytesUtils.paddedByteCountFromBits(totalValues) << 1 | 1;
     BytesUtils.writeUnsignedVarInt(header, size);
-    return BytesInput.fromSequence(
-        BytesInput.from(size),
-        bitPackingEncoder.toBytes()
-        );
+    return concat(BytesInput.from(size), bitPackingEncoder.toBytes());
   }
 }

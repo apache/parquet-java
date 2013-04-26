@@ -15,6 +15,8 @@
  */
 package parquet.column.impl;
 
+import static parquet.bytes.BytesInput.concat;
+
 import java.io.IOException;
 
 import parquet.Log;
@@ -75,7 +77,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     if (DEBUG) LOG.debug("write page");
     try {
       pageWriter.writePage(
-          BytesInput.fromSequence(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()),
+          concat(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()),
           valueCount,
           repetitionLevelColumn.getEncoding(),
           definitionLevelColumn.getEncoding(),

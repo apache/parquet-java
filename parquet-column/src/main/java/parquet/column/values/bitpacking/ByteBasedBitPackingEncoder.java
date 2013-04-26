@@ -15,6 +15,8 @@
  */
 package parquet.column.values.bitpacking;
 
+import static parquet.bytes.BytesInput.concat;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -95,10 +97,7 @@ public class ByteBasedBitPackingEncoder {
       }
       pack();
     }
-    return BytesInput.fromSequence(
-        BytesInput.fromSequence(slabs),
-        BytesInput.from(packed, 0, packedByteLength)
-        );
+    return concat(concat(slabs), BytesInput.from(packed, 0, packedByteLength));
   }
 
   /**
