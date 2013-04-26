@@ -74,7 +74,7 @@ public class DictionaryValuesWriter extends ValuesWriter {
     if (!dictionaryTooBig) {
       writeBytesUsingDict(v);
       if (dictionaryByteSize > maxDictionaryByteSize || dict.size() > 65535 /* 2^16 - 1 */) {
-        // if the dictionary reach the max byte size or the values can not be encoded on two bytes anymore.
+        // if the dictionary reaches the max byte size or the values can not be encoded on two bytes anymore.
         if (DEBUG) LOG.debug("dictionary is now too big, falling back to plain: " + dictionaryByteSize + "B and " + dict.size() + " entries");
         dictionaryTooBig = true;
         if (lastUsedDictionarySize == 0) {
