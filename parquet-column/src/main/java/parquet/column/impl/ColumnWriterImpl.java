@@ -20,7 +20,6 @@ import static parquet.bytes.BytesInput.concat;
 import java.io.IOException;
 
 import parquet.Log;
-import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
 import parquet.column.page.PageWriter;
