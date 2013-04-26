@@ -123,6 +123,67 @@ abstract public class Binary {
     };
   }
 
+  public static Binary fromByteBuffer(final ByteBuffer value) {
+    return new Binary() {
+      @Override
+      public String toStringUsingUTF8() {
+        return new String(getBytes(), BytesUtils.UTF8);
+      }
+
+      @Override
+      public int length() {
+        return value.remaining();
+      }
+
+      @Override
+      public void writeTo(OutputStream out) throws IOException {
+        out.write(getBytes());
+      }
+
+      @Override
+      public byte[] getBytes() {
+        byte[] bytes = new byte[value.remaining()];
+        value.get(bytes);
+        return bytes;
+      }
+
+      @Override
+      public int hashCode() {
+        if (value.hasArray()) {
+          return Binary.hashCode(value.array(), value.arrayOffset() + value.position(),
+              value.arrayOffset() + value.remaining());
+        }
+        byte[] bytes = getBytes();
+        return Binary.hashCode(bytes, 0, bytes.length);
+      }
+
+      @Override
+      boolean equals(Binary other) {
+        if (value.hasArray()) {
+          return other.equals(value.array(), value.arrayOffset() + value.position(),
+              value.arrayOffset() + value.remaining());
+        }
+        byte[] bytes = getBytes();
+        return other.equals(bytes, 0, bytes.length);
+      }
+
+      @Override
+      boolean equals(byte[] other, int otherOffset, int otherLength) {
+        if (value.hasArray()) {
+          return Binary.equals(value.array(), value.arrayOffset() + value.position(),
+              value.arrayOffset() + value.remaining(), other, otherOffset, otherLength);
+        }
+        byte[] bytes = getBytes();
+        return Binary.equals(bytes, 0, bytes.length, other, otherOffset, otherLength);
+      }
+
+      @Override
+      public ByteBuffer toByteBuffer() {
+        return value;
+      }
+    };
+  }
+
   public static Binary fromString(final String value) {
     return fromByteArray(value.getBytes(BytesUtils.UTF8));
   }

@@ -78,7 +78,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
    * @param requestedSchema the requested schema (a subset of the original schema) for record projection
    * @param readSupportClass
    */
-  ParquetRecordReader(ReadSupport<T> readSupport) {
+  public ParquetRecordReader(ReadSupport<T> readSupport) {
     this.readSupport = readSupport;
   }
 

@@ -53,7 +53,7 @@ public class ParquetTBaseScheme<T extends TBase> extends ParquetValueScheme<T> {
   public void sourceConfInit(FlowProcess<JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
     DeprecatedContainerInputFormat.setInputFormat(ParquetThriftInputFormat.class, jobConf);
-    ParquetThriftInputFormat.<ThriftReadSupport>setReadSupportClass(jobConf, ThriftReadSupport.class);
+    ParquetThriftInputFormat.setReadSupportClass(jobConf, ThriftReadSupport.class);
     ThriftReadSupport.setRecordConverterClass(jobConf, ThriftRecordConverter.class);
 
   }
