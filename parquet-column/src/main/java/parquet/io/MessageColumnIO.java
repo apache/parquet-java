@@ -127,7 +127,7 @@ public class MessageColumnIO extends GroupColumnIO {
       if (DEBUG) log("endField("+field+", "+index+")");
       currentColumnIO = currentColumnIO.getParent();
       if (emptyField) {
-        writeNullForMissingFields(index);
+        throw new ParquetEncodingException("empty fields are illegal, the field should be ommited completely instead");
       }
       currentIndex[currentLevel] = index + 1;
       r[currentLevel] = currentLevel == 0 ? 0 : r[currentLevel - 1];
@@ -179,9 +179,9 @@ public class MessageColumnIO extends GroupColumnIO {
     @Override
     public void endGroup() {
       if (DEBUG) log("endGroup()");
+      emptyField = false;
       int lastIndex = ((GroupColumnIO)currentColumnIO).getChildrenCount() - 1;
       writeNullForMissingFields(lastIndex);
-
       -- currentLevel;
 
       setRepetitionLevel();

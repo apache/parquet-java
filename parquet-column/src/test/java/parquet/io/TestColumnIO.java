@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import parquet.Log;
@@ -362,21 +363,12 @@ public class TestColumnIO {
     recordWriter.addLong(0);
     recordWriter.endField("DocId", 0);
     recordWriter.startField("Links", 1);
-    recordWriter.endField("Links", 1);
-    recordWriter.startField("Name", 2);
-    recordWriter.endField("Name", 2);
-    recordWriter.endMessage();
-    columns.flush();
-
-    String[] expected = {
-        "startMessage()",
-        "DocId.addLong(0)",
-        "endMessage()"
-    };
-
-    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expected, schema));
-    recordReader.read();
-
+    try {
+      recordWriter.endField("Links", 1);
+      Assert.fail("expected exception because of empty field");
+    } catch (ParquetEncodingException e) {
+      Assert.assertEquals("empty fields are illegal, the field should be ommited completely instead", e.getMessage());
+    }
   }
 
   @Test

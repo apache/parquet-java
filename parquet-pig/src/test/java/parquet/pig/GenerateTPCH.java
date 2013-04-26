@@ -94,8 +94,8 @@ public class GenerateTPCH {
   }
 
   private static void writeField(RecordConsumer recordWriter, int index, String name, Object value) {
-    recordWriter.startField(name, index);
     if (value != null) {
+      recordWriter.startField(name, index);
       if (value instanceof Integer) {
         recordWriter.addInteger((Integer)value);
       } else if (value instanceof String) {
@@ -105,7 +105,7 @@ public class GenerateTPCH {
       } else {
         throw new IllegalArgumentException(value.getClass().getName() + " not supported");
       }
+      recordWriter.endField(name, index);
     }
-    recordWriter.endField(name, index);
   }
 }
