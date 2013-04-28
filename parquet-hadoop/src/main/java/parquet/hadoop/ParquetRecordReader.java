@@ -148,9 +148,13 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
    * {@inheritDoc}
    */
   @Override
-  public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
+  public void initialize(InputSplit inputSplit, TaskAttemptContext context)
       throws IOException, InterruptedException {
-    Configuration configuration = taskAttemptContext.getConfiguration();
+    initialize(inputSplit, context.getConfiguration());
+  }
+
+  public void initialize(InputSplit inputSplit, Configuration configuration)
+      throws IOException, InterruptedException {
     ParquetInputSplit parquetInputSplit = (ParquetInputSplit)inputSplit;
     this.requestedSchema = MessageTypeParser.parseMessageType(parquetInputSplit.getRequestedSchema());
     this.columnCount = this.requestedSchema.getPaths().size();

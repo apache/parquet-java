@@ -52,10 +52,10 @@ public class TestInputFormat {
     };
     FileStatus fileStatus = new FileStatus(100, false, 2, 50, 0, new Path("hdfs://foo.namenode:1234/bar"));
     FileMetaData fileMetaData = new FileMetaData(new MessageType("foo"), new HashMap<String, String>());
-    List<InputSplit> splits = ParquetInputFormat.generateSplits(blocks, hdfsBlocks, fileStatus, fileMetaData, ReadSupport.class, "");
+    List<ParquetInputSplit> splits = ParquetInputFormat.generateSplits(blocks, hdfsBlocks, fileStatus, fileMetaData, ReadSupport.class, "");
     assertEquals(splits.toString().replaceAll("([{])", "$0\n").replaceAll("([}])", "\n$0"), 2, splits.size());
     for (int i = 0; i < splits.size(); i++) {
-      ParquetInputSplit parquetInputSplit = (ParquetInputSplit)splits.get(i);
+      ParquetInputSplit parquetInputSplit = splits.get(i);
       assertEquals(5, parquetInputSplit.getBlocks().size());
       assertEquals(2, parquetInputSplit.getLocations().length);
       assertEquals("[foo" + i + ".datanode, bar" + i + ".datanode]", Arrays.toString(parquetInputSplit.getLocations()));
