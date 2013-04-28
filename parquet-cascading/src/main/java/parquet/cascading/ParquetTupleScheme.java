@@ -24,10 +24,25 @@
  import cascading.tuple.Tuple;
  import cascading.tuple.Fields;
 
+ /**
+  * A Cascading Scheme that converts Parquet groups into Cascading tuples.
+  * If you provide it with sourceFields, it will selectively materialize only the columns for those fields.
+  * The names must match the names in the Parquet schema.
+  * If you do not provide sourceFields, or use Fields.ALL or Fields.UNKNOWN, it will create one from the
+  * Parquet schema.
+  * Currently, only primitive types are supported. TODO: allow nested fields in the Parquet schema to be
+  * flattened to a top-level field in the Cascading tuple.
+  *
+  * @author Avi Bryant
+  */
 
 public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputCollector, Object[], Object[]>{
 
   private static final long serialVersionUID = 0L;
+
+  public ParquetTupleScheme() {
+    super();
+  }
 
   public ParquetTupleScheme(Fields sourceFields) {
     super(sourceFields);
