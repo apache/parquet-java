@@ -21,7 +21,7 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.RecordReader;
 
-import parquet.hadoop.thrift.Container;
+import parquet.hadoop.mapred.Container;
 
 import cascading.flow.FlowProcess;
 import cascading.scheme.Scheme;
