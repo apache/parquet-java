@@ -21,7 +21,7 @@
       <url>http://conjars.org/repo</url>
     </repository>
   </repositories>
-  
+
   <dependencies>
     <dependency>
       <groupId>com.twitter</groupId>
@@ -57,7 +57,7 @@
     </dependency>
     <dependency>
        <groupId>cascading</groupId>
-       <artifactId>cascading-core</artifactId>
+       <artifactId>cascading-hadoop</artifactId>
        <version>2.1.5</version>
     </dependency>
   </dependencies>

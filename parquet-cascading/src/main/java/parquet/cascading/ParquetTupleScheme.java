@@ -20,6 +20,7 @@
  import cascading.scheme.SourceCall;
  import cascading.tap.Tap;
  import cascading.tap.CompositeTap;
+ import cascading.tap.hadoop.Hfs;
  import cascading.tuple.Tuple;
  import cascading.tuple.Fields;
 
@@ -43,20 +44,28 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
 
  @Override
  public Fields retrieveSourceFields(FlowProcess<JobConf> flowProcess, Tap tap) {
+    MessageType schema = readSchema(flowProcess, tap);
+    SchemaIntersection intersection = new SchemaIntersection(schema, getSourceFields());
 
-    if( tap instanceof CompositeTap )
-      tap = (Tap) ( (CompositeTap) tap ).getChildTaps().next();
-
-    MessageType schema = readSchema(flowProcess, new Path(tap.getFullIdentifier(flowProcess.getConfigCopy())));
-
-    setSourceFields(FilterSchema.filterFields(schema, getSourceFields()));
+    setSourceFields(intersection.getSourceFields());
 
     return getSourceFields();
   }
 
-  private MessageType readSchema(FlowProcess<JobConf> flowProcess, Path path) {
-    ParquetMetadata metadata = ParquetFileReader.readAnyFooter(flowProcess.getConfigCopy(), path);
-    return metadata.getFileMetaData().getSchema();
+  private MessageType readSchema(FlowProcess<JobConf> flowProcess, Tap tap) {
+    try {
+      Hfs hfs;
+
+      if( tap instanceof CompositeTap )
+        hfs = (Hfs) ( (CompositeTap) tap ).getChildTaps().next();
+      else
+        hfs = (Hfs) tap;
+
+      ParquetMetadata metadata = ParquetFileReader.readAnyFooter(flowProcess.getConfigCopy(), hfs.getPath());
+      return metadata.getFileMetaData().getSchema();
+    } catch (IOException e) {
+      throw new RuntimeException(e.toString());
+    }
   }
 
   @SuppressWarnings("unchecked")

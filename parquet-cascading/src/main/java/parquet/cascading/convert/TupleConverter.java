@@ -44,7 +44,7 @@ public class TupleConverter extends GroupConverter {
 
   @Override
   final public void start() {
-    currentTuple = new Tuple();
+    currentTuple = Tuple.size(converters.length);
   }
 
   @Override
