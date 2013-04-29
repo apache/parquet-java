@@ -12,3 +12,4 @@ target
 *.iws
 *.orig
 *.rej
+dependency-reduced-pom.xml
