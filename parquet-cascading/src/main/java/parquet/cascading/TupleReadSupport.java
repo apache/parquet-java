@@ -5,6 +5,7 @@ import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.commons.lang.StringUtils;
 
 import cascading.tuple.Tuple;
 import cascading.tuple.Fields;
@@ -20,22 +21,17 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
   static final String PARQUET_CASCADING_REQUESTED_FIELDS = "parquet.cascading.requested.fields";
 
   static protected Fields getRequestedFields(Configuration configuration) {
-    try {
-      String fieldsString = configuration.get(PARQUET_CASCADING_REQUESTED_FIELDS);
-      return HadoopUtil.deserializeBase64(fieldsString, configuration, Fields.class);
-    } catch(IOException e) {
-      throw new RuntimeException(e.toString());
-    }
+    String fieldsString = configuration.get(PARQUET_CASCADING_REQUESTED_FIELDS);
+    String[] parts = StringUtils.split(fieldsString, ":");
+    if(parts.length == 0)
+      return Fields.ALL;
+    else
+      return new Fields(parts);
   }
 
   static protected void setRequestedFields(JobConf configuration, Fields fields) {
-    try {
-      String fieldsString = HadoopUtil.serializeBase64(fields, configuration);
-      configuration.set(PARQUET_CASCADING_REQUESTED_FIELDS, fieldsString);
-    }
-    catch(IOException e) {
-      throw new RuntimeException(e.toString());
-    }
+    String fieldsString = StringUtils.join(fields.iterator(), ":");
+    configuration.set(PARQUET_CASCADING_REQUESTED_FIELDS, fieldsString);
   }
 
   @Override
