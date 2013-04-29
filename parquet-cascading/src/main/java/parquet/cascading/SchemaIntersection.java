@@ -14,6 +14,9 @@ public class SchemaIntersection {
   private final Fields sourceFields;
 
   public SchemaIntersection(MessageType fileSchema, Fields requestedFields) {
+    if(requestedFields == Fields.UNKNOWN)
+      requestedFields = Fields.ALL;
+
     Fields newFields = Fields.NONE;
     List<Type> newSchemaFields = new ArrayList<Type>();
     int schemaSize = fileSchema.getFieldCount();
