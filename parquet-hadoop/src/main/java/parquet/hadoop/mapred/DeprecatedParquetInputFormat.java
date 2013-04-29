@@ -37,7 +37,7 @@ import parquet.hadoop.ParquetRecordReader;
 import parquet.hadoop.Footer;
 
 @SuppressWarnings("deprecation")
-public abstract class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.FileInputFormat<Void, Container<V>> {
+public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.FileInputFormat<Void, Container<V>> {
 
   protected ParquetInputFormat<V> realInputFormat = new ParquetInputFormat<V>();
 
