@@ -49,7 +49,7 @@ abstract public class BytesInput {
    * @param inputs the inputs to concatenate
    * @return a concatenated input
    */
-  public static BytesInput fromSequence(BytesInput... inputs) {
+  public static BytesInput concat(BytesInput... inputs) {
     return new SequenceBytesIn(Arrays.asList(inputs));
   }
 
@@ -58,7 +58,7 @@ abstract public class BytesInput {
    * @param inputs the inputs to concatenate
    * @return a concatenated input
    */
-  public static BytesInput fromSequence(List<BytesInput> inputs) {
+  public static BytesInput concat(List<BytesInput> inputs) {
     return new SequenceBytesIn(inputs);
   }
 
@@ -189,7 +189,7 @@ abstract public class BytesInput {
   private static class SequenceBytesIn extends BytesInput {
     private static final Log LOG = Log.getLog(BytesInput.SequenceBytesIn.class);
 
-    public final List<BytesInput> inputs;
+    private final List<BytesInput> inputs;
     private final long size;
 
     private SequenceBytesIn(List<BytesInput> inputs) {

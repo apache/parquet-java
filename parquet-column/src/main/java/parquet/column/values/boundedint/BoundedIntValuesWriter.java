@@ -15,6 +15,7 @@
  */
 package parquet.column.values.boundedint;
 
+import static parquet.bytes.BytesInput.concat;
 import static parquet.column.Encoding.RLE;
 import parquet.Log;
 import parquet.bytes.BytesInput;
@@ -82,7 +83,7 @@ class BoundedIntValuesWriter extends ValuesWriter {
     // We serialize the length so that on deserialization we can
     // deserialize as we go, instead of having to load everything
     // into memory
-    return BytesInput.fromSequence(BytesInput.fromInt(buf.length), BytesInput.from(buf));
+    return concat(BytesInput.fromInt(buf.length), BytesInput.from(buf));
   }
 
   @Override

@@ -1,6 +1,7 @@
 package parquet.column.values.dictionary;
 
 import static parquet.Log.DEBUG;
+import static parquet.bytes.BytesInput.concat;
 import static parquet.column.Encoding.PLAIN_DICTIONARY;
 
 import java.io.IOException;
@@ -140,7 +141,7 @@ public class DictionaryValuesWriter extends ValuesWriter {
         bytesHeader[1] = (byte)((maxDicId >>>  8) & 0xFF);
         final BytesInput rleEncodedBytes = rleSimpleEncoder.toBytes();
         if (DEBUG) LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
-        return BytesInput.fromSequence(BytesInput.from(bytesHeader), rleEncodedBytes);
+        return concat(BytesInput.from(bytesHeader), rleEncodedBytes);
       } catch (IOException e) {
         throw new ParquetEncodingException("could not encode the values", e);
       }

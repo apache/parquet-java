@@ -48,7 +48,7 @@ public class RLEDecoder {
     this.bitWidth = bitWidth;
     this.packer = ByteBitPacking.getPacker(bitWidth);
     // number of bytes needed when padding to the next byte
-    this.bytesWidth = (bitWidth + 7) / 8;
+    this.bytesWidth = BytesUtils.paddedByteCountFromBits(bitWidth);
     this.in = in;
   }
 
