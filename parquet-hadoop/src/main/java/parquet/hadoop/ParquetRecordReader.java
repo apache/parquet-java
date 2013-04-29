@@ -154,7 +154,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   }
 
   public void initialize(InputSplit inputSplit, Configuration configuration)
-      throws IOException, InterruptedException {
+      throws IOException {
     ParquetInputSplit parquetInputSplit = (ParquetInputSplit)inputSplit;
     this.requestedSchema = MessageTypeParser.parseMessageType(parquetInputSplit.getRequestedSchema());
     this.columnCount = this.requestedSchema.getPaths().size();
