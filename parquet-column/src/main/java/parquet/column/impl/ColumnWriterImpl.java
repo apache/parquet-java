@@ -50,10 +50,10 @@ final class ColumnWriterImpl implements ColumnWriter {
     definitionLevelColumn = new BitPackingValuesWriter(path.getMaxDefinitionLevel());
     switch (path.getType()) {
     case BOOLEAN:
-      this.dataColumn = new BooleanPlainValuesWriter(pageSizeThreshold * 11 / 10);
+      this.dataColumn = new BooleanPlainValuesWriter(pageSizeThreshold / 10 * 11);
       break;
     default:
-      this.dataColumn = new PlainValuesWriter(pageSizeThreshold * 11 / 10);
+      this.dataColumn = new PlainValuesWriter(pageSizeThreshold / 10 * 11);
     }
   }
 
