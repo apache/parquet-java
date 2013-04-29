@@ -56,6 +56,7 @@ public interface ColumnReader {
   void writeCurrentValueToConverter();
 
   /**
+   * available when the underlying encoding is dictionary based
    * @return the dictionary id for the current value
    */
   int getCurrentValueDictionaryID();
