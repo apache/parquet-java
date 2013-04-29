@@ -10,8 +10,8 @@
  import parquet.hadoop.ParquetInputFormat;
  import parquet.hadoop.ParquetFileReader;
  import parquet.hadoop.metadata.ParquetMetadata;
- import parquet.hadoop.thrift.Container;
- import parquet.hadoop.thrift.DeprecatedContainerInputFormat;
+ import parquet.hadoop.mapred.Container;
+ import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
  import parquet.schema.MessageType;
 
  import cascading.flow.FlowProcess;
@@ -52,7 +52,7 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
   @Override
   public void sourceConfInit(FlowProcess<JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
-    DeprecatedContainerInputFormat.setInputFormat(ParquetInputFormat.class, jobConf);
+    jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
     ParquetInputFormat.setReadSupportClass(jobConf, TupleReadSupport.class);
     TupleReadSupport.setRequestedFields(jobConf, getSourceFields());
  }
