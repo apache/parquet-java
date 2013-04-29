@@ -63,7 +63,7 @@ public class TestInputOutputFormat {
 
   public static class MyMapper extends Mapper<LongWritable, Text, Void, AddressBook> {
 
-    public void run(org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,AddressBook>.Context context) throws IOException ,InterruptedException {
+    public void run(org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,AddressBook>.Context context) throws IOException, InterruptedException {
       for (int i = 0; i < 10; i++) {
         AddressBook a = TestInputOutputFormat.nextAddressbook(i);
         context.write(null, a);

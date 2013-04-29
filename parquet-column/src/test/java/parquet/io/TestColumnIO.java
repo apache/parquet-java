@@ -22,6 +22,11 @@ import static parquet.example.Paper.r1;
 import static parquet.example.Paper.r2;
 import static parquet.example.Paper.schema;
 import static parquet.example.Paper.schema2;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static parquet.schema.Type.Repetition.OPTIONAL;
+import static parquet.schema.Type.Repetition.REPEATED;
+import static parquet.schema.Type.Repetition.REQUIRED;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -29,6 +34,7 @@ import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import parquet.Log;
@@ -341,14 +347,28 @@ public class TestColumnIO {
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
     columns.flush();
 
-    final Deque<String> expectations = new ArrayDeque<String>();
-    for (String string : expectedEventsForR1) {
-      expectations.add(string);
-    }
-
-    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectations, schema));
+    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectedEventsForR1, schema));
     recordReader.read();
 
+  }
+
+  @Test
+  public void testEmptyField() {
+    MemPageStore memPageStore = new MemPageStore();
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800);
+    MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
+    final RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
+    recordWriter.startMessage();
+    recordWriter.startField("DocId", 0);
+    recordWriter.addLong(0);
+    recordWriter.endField("DocId", 0);
+    recordWriter.startField("Links", 1);
+    try {
+      recordWriter.endField("Links", 1);
+      Assert.fail("expected exception because of empty field");
+    } catch (ParquetEncodingException e) {
+      Assert.assertEquals("empty fields are illegal, the field should be ommited completely instead", e.getMessage());
+    }
   }
 
   @Test
