@@ -15,10 +15,13 @@
  */
 package parquet.column.values.bitpacking;
 
+import static parquet.Log.DEBUG;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import parquet.Log;
 import parquet.bytes.BytesInput;
 
 /**
@@ -28,6 +31,7 @@ import parquet.bytes.BytesInput;
  *
  */
 public class ByteBasedBitPackingEncoder {
+  private static final Log LOG = Log.getLog(ByteBasedBitPackingEncoder.class);
 
   private static final int VALUES_WRITTEN_AT_A_TIME = 8;
   /** must be a multiple of VALUES_WRITTEN_AT_A_TIME */
@@ -88,6 +92,7 @@ public class ByteBasedBitPackingEncoder {
    */
   public BytesInput toBytes() throws IOException {
     int packedByteLength = packedPosition + (inputSize * bitWidth + 7) / 8;
+    if (DEBUG) LOG.debug("writing " + (slabs.size() * SLAB_SIZE + packedByteLength) + " bytes");
     if (inputSize > 0) {
       for (int i = inputSize; i < input.length; i++) {
         input[i] = 0;

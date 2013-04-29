@@ -10,12 +10,15 @@ import java.util.Map;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
+import parquet.bytes.BytesUtils;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.bytes.LittleEndianDataOutputStream;
 import parquet.column.Encoding;
 import parquet.column.page.DictionaryPage;
 import parquet.column.values.ValuesWriter;
+import parquet.column.values.dictionary.IntList.IntIterator;
 import parquet.column.values.plain.PlainValuesWriter;
+import parquet.column.values.rle.RLESimpleEncoder;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
 
@@ -61,7 +64,7 @@ public class DictionaryValuesWriter extends ValuesWriter {
   /**
    * dictionary encoded values
    */
-  private CapacityByteArrayOutputStream out = new CapacityByteArrayOutputStream(32 * 1024); // TODO: initial size
+  private IntList out = new IntList();
 
   public DictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
     this.maxDictionaryByteSize = maxDictionaryByteSize;
@@ -87,7 +90,6 @@ public class DictionaryValuesWriter extends ValuesWriter {
       }
     }
     // write also to plain encoding if we need to fall back
-    if (DEBUG) LOG.debug("writing in plain encoding");
     plainValuesWriter.writeBytes(v);
   }
 
@@ -96,7 +98,6 @@ public class DictionaryValuesWriter extends ValuesWriter {
    * @param v the value to dictionary encode
    */
   private void writeBytesUsingDict(Binary v) {
-    if (DEBUG) LOG.debug("writing using dictionary");
     Integer id = dict.get(v);
     if (id == null) {
       id = dict.size();
@@ -104,22 +105,20 @@ public class DictionaryValuesWriter extends ValuesWriter {
       // length as int (2 bytes) + actual bytes
       dictionaryByteSize += 2 + v.length();
     }
-    // we write only two bytes
-    out.write((id >>>  0) & 0xFF);
-    out.write((id >>>  8) & 0xFF);
+    out.add(id);
   }
 
   @Override
   public long getBufferedSize() {
     // size that will be written to a page
     // not including the dictionary size
-    return dictionaryTooBig ? plainValuesWriter.getBufferedSize() : out.size();
+    return dictionaryTooBig ? plainValuesWriter.getBufferedSize() : out.size() * 4;
   }
 
   @Override
   public long getAllocatedSize() {
     // size used in memory
-    return (out == null ? 0 : out.getCapacity()) + dictionaryByteSize + plainValuesWriter.getAllocatedSize();
+    return (out == null ? 0 : out.size() * 4) + dictionaryByteSize + plainValuesWriter.getAllocatedSize();
   }
 
   @Override
@@ -128,7 +127,23 @@ public class DictionaryValuesWriter extends ValuesWriter {
       // remember size of dictionary when we last wrote a page
       lastUsedDictionarySize = dict.size();
       lastUsedDictionaryByteSize = dictionaryByteSize;
-      return BytesInput.from(out);
+      final int maxDicId = dict.size() - 1;
+      if (DEBUG) LOG.debug("max dic id " + maxDicId);
+      final RLESimpleEncoder rleSimpleEncoder = new RLESimpleEncoder(BytesUtils.getWidthFromMaxInt(maxDicId));
+      final IntIterator iterator = out.iterator();
+      try {
+        while (iterator.hasNext()) {
+          rleSimpleEncoder.writeInt(iterator.next());
+        }
+        byte[] bytesHeader = new byte[2];
+        bytesHeader[0] = (byte)(maxDicId & 0xFF);
+        bytesHeader[1] = (byte)((maxDicId >>>  8) & 0xFF);
+        final BytesInput rleEncodedBytes = rleSimpleEncoder.toBytes();
+        if (DEBUG) LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
+        return BytesInput.fromSequence(BytesInput.from(bytesHeader), rleEncodedBytes);
+      } catch (IOException e) {
+        throw new ParquetEncodingException("could not encode the values", e);
+      }
     }
     return plainValuesWriter.getBytes();
   }
@@ -144,7 +159,7 @@ public class DictionaryValuesWriter extends ValuesWriter {
   @Override
   public void reset() {
     if (out != null) {
-      out.reset();
+      out = new IntList();
     }
     plainValuesWriter.reset();
   }

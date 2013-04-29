@@ -8,8 +8,10 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import parquet.Log;
+import parquet.bytes.BytesUtils;
 import parquet.column.Dictionary;
 import parquet.column.values.ValuesReader;
+import parquet.column.values.rle.RLEDecoder;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
 
@@ -26,6 +28,8 @@ public class DictionaryValuesReader extends ValuesReader {
 
   private Dictionary dictionary;
 
+  private RLEDecoder decoder;
+
   public DictionaryValuesReader(Dictionary dictionary) {
     this.dictionary = dictionary;
   }
@@ -35,30 +39,27 @@ public class DictionaryValuesReader extends ValuesReader {
       throws IOException {
     if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (page.length - offset));
     this.in = new ByteArrayInputStream(page, offset, page.length - offset);
+    int maxDicId = BytesUtils.readIntLittleEndianOnTwoBytes(in);
+    if (DEBUG) LOG.debug("max dic Id " + maxDicId);
+    decoder = new RLEDecoder(BytesUtils.getWidthFromMaxInt(maxDicId), in);
     return page.length;
   }
 
   @Override
   public int readValueDictionaryId() {
-    return readIntOnTwoBytes();
+    try {
+      return decoder.readInt();
+    } catch (IOException e) {
+      throw new ParquetDecodingException(e);
+    }
   }
 
   @Override
   public Binary readBytes() {
-    int id = readIntOnTwoBytes();
-    return dictionary.decodeToBinary(id);
-  }
-
-  private int readIntOnTwoBytes() {
     try {
-      int ch4 = in.read();
-      int ch3 = in.read();
-      if ((ch3 | ch4) < 0)
-        throw new EOFException();
-      int id = ((ch3 << 8) + (ch4 << 0));
-      return id;
+      return dictionary.decodeToBinary(decoder.readInt());
     } catch (IOException e) {
-      throw new ParquetDecodingException("could not read bytes", e);
+      throw new ParquetDecodingException(e);
     }
   }
 

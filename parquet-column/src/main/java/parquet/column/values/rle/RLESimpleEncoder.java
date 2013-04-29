@@ -15,9 +15,12 @@
  */
 package parquet.column.values.rle;
 
+import static parquet.Log.DEBUG;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
+import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.BytesUtils;
 import parquet.column.values.bitpacking.ByteBasedBitPackingEncoder;
@@ -29,11 +32,16 @@ import parquet.column.values.bitpacking.ByteBasedBitPackingEncoder;
  *
  */
 public class RLESimpleEncoder {
+  private static final Log LOG = Log.getLog(RLESimpleEncoder.class);
 
   private ByteBasedBitPackingEncoder bitPackingEncoder;
   private int totalValues = 0;
 
+  private final int bitWidth;
+
   public RLESimpleEncoder(int bitWidth) {
+    this.bitWidth = bitWidth;
+    if (DEBUG) LOG.debug("encoding bitWidth " + bitWidth);
     this.bitPackingEncoder = new ByteBasedBitPackingEncoder(bitWidth);
   }
 
@@ -43,12 +51,21 @@ public class RLESimpleEncoder {
   }
 
   public BytesInput toBytes() throws IOException {
+    if (totalValues % 8 != 0) {
+      // padding to the next multiple of 8
+      for (int i = 0; i < 8 - (totalValues % 8); ++ i) {
+        bitPackingEncoder.writeInt(0);
+      }
+    }
     ByteArrayOutputStream size = new ByteArrayOutputStream(4);
-    int header = (totalValues + 7) / 8 << 1 | 1;
+    final int padded8ValuesBlocks = (totalValues + 7) / 8;
+    if (DEBUG) LOG.debug("writing " + totalValues + " values padded to " + (padded8ValuesBlocks * 8));
+    int header = padded8ValuesBlocks << 1 | 1;
     BytesUtils.writeUnsignedVarInt(header, size);
+    BytesInput bitPacked = bitPackingEncoder.toBytes();
     return BytesInput.fromSequence(
         BytesInput.from(size),
-        bitPackingEncoder.toBytes()
+        bitPacked
         );
   }
 }
