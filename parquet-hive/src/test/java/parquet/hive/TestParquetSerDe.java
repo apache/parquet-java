@@ -1,17 +1,13 @@
 /**
  * Copyright 2013 Criteo.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License
+ * at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+ * OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
  */
 package parquet.hive;
 
@@ -19,9 +15,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Properties;
+import junit.framework.TestCase;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hive.serde.Constants;
 import org.apache.hadoop.hive.serde2.SerDeException;
 import org.apache.hadoop.hive.serde2.io.ByteWritable;
 import org.apache.hadoop.hive.serde2.io.DoubleWritable;
@@ -44,9 +40,8 @@ import parquet.hive.writable.BinaryWritable;
  * @author Mickaël Lacour <m.lacour@criteo.com>
  *
  */
-public class TestParquetSerDe {
+public class TestParquetSerDe extends TestCase {
 
-  @Test
   public void testParquetHiveSerDe() throws Throwable {
     try {
       // Create the SerDe
@@ -78,41 +73,25 @@ public class TestParquetSerDe {
   }
 
   private void deserializeAndSerializeLazySimple(final ParquetHiveSerDe serDe, final MapWritable t)
-      throws SerDeException {
+          throws SerDeException {
 
     // Get the row structure
     final StructObjectInspector oi = (StructObjectInspector) serDe
-        .getObjectInspector();
+            .getObjectInspector();
 
     // Deserialize
     final Object row = serDe.deserialize(t);
     assertEquals("deserialize gave the wrong object", row.getClass(), MapWritable.class);
     assertEquals("serialized size correct after deserialization", serDe.getSerDeStats()
-        .getRawDataSize(), t.size());
+            .getRawDataSize(), t.size());
     assertEquals("deserialisation give the wrong object", t, row);
 
     // Serialize
     final MapWritable serializedMap = (MapWritable) serDe.serialize(row, oi);
     assertEquals("serialized size correct after serialization", serDe.getSerDeStats()
-        .getRawDataSize(),
-        serializedMap.size());
-    assertTrue("serialize Object to MapWritable should be equals", mapEquals(t, serializedMap));
-  }
-
-
-  private boolean mapEquals(final MapWritable first, final MapWritable second) {
-
-    if (first == second) {
-      return true;
-    }
-
-    if (second instanceof MapWritable) {
-      if (first.size() != second.size()) {
-        return false;
-      }
-      return first.entrySet().equals(second.entrySet());
-    }
-    return false;
+            .getRawDataSize(),
+            serializedMap.size());
+    assertTrue("serialize Object to MapWritable should be equals", UtilitiesTestMethods.mapEquals(t, serializedMap));
   }
 
   private Properties createProperties() {
@@ -120,11 +99,10 @@ public class TestParquetSerDe {
 
     // Set the configuration parameters
     tbl.setProperty("columns",
-        "abyte,ashort,aint,along,adouble,astring");
+            "abyte,ashort,aint,along,adouble,astring");
     tbl.setProperty("columns.types",
-        "tinyint:smallint:int:bigint:double:string");
-    tbl.setProperty(Constants.SERIALIZATION_NULL_FORMAT, "NULL");
+            "tinyint:smallint:int:bigint:double:string");
+    tbl.setProperty(org.apache.hadoop.hive.serde.serdeConstants.SERIALIZATION_NULL_FORMAT, "NULL");
     return tbl;
   }
-
 }

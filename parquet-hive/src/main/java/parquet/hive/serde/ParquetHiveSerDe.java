@@ -288,7 +288,7 @@ public class ParquetHiveSerDe implements SerDe {
       throw new SerDeException("Unknown data type" + inspector.getCategory());
     }
   }
-
+  //
   @Override
   public SerDeStats getSerDeStats() {
     // must be different
@@ -301,4 +301,5 @@ public class ParquetHiveSerDe implements SerDe {
     }
     return stats;
   }
+
 }

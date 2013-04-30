@@ -1,17 +1,13 @@
 /**
  * Copyright 2013 Criteo.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License
+ * at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+ * OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
  */
 package parquet.hive;
 
@@ -63,7 +59,7 @@ import parquet.schema.Type;
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  *
  */
-@SuppressWarnings({ "unchecked", "rawtypes" })
+@SuppressWarnings({"unchecked", "rawtypes"})
 public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWritable> {
 
   protected ParquetInputFormat<MapWritable> realInput;
@@ -80,7 +76,6 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
   protected boolean isSplitable(final FileSystem fs, final Path filename) {
     return false;
   }
-
   private final ManageJobConfig manageJob = new ManageJobConfig();
 
   @Override
@@ -113,11 +108,11 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
 
   @Override
   public org.apache.hadoop.mapred.RecordReader<Void, MapWritable> getRecordReader(final org.apache.hadoop.mapred.InputSplit split, final org.apache.hadoop.mapred.JobConf job,
-      final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
+          final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
     return (RecordReader<Void, MapWritable>) new RecordReaderWrapper(realInput, split, job, reporter);
   }
 
-  private static class InputSplitWrapper extends FileSplit implements InputSplit {
+  static class InputSplitWrapper extends FileSplit implements InputSplit {
 
     private ParquetInputSplit realSplit;
 
@@ -191,7 +186,6 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
 
     private org.apache.hadoop.mapreduce.RecordReader<Void, MapWritable> realReader;
     private final long splitLen; // for getPos()
-
     // expect readReader return same Key & Value objects (common case)
     // this avoids extra serialization & deserialization of these objects
     private MapWritable valueObj = null;
@@ -212,19 +206,20 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
         final ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(cloneJob, finalPath);
         final List<BlockMetaData> blocks = parquetMetadata.getBlocks();
         final FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
-        final List<String>  listColumns = (List<String>) StringUtils.getStringCollection(cloneJob.get("columns"));
+        final List<String> listColumns = (List<String>) StringUtils.getStringCollection(cloneJob.get("columns"));
         final MessageType fileSchema = fileMetaData.getSchema();
         MessageType requestedSchemaByUser = fileSchema;
         final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(cloneJob);
         if (indexColumnsWanted.isEmpty() == false) {
           final List<Type> typeList = new ArrayList<Type>();
-          for(final Integer idx : indexColumnsWanted) {
+          for (final Integer idx : indexColumnsWanted) {
             typeList.add(fileSchema.getType(listColumns.get(idx)));
           }
           requestedSchemaByUser = new MessageType(fileSchema.getName(), typeList);
         }
+
         split = new ParquetInputSplit(finalPath, ((FileSplit) oldSplit).getStart(), oldSplit.getLength(), oldSplit.getLocations(), blocks,
-            fileSchema.toString() , requestedSchemaByUser.toString(), fileMetaData.getKeyValueMetaData());
+                fileSchema.toString(), requestedSchemaByUser.toString(), fileMetaData.getKeyValueMetaData());
 
       } else {
         throw new RuntimeException("Unknown split type");
@@ -237,7 +232,6 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
 
       // create a TaskInputOutputContext
       final TaskAttemptContext taskContext = new TaskInputOutputContext(oldJobConf, taskAttemptID, null, null, new ReporterWrapper(reporter)) {
-
         @Override
         public Object getCurrentKey() throws IOException, InterruptedException {
           throw new NotImplementedException();
@@ -252,8 +246,6 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
         public boolean nextKeyValue() throws IOException, InterruptedException {
           throw new NotImplementedException();
         }
-
-
       };
 
       try {
@@ -315,9 +307,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
       try {
         if (realReader.nextKeyValue()) {
           if (key != realReader.getCurrentKey() || value != realReader.getCurrentValue()) {
-
-            throw new IOException("DeprecatedParquetHiveInput can not " + "support RecordReaders that don't return same key & value "
-                + "objects. current reader class : " + realReader.getClass());
+            throw new IOException("DeprecatedParquetHiveInput can not " + "support RecordReaders that don't return same key & value ");
           }
 
           return true;
@@ -335,6 +325,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
    * A reporter that works with both mapred and mapreduce APIs.
    */
   private static class ReporterWrapper extends StatusReporter implements Reporter {
+
     private final Reporter wrappedReporter;
 
     public ReporterWrapper(final Reporter reporter) {
@@ -376,5 +367,4 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
       wrappedReporter.setStatus(s);
     }
   }
-
 }

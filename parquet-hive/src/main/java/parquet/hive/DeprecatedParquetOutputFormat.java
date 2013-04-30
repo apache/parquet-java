@@ -1,17 +1,13 @@
 /**
  * Copyright 2013 Criteo.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License
+ * at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+ * OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
  */
 package parquet.hive;
 
@@ -27,7 +23,6 @@ import org.apache.hadoop.hive.ql.io.HiveOutputFormat;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
 import org.apache.hadoop.io.MapWritable;
-import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.FileOutputFormat;
 import org.apache.hadoop.mapred.JobConf;
@@ -45,7 +40,6 @@ import parquet.hadoop.ParquetOutputFormat;
 import parquet.hive.convert.HiveSchemaConverter;
 import parquet.hive.write.MapWritableWriteSupport;
 
-
 /**
  *
  * A Parquet OutputFormat for Hive (with the deprecated package mapred)
@@ -55,8 +49,8 @@ import parquet.hive.write.MapWritableWriteSupport;
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  *
  */
-@SuppressWarnings({ "unchecked", "rawtypes" })
-public class DeprecatedParquetOutputFormat extends FileOutputFormat<Void, MapWritable> implements HiveOutputFormat<NullWritable, MapWritable> {
+@SuppressWarnings({"unchecked", "rawtypes"})
+public class DeprecatedParquetOutputFormat extends FileOutputFormat<Void, MapWritable> implements HiveOutputFormat<Void, MapWritable> {
 
   protected ParquetOutputFormat<MapWritable> realOutputFormat;
 
@@ -80,7 +74,7 @@ public class DeprecatedParquetOutputFormat extends FileOutputFormat<Void, MapWri
 
   @Override
   public org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter getHiveRecordWriter(final JobConf jc, final Path finalOutPath, final Class<? extends Writable> valueClass,
-      final boolean isCompressed, final Properties tableProperties, final Progressable progress) throws IOException {
+          final boolean isCompressed, final Properties tableProperties, final Progressable progress) throws IOException {
     final String columnNameProperty = tableProperties.getProperty("columns");
     final String columnTypeProperty = tableProperties.getProperty("columns.types");
     List<String> columnNames;
