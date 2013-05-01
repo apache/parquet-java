@@ -227,17 +227,9 @@ public class ParquetFileReader implements Closeable {
   }
 
 
-  public static final ParquetMetadata readAnyFooter(Configuration configuration, Path file) throws IOException {
+  public static final List<Footer> readFooters(Configuration configuration, Path file) throws IOException {
     FileSystem fileSystem = file.getFileSystem(configuration);
-    FileStatus fileStatus = fileSystem.getFileStatus(file);
-    if (fileStatus.isDir()) {
-      FileStatus[] statuses = fileSystem.listStatus(file, new Utils.OutputFileUtils.OutputFilesFilter());
-      if(statuses.length == 0)
-        throw new IOException("Could not find any output files in " + file);
-      return readFooter(configuration, statuses[0]);
-    } else {
-      return readFooter(configuration, fileStatus);
-    }
+    return readFooters(configuration, fileSystem.getFileStatus(file));
   }
 
   /**

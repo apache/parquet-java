@@ -22,6 +22,10 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
 
   static protected Fields getRequestedFields(Configuration configuration) {
     String fieldsString = configuration.get(PARQUET_CASCADING_REQUESTED_FIELDS);
+
+    if(fieldsString == null)
+      return Fields.ALL;
+
     String[] parts = StringUtils.split(fieldsString, ":");
     if(parts.length == 0)
       return Fields.ALL;

@@ -1,7 +1,7 @@
  package parquet.cascading;
 
  import java.io.IOException;
-
+ import java.util.List;
  import org.apache.hadoop.mapred.JobConf;
  import org.apache.hadoop.mapred.OutputCollector;
  import org.apache.hadoop.mapred.RecordReader;
@@ -9,6 +9,7 @@
 
  import parquet.hadoop.ParquetInputFormat;
  import parquet.hadoop.ParquetFileReader;
+ import parquet.hadoop.Footer;
  import parquet.hadoop.metadata.ParquetMetadata;
  import parquet.hadoop.mapred.Container;
  import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
@@ -19,6 +20,7 @@
  import cascading.scheme.Scheme;
  import cascading.scheme.SourceCall;
  import cascading.tap.Tap;
+ import cascading.tap.TapException;
  import cascading.tap.CompositeTap;
  import cascading.tap.hadoop.Hfs;
  import cascading.tuple.Tuple;
@@ -76,10 +78,14 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
       else
         hfs = (Hfs) tap;
 
-      ParquetMetadata metadata = ParquetFileReader.readAnyFooter(flowProcess.getConfigCopy(), hfs.getPath());
-      return metadata.getFileMetaData().getSchema();
+      List<Footer> footers = ParquetFileReader.readFooters(flowProcess.getConfigCopy(), hfs.getPath());
+      if(footers.isEmpty()) {
+        throw new TapException("Could not read Parquet metadata at " + hfs.getPath());
+      } else {
+        return footers.get(0).getParquetMetadata().getFileMetaData().getSchema();
+      }
     } catch (IOException e) {
-      throw new RuntimeException(e.toString());
+      throw new TapException(e);
     }
   }
 
