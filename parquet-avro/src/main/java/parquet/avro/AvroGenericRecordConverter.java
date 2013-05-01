@@ -43,7 +43,7 @@ class AvroGenericRecordConverter extends GroupConverter {
       }
       Type type = parquetSchema.getType(index);
       final int finalAvroIndex = avroIndex;
-      final Schema fieldSchema = AvroSchemaHelper.getNonNull(field.schema());
+      final Schema fieldSchema = AvroSchemaConverter.getNonNull(field.schema());
       converters[index] = newConverter(fieldSchema, type, new ParentValueContainer() {
         @Override
         void add(Object value) {

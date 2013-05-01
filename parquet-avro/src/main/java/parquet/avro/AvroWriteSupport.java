@@ -78,13 +78,13 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
     for (int avroIndex = 0; avroIndex < avroFields.size(); avroIndex++) {
       Schema.Field avroField = avroFields.get(avroIndex);
       if (avroField.schema().getType().equals(Schema.Type.NULL)) {
-        continue; // NOTE: Not sure of the point of this; why would I have a null type in a schema?
+        continue;
       }
       Type fieldType = fields.get(index);
       Object value = record.get(avroIndex);
       if (value != null) {
         recordConsumer.startField(fieldType.getName(), index);
-        writeValue(fieldType, AvroSchemaHelper.getNonNull(avroField.schema()), value);
+        writeValue(fieldType, avroField.schema(), value);
         recordConsumer.endField(fieldType.getName(), index);
       } else if (fieldType.getRepetition() == Type.Repetition.REQUIRED) {
         throw new RuntimeException("Null-value for required field: " + avroField.name());
@@ -130,7 +130,7 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
 
   @SuppressWarnings("unchecked")
   private void writeValue(Type type, Schema avroSchema, Object value) {
-    Schema.Type avroType = avroSchema.getType();
+    Schema.Type avroType = AvroSchemaConverter.getNonNull(avroSchema).getType();
     if (avroType.equals(Schema.Type.BOOLEAN)) {
       recordConsumer.addBoolean((Boolean) value);
     } else if (avroType.equals(Schema.Type.INT)) {
