@@ -15,15 +15,16 @@
  */
 package parquet.column.impl;
 
+import static parquet.bytes.BytesInput.concat;
+
 import java.io.IOException;
 
 import parquet.Log;
-import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
 import parquet.column.page.PageWriter;
 import parquet.column.values.ValuesWriter;
-import parquet.column.values.bitpacking.BitPackingValuesWriter;
+import parquet.column.values.bitpacking.ByteBitPackingValuesWriter;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
 import parquet.io.ParquetEncodingException;
@@ -46,8 +47,8 @@ final class ColumnWriterImpl implements ColumnWriter {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
-    repetitionLevelColumn = new BitPackingValuesWriter(path.getMaxRepetitionLevel());
-    definitionLevelColumn = new BitPackingValuesWriter(path.getMaxDefinitionLevel());
+    repetitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxRepetitionLevel());
+    definitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxDefinitionLevel());
     switch (path.getType()) {
     case BOOLEAN:
       this.dataColumn = new BooleanPlainValuesWriter(pageSizeThreshold / 10 * 11);
@@ -75,7 +76,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     if (DEBUG) LOG.debug("write page");
     try {
       pageWriter.writePage(
-          BytesInput.fromSequence(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()),
+          concat(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()),
           valueCount,
           repetitionLevelColumn.getEncoding(),
           definitionLevelColumn.getEncoding(),

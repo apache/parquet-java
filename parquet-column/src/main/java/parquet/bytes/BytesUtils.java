@@ -64,10 +64,37 @@ public class BytesUtils {
     int ch2 = in.read();
     int ch3 = in.read();
     int ch4 = in.read();
-    if ((ch1 | ch2 | ch3 | ch4) < 0)
+    if ((ch1 | ch2 | ch3 | ch4) < 0) {
         throw new EOFException();
-    if (Log.DEBUG) LOG.debug("read le int: " + ch1 + " " + ch2 + " " + ch3 + " " + ch4 + " => " + ((ch4 << 24) + (ch3 << 16) + (ch2 << 8) + (ch1 << 0)));
+    }
     return ((ch4 << 24) + (ch3 << 16) + (ch2 << 8) + (ch1 << 0));
+  }
+
+  public static int readIntLittleEndianOnOneByte(InputStream in) throws IOException {
+      int ch1 = in.read();
+      if (ch1 < 0) {
+        throw new EOFException();
+      }
+      return ch1;
+  }
+
+  public static int readIntLittleEndianOnTwoBytes(InputStream in) throws IOException {
+      int ch1 = in.read();
+      int ch2 = in.read();
+      if ((ch1 | ch2 ) < 0) {
+          throw new EOFException();
+      }
+      return ((ch2 << 8) + (ch1 << 0));
+  }
+
+  public static int readIntLittleEndianOnThreeBytes(InputStream in) throws IOException {
+      int ch1 = in.read();
+      int ch2 = in.read();
+      int ch3 = in.read();
+      if ((ch1 | ch2 | ch3 ) < 0) {
+          throw new EOFException();
+      }
+      return ((ch3 << 16) + (ch2 << 8) + (ch1 << 0));
   }
 
   public static void writeIntLittleEndian(OutputStream out, int v) throws IOException {
@@ -96,5 +123,13 @@ public class BytesUtils {
       value >>>= 7;
     }
     out.write(value & 0x7F);
+  }
+
+  /**
+   * @param bitLength a count of bits
+   * @return the corresponding byte count padded to the next byte
+   */
+  public static int paddedByteCountFromBits(int bitLength) {
+    return (bitLength + 7) / 8;
   }
 }

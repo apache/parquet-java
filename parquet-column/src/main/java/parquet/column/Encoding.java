@@ -17,7 +17,7 @@ package parquet.column;
 
 import parquet.column.values.ValuesReader;
 import parquet.column.values.ValuesType;
-import parquet.column.values.bitpacking.BitPackingValuesReader;
+import parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 import parquet.column.values.boundedint.BoundedIntValuesFactory;
 import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.BooleanPlainValuesReader;
@@ -56,7 +56,7 @@ public enum Encoding {
   BIT_PACKED {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      return new BitPackingValuesReader(getMaxLevel(descriptor, valuesType));
+      return new ByteBitPackingValuesReader(getMaxLevel(descriptor, valuesType));
     }
   },
 

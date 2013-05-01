@@ -13,23 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.primitive;
+package parquet.column.values.bitpacking;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-
-import org.junit.Assert;
 import org.junit.Test;
 
-import parquet.column.values.bitpacking.BitPacking;
-import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
-import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
+import parquet.column.values.ValuesReader;
+import parquet.column.values.ValuesWriter;
 
-public class TestBitPacking {
+public class TestBitPackingColumn {
 
   @Test
   public void testZero() throws IOException {
@@ -157,59 +153,50 @@ public class TestBitPacking {
     validateEncodeDecode(7, vals, expected);
   }
 
-  private void validateEncodeDecode(int bitLength, int[] vals, String expected)
-      throws IOException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    BitPackingWriter w = BitPacking.getBitPackingWriter(bitLength, baos);
-    for (int i : vals) {
-      w.write(i);
+  private void validateEncodeDecode(int bitLength, int[] vals, String expected) throws IOException {
+    for (PACKING_TYPE type : PACKING_TYPE.values()) {
+      System.out.println(type);
+      final int bound = (int)Math.pow(2, bitLength) - 1;
+      ValuesWriter w = type.getWriter(bound);
+      for (int i : vals) {
+        w.writeInteger(i);
+      }
+      byte[] bytes = w.getBytes().toByteArray();
+      System.out.println("vals ("+bitLength+"): " + TestBitPacking.toString(vals));
+      System.out.println("bytes: " + TestBitPacking.toString(bytes));
+      assertEquals(type.toString(), expected, TestBitPacking.toString(bytes));
+      ValuesReader r = type.getReader(bound);
+      r.initFromPage(vals.length, bytes, 0);
+      int[] result = new int[vals.length];
+      for (int i = 0; i < result.length; i++) {
+        result[i] = r.readInteger();
+      }
+      System.out.println("result: " + TestBitPacking.toString(result));
+      assertArrayEquals(type + " result: " + TestBitPacking.toString(result), vals, result);
     }
-    w.finish();
-    byte[] bytes = baos.toByteArray();
-    System.out.println("vals ("+bitLength+"): " + toString(vals));
-    System.out.println("bytes: " + toString(bytes));
-    Assert.assertEquals(expected, toString(bytes));
-    ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-    BitPackingReader r = BitPacking.createBitPackingReader(bitLength, bais, vals.length);
-    int[] result = new int[vals.length];
-    for (int i = 0; i < result.length; i++) {
-      result[i] = r.read();
-    }
-    System.out.println("result: " + toString(result));
-    assertArrayEquals(vals, result);
   }
 
-  public static String toString(int[] vals) {
-    StringBuilder sb = new StringBuilder();
-    boolean first = true;
-    for (int i : vals) {
-      if (first) {
-        first = false;
-      } else {
-        sb.append(" ");
+  private static enum PACKING_TYPE {
+    BYTE_BASED_MANUAL {
+      public ValuesReader getReader(final int bound) {
+        return new BitPackingValuesReader(bound);
       }
-      sb.append(i);
+      public ValuesWriter getWriter(final int bound) {
+        return new BitPackingValuesWriter(bound);
+      }
     }
-    return sb.toString();
-  }
-
-  public static String toString(byte[] bytes) {
-    StringBuilder sb = new StringBuilder();
-    boolean first = true;
-    for (byte b : bytes) {
-      if (first) {
-        first = false;
-      } else {
-        sb.append(" ");
+    ,
+    BYTE_BASED_GENERATED {
+      public ValuesReader getReader(final int bound) {
+        return new ByteBitPackingValuesReader(bound);
       }
-      int i = b < 0 ? 256 + b : b;
-      String binaryString = Integer.toBinaryString(i);
-      for (int j = binaryString.length(); j<8; ++j) {
-        sb.append("0");
+      public ValuesWriter getWriter(final int bound) {
+        return new ByteBitPackingValuesWriter(bound);
       }
-      sb.append(binaryString);
     }
-    return sb.toString();
+    ;
+    abstract public ValuesReader getReader(final int bound);
+    abstract public ValuesWriter getWriter(final int bound);
   }
 
 }

@@ -13,19 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.primitive;
+package parquet.column.values.bitpacking;
 
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
+import org.junit.Assert;
 import org.junit.Test;
 
-import parquet.column.values.bitpacking.BitPackingValuesReader;
-import parquet.column.values.bitpacking.BitPackingValuesWriter;
+import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
+import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
-public class TestBitPackingColumn {
+public class TestBitPacking {
 
   @Test
   public void testZero() throws IOException {
@@ -153,24 +155,59 @@ public class TestBitPackingColumn {
     validateEncodeDecode(7, vals, expected);
   }
 
-  private void validateEncodeDecode(int bitLength, int[] vals, String expected) throws IOException {
-    final int bound = (int)Math.pow(2, bitLength) - 1;
-    BitPackingValuesWriter w = new BitPackingValuesWriter(bound);
+  private void validateEncodeDecode(int bitLength, int[] vals, String expected)
+      throws IOException {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    BitPackingWriter w = BitPacking.getBitPackingWriter(bitLength, baos);
     for (int i : vals) {
-      w.writeInteger(i);
+      w.write(i);
     }
-    byte[] bytes = w.getBytes().toByteArray();
-    System.out.println("vals ("+bitLength+"): " + TestBitPacking.toString(vals));
-    System.out.println("bytes: " + TestBitPacking.toString(bytes));
-    assertEquals(expected, TestBitPacking.toString(bytes));
-    BitPackingValuesReader r = new BitPackingValuesReader(bound);
-    r.initFromPage(vals.length, bytes, 0);
+    w.finish();
+    byte[] bytes = baos.toByteArray();
+    System.out.println("vals ("+bitLength+"): " + toString(vals));
+    System.out.println("bytes: " + toString(bytes));
+    Assert.assertEquals(expected, toString(bytes));
+    ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+    BitPackingReader r = BitPacking.createBitPackingReader(bitLength, bais, vals.length);
     int[] result = new int[vals.length];
     for (int i = 0; i < result.length; i++) {
-      result[i] = r.readInteger();
+      result[i] = r.read();
     }
-    System.out.println("result: " + TestBitPacking.toString(result));
-    assertArrayEquals("result: " + TestBitPacking.toString(result), vals, result);
+    System.out.println("result: " + toString(result));
+    assertArrayEquals(vals, result);
+  }
+
+  public static String toString(int[] vals) {
+    StringBuilder sb = new StringBuilder();
+    boolean first = true;
+    for (int i : vals) {
+      if (first) {
+        first = false;
+      } else {
+        sb.append(" ");
+      }
+      sb.append(i);
+    }
+    return sb.toString();
+  }
+
+  public static String toString(byte[] bytes) {
+    StringBuilder sb = new StringBuilder();
+    boolean first = true;
+    for (byte b : bytes) {
+      if (first) {
+        first = false;
+      } else {
+        sb.append(" ");
+      }
+      int i = b < 0 ? 256 + b : b;
+      String binaryString = Integer.toBinaryString(i);
+      for (int j = binaryString.length(); j<8; ++j) {
+        sb.append("0");
+      }
+      sb.append(binaryString);
+    }
+    return sb.toString();
   }
 
 }

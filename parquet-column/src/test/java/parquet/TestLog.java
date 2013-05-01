@@ -13,17 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.avro;
+package parquet;
 
-import org.apache.avro.generic.GenericRecord;
-import parquet.avro.AvroReadSupport;
-import parquet.hadoop.ParquetInputFormat;
+import org.junit.Assert;
+import org.junit.Test;
 
-/**
- * A Hadoop {@link org.apache.hadoop.mapreduce.InputFormat} for Parquet files.
- */
-public class AvroParquetInputFormat extends ParquetInputFormat<GenericRecord> {
-  public AvroParquetInputFormat() {
-    super(AvroReadSupport.class);
+public class TestLog {
+
+  @Test
+  public void test() {
+    // Use a compile time log level of INFO for performance
+    Assert.assertFalse("Do not merge in log level DEBUG", Log.DEBUG);
   }
 }
