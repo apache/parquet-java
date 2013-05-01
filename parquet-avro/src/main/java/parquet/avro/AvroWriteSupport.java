@@ -78,16 +78,21 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
     for (int avroIndex = 0; avroIndex < avroFields.size(); avroIndex++) {
       Schema.Field avroField = avroFields.get(avroIndex);
       if (avroField.schema().getType().equals(Schema.Type.NULL)) {
-        continue;
+        continue; // NOTE: Not sure of the point of this; why would I have a null type in a schema?
       }
       Type fieldType = fields.get(index);
-      recordConsumer.startField(fieldType.getName(), index);
-      writeValue(fieldType, avroField.schema(), record.get(avroIndex));
-      recordConsumer.endField(fieldType.getName(), index);
+      Object value = record.get(avroIndex);
+      if (value != null) {
+        recordConsumer.startField(fieldType.getName(), index);
+        writeValue(fieldType, AvroSchemaHelper.getNonNull(avroField.schema()), value);
+        recordConsumer.endField(fieldType.getName(), index);
+      } else if (fieldType.getRepetition() == Type.Repetition.REQUIRED) {
+        throw new RuntimeException("Null-value for required field: " + avroField.name());
+      }
       index++;
     }
   }
-
+  
   private <T> void writeArray(GroupType schema, Schema avroSchema,
       GenericArray<T> array) {
     recordConsumer.startGroup(); // group wrapper (original type LIST)
