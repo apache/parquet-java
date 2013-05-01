@@ -226,6 +226,12 @@ public class ParquetFileReader implements Closeable {
     return readFooter(configuration, fileSystem.getFileStatus(file));
   }
 
+
+  public static final List<Footer> readFooters(Configuration configuration, Path file) throws IOException {
+    FileSystem fileSystem = file.getFileSystem(configuration);
+    return readFooters(configuration, fileSystem.getFileStatus(file));
+  }
+
   /**
    * Reads the meta data block in the footer of the file
    * @param configuration
