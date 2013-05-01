@@ -188,7 +188,8 @@ public class ParquetFileWriter {
       parquet.column.Encoding dlEncoding,
       parquet.column.Encoding valuesEncoding) throws IOException {
     state = state.write();
-    if (DEBUG) LOG.debug(out.getPos() + ": write data page: " + valueCount + " values");
+    long beforeHeader = out.getPos();
+    if (DEBUG) LOG.debug(beforeHeader + ": write data page: " + valueCount + " values");
     int compressedPageSize = (int)bytes.size();
     metadataConverter.writeDataPageHeader(
         uncompressedPageSize, compressedPageSize,
@@ -197,8 +198,9 @@ public class ParquetFileWriter {
         dlEncoding,
         valuesEncoding,
         out);
-    this.uncompressedLength += uncompressedPageSize;
-    this.compressedLength += compressedPageSize;
+    long headerSize = out.getPos() - beforeHeader;
+    this.uncompressedLength += uncompressedPageSize + headerSize;
+    this.compressedLength += compressedPageSize + headerSize;
     if (DEBUG) LOG.debug(out.getPos() + ": write data page content " + compressedPageSize);
     bytes.writeAllTo(out);
     currentEncodings.add(rlEncoding);
@@ -216,8 +218,9 @@ public class ParquetFileWriter {
    void writeDataPages(BytesInput bytes, long uncompressedTotalPageSize, long compressedTotalPageSize, List<parquet.column.Encoding> encodings) throws IOException {
     state = state.write();
     if (DEBUG) LOG.debug(out.getPos() + ": write data pages");
-    this.uncompressedLength += uncompressedTotalPageSize;
-    this.compressedLength += compressedTotalPageSize;
+    long headersSize = bytes.size() - compressedTotalPageSize;
+    this.uncompressedLength += uncompressedTotalPageSize + headersSize;
+    this.compressedLength += compressedTotalPageSize + headersSize;
     if (DEBUG) LOG.debug(out.getPos() + ": write data pages content");
     bytes.writeAllTo(out);
     currentEncodings.addAll(encodings);
@@ -307,6 +310,14 @@ public class ParquetFileWriter {
       }
     }
     return new ParquetMetadata(fileMetaData, blocks);
+  }
+
+  /**
+   * @return the current position in the underlying file
+   * @throws IOException
+   */
+  public long getPos() throws IOException {
+    return out.getPos();
   }
 
   static FileMetaData mergeInto(
