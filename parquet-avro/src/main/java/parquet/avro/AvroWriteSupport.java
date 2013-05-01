@@ -96,13 +96,18 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
         continue;
       }
       Type fieldType = fields.get(index);
-      recordConsumer.startField(fieldType.getName(), index);
-      writeValue(fieldType, avroField.schema(), record.get(avroIndex));
-      recordConsumer.endField(fieldType.getName(), index);
+      Object value = record.get(avroIndex);
+      if (value != null) {
+        recordConsumer.startField(fieldType.getName(), index);
+        writeValue(fieldType, avroField.schema(), value);
+        recordConsumer.endField(fieldType.getName(), index);
+      } else if (fieldType.getRepetition() == Type.Repetition.REQUIRED) {
+        throw new RuntimeException("Null-value for required field: " + avroField.name());
+      }
       index++;
     }
   }
-
+  
   private <T> void writeArray(GroupType schema, Schema avroSchema,
       GenericArray<T> array) {
     recordConsumer.startGroup(); // group wrapper (original type LIST)
@@ -140,7 +145,7 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
 
   @SuppressWarnings("unchecked")
   private void writeValue(Type type, Schema avroSchema, Object value) {
-    Schema.Type avroType = avroSchema.getType();
+    Schema.Type avroType = AvroSchemaConverter.getNonNull(avroSchema).getType();
     if (avroType.equals(Schema.Type.BOOLEAN)) {
       recordConsumer.addBoolean((Boolean) value);
     } else if (avroType.equals(Schema.Type.INT)) {
