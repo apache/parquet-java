@@ -15,13 +15,9 @@
  */
 package parquet.hive.convert;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Writable;
-import parquet.io.ParquetDecodingException;
 
+import parquet.io.ParquetDecodingException;
 import parquet.io.api.Converter;
 import parquet.schema.GroupType;
 
@@ -35,18 +31,14 @@ import parquet.schema.GroupType;
  */
 public class ArrayWritableGroupConverter extends HiveGroupConverter {
 
-  private final GroupType groupType;
   private final Converter[] converters;
   private final HiveGroupConverter parent;
   private final int index;
-  private final List<Writable> currentList;
-  private ArrayWritable arrayWritable = null;
+  private Writable currentValue;
 
   public ArrayWritableGroupConverter(final GroupType groupType, final HiveGroupConverter parent, final int index) {
     this.parent = parent;
     this.index = index;
-    this.groupType = groupType;
-    this.currentList = new ArrayList<Writable>();
 
     if (groupType.getFieldCount() == 2) {
       final MapWritableGroupConverter intermediateConverter = new MapWritableGroupConverter(groupType, this, 0);
@@ -62,14 +54,6 @@ public class ArrayWritableGroupConverter extends HiveGroupConverter {
 
   }
 
-  final public ArrayWritable getCurrentArray() {
-    if (arrayWritable == null) {
-      arrayWritable = new ArrayWritable(Writable.class);
-    }
-    arrayWritable.set(currentList.toArray(new Writable[currentList.size()]));
-    return arrayWritable;
-  }
-
   @Override
   public Converter getConverter(final int fieldIndex) {
     return converters[fieldIndex];
@@ -77,12 +61,11 @@ public class ArrayWritableGroupConverter extends HiveGroupConverter {
 
   @Override
   public void start() {
-    currentList.clear();
   }
 
   @Override
   public void end() {
-    parent.set(index, getCurrentArray());
+    parent.add(index, currentValue);
   }
 
   @Override
@@ -90,6 +73,11 @@ public class ArrayWritableGroupConverter extends HiveGroupConverter {
     if (index != 0) {
       throw new ParquetDecodingException("Repeated group can only have one field. Not allowed to set for the index : " + index);
     }
-    currentList.add(value);
+    currentValue = value;
+  }
+
+  @Override
+  protected void add(final int index, final Writable value) {
+    set(index, value);
   }
 }

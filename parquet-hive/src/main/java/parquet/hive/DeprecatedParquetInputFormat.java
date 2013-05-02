@@ -59,7 +59,7 @@ import parquet.schema.Type;
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  *
  */
-@SuppressWarnings({"unchecked", "rawtypes"})
+@SuppressWarnings({ "unchecked", "rawtypes" })
 public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWritable> {
 
   protected ParquetInputFormat<MapWritable> realInput;
@@ -76,6 +76,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
   protected boolean isSplitable(final FileSystem fs, final Path filename) {
     return false;
   }
+
   private final ManageJobConfig manageJob = new ManageJobConfig();
 
   @Override
@@ -107,8 +108,8 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
   }
 
   @Override
-  public org.apache.hadoop.mapred.RecordReader<Void, MapWritable> getRecordReader(final org.apache.hadoop.mapred.InputSplit split, final org.apache.hadoop.mapred.JobConf job,
-          final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
+  public org.apache.hadoop.mapred.RecordReader<Void, MapWritable> getRecordReader(final org.apache.hadoop.mapred.InputSplit split,
+      final org.apache.hadoop.mapred.JobConf job, final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
     return (RecordReader<Void, MapWritable>) new RecordReaderWrapper(realInput, split, job, reporter);
   }
 
@@ -193,7 +194,8 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
     private boolean firstRecord = false;
     private boolean eof = false;
 
-    public RecordReaderWrapper(final ParquetInputFormat<MapWritable> newInputFormat, final InputSplit oldSplit, final JobConf oldJobConf, final Reporter reporter) throws IOException {
+    public RecordReaderWrapper(final ParquetInputFormat<MapWritable> newInputFormat, final InputSplit oldSplit, final JobConf oldJobConf, final Reporter reporter)
+        throws IOException {
 
       splitLen = oldSplit.getLength();
       ParquetInputSplit split;
@@ -218,8 +220,8 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
           requestedSchemaByUser = new MessageType(fileSchema.getName(), typeList);
         }
 
-        split = new ParquetInputSplit(finalPath, ((FileSplit) oldSplit).getStart(), oldSplit.getLength(), oldSplit.getLocations(), blocks,
-                fileSchema.toString(), requestedSchemaByUser.toString(), fileMetaData.getKeyValueMetaData());
+        split = new ParquetInputSplit(finalPath, ((FileSplit) oldSplit).getStart(), oldSplit.getLength(), oldSplit.getLocations(), blocks, fileSchema.toString(),
+            requestedSchemaByUser.toString(), fileMetaData.getKeyValueMetaData());
 
       } else {
         throw new RuntimeException("Unknown split type");
@@ -299,25 +301,26 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
         return false;
       }
 
-      if (firstRecord) { // key & value are already read.
-        firstRecord = false;
-        return true;
-      }
-
       try {
-        if (realReader.nextKeyValue()) {
-          if (key != realReader.getCurrentKey() || value != realReader.getCurrentValue()) {
-            throw new IOException("DeprecatedParquetHiveInput can not " + "support RecordReaders that don't return same key & value ");
-          }
-
-          return true;
+        if (firstRecord) { // key & value are already read.
+          firstRecord = false;
+        } else if (!realReader.nextKeyValue()) {
+          eof = true; // strictly not required, just for consistency
+          return false;
         }
+
+        if (value != realReader.getCurrentValue()) {
+          // TODO: find out if we can force the value to be the same
+          value.clear();
+          value.putAll(realReader.getCurrentValue());
+          // throw new IOException("DeprecatedParquetHiveInput can not " +
+          // "support RecordReaders that don't return same key & value ");
+        }
+        return true;
+
       } catch (final InterruptedException e) {
         throw new IOException(e);
       }
-
-      eof = true; // strictly not required, just for consistency
-      return false;
     }
   }
 

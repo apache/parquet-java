@@ -39,7 +39,6 @@ public class MapWritableRecordConverter extends RecordMaterializer<MapWritable> 
 
   public MapWritableRecordConverter(final GroupType requestedSchema, final Map<String, String> keyValueMetaData, final MessageType fileSchema) {
     this.root = new MapWritableGroupConverter(requestedSchema);
-
   }
 
   @Override

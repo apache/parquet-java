@@ -39,22 +39,22 @@ import parquet.schema.Type;
  *
  */
 public class MapWritableReadSupport extends ReadSupport<MapWritable> {
-  //  static final Log LOG = LogFactory.getLog(MapWritableReadSupport.class);
 
   @Override
   public parquet.hadoop.api.ReadSupport.ReadContext init(final Configuration configuration, final Map<String, String> keyValueMetaData, final MessageType fileSchema) {
-    final List<String>  listColumns = (List<String>) StringUtils.getStringCollection(configuration.get("columns"));
+    final List<String> listColumns = (List<String>) StringUtils.getStringCollection(configuration.get("columns"));
 
     MessageType requestedSchemaByUser = fileSchema;
     final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(configuration);
 
     if (indexColumnsWanted.isEmpty() == false) {
       final List<Type> typeList = new ArrayList<Type>();
-      for(final Integer idx : indexColumnsWanted) {
+      for (final Integer idx : indexColumnsWanted) {
         typeList.add(fileSchema.getType(listColumns.get(idx)));
       }
       requestedSchemaByUser = new MessageType(fileSchema.getName(), typeList);
     }
+
     return new ReadContext(requestedSchemaByUser);
   }
 

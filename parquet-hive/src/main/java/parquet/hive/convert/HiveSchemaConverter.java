@@ -46,14 +46,17 @@ public class HiveSchemaConverter {
   private static final Log LOG = Log.getLog(HiveSchemaConverter.class);
 
   static public MessageType convert(final List<String> columnNames, final List<TypeInfo> columnTypes) {
-    LOG.info(new MessageType("hive_schema", convertTypes(columnNames, columnTypes)));
-    return new MessageType("hive_schema", convertTypes(columnNames, columnTypes));
+    final MessageType schema = new MessageType("hive_schema", convertTypes(columnNames, columnTypes));
+    if (Log.INFO) {
+      LOG.info(schema);
+    }
+    return schema;
   }
 
   static private Type[] convertTypes(final List<String> columnNames, final List<TypeInfo> columnTypes) {
     if (columnNames.size() != columnTypes.size()) {
       throw new RuntimeException("Mismatched Hive columns and types. Hive columns names found : " + columnNames
-              + " . And Hive types found : " + columnTypes);
+          + " . And Hive types found : " + columnTypes);
     }
 
     final Type[] types = new Type[columnNames.size()];

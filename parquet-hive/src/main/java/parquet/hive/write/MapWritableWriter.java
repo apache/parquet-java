@@ -104,7 +104,6 @@ public class MapWritableWriter {
     for (int field = 0; field < fieldCount; ++field) {
       final Type subType = type.getType(field);
       recordConsumer.startField(subType.getName(), field);
-      //            LOG.info("writing " + subValues.length + " values for " + type.getName());
       for (int i = 0; i < subValues.length; ++i) {
         final Writable subValue = subValues[i];
         if (subValue != null) {

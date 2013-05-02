@@ -74,7 +74,7 @@ public class DeprecatedParquetOutputFormat extends FileOutputFormat<Void, MapWri
 
   @Override
   public org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter getHiveRecordWriter(final JobConf jc, final Path finalOutPath, final Class<? extends Writable> valueClass,
-          final boolean isCompressed, final Properties tableProperties, final Progressable progress) throws IOException {
+      final boolean isCompressed, final Properties tableProperties, final Progressable progress) throws IOException {
     final String columnNameProperty = tableProperties.getProperty("columns");
     final String columnTypeProperty = tableProperties.getProperty("columns.types");
     List<String> columnNames;

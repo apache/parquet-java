@@ -15,9 +15,13 @@
  */
 package parquet.hive.convert;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
+import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
@@ -36,7 +40,6 @@ import parquet.schema.Type;
  */
 
 public class MapWritableGroupConverter extends HiveGroupConverter {
-  //  private static final Log LOG = Log.getLog(MapWritableGroupConverter.class);
 
   private final GroupType groupType;
   private final Converter[] converters;
@@ -44,10 +47,12 @@ public class MapWritableGroupConverter extends HiveGroupConverter {
   private final HiveGroupConverter parent;
   private final int index;
   private final Map<Writable, Writable> currentMap;
-  private MapWritable mapWritable = null;
+  private final Map<Writable, List<Writable>> bufferMap; // Holds values from children arrays
+  private MapWritable rootMap;
 
   public MapWritableGroupConverter(final GroupType groupType) {
     this(groupType, null, 0);
+    this.rootMap = new MapWritable();
   }
 
   public MapWritableGroupConverter(final GroupType groupType, final HiveGroupConverter parent, final int index) {
@@ -55,6 +60,7 @@ public class MapWritableGroupConverter extends HiveGroupConverter {
     this.parent = parent;
     this.index = index;
     this.currentMap = new HashMap<Writable, Writable>();
+    this.bufferMap = new HashMap<Writable, List<Writable>>();
     converters = new Converter[this.groupType.getFieldCount()];
 
     int i = 0;
@@ -65,18 +71,26 @@ public class MapWritableGroupConverter extends HiveGroupConverter {
   }
 
   final public MapWritable getCurrentMap() {
-    if (mapWritable == null) {
+    for (final Entry<Writable, List<Writable>> entry : bufferMap.entrySet()) {
+      final ArrayWritable arr = new ArrayWritable(Writable.class, entry.getValue().toArray(new Writable[entry.getValue().size()]));
+      currentMap.put(entry.getKey(), arr);
+    }
+
+    MapWritable mapWritable;
+    if (this.rootMap != null) { // We're at the root : we can safely re-use the same map to save perf
+      mapWritable = this.rootMap;
+      mapWritable.clear();
+    } else {
       mapWritable = new MapWritable();
     }
-    mapWritable.clear();
+
     mapWritable.putAll(currentMap);
+
     return mapWritable;
   }
 
   @Override
   final protected void set(final int index, final Writable value) {
-    //    LOG.info("current group name: " + groupType.getName());
-    //    LOG.info("setting " + value + " at index " + index + " in map " + currentMap);
     currentMap.put(new Text(groupType.getFieldName(index)), value);
   }
 
@@ -87,8 +101,8 @@ public class MapWritableGroupConverter extends HiveGroupConverter {
 
   @Override
   public void start() {
-    // LOG.info("starting for group: " + groupType);
     currentMap.clear();
+    bufferMap.clear();
   }
 
   @Override
@@ -96,5 +110,19 @@ public class MapWritableGroupConverter extends HiveGroupConverter {
     if (parent != null) {
       parent.set(index, getCurrentMap());
     }
+  }
+
+  @Override
+  protected void add(final int index, final Writable value) {
+    final Text key = new Text(groupType.getFieldName(index));
+
+    if (bufferMap.containsKey(key)) {
+      bufferMap.get(key).add(value);
+    } else {
+      final List<Writable> buffer = new ArrayList<Writable>();
+      buffer.add(value);
+      bufferMap.put(key, buffer);
+    }
+
   }
 }

@@ -22,8 +22,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.serde2.SerDe;
 import org.apache.hadoop.hive.serde2.SerDeException;
@@ -84,7 +82,6 @@ public class ParquetHiveSerDe implements SerDe {
   boolean lastOperationDeserialize;
   private long serializedSize;
   private long deserializedSize;
-  static final Log LOG = LogFactory.getLog(ParquetHiveSerDe.class);
 
   @Override
   final public void initialize(final Configuration conf, final Properties tbl) throws SerDeException {
@@ -168,7 +165,6 @@ public class ParquetHiveSerDe implements SerDe {
     int i = 0;
 
     for (final StructField field : fields) {
-
 
       final Object subObj = inspector.getStructFieldData(obj, field);
       final ObjectInspector subInspector = field.getFieldObjectInspector();
@@ -286,6 +282,7 @@ public class ParquetHiveSerDe implements SerDe {
       throw new SerDeException("Unknown data type" + inspector.getCategory());
     }
   }
+
   //
   @Override
   public SerDeStats getSerDeStats() {
