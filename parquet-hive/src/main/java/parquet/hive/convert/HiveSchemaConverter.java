@@ -52,7 +52,8 @@ public class HiveSchemaConverter {
 
   static private Type[] convertTypes(final List<String> columnNames, final List<TypeInfo> columnTypes) {
     if (columnNames.size() != columnTypes.size()) {
-      throw new RuntimeException("Mismatched Hive columns and types");
+      throw new RuntimeException("Mismatched Hive columns and types. Hive columns names found : " + columnNames
+              + " . And Hive types found : " + columnTypes);
     }
 
     final Type[] types = new Type[columnNames.size()];
@@ -63,7 +64,6 @@ public class HiveSchemaConverter {
 
     return types;
   }
-
 
   static private Type convertType(final String name, final TypeInfo typeInfo) {
     return convertType(name, typeInfo, Repetition.OPTIONAL);

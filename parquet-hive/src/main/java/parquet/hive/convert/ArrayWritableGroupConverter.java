@@ -20,6 +20,7 @@ import java.util.List;
 
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Writable;
+import parquet.io.ParquetDecodingException;
 
 import parquet.io.api.Converter;
 import parquet.schema.GroupType;
@@ -87,9 +88,8 @@ public class ArrayWritableGroupConverter extends HiveGroupConverter {
   @Override
   protected void set(final int index, final Writable value) {
     if (index != 0) {
-      throw new RuntimeException("weee" + index);
+      throw new ParquetDecodingException("Repeated group can only have one field. Not allowed to set for the index : " + index);
     }
     currentList.add(value);
   }
-
 }

@@ -71,34 +71,34 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
   }
 
   public void testParquetHiveOutputFormat() throws Exception {
-    try {
+    final HiveOutputFormat format = new DeprecatedParquetOutputFormat();
+    final Properties tableProperties = new Properties();
 
-      final HiveOutputFormat format = new DeprecatedParquetOutputFormat();
-      final Properties tableProperties = new Properties();
+    // Set the configuration parameters
+    tableProperties.setProperty("columns",
+            "c_custkey,c_name,c_address,c_nationkey,c_phone,c_acctbal,c_mktsegment,c_comment");
+    tableProperties.setProperty("columns.types",
+            "int:string:string:int:string:double:string:string");
+    tableProperties.setProperty(org.apache.hadoop.hive.serde.serdeConstants.SERIALIZATION_NULL_FORMAT, "NULL");
 
-      // Set the configuration parameters
-      tableProperties.setProperty("columns",
-              "c_custkey,c_name,c_address,c_nationkey,c_phone,c_acctbal,c_mktsegment,c_comment");
-      tableProperties.setProperty("columns.types",
-              "int:string:string:int:string:double:string:string");
-      tableProperties.setProperty(org.apache.hadoop.hive.serde.serdeConstants.SERIALIZATION_NULL_FORMAT, "NULL");
-
-      job.set("mapred.task.id", "attempt_201304241759_32973_m_000002_0"); // FAKE ID
-      fakeStatus reporter = new fakeStatus();
-      org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter recordWriter = format.getHiveRecordWriter(
-              job,
-              new Path(testFile.getAbsolutePath()),
-              NullWritable.class,
-              false,
-              tableProperties,
-              reporter);
-      // create key/value
-      for (Map.Entry<Integer, MapWritable> entry : mapData.entrySet()) {
-        recordWriter.write(entry.getValue());
-      }
-      recordWriter.close(false);
-
-      // TODO CHECK IF WE CAN READ AND FIND EXACLTY THE SAME VALUE
+    job.set("mapred.task.id", "attempt_201304241759_32973_m_000002_0"); // FAKE ID
+    fakeStatus reporter = new fakeStatus();
+    org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter recordWriter = format.getHiveRecordWriter(
+            job,
+            new Path(testFile.getAbsolutePath()),
+            NullWritable.class,
+            false,
+            tableProperties,
+            reporter);
+    // create key/value
+    for (Map.Entry<Integer, MapWritable> entry : mapData.entrySet()) {
+      recordWriter.write(entry.getValue());
+    }
+    recordWriter.close(false);
+    assertTrue("File created", testFile.exists());
+    System.out.println("file size : " + testFile.getUsableSpace());
+    assertTrue("File size too small", testFile.getTotalSpace() >= 476208406528l);
+    // TODO CHECK IF WE CAN READ AND FIND EXACLTY THE SAME VALUE
 //      int count = 0;
 //      while (reader.next(key, value)) {
 //        assertTrue(count < mapData.size());
@@ -114,11 +114,6 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
 
 //      assertEquals("Number of lines found and data written don't match", count, mapData.size());
 
-    } catch (final Exception e) {
-      System.err.println("caught: " + e);
-      throw e;
-    } finally {
-    }
 
   }
 

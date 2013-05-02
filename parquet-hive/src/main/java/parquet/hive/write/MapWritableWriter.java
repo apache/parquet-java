@@ -21,6 +21,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 
 import parquet.hive.writable.BinaryWritable;
+import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
 import parquet.io.api.RecordConsumer;
 import parquet.schema.GroupType;
@@ -82,7 +83,7 @@ public class MapWritableWriter {
         } else if (value instanceof ArrayWritable) {
           writeArray((ArrayWritable) value, fieldType.asGroupType());
         } else if (value != null) {
-          throw new RuntimeException("This should be an ArrayWritable or MapWritable: " + value);
+          throw new ParquetEncodingException("This should be an ArrayWritable or MapWritable: " + value);
         }
 
         recordConsumer.endGroup();

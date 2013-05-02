@@ -88,7 +88,6 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
     }
     fs.delete(dir, true);
     FileInputFormat.setInputPaths(job, dir);
-    try {
 //      mapData.clear();
 //      for (int i = 0; i < 1000; i++) {
 //        // yeah same test as pig one :)
@@ -96,11 +95,8 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
 //                i % 13 == 0 ? null : i, i % 14 == 0 ? null : "phone_" + i, i % 15 == 0 ? null : 1.2d * i, i % 16 == 0 ? null : "mktsegment_" + i,
 //                i % 17 == 0 ? null : "comment_" + i));
 //      }
-      // Write data
-      writeFile();
-    } catch (final Exception e) {
-      assertFalse(true);
-    }
+    // Write data
+    writeFile();
 
   }
 
@@ -154,54 +150,49 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
   }
 
   public void testParquetHiveInputFormat() throws Exception {
-    try {
-      final ParquetMetadata readFooter = ParquetFileReader.readFooter(conf, new Path(testFile.getAbsolutePath()));
-      final MessageType schema = readFooter.getFileMetaData().getSchema();
 
-      long size = 0;
-      final List<BlockMetaData> blocks = readFooter.getBlocks();
-      for (final BlockMetaData block : blocks) {
-        size += block.getTotalByteSize();
-      }
+    final ParquetMetadata readFooter = ParquetFileReader.readFooter(conf, new Path(testFile.getAbsolutePath()));
+    final MessageType schema = readFooter.getFileMetaData().getSchema();
 
-
-      final FileInputFormat<Void, MapWritable> format = new DeprecatedParquetInputFormat();
-      final String[] locations = new String[]{"localhost"};
-      final String schemaToString = schema.toString();
-      final ParquetInputSplit realSplit = new ParquetInputSplit(new Path(testFile.getAbsolutePath()), 0, size, locations, blocks,
-              schemaToString, schemaToString, readFooter.getFileMetaData().getKeyValueMetaData());
-
-      final DeprecatedParquetInputFormat.InputSplitWrapper splitWrapper = new InputSplitWrapper(realSplit);
-
-      // construct the record reader
-      final RecordReader<Void, MapWritable> reader = format.getRecordReader(splitWrapper, job, reporter);
-
-      // create key/value
-      final Void key = reader.createKey();
-      final MapWritable value = reader.createValue();
+    long size = 0;
+    final List<BlockMetaData> blocks = readFooter.getBlocks();
+    for (final BlockMetaData block : blocks) {
+      size += block.getTotalByteSize();
+    }
 
 
-      int count = 0;
-      while (reader.next(key, value)) {
-        assertTrue(count < mapData.size());
-        assertTrue(key == null);
-        final Object obj = value.get(new Text("c_custkey"));
+    final FileInputFormat<Void, MapWritable> format = new DeprecatedParquetInputFormat();
+    final String[] locations = new String[]{"localhost"};
+    final String schemaToString = schema.toString();
+    final ParquetInputSplit realSplit = new ParquetInputSplit(new Path(testFile.getAbsolutePath()), 0, size, locations, blocks,
+            schemaToString, schemaToString, readFooter.getFileMetaData().getKeyValueMetaData());
+
+    final DeprecatedParquetInputFormat.InputSplitWrapper splitWrapper = new InputSplitWrapper(realSplit);
+
+    // construct the record reader
+    final RecordReader<Void, MapWritable> reader = format.getRecordReader(splitWrapper, job, reporter);
+
+    // create key/value
+    final Void key = reader.createKey();
+    final MapWritable value = reader.createValue();
+
+
+    int count = 0;
+    while (reader.next(key, value)) {
+      assertTrue(count < mapData.size());
+      assertTrue(key == null);
+      final Object obj = value.get(new Text("c_custkey"));
 //        System.out.println("obj : " + obj);
-        final MapWritable expected = mapData.get(((IntWritable) obj).get());
+      final MapWritable expected = mapData.get(((IntWritable) obj).get());
 //        System.out.println("expected " + expected.entrySet().toString());
 //        System.out.println("value " + value.entrySet().toString());
 
-        assertTrue(UtilitiesTestMethods.mapEquals(value, expected));
-        count++;
-      }
-
-      reader.close();
-
-      assertEquals("Number of lines found and data written don't match", count, mapData.size());
-
-    } catch (final Exception e) {
-      System.err.println("caught: " + e);
-      assertFalse(true);
+      assertTrue(UtilitiesTestMethods.mapEquals(value, expected));
+      count++;
     }
+
+    reader.close();
+
+    assertEquals("Number of lines found and data written don't match", count, mapData.size());
   }
 }

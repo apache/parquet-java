@@ -74,7 +74,6 @@ public class ParquetHiveSerDe implements SerDe {
 
   private List<String> columnNames;
   private List<TypeInfo> columnTypes;
-
   public static Text MAP_KEY = new Text("key");
   public static Text MAP_VALUE = new Text("value");
   public static Text MAP = new Text("map");
@@ -150,7 +149,7 @@ public class ParquetHiveSerDe implements SerDe {
   @Override
   public Writable serialize(final Object obj, final ObjectInspector objInspector) throws SerDeException {
     if (!objInspector.getCategory().equals(Category.STRUCT)) {
-      throw new SerDeException("Can only serialize a struct");
+      throw new SerDeException("Cannot serialize " + objInspector.getCategory() + ". Can only serialize a struct");
     }
 
     final MapWritable serializeData = createStruct(obj, (StructObjectInspector) objInspector, columnNames);
@@ -161,7 +160,6 @@ public class ParquetHiveSerDe implements SerDe {
 
     return serializeData;
   }
-
 
   private MapWritable createStruct(final Object obj, final StructObjectInspector inspector, final List<String> colNames) throws SerDeException {
     final MapWritable result = new MapWritable();
@@ -301,5 +299,4 @@ public class ParquetHiveSerDe implements SerDe {
     }
     return stats;
   }
-
 }
