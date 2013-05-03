@@ -65,7 +65,11 @@ public class ParquetStorer extends StoreFunc implements StoreMetadata {
 
   private Schema getSchema() {
     try {
-      return Utils.getSchemaFromString(getProperties().getProperty(SCHEMA));
+      final String schemaString = getProperties().getProperty(SCHEMA);
+      if (schemaString == null) {
+        throw new ParquetEncodingException("Can not store relation in Parquet as the schema is unknown");
+      }
+      return Utils.getSchemaFromString(schemaString);
     } catch (ParserException e) {
       throw new ParquetEncodingException("can not get schema from context", e);
     }
