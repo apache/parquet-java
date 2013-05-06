@@ -60,6 +60,7 @@
     <maven.compiler.target>1.6</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jackson.version>1.9.11</jackson.version>
+    <hadoop.version>1.0.0</hadoop.version>
   </properties>
 
   <modules>
@@ -70,6 +71,7 @@
     <module>parquet-pig</module>
     <module>parquet-scrooge</module>
     <module>parquet-thrift</module>
+    <module>parquet-test-hadoop2</module>
   </modules>
 
   <dependencies>
