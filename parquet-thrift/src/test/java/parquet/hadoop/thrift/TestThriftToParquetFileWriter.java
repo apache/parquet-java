@@ -49,6 +49,7 @@ import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
+import parquet.hadoop.util.ContextUtil;
 
 public class TestThriftToParquetFileWriter {
   private static final Log LOG = Log
@@ -87,11 +88,11 @@ public class TestThriftToParquetFileWriter {
     Job job = new Job();
     ExampleInputFormat.addInputPath(job, fileToCreate);
     final JobID jobID = new JobID("local", 1);
-    List<InputSplit> splits = exampleInputFormat.getSplits(new JobContext(job.getConfiguration(), jobID));
+    List<InputSplit> splits = exampleInputFormat.getSplits(new JobContext(ContextUtil.getConfiguration(job), jobID));
     int i = 0;
     for (InputSplit split : splits) {
       LOG.info(split);
-      TaskAttemptContext taskAttemptContext = new TaskAttemptContext(job.getConfiguration(), new TaskAttemptID(new TaskID(jobID, true, i), 0));
+      TaskAttemptContext taskAttemptContext = new TaskAttemptContext(ContextUtil.getConfiguration(job), new TaskAttemptID(new TaskID(jobID, true, i), 0));
       final RecordReader<Void, Group> reader = exampleInputFormat.createRecordReader(split, taskAttemptContext);
       reader.initialize(split, taskAttemptContext);
       while (reader.nextKeyValue()) {

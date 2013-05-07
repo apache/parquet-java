@@ -20,6 +20,7 @@ import org.apache.hadoop.mapreduce.Job;
 
 import parquet.example.data.Group;
 import parquet.hadoop.ParquetOutputFormat;
+import parquet.hadoop.util.ContextUtil;
 import parquet.schema.MessageType;
 
 /**
@@ -40,7 +41,7 @@ public class ExampleOutputFormat extends ParquetOutputFormat<Group> {
    * @param configuration the job configuration
    */
   public static void setSchema(Job job, MessageType schema) {
-    GroupWriteSupport.setSchema(schema, job.getConfiguration());
+    GroupWriteSupport.setSchema(schema, ContextUtil.getConfiguration(job));
   }
 
   /**
@@ -49,7 +50,7 @@ public class ExampleOutputFormat extends ParquetOutputFormat<Group> {
    * @return the schema
    */
   public static MessageType getSchema(Job job) {
-    return GroupWriteSupport.getSchema(job.getConfiguration());
+    return GroupWriteSupport.getSchema(ContextUtil.getConfiguration(job));
   }
 
   public ExampleOutputFormat() {

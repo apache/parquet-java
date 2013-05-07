@@ -39,6 +39,7 @@ import parquet.Log;
 import parquet.example.data.Group;
 import parquet.example.data.simple.SimpleGroupFactory;
 import parquet.hadoop.metadata.CompressionCodecName;
+import parquet.hadoop.util.ContextUtil;
 import parquet.schema.MessageTypeParser;
 
 public class TestInputOutputFormat {
@@ -47,7 +48,7 @@ public class TestInputOutputFormat {
   public static class MyMapper extends Mapper<LongWritable, Text, Void, Group> {
     private SimpleGroupFactory factory;
     protected void setup(org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,Group>.Context context) throws java.io.IOException ,InterruptedException {
-      factory = new SimpleGroupFactory(GroupWriteSupport.getSchema(context.getConfiguration()));
+      factory = new SimpleGroupFactory(GroupWriteSupport.getSchema(ContextUtil.getConfiguration(context)));
     };
     protected void map(LongWritable key, Text value, Mapper<LongWritable,Text,Void,Group>.Context context) throws java.io.IOException ,InterruptedException {
       Group group = factory.newGroup()
