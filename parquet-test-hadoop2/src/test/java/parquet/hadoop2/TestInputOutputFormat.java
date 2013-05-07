@@ -16,6 +16,7 @@
 package parquet.hadoop2;
 
 import static java.lang.Thread.sleep;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -71,8 +72,8 @@ public class TestInputOutputFormat {
   public void testReadWrite() throws IOException, ClassNotFoundException, InterruptedException {
     final Configuration conf = new Configuration();
     final Path inputPath = new Path("src/test/java/parquet/hadoop2/TestInputOutputFormat.java");
-    final Path parquetPath = new Path("target/test/example/TestInputOutputFormat/parquet");
-    final Path outputPath = new Path("target/test/example/TestInputOutputFormat/out");
+    final Path parquetPath = new Path("target/test/hadoop2/example/TestInputOutputFormat/parquet");
+    final Path outputPath = new Path("target/test/hadoop2/example/TestInputOutputFormat/out");
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);
     fileSystem.delete(outputPath, true);
@@ -119,6 +120,7 @@ public class TestInputOutputFormat {
     }
     assertNull("line " + lineNumber, lineIn);
     assertNull("line " + lineNumber, out.readLine());
+    assertTrue(lineNumber > 0);
     in.close();
     out.close();
   }
