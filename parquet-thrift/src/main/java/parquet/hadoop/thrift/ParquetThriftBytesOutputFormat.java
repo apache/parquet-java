@@ -22,19 +22,20 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 
 import parquet.hadoop.ParquetOutputFormat;
+import parquet.hadoop.util.ContextUtil;
 
 public class ParquetThriftBytesOutputFormat extends ParquetOutputFormat<BytesWritable> {
 
   public static void setThriftClass(Job job, Class<? extends TBase<?, ?>> thriftClass) {
-    ThriftWriteSupport.setThriftClass(job.getConfiguration(), thriftClass);
+    ThriftWriteSupport.setThriftClass(ContextUtil.getConfiguration(job), thriftClass);
   }
 
   public static Class<? extends TBase<?,?>> getThriftClass(Job job) {
-    return ThriftWriteSupport.getThriftClass(job.getConfiguration());
+    return ThriftWriteSupport.getThriftClass(ContextUtil.getConfiguration(job));
   }
 
   public static <U extends TProtocol> void setTProtocolClass(Job job, Class<U> tProtocolClass) {
-    ThriftBytesWriteSupport.setTProtocolClass(job.getConfiguration(), tProtocolClass);
+    ThriftBytesWriteSupport.setTProtocolClass(ContextUtil.getConfiguration(job), tProtocolClass);
   }
 
   public ParquetThriftBytesOutputFormat() {

@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.hadoop.example;
+package parquet.hadoop2;
 
 import static java.lang.Thread.sleep;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -38,8 +39,10 @@ import org.junit.Test;
 import parquet.Log;
 import parquet.example.data.Group;
 import parquet.example.data.simple.SimpleGroupFactory;
+import parquet.hadoop.example.ExampleInputFormat;
+import parquet.hadoop.example.ExampleOutputFormat;
+import parquet.hadoop.example.GroupWriteSupport;
 import parquet.hadoop.metadata.CompressionCodecName;
-import parquet.hadoop.util.ContextUtil;
 import parquet.schema.MessageTypeParser;
 
 public class TestInputOutputFormat {
@@ -48,7 +51,7 @@ public class TestInputOutputFormat {
   public static class MyMapper extends Mapper<LongWritable, Text, Void, Group> {
     private SimpleGroupFactory factory;
     protected void setup(org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,Group>.Context context) throws java.io.IOException ,InterruptedException {
-      factory = new SimpleGroupFactory(GroupWriteSupport.getSchema(ContextUtil.getConfiguration(context)));
+      factory = new SimpleGroupFactory(GroupWriteSupport.getSchema(context.getConfiguration()));
     };
     protected void map(LongWritable key, Text value, Mapper<LongWritable,Text,Void,Group>.Context context) throws java.io.IOException ,InterruptedException {
       Group group = factory.newGroup()
@@ -68,9 +71,9 @@ public class TestInputOutputFormat {
   @Test
   public void testReadWrite() throws IOException, ClassNotFoundException, InterruptedException {
     final Configuration conf = new Configuration();
-    final Path inputPath = new Path("src/test/java/parquet/hadoop/example/TestInputOutputFormat.java");
-    final Path parquetPath = new Path("target/test/example/TestInputOutputFormat/parquet");
-    final Path outputPath = new Path("target/test/example/TestInputOutputFormat/out");
+    final Path inputPath = new Path("src/test/java/parquet/hadoop2/TestInputOutputFormat.java");
+    final Path parquetPath = new Path("target/test/hadoop2/example/TestInputOutputFormat/parquet");
+    final Path outputPath = new Path("target/test/hadoop2/example/TestInputOutputFormat/out");
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);
     fileSystem.delete(outputPath, true);
@@ -117,6 +120,7 @@ public class TestInputOutputFormat {
     }
     assertNull("line " + lineNumber, lineIn);
     assertNull("line " + lineNumber, out.readLine());
+    assertTrue(lineNumber > 0);
     in.close();
     out.close();
   }
