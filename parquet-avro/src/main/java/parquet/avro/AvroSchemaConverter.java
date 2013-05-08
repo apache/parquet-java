@@ -33,7 +33,7 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
  * of the mapping.
  * </p>
  */
-class AvroSchemaConverter {
+public class AvroSchemaConverter {
 
   /**
    * Given a schema, check to see if it is a union of a null type and a regular schema,

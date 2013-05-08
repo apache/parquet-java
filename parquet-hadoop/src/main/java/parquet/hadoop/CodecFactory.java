@@ -34,7 +34,7 @@ import org.apache.hadoop.util.ReflectionUtils;
 import parquet.bytes.BytesInput;
 import parquet.hadoop.metadata.CompressionCodecName;
 
-class CodecFactory {
+public class CodecFactory {
 
   public class BytesDecompressor {
 
