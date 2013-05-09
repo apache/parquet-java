@@ -68,7 +68,10 @@ We haven't published a 1.0.0 yet
 
 ## Authors and contributors
 
-* Julien Le Dem <http://twitter.com/J_>
+* Julien Le Dem [@J_](http://twitter.com/J_) <https://github.com/julienledem>
+* Tom White <https://github.com/tomwhite>
+* Avi Bryant <https://github.com/avibryant>
+* Dmitriy Ryaboy [@squarecog](https://twitter.com/squarecog) <https://github.com/dvryaboy>
 * Jonathan Coveney <http://twitter.com/jco>
 
 ## Discussions
