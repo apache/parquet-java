@@ -42,6 +42,7 @@ import parquet.hadoop.api.ReadSupport.ReadContext;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.hadoop.util.ContextUtil;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 
@@ -64,7 +65,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public static final String READ_SUPPORT_CLASS = "parquet.read.support.class";
 
   public static void setReadSupportClass(Job job,  Class<?> readSupportClass) {
-    job.getConfiguration().set(READ_SUPPORT_CLASS, readSupportClass.getName());
+    ContextUtil.getConfiguration(job).set(READ_SUPPORT_CLASS, readSupportClass.getName());
   }
 
   public static void setReadSupportClass(JobConf conf, Class<?> readSupportClass) {
@@ -112,7 +113,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public RecordReader<Void, T> createRecordReader(
       InputSplit inputSplit,
       TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
-    return new ParquetRecordReader<T>(getReadSupport(taskAttemptContext.getConfiguration()));
+    return new ParquetRecordReader<T>(getReadSupport(ContextUtil.getConfiguration(taskAttemptContext)));
   }
 
   public ReadSupport<T> getReadSupport(Configuration configuration){
@@ -212,7 +213,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   @Override
   public List<InputSplit> getSplits(JobContext jobContext) throws IOException {
     List<InputSplit> splits = new ArrayList<InputSplit>();
-    splits.addAll(getSplits(jobContext.getConfiguration(), getFooters(jobContext)));
+    splits.addAll(getSplits(ContextUtil.getConfiguration(jobContext), getFooters(jobContext)));
     return splits;
   }
 
@@ -251,7 +252,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    */
   public List<Footer> getFooters(JobContext jobContext) throws IOException {
     if (footers == null) {
-      footers = getFooters(jobContext.getConfiguration(), super.listStatus(jobContext));
+      footers = getFooters(ContextUtil.getConfiguration(jobContext), super.listStatus(jobContext));
     }
 
     return footers;

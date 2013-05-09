@@ -20,6 +20,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.mapreduce.Job;
 import parquet.avro.AvroWriteSupport;
 import parquet.hadoop.ParquetOutputFormat;
+import parquet.hadoop.util.ContextUtil;
 
 /**
  * A Hadoop {@link org.apache.hadoop.mapreduce.OutputFormat} for Parquet files.
@@ -27,7 +28,7 @@ import parquet.hadoop.ParquetOutputFormat;
 public class AvroParquetOutputFormat extends ParquetOutputFormat<GenericRecord> {
 
   public static void setSchema(Job job, Schema schema) {
-    AvroWriteSupport.setSchema(job.getConfiguration(), schema);
+    AvroWriteSupport.setSchema(ContextUtil.getConfiguration(job), schema);
   }
 
   public AvroParquetOutputFormat() {
