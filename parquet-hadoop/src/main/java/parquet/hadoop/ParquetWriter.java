@@ -30,7 +30,9 @@ public class ParquetWriter<T> implements Closeable {
 
   private final ParquetRecordWriter<T> writer;
 
-  public ParquetWriter(Path file, WriteSupport<T> writeSupport) throws IOException {
+  public ParquetWriter(Path file, WriteSupport<T> writeSupport,
+	CompressionCodecName compressionCodecName, int blockSize,
+	int pageSize) throws IOException {
     Configuration conf = new Configuration();
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
@@ -41,10 +43,14 @@ public class ParquetWriter<T> implements Closeable {
 
     CodecFactory codecFactory = new CodecFactory(conf);
     CodecFactory.BytesCompressor compressor =
-        codecFactory.getCompressor(CompressionCodecName.UNCOMPRESSED, 0);
+	codecFactory.getCompressor(compressionCodecName, 0);
     this.writer = new ParquetRecordWriter<T>
-        (fileWriter, writeSupport, schema, writeContext.getExtraMetaData(), 50*1024*1024,
-            1*1024*1024, compressor);
+	(fileWriter, writeSupport, schema, writeContext.getExtraMetaData(), blockSize,
+	    pageSize, compressor);
+  }
+
+  public ParquetWriter(Path file, WriteSupport<T> writeSupport) throws IOException {
+    this(file, writeSupport, CompressionCodecName.UNCOMPRESSED, 50*1024*1024, 1*1024*1024);
   }
 
   public void write(T object) throws IOException {

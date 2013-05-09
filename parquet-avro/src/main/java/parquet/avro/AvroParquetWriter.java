@@ -20,15 +20,23 @@ import org.apache.avro.Schema;
 import org.apache.hadoop.fs.Path;
 import parquet.hadoop.ParquetWriter;
 import parquet.hadoop.api.WriteSupport;
+import parquet.hadoop.metadata.CompressionCodecName;
 
 /**
  * Write Avro records to a Parquet file.
  */
 public class AvroParquetWriter<T> extends ParquetWriter<T> {
 
-  public AvroParquetWriter(Path file, Schema avroSchema) throws IOException {
+  public AvroParquetWriter(Path file, Schema avroSchema,
+      CompressionCodecName compressionCodecName, int blockSize,
+      int pageSize) throws IOException {
     super(file, (WriteSupport<T>)
-        new AvroWriteSupport(new AvroSchemaConverter().convert(avroSchema), avroSchema));
+	new AvroWriteSupport(new AvroSchemaConverter().convert(avroSchema), avroSchema),
+	compressionCodecName, blockSize, pageSize);
+  }
+
+  public AvroParquetWriter(Path file, Schema avroSchema) throws IOException {
+    this(file, avroSchema, CompressionCodecName.UNCOMPRESSED, 50*1024*1024, 1*1024*1024);
   }
 
 }
