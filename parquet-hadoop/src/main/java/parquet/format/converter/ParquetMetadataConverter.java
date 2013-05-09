@@ -77,6 +77,8 @@ public class ParquetMetadataConverter {
       addKeyValue(fileMetaData, keyValue.getKey(), keyValue.getValue());
     }
 
+    fileMetaData.setCreated_by(parquetMetadata.getFileMetaData().getCreatedBy());
+
     return fileMetaData;
   }
 
@@ -272,7 +274,7 @@ public class ParquetMetadataConverter {
       }
     }
     return new ParquetMetadata(
-        new parquet.hadoop.metadata.FileMetaData(messageType, keyValueMetaData),
+        new parquet.hadoop.metadata.FileMetaData(messageType, keyValueMetaData, parquetMetadata.getCreated_by()),
         blocks);
   }
 

@@ -35,6 +35,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import parquet.Log;
+import parquet.Version;
 import parquet.bytes.BytesInput;
 import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
@@ -265,7 +266,7 @@ public class ParquetFileWriter {
   public void end(Map<String, String> extraMetaData) throws IOException {
     state = state.end();
     if (DEBUG) LOG.debug(out.getPos() + ": end");
-    ParquetMetadata footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData), blocks);
+    ParquetMetadata footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
     serializeFooter(footer, out);
     out.close();
   }
@@ -326,7 +327,8 @@ public class ParquetFileWriter {
     if (mergedMetadata == null) {
       return new FileMetaData(
           toMerge.getSchema(),
-          new HashMap<String, String>(toMerge.getKeyValueMetaData()));
+          new HashMap<String, String>(toMerge.getKeyValueMetaData()),
+          Version.FULL_VERSION);
     } else if (
         (mergedMetadata.getSchema() == null && toMerge.getSchema() != null)
         || (mergedMetadata.getSchema() != null && !mergedMetadata.getSchema().equals(toMerge.getSchema()))) {
