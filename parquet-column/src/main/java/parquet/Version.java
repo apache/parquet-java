@@ -6,7 +6,14 @@ import java.util.Enumeration;
 import java.util.Properties;
 import java.util.jar.Manifest;
 
-
+/**
+ * The version of the library
+ *
+ * parquet-mr version 1.0.0-SNAPSHOT (build 6cf94d29b2b7115df4de2c06e2ab4326d721eb55)
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class Version {
   private static final Log LOG = Log.getLog(Version.class);
 
@@ -57,7 +64,7 @@ public class Version {
     } catch (Exception e) {
       LOG.warn("can't read from META-INF", e);
     }
-    return "parquet-mr" + (version != null ? " " + version : "") + (sha != null ? " " + sha : "");
+    return "parquet-mr" + (version != null ? " version " + version : "") + (sha != null ? " (build " + sha + ")" : "");
   }
 
   public static void main(String[] args) {

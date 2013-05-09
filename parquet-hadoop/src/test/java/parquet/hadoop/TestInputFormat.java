@@ -26,7 +26,6 @@ import java.util.List;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.mapreduce.InputSplit;
 import org.junit.Test;
 
 import parquet.column.Encoding;
@@ -51,7 +50,7 @@ public class TestInputFormat {
         new BlockLocation(new String[0], new String[] { "foo1.datanode", "bar1.datanode"}, 50, 50)
     };
     FileStatus fileStatus = new FileStatus(100, false, 2, 50, 0, new Path("hdfs://foo.namenode:1234/bar"));
-    FileMetaData fileMetaData = new FileMetaData(new MessageType("foo"), new HashMap<String, String>());
+    FileMetaData fileMetaData = new FileMetaData(new MessageType("foo"), new HashMap<String, String>(), "parquet-mr");
     List<ParquetInputSplit> splits = ParquetInputFormat.generateSplits(blocks, hdfsBlocks, fileStatus, fileMetaData, ReadSupport.class, "");
     assertEquals(splits.toString().replaceAll("([{])", "$0\n").replaceAll("([}])", "\n$0"), 2, splits.size());
     for (int i = 0; i < splits.size(); i++) {
