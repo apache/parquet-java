@@ -94,21 +94,28 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     public long allocatedSize() {
       return buf.getCapacity();
     }
+
+    @Override
+    public String memUsageString(String prefix) {
+      return buf.memUsageString(prefix + " ColumnChunkPageWriter");
+    }
   }
 
   private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
   private final MessageType schema;
   private final BytesCompressor compressor;
+  private final int initialSize;
 
-  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema) {
+  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, int initialSize) {
     this.compressor = compressor;
     this.schema = schema;
+    this.initialSize = initialSize;
   }
 
   @Override
   public PageWriter getPageWriter(ColumnDescriptor path) {
     if (!writers.containsKey(path)) {
-      writers.put(path,  new ColumnChunkPageWriter(path, compressor, 1024*1024/2)); // TODO: better deal with this initial size
+      writers.put(path,  new ColumnChunkPageWriter(path, compressor, initialSize));
     }
     return writers.get(path);
   }
