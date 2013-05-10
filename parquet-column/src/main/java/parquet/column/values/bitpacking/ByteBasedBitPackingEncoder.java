@@ -34,7 +34,7 @@ public class ByteBasedBitPackingEncoder {
 
   private static final int VALUES_WRITTEN_AT_A_TIME = 8;
   /** must be a multiple of VALUES_WRITTEN_AT_A_TIME */
-  private static final int SLAB_SIZE = VALUES_WRITTEN_AT_A_TIME * 1024 * 1024;
+  private static final int SLAB_SIZE = VALUES_WRITTEN_AT_A_TIME * 8 * 1024;
 
   private final int bitWidth;
   private final BytePacker packer;
