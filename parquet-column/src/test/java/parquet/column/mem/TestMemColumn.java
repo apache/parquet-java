@@ -39,7 +39,7 @@ public class TestMemColumn {
     String schema = "message msg { required group foo { required int64 bar; } }";
     String[] col = {"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048);
+    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048, 2048);
     ColumnDescriptor path = getCol(schema, col);
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
     columnWriter.write(42l, 0, 0);
@@ -65,7 +65,7 @@ public class TestMemColumn {
     String schema = "message msg { required group foo { required binary bar; } }";
     String[] col = new String[]{"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048);
+    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048, 2048);
     ColumnDescriptor path = getCol(schema, col);
 
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
@@ -86,7 +86,7 @@ public class TestMemColumn {
     String schema = "message msg { required group foo { required int64 bar; } }";
     String[] col = new String[]{"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048);
+    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048, 2048);
     ColumnDescriptor path = getCol(schema, col);
 
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
@@ -109,7 +109,7 @@ public class TestMemColumn {
     String schema = "message msg { repeated group foo { repeated int64 bar; } }";
     String[] col = new String[]{"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048);
+    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048, 2048);
     ColumnDescriptor path = getCol(schema, col);
 
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);

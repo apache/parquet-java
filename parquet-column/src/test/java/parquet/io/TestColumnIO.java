@@ -148,7 +148,7 @@ public class TestColumnIO {
     log(r2);
 
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     {
@@ -294,7 +294,7 @@ public class TestColumnIO {
 
   private void testSchema(MessageType messageSchema, List<Group> groups) {
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
 
@@ -342,7 +342,7 @@ public class TestColumnIO {
   @Test
   public void testPushParser() {
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
     columns.flush();
@@ -355,7 +355,7 @@ public class TestColumnIO {
   @Test
   public void testEmptyField() {
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800);
     MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     final RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
     recordWriter.startMessage();

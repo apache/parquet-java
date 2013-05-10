@@ -23,7 +23,7 @@ public abstract class BoundedIntValuesFactory {
     return bound == 0 ? new ZeroIntegerValuesReader() : new BoundedIntValuesReader(bound);
   }
 
-  public static ValuesWriter getBoundedWriter(int bound) {
-    return bound == 0 ? new DevNullValuesWriter() : new BoundedIntValuesWriter(bound);
+  public static ValuesWriter getBoundedWriter(int bound, int initialCapacity) {
+    return bound == 0 ? new DevNullValuesWriter() : new BoundedIntValuesWriter(bound, initialCapacity);
   }
 }

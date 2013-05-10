@@ -42,19 +42,21 @@ final class ColumnWriterImpl implements ColumnWriter {
   private ValuesWriter definitionLevelColumn;
   private ValuesWriter dataColumn;
   private int valueCount;
+  private int valueCountForNextSizeCheck;
 
-  public ColumnWriterImpl(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold) {
+  public ColumnWriterImpl(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold, int initialSizePerCol) {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
+    this.valueCountForNextSizeCheck = 100;
     repetitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxRepetitionLevel());
     definitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxDefinitionLevel());
     switch (path.getType()) {
     case BOOLEAN:
-      this.dataColumn = new BooleanPlainValuesWriter(pageSizeThreshold / 10 * 11);
+      this.dataColumn = new BooleanPlainValuesWriter(initialSizePerCol);
       break;
     default:
-      this.dataColumn = new PlainValuesWriter(pageSizeThreshold / 10 * 11);
+      this.dataColumn = new PlainValuesWriter(initialSizePerCol);
     }
   }
 
@@ -64,11 +66,18 @@ final class ColumnWriterImpl implements ColumnWriter {
 
   private void accountForValueWritten() {
     ++ valueCount;
-    long memSize = repetitionLevelColumn.getBufferedSize()
-        + definitionLevelColumn.getBufferedSize()
-        + dataColumn.getBufferedSize();
-    if (memSize > pageSizeThreshold) {
-      writePage();
+    if (valueCount > valueCountForNextSizeCheck) {
+      // not checking the memory used for every value
+      long memSize = repetitionLevelColumn.getBufferedSize()
+          + definitionLevelColumn.getBufferedSize()
+          + dataColumn.getBufferedSize();
+      if (memSize > pageSizeThreshold) {
+        valueCountForNextSizeCheck = valueCount / 2;
+        writePage();
+      } else {
+        // will check again midway
+        valueCountForNextSizeCheck = (int)(valueCount + ((float)valueCount * pageSizeThreshold / memSize)) / 2 + 1;
+      }
     }
   }
 
@@ -172,5 +181,16 @@ final class ColumnWriterImpl implements ColumnWriter {
     + definitionLevelColumn.getAllocatedSize()
     + dataColumn.getAllocatedSize()
     + pageWriter.allocatedSize();
+  }
+
+  public String memUsageString(String indent) {
+    StringBuilder b = new StringBuilder(indent).append(path).append(" {\n");
+    b.append(repetitionLevelColumn.memUsageString(indent + "  r:")).append("\n");
+    b.append(definitionLevelColumn.memUsageString(indent + "  d:")).append("\n");
+    b.append(dataColumn.memUsageString(indent + "  data:")).append("\n");
+    b.append(pageWriter.memUsageString(indent + "  pages:")).append("\n");
+    b.append(indent).append(String.format("  total: %,d/%,d", getBufferedSizeInMemory(), allocatedSize())).append("\n");
+    b.append(indent).append("}\n");
+    return b.toString();
   }
 }

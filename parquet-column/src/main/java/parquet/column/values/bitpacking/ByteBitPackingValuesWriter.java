@@ -73,4 +73,9 @@ public class ByteBitPackingValuesWriter extends ValuesWriter {
     return encoder.getAllocatedSize();
   }
 
+  @Override
+  public String memUsageString(String prefix) {
+    return encoder.memUsageString(prefix);
+  }
+
 }

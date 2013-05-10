@@ -87,4 +87,9 @@ public class BooleanPlainValuesWriter extends ValuesWriter {
     return PLAIN;
   }
 
+  @Override
+  public String memUsageString(String prefix) {
+    return out.memUsageString(prefix);
+  }
+
 }

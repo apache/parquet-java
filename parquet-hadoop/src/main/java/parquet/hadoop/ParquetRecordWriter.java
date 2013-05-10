@@ -15,6 +15,9 @@
  */
 package parquet.hadoop;
 
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+
 import java.io.IOException;
 import java.util.Map;
 
@@ -82,7 +85,13 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
 
   private void initStore() {
     pageStore = new ColumnChunkPageWriteStore(compressor, schema);
-    store = new ColumnWriteStoreImpl(pageStore, pageSize);
+    int initialPageBufferSize =
+        max(64 * 1024, // we don't want this number to be too small
+            min( // nor too big
+                pageSize + pageSize / 10, // ideally, slightly bigger than the page size
+                blockSize / schema.getColumns().size() // if too many columns, just divide equally the block size
+                ));
+    store = new ColumnWriteStoreImpl(pageStore, pageSize, initialPageBufferSize);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     writeSupport.prepareForWrite(columnIO.getRecordWriter(store));
   }
