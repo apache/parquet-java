@@ -61,7 +61,7 @@ public class ParquetWriter<T> implements Closeable {
   }
 
   /** Create a new ParquetWriter.  The default block size is 50 MB.The default
-   *  page size is 1 MB.
+   *  page size is 1 MB.  Default compression is no compression.
    * @param file
    * @param writeSupport
    * @throws IOException

@@ -48,7 +48,7 @@ public class AvroParquetWriter<T> extends ParquetWriter<T> {
   }
 
   /** Create a new {@link AvroParquetWriter}. The default block size is 50 MB.The default
-   *  page size is 1 MB.
+   *  page size is 1 MB.  Default compression is no compression.
    *
    * @param file
    * @param avroSchema
