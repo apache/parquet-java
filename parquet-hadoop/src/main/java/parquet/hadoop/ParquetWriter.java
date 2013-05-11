@@ -28,8 +28,19 @@ import parquet.schema.MessageType;
  */
 public class ParquetWriter<T> implements Closeable {
 
+  private static final int DEFAULT_BLOCK_SIZE = 50*1024*1024;
+  private static final int DEFAULT_PAGE_SIZE = 1*1024*1024;
   private final ParquetRecordWriter<T> writer;
 
+  /** Create a new ParquetWriter.
+   *
+   * @param file
+   * @param writeSupport
+   * @param compressionCodecName
+   * @param blockSize
+   * @param pageSize
+   * @throws IOException
+   */
   public ParquetWriter(Path file, WriteSupport<T> writeSupport,
 	CompressionCodecName compressionCodecName, int blockSize,
 	int pageSize) throws IOException {
@@ -49,8 +60,15 @@ public class ParquetWriter<T> implements Closeable {
 	    pageSize, compressor);
   }
 
+  /** Create a new ParquetWriter.  The default block size is 50 MB.The default
+   *  page size is 1 MB.
+   * @param file
+   * @param writeSupport
+   * @throws IOException
+   */
   public ParquetWriter(Path file, WriteSupport<T> writeSupport) throws IOException {
-    this(file, writeSupport, CompressionCodecName.UNCOMPRESSED, 50*1024*1024, 1*1024*1024);
+    this(file, writeSupport, CompressionCodecName.UNCOMPRESSED,
+	 DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
   }
 
   public void write(T object) throws IOException {
