@@ -62,7 +62,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
       this.currentSlab = this.slabs.get(currentSlabIndex);
       if (Log.DEBUG) LOG.debug(String.format("reusing slab of size %d", currentSlab.length));
       if (currentSlab.length < minimumSize) {
-        if (Log.DEBUG) LOG.debug(String.format("slab size %,d too small for value of size %,d. Bumping up slab size", currentSlab.length, minimumSize));
+        if (Log.DEBUG) LOG.debug(String.format("slab size %,d too small for value of size %,d. replacing slab", currentSlab.length, minimumSize));
         byte[] newSlab = new byte[minimumSize];
         capacity += minimumSize - currentSlab.length;
         this.currentSlab = newSlab;
@@ -184,5 +184,9 @@ public class CapacityByteArrayOutputStream extends OutputStream {
 
   public String memUsageString(String prefix) {
     return String.format("%s %s %d slabs, %,d bytes", prefix, getClass().getSimpleName(), slabs.size(), getCapacity());
+  }
+
+  int getSlabCount() {
+    return slabs.size();
   }
 }
