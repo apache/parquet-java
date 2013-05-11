@@ -85,8 +85,9 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
 
   private void initStore() {
     // we don't want this number to be too small
-    // ideally we divide the block equally
-    int initialBlockBufferSize = max(64 * 1024, blockSize / schema.getColumns().size());
+    // ideally we divide the block equally across the columns
+    // it is unlikely all columns are going to be the same size.
+    int initialBlockBufferSize = max(64 * 1024, blockSize / schema.getColumns().size() / 5);
     pageStore = new ColumnChunkPageWriteStore(compressor, schema, initialBlockBufferSize);
     // we don't want this number to be too small either
     // ideally, slightly bigger than the page size, but not bigger than the block buffer
