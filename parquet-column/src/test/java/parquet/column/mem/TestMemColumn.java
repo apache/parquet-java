@@ -55,7 +55,7 @@ public class TestMemColumn {
 
   private ColumnWriter getColumnWriter(ColumnDescriptor path,
       MemPageStore memPageStore) {
-    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048);
+    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048, false);
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
     return columnWriter;
   }
@@ -73,7 +73,7 @@ public class TestMemColumn {
     MessageType mt = MessageTypeParser.parseMessageType("message msg { required group foo { required binary bar; } }");
     String[] col = new String[]{"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048);
+    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048, false);
     ColumnDescriptor path1 = mt.getColumnDescription(col);
     ColumnDescriptor path = path1;
 
@@ -95,7 +95,7 @@ public class TestMemColumn {
     MessageType mt = MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
     String[] col = new String[]{"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048);
+    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048, false);
     ColumnDescriptor path1 = mt.getColumnDescription(col);
     ColumnDescriptor path = path1;
 
@@ -119,7 +119,7 @@ public class TestMemColumn {
     MessageType mt = MessageTypeParser.parseMessageType("message msg { repeated group foo { repeated int64 bar; } }");
     String[] col = new String[]{"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048);
+    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048, false);
     ColumnDescriptor path1 = mt.getColumnDescription(col);
     ColumnDescriptor path = path1;
 

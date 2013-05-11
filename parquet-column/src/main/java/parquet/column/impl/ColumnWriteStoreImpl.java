@@ -33,11 +33,13 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
   private final Map<ColumnDescriptor, ColumnWriterImpl> columns = new TreeMap<ColumnDescriptor, ColumnWriterImpl>();
   private final PageWriteStore pageWriteStore;
   private final int pageSizeThreshold;
+  private final boolean enableDictionary;
 
-  public ColumnWriteStoreImpl(PageWriteStore pageWriteStore, int pageSizeThreshold) {
+  public ColumnWriteStoreImpl(PageWriteStore pageWriteStore, int pageSizeThreshold, boolean enableDictionary) {
     super();
     this.pageWriteStore = pageWriteStore;
     this.pageSizeThreshold = pageSizeThreshold;
+    this.enableDictionary = enableDictionary;
   }
 
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
@@ -51,7 +53,7 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
 
   private ColumnWriterImpl newMemColumn(ColumnDescriptor path) {
     PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-    return new ColumnWriterImpl(path, pageWriter, pageSizeThreshold);
+    return new ColumnWriterImpl(path, pageWriter, pageSizeThreshold, enableDictionary);
   }
 
   @Override

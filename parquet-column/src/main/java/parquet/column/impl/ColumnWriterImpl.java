@@ -45,7 +45,7 @@ final class ColumnWriterImpl implements ColumnWriter {
   private ValuesWriter dataColumn;
   private int valueCount;
 
-  public ColumnWriterImpl(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold) {
+  public ColumnWriterImpl(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold, boolean enableDictionary) {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
@@ -56,7 +56,11 @@ final class ColumnWriterImpl implements ColumnWriter {
       this.dataColumn = new BooleanPlainValuesWriter(pageSizeThreshold * 11 / 10);
       break;
     case BINARY:
-      this.dataColumn = new DictionaryValuesWriter(pageSizeThreshold / 5, pageSizeThreshold);
+      if (enableDictionary) {
+        this.dataColumn = new DictionaryValuesWriter(pageSizeThreshold / 5, pageSizeThreshold);
+      } else {
+        this.dataColumn = new PlainValuesWriter(pageSizeThreshold * 11 / 10);
+      }
       break;
     default:
       this.dataColumn = new PlainValuesWriter(pageSizeThreshold * 11 / 10);

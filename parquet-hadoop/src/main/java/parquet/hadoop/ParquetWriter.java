@@ -44,7 +44,7 @@ public class ParquetWriter<T> implements Closeable {
         codecFactory.getCompressor(CompressionCodecName.UNCOMPRESSED, 0);
     this.writer = new ParquetRecordWriter<T>
         (fileWriter, writeSupport, schema, writeContext.getExtraMetaData(), 50*1024*1024,
-            1*1024*1024, compressor);
+            1*1024*1024, compressor, false);
   }
 
   public void write(T object) throws IOException {
