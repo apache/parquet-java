@@ -55,18 +55,29 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     this.size = 0;
   }
 
-  private void addSlab() {
+  private void addSlab(int minimumSize) {
     this.currentSlabIndex += 1;
     if (currentSlabIndex < this.slabs.size()) {
       // reuse existing slab
       this.currentSlab = this.slabs.get(currentSlabIndex);
       if (Log.DEBUG) LOG.debug(String.format("reusing slab of size %d", currentSlab.length));
+      if (currentSlab.length < minimumSize) {
+        if (Log.DEBUG) LOG.debug(String.format("slab size %,d too small for value of size %,d. Bumping up slab size", currentSlab.length, minimumSize));
+        byte[] newSlab = new byte[minimumSize];
+        capacity += minimumSize - currentSlab.length;
+        this.currentSlab = newSlab;
+        this.slabs.set(currentSlabIndex, newSlab);
+      }
     } else {
       if (currentSlabIndex > 10) {
         // make slabs bigger in case we are creating too many of them
         // double slab size every time.
         this.slabSize = size;
         if (Log.DEBUG) LOG.debug(String.format("used %d slabs, new slab size %d", currentSlabIndex, slabSize));
+      }
+      if (slabSize < minimumSize) {
+        if (Log.DEBUG) LOG.debug(String.format("slab size %,d too small for value of size %,d. Bumping up slab size", slabSize, minimumSize));
+        this.slabSize = minimumSize;
       }
       if (Log.DEBUG) LOG.debug(String.format("new slab of size %d", slabSize));
       this.currentSlab = new byte[slabSize];
@@ -83,7 +94,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
    */
   public void write(int b) {
     if (currentSlabPosition == currentSlab.length) {
-      addSlab();
+      addSlab(1);
     }
     currentSlab[currentSlabPosition] = (byte) b;
     currentSlabPosition += 1;
@@ -106,8 +117,8 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     if (currentSlabPosition + len >= currentSlab.length) {
       final int length1 = currentSlab.length - currentSlabPosition;
       System.arraycopy(b, off, currentSlab, currentSlabPosition, length1);
-      addSlab();
       final int length2 = len - length1;
+      addSlab(length2);
       System.arraycopy(b, off + length1, currentSlab, currentSlabPosition, length2);
       currentSlabPosition = length2;
     } else {
