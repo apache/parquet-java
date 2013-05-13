@@ -116,11 +116,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public static int getBlockSize(JobContext jobContext) {
-    return ContextUtil.getConfiguration(jobContext).getInt(BLOCK_SIZE, 50*1024*1024);
+    return ContextUtil.getConfiguration(jobContext).getInt(BLOCK_SIZE, ParquetWriter.DEFAULT_BLOCK_SIZE);
   }
 
   public static int getPageSize(JobContext jobContext) {
-    return ContextUtil.getConfiguration(jobContext).getInt(PAGE_SIZE, 1*1024*1024);
+    return ContextUtil.getConfiguration(jobContext).getInt(PAGE_SIZE, ParquetWriter.DEFAULT_PAGE_SIZE);
   }
 
   public static CompressionCodecName getCompression(JobContext jobContext) {

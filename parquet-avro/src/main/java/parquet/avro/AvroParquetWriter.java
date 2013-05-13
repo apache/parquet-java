@@ -27,9 +27,6 @@ import parquet.hadoop.metadata.CompressionCodecName;
  */
 public class AvroParquetWriter<T> extends ParquetWriter<T> {
 
-  private static final int DEFAULT_BLOCK_SIZE = 50*1024*1024;
-  private static final int DEFAULT_PAGE_SIZE = 1*1024*1024;
-
   /** Create a new {@link AvroParquetWriter}.
    *
    * @param file
@@ -48,7 +45,7 @@ public class AvroParquetWriter<T> extends ParquetWriter<T> {
   }
 
   /** Create a new {@link AvroParquetWriter}. The default block size is 50 MB.The default
-   *  page size is 1 MB.  Default compression is no compression.
+   *  page size is 1 MB.  Default compression is no compression. (Inherited from {@link ParquetWriter})
    *
    * @param file
    * @param avroSchema
