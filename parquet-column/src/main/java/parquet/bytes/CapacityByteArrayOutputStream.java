@@ -42,6 +42,9 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   private int size;
 
   public CapacityByteArrayOutputStream(int initialSize) {
+    if (initialSize < 0) {
+      throw new IllegalArgumentException("Negative initial size: " + initialSize);
+    }
     initSlabs(initialSize);
   }
 
