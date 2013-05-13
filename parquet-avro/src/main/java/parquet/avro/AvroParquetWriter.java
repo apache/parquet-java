@@ -20,15 +20,40 @@ import org.apache.avro.Schema;
 import org.apache.hadoop.fs.Path;
 import parquet.hadoop.ParquetWriter;
 import parquet.hadoop.api.WriteSupport;
+import parquet.hadoop.metadata.CompressionCodecName;
 
 /**
  * Write Avro records to a Parquet file.
  */
 public class AvroParquetWriter<T> extends ParquetWriter<T> {
 
-  public AvroParquetWriter(Path file, Schema avroSchema) throws IOException {
+  /** Create a new {@link AvroParquetWriter}.
+   *
+   * @param file
+   * @param avroSchema
+   * @param compressionCodecName
+   * @param blockSize
+   * @param pageSize
+   * @throws IOException
+   */
+  public AvroParquetWriter(Path file, Schema avroSchema,
+      CompressionCodecName compressionCodecName, int blockSize,
+      int pageSize) throws IOException {
     super(file, (WriteSupport<T>)
-        new AvroWriteSupport(new AvroSchemaConverter().convert(avroSchema), avroSchema));
+	new AvroWriteSupport(new AvroSchemaConverter().convert(avroSchema), avroSchema),
+	compressionCodecName, blockSize, pageSize);
+  }
+
+  /** Create a new {@link AvroParquetWriter}. The default block size is 50 MB.The default
+   *  page size is 1 MB.  Default compression is no compression. (Inherited from {@link ParquetWriter})
+   *
+   * @param file
+   * @param avroSchema
+   * @throws IOException
+   */
+  public AvroParquetWriter(Path file, Schema avroSchema) throws IOException {
+    this(file, avroSchema, CompressionCodecName.UNCOMPRESSED,
+	 DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
   }
 
 }
