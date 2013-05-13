@@ -31,6 +31,8 @@ import parquet.Log;
 public class CapacityByteArrayOutputStream extends OutputStream {
   private static final Log LOG = Log.getLog(CapacityByteArrayOutputStream.class);
 
+  private static final int EXPONENTIAL_SLAB_SIZE_THRESHOLD = 10;
+
   private int slabSize;
   private List<byte[]> slabs = new ArrayList<byte[]>();
   private byte[] currentSlab;
@@ -69,7 +71,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
         this.slabs.set(currentSlabIndex, newSlab);
       }
     } else {
-      if (currentSlabIndex > 10) {
+      if (currentSlabIndex > EXPONENTIAL_SLAB_SIZE_THRESHOLD) {
         // make slabs bigger in case we are creating too many of them
         // double slab size every time.
         this.slabSize = size;
@@ -87,11 +89,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     this.currentSlabPosition = 0;
   }
 
-  /**
-   * Writes the specified byte to this byte array output stream.
-   *
-   * @param   b   the byte to be written.
-   */
+  @Override
   public void write(int b) {
     if (currentSlabPosition == currentSlab.length) {
       addSlab(1);
@@ -101,14 +99,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     size += 1;
   }
 
-  /**
-   * Writes <code>len</code> bytes from the specified byte array
-   * starting at offset <code>off</code> to this byte array output stream.
-   *
-   * @param   b     the data.
-   * @param   off   the start offset in the data.
-   * @param   len   the number of bytes to write.
-   */
+  @Override
   public void write(byte b[], int off, int len) {
     if ((off < 0) || (off > b.length) || (len < 0) ||
         ((off + len) - b.length > 0)) {
@@ -159,7 +150,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
         (currentSlabIndex == 0 && currentSlabPosition < currentSlab.length / 2 && currentSlab.length > 64 * 1024)
         ||
         // we want to avoid generating too many slabs.
-        (currentSlabIndex > 10)
+        (currentSlabIndex > EXPONENTIAL_SLAB_SIZE_THRESHOLD)
         ){
       // readjust slab size
       initSlabs(Math.max(size / 5, 64 * 1024)); // should make overhead to about 20% without incurring many slabs
