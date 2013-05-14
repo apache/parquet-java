@@ -106,4 +106,6 @@ public abstract class ValuesWriter {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
+  abstract public String memUsageString(String prefix);
+
 }

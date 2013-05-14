@@ -51,4 +51,6 @@ public interface PageWriter {
    */
   public abstract long allocatedSize();
 
+  public abstract String memUsageString(String prefix);
+
 }

@@ -61,7 +61,7 @@ public class GenerateTPCH {
         );
 
     MemPageStore pageStore = new MemPageStore();
-    ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 8*1024);
+    ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 20*1024, 1*1024);
     //
     MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
 
@@ -82,7 +82,8 @@ public class GenerateTPCH {
       ++ recordCount;
     }
     store.flush();
-
+    System.out.printf("mem size %,d, maxColSize %,d, allocated %,d\n", store.memSize(), store.maxColMemSize(), store.allocatedSize());
+    System.out.println(store.memUsageString());
     writeToFile(testFile, configuration, schema, pageStore, recordCount);
 
     try {

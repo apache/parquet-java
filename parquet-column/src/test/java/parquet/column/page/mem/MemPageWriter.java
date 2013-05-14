@@ -68,4 +68,9 @@ public class MemPageWriter implements PageWriter {
     return memSize;
   }
 
+  @Override
+  public String memUsageString(String prefix) {
+    return String.format("%s %,d bytes", prefix, memSize);
+  }
+
 }

@@ -114,4 +114,8 @@ public class ByteBasedBitPackingEncoder {
     return (slabs.size() * SLAB_SIZE) + packed.length + input.length * 4;
   }
 
+  public String memUsageString(String prefix) {
+    return String.format("%s ByteBitPacking %d slabs, %d bytes", prefix, slabs.size(), getAllocatedSize());
+  }
+
 }
