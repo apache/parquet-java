@@ -45,6 +45,8 @@ import parquet.schema.MessageType;
 public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
   private static final Log LOG = Log.getLog(ParquetRecordWriter.class);
 
+  private static final int MINIMUM_BUFFER_SIZE = 64 * 1024;
+
   private final ParquetFileWriter w;
   private final WriteSupport<T> writeSupport;
   private final MessageType schema;
@@ -87,11 +89,11 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
     // we don't want this number to be too small
     // ideally we divide the block equally across the columns
     // it is unlikely all columns are going to be the same size.
-    int initialBlockBufferSize = max(64 * 1024, blockSize / schema.getColumns().size() / 5);
+    int initialBlockBufferSize = max(MINIMUM_BUFFER_SIZE, blockSize / schema.getColumns().size() / 5);
     pageStore = new ColumnChunkPageWriteStore(compressor, schema, initialBlockBufferSize);
     // we don't want this number to be too small either
     // ideally, slightly bigger than the page size, but not bigger than the block buffer
-    int initialPageBufferSize = max(64 * 1024, min(pageSize + pageSize / 10, initialBlockBufferSize));
+    int initialPageBufferSize = max(MINIMUM_BUFFER_SIZE, min(pageSize + pageSize / 10, initialBlockBufferSize));
     store = new ColumnWriteStoreImpl(pageStore, pageSize, initialPageBufferSize);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     writeSupport.prepareForWrite(columnIO.getRecordWriter(store));

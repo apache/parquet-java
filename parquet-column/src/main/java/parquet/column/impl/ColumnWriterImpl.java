@@ -30,10 +30,16 @@ import parquet.column.values.plain.PlainValuesWriter;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
 
-
+/**
+ * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
+ *
+ * @author Julien Le Dem
+ *
+ */
 final class ColumnWriterImpl implements ColumnWriter {
   private static final Log LOG = Log.getLog(ColumnWriterImpl.class);
   private static final boolean DEBUG = false; //Log.DEBUG;
+  private static final int INITIAL_COUNT_FOR_SIZE_CHECK = 100;
 
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
@@ -48,7 +54,8 @@ final class ColumnWriterImpl implements ColumnWriter {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
-    this.valueCountForNextSizeCheck = 100;
+    // initial check of memory usage. So that we have enough data to make an initial prediction
+    this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
     repetitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxRepetitionLevel());
     definitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxDefinitionLevel());
     switch (path.getType()) {
@@ -64,6 +71,15 @@ final class ColumnWriterImpl implements ColumnWriter {
     LOG.debug(path+" "+value+" r:"+r+" d:"+d);
   }
 
+  /**
+   * Counts how many values have been written and checks the memory usage to flush the page when we reach the page threshold.
+   *
+   * We measure the memory used when we reach the mid point toward our estimated count.
+   * We then update the estimate and flush the page if we reached the threshold.
+   *
+   * That way we check the memory size log2(n) times.
+   *
+   */
   private void accountForValueWritten() {
     ++ valueCount;
     if (valueCount > valueCountForNextSizeCheck) {
@@ -72,10 +88,11 @@ final class ColumnWriterImpl implements ColumnWriter {
           + definitionLevelColumn.getBufferedSize()
           + dataColumn.getBufferedSize();
       if (memSize > pageSizeThreshold) {
+        // we will write the current page and check again the size at the predicted middle of next page
         valueCountForNextSizeCheck = valueCount / 2;
         writePage();
       } else {
-        // will check again midway
+        // not reached the threshold, will check again midway
         valueCountForNextSizeCheck = (int)(valueCount + ((float)valueCount * pageSizeThreshold / memSize)) / 2 + 1;
       }
     }
