@@ -46,7 +46,6 @@ public class ContextUtil {
   private static final Field WRAPPED_CONTEXT_FIELD;
 
   private static final Method GET_CONFIGURATION_METHOD;
-  private static final Method GET_COUNTER_METHOD;
 
   static {
     boolean v21 = true;
@@ -124,8 +123,6 @@ public class ContextUtil {
         WRAPPED_CONTEXT_FIELD =
             innerMapContextCls.getDeclaredField("mapContext");
         WRAPPED_CONTEXT_FIELD.setAccessible(true);
-        GET_COUNTER_METHOD = Class.forName(PACKAGE+".TaskAttemptContext")
-            .getMethod("getCounter", String.class, String.class);
 
       } else {
         MAP_CONTEXT_CONSTRUCTOR =
@@ -139,8 +136,6 @@ public class ContextUtil {
                 InputSplit.class);
         MAP_CONTEXT_IMPL_CONSTRUCTOR = null;
         WRAPPED_CONTEXT_FIELD = null;
-        GET_COUNTER_METHOD = Class.forName(PACKAGE+".TaskInputOutputContext")
-            .getMethod("getCounter", String.class, String.class);
       }
       MAP_CONTEXT_CONSTRUCTOR.setAccessible(true);
       READER_FIELD = mapContextCls.getDeclaredField("reader");
@@ -221,21 +216,6 @@ public class ContextUtil {
   public static Configuration getConfiguration(JobContext context) {
     try {
       return (Configuration) GET_CONFIGURATION_METHOD.invoke(context);
-    } catch (IllegalAccessException e) {
-      throw new IllegalArgumentException("Can't invoke method", e);
-    } catch (InvocationTargetException e) {
-      throw new IllegalArgumentException("Can't invoke method", e);
-    }
-  }
-
-  /**
-   * Invoke getCounter() TaskInputOutputContext. Works with both
-   * Hadoop 1 and 2.
-   */
-  public static Counter getCounter(TaskInputOutputContext context,
-      String groupName, String counterName) {
-    try {
-      return (Counter) GET_COUNTER_METHOD.invoke(context, groupName, counterName);
     } catch (IllegalAccessException e) {
       throw new IllegalArgumentException("Can't invoke method", e);
     } catch (InvocationTargetException e) {
