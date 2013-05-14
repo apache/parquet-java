@@ -15,6 +15,7 @@
  */
 package parquet.bytes;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -25,12 +26,18 @@ import parquet.Log;
 /**
  * functionality of ByteArrayOutputStream without the memory and copy overhead
  *
+ * It will linearly create a new slab of the initial size when needed (instead of creating a new buffer and copying the data).
+ * After 10 slabs their size will increase exponentially (similar to {@link ByteArrayOutputStream} behavior) by making the new slab size the size of the existing data.
+ *
+ * When reusing a buffer it will adjust the slab size based on the previous data size ({@link CapacityByteArrayOutputStream#reset()})
+ *
  * @author Julien Le Dem
  *
  */
 public class CapacityByteArrayOutputStream extends OutputStream {
   private static final Log LOG = Log.getLog(CapacityByteArrayOutputStream.class);
 
+  private static final int MINIMUM_SLAB_SIZE = 64 * 1024;
   private static final int EXPONENTIAL_SLAB_SIZE_THRESHOLD = 10;
 
   private int slabSize;
@@ -41,6 +48,9 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   private int currentSlabPosition;
   private int size;
 
+  /**
+   * @param initialSize the initialSize of the buffer (also slab size)
+   */
   public CapacityByteArrayOutputStream(int initialSize) {
     if (initialSize < 0) {
       throw new IllegalArgumentException("Negative initial size: " + initialSize);
@@ -123,9 +133,8 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   }
 
   /**
-   * Writes the complete contents of this byte array output stream to
-   * the specified output stream argument, as if by calling the output
-   * stream's write method using <code>out.write(buf, 0, count)</code>.
+   * Writes the complete contents of this buffer to the specified output stream argument. the output
+   * stream's write method <code>out.write(slab, 0, slab.length)</code>) will be called once per slab.
    *
    * @param      out   the output stream to which to write the data.
    * @exception  IOException  if an I/O error occurs.
@@ -139,24 +148,34 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   }
 
   /**
-   *
    * @return the size of the allocated buffer
    */
   public int getCapacity() {
     return capacity;
   }
 
+  /**
+   * When re-using an instance with reset, it will adjust slab size based on previous data size.
+   * The intent is to reuse the same instance for the same type of data (for example, the same column).
+   * The assumption is that the size in the buffer will be consistent. Otherwise we fall back to exponentialy double the slab size.
+   * <ul>
+   * <li>if we used less than half of the first slab (and it is above the minimum slab size), we will make the slab size smaller.
+   * <li>if we used more than the slab count threshold (10), we will re-adjust the slab size.
+   * </ul>
+   * if re-adjusting the slab size we will make it 1/5th of the previous used size in the buffer so that overhead of extra memory allocation is about 20%
+   * If we used less than the available slabs we free up the unused ones to reduce memory overhead.
+   */
   public void reset() {
     // heuristics to adjust slab size
     if (
-        // if we have only one slab, make sure it is not way too big
-        (currentSlabIndex == 0 && currentSlabPosition < currentSlab.length / 2 && currentSlab.length > 64 * 1024)
+        // if we have only one slab, make sure it is not way too big (more than twice what we need). Except if the slab is already small
+        (currentSlabIndex == 0 && currentSlabPosition < currentSlab.length / 2 && currentSlab.length > MINIMUM_SLAB_SIZE)
         ||
         // we want to avoid generating too many slabs.
         (currentSlabIndex > EXPONENTIAL_SLAB_SIZE_THRESHOLD)
         ){
       // readjust slab size
-      initSlabs(Math.max(size / 5, 64 * 1024)); // should make overhead to about 20% without incurring many slabs
+      initSlabs(Math.max(size / 5, MINIMUM_SLAB_SIZE)); // should make overhead to about 20% without incurring many slabs
       if (Log.DEBUG) LOG.debug(String.format("used %d slabs, new slab size %d", currentSlabIndex + 1, slabSize));
     } else if (currentSlabIndex < slabs.size() - 1) {
       // free up the slabs that we are not using. We want to minimize overhead
@@ -172,14 +191,24 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     this.size = 0;
   }
 
+  /**
+   * @return the size of the buffered data
+   */
   public long size() {
     return size;
   }
 
+  /**
+   * @param prefix  a prefix to be used for every new line in the string
+   * @return a text representation of the memory usage of this structure
+   */
   public String memUsageString(String prefix) {
     return String.format("%s %s %d slabs, %,d bytes", prefix, getClass().getSimpleName(), slabs.size(), getCapacity());
   }
 
+  /**
+   * @return the total count of allocated slabs
+   */
   int getSlabCount() {
     return slabs.size();
   }
