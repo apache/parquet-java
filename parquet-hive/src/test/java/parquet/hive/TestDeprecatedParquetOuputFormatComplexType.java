@@ -49,7 +49,7 @@ import parquet.schema.MessageType;
  * @author Mickaël Lacour <m.lacour@criteo.com>
  *
  */
-public class TestDeprecatedParquetOuputFormat extends TestCase {
+public class TestDeprecatedParquetOuputFormatComplexType extends TestCase {
 
   Map<Integer, MapWritable> mapData;
   Configuration conf;
