@@ -17,8 +17,10 @@ package parquet.hadoop;
 
 import java.io.Closeable;
 import java.io.IOException;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+
 import parquet.hadoop.api.WriteSupport;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.schema.MessageType;
@@ -30,21 +32,44 @@ public class ParquetWriter<T> implements Closeable {
 
   public static final int DEFAULT_BLOCK_SIZE = 50*1024*1024;
   public static final int DEFAULT_PAGE_SIZE = 1*1024*1024;
-  
+
   private final ParquetRecordWriter<T> writer;
+
+  /** Create a new ParquetWriter. (with validation off)
+   *  @see ParquetWriter#ParquetWriter(Path, WriteSupport, CompressionCodecName, int, int, boolean)
+   * @param file the file to write to
+   * @param writeSupport the writeSupport implementation to use
+   * @param compressionCodecName the compression to use
+   * @param blockSize the block size threshold
+   * @param pageSize the page size threshold
+   * @throws IOException
+   */
+  public ParquetWriter(
+      Path file,
+      WriteSupport<T> writeSupport,
+      CompressionCodecName compressionCodecName,
+      int blockSize,
+      int pageSize) throws IOException {
+    this(file, writeSupport, compressionCodecName, blockSize, pageSize, false);
+  }
 
   /** Create a new ParquetWriter.
    *
-   * @param file
-   * @param writeSupport
-   * @param compressionCodecName
-   * @param blockSize
-   * @param pageSize
+   * @param file the file to write to
+   * @param writeSupport the writeSupport implementation to use
+   * @param compressionCodecName the compression to use
+   * @param blockSize the block size threshold
+   * @param pageSize the page size threshold
+   * @param validating to turn on validation using the schema
    * @throws IOException
    */
-  public ParquetWriter(Path file, WriteSupport<T> writeSupport,
-	CompressionCodecName compressionCodecName, int blockSize,
-	int pageSize) throws IOException {
+  public ParquetWriter(
+      Path file,
+      WriteSupport<T> writeSupport,
+      CompressionCodecName compressionCodecName,
+      int blockSize,
+      int pageSize,
+      boolean validating) throws IOException {
     Configuration conf = new Configuration();
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
@@ -54,11 +79,8 @@ public class ParquetWriter<T> implements Closeable {
     fileWriter.start();
 
     CodecFactory codecFactory = new CodecFactory(conf);
-    CodecFactory.BytesCompressor compressor =
-	codecFactory.getCompressor(compressionCodecName, 0);
-    this.writer = new ParquetRecordWriter<T>
-	(fileWriter, writeSupport, schema, writeContext.getExtraMetaData(), blockSize,
-	    pageSize, compressor);
+    CodecFactory.BytesCompressor compressor =	codecFactory.getCompressor(compressionCodecName, 0);
+    this.writer = new ParquetRecordWriter<T>(fileWriter, writeSupport, schema, writeContext.getExtraMetaData(), blockSize, pageSize, compressor, validating);
   }
 
   /** Create a new ParquetWriter.  The default block size is 50 MB.The default
