@@ -21,6 +21,8 @@ import com.google.common.io.Resources;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.List;
+
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -50,6 +52,10 @@ public class TestReadWrite {
           schema.getField("mynestedrecord").schema())
         .set("mynestedint", 1).build();
 
+    List<Integer> integerArray = Arrays.asList(1, 2, 3);
+    GenericData.Array<Integer> genericIntegerArray = new GenericData.Array<Integer>(
+                Schema.createArray(Schema.create(Schema.Type.INT)), integerArray);
+
     GenericData.Record record = new GenericRecordBuilder(schema)
         .set("mynull", null)
         .set("myboolean", true)
@@ -61,8 +67,8 @@ public class TestReadWrite {
         .set("mystring", "hello")
         .set("mynestedrecord", nestedRecord)
         .set("myenum", "a")
-        .set("myarray", new GenericData.Array<Integer>(
-            Schema.createArray(Schema.create(Schema.Type.INT)), Arrays.asList(1, 2)))
+        .set("myarray", genericIntegerArray)
+        .set("myoptionalarray", genericIntegerArray)
         .set("mymap", ImmutableMap.of("a", 1, "b", 2))
         // TODO: support fixed encoding by plumbing in FIXED_LEN_BYTE_ARRAY
         //.set("myfixed", new GenericData.Fixed(Schema.createFixed("ignored", null, null, 1),
@@ -85,7 +91,8 @@ public class TestReadWrite {
     assertEquals("hello", nextRecord.get("mystring"));
     assertEquals("a", nextRecord.get("myenum"));
     assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
-    assertEquals(Arrays.asList(1, 2), nextRecord.get("myarray"));
+    assertEquals(integerArray, nextRecord.get("myarray"));
+    assertEquals(integerArray, nextRecord.get("myoptionalarray"));
     assertEquals(ImmutableMap.of("a", 1, "b", 2), nextRecord.get("mymap"));
     //assertEquals(new byte[] { (byte) 65 }, nextRecord.get("myfixed"));
   }
