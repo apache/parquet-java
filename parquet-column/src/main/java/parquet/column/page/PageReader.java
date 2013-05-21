@@ -26,15 +26,15 @@ public interface PageReader {
  /**
   * @return the dictionary page in that chunk
   */
- abstract DictionaryPage readDictionaryPage();
+  DictionaryPage readDictionaryPage();
 
   /**
    * @return the total number of values in the column chunk
    */
-  abstract long getTotalValueCount();
+  long getTotalValueCount();
 
   /**
    * @return the next page in that chunk
    */
-  abstract Page readPage();
+  Page readPage();
 }
