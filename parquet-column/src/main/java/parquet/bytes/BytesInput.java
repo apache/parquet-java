@@ -15,8 +15,6 @@
  */
 package parquet.bytes;
 
-import static parquet.Log.DEBUG;
-
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;

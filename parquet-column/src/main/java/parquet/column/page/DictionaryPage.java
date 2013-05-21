@@ -1,5 +1,7 @@
 package parquet.column.page;
 
+import static parquet.Preconditions.checkNotNull;
+
 import java.io.IOException;
 
 import parquet.bytes.BytesInput;
@@ -36,16 +38,10 @@ public class DictionaryPage {
    * @param encoding the encoding used
    */
   public DictionaryPage(BytesInput bytes, int uncompressedSize, int dictionarySize, Encoding encoding) {
-    if (bytes == null) {
-      throw new NullPointerException("bytes");
-    }
-    if (encoding == null) {
-      throw new NullPointerException("encoding");
-    }
-    this.bytes = bytes;
+    this.bytes = checkNotNull(bytes, "bytes");
     this.uncompressedSize = uncompressedSize;
     this.dictionarySize = dictionarySize;
-    this.encoding = encoding;
+    this.encoding = checkNotNull(encoding, "encoding");
   }
 
   public BytesInput getBytes() {

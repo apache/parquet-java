@@ -16,6 +16,7 @@
 package parquet.column.page.mem;
 
 import static parquet.Log.DEBUG;
+import static parquet.Preconditions.checkNotNull;
 
 import java.util.Iterator;
 
@@ -35,9 +36,7 @@ public class MemPageReader implements PageReader {
 
   public MemPageReader(long totalValueCount, Iterator<Page> pages, DictionaryPage dictionaryPage) {
     super();
-    if (pages == null) {
-      throw new NullPointerException("pages");
-    }
+    checkNotNull(pages, "pages");
     this.totalValueCount = totalValueCount;
     this.pages = pages;
     this.dictionaryPage = dictionaryPage;

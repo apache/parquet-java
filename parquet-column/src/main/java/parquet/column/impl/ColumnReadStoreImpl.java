@@ -15,15 +15,11 @@
  */
 package parquet.column.impl;
 
-import java.io.IOException;
-
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnReadStore;
 import parquet.column.ColumnReader;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
-import parquet.io.ParquetDecodingException;
-import parquet.io.api.Binary;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
 import parquet.io.api.PrimitiveConverter;

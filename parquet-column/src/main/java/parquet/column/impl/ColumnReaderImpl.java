@@ -16,6 +16,7 @@
 package parquet.column.impl;
 
 import static parquet.Log.DEBUG;
+import static parquet.Preconditions.checkNotNull;
 
 import java.io.IOException;
 
@@ -47,9 +48,6 @@ class ColumnReaderImpl implements ColumnReader {
     abstract void read();
     abstract void writeValue();
     public int getDictionaryId() {
-      throw new UnsupportedOperationException();
-    }
-    public String getString() {
       throw new UnsupportedOperationException();
     }
     public int getInteger() {
@@ -241,18 +239,9 @@ class ColumnReaderImpl implements ColumnReader {
    * @param pageReader the underlying store to read from
    */
   public ColumnReaderImpl(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter) {
-    if (path == null) {
-      throw new NullPointerException("path");
-    }
-    if (pageReader == null) {
-      throw new NullPointerException("pageReader");
-    }
-    if (converter == null) {
-      throw new NullPointerException("converter");
-    }
-    this.path = path;
-    this.pageReader = pageReader;
-    this.converter = converter;
+    this.path = checkNotNull(path, "path");
+    this.pageReader = checkNotNull(pageReader, "pageReader");
+    this.converter = checkNotNull(converter, "converter");
     DictionaryPage dictionaryPage = pageReader.readDictionaryPage();
     if (dictionaryPage != null) {
       try {
