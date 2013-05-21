@@ -8,7 +8,7 @@ import parquet.io.api.Binary;
  * @author Julien Le Dem
  *
  */
-abstract public class Dictionary {
+public abstract class Dictionary {
 
   private final Encoding encoding;
 
@@ -20,7 +20,7 @@ abstract public class Dictionary {
     return encoding;
   }
 
-  abstract public int getMaxId();
+  public abstract int getMaxId();
 
   public Binary decodeToBinary(int id) {
     throw new UnsupportedOperationException(this.getClass().getName());
