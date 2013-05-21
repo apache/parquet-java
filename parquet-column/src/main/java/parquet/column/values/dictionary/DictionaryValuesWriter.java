@@ -26,6 +26,8 @@ import parquet.io.api.Binary;
 public class DictionaryValuesWriter extends ValuesWriter {
   private static final Log LOG = Log.getLog(DictionaryValuesWriter.class);
 
+  private static final int MAX_DICTIONARY_ENTRIES = 65535 /* 2^16 - 1 */;
+
   /**
    * maximum size in bytes allowed for the dictionary
    * will fail over to plain encoding if reached
@@ -77,7 +79,7 @@ public class DictionaryValuesWriter extends ValuesWriter {
   public void writeBytes(Binary v) {
     if (!dictionaryTooBig) {
       writeBytesUsingDict(v);
-      if (dictionaryByteSize > maxDictionaryByteSize || dict.size() > 65535 /* 2^16 - 1 */) {
+      if (dictionaryByteSize > maxDictionaryByteSize || dict.size() > MAX_DICTIONARY_ENTRIES) {
         // if the dictionary reaches the max byte size or the values can not be encoded on two bytes anymore.
         if (DEBUG) LOG.debug("dictionary is now too big, falling back to plain: " + dictionaryByteSize + "B and " + dict.size() + " entries");
         dictionaryTooBig = true;
@@ -136,9 +138,8 @@ public class DictionaryValuesWriter extends ValuesWriter {
         while (iterator.hasNext()) {
           rleSimpleEncoder.writeInt(iterator.next());
         }
-        byte[] bytesHeader = new byte[2];
-        bytesHeader[0] = (byte)(maxDicId & 0xFF);
-        bytesHeader[1] = (byte)((maxDicId >>>  8) & 0xFF);
+        // encodes the max dict id on 2 bytes (as it is < 64K)
+        byte[] bytesHeader = intTo2Bytes(maxDicId);
         final BytesInput rleEncodedBytes = rleSimpleEncoder.toBytes();
         if (DEBUG) LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
         return concat(BytesInput.from(bytesHeader), rleEncodedBytes);
@@ -147,6 +148,13 @@ public class DictionaryValuesWriter extends ValuesWriter {
       }
     }
     return plainValuesWriter.getBytes();
+  }
+
+  private byte[] intTo2Bytes(final int maxDicId) {
+    byte[] bytesHeader = new byte[2];
+    bytesHeader[0] = (byte)(maxDicId & 0xFF);
+    bytesHeader[1] = (byte)((maxDicId >>>  8) & 0xFF);
+    return bytesHeader;
   }
 
   @Override

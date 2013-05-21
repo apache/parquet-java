@@ -37,6 +37,9 @@ final class ColumnWriterImpl implements ColumnWriter {
   private static final Log LOG = Log.getLog(ColumnWriterImpl.class);
   private static final boolean DEBUG = false; //Log.DEBUG;
 
+  private static final int PAGE_EXTRA_BUFFER_PERCENT = 10;
+  private static final int DICTIONARY_PAGE_MAX_SIZE_PERCENT = 20;
+
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
   private final long pageSizeThreshold;
@@ -51,20 +54,28 @@ final class ColumnWriterImpl implements ColumnWriter {
     this.pageSizeThreshold = pageSizeThreshold;
     repetitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxRepetitionLevel());
     definitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxDefinitionLevel());
+    int initialSize = pageSizeThreshold + applyRatioInPercent(pageSizeThreshold, PAGE_EXTRA_BUFFER_PERCENT);
     switch (path.getType()) {
     case BOOLEAN:
-      this.dataColumn = new BooleanPlainValuesWriter(pageSizeThreshold * 11 / 10);
+      this.dataColumn = new BooleanPlainValuesWriter(initialSize);
       break;
     case BINARY:
       if (enableDictionary) {
-        this.dataColumn = new DictionaryValuesWriter(pageSizeThreshold / 5, pageSizeThreshold);
+        this.dataColumn = new DictionaryValuesWriter(applyRatioInPercent(pageSizeThreshold, DICTIONARY_PAGE_MAX_SIZE_PERCENT), pageSizeThreshold);
       } else {
-        this.dataColumn = new PlainValuesWriter(pageSizeThreshold * 11 / 10);
+        this.dataColumn = new PlainValuesWriter(initialSize);
       }
       break;
     default:
-      this.dataColumn = new PlainValuesWriter(pageSizeThreshold * 11 / 10);
+      this.dataColumn = new PlainValuesWriter(initialSize);
     }
+  }
+
+  private int applyRatioInPercent(int value, int ratio) {
+    if (100 % ratio != 0) {
+      throw new IllegalArgumentException("ratio should be a diviser of 100: not " + ratio);
+    }
+    return value / (100 / ratio);
   }
 
   private void log(Object value, int r, int d) {
