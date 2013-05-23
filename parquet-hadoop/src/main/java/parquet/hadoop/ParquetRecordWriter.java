@@ -54,12 +54,14 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
   private final int blockSize;
   private final int pageSize;
   private final BytesCompressor compressor;
+  private final boolean enableDictionary;
 
   private long recordCount = 0;
   private long recordCountForNextMemCheck = 100;
 
   private ColumnWriteStoreImpl store;
   private ColumnChunkPageWriteStore pageStore;
+
 
 
   /**
@@ -71,7 +73,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    * @param blockSize the size of a block in the file (this will be approximate)
    * @param codec the codec used to compress
    */
-  public ParquetRecordWriter(ParquetFileWriter w, WriteSupport<T> writeSupport, MessageType schema,  Map<String, String> extraMetaData, int blockSize, int pageSize, BytesCompressor compressor) {
+  public ParquetRecordWriter(ParquetFileWriter w, WriteSupport<T> writeSupport, MessageType schema,  Map<String, String> extraMetaData, int blockSize, int pageSize, BytesCompressor compressor, boolean enableDictionary) {
     if (writeSupport == null) {
       throw new NullPointerException("writeSupport");
     }
@@ -82,6 +84,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
     this.blockSize = blockSize;
     this.pageSize = pageSize;
     this.compressor = compressor;
+    this.enableDictionary = enableDictionary;
     initStore();
   }
 
@@ -94,7 +97,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
     // we don't want this number to be too small either
     // ideally, slightly bigger than the page size, but not bigger than the block buffer
     int initialPageBufferSize = max(MINIMUM_BUFFER_SIZE, min(pageSize + pageSize / 10, initialBlockBufferSize));
-    store = new ColumnWriteStoreImpl(pageStore, pageSize, initialPageBufferSize);
+    store = new ColumnWriteStoreImpl(pageStore, pageSize, initialPageBufferSize, enableDictionary);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     writeSupport.prepareForWrite(columnIO.getRecordWriter(store));
   }
@@ -130,7 +133,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       } else {
         float recordSize = (float) memSize / recordCount;
         recordCountForNextMemCheck = Math.max(100, (recordCount + (long)(blockSize / recordSize)) / 2); // will check halfway
-        LOG.info("Checked mem at " + recordCount + " will check again at: " + recordCountForNextMemCheck);
+        LOG.debug("Checked mem at " + recordCount + " will check again at: " + recordCountForNextMemCheck);
       }
     }
   }

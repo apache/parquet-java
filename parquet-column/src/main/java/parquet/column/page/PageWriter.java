@@ -37,19 +37,23 @@ public interface PageWriter {
    * @param valuesEncoding values encoding
    * @throws IOException
    */
-  abstract public void writePage(BytesInput bytesInput, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
+  void writePage(BytesInput bytesInput, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
 
   /**
-   *
    * @return the current size used in the memory buffer for that column chunk
    */
-  abstract public long getMemSize();
+  long getMemSize();
 
   /**
-   *
    * @return the allocated size for the buffer ( > getMemSize() )
    */
-  public abstract long allocatedSize();
+  long allocatedSize();
+
+  /**
+   * writes a dictionary page
+   * @param dictionaryPage the dictionary page containing the dictionary data
+   */
+  void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException;
 
   public abstract String memUsageString(String prefix);
 

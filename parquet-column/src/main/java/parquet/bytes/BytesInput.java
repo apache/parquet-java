@@ -27,8 +27,12 @@ import parquet.Log;
 
 
 /**
- *
- * A source of bytes capable of writing itself to an output
+ * A source of bytes capable of writing itself to an output.
+ * A BytesInput should be consumed right away.
+ * It is not a container.
+ * For example if it is referring to a stream,
+ * subsequent BytesInput reads from the stream will be incorrect
+ * if the previous has not been consumed.
  *
  * @author Julien Le Dem
  *

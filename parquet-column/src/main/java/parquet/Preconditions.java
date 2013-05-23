@@ -13,28 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.page;
+package parquet;
 
 /**
- * Reader for a sequence a page from a given column chunk
+ * Utility for parameter validation
  *
  * @author Julien Le Dem
  *
  */
-public interface PageReader {
-
- /**
-  * @return the dictionary page in that chunk or null if none
-  */
-  DictionaryPage readDictionaryPage();
+public class Preconditions {
 
   /**
-   * @return the total number of values in the column chunk
+   * @param o the param to check
+   * @param name the name of the param for the error message
+   * @return the validated o
+   * @throws NullPointerException if o is null
    */
-  long getTotalValueCount();
+  public static <T> T checkNotNull(T o, String name) {
+    if (o == null) {
+      throw new NullPointerException(name + " should not be null");
+    }
+    return o;
+  }
 
-  /**
-   * @return the next page in that chunk or null if after the last page
-   */
-  Page readPage();
 }

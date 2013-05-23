@@ -60,6 +60,9 @@ import parquet.hadoop.util.ContextUtil;
  * # The write support class to convert the records written to the OutputFormat into the events accepted by the record consumer
  * # Usually provided by a specific ParquetOutputFormat subclass
  * parquet.write.support.class= # fully qualified name
+ *
+ * # To enable dictionary encoding
+ * parquet.enable.dictionary=false # true to enable dictionary encoding
  * </pre>
  *
  * If parquet.compression is not set, the following properties are checked (FileOutputFormat behavior).
@@ -82,6 +85,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String PAGE_SIZE           = "parquet.page.size";
   public static final String COMPRESSION         = "parquet.compression";
   public static final String WRITE_SUPPORT_CLASS = "parquet.write.support.class";
+  public static final String ENABLE_DICTIONARY   = "parquet.enable.dictionary";
 
   public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
     ContextUtil.getConfiguration(job).set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
@@ -113,6 +117,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static void setCompression(Job job, CompressionCodecName compression) {
     ContextUtil.getConfiguration(job).set(COMPRESSION, compression.name());
+  }
+
+  public static void setEnableDictionary(Job job, boolean enableDictionary) {
+    ContextUtil.getConfiguration(job).setBoolean(ENABLE_DICTIONARY, enableDictionary);
+  }
+
+  public static boolean getEnableDictionary(JobContext jobContext) {
+    return ContextUtil.getConfiguration(jobContext).getBoolean(ENABLE_DICTIONARY, false);
   }
 
   public static int getBlockSize(JobContext jobContext) {
@@ -199,10 +211,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (file == null) {
       file = getDefaultWorkFile(taskAttemptContext, extension);
     }
+    boolean enableDictionary = getEnableDictionary(taskAttemptContext);
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(conf, init.getSchema(), file);
     w.start();
-    return new ParquetRecordWriter<T>(w, writeSupport, init.getSchema(), init.getExtraMetaData(), blockSize, pageSize, codecFactory.getCompressor(codec, pageSize));
+    return new ParquetRecordWriter<T>(
+        w,
+        writeSupport,
+        init.getSchema(),
+        init.getExtraMetaData(),
+        blockSize, pageSize,
+        codecFactory.getCompressor(codec, pageSize),
+        enableDictionary);
   }
 
   @Override

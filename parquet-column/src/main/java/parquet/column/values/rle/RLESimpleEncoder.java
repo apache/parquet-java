@@ -15,27 +15,32 @@
  */
 package parquet.column.values.rle;
 
+
+import static parquet.Log.DEBUG;
 import static parquet.bytes.BytesInput.concat;
+import static parquet.bytes.BytesUtils.writeUnsignedVarInt;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
+import parquet.Log;
 import parquet.bytes.BytesInput;
-import parquet.bytes.BytesUtils;
 import parquet.column.values.bitpacking.ByteBasedBitPackingEncoder;
 
 /**
- * Simple RLE Encoder that does only bitpacking
+ * Simple RLE Encoder that does only bit packing
  *
  * @author Julien Le Dem
  *
  */
 public class RLESimpleEncoder {
+  private static final Log LOG = Log.getLog(RLESimpleEncoder.class);
 
   private ByteBasedBitPackingEncoder bitPackingEncoder;
   private int totalValues = 0;
 
-  public RLESimpleEncoder(int bitWidth) {
+    public RLESimpleEncoder(int bitWidth) {
+    if (DEBUG) LOG.debug("encoding bitWidth " + bitWidth);
     this.bitPackingEncoder = new ByteBasedBitPackingEncoder(bitWidth);
   }
 
@@ -45,9 +50,24 @@ public class RLESimpleEncoder {
   }
 
   public BytesInput toBytes() throws IOException {
+    if (totalValues % 8 != 0) {
+      // padding to the next multiple of 8
+      for (int i = 0; i < 8 - (totalValues % 8); ++ i) {
+        bitPackingEncoder.writeInt(0);
+      }
+    }
     ByteArrayOutputStream size = new ByteArrayOutputStream(4);
-    int header = BytesUtils.paddedByteCountFromBits(totalValues) << 1 | 1;
-    BytesUtils.writeUnsignedVarInt(header, size);
-    return concat(BytesInput.from(size), bitPackingEncoder.toBytes());
+    // how many 8-value-blocks are encoded
+    // if not a multiple of 8, we pad with zeros
+    int padded8ValuesBlocks = (totalValues + 7) / 8;
+    if (DEBUG) LOG.debug("writing " + totalValues + " values padded to " + (padded8ValuesBlocks * 8));
+    // the least significant bit indicate if we use rle or bit packing
+    // 1 means bit packing
+    // 0 means RLE
+    int header = padded8ValuesBlocks << 1 | 1;
+    writeUnsignedVarInt(header, size);
+    // then write the corresponding bytes
+    BytesInput bitPacked = bitPackingEncoder.toBytes();
+    return concat(BytesInput.from(size), bitPacked);
   }
 }

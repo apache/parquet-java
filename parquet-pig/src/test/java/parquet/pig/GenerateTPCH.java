@@ -61,8 +61,7 @@ public class GenerateTPCH {
         );
 
     MemPageStore pageStore = new MemPageStore();
-    ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 20*1024, 1*1024);
-    //
+    ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 20*1024, 1*1024, false);
     MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
 
     RecordConsumer recordWriter = columnIO.getRecordWriter(store);

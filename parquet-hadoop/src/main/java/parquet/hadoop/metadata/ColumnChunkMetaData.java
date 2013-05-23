@@ -37,6 +37,7 @@ public class ColumnChunkMetaData implements Serializable {
   private final List<Encoding> encodings;
 
   private long firstDataPage;
+  private long dictionaryPageOffset;
 
   // for info
   private long valueCount;
@@ -46,7 +47,6 @@ public class ColumnChunkMetaData implements Serializable {
 
 
   /**
-   *
    * @param path column identifier
    * @param type type of the column
    * @param encodings
@@ -71,7 +71,6 @@ public class ColumnChunkMetaData implements Serializable {
   }
 
   /**
-   *
    * @return type of the column
    */
   public PrimitiveTypeName getType() {
@@ -79,7 +78,6 @@ public class ColumnChunkMetaData implements Serializable {
   }
 
   /**
-   *
    * @param dataStart offset in the file where data starts
    */
   public void setFirstDataPageOffset(long firstDataPage) {
@@ -87,7 +85,13 @@ public class ColumnChunkMetaData implements Serializable {
   }
 
   /**
-   *
+   * @param dictionaryPageOffset offset in the file of the dictionary page
+   */
+  public void setDictionaryPageOffset(long dictionaryPageOffset) {
+    this.dictionaryPageOffset = dictionaryPageOffset;
+  }
+
+  /**
    * @return start of the column data offset
    */
   public long getFirstDataPageOffset() {
@@ -95,7 +99,13 @@ public class ColumnChunkMetaData implements Serializable {
   }
 
   /**
-   *
+   * @return the location of the dictionary page if any
+   */
+  public long getDictionaryPageOffset() {
+    return dictionaryPageOffset;
+  }
+
+  /**
    * @param valueCount count of values in this block of the column
    */
   public void setValueCount(long valueCount) {
@@ -103,7 +113,6 @@ public class ColumnChunkMetaData implements Serializable {
   }
 
   /**
-   *
    * @return count of values in this block of the column
    */
   public long getValueCount() {
@@ -123,6 +132,7 @@ public class ColumnChunkMetaData implements Serializable {
   public void setTotalUncompressedSize(long totalUncompressedSize) {
     this.totalUncompressedSize = totalUncompressedSize;
   }
+
   /**
    * @return the totalSize
    */
@@ -138,7 +148,6 @@ public class ColumnChunkMetaData implements Serializable {
   }
 
   /**
-   *
    * @return all the encodings used in this column
    */
   public List<Encoding> getEncodings() {

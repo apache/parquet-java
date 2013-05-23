@@ -22,16 +22,9 @@ import static parquet.example.Paper.r1;
 import static parquet.example.Paper.r2;
 import static parquet.example.Paper.schema;
 import static parquet.example.Paper.schema2;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static parquet.schema.Type.Repetition.OPTIONAL;
-import static parquet.schema.Type.Repetition.REPEATED;
-import static parquet.schema.Type.Repetition.REQUIRED;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Deque;
 import java.util.List;
 
 import org.junit.Assert;
@@ -148,7 +141,7 @@ public class TestColumnIO {
     log(r2);
 
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     {
@@ -294,7 +287,7 @@ public class TestColumnIO {
 
   private void testSchema(MessageType messageSchema, List<Group> groups) {
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
 
@@ -342,7 +335,7 @@ public class TestColumnIO {
   @Test
   public void testPushParser() {
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
     columns.flush();
@@ -355,7 +348,7 @@ public class TestColumnIO {
   @Test
   public void testEmptyField() {
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
     MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     final RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
     recordWriter.startMessage();

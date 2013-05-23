@@ -15,16 +15,20 @@
  */
 package parquet.column.values.rle;
 
+import static parquet.Log.DEBUG;
+
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import parquet.Log;
 import parquet.bytes.BytesUtils;
 import parquet.column.values.bitpacking.ByteBitPacking;
 import parquet.column.values.bitpacking.BytePacker;
 import parquet.io.ParquetDecodingException;
 
 public class RLEDecoder {
+  private static final Log LOG = Log.getLog(RLEDecoder.class);
 
   private static enum MODE { RLE, PACKED }
 
@@ -40,6 +44,7 @@ public class RLEDecoder {
   private int[] currentBuffer;
 
   public RLEDecoder(int bitWidth, InputStream in) {
+    if (DEBUG) LOG.debug("decoding bitWidth " + bitWidth);
     this.bitWidth = bitWidth;
     this.packer = ByteBitPacking.getPacker(bitWidth);
     // number of bytes needed when padding to the next byte
@@ -72,6 +77,7 @@ public class RLEDecoder {
     switch (mode) {
     case RLE: // TODO: test this
       currentCount = header >>> 1;
+      if (DEBUG) LOG.debug("reading " + currentCount + " values RLE");
       switch (bytesWidth) {
         case 1:
           currentValue = BytesUtils.readIntLittleEndianOnOneByte(in);
@@ -92,6 +98,7 @@ public class RLEDecoder {
     case PACKED:
       int blocks = header >>> 1;
       currentCount = blocks * 8;
+      if (DEBUG) LOG.debug("reading " + currentCount + " values BIT PACKED");
       currentBuffer = new int[currentCount]; // TODO: reuse a buffer
       byte[] bytes = new byte[blocks * bitWidth];
       new DataInputStream(in).readFully(bytes);

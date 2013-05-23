@@ -17,6 +17,7 @@ package parquet.column.values;
 
 import parquet.bytes.BytesInput;
 import parquet.column.Encoding;
+import parquet.column.page.DictionaryPage;
 import parquet.io.api.Binary;
 
 /**
@@ -33,8 +34,9 @@ public abstract class ValuesWriter {
    */
   public abstract long getBufferedSize();
 
+
+  // TODO: maybe consolidate into a getPage
   /**
-   *
    * @return the bytes buffered so far to write to the current page
    */
   public abstract BytesInput getBytes();
@@ -49,6 +51,19 @@ public abstract class ValuesWriter {
    * called after getBytes() to reset the current buffer and start writing the next page
    */
   public abstract void reset();
+
+  /**
+   * @return the dictionary page or null if not dictionary based
+   */
+  public DictionaryPage createDictionaryPage() {
+    return null;
+  }
+
+  /**
+   * reset the dictionary when a new block starts
+   */
+  public void resetDictionary() {
+  }
 
   /**
    *

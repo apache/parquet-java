@@ -15,17 +15,23 @@
  */
 package parquet.column;
 
+import java.io.IOException;
+
+import parquet.column.page.DictionaryPage;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.ValuesType;
 import parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 import parquet.column.values.boundedint.BoundedIntValuesFactory;
+import parquet.column.values.dictionary.DictionaryValuesReader;
+import parquet.column.values.dictionary.PlainBinaryDictionary;
 import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.BooleanPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader;
 import parquet.io.ParquetDecodingException;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
- * endoding of the data
+ * encoding of the data
  *
  * @author Julien Le Dem
  *
@@ -46,6 +52,10 @@ public enum Encoding {
     }
   },
 
+  /**
+   * this is not used anymore and will be removed
+   */
+  @Deprecated
   RLE {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
@@ -61,21 +71,29 @@ public enum Encoding {
   },
 
   GROUP_VAR_INT {
-
     @Override // TODO: GROUP VAR INT encoding
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor,
-        ValuesType valuesType) {
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       throw new UnsupportedOperationException("NYI");
     }
-
   },
 
   PLAIN_DICTIONARY {
+    @Override
+    public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
+      switch (descriptor.getType()) {
+      case BINARY:
+        return new DictionaryValuesReader(dictionary);
+      default:
+        throw new ParquetDecodingException("Dictionary encoding not supported for type: " + descriptor.getType());
+      }
+    }
 
-    @Override // TODO: dictionary encoding
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor,
-        ValuesType valuesType) {
-      throw new UnsupportedOperationException("NYI");
+    @Override
+    public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage) throws IOException {
+      if (descriptor.getType() != PrimitiveTypeName.BINARY) {
+        throw new UnsupportedOperationException("only Binary dictionaries are supported for now");
+      }
+      return new PlainBinaryDictionary(dictionaryPage);
     }
 
   };
@@ -96,9 +114,37 @@ public enum Encoding {
   }
 
   /**
+   * initializes a dictionary from a page
+   * @param dictionaryPage
+   * @return the corresponding dictionary
+   */
+  public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage) throws IOException {
+    throw new UnsupportedOperationException(this.name() + " does not support dictionary");
+  }
+
+  /**
+   * To read decoded values that don't require a dictionary
+   *
    * @param descriptor the column to read
    * @param valuesType the type of values
    * @return the proper values reader for the given column
+   * @throw {@link UnsupportedOperationException} if the encoding is dictionary based
    */
-  abstract public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType);
+  public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+    throw new UnsupportedOperationException("Error decoding " + descriptor + ". " + this.name() + " is dictionary based");
+  }
+
+  /**
+   * To read decoded values that require a dictionary
+   *
+   * @param descriptor the column to read
+   * @param valuesType the type of values
+   * @param dictionary the dictionary
+   * @return the proper values reader for the given column
+   * @throw {@link UnsupportedOperationException} if the encoding is not dictionary based
+   */
+  public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
+    throw new UnsupportedOperationException(this.name() + " is not dictionary based");
+  }
+
 }

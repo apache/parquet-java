@@ -22,10 +22,10 @@ import parquet.io.api.Binary;
 /**
  * Base class to implement an encoding for a given column type.
  *
- * A PrimitiveColumnReader is provided with a page (byte-array) and is responsible
+ * A ValuesReader is provided with a page (byte-array) and is responsible
  * for deserializing the primitive values stored in that page.
- * 
- * Given that pages are homogenous (store only a single type), typical subclasses
+ *
+ * Given that pages are homogeneous (store only a single type), typical subclasses
  * will only override one of the read*() methods.
  *
  * @author Julien Le Dem
@@ -37,14 +37,14 @@ public abstract class ValuesReader {
    *
    * The underlying implementation knows how much data to read, so a length
    * is not provided.
-   * 
+   *
    * Each page may contain several sections:
    * <ul>
    *  <li> repetition levels column
    *  <li> definition levels column
    *  <li> data column
    * </ul>
-   * 
+   *
    * This function is called with 'offset' pointing to the beginning of one of these sections,
    * and should return the offset to the section following it.
    *
@@ -57,6 +57,14 @@ public abstract class ValuesReader {
   public abstract int initFromPage(long valueCount, byte[] page, int offset) throws IOException;
 
   /**
+   * usable when the encoding is doctionary based
+   * @return the id of the next value from the page
+   */
+  public int readValueDictionaryId() {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
    * @return the next boolean from the page
    */
   public boolean readBoolean() {
@@ -64,44 +72,38 @@ public abstract class ValuesReader {
   }
 
   /**
-   * @return the next boolean from the page
-   */
-  public int readByte() {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * @return the next boolean from the page
-   */
-  public float readFloat() {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * @return the next boolean from the page
+   * @return the next Binary from the page
    */
   public Binary readBytes() {
     throw new UnsupportedOperationException();
   }
 
   /**
-   * @return the next boolean from the page
+   * @return the next float from the page
+   */
+  public float readFloat() {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * @return the next double from the page
    */
   public double readDouble() {
     throw new UnsupportedOperationException();
   }
 
   /**
-   * @return the next boolean from the page
+   * @return the next integer from the page
    */
   public int readInteger() {
     throw new UnsupportedOperationException();
   }
 
   /**
-   * @return the next boolean from the page
+   * @return the next long from the page
    */
   public long readLong() {
     throw new UnsupportedOperationException();
   }
+
 }

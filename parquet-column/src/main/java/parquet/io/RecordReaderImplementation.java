@@ -390,7 +390,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       // set the current value
       if (d >= currentState.maxDefinitionLevel) {
         // not null
-        currentState.primitive.addValueToPrimitiveConverter(currentState.primitiveConverter, columnReader);
+        columnReader.writeCurrentValueToConverter();
       }
       columnReader.consume();
 
