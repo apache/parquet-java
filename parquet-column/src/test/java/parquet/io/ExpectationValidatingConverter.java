@@ -17,6 +17,8 @@ package parquet.io;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 
@@ -41,6 +43,10 @@ public class ExpectationValidatingConverter extends RecordMaterializer<Void> {
   public void validate(String got) {
     assertEquals("event #"+count, expectations.pop(), got);
     ++count;
+  }
+
+  public ExpectationValidatingConverter(String[] expectations, MessageType schema) {
+    this(new ArrayDeque<String>(Arrays.asList(expectations)), schema);
   }
 
   public ExpectationValidatingConverter(Deque<String> expectations, MessageType schema) {

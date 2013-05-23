@@ -23,7 +23,8 @@ import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.RecordReader;
 
 import parquet.cascading.ParquetValueScheme;
-import parquet.hadoop.thrift.DeprecatedContainerInputFormat;
+import parquet.hadoop.ParquetInputFormat;
+import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
 import parquet.hadoop.thrift.ParquetThriftInputFormat;
 import parquet.hadoop.thrift.ThriftReadSupport;
 import cascading.flow.FlowProcess;
@@ -59,11 +60,10 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
   @Override
   public void sourceConfInit(FlowProcess<JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
-    DeprecatedContainerInputFormat.setInputFormat(ParquetThriftInputFormat.class, jobConf);
-    ParquetThriftInputFormat.setReadSupportClass(jobConf, ThriftReadSupport.class);
+    jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
+    ParquetInputFormat.setReadSupportClass(jobConf, ThriftReadSupport.class);
     ThriftReadSupport.setRecordConverterClass(jobConf, ScroogeRecordConverter.class);
     ParquetThriftInputFormat.<T>setThriftClass(jobConf, klass);
-
   }
 
   @Override

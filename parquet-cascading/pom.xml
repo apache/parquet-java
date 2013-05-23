@@ -21,7 +21,7 @@
       <url>http://conjars.org/repo</url>
     </repository>
   </repositories>
-  
+
   <dependencies>
     <dependency>
       <groupId>com.twitter</groupId>
@@ -40,8 +40,8 @@
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-core</artifactId>
-      <version>1.0.0</version>
+      <artifactId>hadoop-client</artifactId>
+      <version>${hadoop.version}</version>
     </dependency>
     <dependency>
       <groupId>log4j</groupId>
@@ -57,8 +57,32 @@
     </dependency>
     <dependency>
        <groupId>cascading</groupId>
-       <artifactId>cascading-core</artifactId>
+       <artifactId>cascading-hadoop</artifactId>
        <version>2.1.5</version>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>${maven-jar-plugin.version}</version>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <git-SHA-1>${buildNumber}</git-SHA-1>
+            </manifestEntries>
+          </archive>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>

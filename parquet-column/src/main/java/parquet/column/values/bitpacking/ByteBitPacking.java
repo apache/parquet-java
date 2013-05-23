@@ -71,13 +71,13 @@ public abstract class ByteBitPacking {
       super(0);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
     }
   }
 
@@ -87,7 +87,7 @@ public abstract class ByteBitPacking {
       super(1);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //           [7_______]
           //           [0]
@@ -114,7 +114,7 @@ public abstract class ByteBitPacking {
           //                  [0]
            ((in[ 7 + inPos] & 1))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //           [7_______]
           //           [0]
@@ -216,7 +216,7 @@ public abstract class ByteBitPacking {
           //                  [0]
            ((in[31 + inPos] & 1))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //           [7_______]
           //           [0]
@@ -250,7 +250,7 @@ public abstract class ByteBitPacking {
           //                  [0]
             (((((int)in[ 0 + inPos]) & 255) ) & 1);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //           [7_______]
           //           [0]
@@ -388,7 +388,7 @@ public abstract class ByteBitPacking {
       super(2);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //            [76______]
           //            [10]
@@ -416,7 +416,7 @@ public abstract class ByteBitPacking {
           //                  [10]
            ((in[ 7 + inPos] & 3))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //            [76______]
           //            [10]
@@ -522,7 +522,7 @@ public abstract class ByteBitPacking {
           //                  [10]
            ((in[31 + inPos] & 3))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //            [76______]
           //            [10]
@@ -556,7 +556,7 @@ public abstract class ByteBitPacking {
           //                  [10]
             (((((int)in[ 1 + inPos]) & 255) ) & 3);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //            [76______]
           //            [10]
@@ -694,7 +694,7 @@ public abstract class ByteBitPacking {
       super(3);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //             [765_____]
           //             [210]
@@ -729,7 +729,7 @@ public abstract class ByteBitPacking {
           //                  [210]
            ((in[ 7 + inPos] & 7))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //             [765_____]
           //             [210]
@@ -863,7 +863,7 @@ public abstract class ByteBitPacking {
           //                  [210]
            ((in[31 + inPos] & 7))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //             [765_____]
           //             [210]
@@ -903,7 +903,7 @@ public abstract class ByteBitPacking {
           //                  [210]
             (((((int)in[ 2 + inPos]) & 255) ) & 7);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //             [765_____]
           //             [210]
@@ -1065,7 +1065,7 @@ public abstract class ByteBitPacking {
       super(4);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //              [7654____]
           //              [3210]
@@ -1095,7 +1095,7 @@ public abstract class ByteBitPacking {
           //                  [3210]
            ((in[ 7 + inPos] & 15))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //              [7654____]
           //              [3210]
@@ -1209,7 +1209,7 @@ public abstract class ByteBitPacking {
           //                  [3210]
            ((in[31 + inPos] & 15))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //              [7654____]
           //              [3210]
@@ -1243,7 +1243,7 @@ public abstract class ByteBitPacking {
           //                  [3210]
             (((((int)in[ 3 + inPos]) & 255) ) & 15);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //              [7654____]
           //              [3210]
@@ -1381,7 +1381,7 @@ public abstract class ByteBitPacking {
       super(5);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //               [76543___]
           //               [43210]
@@ -1424,7 +1424,7 @@ public abstract class ByteBitPacking {
           //                  [43210]
            ((in[ 7 + inPos] & 31))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //               [76543___]
           //               [43210]
@@ -1590,7 +1590,7 @@ public abstract class ByteBitPacking {
           //                  [43210]
            ((in[31 + inPos] & 31))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //               [76543___]
           //               [43210]
@@ -1636,7 +1636,7 @@ public abstract class ByteBitPacking {
           //                  [43210]
             (((((int)in[ 4 + inPos]) & 255) ) & 31);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //               [76543___]
           //               [43210]
@@ -1822,7 +1822,7 @@ public abstract class ByteBitPacking {
       super(6);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                [765432__]
           //                [543210]
@@ -1866,7 +1866,7 @@ public abstract class ByteBitPacking {
           //                  [543210]
            ((in[ 7 + inPos] & 63))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                [765432__]
           //                [543210]
@@ -2036,7 +2036,7 @@ public abstract class ByteBitPacking {
           //                  [543210]
            ((in[31 + inPos] & 63))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                [765432__]
           //                [543210]
@@ -2082,7 +2082,7 @@ public abstract class ByteBitPacking {
           //                  [543210]
             (((((int)in[ 5 + inPos]) & 255) ) & 63);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                [765432__]
           //                [543210]
@@ -2268,7 +2268,7 @@ public abstract class ByteBitPacking {
       super(7);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                 [7654321_]
           //                 [6543210]
@@ -2319,7 +2319,7 @@ public abstract class ByteBitPacking {
           //                  [6543210]
            ((in[ 7 + inPos] & 127))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                 [7654321_]
           //                 [6543210]
@@ -2517,7 +2517,7 @@ public abstract class ByteBitPacking {
           //                  [6543210]
            ((in[31 + inPos] & 127))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                 [7654321_]
           //                 [6543210]
@@ -2569,7 +2569,7 @@ public abstract class ByteBitPacking {
           //                  [6543210]
             (((((int)in[ 6 + inPos]) & 255) ) & 127);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                 [7654321_]
           //                 [6543210]
@@ -2779,7 +2779,7 @@ public abstract class ByteBitPacking {
       super(8);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                  [76543210]
           //                  [76543210]
@@ -2813,7 +2813,7 @@ public abstract class ByteBitPacking {
           //                  [76543210]
            ((in[ 7 + inPos] & 255))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                  [76543210]
           //                  [76543210]
@@ -2943,7 +2943,7 @@ public abstract class ByteBitPacking {
           //                  [76543210]
            ((in[31 + inPos] & 255))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                  [76543210]
           //                  [76543210]
@@ -2977,7 +2977,7 @@ public abstract class ByteBitPacking {
           //                  [76543210]
             (((((int)in[ 7 + inPos]) & 255) ) & 255);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                  [76543210]
           //                  [76543210]
@@ -3115,7 +3115,7 @@ public abstract class ByteBitPacking {
       super(9);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                   [76543210]
           //                   [87654321_]
@@ -3174,7 +3174,7 @@ public abstract class ByteBitPacking {
           //                  [_76543210]
            ((in[ 7 + inPos] & 511))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                   [76543210]
           //                   [87654321_]
@@ -3404,7 +3404,7 @@ public abstract class ByteBitPacking {
           //                  [_76543210]
            ((in[31 + inPos] & 511))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                   [76543210]
           //                   [87654321_]
@@ -3462,7 +3462,7 @@ public abstract class ByteBitPacking {
           //                  [_76543210]
             (((((int)in[ 8 + inPos]) & 255) ) & 511);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                   [76543210]
           //                   [87654321_]
@@ -3696,7 +3696,7 @@ public abstract class ByteBitPacking {
       super(10);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                    [76543210]
           //                    [98765432__]
@@ -3756,7 +3756,7 @@ public abstract class ByteBitPacking {
           //                  [__76543210]
            ((in[ 7 + inPos] & 1023))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                    [76543210]
           //                    [98765432__]
@@ -3990,7 +3990,7 @@ public abstract class ByteBitPacking {
           //                  [__76543210]
            ((in[31 + inPos] & 1023))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                    [76543210]
           //                    [98765432__]
@@ -4048,7 +4048,7 @@ public abstract class ByteBitPacking {
           //                  [__76543210]
             (((((int)in[ 9 + inPos]) & 255) ) & 1023);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                    [76543210]
           //                    [98765432__]
@@ -4282,7 +4282,7 @@ public abstract class ByteBitPacking {
       super(11);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                     [76543210]
           //                     [09876543___]
@@ -4349,7 +4349,7 @@ public abstract class ByteBitPacking {
           //                  [___76543210]
            ((in[ 7 + inPos] & 2047))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                     [76543210]
           //                     [09876543___]
@@ -4611,7 +4611,7 @@ public abstract class ByteBitPacking {
           //                  [___76543210]
            ((in[31 + inPos] & 2047))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                     [76543210]
           //                     [09876543___]
@@ -4675,7 +4675,7 @@ public abstract class ByteBitPacking {
           //                  [___76543210]
             (((((int)in[10 + inPos]) & 255) ) & 2047);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                     [76543210]
           //                     [09876543___]
@@ -4933,7 +4933,7 @@ public abstract class ByteBitPacking {
       super(12);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                      [76543210]
           //                      [10987654____]
@@ -4995,7 +4995,7 @@ public abstract class ByteBitPacking {
           //                  [____76543210]
            ((in[ 7 + inPos] & 4095))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                      [76543210]
           //                      [10987654____]
@@ -5237,7 +5237,7 @@ public abstract class ByteBitPacking {
           //                  [____76543210]
            ((in[31 + inPos] & 4095))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                      [76543210]
           //                      [10987654____]
@@ -5295,7 +5295,7 @@ public abstract class ByteBitPacking {
           //                  [____76543210]
             (((((int)in[11 + inPos]) & 255) ) & 4095);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                      [76543210]
           //                      [10987654____]
@@ -5529,7 +5529,7 @@ public abstract class ByteBitPacking {
       super(13);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                       [76543210]
           //                       [21098765_____]
@@ -5604,7 +5604,7 @@ public abstract class ByteBitPacking {
           //                  [_____76543210]
            ((in[ 7 + inPos] & 8191))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                       [76543210]
           //                       [21098765_____]
@@ -5898,7 +5898,7 @@ public abstract class ByteBitPacking {
           //                  [_____76543210]
            ((in[31 + inPos] & 8191))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                       [76543210]
           //                       [21098765_____]
@@ -5968,7 +5968,7 @@ public abstract class ByteBitPacking {
           //                  [_____76543210]
             (((((int)in[12 + inPos]) & 255) ) & 8191);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                       [76543210]
           //                       [21098765_____]
@@ -6250,7 +6250,7 @@ public abstract class ByteBitPacking {
       super(14);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                        [76543210]
           //                        [32109876______]
@@ -6326,7 +6326,7 @@ public abstract class ByteBitPacking {
           //                  [______76543210]
            ((in[ 7 + inPos] & 16383))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                        [76543210]
           //                        [32109876______]
@@ -6624,7 +6624,7 @@ public abstract class ByteBitPacking {
           //                  [______76543210]
            ((in[31 + inPos] & 16383))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                        [76543210]
           //                        [32109876______]
@@ -6694,7 +6694,7 @@ public abstract class ByteBitPacking {
           //                  [______76543210]
             (((((int)in[13 + inPos]) & 255) ) & 16383);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                        [76543210]
           //                        [32109876______]
@@ -6976,7 +6976,7 @@ public abstract class ByteBitPacking {
       super(15);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                         [76543210]
           //                         [43210987_______]
@@ -7059,7 +7059,7 @@ public abstract class ByteBitPacking {
           //                  [_______76543210]
            ((in[ 7 + inPos] & 32767))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                         [76543210]
           //                         [43210987_______]
@@ -7385,7 +7385,7 @@ public abstract class ByteBitPacking {
           //                  [_______76543210]
            ((in[31 + inPos] & 32767))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                         [76543210]
           //                         [43210987_______]
@@ -7461,7 +7461,7 @@ public abstract class ByteBitPacking {
           //                  [_______76543210]
             (((((int)in[14 + inPos]) & 255) ) & 32767);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                         [76543210]
           //                         [43210987_______]
@@ -7767,7 +7767,7 @@ public abstract class ByteBitPacking {
       super(16);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                          [76543210]
           //                          [54321098________]
@@ -7833,7 +7833,7 @@ public abstract class ByteBitPacking {
           //                  [________76543210]
            ((in[ 7 + inPos] & 65535))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                          [76543210]
           //                          [54321098________]
@@ -8091,7 +8091,7 @@ public abstract class ByteBitPacking {
           //                  [________76543210]
            ((in[31 + inPos] & 65535))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                          [76543210]
           //                          [54321098________]
@@ -8149,7 +8149,7 @@ public abstract class ByteBitPacking {
           //                  [________76543210]
             (((((int)in[15 + inPos]) & 255) ) & 65535);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                          [76543210]
           //                          [54321098________]
@@ -8383,7 +8383,7 @@ public abstract class ByteBitPacking {
       super(17);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                           [76543210]
           //                           [65432109_________]
@@ -8474,7 +8474,7 @@ public abstract class ByteBitPacking {
           //                  [_________76543210]
            ((in[ 7 + inPos] & 131071))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                           [76543210]
           //                           [65432109_________]
@@ -8832,7 +8832,7 @@ public abstract class ByteBitPacking {
           //                  [_________76543210]
            ((in[31 + inPos] & 131071))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                           [76543210]
           //                           [65432109_________]
@@ -8914,7 +8914,7 @@ public abstract class ByteBitPacking {
           //                  [_________76543210]
             (((((int)in[16 + inPos]) & 255) ) & 131071);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                           [76543210]
           //                           [65432109_________]
@@ -9244,7 +9244,7 @@ public abstract class ByteBitPacking {
       super(18);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                            [76543210]
           //                            [76543210__________]
@@ -9336,7 +9336,7 @@ public abstract class ByteBitPacking {
           //                  [__________76543210]
            ((in[ 7 + inPos] & 262143))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                            [76543210]
           //                            [76543210__________]
@@ -9698,7 +9698,7 @@ public abstract class ByteBitPacking {
           //                  [__________76543210]
            ((in[31 + inPos] & 262143))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                            [76543210]
           //                            [76543210__________]
@@ -9780,7 +9780,7 @@ public abstract class ByteBitPacking {
           //                  [__________76543210]
             (((((int)in[17 + inPos]) & 255) ) & 262143);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                            [76543210]
           //                            [76543210__________]
@@ -10110,7 +10110,7 @@ public abstract class ByteBitPacking {
       super(19);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                             [76543210]
           //                             [87654321___________]
@@ -10209,7 +10209,7 @@ public abstract class ByteBitPacking {
           //                  [___________76543210]
            ((in[ 7 + inPos] & 524287))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                             [76543210]
           //                             [87654321___________]
@@ -10599,7 +10599,7 @@ public abstract class ByteBitPacking {
           //                  [___________76543210]
            ((in[31 + inPos] & 524287))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                             [76543210]
           //                             [87654321___________]
@@ -10687,7 +10687,7 @@ public abstract class ByteBitPacking {
           //                  [___________76543210]
             (((((int)in[18 + inPos]) & 255) ) & 524287);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                             [76543210]
           //                             [87654321___________]
@@ -11041,7 +11041,7 @@ public abstract class ByteBitPacking {
       super(20);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                              [76543210]
           //                              [98765432____________]
@@ -11135,7 +11135,7 @@ public abstract class ByteBitPacking {
           //                  [____________76543210]
            ((in[ 7 + inPos] & 1048575))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                              [76543210]
           //                              [98765432____________]
@@ -11505,7 +11505,7 @@ public abstract class ByteBitPacking {
           //                  [____________76543210]
            ((in[31 + inPos] & 1048575))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                              [76543210]
           //                              [98765432____________]
@@ -11587,7 +11587,7 @@ public abstract class ByteBitPacking {
           //                  [____________76543210]
             (((((int)in[19 + inPos]) & 255) ) & 1048575);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                              [76543210]
           //                              [98765432____________]
@@ -11917,7 +11917,7 @@ public abstract class ByteBitPacking {
       super(21);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                               [76543210]
           //                               [09876543_____________]
@@ -12024,7 +12024,7 @@ public abstract class ByteBitPacking {
           //                  [_____________76543210]
            ((in[ 7 + inPos] & 2097151))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                               [76543210]
           //                               [09876543_____________]
@@ -12446,7 +12446,7 @@ public abstract class ByteBitPacking {
           //                  [_____________76543210]
            ((in[31 + inPos] & 2097151))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                               [76543210]
           //                               [09876543_____________]
@@ -12540,7 +12540,7 @@ public abstract class ByteBitPacking {
           //                  [_____________76543210]
             (((((int)in[20 + inPos]) & 255) ) & 2097151);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                               [76543210]
           //                               [09876543_____________]
@@ -12918,7 +12918,7 @@ public abstract class ByteBitPacking {
       super(22);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                [76543210]
           //                                [10987654______________]
@@ -13026,7 +13026,7 @@ public abstract class ByteBitPacking {
           //                  [______________76543210]
            ((in[ 7 + inPos] & 4194303))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                [76543210]
           //                                [10987654______________]
@@ -13452,7 +13452,7 @@ public abstract class ByteBitPacking {
           //                  [______________76543210]
            ((in[31 + inPos] & 4194303))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                [76543210]
           //                                [10987654______________]
@@ -13546,7 +13546,7 @@ public abstract class ByteBitPacking {
           //                  [______________76543210]
             (((((int)in[21 + inPos]) & 255) ) & 4194303);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                [76543210]
           //                                [10987654______________]
@@ -13924,7 +13924,7 @@ public abstract class ByteBitPacking {
       super(23);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                 [76543210]
           //                                 [21098765_______________]
@@ -14039,7 +14039,7 @@ public abstract class ByteBitPacking {
           //                  [_______________76543210]
            ((in[ 7 + inPos] & 8388607))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                 [76543210]
           //                                 [21098765_______________]
@@ -14493,7 +14493,7 @@ public abstract class ByteBitPacking {
           //                  [_______________76543210]
            ((in[31 + inPos] & 8388607))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                 [76543210]
           //                                 [21098765_______________]
@@ -14593,7 +14593,7 @@ public abstract class ByteBitPacking {
           //                  [_______________76543210]
             (((((int)in[22 + inPos]) & 255) ) & 8388607);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                 [76543210]
           //                                 [21098765_______________]
@@ -14995,7 +14995,7 @@ public abstract class ByteBitPacking {
       super(24);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                  [76543210]
           //                                  [32109876________________]
@@ -15093,7 +15093,7 @@ public abstract class ByteBitPacking {
           //                  [________________76543210]
            ((in[ 7 + inPos] & 16777215))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                  [76543210]
           //                                  [32109876________________]
@@ -15479,7 +15479,7 @@ public abstract class ByteBitPacking {
           //                  [________________76543210]
            ((in[31 + inPos] & 16777215))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                  [76543210]
           //                                  [32109876________________]
@@ -15561,7 +15561,7 @@ public abstract class ByteBitPacking {
           //                  [________________76543210]
             (((((int)in[23 + inPos]) & 255) ) & 16777215);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                  [76543210]
           //                                  [32109876________________]
@@ -15891,7 +15891,7 @@ public abstract class ByteBitPacking {
       super(25);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                   [76543210]
           //                                   [43210987_________________]
@@ -16014,7 +16014,7 @@ public abstract class ByteBitPacking {
           //                  [_________________76543210]
            ((in[ 7 + inPos] & 33554431))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                   [76543210]
           //                                   [43210987_________________]
@@ -16500,7 +16500,7 @@ public abstract class ByteBitPacking {
           //                  [_________________76543210]
            ((in[31 + inPos] & 33554431))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                   [76543210]
           //                                   [43210987_________________]
@@ -16606,7 +16606,7 @@ public abstract class ByteBitPacking {
           //                  [_________________76543210]
             (((((int)in[24 + inPos]) & 255) ) & 33554431);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                   [76543210]
           //                                   [43210987_________________]
@@ -17032,7 +17032,7 @@ public abstract class ByteBitPacking {
       super(26);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                    [76543210]
           //                                    [54321098__________________]
@@ -17156,7 +17156,7 @@ public abstract class ByteBitPacking {
           //                  [__________________76543210]
            ((in[ 7 + inPos] & 67108863))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                    [76543210]
           //                                    [54321098__________________]
@@ -17646,7 +17646,7 @@ public abstract class ByteBitPacking {
           //                  [__________________76543210]
            ((in[31 + inPos] & 67108863))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                    [76543210]
           //                                    [54321098__________________]
@@ -17752,7 +17752,7 @@ public abstract class ByteBitPacking {
           //                  [__________________76543210]
             (((((int)in[25 + inPos]) & 255) ) & 67108863);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                    [76543210]
           //                                    [54321098__________________]
@@ -18178,7 +18178,7 @@ public abstract class ByteBitPacking {
       super(27);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                     [76543210]
           //                                     [65432109___________________]
@@ -18309,7 +18309,7 @@ public abstract class ByteBitPacking {
           //                  [___________________76543210]
            ((in[ 7 + inPos] & 134217727))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                     [76543210]
           //                                     [65432109___________________]
@@ -18827,7 +18827,7 @@ public abstract class ByteBitPacking {
           //                  [___________________76543210]
            ((in[31 + inPos] & 134217727))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                     [76543210]
           //                                     [65432109___________________]
@@ -18939,7 +18939,7 @@ public abstract class ByteBitPacking {
           //                  [___________________76543210]
             (((((int)in[26 + inPos]) & 255) ) & 134217727);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                     [76543210]
           //                                     [65432109___________________]
@@ -19389,7 +19389,7 @@ public abstract class ByteBitPacking {
       super(28);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                      [76543210]
           //                                      [76543210____________________]
@@ -19515,7 +19515,7 @@ public abstract class ByteBitPacking {
           //                  [____________________76543210]
            ((in[ 7 + inPos] & 268435455))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                      [76543210]
           //                                      [76543210____________________]
@@ -20013,7 +20013,7 @@ public abstract class ByteBitPacking {
           //                  [____________________76543210]
            ((in[31 + inPos] & 268435455))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                      [76543210]
           //                                      [76543210____________________]
@@ -20119,7 +20119,7 @@ public abstract class ByteBitPacking {
           //                  [____________________76543210]
             (((((int)in[27 + inPos]) & 255) ) & 268435455);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                      [76543210]
           //                                      [76543210____________________]
@@ -20545,7 +20545,7 @@ public abstract class ByteBitPacking {
       super(29);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                       [76543210]
           //                                       [87654321_____________________]
@@ -20684,7 +20684,7 @@ public abstract class ByteBitPacking {
           //                  [_____________________76543210]
            ((in[ 7 + inPos] & 536870911))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                       [76543210]
           //                                       [87654321_____________________]
@@ -21234,7 +21234,7 @@ public abstract class ByteBitPacking {
           //                  [_____________________76543210]
            ((in[31 + inPos] & 536870911))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                       [76543210]
           //                                       [87654321_____________________]
@@ -21352,7 +21352,7 @@ public abstract class ByteBitPacking {
           //                  [_____________________76543210]
             (((((int)in[28 + inPos]) & 255) ) & 536870911);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                       [76543210]
           //                                       [87654321_____________________]
@@ -21826,7 +21826,7 @@ public abstract class ByteBitPacking {
       super(30);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                        [76543210]
           //                                        [98765432______________________]
@@ -21966,7 +21966,7 @@ public abstract class ByteBitPacking {
           //                  [______________________76543210]
            ((in[ 7 + inPos] & 1073741823))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                        [76543210]
           //                                        [98765432______________________]
@@ -22520,7 +22520,7 @@ public abstract class ByteBitPacking {
           //                  [______________________76543210]
            ((in[31 + inPos] & 1073741823))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                        [76543210]
           //                                        [98765432______________________]
@@ -22638,7 +22638,7 @@ public abstract class ByteBitPacking {
           //                  [______________________76543210]
             (((((int)in[29 + inPos]) & 255) ) & 1073741823);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                        [76543210]
           //                                        [98765432______________________]
@@ -23112,7 +23112,7 @@ public abstract class ByteBitPacking {
       super(31);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                         [76543210]
           //                                         [09876543_______________________]
@@ -23259,7 +23259,7 @@ public abstract class ByteBitPacking {
           //                  [_______________________76543210]
            ((in[ 7 + inPos] & 2147483647))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                         [76543210]
           //                                         [09876543_______________________]
@@ -23841,7 +23841,7 @@ public abstract class ByteBitPacking {
           //                  [_______________________76543210]
            ((in[31 + inPos] & 2147483647))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                         [76543210]
           //                                         [09876543_______________________]
@@ -23965,7 +23965,7 @@ public abstract class ByteBitPacking {
           //                  [_______________________76543210]
             (((((int)in[30 + inPos]) & 255) ) & 2147483647);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                         [76543210]
           //                                         [09876543_______________________]
@@ -24463,7 +24463,7 @@ public abstract class ByteBitPacking {
       super(32);
     }
 
-    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack8Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                          [76543210]
           //                                          [10987654________________________]
@@ -24593,7 +24593,7 @@ public abstract class ByteBitPacking {
           //                  [________________________76543210]
            ((in[ 7 + inPos] & -1))) & 255);
     }
-    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos){
+    public final void pack32Values(final int[] in, final int inPos, final byte[] out, final int outPos) {
       out[ 0 + outPos] = (byte)((
           //                                          [76543210]
           //                                          [10987654________________________]
@@ -25107,7 +25107,7 @@ public abstract class ByteBitPacking {
           //                  [________________________76543210]
            ((in[31 + inPos] & -1))) & 255);
     }
-    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack8Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                          [76543210]
           //                                          [10987654________________________]
@@ -25213,7 +25213,7 @@ public abstract class ByteBitPacking {
           //                  [________________________76543210]
             (((((int)in[31 + inPos]) & 255) ) & -1);
     }
-    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos){
+    public final void unpack32Values(final byte[] in, final int inPos, final int[] out, final int outPos) {
       out[ 0 + outPos] =
           //                                          [76543210]
           //                                          [10987654________________________]

@@ -55,4 +55,6 @@ public interface PageWriter {
    */
   void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException;
 
+  public abstract String memUsageString(String prefix);
+
 }

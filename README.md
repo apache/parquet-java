@@ -33,9 +33,45 @@ mvn package
 The build runs in [Travis CI](http://travis-ci.org/Parquet/parquet-mr):
 [![Build Status](https://secure.travis-ci.org/Parquet/parquet-mr.png?branch=master)](http://travis-ci.org/Parquet/parquet-mr)
 
+## Add Parquet as a dependency in Maven
+
+### Snapshot releases
+```xml
+  <repositories>
+    <repository>
+      <id>sonatype-nexus-snapshots</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+     </repository>
+  </repositories>
+  <dependencies>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-column</artifactId>
+      <version>1.0.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-hadoop</artifactId>
+      <version>1.0.0-SNAPSHOT</version>
+    </dependency>
+  </dependencies>
+```
+
+### Official releases
+We haven't published a 1.0.0 yet
+
 ## Authors and contributors
 
-* Julien Le Dem <http://twitter.com/J_>
+* Julien Le Dem [@J_](http://twitter.com/J_) <https://github.com/julienledem>
+* Tom White <https://github.com/tomwhite>
+* Avi Bryant <https://github.com/avibryant>
+* Dmitriy Ryaboy [@squarecog](https://twitter.com/squarecog) <https://github.com/dvryaboy>
 * Jonathan Coveney <http://twitter.com/jco>
 
 ## Discussions

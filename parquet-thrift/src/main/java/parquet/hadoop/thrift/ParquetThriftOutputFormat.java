@@ -18,6 +18,7 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.thrift.TBase;
 
 import parquet.hadoop.ParquetOutputFormat;
+import parquet.hadoop.util.ContextUtil;
 
 /**
  *
@@ -28,11 +29,11 @@ import parquet.hadoop.ParquetOutputFormat;
 public class ParquetThriftOutputFormat<T extends TBase<?,?>> extends ParquetOutputFormat<T> {
 
   public static void setThriftClass(Job job, Class<? extends TBase<?,?>> thriftClass) {
-    ThriftWriteSupport.setThriftClass(job.getConfiguration(), thriftClass);
+    ThriftWriteSupport.setThriftClass(ContextUtil.getConfiguration(job), thriftClass);
   }
 
   public static Class<? extends TBase<?,?>> getThriftClass(Job job) {
-    return ThriftWriteSupport.getThriftClass(job.getConfiguration());
+    return ThriftWriteSupport.getThriftClass(ContextUtil.getConfiguration(job));
   }
 
   public ParquetThriftOutputFormat() {

@@ -41,8 +41,8 @@
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-core</artifactId>
-      <version>1.0.0</version>
+      <artifactId>hadoop-client</artifactId>
+      <version>${hadoop.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
@@ -64,6 +64,14 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
+        <version>${maven-jar-plugin.version}</version>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <git-SHA-1>${buildNumber}</git-SHA-1>
+            </manifestEntries>
+          </archive>
+        </configuration>
         <executions>
           <execution>
             <goals>

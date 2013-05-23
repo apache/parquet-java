@@ -33,8 +33,34 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
  * of the mapping.
  * </p>
  */
-class AvroSchemaConverter {
+public class AvroSchemaConverter {
 
+  /**
+   * Given a schema, check to see if it is a union of a null type and a regular schema,
+   * and then return the non-null sub-schema. Otherwise, return the given schema.
+   * 
+   * @param schema The schema to check
+   * @return The non-null portion of a union schema, or the given schema
+   */
+  public static Schema getNonNull(Schema schema) {
+    if (schema.getType().equals(Schema.Type.UNION)) {
+      List<Schema> schemas = schema.getTypes();
+      if (schemas.size() == 2) {
+        if (schemas.get(0).getType().equals(Schema.Type.NULL)) {
+          return schemas.get(1);
+        } else if (schemas.get(1).getType().equals(Schema.Type.NULL)) {
+          return schemas.get(0);
+        } else {
+          return schema;
+        }
+      } else {
+        return schema;
+      }
+    } else {
+      return schema;
+    }
+  }
+  
   public MessageType convert(Schema avroSchema) {
     if (!avroSchema.getType().equals(Schema.Type.RECORD)) {
       throw new IllegalArgumentException("Avro schema must be a record.");

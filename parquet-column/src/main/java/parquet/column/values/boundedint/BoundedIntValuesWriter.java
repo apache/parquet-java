@@ -44,7 +44,7 @@ class BoundedIntValuesWriter extends ValuesWriter {
   private boolean thereIsABufferedValue = false;
   private int shouldRepeatThreshold = 0;
   private int bitsPerValue;
-  private BitWriter bitWriter = new BitWriter();
+  private BitWriter bitWriter;
   private boolean isFirst = true;
 
   private static final int[] byteToTrueMask = new int[8];
@@ -56,10 +56,11 @@ class BoundedIntValuesWriter extends ValuesWriter {
     }
   }
 
-  public BoundedIntValuesWriter(int bound) {
+  public BoundedIntValuesWriter(int bound, int initialCapacity) {
     if (bound == 0) {
       throw new ParquetEncodingException("Value bound cannot be 0. Use DevNullColumnWriter instead.");
     }
+    this.bitWriter = new BitWriter(initialCapacity);
     bitsPerValue = (int)Math.ceil(Math.log(bound + 1)/Math.log(2));
     shouldRepeatThreshold = (bitsPerValue + 9)/(1 + bitsPerValue);
     if (Log.DEBUG) LOG.debug("init column with bit width of " + bitsPerValue + " and repeat threshold of " + shouldRepeatThreshold);
@@ -78,12 +79,12 @@ class BoundedIntValuesWriter extends ValuesWriter {
   @Override
   public BytesInput getBytes() {
     serializeCurrentValue();
-    byte[] buf = bitWriter.finish();
-    if (Log.DEBUG) LOG.debug("writing a buffer of size " + buf.length + " + 4 bytes");
+    BytesInput buf = bitWriter.finish();
+    if (Log.DEBUG) LOG.debug("writing a buffer of size " + buf.size() + " + 4 bytes");
     // We serialize the length so that on deserialization we can
     // deserialize as we go, instead of having to load everything
     // into memory
-    return concat(BytesInput.fromInt(buf.length), BytesInput.from(buf));
+    return concat(BytesInput.fromInt((int)buf.size()), buf);
   }
 
   @Override
@@ -145,6 +146,11 @@ class BoundedIntValuesWriter extends ValuesWriter {
   @Override
   public Encoding getEncoding() {
     return RLE;
+  }
+
+  @Override
+  public String memUsageString(String prefix) {
+    return bitWriter.memUsageString(prefix);
   }
 
 }

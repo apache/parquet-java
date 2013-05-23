@@ -45,10 +45,13 @@ public class TestInputOutputFormat {
   private static Schema avroSchema;
   static {
     avroSchema = Schema.createRecord("record1", null, null, false);
-    avroSchema.setFields(Arrays.asList(new Schema.Field("a", Schema.create(Schema.Type.INT), null, null)));
+    avroSchema.setFields(
+        Arrays.asList(new Schema.Field("a",
+            Schema.createUnion(Arrays.asList(Schema.create(Schema.Type.INT), Schema.create(Schema.Type.NULL))),
+            null, null)));
   }
 
-  public static GenericRecord nextRecord(int i) {
+  public static GenericRecord nextRecord(Integer i) {
     return new GenericRecordBuilder(avroSchema).set("a", i).build();
   };
 
@@ -56,7 +59,8 @@ public class TestInputOutputFormat {
 
     public void run(Context context) throws IOException ,InterruptedException {
       for (int i = 0; i < 10; i++) {
-        GenericRecord a = TestInputOutputFormat.nextRecord(i);
+        GenericRecord a;
+        a = TestInputOutputFormat.nextRecord(i == 4 ? null : i);
         context.write(null, a);
       }
     }
@@ -114,7 +118,7 @@ public class TestInputOutputFormat {
     int lineNumber = 0;
     while ((lineOut = out.readLine()) != null) {
       lineOut = lineOut.substring(lineOut.indexOf("\t") + 1);
-      GenericRecord a = nextRecord(lineNumber);
+      GenericRecord a = nextRecord(lineNumber == 4 ? null : lineNumber);
       assertEquals("line " + lineNumber, a.toString(), lineOut);
       ++ lineNumber;
     }

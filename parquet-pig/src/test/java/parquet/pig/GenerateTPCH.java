@@ -61,9 +61,8 @@ public class GenerateTPCH {
         );
 
     MemPageStore pageStore = new MemPageStore();
-    ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 8*1024, false);
-    //
-    MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+    ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 20*1024, 1*1024, false);
+    MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
 
     RecordConsumer recordWriter = columnIO.getRecordWriter(store);
 
@@ -82,7 +81,8 @@ public class GenerateTPCH {
       ++ recordCount;
     }
     store.flush();
-
+    System.out.printf("mem size %,d, maxColSize %,d, allocated %,d\n", store.memSize(), store.maxColMemSize(), store.allocatedSize());
+    System.out.println(store.memUsageString());
     writeToFile(testFile, configuration, schema, pageStore, recordCount);
 
     try {
@@ -94,8 +94,8 @@ public class GenerateTPCH {
   }
 
   private static void writeField(RecordConsumer recordWriter, int index, String name, Object value) {
-    recordWriter.startField(name, index);
     if (value != null) {
+      recordWriter.startField(name, index);
       if (value instanceof Integer) {
         recordWriter.addInteger((Integer)value);
       } else if (value instanceof String) {
@@ -105,7 +105,7 @@ public class GenerateTPCH {
       } else {
         throw new IllegalArgumentException(value.getClass().getName() + " not supported");
       }
+      recordWriter.endField(name, index);
     }
-    recordWriter.endField(name, index);
   }
 }

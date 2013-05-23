@@ -233,4 +233,15 @@ public class DictionaryValuesWriter extends ValuesWriter {
   public int getDictionaryByteSize() {
     return dictionaryByteSize;
   }
+
+  @Override
+  public String memUsageString(String prefix) {
+    return String.format("%s DictionaryValuesWriter{\n%s\n%s\n%s\n%s}\n",
+        prefix,
+        plainValuesWriter.memUsageString(prefix + " plain:"),
+        prefix + " dict:" + dictionaryByteSize,
+        prefix + " values:" + (out.size() * 4),
+        prefix
+        );
+  }
 }

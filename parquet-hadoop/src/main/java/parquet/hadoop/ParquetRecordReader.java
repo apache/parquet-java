@@ -31,6 +31,7 @@ import parquet.column.ColumnDescriptor;
 import parquet.column.page.PageReadStore;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
+import parquet.hadoop.util.ContextUtil;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.io.api.RecordMaterializer;
@@ -148,9 +149,13 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
    * {@inheritDoc}
    */
   @Override
-  public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
+  public void initialize(InputSplit inputSplit, TaskAttemptContext context)
       throws IOException, InterruptedException {
-    Configuration configuration = taskAttemptContext.getConfiguration();
+    initialize(inputSplit, ContextUtil.getConfiguration(context));
+  }
+
+  public void initialize(InputSplit inputSplit, Configuration configuration)
+      throws IOException {
     ParquetInputSplit parquetInputSplit = (ParquetInputSplit)inputSplit;
     this.requestedSchema = MessageTypeParser.parseMessageType(parquetInputSplit.getRequestedSchema());
     this.columnCount = this.requestedSchema.getPaths().size();

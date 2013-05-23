@@ -36,8 +36,6 @@ import parquet.io.ParquetEncodingException;
  */
 public class BitPackingValuesWriter extends ValuesWriter {
 
-  private static final int INITIAL_CAPACITY = 32*1024;
-
   private CapacityByteArrayOutputStream out;
   private BitPackingWriter bitPackingWriter;
   private int bitsPerValue;
@@ -45,9 +43,9 @@ public class BitPackingValuesWriter extends ValuesWriter {
   /**
    * @param bound the maximum value stored by this column
    */
-  public BitPackingValuesWriter(int bound) {
+  public BitPackingValuesWriter(int bound, int initialCapacity) {
     this.bitsPerValue = getWidthFromMaxInt(bound);
-    this.out = new CapacityByteArrayOutputStream(INITIAL_CAPACITY);
+    this.out = new CapacityByteArrayOutputStream(initialCapacity);
     init();
   }
 
@@ -111,9 +109,13 @@ public class BitPackingValuesWriter extends ValuesWriter {
   }
 
   @Override
+  public String memUsageString(String prefix) {
+    return out.memUsageString(prefix);
+  }
+
+  @Override
   public Encoding getEncoding() {
     return BIT_PACKED;
   }
-
 
 }

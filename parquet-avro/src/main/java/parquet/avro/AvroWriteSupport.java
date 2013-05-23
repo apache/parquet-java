@@ -1,3 +1,18 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package parquet.avro;
 
 import java.nio.ByteBuffer;
@@ -81,13 +96,18 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
         continue;
       }
       Type fieldType = fields.get(index);
-      recordConsumer.startField(fieldType.getName(), index);
-      writeValue(fieldType, avroField.schema(), record.get(avroIndex));
-      recordConsumer.endField(fieldType.getName(), index);
+      Object value = record.get(avroIndex);
+      if (value != null) {
+        recordConsumer.startField(fieldType.getName(), index);
+        writeValue(fieldType, avroField.schema(), value);
+        recordConsumer.endField(fieldType.getName(), index);
+      } else if (fieldType.getRepetition() == Type.Repetition.REQUIRED) {
+        throw new RuntimeException("Null-value for required field: " + avroField.name());
+      }
       index++;
     }
   }
-
+  
   private <T> void writeArray(GroupType schema, Schema avroSchema,
       GenericArray<T> array) {
     recordConsumer.startGroup(); // group wrapper (original type LIST)
@@ -125,7 +145,8 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
 
   @SuppressWarnings("unchecked")
   private void writeValue(Type type, Schema avroSchema, Object value) {
-    Schema.Type avroType = avroSchema.getType();
+    Schema nonNullAvroSchema =  AvroSchemaConverter.getNonNull(avroSchema);
+    Schema.Type avroType = nonNullAvroSchema.getType();
     if (avroType.equals(Schema.Type.BOOLEAN)) {
       recordConsumer.addBoolean((Boolean) value);
     } else if (avroType.equals(Schema.Type.INT)) {
@@ -141,13 +162,13 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
     } else if (avroType.equals(Schema.Type.STRING)) {
       recordConsumer.addBinary(fromAvroString(value));
     } else if (avroType.equals(Schema.Type.RECORD)) {
-      writeRecord((GroupType) type, avroSchema, (GenericRecord) value);
+      writeRecord((GroupType) type, nonNullAvroSchema, (GenericRecord) value);
     } else if (avroType.equals(Schema.Type.ENUM)) {
       recordConsumer.addBinary(Binary.fromString(value.toString()));
     } else if (avroType.equals(Schema.Type.ARRAY)) {
-      writeArray((GroupType) type, avroSchema, (GenericArray<?>) value);
+      writeArray((GroupType) type, nonNullAvroSchema, (GenericArray<?>) value);
     } else if (avroType.equals(Schema.Type.MAP)) {
-      writeMap((GroupType) type, avroSchema, (Map<String, ?>) value);
+      writeMap((GroupType) type, nonNullAvroSchema, (Map<String, ?>) value);
     } else if (avroType.equals(Schema.Type.FIXED)) {
       recordConsumer.addBinary(Binary.fromByteArray(((GenericFixed) value).bytes()));
     }

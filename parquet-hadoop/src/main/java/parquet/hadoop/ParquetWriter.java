@@ -28,9 +28,36 @@ import parquet.schema.MessageType;
  */
 public class ParquetWriter<T> implements Closeable {
 
+  public static final int DEFAULT_BLOCK_SIZE = 50*1024*1024;
+  public static final int DEFAULT_PAGE_SIZE = 1*1024*1024;
+
   private final ParquetRecordWriter<T> writer;
 
-  public ParquetWriter(Path file, WriteSupport<T> writeSupport) throws IOException {
+  /** Create a new ParquetWriter.
+   * (with dictionary encoding disabled)
+   *
+   * @param file the file to create
+   * @param writeSupport the implementation to write a record to a RecordConsumer
+   * @param compressionCodecName the compression codec to use
+   * @param blockSize the block size threshold
+   * @param pageSize the page size threshold
+   * @throws IOException
+   */
+  public ParquetWriter(Path file, WriteSupport<T> writeSupport, CompressionCodecName compressionCodecName, int blockSize, int pageSize) throws IOException {
+    this(file, writeSupport, compressionCodecName, blockSize, pageSize, false);
+  }
+
+  /** Create a new ParquetWriter.
+   *
+   * @param file the file to create
+   * @param writeSupport the implementation to write a record to a RecordConsumer
+   * @param compressionCodecName the compression codec to use
+   * @param blockSize the block size threshold
+   * @param pageSize the page size threshold
+   * @param enableDictionary to turn dictionary encoding on
+   * @throws IOException
+   */
+  public ParquetWriter(Path file, WriteSupport<T> writeSupport, CompressionCodecName compressionCodecName, int blockSize, int pageSize, boolean enableDictionary) throws IOException {
     Configuration conf = new Configuration();
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
@@ -40,11 +67,18 @@ public class ParquetWriter<T> implements Closeable {
     fileWriter.start();
 
     CodecFactory codecFactory = new CodecFactory(conf);
-    CodecFactory.BytesCompressor compressor =
-        codecFactory.getCompressor(CompressionCodecName.UNCOMPRESSED, 0);
-    this.writer = new ParquetRecordWriter<T>
-        (fileWriter, writeSupport, schema, writeContext.getExtraMetaData(), 50*1024*1024,
-            1*1024*1024, compressor, false);
+    CodecFactory.BytesCompressor compressor = codecFactory.getCompressor(compressionCodecName, 0);
+    this.writer = new ParquetRecordWriter<T>(fileWriter, writeSupport, schema, writeContext.getExtraMetaData(), blockSize, pageSize, compressor, enableDictionary);
+  }
+
+  /** Create a new ParquetWriter.  The default block size is 50 MB.The default
+   *  page size is 1 MB.  Default compression is no compression. Dictionary encoding is disabled.
+   * @param file the file to create
+   * @param writeSupport the implementation to write a record to a RecordConsumer
+   * @throws IOException
+   */
+  public ParquetWriter(Path file, WriteSupport<T> writeSupport) throws IOException {
+    this(file, writeSupport, CompressionCodecName.UNCOMPRESSED, DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
   }
 
   public void write(T object) throws IOException {

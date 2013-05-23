@@ -35,6 +35,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import parquet.Log;
+import parquet.Version;
 import parquet.bytes.BytesInput;
 import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
@@ -215,7 +216,8 @@ public class ParquetFileWriter {
       parquet.column.Encoding dlEncoding,
       parquet.column.Encoding valuesEncoding) throws IOException {
     state = state.write();
-    if (DEBUG) LOG.debug(out.getPos() + ": write data page: " + valueCount + " values");
+    long beforeHeader = out.getPos();
+    if (DEBUG) LOG.debug(beforeHeader + ": write data page: " + valueCount + " values");
     int compressedPageSize = (int)bytes.size();
     metadataConverter.writeDataPageHeader(
         uncompressedPageSize, compressedPageSize,
@@ -224,8 +226,9 @@ public class ParquetFileWriter {
         dlEncoding,
         valuesEncoding,
         out);
-    this.uncompressedLength += uncompressedPageSize;
-    this.compressedLength += compressedPageSize;
+    long headerSize = out.getPos() - beforeHeader;
+    this.uncompressedLength += uncompressedPageSize + headerSize;
+    this.compressedLength += compressedPageSize + headerSize;
     if (DEBUG) LOG.debug(out.getPos() + ": write data page content " + compressedPageSize);
     bytes.writeAllTo(out);
     currentEncodings.add(rlEncoding);
@@ -243,8 +246,9 @@ public class ParquetFileWriter {
    void writeDataPages(BytesInput bytes, long uncompressedTotalPageSize, long compressedTotalPageSize, List<parquet.column.Encoding> encodings) throws IOException {
     state = state.write();
     if (DEBUG) LOG.debug(out.getPos() + ": write data pages");
-    this.uncompressedLength += uncompressedTotalPageSize;
-    this.compressedLength += compressedTotalPageSize;
+    long headersSize = bytes.size() - compressedTotalPageSize;
+    this.uncompressedLength += uncompressedTotalPageSize + headersSize;
+    this.compressedLength += compressedTotalPageSize + headersSize;
     if (DEBUG) LOG.debug(out.getPos() + ": write data pages content");
     bytes.writeAllTo(out);
     currentEncodings.addAll(encodings);
@@ -289,7 +293,7 @@ public class ParquetFileWriter {
   public void end(Map<String, String> extraMetaData) throws IOException {
     state = state.end();
     if (DEBUG) LOG.debug(out.getPos() + ": end");
-    ParquetMetadata footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData), blocks);
+    ParquetMetadata footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
     serializeFooter(footer, out);
     out.close();
   }
@@ -336,13 +340,22 @@ public class ParquetFileWriter {
     return new ParquetMetadata(fileMetaData, blocks);
   }
 
+  /**
+   * @return the current position in the underlying file
+   * @throws IOException
+   */
+  public long getPos() throws IOException {
+    return out.getPos();
+  }
+
   static FileMetaData mergeInto(
       FileMetaData toMerge,
       FileMetaData mergedMetadata) {
     if (mergedMetadata == null) {
       return new FileMetaData(
           toMerge.getSchema(),
-          new HashMap<String, String>(toMerge.getKeyValueMetaData()));
+          new HashMap<String, String>(toMerge.getKeyValueMetaData()),
+          Version.FULL_VERSION);
     } else if (
         (mergedMetadata.getSchema() == null && toMerge.getSchema() != null)
         || (mergedMetadata.getSchema() != null && !mergedMetadata.getSchema().equals(toMerge.getSchema()))) {

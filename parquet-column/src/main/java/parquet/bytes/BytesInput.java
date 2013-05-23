@@ -96,8 +96,16 @@ abstract public class BytesInput {
    * @param arrayOut
    * @return a BytesInput that will write the content of the buffer
    */
-  public static BytesInput from(ByteArrayOutputStream arrayOut) {
-    return new BAOSBytesInput(arrayOut);
+  public static BytesInput from(CapacityByteArrayOutputStream arrayOut) {
+    return new CapacityBAOSBytesInput(arrayOut);
+  }
+
+  /**
+   * @param arrayOut
+   * @return a BytesInput that will write the content of the buffer
+   */
+  public static BytesInput from(ByteArrayOutputStream baos) {
+    return new BAOSBytesInput(baos);
   }
 
   /**
@@ -245,6 +253,26 @@ abstract public class BytesInput {
     @Override
     public long size() {
       return 0;
+    }
+
+  }
+
+  private static class CapacityBAOSBytesInput extends BytesInput {
+
+    private final CapacityByteArrayOutputStream arrayOut;
+
+    private CapacityBAOSBytesInput(CapacityByteArrayOutputStream arrayOut) {
+      this.arrayOut = arrayOut;
+    }
+
+    @Override
+    public void writeAllTo(OutputStream out) throws IOException {
+      arrayOut.writeTo(out);
+    }
+
+    @Override
+    public long size() {
+      return arrayOut.size();
     }
 
   }

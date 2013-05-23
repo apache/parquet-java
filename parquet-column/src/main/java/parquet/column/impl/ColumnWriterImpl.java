@@ -32,12 +32,16 @@ import parquet.column.values.plain.PlainValuesWriter;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
 
-
+/**
+ * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
+ *
+ * @author Julien Le Dem
+ *
+ */
 final class ColumnWriterImpl implements ColumnWriter {
   private static final Log LOG = Log.getLog(ColumnWriterImpl.class);
   private static final boolean DEBUG = false; //Log.DEBUG;
-
-  private static final int PAGE_EXTRA_BUFFER_PERCENT = 10;
+  private static final int INITIAL_COUNT_FOR_SIZE_CHECK = 100;
   private static final int DICTIONARY_PAGE_MAX_SIZE_PERCENT = 20;
 
   private final ColumnDescriptor path;
@@ -47,27 +51,29 @@ final class ColumnWriterImpl implements ColumnWriter {
   private ValuesWriter definitionLevelColumn;
   private ValuesWriter dataColumn;
   private int valueCount;
+  private int valueCountForNextSizeCheck;
 
-  public ColumnWriterImpl(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold, boolean enableDictionary) {
+  public ColumnWriterImpl(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold, int initialSizePerCol, boolean enableDictionary) {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
+    // initial check of memory usage. So that we have enough data to make an initial prediction
+    this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
     repetitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxRepetitionLevel());
     definitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxDefinitionLevel());
-    int initialSize = pageSizeThreshold + applyRatioInPercent(pageSizeThreshold, PAGE_EXTRA_BUFFER_PERCENT);
     switch (path.getType()) {
     case BOOLEAN:
-      this.dataColumn = new BooleanPlainValuesWriter(initialSize);
+      this.dataColumn = new BooleanPlainValuesWriter(initialSizePerCol);
       break;
     case BINARY:
       if (enableDictionary) {
-        this.dataColumn = new DictionaryValuesWriter(applyRatioInPercent(pageSizeThreshold, DICTIONARY_PAGE_MAX_SIZE_PERCENT), pageSizeThreshold);
+        this.dataColumn = new DictionaryValuesWriter(applyRatioInPercent(pageSizeThreshold, DICTIONARY_PAGE_MAX_SIZE_PERCENT), initialSizePerCol);
       } else {
-        this.dataColumn = new PlainValuesWriter(initialSize);
+        this.dataColumn = new PlainValuesWriter(initialSizePerCol);
       }
       break;
     default:
-      this.dataColumn = new PlainValuesWriter(initialSize);
+      this.dataColumn = new PlainValuesWriter(initialSizePerCol);
     }
   }
 
@@ -82,13 +88,30 @@ final class ColumnWriterImpl implements ColumnWriter {
     LOG.debug(path+" "+value+" r:"+r+" d:"+d);
   }
 
+  /**
+   * Counts how many values have been written and checks the memory usage to flush the page when we reach the page threshold.
+   *
+   * We measure the memory used when we reach the mid point toward our estimated count.
+   * We then update the estimate and flush the page if we reached the threshold.
+   *
+   * That way we check the memory size log2(n) times.
+   *
+   */
   private void accountForValueWritten() {
     ++ valueCount;
-    long memSize = repetitionLevelColumn.getBufferedSize()
-        + definitionLevelColumn.getBufferedSize()
-        + dataColumn.getBufferedSize();
-    if (memSize > pageSizeThreshold) {
-      writePage();
+    if (valueCount > valueCountForNextSizeCheck) {
+      // not checking the memory used for every value
+      long memSize = repetitionLevelColumn.getBufferedSize()
+          + definitionLevelColumn.getBufferedSize()
+          + dataColumn.getBufferedSize();
+      if (memSize > pageSizeThreshold) {
+        // we will write the current page and check again the size at the predicted middle of next page
+        valueCountForNextSizeCheck = valueCount / 2;
+        writePage();
+      } else {
+        // not reached the threshold, will check again midway
+        valueCountForNextSizeCheck = (int)(valueCount + ((float)valueCount * pageSizeThreshold / memSize)) / 2 + 1;
+      }
     }
   }
 
@@ -202,5 +225,16 @@ final class ColumnWriterImpl implements ColumnWriter {
     + definitionLevelColumn.getAllocatedSize()
     + dataColumn.getAllocatedSize()
     + pageWriter.allocatedSize();
+  }
+
+  public String memUsageString(String indent) {
+    StringBuilder b = new StringBuilder(indent).append(path).append(" {\n");
+    b.append(repetitionLevelColumn.memUsageString(indent + "  r:")).append("\n");
+    b.append(definitionLevelColumn.memUsageString(indent + "  d:")).append("\n");
+    b.append(dataColumn.memUsageString(indent + "  data:")).append("\n");
+    b.append(pageWriter.memUsageString(indent + "  pages:")).append("\n");
+    b.append(indent).append(String.format("  total: %,d/%,d", getBufferedSizeInMemory(), allocatedSize())).append("\n");
+    b.append(indent).append("}\n");
+    return b.toString();
   }
 }

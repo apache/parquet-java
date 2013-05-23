@@ -33,6 +33,7 @@ import parquet.Log;
 import parquet.hadoop.api.WriteSupport;
 import parquet.hadoop.api.WriteSupport.WriteContext;
 import parquet.hadoop.metadata.CompressionCodecName;
+import parquet.hadoop.util.ContextUtil;
 
 /**
  * OutputFormat to write to a Parquet file
@@ -87,11 +88,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String ENABLE_DICTIONARY   = "parquet.enable.dictionary";
 
   public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
-    job.getConfiguration().set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
+    ContextUtil.getConfiguration(job).set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
   }
 
   public static Class<?> getWriteSupportClass(JobContext jobContext) {
-    final String className = jobContext.getConfiguration().get(WRITE_SUPPORT_CLASS);
+    final String className = ContextUtil.getConfiguration(jobContext).get(WRITE_SUPPORT_CLASS);
     if (className == null) {
       return null;
     }
@@ -107,39 +108,39 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public static void setBlockSize(Job job, int blockSize) {
-    job.getConfiguration().setInt(BLOCK_SIZE, blockSize);
+    ContextUtil.getConfiguration(job).setInt(BLOCK_SIZE, blockSize);
   }
 
   public static void setPageSize(Job job, int pageSize) {
-    job.getConfiguration().setInt(PAGE_SIZE, pageSize);
+    ContextUtil.getConfiguration(job).setInt(PAGE_SIZE, pageSize);
   }
 
   public static void setCompression(Job job, CompressionCodecName compression) {
-    job.getConfiguration().set(COMPRESSION, compression.name());
+    ContextUtil.getConfiguration(job).set(COMPRESSION, compression.name());
   }
 
   public static void setEnableDictionary(Job job, boolean enableDictionary) {
-    job.getConfiguration().setBoolean(ENABLE_DICTIONARY, enableDictionary);
+    ContextUtil.getConfiguration(job).setBoolean(ENABLE_DICTIONARY, enableDictionary);
   }
 
   public static boolean getEnableDictionary(JobContext jobContext) {
-    return jobContext.getConfiguration().getBoolean(ENABLE_DICTIONARY, false);
+    return ContextUtil.getConfiguration(jobContext).getBoolean(ENABLE_DICTIONARY, false);
   }
 
   public static int getBlockSize(JobContext jobContext) {
-    return jobContext.getConfiguration().getInt(BLOCK_SIZE, 50*1024*1024);
+    return ContextUtil.getConfiguration(jobContext).getInt(BLOCK_SIZE, ParquetWriter.DEFAULT_BLOCK_SIZE);
   }
 
   public static int getPageSize(JobContext jobContext) {
-    return jobContext.getConfiguration().getInt(PAGE_SIZE, 1*1024*1024);
+    return ContextUtil.getConfiguration(jobContext).getInt(PAGE_SIZE, ParquetWriter.DEFAULT_PAGE_SIZE);
   }
 
   public static CompressionCodecName getCompression(JobContext jobContext) {
-    return CompressionCodecName.fromConf(jobContext.getConfiguration().get(COMPRESSION, CompressionCodecName.UNCOMPRESSED.name()));
+    return CompressionCodecName.fromConf(ContextUtil.getConfiguration(jobContext).get(COMPRESSION, CompressionCodecName.UNCOMPRESSED.name()));
   }
 
   public static boolean isCompressionSet(JobContext jobContext) {
-    return jobContext.getConfiguration().get(COMPRESSION) != null;
+    return ContextUtil.getConfiguration(jobContext).get(COMPRESSION) != null;
   }
 
   private WriteSupport<T> writeSupport;
@@ -174,7 +175,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   @SuppressWarnings("unchecked") // writeSupport instantiation
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Path file)
         throws IOException, InterruptedException {
-    final Configuration conf = taskAttemptContext.getConfiguration();
+    final Configuration conf = ContextUtil.getConfiguration(taskAttemptContext);
     CodecFactory codecFactory = new CodecFactory(conf);
     int blockSize = getBlockSize(taskAttemptContext);
     if (INFO) LOG.info("Parquet block size to " + blockSize);

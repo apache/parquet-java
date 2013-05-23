@@ -78,4 +78,9 @@ public class DevNullValuesWriter extends ValuesWriter {
   public Encoding getEncoding() {
     return BIT_PACKED;
   }
+
+  @Override
+  public String memUsageString(String prefix) {
+    return prefix + "0";
+  }
 }

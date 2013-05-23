@@ -84,4 +84,10 @@ public class MemPageWriter implements PageWriter {
     if (DEBUG) LOG.debug("dictionary page written for " + dictionaryPage.getBytes().size() + " bytes and " + dictionaryPage.getDictionarySize() + " records");
   }
 
+  @Override
+  public String memUsageString(String prefix) {
+    return String.format("%s %,d bytes", prefix, memSize);
+
+  }
+
 }

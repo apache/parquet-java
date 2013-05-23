@@ -88,7 +88,7 @@ public class ByteBasedBitPackingGenerator {
 
   private static void generatePack(FileWriter fw, int bitWidth, int batch) throws IOException {
     int mask = genMask(bitWidth);
-    fw.append("    public final void pack" + (batch * 8) + "Values(final int[] in, final int inPos, final byte[] out, final int outPos){\n");
+    fw.append("    public final void pack" + (batch * 8) + "Values(final int[] in, final int inPos, final byte[] out, final int outPos) {\n");
     for (int byteIndex = 0; byteIndex < bitWidth * batch; ++byteIndex) {
       fw.append("      out[" + align(byteIndex, 2) + " + outPos] = (byte)((\n");
       int startIndex = (byteIndex * 8) / bitWidth;
@@ -164,7 +164,7 @@ public class ByteBasedBitPackingGenerator {
 
   private static void generateUnpack(FileWriter fw, int bitWidth, int batch)
       throws IOException {
-    fw.append("    public final void unpack" + (batch * 8) + "Values(final byte[] in, final int inPos, final int[] out, final int outPos){\n");
+    fw.append("    public final void unpack" + (batch * 8) + "Values(final byte[] in, final int inPos, final int[] out, final int outPos) {\n");
     if (bitWidth > 0) {
       int mask = genMask(bitWidth);
       for (int valueIndex = 0; valueIndex < (batch * 8); ++valueIndex) {
