@@ -37,15 +37,15 @@ abstract public class PrimitiveConverter extends Converter {
 
   /**
    * if it returns true we will attempt to use dictionary based conversion instead
-   * @param fieldIndex index of the field in this group
-   * @return the corresponding converter
+   * @return if dictionary is supported
    */
   public boolean hasDictionarySupport() {
     return false;
   }
 
   /**
-   * if the converter hasDictionarySupport() and the data was encoded using a dictionary, will pass the dictionary
+   * Set the dictionary to use if the data was encoded using dictionary encoding
+   * and the converter hasDictionarySupport().
    * @param dictionary the dictionary to use for conversion
    */
   public void setDictionary(Dictionary dictionary) {

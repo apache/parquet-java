@@ -23,6 +23,13 @@ import parquet.column.values.rle.RLESimpleEncoder;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
 
+/**
+ * Will attempt to encode values using a dictionary and fall back to plain encoding
+ *  if the dictionary gets too big
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class DictionaryValuesWriter extends ValuesWriter {
   private static final Log LOG = Log.getLog(DictionaryValuesWriter.class);
 

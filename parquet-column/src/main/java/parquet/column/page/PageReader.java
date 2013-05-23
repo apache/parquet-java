@@ -24,7 +24,7 @@ package parquet.column.page;
 public interface PageReader {
 
  /**
-  * @return the dictionary page in that chunk
+  * @return the dictionary page in that chunk or null if none
   */
   DictionaryPage readDictionaryPage();
 
@@ -34,7 +34,7 @@ public interface PageReader {
   long getTotalValueCount();
 
   /**
-   * @return the next page in that chunk
+   * @return the next page in that chunk or null if after the last page
    */
   Page readPage();
 }

@@ -17,20 +17,18 @@ package parquet.column.values.rle;
 
 
 import static parquet.Log.DEBUG;
-
 import static parquet.bytes.BytesInput.concat;
-
+import static parquet.bytes.BytesUtils.writeUnsignedVarInt;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
-import parquet.bytes.BytesUtils;
 import parquet.column.values.bitpacking.ByteBasedBitPackingEncoder;
 
 /**
- * Simple RLE Encoder that does only bitpacking
+ * Simple RLE Encoder that does only bit packing
  *
  * @author Julien Le Dem
  *
@@ -41,10 +39,7 @@ public class RLESimpleEncoder {
   private ByteBasedBitPackingEncoder bitPackingEncoder;
   private int totalValues = 0;
 
-  private final int bitWidth;
-
-  public RLESimpleEncoder(int bitWidth) {
-    this.bitWidth = bitWidth;
+    public RLESimpleEncoder(int bitWidth) {
     if (DEBUG) LOG.debug("encoding bitWidth " + bitWidth);
     this.bitPackingEncoder = new ByteBasedBitPackingEncoder(bitWidth);
   }
@@ -62,10 +57,16 @@ public class RLESimpleEncoder {
       }
     }
     ByteArrayOutputStream size = new ByteArrayOutputStream(4);
-    final int padded8ValuesBlocks = (totalValues + 7) / 8;
+    // how many 8-value-blocks are encoded
+    // if not a multiple of 8, we pad with zeros
+    int padded8ValuesBlocks = (totalValues + 7) / 8;
     if (DEBUG) LOG.debug("writing " + totalValues + " values padded to " + (padded8ValuesBlocks * 8));
+    // the least significant bit indicate if we use rle or bit packing
+    // 1 means bit packing
+    // 0 means RLE
     int header = padded8ValuesBlocks << 1 | 1;
-    BytesUtils.writeUnsignedVarInt(header, size);
+    writeUnsignedVarInt(header, size);
+    // then write the corresponding bytes
     BytesInput bitPacked = bitPackingEncoder.toBytes();
     return concat(BytesInput.from(size), bitPacked);
   }

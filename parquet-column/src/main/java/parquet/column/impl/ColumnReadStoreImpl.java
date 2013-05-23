@@ -27,13 +27,25 @@ import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
 
-
+/**
+ * Implementation of the ColumnReadStore
+ *
+ * Initializes individual columns based on schema and converter
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class ColumnReadStoreImpl implements ColumnReadStore {
 
   private final PageReadStore pageReadStore;
   private final GroupConverter recordConverter;
   private final MessageType schema;
 
+  /**
+   * @param pageReadStore uderlying page storage
+   * @param recordConverter the user provided converter to materialize records
+   * @param schema the schema we are reading
+   */
   public ColumnReadStoreImpl(PageReadStore pageReadStore, GroupConverter recordConverter, MessageType schema) {
     super();
     this.pageReadStore = pageReadStore;
@@ -41,6 +53,7 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
     this.schema = schema;
   }
 
+  @Override
   public ColumnReader getColumnReader(ColumnDescriptor path) {
     return newMemColumnReader(path, pageReadStore.getPageReader(path));
   }

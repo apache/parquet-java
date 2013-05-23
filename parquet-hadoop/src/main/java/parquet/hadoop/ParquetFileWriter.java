@@ -178,9 +178,7 @@ public class ParquetFileWriter {
 
   /**
    * writes a dictionary page page
-   * @param valueCount count of values
-   * @param uncompressedPageSize the size of the data once uncompressed
-   * @param bytes the compressed data for the page without header
+   * @param dictionaryPage the dictionary page
    */
   public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
     state = state.write();
