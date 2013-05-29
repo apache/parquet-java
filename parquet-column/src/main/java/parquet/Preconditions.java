@@ -21,7 +21,8 @@ package parquet;
  * @author Julien Le Dem
  *
  */
-public class Preconditions {
+public final class Preconditions {
+  private Preconditions() { }
 
   /**
    * @param o the param to check
@@ -34,6 +35,18 @@ public class Preconditions {
       throw new NullPointerException(name + " should not be null");
     }
     return o;
+  }
+
+  public static void checkArgument(boolean valid, String message) {
+    if (!valid) {
+      throw new IllegalArgumentException(message);
+    }
+  }
+
+  public static void checkArgument(boolean valid) {
+    if (!valid) {
+      throw new IllegalArgumentException();
+    }
   }
 
 }

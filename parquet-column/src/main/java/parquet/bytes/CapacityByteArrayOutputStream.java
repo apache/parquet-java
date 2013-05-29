@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import parquet.Log;
+import parquet.Preconditions;
 
 /**
  * functionality of ByteArrayOutputStream without the memory and copy overhead
@@ -52,9 +53,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
    * @param initialSize the initialSize of the buffer (also slab size)
    */
   public CapacityByteArrayOutputStream(int initialSize) {
-    if (initialSize < 0) {
-      throw new IllegalArgumentException("Negative initial size: " + initialSize);
-    }
+    Preconditions.checkArgument(initialSize > 0, "initialSize must be > 0");
     initSlabs(initialSize);
   }
 
@@ -196,6 +195,30 @@ public class CapacityByteArrayOutputStream extends OutputStream {
    */
   public long size() {
     return size;
+  }
+
+  /**
+   * @return the index of the current value being written to this stream, which
+   * can be passed to {@link #setByte(long, byte)} in order to mutuate
+   */
+  public long getCurrentIndex() {
+    return size - 1;
+  }
+
+  public void setByte(long index, byte value) {
+    if (index >= size) {
+      throw new IllegalArgumentException("Index: " + index + " is >= the current size of: " + size);
+    }
+    long seen = 0;
+    for (int i = 0; i < currentSlabIndex; i++) {
+      byte[] slab = slabs.get(i);
+      if (index < seen + slab.length) {
+        // ok found index
+        slab[(int)(index-seen)] = value;
+        break;
+      }
+      seen += slab.length;
+    }
   }
 
   /**

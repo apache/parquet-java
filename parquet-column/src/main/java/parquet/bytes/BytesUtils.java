@@ -97,6 +97,21 @@ public class BytesUtils {
       return ((ch3 << 16) + (ch2 << 8) + (ch1 << 0));
   }
 
+  public static void writeIntLittleEndianOnOneByte(OutputStream out, int v) throws IOException {
+    out.write((v >>>  0) & 0xFF);
+  }
+
+  public static void writeIntLittleEndianOnTwoBytes(OutputStream out, int v) throws IOException {
+    out.write((v >>>  0) & 0xFF);
+    out.write((v >>>  8) & 0xFF);
+  }
+
+  public static void writeIntLittleEndianOnThreeBytes(OutputStream out, int v) throws IOException {
+    out.write((v >>>  0) & 0xFF);
+    out.write((v >>>  8) & 0xFF);
+    out.write((v >>> 16) & 0xFF);
+  }
+
   public static void writeIntLittleEndian(OutputStream out, int v) throws IOException {
     // TODO: this is duplicated code in LittleEndianDataOutputStream
     out.write((v >>>  0) & 0xFF);
@@ -104,6 +119,29 @@ public class BytesUtils {
     out.write((v >>> 16) & 0xFF);
     out.write((v >>> 24) & 0xFF);
     if (Log.DEBUG) LOG.debug("write le int: " + v + " => "+ ((v >>>  0) & 0xFF) + " " + ((v >>>  8) & 0xFF) + " " + ((v >>> 16) & 0xFF) + " " + ((v >>> 24) & 0xFF));
+  }
+
+  public static void writeIntLittleEndianPaddedOnBitWidth(OutputStream out, int v, int bitWidth)
+      throws IOException {
+
+    int bytesWidth = paddedByteCountFromBits(bitWidth);
+    switch (bytesWidth) {
+      case 1:
+        writeIntLittleEndianOnOneByte(out, v);
+        break;
+      case 2:
+        writeIntLittleEndianOnTwoBytes(out, v);
+        break;
+      case 3:
+        writeIntLittleEndianOnThreeBytes(out, v);
+        break;
+      case 4:
+        writeIntLittleEndian(out, v);
+        break;
+      default:
+        throw new IOException(
+          String.format("Encountered value (%d) that requires more than 4 bytes", v));
+    }
   }
 
   public static int readUnsignedVarInt(InputStream in) throws IOException {
