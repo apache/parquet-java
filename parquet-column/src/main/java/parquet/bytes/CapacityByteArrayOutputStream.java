@@ -198,17 +198,24 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   }
 
   /**
-   * @return the index of the current value being written to this stream, which
-   * can be passed to {@link #setByte(long, byte)} in order to mutuate
+   * @return the index of the last value being written to this stream, which
+   * can be passed to {@link #setByte(long, byte)} in order to change it
    */
   public long getCurrentIndex() {
+    Preconditions.checkArgument(size > 0, "This is an empty stream");
     return size - 1;
   }
 
+  /**
+   * Replace the byte stored at position index in this stream with value
+   *
+   * @param index which byte to replace
+   * @param value the value to replace it with
+   */
   public void setByte(long index, byte value) {
-    if (index >= size) {
-      throw new IllegalArgumentException("Index: " + index + " is >= the current size of: " + size);
-    }
+    Preconditions.checkArgument(index < size,
+      "Index: " + index + " is >= the current size of: " + size);
+
     long seen = 0;
     for (int i = 0; i < currentSlabIndex; i++) {
       byte[] slab = slabs.get(i);
