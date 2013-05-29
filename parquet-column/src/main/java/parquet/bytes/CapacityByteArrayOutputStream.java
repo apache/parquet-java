@@ -217,7 +217,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
       "Index: " + index + " is >= the current size of: " + size);
 
     long seen = 0;
-    for (int i = 0; i < currentSlabIndex; i++) {
+    for (int i = 0; i <=currentSlabIndex; i++) {
       byte[] slab = slabs.get(i);
       if (index < seen + slab.length) {
         // ok found index
