@@ -27,12 +27,14 @@ import parquet.io.ParquetEncodingException;
 
 public class ByteBitPackingValuesWriter extends ValuesWriter {
 
-  private ByteBasedBitPackingEncoder encoder;
+  private final Packer packer;
   private final int bitWidth;
+  private ByteBasedBitPackingEncoder encoder;
 
-  public ByteBitPackingValuesWriter(int bound) {
+  public ByteBitPackingValuesWriter(int bound, Packer packer) {
+    this.packer = packer;
     this.bitWidth = BytesUtils.getWidthFromMaxInt(bound);
-    this.encoder = new ByteBasedBitPackingEncoder(bitWidth);
+    this.encoder = new ByteBasedBitPackingEncoder(bitWidth, packer);
   }
 
   @Override
@@ -60,7 +62,7 @@ public class ByteBitPackingValuesWriter extends ValuesWriter {
 
   @Override
   public void reset() {
-    encoder = new ByteBasedBitPackingEncoder(bitWidth);
+    encoder = new ByteBasedBitPackingEncoder(bitWidth, packer);
   }
 
   @Override

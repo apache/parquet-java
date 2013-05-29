@@ -34,9 +34,9 @@ public class ByteBitPackingValuesReader extends ValuesReader {
   private byte[] encoded;
   private int encodedPos;
 
-  public ByteBitPackingValuesReader(int bound) {
+  public ByteBitPackingValuesReader(int bound, Packer packer) {
     this.bitWidth = BytesUtils.getWidthFromMaxInt(bound);
-    this.packer = ByteBitPacking.getPacker(bitWidth);
+    this.packer = packer.newBytePacker(bitWidth);
   }
 
   @Override
