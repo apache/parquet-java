@@ -121,6 +121,10 @@ public class BytesUtils {
     if (Log.DEBUG) LOG.debug("write le int: " + v + " => "+ ((v >>>  0) & 0xFF) + " " + ((v >>>  8) & 0xFF) + " " + ((v >>> 16) & 0xFF) + " " + ((v >>> 24) & 0xFF));
   }
 
+  /**
+   * Write a little endian int to out, using the the number of bytes required by
+   * bit width
+   */
   public static void writeIntLittleEndianPaddedOnBitWidth(OutputStream out, int v, int bitWidth)
       throws IOException {
 
