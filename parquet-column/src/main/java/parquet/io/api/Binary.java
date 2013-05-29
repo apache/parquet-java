@@ -19,10 +19,12 @@ import static parquet.bytes.BytesUtils.UTF8;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import parquet.bytes.BytesUtils;
+import parquet.io.ParquetEncodingException;
 
 abstract public class Binary {
 
@@ -187,7 +189,11 @@ abstract public class Binary {
   }
 
   public static Binary fromString(final String value) {
-    return fromByteArray(value.getBytes(BytesUtils.UTF8));
+    try {
+      return fromByteArray(value.getBytes("UTF-8"));
+    } catch (UnsupportedEncodingException e) {
+      throw new ParquetEncodingException("UTF-8 not supported.", e);
+    }
   }
 
   /**
