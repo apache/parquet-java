@@ -30,20 +30,29 @@ public final class Preconditions {
    * @return the validated o
    * @throws NullPointerException if o is null
    */
-  public static <T> T checkNotNull(T o, String name) {
+  public static <T> T checkNotNull(T o, String name) throws NullPointerException {
     if (o == null) {
       throw new NullPointerException(name + " should not be null");
     }
     return o;
   }
 
-  public static void checkArgument(boolean valid, String message) {
+  /**
+   * @param valid whether the argument is valid
+   * @param message error message if the argument is not valid
+   * @throws IllegalArgumentException if !valid
+   */
+  public static void checkArgument(boolean valid, String message) throws IllegalArgumentException {
     if (!valid) {
       throw new IllegalArgumentException(message);
     }
   }
 
-  public static void checkArgument(boolean valid) {
+  /**
+   * @param valid whether the argument is valid
+   * @throws IllegalArgumentException if !valid
+   */
+  public static void checkArgument(boolean valid) throws IllegalArgumentException {
     if (!valid) {
       throw new IllegalArgumentException();
     }
