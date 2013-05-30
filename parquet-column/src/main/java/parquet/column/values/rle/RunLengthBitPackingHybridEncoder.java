@@ -33,7 +33,8 @@ import static parquet.Log.DEBUG;
  */
 public class RunLengthBitPackingHybridEncoder {
   private static final Log LOG = Log.getLog(RunLengthBitPackingHybridEncoder.class);
-  private static final BytePacker PACKER = ByteBitPacking.getPacker(8);
+
+  private final BytePacker packer;
 
   private final CapacityByteArrayOutputStream baos;
 
@@ -102,6 +103,7 @@ public class RunLengthBitPackingHybridEncoder {
     this.baos = new CapacityByteArrayOutputStream(initialCapacity);
     this.packBuffer = new byte[bitWidth];
     this.bufferedValues = new int[8];
+    this.packer = ByteBitPacking.getPacker(bitWidth);
     reset(false);
   }
 
@@ -176,7 +178,7 @@ public class RunLengthBitPackingHybridEncoder {
       bitPackedRunHeaderPointer = baos.getCurrentIndex();
     }
 
-    PACKER.pack8Values(bufferedValues, 0, packBuffer, 0);
+    packer.pack8Values(bufferedValues, 0, packBuffer, 0);
     baos.write(packBuffer);
 
     // empty the buffer, they've all bee written
