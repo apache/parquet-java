@@ -22,19 +22,24 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import parquet.Log;
+import parquet.Preconditions;
 import parquet.bytes.BytesUtils;
 import parquet.column.values.bitpacking.ByteBitPacking;
 import parquet.column.values.bitpacking.BytePacker;
 import parquet.io.ParquetDecodingException;
 
-public class RLEDecoder {
-  private static final Log LOG = Log.getLog(RLEDecoder.class);
+/**
+ * Decodes values written in the grammar described in {@link RunLengthBitPackingHybridEncoder}
+ *
+ * @author Julien Le Dem
+ */
+public class RunLengthBitPackingHybridDecoder {
+  private static final Log LOG = Log.getLog(RunLengthBitPackingHybridDecoder.class);
 
   private static enum MODE { RLE, PACKED }
 
   private final int bitWidth;
   private final BytePacker packer;
-  private final int bytesWidth;
   private final InputStream in;
 
   private MODE mode;
@@ -43,12 +48,12 @@ public class RLEDecoder {
   private int currentValue;
   private int[] currentBuffer;
 
-  public RLEDecoder(int bitWidth, InputStream in) {
+  public RunLengthBitPackingHybridDecoder(int bitWidth, InputStream in) {
     if (DEBUG) LOG.debug("decoding bitWidth " + bitWidth);
+
+    Preconditions.checkArgument(bitWidth > 0 && bitWidth <= 32, "bitWidth must be > 0 and <= 32");
     this.bitWidth = bitWidth;
     this.packer = ByteBitPacking.getPacker(bitWidth);
-    // number of bytes needed when padding to the next byte
-    this.bytesWidth = BytesUtils.paddedByteCountFromBits(bitWidth);
     this.in = in;
   }
 
@@ -73,39 +78,26 @@ public class RLEDecoder {
 
   private void readNext() throws IOException {
     final int header = BytesUtils.readUnsignedVarInt(in);
-    mode = (header | 1) == 0 ? MODE.RLE : MODE.PACKED;
+    mode = (header & 1) == 0 ? MODE.RLE : MODE.PACKED;
     switch (mode) {
     case RLE: // TODO: test this
       currentCount = header >>> 1;
       if (DEBUG) LOG.debug("reading " + currentCount + " values RLE");
-      switch (bytesWidth) {
-        case 1:
-          currentValue = BytesUtils.readIntLittleEndianOnOneByte(in);
-          break;
-        case 2:
-          currentValue = BytesUtils.readIntLittleEndianOnTwoBytes(in);
-          break;
-        case 3:
-          currentValue = BytesUtils.readIntLittleEndianOnThreeBytes(in);
-          break;
-        case 4:
-          currentValue = BytesUtils.readIntLittleEndian(in);
-          break;
-        default:
-          throw new ParquetDecodingException("can not store values on more than 4 bytes: " + bytesWidth + " Bytes, " + bitWidth + " bits");
-      }
+      currentValue = BytesUtils.readIntLittleEndianPaddedOnBitWidth(in, bitWidth);
       break;
     case PACKED:
-      int blocks = header >>> 1;
-      currentCount = blocks * 8;
+      int numGroups = header >>> 1;
+      currentCount = numGroups * 8;
       if (DEBUG) LOG.debug("reading " + currentCount + " values BIT PACKED");
       currentBuffer = new int[currentCount]; // TODO: reuse a buffer
-      byte[] bytes = new byte[blocks * bitWidth];
+      byte[] bytes = new byte[numGroups * bitWidth];
       new DataInputStream(in).readFully(bytes);
       for (int valueIndex = 0, byteIndex = 0; valueIndex < currentCount; valueIndex += 8, byteIndex += bitWidth) {
         packer.unpack8Values(bytes, byteIndex, currentBuffer, valueIndex);
       }
       break;
+    default:
+      throw new ParquetDecodingException("not a valid mode " + mode);
     }
   }
 }

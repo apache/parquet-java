@@ -97,6 +97,25 @@ public class BytesUtils {
       return ((ch3 << 16) + (ch2 << 8) + (ch1 << 0));
   }
 
+  public static int readIntLittleEndianPaddedOnBitWidth(InputStream in, int bitWidth)
+      throws IOException {
+
+    int bytesWidth = paddedByteCountFromBits(bitWidth);
+    switch (bytesWidth) {
+      case 1:
+        return BytesUtils.readIntLittleEndianOnOneByte(in);
+      case 2:
+        return BytesUtils.readIntLittleEndianOnTwoBytes(in);
+      case 3:
+        return  BytesUtils.readIntLittleEndianOnThreeBytes(in);
+      case 4:
+        return BytesUtils.readIntLittleEndian(in);
+      default:
+        throw new IOException(
+          String.format("Encountered bitWidth (%d) that requires more than 4 bytes"));
+    }
+  }
+
   public static void writeIntLittleEndianOnOneByte(OutputStream out, int v) throws IOException {
     out.write((v >>>  0) & 0xFF);
   }

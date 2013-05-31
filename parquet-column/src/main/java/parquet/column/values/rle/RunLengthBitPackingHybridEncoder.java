@@ -29,10 +29,16 @@ import static parquet.Log.DEBUG;
  * repeated-value := value that is repeated, using a fixed-width of round-up-to-next-byte(bit-width)
  * </code>
  *
+ *
+ * Only supports values >= 0 // TODO: is that ok? Should we make a signed version?
+ *
  * @author Alex Levenson
  */
 public class RunLengthBitPackingHybridEncoder {
   private static final Log LOG = Log.getLog(RunLengthBitPackingHybridEncoder.class);
+
+  // TODO: what is a good value for this?
+  private static final int DEFAULT_INITIAL_CAPACITY = 64 * 1024;
 
   private final BytePacker packer;
 
@@ -103,6 +109,10 @@ public class RunLengthBitPackingHybridEncoder {
     this.bufferedValues = new int[8];
     this.packer = ByteBitPacking.getPacker(bitWidth);
     reset(false);
+  }
+
+  public RunLengthBitPackingHybridEncoder(int bitWidth) {
+    this(bitWidth, DEFAULT_INITIAL_CAPACITY);
   }
 
   private void reset(boolean resetBaos) {

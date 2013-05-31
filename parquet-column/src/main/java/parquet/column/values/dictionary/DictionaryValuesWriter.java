@@ -15,10 +15,6 @@
  */
 package parquet.column.values.dictionary;
 
-import static parquet.Log.DEBUG;
-import static parquet.bytes.BytesInput.concat;
-import static parquet.column.Encoding.PLAIN_DICTIONARY;
-
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -34,9 +30,13 @@ import parquet.column.page.DictionaryPage;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.dictionary.IntList.IntIterator;
 import parquet.column.values.plain.PlainValuesWriter;
-import parquet.column.values.rle.RLESimpleEncoder;
+import parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
+
+import static parquet.Log.DEBUG;
+import static parquet.bytes.BytesInput.concat;
+import static parquet.column.Encoding.PLAIN_DICTIONARY;
 
 /**
  * Will attempt to encode values using a dictionary and fall back to plain encoding
@@ -154,15 +154,16 @@ public class DictionaryValuesWriter extends ValuesWriter {
       lastUsedDictionaryByteSize = dictionaryByteSize;
       final int maxDicId = dict.size() - 1;
       if (DEBUG) LOG.debug("max dic id " + maxDicId);
-      final RLESimpleEncoder rleSimpleEncoder = new RLESimpleEncoder(BytesUtils.getWidthFromMaxInt(maxDicId));
+      final RunLengthBitPackingHybridEncoder encoder =
+          new RunLengthBitPackingHybridEncoder(BytesUtils.getWidthFromMaxInt(maxDicId));
       final IntIterator iterator = out.iterator();
       try {
         while (iterator.hasNext()) {
-          rleSimpleEncoder.writeInt(iterator.next());
+          encoder.writeInt(iterator.next());
         }
         // encodes the max dict id on 2 bytes (as it is < 64K)
         byte[] bytesHeader = intTo2Bytes(maxDicId);
-        final BytesInput rleEncodedBytes = rleSimpleEncoder.toBytes();
+        final BytesInput rleEncodedBytes = encoder.toBytes();
         if (DEBUG) LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
         return concat(BytesInput.from(bytesHeader), rleEncodedBytes);
       } catch (IOException e) {
