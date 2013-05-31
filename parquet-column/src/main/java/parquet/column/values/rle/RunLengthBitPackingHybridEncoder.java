@@ -117,7 +117,7 @@ public class RunLengthBitPackingHybridEncoder {
     this.bitWidth = bitWidth;
     this.baos = new CapacityByteArrayOutputStream(initialCapacity);
     this.packBuffer = new byte[bitWidth];
-    this.bufferedValues = new int[8];
+    this.bufferedValues = new int[rleThreshold];
     this.packer = ByteBitPacking.getPacker(bitWidth);
     this.rleThreshold = rleThreshold;
 
