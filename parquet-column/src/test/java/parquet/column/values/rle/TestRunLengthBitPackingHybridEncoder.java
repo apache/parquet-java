@@ -48,7 +48,7 @@ public class TestRunLengthBitPackingHybridEncoder {
     RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(3, 5);
 
     for (int i = 0; i < 100; i++) {
-      encoder.writeInt(i % 2);
+      encoder.writeInt(i % 3);
     }
 
     ByteArrayInputStream is = new ByteArrayInputStream(encoder.toBytes().toByteArray());
@@ -56,16 +56,24 @@ public class TestRunLengthBitPackingHybridEncoder {
     // header = ((104/8) << 1) | 1 = 27
     assertEquals(27, BytesUtils.readUnsignedVarInt(is));
 
-    BytePacker packer = ByteBitPacking.getPacker(3);
+    List<Integer> values = unpack(3, 104, is);
+
+    for (int i = 0; i < 100; i++) {
+      assertEquals(i % 3, (int) values.get(i));
+    }
+  }
+
+  private List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is)
+      throws Exception {
+
+    BytePacker packer = ByteBitPacking.getPacker(bitWidth);
     int[] unpacked = new int[8];
-    byte[] next8Values = new byte[3];
+    byte[] next8Values = new byte[bitWidth];
 
-    List<Integer> values = new ArrayList<Integer>(104);
+    List<Integer> values = new ArrayList<Integer>(numValues);
 
-    int valueCounter = 0;
-
-    while(values.size() < 104) {
-      for (int i = 0; i < 3; i++) {
+    while(values.size() < numValues) {
+      for (int i = 0; i < bitWidth; i++) {
         next8Values[i] = (byte) is.read();
       }
 
@@ -76,10 +84,36 @@ public class TestRunLengthBitPackingHybridEncoder {
       }
     }
 
-    for (int i = 0; i < 100; i++) {
-      assertEquals(i % 2, (int) values.get(i));
+    return values;
+  }
+
+  @Test
+  public void testBitPackingOverflow() throws Exception {
+    RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(3, 5);
+
+    for (int i = 0; i < 1000; i++) {
+      encoder.writeInt(i % 3);
     }
 
+    ByteArrayInputStream is = new ByteArrayInputStream(encoder.toBytes().toByteArray());
+
+    // 504 is the max number of values in a bit packed run
+    // that still has a header of 1 byte
+    // header = ((504/8) << 1) | 1 = 127
+    assertEquals(127, BytesUtils.readUnsignedVarInt(is));
+    List<Integer> values = unpack(3, 504, is);
+
+    for (int i = 0; i < 504; i++) {
+      assertEquals(i % 3, (int) values.get(i));
+    }
+
+    // there should now be 496 values in another bit-packed run
+    // header = ((496/8) << 1) | 1 = 125
+    assertEquals(125, BytesUtils.readUnsignedVarInt(is));
+    values = unpack(3, 496, is);
+    for (int i = 0; i < 496; i++) {
+      assertEquals((i + 504) % 3, (int) values.get(i));
+    }
   }
 
 }
