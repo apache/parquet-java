@@ -91,10 +91,8 @@ public class RunLengthBitPackingHybridEncoder {
 
   public RunLengthBitPackingHybridEncoder(int bitWidth, int initialCapacity) {
     if (DEBUG) {
-      LOG.debug(String.format(
-        "Encoding: RunLengthBitPackingHybridEncoder with bithWidth: %d initialCapacity %d",
-        bitWidth,
-        initialCapacity));
+      LOG.debug(String.format("Encoding: RunLengthBitPackingHybridEncoder with "
+        + "bithWidth: %d initialCapacity %d", bitWidth, initialCapacity));
     }
 
     Preconditions.checkArgument(bitWidth > 0 && bitWidth <= 32, "bitWidth must be > 0 and <= 32");
@@ -137,12 +135,6 @@ public class RunLengthBitPackingHybridEncoder {
       if (repeatCount >= 8) {
         // it does! write an rle-run
         writeRleRun();
-
-        // this is a new value so we've only seen it once
-        repeatCount = 1;
-        // start tracking this value for repeats
-        previousValue = value;
-        return;
       }
 
       // this is a new value so we've only seen it once
@@ -236,7 +228,6 @@ public class RunLengthBitPackingHybridEncoder {
         "You cannot call toBytes() more than once without calling reset()");
 
     if (repeatCount >= 8) {
-      endPreviousBitPackedRun();
       writeRleRun();
     } else if(numBufferedValues > 0) {
       for (int i = numBufferedValues; i < 8; i++) {
