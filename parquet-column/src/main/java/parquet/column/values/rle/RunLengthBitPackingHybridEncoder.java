@@ -183,7 +183,7 @@ public class RunLengthBitPackingHybridEncoder {
     packer.pack8Values(bufferedValues, 0, packBuffer, 0);
     baos.write(packBuffer);
 
-    // empty the buffer, they've all bee written
+    // empty the buffer, they've all been written
     numBufferedValues = 0;
 
     // clear the repeat count, as some repeated values
@@ -219,6 +219,9 @@ public class RunLengthBitPackingHybridEncoder {
   }
 
   private void writeRleRun() throws IOException {
+    // we may have been working on a bit-packed-run
+    // so close that run if it exists before writing this
+    // rle-run
     endPreviousBitPackedRun();
 
     // write the rle-header (lsb of 0 signifies a rle run)
@@ -237,13 +240,13 @@ public class RunLengthBitPackingHybridEncoder {
     Preconditions.checkArgument(!toBytesCalled,
         "You cannot call toBytes() more than once without calling reset()");
 
+    // write anything that is buffered / queued up for an rle-run
     if (repeatCount >= 8) {
       writeRleRun();
     } else if(numBufferedValues > 0) {
       for (int i = numBufferedValues; i < 8; i++) {
         bufferedValues[i] = 0;
       }
-
       writeOrAppendBitPackedRun();
       endPreviousBitPackedRun();
     } else {
