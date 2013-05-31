@@ -89,30 +89,6 @@ public class TestRunLengthBitPackingHybridEncoder {
     assertEquals(-1, is.read());
   }
 
-  private List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is)
-      throws Exception {
-
-    BytePacker packer = ByteBitPacking.getPacker(bitWidth);
-    int[] unpacked = new int[8];
-    byte[] next8Values = new byte[bitWidth];
-
-    List<Integer> values = new ArrayList<Integer>(numValues);
-
-    while(values.size() < numValues) {
-      for (int i = 0; i < bitWidth; i++) {
-        next8Values[i] = (byte) is.read();
-      }
-
-      packer.unpack8Values(next8Values, 0, unpacked, 0);
-
-      for (int v = 0; v < 8; v++) {
-        values.add(unpacked[v]);
-      }
-    }
-
-    return values;
-  }
-
   @Test
   public void testBitPackingOverflow() throws Exception {
     RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(3, 5);
@@ -268,4 +244,29 @@ public class TestRunLengthBitPackingHybridEncoder {
     // end of stream
     assertEquals(-1, is.read());
   }
+
+  private static List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is)
+    throws Exception {
+
+    BytePacker packer = ByteBitPacking.getPacker(bitWidth);
+    int[] unpacked = new int[8];
+    byte[] next8Values = new byte[bitWidth];
+
+    List<Integer> values = new ArrayList<Integer>(numValues);
+
+    while(values.size() < numValues) {
+      for (int i = 0; i < bitWidth; i++) {
+        next8Values[i] = (byte) is.read();
+      }
+
+      packer.unpack8Values(next8Values, 0, unpacked, 0);
+
+      for (int v = 0; v < 8; v++) {
+        values.add(unpacked[v]);
+      }
+    }
+
+    return values;
+  }
+
 }
