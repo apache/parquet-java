@@ -34,6 +34,16 @@ import static parquet.Log.DEBUG;
 public class RunLengthBitPackingHybridEncoder {
   private static final Log LOG = Log.getLog(RunLengthBitPackingHybridEncoder.class);
 
+  /**
+   * These represent how many repeats are needed to use RLE.
+   * These values are optimal when we expect to frequently
+   * see 504 values (the max bit-packed-run length) without switching
+   * to RLE. These thresholds could be lowered if we expect repeats
+   * to occur more frequently. Everything with bitWidth > 12 however
+   * should use RLE whenever it can.
+   */
+  private static final int[] RLE_THRESHOLDS = new int[] {16, 8, 6, 4, 4, 3, 3, 2, 3, 3, 3};
+
   private final BytePacker packer;
 
   private final CapacityByteArrayOutputStream baos;
@@ -43,6 +53,13 @@ public class RunLengthBitPackingHybridEncoder {
    * the repeated-value
    */
   private final int bitWidth;
+
+  /**
+   * How many times a value needs to repeat in order
+   * to use run length encoding instead of bit packing.
+   * Changes based on bitWidth.
+   */
+  private final int rleThreshold;
 
   /**
    * Values that are bit packed 8 at at a time are packed into this
@@ -89,7 +106,7 @@ public class RunLengthBitPackingHybridEncoder {
 
   private boolean toBytesCalled;
 
-  public RunLengthBitPackingHybridEncoder(int bitWidth, int initialCapacity) {
+  public RunLengthBitPackingHybridEncoder(int bitWidth, int initialCapacity, int rleThreshold) {
     if (DEBUG) {
       LOG.debug(String.format("Encoding: RunLengthBitPackingHybridEncoder with "
         + "bithWidth: %d initialCapacity %d", bitWidth, initialCapacity));
@@ -102,7 +119,20 @@ public class RunLengthBitPackingHybridEncoder {
     this.packBuffer = new byte[bitWidth];
     this.bufferedValues = new int[8];
     this.packer = ByteBitPacking.getPacker(bitWidth);
+    this.rleThreshold = rleThreshold;
+
     reset(false);
+  }
+
+  public RunLengthBitPackingHybridEncoder(int bitWidth, int initialCapacity) {
+    this(bitWidth, initialCapacity, determineRleThreshold(bitWidth));
+  }
+
+  private static int determineRleThreshold(int bitWidth) {
+    if (bitWidth - 1 < RLE_THRESHOLDS.length) {
+      return RLE_THRESHOLDS[bitWidth - 1];
+    }
+    return 2;
   }
 
   private void reset(boolean resetBaos) {
@@ -123,7 +153,7 @@ public class RunLengthBitPackingHybridEncoder {
       // consecutively
       ++repeatCount;
 
-      if (repeatCount >= 8) {
+      if (repeatCount >= rleThreshold) {
         // we've seen this at least 8 times, we're
         // certainly going to write an rle-run,
         // so just keep on counting repeats for now
@@ -132,7 +162,7 @@ public class RunLengthBitPackingHybridEncoder {
     } else {
       // This is a new value, check if it signals the end of
       // an rle-run
-      if (repeatCount >= 8) {
+      if (repeatCount >= rleThreshold) {
         // it does! write an rle-run
         writeRleRun();
       }
@@ -227,7 +257,7 @@ public class RunLengthBitPackingHybridEncoder {
     Preconditions.checkArgument(!toBytesCalled,
         "You cannot call toBytes() more than once without calling reset()");
 
-    if (repeatCount >= 8) {
+    if (repeatCount >= rleThreshold) {
       writeRleRun();
     } else if(numBufferedValues > 0) {
       for (int i = numBufferedValues; i < 8; i++) {
