@@ -71,7 +71,7 @@ public class BitPackingPerfTest {
 
   private static long generated(byte[] bytes, int[] result)
       throws IOException {
-    return readNTimes(bytes, result, new ByteBitPackingValuesReader(1));
+    return readNTimes(bytes, result, new ByteBitPackingValuesReader(1, Packer.BIG_ENDIAN));
   }
 
   private static long readNTimes(byte[] bytes, int[] result, ValuesReader r)

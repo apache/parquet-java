@@ -29,27 +29,35 @@ public class TestLemireBitPacking {
 
   @Test
   public void testPackUnPack() {
-    System.out.println();
-    System.out.println("testPackUnPack");
-    for (int i = 1; i < 32; i++) {
-      System.out.println("Width: " + i);
-      int[] unpacked = new int[32];
-      int[] values = generateValues(i);
-      {
-        packUnpack(LemireBitPackingBE.getPacker(i), values, unpacked);
-        System.out.println("Output BE: " + TestBitPacking.toString(unpacked));
-        Assert.assertArrayEquals("BE width "+i, values, unpacked);
-      }
-      {
-        packUnpack(LemireBitPackingLE.getPacker(i), values, unpacked);
-        System.out.println("Output LE: " + TestBitPacking.toString(unpacked));
-        Assert.assertArrayEquals("LE width "+i, values, unpacked);
+    for (Packer packer : Packer.values()) {
+      System.out.println();
+      System.out.println("testPackUnPack");
+      for (int i = 1; i < 32; i++) {
+        System.out.println("Width: " + i);
+        int[] values = generateValues(i);
+        int[] unpacked = new int[32];
+        {
+          packUnpack(packer.newIntPacker(i), values, unpacked);
+          System.out.println("int based Output " + packer.name() + ": " + TestBitPacking.toString(unpacked));
+          Assert.assertArrayEquals(packer.name() + " width "+i, values, unpacked);
+        }
+        {
+          packUnpack(packer.newBytePacker(i), values, unpacked);
+          System.out.println("byte based Output " + packer.name() + ": " + TestBitPacking.toString(unpacked));
+          Assert.assertArrayEquals(packer.name() + " width "+i, values, unpacked);
+        }
       }
     }
   }
 
   private void packUnpack(IntPacker packer, int[] values, int[] unpacked) {
     int[] packed = new int[packer.getBitWidth()];
+    packer.pack32Values(values, 0, packed, 0);
+    packer.unpack32Values(packed, 0, unpacked, 0);
+  }
+
+  private void packUnpack(BytePacker packer, int[] values, int[] unpacked) {
+    byte[] packed = new byte[packer.getBitWidth() * 4];
     packer.pack32Values(values, 0, packed, 0);
     packer.unpack32Values(packed, 0, unpacked, 0);
   }

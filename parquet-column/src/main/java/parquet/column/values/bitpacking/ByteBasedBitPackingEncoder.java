@@ -51,11 +51,11 @@ public class ByteBasedBitPackingEncoder {
   /**
    * @param bitWidth the number of bits used to encode an int
    */
-  public ByteBasedBitPackingEncoder(int bitWidth) {
+  public ByteBasedBitPackingEncoder(int bitWidth, Packer packer) {
     this.bitWidth = bitWidth;
     this.inputSize = 0;
     initPackedSlab();
-    packer = ByteBitPacking.getPacker(bitWidth);
+    this.packer = packer.newBytePacker(bitWidth);
   }
 
   /**

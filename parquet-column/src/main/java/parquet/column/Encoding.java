@@ -31,6 +31,8 @@ import parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
 import parquet.io.ParquetDecodingException;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
+import static parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
+
 /**
  * encoding of the data
  *
@@ -73,7 +75,7 @@ public enum Encoding {
   BIT_PACKED {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      return new ByteBitPackingValuesReader(getMaxLevel(descriptor, valuesType));
+      return new ByteBitPackingValuesReader(getMaxLevel(descriptor, valuesType), BIG_ENDIAN);
     }
   },
 

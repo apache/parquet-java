@@ -33,15 +33,25 @@ import parquet.bytes.BytesUtils;
  */
 public class ByteBasedBitPackingGenerator {
 
-  private static final String className = "ByteBitPacking";
+  private static final String CLASS_NAME_PREFIX = "ByteBitPacking";
+  private static final int PACKER_COUNT = 32;
 
   public static void main(String[] args) throws Exception {
+    generateScheme(CLASS_NAME_PREFIX + "BE", true);
+    generateScheme(CLASS_NAME_PREFIX + "LE", false);
+  }
+
+  private static void generateScheme(String className, boolean msbFirst) throws IOException {
     final File file = new File("src/main/java/parquet/column/values/bitpacking/" + className + ".java");
     FileWriter fw = new FileWriter(file);
     fw.append("package parquet.column.values.bitpacking;\n");
     fw.append("\n");
     fw.append("/**\n");
-    fw.append(" * Packs from the Most Significant Bit first\n");
+    if (msbFirst) {
+      fw.append(" * Packs from the Most Significant Bit first\n");
+    } else {
+      fw.append(" * Packs from the Least Significant Bit first\n");
+    }
     fw.append(" * \n");
     fw.append(" * @author automatically generated\n");
     fw.append(" * @see ByteBasedBitPackingGenerator\n");
@@ -51,7 +61,7 @@ public class ByteBasedBitPackingGenerator {
     fw.append("\n");
     fw.append("  private static final BytePacker[] packers = new BytePacker[33];\n");
     fw.append("  static {\n");
-    for (int i = 0; i <= 32; i++) {
+    for (int i = 0; i <= PACKER_COUNT; i++) {
       fw.append("    packers[" + i + "] = new Packer" + i + "();\n");
     }
     fw.append("  }\n");
@@ -60,15 +70,15 @@ public class ByteBasedBitPackingGenerator {
     fw.append("    return packers[bitWidth];\n");
     fw.append("  }\n");
     fw.append("\n");
-    for (int i = 0; i <= 32; i++) {
-      generateClass(fw, i);
+    for (int i = 0; i <= PACKER_COUNT; i++) {
+      generateClass(fw, i, msbFirst);
       fw.append("\n");
     }
     fw.append("}\n");
     fw.close();
   }
 
-  private static void generateClass(FileWriter fw, int bitWidth) throws IOException {
+  private static void generateClass(FileWriter fw, int bitWidth, boolean msbFirst) throws IOException {
     fw.append("  private static final class Packer" + bitWidth + " extends BytePacker {\n");
     fw.append("\n");
     fw.append("    private Packer" + bitWidth + "() {\n");
@@ -76,62 +86,57 @@ public class ByteBasedBitPackingGenerator {
     fw.append("    }\n");
     fw.append("\n");
     // Packing
-    generatePack(fw, bitWidth, 1);
-    generatePack(fw, bitWidth, 4);
+    generatePack(fw, bitWidth, 1, msbFirst);
+    generatePack(fw, bitWidth, 4, msbFirst);
 
     // Unpacking
-    generateUnpack(fw, bitWidth, 1);
-    generateUnpack(fw, bitWidth, 4);
+    generateUnpack(fw, bitWidth, 1, msbFirst);
+    generateUnpack(fw, bitWidth, 4, msbFirst);
 
     fw.append("  }\n");
   }
 
-  private static void generatePack(FileWriter fw, int bitWidth, int batch) throws IOException {
-    int mask = genMask(bitWidth);
-    fw.append("    public final void pack" + (batch * 8) + "Values(final int[] in, final int inPos, final byte[] out, final int outPos) {\n");
-    for (int byteIndex = 0; byteIndex < bitWidth * batch; ++byteIndex) {
-      fw.append("      out[" + align(byteIndex, 2) + " + outPos] = (byte)((\n");
-      int startIndex = (byteIndex * 8) / bitWidth;
-      int endIndex = ((byteIndex + 1) * 8 + bitWidth - 1) / bitWidth;
-      for (int valueIndex = startIndex; valueIndex < endIndex; valueIndex++) {
-        if (valueIndex == startIndex) {
-          fw.append("          ");
-        } else {
-          fw.append("\n        | ");
-        }
-        // relative positions of the start and end of the value to the start and end of the byte
-        int valueStartBitIndex = (valueIndex * bitWidth) - (8 * (byteIndex));
-        int valueEndBitIndex = ((valueIndex + 1) * bitWidth) - (8 * (byteIndex + 1));
+  private static int getShift(FileWriter fw, int bitWidth, boolean msbFirst,
+      int byteIndex, int valueIndex) throws IOException {
+    // relative positions of the start and end of the value to the start and end of the byte
+    int valueStartBitIndex = (valueIndex * bitWidth) - (8 * (byteIndex));
+    int valueEndBitIndex = ((valueIndex + 1) * bitWidth) - (8 * (byteIndex + 1));
 
-        // boundaries of the current value that we want
-        int valueStartBitWanted = valueStartBitIndex < 0 ? bitWidth - 1 + valueStartBitIndex : bitWidth - 1;
-        int valueEndBitWanted = valueEndBitIndex > 0 ? valueEndBitIndex : 0;
+    // boundaries of the current value that we want
+    int valueStartBitWanted;
+    int valueEndBitWanted;
+    // boundaries of the current byte that will receive them
+    int byteStartBitWanted;
+    int byteEndBitWanted;
 
-        // boundaries of the current byte that will receive them
-        int byteStartBitWanted = valueStartBitIndex < 0 ? 8 : 7 - valueStartBitIndex;
-        int byteEndBitWanted = valueEndBitIndex > 0 ? 0 : -valueEndBitIndex;
-        visualizeAlignment(
-            fw, bitWidth, valueEndBitIndex,
-            valueStartBitWanted, valueEndBitWanted,
-            byteStartBitWanted, byteEndBitWanted
-            );
-        int shift = valueEndBitWanted - byteEndBitWanted;
-        String shiftString = ""; // used when shift == 0
-        if (shift > 0) {
-          shiftString = " >>> " + shift;
-        } else if (shift < 0) {
-          shiftString = " <<  " + ( - shift);
-        }
-        fw.append("((in[" + align(valueIndex, 2) + " + inPos] & " + mask + ")" + shiftString + ")");
-      }
-      fw.append(") & 255);\n");
+    int shift;
+
+    if (msbFirst) {
+      valueStartBitWanted = valueStartBitIndex < 0 ? bitWidth - 1 + valueStartBitIndex : bitWidth - 1;
+      valueEndBitWanted = valueEndBitIndex > 0 ? valueEndBitIndex : 0;
+      byteStartBitWanted = valueStartBitIndex < 0 ? 8 : 7 - valueStartBitIndex;
+      byteEndBitWanted = valueEndBitIndex > 0 ? 0 : -valueEndBitIndex;
+      shift = valueEndBitWanted - byteEndBitWanted;
+    } else {
+      valueStartBitWanted = bitWidth - 1 - (valueEndBitIndex > 0 ? valueEndBitIndex : 0);
+      valueEndBitWanted = bitWidth - 1 - (valueStartBitIndex < 0 ? bitWidth - 1 + valueStartBitIndex : bitWidth - 1);
+      byteStartBitWanted = 7 - (valueEndBitIndex > 0 ? 0 : -valueEndBitIndex);
+      byteEndBitWanted = 7 - (valueStartBitIndex < 0 ? 8 : 7 - valueStartBitIndex);
+      shift = valueStartBitWanted - byteStartBitWanted;
     }
-    fw.append("    }\n");
+
+    visualizeAlignment(
+        fw, bitWidth, valueEndBitIndex,
+        valueStartBitWanted, valueEndBitWanted,
+        byteStartBitWanted, byteEndBitWanted,
+        shift
+        );
+    return shift;
   }
 
   private static void visualizeAlignment(FileWriter fw, int bitWidth,
       int valueEndBitIndex, int valueStartBitWanted, int valueEndBitWanted,
-      int byteStartBitWanted, int byteEndBitWanted) throws IOException {
+      int byteStartBitWanted, int byteEndBitWanted, int shift) throws IOException {
     // ASCII art to visualize what is happening
     fw.append("//");
     int buf = 2 + Math.max(0, bitWidth + 8);
@@ -147,7 +152,7 @@ public class ByteBasedBitPackingGenerator {
       }
     }
     fw.append("]\n          //");
-    for (int i = 0; i < buf + 8 - bitWidth + valueEndBitIndex ; i++) {
+    for (int i = 0; i < buf + (8 - bitWidth + shift); i++) {
       fw.append(" ");
     }
     fw.append("[");
@@ -162,7 +167,36 @@ public class ByteBasedBitPackingGenerator {
     fw.append("           ");
   }
 
-  private static void generateUnpack(FileWriter fw, int bitWidth, int batch)
+  private static void generatePack(FileWriter fw, int bitWidth, int batch, boolean msbFirst) throws IOException {
+    int mask = genMask(bitWidth);
+    fw.append("    public final void pack" + (batch * 8) + "Values(final int[] in, final int inPos, final byte[] out, final int outPos) {\n");
+    for (int byteIndex = 0; byteIndex < bitWidth * batch; ++byteIndex) {
+      fw.append("      out[" + align(byteIndex, 2) + " + outPos] = (byte)((\n");
+      int startIndex = (byteIndex * 8) / bitWidth;
+      int endIndex = ((byteIndex + 1) * 8 + bitWidth - 1) / bitWidth;
+      for (int valueIndex = startIndex; valueIndex < endIndex; valueIndex++) {
+
+        if (valueIndex == startIndex) {
+          fw.append("          ");
+        } else {
+          fw.append("\n        | ");
+        }
+        int shift = getShift(fw, bitWidth, msbFirst, byteIndex, valueIndex);
+
+        String shiftString = ""; // used when shift == 0
+        if (shift > 0) {
+          shiftString = " >>> " + shift;
+        } else if (shift < 0) {
+          shiftString = " <<  " + ( - shift);
+        }
+        fw.append("((in[" + align(valueIndex, 2) + " + inPos] & " + mask + ")" + shiftString + ")");
+      }
+      fw.append(") & 255);\n");
+    }
+    fw.append("    }\n");
+  }
+
+  private static void generateUnpack(FileWriter fw, int bitWidth, int batch, boolean msbFirst)
       throws IOException {
     fw.append("    public final void unpack" + (batch * 8) + "Values(final byte[] in, final int inPos, final int[] out, final int outPos) {\n");
     if (bitWidth > 0) {
@@ -179,24 +213,8 @@ public class ByteBasedBitPackingGenerator {
           } else {
             fw.append("\n        | ");
           }
-          // relative positions of the start and end of the value to the start and end of the byte
-          int valueStartBitIndex = (valueIndex * bitWidth) - (8 * (byteIndex));
-          int valueEndBitIndex = ((valueIndex + 1) * bitWidth) - (8 * (byteIndex + 1));
+          int shift = getShift(fw, bitWidth, msbFirst, byteIndex, valueIndex);
 
-          // boundaries of the current value that we want
-          int valueStartBitWanted = valueStartBitIndex < 0 ? bitWidth - 1 + valueStartBitIndex : bitWidth - 1;
-          int valueEndBitWanted = valueEndBitIndex > 0 ? valueEndBitIndex : 0;
-
-          // boundaries of the current byte that will receive them
-          int byteStartBitWanted = valueStartBitIndex < 0 ? 8 : 7 - valueStartBitIndex;
-          int byteEndBitWanted = valueEndBitIndex > 0 ? 0 : -valueEndBitIndex;
-          visualizeAlignment(
-              fw, bitWidth, valueEndBitIndex,
-              valueStartBitWanted, valueEndBitWanted,
-              byteStartBitWanted, byteEndBitWanted
-              );
-
-          int shift = valueEndBitIndex;
           String shiftString = ""; // when shift == 0
           if (shift < 0) {
             shiftString = ">>>  " + (-shift);
