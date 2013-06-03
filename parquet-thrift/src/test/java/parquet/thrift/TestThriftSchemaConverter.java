@@ -64,4 +64,5 @@ public class TestThriftSchemaConverter {
     final ThriftType fromJSON = StructType.fromJSON(json);
     assertEquals(json, fromJSON.toJSON());
   }
+
 }

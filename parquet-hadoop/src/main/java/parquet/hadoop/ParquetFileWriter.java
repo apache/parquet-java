@@ -39,6 +39,7 @@ import parquet.Version;
 import parquet.bytes.BytesInput;
 import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
+import parquet.column.page.DictionaryPage;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -177,10 +178,36 @@ public class ParquetFileWriter {
   }
 
   /**
+   * writes a dictionary page page
+   * @param dictionaryPage the dictionary page
+   */
+  public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
+    state = state.write();
+    if (DEBUG) LOG.debug(out.getPos() + ": write dictionary page: " + dictionaryPage.getDictionarySize() + " values");
+    currentColumn.setDictionaryPageOffset(out.getPos());
+    int uncompressedSize = dictionaryPage.getUncompressedSize();
+    int compressedPageSize = (int)dictionaryPage.getBytes().size(); // TODO: fix casts
+    metadataConverter.writeDictionaryPageHeader(
+        uncompressedSize,
+        compressedPageSize,
+        dictionaryPage.getDictionarySize(),
+        dictionaryPage.getEncoding(),
+        out);
+    this.uncompressedLength += uncompressedSize;
+    this.compressedLength += compressedPageSize;
+    if (DEBUG) LOG.debug(out.getPos() + ": write dictionary page content " + compressedPageSize);
+    dictionaryPage.getBytes().writeAllTo(out);
+    currentEncodings.add(dictionaryPage.getEncoding());
+  }
+
+  /**
    * writes a single page
    * @param valueCount count of values
    * @param uncompressedPageSize the size of the data once uncompressed
    * @param bytes the compressed data for the page without header
+   * @param rlEncoding encoding of the repetition level
+   * @param dlEncoding encoding of the definition level
+   * @param valuesEncoding encoding of values
    */
   public void writeDataPage(
       int valueCount, int uncompressedPageSize,
@@ -238,7 +265,7 @@ public class ParquetFileWriter {
     currentColumn.setTotalSize(compressedLength);
     currentColumn.getEncodings().addAll(currentEncodings);
     currentBlock.addColumn(currentColumn);
-    if (INFO) LOG.info("ended Column chumk: " + currentColumn);
+    if (DEBUG) LOG.info("ended Column chumk: " + currentColumn);
     currentColumn = null;
     this.uncompressedLength = 0;
     this.compressedLength = 0;

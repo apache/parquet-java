@@ -15,195 +15,65 @@
  */
 package parquet.column.impl;
 
-import java.io.IOException;
-
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnReadStore;
 import parquet.column.ColumnReader;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
-import parquet.io.ParquetDecodingException;
-import parquet.io.api.Binary;
+import parquet.io.api.Converter;
+import parquet.io.api.GroupConverter;
+import parquet.io.api.PrimitiveConverter;
+import parquet.schema.GroupType;
+import parquet.schema.MessageType;
+import parquet.schema.Type;
 
-
+/**
+ * Implementation of the ColumnReadStore
+ *
+ * Initializes individual columns based on schema and converter
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class ColumnReadStoreImpl implements ColumnReadStore {
 
   private final PageReadStore pageReadStore;
+  private final GroupConverter recordConverter;
+  private final MessageType schema;
 
-  public ColumnReadStoreImpl(PageReadStore pageReadStore) {
+  /**
+   * @param pageReadStore uderlying page storage
+   * @param recordConverter the user provided converter to materialize records
+   * @param schema the schema we are reading
+   */
+  public ColumnReadStoreImpl(PageReadStore pageReadStore, GroupConverter recordConverter, MessageType schema) {
     super();
     this.pageReadStore = pageReadStore;
+    this.recordConverter = recordConverter;
+    this.schema = schema;
   }
 
+  @Override
   public ColumnReader getColumnReader(ColumnDescriptor path) {
     return newMemColumnReader(path, pageReadStore.getPageReader(path));
   }
 
   private ColumnReaderImpl newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
-    switch (path.getType()) {
-    case INT32:
-      return new INT32MemColumnReader(path, pageReader);
-    case INT64:
-      return new INT64MemColumnReader(path, pageReader);
-    case BOOLEAN:
-      return new BOOLEANMemColumnReader(path, pageReader);
-    case BINARY:
-      return new BINARYMemColumnReader(path, pageReader);
-    case FLOAT:
-      return new FLOATMemColumnReader(path, pageReader);
-    case DOUBLE:
-      return new DOUBLEMemColumnReader(path, pageReader);
-    }
-    throw new ParquetDecodingException("type "+path.getType()+" not supported");
+    PrimitiveConverter converter = getPrimitiveConverter(path);
+    return new ColumnReaderImpl(path, pageReader, converter);
   }
 
-  private static final class INT32MemColumnReader extends ColumnReaderImpl {
-    private int currentInt;
-
-    public INT32MemColumnReader(ColumnDescriptor path, PageReader pageReader) {
-      super(path, pageReader);
+  private PrimitiveConverter getPrimitiveConverter(ColumnDescriptor path) {
+    Type currentType = schema;
+    Converter currentConverter = recordConverter;
+    for (String fieldName : path.getPath()) {
+      final GroupType groupType = currentType.asGroupType();
+      int fieldIndex = groupType.getFieldIndex(fieldName);
+      currentType = groupType.getType(fieldName);
+      currentConverter = currentConverter.asGroupConverter().getConverter(fieldIndex);
     }
-
-    @Override
-    public int getInteger() {
-      checkValueRead();
-      return currentInt;
-    }
-
-    @Override
-    protected void readCurrentValue() {
-        currentInt = dataColumn.readInteger();
-    }
-
-    @Override
-    public String getCurrentValueToString() throws IOException {
-      checkRead();
-      return String.valueOf(currentInt);
-    }
+    PrimitiveConverter converter = currentConverter.asPrimitiveConverter();
+    return converter;
   }
 
-  private static final class INT64MemColumnReader extends ColumnReaderImpl {
-    private long currentLong;
-
-    public INT64MemColumnReader(ColumnDescriptor path, PageReader pageReader) {
-      super(path, pageReader);
-    }
-
-    @Override
-    public long getLong() {
-      checkValueRead();
-      return currentLong;
-    }
-
-    @Override
-    protected void readCurrentValue() {
-      currentLong = dataColumn.readLong();
-    }
-
-    @Override
-    public String getCurrentValueToString() throws IOException {
-      checkRead();
-      return String.valueOf(currentLong);
-    }
-  }
-
-  private static final class BINARYMemColumnReader extends ColumnReaderImpl {
-    private Binary current;
-
-    public BINARYMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
-      super(path, pageReader);
-    }
-
-    @Override
-    public Binary getBinary() {
-      checkValueRead();
-      return current;
-    }
-
-    @Override
-    protected void readCurrentValue() {
-      current = dataColumn.readBytes();
-    }
-
-    @Override
-    public String getCurrentValueToString() throws IOException {
-      checkRead();
-      return String.valueOf(current);
-    }
-  }
-
-  private static final class BOOLEANMemColumnReader extends ColumnReaderImpl {
-    private boolean current;
-
-    public BOOLEANMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
-      super(path, pageReader);
-    }
-
-    @Override
-    public boolean getBoolean() {
-      checkValueRead();
-      return current;
-    }
-
-    @Override
-    protected void readCurrentValue() {
-      current = dataColumn.readBoolean();
-    }
-
-    @Override
-    public String getCurrentValueToString() throws IOException {
-      checkRead();
-      return String.valueOf(current);
-    }
-  }
-
-  private static final class FLOATMemColumnReader extends ColumnReaderImpl {
-    private float current;
-
-    public FLOATMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
-      super(path, pageReader);
-    }
-
-    @Override
-    public float getFloat() {
-      checkValueRead();
-      return current;
-    }
-
-    @Override
-    protected void readCurrentValue() {
-      current = dataColumn.readFloat();
-    }
-
-    @Override
-    public String getCurrentValueToString() throws IOException {
-      checkRead();
-      return String.valueOf(current);
-    }
-  }
-
-  private static final class DOUBLEMemColumnReader extends ColumnReaderImpl {
-    private double current;
-
-    public DOUBLEMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
-      super(path, pageReader);
-    }
-
-    @Override
-    public double getDouble() {
-      checkValueRead();
-      return current;
-    }
-
-    @Override
-    protected void readCurrentValue() {
-      current = dataColumn.readDouble();
-    }
-
-    @Override
-    public String getCurrentValueToString() throws IOException {
-      checkRead();
-      return String.valueOf(current);
-    }
-  }
 }

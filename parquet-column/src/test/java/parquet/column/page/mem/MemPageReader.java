@@ -16,10 +16,12 @@
 package parquet.column.page.mem;
 
 import static parquet.Log.DEBUG;
+import static parquet.Preconditions.checkNotNull;
 
 import java.util.Iterator;
 
 import parquet.Log;
+import parquet.column.page.DictionaryPage;
 import parquet.column.page.Page;
 import parquet.column.page.PageReader;
 import parquet.io.ParquetDecodingException;
@@ -28,16 +30,16 @@ import parquet.io.ParquetDecodingException;
 public class MemPageReader implements PageReader {
   private static final Log LOG = Log.getLog(MemPageReader.class);
 
-  private long totalValueCount;
-  private Iterator<Page> pages;
+  private final long totalValueCount;
+  private final Iterator<Page> pages;
+  private final DictionaryPage dictionaryPage;
 
-  public MemPageReader(long totalValueCount, Iterator<Page> pages) {
+  public MemPageReader(long totalValueCount, Iterator<Page> pages, DictionaryPage dictionaryPage) {
     super();
-    if (pages == null) {
-      throw new NullPointerException("pages");
-    }
+    checkNotNull(pages, "pages");
     this.totalValueCount = totalValueCount;
     this.pages = pages;
+    this.dictionaryPage = dictionaryPage;
   }
 
   @Override
@@ -54,6 +56,11 @@ public class MemPageReader implements PageReader {
     } else {
       throw new ParquetDecodingException("after last page");
     }
+  }
+
+  @Override
+  public DictionaryPage readDictionaryPage() {
+    return dictionaryPage;
   }
 
 }

@@ -145,7 +145,8 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
 
   @SuppressWarnings("unchecked")
   private void writeValue(Type type, Schema avroSchema, Object value) {
-    Schema.Type avroType = AvroSchemaConverter.getNonNull(avroSchema).getType();
+    Schema nonNullAvroSchema =  AvroSchemaConverter.getNonNull(avroSchema);
+    Schema.Type avroType = nonNullAvroSchema.getType();
     if (avroType.equals(Schema.Type.BOOLEAN)) {
       recordConsumer.addBoolean((Boolean) value);
     } else if (avroType.equals(Schema.Type.INT)) {
@@ -161,13 +162,13 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
     } else if (avroType.equals(Schema.Type.STRING)) {
       recordConsumer.addBinary(fromAvroString(value));
     } else if (avroType.equals(Schema.Type.RECORD)) {
-      writeRecord((GroupType) type, avroSchema, (GenericRecord) value);
+      writeRecord((GroupType) type, nonNullAvroSchema, (GenericRecord) value);
     } else if (avroType.equals(Schema.Type.ENUM)) {
       recordConsumer.addBinary(Binary.fromString(value.toString()));
     } else if (avroType.equals(Schema.Type.ARRAY)) {
-      writeArray((GroupType) type, avroSchema, (GenericArray<?>) value);
+      writeArray((GroupType) type, nonNullAvroSchema, (GenericArray<?>) value);
     } else if (avroType.equals(Schema.Type.MAP)) {
-      writeMap((GroupType) type, avroSchema, (Map<String, ?>) value);
+      writeMap((GroupType) type, nonNullAvroSchema, (Map<String, ?>) value);
     } else if (avroType.equals(Schema.Type.FIXED)) {
       recordConsumer.addBinary(Binary.fromByteArray(((GenericFixed) value).bytes()));
     }

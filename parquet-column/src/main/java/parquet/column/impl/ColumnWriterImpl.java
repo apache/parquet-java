@@ -16,15 +16,18 @@
 package parquet.column.impl;
 
 import static parquet.bytes.BytesInput.concat;
+import static parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
 
 import java.io.IOException;
 
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
+import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.bitpacking.ByteBitPackingValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
 import parquet.io.ParquetEncodingException;
@@ -40,6 +43,7 @@ final class ColumnWriterImpl implements ColumnWriter {
   private static final Log LOG = Log.getLog(ColumnWriterImpl.class);
   private static final boolean DEBUG = false; //Log.DEBUG;
   private static final int INITIAL_COUNT_FOR_SIZE_CHECK = 100;
+  private static final int DICTIONARY_PAGE_MAX_SIZE_PERCENT = 20;
 
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
@@ -50,21 +54,35 @@ final class ColumnWriterImpl implements ColumnWriter {
   private int valueCount;
   private int valueCountForNextSizeCheck;
 
-  public ColumnWriterImpl(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold, int initialSizePerCol) {
+  public ColumnWriterImpl(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold, int initialSizePerCol, boolean enableDictionary) {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
-    repetitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxRepetitionLevel());
-    definitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxDefinitionLevel());
+    repetitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxRepetitionLevel(), BIG_ENDIAN);
+    definitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxDefinitionLevel(), BIG_ENDIAN);
     switch (path.getType()) {
     case BOOLEAN:
-      this.dataColumn = new BooleanPlainValuesWriter(initialSizePerCol);
+      this.dataColumn = new BooleanPlainValuesWriter();
+      break;
+    case BINARY:
+      if (enableDictionary) {
+        this.dataColumn = new DictionaryValuesWriter(applyRatioInPercent(pageSizeThreshold, DICTIONARY_PAGE_MAX_SIZE_PERCENT), initialSizePerCol);
+      } else {
+        this.dataColumn = new PlainValuesWriter(initialSizePerCol);
+      }
       break;
     default:
       this.dataColumn = new PlainValuesWriter(initialSizePerCol);
     }
+  }
+
+  private int applyRatioInPercent(int value, int ratio) {
+    if (100 % ratio != 0) {
+      throw new IllegalArgumentException("ratio should be a diviser of 100: not " + ratio);
+    }
+    return value / (100 / ratio);
   }
 
   private void log(Object value, int r, int d) {
@@ -182,6 +200,16 @@ final class ColumnWriterImpl implements ColumnWriter {
   public void flush() {
     if (valueCount > 0) {
       writePage();
+    }
+    final DictionaryPage dictionaryPage = dataColumn.createDictionaryPage();
+    if (dictionaryPage != null) {
+      if (DEBUG) LOG.debug("write dictionary");
+      try {
+        pageWriter.writeDictionaryPage(dictionaryPage);
+      } catch (IOException e) {
+        throw new ParquetEncodingException("could not write dictionary page for " + path, e);
+      }
+      dataColumn.resetDictionary();
     }
   }
 

@@ -15,6 +15,8 @@
  */
 package parquet.hadoop;
 
+import static parquet.Log.INFO;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,17 +25,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.column.ColumnDescriptor;
 import parquet.column.Encoding;
+import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriteStore;
 import parquet.column.page.PageWriter;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.CodecFactory.BytesCompressor;
+import parquet.io.ParquetEncodingException;
 import parquet.schema.MessageType;
 
 class ColumnChunkPageWriteStore implements PageWriteStore {
+  private static final Log LOG = Log.getLog(ColumnChunkPageWriteStore.class);
 
   private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
@@ -43,10 +49,12 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private final BytesCompressor compressor;
 
     private final CapacityByteArrayOutputStream buf;
+    private DictionaryPage dictionaryPage;
 
     private long uncompressedLength;
     private long compressedLength;
     private long totalValueCount;
+    private int pageCount;
 
     private Set<Encoding> encodings = new HashSet<Encoding>();
 
@@ -72,6 +80,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
+      this.pageCount += 1;
       compressedBytes.writeAllTo(buf);
       encodings.add(rlEncoding);
       encodings.add(dlEncoding);
@@ -85,14 +94,40 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
     public void writeToFileWriter(ParquetFileWriter writer) throws IOException {
       writer.startColumn(path, totalValueCount, compressor.getCodecName());
+      if (dictionaryPage != null) {
+        writer.writeDictionaryPage(dictionaryPage);
+        encodings.add(dictionaryPage.getEncoding());
+      }
       writer.writeDataPages(BytesInput.from(buf), uncompressedLength, compressedLength, new ArrayList<Encoding>(encodings));
       writer.endColumn();
+      if (INFO) {
+        LOG.info(
+            String.format(
+                "written %,dB for %s: %,d values, %,dB raw, %,dB comp, %d pages, encodings: %s",
+                buf.size(), path, totalValueCount, uncompressedLength, compressedLength, pageCount, encodings)
+            + (dictionaryPage != null ? String.format(
+                    ", dic { %,d entries, %,dB raw, %,dB comp}",
+                    dictionaryPage.getDictionarySize(), dictionaryPage.getUncompressedSize(), dictionaryPage.getDictionarySize())
+                    : ""));
+      }
       encodings.clear();
+      pageCount = 0;
     }
 
     @Override
     public long allocatedSize() {
       return buf.getCapacity();
+    }
+
+    @Override
+    public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
+      if (this.dictionaryPage != null) {
+        throw new ParquetEncodingException("Only one dictionary page is allowed");
+      }
+      BytesInput dictionaryBytes = dictionaryPage.getBytes();
+      int uncompressedSize = (int)dictionaryBytes.size();
+      BytesInput compressedBytes = compressor.compress(dictionaryBytes);
+      this.dictionaryPage = new DictionaryPage(BytesInput.copy(compressedBytes), uncompressedSize, dictionaryPage.getDictionarySize(), dictionaryPage.getEncoding());
     }
 
     @Override
