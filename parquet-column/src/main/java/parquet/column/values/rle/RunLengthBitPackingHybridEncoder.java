@@ -7,7 +7,7 @@ import parquet.Preconditions;
 import parquet.bytes.BytesInput;
 import parquet.bytes.BytesUtils;
 import parquet.bytes.CapacityByteArrayOutputStream;
-import parquet.column.values.bitpacking.ByteBitPacking;
+import parquet.column.values.bitpacking.ByteBitPackingLE;
 import parquet.column.values.bitpacking.BytePacker;
 
 import static parquet.Log.DEBUG;
@@ -104,7 +104,7 @@ public class RunLengthBitPackingHybridEncoder {
     this.baos = new CapacityByteArrayOutputStream(initialCapacity);
     this.packBuffer = new byte[bitWidth];
     this.bufferedValues = new int[8];
-    this.packer = ByteBitPacking.getPacker(bitWidth);
+    this.packer = ByteBitPackingLE.getPacker(bitWidth);
     reset(false);
   }
 
@@ -255,5 +255,13 @@ public class RunLengthBitPackingHybridEncoder {
    */
   public void reset() {
     reset(true);
+  }
+
+  public long getBufferedSize() {
+    return baos.size();
+  }
+
+  public long getAllocatedSize() {
+    return baos.getCapacity();
   }
 }

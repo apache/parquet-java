@@ -8,7 +8,7 @@ import java.util.List;
 import org.junit.Test;
 
 import parquet.bytes.BytesUtils;
-import parquet.column.values.bitpacking.ByteBitPacking;
+import parquet.column.values.bitpacking.ByteBitPackingLE;
 import parquet.column.values.bitpacking.BytePacker;
 
 import static org.junit.Assert.assertEquals;
@@ -264,7 +264,7 @@ public class TestRunLengthBitPackingHybridEncoder {
   private static List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is)
     throws Exception {
 
-    BytePacker packer = ByteBitPacking.getPacker(bitWidth);
+    BytePacker packer = ByteBitPackingLE.getPacker(bitWidth);
     int[] unpacked = new int[8];
     byte[] next8Values = new byte[bitWidth];
 
