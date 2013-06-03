@@ -15,10 +15,10 @@
  */
 package parquet.column.values.rle;
 
-
 import static parquet.Log.DEBUG;
 import static parquet.bytes.BytesInput.concat;
 import static parquet.bytes.BytesUtils.writeUnsignedVarInt;
+import static parquet.column.values.bitpacking.Packer.LITTLE_ENDIAN;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -41,7 +41,7 @@ public class RLESimpleEncoder {
 
     public RLESimpleEncoder(int bitWidth) {
     if (DEBUG) LOG.debug("encoding bitWidth " + bitWidth);
-    this.bitPackingEncoder = new ByteBasedBitPackingEncoder(bitWidth);
+    this.bitPackingEncoder = new ByteBasedBitPackingEncoder(bitWidth, LITTLE_ENDIAN);
   }
 
   public void writeInt(int value) throws IOException {

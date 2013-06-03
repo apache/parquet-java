@@ -23,7 +23,7 @@ import java.io.InputStream;
 
 import parquet.Log;
 import parquet.bytes.BytesUtils;
-import parquet.column.values.bitpacking.ByteBitPacking;
+import parquet.column.values.bitpacking.ByteBitPackingLE;
 import parquet.column.values.bitpacking.BytePacker;
 import parquet.io.ParquetDecodingException;
 
@@ -46,7 +46,7 @@ public class RLEDecoder {
   public RLEDecoder(int bitWidth, InputStream in) {
     if (DEBUG) LOG.debug("decoding bitWidth " + bitWidth);
     this.bitWidth = bitWidth;
-    this.packer = ByteBitPacking.getPacker(bitWidth);
+    this.packer = ByteBitPackingLE.getPacker(bitWidth);
     // number of bytes needed when padding to the next byte
     this.bytesWidth = BytesUtils.paddedByteCountFromBits(bitWidth);
     this.in = in;

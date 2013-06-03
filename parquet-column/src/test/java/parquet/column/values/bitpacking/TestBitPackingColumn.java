@@ -17,6 +17,7 @@ package parquet.column.values.bitpacking;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
 
 import java.io.IOException;
 
@@ -188,10 +189,10 @@ public class TestBitPackingColumn {
     ,
     BYTE_BASED_GENERATED {
       public ValuesReader getReader(final int bound) {
-        return new ByteBitPackingValuesReader(bound);
+        return new ByteBitPackingValuesReader(bound, BIG_ENDIAN);
       }
       public ValuesWriter getWriter(final int bound) {
-        return new ByteBitPackingValuesWriter(bound);
+        return new ByteBitPackingValuesWriter(bound, BIG_ENDIAN);
       }
     }
     ;
