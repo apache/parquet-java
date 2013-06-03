@@ -14,7 +14,7 @@ public class RunLengthBitPackingHybridIntegrationTest {
 
   @Test
   public void integrationTest() throws Exception {
-    for (int i = 1; i <= 32; i++) {
+    for (int i = 0; i <= 32; i++) {
       doIntegrationTest(i);
     }
   }

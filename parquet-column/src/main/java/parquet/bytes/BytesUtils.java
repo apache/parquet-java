@@ -102,6 +102,8 @@ public class BytesUtils {
 
     int bytesWidth = paddedByteCountFromBits(bitWidth);
     switch (bytesWidth) {
+      case 0:
+        return 0;
       case 1:
         return BytesUtils.readIntLittleEndianOnOneByte(in);
       case 2:
@@ -112,7 +114,7 @@ public class BytesUtils {
         return BytesUtils.readIntLittleEndian(in);
       default:
         throw new IOException(
-          String.format("Encountered bitWidth (%d) that requires more than 4 bytes"));
+          String.format("Encountered bitWidth (%d) that requires more than 4 bytes", bitWidth));
     }
   }
 
@@ -149,6 +151,8 @@ public class BytesUtils {
 
     int bytesWidth = paddedByteCountFromBits(bitWidth);
     switch (bytesWidth) {
+      case 0:
+        break;
       case 1:
         writeIntLittleEndianOnOneByte(out, v);
         break;

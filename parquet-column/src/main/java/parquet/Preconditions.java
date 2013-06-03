@@ -47,15 +47,4 @@ public final class Preconditions {
       throw new IllegalArgumentException(message);
     }
   }
-
-  /**
-   * @param valid whether the argument is valid
-   * @throws IllegalArgumentException if !valid
-   */
-  public static void checkArgument(boolean valid) throws IllegalArgumentException {
-    if (!valid) {
-      throw new IllegalArgumentException();
-    }
-  }
-
 }

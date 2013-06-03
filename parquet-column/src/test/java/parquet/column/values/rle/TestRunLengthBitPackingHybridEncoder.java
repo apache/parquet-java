@@ -67,6 +67,22 @@ public class TestRunLengthBitPackingHybridEncoder {
   }
 
   @Test
+  public void testBitWidthZero() throws Exception {
+    RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(0, 5);
+    for (int i = 0; i < 10; i++) {
+      encoder.writeInt(0);
+    }
+
+    ByteArrayInputStream is = new ByteArrayInputStream(encoder.toBytes().toByteArray());
+
+    // header = 10 << 1 = 20
+    assertEquals(20, BytesUtils.readUnsignedVarInt(is));
+
+    // end of stream
+    assertEquals(-1, is.read());
+  }
+
+  @Test
   public void testBitPackingOnly() throws Exception {
     RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(3, 5);
 

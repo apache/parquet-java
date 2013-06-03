@@ -51,7 +51,7 @@ public class RunLengthBitPackingHybridDecoder {
   public RunLengthBitPackingHybridDecoder(int bitWidth, InputStream in) {
     if (DEBUG) LOG.debug("decoding bitWidth " + bitWidth);
 
-    Preconditions.checkArgument(bitWidth > 0 && bitWidth <= 32, "bitWidth must be > 0 and <= 32");
+    Preconditions.checkArgument(bitWidth >= 0 && bitWidth <= 32, "bitWidth must be >= 0 and <= 32");
     this.bitWidth = bitWidth;
     this.packer = ByteBitPacking.getPacker(bitWidth);
     this.in = in;
@@ -80,7 +80,7 @@ public class RunLengthBitPackingHybridDecoder {
     final int header = BytesUtils.readUnsignedVarInt(in);
     mode = (header & 1) == 0 ? MODE.RLE : MODE.PACKED;
     switch (mode) {
-    case RLE: // TODO: test this
+    case RLE:
       currentCount = header >>> 1;
       if (DEBUG) LOG.debug("reading " + currentCount + " values RLE");
       currentValue = BytesUtils.readIntLittleEndianPaddedOnBitWidth(in, bitWidth);

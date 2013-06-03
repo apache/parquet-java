@@ -17,16 +17,17 @@ package parquet.column;
 
 import java.io.IOException;
 
+import parquet.bytes.BytesUtils;
 import parquet.column.page.DictionaryPage;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.ValuesType;
 import parquet.column.values.bitpacking.ByteBitPackingValuesReader;
-import parquet.column.values.boundedint.BoundedIntValuesFactory;
 import parquet.column.values.dictionary.DictionaryValuesReader;
 import parquet.column.values.dictionary.PlainBinaryDictionary;
 import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.BooleanPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader;
+import parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
 import parquet.io.ParquetDecodingException;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -53,16 +54,22 @@ public enum Encoding {
   },
 
   /**
-   * this is not used anymore and will be removed
+   * Actually a combination of bit packing and run length encoding.
+   * TODO: Should we rename this to be more clear?
    */
-  @Deprecated
   RLE {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      return BoundedIntValuesFactory.getBoundedReader(getMaxLevel(descriptor, valuesType));
+      int bitWidth = BytesUtils.getWidthFromMaxInt(getMaxLevel(descriptor, valuesType));
+      return new RunLengthBitPackingHybridValuesReader(bitWidth);
     }
   },
 
+  /**
+   * This is no longer used, and has been replaced by {@link #RLE}
+   * which is combination of bit packing and rle
+   */
+  @Deprecated
   BIT_PACKED {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {

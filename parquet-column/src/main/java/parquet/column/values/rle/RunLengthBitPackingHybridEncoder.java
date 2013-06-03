@@ -37,9 +37,6 @@ import static parquet.Log.DEBUG;
 public class RunLengthBitPackingHybridEncoder {
   private static final Log LOG = Log.getLog(RunLengthBitPackingHybridEncoder.class);
 
-  // TODO: what is a good value for this?
-  private static final int DEFAULT_INITIAL_CAPACITY = 64 * 1024;
-
   private final BytePacker packer;
 
   private final CapacityByteArrayOutputStream baos;
@@ -101,7 +98,7 @@ public class RunLengthBitPackingHybridEncoder {
         + "bithWidth: %d initialCapacity %d", bitWidth, initialCapacity));
     }
 
-    Preconditions.checkArgument(bitWidth > 0 && bitWidth <= 32, "bitWidth must be > 0 and <= 32");
+    Preconditions.checkArgument(bitWidth >= 0 && bitWidth <= 32, "bitWidth must be >= 0 and <= 32");
 
     this.bitWidth = bitWidth;
     this.baos = new CapacityByteArrayOutputStream(initialCapacity);
@@ -109,10 +106,6 @@ public class RunLengthBitPackingHybridEncoder {
     this.bufferedValues = new int[8];
     this.packer = ByteBitPacking.getPacker(bitWidth);
     reset(false);
-  }
-
-  public RunLengthBitPackingHybridEncoder(int bitWidth) {
-    this(bitWidth, DEFAULT_INITIAL_CAPACITY);
   }
 
   private void reset(boolean resetBaos) {

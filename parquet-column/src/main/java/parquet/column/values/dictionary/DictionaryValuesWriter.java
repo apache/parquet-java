@@ -154,8 +154,9 @@ public class DictionaryValuesWriter extends ValuesWriter {
       lastUsedDictionaryByteSize = dictionaryByteSize;
       final int maxDicId = dict.size() - 1;
       if (DEBUG) LOG.debug("max dic id " + maxDicId);
+      // TODO: what is a good initialCapacity?
       final RunLengthBitPackingHybridEncoder encoder =
-          new RunLengthBitPackingHybridEncoder(BytesUtils.getWidthFromMaxInt(maxDicId));
+          new RunLengthBitPackingHybridEncoder(BytesUtils.getWidthFromMaxInt(maxDicId), 64 * 1024);
       final IntIterator iterator = out.iterator();
       try {
         while (iterator.hasNext()) {
