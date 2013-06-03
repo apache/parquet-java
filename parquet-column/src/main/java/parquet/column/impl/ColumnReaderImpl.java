@@ -374,7 +374,7 @@ class ColumnReaderImpl implements ColumnReader {
     } catch (RuntimeException e) {
       throw new ParquetDecodingException(
           format(
-              "Can't read value in column %s at value %d out of %d, %d out of %d in currentPage.r: %d, d: %d",
+              "Can't read value in column %s at value %d out of %d, %d out of %d in currentPage. repetition level: %d, definition level: %d",
               path, readValues, totalValueCount, readValuesInPage, pageValueCount, repetitionLevel, definitionLevel),
           e);
     }
