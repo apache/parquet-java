@@ -15,6 +15,7 @@
  */
 package parquet.hadoop;
 
+import static java.lang.String.format;
 import static parquet.Log.DEBUG;
 
 import java.io.IOException;
@@ -34,6 +35,7 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.util.ContextUtil;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
+import parquet.io.ParquetDecodingException;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
@@ -63,6 +65,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   private T currentValue;
   private long total;
   private int current = 0;
+  private int currentBlock = -1;
   private ParquetFileReader reader;
   private parquet.io.RecordReader<T> recordReader;
 
@@ -72,10 +75,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
   private long totalCountLoadedSoFar = 0;
 
-
-
   /**
-   *
    * @param requestedSchema the requested schema (a subset of the original schema) for record projection
    * @param readSupportClass
    */
@@ -109,6 +109,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       recordReader = columnIO.getRecordReader(pages, recordConverter);
       startedAssemblingCurrentBlockAt = System.currentTimeMillis();
       totalCountLoadedSoFar += pages.getRowCount();
+      ++ currentBlock;
     }
   }
 
@@ -196,10 +197,14 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
     if (current < total) {
-      checkRead();
-      currentValue = recordReader.read();
-      if (DEBUG) LOG.debug("read value: " + currentValue);
-      current ++;
+      try {
+        checkRead();
+        currentValue = recordReader.read();
+        if (DEBUG) LOG.debug("read value: " + currentValue);
+        current ++;
+      } catch (RuntimeException e) {
+        throw new ParquetDecodingException(format("Can not read value at %d in block %d", current, currentBlock), e);
+      }
       return true;
     }
     return false;

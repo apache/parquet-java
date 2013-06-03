@@ -55,6 +55,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
   private final int pageSize;
   private final BytesCompressor compressor;
   private final boolean enableDictionary;
+  private final boolean validating;
 
   private long recordCount = 0;
   private long recordCountForNextMemCheck = 100;
@@ -73,7 +74,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    * @param blockSize the size of a block in the file (this will be approximate)
    * @param codec the codec used to compress
    */
-  public ParquetRecordWriter(ParquetFileWriter w, WriteSupport<T> writeSupport, MessageType schema,  Map<String, String> extraMetaData, int blockSize, int pageSize, BytesCompressor compressor, boolean enableDictionary) {
+  public ParquetRecordWriter(ParquetFileWriter w, WriteSupport<T> writeSupport, MessageType schema,  Map<String, String> extraMetaData, int blockSize, int pageSize, BytesCompressor compressor, boolean enableDictionary, boolean validating) {
     if (writeSupport == null) {
       throw new NullPointerException("writeSupport");
     }
@@ -85,6 +86,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
     this.pageSize = pageSize;
     this.compressor = compressor;
     this.enableDictionary = enableDictionary;
+    this.validating = validating;
     initStore();
   }
 
@@ -98,7 +100,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
     // ideally, slightly bigger than the page size, but not bigger than the block buffer
     int initialPageBufferSize = max(MINIMUM_BUFFER_SIZE, min(pageSize + pageSize / 10, initialBlockBufferSize));
     store = new ColumnWriteStoreImpl(pageStore, pageSize, initialPageBufferSize, enableDictionary);
-    MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+    MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
     writeSupport.prepareForWrite(columnIO.getRecordWriter(store));
   }
 

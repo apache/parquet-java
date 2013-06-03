@@ -15,6 +15,7 @@
  */
 package parquet.column.impl;
 
+import static java.lang.String.format;
 import static parquet.Log.DEBUG;
 import static parquet.Preconditions.checkNotNull;
 
@@ -364,10 +365,18 @@ class ColumnReaderImpl implements ColumnReader {
   }
 
   protected void checkValueRead() {
-    checkRead();
-    if (!consumed && !valueRead) {
-      readCurrentValue();
-      valueRead = true;
+    try {
+      checkRead();
+      if (!consumed && !valueRead) {
+        readCurrentValue();
+        valueRead = true;
+      }
+    } catch (RuntimeException e) {
+      throw new ParquetDecodingException(
+          format(
+              "Can't read value in column %s at value %d out of %d, %d out of %d in currentPage. repetition level: %d, definition level: %d",
+              path, readValues, totalValueCount, readValuesInPage, pageValueCount, repetitionLevel, definitionLevel),
+          e);
     }
   }
 

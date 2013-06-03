@@ -39,6 +39,8 @@ public class BinaryPlainValuesReader extends ValuesReader {
       return Binary.fromByteArray(in, start, length);
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read bytes at offset " + offset, e);
+    } catch (RuntimeException e) {
+      throw new ParquetDecodingException("could not read bytes at offset " + offset, e);
     }
   }
 
