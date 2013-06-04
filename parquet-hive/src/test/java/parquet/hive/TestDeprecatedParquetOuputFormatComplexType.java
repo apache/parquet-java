@@ -1,12 +1,12 @@
 /**
- * Copyright 2013 Criteo.
+ *  Copyright 2013 Criteo.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License
  * at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
  * OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
  */
 package parquet.hive;
@@ -43,10 +43,10 @@ import parquet.schema.MessageType;
 
 /**
  *
- * TestHiveOuputFormat
+ *  TestHiveOuputFormat
  *
  *
- * @author Mickaël Lacour <m.lacour@criteo.com>
+ *  @author Mickaël Lacour <m.lacour@criteo.com>
  *
  */
 public class TestDeprecatedParquetOuputFormatComplexType extends TestCase {
@@ -130,7 +130,7 @@ public class TestDeprecatedParquetOuputFormatComplexType extends TestCase {
 
 
     final FileInputFormat<Void, MapWritable> format = new DeprecatedParquetInputFormat();
-    final String[] locations = new String[]{"localhost"};
+    final String[] locations = new String[] {"localhost"};
     final String schemaToString = schema.toString();
     final ParquetInputSplit realSplit = new ParquetInputSplit(new Path(testFile.getAbsolutePath()), 0, size, locations, blocks,
             schemaToString, schemaToString, readFooter.getFileMetaData().getKeyValueMetaData());
@@ -182,6 +182,11 @@ public class TestDeprecatedParquetOuputFormatComplexType extends TestCase {
     @Override
     public void setStatus(String string) {
       throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public float getProgress() {
+      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
   }
 }
