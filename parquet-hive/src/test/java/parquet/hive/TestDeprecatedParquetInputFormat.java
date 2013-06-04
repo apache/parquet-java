@@ -17,7 +17,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertTrue;
 
 import junit.framework.TestCase;
@@ -112,7 +111,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
             new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "c_comment"));
 
     final MemPageStore pageStore = new MemPageStore();
-    final ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 8 * 1024);
+    final ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 8 * 1024, 8 * 1024, false);
     //
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
 
@@ -162,7 +161,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
 
 
     final FileInputFormat<Void, MapWritable> format = new DeprecatedParquetInputFormat();
-    final String[] locations = new String[]{"localhost"};
+    final String[] locations = new String[] {"localhost"};
     final String schemaToString = schema.toString();
     final ParquetInputSplit realSplit = new ParquetInputSplit(new Path(testFile.getAbsolutePath()), 0, size, locations, blocks,
             schemaToString, schemaToString, readFooter.getFileMetaData().getKeyValueMetaData());

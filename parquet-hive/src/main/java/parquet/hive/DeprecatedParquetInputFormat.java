@@ -59,7 +59,7 @@ import parquet.schema.Type;
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  *
  */
-@SuppressWarnings({ "unchecked", "rawtypes" })
+@SuppressWarnings({"unchecked", "rawtypes"})
 public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWritable> {
 
   protected ParquetInputFormat<MapWritable> realInput;
@@ -76,7 +76,6 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
   protected boolean isSplitable(final FileSystem fs, final Path filename) {
     return false;
   }
-
   private final ManageJobConfig manageJob = new ManageJobConfig();
 
   @Override
@@ -109,7 +108,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
 
   @Override
   public org.apache.hadoop.mapred.RecordReader<Void, MapWritable> getRecordReader(final org.apache.hadoop.mapred.InputSplit split,
-      final org.apache.hadoop.mapred.JobConf job, final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
+          final org.apache.hadoop.mapred.JobConf job, final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
     return (RecordReader<Void, MapWritable>) new RecordReaderWrapper(realInput, split, job, reporter);
   }
 
@@ -195,7 +194,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
     private boolean eof = false;
 
     public RecordReaderWrapper(final ParquetInputFormat<MapWritable> newInputFormat, final InputSplit oldSplit, final JobConf oldJobConf, final Reporter reporter)
-        throws IOException {
+            throws IOException {
 
       splitLen = oldSplit.getLength();
       ParquetInputSplit split;
@@ -221,7 +220,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
         }
 
         split = new ParquetInputSplit(finalPath, ((FileSplit) oldSplit).getStart(), oldSplit.getLength(), oldSplit.getLocations(), blocks, fileSchema.toString(),
-            requestedSchemaByUser.toString(), fileMetaData.getKeyValueMetaData());
+                requestedSchemaByUser.toString(), fileMetaData.getKeyValueMetaData());
 
       } else {
         throw new RuntimeException("Unknown split type");
@@ -368,6 +367,11 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
     @Override
     public void setStatus(final String s) {
       wrappedReporter.setStatus(s);
+    }
+
+    @Override
+    public float getProgress() {
+      return wrappedReporter.getProgress();
     }
   }
 }
