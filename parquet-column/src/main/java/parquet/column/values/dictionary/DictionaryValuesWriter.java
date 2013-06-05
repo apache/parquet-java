@@ -152,17 +152,18 @@ public class DictionaryValuesWriter extends ValuesWriter {
       // remember size of dictionary when we last wrote a page
       lastUsedDictionarySize = dict.size();
       lastUsedDictionaryByteSize = dictionaryByteSize;
-      final int maxDicId = dict.size() - 1;
+      int maxDicId = dict.size() - 1;
       if (DEBUG) LOG.debug("max dic id " + maxDicId);
-      final RLESimpleEncoder rleSimpleEncoder = new RLESimpleEncoder(BytesUtils.getWidthFromMaxInt(maxDicId));
-      final IntIterator iterator = out.iterator();
+      int bitWidth = BytesUtils.getWidthFromMaxInt(maxDicId);
+      RLESimpleEncoder rleSimpleEncoder = new RLESimpleEncoder(bitWidth);
+      IntIterator iterator = out.iterator();
       try {
         while (iterator.hasNext()) {
           rleSimpleEncoder.writeInt(iterator.next());
         }
-        // encodes the max dict id on 2 bytes (as it is < 64K)
-        byte[] bytesHeader = intTo2Bytes(maxDicId);
-        final BytesInput rleEncodedBytes = rleSimpleEncoder.toBytes();
+        // encodes the bit width
+        byte[] bytesHeader = new byte[] { (byte)(bitWidth & 0xFF) };
+        BytesInput rleEncodedBytes = rleSimpleEncoder.toBytes();
         if (DEBUG) LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
         return concat(BytesInput.from(bytesHeader), rleEncodedBytes);
       } catch (IOException e) {
@@ -170,13 +171,6 @@ public class DictionaryValuesWriter extends ValuesWriter {
       }
     }
     return plainValuesWriter.getBytes();
-  }
-
-  private byte[] intTo2Bytes(final int maxDicId) {
-    byte[] bytesHeader = new byte[2];
-    bytesHeader[0] = (byte)(maxDicId & 0xFF);
-    bytesHeader[1] = (byte)((maxDicId >>>  8) & 0xFF);
-    return bytesHeader;
   }
 
   @Override
