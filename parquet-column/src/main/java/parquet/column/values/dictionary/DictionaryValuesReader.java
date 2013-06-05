@@ -53,9 +53,9 @@ public class DictionaryValuesReader extends ValuesReader {
       throws IOException {
     if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (page.length - offset));
     this.in = new ByteArrayInputStream(page, offset, page.length - offset);
-    int maxDicId = BytesUtils.readIntLittleEndianOnTwoBytes(in);
-    if (DEBUG) LOG.debug("max dic Id " + maxDicId);
-    decoder = new RunLengthBitPackingHybridDecoder(BytesUtils.getWidthFromMaxInt(maxDicId), in);
+    int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
+    if (DEBUG) LOG.debug("bit width " + bitWidth);
+    decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
     return page.length;
   }
 

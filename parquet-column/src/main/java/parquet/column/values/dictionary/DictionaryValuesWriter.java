@@ -152,33 +152,28 @@ public class DictionaryValuesWriter extends ValuesWriter {
       // remember size of dictionary when we last wrote a page
       lastUsedDictionarySize = dict.size();
       lastUsedDictionaryByteSize = dictionaryByteSize;
-      final int maxDicId = dict.size() - 1;
+      int maxDicId = dict.size() - 1;
       if (DEBUG) LOG.debug("max dic id " + maxDicId);
+      int bitWidth = BytesUtils.getWidthFromMaxInt(maxDicId);
+
       // TODO: what is a good initialCapacity?
       final RunLengthBitPackingHybridEncoder encoder =
           new RunLengthBitPackingHybridEncoder(BytesUtils.getWidthFromMaxInt(maxDicId), 64 * 1024);
-      final IntIterator iterator = out.iterator();
+      IntIterator iterator = out.iterator();
       try {
         while (iterator.hasNext()) {
           encoder.writeInt(iterator.next());
         }
-        // encodes the max dict id on 2 bytes (as it is < 64K)
-        byte[] bytesHeader = intTo2Bytes(maxDicId);
-        final BytesInput rleEncodedBytes = encoder.toBytes();
-        if (DEBUG) LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
+      // encodes the bit width
+      byte[] bytesHeader = new byte[] { (byte)(bitWidth & 0xFF) };
+      BytesInput rleEncodedBytes = encoder.toBytes();
+      if (DEBUG) LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
         return concat(BytesInput.from(bytesHeader), rleEncodedBytes);
       } catch (IOException e) {
         throw new ParquetEncodingException("could not encode the values", e);
       }
     }
     return plainValuesWriter.getBytes();
-  }
-
-  private byte[] intTo2Bytes(final int maxDicId) {
-    byte[] bytesHeader = new byte[2];
-    bytesHeader[0] = (byte)(maxDicId & 0xFF);
-    bytesHeader[1] = (byte)((maxDicId >>>  8) & 0xFF);
-    return bytesHeader;
   }
 
   @Override
