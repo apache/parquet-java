@@ -15,16 +15,22 @@ import parquet.column.values.ValuesReader;
 public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
   private final int bitWidth;
 
-  private int[][] values;
-  private int currentSlab;
-  private int currentValueInSlab;
+  private int[] values;
+  private int valueIndex;
 
   public RunLengthBitPackingHybridValuesReader(int bitWidth) {
     this.bitWidth = bitWidth;
   }
 
   @Override
-  public int initFromPage(long valueCount, byte[] page, int offset) throws IOException {
+  public int initFromPage(long valueCountL, byte[] page, int offset) throws IOException {
+    // TODO: we are assuming valueCount < Integer.MAX_VALUE
+    //       we should address this here and elsewhere
+    Preconditions.checkArgument(valueCountL < Integer.MAX_VALUE,
+      String.format("valueCount (%d) cannot be greater than Integer.MAX_VALUE", valueCountL));
+
+    int valueCount = (int) valueCountL;
+
     PosReportingByteArrayInputStream in =
         new PosReportingByteArrayInputStream(page, offset, page.length);
 
@@ -36,61 +42,22 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
       return offset;
     }
 
-    // ceil(valueCount / Integer.MAX_VALUE)
-    long numSlabsL = 1 + ((valueCount - 1L) / Integer.MAX_VALUE);
-
-    // safe cast to to int
-    // TODO: is this necessary?
-    Preconditions.checkArgument(numSlabsL <= Integer.MAX_VALUE,
-        String.format("valueCount (%d) is too large", valueCount));
-    int numSlabs = (int) numSlabsL;
-
-    // make the slabs array
-    values = new int[numSlabs][];
-
-    // all the slabs except the last one are of size Integer.MAX_VALUE
-    for (int i = 0; i < numSlabs - 1; i++) {
-      values[i] = new int[Integer.MAX_VALUE];
-    }
-
-    // create the last slab
-    if (valueCount % Integer.MAX_VALUE != 0) {
-      // this slab can be smaller
-      values[numSlabs - 1] = new int[(int) (valueCount % Integer.MAX_VALUE)];
-    } else {
-      // it just so happens that the last slab also needs to be
-      // Integer.MAX_VALUE
-      values[numSlabs - 1] = new int[Integer.MAX_VALUE];
-    }
-
-    currentSlab = 0;
-    currentValueInSlab = 0;
+    values = new int[valueCount];
 
     // decode all the values
-    for (long i = 0; i < valueCount; i++) {
-      if (currentValueInSlab > values[currentSlab].length) {
-        ++currentSlab;
-        currentValueInSlab = 0;
-      }
-      values[currentSlab][currentValueInSlab] = decoder.readInt();
-      ++currentValueInSlab;
+    for (int i = 0; i < valueCount; i++) {
+      values[i] = decoder.readInt();
     }
 
-    currentSlab = 0;
-    currentValueInSlab = 0;
-
+    valueIndex = 0;
     // in has been keeping track of its position in page
     return in.getPos();
   }
 
   @Override
   public int readInteger() {
-    if (currentValueInSlab > values[currentSlab].length) {
-      ++currentSlab;
-      currentValueInSlab = 0;
-    }
-    int ret = values[currentSlab][currentValueInSlab];
-    ++currentValueInSlab;
+    int ret = values[valueIndex];
+    valueIndex++;
     return ret;
   }
 
