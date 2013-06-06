@@ -3,6 +3,7 @@ package parquet.column.values.rle;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
+import parquet.Ints;
 import parquet.Preconditions;
 import parquet.column.values.ValuesReader;
 
@@ -26,10 +27,7 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
   public int initFromPage(long valueCountL, byte[] page, int offset) throws IOException {
     // TODO: we are assuming valueCount < Integer.MAX_VALUE
     //       we should address this here and elsewhere
-    Preconditions.checkArgument(valueCountL < Integer.MAX_VALUE,
-      String.format("valueCount (%d) cannot be greater than Integer.MAX_VALUE", valueCountL));
-
-    int valueCount = (int) valueCountL;
+    int valueCount = Ints.checkedCast(valueCountL);
 
     PosReportingByteArrayInputStream in =
         new PosReportingByteArrayInputStream(page, offset, page.length);
