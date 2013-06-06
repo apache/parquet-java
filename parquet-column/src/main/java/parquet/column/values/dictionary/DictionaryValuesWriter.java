@@ -162,7 +162,7 @@ public class DictionaryValuesWriter extends ValuesWriter {
           rleSimpleEncoder.writeInt(iterator.next());
         }
         // encodes the bit width
-        byte[] bytesHeader = new byte[] { (byte)(bitWidth & 0xFF) };
+        byte[] bytesHeader = new byte[] { (byte)bitWidth };
         BytesInput rleEncodedBytes = rleSimpleEncoder.toBytes();
         if (DEBUG) LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
         return concat(BytesInput.from(bytesHeader), rleEncodedBytes);

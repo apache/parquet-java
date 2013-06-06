@@ -36,12 +36,11 @@ public class ByteBasedBitPackingEncoder {
   private static final Log LOG = Log.getLog(ByteBasedBitPackingEncoder.class);
 
   private static final int VALUES_WRITTEN_AT_A_TIME = 8;
-  /** must be a multiple of VALUES_WRITTEN_AT_A_TIME */
-  private static final int SLAB_SIZE = VALUES_WRITTEN_AT_A_TIME * 8 * 1024;
 
   private final int bitWidth;
   private final BytePacker packer;
   private final int[] input = new int[VALUES_WRITTEN_AT_A_TIME];
+  private final int slabSize;
   private int inputSize;
   private byte[] packed;
   private int packedPosition;
@@ -54,6 +53,8 @@ public class ByteBasedBitPackingEncoder {
   public ByteBasedBitPackingEncoder(int bitWidth, Packer packer) {
     this.bitWidth = bitWidth;
     this.inputSize = 0;
+    // must be a multiple of bitWidth
+    this.slabSize = bitWidth * 64 * 1024;
     initPackedSlab();
     this.packer = packer.newBytePacker(bitWidth);
   }
@@ -69,7 +70,7 @@ public class ByteBasedBitPackingEncoder {
     ++ inputSize;
     if (inputSize == VALUES_WRITTEN_AT_A_TIME) {
       pack();
-      if (packedPosition == SLAB_SIZE) {
+      if (packedPosition == slabSize) {
         slabs.add(BytesInput.from(packed));
         initPackedSlab();
       }
@@ -84,7 +85,7 @@ public class ByteBasedBitPackingEncoder {
   }
 
   private void initPackedSlab() {
-    packed = new byte[SLAB_SIZE];
+    packed = new byte[slabSize];
     packedPosition = 0;
   }
 
@@ -95,7 +96,7 @@ public class ByteBasedBitPackingEncoder {
   public BytesInput toBytes() throws IOException {
     int packedByteLength = packedPosition + BytesUtils.paddedByteCountFromBits(inputSize * bitWidth);
 
-    if (DEBUG) LOG.debug("writing " + (slabs.size() * SLAB_SIZE + packedByteLength) + " bytes");
+    if (DEBUG) LOG.debug("writing " + (slabs.size() * slabSize + packedByteLength) + " bytes");
     if (inputSize > 0) {
       for (int i = inputSize; i < input.length; i++) {
         input[i] = 0;
@@ -116,7 +117,7 @@ public class ByteBasedBitPackingEncoder {
    * @return total memory allocated
    */
   public long getAllocatedSize() {
-    return (slabs.size() * SLAB_SIZE) + packed.length + input.length * 4;
+    return (slabs.size() * slabSize) + packed.length + input.length * 4;
   }
 
   public String memUsageString(String prefix) {

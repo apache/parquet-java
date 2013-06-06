@@ -18,7 +18,6 @@ package parquet.column.values.dictionary;
 import static parquet.Log.DEBUG;
 
 import java.io.ByteArrayInputStream;
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 
