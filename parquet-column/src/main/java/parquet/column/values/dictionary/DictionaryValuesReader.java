@@ -18,7 +18,6 @@ package parquet.column.values.dictionary;
 import static parquet.Log.DEBUG;
 
 import java.io.ByteArrayInputStream;
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -26,7 +25,7 @@ import parquet.Log;
 import parquet.bytes.BytesUtils;
 import parquet.column.Dictionary;
 import parquet.column.values.ValuesReader;
-import parquet.column.values.rle.RLEDecoder;
+import parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
 
@@ -43,7 +42,7 @@ public class DictionaryValuesReader extends ValuesReader {
 
   private Dictionary dictionary;
 
-  private RLEDecoder decoder;
+  private RunLengthBitPackingHybridDecoder decoder;
 
   public DictionaryValuesReader(Dictionary dictionary) {
     this.dictionary = dictionary;
@@ -56,7 +55,7 @@ public class DictionaryValuesReader extends ValuesReader {
     this.in = new ByteArrayInputStream(page, offset, page.length - offset);
     int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
     if (DEBUG) LOG.debug("bit width " + bitWidth);
-    decoder = new RLEDecoder(bitWidth, in);
+    decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
     return page.length;
   }
 
