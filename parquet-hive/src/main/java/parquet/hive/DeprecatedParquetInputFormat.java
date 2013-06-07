@@ -20,7 +20,6 @@ import java.util.List;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
@@ -38,17 +37,13 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 import org.apache.hadoop.util.ReflectionUtils;
-import org.apache.hadoop.util.StringUtils;
 
+import parquet.hadoop.Footer;
 import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.ParquetInputSplit;
-import parquet.hadoop.metadata.BlockMetaData;
-import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hive.read.MapWritableReadSupport;
-import parquet.schema.MessageType;
-import parquet.schema.Type;
 
 /**
  *
@@ -59,7 +54,7 @@ import parquet.schema.Type;
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  *
  */
-@SuppressWarnings({"unchecked", "rawtypes"})
+@SuppressWarnings({ "unchecked", "rawtypes" })
 public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWritable> {
 
   protected ParquetInputFormat<MapWritable> realInput;
@@ -76,6 +71,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
   protected boolean isSplitable(final FileSystem fs, final Path filename) {
     return false;
   }
+
   private final ManageJobConfig manageJob = new ManageJobConfig();
 
   @Override
@@ -108,8 +104,13 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
 
   @Override
   public org.apache.hadoop.mapred.RecordReader<Void, MapWritable> getRecordReader(final org.apache.hadoop.mapred.InputSplit split,
-          final org.apache.hadoop.mapred.JobConf job, final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
-    return (RecordReader<Void, MapWritable>) new RecordReaderWrapper(realInput, split, job, reporter);
+      final org.apache.hadoop.mapred.JobConf job, final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
+    try {
+      return (RecordReader<Void, MapWritable>) new RecordReaderWrapper(realInput, split, job, reporter);
+    } catch (final InterruptedException e) {
+      e.printStackTrace();
+      return null;
+    }
   }
 
   static class InputSplitWrapper extends FileSplit implements InputSplit {
@@ -194,10 +195,10 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
     private boolean eof = false;
 
     public RecordReaderWrapper(final ParquetInputFormat<MapWritable> newInputFormat, final InputSplit oldSplit, final JobConf oldJobConf, final Reporter reporter)
-            throws IOException {
+        throws IOException, InterruptedException {
 
       splitLen = oldSplit.getLength();
-      ParquetInputSplit split;
+      ParquetInputSplit split = null;
 
       if (oldSplit instanceof InputSplitWrapper) {
         split = ((InputSplitWrapper) oldSplit).getRealSplit();
@@ -205,22 +206,19 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
         final Path finalPath = ((FileSplit) oldSplit).getPath();
         final JobConf cloneJob = manageJob.cloneJobAndInit(oldJobConf, finalPath.getParent());
         final ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(cloneJob, finalPath);
-        final List<BlockMetaData> blocks = parquetMetadata.getBlocks();
-        final FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
-        final List<String> listColumns = (List<String>) StringUtils.getStringCollection(cloneJob.get("columns"));
-        final MessageType fileSchema = fileMetaData.getSchema();
-        MessageType requestedSchemaByUser = fileSchema;
-        final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(cloneJob);
-        if (indexColumnsWanted.isEmpty() == false) {
-          final List<Type> typeList = new ArrayList<Type>();
-          for (final Integer idx : indexColumnsWanted) {
-            typeList.add(fileSchema.getType(listColumns.get(idx)));
+        final List<Footer> footers = new ArrayList<Footer>();
+        footers.add(new Footer(finalPath, parquetMetadata));
+        final List<ParquetInputSplit> splits = newInputFormat.getSplits(cloneJob, footers);
+        for (final ParquetInputSplit newSplit : splits) {
+          if (((FileSplit) oldSplit).getStart() == newSplit.getStart() && oldSplit.getLength() == newSplit.getLength()) {
+            split = newSplit;
+            break;
           }
-          requestedSchemaByUser = new MessageType(fileSchema.getName(), typeList);
         }
 
-        split = new ParquetInputSplit(finalPath, ((FileSplit) oldSplit).getStart(), oldSplit.getLength(), oldSplit.getLocations(), blocks, fileSchema.toString(),
-                requestedSchemaByUser.toString(), fileMetaData.getKeyValueMetaData());
+        if (split == null) {
+          throw new RuntimeException("Could not find corresponding Parquet split");
+        }
 
       } else {
         throw new RuntimeException("Unknown split type");
