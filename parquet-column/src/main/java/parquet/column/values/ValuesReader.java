@@ -57,7 +57,7 @@ public abstract class ValuesReader {
   public abstract int initFromPage(long valueCount, byte[] page, int offset) throws IOException;
 
   /**
-   * usable when the encoding is doctionary based
+   * usable when the encoding is dictionary based
    * @return the id of the next value from the page
    */
   public int readValueDictionaryId() {

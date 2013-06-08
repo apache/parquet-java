@@ -30,7 +30,7 @@ public abstract class ValuesWriter {
 
   /**
    * used to decide if we want to work to the next page
-   * @return the size of the currently buffered data
+   * @return the size of the currently buffered data (in bytes)
    */
   public abstract long getBufferedSize();
 

@@ -15,9 +15,11 @@
  */
 package parquet.bytes;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -126,6 +128,90 @@ public class TestCapacityByteArrayOutputStream {
     validate(capacityByteArrayOutputStream, v * 3);
     // verifying we use less slabs now
     assertTrue("slab count: " + capacityByteArrayOutputStream.getSlabCount(),capacityByteArrayOutputStream.getSlabCount() <= 2);
+  }
+
+  @Test
+  public void testReplaceByte() throws Throwable {
+    // test replace the first value
+    {
+      CapacityByteArrayOutputStream cbaos = new CapacityByteArrayOutputStream(5);
+      cbaos.write(10);
+      assertEquals(0, cbaos.getCurrentIndex());
+      cbaos.setByte(0, (byte) 7);
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      cbaos.writeTo(baos);
+      assertEquals(7, baos.toByteArray()[0]);
+    }
+
+    // test replace value in the first slab
+    {
+      CapacityByteArrayOutputStream cbaos = new CapacityByteArrayOutputStream(5);
+      cbaos.write(10);
+      cbaos.write(13);
+      cbaos.write(15);
+      cbaos.write(17);
+      assertEquals(3, cbaos.getCurrentIndex());
+      cbaos.write(19);
+      cbaos.setByte(3, (byte) 7);
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      cbaos.writeTo(baos);
+      assertArrayEquals(new byte[]{10, 13, 15, 7, 19}, baos.toByteArray());
+    }
+
+    // test replace in *not* the first slab
+    {
+      CapacityByteArrayOutputStream cbaos = new CapacityByteArrayOutputStream(5);
+
+      // advance part way through the 3rd slab
+      for (int i = 0; i < 12; i++) {
+        cbaos.write(100 + i);
+      }
+      assertEquals(11, cbaos.getCurrentIndex());
+
+      cbaos.setByte(6, (byte) 7);
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      cbaos.writeTo(baos);
+      assertArrayEquals(
+        new byte[]{100, 101, 102, 103, 104, 105, 7, 107, 108, 109, 110, 111},
+        baos.toByteArray());
+    }
+
+    // test replace last value of a slab
+    {
+      CapacityByteArrayOutputStream cbaos = new CapacityByteArrayOutputStream(5);
+
+      // advance part way through the 3rd slab
+      for (int i = 0; i < 12; i++) {
+        cbaos.write(100 + i);
+      }
+      assertEquals(11, cbaos.getCurrentIndex());
+
+      cbaos.setByte(9, (byte) 7);
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      cbaos.writeTo(baos);
+      assertArrayEquals(
+        new byte[]{100, 101, 102, 103, 104, 105, 106, 107, 108, 7, 110, 111},
+        baos.toByteArray());
+    }
+
+    // test replace last value
+    {
+      CapacityByteArrayOutputStream cbaos = new CapacityByteArrayOutputStream(5);
+
+      // advance part way through the 3rd slab
+      for (int i = 0; i < 12; i++) {
+        cbaos.write(100 + i);
+      }
+      assertEquals(11, cbaos.getCurrentIndex());
+
+      cbaos.setByte(11, (byte) 7);
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      cbaos.writeTo(baos);
+      assertArrayEquals(
+        new byte[]{100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 7},
+        baos.toByteArray());
+    }
+
   }
 
   private void writeArraysOf3(CapacityByteArrayOutputStream capacityByteArrayOutputStream, int n)

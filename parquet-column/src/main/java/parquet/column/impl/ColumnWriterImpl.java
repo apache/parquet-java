@@ -15,23 +15,23 @@
  */
 package parquet.column.impl;
 
-import static parquet.bytes.BytesInput.concat;
-import static parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
-
 import java.io.IOException;
 
 import parquet.Log;
+import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
 import parquet.column.values.ValuesWriter;
-import parquet.column.values.bitpacking.ByteBitPackingValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
+import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
+
+import static parquet.bytes.BytesInput.concat;
 
 /**
  * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
@@ -60,8 +60,17 @@ final class ColumnWriterImpl implements ColumnWriter {
     this.pageSizeThreshold = pageSizeThreshold;
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
-    repetitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxRepetitionLevel(), BIG_ENDIAN);
-    definitionLevelColumn = new ByteBitPackingValuesWriter(path.getMaxDefinitionLevel(), BIG_ENDIAN);
+
+    // TODO: what is a good initialCapacity?
+    repetitionLevelColumn = new RunLengthBitPackingHybridValuesWriter(
+        BytesUtils.getWidthFromMaxInt(path.getMaxRepetitionLevel()),
+        64 * 1024);
+
+    // TODO: what is a good initialCapacity?
+    definitionLevelColumn = new RunLengthBitPackingHybridValuesWriter(
+        BytesUtils.getWidthFromMaxInt(path.getMaxDefinitionLevel()),
+        64 * 1024);
+
     switch (path.getType()) {
     case BOOLEAN:
       this.dataColumn = new BooleanPlainValuesWriter();
