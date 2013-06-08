@@ -164,10 +164,10 @@ public class DictionaryValuesWriter extends ValuesWriter {
         while (iterator.hasNext()) {
           encoder.writeInt(iterator.next());
         }
-      // encodes the bit width
-      byte[] bytesHeader = new byte[] { (byte)(bitWidth & 0xFF) };
-      BytesInput rleEncodedBytes = encoder.toBytes();
-      if (DEBUG) LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
+        // encodes the bit width
+        byte[] bytesHeader = new byte[] { (byte)bitWidth };
+        BytesInput rleEncodedBytes = encoder.toBytes();
+        if (DEBUG) LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
         return concat(BytesInput.from(bytesHeader), rleEncodedBytes);
       } catch (IOException e) {
         throw new ParquetEncodingException("could not encode the values", e);
