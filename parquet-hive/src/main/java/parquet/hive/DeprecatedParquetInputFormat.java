@@ -38,6 +38,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 import org.apache.hadoop.util.ReflectionUtils;
 
+import parquet.Log;
 import parquet.hadoop.Footer;
 import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.ParquetInputFormat;
@@ -56,6 +57,9 @@ import parquet.hive.read.MapWritableReadSupport;
  */
 @SuppressWarnings({ "unchecked", "rawtypes" })
 public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWritable> {
+
+  private static final Log LOG = Log.getLog(DeprecatedParquetInputFormat.class);
+
 
   protected ParquetInputFormat<MapWritable> realInput;
 
@@ -200,6 +204,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
       splitLen = oldSplit.getLength();
       ParquetInputSplit split = null;
 
+      // TODO: put in InputSplitFactory(oldSplit)
       if (oldSplit instanceof InputSplitWrapper) {
         split = ((InputSplitWrapper) oldSplit).getRealSplit();
       } else if (oldSplit instanceof FileSplit) {
@@ -215,11 +220,6 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
             break;
           }
         }
-
-        if (split == null) {
-          throw new RuntimeException("Could not find corresponding Parquet split");
-        }
-
       } else {
         throw new RuntimeException("Unknown split type");
       }
@@ -247,25 +247,36 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
         }
       };
 
-      try {
-        realReader = newInputFormat.createRecordReader(split, taskContext);
-        realReader.initialize(split, taskContext);
+      if (split != null) {
+        try {
+          realReader = newInputFormat.createRecordReader(split, taskContext);
+          realReader.initialize(split, taskContext);
 
-        // read once to gain access to key and value objects
-        if (realReader.nextKeyValue()) {
-          firstRecord = true;
-          valueObj = realReader.getCurrentValue();
-        } else {
-          eof = true;
+          // read once to gain access to key and value objects
+          if (realReader.nextKeyValue()) {
+            firstRecord = true;
+            valueObj = realReader.getCurrentValue();
+          } else {
+            eof = true;
+          }
+        } catch (final InterruptedException e) {
+          throw new IOException(e);
         }
-      } catch (final InterruptedException e) {
-        throw new IOException(e);
+      } else {
+        LOG.warn("No split found for: [INSERT SOME INFO HERE]");
+        realReader = null;
+        eof = true;
+        if (valueObj == null) {
+          valueObj = new MapWritable();
+        }
       }
     }
 
     @Override
     public void close() throws IOException {
-      realReader.close();
+      if (realReader != null) {
+        realReader.close();
+      }
     }
 
     @Override
@@ -285,10 +296,14 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, MapWrita
 
     @Override
     public float getProgress() throws IOException {
-      try {
-        return realReader.getProgress();
-      } catch (final InterruptedException e) {
-        throw new IOException(e);
+      if (realReader == null) {
+        return 1f;
+      } else {
+        try {
+          return realReader.getProgress();
+        } catch (final InterruptedException e) {
+          throw new IOException(e);
+        }
       }
     }
 
