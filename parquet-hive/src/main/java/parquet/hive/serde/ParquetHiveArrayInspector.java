@@ -21,7 +21,6 @@ import java.util.List;
 import org.apache.hadoop.hive.serde2.objectinspector.ListObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.io.ArrayWritable;
-import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Writable;
 
 public class ParquetHiveArrayInspector implements ListObjectInspector {
@@ -53,7 +52,7 @@ public class ParquetHiveArrayInspector implements ListObjectInspector {
       return null;
     }
 
-    final Writable subObj = ((MapWritable) data).get(ParquetHiveSerDe.ARRAY);
+    final Writable subObj = ((ArrayWritable) data).get()[0];
 
     if (subObj == null) {
       return null;
@@ -68,7 +67,7 @@ public class ParquetHiveArrayInspector implements ListObjectInspector {
       return 0;
     }
 
-    final Writable subObj = ((MapWritable) data).get(ParquetHiveSerDe.ARRAY);
+    final Writable subObj = ((ArrayWritable) data).get()[0];
 
     if (subObj == null) {
       return 0;
@@ -83,7 +82,7 @@ public class ParquetHiveArrayInspector implements ListObjectInspector {
       return null;
     }
 
-    final Writable subObj = ((MapWritable) data).get(ParquetHiveSerDe.ARRAY);
+    final Writable subObj = ((ArrayWritable) data).get()[0];
 
     if (subObj == null) {
       return null;
@@ -98,5 +97,4 @@ public class ParquetHiveArrayInspector implements ListObjectInspector {
 
     return list;
   }
-
 }

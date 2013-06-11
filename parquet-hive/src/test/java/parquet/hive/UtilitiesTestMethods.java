@@ -7,9 +7,9 @@ import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.serde2.io.DoubleWritable;
+import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.MapWritable;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.Writable;
 
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
@@ -36,33 +36,48 @@ public class UtilitiesTestMethods {
     w.end(new HashMap<String, String>());
   }
 
-  static public MapWritable createMap(final Integer custkey, final String name, final String address, final Integer nationkey, final String phone, final Double acctbal, final String mktsegment, final String comment) {
-    final MapWritable map = new MapWritable();
+  public static boolean smartCheckArray(Writable[] arrValue, Writable[] arrExpected, Integer[] arrCheckIndexValues) {
+    int i = 0;
+    for (Integer index : arrCheckIndexValues) {
+      final Writable expectedValue = arrExpected[index];
+      final Writable value = arrValue[i];
+      if (((value == null && expectedValue == null)
+              || (((value != null && expectedValue != null) && (value.equals(expectedValue))))) == false) {
+        return false;
+      }
+      i++;
+    }
 
-    map.put(new Text("c_custkey"), new IntWritable(custkey));
+    return true;
+  }
+
+  static public ArrayWritable createArrayWritable(final Integer custkey, final String name, final String address, final Integer nationkey, final String phone, final Double acctbal, final String mktsegment, final String comment) {
+
+    Writable[] arr = new Writable[8];
+    arr[0] = new IntWritable(custkey);
     if (name != null) {
-      map.put(new Text("c_name"), new BinaryWritable(name));
+      arr[1] = new BinaryWritable(name);
     }
     if (address != null) {
-      map.put(new Text("c_address"), new BinaryWritable(address));
+      arr[2] = new BinaryWritable(address);
     }
     if (nationkey != null) {
-      map.put(new Text("c_nationkey"), new IntWritable(nationkey));
+      arr[3] = new IntWritable(nationkey);
     }
     if (phone != null) {
-      map.put(new Text("c_phone"), new BinaryWritable(phone));
+      arr[4] = new BinaryWritable(phone);
     }
     if (acctbal != null) {
-      map.put(new Text("c_acctbal"), new DoubleWritable(acctbal));
+      arr[5] = new DoubleWritable(acctbal);
     }
     if (mktsegment != null) {
-      map.put(new Text("c_mktsegment"), new BinaryWritable(mktsegment));
+      arr[6] = new BinaryWritable(mktsegment);
     }
     if (comment != null) {
-      map.put(new Text("c_comment"), new BinaryWritable(comment));
+      arr[7] = new BinaryWritable(comment);
     }
 
-    return map;
+    return new ArrayWritable(Writable.class, arr);
   }
 //  public static void readTestFile(Path testFile, Configuration configuration)
 //          throws IOException {
@@ -122,21 +137,6 @@ public class UtilitiesTestMethods {
     final ParquetFileWriter w = new ParquetFileWriter(configuration, schema, file);
     w.start();
     return w;
-  }
-
-  public static boolean mapEquals(final MapWritable first, final MapWritable second) {
-
-    if (first == second) {
-      return true;
-    }
-
-    if (second instanceof MapWritable) {
-      if (first.size() != second.size()) {
-        return false;
-      }
-      return first.entrySet().equals(second.entrySet());
-    }
-    return false;
   }
 
   public static void writeField(final RecordConsumer recordWriter, final int index, final String name, final Object value) {

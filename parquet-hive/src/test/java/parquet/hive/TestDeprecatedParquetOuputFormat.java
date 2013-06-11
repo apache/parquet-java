@@ -25,10 +25,10 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.io.HiveOutputFormat;
+import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.FileInputFormat;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
@@ -43,15 +43,15 @@ import parquet.schema.MessageType;
 
 /**
  *
- *  TestHiveOuputFormat
+ * TestHiveOuputFormat
  *
  *
- *  @author Mickaël Lacour <m.lacour@criteo.com>
+ * @author Mickaël Lacour <m.lacour@criteo.com>
  *
  */
 public class TestDeprecatedParquetOuputFormat extends TestCase {
 
-  Map<Integer, MapWritable> mapData;
+  Map<Integer, ArrayWritable> mapData;
   Configuration conf;
   JobConf job;
   FileSystem fs;
@@ -73,11 +73,11 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
       }
     }
     reporter = Reporter.NULL;
-    mapData = new HashMap<Integer, MapWritable>();
+    mapData = new HashMap<Integer, ArrayWritable>();
     mapData.clear();
     for (int i = 0; i < 1000; i++) {
       // yeah same test as pig one :)
-      mapData.put(i, UtilitiesTestMethods.createMap(i, i % 11 == 0 ? null : "name_" + i, i % 12 == 0 ? null : "add_" + i,
+      mapData.put(i, UtilitiesTestMethods.createArrayWritable(i, i % 11 == 0 ? null : "name_" + i, i % 12 == 0 ? null : "add_" + i,
               i % 13 == 0 ? null : i, i % 14 == 0 ? null : "phone_" + i, i % 15 == 0 ? null : 1.2d * i, i % 16 == 0 ? null : "mktsegment_" + i,
               i % 17 == 0 ? null : "comment_" + i));
     }
@@ -106,7 +106,7 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
             tableProperties,
             reporter);
     // create key/value
-    for (Map.Entry<Integer, MapWritable> entry : mapData.entrySet()) {
+    for (Map.Entry<Integer, ArrayWritable> entry : mapData.entrySet()) {
       recordWriter.write(entry.getValue());
     }
     recordWriter.close(false);
@@ -114,7 +114,6 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
 
     System.out.println("Second part, check if everything is ok");
 
-    // TODO CHECK IF WE CAN READ AND FIND EXACLTY THE SAME VALUE
     checkWrite();
   }
 
@@ -129,7 +128,7 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
     }
 
 
-    final FileInputFormat<Void, MapWritable> format = new DeprecatedParquetInputFormat();
+    final FileInputFormat<Void, ArrayWritable> format = new DeprecatedParquetInputFormat();
     final String[] locations = new String[] {"localhost"};
     final String schemaToString = schema.toString();
     final ParquetInputSplit realSplit = new ParquetInputSplit(new Path(testFile.getAbsolutePath()), 0, size, locations, blocks,
@@ -138,21 +137,26 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
     final DeprecatedParquetInputFormat.InputSplitWrapper splitWrapper = new DeprecatedParquetInputFormat.InputSplitWrapper(realSplit);
 
     // construct the record reader
-    final RecordReader<Void, MapWritable> reader = format.getRecordReader(splitWrapper, job, reporter);
+    final RecordReader<Void, ArrayWritable> reader = format.getRecordReader(splitWrapper, job, reporter);
 
     // create key/value
     final Void key = reader.createKey();
-    final MapWritable value = reader.createValue();
+    final ArrayWritable value = reader.createValue();
 
 
     int count = 0;
     while (reader.next(key, value)) {
       assertTrue(count < mapData.size());
       assertTrue(key == null);
-      final Object obj = value.get(new Text("c_custkey"));
-      final MapWritable expected = mapData.get(((IntWritable) obj).get());
+      final Writable[] arrValue = value.get();
+      final Writable[] writableArr = arrValue;
+      final ArrayWritable expected = mapData.get(((IntWritable) writableArr[0]).get());
+      final Writable[] arrExpected = expected.get();
+      assertEquals(arrValue.length, 8);
 
-      assertTrue(UtilitiesTestMethods.mapEquals(value, expected));
+      final boolean deepEquals = UtilitiesTestMethods.smartCheckArray(arrValue, arrExpected, new Integer[] {0, 1, 2, 3, 4, 5, 6, 7});
+
+      assertTrue(deepEquals);
       count++;
     }
     reader.close();

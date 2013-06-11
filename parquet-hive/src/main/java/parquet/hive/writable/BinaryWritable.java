@@ -24,13 +24,14 @@ import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.Writable;
 
 import parquet.io.api.Binary;
+
 /**
  *
- * A Parquet InputFormat for Hive (with the deprecated package mapred)
+ *   A Parquet InputFormat for Hive (with the deprecated package mapred)
  *
  *
- * @author Mickaël Lacour <m.lacour@criteo.com>
- * @author Rémy Pecqueur <r.pecqueur@criteo.com>
+ *   @author Mickaël Lacour <m.lacour@criteo.com>
+ *   @author Rémy Pecqueur <r.pecqueur@criteo.com>
  *
  */
 public class BinaryWritable implements Writable {
@@ -90,7 +91,7 @@ public class BinaryWritable implements Writable {
       final int thisLen = bytes == null ? 0 : bytes.length;
       final int otherLen = otherBytes == null ? 0 : otherBytes.length;
       return BytesWritable.Comparator.compareBytes(bytes, 0, thisLen,
-          otherBytes, 0, otherLen) == 0;
+              otherBytes, 0, otherLen) == 0;
     }
 
     return false;
@@ -101,4 +102,14 @@ public class BinaryWritable implements Writable {
     return (bytes == null) ? 31 : Arrays.hashCode(bytes);
   }
 
+  @Override
+  public String toString() {
+    byte[] msgObj = getBytes();
+
+    if (msgObj == null) {
+      return super.toString();
+    }
+
+    return new String(msgObj);
+  }
 }

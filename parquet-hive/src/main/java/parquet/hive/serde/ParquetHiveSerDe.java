@@ -53,7 +53,6 @@ import org.apache.hadoop.io.BooleanWritable;
 import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 
@@ -110,7 +109,7 @@ public class ParquetHiveSerDe implements SerDe {
 
     // Create row related objects
     rowTypeInfo = TypeInfoFactory.getStructTypeInfo(columnNames, columnTypes);
-    this.objInspector = new MapWritableObjectInspector((StructTypeInfo) rowTypeInfo);
+    this.objInspector = new ArrayWritableObjectInspector((StructTypeInfo) rowTypeInfo);
 
     // Stats part
     stats = new SerDeStats();
@@ -125,8 +124,8 @@ public class ParquetHiveSerDe implements SerDe {
     lastOperationSerialize = false;
     lastOperationDeserialize = true;
     deserializedSize = 0;
-    if (blob instanceof MapWritable) {
-      deserializedSize = ((MapWritable) blob).size();
+    if (blob instanceof ArrayWritable) {
+      deserializedSize = ((ArrayWritable) blob).get().length;
       return blob;
     } else {
       return null;
@@ -140,7 +139,7 @@ public class ParquetHiveSerDe implements SerDe {
 
   @Override
   public Class<? extends Writable> getSerializedClass() {
-    return MapWritable.class;
+    return ArrayWritable.class;
   }
 
   @Override
@@ -149,37 +148,30 @@ public class ParquetHiveSerDe implements SerDe {
       throw new SerDeException("Cannot serialize " + objInspector.getCategory() + ". Can only serialize a struct");
     }
 
-    final MapWritable serializeData = createStruct(obj, (StructObjectInspector) objInspector, columnNames);
+    final ArrayWritable serializeData = createStruct(obj, (StructObjectInspector) objInspector, columnNames);
 
-    serializedSize = serializeData.size();
+    serializedSize = serializeData.get().length;
     lastOperationSerialize = true;
     lastOperationDeserialize = false;
 
     return serializeData;
   }
 
-  private MapWritable createStruct(final Object obj, final StructObjectInspector inspector, final List<String> colNames) throws SerDeException {
-    final MapWritable result = new MapWritable();
+  private ArrayWritable createStruct(final Object obj, final StructObjectInspector inspector, final List<String> colNames) throws SerDeException {
+
+    final Writable[] arr = new Writable[colNames.size()];
     final List<? extends StructField> fields = inspector.getAllStructFieldRefs();
 
     int i = 0;
 
     for (final StructField field : fields) {
-
       final Object subObj = inspector.getStructFieldData(obj, field);
       final ObjectInspector subInspector = field.getFieldObjectInspector();
 
-      final Writable subResult = createObject(subObj, subInspector);
-
-      // for the 1st lvl, the field names are "_col0" ... and we want the
-      // real names
-      final String colName = (colNames != null) ? colNames.get(i++) : field.getFieldName();
-      if (subResult != null) {
-        result.put(new Text(colName), subResult);
-      }
+      arr[i++] = createObject(subObj, subInspector);
     }
 
-    return result;
+    return new ArrayWritable(Writable.class, arr);
 
   }
 
@@ -187,7 +179,7 @@ public class ParquetHiveSerDe implements SerDe {
     final Map<?, ?> sourceMap = inspector.getMap(obj);
     final ObjectInspector keyInspector = inspector.getMapKeyObjectInspector();
     final ObjectInspector valueInspector = inspector.getMapValueObjectInspector();
-    final List<MapWritable> array = new ArrayList<MapWritable>();
+    final List<ArrayWritable> array = new ArrayList<ArrayWritable>();
 
     if (sourceMap != null) {
       for (final Entry<?, ?> keyValue : sourceMap.entrySet()) {
@@ -195,26 +187,24 @@ public class ParquetHiveSerDe implements SerDe {
         final Writable value = createObject(keyValue.getValue(), valueInspector);
 
         if (key != null) {
-          final MapWritable keyValueWritable = new MapWritable();
-          keyValueWritable.put(MAP_KEY, key);
-          keyValueWritable.put(MAP_VALUE, value);
-          array.add(keyValueWritable);
+          Writable[] arr = new Writable[2];
+          arr[0] = key;
+          arr[1] = value;
+          array.add(new ArrayWritable(Writable.class, arr));
         }
 
       }
     }
 
     if (array.size() > 0) {
-      final ArrayWritable subArray = new ArrayWritable(MapWritable.class, array.toArray(new MapWritable[array.size()]));
-      final MapWritable map = new MapWritable();
-      map.put(MAP, subArray);
-      return map;
+      final ArrayWritable subArray = new ArrayWritable(ArrayWritable.class, array.toArray(new ArrayWritable[array.size()]));
+      return new ArrayWritable(Writable.class, new Writable[] {subArray});
     } else {
       return null;
     }
   }
 
-  private MapWritable createArray(final Object obj, final ListObjectInspector inspector) throws SerDeException {
+  private ArrayWritable createArray(final Object obj, final ListObjectInspector inspector) throws SerDeException {
     final List<?> sourceArray = inspector.getList(obj);
     final ObjectInspector subInspector = inspector.getListElementObjectInspector();
     final List<Writable> array = new ArrayList<Writable>();
@@ -230,9 +220,7 @@ public class ParquetHiveSerDe implements SerDe {
 
     if (array.size() > 0) {
       final ArrayWritable subArray = new ArrayWritable(array.get(0).getClass(), array.toArray(new Writable[array.size()]));
-      final MapWritable map = new MapWritable();
-      map.put(ARRAY, subArray);
-      return map;
+      return new ArrayWritable(Writable.class, new Writable[] {subArray});
     } else {
       return null;
     }

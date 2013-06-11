@@ -11,14 +11,15 @@
  */
 package parquet.hive.write;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.hadoop.hive.serde2.io.DoubleWritable;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.BooleanWritable;
 import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.MapWritable;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Writable;
+import parquet.hive.writable.BigDecimalWritable;
 
 import parquet.hive.writable.BinaryWritable;
 import parquet.io.ParquetEncodingException;
@@ -35,53 +36,53 @@ import parquet.schema.Type;
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  *
  */
-public class MapWritableWriter {
+public class DataWritableWriter {
 
   private final RecordConsumer recordConsumer;
   private final GroupType schema;
 
-  public MapWritableWriter(final RecordConsumer recordConsumer, final GroupType schema) {
+  public DataWritableWriter(final RecordConsumer recordConsumer, final GroupType schema) {
     this.recordConsumer = recordConsumer;
     this.schema = schema;
   }
 
-  public void write(final MapWritable map) {
+  public void write(final ArrayWritable arr) {
 
-    if (map == null) {
+    if (arr == null) {
       return;
     }
     recordConsumer.startMessage();
-    writeMap(map, schema);
+    writeData(arr, schema);
     recordConsumer.endMessage();
   }
 
-  private void writeMap(final MapWritable map, final GroupType type) {
+  private void writeData(final ArrayWritable arr, final GroupType type) {
 
-    if (map == null) {
+    if (arr == null) {
       return;
     }
 
     final int fieldCount = type.getFieldCount();
+    Writable[] values = arr.get();
     for (int field = 0; field < fieldCount; ++field) {
       final Type fieldType = type.getType(field);
       final String fieldName = fieldType.getName();
-      final Writable value = map.get(new Text(fieldName));
+      final Writable value = values[field];
       if (value == null) {
         continue;
       }
       recordConsumer.startField(fieldName, field);
 
-
       if (fieldType.isPrimitive()) {
-
         writePrimitive(value);
       } else {
         recordConsumer.startGroup();
-
-        if (value instanceof MapWritable) {
-          writeMap((MapWritable) value, fieldType.asGroupType());
-        } else if (value instanceof ArrayWritable) {
-          writeArray((ArrayWritable) value, fieldType.asGroupType());
+        if (value instanceof ArrayWritable) {
+          if (fieldType.asGroupType().getRepetition().equals(Type.Repetition.REPEATED)) {
+            writeArray((ArrayWritable) value, fieldType.asGroupType());
+          } else {
+            writeData((ArrayWritable) value, fieldType.asGroupType());
+          }
         } else if (value != null) {
           throw new ParquetEncodingException("This should be an ArrayWritable or MapWritable: " + value);
         }
@@ -107,19 +108,18 @@ public class MapWritableWriter {
       for (int i = 0; i < subValues.length; ++i) {
         final Writable subValue = subValues[i];
         if (subValue != null) {
-
           if (subType.isPrimitive()) {
-            if (subValue instanceof MapWritable) {
-              writePrimitive(((MapWritable) subValue).get(new Text(subType.getName())));
+            if (subValue instanceof ArrayWritable) {
+              writePrimitive(((ArrayWritable) subValue).get()[field]);// 0 ?
             } else {
               writePrimitive(subValue);
             }
           } else {
-            if (!(subValue instanceof MapWritable)) {
-              throw new RuntimeException("This should be a MapWritable: " + subValue);
+            if (!(subValue instanceof ArrayWritable)) {
+              throw new RuntimeException("This should be a ArrayWritable: " + subValue);
             } else {
               recordConsumer.startGroup();
-              writeMap((MapWritable) subValue, subType.asGroupType());
+              writeData((ArrayWritable) subValue, subType.asGroupType());
               recordConsumer.endGroup();
             }
           }
@@ -142,6 +142,10 @@ public class MapWritableWriter {
       recordConsumer.addFloat(((FloatWritable) value).get());
     } else if (value instanceof IntWritable) {
       recordConsumer.addInteger(((IntWritable) value).get());
+    } else if (value instanceof LongWritable) {
+      recordConsumer.addLong(((LongWritable) value).get());
+    } else if (value instanceof BigDecimalWritable) {
+      throw new NotImplementedException("BigDecimal writing not implemented");
     } else if (value instanceof BinaryWritable) {
       recordConsumer.addBinary(Binary.fromByteArray(((BinaryWritable) value).getBytes()));
     } else {

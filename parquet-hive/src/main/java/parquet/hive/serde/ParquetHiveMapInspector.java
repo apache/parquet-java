@@ -21,10 +21,10 @@ import java.util.Map;
 import org.apache.hadoop.hive.serde2.objectinspector.MapObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.io.ArrayWritable;
-import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Writable;
 
 public class ParquetHiveMapInspector implements MapObjectInspector {
+
   private final ObjectInspector keyInspector;
   private final ObjectInspector valueInspector;
 
@@ -63,9 +63,10 @@ public class ParquetHiveMapInspector implements MapObjectInspector {
     final Writable[] mapArray = ((ArrayWritable) data).get();
 
     for (final Writable obj : mapArray) {
-      final MapWritable mapObj = (MapWritable) obj;
-      if (mapObj.get(ParquetHiveSerDe.MAP_KEY) == key) {
-        return mapObj.get(ParquetHiveSerDe.MAP_VALUE);
+      final ArrayWritable mapObj = (ArrayWritable) obj;
+      final Writable[] arr = mapObj.get();
+      if (arr[0] == key) {
+        return arr[1];
       }
     }
 
@@ -83,8 +84,9 @@ public class ParquetHiveMapInspector implements MapObjectInspector {
     final Map<Writable, Writable> map = new HashMap<Writable, Writable>();
 
     for (final Writable obj : mapArray) {
-      final MapWritable mapObj = (MapWritable) obj;
-      map.put(mapObj.get(ParquetHiveSerDe.MAP_KEY), mapObj.get(ParquetHiveSerDe.MAP_VALUE));
+      final ArrayWritable mapObj = (ArrayWritable) obj;
+      final Writable[] arr = mapObj.get();
+      map.put(arr[0], arr[1]);
     }
 
     return map;
@@ -94,5 +96,4 @@ public class ParquetHiveMapInspector implements MapObjectInspector {
   public int getMapSize(final Object data) {
     return ((ArrayWritable) data).get().length;
   }
-
 }

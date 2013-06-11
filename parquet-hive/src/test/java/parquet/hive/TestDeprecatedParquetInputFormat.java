@@ -11,8 +11,11 @@
  */
 package parquet.hive;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,9 +28,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.MapWritable;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.FileInputFormat;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
@@ -56,7 +59,6 @@ import parquet.schema.Type.Repetition;
  * @author Mickaël Lacour <m.lacour@criteo.com>
  *
  */
-// TODO to understand how to write a file :)
 public class TestDeprecatedParquetInputFormat extends TestCase {
 
   Configuration conf;
@@ -66,14 +68,69 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
   File testFile;
   Reporter reporter;
   FSDataOutputStream ds;
-  Map<Integer, MapWritable> mapData;
+  Map<Integer, ArrayWritable> mapData;
 
+  public void testParquetHiveInputFormatWithoutSpecificSchema() throws Exception {
+    final String schemaRequested = "message customer {\n"
+            + "  optional int32 c_custkey;\n"
+            + "  optional binary c_name;\n"
+            + "  optional binary c_address;\n"
+            + "  optional int32 c_nationkey;\n"
+            + "  optional binary c_phone;\n"
+            + "  optional double c_acctbal;\n"
+            + "  optional binary c_mktsegment;\n"
+            + "  optional binary c_comment;\n"
+            + "}";
+    readParquetHiveInputFormat(schemaRequested, new Integer[] {0, 1, 2, 3, 4, 5, 6, 7});
+  }
+
+  public void testParquetHiveInputFormatWithSpecificSchema() throws Exception {
+    final String schemaRequested = "message customer {\n"
+            + "  optional int32 c_custkey;\n"
+            + "  optional binary c_name;\n"
+            + "  optional double c_acctbal;\n"
+            + "  optional binary c_mktsegment;\n"
+            + "  optional binary c_comment;\n"
+            + "}";
+    readParquetHiveInputFormat(schemaRequested, new Integer[] {0, 1, 5, 6, 7});
+  }
+
+  public void testParquetHiveInputFormatWithSpecificSchemaRandomColumn() throws Exception {
+    final String schemaRequested = "message customer {\n"
+            + "  optional int32 c_custkey;\n"
+            + "  optional binary c_mktsegment;\n"
+            + "}";
+    readParquetHiveInputFormat(schemaRequested, new Integer[] {0, 6});
+  }
+
+  public void testParquetHiveInputFormatWithSpecificSchemaFirstColumn() throws Exception {
+    final String schemaRequested = "message customer {\n"
+            + "  optional int32 c_custkey;\n"
+            + "}";
+    readParquetHiveInputFormat(schemaRequested, new Integer[] {0});
+  }
+//  Need to improve the checking because we need the key for the map. // TODO
+//  public void testParquetHiveInputFormatWithSpecificSchemaLastColumn() throws Exception {
+//    final String schemaRequested = "message customer {\n"
+//            + "  optional binary c_comment;\n"
+//            + "}";
+//    readParquetHiveInputFormat(schemaRequested, new Integer[] {7});
+//  }
+
+// Not working yet // TODO
+//  public void testParquetHiveInputFormatWithSpecificSchemaUnknownColumn() throws Exception {
+//    final String schemaRequested = "message customer {\n"
+//            + "  optional int32 unknown;\n"
+//            + "}";
+//    readParquetHiveInputFormat(schemaRequested, new Integer[] {Integer.MIN_VALUE});
+//  }
+//
   @Override
   protected void setUp() throws Exception {
     //
     // create job and filesystem and reporter and such.
     //
-    mapData = new HashMap<Integer, MapWritable>();
+    mapData = new HashMap<Integer, ArrayWritable>();
     conf = new Configuration();
     job = new JobConf(conf);
     fs = FileSystem.getLocal(conf);
@@ -87,13 +144,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
     }
     fs.delete(dir, true);
     FileInputFormat.setInputPaths(job, dir);
-//      mapData.clear();
-//      for (int i = 0; i < 1000; i++) {
-//        // yeah same test as pig one :)
-//        mapData.put(i, UtilitiesTestMethods.createMap(i, i % 11 == 0 ? null : "name_" + i, i % 12 == 0 ? null : "add_" + i,
-//                i % 13 == 0 ? null : i, i % 14 == 0 ? null : "phone_" + i, i % 15 == 0 ? null : 1.2d * i, i % 16 == 0 ? null : "mktsegment_" + i,
-//                i % 17 == 0 ? null : "comment_" + i));
-//      }
+
     // Write data
     writeFile();
 
@@ -112,7 +163,6 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
 
     final MemPageStore pageStore = new MemPageStore();
     final ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 8 * 1024, 8 * 1024, false);
-    //
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
 
     final RecordConsumer recordWriter = columnIO.getRecordWriter(store);
@@ -122,7 +172,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
     for (int i = 0; i < 1000; i++) {
       recordWriter.startMessage();
       // yeah same test as pig one :)
-      mapData.put(i, UtilitiesTestMethods.createMap(i, i % 11 == 0 ? null : "name_" + i, i % 12 == 0 ? null : "add_" + i,
+      mapData.put(i, UtilitiesTestMethods.createArrayWritable(i, i % 11 == 0 ? null : "name_" + i, i % 12 == 0 ? null : "add_" + i,
               i % 13 == 0 ? null : i, i % 14 == 0 ? null : "phone_" + i, i % 15 == 0 ? null : 1.2d * i, i % 16 == 0 ? null : "mktsegment_" + i,
               i % 17 == 0 ? null : "comment_" + i));
       saveData(recordWriter, i, i % 11 == 0 ? null : "name_" + i, i % 12 == 0 ? null : "add_" + i,
@@ -148,8 +198,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
     UtilitiesTestMethods.writeField(recordWriter, 7, "c_comment", comment);
   }
 
-  public void testParquetHiveInputFormat() throws Exception {
-
+  private void readParquetHiveInputFormat(final String schemaRequested, Integer[] arrCheckIndexValues) throws Exception {
     final ParquetMetadata readFooter = ParquetFileReader.readFooter(conf, new Path(testFile.getAbsolutePath()));
     final MessageType schema = readFooter.getFileMetaData().getSchema();
 
@@ -159,39 +208,44 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
       size += block.getTotalByteSize();
     }
 
-
-    final FileInputFormat<Void, MapWritable> format = new DeprecatedParquetInputFormat();
+    final FileInputFormat<Void, ArrayWritable> format = new DeprecatedParquetInputFormat();
     final String[] locations = new String[] {"localhost"};
     final String schemaToString = schema.toString();
+    System.out.println(schemaToString);
+
+    final String specificSchema = schemaRequested == null ? schemaToString : schemaRequested;
+
     final ParquetInputSplit realSplit = new ParquetInputSplit(new Path(testFile.getAbsolutePath()), 0, size, locations, blocks,
-            schemaToString, schemaToString, readFooter.getFileMetaData().getKeyValueMetaData());
+            schemaToString, specificSchema, readFooter.getFileMetaData().getKeyValueMetaData());
 
     final DeprecatedParquetInputFormat.InputSplitWrapper splitWrapper = new InputSplitWrapper(realSplit);
 
     // construct the record reader
-    final RecordReader<Void, MapWritable> reader = format.getRecordReader(splitWrapper, job, reporter);
+    final RecordReader<Void, ArrayWritable> reader = format.getRecordReader(splitWrapper, job, reporter);
 
     // create key/value
     final Void key = reader.createKey();
-    final MapWritable value = reader.createValue();
-
+    final ArrayWritable value = reader.createValue();
 
     int count = 0;
+    final int sizeExpected = mapData.size();
     while (reader.next(key, value)) {
-      assertTrue(count < mapData.size());
+      assertTrue(count < sizeExpected);
       assertTrue(key == null);
-      final Object obj = value.get(new Text("c_custkey"));
-//        System.out.println("obj : " + obj);
-      final MapWritable expected = mapData.get(((IntWritable) obj).get());
-//        System.out.println("expected " + expected.entrySet().toString());
-//        System.out.println("value " + value.entrySet().toString());
+      final Writable[] arrValue = value.get();
+      final Writable[] writableArr = arrValue;
+      final ArrayWritable expected = mapData.get(((IntWritable) writableArr[0]).get());
+      final Writable[] arrExpected = expected.get();
+      assertEquals(arrValue.length, arrCheckIndexValues.length);
 
-      assertTrue(UtilitiesTestMethods.mapEquals(value, expected));
+      final boolean deepEquals = UtilitiesTestMethods.smartCheckArray(arrValue, arrExpected, arrCheckIndexValues);
+
+      assertTrue(deepEquals);
       count++;
     }
-
+    System.out.println("nb lines " + count);
     reader.close();
 
-    assertEquals("Number of lines found and data written don't match", count, mapData.size());
+    assertEquals("Number of lines found and data written don't match", count, sizeExpected);
   }
 }

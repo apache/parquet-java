@@ -35,7 +35,7 @@ public abstract class HiveGroupConverter extends GroupConverter {
       if (type.asGroupType().getRepetition() == Repetition.REPEATED) {
         return new ArrayWritableGroupConverter(type.asGroupType(), parent, index);
       } else {
-        return new MapWritableGroupConverter(type.asGroupType(), parent, index);
+        return new DataWritableGroupConverter(type.asGroupType(), parent, index);
       }
     }
   }

@@ -16,6 +16,7 @@
 package parquet.hive.convert;
 
 import java.util.List;
+import org.apache.commons.lang.NotImplementedException;
 
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
 import org.apache.hadoop.hive.serde2.typeinfo.ListTypeInfo;
@@ -43,6 +44,7 @@ import parquet.schema.Type.Repetition;
  *
  */
 public class HiveSchemaConverter {
+
   private static final Log LOG = Log.getLog(HiveSchemaConverter.class);
 
   static public MessageType convert(final List<String> columnNames, final List<TypeInfo> columnTypes) {
@@ -56,7 +58,7 @@ public class HiveSchemaConverter {
   static private Type[] convertTypes(final List<String> columnNames, final List<TypeInfo> columnTypes) {
     if (columnNames.size() != columnTypes.size()) {
       throw new RuntimeException("Mismatched Hive columns and types. Hive columns names found : " + columnNames
-          + " . And Hive types found : " + columnTypes);
+              + " . And Hive types found : " + columnTypes);
     }
 
     final Type[] types = new Type[columnNames.size()];
@@ -86,8 +88,16 @@ public class HiveSchemaConverter {
         return new PrimitiveType(repetition, PrimitiveTypeName.FLOAT, name);
       } else if (typeInfo.equals(TypeInfoFactory.booleanTypeInfo)) {
         return new PrimitiveType(repetition, PrimitiveTypeName.BOOLEAN, name);
+      } else if (typeInfo.equals(TypeInfoFactory.binaryTypeInfo)) {
+        throw new NotImplementedException("Binary type not implemented");
+      } else if (typeInfo.equals(TypeInfoFactory.timestampTypeInfo)) {
+        throw new NotImplementedException("Timestamp type not implemented");
+      } else if (typeInfo.equals(TypeInfoFactory.voidTypeInfo)) {
+        throw new NotImplementedException("Void type not implemented");
+      } else if (typeInfo.equals(TypeInfoFactory.unknownTypeInfo)) {
+        throw new NotImplementedException("Unknown type not implemented");
       } else {
-        throw new RuntimeException();
+        throw new RuntimeException("Unknown type: " + typeInfo);
       }
     } else if (typeInfo.getCategory().equals(Category.LIST)) {
       return convertArrayType(name, (ListTypeInfo) typeInfo);
@@ -95,6 +105,8 @@ public class HiveSchemaConverter {
       return convertStructType(name, (StructTypeInfo) typeInfo);
     } else if (typeInfo.getCategory().equals(Category.MAP)) {
       return convertMapType(name, (MapTypeInfo) typeInfo);
+    } else if (typeInfo.getCategory().equals(Category.UNION)) {
+      throw new NotImplementedException("Union type not implemented");
     } else {
       throw new RuntimeException("Unknown type: " + typeInfo);
     }

@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.exec.TableScanOperator;
 import org.apache.hadoop.hive.ql.exec.Utilities;
@@ -33,19 +34,22 @@ import org.apache.hadoop.hive.ql.plan.PartitionDesc;
 import org.apache.hadoop.hive.ql.plan.TableScanDesc;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.mapred.JobConf;
+
 /**
  *
- * ManageJobConfig (from Hive file, need to be deleted after) quick workaround to init the job with column needed
+ *   ManageJobConfig (from Hive file, need to be deleted after) quick workaround to init the job with column needed
  *
  *
- * @author Mickaël Lacour <m.lacour@criteo.com>
+ *   @author Mickaël Lacour <m.lacour@criteo.com>
  *
  */
 public class ManageJobConfig {
+
   MapredWork mrwork;
   private Map<String, PartitionDesc> pathToPartitionInfo;
+
   private void init(final JobConf job) {
-    if (mrwork == null) {
+    if (mrwork == null && HiveConf.getVar(job, HiveConf.ConfVars.PLAN).length() > 0) {
       mrwork = Utilities.getMapRedWork(job);
       pathToPartitionInfo = new LinkedHashMap<String, PartitionDesc>();
       for (final Map.Entry<String, PartitionDesc> entry : mrwork.getPathToPartitionInfo().entrySet()) {
@@ -63,7 +67,7 @@ public class ManageJobConfig {
 
   private void pushProjectionsAndFilters(final JobConf jobConf, final String splitPath, final String splitPathWithNoSchema) {
 
-    if(this.mrwork.getPathToAliases() == null) {
+    if (mrwork == null || mrwork.getPathToAliases() == null) {
       return;
     }
 
@@ -84,7 +88,7 @@ public class ManageJobConfig {
 
     for (final String alias : aliases) {
       final Operator<? extends Serializable> op = this.mrwork.getAliasToWork().get(
-          alias);
+              alias);
       if (op != null && op instanceof TableScanOperator) {
         final TableScanOperator tableScan = (TableScanOperator) op;
 
@@ -121,11 +125,11 @@ public class ManageJobConfig {
     final String filterText = filterExpr.getExprString();
     final String filterExprSerialized = Utilities.serializeExpression(filterExpr);
     jobConf.set(
-        TableScanDesc.FILTER_TEXT_CONF_STR,
-        filterText);
+            TableScanDesc.FILTER_TEXT_CONF_STR,
+            filterText);
     jobConf.set(
-        TableScanDesc.FILTER_EXPR_CONF_STR,
-        filterExprSerialized);
+            TableScanDesc.FILTER_EXPR_CONF_STR,
+            filterExprSerialized);
   }
 
   public JobConf cloneJobAndInit(final JobConf jobConf, final Path path) throws IOException {

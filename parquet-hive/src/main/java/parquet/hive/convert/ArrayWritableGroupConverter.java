@@ -41,7 +41,7 @@ public class ArrayWritableGroupConverter extends HiveGroupConverter {
     this.index = index;
 
     if (groupType.getFieldCount() == 2) {
-      final MapWritableGroupConverter intermediateConverter = new MapWritableGroupConverter(groupType, this, 0);
+      final DataWritableGroupConverter intermediateConverter = new DataWritableGroupConverter(groupType, this, 0);
       converters = new Converter[groupType.getFieldCount()];
       converters[0] = getConverterFromDescription(groupType.getType(0), 0, intermediateConverter);
       converters[1] = getConverterFromDescription(groupType.getType(1), 1, intermediateConverter);
