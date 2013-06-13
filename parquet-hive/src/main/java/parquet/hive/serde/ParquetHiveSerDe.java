@@ -69,8 +69,6 @@ import parquet.hive.writable.BinaryWritable;
  */
 public class ParquetHiveSerDe implements SerDe {
 
-  private List<String> columnNames;
-  private List<TypeInfo> columnTypes;
   public static Text MAP_KEY = new Text("key");
   public static Text MAP_VALUE = new Text("value");
   public static Text MAP = new Text("map");
@@ -86,7 +84,8 @@ public class ParquetHiveSerDe implements SerDe {
   final public void initialize(final Configuration conf, final Properties tbl) throws SerDeException {
 
     final TypeInfo rowTypeInfo;
-
+    final List<String> columnNames;
+    final List<TypeInfo> columnTypes;
     // Get column names and sort order
     final String columnNameProperty = tbl.getProperty("columns");
     final String columnTypeProperty = tbl.getProperty("columns.types");
@@ -148,7 +147,7 @@ public class ParquetHiveSerDe implements SerDe {
       throw new SerDeException("Cannot serialize " + objInspector.getCategory() + ". Can only serialize a struct");
     }
 
-    final ArrayWritable serializeData = createStruct(obj, (StructObjectInspector) objInspector, columnNames);
+    final ArrayWritable serializeData = createStruct(obj, (StructObjectInspector) objInspector);
 
     serializedSize = serializeData.get().length;
     lastOperationSerialize = true;
@@ -157,10 +156,10 @@ public class ParquetHiveSerDe implements SerDe {
     return serializeData;
   }
 
-  private ArrayWritable createStruct(final Object obj, final StructObjectInspector inspector, final List<String> colNames) throws SerDeException {
+  private ArrayWritable createStruct(final Object obj, final StructObjectInspector inspector) throws SerDeException {
 
-    final Writable[] arr = new Writable[colNames.size()];
     final List<? extends StructField> fields = inspector.getAllStructFieldRefs();
+    final Writable[] arr = new Writable[fields.size()];
 
     int i = 0;
 
@@ -259,7 +258,7 @@ public class ParquetHiveSerDe implements SerDe {
   private Writable createObject(final Object obj, final ObjectInspector inspector) throws SerDeException {
     switch (inspector.getCategory()) {
     case STRUCT:
-      return createStruct(obj, (StructObjectInspector) inspector, null);
+      return createStruct(obj, (StructObjectInspector) inspector);
     case LIST:
       return createArray(obj, (ListObjectInspector) inspector);
     case MAP:
