@@ -16,8 +16,8 @@
 package parquet.hive.convert;
 
 import java.util.List;
-import org.apache.commons.lang.NotImplementedException;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
 import org.apache.hadoop.hive.serde2.typeinfo.ListTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.MapTypeInfo;
@@ -58,7 +58,7 @@ public class HiveSchemaConverter {
   static private Type[] convertTypes(final List<String> columnNames, final List<TypeInfo> columnTypes) {
     if (columnNames.size() != columnTypes.size()) {
       throw new RuntimeException("Mismatched Hive columns and types. Hive columns names found : " + columnNames
-              + " . And Hive types found : " + columnTypes);
+          + " . And Hive types found : " + columnTypes);
     }
 
     final Type[] types = new Type[columnNames.size()];

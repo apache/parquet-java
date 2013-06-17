@@ -33,7 +33,7 @@ public class ParquetHiveArrayInspector implements ListObjectInspector {
 
   @Override
   public String getTypeName() {
-    return "ParquetHiveArray<" + arrayElementInspector.getTypeName() + ">";
+    return "array<" + arrayElementInspector.getTypeName() + ">";
   }
 
   @Override

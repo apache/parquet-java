@@ -35,7 +35,7 @@ public class ParquetHiveMapInspector implements MapObjectInspector {
 
   @Override
   public String getTypeName() {
-    return "ParquetHiveMap<" + keyInspector.getTypeName() + "," + valueInspector.getTypeName() + ">";
+    return "map<" + keyInspector.getTypeName() + "," + valueInspector.getTypeName() + ">";
   }
 
   @Override

@@ -11,7 +11,6 @@
  */
 package parquet.hive.convert;
 
-import java.lang.Object;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,24 +37,33 @@ public class DataWritableGroupConverter extends HiveGroupConverter {
   private final Object[] currentArr;
   private Writable[] rootMap;
 
-  public DataWritableGroupConverter(final GroupType groupType) {
-    this(groupType, null, 0);
-    final int fieldCount = groupType.getFieldCount();
+  public DataWritableGroupConverter(final GroupType requestedSchema, final GroupType tableSchema) {
+    this(requestedSchema, null, 0, tableSchema);
+    final int fieldCount = tableSchema.getFieldCount();
     this.rootMap = new Writable[fieldCount];
   }
 
   public DataWritableGroupConverter(final GroupType groupType, final HiveGroupConverter parent, final int index) {
-    this.groupType = groupType;
+    this(groupType, parent, index, groupType);
+  }
+
+  public DataWritableGroupConverter(final GroupType selectedGroupType, final HiveGroupConverter parent, final int index, final GroupType containingGroupType) {
+    this.groupType = selectedGroupType;
     this.parent = parent;
     this.index = index;
-    final int fieldCount = this.groupType.getFieldCount();
+    final int totalFieldCount = containingGroupType.getFieldCount();
+    final int selectedFieldCount = selectedGroupType.getFieldCount();
 
-    currentArr = new Object[fieldCount];
-    converters = new Converter[fieldCount];
+    currentArr = new Object[totalFieldCount];
+    converters = new Converter[selectedFieldCount];
 
     int i = 0;
-    for (final Type subtype : this.groupType.getFields()) {
-      converters[i] = getConverterFromDescription(subtype, i, this);
+    for (final Type subtype : selectedGroupType.getFields()) {
+      if (containingGroupType.getFields().contains(subtype)) {
+        converters[i] = getConverterFromDescription(subtype, containingGroupType.getFieldIndex(subtype.getName()), this);
+      } else {
+        throw new RuntimeException("Group type [" + containingGroupType + "] does not contain requested field: " + subtype);
+      }
       ++i;
     }
   }
@@ -69,9 +77,9 @@ public class DataWritableGroupConverter extends HiveGroupConverter {
     }
 
     for (int i = 0; i < currentArr.length; i++) {
-      Object obj = currentArr[i];
+      final Object obj = currentArr[i];
       if (obj instanceof List) {
-        List<Object> objList = (List<Object>) (obj);
+        final List<Object> objList = (List<Object>) (obj);
         final ArrayWritable arr = new ArrayWritable(Writable.class, objList.toArray(new Writable[objList.size()]));
         writableArr[i] = arr;
       } else {
@@ -110,9 +118,9 @@ public class DataWritableGroupConverter extends HiveGroupConverter {
 
     if (currentArr[index] != null) {
 
-      Object obj = currentArr[index];
+      final Object obj = currentArr[index];
       if (obj instanceof List) {
-        List<Writable> list = (List<Writable>) obj;
+        final List<Writable> list = (List<Writable>) obj;
         list.add(value);
       } else {
         throw new RuntimeException("This should be a List: " + obj);

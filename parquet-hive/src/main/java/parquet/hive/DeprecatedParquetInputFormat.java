@@ -23,9 +23,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
-
 import org.apache.hadoop.io.ArrayWritable;
-
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
 import org.apache.hadoop.mapred.Counters;
@@ -51,10 +49,9 @@ import parquet.hadoop.ParquetInputSplit;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.hive.read.DataWritableReadSupport;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
-import parquet.hive.read.DataWritableReadSupport;
-import parquet.schema.MessageTypeParser;
 
 /**
  *
@@ -65,7 +62,7 @@ import parquet.schema.MessageTypeParser;
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  *
  */
-@SuppressWarnings({"unchecked", "rawtypes"})
+@SuppressWarnings({ "unchecked", "rawtypes" })
 public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWritable> {
 
   private static final Log LOG = Log.getLog(DeprecatedParquetInputFormat.class);
@@ -83,6 +80,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
   protected boolean isSplitable(final FileSystem fs, final Path filename) {
     return false;
   }
+
   private final ManageJobConfig manageJob = new ManageJobConfig();
 
   @Override
@@ -104,6 +102,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
 
     for (final org.apache.hadoop.mapreduce.InputSplit split : splits) {
       try {
+        ((ParquetInputSplit) split).getExtraMetadata().put(DataWritableReadSupport.COLUMN_KEY, cloneJobConf.get("columns"));
         resultSplits[i++] = new InputSplitWrapper((ParquetInputSplit) split);
       } catch (final InterruptedException e) {
         return null;
@@ -115,7 +114,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
 
   @Override
   public org.apache.hadoop.mapred.RecordReader<Void, ArrayWritable> getRecordReader(final org.apache.hadoop.mapred.InputSplit split,
-          final org.apache.hadoop.mapred.JobConf job, final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
+      final org.apache.hadoop.mapred.JobConf job, final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
     try {
       return (RecordReader<Void, ArrayWritable>) new RecordReaderWrapper(realInput, split, job, reporter);
     } catch (final InterruptedException e) {
@@ -206,7 +205,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
     private boolean eof = false;
 
     public RecordReaderWrapper(final ParquetInputFormat<ArrayWritable> newInputFormat, final InputSplit oldSplit, final JobConf oldJobConf, final Reporter reporter)
-            throws IOException, InterruptedException {
+        throws IOException, InterruptedException {
 
       splitLen = oldSplit.getLength();
       ParquetInputSplit split = null;
@@ -214,7 +213,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
       // TODO: put in InputSplitFactory(oldSplit)
       if (oldSplit instanceof InputSplitWrapper) {
         split = ((InputSplitWrapper) oldSplit).getRealSplit();
-        sizeSchema = MessageTypeParser.parseMessageType(split.getRequestedSchema()).getColumns().size();
+        sizeSchema = StringUtils.getStringCollection(split.getExtraMetadata().get(DataWritableReadSupport.COLUMN_KEY)).size();
       } else if (oldSplit instanceof FileSplit) {
         final Path finalPath = ((FileSplit) oldSplit).getPath();
         final JobConf cloneJob = manageJob.cloneJobAndInit(oldJobConf, finalPath.getParent());
@@ -232,7 +231,8 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
         final List<BlockMetaData> blocks = parquetMetadata.getBlocks();
         final FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
 
-        final List<String> listColumns = (List<String>) StringUtils.getStringCollection(cloneJob.get("columns"));
+        final List<String> listColumns = ManageJobConfig.getColumns(cloneJob.get("columns"));
+        sizeSchema = listColumns.size();
         final MessageType fileSchema = fileMetaData.getSchema();
         MessageType requestedSchemaByUser = fileSchema;
         final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(cloneJob);
@@ -243,7 +243,6 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
           }
           requestedSchemaByUser = new MessageType(fileSchema.getName(), typeList);
         }
-        sizeSchema = requestedSchemaByUser.getColumns().size();
         final List<BlockMetaData> splitGroup = new ArrayList<BlockMetaData>();
         for (final BlockMetaData block : blocks) {
           final long firstDataPage = block.getColumns().get(0).getFirstDataPageOffset();
@@ -257,7 +256,8 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
           split = null;
         } else {
           split = new ParquetInputSplit(finalPath, hdfsBlock.getOffset(), hdfsBlock.getLength(), hdfsBlock.getHosts(), splitGroup, fileMetaData.getSchema().toString(),
-                  requestedSchemaByUser.toString(), fileMetaData.getKeyValueMetaData());
+              requestedSchemaByUser.toString(), fileMetaData.getKeyValueMetaData());
+          split.getExtraMetadata().put(DataWritableReadSupport.COLUMN_KEY, cloneJob.get("columns"));
         }
 
       } else {
@@ -363,13 +363,14 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
         final ArrayWritable tmpCurValue = realReader.getCurrentValue();
 
         if (value != tmpCurValue) {
-          Writable[] arrValue = value.get();
-          Writable[] arrCurrent = tmpCurValue.get();
+          final Writable[] arrValue = value.get();
+          final Writable[] arrCurrent = tmpCurValue.get();
           if (value != null && arrValue.length == arrCurrent.length) {
             System.arraycopy(arrCurrent, 0, arrValue, 0, arrCurrent.length);
           } else {
             if (arrValue.length != arrCurrent.length) {
-              throw new IOException("DeprecatedParquetHiveInput : size of object differs. Value size :  " + arrValue.length + ", Current Object size : " + arrCurrent.length);
+              throw new IOException("DeprecatedParquetHiveInput : size of object differs. Value size :  " + arrValue.length + ", Current Object size : "
+                  + arrCurrent.length);
             } else {
               throw new IOException("DeprecatedParquetHiveInput can not support RecordReaders that don't return same key & value & value is null");
             }

@@ -20,6 +20,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -34,6 +35,7 @@ import org.apache.hadoop.hive.ql.plan.PartitionDesc;
 import org.apache.hadoop.hive.ql.plan.TableScanDesc;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.util.StringUtils;
 
 /**
  *
@@ -47,6 +49,16 @@ public class ManageJobConfig {
 
   MapredWork mrwork;
   private Map<String, PartitionDesc> pathToPartitionInfo;
+
+  public static List<String> getColumns(final String columns) {
+    final List<String> listColumns = (List<String>) StringUtils.getStringCollection(columns);
+    // Remove virtual Hive columns, hardcoded for compatibility
+    listColumns.remove("INPUT__FILE__NAME");
+    listColumns.remove("BLOCK__OFFSET__INSIDE__FILE");
+    listColumns.remove("ROW__OFFSET__INSIDE__BLOCK");
+    listColumns.remove("RAW__DATA__SIZE");
+    return listColumns;
+  }
 
   private void init(final JobConf job) {
     if (mrwork == null && HiveConf.getVar(job, HiveConf.ConfVars.PLAN).length() > 0) {
@@ -88,7 +100,7 @@ public class ManageJobConfig {
 
     for (final String alias : aliases) {
       final Operator<? extends Serializable> op = this.mrwork.getAliasToWork().get(
-              alias);
+          alias);
       if (op != null && op instanceof TableScanOperator) {
         final TableScanOperator tableScan = (TableScanOperator) op;
 
@@ -125,11 +137,11 @@ public class ManageJobConfig {
     final String filterText = filterExpr.getExprString();
     final String filterExprSerialized = Utilities.serializeExpression(filterExpr);
     jobConf.set(
-            TableScanDesc.FILTER_TEXT_CONF_STR,
-            filterText);
+        TableScanDesc.FILTER_TEXT_CONF_STR,
+        filterText);
     jobConf.set(
-            TableScanDesc.FILTER_EXPR_CONF_STR,
-            filterExprSerialized);
+        TableScanDesc.FILTER_EXPR_CONF_STR,
+        filterExprSerialized);
   }
 
   public JobConf cloneJobAndInit(final JobConf jobConf, final Path path) throws IOException {

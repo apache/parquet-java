@@ -18,13 +18,16 @@ import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.io.ArrayWritable;
-import org.apache.hadoop.util.StringUtils;
 
 import parquet.hadoop.api.ReadSupport;
+import parquet.hive.ManageJobConfig;
 import parquet.hive.convert.DataWritableRecordConverter;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
+import parquet.schema.PrimitiveType;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type;
+import parquet.schema.Type.Repetition;
 
 /**
  *
@@ -37,6 +40,8 @@ import parquet.schema.Type;
  */
 public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
 
+  public static final String COLUMN_KEY = "HIVE_COLUMNS_LIST";
+
   /**
    *
    * It creates the readContext for Parquet side with the requested schema during the init phase.
@@ -48,7 +53,7 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
    */
   @Override
   public parquet.hadoop.api.ReadSupport.ReadContext init(final Configuration configuration, final Map<String, String> keyValueMetaData, final MessageType fileSchema) {
-    final List<String> listColumns = (List<String>) StringUtils.getStringCollection(configuration.get("columns"));
+    final List<String> listColumns = ManageJobConfig.getColumns(configuration.get("columns"));
 
     MessageType requestedSchemaByUser = fileSchema;
     final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(configuration);
@@ -69,14 +74,24 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
    * It creates the hive read support to interpret data from parquet to hive
    *
    * @param configuration // unused
-   * @param keyValueMetaData // unused
+   * @param keyValueMetaData
    * @param fileSchema // unused
-   * @param readContext the one from the init step
+   * @param readContext containing the requested schema
    * @return Record Materialize for Hive
    */
   @Override
   public RecordMaterializer<ArrayWritable> prepareForRead(final Configuration configuration, final Map<String, String> keyValueMetaData, final MessageType fileSchema,
-          final parquet.hadoop.api.ReadSupport.ReadContext readContext) {
-    return new DataWritableRecordConverter(readContext.getRequestedSchema(), keyValueMetaData, fileSchema);
+      final parquet.hadoop.api.ReadSupport.ReadContext readContext) {
+    final List<String> listColumns = ManageJobConfig.getColumns(keyValueMetaData.get(COLUMN_KEY));
+    final List<Type> typeList = new ArrayList<Type>();
+    for (final String col : listColumns) {
+      if (fileSchema.containsField(col)) {
+        typeList.add(fileSchema.getType(col));
+      } else { // dummy type
+        typeList.add(new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, col));
+      }
+    }
+    final MessageType tableSchema = new MessageType("table_schema", typeList);
+    return new DataWritableRecordConverter(readContext.getRequestedSchema(), tableSchema);
   }
 }
