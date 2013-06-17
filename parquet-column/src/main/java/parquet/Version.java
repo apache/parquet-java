@@ -31,8 +31,9 @@ import java.util.jar.Manifest;
  */
 public class Version {
   private static final Log LOG = Log.getLog(Version.class);
-
-  public static final String FULL_VERSION = readVersion();
+  
+  public static final String VERSION_NUMBER = readVersionNumber();
+  public static final String FULL_VERSION = readFullVersion();
 
   private static String getJarPath() {
     final URL versionClassBaseUrl = Version.class.getResource("");
@@ -57,10 +58,9 @@ public class Version {
     }
     return null;
   }
-
-  private static String readVersion() {
+  
+  private static String readVersionNumber() {
     String version = null;
-    String sha = null;
     try {
       String jarPath = getJarPath();
       if (jarPath != null) {
@@ -70,6 +70,18 @@ public class Version {
           properties.load(pomPropertiesUrl.openStream());
           version = properties.getProperty("version");
         }
+      }
+    } catch (Exception e) {
+      LOG.warn("can't read from META-INF", e);
+    }
+    return version;
+  }
+
+  private static String readFullVersion() {
+    String sha = null;
+    try {
+      String jarPath = getJarPath();
+      if (jarPath != null) {
         URL manifestUrl = getResourceFromJar(jarPath, "META-INF/MANIFEST.MF");
         if (manifestUrl != null) {
           Manifest manifest = new Manifest(manifestUrl.openStream());
@@ -79,7 +91,7 @@ public class Version {
     } catch (Exception e) {
       LOG.warn("can't read from META-INF", e);
     }
-    return "parquet-mr" + (version != null ? " version " + version : "") + (sha != null ? " (build " + sha + ")" : "");
+    return "parquet-mr" + (VERSION_NUMBER != null ? " version " + VERSION_NUMBER : "") + (sha != null ? " (build " + sha + ")" : "");
   }
 
   public static void main(String[] args) {
