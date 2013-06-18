@@ -213,9 +213,6 @@ public class TupleConverter extends GroupConverter {
 
     @Override
     public void setDictionary(Dictionary dictionary) {
-      if (this.dict!=null) {
-        throw new ParquetDecodingException("dictionary can be set only once");
-      }
       dict = new String[dictionary.getMaxId() + 1];
       for (int i = 0; i <= dictionary.getMaxId(); i++) {
         dict[i] = dictionary.decodeToBinary(i).toStringUsingUTF8();
