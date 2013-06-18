@@ -17,7 +17,8 @@ import static parquet.Log.DEBUG;
  * according to the following grammar:
  *
  * <code>
- * encoded-block := <run>*
+ * rle-bit-packed-hybrid: <length> <run>*
+ * length := length of this column in bytes, stored as 4 bytes little endian
  * run := <bit-packed-run> | <rle-run>
  * bit-packed-run := <bit-packed-header> <bit-packed-values>
  * bit-packed-header := varint-encode(<bit-pack-count> << 1 | 1)
@@ -29,6 +30,8 @@ import static parquet.Log.DEBUG;
  * repeated-value := value that is repeated, using a fixed-width of round-up-to-next-byte(bit-width)
  * </code>
  *
+ * NOTE: the <length> in the above grammar has already been read by
+ *       {@link RunLengthBitPackingHybridValuesReader}
  *
  * Only supports values >= 0 // TODO: is that ok? Should we make a signed version?
  *

@@ -5,7 +5,9 @@ import java.io.IOException;
 
 import parquet.Ints;
 import parquet.Preconditions;
+import parquet.bytes.BytesUtils;
 import parquet.column.values.ValuesReader;
+import parquet.io.ParquetDecodingException;
 
 /**
  * This ValuesReader does all the reading in {@link #initFromPage}
@@ -15,9 +17,7 @@ import parquet.column.values.ValuesReader;
  */
 public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
   private final int bitWidth;
-
-  private int[] values;
-  private int valueIndex;
+  private RunLengthBitPackingHybridDecoder decoder;
 
   public RunLengthBitPackingHybridValuesReader(int bitWidth) {
     this.bitWidth = bitWidth;
@@ -29,51 +29,27 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
     //       we should address this here and elsewhere
     int valueCount = Ints.checkedCast(valueCountL);
 
-    PosReportingByteArrayInputStream in =
-        new PosReportingByteArrayInputStream(page, offset, page.length);
-
-    RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
-
     if (valueCount <= 0) {
       // readInteger() will never be called,
       // there is no data to read
       return offset;
     }
 
-    values = new int[valueCount];
+    ByteArrayInputStream in = new ByteArrayInputStream(page, offset, page.length);
+    int length = BytesUtils.readIntLittleEndian(in);
 
-    // decode all the values
-    for (int i = 0; i < valueCount; i++) {
-      values[i] = decoder.readInt();
-    }
+    decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
 
-    valueIndex = 0;
-    // in has been keeping track of its position in page
-    return in.getPos();
+    // 4 is for the length which is stored as 4 bytes little endian
+    return offset + length + 4;
   }
 
   @Override
   public int readInteger() {
-    int ret = values[valueIndex];
-    valueIndex++;
-    return ret;
-  }
-
-  /**
-   * A regular {@link ByteArrayInputStream}
-   * that exposes its position in buf
-   */
-  static class PosReportingByteArrayInputStream extends ByteArrayInputStream {
-    public PosReportingByteArrayInputStream(byte[] buf) {
-      super(buf);
-    }
-
-    public PosReportingByteArrayInputStream(byte[] buf, int offset, int length) {
-      super(buf, offset, length);
-    }
-
-    public int getPos() {
-      return pos;
+    try {
+      return decoder.readInt();
+    } catch (IOException e) {
+      throw new ParquetDecodingException(e);
     }
   }
 }
