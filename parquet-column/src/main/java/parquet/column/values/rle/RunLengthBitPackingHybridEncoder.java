@@ -16,9 +16,11 @@ import static parquet.Log.DEBUG;
  * Encodes values using a combination of run length encoding and bit packing,
  * according to the following grammar:
  *
- * <code>
- * rle-bit-packed-hybrid: <length> <run>*
- * length := length of this column in bytes, stored as 4 bytes little endian
+ * <pre>
+ * {@code
+ * rle-bit-packed-hybrid: <length> <encoded-data>
+ * length := length of the <encoded-data> in bytes stored as 4 bytes little endian
+ * encoded-data := <run>*
  * run := <bit-packed-run> | <rle-run>
  * bit-packed-run := <bit-packed-header> <bit-packed-values>
  * bit-packed-header := varint-encode(<bit-pack-count> << 1 | 1)
@@ -28,11 +30,12 @@ import static parquet.Log.DEBUG;
  * rle-run := <rle-header> <repeated-value>
  * rle-header := varint-encode( (number of times repeated) << 1)
  * repeated-value := value that is repeated, using a fixed-width of round-up-to-next-byte(bit-width)
- * </code>
- *
- * NOTE: the <length> in the above grammar has already been read by
- *       {@link RunLengthBitPackingHybridValuesReader}
- *
+ * }
+ * </pre>
+ * NOTE: this class is only responsible for creating and returning the {@code <encoded-data>}
+ *       portion of the above grammar. The {@code <length>} portion is done by
+ *       {@link RunLengthBitPackingHybridValuesWriter}
+ * <p>
  * Only supports values >= 0 // TODO: is that ok? Should we make a signed version?
  *
  * @author Alex Levenson
