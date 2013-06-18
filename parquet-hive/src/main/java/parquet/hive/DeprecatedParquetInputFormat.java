@@ -17,16 +17,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
-import org.apache.hadoop.mapred.Counters;
 import org.apache.hadoop.mapred.FileInputFormat;
 import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.InputSplit;
@@ -34,25 +31,20 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.InputFormat;
-import org.apache.hadoop.mapreduce.JobContext;
-import org.apache.hadoop.mapreduce.StatusReporter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
-import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 import org.apache.hadoop.util.ReflectionUtils;
-import org.apache.hadoop.util.StringUtils;
 
 import parquet.Log;
 import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.ParquetInputSplit;
+import parquet.hadoop.api.ReadSupport.ReadContext;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
-import parquet.hive.read.DataWritableReadSupport;
 import parquet.hadoop.util.ContextUtil;
-import parquet.schema.MessageType;
-import parquet.schema.Type;
+import parquet.hive.read.DataWritableReadSupport;
 
 /**
  *
@@ -63,7 +55,6 @@ import parquet.schema.Type;
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  *
  */
-@SuppressWarnings({ "unchecked", "rawtypes" })
 public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWritable> {
 
   private static final Log LOG = Log.getLog(DeprecatedParquetInputFormat.class);
@@ -81,7 +72,6 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
   protected boolean isSplitable(final FileSystem fs, final Path filename) {
     return false;
   }
-
   private final ManageJobConfig manageJob = new ManageJobConfig();
 
   @Override
@@ -104,7 +94,6 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
 
     for (final org.apache.hadoop.mapreduce.InputSplit split : splits) {
       try {
-        ((ParquetInputSplit) split).getExtraMetadata().put(DataWritableReadSupport.COLUMN_KEY, cloneJobConf.get("columns"));
         resultSplits[i++] = new InputSplitWrapper((ParquetInputSplit) split);
       } catch (final InterruptedException e) {
         return null;
@@ -205,67 +194,13 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
     private final ManageJobConfig manageJob = new ManageJobConfig();
     private boolean firstRecord = false;
     private boolean eof = false;
+    private int schemaSize;
 
     public RecordReaderWrapper(final ParquetInputFormat<ArrayWritable> newInputFormat, final InputSplit oldSplit, final JobConf oldJobConf, final Reporter reporter)
             throws IOException, InterruptedException {
 
       splitLen = oldSplit.getLength();
-      ParquetInputSplit split = null;
-      final int sizeSchema;
-      // TODO: put in InputSplitFactory(oldSplit)
-      if (oldSplit instanceof InputSplitWrapper) {
-        split = ((InputSplitWrapper) oldSplit).getRealSplit();
-        sizeSchema = StringUtils.getStringCollection(split.getExtraMetadata().get(DataWritableReadSupport.COLUMN_KEY)).size();
-      } else if (oldSplit instanceof FileSplit) {
-        final Path finalPath = ((FileSplit) oldSplit).getPath();
-        final JobConf cloneJob = manageJob.cloneJobAndInit(oldJobConf, finalPath.getParent());
-
-        final FileSystem fs = FileSystem.get(cloneJob);
-        final FileStatus status = fs.getFileStatus(finalPath);
-
-        final BlockLocation[] hdfsBlocks = fs.getFileBlockLocations(status, ((FileSplit) oldSplit).getStart(), oldSplit.getLength());
-        if (hdfsBlocks.length != 1) {
-          throw new RuntimeException("Should have exactly 1 HDFS block per split, got: " + hdfsBlocks.length);
-        }
-        final BlockLocation hdfsBlock = hdfsBlocks[0];
-
-        final ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(cloneJob, finalPath);
-        final List<BlockMetaData> blocks = parquetMetadata.getBlocks();
-        final FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
-        final String ColumnsStr = cloneJob.get("columns");
-
-        final List<String> listColumns = ManageJobConfig.getColumns(ColumnsStr);
-        sizeSchema = listColumns.size();
-        final MessageType fileSchema = fileMetaData.getSchema();
-        MessageType requestedSchemaByUser = fileSchema;
-        final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(cloneJob);
-        if (indexColumnsWanted.isEmpty() == false) {
-          final List<Type> typeList = new ArrayList<Type>();
-          for (final Integer idx : indexColumnsWanted) {
-            typeList.add(fileSchema.getType(listColumns.get(idx)));
-          }
-          requestedSchemaByUser = new MessageType(fileSchema.getName(), typeList);
-        }
-        final List<BlockMetaData> splitGroup = new ArrayList<BlockMetaData>();
-        for (final BlockMetaData block : blocks) {
-          final long firstDataPage = block.getColumns().get(0).getFirstDataPageOffset();
-          if (firstDataPage >= hdfsBlock.getOffset() && firstDataPage < hdfsBlock.getOffset() + hdfsBlock.getLength()) {
-            splitGroup.add(block);
-          }
-        }
-
-        if (splitGroup.isEmpty()) {
-          LOG.warn("Skipping split, could not find row group in: " + (FileSplit) oldSplit);
-          split = null;
-        } else {
-          split = new ParquetInputSplit(finalPath, hdfsBlock.getOffset(), hdfsBlock.getLength(), hdfsBlock.getHosts(), splitGroup, fileMetaData.getSchema().toString(),
-                  requestedSchemaByUser.toString(), fileMetaData.getKeyValueMetaData());
-          split.getExtraMetadata().put(DataWritableReadSupport.COLUMN_KEY, ColumnsStr);
-        }
-
-      } else {
-        throw new RuntimeException("Unknown split type");
-      }
+      final ParquetInputSplit split = getSplit(oldSplit, oldJobConf);
 
       TaskAttemptID taskAttemptID = TaskAttemptID.forName(oldJobConf.get("mapred.task.id"));
       if (taskAttemptID == null) {
@@ -293,8 +228,8 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
       } else {
         realReader = null;
         eof = true;
-        if (valueObj == null) {
-          valueObj = new ArrayWritable(Writable.class, new Writable[sizeSchema]);
+        if (valueObj == null) { // Should initialize the value for createValue
+          valueObj = new ArrayWritable(Writable.class, new Writable[schemaSize]);
         }
       }
     }
@@ -358,7 +293,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
           } else {
             if (arrValue.length != arrCurrent.length) {
               throw new IOException("DeprecatedParquetHiveInput : size of object differs. Value size :  " + arrValue.length + ", Current Object size : "
-                  + arrCurrent.length);
+                      + arrCurrent.length);
             } else {
               throw new IOException("DeprecatedParquetHiveInput can not support RecordReaders that don't return same key & value & value is null");
             }
@@ -370,57 +305,53 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
         throw new IOException(e);
       }
     }
-  }
 
-  /**
-   * A reporter that works with both mapred and mapreduce APIs.
-   */
-  private static class ReporterWrapper extends StatusReporter implements Reporter {
+    private ParquetInputSplit getSplit(final InputSplit oldSplit, final JobConf conf) throws IOException {
+      ParquetInputSplit split;
 
-    private final Reporter wrappedReporter;
+      if (oldSplit instanceof InputSplitWrapper) {
+        split = ((InputSplitWrapper) oldSplit).getRealSplit();
+      } else if (oldSplit instanceof FileSplit) {
+        final Path finalPath = ((FileSplit) oldSplit).getPath();
+        final JobConf cloneJob = manageJob.cloneJobAndInit(conf, finalPath.getParent());
 
-    public ReporterWrapper(final Reporter reporter) {
-      wrappedReporter = reporter;
-    }
+        final FileSystem fs = FileSystem.get(cloneJob);
+        final FileStatus status = fs.getFileStatus(finalPath);
 
-    @Override
-    public Counters.Counter getCounter(final Enum<?> anEnum) {
-      return wrappedReporter.getCounter(anEnum);
-    }
+        final BlockLocation[] hdfsBlocks = fs.getFileBlockLocations(status, ((FileSplit) oldSplit).getStart(), oldSplit.getLength());
+        if (hdfsBlocks.length != 1) {
+          throw new RuntimeException("Should have exactly 1 HDFS block per split, got: " + hdfsBlocks.length);
+        }
+        final BlockLocation hdfsBlock = hdfsBlocks[0];
 
-    @Override
-    public Counters.Counter getCounter(final String s, final String s1) {
-      return wrappedReporter.getCounter(s, s1);
-    }
+        final ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(cloneJob, finalPath);
+        final List<BlockMetaData> blocks = parquetMetadata.getBlocks();
+        final FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
 
-    @Override
-    public void incrCounter(final Enum<?> anEnum, final long l) {
-      wrappedReporter.incrCounter(anEnum, l);
-    }
+        final ReadContext readContext = new DataWritableReadSupport().init(cloneJob, fileMetaData.getKeyValueMetaData(), fileMetaData.getSchema());
+        schemaSize = ManageJobConfig.getColumns(readContext.getReadSupportMetadata().get(DataWritableReadSupport.COLUMN_KEY)).size();
 
-    @Override
-    public void incrCounter(final String s, final String s1, final long l) {
-      wrappedReporter.incrCounter(s, s1, l);
-    }
+        final List<BlockMetaData> splitGroup = new ArrayList<BlockMetaData>();
+        for (final BlockMetaData block : blocks) {
+          final long firstDataPage = block.getColumns().get(0).getFirstDataPageOffset();
+          if (firstDataPage >= hdfsBlock.getOffset() && firstDataPage < hdfsBlock.getOffset() + hdfsBlock.getLength()) {
+            splitGroup.add(block);
+          }
+        }
 
-    @Override
-    public InputSplit getInputSplit() throws UnsupportedOperationException {
-      return wrappedReporter.getInputSplit();
-    }
+        if (splitGroup.isEmpty()) {
+          LOG.warn("Skipping split, could not find row group in: " + (FileSplit) oldSplit);
+          split = null;
+        } else {
+          split = new ParquetInputSplit(finalPath, hdfsBlock.getOffset(), hdfsBlock.getLength(), hdfsBlock.getHosts(), splitGroup, fileMetaData.getSchema().toString(),
+                  readContext.getRequestedSchema().toString(), fileMetaData.getKeyValueMetaData(), readContext.getReadSupportMetadata());
+        }
 
-    @Override
-    public void progress() {
-      wrappedReporter.progress();
-    }
+      } else {
+        throw new RuntimeException("Unknown split type");
+      }
 
-    @Override
-    public void setStatus(final String s) {
-      wrappedReporter.setStatus(s);
-    }
-
-    @Override
-    public float getProgress() {
-      return wrappedReporter.getProgress();
+      return split;
     }
   }
 }

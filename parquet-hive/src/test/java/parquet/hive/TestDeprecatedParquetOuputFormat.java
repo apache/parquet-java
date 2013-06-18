@@ -1,12 +1,12 @@
 /**
- *  Copyright 2013 Criteo.
+ * Copyright 2013 Criteo.
  *
- *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License
  * at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
  * OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
  */
 package parquet.hive;
@@ -133,10 +133,10 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
     final String[] locations = new String[] {"localhost"};
     final String schemaToString = schema.toString();
     final String columnsStr = "c_custkey,c_name,c_address,c_nationkey,c_phone,c_acctbal,c_mktsegment,c_comment";
-    final Map<String, String> keyValueMetaData = readFooter.getFileMetaData().getKeyValueMetaData();
-    keyValueMetaData.put(DataWritableReadSupport.COLUMN_KEY, columnsStr);
+    final Map<String, String> readSupportMetaData = new HashMap<String, String>();
+    readSupportMetaData.put(DataWritableReadSupport.COLUMN_KEY, columnsStr);
     final ParquetInputSplit realSplit = new ParquetInputSplit(new Path(testFile.getAbsolutePath()), 0, size, locations, blocks,
-            schemaToString, schemaToString, keyValueMetaData);
+            schemaToString, schemaToString, readFooter.getFileMetaData().getKeyValueMetaData(), readSupportMetaData);
 
     final DeprecatedParquetInputFormat.InputSplitWrapper splitWrapper = new DeprecatedParquetInputFormat.InputSplitWrapper(realSplit);
 

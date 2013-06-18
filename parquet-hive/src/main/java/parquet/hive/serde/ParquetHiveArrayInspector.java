@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
 import org.apache.hadoop.hive.serde2.objectinspector.SettableListObjectInspector;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Writable;
@@ -100,8 +99,8 @@ public class ParquetHiveArrayInspector implements SettableListObjectInspector {
   }
 
   @Override
-  public Object create(int size) {
-    ArrayList<Object> result = new ArrayList<Object>(size);
+  public Object create(final int size) {
+    final ArrayList<Object> result = new ArrayList<Object>(size);
     for (int i = 0; i < size; ++i) {
       result.add(null);
     }
@@ -109,8 +108,8 @@ public class ParquetHiveArrayInspector implements SettableListObjectInspector {
   }
 
   @Override
-  public Object set(Object list, int index, Object element) {
-    List l = (List) list;
+  public Object set(final Object list, final int index, final Object element) {
+    final List l = (List) list;
     for (int i = l.size(); i < index + 1; ++i) {
       l.add(null);
     }
@@ -119,19 +118,19 @@ public class ParquetHiveArrayInspector implements SettableListObjectInspector {
   }
 
   @Override
-  public Object resize(Object list, int newSize) {
+  public Object resize(final Object list, final int newSize) {
     ((ArrayList) list).ensureCapacity(newSize);
     return list;
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (o == null || o.getClass() != getClass()) {
       return false;
     } else if (o == this) {
       return true;
     } else {
-      ObjectInspector other = ((ParquetHiveArrayInspector) o).arrayElementInspector;
+      final ObjectInspector other = ((ParquetHiveArrayInspector) o).arrayElementInspector;
       return other.equals(arrayElementInspector);
     }
   }

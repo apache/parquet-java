@@ -143,7 +143,7 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
 
     if (data != null && data instanceof ArrayWritable) {
       final ArrayWritable arr = (ArrayWritable) data;
-      Object[] arrWritable = arr.get();
+      final Object[] arrWritable = arr.get();
       result = new ArrayList<Object>(Arrays.asList(arrWritable));
     }
     return result;
@@ -209,7 +209,7 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
     }
 
     @Override
-    public Object set(Object o, Text text) {
+    public Object set(final Object o, final Text text) {
       final BinaryWritable binaryWritable = new BinaryWritable();
       if (text != null) {
         binaryWritable.setBytes(text.getBytes());
@@ -218,7 +218,7 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
     }
 
     @Override
-    public Object set(Object o, String string) {
+    public Object set(final Object o, final String string) {
       if (string != null) {
         return new BinaryWritable(string);
       }
@@ -226,7 +226,7 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
     }
 
     @Override
-    public Object create(Text text) {
+    public Object create(final Text text) {
       if (text == null) {
         return null;
       }
@@ -234,7 +234,7 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
     }
 
     @Override
-    public Object create(String string) {
+    public Object create(final String string) {
       return string;
     }
   }

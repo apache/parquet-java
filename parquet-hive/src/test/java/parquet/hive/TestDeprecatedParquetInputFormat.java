@@ -218,10 +218,10 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
 
     // Set the configuration parameters
     final String columnsStr = "c_custkey,c_name,c_address,c_nationkey,c_phone,c_acctbal,c_mktsegment,c_comment";
-    final Map<String, String> keyValueMetaData = readFooter.getFileMetaData().getKeyValueMetaData();
-    keyValueMetaData.put(DataWritableReadSupport.COLUMN_KEY, columnsStr);
+    final Map<String, String> readSupportMetaData = new HashMap<String, String>();
+    readSupportMetaData.put(DataWritableReadSupport.COLUMN_KEY, columnsStr);
     final ParquetInputSplit realSplit = new ParquetInputSplit(new Path(testFile.getAbsolutePath()), 0, size, locations, blocks,
-            schemaToString, specificSchema, keyValueMetaData);
+            schemaToString, specificSchema, readFooter.getFileMetaData().getKeyValueMetaData(), readSupportMetaData);
 
     final DeprecatedParquetInputFormat.InputSplitWrapper splitWrapper = new InputSplitWrapper(realSplit);
 

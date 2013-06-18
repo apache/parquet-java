@@ -30,13 +30,12 @@ import org.apache.hadoop.mapred.RecordWriter;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.OutputFormat;
-import org.apache.hadoop.mapreduce.StatusReporter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
-import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 import org.apache.hadoop.util.Progressable;
 
 import parquet.hadoop.ParquetOutputFormat;
+import parquet.hadoop.util.ContextUtil;
 import parquet.hive.convert.HiveSchemaConverter;
 import parquet.hive.write.DataWritableWriteSupport;
 
@@ -74,7 +73,7 @@ public class DeprecatedParquetOutputFormat extends FileOutputFormat<Void, ArrayW
 
   @Override
   public org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter getHiveRecordWriter(final JobConf jc, final Path finalOutPath, final Class<? extends Writable> valueClass,
-          final boolean isCompressed, final Properties tableProperties, final Progressable progress) throws IOException {
+      final boolean isCompressed, final Properties tableProperties, final Progressable progress) throws IOException {
     // TODO find out if we can overwrite any _col0 column names here
     final String columnNameProperty = tableProperties.getProperty("columns");
     final String columnTypeProperty = tableProperties.getProperty("columns.types");
@@ -99,28 +98,17 @@ public class DeprecatedParquetOutputFormat extends FileOutputFormat<Void, ArrayW
 
   private static class RecordWriterWrapper implements RecordWriter<Void, ArrayWritable>, org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter {
 
-    private org.apache.hadoop.mapreduce.RecordWriter<Void, ArrayWritable> realWriter;
+    private final org.apache.hadoop.mapreduce.RecordWriter<Void, ArrayWritable> realWriter;
     private TaskAttemptContext taskContext;
 
     RecordWriterWrapper(final OutputFormat<Void, ArrayWritable> realOutputFormat, final JobConf jobConf, final String name, final Progressable progress) throws IOException {
       try {
         // create a TaskInputOutputContext
-        taskContext = new TaskInputOutputContext(jobConf, TaskAttemptID.forName(jobConf.get("mapred.task.id")), null, null, (StatusReporter) progress) {
-          @Override
-          public Object getCurrentKey() throws IOException, InterruptedException {
-            throw new RuntimeException("not implemented");
-          }
-
-          @Override
-          public Object getCurrentValue() throws IOException, InterruptedException {
-            throw new RuntimeException("not implemented");
-          }
-
-          @Override
-          public boolean nextKeyValue() throws IOException, InterruptedException {
-            throw new RuntimeException("not implemented");
-          }
-        };
+        TaskAttemptID taskAttemptID = TaskAttemptID.forName(jobConf.get("mapred.task.id"));
+        if (taskAttemptID == null) {
+          taskAttemptID = new TaskAttemptID();
+        }
+        taskContext = ContextUtil.newTaskAttemptContext(jobConf, taskAttemptID);
 
         realWriter = (org.apache.hadoop.mapreduce.RecordWriter<Void, ArrayWritable>) ((ParquetOutputFormat) realOutputFormat).getRecordWriter(taskContext, new Path(name));
       } catch (final InterruptedException e) {
