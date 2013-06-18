@@ -27,8 +27,10 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import parquet.hadoop.api.ReadSupport;
+import parquet.hadoop.api.ReadSupport.ReadContext;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.FileMetaData;
+import parquet.schema.MessageType;
 
 /**
  * Read records from a Parquet file.
@@ -39,7 +41,6 @@ public class ParquetReader<T> implements Closeable {
 
   public ParquetReader(Path file, ReadSupport<T> readSupport) throws IOException {
     Configuration conf = new Configuration();
-    reader = new ParquetRecordReader<T>(readSupport);
 
     FileSystem fs = FileSystem.get(conf);
     List<FileStatus> statuses = Arrays.asList(fs.listStatus(file));
@@ -48,10 +49,18 @@ public class ParquetReader<T> implements Closeable {
 
     List<BlockMetaData> blocks = footer.getParquetMetadata().getBlocks();
     FileMetaData fileMetaData = footer.getParquetMetadata().getFileMetaData();
-    String schema = fileMetaData.getSchema().toString();
+    // TODO: this assumes all files have the same schema
+    MessageType schema = fileMetaData.getSchema();
     Map<String, String> extraMetadata = fileMetaData.getKeyValueMetaData();
-    ParquetInputSplit inputSplit = new ParquetInputSplit(file, 0, 0, null, blocks,
-        schema, schema, extraMetadata);
+    final ReadContext readContext = readSupport.init(conf, extraMetadata, schema);
+    reader = new ParquetRecordReader<T>(readSupport);
+    ParquetInputSplit inputSplit =
+        new ParquetInputSplit(
+            file, 0, 0, null, blocks,
+            schema.toString(),
+            readContext.getRequestedSchema().toString(),
+            extraMetadata,
+            readContext.getReadSupportMetadata());
     reader.initialize(inputSplit, conf);
   }
 

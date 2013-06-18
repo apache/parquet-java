@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
@@ -147,14 +148,20 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @param hdfsBlocks hdfs blocks
    * @param fileStatus the containing file
    * @param fileMetaData file level meta data
-   * @param extraMetadata
-   * @param readSupport how to materialize the records
+   * @param readSupportClass the class used to materialize records
+   * @param requestedSchema the schema requested by the user
+   * @param readSupportMetadata the metadata provided by the readSupport implementation in init
    * @return the splits (one per HDFS block)
    * @throws IOException If hosts can't be retrieved for the HDFS block
    */
-  static <T> List<ParquetInputSplit> generateSplits(List<BlockMetaData> blocks,
-      BlockLocation[] hdfsBlocks, FileStatus fileStatus,
-      FileMetaData fileMetaData, Class<?> readSupportClass, String requestedSchema) throws IOException {
+  static <T> List<ParquetInputSplit> generateSplits(
+      List<BlockMetaData> blocks,
+      BlockLocation[] hdfsBlocks,
+      FileStatus fileStatus,
+      FileMetaData fileMetaData,
+      Class<?> readSupportClass,
+      String requestedSchema,
+      Map<String, String> readSupportMetadata) throws IOException {
     Comparator<BlockLocation> comparator = new Comparator<BlockLocation>() {
       @Override
       public int compare(BlockLocation b1, BlockLocation b2) {
@@ -200,7 +207,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
           blocksForCurrentSplit,
           fileMetaData.getSchema().toString(),
           requestedSchema,
-          fileMetaData.getKeyValueMetaData()
+          fileMetaData.getKeyValueMetaData(),
+          readSupportMetadata
           ));
       }
     }
@@ -239,7 +247,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
               fileStatus,
               parquetMetaData.getFileMetaData(),
               readSupportClass,
-              readContext.getRequestedSchema().toString())
+              readContext.getRequestedSchema().toString(),
+              readContext.getReadSupportMetadata())
           );
     }
     return splits;

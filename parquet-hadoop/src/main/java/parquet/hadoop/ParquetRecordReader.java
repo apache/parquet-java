@@ -164,7 +164,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
         configuration,
         parquetInputSplit.getExtraMetadata(),
         MessageTypeParser.parseMessageType(parquetInputSplit.getSchema()),
-        new ReadSupport.ReadContext(requestedSchema));
+        new ReadSupport.ReadContext(requestedSchema, parquetInputSplit.getReadSupportMetadata()));
 
     Path path = parquetInputSplit.getPath();
     List<BlockMetaData> blocks = parquetInputSplit.getBlocks();
