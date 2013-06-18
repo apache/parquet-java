@@ -46,6 +46,10 @@ public class BinaryWritable implements Writable {
     bytes = string.getBytes();
   }
 
+  public BinaryWritable() {
+    bytes = null;
+  }
+
   @Override
   public void readFields(final DataInput input) throws IOException {
     final int size = input.readInt();

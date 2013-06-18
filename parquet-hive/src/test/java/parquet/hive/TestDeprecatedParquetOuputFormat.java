@@ -39,6 +39,7 @@ import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.ParquetInputSplit;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.hive.read.DataWritableReadSupport;
 import parquet.schema.MessageType;
 
 /**
@@ -131,8 +132,11 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
     final FileInputFormat<Void, ArrayWritable> format = new DeprecatedParquetInputFormat();
     final String[] locations = new String[] {"localhost"};
     final String schemaToString = schema.toString();
+    final String columnsStr = "c_custkey,c_name,c_address,c_nationkey,c_phone,c_acctbal,c_mktsegment,c_comment";
+    final Map<String, String> keyValueMetaData = readFooter.getFileMetaData().getKeyValueMetaData();
+    keyValueMetaData.put(DataWritableReadSupport.COLUMN_KEY, columnsStr);
     final ParquetInputSplit realSplit = new ParquetInputSplit(new Path(testFile.getAbsolutePath()), 0, size, locations, blocks,
-            schemaToString, schemaToString, readFooter.getFileMetaData().getKeyValueMetaData());
+            schemaToString, schemaToString, keyValueMetaData);
 
     final DeprecatedParquetInputFormat.InputSplitWrapper splitWrapper = new DeprecatedParquetInputFormat.InputSplitWrapper(realSplit);
 

@@ -18,12 +18,13 @@ package parquet.hive.serde;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.hadoop.hive.serde2.objectinspector.ListObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
+import org.apache.hadoop.hive.serde2.objectinspector.SettableListObjectInspector;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Writable;
 
-public class ParquetHiveArrayInspector implements ListObjectInspector {
+public class ParquetHiveArrayInspector implements SettableListObjectInspector {
 
   ObjectInspector arrayElementInspector;
 
@@ -96,5 +97,49 @@ public class ParquetHiveArrayInspector implements ListObjectInspector {
     }
 
     return list;
+  }
+
+  @Override
+  public Object create(int size) {
+    ArrayList<Object> result = new ArrayList<Object>(size);
+    for (int i = 0; i < size; ++i) {
+      result.add(null);
+    }
+    return result;
+  }
+
+  @Override
+  public Object set(Object list, int index, Object element) {
+    List l = (List) list;
+    for (int i = l.size(); i < index + 1; ++i) {
+      l.add(null);
+    }
+    l.set(index, element);
+    return list;
+  }
+
+  @Override
+  public Object resize(Object list, int newSize) {
+    ((ArrayList) list).ensureCapacity(newSize);
+    return list;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (o == null || o.getClass() != getClass()) {
+      return false;
+    } else if (o == this) {
+      return true;
+    } else {
+      ObjectInspector other = ((ParquetHiveArrayInspector) o).arrayElementInspector;
+      return other.equals(arrayElementInspector);
+    }
+  }
+
+  @Override
+  public int hashCode() {
+    int hash = 3;
+    hash = 29 * hash + (this.arrayElementInspector != null ? this.arrayElementInspector.hashCode() : 0);
+    return hash;
   }
 }

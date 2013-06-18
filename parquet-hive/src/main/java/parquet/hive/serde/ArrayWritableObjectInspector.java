@@ -28,7 +28,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.AbstractPrimitiveJavaObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils;
-import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.SettableStringObjectInspector;
 import org.apache.hadoop.hive.serde2.typeinfo.ListTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.MapTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
@@ -184,7 +184,7 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
   /**
    * A JavaStringObjectInspector inspects a Java String Object.
    */
-  public class JavaStringBinaryObjectInspector extends AbstractPrimitiveJavaObjectInspector implements StringObjectInspector {
+  public class JavaStringBinaryObjectInspector extends AbstractPrimitiveJavaObjectInspector implements SettableStringObjectInspector {
 
     JavaStringBinaryObjectInspector() {
       super(PrimitiveObjectInspectorUtils.stringTypeEntry);
@@ -198,10 +198,44 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
     @Override
     public String getPrimitiveJavaObject(final Object o) {
       try {
-        return new String(((BinaryWritable) o).getBytes(), "UTF-8");
+        final byte[] bytes = ((BinaryWritable) o).getBytes();
+        if (bytes == null) {
+          return null;
+        }
+        return new String(bytes, "UTF-8");
       } catch (final UnsupportedEncodingException e) {
         return null;
       }
+    }
+
+    @Override
+    public Object set(Object o, Text text) {
+      final BinaryWritable binaryWritable = new BinaryWritable();
+      if (text != null) {
+        binaryWritable.setBytes(text.getBytes());
+      }
+      return binaryWritable;
+    }
+
+    @Override
+    public Object set(Object o, String string) {
+      if (string != null) {
+        return new BinaryWritable(string);
+      }
+      return new BinaryWritable();
+    }
+
+    @Override
+    public Object create(Text text) {
+      if (text == null) {
+        return null;
+      }
+      return text.toString();
+    }
+
+    @Override
+    public Object create(String string) {
+      return string;
     }
   }
 }

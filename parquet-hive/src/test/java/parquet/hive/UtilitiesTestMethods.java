@@ -37,15 +37,14 @@ public class UtilitiesTestMethods {
   }
 
   public static boolean smartCheckArray(Writable[] arrValue, Writable[] arrExpected, Integer[] arrCheckIndexValues) {
-    int i = 0;
+
     for (Integer index : arrCheckIndexValues) {
       final Writable expectedValue = arrExpected[index];
-      final Writable value = arrValue[i];
+      final Writable value = arrValue[index];
       if (((value == null && expectedValue == null)
               || (((value != null && expectedValue != null) && (value.equals(expectedValue))))) == false) {
         return false;
       }
-      i++;
     }
 
     return true;

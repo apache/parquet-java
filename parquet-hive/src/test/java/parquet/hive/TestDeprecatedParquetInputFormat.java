@@ -43,6 +43,7 @@ import parquet.hadoop.ParquetInputSplit;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hive.DeprecatedParquetInputFormat.InputSplitWrapper;
+import parquet.hive.read.DataWritableReadSupport;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.io.api.RecordConsumer;
@@ -215,8 +216,12 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
 
     final String specificSchema = schemaRequested == null ? schemaToString : schemaRequested;
 
+    // Set the configuration parameters
+    final String columnsStr = "c_custkey,c_name,c_address,c_nationkey,c_phone,c_acctbal,c_mktsegment,c_comment";
+    final Map<String, String> keyValueMetaData = readFooter.getFileMetaData().getKeyValueMetaData();
+    keyValueMetaData.put(DataWritableReadSupport.COLUMN_KEY, columnsStr);
     final ParquetInputSplit realSplit = new ParquetInputSplit(new Path(testFile.getAbsolutePath()), 0, size, locations, blocks,
-            schemaToString, specificSchema, readFooter.getFileMetaData().getKeyValueMetaData());
+            schemaToString, specificSchema, keyValueMetaData);
 
     final DeprecatedParquetInputFormat.InputSplitWrapper splitWrapper = new InputSplitWrapper(realSplit);
 
@@ -233,10 +238,9 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
       assertTrue(count < sizeExpected);
       assertTrue(key == null);
       final Writable[] arrValue = value.get();
-      final Writable[] writableArr = arrValue;
-      final ArrayWritable expected = mapData.get(((IntWritable) writableArr[0]).get());
+      final ArrayWritable expected = mapData.get(((IntWritable) arrValue[0]).get());
       final Writable[] arrExpected = expected.get();
-      assertEquals(arrValue.length, arrCheckIndexValues.length);
+      assertEquals(arrValue.length, arrExpected.length);
 
       final boolean deepEquals = UtilitiesTestMethods.smartCheckArray(arrValue, arrExpected, arrCheckIndexValues);
 

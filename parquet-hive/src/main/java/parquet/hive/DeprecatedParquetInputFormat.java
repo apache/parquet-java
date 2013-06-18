@@ -50,6 +50,7 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hive.read.DataWritableReadSupport;
+import parquet.hadoop.util.ContextUtil;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
 
@@ -89,9 +90,10 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
     if (dirs.length == 0) {
       throw new IOException("No input paths specified in job");
     }
+
     final Path tmpPath = new Path((dirs[dirs.length - 1]).makeQualified(FileSystem.get(job)).toUri().getPath());
     final JobConf cloneJobConf = manageJob.cloneJobAndInit(job, tmpPath);
-    final List<org.apache.hadoop.mapreduce.InputSplit> splits = realInput.getSplits(new JobContext(cloneJobConf, null));
+    final List<org.apache.hadoop.mapreduce.InputSplit> splits = realInput.getSplits(ContextUtil.newJobContext(cloneJobConf, null));
 
     if (splits == null) {
       return null;
@@ -114,7 +116,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
 
   @Override
   public org.apache.hadoop.mapred.RecordReader<Void, ArrayWritable> getRecordReader(final org.apache.hadoop.mapred.InputSplit split,
-      final org.apache.hadoop.mapred.JobConf job, final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
+          final org.apache.hadoop.mapred.JobConf job, final org.apache.hadoop.mapred.Reporter reporter) throws IOException {
     try {
       return (RecordReader<Void, ArrayWritable>) new RecordReaderWrapper(realInput, split, job, reporter);
     } catch (final InterruptedException e) {
@@ -205,7 +207,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
     private boolean eof = false;
 
     public RecordReaderWrapper(final ParquetInputFormat<ArrayWritable> newInputFormat, final InputSplit oldSplit, final JobConf oldJobConf, final Reporter reporter)
-        throws IOException, InterruptedException {
+            throws IOException, InterruptedException {
 
       splitLen = oldSplit.getLength();
       ParquetInputSplit split = null;
@@ -230,8 +232,9 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
         final ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(cloneJob, finalPath);
         final List<BlockMetaData> blocks = parquetMetadata.getBlocks();
         final FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
+        final String ColumnsStr = cloneJob.get("columns");
 
-        final List<String> listColumns = ManageJobConfig.getColumns(cloneJob.get("columns"));
+        final List<String> listColumns = ManageJobConfig.getColumns(ColumnsStr);
         sizeSchema = listColumns.size();
         final MessageType fileSchema = fileMetaData.getSchema();
         MessageType requestedSchemaByUser = fileSchema;
@@ -251,13 +254,13 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
           }
         }
 
-        if (splitGroup.size() == 0) {
+        if (splitGroup.isEmpty()) {
           LOG.warn("Skipping split, could not find row group in: " + (FileSplit) oldSplit);
           split = null;
         } else {
           split = new ParquetInputSplit(finalPath, hdfsBlock.getOffset(), hdfsBlock.getLength(), hdfsBlock.getHosts(), splitGroup, fileMetaData.getSchema().toString(),
-              requestedSchemaByUser.toString(), fileMetaData.getKeyValueMetaData());
-          split.getExtraMetadata().put(DataWritableReadSupport.COLUMN_KEY, cloneJob.get("columns"));
+                  requestedSchemaByUser.toString(), fileMetaData.getKeyValueMetaData());
+          split.getExtraMetadata().put(DataWritableReadSupport.COLUMN_KEY, ColumnsStr);
         }
 
       } else {
@@ -270,22 +273,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
       }
 
       // create a TaskInputOutputContext
-      final TaskAttemptContext taskContext = new TaskInputOutputContext(oldJobConf, taskAttemptID, null, null, new ReporterWrapper(reporter)) {
-        @Override
-        public Object getCurrentKey() throws IOException, InterruptedException {
-          throw new NotImplementedException();
-        }
-
-        @Override
-        public Object getCurrentValue() throws IOException, InterruptedException {
-          throw new NotImplementedException();
-        }
-
-        @Override
-        public boolean nextKeyValue() throws IOException, InterruptedException {
-          throw new NotImplementedException();
-        }
-      };
+      final TaskAttemptContext taskContext = ContextUtil.newTaskAttemptContext(oldJobConf, taskAttemptID);
 
       if (split != null) {
         try {
