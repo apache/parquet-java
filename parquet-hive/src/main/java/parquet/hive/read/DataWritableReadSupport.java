@@ -25,6 +25,7 @@ import parquet.hive.ManageJobConfig;
 import parquet.hive.convert.DataWritableRecordConverter;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 import parquet.schema.PrimitiveType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type;
@@ -41,7 +42,7 @@ import parquet.schema.Type.Repetition;
  */
 public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
 
-  public static final String COLUMN_KEY = "HIVE_COLUMNS_LIST";
+  public static final String HIVE_SCHEMA_KEY = "HIVE_TABLE_SCHEMA";
 
   /**
    *
@@ -57,17 +58,26 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
     final String columns = configuration.get("columns");
     final List<String> listColumns = ManageJobConfig.getColumns(columns);
     final Map<String, String> contextMetadata = new HashMap<String, String>();
-    contextMetadata.put(DataWritableReadSupport.COLUMN_KEY, columns);
 
-    MessageType requestedSchemaByUser = fileSchema;
-    final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(configuration);
-
-    if (indexColumnsWanted.isEmpty() == false) {
-      final List<Type> typeList = new ArrayList<Type>();
-      for (final Integer idx : indexColumnsWanted) {
-        typeList.add(fileSchema.getType(listColumns.get(idx)));
+    final List<Type> typeListTable = new ArrayList<Type>();
+    for (final String col : listColumns) {
+      if (fileSchema.containsField(col)) {
+        typeListTable.add(fileSchema.getType(col));
+      } else { // dummy type, should not be called
+        typeListTable.add(new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, col));
       }
-      requestedSchemaByUser = new MessageType(fileSchema.getName(), typeList);
+    }
+    final MessageType tableSchema = new MessageType("table_schema", typeListTable);
+    contextMetadata.put(HIVE_SCHEMA_KEY, tableSchema.toString());
+
+    MessageType requestedSchemaByUser = tableSchema;
+    final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(configuration);
+    if (indexColumnsWanted.isEmpty() == false) {
+      final List<Type> typeListWanted = new ArrayList<Type>();
+      for (final Integer idx : indexColumnsWanted) {
+        typeListWanted.add(tableSchema.getType(listColumns.get(idx)));
+      }
+      requestedSchemaByUser = new MessageType(fileSchema.getName(), typeListWanted);
     }
 
     return new ReadContext(requestedSchemaByUser, contextMetadata);
@@ -79,23 +89,14 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
    *
    * @param configuration    // unused
    * @param keyValueMetaData
-   * @param fileSchema       // unused
-   * @param readContext      containing the requested schema
+   * @param fileSchema // unused
+   * @param readContext containing the requested schema and the schema of the hive table
    * @return Record Materialize for Hive
    */
   @Override
   public RecordMaterializer<ArrayWritable> prepareForRead(final Configuration configuration, final Map<String, String> keyValueMetaData, final MessageType fileSchema,
-          final parquet.hadoop.api.ReadSupport.ReadContext readContext) {
-    final List<String> listColumns = ManageJobConfig.getColumns(readContext.getReadSupportMetadata().get(COLUMN_KEY));
-    final List<Type> typeList = new ArrayList<Type>();
-    for (final String col : listColumns) {
-      if (fileSchema.containsField(col)) {
-        typeList.add(fileSchema.getType(col));
-      } else { // dummy type
-        typeList.add(new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, col));
-      }
-    }
-    final MessageType tableSchema = new MessageType("table_schema", typeList);
+      final parquet.hadoop.api.ReadSupport.ReadContext readContext) {
+    final MessageType tableSchema = MessageTypeParser.parseMessageType(readContext.getReadSupportMetadata().get(HIVE_SCHEMA_KEY));
     return new DataWritableRecordConverter(readContext.getRequestedSchema(), tableSchema);
   }
 }

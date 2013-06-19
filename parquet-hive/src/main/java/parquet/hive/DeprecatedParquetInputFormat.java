@@ -45,6 +45,7 @@ import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.ContextUtil;
 import parquet.hive.read.DataWritableReadSupport;
+import parquet.schema.MessageTypeParser;
 
 /**
  *
@@ -329,7 +330,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
         final FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
 
         final ReadContext readContext = new DataWritableReadSupport().init(cloneJob, fileMetaData.getKeyValueMetaData(), fileMetaData.getSchema());
-        schemaSize = ManageJobConfig.getColumns(readContext.getReadSupportMetadata().get(DataWritableReadSupport.COLUMN_KEY)).size();
+        schemaSize = MessageTypeParser.parseMessageType(readContext.getReadSupportMetadata().get(DataWritableReadSupport.HIVE_SCHEMA_KEY)).getFieldCount();
 
         final List<BlockMetaData> splitGroup = new ArrayList<BlockMetaData>();
         for (final BlockMetaData block : blocks) {

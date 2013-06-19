@@ -61,7 +61,8 @@ public class ManageJobConfig {
   }
 
   private void init(final JobConf job) {
-    if (mrwork == null && HiveConf.getVar(job, HiveConf.ConfVars.PLAN).length() > 0) {
+    final String plan = HiveConf.getVar(job, HiveConf.ConfVars.PLAN);
+    if (mrwork == null && plan != null && plan.length() > 0) {
       mrwork = Utilities.getMapRedWork(job);
       pathToPartitionInfo = new LinkedHashMap<String, PartitionDesc>();
       for (final Map.Entry<String, PartitionDesc> entry : mrwork.getPathToPartitionInfo().entrySet()) {

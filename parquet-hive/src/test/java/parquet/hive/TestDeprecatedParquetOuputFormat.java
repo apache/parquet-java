@@ -132,9 +132,20 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
     final FileInputFormat<Void, ArrayWritable> format = new DeprecatedParquetInputFormat();
     final String[] locations = new String[] {"localhost"};
     final String schemaToString = schema.toString();
-    final String columnsStr = "c_custkey,c_name,c_address,c_nationkey,c_phone,c_acctbal,c_mktsegment,c_comment";
+    final String columnsStr = "message customer {\n"
+            + "  optional int32 c_custkey;\n"
+            + "  optional binary c_name;\n"
+            + "  optional binary c_address;\n"
+            + "  optional int32 c_nationkey;\n"
+            + "  optional binary c_phone;\n"
+            + "  optional double c_acctbal;\n"
+            + "  optional binary c_mktsegment;\n"
+            + "  optional binary c_comment;\n"
+            + "}";
+
+
     final Map<String, String> readSupportMetaData = new HashMap<String, String>();
-    readSupportMetaData.put(DataWritableReadSupport.COLUMN_KEY, columnsStr);
+    readSupportMetaData.put(DataWritableReadSupport.HIVE_SCHEMA_KEY, columnsStr);
     final ParquetInputSplit realSplit = new ParquetInputSplit(new Path(testFile.getAbsolutePath()), 0, size, locations, blocks,
             schemaToString, schemaToString, readFooter.getFileMetaData().getKeyValueMetaData(), readSupportMetaData);
 
