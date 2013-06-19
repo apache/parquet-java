@@ -72,13 +72,13 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
 
     MessageType requestedSchemaByUser = tableSchema;
     final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(configuration);
-    if (indexColumnsWanted.isEmpty() == false) {
-      final List<Type> typeListWanted = new ArrayList<Type>();
-      for (final Integer idx : indexColumnsWanted) {
-        typeListWanted.add(tableSchema.getType(listColumns.get(idx)));
-      }
-      requestedSchemaByUser = new MessageType(fileSchema.getName(), typeListWanted);
+
+    final List<Type> typeListWanted = new ArrayList<Type>();
+    for (final Integer idx : indexColumnsWanted) {
+      typeListWanted.add(tableSchema.getType(listColumns.get(idx)));
     }
+    requestedSchemaByUser = new MessageType(fileSchema.getName(), typeListWanted);
+
 
     return new ReadContext(requestedSchemaByUser, contextMetadata);
   }
@@ -89,14 +89,18 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
    *
    * @param configuration    // unused
    * @param keyValueMetaData
-   * @param fileSchema // unused
-   * @param readContext containing the requested schema and the schema of the hive table
+   * @param fileSchema       // unused
+   * @param readContext      containing the requested schema and the schema of the hive table
    * @return Record Materialize for Hive
    */
   @Override
   public RecordMaterializer<ArrayWritable> prepareForRead(final Configuration configuration, final Map<String, String> keyValueMetaData, final MessageType fileSchema,
-      final parquet.hadoop.api.ReadSupport.ReadContext readContext) {
-    final MessageType tableSchema = MessageTypeParser.parseMessageType(readContext.getReadSupportMetadata().get(HIVE_SCHEMA_KEY));
+          final parquet.hadoop.api.ReadSupport.ReadContext readContext) {
+    final Map<String, String> metadata = readContext.getReadSupportMetadata();
+    if (metadata == null) {
+      throw new RuntimeException("ReadContext not initialized properly. Don't know the Hive Schema.");
+    }
+    final MessageType tableSchema = MessageTypeParser.parseMessageType(metadata.get(HIVE_SCHEMA_KEY));
     return new DataWritableRecordConverter(readContext.getRequestedSchema(), tableSchema);
   }
 }
