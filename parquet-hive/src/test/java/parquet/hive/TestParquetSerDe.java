@@ -84,15 +84,15 @@ public class TestParquetSerDe extends TestCase {
     // Deserialize
     final Object row = serDe.deserialize(t);
     assertEquals("deserialize gave the wrong object", row.getClass(), ArrayWritable.class);
-//    assertEquals("serialized size correct after deserialization", serDe.getSerDeStats()
-//            .getRawDataSize(), t.get().length);
+    assertEquals("serialized size correct after deserialization", serDe.getSerDeStats()
+            .getRawDataSize(), t.get().length);
     assertEquals("deserialisation give the wrong object", t, row);
 
     // Serialize
     final ArrayWritable serializedArr = (ArrayWritable) serDe.serialize(row, oi);
-//    assertEquals("serialized size correct after serialization", serDe.getSerDeStats()
-//            .getRawDataSize(),
-//            serializedArr.get().length);
+    assertEquals("serialized size correct after serialization", serDe.getSerDeStats()
+            .getRawDataSize(),
+            serializedArr.get().length);
     assertTrue("serialize Object to ArrayWritable should be equals", Arrays.deepEquals(t.get(), serializedArr.get()));
   }
 

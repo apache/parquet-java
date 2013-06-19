@@ -75,8 +75,14 @@ public class ParquetHiveSerDe implements SerDe {
   public static Text ARRAY = new Text("bag");
   private SerDeStats stats;
   ObjectInspector objInspector;
-  boolean lastOperationSerialize;
-  boolean lastOperationDeserialize;
+
+  private enum LAST_OPERATION {
+
+    SERIALIZE,
+    DESERIALIZE,
+    UNKNOWN
+  }
+  LAST_OPERATION status;
   private long serializedSize;
   private long deserializedSize;
 
@@ -114,14 +120,12 @@ public class ParquetHiveSerDe implements SerDe {
     stats = new SerDeStats();
     serializedSize = 0;
     deserializedSize = 0;
-    lastOperationSerialize = false;
-    lastOperationDeserialize = false;
+    status = LAST_OPERATION.UNKNOWN;
   }
 
   @Override
   public Object deserialize(final Writable blob) throws SerDeException {
-    lastOperationSerialize = false;
-    lastOperationDeserialize = true;
+    status = LAST_OPERATION.DESERIALIZE;
     deserializedSize = 0;
     if (blob instanceof ArrayWritable) {
       deserializedSize = ((ArrayWritable) blob).get().length;
@@ -150,8 +154,7 @@ public class ParquetHiveSerDe implements SerDe {
     final ArrayWritable serializeData = createStruct(obj, (StructObjectInspector) objInspector);
 
     serializedSize = serializeData.get().length;
-    lastOperationSerialize = true;
-    lastOperationDeserialize = false;
+    status = LAST_OPERATION.SERIALIZE;
 
     return serializeData;
   }
@@ -167,7 +170,8 @@ public class ParquetHiveSerDe implements SerDe {
       final Object subObj = inspector.getStructFieldData(obj, field);
       final ObjectInspector subInspector = field.getFieldObjectInspector();
 
-      arr[i++] = createObject(subObj, subInspector);
+      arr[i] = createObject(subObj, subInspector);
+      ++i;
     }
 
     return new ArrayWritable(Writable.class, arr);
@@ -251,7 +255,7 @@ public class ParquetHiveSerDe implements SerDe {
     case STRING:
       return new BinaryWritable(((StringObjectInspector) inspector).getPrimitiveJavaObject(obj));
     default:
-      throw new SerDeException("Unknown primitive");
+      throw new SerDeException("Unknown primitive : " + inspector.getPrimitiveCategory());
     }
   }
 
@@ -274,9 +278,9 @@ public class ParquetHiveSerDe implements SerDe {
   @Override
   public SerDeStats getSerDeStats() {
     // must be different
-    assert (lastOperationSerialize != lastOperationDeserialize);
+    assert (status != LAST_OPERATION.UNKNOWN);
 
-    if (lastOperationSerialize) {
+    if (status == LAST_OPERATION.SERIALIZE) {
       stats.setRawDataSize(serializedSize);
     } else {
       stats.setRawDataSize(deserializedSize);

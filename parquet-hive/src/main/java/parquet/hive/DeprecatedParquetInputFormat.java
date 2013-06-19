@@ -69,10 +69,6 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
     this.realInput = (ParquetInputFormat<ArrayWritable>) realInputFormat;
   }
 
-  @Override
-  protected boolean isSplitable(final FileSystem fs, final Path filename) {
-    return false;
-  }
   private final ManageJobConfig manageJob = new ManageJobConfig();
 
   @Override
@@ -97,7 +93,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
       try {
         resultSplits[i++] = new InputSplitWrapper((ParquetInputSplit) split);
       } catch (final InterruptedException e) {
-        return null;
+        throw new RuntimeException("Cannot create an InputSplitWrapper", e);
       }
     }
 
@@ -110,8 +106,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
     try {
       return (RecordReader<Void, ArrayWritable>) new RecordReaderWrapper(realInput, split, job, reporter);
     } catch (final InterruptedException e) {
-      e.printStackTrace();
-      return null;
+      throw new RuntimeException("Cannot create a ReacordReaderWrapper", e);
     }
   }
 
@@ -135,12 +130,16 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
 
     @Override
     public long getLength() {
-      try {
-        return realSplit.getLength();
-      } catch (final InterruptedException e) {
+      if (realSplit == null) {
         return 0;
-      } catch (final IOException e) {
-        return 0;
+      } else {
+        try {
+          return realSplit.getLength();
+        } catch (IOException ex) {
+          throw new RuntimeException("Cannot get the length of the ParquetInputSlipt", ex);
+        } catch (InterruptedException ex) {
+          throw new RuntimeException("Cannot get the length of the ParquetInputSlipt", ex);
+        }
       }
     }
 
@@ -349,7 +348,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
         }
 
       } else {
-        throw new RuntimeException("Unknown split type");
+        throw new RuntimeException("Unknown split type: " + oldSplit);
       }
 
       return split;

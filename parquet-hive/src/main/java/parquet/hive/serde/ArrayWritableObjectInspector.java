@@ -204,7 +204,7 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
         }
         return new String(bytes, "UTF-8");
       } catch (final UnsupportedEncodingException e) {
-        return null;
+        throw new RuntimeException("Not able to get a Java Primitive object from JavaStringObjectInspector object", e);
       }
     }
 
