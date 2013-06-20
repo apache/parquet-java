@@ -380,8 +380,8 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
   @Override
   public T read() {
     int currentLevel = 0;
-    State currentState = states[0];
     recordConsumer.start();
+    State currentState = states[0];
     do {
       ColumnReader columnReader = currentState.column;
       int d = columnReader.getCurrentDefinitionLevel();
