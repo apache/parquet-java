@@ -27,6 +27,14 @@
     </developer>
   </developers>
 
+  <repositories>
+    <repository>
+      <id>repository.cloudera.com</id>
+      <name>repository.cloudera.com-releases</name>
+      <url>https://repository.cloudera.com/artifactory/datanucleus</url>
+    </repository>
+  </repositories>
+
   <properties>
   </properties>
 
