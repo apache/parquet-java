@@ -70,7 +70,6 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
   public DeprecatedParquetInputFormat(final InputFormat<Void, ArrayWritable> realInputFormat) {
     this.realInput = (ParquetInputFormat<ArrayWritable>) realInputFormat;
   }
-
   private final ManageJobConfig manageJob = new ManageJobConfig();
 
   @Override
@@ -308,6 +307,14 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
       }
     }
 
+    /**
+     * gets a ParquetInputSplit corresponding to a split given by Hive
+     *
+     * @param oldSplit The split given by Hive
+     * @param conf The JobConf of the Hive job
+     * @return a ParquetInputSplit corresponding to the oldSplit
+     * @throws IOException if the config cannot be enhanced or if the footer cannot be read from the file
+     */
     private ParquetInputSplit getSplit(final InputSplit oldSplit, final JobConf conf) throws IOException {
       ParquetInputSplit split;
 
@@ -317,15 +324,6 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
         final Path finalPath = ((FileSplit) oldSplit).getPath();
         final JobConf cloneJob = manageJob.cloneJobAndInit(conf, finalPath.getParent());
 
-        final FileSystem fs = FileSystem.get(cloneJob);
-        final FileStatus status = fs.getFileStatus(finalPath);
-
-        final BlockLocation[] hdfsBlocks = fs.getFileBlockLocations(status, ((FileSplit) oldSplit).getStart(), oldSplit.getLength());
-        if (hdfsBlocks.length != 1) {
-          throw new RuntimeException("Should have exactly 1 HDFS block per split, got: " + hdfsBlocks.length);
-        }
-        final BlockLocation hdfsBlock = hdfsBlocks[0];
-
         final ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(cloneJob, finalPath);
         final List<BlockMetaData> blocks = parquetMetadata.getBlocks();
         final FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
@@ -334,9 +332,11 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
         schemaSize = MessageTypeParser.parseMessageType(readContext.getReadSupportMetadata().get(DataWritableReadSupport.HIVE_SCHEMA_KEY)).getFieldCount();
 
         final List<BlockMetaData> splitGroup = new ArrayList<BlockMetaData>();
+        final long splitStart = ((FileSplit) oldSplit).getStart();
+        final long splitLength = ((FileSplit) oldSplit).getLength();
         for (final BlockMetaData block : blocks) {
           final long firstDataPage = block.getColumns().get(0).getFirstDataPageOffset();
-          if (firstDataPage >= hdfsBlock.getOffset() && firstDataPage < hdfsBlock.getOffset() + hdfsBlock.getLength()) {
+          if (firstDataPage >= splitStart && firstDataPage < splitStart + splitLength) {
             splitGroup.add(block);
           }
         }
@@ -345,8 +345,15 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
           LOG.warn("Skipping split, could not find row group in: " + (FileSplit) oldSplit);
           split = null;
         } else {
-          split = new ParquetInputSplit(finalPath, hdfsBlock.getOffset(), hdfsBlock.getLength(), hdfsBlock.getHosts(), splitGroup, fileMetaData.getSchema().toString(),
-                  readContext.getRequestedSchema().toString(), fileMetaData.getKeyValueMetaData(), readContext.getReadSupportMetadata());
+          split = new ParquetInputSplit(finalPath,
+                  splitStart,
+                  splitLength,
+                  ((FileSplit) oldSplit).getLocations(),
+                  splitGroup,
+                  fileMetaData.getSchema().toString(),
+                  readContext.getRequestedSchema().toString(),
+                  fileMetaData.getKeyValueMetaData(),
+                  readContext.getReadSupportMetadata());
         }
 
       } else {
