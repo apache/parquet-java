@@ -29,9 +29,14 @@ import org.apache.hadoop.hive.serde2.lazybinary.LazyBinaryUtils;
 import org.apache.hadoop.hive.serde2.lazybinary.LazyBinaryUtils.VInt;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.io.WritableUtils;
+
 /**
- *
- * From HIVE 0.9 !!!!
+ * This file is taken from hive 0.11
+ * website : http://hive.apache.org/
+ * github : https://github.com/apache/hive
+ * branch : branch-0.11
+ * Issue : https://issues.apache.org/jira/browse/HIVE-2693
+ * License : Same as the header of this file
  *
  */
 public class BigDecimalWritable implements WritableComparable<BigDecimalWritable> {

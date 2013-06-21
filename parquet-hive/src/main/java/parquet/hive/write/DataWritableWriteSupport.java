@@ -23,8 +23,7 @@ import parquet.schema.MessageTypeParser;
 
 /**
  *
- * A MapWritableWriteSupport
- * TODO
+ * DataWritableWriteSupport is a WriteSupport for the DataWritableWriter
  *
  *
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>

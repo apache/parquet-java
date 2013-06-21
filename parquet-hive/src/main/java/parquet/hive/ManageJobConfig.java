@@ -39,10 +39,11 @@ import org.apache.hadoop.util.StringUtils;
 
 /**
  *
- *   ManageJobConfig (from Hive file, need to be deleted after) quick workaround to init the job with column needed
+ * ManageJobConfig quick workaround to initialize the job with column needed
  *
  *
- *   @author Mickaël Lacour <m.lacour@criteo.com>
+ *
+ * @author Mickaël Lacour <m.lacour@criteo.com>
  *
  */
 public class ManageJobConfig {

@@ -27,11 +27,11 @@ import parquet.io.api.Binary;
 
 /**
  *
- *   A Parquet InputFormat for Hive (with the deprecated package mapred)
+ * A BinaryWritable to handle byte[]
  *
  *
- *   @author Mickaël Lacour <m.lacour@criteo.com>
- *   @author Rémy Pecqueur <r.pecqueur@criteo.com>
+ * @author Mickaël Lacour <m.lacour@criteo.com>
+ * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  *
  */
 public class BinaryWritable implements Writable {

@@ -30,8 +30,9 @@ import parquet.schema.Type;
 
 /**
  *
- * A MapWritableWriter TODO
- *
+ * DataWritableWriter is a writer,
+ * that will read an ArrayWritable and give the data to parquet
+ * with the expected schema
  *
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  *

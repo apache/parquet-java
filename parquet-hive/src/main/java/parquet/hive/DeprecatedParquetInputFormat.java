@@ -51,6 +51,8 @@ import parquet.schema.MessageTypeParser;
  *
  * A Parquet InputFormat for Hive (with the deprecated package mapred)
  *
+ * TODO : Refactor all of the wrappers here
+ * Talk about it on : https://github.com/Parquet/parquet-mr/pull/28s
  *
  * @author Mickaël Lacour <m.lacour@criteo.com>
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
