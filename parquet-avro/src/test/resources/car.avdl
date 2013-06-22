@@ -1,0 +1,10 @@
+@namespace("parquet.avro")
+protocol Cars {
+    record Car {
+        long year;
+        string make;
+        string model;
+        long doors;
+        float engineCapacity;
+    }
+}
