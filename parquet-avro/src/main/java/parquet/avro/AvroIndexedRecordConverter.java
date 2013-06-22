@@ -22,6 +22,8 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.IndexedRecord;
+import org.apache.avro.specific.SpecificData;
 import parquet.io.api.Binary;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
@@ -30,20 +32,20 @@ import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
 
-class AvroGenericRecordConverter extends GroupConverter {
+class AvroIndexedRecordConverter extends GroupConverter {
 
   private final ParentValueContainer parent;
-  protected GenericData.Record currentRecord;
+  protected IndexedRecord currentRecord;
   private final Converter[] converters;
 
   private final GroupType parquetSchema;
   private final Schema avroSchema;
 
-  public AvroGenericRecordConverter(MessageType parquetSchema, Schema avroSchema) {
+  public AvroIndexedRecordConverter(MessageType parquetSchema, Schema avroSchema) {
     this(null, parquetSchema, avroSchema);
   }
 
-  public AvroGenericRecordConverter(ParentValueContainer parent, GroupType
+  public AvroIndexedRecordConverter(ParentValueContainer parent, GroupType
       parquetSchema, Schema avroSchema) {
     this.parent = parent;
     this.parquetSchema = parquetSchema;
@@ -62,7 +64,7 @@ class AvroGenericRecordConverter extends GroupConverter {
       converters[index] = newConverter(fieldSchema, type, new ParentValueContainer() {
         @Override
         void add(Object value) {
-          AvroGenericRecordConverter.this.set(finalAvroIndex, value);
+          AvroIndexedRecordConverter.this.set(finalAvroIndex, value);
         }
       });
       index++;
@@ -86,7 +88,7 @@ class AvroGenericRecordConverter extends GroupConverter {
     } else if (schema.getType().equals(Schema.Type.STRING)) {
       return new FieldStringConverter(parent);
     } else if (schema.getType().equals(Schema.Type.RECORD)) {
-      return new AvroGenericRecordConverter(parent, type.asGroupType(), schema);
+      return new AvroIndexedRecordConverter(parent, type.asGroupType(), schema);
     } else if (schema.getType().equals(Schema.Type.ENUM)) {
       return new FieldStringConverter(parent);
     } else if (schema.getType().equals(Schema.Type.ARRAY)) {
@@ -111,7 +113,9 @@ class AvroGenericRecordConverter extends GroupConverter {
 
   @Override
   public void start() {
-    this.currentRecord = new GenericData.Record(avroSchema);
+    // Should do the right thing whether it is generic or specific
+    this.currentRecord =
+        (IndexedRecord) SpecificData.get().newRecord((IndexedRecord)null, avroSchema);
   }
 
   @Override
@@ -121,7 +125,7 @@ class AvroGenericRecordConverter extends GroupConverter {
     }
   }
 
-  GenericRecord getCurrentRecord() {
+  IndexedRecord getCurrentRecord() {
     return currentRecord;
   }
 

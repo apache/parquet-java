@@ -17,20 +17,21 @@ package parquet.avro;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.IndexedRecord;
 import parquet.io.api.GroupConverter;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 
-class AvroRecordMaterializer extends RecordMaterializer<GenericRecord> {
+class AvroRecordMaterializer extends RecordMaterializer<IndexedRecord> {
 
-  private AvroGenericRecordConverter root;
+  private AvroIndexedRecordConverter root;
 
   public AvroRecordMaterializer(MessageType requestedSchema, Schema avroSchema) {
-    this.root = new AvroGenericRecordConverter(requestedSchema, avroSchema);
+    this.root = new AvroIndexedRecordConverter(requestedSchema, avroSchema);
   }
 
   @Override
-  public GenericRecord getCurrentRecord() {
+  public IndexedRecord getCurrentRecord() {
     return root.getCurrentRecord();
   }
 

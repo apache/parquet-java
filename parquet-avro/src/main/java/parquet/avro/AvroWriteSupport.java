@@ -23,6 +23,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import parquet.hadoop.api.WriteSupport;
@@ -37,7 +38,7 @@ import parquet.schema.Type;
  * use {@link AvroParquetWriter} or {@link AvroParquetOutputFormat} rather than using
  * this class directly.
  */
-public class AvroWriteSupport extends WriteSupport<GenericRecord> {
+public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
 
   private RecordConsumer recordConsumer;
   private MessageType rootSchema;
@@ -72,21 +73,21 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
   }
 
   @Override
-  public void write(GenericRecord record) {
+  public void write(IndexedRecord record) {
     recordConsumer.startMessage();
     writeRecordFields(rootSchema, rootAvroSchema, record);
     recordConsumer.endMessage();
   }
 
   private void writeRecord(GroupType schema, Schema avroSchema,
-      GenericRecord record) {
+                           IndexedRecord record) {
     recordConsumer.startGroup();
     writeRecordFields(schema, avroSchema, record);
     recordConsumer.endGroup();
   }
 
   private void writeRecordFields(GroupType schema, Schema avroSchema,
-      GenericRecord record) {
+                                 IndexedRecord record) {
     List<Type> fields = schema.getFields();
     List<Schema.Field> avroFields = avroSchema.getFields();
     int index = 0; // parquet ignores Avro nulls, so index may differ
