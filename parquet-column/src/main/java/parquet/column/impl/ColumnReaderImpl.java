@@ -358,6 +358,24 @@ class ColumnReaderImpl implements ColumnReader {
   }
 
   /**
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#skip()
+   */
+  @Override
+  public void skip() {
+    checkValueRead(); // must be a more efficient version of this
+  }
+
+  /**
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#getDescriptor()
+   */
+  @Override
+  public ColumnDescriptor getDescriptor() {
+    return path;
+  }
+
+  /**
    * reads the current value
    */
   public void readCurrentValue() {

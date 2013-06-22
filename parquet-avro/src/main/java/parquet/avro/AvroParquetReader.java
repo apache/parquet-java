@@ -17,6 +17,7 @@ package parquet.avro;
 
 import java.io.IOException;
 import org.apache.hadoop.fs.Path;
+import parquet.filter.UnboundRecordFilter;
 import parquet.hadoop.ParquetReader;
 import parquet.hadoop.api.ReadSupport;
 
@@ -27,5 +28,9 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
 
   public AvroParquetReader(Path file) throws IOException {
     super(file, (ReadSupport<T>) new AvroReadSupport());
+  }
+
+  public AvroParquetReader(Path file, UnboundRecordFilter recordFilter ) throws IOException {
+    super(file, (ReadSupport<T>) new AvroReadSupport(), recordFilter);
   }
 }

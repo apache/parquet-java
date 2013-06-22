@@ -98,4 +98,14 @@ public interface ColumnReader {
    * @return the current value
    */
   double getDouble();
+
+  /**
+   * @return Descriptor of the column.
+   */
+  ColumnDescriptor getDescriptor();
+
+  /**
+   * Skip the current value
+   */
+  void skip();
 }

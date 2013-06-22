@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.ImmutableList;
 import parquet.Log;
 import parquet.column.ColumnReader;
 import parquet.column.impl.ColumnReadStoreImpl;
@@ -33,6 +34,8 @@ import parquet.io.api.RecordConsumer;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.filter.UnboundRecordFilter;
+import parquet.filter.RecordFilter;
 
 
 /**
@@ -226,17 +229,19 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
 
   private final GroupConverter recordConsumer;
   private final RecordMaterializer<T> recordMaterializer;
+  private final RecordFilter recordFilter;
 
   private State[] states;
 
   /**
    *
    * @param root the root of the schema
-   * @param leaves the leaves of the schema
    * @param validating
-   * @param columns2
+   * @param columnsStore
+   * @param unboundFilter Filter records, pass in NULL_FILTER to leave unfiltered.
    */
-  public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnReadStoreImpl columnStore) {
+  public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnReadStoreImpl columnStore,
+                                    UnboundRecordFilter unboundFilter) {
     this.recordMaterializer = recordMaterializer;
     this.recordConsumer = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer), validating, root.getType());
     PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
@@ -356,6 +361,10 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       Collections.sort(state.definedCases, caseComparator);
       Collections.sort(state.undefinedCases, caseComparator);
     }
+
+    // We need to make defensive copy to stop interference but as an optimisation don't bother if null
+    recordFilter = unboundFilter.bind(( unboundFilter == RecordFilter.NULL_FILTER )
+        ? null : ImmutableList.copyOf(columns));
   }
 
   //TODO: have those wrappers for a converter
@@ -375,36 +384,54 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
    */
   @Override
   public T read() {
-    int currentLevel = 0;
-    State currentState = states[0];
-    recordConsumer.start();
-    do {
-      ColumnReader columnReader = currentState.column;
-      int d = columnReader.getCurrentDefinitionLevel();
-      // creating needed nested groups until the current field (opening tags)
-      int depth = currentState.definitionLevelToDepth[d];
-      for (; currentLevel <= depth; ++currentLevel) {
-        currentState.groupConverterPath[currentLevel].start();
-      }
-      // currentLevel = depth + 1 at this point
-      // set the current value
-      if (d >= currentState.maxDefinitionLevel) {
-        // not null
-        columnReader.writeCurrentValueToConverter();
-      }
-      columnReader.consume();
+    // Loop will end when either the record is materialized or we run out of values to consume
+    while ( !recordFilter.isFullyConsumed()) {
 
-      int nextR = currentState.maxRepetitionLevel == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
-      // level to go to close current groups
-      int next = currentState.nextLevel[nextR];
-      for (; currentLevel > next; currentLevel--) {
-        currentState.groupConverterPath[currentLevel - 1].end();
+      int currentLevel = 0;
+      State currentState = states[0];
+      boolean materializeRecord = recordFilter.isMatch();
+      if ( materializeRecord ) {
+        // Where we are creating objects this is likely to be expensive.
+        recordConsumer.start();
       }
+      do {
+        ColumnReader columnReader = currentState.column;
+        int d = columnReader.getCurrentDefinitionLevel();
+        if (materializeRecord) {
+          // creating needed nested groups until the current field (opening tags)
+          int depth = currentState.definitionLevelToDepth[d];
+          for (; currentLevel <= depth; ++currentLevel) {
+            currentState.groupConverterPath[currentLevel].start();
+          }
+        }
+        // currentLevel = depth + 1 at this point
+        // set the current value
+        if (d >= currentState.maxDefinitionLevel) {
+          // not null
+          if (materializeRecord) {
+            columnReader.writeCurrentValueToConverter();
+          } else {
+            columnReader.skip();
+          }
+        }
+        columnReader.consume();
 
-      currentState = currentState.nextState[nextR];
-    } while (currentState != null);
-    recordConsumer.end();
-    return recordMaterializer.getCurrentRecord();
+        int nextR = currentState.maxRepetitionLevel == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
+        // level to go to close current groups
+        int next = currentState.nextLevel[nextR];
+        if (materializeRecord) {
+          for (; currentLevel > next; currentLevel--) {
+            currentState.groupConverterPath[currentLevel - 1].end();
+          }
+        }
+        currentState = currentState.nextState[nextR];
+      } while (currentState != null);
+
+      if (materializeRecord) {
+        recordConsumer.end();
+        return recordMaterializer.getCurrentRecord();
+      }    }
+    return null;
   }
 
   private static void log(String string) {
