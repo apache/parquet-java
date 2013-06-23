@@ -46,11 +46,29 @@ public class PlainValuesReader extends ValuesReader {
   }
 
   @Override
+  public void skipFloat() {
+    try {
+      in.skipBytes(4);
+    } catch (IOException e) {
+      throw new ParquetDecodingException("could not skip float", e);
+    }
+  }
+
+  @Override
   public double readDouble() {
     try {
       return in.readDouble();
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read double", e);
+    }
+  }
+
+  @Override
+  public void skipDouble() {
+    try {
+      in.skipBytes(8);
+    } catch (IOException e) {
+      throw new ParquetDecodingException("could not skip double", e);
     }
   }
 
@@ -64,11 +82,29 @@ public class PlainValuesReader extends ValuesReader {
   }
 
   @Override
+  public void skipInteger() {
+    try {
+      in.skipBytes(4);
+    } catch (IOException e) {
+      throw new ParquetDecodingException("could not skip int", e);
+    }
+  }
+
+  @Override
   public long readLong() {
     try {
       return in.readLong();
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read long", e);
+    }
+  }
+
+  @Override
+  public void skipLong() {
+    try {
+      in.skipBytes(8);
+    } catch (IOException e) {
+      throw new ParquetDecodingException("could not skip long", e);
     }
   }
 

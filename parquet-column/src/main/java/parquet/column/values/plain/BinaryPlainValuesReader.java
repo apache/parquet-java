@@ -45,6 +45,18 @@ public class BinaryPlainValuesReader extends ValuesReader {
   }
 
   @Override
+  public void skipBytes() {
+    try {
+      int length = BytesUtils.readIntLittleEndian(in, offset);
+      offset += 4 + length;
+    } catch (IOException e) {
+      throw new ParquetDecodingException("could not skip bytes at offset " + offset, e);
+    } catch (RuntimeException e) {
+      throw new ParquetDecodingException("could not skip bytes at offset " + offset, e);
+    }
+  }
+
+  @Override
   public int initFromPage(long valueCount, byte[] in, int offset)
       throws IOException {
     if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));

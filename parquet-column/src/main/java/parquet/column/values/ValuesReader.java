@@ -72,9 +72,23 @@ public abstract class ValuesReader {
   }
 
   /**
+   * Skips the next boolean in the page
+   */
+  public void skipBoolean() {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
    * @return the next Binary from the page
    */
   public Binary readBytes() {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Skips the next Binary in the page
+   */
+  public void skipBytes() {
     throw new UnsupportedOperationException();
   }
 
@@ -86,9 +100,23 @@ public abstract class ValuesReader {
   }
 
   /**
+   * Skips the next float in the page
+   */
+  public void skipFloat() {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
    * @return the next double from the page
    */
   public double readDouble() {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Skips the next float in the page
+   */
+  public void skipDouble() {
     throw new UnsupportedOperationException();
   }
 
@@ -100,10 +128,23 @@ public abstract class ValuesReader {
   }
 
   /**
+   * Skips the next integer in the page
+   */
+  public void skipInteger() {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
    * @return the next long from the page
    */
   public long readLong() {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   * Skips the next long in the page
+   */
+  public void skipLong() {
+    throw new UnsupportedOperationException();
+  }
 }
