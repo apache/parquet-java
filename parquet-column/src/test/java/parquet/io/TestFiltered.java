@@ -51,17 +51,32 @@ public class TestFiltered {
 
   }
 
-  /**
-   * Not yet working.
-   */
-  @Ignore
+  @Test
   public void testFilterOnString() {
     MemPageStore memPageStore = new MemPageStore();
     MessageColumnIO columnIO =  new ColumnIOFactory(true).getColumnIO(schema);
     writeTestRecords(memPageStore, columnIO, 1);
 
+    // First try matching against the A url in record 1
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
     RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
+        columnIO.getRecordReader(memPageStore, recordConverter,
+            column("Name.Url", equalTo("http://A")));
+
+    Group actual1 =  recordReader.read();
+    assertNull( "There should be no more records as r2 filtered out", recordReader.read());
+    assertEquals("filtering did not return the correct record", r1.toString(), actual1.toString());
+
+    // Second try matching against the B url in record 1 - it should fail as we only match
+    // against the first instance of a
+    recordReader = (RecordReaderImplementation<Group>)
+        columnIO.getRecordReader(memPageStore, recordConverter,
+            column("Name.Url", equalTo("http://B")));
+
+    assertNull( "There should be no matching records", recordReader.read());
+
+    // Finally try matching against the C url in record 2
+    recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
             column("Name.Url", equalTo("http://C")));
 

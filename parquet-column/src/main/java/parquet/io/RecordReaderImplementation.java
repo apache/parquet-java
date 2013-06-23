@@ -237,7 +237,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
    *
    * @param root the root of the schema
    * @param validating
-   * @param columnsStore
+   * @param columnStore
    * @param unboundFilter Filter records, pass in NULL_FILTER to leave unfiltered.
    */
   public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnReadStoreImpl columnStore,
@@ -384,54 +384,69 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
    */
   @Override
   public T read() {
-    // Loop will end when either the record is materialized or we run out of values to consume
-    while ( !recordFilter.isFullyConsumed()) {
+    // Skip forwards until the filter matches a record
+    if ( !skipToMatch()) {
+      return null;
+    }
 
-      int currentLevel = 0;
-      State currentState = states[0];
-      boolean materializeRecord = recordFilter.isMatch();
-      if ( materializeRecord ) {
-        // Where we are creating objects this is likely to be expensive.
-        recordConsumer.start();
+    // Materialize the record
+    int currentLevel = 0;
+    State currentState = states[0];
+    recordConsumer.start();
+    do {
+      ColumnReader columnReader = currentState.column;
+      int d = columnReader.getCurrentDefinitionLevel();
+      // creating needed nested groups until the current field (opening tags)
+      int depth = currentState.definitionLevelToDepth[d];
+      for (; currentLevel <= depth; ++currentLevel) {
+        currentState.groupConverterPath[currentLevel].start();
       }
+      // currentLevel = depth + 1 at this point
+      // set the current value
+      if (d >= currentState.maxDefinitionLevel) {
+        // not null
+        columnReader.writeCurrentValueToConverter();
+      }
+      columnReader.consume();
+
+      int nextR = currentState.maxRepetitionLevel == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
+      // level to go to close current groups
+      int next = currentState.nextLevel[nextR];
+      for (; currentLevel > next; currentLevel--) {
+        currentState.groupConverterPath[currentLevel - 1].end();
+      }
+      currentState = currentState.nextState[nextR];
+    } while (currentState != null);
+    recordConsumer.end();
+    return recordMaterializer.getCurrentRecord();
+  }
+
+  /**
+   * Skips forwards until the filter finds the first match. Returns false
+   * if none found.
+   */
+  private boolean skipToMatch() {
+    while ( !recordFilter.isMatch()) {
+      if ( recordFilter.isFullyConsumed()) {
+        return false;
+      }
+      State currentState = states[0];
       do {
         ColumnReader columnReader = currentState.column;
-        int d = columnReader.getCurrentDefinitionLevel();
-        if (materializeRecord) {
-          // creating needed nested groups until the current field (opening tags)
-          int depth = currentState.definitionLevelToDepth[d];
-          for (; currentLevel <= depth; ++currentLevel) {
-            currentState.groupConverterPath[currentLevel].start();
-          }
-        }
+
         // currentLevel = depth + 1 at this point
         // set the current value
-        if (d >= currentState.maxDefinitionLevel) {
-          // not null
-          if (materializeRecord) {
-            columnReader.writeCurrentValueToConverter();
-          } else {
+        if (columnReader.getCurrentDefinitionLevel() >= currentState.maxDefinitionLevel) {
             columnReader.skip();
-          }
         }
         columnReader.consume();
 
+        // Based on repetition level work out next state to go to
         int nextR = currentState.maxRepetitionLevel == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
-        // level to go to close current groups
-        int next = currentState.nextLevel[nextR];
-        if (materializeRecord) {
-          for (; currentLevel > next; currentLevel--) {
-            currentState.groupConverterPath[currentLevel - 1].end();
-          }
-        }
         currentState = currentState.nextState[nextR];
       } while (currentState != null);
-
-      if (materializeRecord) {
-        recordConsumer.end();
-        return recordMaterializer.getCurrentRecord();
-      }    }
-    return null;
+    }
+    return true;
   }
 
   private static void log(String string) {

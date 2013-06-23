@@ -268,7 +268,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public boolean isFullyConsumed() {
-    return readValues >= totalValueCount;
+    return readValues > totalValueCount || ( readValues == totalValueCount && consumed);
   }
 
   /**

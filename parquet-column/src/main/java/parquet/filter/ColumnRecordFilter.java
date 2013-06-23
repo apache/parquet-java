@@ -21,6 +21,9 @@ public final class ColumnRecordFilter implements RecordFilter {
 
   /**
    * Factory method for record filter which applies the supplied predicate to the specified column.
+   * Note that if searching for a repeated sub-attribute it will only ever match against the
+   * first instance of it in the object.
+   *
    * @param columnPath Dot separated path specifier, e.g. "engine.capacity"
    * @param predicate Should call getBinary etc. and check the value
    */
@@ -54,6 +57,7 @@ public final class ColumnRecordFilter implements RecordFilter {
    */
   @Override
   public boolean isMatch() {
+
     return ( filterOnColumn.isFullyConsumed()) ? false : filterPredicate.apply( filterOnColumn );
   }
 
