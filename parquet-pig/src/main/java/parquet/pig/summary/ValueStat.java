@@ -18,8 +18,8 @@ package parquet.pig.summary;
 public class ValueStat {
 
   private double total;
-  private double min = Double.MAX_VALUE;
-  private double max = Double.MIN_VALUE;
+  private double min = Double.POSITIVE_INFINITY;
+  private double max = Double.NEGATIVE_INFINITY;
 
   public void add(double v) {
     total += v;
