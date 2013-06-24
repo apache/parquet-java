@@ -3,7 +3,7 @@
 
   <groupId>com.twitter</groupId>
   <artifactId>parquet-format</artifactId>
-  <version>1.0.0-t2</version>
+  <version>1.0.0-t3-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>parquet format metadata</name>
