@@ -31,7 +31,7 @@ import parquet.io.api.PrimitiveConverter;
 
 /**
  *
- * TODO : doc + see classes below (duplicated code from julien)
+ * ETypeConverter is an easy way to set the converter for the right type.
  *
  *
  * @author Mickaël Lacour <m.lacour@criteo.com>
@@ -106,7 +106,6 @@ public enum ETypeConverter {
     }
   },
   EBINARY_CONVERTER(Binary.class) {
-
     @Override
     Converter getConverter(final Class<?> type, final int index, final HiveGroupConverter parent) {
       return new FieldBinaryConverter(new ParentValueContainer() {
@@ -116,9 +115,7 @@ public enum ETypeConverter {
         }
       });
     }
-
   };
-
   final Class<?> _type;
 
   private ETypeConverter(final Class<?> type) {
@@ -140,11 +137,10 @@ public enum ETypeConverter {
     throw new RuntimeException("Converter not found ... for type : " + type);
   }
 
-  // TODO : Duplicate code with Julien, need to take a look after it works
   /**
    * handle string values
    *
-   * @author Julien Le Dem
+   * TODO : Duplicate code with parquet-avro and parquet-pig, need refactoring
    *
    */
   final class FieldBinaryConverter extends PrimitiveConverter {
@@ -159,13 +155,10 @@ public enum ETypeConverter {
     final public void addBinary(final Binary value) {
       parent.add(value);
     }
-
   }
 
   /**
    * Handles doubles
-   *
-   * @author Julien Le Dem
    *
    */
   final class FieldDoubleConverter extends PrimitiveConverter {
@@ -180,9 +173,12 @@ public enum ETypeConverter {
     final public void addDouble(final double value) {
       parent.add(value);
     }
-
   }
 
+  /**
+   * Handles integer
+   *
+   */
   final class FieldIntegerConverter extends PrimitiveConverter {
 
     private final ParentValueContainer parent;
@@ -197,6 +193,10 @@ public enum ETypeConverter {
     }
   }
 
+  /**
+   * Handles float
+   *
+   */
   final class FieldFloatConverter extends PrimitiveConverter {
 
     private final ParentValueContainer parent;
@@ -209,9 +209,12 @@ public enum ETypeConverter {
     public void addFloat(final float value) {
       parent.add(value);
     }
-
   }
 
+  /**
+   * Handles long
+   *
+   */
   final class FieldLongConverter extends PrimitiveConverter {
 
     private final ParentValueContainer parent;
@@ -224,9 +227,12 @@ public enum ETypeConverter {
     public void addLong(final long value) {
       parent.add(value);
     }
-
   }
 
+  /**
+   * Handles boolean
+   *
+   */
   final class FieldBooleanConverter extends PrimitiveConverter {
 
     private final ParentValueContainer parent;
@@ -239,10 +245,14 @@ public enum ETypeConverter {
     public void addBoolean(final boolean value) {
       parent.add(value);
     }
-
   }
 
-  // TODO NOT IMPLEMENTED YET !!!
+  /**
+   * Handles BigDecimal
+   *
+   * TODO : need to override the addBigDecimal method once BigDecimal is supported
+   *
+   */
   final class FieldBigDecimalConverter extends PrimitiveConverter {
 
     private final ParentValueContainer parent;
@@ -255,24 +265,19 @@ public enum ETypeConverter {
     public void addLong(final long value) {
       parent.add(value);
     }
-
   }
 
   /**
    * for converters to add their current value to their parent
    *
-   * @author Julien Le Dem
-   *
    */
   abstract public class ParentValueContainer {
 
     /**
-     * will add the value to the parent whether it's a map, a bag or a tuple
+     * will add the value to the parent whether it's a map, a bag or a tuple or a array
      *
      * @param value
      */
     abstract void add(Object value);
-
   }
-
 }

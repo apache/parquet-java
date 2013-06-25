@@ -25,12 +25,12 @@ import parquet.io.api.RecordMaterializer;
  *
  * @param <T> the type of the materialized record
  */
-class RecordReaderEmpty<T> extends RecordReader<T> {
+class EmptyRecordReader<T> extends RecordReader<T> {
 
   private final GroupConverter recordConsumer;
   private final RecordMaterializer<T> recordMaterializer;
 
-  public RecordReaderEmpty(RecordMaterializer<T> recordMaterializer) {
+  public EmptyRecordReader(RecordMaterializer<T> recordMaterializer) {
     this.recordMaterializer = recordMaterializer;
     this.recordConsumer = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer), validating, root.getType());
   }

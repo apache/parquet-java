@@ -36,6 +36,7 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.Utils;
 
 import parquet.hive.writable.BinaryWritable;
 
@@ -212,7 +213,7 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
     public Object set(final Object o, final Text text) {
       final BinaryWritable binaryWritable = new BinaryWritable();
       if (text != null) {
-        binaryWritable.setBytes(text.getBytes());
+        binaryWritable.set(text.getBytes(), 0, text.getLength());
       }
       return binaryWritable;
     }

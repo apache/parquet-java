@@ -66,7 +66,7 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
     conf = new Configuration();
     job = new JobConf(conf);
     fs = FileSystem.getLocal(conf);
-    dir = new Path("testdata/from_java/deprecatedoutputformat/");
+    dir = new Path("target/tests/from_java/deprecatedoutputformat/");
     testFile = new File(dir.toString(), "customer");
     if (testFile.exists()) {
       if (!testFile.delete()) {

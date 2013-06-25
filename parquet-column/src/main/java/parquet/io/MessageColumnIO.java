@@ -64,7 +64,7 @@ public class MessageColumnIO extends GroupColumnIO {
         new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType())
       );
     } else {
-      return new RecordReaderEmpty<T>(recordMaterializer);
+      return new EmptyRecordReader<T>(recordMaterializer);
     }
   }
 

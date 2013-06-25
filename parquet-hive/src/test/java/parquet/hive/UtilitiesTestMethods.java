@@ -38,13 +38,23 @@ public class UtilitiesTestMethods {
 
   public static boolean smartCheckArray(Writable[] arrValue, Writable[] arrExpected, Integer[] arrCheckIndexValues) {
 
+    int i = 0;
     for (Integer index : arrCheckIndexValues) {
-      final Writable expectedValue = arrExpected[index];
-      final Writable value = arrValue[index];
-      if (((value == null && expectedValue == null)
-              || (((value != null && expectedValue != null) && (value.equals(expectedValue))))) == false) {
-        return false;
+      if (index != Integer.MIN_VALUE) {
+        final Writable value = arrValue[index];
+        final Writable expectedValue = arrExpected[index];
+
+        if (((value == null && expectedValue == null)
+                || (((value != null && expectedValue != null) && (value.equals(expectedValue))))) == false) {
+          return false;
+        }
+      } else {
+        final Writable value = arrValue[i];
+        if (value != null) {
+          return false;
+        }
       }
+      ++i;
     }
 
     return true;
@@ -52,7 +62,7 @@ public class UtilitiesTestMethods {
 
   static public ArrayWritable createArrayWritable(final Integer custkey, final String name, final String address, final Integer nationkey, final String phone, final Double acctbal, final String mktsegment, final String comment) {
 
-    Writable[] arr = new Writable[8];
+    Writable[] arr = new Writable[9]; // The last one is for the unknow column
     arr[0] = new IntWritable(custkey);
     if (name != null) {
       arr[1] = new BinaryWritable(name);
@@ -78,32 +88,6 @@ public class UtilitiesTestMethods {
 
     return new ArrayWritable(Writable.class, arr);
   }
-//  public static void readTestFile(Path testFile, Configuration configuration)
-//          throws IOException {
-//    ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, testFile);
-//    MessageType schema = readFooter.getFileMetaData().getSchema();
-//    MessageType requestedSchema = new MessageType("requested", schema.getFields());
-//    ParquetFileReader parquetFileReader = new ParquetFileReader(configuration, testFile, readFooter.getBlocks(), requestedSchema.getColumns());
-//    PageReadStore pages = parquetFileReader.readNextRowGroup();
-//    List<ColumnDescriptor> columns = requestedSchema.getColumns();
-//    for (ColumnDescriptor columnDescriptor : columns) {
-//      PageReader pageReader = pages.getPageReader(columnDescriptor);
-//      Page page = null;
-//      do {
-//        page = pageReader.readPage();
-//        if (page != null) {
-//          System.out.print("data number element:" + page.getValueCount());
-//          System.out.print("data number getValueEncoding:" + page.getValueEncoding());
-//          String data = new String(page.getBytes().toByteArray(), BytesUtils.UTF8);
-//          System.out.print("data:" + data);
-//        }
-//        System.out.println();
-//      } while (page != null);
-//    }
-//
-//    System.out.println("pages : " + pages);
-////    System.out.println(pages.getRowCount());
-//  }
 
   public static void writeBlock(final MessageType schema, final MemPageStore pageStore,
           final int recordCount, final ParquetFileWriter w) throws IOException {

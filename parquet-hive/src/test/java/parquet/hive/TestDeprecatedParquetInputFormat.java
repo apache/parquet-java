@@ -82,7 +82,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
             + "  optional binary c_mktsegment;\n"
             + "  optional binary c_comment;\n"
             + "}";
-    readParquetHiveInputFormat(schemaRequested, new Integer[] {0, 1, 2, 3, 4, 5, 6, 7});
+    readParquetHiveInputFormat(schemaRequested, new Integer[] {0, 1, 2, 3, 4, 5, 6, 7, 8});
   }
 
   public void testParquetHiveInputFormatWithSpecificSchema() throws Exception {
@@ -110,22 +110,15 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
             + "}";
     readParquetHiveInputFormat(schemaRequested, new Integer[] {0});
   }
-//  Need to improve the checking because we need the key for the map. // TODO
-//  public void testParquetHiveInputFormatWithSpecificSchemaLastColumn() throws Exception {
-//    final String schemaRequested = "message customer {\n"
-//            + "  optional binary c_comment;\n"
-//            + "}";
-//    readParquetHiveInputFormat(schemaRequested, new Integer[] {7});
-//  }
 
-// Not working yet // TODO
-//  public void testParquetHiveInputFormatWithSpecificSchemaUnknownColumn() throws Exception {
-//    final String schemaRequested = "message customer {\n"
-//            + "  optional int32 unknown;\n"
-//            + "}";
-//    readParquetHiveInputFormat(schemaRequested, new Integer[] {Integer.MIN_VALUE});
-//  }
-//
+  public void testParquetHiveInputFormatWithSpecificSchemaUnknownColumn() throws Exception {
+    final String schemaRequested = "message customer {\n"
+            + "  optional int32 c_custkey;\n"
+            + "  optional int32 unknown;\n"
+            + "}";
+    readParquetHiveInputFormat(schemaRequested, new Integer[] {0, Integer.MIN_VALUE});
+  }
+
   @Override
   protected void setUp() throws Exception {
     //
@@ -135,7 +128,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
     conf = new Configuration();
     job = new JobConf(conf);
     fs = FileSystem.getLocal(conf);
-    dir = new Path("testdata/from_java/deprecatedoutputformat/");
+    dir = new Path("target/tests/from_java/deprecatedoutputformat/");
     testFile = new File(dir.toString(), "customer");
     reporter = Reporter.NULL;
     if (testFile.exists()) {
@@ -226,6 +219,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
             + "  optional double c_acctbal;\n"
             + "  optional binary c_mktsegment;\n"
             + "  optional binary c_comment;\n"
+            + "  optional int32 unknown;\n"
             + "}";
 
 

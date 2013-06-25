@@ -49,16 +49,13 @@ public class HiveSchemaConverter {
 
   static public MessageType convert(final List<String> columnNames, final List<TypeInfo> columnTypes) {
     final MessageType schema = new MessageType("hive_schema", convertTypes(columnNames, columnTypes));
-    if (Log.INFO) {
-      LOG.info(schema);
-    }
     return schema;
   }
 
   static private Type[] convertTypes(final List<String> columnNames, final List<TypeInfo> columnTypes) {
     if (columnNames.size() != columnTypes.size()) {
       throw new RuntimeException("Mismatched Hive columns and types. Hive columns names found : " + columnNames
-          + " . And Hive types found : " + columnTypes);
+              + " . And Hive types found : " + columnTypes);
     }
 
     final Type[] types = new Type[columnNames.size()];
@@ -89,6 +86,7 @@ public class HiveSchemaConverter {
       } else if (typeInfo.equals(TypeInfoFactory.booleanTypeInfo)) {
         return new PrimitiveType(repetition, PrimitiveTypeName.BOOLEAN, name);
       } else if (typeInfo.equals(TypeInfoFactory.binaryTypeInfo)) {
+        // TODO : binaryTypeInfo is a byte array. Need to map it
         throw new NotImplementedException("Binary type not implemented");
       } else if (typeInfo.equals(TypeInfoFactory.timestampTypeInfo)) {
         throw new NotImplementedException("Timestamp type not implemented");

@@ -41,7 +41,11 @@ import org.apache.hadoop.util.StringUtils;
  *
  * ManageJobConfig quick workaround to initialize the job with column needed
  *
+ * We are going to get the Table from a partition in order to get all the aliases from it.
+ * Once we have them, we take a look at the different columns needed for each of them, and we update the job
+ * by appending these columns.
  *
+ * At the end, the new JobConf will contain all the wanted columns.
  *
  * @author Mickaël Lacour <m.lacour@criteo.com>
  *
@@ -51,6 +55,12 @@ public class ManageJobConfig {
   MapredWork mrwork;
   private Map<String, PartitionDesc> pathToPartitionInfo;
 
+  /**
+   * From a string which columns names (including hive column), return a list of string columns
+   *
+   * @param columns
+   * @return
+   */
   public static List<String> getColumns(final String columns) {
     final List<String> listColumns = (List<String>) StringUtils.getStringCollection(columns);
     // Remove virtual Hive columns, hardcoded for compatibility
@@ -61,6 +71,11 @@ public class ManageJobConfig {
     return listColumns;
   }
 
+  /**
+   * Initialize the mrwork variable in order to get all the partition and start to update the jobconf
+   *
+   * @param job
+   */
   private void init(final JobConf job) {
     final String plan = HiveConf.getVar(job, HiveConf.ConfVars.PLAN);
     if (mrwork == null && plan != null && plan.length() > 0) {
@@ -102,7 +117,7 @@ public class ManageJobConfig {
 
     for (final String alias : aliases) {
       final Operator<? extends Serializable> op = this.mrwork.getAliasToWork().get(
-          alias);
+              alias);
       if (op != null && op instanceof TableScanOperator) {
         final TableScanOperator tableScan = (TableScanOperator) op;
 
@@ -139,13 +154,22 @@ public class ManageJobConfig {
     final String filterText = filterExpr.getExprString();
     final String filterExprSerialized = Utilities.serializeExpression(filterExpr);
     jobConf.set(
-        TableScanDesc.FILTER_TEXT_CONF_STR,
-        filterText);
+            TableScanDesc.FILTER_TEXT_CONF_STR,
+            filterText);
     jobConf.set(
-        TableScanDesc.FILTER_EXPR_CONF_STR,
-        filterExprSerialized);
+            TableScanDesc.FILTER_EXPR_CONF_STR,
+            filterExprSerialized);
   }
 
+  /**
+   *
+   * Clone the job and try to update the new one with the requested columns
+   *
+   * @param jobConf
+   * @param path    : needed to be able to
+   * @return the
+   * @throws IOException
+   */
   public JobConf cloneJobAndInit(final JobConf jobConf, final Path path) throws IOException {
     init(jobConf);
     final JobConf cloneJobConf = new JobConf(jobConf);

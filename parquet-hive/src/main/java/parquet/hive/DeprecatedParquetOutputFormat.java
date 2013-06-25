@@ -43,6 +43,8 @@ import parquet.hive.write.DataWritableWriteSupport;
  *
  * A Parquet OutputFormat for Hive (with the deprecated package mapred)
  *
+ * TODO : Refactor all of the wrappers here
+ * Talk about it on : https://github.com/Parquet/parquet-mr/pull/28s
  *
  * @author Mickaël Lacour <m.lacour@criteo.com>
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
@@ -71,9 +73,13 @@ public class DeprecatedParquetOutputFormat extends FileOutputFormat<Void, ArrayW
     throw new RuntimeException("Should never be used");
   }
 
+  /**
+   *
+   * Create the parquet schema from the hive schema, and return the RecordWriterWrapper which contains the real output format
+   */
   @Override
   public org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter getHiveRecordWriter(final JobConf jc, final Path finalOutPath, final Class<? extends Writable> valueClass,
-      final boolean isCompressed, final Properties tableProperties, final Progressable progress) throws IOException {
+          final boolean isCompressed, final Properties tableProperties, final Progressable progress) throws IOException {
     // TODO find out if we can overwrite any _col0 column names here
     final String columnNameProperty = tableProperties.getProperty("columns");
     final String columnTypeProperty = tableProperties.getProperty("columns.types");
