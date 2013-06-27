@@ -220,7 +220,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       codec = CompressionCodecName.UNCOMPRESSED;
     }
     if (INFO) LOG.info("Compression: " + codec.name());
-    extension += codec.getExtension();
+    extension = codec.getExtension() + extension;
     if (file == null) {
       file = getDefaultWorkFile(taskAttemptContext, extension);
     }
