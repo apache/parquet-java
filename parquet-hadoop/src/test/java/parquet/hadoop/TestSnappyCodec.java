@@ -16,11 +16,13 @@ public class TestSnappyCodec {
     SnappyCompressor compressor = new SnappyCompressor();
     SnappyDecompressor decompressor = new SnappyDecompressor();
 
-    TestSnappy(compressor, decompressor, "");
-    TestSnappy(compressor, decompressor, "FooBar");	
-    TestSnappy(compressor, decompressor, "FooBar1", "FooBar2");
+    TestSnappy(compressor, decompressor, "");    
+    TestSnappy(compressor, decompressor, "FooBar");    
+    TestSnappy(compressor, decompressor, "FooBar1", "FooBar2");    
     TestSnappy(compressor, decompressor, "FooBar");
-    TestSnappy(compressor, decompressor, "a", "blahblahblah", "abcdef");
+    TestSnappy(compressor, decompressor, "a", "blahblahblah", "abcdef");    
+    TestSnappy(compressor, decompressor, "");
+    TestSnappy(compressor, decompressor, "FooBar");
   }
 
   private void TestSnappy(SnappyCompressor compressor, SnappyDecompressor decompressor, 
@@ -45,7 +47,7 @@ public class TestSnappyCodec {
     assert(compressor.needsInput());
     compressor.finish();
     assert(!compressor.needsInput());
-    assert(!compressor.finished());
+    assert(!compressor.finished() || uncompressedSize == 0);
     byte[] compressedData = new byte[1000];
 
     int compressedSize = compressor.compress(compressedData, 0, 1000);
