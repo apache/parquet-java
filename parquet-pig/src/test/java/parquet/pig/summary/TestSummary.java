@@ -140,5 +140,23 @@ public class TestSummary {
     System.out.println(s);
   }
 
+  @Test
+  public void testMaxIsZero() throws Exception {
+    PigServer pigServer = new PigServer(ExecType.LOCAL);
+    Data data = Storage.resetData(pigServer);
+
+    List<Tuple> list = new ArrayList<Tuple>();
+    for (int i = 0; i < 10; i++) {
+      list.add(t("a", i - 9));
+    }
+    
+    data.set("in", "a:chararray, b:int", list);
+    pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
+    pigServer.registerQuery("B = FOREACH (GROUP A ALL) GENERATE " + Summary.class.getName() + "(A);");
+    pigServer.registerQuery("STORE B INTO 'out' USING mock.Storage();");
+    TupleSummaryData s = SummaryData.fromJSON((String) data.get("out").get(0).get(0), TupleSummaryData.class);
+    System.out.println(s);	  
+    assertEquals(0, s.getFields().get(1).getNumber().getValue().getMax(), 0);
+  }
 
 }

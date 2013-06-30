@@ -62,11 +62,9 @@ public class TestInputOutputFormat {
     protected void map(Void key, Group value, Mapper<Void,Group,LongWritable,Text>.Context context) throws IOException ,InterruptedException {
       context.write(new LongWritable(value.getInteger("line", 0)), new Text(value.getString("content", 0)));
     }
-
   }
 
-  @Test
-  public void testReadWrite() throws IOException, ClassNotFoundException, InterruptedException {
+  private void testReadWrite(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException {
     final Configuration conf = new Configuration();
     final Path inputPath = new Path("src/test/java/parquet/hadoop/example/TestInputOutputFormat.java");
     final Path parquetPath = new Path("target/test/example/TestInputOutputFormat/parquet");
@@ -79,7 +77,7 @@ public class TestInputOutputFormat {
       TextInputFormat.addInputPath(job, inputPath);
       job.setInputFormatClass(TextInputFormat.class);
       job.setNumReduceTasks(0);
-      ExampleOutputFormat.setCompression(job, CompressionCodecName.GZIP);
+      ExampleOutputFormat.setCompression(job, codec);
       ExampleOutputFormat.setOutputPath(job, parquetPath);
       job.setOutputFormatClass(ExampleOutputFormat.class);
       job.setMapperClass(TestInputOutputFormat.MyMapper.class);
@@ -119,6 +117,13 @@ public class TestInputOutputFormat {
     assertNull("line " + lineNumber, out.readLine());
     in.close();
     out.close();
+  }
+  @Test
+  public void testReadWrite() throws IOException, ClassNotFoundException, InterruptedException {
+    // TODO: Lzo requires additional external setup steps so leave it out for now
+    testReadWrite(CompressionCodecName.GZIP);
+    testReadWrite(CompressionCodecName.UNCOMPRESSED);
+    testReadWrite(CompressionCodecName.SNAPPY);
   }
 
   private void waitForJob(Job job) throws InterruptedException, IOException {
