@@ -13,9 +13,9 @@ Parquet is a very active project, and new features are being added quickly; belo
 
 
 <table>
-  <tr><td>Feature</td><td>In trunk</td><td>In dev</td><td>Planned</td><td>Expected release</td></tr>
+  <tr><th>Feature</th><th>In trunk</th><th>In dev</th><th>Planned</th><th>Expected release</th></tr>
   <tr><td>Type-specific encoding</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Hive integration</td><td></td><td>YES (#28)</td></td><td></td><td>1.0</td></tr>
+  <tr><td>Hive integration</td><td></td><td>YES (<a href ="https://github.com/Parquet/parquet-mr/pull/28">28</a>)</td></td><td></td><td>1.0</td></tr>
   <tr><td>Pig integration</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Cascading integration</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Impala integration</td><td>YES (non-nested)</td><td></td></td><td></td><td>1.0</td></tr>
@@ -28,7 +28,7 @@ Parquet is a very active project, and new features are being added quickly; belo
   <tr><td>Bit Packing</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Adaptive dictionary encoding</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Complex structure support</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Predicate pushdown</td><td></td><td>YES (#68)</td></td><td></td><td>2.0</td></tr>
+  <tr><td>Predicate pushdown</td><td></td><td>YES (<a href ="https://github.com/Parquet/parquet-mr/pull/68">68</a>)</td></td><td></td><td>2.0</td></tr>
   <tr><td>Column stats</td><td></td><td></td></td><td>YES</td><td>2.0</td></tr>  <tr><td>Delta encoding</td><td></td><td></td></td><td>YES</td><td>2.0</td></tr>
   <tr><td>Native Protocol Buffers support</td><td></td><td></td></td><td>YES</td><td>2.0</td></tr>
   <tr><td>Index pages</td><td></td><td></td></td><td>YES</td><td>2.0</td></tr>
@@ -42,10 +42,10 @@ Note that to use an Input or Output format, you need to implement a WriteSupport
 We've implemented this for 2 popular data formats to provide a clean migration path as well:
 
 ### Thrift
-Thrift integration is provided by the (parquet-thrift)[https://github.com/Parquet/parquet-mr/tree/master/parquet-thrift] sub-project. If you are using Thrift through Scala, you may be using Twitter's (Scrooge)[https://github.com/twitter/scrooge]. If that's the case, not to worry -- we took care of the Scrooge/Apache Thrift glue for you in the (parquet-scrooge)[https://github.com/Parquet/parquet-mr/tree/master/parquet-scrooge] sub-project.
+Thrift integration is provided by the [parquet-thrift](https://github.com/Parquet/parquet-mr/tree/master/parquet-thrift) sub-project. If you are using Thrift through Scala, you may be using Twitter's [Scrooge](https://github.com/twitter/scrooge). If that's the case, not to worry -- we took care of the Scrooge/Apache Thrift glue for you in the [parquet-scrooge](https://github.com/Parquet/parquet-mr/tree/master/parquet-scrooge) sub-project.
 
 ### Avro
-Avro conversion is implemented via the (parquet-avro)[https://github.com/Parquet/parquet-mr/tree/master/parquet-avro] sub-project.
+Avro conversion is implemented via the [parquet-avro](https://github.com/Parquet/parquet-mr/tree/master/parquet-avro) sub-project.
 
 ### Create your own objects
 * The ParquetOutputFormat can be provided a WriteSupport to write your own objects to an event based RecordConsumer.
@@ -74,7 +74,7 @@ If the data was stored using Pig, things will "just work". If the data was store
 
 ## Hive integration
 
-Hive integration is under development in Issue #68 and very close to being merged! Feel free to try out that branch and tell us what you think.
+Hive integration is under development in <a href ="https://github.com/Parquet/parquet-mr/pull/28">Issue 28</a> and very close to being merged! Feel free to try out that branch and tell us what you think.
 
 ## Build
 
@@ -127,7 +127,7 @@ We haven't published a 1.0.0 yet
 * Avi Bryant <https://github.com/avibryant>
 * Dmitriy Ryaboy [@squarecog](https://twitter.com/squarecog) <https://github.com/dvryaboy>
 * Jonathan Coveney <http://twitter.com/jco>
-* and many others -- see the (Contributor report)[ https://github.com/Parquet/parquet-mr/contributors]
+* and many others -- see the [Contributor report]( https://github.com/Parquet/parquet-mr/contributors)
 
 ## Discussions
 * google group https://groups.google.com/d/forum/parquet-dev
