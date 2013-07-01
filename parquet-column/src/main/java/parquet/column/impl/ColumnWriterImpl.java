@@ -24,6 +24,8 @@ import parquet.column.ColumnWriter;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
 import parquet.column.values.ValuesWriter;
+import parquet.column.values.boundedint.DevNullValuesWriter;
+import parquet.column.values.boundedint.ZeroIntegerValuesReader;
 import parquet.column.values.dictionary.DictionaryValuesWriter;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
@@ -61,15 +63,9 @@ final class ColumnWriterImpl implements ColumnWriter {
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
 
-    // TODO: what is a good initialCapacity?
-    repetitionLevelColumn = new RunLengthBitPackingHybridValuesWriter(
-        BytesUtils.getWidthFromMaxInt(path.getMaxRepetitionLevel()),
-        64 * 1024);
+    repetitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel());
 
-    // TODO: what is a good initialCapacity?
-    definitionLevelColumn = new RunLengthBitPackingHybridValuesWriter(
-        BytesUtils.getWidthFromMaxInt(path.getMaxDefinitionLevel()),
-        64 * 1024);
+    definitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel());
 
     switch (path.getType()) {
     case BOOLEAN:
@@ -84,6 +80,18 @@ final class ColumnWriterImpl implements ColumnWriter {
       break;
     default:
       this.dataColumn = new PlainValuesWriter(initialSizePerCol);
+    }
+  }
+  
+  private ValuesWriter getColumnDescriptorValuesWriter(int maxLevel) {
+    if(maxLevel == 0) {
+      return new DevNullValuesWriter();
+    }
+    else {
+      // TODO: what is a good initialCapacity?
+      return new RunLengthBitPackingHybridValuesWriter(
+        BytesUtils.getWidthFromMaxInt(maxLevel),
+        64 * 1024);
     }
   }
 

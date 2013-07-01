@@ -22,6 +22,7 @@ import parquet.column.page.DictionaryPage;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.ValuesType;
 import parquet.column.values.bitpacking.ByteBitPackingValuesReader;
+import parquet.column.values.boundedint.ZeroIntegerValuesReader;
 import parquet.column.values.dictionary.DictionaryValuesReader;
 import parquet.column.values.dictionary.PlainBinaryDictionary;
 import parquet.column.values.plain.BinaryPlainValuesReader;
@@ -63,6 +64,9 @@ public enum Encoding {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       int bitWidth = BytesUtils.getWidthFromMaxInt(getMaxLevel(descriptor, valuesType));
+      if(bitWidth == 0) {
+        return new ZeroIntegerValuesReader();
+      }
       return new RunLengthBitPackingHybridValuesReader(bitWidth);
     }
   },
