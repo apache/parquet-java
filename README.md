@@ -60,9 +60,10 @@ A [Loader](https://github.com/Parquet/parquet-mr/blob/master/parquet-pig/src/mai
 
 Storing data into Parquet in Pig is simple:
 ```
--- control page size and compression options
-SET parquet.page.size 1048576
-SET parquet.compression lzo
+-- options you might want to fiddle with
+SET parquet.page.size 1048576 -- default. this is your min read/write unit.
+SET parquet.block.size 524288000 -- your memory budget for buffering data
+SET parquet.compression lzo -- or you can use none, gzip, snappy
 STORE mydata into '/some/path' USING parquet.pig.ParquetStorer;
 ```
 Reading in Pig is also simple:
