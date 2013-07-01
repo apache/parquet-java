@@ -82,7 +82,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
    * @param readSupport Provides functionality for reading.
    */
   public ParquetRecordReader(ReadSupport<T> readSupport ) {
-    this(readSupport, RecordFilter.NULL_FILTER );
+    this(readSupport, null);
   }
 
   /**

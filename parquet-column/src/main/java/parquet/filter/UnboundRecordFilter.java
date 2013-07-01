@@ -1,6 +1,5 @@
 package parquet.filter;
 
-import com.google.common.base.Predicate;
 import parquet.column.ColumnReader;
 
 /**

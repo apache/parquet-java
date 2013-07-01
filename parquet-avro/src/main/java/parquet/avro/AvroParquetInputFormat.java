@@ -15,7 +15,6 @@
  */
 package parquet.avro;
 
-import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.IndexedRecord;
 import parquet.avro.AvroReadSupport;
 import parquet.hadoop.ParquetInputFormat;

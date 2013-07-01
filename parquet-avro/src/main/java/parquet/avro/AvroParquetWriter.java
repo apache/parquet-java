@@ -40,38 +40,38 @@ public class AvroParquetWriter<T extends IndexedRecord> extends ParquetWriter<T>
   public AvroParquetWriter(Path file, Schema avroSchema,
       CompressionCodecName compressionCodecName, int blockSize,
       int pageSize) throws IOException {
-    super(file, (WriteSupport<T>)
-	new AvroWriteSupport(new AvroSchemaConverter().convert(avroSchema), avroSchema),
-	compressionCodecName, blockSize, pageSize);
+    super(file, (WriteSupport<T>)new AvroWriteSupport(new AvroSchemaConverter().convert(avroSchema), avroSchema),
+	      compressionCodecName, blockSize, pageSize);
   }
 
   /** Create a new {@link AvroParquetWriter}.
    *
-   * @param file
-   * @param avroSchema
-   * @param compressionCodecName
-   * @param blockSize
-   * @param pageSize
+   * @param file The file name to write to.
+   * @param avroSchema The schema to write with.
+   * @param compressionCodecName Compression code to use, or CompressionCodecName.UNCOMPRESSED
+   * @param blockSize HDFS block size
+   * @param pageSize See parquet write up. Blocks are subdivided into pages for alignment and other purposes.
+   * @param enableDictionary Whether to use a dictionary to compress columns.
    * @throws IOException
    */
   public AvroParquetWriter(Path file, Schema avroSchema,
                            CompressionCodecName compressionCodecName, int blockSize,
                            int pageSize, boolean enableDictionary) throws IOException {
     super(file, (WriteSupport<T>)
-        new AvroWriteSupport(new AvroSchemaConverter().convert(avroSchema), avroSchema),
-        compressionCodecName, blockSize, pageSize,enableDictionary,false);
+        new AvroWriteSupport(new AvroSchemaConverter().convert(avroSchema),avroSchema),
+        compressionCodecName, blockSize, pageSize, enableDictionary, false);
   }
 
   /** Create a new {@link AvroParquetWriter}. The default block size is 50 MB.The default
    *  page size is 1 MB.  Default compression is no compression. (Inherited from {@link ParquetWriter})
    *
-   * @param file
-   * @param avroSchema
+   * @param file The file name to write to.
+   * @param avroSchema The schema to write with.
    * @throws IOException
    */
   public AvroParquetWriter(Path file, Schema avroSchema) throws IOException {
     this(file, avroSchema, CompressionCodecName.UNCOMPRESSED,
-	 DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
+	  DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
   }
 
 }

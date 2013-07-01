@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.google.common.collect.ImmutableList;
 import parquet.Log;
 import parquet.column.ColumnReader;
 import parquet.column.impl.ColumnReadStoreImpl;
@@ -34,8 +33,6 @@ import parquet.io.api.RecordConsumer;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
-import parquet.filter.UnboundRecordFilter;
-import parquet.filter.RecordFilter;
 
 
 /**
@@ -225,27 +222,29 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     public Case getCase(int currentLevel, int d, int nextR) {
       return caseLookup[currentLevel][d][nextR];
     }
+
+    public State getNextState(int nextR) {
+      return nextState[nextR];
+    }
   }
 
   private final GroupConverter recordConsumer;
   private final RecordMaterializer<T> recordMaterializer;
-  private final RecordFilter recordFilter;
 
   private State[] states;
+  private ColumnReader[] columns;
 
   /**
    *
    * @param root the root of the schema
    * @param validating
    * @param columnStore
-   * @param unboundFilter Filter records, pass in NULL_FILTER to leave unfiltered.
    */
-  public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnReadStoreImpl columnStore,
-                                    UnboundRecordFilter unboundFilter) {
+  public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnReadStoreImpl columnStore) {
     this.recordMaterializer = recordMaterializer;
     this.recordConsumer = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer), validating, root.getType());
     PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
-    ColumnReader[] columns = new ColumnReader[leaves.length];
+    columns = new ColumnReader[leaves.length];
     int[][] nextReader = new int[leaves.length][];
     int[][] nextLevel = new int[leaves.length][];
     GroupConverter[][] groupConverterPaths = new GroupConverter[leaves.length][];
@@ -361,10 +360,6 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       Collections.sort(state.definedCases, caseComparator);
       Collections.sort(state.undefinedCases, caseComparator);
     }
-
-    // We need to make defensive copy to stop interference but as an optimisation don't bother if null
-    recordFilter = unboundFilter.bind(( unboundFilter == RecordFilter.NULL_FILTER )
-        ? null : ImmutableList.copyOf(columns));
   }
 
   //TODO: have those wrappers for a converter
@@ -384,12 +379,6 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
    */
   @Override
   public T read() {
-    // Skip forwards until the filter matches a record
-    if ( !skipToMatch()) {
-      return null;
-    }
-
-    // Materialize the record
     int currentLevel = 0;
     State currentState = states[0];
     recordConsumer.start();
@@ -415,38 +404,11 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       for (; currentLevel > next; currentLevel--) {
         currentState.groupConverterPath[currentLevel - 1].end();
       }
+
       currentState = currentState.nextState[nextR];
     } while (currentState != null);
     recordConsumer.end();
     return recordMaterializer.getCurrentRecord();
-  }
-
-  /**
-   * Skips forwards until the filter finds the first match. Returns false
-   * if none found.
-   */
-  private boolean skipToMatch() {
-    while ( !recordFilter.isMatch()) {
-      if ( recordFilter.isFullyConsumed()) {
-        return false;
-      }
-      State currentState = states[0];
-      do {
-        ColumnReader columnReader = currentState.column;
-
-        // currentLevel = depth + 1 at this point
-        // set the current value
-        if (columnReader.getCurrentDefinitionLevel() >= currentState.maxDefinitionLevel) {
-            columnReader.skip();
-        }
-        columnReader.consume();
-
-        // Based on repetition level work out next state to go to
-        int nextR = currentState.maxRepetitionLevel == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
-        currentState = currentState.nextState[nextR];
-      } while (currentState != null);
-    }
-    return true;
   }
 
   private static void log(String string) {
@@ -486,4 +448,8 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     return recordConsumer;
   }
 
+  protected Iterable<ColumnReader> getColumnReaders() {
+    // Converting the array to an iterable ensures that the array cannot be altered
+    return Arrays.asList(columns);
+  }
 }

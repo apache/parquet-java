@@ -1,5 +1,6 @@
 package parquet.avro;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
 import org.junit.Test;
@@ -13,20 +14,36 @@ import java.io.IOException;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static parquet.filter.ColumnRecordFilter.column;
-import static parquet.filter.ColumnRecordFilter.equalTo;
+import static parquet.filter.ColumnPredicates.equalTo;
 import static parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
 
+/**
+ * Other tests exercise the use of Avro Generic, a dynamic data representation. This class focuses
+ * on Avro Speific whose schemas are pre-compiled to POJOs with built in SerDe for faster serialization.
+ */
 public class TestSpecificReadWrite {
 
   @Test
   public void testReadWriteSpecific() throws IOException {
-    Path path = writeCarsToParquetFile( 10, false, CompressionCodecName.UNCOMPRESSED, false);
+    Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
     ParquetReader<Car> reader = new AvroParquetReader<Car>(path);
-    for ( int i =0; i < 10; i++ ) {
-      assertEquals(getVwPolo().toString(), reader.read().toString());
-      assertEquals(getVwPassat().toString(), reader.read().toString());
-      assertEquals(getBmwMini().toString(), reader.read().toString());
+    for (int i = 0; i < 10; i++) {
+      assertEquals(getVwPolo().toString(),reader.read().toString());
+      assertEquals(getVwPassat().toString(),reader.read().toString());
+      assertEquals(getBmwMini().toString(),reader.read().toString());
+    }
+    assertNull(reader.read());
+  }
+
+  @Test
+  public void testReadWriteSpecificWithDictionary() throws IOException {
+    Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, true);
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(path);
+    for (int i = 0; i < 10; i++) {
+      assertEquals(getVwPolo().toString(),reader.read().toString());
+      assertEquals(getVwPassat().toString(),reader.read().toString());
+      assertEquals(getBmwMini().toString(),reader.read().toString());
     }
     assertNull(reader.read());
   }
@@ -34,36 +51,59 @@ public class TestSpecificReadWrite {
   @Test
   public void testFilterMatchesMultiple() throws IOException {
 
-    Path path = writeCarsToParquetFile(10, false, CompressionCodecName.UNCOMPRESSED, false);
+    Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
 
     ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Volkswagen")));
-    for ( int i =0; i < 10; i++ ) {
-      assertEquals(reader.read().toString(), getVwPolo().toString());
-      assertEquals(reader.read().toString(), getVwPassat().toString());
+    for (int i = 0; i < 10; i++) {
+      assertEquals(reader.read().toString(),getVwPolo().toString());
+      assertEquals(reader.read().toString(),getVwPassat().toString());
     }
     assertNull( reader.read());
   }
 
+  @Test
+  public void testFilterWithDictionary() throws IOException {
 
-  private Path writeCarsToParquetFile( int num, boolean varyYear,
-                                      CompressionCodecName compression, boolean enableDictionary) throws IOException {
+    Path path = writeCarsToParquetFile(1,CompressionCodecName.UNCOMPRESSED,true);
+
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Volkswagen")));
+    assertEquals(reader.read().toString(),getVwPolo().toString());
+    assertEquals(reader.read().toString(),getVwPassat().toString());
+    assertNull( reader.read());
+  }
+
+  @Test
+  public void testFilterOnSubAttribute() throws IOException {
+
+    Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
+
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("engine.type", equalTo(EngineType.DIESEL)));
+    assertEquals(reader.read().toString(),getVwPassat().toString());
+    assertNull( reader.read());
+
+    reader = new AvroParquetReader<Car>(path, column("engine.capacity", equalTo(1.4f)));
+    assertEquals(reader.read().toString(),getVwPolo().toString());
+    assertNull( reader.read());
+
+
+    reader = new AvroParquetReader<Car>(path, column("engine.hasTurboCharger", equalTo(true)));
+    assertEquals(reader.read().toString(),getBmwMini().toString());
+    assertNull( reader.read());
+  }
+
+  private Path writeCarsToParquetFile( int num, CompressionCodecName compression, boolean enableDictionary) throws IOException {
     File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
     tmp.deleteOnExit();
     tmp.delete();
     Path path = new Path(tmp.getPath());
 
-    Car vwPolo    =  getVwPolo();
-    Car vwPassat  =  getVwPassat();
-    Car bmwMini   =  getBmwMini();
+    Car vwPolo   = getVwPolo();
+    Car vwPassat = getVwPassat();
+    Car bmwMini  = getBmwMini();
 
-    ParquetWriter<Car> writer = new AvroParquetWriter<Car>(path, Car.SCHEMA$, compression,
-        DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE,enableDictionary);
-    for ( int i =0; i < num; i++ ) {
-      if (varyYear ) {
-        vwPolo.setYear( ( i / 100l ));
-        vwPassat.setYear( ( i / 100l ));
-        bmwMini.setYear( ( i / 100l ));
-      }
+    ParquetWriter<Car> writer = new AvroParquetWriter<Car>(path,Car.SCHEMA$, compression,
+        DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE, enableDictionary);
+    for (int i = 0; i < num; i++) {
       writer.write(vwPolo);
       writer.write(vwPassat);
       writer.write(bmwMini);
@@ -75,30 +115,51 @@ public class TestSpecificReadWrite {
   public static Car getVwPolo() {
     return Car.newBuilder()
         .setYear(2010)
+        .setRegistration("A123 GTR")
         .setMake("Volkswagen")
         .setModel("Polo")
         .setDoors(4)
-        .setEngineCapacity(1.4f)
+        .setEngine(Engine.newBuilder().setType(EngineType.PETROL)
+                  .setCapacity(1.4f).setHasTurboCharger(false).build())
+        .setOptionalExtra(
+            Stereo.newBuilder().setMake("Blaupunkt").setSpeakers(4).build())
+        .setServiceHistory(ImmutableList.of(
+            Service.newBuilder().setDate(1325376000l).setMechanic("Jim").build(),
+            Service.newBuilder().setDate(1356998400l).setMechanic("Mike").build()
+            ))
         .build();
   }
 
   public static Car getVwPassat() {
     return Car.newBuilder()
         .setYear(2010)
+        .setRegistration("A123 GXR")
         .setMake("Volkswagen")
         .setModel("Passat")
         .setDoors(5)
-        .setEngineCapacity(2.0f)
+        .setEngine(Engine.newBuilder().setType(EngineType.DIESEL)
+            .setCapacity(2.0f).setHasTurboCharger(false).build())
+        .setOptionalExtra(
+            LeatherTrim.newBuilder().setColour("Black").build())
+        .setServiceHistory(ImmutableList.of(
+            Service.newBuilder().setDate(1325376000l).setMechanic("Jim").build()
+        ))
         .build();
   }
 
   public static Car getBmwMini() {
     return Car.newBuilder()
         .setYear(2010)
+        .setRegistration("A124 GSR")
         .setMake("BMW")
         .setModel("Mini")
         .setDoors(4)
-        .setEngineCapacity(1.6f)
+        .setEngine(Engine.newBuilder().setType(EngineType.PETROL)
+            .setCapacity(1.6f).setHasTurboCharger(true).build())
+        .setOptionalExtra(null)
+        .setServiceHistory(ImmutableList.of(
+            Service.newBuilder().setDate(1356998400l).setMechanic("Mike").build()
+        ))
         .build();
   }
 }

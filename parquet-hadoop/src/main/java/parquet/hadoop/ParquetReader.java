@@ -42,7 +42,7 @@ public class ParquetReader<T> implements Closeable {
   private ParquetRecordReader<T> reader;
 
   public ParquetReader(Path file, ReadSupport<T> readSupport) throws IOException {
-    this(file, readSupport, RecordFilter.NULL_FILTER);
+    this(file, readSupport, null);
   }
 
   public ParquetReader(Path file, ReadSupport<T> readSupport, UnboundRecordFilter filter) throws IOException {
@@ -59,7 +59,7 @@ public class ParquetReader<T> implements Closeable {
     MessageType schema = fileMetaData.getSchema();
     Map<String, String> extraMetadata = fileMetaData.getKeyValueMetaData();
     final ReadContext readContext = readSupport.init(conf, extraMetadata, schema);
-    reader = new ParquetRecordReader<T>(readSupport,filter);
+    reader = new ParquetRecordReader<T>(readSupport, filter);
     ParquetInputSplit inputSplit =
         new ParquetInputSplit(
             file, 0, 0, null, blocks,

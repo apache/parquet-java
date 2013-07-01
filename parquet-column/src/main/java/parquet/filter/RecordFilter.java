@@ -18,9 +18,4 @@ public interface RecordFilter {
    * Whether the filter values are fully consumed.
    */
   boolean isFullyConsumed();
-
-  /**
-   * Null filter to be used if no filtering needed.
-   */
-  public static final UnboundRecordFilter NULL_FILTER = new NullRecordFilter();
 }

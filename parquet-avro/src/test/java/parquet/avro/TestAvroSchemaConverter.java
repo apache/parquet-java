@@ -88,15 +88,4 @@ public class TestAvroSchemaConverter {
         "  optional int32 myint;\n" +
         "}\n");
   }
-
-  @Test(expected = UnsupportedOperationException.class)
-  public void testNonNullUnion() {
-    Schema union = Schema.createUnion(Arrays.asList(Schema.create(Schema.Type.INT),
-        Schema.create(Schema.Type.LONG)));
-    Schema schema = Schema.createRecord("record1", null, null, false);
-    schema.setFields(Arrays.asList(
-        new Schema.Field("myunion", union, null, null)));
-
-    new AvroSchemaConverter().convert(schema);
-  }
 }

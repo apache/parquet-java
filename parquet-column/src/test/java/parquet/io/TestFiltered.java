@@ -1,8 +1,6 @@
 package parquet.io;
 
-import org.junit.Ignore;
 import org.junit.Test;
-import parquet.Log;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.mem.MemPageStore;
 import parquet.example.data.Group;
@@ -17,12 +15,10 @@ import static parquet.example.Paper.r2;
 import static parquet.example.Paper.schema;
 import static parquet.filter.AndRecordFilter.and;
 import static parquet.filter.PagedRecordFilter.page;
-import static parquet.filter.ColumnRecordFilter.equalTo;
+import static parquet.filter.ColumnPredicates.equalTo;
 import static parquet.filter.ColumnRecordFilter.column;
 
 public class TestFiltered {
-
-  private static final Log LOG = Log.getLog(TestColumnIO.class);
 
   @Test
   public void testFilterOnInteger() {
@@ -45,7 +41,7 @@ public class TestFiltered {
         columnIO.getRecordReader(memPageStore, recordConverter,
             column("DocId", equalTo(20l)));
 
-    Group actual2=  recordReader.read();
+    Group actual2 = recordReader.read();
     assertNull( "There should be no more records as r1 filtered out", recordReader.read());
     assertEquals("filtering did not return the correct record", r2.toString(), actual2.toString());
 
@@ -63,7 +59,7 @@ public class TestFiltered {
         columnIO.getRecordReader(memPageStore, recordConverter,
             column("Name.Url", equalTo("http://A")));
 
-    Group actual1 =  recordReader.read();
+    Group actual1 = recordReader.read();
     assertNull( "There should be no more records as r2 filtered out", recordReader.read());
     assertEquals("filtering did not return the correct record", r1.toString(), actual1.toString());
 

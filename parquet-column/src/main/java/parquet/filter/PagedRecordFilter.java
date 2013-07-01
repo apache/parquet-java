@@ -34,8 +34,7 @@ public final class PagedRecordFilter implements RecordFilter {
   }
 
   /**
-   * Terminate early when we have got our page. Later we will want a row count and this
-   * will be no good.
+   * Terminate early when we have got our page.
    */
   @Override
   public boolean isFullyConsumed() {

@@ -404,7 +404,7 @@ class ColumnReaderImpl implements ColumnReader {
 
   /**
    * Reads the value into the binding or skips forwards.
-   * @param skip If true don;t deserialize just skip forwards
+   * @param skip If true do not deserialize just skip forwards
    */
   protected void checkValueRead(boolean skip) {
     try {

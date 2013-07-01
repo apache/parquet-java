@@ -1,14 +1,7 @@
 package parquet.filter;
 
-import com.google.common.base.Objects;
-import com.google.common.base.Predicate;
-import com.google.common.base.Splitter;
 import parquet.column.ColumnReader;
-import parquet.io.api.Binary;
-
 import java.util.Arrays;
-
-import static com.google.common.collect.Iterables.toArray;
 import static parquet.Preconditions.checkNotNull;
 
 /**
@@ -17,7 +10,7 @@ import static parquet.Preconditions.checkNotNull;
 public final class ColumnRecordFilter implements RecordFilter {
 
   private final ColumnReader filterOnColumn;
-  private final Predicate<ColumnReader> filterPredicate;
+  private final ColumnPredicates.Predicate filterPredicate;
 
   /**
    * Factory method for record filter which applies the supplied predicate to the specified column.
@@ -27,14 +20,15 @@ public final class ColumnRecordFilter implements RecordFilter {
    * @param columnPath Dot separated path specifier, e.g. "engine.capacity"
    * @param predicate Should call getBinary etc. and check the value
    */
-  public static final UnboundRecordFilter column(final String columnPath, final Predicate<ColumnReader> predicate) {
+  public static final UnboundRecordFilter column(final String columnPath,
+                                                 final ColumnPredicates.Predicate predicate) {
     checkNotNull(columnPath, "columnPath");
     checkNotNull(predicate,  "predicate");
     return new UnboundRecordFilter() {
-      final String[] filterPath = toArray(Splitter.on('.').split(columnPath), String.class);
+      final String[] filterPath = columnPath.split("\\.");
       @Override
       public RecordFilter bind(Iterable<ColumnReader> readers) {
-        for ( ColumnReader reader : readers ) {
+        for (ColumnReader reader : readers) {
           if ( Arrays.equals( reader.getDescriptor().getPath(), filterPath)) {
             return new ColumnRecordFilter(reader, predicate);
           }
@@ -47,7 +41,7 @@ public final class ColumnRecordFilter implements RecordFilter {
   /**
    * Private constructor. Use column() instead.
    */
-  private ColumnRecordFilter(ColumnReader filterOnColumn, Predicate<ColumnReader> filterPredicate) {
+  private ColumnRecordFilter(ColumnReader filterOnColumn, ColumnPredicates.Predicate filterPredicate) {
     this.filterOnColumn  = filterOnColumn;
     this.filterPredicate = filterPredicate;
   }
@@ -67,30 +61,5 @@ public final class ColumnRecordFilter implements RecordFilter {
   @Override
   public boolean isFullyConsumed() {
     return filterOnColumn.isFullyConsumed();
-  }
-
-  /**
-   * Predicate for string equality
-   */
-  public static final Predicate<ColumnReader> equalTo( final String value ) {
-    final Binary valueAsBinary = Binary.fromString( value );
-    return new Predicate<ColumnReader> () {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return Objects.equal( input.getBinary(), valueAsBinary );
-      }
-    };
-  }
-
-  /**
-   * Predicate for INT64 / long equality
-   */
-  public static final Predicate<ColumnReader> equalTo( final long value ) {
-    return new Predicate<ColumnReader> () {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return input.getLong() == value;
-      }
-    };
   }
 }

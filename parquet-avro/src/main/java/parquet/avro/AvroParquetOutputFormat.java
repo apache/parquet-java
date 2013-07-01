@@ -16,7 +16,6 @@
 package parquet.avro;
 
 import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.mapreduce.Job;
 import parquet.avro.AvroWriteSupport;
