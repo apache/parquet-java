@@ -15,6 +15,8 @@
  */
 package parquet.io;
 
+import static parquet.schema.Type.Repetition.REQUIRED;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,45 +41,66 @@ public class ColumnIOFactory {
     private GroupColumnIO current;
     private List<PrimitiveColumnIO> leaves = new ArrayList<PrimitiveColumnIO>();
     private final boolean validating;
+    private final MessageType fileSchema;
+    private int currentFileIndex;
+    private Type currentFileType;
 
-    public ColumnIOCreatorVisitor(boolean validating) {
+    public ColumnIOCreatorVisitor(boolean validating, MessageType fileSchema) {
       this.validating = validating;
-    }
-
-    @Override
-    public void visit(GroupType groupType) {
-      GroupColumnIO newIO;
-      if (groupType.getRepetition() == Repetition.REPEATED) {
-        newIO = new GroupColumnIO(groupType, current, current.getChildrenCount());
-      } else {
-        newIO = new GroupColumnIO(groupType, current, current.getChildrenCount());
-      }
-      current.add(newIO);
-      visitChildren(newIO, groupType);
-    }
-
-    private void visitChildren(GroupColumnIO newIO, GroupType groupType) {
-      GroupColumnIO oldIO = current;
-      current = newIO;
-      for (Type type : groupType.getFields()) {
-        type.accept(this);
-      }
-      current = oldIO;
+      this.fileSchema = fileSchema;
     }
 
     @Override
     public void visit(MessageType messageType) {
       columnIO = new MessageColumnIO(messageType, validating);
-      visitChildren(columnIO, messageType);
+      visitChildren(columnIO, messageType, fileSchema);
       columnIO.setLevels();
       columnIO.setLeaves(leaves);
     }
 
     @Override
+    public void visit(GroupType groupType) {
+      if (currentFileType.isPrimitive()) {
+        incompatibleSchema(groupType, currentFileType);
+      }
+      GroupColumnIO newIO = new GroupColumnIO(groupType, current, currentFileIndex);
+      current.add(newIO);
+      visitChildren(newIO, groupType, currentFileType.asGroupType());
+    }
+
+    private void visitChildren(GroupColumnIO newIO, GroupType groupType, GroupType fileGroupType) {
+      GroupColumnIO oldIO = current;
+      current = newIO;
+      for (Type type : groupType.getFields()) {
+        // if the file schema does not contain the field it will just stay null
+        if (fileGroupType.containsField(type.getName())) {
+          currentFileIndex = fileGroupType.getFieldIndex(type.getName());
+          currentFileType = fileGroupType.getType(currentFileIndex);
+          if (type.getRepetition().isMoreRestrictiveThan(currentFileType.getRepetition())) {
+            incompatibleSchema(type, currentFileType);
+          }
+          type.accept(this);
+        } else if (type.getRepetition() == REQUIRED) {
+          // if the missing field is required we fail
+          // TODO: add support for default values
+          throw new ParquetDecodingException("The requested schema is not compatible with the file schema. Missing required field in file " + type);
+        }
+      }
+      current = oldIO;
+    }
+
+    @Override
     public void visit(PrimitiveType primitiveType) {
-      PrimitiveColumnIO newIO = new PrimitiveColumnIO(primitiveType, current, current.getChildrenCount(), leaves.size());
+      if (!currentFileType.isPrimitive() || currentFileType.asPrimitiveType().getPrimitiveTypeName() != primitiveType.getPrimitiveTypeName()) {
+        incompatibleSchema(primitiveType, currentFileType);
+      }
+      PrimitiveColumnIO newIO = new PrimitiveColumnIO(primitiveType, current, currentFileIndex, leaves.size());
       current.add(newIO);
       leaves.add(newIO);
+    }
+
+    private void incompatibleSchema(Type requestedType, Type fileType) {
+      throw new ParquetDecodingException("The requested schema is not compatible with the file schema. incompatible types: " + requestedType + " != " + fileType);
     }
 
     public MessageColumnIO getColumnIO() {
@@ -104,13 +127,22 @@ public class ColumnIOFactory {
   }
 
   /**
+   * @param schema the requestedSchema we want to read/write
+   * @param fileSchema the file schema (when reading it can be different from the requested schema)
+   * @return the corresponding serializing/deserializing structure
+   */
+  public MessageColumnIO getColumnIO(MessageType requestedSchema, MessageType fileSchema) {
+    ColumnIOCreatorVisitor visitor = new ColumnIOCreatorVisitor(validating, fileSchema);
+    requestedSchema.accept(visitor);
+    return visitor.getColumnIO();
+  }
+
+  /**
    * @param schema the schema we want to read/write
    * @return the corresponding serializing/deserializing structure
    */
   public MessageColumnIO getColumnIO(MessageType schema) {
-    ColumnIOCreatorVisitor visitor = new ColumnIOCreatorVisitor(validating);
-    schema.accept(visitor);
-    return visitor.getColumnIO();
+    return this.getColumnIO(schema, schema);
   }
 
 }

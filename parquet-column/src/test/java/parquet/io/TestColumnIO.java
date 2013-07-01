@@ -22,9 +22,13 @@ import static parquet.example.Paper.r1;
 import static parquet.example.Paper.r2;
 import static parquet.example.Paper.schema;
 import static parquet.example.Paper.schema2;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static parquet.schema.Type.Repetition.OPTIONAL;
+import static parquet.schema.Type.Repetition.REQUIRED;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import org.junit.Assert;
@@ -131,6 +135,104 @@ public class TestColumnIO {
   public void testSchema() {
     assertEquals(schemaString, schema.toString());
   }
+
+  @Test
+  public void testSchemaCompatibility() {
+    MessageType schema1 = new MessageType("schema",
+        new PrimitiveType(REQUIRED, INT32, "a"));
+    MessageType schema2 = new MessageType("schema",
+        new PrimitiveType(OPTIONAL, INT32, "b"),
+        new PrimitiveType(OPTIONAL, INT32, "a")
+        );
+    MessageType schema3 = new MessageType("schema",
+        new PrimitiveType(OPTIONAL, INT32, "c"));
+
+    MemPageStore memPageStore1 = new MemPageStore();
+    MemPageStore memPageStore2 = new MemPageStore();
+    MemPageStore memPageStore3 = new MemPageStore();
+
+    SimpleGroupFactory groupFactory1 = new SimpleGroupFactory(schema1);
+    writeGroups(schema1, memPageStore1, groupFactory1.newGroup().append("a", 1));
+
+    SimpleGroupFactory groupFactory2 = new SimpleGroupFactory(schema2);
+    writeGroups(schema2, memPageStore2, groupFactory2.newGroup().append("a", 2).append("b", 3));
+
+    SimpleGroupFactory groupFactory3 = new SimpleGroupFactory(schema3);
+    writeGroups(schema3, memPageStore3, groupFactory3.newGroup().append("c", 4));
+
+    {
+      List<Group> groups1 = new ArrayList<Group>();
+      groups1.addAll(readGroups(memPageStore1, schema1, schema2, 1));
+      groups1.addAll(readGroups(memPageStore2, schema2, schema2, 1));
+      // TODO: add once we have the support for empty projection
+//      groups1.addAll(readGroups(memPageStore3, schema3, schema2, 1));
+
+      Object[][] e1 = {
+          { null, 1},
+          { 3, 2},
+//          { null, null}
+      };
+      validateGroups(groups1, e1);
+    }
+
+    {
+      MessageType schema4 = new MessageType("schema",
+          new PrimitiveType(OPTIONAL, INT32, "c"),
+          new PrimitiveType(OPTIONAL, INT32, "b"),
+          new PrimitiveType(OPTIONAL, INT32, "a"));
+
+      List<Group> groups2 = new ArrayList<Group>();
+      groups2.addAll(readGroups(memPageStore1, schema1, schema4, 1));
+      groups2.addAll(readGroups(memPageStore2, schema2, schema4, 1));
+      groups2.addAll(readGroups(memPageStore3, schema3, schema4, 1));
+
+      Object[][] e2 = {
+          { null, null, 1},
+          { null, 3, 2},
+          { 4, null, null}
+      };
+      validateGroups(groups2, e2);
+    }
+  }
+
+  private void validateGroups(List<Group> groups1, Object[][] e1) {
+    Iterator<Group> i1 = groups1.iterator();
+    for (int i = 0; i < e1.length; i++) {
+      Object[] objects = e1[i];
+      Group next = i1.next();
+      for (int j = 0; j < objects.length; j++) {
+        Object object = objects[j];
+        if (object == null) {
+          assertEquals(0, next.getFieldRepetitionCount(j));
+        } else {
+          assertEquals(object, next.getInteger(j, 0));
+        }
+      }
+    }
+  }
+
+  private List<Group> readGroups(MemPageStore memPageStore, MessageType fileSchema, MessageType requestedSchema, int n) {
+    ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
+    MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema);
+    RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, requestedSchema, memPageStore);
+    List<Group> groups = new ArrayList<Group>();
+    for (int i = 0; i < n; i++) {
+      groups.add(recordReader.read());
+    }
+    return groups;
+  }
+
+  private void writeGroups(MessageType writtenSchema, MemPageStore memPageStore, Group... groups) {
+    ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
+    MessageColumnIO columnIO = columnIOFactory.getColumnIO(writtenSchema);
+    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), writtenSchema);
+    for (Group group : groups) {
+      groupWriter.write(group);
+    }
+    columns.flush();
+  }
+
 
   @Test
   public void testColumnIO() {
