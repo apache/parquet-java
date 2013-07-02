@@ -16,12 +16,14 @@
 package parquet.io;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static parquet.example.Paper.pr1;
 import static parquet.example.Paper.pr2;
 import static parquet.example.Paper.r1;
 import static parquet.example.Paper.r2;
 import static parquet.example.Paper.schema;
 import static parquet.example.Paper.schema2;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static parquet.schema.Type.Repetition.OPTIONAL;
 import static parquet.schema.Type.Repetition.REQUIRED;
@@ -193,6 +195,25 @@ public class TestColumnIO {
       };
       validateGroups(groups2, e2);
     }
+
+    try {
+      MessageType schema5 = new MessageType("schema",
+          new PrimitiveType(OPTIONAL, BINARY, "c")); // Incompatible schema: different type
+      readGroups(memPageStore3, schema3, schema5, 1);
+      fail("should have thrown an incompatible schema exception");
+    } catch (ParquetDecodingException e) {
+      assertEquals("The requested schema is not compatible with the file schema. incompatible types: optional binary c != optional int32 c", e.getMessage());
+    }
+
+    try {
+      MessageType schema6 = new MessageType("schema",
+          new PrimitiveType(REQUIRED, INT32, "c")); // Incompatible schema: required when it was optional
+      readGroups(memPageStore3, schema3, schema6, 1);
+      fail("should have thrown an incompatible schema exception");
+    } catch (ParquetDecodingException e) {
+      assertEquals("The requested schema is not compatible with the file schema. incompatible types: required int32 c != optional int32 c", e.getMessage());
+    }
+
   }
 
   private void validateGroups(List<Group> groups1, Object[][] e1) {
