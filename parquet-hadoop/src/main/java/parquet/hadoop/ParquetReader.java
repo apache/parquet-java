@@ -59,6 +59,7 @@ public class ParquetReader<T> implements Closeable {
             file, 0, 0, null, blocks,
             schema.toString(),
             readContext.getRequestedSchema().toString(),
+            schema.toString(),
             extraMetadata,
             readContext.getReadSupportMetadata());
     reader.initialize(inputSplit, conf);

@@ -57,6 +57,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   private final ColumnIOFactory columnIOFactory = new ColumnIOFactory();
 
   private MessageType requestedSchema;
+  private MessageType fileSchema;
   private int columnCount;
   private final ReadSupport<T> readSupport;
 
@@ -105,7 +106,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       totalTimeSpentReadingBytes += timeSpentReading;
       LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
       if (Log.DEBUG) LOG.debug("initializing Record assembly with requested schema " + requestedSchema);
-      MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema);
+      MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema);
       recordReader = columnIO.getRecordReader(pages, recordConverter);
       startedAssemblingCurrentBlockAt = System.currentTimeMillis();
       totalCountLoadedSoFar += pages.getRowCount();
@@ -159,6 +160,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       throws IOException {
     ParquetInputSplit parquetInputSplit = (ParquetInputSplit)inputSplit;
     this.requestedSchema = MessageTypeParser.parseMessageType(parquetInputSplit.getRequestedSchema());
+    this.fileSchema = MessageTypeParser.parseMessageType(parquetInputSplit.getFileSchema());
     this.columnCount = this.requestedSchema.getPaths().size();
     this.recordConverter = readSupport.prepareForRead(
         configuration,
