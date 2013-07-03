@@ -25,7 +25,6 @@ import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType;
 import parquet.schema.Type;
 import parquet.schema.TypeVisitor;
-import parquet.schema.Type.Repetition;
 
 /**
  * Factory constructing the ColumnIO structure from the schema
@@ -41,43 +40,43 @@ public class ColumnIOFactory {
     private GroupColumnIO current;
     private List<PrimitiveColumnIO> leaves = new ArrayList<PrimitiveColumnIO>();
     private final boolean validating;
-    private final MessageType fileSchema;
-    private int currentFileIndex;
-    private Type currentFileType;
+    private final MessageType requestedSchema;
+    private int currentRequestedIndex;
+    private Type currentRequestedType;
 
     public ColumnIOCreatorVisitor(boolean validating, MessageType fileSchema) {
       this.validating = validating;
-      this.fileSchema = fileSchema;
+      this.requestedSchema = fileSchema;
     }
 
     @Override
     public void visit(MessageType messageType) {
-      columnIO = new MessageColumnIO(messageType, validating);
-      visitChildren(columnIO, messageType, fileSchema);
+      columnIO = new MessageColumnIO(requestedSchema, validating);
+      visitChildren(columnIO, messageType, requestedSchema);
       columnIO.setLevels();
       columnIO.setLeaves(leaves);
     }
 
     @Override
     public void visit(GroupType groupType) {
-      if (currentFileType.isPrimitive()) {
-        incompatibleSchema(groupType, currentFileType);
+      if (currentRequestedType.isPrimitive()) {
+        incompatibleSchema(groupType, currentRequestedType);
       }
-      GroupColumnIO newIO = new GroupColumnIO(groupType, current, currentFileIndex);
+      GroupColumnIO newIO = new GroupColumnIO(groupType, current, currentRequestedIndex);
       current.add(newIO);
-      visitChildren(newIO, groupType, currentFileType.asGroupType());
+      visitChildren(newIO, groupType, currentRequestedType.asGroupType());
     }
 
-    private void visitChildren(GroupColumnIO newIO, GroupType groupType, GroupType fileGroupType) {
+    private void visitChildren(GroupColumnIO newIO, GroupType groupType, GroupType requestedGroupType) {
       GroupColumnIO oldIO = current;
       current = newIO;
       for (Type type : groupType.getFields()) {
         // if the file schema does not contain the field it will just stay null
-        if (fileGroupType.containsField(type.getName())) {
-          currentFileIndex = fileGroupType.getFieldIndex(type.getName());
-          currentFileType = fileGroupType.getType(currentFileIndex);
-          if (type.getRepetition().isMoreRestrictiveThan(currentFileType.getRepetition())) {
-            incompatibleSchema(type, currentFileType);
+        if (requestedGroupType.containsField(type.getName())) {
+          currentRequestedIndex = requestedGroupType.getFieldIndex(type.getName());
+          currentRequestedType = requestedGroupType.getType(currentRequestedIndex);
+          if (currentRequestedType.getRepetition().isMoreRestrictiveThan(type.getRepetition())) {
+            incompatibleSchema(type, currentRequestedType);
           }
           type.accept(this);
         } else if (type.getRepetition() == REQUIRED) {
@@ -91,15 +90,15 @@ public class ColumnIOFactory {
 
     @Override
     public void visit(PrimitiveType primitiveType) {
-      if (!currentFileType.isPrimitive() || currentFileType.asPrimitiveType().getPrimitiveTypeName() != primitiveType.getPrimitiveTypeName()) {
-        incompatibleSchema(primitiveType, currentFileType);
+      if (!currentRequestedType.isPrimitive() || currentRequestedType.asPrimitiveType().getPrimitiveTypeName() != primitiveType.getPrimitiveTypeName()) {
+        incompatibleSchema(primitiveType, currentRequestedType);
       }
-      PrimitiveColumnIO newIO = new PrimitiveColumnIO(primitiveType, current, currentFileIndex, leaves.size());
+      PrimitiveColumnIO newIO = new PrimitiveColumnIO(primitiveType, current, currentRequestedIndex, leaves.size());
       current.add(newIO);
       leaves.add(newIO);
     }
 
-    private void incompatibleSchema(Type requestedType, Type fileType) {
+    private void incompatibleSchema(Type fileType, Type requestedType) {
       throw new ParquetDecodingException("The requested schema is not compatible with the file schema. incompatible types: " + requestedType + " != " + fileType);
     }
 
@@ -132,8 +131,8 @@ public class ColumnIOFactory {
    * @return the corresponding serializing/deserializing structure
    */
   public MessageColumnIO getColumnIO(MessageType requestedSchema, MessageType fileSchema) {
-    ColumnIOCreatorVisitor visitor = new ColumnIOCreatorVisitor(validating, fileSchema);
-    requestedSchema.accept(visitor);
+    ColumnIOCreatorVisitor visitor = new ColumnIOCreatorVisitor(validating, requestedSchema);
+    fileSchema.accept(visitor);
     return visitor.getColumnIO();
   }
 
