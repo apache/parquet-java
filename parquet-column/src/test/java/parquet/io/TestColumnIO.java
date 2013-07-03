@@ -168,7 +168,6 @@ public class TestColumnIO {
       groups1.addAll(readGroups(memPageStore2, schema2, schema2, 1));
       // TODO: add once we have the support for empty projection
 //      groups1.addAll(readGroups(memPageStore3, schema3, schema2, 1));
-
       Object[][] e1 = {
           { null, 1},
           { 3, 2},
@@ -226,6 +225,7 @@ public class TestColumnIO {
         if (object == null) {
           assertEquals(0, next.getFieldRepetitionCount(j));
         } else {
+          assertEquals("looking for r[" + i + "][" + j + "][0]=" + object, 1, next.getFieldRepetitionCount(j));
           assertEquals(object, next.getInteger(j, 0));
         }
       }
