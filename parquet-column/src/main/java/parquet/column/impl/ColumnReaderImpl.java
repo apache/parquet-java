@@ -423,7 +423,7 @@ class ColumnReaderImpl implements ColumnReader {
       } else {
         this.dataColumn = page.getValueEncoding().getValuesReader(path, ValuesType.VALUES);
       }
-      if (dictionary != null && converter.hasDictionarySupport()) {
+      if (page.getValueEncoding().usesDictionary() && converter.hasDictionarySupport()) {
         bindToDictionary(dictionary);
       } else {
         bind(path.getType());
