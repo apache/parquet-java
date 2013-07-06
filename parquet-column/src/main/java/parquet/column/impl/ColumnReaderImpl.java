@@ -306,13 +306,13 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public void writeCurrentValueToConverter() {
-    checkValueRead(false);
+    readIfPossible(false);
     this.binding.writeValue();
   }
 
   @Override
   public int getCurrentValueDictionaryID() {
-    checkValueRead(false);
+    readIfPossible(false);
     return binding.getDictionaryId();
   }
 
@@ -322,7 +322,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public int getInteger() {
-    checkValueRead(false);
+    readIfPossible(false);
     return this.binding.getInteger();
   }
 
@@ -332,7 +332,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public boolean getBoolean() {
-    checkValueRead(false);
+    readIfPossible(false);
     return this.binding.getBoolean();
   }
 
@@ -342,7 +342,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public long getLong() {
-    checkValueRead(false);
+    readIfPossible(false);
     return this.binding.getLong();
   }
 
@@ -352,7 +352,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public Binary getBinary() {
-    checkValueRead(false);
+    readIfPossible(false);
     return this.binding.getBinary();
   }
 
@@ -362,7 +362,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public float getFloat() {
-    checkValueRead(false);
+    readIfPossible(false);
     return this.binding.getFloat();
   }
 
@@ -372,7 +372,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public double getDouble() {
-    checkValueRead(false);
+    readIfPossible(false);
     return this.binding.getDouble();
   }
 
@@ -406,7 +406,7 @@ class ColumnReaderImpl implements ColumnReader {
    * Reads the value into the binding or skips forwards.
    * @param skip If true do not deserialize just skip forwards
    */
-  protected void checkValueRead(boolean skip) {
+  protected void readIfPossible(boolean skip) {
     try {
       checkRead();
       if (!consumed && !valueRead) {
@@ -432,7 +432,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public void skip() {
-    checkValueRead(true);
+    readIfPossible(true);
   }
 
   /**
