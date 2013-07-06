@@ -51,6 +51,7 @@ public class ParquetInputSplit extends InputSplit implements Serializable, Writa
   private List<BlockMetaData> blocks;
   private String schema;
   private String requestedSchema;
+  private String fileSchema;
   private Map<String, String> extraMetadata;
   private Map<String, String> readSupportMetadata;
 
@@ -70,7 +71,8 @@ public class ParquetInputSplit extends InputSplit implements Serializable, Writa
    * @param blocks the block meta data (Columns locations)
    * @param schema the file schema
    * @param readSupportClass the class used to materialize records
-   * @param requestedSchema the requested schema for projection
+   * @param requestedSchema the requested schema for materialization
+   * @param fileSchema the schema of the file
    * @param extraMetadata the app specific meta data in the file
    * @param readSupportMetadata the read support specific metadata
    */
@@ -82,6 +84,7 @@ public class ParquetInputSplit extends InputSplit implements Serializable, Writa
       List<BlockMetaData> blocks,
       String schema,
       String requestedSchema,
+      String fileSchema,
       Map<String, String> extraMetadata,
       Map<String, String> readSupportMetadata) {
     this.path = path.toUri().toString();
@@ -91,6 +94,7 @@ public class ParquetInputSplit extends InputSplit implements Serializable, Writa
     this.blocks = blocks;
     this.schema = schema;
     this.requestedSchema = requestedSchema;
+    this.fileSchema = fileSchema;
     this.extraMetadata = extraMetadata;
     this.readSupportMetadata = readSupportMetadata;
   }
@@ -151,6 +155,13 @@ public class ParquetInputSplit extends InputSplit implements Serializable, Writa
   }
 
   /**
+   * @return the file schema
+   */
+  public String getFileSchema() {
+    return fileSchema;
+  }
+
+  /**
    * @return app specific metadata from the file
    */
   public Map<String, String> getExtraMetadata() {
@@ -181,6 +192,7 @@ public class ParquetInputSplit extends InputSplit implements Serializable, Writa
       this.blocks = other.blocks;
       this.schema = other.schema;
       this.requestedSchema = other.requestedSchema;
+      this.fileSchema = other.fileSchema;
       this.extraMetadata = other.extraMetadata;
       this.readSupportMetadata = other.readSupportMetadata;
     } catch (ClassNotFoundException e) {
@@ -210,6 +222,7 @@ public class ParquetInputSplit extends InputSplit implements Serializable, Writa
         + " blocks: " + blocks.size()
         + " schema: " + schema
         + " requestedSchema: " + requestedSchema
+        + " fileSchema: " + fileSchema
         + " extraMetadata: " + extraMetadata
         + " readSupportMetadata: " + readSupportMetadata
         + "}";

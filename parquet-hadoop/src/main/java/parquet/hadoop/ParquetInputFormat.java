@@ -207,6 +207,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
           blocksForCurrentSplit,
           fileMetaData.getSchema().toString(),
           requestedSchema,
+          fileMetaData.getSchema().toString(),
           fileMetaData.getKeyValueMetaData(),
           readSupportMetadata
           ));

@@ -469,12 +469,16 @@ class ColumnReaderImpl implements ColumnReader {
 
       this.repetitionLevelColumn = page.getRlEncoding().getValuesReader(path, ValuesType.REPETITION_LEVEL);
       this.definitionLevelColumn = page.getDlEncoding().getValuesReader(path, ValuesType.DEFINITION_LEVEL);
-      if (dictionary == null) {
-        this.dataColumn = page.getValueEncoding().getValuesReader(path, ValuesType.VALUES);
-      } else {
+      if (page.getValueEncoding().usesDictionary()) {
+        if (dictionary == null) {
+          throw new ParquetDecodingException(
+              "could not read page " + page + " in col " + path + " as the dictionary was missing for encoding " + page.getValueEncoding());
+        }
         this.dataColumn = page.getValueEncoding().getDictionaryBasedValuesReader(path, ValuesType.VALUES, dictionary);
+      } else {
+        this.dataColumn = page.getValueEncoding().getValuesReader(path, ValuesType.VALUES);
       }
-      if (dictionary != null && converter.hasDictionarySupport()) {
+      if (page.getValueEncoding().usesDictionary() && converter.hasDictionarySupport()) {
         bindToDictionary(dictionary);
       } else {
         bind(path.getType());

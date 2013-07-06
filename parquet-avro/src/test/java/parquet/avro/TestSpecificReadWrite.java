@@ -70,8 +70,8 @@ public class TestSpecificReadWrite {
 
     ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Volkswagen")));
     for (int i = 0; i < 10; i++) {
-      assertEquals(reader.read().toString(),getVwPolo().toString());
-      assertEquals(reader.read().toString(),getVwPassat().toString());
+      assertEquals(getVwPolo().toString(),reader.read().toString());
+      assertEquals(getVwPassat().toString(),reader.read().toString());
     }
     assertNull( reader.read());
   }
@@ -82,8 +82,8 @@ public class TestSpecificReadWrite {
     Path path = writeCarsToParquetFile(1,CompressionCodecName.UNCOMPRESSED,true);
 
     ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Volkswagen")));
-    assertEquals(reader.read().toString(),getVwPolo().toString());
-    assertEquals(reader.read().toString(),getVwPassat().toString());
+    assertEquals(getVwPolo().toString(),reader.read().toString());
+    assertEquals(getVwPassat().toString(),reader.read().toString());
     assertNull( reader.read());
   }
 
@@ -97,12 +97,12 @@ public class TestSpecificReadWrite {
     assertNull( reader.read());
 
     reader = new AvroParquetReader<Car>(path, column("engine.capacity", equalTo(1.4f)));
-    assertEquals(reader.read().toString(),getVwPolo().toString());
+    assertEquals(getVwPolo().toString(),reader.read().toString());
     assertNull( reader.read());
 
 
     reader = new AvroParquetReader<Car>(path, column("engine.hasTurboCharger", equalTo(true)));
-    assertEquals(reader.read().toString(),getBmwMini().toString());
+    assertEquals(getBmwMini().toString(),reader.read().toString());
     assertNull( reader.read());
   }
 
