@@ -23,9 +23,10 @@ import java.io.IOException;
 import parquet.Log;
 import parquet.bytes.LittleEndianDataInputStream;
 import parquet.column.values.ValuesReader;
+import parquet.io.ParquetDecodingException;
 
 /**
- * Plain encoding except for booleans
+ * Plain encoding for float, double, int, long
  *
  * @author Julien Le Dem
  *
@@ -46,4 +47,47 @@ public class PlainValuesReader extends ValuesReader {
     return in.length;
   }
 
+  public static class DoublePlainValuesReader extends PlainValuesReader {
+    @Override
+    public double readDouble() {
+      try {
+        return in.readDouble();
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not read double", e);
+      }
+    }
+  }
+
+  public static class FloatPlainValuesReader extends PlainValuesReader {
+    @Override
+    public float readFloat() {
+      try {
+        return in.readFloat();
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not read float", e);
+      }
+    }
+  }
+
+  public static class IntegerPlainValuesReader extends PlainValuesReader {
+    @Override
+    public int readInteger() {
+      try {
+        return in.readInt();
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not read int", e);
+      }
+    }
+  }
+
+  public static class LongPlainValuesReader extends PlainValuesReader {
+    @Override
+    public long readLong() {
+      try {
+        return in.readLong();
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not read long", e);
+      }
+    }
+  }
 }
