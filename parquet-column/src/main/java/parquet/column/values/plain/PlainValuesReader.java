@@ -23,7 +23,6 @@ import java.io.IOException;
 import parquet.Log;
 import parquet.bytes.LittleEndianDataInputStream;
 import parquet.column.values.ValuesReader;
-import parquet.io.ParquetDecodingException;
 
 /**
  * Plain encoding except for booleans
@@ -34,43 +33,7 @@ import parquet.io.ParquetDecodingException;
 public class PlainValuesReader extends ValuesReader {
   private static final Log LOG = Log.getLog(PlainValuesReader.class);
 
-  private LittleEndianDataInputStream in;
-
-  @Override
-  public float readFloat() {
-    try {
-      return in.readFloat();
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not read float", e);
-    }
-  }
-
-  @Override
-  public double readDouble() {
-    try {
-      return in.readDouble();
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not read double", e);
-    }
-  }
-
-  @Override
-  public int readInteger() {
-    try {
-      return in.readInt();
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not read int", e);
-    }
-  }
-
-  @Override
-  public long readLong() {
-    try {
-      return in.readLong();
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not read long", e);
-    }
-  }
+  protected LittleEndianDataInputStream in;
 
   /**
    * {@inheritDoc}
