@@ -9,10 +9,10 @@
 
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>parquet-column</artifactId>
+  <artifactId>parquet-encoding</artifactId>
   <packaging>jar</packaging>
 
-  <name>Parquet Column</name>
+  <name>Parquet Encodings</name>
   <url>https://github.com/Parquet/parquet-mr</url>
 
   <properties>
@@ -26,7 +26,7 @@
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>parquet-encoding</artifactId>
+      <artifactId>parquet-generator</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -34,13 +34,6 @@
       <artifactId>commons-codec</artifactId>
       <version>1.7</version>
       <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.twitter</groupId>
-      <artifactId>parquet-encoding</artifactId>
-      <version>${project.version}</version>
-      <type>test-jar</type>
-      <scope>test</scope>
     </dependency>
   </dependencies>
 
@@ -64,6 +57,26 @@
             </goals>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.2.1</version>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>java</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <mainClass>parquet.encoding.Generator</mainClass>          
+          <arguments>
+            <argument>${basedir}/target/generated-src</argument>
+          </arguments>
+          <sourceRoot>${basedir}/target/generated-src</sourceRoot>
+        </configuration>
       </plugin>
     </plugins>
   </build>

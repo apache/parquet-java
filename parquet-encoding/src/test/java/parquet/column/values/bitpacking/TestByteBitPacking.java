@@ -36,7 +36,7 @@ public class TestByteBitPacking {
       System.out.println("Width: " + i);
       int[] unpacked = new int[32];
       int[] values = generateValues(i);
-      packUnpack(ByteBitPackingBE.getPacker(i), values, unpacked);
+      packUnpack(Packer.BIG_ENDIAN.newBytePacker(i), values, unpacked);
       System.out.println("Output: " + TestBitPacking.toString(unpacked));
       Assert.assertArrayEquals("width "+i, values, unpacked);
     }
@@ -69,7 +69,7 @@ public class TestByteBitPacking {
       int[] values = generateValues(i);
 
       // pack generated
-      final BytePacker packer = ByteBitPackingBE.getPacker(i);
+      final BytePacker packer = Packer.BIG_ENDIAN.newBytePacker(i);
       packer.pack32Values(values, 0, packed, 0);
 
       System.out.println("Generated: " + TestBitPacking.toString(packed));

@@ -13,14 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.values;
+package parquet.encoding;
+
+import parquet.encoding.bitpacking.ByteBasedBitPackingGenerator;
+import parquet.encoding.bitpacking.IntBasedBitPackingGenerator;
 
 /**
- * The different type of values we can store in columns
+ * main class for code generation hook in build
  *
  * @author Julien Le Dem
  *
  */
-public enum ValuesType {
-  REPETITION_LEVEL, DEFINITION_LEVEL, VALUES;
+public class Generator {
+
+  public static void main(String[] args) throws Exception {
+    IntBasedBitPackingGenerator.main(args);
+    ByteBasedBitPackingGenerator.main(args);
+  }
+
 }

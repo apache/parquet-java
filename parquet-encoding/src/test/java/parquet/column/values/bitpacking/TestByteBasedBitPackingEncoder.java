@@ -13,17 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.hadoop.codec;
+package parquet.column.values.bitpacking;
 
-import parquet.Preconditions;
+import org.junit.Test;
 
-/**
- * Utilities for SnappyCompressor and SnappyDecompressor.
- */
-public class SnappyUtil {
-  public static void validateBuffer(byte[] buffer, int off, int len) {
-    Preconditions.checkNotNull(buffer, "buffer");
-    Preconditions.checkArgument(off >= 0 && len >= 0 && off <= buffer.length - len,
-        "Invalid offset or length. Out of buffer bounds.");
+public class TestByteBasedBitPackingEncoder {
+
+  @Test
+  public void testSlabBoundary() {
+    for (int i = 0; i < 32; i++) {
+      final ByteBasedBitPackingEncoder encoder = new ByteBasedBitPackingEncoder(i, Packer.BIG_ENDIAN);
+      // make sure to write more than a slab
+      for (int j = 0; j < 64 * 1024 * 32 + 10; j++) {
+        try {
+          encoder.writeInt(j);
+        } catch (Exception e) {
+          throw new RuntimeException(i + ": error writing " + j, e);
+        }
+      }
+    }
   }
+
 }

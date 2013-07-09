@@ -13,17 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.hadoop.codec;
+package parquet.column.values.bitpacking;
 
-import parquet.Preconditions;
+public interface BytePackerFactory {
 
-/**
- * Utilities for SnappyCompressor and SnappyDecompressor.
- */
-public class SnappyUtil {
-  public static void validateBuffer(byte[] buffer, int off, int len) {
-    Preconditions.checkNotNull(buffer, "buffer");
-    Preconditions.checkArgument(off >= 0 && len >= 0 && off <= buffer.length - len,
-        "Invalid offset or length. Out of buffer bounds.");
-  }
+  BytePacker newBytePacker(int width);
+
 }

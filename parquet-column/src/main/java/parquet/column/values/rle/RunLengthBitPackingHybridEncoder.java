@@ -1,3 +1,18 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package parquet.column.values.rle;
 
 import java.io.IOException;
@@ -7,8 +22,8 @@ import parquet.Preconditions;
 import parquet.bytes.BytesInput;
 import parquet.bytes.BytesUtils;
 import parquet.bytes.CapacityByteArrayOutputStream;
-import parquet.column.values.bitpacking.ByteBitPackingLE;
 import parquet.column.values.bitpacking.BytePacker;
+import parquet.column.values.bitpacking.Packer;
 
 import static parquet.Log.DEBUG;
 
@@ -110,7 +125,7 @@ public class RunLengthBitPackingHybridEncoder {
     this.baos = new CapacityByteArrayOutputStream(initialCapacity);
     this.packBuffer = new byte[bitWidth];
     this.bufferedValues = new int[8];
-    this.packer = ByteBitPackingLE.getPacker(bitWidth);
+    this.packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
     reset(false);
   }
 

@@ -20,7 +20,6 @@ import java.io.IOException;
 import parquet.bytes.BytesUtils;
 import parquet.column.page.DictionaryPage;
 import parquet.column.values.ValuesReader;
-import parquet.column.values.ValuesType;
 import parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 import parquet.column.values.boundedint.ZeroIntegerValuesReader;
 import parquet.column.values.dictionary.DictionaryValuesReader;
