@@ -44,9 +44,9 @@ public class ColumnIOFactory {
     private int currentRequestedIndex;
     private Type currentRequestedType;
 
-    public ColumnIOCreatorVisitor(boolean validating, MessageType fileSchema) {
+    public ColumnIOCreatorVisitor(boolean validating, MessageType requestedSchema) {
       this.validating = validating;
-      this.requestedSchema = fileSchema;
+      this.requestedSchema = requestedSchema;
     }
 
     @Override
