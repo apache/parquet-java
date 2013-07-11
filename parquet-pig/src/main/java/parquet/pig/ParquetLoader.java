@@ -62,7 +62,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   private static final Log LOG = Log.getLog(ParquetLoader.class);
 
   private final String requestedSchemaStr;
-  private Schema requestedSchema;
+  private Schema requiredSchema;
 
   private boolean setLocationHasBeenCalled = false;
   private RecordReader<Void, Tuple> reader;
@@ -78,7 +78,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   /**
    * To read only a subset of the columns in the file
-   * @param requestedSchema a subset of the original pig schema in the file
+   * @param requiredSchema a subset of the original pig schema in the file
    */
   public ParquetLoader(String requestedSchemaStr) {
     this.requestedSchemaStr = requestedSchemaStr;
@@ -88,11 +88,11 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   public void setLocation(String location, Job job) throws IOException {
     LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
     setInput(location, job);
-    if (requestedSchemaStr != null) {
-      Schema pigSchema = parsePigSchema(requestedSchemaStr);
-      ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, ObjectSerializer.serialize(pigSchema));
-    } else if (requestedSchema != null) {
-      ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, ObjectSerializer.serialize(requestedSchema));
+    if (requiredSchema != null) {
+      ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, ObjectSerializer.serialize(requiredSchema));
+    } else if (requestedSchemaStr != null){
+      // request for the full schema (or requestedschema )
+      ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, ObjectSerializer.serialize(schema));
     }
   }
   
@@ -199,7 +199,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       throws FrontendException {
     if (requiredFieldList == null)
       return null;
-    requestedSchema = getSchemaFromRequiredFieldList(schema, requiredFieldList.getFields());
+    requiredSchema = getSchemaFromRequiredFieldList(schema, requiredFieldList.getFields());
     return new RequiredFieldResponse(true);
   }
   
@@ -216,7 +216,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       if (f == null) {
         return null;
       }
-      if (rf.getSubFields() != null) {
+      if (rf.getSubFields() == null) {
         s.add(f);
       } else {
         Schema innerSchema = getSchemaFromRequiredFieldList(f.schema, rf.getSubFields());

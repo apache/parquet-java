@@ -15,11 +15,13 @@
  */
 package parquet.pig;
 
+import java.io.IOException;
 import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
+import org.apache.pig.impl.util.ObjectSerializer;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
@@ -50,8 +52,19 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
    * @return the pig schema requested by the user or null if none.
    */
   static Schema getRequestedPigSchema(Configuration configuration) {
-    String pigSchemaString = configuration.get(PARQUET_PIG_REQUESTED_SCHEMA);
-    return parsePigSchema(pigSchemaString);
+    //String pigSchemaString = configuration.get(PARQUET_PIG_REQUESTED_SCHEMA);
+    //return parsePigSchema(pigSchemaString);
+    Schema pigSchema = null;
+    try {
+      String schemaStr = configuration.get(PARQUET_PIG_REQUESTED_SCHEMA);
+      if (schemaStr == null) {
+        return null;
+      }
+      pigSchema = (Schema)ObjectSerializer.deserialize(schemaStr);
+    } catch (IOException ioe) {
+      throw new SchemaConversionException("could not get pig schema from configuration ");
+    }
+    return pigSchema;
   }
 
   static Schema parsePigSchema(String pigSchemaString) {
