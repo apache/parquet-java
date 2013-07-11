@@ -708,17 +708,26 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
       this.tStruct = new TStruct(name);
       this.thriftType = (StructType)field.getType();
       this.schemaSize = parquetSchema.getFieldCount();
-      if (schemaSize != thriftType.getChildren().size()) {
-        throw new IllegalArgumentException("schema sizes don't match:\n" + parquetSchema + "\n" + thriftType);
-      }
       this.converters = new Converter[this.schemaSize];
+      List<ThriftField> thriftChildren = thriftType.getChildren();
       for (int i = 0; i < schemaSize; i++) {
-        ThriftField childField = thriftType.getChildren().get(i);
-        Type type = parquetSchema.getType(i);
-        if (type.isPrimitive()) {
-          converters[i] = new PrimitiveFieldHandler(newConverter(events, type, childField).asPrimitiveConverter(), childField, events);
+        Type schemaType = parquetSchema.getType(i);
+        String fieldName = schemaType.getName();
+        ThriftField matchingThrift = null;
+        for (ThriftField childField: thriftChildren) {
+          String thriftChildName = childField.getName();
+          if (thriftChildName != null && thriftChildName.equalsIgnoreCase(fieldName)) {
+            matchingThrift = childField;
+            break;
+          }
+        }
+        if (matchingThrift == null) {
+        	throw new IllegalArgumentException("schema mismatch :: cannot find Thrift field for column [" + fieldName + "]");
+        }
+        if (schemaType.isPrimitive()) {
+        	converters[i] = new PrimitiveFieldHandler(newConverter(events, schemaType, matchingThrift).asPrimitiveConverter(), matchingThrift, events);
         } else {
-          converters[i] = new GroupFieldhandler(newConverter(events, type, childField).asGroupConverter(), childField, events);
+        	converters[i] = new GroupFieldhandler(newConverter(events, schemaType, matchingThrift).asGroupConverter(), matchingThrift, events);
         }
       }
     }
