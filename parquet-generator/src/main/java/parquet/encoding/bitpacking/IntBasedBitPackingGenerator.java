@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.values.bitpacking;
+package parquet.encoding.bitpacking;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -43,12 +43,16 @@ public class IntBasedBitPackingGenerator {
   private static final String CLASS_NAME_PREFIX = "LemireBitPacking";
 
   public static void main(String[] args) throws Exception {
-    generateScheme(CLASS_NAME_PREFIX + "BE", true);
-    generateScheme(CLASS_NAME_PREFIX + "LE", false);
+    String basePath = args[0];
+    generateScheme(CLASS_NAME_PREFIX + "BE", true, basePath);
+    generateScheme(CLASS_NAME_PREFIX + "LE", false, basePath);
   }
 
-  private static void generateScheme(String className, boolean msbFirst) throws IOException {
-    final File file = new File("src/main/java/parquet/column/values/bitpacking/" + className + ".java");
+  private static void generateScheme(String className, boolean msbFirst, String basePath) throws IOException {
+    final File file = new File(basePath + "/parquet/column/values/bitpacking/" + className + ".java").getAbsoluteFile();
+    if (!file.getParentFile().exists()) {
+      file.getParentFile().mkdirs();
+    }
     FileWriter fw = new FileWriter(file);
     fw.append("package parquet.column.values.bitpacking;\n");
     fw.append("\n");
@@ -76,9 +80,11 @@ public class IntBasedBitPackingGenerator {
     }
     fw.append("  }\n");
     fw.append("\n");
-    fw.append("  public static final IntPacker getPacker(int bitWidth) {\n");
-    fw.append("    return packers[bitWidth];\n");
-    fw.append("  }\n");
+    fw.append("  public static final IntPackerFactory factory = new IntPackerFactory() {\n");
+    fw.append("    public IntPacker newIntPacker(int bitWidth) {\n");
+    fw.append("      return packers[bitWidth];\n");
+    fw.append("    }\n");
+    fw.append("  };\n");
     fw.append("\n");
     for (int i = 0; i < 32; i++) {
       generateClass(fw, i, msbFirst);

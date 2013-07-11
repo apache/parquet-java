@@ -18,7 +18,6 @@ package parquet.schema;
 import java.util.List;
 
 import parquet.io.InvalidRecordException;
-import parquet.schema.Type.Repetition;
 
 /**
  * Represents the declared type for a field in a schema.

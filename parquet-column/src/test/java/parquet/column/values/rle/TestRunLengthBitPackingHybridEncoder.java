@@ -1,4 +1,21 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package parquet.column.values.rle;
+
+import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
@@ -8,10 +25,8 @@ import java.util.List;
 import org.junit.Test;
 
 import parquet.bytes.BytesUtils;
-import parquet.column.values.bitpacking.ByteBitPackingLE;
 import parquet.column.values.bitpacking.BytePacker;
-
-import static org.junit.Assert.assertEquals;
+import parquet.column.values.bitpacking.Packer;
 
 /**
  * @author Alex Levenson
@@ -264,7 +279,7 @@ public class TestRunLengthBitPackingHybridEncoder {
   private static List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is)
     throws Exception {
 
-    BytePacker packer = ByteBitPackingLE.getPacker(bitWidth);
+    BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
     int[] unpacked = new int[8];
     byte[] next8Values = new byte[bitWidth];
 

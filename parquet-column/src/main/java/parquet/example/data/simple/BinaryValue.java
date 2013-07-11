@@ -15,7 +15,6 @@
  */
 package parquet.example.data.simple;
 
-import parquet.bytes.BytesUtils;
 import parquet.io.api.Binary;
 import parquet.io.api.RecordConsumer;
 

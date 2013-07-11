@@ -24,8 +24,8 @@ import java.io.InputStream;
 import parquet.Log;
 import parquet.Preconditions;
 import parquet.bytes.BytesUtils;
-import parquet.column.values.bitpacking.ByteBitPackingLE;
 import parquet.column.values.bitpacking.BytePacker;
+import parquet.column.values.bitpacking.Packer;
 import parquet.io.ParquetDecodingException;
 
 /**
@@ -53,7 +53,7 @@ public class RunLengthBitPackingHybridDecoder {
 
     Preconditions.checkArgument(bitWidth >= 0 && bitWidth <= 32, "bitWidth must be >= 0 and <= 32");
     this.bitWidth = bitWidth;
-    this.packer = ByteBitPackingLE.getPacker(bitWidth);
+    this.packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
     this.in = in;
   }
 
