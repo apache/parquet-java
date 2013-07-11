@@ -45,6 +45,8 @@ import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.ContextUtil;
+import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 
 /**
  * The input format to read a Parquet file.
