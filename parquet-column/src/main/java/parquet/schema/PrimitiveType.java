@@ -403,4 +403,9 @@ public final class PrimitiveType extends Type {
   public <T> T convert(List<GroupType> path, TypeConverter<T> converter) {
     return converter.convertPrimitiveType(path, this);
   }
+
+  @Override
+  protected boolean containsPath(String[] path, int depth) {
+    return path.length == depth;
+  }
 }
