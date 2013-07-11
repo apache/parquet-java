@@ -2,6 +2,7 @@ package parquet.hadoop;
 
 import java.io.IOException;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -10,6 +11,7 @@ import parquet.hadoop.codec.SnappyCompressor;
 import parquet.hadoop.codec.SnappyDecompressor;
 
 public class TestSnappyCodec {
+  @Ignore
   @Test
   public void TestSnappy() throws IOException {
     // Reuse the snappy objects between test cases
