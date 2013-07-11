@@ -18,6 +18,9 @@ package parquet.pig;
 import static parquet.pig.TupleReadSupport.PARQUET_PIG_REQUESTED_SCHEMA;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Properties;
 
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
@@ -26,11 +29,18 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.pig.Expression;
 import org.apache.pig.LoadFunc;
 import org.apache.pig.LoadMetadata;
+import org.apache.pig.LoadPushDown;
 import org.apache.pig.ResourceSchema;
 import org.apache.pig.ResourceStatistics;
+import org.apache.pig.LoadPushDown.RequiredField;
+import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigSplit;
 import org.apache.pig.data.Tuple;
+import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
+import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
+import org.apache.pig.impl.util.ObjectSerializer;
+import org.apache.pig.impl.util.UDFContext;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
@@ -48,10 +58,11 @@ import parquet.io.ParquetDecodingException;
  * @author Julien Le Dem
  *
  */
-public class ParquetLoader extends LoadFunc implements LoadMetadata {
+public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDown {
   private static final Log LOG = Log.getLog(ParquetLoader.class);
 
-  private final String requestedSchema;
+  private final String requestedSchemaStr;
+  private Schema requestedSchema;
 
   private boolean setLocationHasBeenCalled = false;
   private RecordReader<Void, Tuple> reader;
@@ -62,23 +73,34 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata {
    * To read the content in its original schema
    */
   public ParquetLoader() {
-    this.requestedSchema = null;
+    this(null);
   }
 
   /**
    * To read only a subset of the columns in the file
    * @param requestedSchema a subset of the original pig schema in the file
    */
-  public ParquetLoader(String requestedSchema) {
-    this.requestedSchema = requestedSchema;
+  public ParquetLoader(String requestedSchemaStr) {
+    this.requestedSchemaStr = requestedSchemaStr;
   }
 
   @Override
   public void setLocation(String location, Job job) throws IOException {
     LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
     setInput(location, job);
-    if (requestedSchema != null) {
-      ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, requestedSchema);
+    if (requestedSchemaStr != null) {
+      Schema pigSchema = parsePigSchema(requestedSchemaStr);
+      ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, ObjectSerializer.serialize(pigSchema));
+    } else if (requestedSchema != null) {
+      ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, ObjectSerializer.serialize(requestedSchema));
+    }
+  }
+  
+  static Schema parsePigSchema(String pigSchemaString) {
+    try {
+      return pigSchemaString == null ? null : Utils.getSchemaFromString(pigSchemaString);
+    } catch (ParserException e) {
+      throw new SchemaConversionException("could not parse Pig schema: " + pigSchemaString, e);
     }
   }
 
@@ -141,14 +163,14 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata {
     LOG.debug("LoadMetadata.getSchema(" + location + ", " + job + ")");
     setInput(location, job);
     if (schema == null) {
-      if (requestedSchema == null) {
+      if (requestedSchemaStr == null) {
         // no requested schema => use the schema from the file
         final FileMetaData globalMetaData = getParquetInputFormat().getGlobalMetaData(job);
         // TODO: if no Pig schema in file: generate one from the Parquet schema
         schema = TupleReadSupport.getPigSchemaFromFile(globalMetaData.getSchema(), globalMetaData.getKeyValueMetaData());
       } else {
         // there was a schema requested => use that
-        schema = Utils.getSchemaFromString(requestedSchema);
+        schema = Utils.getSchemaFromString(requestedSchemaStr);
       }
     }
     return new ResourceSchema(schema);
@@ -166,5 +188,47 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata {
   public void setPartitionFilter(Expression expression) throws IOException {
     LOG.debug("LoadMetadata.setPartitionFilter(" + expression + ")");
   }
+  
+  @Override
+  public List<OperatorSet> getFeatures() {
+    return Arrays.asList(LoadPushDown.OperatorSet.PROJECTION);
+  }
 
+  @Override
+  public RequiredFieldResponse pushProjection(RequiredFieldList requiredFieldList)
+      throws FrontendException {
+    if (requiredFieldList == null)
+      return null;
+    requestedSchema = getSchemaFromRequiredFieldList(schema, requiredFieldList.getFields());
+    return new RequiredFieldResponse(true);
+  }
+  
+  private Schema getSchemaFromRequiredFieldList(Schema schema, List<RequiredField> fieldList) 
+      throws FrontendException {
+    Schema s = new Schema();
+    for (RequiredField rf : fieldList) {
+      FieldSchema f = null;
+      try {
+         f = schema.getField(rf.getAlias()).clone();
+      } catch (CloneNotSupportedException e) {
+        throw new FrontendException("Clone not supported for the fieldschema", e);
+      }
+      if (f == null) {
+        return null;
+      }
+      if (rf.getSubFields() != null) {
+        s.add(f);
+      } else {
+        Schema innerSchema = getSchemaFromRequiredFieldList(f.schema, rf.getSubFields());
+        if (innerSchema == null) {
+          return null;
+        } else {
+          f.schema = innerSchema;
+          s.add(f);
+        }
+      }
+    }
+    return s;
+  }
+  
 }

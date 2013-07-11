@@ -29,6 +29,7 @@ import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
@@ -133,6 +134,49 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     }
   }
 
+  @Override
+  protected List<FileStatus> listStatus(JobContext job) throws IOException {               
+    return getAllFileRecursively(super.listStatus(job), 
+        job.getConfiguration());        
+  }
+
+  private static final PathFilter hiddenFileFilter = new PathFilter(){
+    public boolean accept(Path p){
+      String name = p.getName(); 
+      return !name.startsWith("_") && !name.startsWith("."); 
+    }
+  }; 
+  
+  private static List<FileStatus> getAllFileRecursively(
+      List<FileStatus> files, Configuration conf) throws IOException {
+    List<FileStatus> result = new ArrayList<FileStatus>();
+    int len = files.size();
+    for (int i = 0; i < len; ++i) {
+      FileStatus file = files.get(i);
+      if (file.isDir()) {
+        Path p = file.getPath();
+        FileSystem fs = p.getFileSystem(conf);
+        addInputPathRecursively(result, fs, p, hiddenFileFilter);
+      } else {
+        result.add(file);
+      }
+    }
+    LOG.info("Total input paths to process : " + result.size()); 
+    return result;
+  }
+  
+  private static void addInputPathRecursively(List<FileStatus> result,
+      FileSystem fs, Path path, PathFilter inputFilter) 
+          throws IOException {
+    for (FileStatus stat: fs.listStatus(path, inputFilter)) {
+      if (stat.isDir()) {
+        addInputPathRecursively(result, fs, stat.getPath(), inputFilter);
+      } else {
+        result.add(stat);
+      }
+    }
+  }  
+
   /**
    * groups together all the data blocks for the same HDFS block
    * @param blocks data blocks (row groups)
@@ -201,17 +245,17 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
           }
         }
         splits.add(new ParquetInputSplit(
-          fileStatus.getPath(),
-          hdfsBlock.getOffset(),
-          length,
-          hdfsBlock.getHosts(),
-          blocksForCurrentSplit,
-          fileMetaData.getSchema().toString(),
-          requestedSchema,
-          fileMetaData.getSchema().toString(),
-          fileMetaData.getKeyValueMetaData(),
-          readSupportMetadata
-          ));
+            fileStatus.getPath(),
+            hdfsBlock.getOffset(),
+            length,
+            hdfsBlock.getHosts(),
+            blocksForCurrentSplit,
+            fileMetaData.getSchema().toString(),
+            requestedSchema,
+            fileMetaData.getSchema().toString(),
+            fileMetaData.getKeyValueMetaData(),
+            readSupportMetadata
+            ));
       }
     }
     return splits;
@@ -270,8 +314,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   public List<Footer> getFooters(Configuration configuration, List<FileStatus> statuses) throws IOException {
-      LOG.debug("reading " + statuses.size() + " files");
-      return ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses);
+    LOG.debug("reading " + statuses.size() + " files");
+    return ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses);
   }
 
   /**
