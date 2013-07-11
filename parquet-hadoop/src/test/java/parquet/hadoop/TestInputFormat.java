@@ -35,6 +35,7 @@ import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 public class TestInputFormat {
@@ -50,17 +51,18 @@ public class TestInputFormat {
         new BlockLocation(new String[0], new String[] { "foo1.datanode", "bar1.datanode"}, 50, 50)
     };
     FileStatus fileStatus = new FileStatus(100, false, 2, 50, 0, new Path("hdfs://foo.namenode:1234/bar"));
-    FileMetaData fileMetaData = new FileMetaData(new MessageType("foo"), new HashMap<String, String>(), "parquet-mr");
+    MessageType schema = MessageTypeParser.parseMessageType("message doc { required binary foo; }");
+    FileMetaData fileMetaData = new FileMetaData(schema, new HashMap<String, String>(), "parquet-mr");
     @SuppressWarnings("serial")
     List<ParquetInputSplit> splits = ParquetInputFormat.generateSplits(
-        blocks, hdfsBlocks, fileStatus, fileMetaData, ReadSupport.class, "", new HashMap<String, String>() {{put("specific", "foo");}});
+        blocks, hdfsBlocks, fileStatus, fileMetaData, ReadSupport.class, schema.toString(), new HashMap<String, String>() {{put("specific", "foo");}});
     assertEquals(splits.toString().replaceAll("([{])", "$0\n").replaceAll("([}])", "\n$0"), 2, splits.size());
     for (int i = 0; i < splits.size(); i++) {
       ParquetInputSplit parquetInputSplit = splits.get(i);
       assertEquals(5, parquetInputSplit.getBlocks().size());
       assertEquals(2, parquetInputSplit.getLocations().length);
       assertEquals("[foo" + i + ".datanode, bar" + i + ".datanode]", Arrays.toString(parquetInputSplit.getLocations()));
-      assertEquals(50, parquetInputSplit.getLength());
+      assertEquals(10, parquetInputSplit.getLength());
       assertEquals("foo", parquetInputSplit.getReadSupportMetadata().get("specific"));
     }
   }
@@ -69,6 +71,7 @@ public class TestInputFormat {
     BlockMetaData blockMetaData = new BlockMetaData();
     ColumnChunkMetaData column = new ColumnChunkMetaData(new String[] {"foo"}, PrimitiveTypeName.BINARY, CompressionCodecName.GZIP, Arrays.asList(Encoding.PLAIN));
     column.setFirstDataPageOffset(start);
+    column.setTotalSize(2);
     blockMetaData.addColumn(column);
     return blockMetaData;
   }

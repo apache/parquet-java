@@ -222,6 +222,14 @@ public class GroupType extends Type {
   }
 
   @Override
+  protected boolean containsPath(String[] path, int depth) {
+    if (depth == path.length) {
+      return false;
+    }
+    return containsField(path[depth]) && getType(path[depth]).containsPath(path, depth + 1);
+  }
+
+  @Override
   protected List<String[]> getPaths(int depth) {
     List<String[]> result = new ArrayList<String[]>();
     for (Type field : fields) {

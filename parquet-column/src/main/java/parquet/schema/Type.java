@@ -132,6 +132,8 @@ abstract public class Type {
 
   protected abstract List<String[]> getPaths(int depth);
 
+  protected abstract boolean containsPath(String[] path, int depth);
+
   /**
    * {@inheritDoc}
    */
