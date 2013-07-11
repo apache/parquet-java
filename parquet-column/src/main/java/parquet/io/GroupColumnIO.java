@@ -57,8 +57,8 @@ public class GroupColumnIO extends ColumnIO {
     for (ColumnIO child : this.children) {
       String[] newFieldPath = Arrays.copyOf(fieldPath, fieldPath.length + 1);
       int[] newIndexFieldPath = Arrays.copyOf(indexFieldPath, indexFieldPath.length + 1);
-      newFieldPath[fieldPath.length] =  child.getType().getName();
-      newIndexFieldPath[indexFieldPath.length] =  this.getType().asGroupType().getFieldIndex(child.getType().getName());
+      newFieldPath[fieldPath.length] = child.getType().getName();
+      newIndexFieldPath[indexFieldPath.length] = child.getIndex();
       List<ColumnIO> newRepetition;
       if (child.getType().getRepetition() == REPEATED) {
         newRepetition = new ArrayList<ColumnIO>(repetition);
