@@ -44,8 +44,6 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.ContextUtil;
-import parquet.schema.MessageType;
-import parquet.schema.MessageTypeParser;
 
 /**
  * The input format to read a Parquet file.
@@ -130,16 +128,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     } catch (IllegalAccessException e) {
       throw new BadConfigurationException("could not instanciate read support class", e);
     }
-  }
-
-  private String getRequestedSchema(String fileSchema, String requestedSchema) {
-    if (requestedSchema != null) {
-      MessageType requestedMessageType = MessageTypeParser.parseMessageType(requestedSchema);
-      MessageType fileMessageType = MessageTypeParser.parseMessageType(fileSchema);
-      fileMessageType.checkContains(requestedMessageType);
-      return requestedSchema;
-    }
-    return fileSchema;
   }
 
   /**

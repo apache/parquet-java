@@ -58,9 +58,10 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
   @Override
   public parquet.hadoop.api.ReadSupport.ReadContext init(
       Configuration configuration, Map<String, String> keyValueMetaData,
-      MessageType fileSchema) {
-    // TODO: handle the requested schema
-    return new ReadContext(fileSchema);
+      MessageType fileMessageType) {
+    String partialSchemaString = configuration.get(ReadSupport.PARQUET_READ_SCHEMA);
+    MessageType requestedProjection = getSchemaForRead(fileMessageType, partialSchemaString);
+    return new ReadContext(requestedProjection);
   }
 
   @SuppressWarnings("unchecked")
@@ -86,8 +87,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
       Class<ThriftRecordConverter<T>> converterClass = (Class<ThriftRecordConverter<T>>) Class.forName(converterClassName);
       Constructor<ThriftRecordConverter<T>> constructor =
           converterClass.getConstructor(Class.class, MessageType.class, StructType.class);
-      // TODO: handle the requested schema
-      ThriftRecordConverter<T> converter = constructor.newInstance(thriftClass, fileSchema, thriftMetaData.getDescriptor());
+      ThriftRecordConverter<T> converter = constructor.newInstance(thriftClass, readContext.getRequestedSchema(), thriftMetaData.getDescriptor());
       return converter;
     } catch (Exception t) {
       throw new RuntimeException("Unable to create Thrift Converter for Thrift metadata " + thriftMetaData, t);
