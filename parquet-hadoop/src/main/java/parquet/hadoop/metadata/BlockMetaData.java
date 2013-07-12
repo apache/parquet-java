@@ -15,7 +15,6 @@
  */
 package parquet.hadoop.metadata;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,8 +25,7 @@ import java.util.List;
  * @author Julien Le Dem
  *
  */
-public class BlockMetaData implements Serializable {
-  private static final long serialVersionUID = 1L;
+public class BlockMetaData {
 
   private List<ColumnChunkMetaData> columns = new ArrayList<ColumnChunkMetaData>();
   private long rowCount;
