@@ -161,7 +161,7 @@ public class ParquetMetadataConverter {
 
   private static final class EncodingList {
 
-    private List<parquet.column.Encoding> encodings;
+    private final List<parquet.column.Encoding> encodings;
 
     public EncodingList(List<parquet.column.Encoding> encodings) {
       this.encodings = encodings;
@@ -328,7 +328,7 @@ public class ParquetMetadataConverter {
 
   private static final class Path {
 
-    private String[] p;
+    private final String[] p;
 
     public Path(String[] path) {
       this.p = path;
