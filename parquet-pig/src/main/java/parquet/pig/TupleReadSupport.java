@@ -52,8 +52,6 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
    * @return the pig schema requested by the user or null if none.
    */
   static Schema getRequestedPigSchema(Configuration configuration) {
-    //String pigSchemaString = configuration.get(PARQUET_PIG_REQUESTED_SCHEMA);
-    //return parsePigSchema(pigSchemaString);
     Schema pigSchema = null;
     try {
       String schemaStr = configuration.get(PARQUET_PIG_REQUESTED_SCHEMA);
