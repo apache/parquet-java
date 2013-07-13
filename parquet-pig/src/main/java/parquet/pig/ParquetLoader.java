@@ -18,8 +18,6 @@ package parquet.pig;
 import static parquet.pig.TupleReadSupport.PARQUET_PIG_REQUESTED_SCHEMA;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
@@ -37,9 +35,9 @@ import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
 import parquet.Log;
-import parquet.hadoop.Footer;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.metadata.FileMetaData;
+import parquet.hadoop.util.ContextUtil;
 import parquet.io.ParquetDecodingException;
 
 /**
@@ -80,7 +78,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata {
     LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
     setInput(location, job);
     if (requestedSchema != null) {
-      job.getConfiguration().set(PARQUET_PIG_REQUESTED_SCHEMA, requestedSchema);
+      ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, requestedSchema);
     }
   }
 

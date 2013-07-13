@@ -76,4 +76,9 @@ class BoundedIntValuesReader extends ValuesReader {
     if (DEBUG) LOG.debug("will read next from " + (offset + totalBytes + 4));
     return offset + totalBytes + 4;
   }
+
+  @Override
+  public void skip() {
+    readInteger();
+  }
 }

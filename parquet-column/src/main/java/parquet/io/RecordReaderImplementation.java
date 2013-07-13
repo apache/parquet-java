@@ -222,25 +222,29 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     public Case getCase(int currentLevel, int d, int nextR) {
       return caseLookup[currentLevel][d][nextR];
     }
+
+    public State getNextState(int nextR) {
+      return nextState[nextR];
+    }
   }
 
   private final GroupConverter recordConsumer;
   private final RecordMaterializer<T> recordMaterializer;
 
   private State[] states;
+  private ColumnReader[] columns;
 
   /**
    *
    * @param root the root of the schema
-   * @param leaves the leaves of the schema
    * @param validating
-   * @param columns2
+   * @param columnStore
    */
   public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnReadStoreImpl columnStore) {
     this.recordMaterializer = recordMaterializer;
     this.recordConsumer = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer), validating, root.getType());
     PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
-    ColumnReader[] columns = new ColumnReader[leaves.length];
+    columns = new ColumnReader[leaves.length];
     int[][] nextReader = new int[leaves.length][];
     int[][] nextLevel = new int[leaves.length][];
     GroupConverter[][] groupConverterPaths = new GroupConverter[leaves.length][];
@@ -298,17 +302,18 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       states[i] = new State(i, leaves[i], columns[i], nextLevel[i], groupConverterPaths[i], primitiveConverters[i]);
 
       int[] definitionLevelToDepth = new int[states[i].primitiveColumnIO.getDefinitionLevel() + 1];
-      int depth = 0;
       // for each possible definition level, determine the depth at which to create groups
+      final ColumnIO[] path = states[i].primitiveColumnIO.getPath();
+      int depth = 0;
       for (int d = 0; d < definitionLevelToDepth.length; ++d) {
         while (depth < (states[i].fieldPath.length - 1)
-          && d > states[i].primitiveColumnIO.getPath()[depth].getDefinitionLevel()) {
+          && d >= path[depth + 1].getDefinitionLevel()
+          ) {
           ++ depth;
         }
         definitionLevelToDepth[d] = depth - 1;
       }
       states[i].definitionLevelToDepth = definitionLevelToDepth;
-
     }
     for (int i = 0; i < leaves.length; i++) {
       State state = states[i];
@@ -389,7 +394,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       // set the current value
       if (d >= currentState.maxDefinitionLevel) {
         // not null
-        currentState.primitive.addValueToPrimitiveConverter(currentState.primitiveConverter, columnReader);
+        columnReader.writeCurrentValueToConverter();
       }
       columnReader.consume();
 
@@ -443,4 +448,8 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     return recordConsumer;
   }
 
+  protected Iterable<ColumnReader> getColumnReaders() {
+    // Converting the array to an iterable ensures that the array cannot be altered
+    return Arrays.asList(columns);
+  }
 }

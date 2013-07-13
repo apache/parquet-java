@@ -58,7 +58,7 @@ public class TestRecordReaderCompiler {
     });
 
     MemPageStore memPageStore = new MemPageStore();
-    ColumnWriteStore writeStore = new ColumnWriteStoreImpl(memPageStore, 1024*1024*1);
+    ColumnWriteStore writeStore = new ColumnWriteStoreImpl(memPageStore, 1024*1024*1, 1024*1024*1, false);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     new GroupWriter(columnIO.getRecordWriter(writeStore), schema).write(r1);
     writeStore.flush();

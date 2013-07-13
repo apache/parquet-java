@@ -16,6 +16,11 @@
 package parquet.hadoop;
 
 import static parquet.Log.INFO;
+import static parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
+import static parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
+import static parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
+import static parquet.hadoop.metadata.CompressionCodecName.fromConf;
+import static parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
 
@@ -59,6 +64,9 @@ import parquet.hadoop.metadata.CompressionCodecName;
  * # The write support class to convert the records written to the OutputFormat into the events accepted by the record consumer
  * # Usually provided by a specific ParquetOutputFormat subclass
  * parquet.write.support.class= # fully qualified name
+ *
+ * # To enable dictionary encoding
+ * parquet.enable.dictionary=false # true to enable dictionary encoding
  * </pre>
  *
  * If parquet.compression is not set, the following properties are checked (FileOutputFormat behavior).
@@ -81,13 +89,15 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String PAGE_SIZE           = "parquet.page.size";
   public static final String COMPRESSION         = "parquet.compression";
   public static final String WRITE_SUPPORT_CLASS = "parquet.write.support.class";
+  public static final String ENABLE_DICTIONARY   = "parquet.enable.dictionary";
+  public static final String VALIDATION          = "parquet.validation";
 
   public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
-    job.getConfiguration().set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
+    getConfiguration(job).set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
   }
 
   public static Class<?> getWriteSupportClass(JobContext jobContext) {
-    final String className = jobContext.getConfiguration().get(WRITE_SUPPORT_CLASS);
+    final String className = getConfiguration(jobContext).get(WRITE_SUPPORT_CLASS);
     if (className == null) {
       return null;
     }
@@ -103,31 +113,47 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public static void setBlockSize(Job job, int blockSize) {
-    job.getConfiguration().setInt(BLOCK_SIZE, blockSize);
+    getConfiguration(job).setInt(BLOCK_SIZE, blockSize);
   }
 
   public static void setPageSize(Job job, int pageSize) {
-    job.getConfiguration().setInt(PAGE_SIZE, pageSize);
+    getConfiguration(job).setInt(PAGE_SIZE, pageSize);
   }
 
   public static void setCompression(Job job, CompressionCodecName compression) {
-    job.getConfiguration().set(COMPRESSION, compression.name());
+    getConfiguration(job).set(COMPRESSION, compression.name());
+  }
+
+  public static void setEnableDictionary(Job job, boolean enableDictionary) {
+    getConfiguration(job).setBoolean(ENABLE_DICTIONARY, enableDictionary);
+  }
+
+  public static boolean getEnableDictionary(JobContext jobContext) {
+    return getConfiguration(jobContext).getBoolean(ENABLE_DICTIONARY, false);
   }
 
   public static int getBlockSize(JobContext jobContext) {
-    return jobContext.getConfiguration().getInt(BLOCK_SIZE, 50*1024*1024);
+    return getConfiguration(jobContext).getInt(BLOCK_SIZE, DEFAULT_BLOCK_SIZE);
   }
 
   public static int getPageSize(JobContext jobContext) {
-    return jobContext.getConfiguration().getInt(PAGE_SIZE, 1*1024*1024);
+    return getConfiguration(jobContext).getInt(PAGE_SIZE, DEFAULT_PAGE_SIZE);
   }
 
   public static CompressionCodecName getCompression(JobContext jobContext) {
-    return CompressionCodecName.fromConf(jobContext.getConfiguration().get(COMPRESSION, CompressionCodecName.UNCOMPRESSED.name()));
+    return fromConf(getConfiguration(jobContext).get(COMPRESSION, UNCOMPRESSED.name()));
   }
 
   public static boolean isCompressionSet(JobContext jobContext) {
-    return jobContext.getConfiguration().get(COMPRESSION) != null;
+    return getConfiguration(jobContext).get(COMPRESSION) != null;
+  }
+
+  public static void setValidation(JobContext jobContext, boolean validating) {
+    getConfiguration(jobContext).setBoolean(VALIDATION, validating);
+  }
+
+  public static boolean getValidation(JobContext jobContext) {
+    return getConfiguration(jobContext).getBoolean(VALIDATION, false);
   }
 
   private WriteSupport<T> writeSupport;
@@ -162,7 +188,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   @SuppressWarnings("unchecked") // writeSupport instantiation
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Path file)
         throws IOException, InterruptedException {
-    final Configuration conf = taskAttemptContext.getConfiguration();
+    final Configuration conf = getConfiguration(taskAttemptContext);
     CodecFactory codecFactory = new CodecFactory(conf);
     int blockSize = getBlockSize(taskAttemptContext);
     if (INFO) LOG.info("Parquet block size to " + blockSize);
@@ -194,14 +220,25 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       codec = CompressionCodecName.UNCOMPRESSED;
     }
     if (INFO) LOG.info("Compression: " + codec.name());
-    extension += codec.getExtension();
+    extension = codec.getExtension() + extension;
     if (file == null) {
       file = getDefaultWorkFile(taskAttemptContext, extension);
     }
+    boolean enableDictionary = getEnableDictionary(taskAttemptContext);
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(conf, init.getSchema(), file);
     w.start();
-    return new ParquetRecordWriter<T>(w, writeSupport, init.getSchema(), init.getExtraMetaData(), blockSize, pageSize, codecFactory.getCompressor(codec, pageSize));
+    boolean validating = getValidation(taskAttemptContext);
+    if (INFO) LOG.info("Validation is " + (validating ? "on" : "off"));
+    return new ParquetRecordWriter<T>(
+        w,
+        writeSupport,
+        init.getSchema(),
+        init.getExtraMetaData(),
+        blockSize, pageSize,
+        codecFactory.getCompressor(codec, pageSize),
+        enableDictionary,
+        validating);
   }
 
   @Override

@@ -16,17 +16,11 @@
 package parquet.column.values.plain;
 
 import static parquet.column.Encoding.PLAIN;
-import static parquet.column.values.bitpacking.BitPacking.getBitPackingWriter;
-
-import java.io.IOException;
-
-import parquet.Log;
+import static parquet.column.values.bitpacking.Packer.LITTLE_ENDIAN;
 import parquet.bytes.BytesInput;
-import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.column.Encoding;
 import parquet.column.values.ValuesWriter;
-import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
-import parquet.io.ParquetEncodingException;
+import parquet.column.values.bitpacking.ByteBitPackingValuesWriter;
 
 
 /**
@@ -36,55 +30,46 @@ import parquet.io.ParquetEncodingException;
  *
  */
 public class BooleanPlainValuesWriter extends ValuesWriter {
-  private static final Log LOG = Log.getLog(BooleanPlainValuesWriter.class);
 
-  private CapacityByteArrayOutputStream out;
-  private BitPackingWriter bitPackingWriter;
+  private ByteBitPackingValuesWriter bitPackingWriter;
 
-  public BooleanPlainValuesWriter(int initialSize) {
-    out = new CapacityByteArrayOutputStream(initialSize);
-    bitPackingWriter = getBitPackingWriter(1, out);
+  public BooleanPlainValuesWriter() {
+    bitPackingWriter = new ByteBitPackingValuesWriter(1, LITTLE_ENDIAN);
   }
 
   @Override
   public final void writeBoolean(boolean v) {
-    try {
-      bitPackingWriter.write(v ? 1 : 0);
-    } catch (IOException e) {
-      throw new ParquetEncodingException("could not write boolean", e);
-    }
+    bitPackingWriter.writeInteger(v ? 1 : 0);
   }
 
   @Override
   public long getBufferedSize() {
-    return out.size();
+    return bitPackingWriter.getBufferedSize();
   }
 
   @Override
   public BytesInput getBytes() {
-    try {
-      bitPackingWriter.finish();
-    } catch (IOException e) {
-      throw new ParquetEncodingException("could not write page", e);
-    }
-    if (Log.DEBUG) LOG.debug("writing a buffer of size " + out.size());
-    return BytesInput.from(out);
+    return bitPackingWriter.getBytes();
   }
 
   @Override
   public void reset() {
-    out.reset();
-    bitPackingWriter = getBitPackingWriter(1, out);
+    bitPackingWriter.reset();
   }
 
   @Override
   public long getAllocatedSize() {
-    return out.getCapacity();
+    return bitPackingWriter.getAllocatedSize();
   }
 
   @Override
   public Encoding getEncoding() {
     return PLAIN;
+  }
+
+  @Override
+  public String memUsageString(String prefix) {
+    return bitPackingWriter.memUsageString(prefix);
   }
 
 }

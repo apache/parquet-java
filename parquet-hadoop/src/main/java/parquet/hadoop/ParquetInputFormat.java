@@ -22,12 +22,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.JobContext;
@@ -39,8 +41,10 @@ import parquet.Log;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
 import parquet.hadoop.metadata.BlockMetaData;
+import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.hadoop.util.ContextUtil;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 
@@ -63,7 +67,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public static final String READ_SUPPORT_CLASS = "parquet.read.support.class";
 
   public static void setReadSupportClass(Job job,  Class<?> readSupportClass) {
-    job.getConfiguration().set(READ_SUPPORT_CLASS, readSupportClass.getName());
+    ContextUtil.getConfiguration(job).set(READ_SUPPORT_CLASS, readSupportClass.getName());
+  }
+
+  public static void setReadSupportClass(JobConf conf, Class<?> readSupportClass) {
+    conf.set(READ_SUPPORT_CLASS, readSupportClass.getName());
   }
 
   public static Class<?> getReadSupportClass(Configuration configuration) {
@@ -87,7 +95,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   private List<Footer> footers;
 
   /**
-   * Hadoop will instanciate using this constructor
+   * Hadoop will instantiate using this constructor
    */
   public ParquetInputFormat() {
   }
@@ -107,10 +115,10 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public RecordReader<Void, T> createRecordReader(
       InputSplit inputSplit,
       TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
-    return new ParquetRecordReader<T>(getReadSupport(taskAttemptContext.getConfiguration()));
+    return new ParquetRecordReader<T>(getReadSupport(ContextUtil.getConfiguration(taskAttemptContext)));
   }
 
-  private ReadSupport<T> getReadSupport(Configuration configuration){
+  public ReadSupport<T> getReadSupport(Configuration configuration){
     try {
       if (readSupportClass == null) {
         readSupportClass = getReadSupportClass(configuration);
@@ -125,30 +133,26 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     }
   }
 
-  private String getRequestedSchema(String fileSchema, String requestedSchema) {
-    if (requestedSchema != null) {
-      MessageType requestedMessageType = MessageTypeParser.parseMessageType(requestedSchema);
-      MessageType fileMessageType = MessageTypeParser.parseMessageType(fileSchema);
-      fileMessageType.checkContains(requestedMessageType);
-      return requestedSchema;
-    }
-    return fileSchema;
-  }
-
   /**
    * groups together all the data blocks for the same HDFS block
    * @param blocks data blocks (row groups)
    * @param hdfsBlocks hdfs blocks
    * @param fileStatus the containing file
    * @param fileMetaData file level meta data
-   * @param extraMetadata
-   * @param readSupport how to materialize the records
+   * @param readSupportClass the class used to materialize records
+   * @param requestedSchema the schema requested by the user
+   * @param readSupportMetadata the metadata provided by the readSupport implementation in init
    * @return the splits (one per HDFS block)
    * @throws IOException If hosts can't be retrieved for the HDFS block
    */
-  static <T> List<InputSplit> generateSplits(List<BlockMetaData> blocks,
-      BlockLocation[] hdfsBlocks, FileStatus fileStatus,
-      FileMetaData fileMetaData, Class<?> readSupportClass, String requestedSchema) throws IOException {
+  static <T> List<ParquetInputSplit> generateSplits(
+      List<BlockMetaData> blocks,
+      BlockLocation[] hdfsBlocks,
+      FileStatus fileStatus,
+      FileMetaData fileMetaData,
+      Class<?> readSupportClass,
+      String requestedSchema,
+      Map<String, String> readSupportMetadata) throws IOException {
     Comparator<BlockLocation> comparator = new Comparator<BlockLocation>() {
       @Override
       public int compare(BlockLocation b1, BlockLocation b2) {
@@ -179,22 +183,34 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         }
       }
     }
-    List<InputSplit> splits = new ArrayList<InputSplit>();
+    List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
     for (int i = 0; i < hdfsBlocks.length; i++) {
       BlockLocation hdfsBlock = hdfsBlocks[i];
       List<BlockMetaData> blocksForCurrentSplit = splitGroups.get(i);
       if (blocksForCurrentSplit.size() == 0) {
         LOG.warn("HDFS block without row group: " + hdfsBlocks[i]);
       } else {
+        long length = 0;
+        for (BlockMetaData block : blocksForCurrentSplit) {
+          MessageType requested = MessageTypeParser.parseMessageType(requestedSchema);
+          List<ColumnChunkMetaData> columns = block.getColumns();
+          for (ColumnChunkMetaData column : columns) {
+            if (requested.containsPath(column.getPath())) {
+              length += column.getTotalSize();
+            }
+          }
+        }
         splits.add(new ParquetInputSplit(
           fileStatus.getPath(),
           hdfsBlock.getOffset(),
-          hdfsBlock.getLength(),
+          length,
           hdfsBlock.getHosts(),
           blocksForCurrentSplit,
           fileMetaData.getSchema().toString(),
           requestedSchema,
-          fileMetaData.getKeyValueMetaData()
+          fileMetaData.getSchema().toString(),
+          fileMetaData.getKeyValueMetaData(),
+          readSupportMetadata
           ));
       }
     }
@@ -207,9 +223,13 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   @Override
   public List<InputSplit> getSplits(JobContext jobContext) throws IOException {
     List<InputSplit> splits = new ArrayList<InputSplit>();
-    Configuration configuration = jobContext.getConfiguration();
-    List<Footer> footers = getFooters(jobContext);
-    FileMetaData globalMetaData = getGlobalMetaData(jobContext);
+    splits.addAll(getSplits(ContextUtil.getConfiguration(jobContext), getFooters(jobContext)));
+    return splits;
+  }
+
+  public List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers) throws IOException {
+    List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
+    FileMetaData globalMetaData = getGlobalMetaData(footers);
     ReadContext readContext = getReadSupport(configuration).init(
         configuration,
         globalMetaData.getKeyValueMetaData(),
@@ -229,7 +249,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
               fileStatus,
               parquetMetaData.getFileMetaData(),
               readSupportClass,
-              readContext.getRequestedSchema().toString())
+              readContext.getRequestedSchema().toString(),
+              readContext.getReadSupportMetadata())
           );
     }
     return splits;
@@ -242,12 +263,15 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    */
   public List<Footer> getFooters(JobContext jobContext) throws IOException {
     if (footers == null) {
-      Configuration configuration = jobContext.getConfiguration();
-      List<FileStatus> statuses = super.listStatus(jobContext);
-      LOG.debug("reading " + statuses.size() + " files");
-      footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses);
+      footers = getFooters(ContextUtil.getConfiguration(jobContext), super.listStatus(jobContext));
     }
+
     return footers;
+  }
+
+  public List<Footer> getFooters(Configuration configuration, List<FileStatus> statuses) throws IOException {
+      LOG.debug("reading " + statuses.size() + " files");
+      return ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses);
   }
 
   /**
@@ -256,12 +280,15 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @throws IOException
    */
   public FileMetaData getGlobalMetaData(JobContext jobContext) throws IOException {
+    return getGlobalMetaData(getFooters(jobContext));
+  }
+
+  private FileMetaData getGlobalMetaData(List<Footer> footers) throws IOException {
     FileMetaData fileMetaData = null;
-    for (Footer footer : getFooters(jobContext)) {
+    for (Footer footer : footers) {
       ParquetMetadata currentMetadata = footer.getParquetMetadata();
       fileMetaData = mergeInto(currentMetadata.getFileMetaData(), fileMetaData);
     }
     return fileMetaData;
   }
-
 }

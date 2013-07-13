@@ -68,7 +68,7 @@ public class ThriftWriteSupport<T extends TBase<?,?>> extends WriteSupport<T> {
     ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter();
     this.thriftStruct = thriftSchemaConverter.toStructType(thriftClass);
     this.schema = thriftSchemaConverter.convert(thriftClass);
-    final Map<String, String> extraMetaData = new ThriftMetaData(thriftClass, thriftStruct).toExtraMetaData();
+    final Map<String, String> extraMetaData = new ThriftMetaData(thriftClass.getName(), thriftStruct).toExtraMetaData();
     // adding the Pig schema as it would have been mapped from thrift
     new PigMetaData(new ThriftToPig(thriftClass).toSchema()).addToMetaData(extraMetaData);
     return new WriteContext(schema, extraMetaData);

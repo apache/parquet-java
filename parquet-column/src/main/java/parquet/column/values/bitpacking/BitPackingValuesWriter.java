@@ -41,12 +41,11 @@ public class BitPackingValuesWriter extends ValuesWriter {
   private int bitsPerValue;
 
   /**
-   *
    * @param bound the maximum value stored by this column
    */
-  public BitPackingValuesWriter(int bound) {
+  public BitPackingValuesWriter(int bound, int initialCapacity) {
     this.bitsPerValue = getWidthFromMaxInt(bound);
-    this.out = new CapacityByteArrayOutputStream(32*1024); // size needed could be small but starting at 32 is really small
+    this.out = new CapacityByteArrayOutputStream(initialCapacity);
     init();
   }
 
@@ -55,7 +54,6 @@ public class BitPackingValuesWriter extends ValuesWriter {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.values.ValuesWriter#writeInteger(int)
    */
@@ -69,7 +67,6 @@ public class BitPackingValuesWriter extends ValuesWriter {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.values.ValuesWriter#getBufferedSize()
    */
@@ -79,7 +76,6 @@ public class BitPackingValuesWriter extends ValuesWriter {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.values.ValuesWriter#getBytes()
    */
@@ -94,7 +90,6 @@ public class BitPackingValuesWriter extends ValuesWriter {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.values.ValuesWriter#reset()
    */
@@ -105,7 +100,6 @@ public class BitPackingValuesWriter extends ValuesWriter {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.values.ValuesWriter#getAllocatedSize()
    */
@@ -115,9 +109,13 @@ public class BitPackingValuesWriter extends ValuesWriter {
   }
 
   @Override
+  public String memUsageString(String prefix) {
+    return out.memUsageString(prefix);
+  }
+
+  @Override
   public Encoding getEncoding() {
     return BIT_PACKED;
   }
-
 
 }

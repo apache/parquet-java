@@ -15,16 +15,29 @@
  */
 package parquet.column;
 
+import java.io.IOException;
+
+import parquet.bytes.BytesUtils;
+import parquet.column.page.DictionaryPage;
 import parquet.column.values.ValuesReader;
-import parquet.column.values.ValuesType;
-import parquet.column.values.bitpacking.BitPackingValuesReader;
-import parquet.column.values.boundedint.BoundedIntValuesFactory;
+import parquet.column.values.bitpacking.ByteBitPackingValuesReader;
+import parquet.column.values.boundedint.ZeroIntegerValuesReader;
+import parquet.column.values.dictionary.DictionaryValuesReader;
+import parquet.column.values.dictionary.PlainBinaryDictionary;
+import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.BooleanPlainValuesReader;
-import parquet.column.values.plain.PlainValuesReader;
+import parquet.column.values.plain.PlainValuesReader.DoublePlainValuesReader;
+import parquet.column.values.plain.PlainValuesReader.FloatPlainValuesReader;
+import parquet.column.values.plain.PlainValuesReader.IntegerPlainValuesReader;
+import parquet.column.values.plain.PlainValuesReader.LongPlainValuesReader;
+import parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
 import parquet.io.ParquetDecodingException;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
+
+import static parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
 
 /**
- * endoding of the data
+ * encoding of the data
  *
  * @author Julien Le Dem
  *
@@ -37,42 +50,78 @@ public enum Encoding {
       switch (descriptor.getType()) {
       case BOOLEAN:
         return new BooleanPlainValuesReader();
+      case BINARY:
+        return new BinaryPlainValuesReader();
+      case FLOAT:
+        return new FloatPlainValuesReader();
+      case DOUBLE:
+        return new DoublePlainValuesReader();
+      case INT32:
+        return new IntegerPlainValuesReader();
+      case INT64:
+        return new LongPlainValuesReader();
       default:
-        return new PlainValuesReader();
+        throw new ParquetDecodingException("no plain reader for type " + descriptor.getType());
       }
     }
   },
 
+  /**
+   * Actually a combination of bit packing and run length encoding.
+   * TODO: Should we rename this to be more clear?
+   */
   RLE {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      return BoundedIntValuesFactory.getBoundedReader(getMaxLevel(descriptor, valuesType));
+      int bitWidth = BytesUtils.getWidthFromMaxInt(getMaxLevel(descriptor, valuesType));
+      if(bitWidth == 0) {
+        return new ZeroIntegerValuesReader();
+      }
+      return new RunLengthBitPackingHybridValuesReader(bitWidth);
     }
   },
 
+  /**
+   * This is no longer used, and has been replaced by {@link #RLE}
+   * which is combination of bit packing and rle
+   */
+  @Deprecated
   BIT_PACKED {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      return new BitPackingValuesReader(getMaxLevel(descriptor, valuesType));
+      return new ByteBitPackingValuesReader(getMaxLevel(descriptor, valuesType), BIG_ENDIAN);
     }
   },
 
   GROUP_VAR_INT {
-
     @Override // TODO: GROUP VAR INT encoding
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor,
-        ValuesType valuesType) {
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       throw new UnsupportedOperationException("NYI");
     }
-
   },
 
   PLAIN_DICTIONARY {
+    @Override
+    public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
+      switch (descriptor.getType()) {
+      case BINARY:
+        return new DictionaryValuesReader(dictionary);
+      default:
+        throw new ParquetDecodingException("Dictionary encoding not supported for type: " + descriptor.getType());
+      }
+    }
 
-    @Override // TODO: dictionary encoding
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor,
-        ValuesType valuesType) {
-      throw new UnsupportedOperationException("NYI");
+    @Override
+    public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage) throws IOException {
+      if (descriptor.getType() != PrimitiveTypeName.BINARY) {
+        throw new UnsupportedOperationException("only Binary dictionaries are supported for now");
+      }
+      return new PlainBinaryDictionary(dictionaryPage);
+    }
+
+    @Override
+    public boolean usesDictionary() {
+      return true;
     }
 
   };
@@ -93,9 +142,44 @@ public enum Encoding {
   }
 
   /**
+   * @return whether this encoding requires a dictionary
+   */
+  public boolean usesDictionary() {
+    return false;
+  }
+
+  /**
+   * initializes a dictionary from a page
+   * @param dictionaryPage
+   * @return the corresponding dictionary
+   */
+  public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage) throws IOException {
+    throw new UnsupportedOperationException(this.name() + " does not support dictionary");
+  }
+
+  /**
+   * To read decoded values that don't require a dictionary
+   *
    * @param descriptor the column to read
    * @param valuesType the type of values
    * @return the proper values reader for the given column
+   * @throw {@link UnsupportedOperationException} if the encoding is dictionary based
    */
-  abstract public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType);
+  public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+    throw new UnsupportedOperationException("Error decoding " + descriptor + ". " + this.name() + " is dictionary based");
+  }
+
+  /**
+   * To read decoded values that require a dictionary
+   *
+   * @param descriptor the column to read
+   * @param valuesType the type of values
+   * @param dictionary the dictionary
+   * @return the proper values reader for the given column
+   * @throw {@link UnsupportedOperationException} if the encoding is not dictionary based
+   */
+  public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
+    throw new UnsupportedOperationException(this.name() + " is not dictionary based");
+  }
+
 }

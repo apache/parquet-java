@@ -33,11 +33,15 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
   private final Map<ColumnDescriptor, ColumnWriterImpl> columns = new TreeMap<ColumnDescriptor, ColumnWriterImpl>();
   private final PageWriteStore pageWriteStore;
   private final int pageSizeThreshold;
+  private final boolean enableDictionary;
+  private final int initialSizePerCol;
 
-  public ColumnWriteStoreImpl(PageWriteStore pageWriteStore, int pageSizeThreshold) {
+  public ColumnWriteStoreImpl(PageWriteStore pageWriteStore, int pageSizeThreshold, int initialSizePerCol, boolean enableDictionary) {
     super();
     this.pageWriteStore = pageWriteStore;
     this.pageSizeThreshold = pageSizeThreshold;
+    this.initialSizePerCol = initialSizePerCol;
+    this.enableDictionary = enableDictionary;
   }
 
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
@@ -51,7 +55,7 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
 
   private ColumnWriterImpl newMemColumn(ColumnDescriptor path) {
     PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-    return new ColumnWriterImpl(path, pageWriter, pageSizeThreshold);
+    return new ColumnWriterImpl(path, pageWriter, pageSizeThreshold, initialSizePerCol, enableDictionary);
   }
 
   @Override
@@ -98,6 +102,16 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
     for (ColumnWriterImpl memColumn : values) {
       memColumn.flush();
     }
+  }
+
+  public String memUsageString() {
+    StringBuilder b = new StringBuilder("Store {\n");
+    Collection<ColumnWriterImpl> values = columns.values();
+    for (ColumnWriterImpl memColumn : values) {
+      b.append(memColumn.memUsageString(" "));
+    }
+    b.append("}\n");
+    return b.toString();
   }
 
 }

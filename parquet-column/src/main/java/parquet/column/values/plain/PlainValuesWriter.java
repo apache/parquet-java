@@ -133,4 +133,9 @@ public class PlainValuesWriter extends ValuesWriter {
     return Encoding.PLAIN;
   }
 
+  @Override
+  public String memUsageString(String prefix) {
+    return arrayOut.memUsageString(prefix + " PLAIN");
+  }
+
 }

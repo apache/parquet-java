@@ -74,14 +74,18 @@ public class TestParquetFileWriter {
     w.start();
     w.startBlock(3);
     w.startColumn(c1, 5, codec);
+    long c1Starts = w.getPos();
     w.writeDataPage(2, 4, BytesInput.from(bytes1), BIT_PACKED, BIT_PACKED, PLAIN);
     w.writeDataPage(3, 4, BytesInput.from(bytes1), BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
+    long c1Ends = w.getPos();
     w.startColumn(c2, 6, codec);
+    long c2Starts = w.getPos();
     w.writeDataPage(2, 4, BytesInput.from(bytes2), BIT_PACKED, BIT_PACKED, PLAIN);
     w.writeDataPage(3, 4, BytesInput.from(bytes2), BIT_PACKED, BIT_PACKED, PLAIN);
     w.writeDataPage(1, 4, BytesInput.from(bytes2), BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
+    long c2Ends = w.getPos();
     w.endBlock();
     w.startBlock(4);
     w.startColumn(c1, 7, codec);
@@ -95,6 +99,9 @@ public class TestParquetFileWriter {
 
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
     assertEquals("footer: "+readFooter, 2, readFooter.getBlocks().size());
+    assertEquals(c1Ends - c1Starts, readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize());
+    assertEquals(c2Ends - c2Starts, readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize());
+
 
     { // read first block of col #1
       ParquetFileReader r = new ParquetFileReader(configuration, path, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(path1)));

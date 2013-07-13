@@ -15,6 +15,7 @@
  */
 package parquet.io.api;
 
+
 /**
  * converter for group nodes
  *
@@ -36,7 +37,7 @@ abstract public class GroupConverter extends Converter {
   /**
    * called at initialization based on schema
    * must consistently return the same object
-   * @param fieldIndex index of a group field in this group
+   * @param fieldIndex index of the field in this group
    * @return the corresponding converter
    */
   abstract public Converter getConverter(int fieldIndex);

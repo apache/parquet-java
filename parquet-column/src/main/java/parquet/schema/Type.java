@@ -28,9 +28,27 @@ import parquet.io.InvalidRecordException;
 abstract public class Type {
 
   public static enum Repetition {
-    REQUIRED, // exactly 1
-    OPTIONAL, // 0 or 1
-    REPEATED  // 0 or more
+    REQUIRED { // exactly 1
+      @Override
+      public boolean isMoreRestrictiveThan(Repetition other) {
+        return other != REQUIRED;
+      }
+    },
+    OPTIONAL { // 0 or 1
+      @Override
+      public boolean isMoreRestrictiveThan(Repetition other) {
+        return other == REPEATED;
+      }
+    },
+    REPEATED {  // 0 or more
+      @Override
+      public boolean isMoreRestrictiveThan(Repetition other) {
+        return false;
+      }
+    }
+    ;
+
+    abstract public boolean isMoreRestrictiveThan(Repetition other);
   }
 
   private final String name;
@@ -113,6 +131,8 @@ abstract public class Type {
   protected abstract Type getType(String[] path, int i);
 
   protected abstract List<String[]> getPaths(int depth);
+
+  protected abstract boolean containsPath(String[] path, int depth);
 
   /**
    * {@inheritDoc}

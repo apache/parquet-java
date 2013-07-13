@@ -28,6 +28,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputCommitter;
 
 import parquet.Log;
+import parquet.hadoop.util.ContextUtil;
 
 public class ParquetOutputCommitter extends FileOutputCommitter {
   private static final Log LOG = Log.getLog(ParquetOutputCommitter.class);
@@ -42,7 +43,7 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
   public void commitJob(JobContext jobContext) throws IOException {
     super.commitJob(jobContext);
     try {
-      Configuration configuration = jobContext.getConfiguration();
+      Configuration configuration = ContextUtil.getConfiguration(jobContext);
       final FileSystem fileSystem = outputPath.getFileSystem(configuration);
       FileStatus outputStatus = fileSystem.getFileStatus(outputPath);
       List<Footer> footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus);

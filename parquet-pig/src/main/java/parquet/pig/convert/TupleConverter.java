@@ -28,6 +28,7 @@ import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
+import parquet.column.Dictionary;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
 import parquet.io.api.Converter;
@@ -37,7 +38,6 @@ import parquet.pig.TupleConversionException;
 import parquet.schema.GroupType;
 import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType;
-import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type;
 import parquet.schema.Type.Repetition;
 
@@ -186,13 +186,16 @@ public class TupleConverter extends GroupConverter {
   }
 
   /**
-   * handle string values
+   * handle string values.
+   * In case of dictionary encoding, the strings will be decoded only once.
    * @author Julien Le Dem
    *
    */
   static final class FieldStringConverter extends PrimitiveConverter {
 
     private final ParentValueContainer parent;
+
+    private String[] dict;
 
     public FieldStringConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -203,6 +206,23 @@ public class TupleConverter extends GroupConverter {
       parent.add(value.toStringUsingUTF8());
     }
 
+    @Override
+    public boolean hasDictionarySupport() {
+      return true;
+    }
+
+    @Override
+    public void setDictionary(Dictionary dictionary) {
+      dict = new String[dictionary.getMaxId() + 1];
+      for (int i = 0; i <= dictionary.getMaxId(); i++) {
+        dict[i] = dictionary.decodeToBinary(i).toStringUsingUTF8();
+      }
+    }
+
+    @Override
+    public void addValueFromDictionary(int dictionaryId) {
+      parent.add(dict[dictionaryId]);
+    }
   }
 
   /**

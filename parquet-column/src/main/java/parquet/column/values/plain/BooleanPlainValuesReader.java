@@ -16,15 +16,13 @@
 package parquet.column.values.plain;
 
 import static parquet.Log.DEBUG;
-import static parquet.column.values.bitpacking.BitPacking.createBitPackingReader;
+import static parquet.column.values.bitpacking.Packer.LITTLE_ENDIAN;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 import parquet.Log;
 import parquet.column.values.ValuesReader;
-import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
-import parquet.io.ParquetDecodingException;
+import parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 
 /**
  * encodes boolean for the plain encoding: one bit at a time (0 = false)
@@ -35,7 +33,7 @@ import parquet.io.ParquetDecodingException;
 public class BooleanPlainValuesReader extends ValuesReader {
   private static final Log LOG = Log.getLog(BooleanPlainValuesReader.class);
 
-  private BitPackingReader in;
+  private ByteBitPackingValuesReader in = new ByteBitPackingValuesReader(1, LITTLE_ENDIAN);
 
   /**
    *
@@ -44,13 +42,17 @@ public class BooleanPlainValuesReader extends ValuesReader {
    */
   @Override
   public boolean readBoolean() {
-    try {
-      return in.read() == 0 ? false : true;
-    } catch (IOException e) {
-      throw new ParquetDecodingException("never happens", e);
-    }
+    return in.readInteger() == 0 ? false : true;
   }
 
+  /**
+   * {@inheritDoc}
+   * @see parquet.column.values.ValuesReader#skipBoolean()
+   */
+  @Override
+  public void skip() {
+    in.readInteger();
+  }
 
   /**
    * {@inheritDoc}
@@ -59,8 +61,7 @@ public class BooleanPlainValuesReader extends ValuesReader {
   @Override
   public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
     if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));
-    this.in = createBitPackingReader(1, new ByteArrayInputStream(in, offset, in.length - offset), valueCount);
-    return in.length;
+    return this.in.initFromPage(valueCount, in, offset);
   }
 
 }

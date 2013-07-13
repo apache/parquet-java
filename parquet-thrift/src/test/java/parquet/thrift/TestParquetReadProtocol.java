@@ -141,8 +141,8 @@ public class TestParquetReadProtocol {
     final ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final MessageType schema = schemaConverter.convert(thriftClass);
     LOG.info(schema);
-    final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
-    final ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 10000);
+    final MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
+    final ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 10000, 10000, false);
     final RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
     final StructType thriftType = schemaConverter.toStructType(thriftClass);
     ParquetWriteProtocol parquetWriteProtocol = new ParquetWriteProtocol(recordWriter, columnIO, thriftType);

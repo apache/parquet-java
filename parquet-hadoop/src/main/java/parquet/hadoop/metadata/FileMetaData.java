@@ -34,11 +34,14 @@ public final class FileMetaData implements Serializable {
 
   private final Map<String, String> keyValueMetaData;
 
+  private final String createdBy;
+
   /**
    * @param schema the schema for the file
    * @param keyValueMetaData the app specific metadata
+   * @param createdBy the description of the library that created the file
    */
-  public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData) {
+  public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy) {
     super();
     if (schema == null) {
       throw new NullPointerException("schema");
@@ -48,6 +51,7 @@ public final class FileMetaData implements Serializable {
     }
     this.schema = schema;
     this.keyValueMetaData = keyValueMetaData;
+    this.createdBy = createdBy;
   }
 
   /**
@@ -67,6 +71,13 @@ public final class FileMetaData implements Serializable {
    */
   public Map<String, String> getKeyValueMetaData() {
     return keyValueMetaData;
+  }
+
+  /**
+   * @return the description of the library that created the file
+   */
+  public String getCreatedBy() {
+    return createdBy;
   }
 
 }

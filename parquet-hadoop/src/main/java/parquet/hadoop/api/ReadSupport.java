@@ -21,6 +21,7 @@ import org.apache.hadoop.conf.Configuration;
 
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 
 /**
  * Abstraction used by the {@link parquet.hadoop.ParquetInputFormat} to materialize records
@@ -32,6 +33,11 @@ import parquet.schema.MessageType;
 abstract public class ReadSupport<T> {
 
   /**
+   * configuration key for a parquet read projection schema
+   */
+	public static final String PARQUET_READ_SCHEMA = "parquet.read.schema";
+  
+  /**
    * information to read the file
    *
    * @author Julien Le Dem
@@ -39,19 +45,40 @@ abstract public class ReadSupport<T> {
    */
   public static final class ReadContext {
     private final MessageType requestedSchema;
+    private final Map<String, String> readSupportMetadata;
 
+    /**
+     * @param requestedSchema the schema requested by the user. Can not be null.
+     */
     public ReadContext(MessageType requestedSchema) {
+      this(requestedSchema, null);
+    }
+
+    /**
+     * @param requestedSchema the schema requested by the user. Can not be null.
+     * @param readSupportMetadata metadata specific to the ReadSupport implementation. Will be available in the prepareForRead phase.
+     */
+    public ReadContext(MessageType requestedSchema, Map<String, String> readSupportMetadata) {
       super();
       if (requestedSchema == null) {
         throw new NullPointerException("requestedSchema");
       }
       this.requestedSchema = requestedSchema;
+      this.readSupportMetadata = readSupportMetadata;
     }
+
     /**
      * @return the schema of the file
      */
     public MessageType getRequestedSchema() {
       return requestedSchema;
+    }
+
+    /**
+     * @return metadata specific to the ReadSupport implementation
+     */
+    public Map<String, String> getReadSupportMetadata() {
+      return readSupportMetadata;
     }
   }
 
@@ -61,7 +88,6 @@ abstract public class ReadSupport<T> {
    * @param configuration the job configuration
    * @param keyValueMetaData the app specific metadata from the file
    * @param fileSchema the schema of the file
-   * @param requestedSchema the schema requested by the user
    * @return the readContext that defines how to read the file
    */
   abstract public ReadContext init(
@@ -83,5 +109,21 @@ abstract public class ReadSupport<T> {
       Map<String, String> keyValueMetaData,
       MessageType fileSchema,
       ReadContext readContext);
+  
+  /**
+   * attempts to validate and construct a {@link MessageType} from a read projection schema
+   * @param fileMessageType the typed schema of the source
+   * @param partialReadSchemaString the requested projection schema 
+   * @return the typed schema that should be used to read
+   */
+  public static MessageType getSchemaForRead(MessageType fileMessageType, String partialReadSchemaString) {
+  	MessageType forRead = fileMessageType;
+    if (partialReadSchemaString != null) {
+      MessageType requestedMessageType = MessageTypeParser.parseMessageType(partialReadSchemaString);
+      fileMessageType.checkContains(requestedMessageType);
+      forRead = requestedMessageType;
+    }
+    return forRead;
+  }
 
 }

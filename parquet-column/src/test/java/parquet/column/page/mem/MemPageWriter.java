@@ -24,6 +24,7 @@ import java.util.List;
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.Encoding;
+import parquet.column.page.DictionaryPage;
 import parquet.column.page.Page;
 import parquet.column.page.PageWriter;
 import parquet.io.ParquetEncodingException;
@@ -33,6 +34,7 @@ public class MemPageWriter implements PageWriter {
   private static final Log LOG = Log.getLog(MemPageWriter.class);
 
   private final List<Page> pages = new ArrayList<Page>();
+  private DictionaryPage dictionaryPage;
   private long memSize = 0;
   private long totalValueCount = 0;
 
@@ -58,6 +60,10 @@ public class MemPageWriter implements PageWriter {
     return pages;
   }
 
+  public DictionaryPage getDictionaryPage() {
+    return dictionaryPage;
+  }
+
   public long getTotalValueCount() {
     return totalValueCount;
   }
@@ -66,6 +72,22 @@ public class MemPageWriter implements PageWriter {
   public long allocatedSize() {
     // this store keeps only the bytes written
     return memSize;
+  }
+
+  @Override
+  public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
+    if (this.dictionaryPage != null) {
+      throw new ParquetEncodingException("Only one dictionary page per block");
+    }
+    this.memSize += dictionaryPage.getBytes().size();
+    this.dictionaryPage = dictionaryPage.copy();
+    if (DEBUG) LOG.debug("dictionary page written for " + dictionaryPage.getBytes().size() + " bytes and " + dictionaryPage.getDictionarySize() + " records");
+  }
+
+  @Override
+  public String memUsageString(String prefix) {
+    return String.format("%s %,d bytes", prefix, memSize);
+
   }
 
 }

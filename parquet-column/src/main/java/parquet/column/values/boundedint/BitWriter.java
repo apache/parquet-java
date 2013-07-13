@@ -16,13 +16,14 @@
 package parquet.column.values.boundedint;
 
 import parquet.Log;
+import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 
 class BitWriter {
   private static final Log LOG = Log.getLog(BitWriter.class);
   private static final boolean DEBUG = false;//Log.DEBUG;
 
-  private CapacityByteArrayOutputStream baos = new CapacityByteArrayOutputStream(32 * 1024); // default of 32 is too small
+  private CapacityByteArrayOutputStream baos;
   private int currentByte = 0;
   private int currentBytePosition = 0;
   private static final int[] byteToTrueMask = new int[8];
@@ -35,6 +36,10 @@ class BitWriter {
       byteToFalseMask[i] = ~currentMask;
       currentMask <<= 1;
     }
+  }
+
+  public BitWriter(int initialCapacity) {
+    this.baos = new CapacityByteArrayOutputStream(initialCapacity);
   }
 
   public void writeBit(boolean bit) {
@@ -89,16 +94,15 @@ class BitWriter {
     return toBinary(val, 8);
   }
 
-  public byte[] finish() {
+  public BytesInput finish() {
     if (!finished) {
       if (currentBytePosition > 0) {
         baos.write(currentByte);
         if (DEBUG) LOG.debug("to buffer: " + toBinary(currentByte));
       }
     }
-    byte[] buf = baos.toByteArray();
     finished = true;
-    return buf;
+    return BytesInput.from(baos);
   }
 
   public void reset() {
@@ -139,10 +143,14 @@ class BitWriter {
     // the size of baos:
     //   count : 4 bytes (rounded to 8)
     //   buf : 12 bytes (8 ptr + 4 length) should technically be rounded to 8 depending on buffer size
-    return 32 + baos.size();
+    return 32 + (int)baos.size();
   }
 
   public int getCapacity() {
     return baos.getCapacity();
+  }
+
+  public String memUsageString(String prefix) {
+    return baos.memUsageString(prefix);
   }
 }

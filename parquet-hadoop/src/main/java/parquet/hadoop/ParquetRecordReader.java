@@ -15,6 +15,7 @@
  */
 package parquet.hadoop;
 
+import static java.lang.String.format;
 import static parquet.Log.DEBUG;
 
 import java.io.IOException;
@@ -29,10 +30,14 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.PageReadStore;
+import parquet.filter.RecordFilter;
+import parquet.filter.UnboundRecordFilter;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
+import parquet.hadoop.util.ContextUtil;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
+import parquet.io.ParquetDecodingException;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
@@ -54,6 +59,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   private final ColumnIOFactory columnIOFactory = new ColumnIOFactory();
 
   private MessageType requestedSchema;
+  private MessageType fileSchema;
   private int columnCount;
   private final ReadSupport<T> readSupport;
 
@@ -62,8 +68,10 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   private T currentValue;
   private long total;
   private int current = 0;
+  private int currentBlock = -1;
   private ParquetFileReader reader;
   private parquet.io.RecordReader<T> recordReader;
+  private UnboundRecordFilter recordFilter;
 
   private long totalTimeSpentReadingBytes;
   private long totalTimeSpentProcessingRecords;
@@ -71,15 +79,20 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
   private long totalCountLoadedSoFar = 0;
 
-
+  /**
+   * @param readSupport Object which helps reads files of the given tye, e.g. Thrift, Avro.
+   */
+  public ParquetRecordReader(ReadSupport<T> readSupport) {
+    this(readSupport, null);
+  }
 
   /**
-   *
-   * @param requestedSchema the requested schema (a subset of the original schema) for record projection
-   * @param readSupportClass
+   * @param readSupport Object which helps reads files of the given tye, e.g. Thrift, Avro.
+   * @param filter Optional filter for only returning matching records.
    */
-  ParquetRecordReader(ReadSupport<T> readSupport) {
+  public ParquetRecordReader(ReadSupport<T> readSupport, UnboundRecordFilter filter) {
     this.readSupport = readSupport;
+    this.recordFilter = filter;
   }
 
   private void checkRead() throws IOException {
@@ -104,10 +117,11 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       totalTimeSpentReadingBytes += timeSpentReading;
       LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
       if (Log.DEBUG) LOG.debug("initializing Record assembly with requested schema " + requestedSchema);
-      MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema);
-      recordReader = columnIO.getRecordReader(pages, recordConverter);
+      MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema);
+      recordReader = columnIO.getRecordReader(pages, recordConverter, recordFilter);
       startedAssemblingCurrentBlockAt = System.currentTimeMillis();
       totalCountLoadedSoFar += pages.getRowCount();
+      ++ currentBlock;
     }
   }
 
@@ -148,17 +162,22 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
    * {@inheritDoc}
    */
   @Override
-  public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
+  public void initialize(InputSplit inputSplit, TaskAttemptContext context)
       throws IOException, InterruptedException {
-    Configuration configuration = taskAttemptContext.getConfiguration();
+    initialize(inputSplit, ContextUtil.getConfiguration(context));
+  }
+
+  public void initialize(InputSplit inputSplit, Configuration configuration)
+      throws IOException {
     ParquetInputSplit parquetInputSplit = (ParquetInputSplit)inputSplit;
     this.requestedSchema = MessageTypeParser.parseMessageType(parquetInputSplit.getRequestedSchema());
+    this.fileSchema = MessageTypeParser.parseMessageType(parquetInputSplit.getFileSchema());
     this.columnCount = this.requestedSchema.getPaths().size();
     this.recordConverter = readSupport.prepareForRead(
         configuration,
         parquetInputSplit.getExtraMetadata(),
         MessageTypeParser.parseMessageType(parquetInputSplit.getSchema()),
-        new ReadSupport.ReadContext(requestedSchema));
+        new ReadSupport.ReadContext(requestedSchema, parquetInputSplit.getReadSupportMetadata()));
 
     Path path = parquetInputSplit.getPath();
     List<BlockMetaData> blocks = parquetInputSplit.getBlocks();
@@ -191,10 +210,14 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
     if (current < total) {
-      checkRead();
-      currentValue = recordReader.read();
-      if (DEBUG) LOG.debug("read value: " + currentValue);
-      current ++;
+      try {
+        checkRead();
+        currentValue = recordReader.read();
+        if (DEBUG) LOG.debug("read value: " + currentValue);
+        current ++;
+      } catch (RuntimeException e) {
+        throw new ParquetDecodingException(format("Can not read value at %d in block %d", current, currentBlock), e);
+      }
       return true;
     }
     return false;

@@ -15,11 +15,15 @@
  */
 package parquet.format.converter;
 
+import static parquet.format.Util.readFileMetaData;
+import static parquet.format.Util.writePageHeader;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -27,13 +31,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.apache.thrift.TBase;
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.transport.TIOStreamTransport;
-
+import parquet.Log;
 import parquet.format.ColumnChunk;
 import parquet.format.DataPageHeader;
+import parquet.format.DictionaryPageHeader;
 import parquet.format.Encoding;
 import parquet.format.FieldRepetitionType;
 import parquet.format.FileMetaData;
@@ -56,6 +57,7 @@ import parquet.schema.Type.Repetition;
 import parquet.schema.TypeVisitor;
 
 public class ParquetMetadataConverter {
+  private static final Log LOG = Log.getLog(ParquetMetadataConverter.class);
 
   public FileMetaData toParquetMetadata(int currentVersion, ParquetMetadata parquetMetadata) {
     List<BlockMetaData> blocks = parquetMetadata.getBlocks();
@@ -76,6 +78,8 @@ public class ParquetMetadataConverter {
     for (Entry<String, String> keyValue : keyValues) {
       addKeyValue(fileMetaData, keyValue.getKey(), keyValue.getValue());
     }
+
+    fileMetaData.setCreated_by(parquetMetadata.getFileMetaData().getCreatedBy());
 
     return fileMetaData;
   }
@@ -137,6 +141,7 @@ public class ParquetMetadataConverter {
           columnMetaData.getTotalSize(),
           columnMetaData.getFirstDataPageOffset()
           );
+      columnChunk.meta_data.dictionary_page_offset = columnMetaData.getDictionaryPageOffset();
 //      columnChunk.meta_data.index_page_offset = ;
 //      columnChunk.meta_data.key_value_metadata = ; // nothing yet
 
@@ -154,12 +159,55 @@ public class ParquetMetadataConverter {
     return converted;
   }
 
+  private static final class EncodingList {
+
+    private final List<parquet.column.Encoding> encodings;
+
+    public EncodingList(List<parquet.column.Encoding> encodings) {
+      this.encodings = encodings;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj instanceof EncodingList) {
+        List<parquet.column.Encoding> other = ((EncodingList)obj).encodings;
+        if (other.size() != encodings.size()) {
+          return false;
+        }
+        for (int i = 0; i < other.size(); i++) {
+          if (!other.get(i).equals(encodings.get(i))) {
+            return false;
+          }
+        }
+        return true;
+      }
+      return false;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = 1;
+      for (parquet.column.Encoding element : encodings)
+        result = 31 * result + (element == null ? 0 : element.hashCode());
+      return result;
+    }
+  }
+
+  private Map<EncodingList, List<parquet.column.Encoding>> encodingLists = new HashMap<EncodingList, List<parquet.column.Encoding>>();
+
   private List<parquet.column.Encoding> fromFormatEncodings(List<Encoding> encodings) {
     List<parquet.column.Encoding> converted = new ArrayList<parquet.column.Encoding>();
     for (Encoding encoding : encodings) {
       converted.add(getEncoding(encoding));
     }
-    return converted;
+    converted = Collections.unmodifiableList(converted);
+    EncodingList key = new EncodingList(converted);
+    List<parquet.column.Encoding> cached = encodingLists.get(key);
+    if (cached == null) {
+      cached = converted;
+      encodingLists.put(key, cached);
+    }
+    return cached;
   }
 
   public parquet.column.Encoding getEncoding(Encoding encoding) {
@@ -222,6 +270,14 @@ public class ParquetMetadataConverter {
     fileMetaData.addToKey_value_metadata(keyValue);
   }
 
+  public ParquetMetadata readParquetMetadata(InputStream from) throws IOException {
+    FileMetaData fileMetaData = readFileMetaData(from);
+    if (Log.DEBUG) LOG.debug(fileMetaData);
+    ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData);
+    if (Log.DEBUG) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
+    return parquetMetadata;
+  }
+
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema());
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
@@ -238,13 +294,14 @@ public class ParquetMetadataConverter {
           throw new ParquetDecodingException("all column chunks of the same row group must be in the same file for now");
         }
         parquet.format.ColumnMetaData metaData = columnChunk.meta_data;
-        String[] path = metaData.path_in_schema.toArray(new String[metaData.path_in_schema.size()]);
+        String[] path = getPath(metaData);
         ColumnChunkMetaData column = new ColumnChunkMetaData(
             path,
             messageType.getType(path).asPrimitiveType().getPrimitiveTypeName(),
             CompressionCodecName.fromParquet(metaData.codec),
             fromFormatEncodings(metaData.encodings));
         column.setFirstDataPageOffset(metaData.data_page_offset);
+        column.setDictionaryPageOffset(metaData.dictionary_page_offset);
         column.setValueCount(metaData.num_values);
         column.setTotalUncompressedSize(metaData.total_uncompressed_size);
         column.setTotalSize(metaData.total_compressed_size);
@@ -264,8 +321,47 @@ public class ParquetMetadataConverter {
       }
     }
     return new ParquetMetadata(
-        new parquet.hadoop.metadata.FileMetaData(messageType, keyValueMetaData),
+        new parquet.hadoop.metadata.FileMetaData(messageType, keyValueMetaData, parquetMetadata.getCreated_by()),
         blocks);
+  }
+
+
+  private static final class Path {
+
+    private final String[] p;
+
+    public Path(String[] path) {
+      this.p = path;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj instanceof Path) {
+        Arrays.equals(p, ((Path)obj).p);
+      }
+      return false;
+    }
+
+    @Override
+    public int hashCode() {
+      return Arrays.hashCode(p);
+    }
+  }
+
+  private Map<Path, String[]> paths = new HashMap<Path, String[]>();
+
+  private String[] getPath(parquet.format.ColumnMetaData metaData) {
+    String[] path = metaData.path_in_schema.toArray(new String[metaData.path_in_schema.size()]);
+    Path key = new Path(path);
+    String[] cached = paths.get(path);
+    if (cached == null) {
+      for (int i = 0; i < path.length; i++) {
+        path[i] = path[i].intern();
+      }
+      cached = path;
+      paths.put(key, cached);
+    }
+    return cached;
   }
 
   MessageType fromParquetSchema(List<SchemaElement> schema) {
@@ -319,68 +415,13 @@ public class ParquetMetadataConverter {
     writePageHeader(newDataPageHeader(uncompressedSize, compressedSize, valueCount, rlEncoding, dlEncoding, valuesEncoding), to);
   }
 
-  protected void writePageHeader(PageHeader pageHeader, OutputStream to) throws IOException {
-    write(pageHeader, to);
-  }
-
-  public PageHeader readPageHeader(InputStream from) throws IOException {
-    return read(from, new PageHeader());
-  }
-
-  public void writeFileMetaData(parquet.format.FileMetaData fileMetadata, OutputStream to) throws IOException {
-    write(fileMetadata, to);
-  }
-
-  public parquet.format.FileMetaData readFileMetaData(InputStream from) throws IOException {
-    return read(from, new parquet.format.FileMetaData());
-  }
-
-  public String toString(TBase<?, ?> tbase) {
-    return tbase.toString();
-//    TMemoryBuffer trans = new TMemoryBuffer(1024);
-//    try {
-//      TSimpleJSONProtocol jsonProt = new TSimpleJSONProtocol(trans);
-//      tbase.write(jsonProt);
-//      return trans.toString("UTF-8");
-//    } catch (Exception e) { // TODO: cleanup exceptions
-//      throw new RuntimeException(e);
-//    }
-  }
-
-  private TCompactProtocol protocol(OutputStream to) {
-    return new TCompactProtocol(new TIOStreamTransport(to));
-  }
-
-  private TCompactProtocol protocol(InputStream from) {
-    return new TCompactProtocol(new TIOStreamTransport(from));
-  }
-
-  private <T extends TBase<?,?>> T read(InputStream from, T tbase)
-      throws IOException {
-    try {
-      tbase.read(protocol(from));
-      return tbase;
-    } catch (TException e) {
-      throw new IOException("can not read " + tbase.getClass() + ": " + e.getMessage(), e);
-    }
-  }
-
-  private void write(TBase<?, ?> tbase, OutputStream to)
-      throws IOException {
-    try {
-      tbase.write(protocol(to));
-    } catch (TException e) {
-      throw new IOException("can not write " + tbase, e);
-    }
-  }
-
   private PageHeader newDataPageHeader(
       int uncompressedSize, int compressedSize,
       int valueCount,
       parquet.column.Encoding rlEncoding,
       parquet.column.Encoding dlEncoding,
       parquet.column.Encoding valuesEncoding) {
-    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, (int)uncompressedSize, (int)compressedSize);
+    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedSize, compressedSize);
     // TODO: pageHeader.crc = ...;
     pageHeader.data_page_header = new DataPageHeader(
         valueCount,
@@ -388,6 +429,14 @@ public class ParquetMetadataConverter {
         getEncoding(dlEncoding),
         getEncoding(rlEncoding));
     return pageHeader;
+  }
+
+  public void writeDictionaryPageHeader(
+      int uncompressedSize, int compressedSize, int valueCount,
+      parquet.column.Encoding valuesEncoding, OutputStream to) throws IOException {
+    PageHeader pageHeader = new PageHeader(PageType.DICTIONARY_PAGE, uncompressedSize, compressedSize);
+    pageHeader.dictionary_page_header = new DictionaryPageHeader(valueCount, getEncoding(valuesEncoding));
+    writePageHeader(pageHeader, to);
   }
 
 

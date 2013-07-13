@@ -15,6 +15,7 @@
  */
 package parquet.thrift;
 
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
 import org.apache.thrift.TException;
@@ -38,7 +39,16 @@ abstract class ParquetProtocol extends TProtocol {
 
   ParquetProtocol() {
     super(null);
-    this.message = getClass().getName();
+    this.message = "in " + getClassInfo();
+  }
+
+  private String getClassInfo() {
+    final Class<? extends ParquetProtocol> clazz = getClass();
+    final Method enclosingMethod = clazz.getEnclosingMethod();
+    if (enclosingMethod != null) {
+      return clazz.getName() + " in " + enclosingMethod.toGenericString();
+    }
+    return clazz.getName();
   }
 
   /**
@@ -46,7 +56,11 @@ abstract class ParquetProtocol extends TProtocol {
    */
   ParquetProtocol(String name) {
     super(null);
-    this.message = name + " " + getClass().getName();
+    this.message = "when we expected " + name + " in " + getClassInfo();
+  }
+
+  private UnsupportedOperationException exception() {
+    return new UnsupportedOperationException(new Exception().getStackTrace()[1].getMethodName() + " was called " + message);
   }
 
   /** WRITE */
@@ -58,204 +72,204 @@ abstract class ParquetProtocol extends TProtocol {
 
   @Override
   public void writeMessageEnd() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeStructBegin(TStruct struct) throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeStructEnd() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeFieldBegin(TField field) throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeFieldEnd() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeFieldStop() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeMapBegin(TMap map) throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeMapEnd() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeListBegin(TList list) throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeListEnd() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeSetBegin(TSet set) throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeSetEnd() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeBool(boolean b) throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeByte(byte b) throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeI16(short i16) throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeI32(int i32) throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeI64(long i64) throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeDouble(double dub) throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeString(String str) throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void writeBinary(ByteBuffer buf) throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   /** READ */
 
   @Override
   public TMessage readMessageBegin() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void readMessageEnd() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public TStruct readStructBegin() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void readStructEnd() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public TField readFieldBegin() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void readFieldEnd() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public TMap readMapBegin() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void readMapEnd() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public TList readListBegin() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void readListEnd() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public TSet readSetBegin() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public void readSetEnd() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public boolean readBool() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public byte readByte() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public short readI16() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public int readI32() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public long readI64() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public double readDouble() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public String readString() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
   @Override
   public ByteBuffer readBinary() throws TException {
-    throw new UnsupportedOperationException(message);
+    throw exception();
   }
 
 }
