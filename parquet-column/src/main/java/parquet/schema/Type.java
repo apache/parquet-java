@@ -18,7 +18,6 @@ package parquet.schema;
 import java.util.List;
 
 import parquet.io.InvalidRecordException;
-import parquet.schema.Type.Repetition;
 
 /**
  * Represents the declared type for a field in a schema.
@@ -132,6 +131,8 @@ abstract public class Type {
   protected abstract Type getType(String[] path, int i);
 
   protected abstract List<String[]> getPaths(int depth);
+
+  protected abstract boolean containsPath(String[] path, int depth);
 
   /**
    * {@inheritDoc}

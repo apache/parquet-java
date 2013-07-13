@@ -20,14 +20,16 @@ import java.io.IOException;
 import parquet.bytes.BytesUtils;
 import parquet.column.page.DictionaryPage;
 import parquet.column.values.ValuesReader;
-import parquet.column.values.ValuesType;
 import parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 import parquet.column.values.boundedint.ZeroIntegerValuesReader;
 import parquet.column.values.dictionary.DictionaryValuesReader;
 import parquet.column.values.dictionary.PlainBinaryDictionary;
 import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.BooleanPlainValuesReader;
-import parquet.column.values.plain.PlainValuesReader;
+import parquet.column.values.plain.PlainValuesReader.DoublePlainValuesReader;
+import parquet.column.values.plain.PlainValuesReader.FloatPlainValuesReader;
+import parquet.column.values.plain.PlainValuesReader.IntegerPlainValuesReader;
+import parquet.column.values.plain.PlainValuesReader.LongPlainValuesReader;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
 import parquet.io.ParquetDecodingException;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -50,8 +52,16 @@ public enum Encoding {
         return new BooleanPlainValuesReader();
       case BINARY:
         return new BinaryPlainValuesReader();
+      case FLOAT:
+        return new FloatPlainValuesReader();
+      case DOUBLE:
+        return new DoublePlainValuesReader();
+      case INT32:
+        return new IntegerPlainValuesReader();
+      case INT64:
+        return new LongPlainValuesReader();
       default:
-        return new PlainValuesReader();
+        throw new ParquetDecodingException("no plain reader for type " + descriptor.getType());
       }
     }
   },

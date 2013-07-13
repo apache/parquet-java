@@ -19,7 +19,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 import parquet.Ints;
-import parquet.Preconditions;
 import parquet.bytes.BytesUtils;
 import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;
@@ -66,5 +65,10 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
     } catch (IOException e) {
       throw new ParquetDecodingException(e);
     }
+  }
+
+  @Override
+  public void skip() {
+    readInteger();
   }
 }

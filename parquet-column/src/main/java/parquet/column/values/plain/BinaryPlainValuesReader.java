@@ -45,7 +45,7 @@ public class BinaryPlainValuesReader extends ValuesReader {
   }
 
   @Override
-  public void skipBytes() {
+  public void skip() {
     try {
       int length = BytesUtils.readIntLittleEndian(in, offset);
       offset += 4 + length;

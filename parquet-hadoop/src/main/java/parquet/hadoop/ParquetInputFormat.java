@@ -41,6 +41,7 @@ import parquet.Log;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
 import parquet.hadoop.metadata.BlockMetaData;
+import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.ContextUtil;
@@ -132,16 +133,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     }
   }
 
-  private String getRequestedSchema(String fileSchema, String requestedSchema) {
-    if (requestedSchema != null) {
-      MessageType requestedMessageType = MessageTypeParser.parseMessageType(requestedSchema);
-      MessageType fileMessageType = MessageTypeParser.parseMessageType(fileSchema);
-      fileMessageType.checkContains(requestedMessageType);
-      return requestedSchema;
-    }
-    return fileSchema;
-  }
-
   /**
    * groups together all the data blocks for the same HDFS block
    * @param blocks data blocks (row groups)
@@ -199,10 +190,20 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       if (blocksForCurrentSplit.size() == 0) {
         LOG.warn("HDFS block without row group: " + hdfsBlocks[i]);
       } else {
+        long length = 0;
+        for (BlockMetaData block : blocksForCurrentSplit) {
+          MessageType requested = MessageTypeParser.parseMessageType(requestedSchema);
+          List<ColumnChunkMetaData> columns = block.getColumns();
+          for (ColumnChunkMetaData column : columns) {
+            if (requested.containsPath(column.getPath())) {
+              length += column.getTotalSize();
+            }
+          }
+        }
         splits.add(new ParquetInputSplit(
           fileStatus.getPath(),
           hdfsBlock.getOffset(),
-          hdfsBlock.getLength(),
+          length,
           hdfsBlock.getHosts(),
           blocksForCurrentSplit,
           fileMetaData.getSchema().toString(),

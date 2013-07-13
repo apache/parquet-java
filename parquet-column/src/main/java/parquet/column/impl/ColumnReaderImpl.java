@@ -25,11 +25,11 @@ import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnReader;
 import parquet.column.Dictionary;
+import parquet.column.ValuesType;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.Page;
 import parquet.column.page.PageReader;
 import parquet.column.values.ValuesReader;
-import parquet.column.values.ValuesType;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
 import parquet.io.api.PrimitiveConverter;
@@ -101,8 +101,7 @@ class ColumnReaderImpl implements ColumnReader {
             dictionaryId = dataColumn.readValueDictionaryId();
           }
           public void skip() {
-            // Type is not important here as its just a key
-            dataColumn.skipBytes();
+            dataColumn.skip();
           }
           public int getDictionaryId() {
             return dictionaryId;
@@ -142,7 +141,7 @@ class ColumnReaderImpl implements ColumnReader {
           }
           public void skip() {
             current = 0;
-            dataColumn.skipFloat();
+            dataColumn.skip();
           }
           public float getFloat() {
             return current;
@@ -161,7 +160,7 @@ class ColumnReaderImpl implements ColumnReader {
           }
           public void skip() {
             current = 0;
-            dataColumn.skipDouble();
+            dataColumn.skip();
           }
           public double getDouble() {
             return current;
@@ -180,7 +179,7 @@ class ColumnReaderImpl implements ColumnReader {
           }
           public void skip() {
             current = 0;
-            dataColumn.skipInteger();
+            dataColumn.skip();
           }
           @Override
           public int getInteger() {
@@ -200,7 +199,7 @@ class ColumnReaderImpl implements ColumnReader {
           }
           public void skip() {
             current = 0;
-            dataColumn.skipLong();
+            dataColumn.skip();
           }
           @Override
           public long getLong() {
@@ -229,7 +228,7 @@ class ColumnReaderImpl implements ColumnReader {
           }
           public void skip() {
             current = false;
-            dataColumn.skipBoolean();
+            dataColumn.skip();
           }
           @Override
           public boolean getBoolean() {
@@ -249,7 +248,7 @@ class ColumnReaderImpl implements ColumnReader {
           }
           public void skip() {
             current = null;
-            dataColumn.skipBytes();
+            dataColumn.skip();
           }
           @Override
           public Binary getBinary() {

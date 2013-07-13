@@ -15,6 +15,8 @@
  */
 package parquet.column.impl;
 
+import static parquet.bytes.BytesInput.concat;
+
 import java.io.IOException;
 
 import parquet.Log;
@@ -25,15 +27,12 @@ import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.boundedint.DevNullValuesWriter;
-import parquet.column.values.boundedint.ZeroIntegerValuesReader;
 import parquet.column.values.dictionary.DictionaryValuesWriter;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
-
-import static parquet.bytes.BytesInput.concat;
 
 /**
  * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
@@ -82,7 +81,7 @@ final class ColumnWriterImpl implements ColumnWriter {
       this.dataColumn = new PlainValuesWriter(initialSizePerCol);
     }
   }
-  
+
   private ValuesWriter getColumnDescriptorValuesWriter(int maxLevel) {
     if(maxLevel == 0) {
       return new DevNullValuesWriter();

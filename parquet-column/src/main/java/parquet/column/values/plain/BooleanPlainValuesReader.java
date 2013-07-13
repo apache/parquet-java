@@ -50,7 +50,7 @@ public class BooleanPlainValuesReader extends ValuesReader {
    * @see parquet.column.values.ValuesReader#skipBoolean()
    */
   @Override
-  public void skipBoolean() {
+  public void skip() {
     in.readInteger();
   }
 

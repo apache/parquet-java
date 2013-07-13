@@ -22,8 +22,8 @@ import parquet.Preconditions;
 import parquet.bytes.BytesInput;
 import parquet.bytes.BytesUtils;
 import parquet.bytes.CapacityByteArrayOutputStream;
-import parquet.column.values.bitpacking.ByteBitPackingLE;
 import parquet.column.values.bitpacking.BytePacker;
+import parquet.column.values.bitpacking.Packer;
 
 import static parquet.Log.DEBUG;
 
@@ -125,7 +125,7 @@ public class RunLengthBitPackingHybridEncoder {
     this.baos = new CapacityByteArrayOutputStream(initialCapacity);
     this.packBuffer = new byte[bitWidth];
     this.bufferedValues = new int[8];
-    this.packer = ByteBitPackingLE.getPacker(bitWidth);
+    this.packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
     reset(false);
   }
 

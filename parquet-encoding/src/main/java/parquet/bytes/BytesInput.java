@@ -207,6 +207,7 @@ abstract public class BytesInput {
       this.size = total;
     }
 
+    @SuppressWarnings("unused")
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
       for (BytesInput input : inputs) {

@@ -26,87 +26,15 @@ import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;
 
 /**
- * Plain encoding except for booleans
+ * Plain encoding for float, double, int, long
  *
  * @author Julien Le Dem
  *
  */
-public class PlainValuesReader extends ValuesReader {
+abstract public class PlainValuesReader extends ValuesReader {
   private static final Log LOG = Log.getLog(PlainValuesReader.class);
 
-  private LittleEndianDataInputStream in;
-
-  @Override
-  public float readFloat() {
-    try {
-      return in.readFloat();
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not read float", e);
-    }
-  }
-
-  @Override
-  public void skipFloat() {
-    try {
-      in.skipBytes(4);
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not skip float", e);
-    }
-  }
-
-  @Override
-  public double readDouble() {
-    try {
-      return in.readDouble();
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not read double", e);
-    }
-  }
-
-  @Override
-  public void skipDouble() {
-    try {
-      in.skipBytes(8);
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not skip double", e);
-    }
-  }
-
-  @Override
-  public int readInteger() {
-    try {
-      return in.readInt();
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not read int", e);
-    }
-  }
-
-  @Override
-  public void skipInteger() {
-    try {
-      in.skipBytes(4);
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not skip int", e);
-    }
-  }
-
-  @Override
-  public long readLong() {
-    try {
-      return in.readLong();
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not read long", e);
-    }
-  }
-
-  @Override
-  public void skipLong() {
-    try {
-      in.skipBytes(8);
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not skip long", e);
-    }
-  }
+  protected LittleEndianDataInputStream in;
 
   /**
    * {@inheritDoc}
@@ -119,4 +47,89 @@ public class PlainValuesReader extends ValuesReader {
     return in.length;
   }
 
+  public static class DoublePlainValuesReader extends PlainValuesReader {
+
+  @Override
+  public void skip() {
+    try {
+      in.skipBytes(8);
+    } catch (IOException e) {
+      throw new ParquetDecodingException("could not skip double", e);
+    }
+  }
+
+    @Override
+    public double readDouble() {
+      try {
+        return in.readDouble();
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not read double", e);
+      }
+    }
+  }
+
+  public static class FloatPlainValuesReader extends PlainValuesReader {
+
+    @Override
+    public void skip() {
+      try {
+        in.skipBytes(4);
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not skip float", e);
+      }
+    }
+
+    @Override
+    public float readFloat() {
+      try {
+        return in.readFloat();
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not read float", e);
+      }
+    }
+  }
+
+  public static class IntegerPlainValuesReader extends PlainValuesReader {
+
+
+
+    @Override
+    public void skip() {
+      try {
+        in.skipBytes(4);
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not skip int", e);
+      }
+    }
+
+    @Override
+    public int readInteger() {
+      try {
+        return in.readInt();
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not read int", e);
+      }
+    }
+  }
+
+  public static class LongPlainValuesReader extends PlainValuesReader {
+
+    @Override
+    public void skip() {
+      try {
+        in.skipBytes(8);
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not skip long", e);
+      }
+    }
+
+    @Override
+    public long readLong() {
+      try {
+        return in.readLong();
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not read long", e);
+      }
+    }
+  }
 }

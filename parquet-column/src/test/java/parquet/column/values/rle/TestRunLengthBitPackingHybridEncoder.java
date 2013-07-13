@@ -15,6 +15,8 @@
  */
 package parquet.column.values.rle;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,10 +25,8 @@ import java.util.List;
 import org.junit.Test;
 
 import parquet.bytes.BytesUtils;
-import parquet.column.values.bitpacking.ByteBitPackingLE;
 import parquet.column.values.bitpacking.BytePacker;
-
-import static org.junit.Assert.assertEquals;
+import parquet.column.values.bitpacking.Packer;
 
 /**
  * @author Alex Levenson
@@ -279,7 +279,7 @@ public class TestRunLengthBitPackingHybridEncoder {
   private static List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is)
     throws Exception {
 
-    BytePacker packer = ByteBitPackingLE.getPacker(bitWidth);
+    BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
     int[] unpacked = new int[8];
     byte[] next8Values = new byte[bitWidth];
 

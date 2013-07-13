@@ -82,7 +82,7 @@ public class TestLemireBitPacking {
       int[] values = generateValues(i);
 
       // pack lemire
-      final IntPacker packer = LemireBitPackingBE.getPacker(i);
+      final IntPacker packer = Packer.BIG_ENDIAN.newIntPacker(i);
       packer.pack32Values(values, 0, packed, 0);
       // convert to ints
       final ByteArrayOutputStream lemireOut = new ByteArrayOutputStream();

@@ -20,7 +20,6 @@ import static parquet.column.Encoding.PLAIN_DICTIONARY;
 
 import java.io.IOException;
 
-import parquet.bytes.BytesUtils;
 import parquet.column.Dictionary;
 import parquet.column.page.DictionaryPage;
 import parquet.io.ParquetDecodingException;

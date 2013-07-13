@@ -15,9 +15,6 @@
  */
 package parquet.column.page;
 
-import java.io.IOException;
-import java.util.Arrays;
-
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.Encoding;

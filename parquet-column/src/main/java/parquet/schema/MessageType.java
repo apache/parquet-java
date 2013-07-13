@@ -124,4 +124,8 @@ public final class MessageType extends GroupType {
     path.add(this);
     return converter.convertMessageType(this, convertChildren(path, converter));
   }
+
+  public boolean containsPath(String[] path) {
+    return containsPath(path, 0);
+  }
 }
