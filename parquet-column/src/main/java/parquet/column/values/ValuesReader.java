@@ -106,4 +106,8 @@ public abstract class ValuesReader {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   * Skips the next value in the page
+   */
+  abstract public void skip();
 }

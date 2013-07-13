@@ -13,17 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.avro;
+package parquet.filter;
 
-import org.apache.avro.generic.IndexedRecord;
-import parquet.avro.AvroReadSupport;
-import parquet.hadoop.ParquetInputFormat;
+import parquet.column.ColumnReader;
 
 /**
- * A Hadoop {@link org.apache.hadoop.mapreduce.InputFormat} for Parquet files.
+ * Filter to be applied to a record to work out whether to skip it.
+ *
+ * @author Jacob Metcalf
  */
-public class AvroParquetInputFormat extends ParquetInputFormat<IndexedRecord> {
-  public AvroParquetInputFormat() {
-    super(AvroReadSupport.class);
-  }
+public interface RecordFilter {
+
+  /**
+   * Works out whether the current record can pass through the filter.
+   */
+  boolean isMatch();
+
+  /**
+   * Whether the filter values are fully consumed.
+   */
+  boolean isFullyConsumed();
 }

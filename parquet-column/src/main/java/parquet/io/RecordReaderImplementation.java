@@ -222,25 +222,29 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     public Case getCase(int currentLevel, int d, int nextR) {
       return caseLookup[currentLevel][d][nextR];
     }
+
+    public State getNextState(int nextR) {
+      return nextState[nextR];
+    }
   }
 
   private final GroupConverter recordConsumer;
   private final RecordMaterializer<T> recordMaterializer;
 
   private State[] states;
+  private ColumnReader[] columns;
 
   /**
    *
    * @param root the root of the schema
-   * @param leaves the leaves of the schema
    * @param validating
-   * @param columns2
+   * @param columnStore
    */
   public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnReadStoreImpl columnStore) {
     this.recordMaterializer = recordMaterializer;
     this.recordConsumer = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer), validating, root.getType());
     PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
-    ColumnReader[] columns = new ColumnReader[leaves.length];
+    columns = new ColumnReader[leaves.length];
     int[][] nextReader = new int[leaves.length][];
     int[][] nextLevel = new int[leaves.length][];
     GroupConverter[][] groupConverterPaths = new GroupConverter[leaves.length][];
@@ -444,4 +448,8 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     return recordConsumer;
   }
 
+  protected Iterable<ColumnReader> getColumnReaders() {
+    // Converting the array to an iterable ensures that the array cannot be altered
+    return Arrays.asList(columns);
+  }
 }

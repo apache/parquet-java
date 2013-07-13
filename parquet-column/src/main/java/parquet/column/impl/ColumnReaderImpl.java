@@ -47,6 +47,7 @@ class ColumnReaderImpl implements ColumnReader {
 
   private static abstract class Binding {
     abstract void read();
+    abstract void skip();
     abstract void writeValue();
     public int getDictionaryId() {
       throw new UnsupportedOperationException();
@@ -99,6 +100,9 @@ class ColumnReaderImpl implements ColumnReader {
           void read() {
             dictionaryId = dataColumn.readValueDictionaryId();
           }
+          public void skip() {
+            dataColumn.skip();
+          }
           public int getDictionaryId() {
             return dictionaryId;
           }
@@ -135,6 +139,10 @@ class ColumnReaderImpl implements ColumnReader {
           void read() {
             current = dataColumn.readFloat();
           }
+          public void skip() {
+            current = 0;
+            dataColumn.skip();
+          }
           public float getFloat() {
             return current;
           }
@@ -149,6 +157,10 @@ class ColumnReaderImpl implements ColumnReader {
           double current;
           void read() {
             current = dataColumn.readDouble();
+          }
+          public void skip() {
+            current = 0;
+            dataColumn.skip();
           }
           public double getDouble() {
             return current;
@@ -165,6 +177,10 @@ class ColumnReaderImpl implements ColumnReader {
           void read() {
             current = dataColumn.readInteger();
           }
+          public void skip() {
+            current = 0;
+            dataColumn.skip();
+          }
           @Override
           public int getInteger() {
             return current;
@@ -180,6 +196,10 @@ class ColumnReaderImpl implements ColumnReader {
           long current;
           void read() {
             current = dataColumn.readLong();
+          }
+          public void skip() {
+            current = 0;
+            dataColumn.skip();
           }
           @Override
           public long getLong() {
@@ -206,6 +226,10 @@ class ColumnReaderImpl implements ColumnReader {
           void read() {
             current = dataColumn.readBoolean();
           }
+          public void skip() {
+            current = false;
+            dataColumn.skip();
+          }
           @Override
           public boolean getBoolean() {
             return current;
@@ -221,6 +245,10 @@ class ColumnReaderImpl implements ColumnReader {
           Binary current;
           void read() {
             current = dataColumn.readBytes();
+          }
+          public void skip() {
+            current = null;
+            dataColumn.skip();
           }
           @Override
           public Binary getBinary() {
@@ -268,7 +296,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public boolean isFullyConsumed() {
-    return readValues >= totalValueCount;
+    return ((readValues == totalValueCount) && consumed) || (readValues > totalValueCount);
   }
 
   /**
@@ -277,13 +305,13 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public void writeCurrentValueToConverter() {
-    checkValueRead();
+    readIfPossible(false);
     this.binding.writeValue();
   }
 
   @Override
   public int getCurrentValueDictionaryID() {
-    checkValueRead();
+    readIfPossible(false);
     return binding.getDictionaryId();
   }
 
@@ -293,7 +321,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public int getInteger() {
-    checkValueRead();
+    readIfPossible(false);
     return this.binding.getInteger();
   }
 
@@ -303,7 +331,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public boolean getBoolean() {
-    checkValueRead();
+    readIfPossible(false);
     return this.binding.getBoolean();
   }
 
@@ -313,7 +341,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public long getLong() {
-    checkValueRead();
+    readIfPossible(false);
     return this.binding.getLong();
   }
 
@@ -323,7 +351,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public Binary getBinary() {
-    checkValueRead();
+    readIfPossible(false);
     return this.binding.getBinary();
   }
 
@@ -333,7 +361,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public float getFloat() {
-    checkValueRead();
+    readIfPossible(false);
     return this.binding.getFloat();
   }
 
@@ -343,7 +371,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public double getDouble() {
-    checkValueRead();
+    readIfPossible(false);
     return this.binding.getDouble();
   }
 
@@ -358,17 +386,34 @@ class ColumnReaderImpl implements ColumnReader {
   }
 
   /**
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#getDescriptor()
+   */
+  @Override
+  public ColumnDescriptor getDescriptor() {
+    return path;
+  }
+
+  /**
    * reads the current value
    */
   public void readCurrentValue() {
     binding.read();
   }
 
-  protected void checkValueRead() {
+  /**
+   * Reads the value into the binding or skips forwards.
+   * @param skip If true do not deserialize just skip forwards
+   */
+  protected void readIfPossible(boolean skip) {
     try {
       checkRead();
       if (!consumed && !valueRead) {
-        readCurrentValue();
+        if ( skip ) {
+          binding.skip();
+        } else {
+          readCurrentValue();
+        }
         valueRead = true;
       }
     } catch (RuntimeException e) {
@@ -378,6 +423,15 @@ class ColumnReaderImpl implements ColumnReader {
               path, readValues, totalValueCount, readValuesInPage, pageValueCount, repetitionLevel, definitionLevel),
           e);
     }
+  }
+
+  /**
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#skip()
+   */
+  @Override
+  public void skip() {
+    readIfPossible(true);
   }
 
   /**

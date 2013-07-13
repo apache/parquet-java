@@ -77,4 +77,12 @@ public class DictionaryValuesReader extends ValuesReader {
     }
   }
 
+  @Override
+  public void skip() {
+    try {
+      decoder.readInt(); // Type does not matter as we are just skipping dictionary keys
+    } catch (IOException e) {
+      throw new ParquetDecodingException(e);
+    }
+  }
 }

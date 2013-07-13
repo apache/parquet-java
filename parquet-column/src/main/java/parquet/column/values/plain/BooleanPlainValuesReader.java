@@ -45,6 +45,14 @@ public class BooleanPlainValuesReader extends ValuesReader {
     return in.readInteger() == 0 ? false : true;
   }
 
+  /**
+   * {@inheritDoc}
+   * @see parquet.column.values.ValuesReader#skipBoolean()
+   */
+  @Override
+  public void skip() {
+    in.readInteger();
+  }
 
   /**
    * {@inheritDoc}

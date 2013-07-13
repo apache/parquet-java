@@ -13,17 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.avro;
+package parquet.filter;
 
-import org.apache.avro.generic.IndexedRecord;
-import parquet.avro.AvroReadSupport;
-import parquet.hadoop.ParquetInputFormat;
+import parquet.column.ColumnReader;
 
 /**
- * A Hadoop {@link org.apache.hadoop.mapreduce.InputFormat} for Parquet files.
+ * Builder for a record filter. Idea is that each filter provides a create function
+ * which returns an unbound filter. This only becomes a filter when it is bound to the actual
+ * columns.
+ *
+ * @author Jacob Metcalf
  */
-public class AvroParquetInputFormat extends ParquetInputFormat<IndexedRecord> {
-  public AvroParquetInputFormat() {
-    super(AvroReadSupport.class);
-  }
+public interface UnboundRecordFilter {
+
+  /**
+   * Call to bind to actual columns and create filter.
+   */
+  RecordFilter bind( Iterable<ColumnReader> readers);
 }

@@ -21,8 +21,11 @@ import java.util.List;
 import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericArray;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericFixed;
-import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.IndexedRecord;
+import org.apache.avro.specific.SpecificData;
+import org.apache.avro.specific.SpecificRecord;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import parquet.hadoop.api.WriteSupport;
@@ -33,11 +36,11 @@ import parquet.schema.MessageType;
 import parquet.schema.Type;
 
 /**
- * Avro implementation of {@link WriteSupport} for {@link GenericRecord}s. Users should
- * use {@link AvroParquetWriter} or {@link AvroParquetOutputFormat} rather than using
+ * Avro implementation of {@link WriteSupport} for {@link IndexedRecord}s - both Avro Generic and Specific.
+ * Users should use {@link AvroParquetWriter} or {@link AvroParquetOutputFormat} rather than using
  * this class directly.
  */
-public class AvroWriteSupport extends WriteSupport<GenericRecord> {
+public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
 
   private RecordConsumer recordConsumer;
   private MessageType rootSchema;
@@ -72,21 +75,21 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
   }
 
   @Override
-  public void write(GenericRecord record) {
+  public void write(IndexedRecord record) {
     recordConsumer.startMessage();
     writeRecordFields(rootSchema, rootAvroSchema, record);
     recordConsumer.endMessage();
   }
 
   private void writeRecord(GroupType schema, Schema avroSchema,
-      GenericRecord record) {
+                           IndexedRecord record) {
     recordConsumer.startGroup();
     writeRecordFields(schema, avroSchema, record);
     recordConsumer.endGroup();
   }
 
   private void writeRecordFields(GroupType schema, Schema avroSchema,
-      GenericRecord record) {
+                                 IndexedRecord record) {
     List<Type> fields = schema.getFields();
     List<Schema.Field> avroFields = avroSchema.getFields();
     int index = 0; // parquet ignores Avro nulls, so index may differ
@@ -109,7 +112,7 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
   }
   
   private <T> void writeArray(GroupType schema, Schema avroSchema,
-      GenericArray<T> array) {
+      Iterable<T> array) {
     recordConsumer.startGroup(); // group wrapper (original type LIST)
     recordConsumer.startField("array", 0);
     for (T elt : array) {
@@ -143,6 +146,31 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
     recordConsumer.endGroup();
   }
 
+  private void writeUnion(GroupType parquetSchema, Schema avroSchema, Object value) {
+
+    recordConsumer.startGroup();
+
+    // ResolveUnion will tell us which of the union member types to deserialise
+    int avroIndex = GenericData.get().resolveUnion(avroSchema, value);
+
+    // For parquet's schema we skip nulls
+    GroupType parquetGroup = parquetSchema.asGroupType();
+    int parquetIndex = avroIndex;
+    for ( int i=0; i<avroIndex; i++) {
+      if ( avroSchema.getTypes().get(i).getType().equals( Schema.Type.NULL )) {
+        parquetIndex--;
+      }
+    }
+
+    // Sparsely populated method of encoding unions, each member has its own set of columns
+    String memberName = "member" + parquetIndex;
+    recordConsumer.startField(memberName, parquetIndex);
+    writeValue(parquetGroup.getType(parquetIndex), avroSchema.getTypes().get(avroIndex), value);
+    recordConsumer.endField(memberName, parquetIndex);
+
+    recordConsumer.endGroup();
+  }
+
   @SuppressWarnings("unchecked")
   private void writeValue(Type type, Schema avroSchema, Object value) {
     Schema nonNullAvroSchema =  AvroSchemaConverter.getNonNull(avroSchema);
@@ -162,13 +190,15 @@ public class AvroWriteSupport extends WriteSupport<GenericRecord> {
     } else if (avroType.equals(Schema.Type.STRING)) {
       recordConsumer.addBinary(fromAvroString(value));
     } else if (avroType.equals(Schema.Type.RECORD)) {
-      writeRecord((GroupType) type, nonNullAvroSchema, (GenericRecord) value);
+      writeRecord((GroupType) type, nonNullAvroSchema, (IndexedRecord) value);
     } else if (avroType.equals(Schema.Type.ENUM)) {
       recordConsumer.addBinary(Binary.fromString(value.toString()));
     } else if (avroType.equals(Schema.Type.ARRAY)) {
-      writeArray((GroupType) type, nonNullAvroSchema, (GenericArray<?>) value);
+      writeArray((GroupType) type, nonNullAvroSchema, (Iterable<?>) value);
     } else if (avroType.equals(Schema.Type.MAP)) {
       writeMap((GroupType) type, nonNullAvroSchema, (Map<String, ?>) value);
+    } else if (avroType.equals(Schema.Type.UNION)) {
+      writeUnion((GroupType) type, nonNullAvroSchema, value);
     } else if (avroType.equals(Schema.Type.FIXED)) {
       recordConsumer.addBinary(Binary.fromByteArray(((GenericFixed) value).bytes()));
     }

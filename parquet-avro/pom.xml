@@ -16,6 +16,7 @@
   <url>https://github.com/Parquet/parquet-mr</url>
 
   <properties>
+    <avro.version>1.7.4</avro.version>
   </properties>
 
   <dependencies>
@@ -37,7 +38,7 @@
     <dependency>
       <groupId>org.apache.avro</groupId>
       <artifactId>avro</artifactId>
-      <version>1.7.3</version>
+      <version>${avro.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
@@ -103,6 +104,44 @@
                   <shadedPattern>parquet.org.codehaus.jackson</shadedPattern>
                 </relocation>
               </relocations>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro-maven-plugin</artifactId>
+        <version>${avro.version}</version>
+        <executions>
+            <execution>
+                <phase>generate-test-sources</phase>
+                <goals>
+                    <goal>idl-protocol</goal>
+                </goals>
+                <configuration>
+                    <sourceDirectory>${project.basedir}/src/test/resources</sourceDirectory>
+                    <outputDirectory>${project.build.directory}/generated-test-sources</outputDirectory>
+                    <stringType>String</stringType>
+                </configuration>
+            </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <!-- Ensure that the specific classes are available during test compile but not included in jar -->
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>1.8</version>
+        <executions>
+          <execution>
+            <id>add-test-sources</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>add-test-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${project.build.directory}/generated-test-sources</source>
+              </sources>
             </configuration>
           </execution>
         </executions>

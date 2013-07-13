@@ -66,4 +66,9 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
       throw new ParquetDecodingException(e);
     }
   }
+
+  @Override
+  public void skip() {
+    readInteger();
+  }
 }

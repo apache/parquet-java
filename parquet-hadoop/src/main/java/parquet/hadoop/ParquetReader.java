@@ -26,6 +26,8 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
+import parquet.filter.RecordFilter;
+import parquet.filter.UnboundRecordFilter;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
 import parquet.hadoop.metadata.BlockMetaData;
@@ -40,6 +42,10 @@ public class ParquetReader<T> implements Closeable {
   private ParquetRecordReader<T> reader;
 
   public ParquetReader(Path file, ReadSupport<T> readSupport) throws IOException {
+    this(file, readSupport, null);
+  }
+
+  public ParquetReader(Path file, ReadSupport<T> readSupport, UnboundRecordFilter filter) throws IOException {
     Configuration conf = new Configuration();
 
     FileSystem fs = FileSystem.get(conf);
@@ -53,7 +59,7 @@ public class ParquetReader<T> implements Closeable {
     MessageType schema = fileMetaData.getSchema();
     Map<String, String> extraMetadata = fileMetaData.getKeyValueMetaData();
     final ReadContext readContext = readSupport.init(conf, extraMetadata, schema);
-    reader = new ParquetRecordReader<T>(readSupport);
+    reader = new ParquetRecordReader<T>(readSupport, filter);
     ParquetInputSplit inputSplit =
         new ParquetInputSplit(
             file, 0, 0, null, blocks,

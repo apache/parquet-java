@@ -15,8 +15,8 @@
  */
 package parquet.avro;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+
 import org.apache.avro.Schema;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
@@ -114,17 +114,37 @@ public class AvroSchemaConverter {
     } else if (type.equals(Schema.Type.FIXED)) {
       return primitive(fieldName, FIXED_LEN_BYTE_ARRAY, repetition);
     } else if (type.equals(Schema.Type.UNION)) {
-      List<Schema> schemas = schema.getTypes();
-      if (schemas.size() == 2) {
-        if (schemas.get(0).getType().equals(Schema.Type.NULL)) {
-          return convertField(fieldName, schemas.get(1), Type.Repetition.OPTIONAL);
-        } else if (schemas.get(1).getType().equals(Schema.Type.NULL)) {
-          return convertField(fieldName, schemas.get(0), Type.Repetition.OPTIONAL);
-        }
-      }
-      throw new UnsupportedOperationException("Cannot convert Avro type " + type);
+      return convertUnion(fieldName, schema, repetition);
     }
     throw new UnsupportedOperationException("Cannot convert Avro type " + type);
+  }
+
+  private Type convertUnion(String fieldName, Schema schema, Type.Repetition repetition) {
+    List<Schema> nonNullSchemas = new ArrayList(schema.getTypes().size());
+    for (Schema childSchema : schema.getTypes()) {
+      if (childSchema.getType().equals(Schema.Type.NULL)) {
+        repetition = Type.Repetition.OPTIONAL;
+      } else {
+        nonNullSchemas.add(childSchema);
+      }
+    }
+    // If we only get a null and one other type then its a simple optional field
+    // otherwise construct a union container
+    switch (nonNullSchemas.size()) {
+      case 0:
+        throw new UnsupportedOperationException("Cannot convert Avro union of only nulls");
+
+      case 1:
+        return convertField(fieldName, nonNullSchemas.get(0), Type.Repetition.OPTIONAL); // Simple optional field
+
+      default: // complex union type
+        List<Type> unionTypes = new ArrayList(nonNullSchemas.size());
+        int index = 0;
+        for (Schema childSchema : nonNullSchemas) {
+          unionTypes.add( convertField("member" + index++, childSchema, Type.Repetition.OPTIONAL));
+        }
+        return new GroupType(repetition, fieldName, unionTypes);
+    }
   }
 
   private Type convertField(Schema.Field field) {

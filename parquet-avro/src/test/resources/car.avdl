@@ -1,0 +1,38 @@
+@namespace("parquet.avro")
+protocol Cars {
+
+    record Service {
+        long date;
+        string mechanic;
+    }
+
+    record Stereo {
+        string make;
+        int speakers;
+    }
+
+    record LeatherTrim {
+        string colour;
+    }
+
+    enum EngineType {
+        DIESEL, PETROL
+    }
+
+    record Engine {
+        EngineType type;
+        float capacity;
+        boolean hasTurboCharger;
+    }
+
+    record Car {
+        long year;
+        string registration;
+        string make;
+        string model;
+        int doors;
+        Engine engine;
+        union { null, Stereo, LeatherTrim } optionalExtra = null;
+        array<Service> serviceHistory;
+    }
+}

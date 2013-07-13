@@ -35,4 +35,8 @@ public class ZeroIntegerValuesReader extends ValuesReader {
     return offset;
   }
 
+  @Override
+  public void skip() {
+  }
+
 }

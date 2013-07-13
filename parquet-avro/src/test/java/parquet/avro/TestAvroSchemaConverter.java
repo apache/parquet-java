@@ -89,14 +89,25 @@ public class TestAvroSchemaConverter {
         "}\n");
   }
 
-  @Test(expected = UnsupportedOperationException.class)
-  public void testNonNullUnion() {
-    Schema union = Schema.createUnion(Arrays.asList(Schema.create(Schema.Type.INT),
-        Schema.create(Schema.Type.LONG)));
-    Schema schema = Schema.createRecord("record1", null, null, false);
+  @Test
+  public void testUnionOfTwoTypes() throws Exception {
+    Schema schema = Schema.createRecord("record2", null, null, false);
+    Schema multipleTypes = Schema.createUnion(Arrays.asList(Schema.create(Schema.Type
+        .NULL),
+        Schema.create(Schema.Type.INT),
+        Schema.create(Schema.Type.FLOAT)));
     schema.setFields(Arrays.asList(
-        new Schema.Field("myunion", union, null, null)));
+        new Schema.Field("myunion", multipleTypes, null, NullNode.getInstance())
+    ));
 
-    new AvroSchemaConverter().convert(schema);
+    // Avro union is modelled using optional data members of thw different types;
+    testConversion(
+        schema,
+        "message record2 {\n" +
+            "  optional group myunion {\n" +
+            "    optional int32 member0;\n" +
+            "    optional float member1;\n" +
+            "  }\n" +
+            "}\n");
   }
 }

@@ -30,6 +30,8 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.PageReadStore;
+import parquet.filter.RecordFilter;
+import parquet.filter.UnboundRecordFilter;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.util.ContextUtil;
@@ -69,6 +71,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   private int currentBlock = -1;
   private ParquetFileReader reader;
   private parquet.io.RecordReader<T> recordReader;
+  private UnboundRecordFilter recordFilter;
 
   private long totalTimeSpentReadingBytes;
   private long totalTimeSpentProcessingRecords;
@@ -77,11 +80,19 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   private long totalCountLoadedSoFar = 0;
 
   /**
-   * @param requestedSchema the requested schema (a subset of the original schema) for record projection
-   * @param readSupportClass
+   * @param readSupport Object which helps reads files of the given tye, e.g. Thrift, Avro.
    */
   public ParquetRecordReader(ReadSupport<T> readSupport) {
+    this(readSupport, null);
+  }
+
+  /**
+   * @param readSupport Object which helps reads files of the given tye, e.g. Thrift, Avro.
+   * @param filter Optional filter for only returning matching records.
+   */
+  public ParquetRecordReader(ReadSupport<T> readSupport, UnboundRecordFilter filter) {
     this.readSupport = readSupport;
+    this.recordFilter = filter;
   }
 
   private void checkRead() throws IOException {
@@ -107,7 +118,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
       if (Log.DEBUG) LOG.debug("initializing Record assembly with requested schema " + requestedSchema);
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema);
-      recordReader = columnIO.getRecordReader(pages, recordConverter);
+      recordReader = columnIO.getRecordReader(pages, recordConverter, recordFilter);
       startedAssemblingCurrentBlockAt = System.currentTimeMillis();
       totalCountLoadedSoFar += pages.getRowCount();
       ++ currentBlock;

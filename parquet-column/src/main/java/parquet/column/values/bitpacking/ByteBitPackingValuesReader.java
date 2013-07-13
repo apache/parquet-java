@@ -67,4 +67,9 @@ public class ByteBitPackingValuesReader extends ValuesReader {
     return offset + length;
   }
 
+  @Override
+  public void skip() {
+    readInteger();
+  }
+
 }
