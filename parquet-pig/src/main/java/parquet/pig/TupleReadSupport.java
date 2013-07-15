@@ -55,12 +55,9 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
     Schema pigSchema = null;
     try {
       String schemaStr = configuration.get(PARQUET_PIG_REQUESTED_SCHEMA);
-      if (schemaStr == null) {
-        return null;
-      }
       pigSchema = (Schema)ObjectSerializer.deserialize(schemaStr);
     } catch (IOException ioe) {
-      throw new SchemaConversionException("could not get pig schema from configuration ");
+      throw new SchemaConversionException("could not get pig schema from configuration ", ioe);
     }
     return pigSchema;
   }

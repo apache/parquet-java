@@ -58,7 +58,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   private static final Log LOG = Log.getLog(ParquetLoader.class);
 
   private final String requestedSchemaStr;
-  private Schema requiredSchema;
+  private Schema requestedSchema;
 
   private boolean setLocationHasBeenCalled = false;
   private RecordReader<Void, Tuple> reader;
@@ -74,7 +74,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   /**
    * To read only a subset of the columns in the file
-   * @param requiredSchema a subset of the original pig schema in the file
+   * @param requestedSchemaStr a subset of the original pig schema in the file
    */
   public ParquetLoader(String requestedSchemaStr) {
     this.requestedSchemaStr = requestedSchemaStr;
@@ -84,8 +84,8 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   public void setLocation(String location, Job job) throws IOException {
     LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
     setInput(location, job);
-    if (requiredSchema != null) {
-      ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, ObjectSerializer.serialize(requiredSchema));
+    if (requestedSchema != null) {
+      ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, ObjectSerializer.serialize(requestedSchema));
     } else if (requestedSchemaStr != null){
       // request for the full schema (or requestedschema )
       ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, ObjectSerializer.serialize(schema));
@@ -195,7 +195,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       throws FrontendException {
     if (requiredFieldList == null)
       return null;
-    requiredSchema = getSchemaFromRequiredFieldList(schema, requiredFieldList.getFields());
+    requestedSchema = getSchemaFromRequiredFieldList(schema, requiredFieldList.getFields());
     return new RequiredFieldResponse(true);
   }
   
@@ -203,14 +203,11 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       throws FrontendException {
     Schema s = new Schema();
     for (RequiredField rf : fieldList) {
-      FieldSchema f = null;
+      FieldSchema f;
       try {
          f = schema.getField(rf.getAlias()).clone();
       } catch (CloneNotSupportedException e) {
         throw new FrontendException("Clone not supported for the fieldschema", e);
-      }
-      if (f == null) {
-        return null;
       }
       if (rf.getSubFields() == null) {
         s.add(f);
