@@ -262,21 +262,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * MAPREDUCE-1577 is fixed.
    */
   @Override
-  protected List<FileStatus> listStatus(JobContext job) throws IOException {        
-    return getAllFileRecursively(super.listStatus(job), 
-        job.getConfiguration());             
+  protected List<FileStatus> listStatus(JobContext jobContext) throws IOException {        
+    return getAllFileRecursively(super.listStatus(jobContext), 
+       ContextUtil.getConfiguration(jobContext));             
   }
 
-  /**
-   * Get all files recursively from the given list of files
-   * 
-   * @param files a list of FileStatus
-   * @param conf the configuration object
-   * @return the list of fileStatus that contains all the files in the given
-   *         list and, recursively, all the files inside the directories in 
-   *         the given list
-   * @throws IOException
-   */
   private static List<FileStatus> getAllFileRecursively(
       List<FileStatus> files, Configuration conf) throws IOException {
     List<FileStatus> result = new ArrayList<FileStatus>();
