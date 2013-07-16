@@ -127,7 +127,12 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       BytesInput dictionaryBytes = dictionaryPage.getBytes();
       int uncompressedSize = (int)dictionaryBytes.size();
       BytesInput compressedBytes = compressor.compress(dictionaryBytes);
-      this.dictionaryPage = new DictionaryPage(BytesInput.copy(compressedBytes), uncompressedSize, dictionaryPage.getDictionarySize(), dictionaryPage.getEncoding());
+      this.dictionaryPage = new DictionaryPage(
+          BytesInput.copy(compressedBytes),
+          (int)compressedBytes.size(),
+          uncompressedSize,
+          dictionaryPage.getDictionarySize(),
+          dictionaryPage.getEncoding());
     }
 
     @Override

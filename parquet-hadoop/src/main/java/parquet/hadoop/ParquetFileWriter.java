@@ -16,7 +16,6 @@
 package parquet.hadoop;
 
 import static parquet.Log.DEBUG;
-import static parquet.Log.INFO;
 import static parquet.format.Util.writeFileMetaData;
 
 import java.io.IOException;

@@ -47,6 +47,7 @@ import org.apache.hadoop.mapred.Utils;
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
+import parquet.column.page.DataPage;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.Page;
 import parquet.column.page.PageReadStore;
@@ -57,7 +58,6 @@ import parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
-import parquet.io.ParquetDecodingException;
 
 /**
  * Reads a Parquet file
@@ -313,14 +313,9 @@ public class ParquetFileReader implements Closeable {
       String pathKey = Arrays.toString(mc.getPath());
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
       if (columnDescriptor != null) {
-        List<Page> pagesInChunk = new ArrayList<Page>();
-        List<DictionaryPage> dictionaryPagesInChunk = new ArrayList<DictionaryPage>();
-        readColumnChunkPages(columnDescriptor, mc, pagesInChunk, dictionaryPagesInChunk);
-        if (dictionaryPagesInChunk.size() > 1) {
-          throw new ParquetDecodingException("more than one dictionary page: " + dictionaryPagesInChunk);
-        }
         BytesDecompressor decompressor = codecFactory.getDecompressor(mc.getCodec());
-        ColumnChunkPageReader columnChunkPageReader = new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPagesInChunk.size() == 0 ? null : dictionaryPagesInChunk.get(0));
+        List<Page> pagesInChunk = readColumnChunkPages(columnDescriptor, mc, decompressor);
+        ColumnChunkPageReader columnChunkPageReader = new ColumnChunkPageReader(pagesInChunk, mc.getValueCount());
         columnChunkPageReadStore.addColumn(columnDescriptor, columnChunkPageReader);
       }
     }
@@ -330,10 +325,12 @@ public class ParquetFileReader implements Closeable {
 
   /**
    * Read all of the pages in a given column chunk.
+   * @param decompressor
    * @return the list of pages
    */
-  private void readColumnChunkPages(ColumnDescriptor columnDescriptor, ColumnChunkMetaData metadata, List<Page> pagesInChunk, List<DictionaryPage> dictionaryPagesInChunk)
+  private List<Page> readColumnChunkPages(ColumnDescriptor columnDescriptor, ColumnChunkMetaData metadata, BytesDecompressor decompressor)
       throws IOException {
+    List<Page> pagesInChunk = new ArrayList<Page>();
     long startingPos = metadata.getFirstDataPageOffset();
     if (metadata.getDictionaryPageOffset() > 0 && metadata.getDictionaryPageOffset() < startingPos) {
       // if there's a dictionary and it's before the first data page, start from there
@@ -344,14 +341,16 @@ public class ParquetFileReader implements Closeable {
       LOG.debug(f.getPos() + ": start column chunk " + Arrays.toString(metadata.getPath()) +
         " " + metadata.getType() + " count=" + metadata.getValueCount());
     }
+    // TODO: read the whole column chunk at once and then map the pages to it instead of reading them individually.
     long valuesCountReadSoFar = 0;
     while (valuesCountReadSoFar < metadata.getValueCount()) {
       PageHeader pageHeader = readPageHeader(f);
       switch (pageHeader.type) {
         case DICTIONARY_PAGE:
-          dictionaryPagesInChunk.add(
+          pagesInChunk.add(
               new DictionaryPage(
-                  BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)),
+                  lazyDecompress(BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)), pageHeader.uncompressed_page_size, decompressor),
+                  pageHeader.compressed_page_size,
                   pageHeader.uncompressed_page_size,
                   pageHeader.dictionary_page_header.num_values,
                   parquetMetadataConverter.getEncoding(pageHeader.dictionary_page_header.encoding)
@@ -359,9 +358,10 @@ public class ParquetFileReader implements Closeable {
           break;
         case DATA_PAGE:
           pagesInChunk.add(
-              new Page(
-                  BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)),
+              new DataPage(
+                  lazyDecompress(BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)), pageHeader.uncompressed_page_size, decompressor),
                   pageHeader.data_page_header.num_values,
+                  pageHeader.compressed_page_size,
                   pageHeader.uncompressed_page_size,
                   parquetMetadataConverter.getEncoding(pageHeader.data_page_header.repetition_level_encoding),
                   parquetMetadataConverter.getEncoding(pageHeader.data_page_header.definition_level_encoding),
@@ -383,6 +383,11 @@ public class ParquetFileReader implements Closeable {
           " but got " + valuesCountReadSoFar + " values instead over " + pagesInChunk.size()
           + " pages ending at file offset " + f.getPos());
     }
+    return pagesInChunk;
+  }
+
+  private BytesInput lazyDecompress(BytesInput in, int uncompressedSize, BytesDecompressor decompressor) throws IOException {
+    return decompressor.decompress(in, uncompressedSize);
   }
 
   @Override

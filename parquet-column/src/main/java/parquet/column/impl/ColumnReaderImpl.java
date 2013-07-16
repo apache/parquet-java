@@ -27,8 +27,10 @@ import parquet.column.ColumnReader;
 import parquet.column.Dictionary;
 import parquet.column.ValuesType;
 import parquet.column.page.DictionaryPage;
+import parquet.column.page.DataPage;
 import parquet.column.page.Page;
 import parquet.column.page.PageReader;
+import parquet.column.page.StatsPage;
 import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
@@ -75,7 +77,7 @@ class ColumnReaderImpl implements ColumnReader {
   private final ColumnDescriptor path;
   private final long totalValueCount;
   private final PageReader pageReader;
-  private final Dictionary dictionary;
+  private Dictionary dictionary;
 
   private ValuesReader repetitionLevelColumn;
   private ValuesReader definitionLevelColumn;
@@ -271,22 +273,20 @@ class ColumnReaderImpl implements ColumnReader {
     this.path = checkNotNull(path, "path");
     this.pageReader = checkNotNull(pageReader, "pageReader");
     this.converter = checkNotNull(converter, "converter");
-    DictionaryPage dictionaryPage = pageReader.readDictionaryPage();
-    if (dictionaryPage != null) {
-      try {
-        this.dictionary = dictionaryPage.getEncoding().initDictionary(path, dictionaryPage);
-        if (converter.hasDictionarySupport()) {
-          converter.setDictionary(dictionary);
-        }
-      } catch (IOException e) {
-        throw new ParquetDecodingException("could not decode the dictionary for " + path, e);
-      }
-    } else {
-      this.dictionary = null;
-    }
     this.totalValueCount = pageReader.getTotalValueCount();
     if (totalValueCount == 0) {
       throw new ParquetDecodingException("totalValueCount == 0");
+    }
+  }
+
+  private void setDictionary(DictionaryPage dictionaryPage) {
+    try {
+      this.dictionary = dictionaryPage.getEncoding().initDictionary(path, dictionaryPage);
+      if (converter.hasDictionarySupport()) {
+        converter.setDictionary(dictionary);
+      }
+    } catch (IOException e) {
+      throw new ParquetDecodingException("could not decode the dictionary for " + path, e);
     }
   }
 
@@ -464,28 +464,28 @@ class ColumnReaderImpl implements ColumnReader {
     }
     if (isPageFullyConsumed()) {
       if (DEBUG) LOG.debug("loading page");
-      Page page = pageReader.readPage();
+      DataPage dataPage = readDataPage();
 
-      this.repetitionLevelColumn = page.getRlEncoding().getValuesReader(path, ValuesType.REPETITION_LEVEL);
-      this.definitionLevelColumn = page.getDlEncoding().getValuesReader(path, ValuesType.DEFINITION_LEVEL);
-      if (page.getValueEncoding().usesDictionary()) {
+      this.repetitionLevelColumn = dataPage.getRlEncoding().getValuesReader(path, ValuesType.REPETITION_LEVEL);
+      this.definitionLevelColumn = dataPage.getDlEncoding().getValuesReader(path, ValuesType.DEFINITION_LEVEL);
+      if (dataPage.getValueEncoding().usesDictionary()) {
         if (dictionary == null) {
           throw new ParquetDecodingException(
-              "could not read page " + page + " in col " + path + " as the dictionary was missing for encoding " + page.getValueEncoding());
+              "could not read page " + dataPage + " in col " + path + " as the dictionary was missing for encoding " + dataPage.getValueEncoding());
         }
-        this.dataColumn = page.getValueEncoding().getDictionaryBasedValuesReader(path, ValuesType.VALUES, dictionary);
+        this.dataColumn = dataPage.getValueEncoding().getDictionaryBasedValuesReader(path, ValuesType.VALUES, dictionary);
       } else {
-        this.dataColumn = page.getValueEncoding().getValuesReader(path, ValuesType.VALUES);
+        this.dataColumn = dataPage.getValueEncoding().getValuesReader(path, ValuesType.VALUES);
       }
-      if (page.getValueEncoding().usesDictionary() && converter.hasDictionarySupport()) {
+      if (dataPage.getValueEncoding().usesDictionary() && converter.hasDictionarySupport()) {
         bindToDictionary(dictionary);
       } else {
         bind(path.getType());
       }
-      this.pageValueCount = page.getValueCount();
+      this.pageValueCount = dataPage.getValueCount();
       this.readValuesInPage = 0;
       try {
-        byte[] bytes = page.getBytes().toByteArray();
+        byte[] bytes = dataPage.getBytes().toByteArray();
         if (DEBUG) LOG.debug("page size " + bytes.length + " bytes and " + pageValueCount + " records");
         if (DEBUG) LOG.debug("reading repetition levels at 0");
         int next = repetitionLevelColumn.initFromPage(pageValueCount, bytes, 0);
@@ -494,10 +494,24 @@ class ColumnReaderImpl implements ColumnReader {
         if (DEBUG) LOG.debug("reading data at " + next);
         dataColumn.initFromPage(pageValueCount, bytes, next);
       } catch (IOException e) {
-        throw new ParquetDecodingException("could not read page " + page + " in col " + path, e);
+        throw new ParquetDecodingException("could not read page " + dataPage + " in col " + path, e);
       }
     }
     read();
+  }
+
+  private DataPage readDataPage() {
+    Page page = pageReader.readPage();
+    if (page instanceof DataPage) {
+      return (DataPage)page;
+    } else if (page instanceof DictionaryPage) {
+      setDictionary((DictionaryPage) page);
+    } else if (page instanceof StatsPage) {
+      // TODO read stats
+    } else {
+      throw new ParquetDecodingException("Unknown page " + page);
+    }
+    return readDataPage();
   }
 
   private boolean isPageFullyConsumed() {

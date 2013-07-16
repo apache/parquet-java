@@ -15,7 +15,6 @@
  */
 package parquet.hadoop;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -23,11 +22,9 @@ import java.util.Map;
 
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
-import parquet.column.page.DictionaryPage;
 import parquet.column.page.Page;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
-import parquet.hadoop.CodecFactory.BytesDecompressor;
 
 /**
  * TODO: should this actually be called RowGroupImpl or something?
@@ -47,20 +44,12 @@ class ColumnChunkPageReadStore implements PageReadStore {
    */
   static final class ColumnChunkPageReader implements PageReader {
 
-    private final BytesDecompressor decompressor;
     private final long valueCount;
-    private final List<Page> compressedPages;
-    private final DictionaryPage compressedDictionaryPage;
+    private final List<Page> pages;
 
-    ColumnChunkPageReader(BytesDecompressor decompressor, List<Page> compressedPages, DictionaryPage compressedDictionaryPage) {
-      this.decompressor = decompressor;
-      this.compressedPages = new LinkedList<Page>(compressedPages);
-      this.compressedDictionaryPage = compressedDictionaryPage;
-      int count = 0;
-      for (Page p : compressedPages) {
-        count += p.getValueCount();
-      }
-      this.valueCount = count;
+    ColumnChunkPageReader(List<Page> pages, long valueCount) {
+      this.pages = new LinkedList<Page>(pages);
+      this.valueCount = valueCount;
     }
 
     @Override
@@ -70,37 +59,12 @@ class ColumnChunkPageReadStore implements PageReadStore {
 
     @Override
     public Page readPage() {
-      if (compressedPages.isEmpty()) {
+      if (pages.isEmpty()) {
         return null;
       }
-      Page compressedPage = compressedPages.remove(0);
-      try {
-        return new Page(
-            decompressor.decompress(compressedPage.getBytes(), compressedPage.getUncompressedSize()),
-            compressedPage.getValueCount(),
-            compressedPage.getUncompressedSize(),
-            compressedPage.getRlEncoding(),
-            compressedPage.getDlEncoding(),
-            compressedPage.getValueEncoding());
-      } catch (IOException e) {
-        throw new RuntimeException(e); // TODO: cleanup
-      }
+      return pages.remove(0);
     }
 
-    @Override
-    public DictionaryPage readDictionaryPage() {
-      if (compressedDictionaryPage == null) {
-        return null;
-      }
-      try {
-        return new DictionaryPage(
-            decompressor.decompress(compressedDictionaryPage.getBytes(), compressedDictionaryPage.getUncompressedSize()),
-            compressedDictionaryPage.getDictionarySize(),
-            compressedDictionaryPage.getEncoding());
-      } catch (IOException e) {
-        throw new RuntimeException(e); // TODO: cleanup
-      }
-    }
   }
 
   private final Map<ColumnDescriptor, ColumnChunkPageReader> readers = new HashMap<ColumnDescriptor, ColumnChunkPageReader>();

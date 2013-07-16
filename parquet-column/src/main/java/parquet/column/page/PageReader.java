@@ -16,17 +16,12 @@
 package parquet.column.page;
 
 /**
- * Reader for a sequence a page from a given column chunk
+ * Reader for a sequence of pages from a given column chunk
  *
  * @author Julien Le Dem
  *
  */
 public interface PageReader {
-
- /**
-  * @return the dictionary page in that chunk or null if none
-  */
-  DictionaryPage readDictionaryPage();
 
   /**
    * @return the total number of values in the column chunk

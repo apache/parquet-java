@@ -23,7 +23,7 @@ import org.junit.Test;
 
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
-import parquet.column.page.Page;
+import parquet.column.page.DataPage;
 import parquet.column.page.PageReader;
 import parquet.column.page.PageWriter;
 import parquet.column.page.mem.MemPageStore;
@@ -38,16 +38,16 @@ public class TestMemPageStore {
     MemPageStore memPageStore = new MemPageStore();
     ColumnDescriptor col = new ColumnDescriptor(path , PrimitiveTypeName.INT64, 2, 2);
     PageWriter pageWriter = memPageStore.getPageWriter(col);
-    pageWriter.writePage(BytesInput.from(new byte[735]), 209, BIT_PACKED, BIT_PACKED, PLAIN);
-    pageWriter.writePage(BytesInput.from(new byte[743]), 209, BIT_PACKED, BIT_PACKED, PLAIN);
-    pageWriter.writePage(BytesInput.from(new byte[743]), 209, BIT_PACKED, BIT_PACKED, PLAIN);
-    pageWriter.writePage(BytesInput.from(new byte[735]), 209, BIT_PACKED, BIT_PACKED, PLAIN);
+    pageWriter.writePage(BytesInput.from(new byte[735]), 209, RLE, RLE, PLAIN);
+    pageWriter.writePage(BytesInput.from(new byte[743]), 209, RLE, RLE, PLAIN);
+    pageWriter.writePage(BytesInput.from(new byte[743]), 209, RLE, RLE, PLAIN);
+    pageWriter.writePage(BytesInput.from(new byte[735]), 209, RLE, RLE, PLAIN);
     PageReader pageReader = memPageStore.getPageReader(col);
     long totalValueCount = pageReader.getTotalValueCount();
     System.out.println(totalValueCount);
     int total = 0;
     do {
-      Page readPage = pageReader.readPage();
+      DataPage readPage = (DataPage)pageReader.readPage();
       total += readPage.getValueCount();
       System.out.println(readPage);
       // TODO: assert

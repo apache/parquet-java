@@ -28,10 +28,8 @@ import parquet.column.Encoding;
  * @author Julien Le Dem
  *
  */
-public class DictionaryPage {
+public class DictionaryPage extends Page {
 
-  private final BytesInput bytes;
-  private final int uncompressedSize;
   private final int dictionarySize;
   private final Encoding encoding;
 
@@ -42,7 +40,7 @@ public class DictionaryPage {
    * @param encoding the encoding used
    */
   public DictionaryPage(BytesInput bytes, int dictionarySize, Encoding encoding) {
-    this(bytes, (int)bytes.size(), dictionarySize, encoding); // TODO: fix sizes long or int
+    this(bytes, (int)bytes.size(), (int)bytes.size(), dictionarySize, encoding); // TODO: fix sizes long or int
   }
 
   /**
@@ -52,37 +50,39 @@ public class DictionaryPage {
    * @param dictionarySize the value count in the dictionary
    * @param encoding the encoding used
    */
-  public DictionaryPage(BytesInput bytes, int uncompressedSize, int dictionarySize, Encoding encoding) {
-    this.bytes = checkNotNull(bytes, "bytes");
-    this.uncompressedSize = uncompressedSize;
+  public DictionaryPage(BytesInput bytes, int compressedSize, int uncompressedSize, int dictionarySize, Encoding encoding) {
+    super(bytes, compressedSize, uncompressedSize);
     this.dictionarySize = dictionarySize;
     this.encoding = checkNotNull(encoding, "encoding");
   }
 
-  public BytesInput getBytes() {
-    return bytes;
-  }
-
-  public int getUncompressedSize() {
-    return uncompressedSize;
-  }
-
+  /**
+   * @return the entry count in the dictionary
+   */
   public int getDictionarySize() {
     return dictionarySize;
   }
 
+  /**
+   * @return the encoding of the dictionary
+   */
   public Encoding getEncoding() {
     return encoding;
   }
 
   public DictionaryPage copy() throws IOException {
-    return new DictionaryPage(BytesInput.copy(bytes), uncompressedSize, dictionarySize, encoding);
+    return new DictionaryPage(BytesInput.copy(getBytes()), getCompressedSize(), getUncompressedSize(), dictionarySize, encoding);
   }
 
 
   @Override
   public String toString() {
-    return "Page [bytes.size=" + bytes.size() + ", entryCount=" + dictionarySize + ", uncompressedSize=" + uncompressedSize + ", encoding=" + encoding + "]";
+    return "DictionaryPage [bytes.size=" + getBytes().size() + ", entryCount=" + dictionarySize + ", uncompressedSize=" + getUncompressedSize() + ", encoding=" + encoding + "]";
+  }
+
+  @Override
+  public void accept(PageVisitor visitor) {
+    visitor.visit(this);
   }
 
 

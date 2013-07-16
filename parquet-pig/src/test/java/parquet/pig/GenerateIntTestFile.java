@@ -27,6 +27,7 @@ import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.impl.ColumnWriteStoreImpl;
+import parquet.column.page.DataPage;
 import parquet.column.page.Page;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
@@ -116,13 +117,13 @@ public class GenerateIntTestFile {
       w.startColumn(columnDescriptor, totalValueCount, CompressionCodecName.UNCOMPRESSED);
       int n = 0;
       do {
-        Page page = pageReader.readPage();
+        DataPage page = readDataPage(pageReader);
         n += page.getValueCount();
         // TODO: change INTFC
         w.writeDataPage(
             page.getValueCount(),
             (int)page.getBytes().size(),
-            BytesInput.from(page.getBytes().toByteArray()),
+            BytesInput.copy(page.getBytes()),
             page.getRlEncoding(),
             page.getDlEncoding(),
             page.getValueEncoding());
@@ -130,6 +131,14 @@ public class GenerateIntTestFile {
       w.endColumn();
     }
     w.endBlock();
+  }
+
+  private static DataPage readDataPage(PageReader pageReader) {
+    Page readPage = pageReader.readPage();
+    if (readPage == null || readPage instanceof DataPage) {
+      return (DataPage)readPage;
+    }
+    return readDataPage(pageReader);
   }
 
   public static ParquetFileWriter startFile(Path file,

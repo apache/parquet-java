@@ -30,7 +30,6 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.PageReadStore;
-import parquet.filter.RecordFilter;
 import parquet.filter.UnboundRecordFilter;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
