@@ -38,10 +38,10 @@ public class TestMemPageStore {
     MemPageStore memPageStore = new MemPageStore();
     ColumnDescriptor col = new ColumnDescriptor(path , PrimitiveTypeName.INT64, 2, 2);
     PageWriter pageWriter = memPageStore.getPageWriter(col);
-    pageWriter.writePage(BytesInput.from(new byte[735]), 209, RLE, RLE, PLAIN);
-    pageWriter.writePage(BytesInput.from(new byte[743]), 209, RLE, RLE, PLAIN);
-    pageWriter.writePage(BytesInput.from(new byte[743]), 209, RLE, RLE, PLAIN);
-    pageWriter.writePage(BytesInput.from(new byte[735]), 209, RLE, RLE, PLAIN);
+    pageWriter.writeDataPage(new DataPage(BytesInput.from(new byte[735]), 209, RLE, RLE, PLAIN));
+    pageWriter.writeDataPage(new DataPage(BytesInput.from(new byte[743]), 209, RLE, RLE, PLAIN));
+    pageWriter.writeDataPage(new DataPage(BytesInput.from(new byte[743]), 209, RLE, RLE, PLAIN));
+    pageWriter.writeDataPage(new DataPage(BytesInput.from(new byte[735]), 209, RLE, RLE, PLAIN));
     PageReader pageReader = memPageStore.getPageReader(col);
     long totalValueCount = pageReader.getTotalValueCount();
     System.out.println(totalValueCount);

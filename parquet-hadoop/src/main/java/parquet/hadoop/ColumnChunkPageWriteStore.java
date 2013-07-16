@@ -30,6 +30,7 @@ import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.column.ColumnDescriptor;
 import parquet.column.Encoding;
+import parquet.column.page.DataPage;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriteStore;
 import parquet.column.page.PageWriter;
@@ -65,26 +66,27 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     }
 
     @Override
-    public void writePage(BytesInput bytes, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException {
+    public void writeDataPage(DataPage dataPage) throws IOException {
+      final BytesInput bytes = dataPage.getBytes();
       long uncompressedSize = bytes.size();
       BytesInput compressedBytes = compressor.compress(bytes);
       long compressedSize = compressedBytes.size();
       parquetMetadataConverter.writeDataPageHeader(
           (int)uncompressedSize,
           (int)compressedSize,
-          valueCount,
-          rlEncoding,
-          dlEncoding,
-          valuesEncoding,
+          dataPage.getValueCount(),
+          dataPage.getRlEncoding(),
+          dataPage.getDlEncoding(),
+          dataPage.getValueEncoding(),
           buf);
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
-      this.totalValueCount += valueCount;
+      this.totalValueCount += dataPage.getValueCount();
       this.pageCount += 1;
       compressedBytes.writeAllTo(buf);
-      encodings.add(rlEncoding);
-      encodings.add(dlEncoding);
-      encodings.add(valuesEncoding);
+      encodings.add(dataPage.getRlEncoding());
+      encodings.add(dataPage.getDlEncoding());
+      encodings.add(dataPage.getValueEncoding());
     }
 
     @Override

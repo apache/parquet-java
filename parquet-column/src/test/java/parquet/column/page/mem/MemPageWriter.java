@@ -22,10 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import parquet.Log;
-import parquet.bytes.BytesInput;
-import parquet.column.Encoding;
-import parquet.column.page.DictionaryPage;
 import parquet.column.page.DataPage;
+import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
 import parquet.io.ParquetEncodingException;
 
@@ -40,15 +38,15 @@ public class MemPageWriter implements PageWriter {
 
 
   @Override
-  public void writePage(BytesInput bytesInput, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding)
+  public void writeDataPage(DataPage dataPage)
       throws IOException {
-    if (valueCount == 0) {
+    if (dataPage.getValueCount() == 0) {
       throw new ParquetEncodingException("illegal page of 0 values");
     }
-    memSize += bytesInput.size();
-    pages.add(new DataPage(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), (int)bytesInput.size(), rlEncoding, dlEncoding, valuesEncoding));
-    totalValueCount += valueCount;
-    if (DEBUG) LOG.debug("page written for " + bytesInput.size() + " bytes and " + valueCount + " records");
+    memSize += dataPage.getBytes().size();
+    pages.add(dataPage.copy());
+    totalValueCount += dataPage.getValueCount();
+    if (DEBUG) LOG.debug("page written for " + dataPage.getBytes().size() + " bytes and " + dataPage.getValueCount() + " records");
   }
 
   @Override

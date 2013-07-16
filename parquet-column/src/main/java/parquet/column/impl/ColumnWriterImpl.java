@@ -23,6 +23,7 @@ import parquet.Log;
 import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
+import parquet.column.page.DataPage;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
 import parquet.column.values.ValuesWriter;
@@ -135,12 +136,13 @@ final class ColumnWriterImpl implements ColumnWriter {
   private void writePage() {
     if (DEBUG) LOG.debug("write page");
     try {
-      pageWriter.writePage(
+      pageWriter.writeDataPage(
+          new DataPage(
           concat(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()),
           valueCount,
           repetitionLevelColumn.getEncoding(),
           definitionLevelColumn.getEncoding(),
-          dataColumn.getEncoding());
+          dataColumn.getEncoding()));
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write page for " + path, e);
     }

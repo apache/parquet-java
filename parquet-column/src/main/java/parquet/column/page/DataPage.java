@@ -15,6 +15,8 @@
  */
 package parquet.column.page;
 
+import java.io.IOException;
+
 import parquet.bytes.BytesInput;
 import parquet.column.Encoding;
 
@@ -32,6 +34,18 @@ public class DataPage extends Page {
   private final Encoding valuesEncoding;
 
   /**
+   * construct an uncompressed data page
+   * @param bytes the bytes for this page
+   * @param valueCount count of values in this page
+   * @param rlEncoding the repetition level encoding for this page
+   * @param dlEncoding the definition level encoding for this page
+   * @param valuesEncoding the values encoding for this page
+   */
+  public DataPage(BytesInput bytes, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
+    this(bytes, valueCount, (int)bytes.size(), (int)bytes.size(), rlEncoding, dlEncoding, valuesEncoding);
+  }
+
+  /**
    * @param bytes the bytes for this page
    * @param valueCount count of values in this page
    * @param compressedSize the compressed size of the page
@@ -39,7 +53,6 @@ public class DataPage extends Page {
    * @param rlEncoding the repetition level encoding for this page
    * @param dlEncoding the definition level encoding for this page
    * @param valuesEncoding the values encoding for this page
-   * @param dlEncoding
    */
   public DataPage(BytesInput bytes, int valueCount, int compressedSize, int uncompressedSize, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
     super(bytes, compressedSize, uncompressedSize);
@@ -86,6 +99,10 @@ public class DataPage extends Page {
   @Override
   public void accept(PageVisitor visitor) {
     visitor.visit(this);
+  }
+
+  public DataPage copy() throws IOException {
+    return new DataPage(BytesInput.copy(getBytes()), valueCount, getCompressedSize(), getUncompressedSize(), rlEncoding, dlEncoding, valuesEncoding);
   }
 
 }
