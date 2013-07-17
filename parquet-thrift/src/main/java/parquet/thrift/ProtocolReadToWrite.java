@@ -30,7 +30,7 @@ import org.apache.thrift.protocol.TType;
  * @author Julien Le Dem
  *
  */
-public class ProtocolReadToWrite {
+public class ProtocolReadToWrite implements ProtocolPipe {
 
   /**
    * reads one record from in and writes it to out
@@ -38,6 +38,7 @@ public class ProtocolReadToWrite {
    * @param out output protocol
    * @throws TException
    */
+  @Override
   public void readOne(TProtocol in, TProtocol out) throws TException {
     readOneStruct(in, out);
   }
