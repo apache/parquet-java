@@ -134,49 +134,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     }
   }
 
-  @Override
-  protected List<FileStatus> listStatus(JobContext job) throws IOException {               
-    return getAllFileRecursively(super.listStatus(job), 
-        job.getConfiguration());        
-  }
-
-  private static final PathFilter hiddenFileFilter = new PathFilter(){
-    public boolean accept(Path p){
-      String name = p.getName(); 
-      return !name.startsWith("_") && !name.startsWith("."); 
-    }
-  }; 
-  
-  private static List<FileStatus> getAllFileRecursively(
-      List<FileStatus> files, Configuration conf) throws IOException {
-    List<FileStatus> result = new ArrayList<FileStatus>();
-    int len = files.size();
-    for (int i = 0; i < len; ++i) {
-      FileStatus file = files.get(i);
-      if (file.isDir()) {
-        Path p = file.getPath();
-        FileSystem fs = p.getFileSystem(conf);
-        addInputPathRecursively(result, fs, p, hiddenFileFilter);
-      } else {
-        result.add(file);
-      }
-    }
-    LOG.info("Total input paths to process : " + result.size()); 
-    return result;
-  }
-  
-  private static void addInputPathRecursively(List<FileStatus> result,
-      FileSystem fs, Path path, PathFilter inputFilter) 
-          throws IOException {
-    for (FileStatus stat: fs.listStatus(path, inputFilter)) {
-      if (stat.isDir()) {
-        addInputPathRecursively(result, fs, stat.getPath(), inputFilter);
-      } else {
-        result.add(stat);
-      }
-    }
-  }  
-
   /**
    * groups together all the data blocks for the same HDFS block
    * @param blocks data blocks (row groups)
@@ -299,15 +256,15 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     }
     return splits;
   }
-  
+
   /*
-   * This is to support multi-level/recursive directory listing until 
+   * This is to support multi-level/recursive directory listing until
    * MAPREDUCE-1577 is fixed.
    */
   @Override
-  protected List<FileStatus> listStatus(JobContext jobContext) throws IOException {        
-    return getAllFileRecursively(super.listStatus(jobContext), 
-       ContextUtil.getConfiguration(jobContext));             
+  protected List<FileStatus> listStatus(JobContext jobContext) throws IOException {
+    return getAllFileRecursively(super.listStatus(jobContext),
+       ContextUtil.getConfiguration(jobContext));
   }
 
   private static List<FileStatus> getAllFileRecursively(
@@ -324,12 +281,12 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         result.add(file);
       }
     }
-    LOG.info("Total input paths to process : " + result.size()); 
+    LOG.info("Total input paths to process : " + result.size());
     return result;
   }
 
   private static void addInputPathRecursively(List<FileStatus> result,
-      FileSystem fs, Path path, PathFilter inputFilter) 
+      FileSystem fs, Path path, PathFilter inputFilter)
           throws IOException {
     for (FileStatus stat: fs.listStatus(path, inputFilter)) {
       if (stat.isDir()) {
@@ -338,14 +295,14 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         result.add(stat);
       }
     }
-  }          
+  }
 
   private static final PathFilter hiddenFileFilter = new PathFilter(){
     public boolean accept(Path p){
-      String name = p.getName(); 
-      return !name.startsWith("_") && !name.startsWith("."); 
+      String name = p.getName();
+      return !name.startsWith("_") && !name.startsWith(".");
     }
-  };   
+  };
 
   /**
    * @param jobContext the current job context
