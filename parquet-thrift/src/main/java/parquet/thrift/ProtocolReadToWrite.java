@@ -30,14 +30,16 @@ import org.apache.thrift.protocol.TType;
  * @author Julien Le Dem
  *
  */
-public class ProtocolReadToWrite {
+public class ProtocolReadToWrite implements ProtocolPipe {
 
   /**
    * reads one record from in and writes it to out
+   * exceptions are not recoverable as record might be halfway written
    * @param in input protocol
    * @param out output protocol
    * @throws TException
    */
+  @Override
   public void readOne(TProtocol in, TProtocol out) throws TException {
     readOneStruct(in, out);
   }
@@ -84,7 +86,7 @@ public class ProtocolReadToWrite {
     case TType.VOID:
       break;
     default:
-      throw new RuntimeException("Unknown type: " + type);
+      throw new TException("Unknown type: " + type);
     }
   }
 
