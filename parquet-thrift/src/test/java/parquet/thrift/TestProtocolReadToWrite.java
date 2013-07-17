@@ -94,14 +94,17 @@ public class TestProtocolReadToWrite {
 
   private void writeReadCompare(TBase<?,?> a)
       throws TException, InstantiationException, IllegalAccessException {
-    final ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
-    final ByteArrayOutputStream baos = baos2;
-    a.write(protocol(baos));
-    new ProtocolReadToWrite().readOne(protocol(new ByteArrayInputStream(baos.toByteArray())), protocol(baos2));
-    TBase<?,?> b = a.getClass().newInstance();
-    b.read(protocol(new ByteArrayInputStream(baos2.toByteArray())));
+    ProtocolPipe[] pipes = {new ProtocolReadToWrite(), new BufferedProtocolReadToWrite()};
+    for (ProtocolPipe p : pipes) {
+      final ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
+      final ByteArrayOutputStream baos = baos2;
+      a.write(protocol(baos));
+      p.readOne(protocol(new ByteArrayInputStream(baos.toByteArray())), protocol(baos2));
+      TBase<?,?> b = a.getClass().newInstance();
+      b.read(protocol(new ByteArrayInputStream(baos2.toByteArray())));
 
-    assertEquals(a, b);
+      assertEquals(p.getClass().getSimpleName(), a, b);
+    }
   }
 
   private TCompactProtocol protocol(OutputStream to) {

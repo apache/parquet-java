@@ -32,9 +32,10 @@ import parquet.io.MessageColumnIO;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
+import parquet.thrift.BufferedProtocolReadToWrite;
 import parquet.thrift.ParquetWriteProtocol;
+import parquet.thrift.ProtocolPipe;
 import parquet.thrift.ProtocolReadToWrite;
-import parquet.thrift.ThriftMetaData;
 import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType.StructType;
 
@@ -59,7 +60,7 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
     }
   }
 
-  private final ProtocolReadToWrite readToWrite = new ProtocolReadToWrite();
+  private final ProtocolPipe readToWrite;
   @SuppressWarnings("rawtypes") // TODO: fix type
   private final ThriftWriteSupport<?> thriftWriteSupport = new ThriftWriteSupport();
   private TProtocolFactory protocolFactory;
@@ -69,12 +70,18 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
   private ParquetWriteProtocol parquetWriteProtocol;
 
   public ThriftBytesWriteSupport() {
+    readToWrite = new ProtocolReadToWrite();
   }
 
-  public ThriftBytesWriteSupport(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass) {
+  public ThriftBytesWriteSupport(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass, boolean buffered) {
     super();
     this.protocolFactory = protocolFactory;
     this.thriftClass = thriftClass;
+    if (buffered) {
+      readToWrite = new BufferedProtocolReadToWrite();
+    } else {
+      readToWrite = new ProtocolReadToWrite();
+    }
   }
 
   @Override

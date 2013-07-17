@@ -24,6 +24,13 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import parquet.hadoop.ParquetOutputFormat;
 import parquet.hadoop.util.ContextUtil;
 
+/**
+ * Output format that turns Thrift bytes into Parquet format using the thrift TProtocol layer
+ *
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class ParquetThriftBytesOutputFormat extends ParquetOutputFormat<BytesWritable> {
 
   public static void setThriftClass(Job job, Class<? extends TBase<?, ?>> thriftClass) {
@@ -38,12 +45,24 @@ public class ParquetThriftBytesOutputFormat extends ParquetOutputFormat<BytesWri
     ThriftBytesWriteSupport.setTProtocolClass(ContextUtil.getConfiguration(job), tProtocolClass);
   }
 
+  /**
+   * Used when settings are set in the configuration
+   */
   public ParquetThriftBytesOutputFormat() {
     super(new ThriftBytesWriteSupport());
   }
 
-  public ParquetThriftBytesOutputFormat(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass) {
-    super(new ThriftBytesWriteSupport(protocolFactory, thriftClass));
+  /**
+   *  The buffered implementation will buffer each record and deal with invalid records (more expansive).
+   *  when catching an exception the record can be discarded.
+   *  The non-buffered implementation will stream field by field. Exceptions are unrecoverable and the file must be closed when an invalid record is written.
+   *
+   * @param protocolFactory the protocol factory to use to read the bytes
+   * @param thriftClass thriftClass the class to exctract the schema from
+   * @param buffered whether we should buffer each record
+   */
+  public ParquetThriftBytesOutputFormat(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass, boolean buffered) {
+    super(new ThriftBytesWriteSupport(protocolFactory, thriftClass, buffered));
   }
 
 }

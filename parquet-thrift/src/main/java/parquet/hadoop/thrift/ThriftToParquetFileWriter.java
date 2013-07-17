@@ -37,6 +37,7 @@ public class ThriftToParquetFileWriter implements Closeable {
   private final TaskAttemptContext taskAttemptContext;
 
   /**
+   * defaults to buffered = true
    * @param fileToCreate the file to create. If null will create the default file name from the taskAttemptContext
    * @param taskAttemptContext The current taskAttemptContext
    * @param protocolFactory to create protocols to read the incoming bytes
@@ -44,15 +45,49 @@ public class ThriftToParquetFileWriter implements Closeable {
    * @throws IOException if there was a problem writing
    * @throws InterruptedException from the underlying Hadoop API
    */
-  public ThriftToParquetFileWriter(Path fileToCreate, TaskAttemptContext taskAttemptContext, TProtocolFactory protocolFactory, Class<? extends TBase<?,?>> thriftClass) throws IOException, InterruptedException {
-    this.taskAttemptContext = taskAttemptContext;
-    this.recordWriter = new ParquetThriftBytesOutputFormat(protocolFactory, thriftClass).getRecordWriter(taskAttemptContext, fileToCreate);
+  public ThriftToParquetFileWriter(
+      Path fileToCreate,
+      TaskAttemptContext taskAttemptContext,
+      TProtocolFactory protocolFactory,
+      Class<? extends TBase<?,?>> thriftClass)
+          throws IOException, InterruptedException {
+    this(fileToCreate, taskAttemptContext, protocolFactory, thriftClass, true);
   }
 
+  /**
+   * @param fileToCreate the file to create. If null will create the default file name from the taskAttemptContext
+   * @param taskAttemptContext The current taskAttemptContext
+   * @param protocolFactory to create protocols to read the incoming bytes
+   * @param thriftClass to produce the schema
+   * @param buffered buffer each record individually
+   * @throws IOException if there was a problem writing
+   * @throws InterruptedException from the underlying Hadoop API
+   */
+  public ThriftToParquetFileWriter(
+      Path fileToCreate,
+      TaskAttemptContext taskAttemptContext,
+      TProtocolFactory protocolFactory,
+      Class<? extends TBase<?,?>> thriftClass,
+          boolean buffered) throws IOException, InterruptedException {
+    this.taskAttemptContext = taskAttemptContext;
+    this.recordWriter = new ParquetThriftBytesOutputFormat(protocolFactory, thriftClass, buffered).getRecordWriter(taskAttemptContext, fileToCreate);
+  }
+
+  /**
+   * write one record to the columnar store
+   * @param bytes
+   * @throws IOException
+   * @throws InterruptedException
+   */
   public void write(BytesWritable bytes) throws IOException, InterruptedException {
     recordWriter.write(null, bytes);
   }
 
+  /**
+   * close the file
+   *
+   * @see java.io.Closeable#close()
+   */
   @Override
   public void close() throws IOException {
     try {
