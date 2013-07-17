@@ -33,10 +33,10 @@ import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
 
-class AvroIndexedRecordConverter extends GroupConverter {
+class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter {
 
   private final ParentValueContainer parent;
-  protected IndexedRecord currentRecord;
+  protected T currentRecord;
   private final Converter[] converters;
 
   private final GroupType parquetSchema;
@@ -119,9 +119,9 @@ class AvroIndexedRecordConverter extends GroupConverter {
   @Override
   public void start() {
     // Should do the right thing whether it is generic or specific
-    this.currentRecord = (this.specificClass == null) ?
-        new GenericData.Record(avroSchema) :
-        (IndexedRecord)SpecificData.newInstance(specificClass, avroSchema);
+    this.currentRecord = (T) ((this.specificClass == null) ?
+            new GenericData.Record(avroSchema) :
+            SpecificData.newInstance(specificClass, avroSchema));
   }
 
   @Override
@@ -131,7 +131,7 @@ class AvroIndexedRecordConverter extends GroupConverter {
     }
   }
 
-  IndexedRecord getCurrentRecord() {
+  T getCurrentRecord() {
     return currentRecord;
   }
 
