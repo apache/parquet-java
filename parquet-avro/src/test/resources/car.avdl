@@ -16,7 +16,7 @@ protocol Cars {
     }
 
     enum EngineType {
-        DIESEL, PETROL
+        DIESEL, PETROL, ELECTRIC
     }
 
     record Engine {
@@ -33,6 +33,6 @@ protocol Cars {
         int doors;
         Engine engine;
         union { null, Stereo, LeatherTrim } optionalExtra = null;
-        array<Service> serviceHistory;
+        union { null, array<Service> } serviceHistory = null;
     }
 }

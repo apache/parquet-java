@@ -21,16 +21,16 @@ import parquet.io.api.GroupConverter;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 
-class AvroRecordMaterializer extends RecordMaterializer<IndexedRecord> {
+class AvroRecordMaterializer<T extends IndexedRecord> extends RecordMaterializer<T> {
 
-  private AvroIndexedRecordConverter root;
+  private AvroIndexedRecordConverter<T> root;
 
   public AvroRecordMaterializer(MessageType requestedSchema, Schema avroSchema) {
-    this.root = new AvroIndexedRecordConverter(requestedSchema, avroSchema);
+    this.root = new AvroIndexedRecordConverter<T>(requestedSchema, avroSchema);
   }
 
   @Override
-  public IndexedRecord getCurrentRecord() {
+  public T getCurrentRecord() {
     return root.getCurrentRecord();
   }
 

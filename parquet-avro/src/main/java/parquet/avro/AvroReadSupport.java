@@ -28,7 +28,7 @@ import parquet.schema.MessageType;
  * Generic. Users should use {@link AvroParquetReader} or {@link AvroParquetInputFormat} rather than using
  * this class directly.
  */
-public class AvroReadSupport extends ReadSupport<IndexedRecord> {
+public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
 
   @Override
   public ReadContext init(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
@@ -36,8 +36,8 @@ public class AvroReadSupport extends ReadSupport<IndexedRecord> {
   }
 
   @Override
-  public RecordMaterializer<IndexedRecord> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema, ReadContext readContext) {
+  public RecordMaterializer<T> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema, ReadContext readContext) {
     Schema avroSchema = new Schema.Parser().parse(keyValueMetaData.get("avro.schema"));
-    return new AvroRecordMaterializer(readContext.getRequestedSchema(), avroSchema);
+    return new AvroRecordMaterializer<T>(readContext.getRequestedSchema(), avroSchema);
   }
 }
