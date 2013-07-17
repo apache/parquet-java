@@ -43,7 +43,7 @@ public class ParquetThriftBytesOutputFormat extends ParquetOutputFormat<BytesWri
   }
 
   public ParquetThriftBytesOutputFormat(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass) {
-    super(new ThriftBytesWriteSupport(protocolFactory, thriftClass));
+    super(new ThriftBytesWriteSupport(protocolFactory, thriftClass, true));
   }
 
 }
