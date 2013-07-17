@@ -154,6 +154,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       Class<?> readSupportClass,
       String requestedSchema,
       Map<String, String> readSupportMetadata) throws IOException {
+    String fileSchema = fileMetaData.getSchema().toString().intern();
     Comparator<BlockLocation> comparator = new Comparator<BlockLocation>() {
       @Override
       public int compare(BlockLocation b1, BlockLocation b2) {
@@ -202,17 +203,16 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
           }
         }
         splits.add(new ParquetInputSplit(
-            fileStatus.getPath(),
-            hdfsBlock.getOffset(),
-            length,
-            hdfsBlock.getHosts(),
-            blocksForCurrentSplit,
-            fileMetaData.getSchema().toString(),
-            requestedSchema,
-            fileMetaData.getSchema().toString(),
-            fileMetaData.getKeyValueMetaData(),
-            readSupportMetadata
-            ));
+          fileStatus.getPath(),
+          hdfsBlock.getOffset(),
+          length,
+          hdfsBlock.getHosts(),
+          blocksForCurrentSplit,
+          requestedSchema,
+          fileSchema,
+          fileMetaData.getKeyValueMetaData(),
+          readSupportMetadata
+          ));
       }
     }
     return splits;

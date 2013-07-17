@@ -15,7 +15,6 @@
  */
 package parquet.hadoop.metadata;
 
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 
@@ -28,8 +27,7 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
  * @author Julien Le Dem
  *
  */
-public class ColumnChunkMetaData implements Serializable {
-  private static final long serialVersionUID = 1L;
+public class ColumnChunkMetaData {
 
   private final CompressionCodecName codec;
   private final String[] path;

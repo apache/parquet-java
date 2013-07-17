@@ -63,7 +63,6 @@ public class ParquetReader<T> implements Closeable {
     ParquetInputSplit inputSplit =
         new ParquetInputSplit(
             file, 0, 0, null, blocks,
-            schema.toString(),
             readContext.getRequestedSchema().toString(),
             schema.toString(),
             extraMetadata,
