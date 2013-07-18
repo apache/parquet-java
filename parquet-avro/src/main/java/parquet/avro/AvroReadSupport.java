@@ -30,9 +30,23 @@ import parquet.schema.MessageType;
  */
 public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
 
+  public static String AVRO_REQUESTED_PROJECTION = "parquet.avro.projection";
+
+  public static void setRequestedProjection(Configuration configuration, Schema requestedProjection) {
+    configuration.set(AVRO_REQUESTED_PROJECTION, requestedProjection.toString());
+  }
+
   @Override
   public ReadContext init(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
-    return new ReadContext(fileSchema);
+    String requestedProjectionString = configuration.get(AVRO_REQUESTED_PROJECTION);
+    if (requestedProjectionString != null) {
+      Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);
+      MessageType requestedProjection = new AvroSchemaConverter().convert(avroRequestedProjection);
+      fileSchema.checkContains(requestedProjection);
+      return new ReadContext(requestedProjection);
+    } else {
+      return new ReadContext(fileSchema);
+    }
   }
 
   @Override

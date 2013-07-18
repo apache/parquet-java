@@ -21,10 +21,10 @@ import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.specific.SpecificData;
 import parquet.Preconditions;
+import parquet.io.InvalidRecordException;
 import parquet.io.api.Binary;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
@@ -39,7 +39,6 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
   protected T currentRecord;
   private final Converter[] converters;
 
-  private final GroupType parquetSchema;
   private final Schema avroSchema;
   private final Class<? extends IndexedRecord> specificClass;
 
@@ -50,27 +49,31 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
   public AvroIndexedRecordConverter(ParentValueContainer parent, GroupType
       parquetSchema, Schema avroSchema) {
     this.parent = parent;
-    this.parquetSchema = parquetSchema;
     this.avroSchema = avroSchema;
     int schemaSize = parquetSchema.getFieldCount();
     this.converters = new Converter[schemaSize];
     this.specificClass = SpecificData.get().getClass(avroSchema);
-    int index = 0; // parquet ignores Avro nulls, so index may differ
-    for (int avroIndex = 0; avroIndex < avroSchema.getFields().size(); avroIndex++) {
-      Schema.Field field = avroSchema.getFields().get(avroIndex);
-      if (field.schema().getType().equals(Schema.Type.NULL)) {
-        continue;
+
+    Map<String, Integer> avroFieldIndexes = new HashMap<String, Integer>();
+    int avroFieldIndex = 0;
+    for (Schema.Field field: avroSchema.getFields()) {
+        avroFieldIndexes.put(field.name(), avroFieldIndex++);
+    }
+    int parquetFieldIndex = 0;
+    for (Type parquetField: parquetSchema.getFields()) {
+      Schema.Field avroField = avroSchema.getField(parquetField.getName());
+      if (avroField == null) {
+        throw new InvalidRecordException(String.format("Parquet/Avro schema mismatch. Avro field '%s' not found.",
+                parquetField.getName()));
       }
-      Type type = parquetSchema.getType(index);
-      final int finalAvroIndex = avroIndex;
-      final Schema fieldSchema = AvroSchemaConverter.getNonNull(field.schema());
-      converters[index] = newConverter(fieldSchema, type, new ParentValueContainer() {
+      Schema nonNullSchema = AvroSchemaConverter.getNonNull(avroField.schema());
+      final int finalAvroIndex = avroFieldIndexes.get(avroField.name());
+      converters[parquetFieldIndex++] = newConverter(nonNullSchema, parquetField, new ParentValueContainer() {
         @Override
         void add(Object value) {
           AvroIndexedRecordConverter.this.set(finalAvroIndex, value);
         }
       });
-      index++;
     }
   }
 
