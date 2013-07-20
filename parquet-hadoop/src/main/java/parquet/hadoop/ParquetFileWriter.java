@@ -16,7 +16,6 @@
 package parquet.hadoop;
 
 import static parquet.Log.DEBUG;
-import static parquet.Log.INFO;
 import static parquet.format.Util.writeFileMetaData;
 
 import java.io.IOException;
@@ -43,11 +42,13 @@ import parquet.column.page.DictionaryPage;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
+import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.ParquetEncodingException;
 import parquet.schema.MessageType;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * Writes a Parquet file
@@ -72,6 +73,13 @@ public class ParquetFileWriter {
   private long uncompressedLength;
   private long compressedLength;
   private Set<parquet.column.Encoding> currentEncodings;
+
+  private CompressionCodecName currentChunkCodec;
+  private ColumnPath currentChunkPath;
+  private PrimitiveTypeName currentChunkType;
+  private long currentChunkFirstDataPage;
+  private long currentChunkDictionaryPageOffset;
+  private long currentChunkValueCount;
 
   /**
    * Captures the order in which methods should be called
@@ -170,9 +178,11 @@ public class ParquetFileWriter {
     state = state.startColumn();
     if (DEBUG) LOG.debug(out.getPos() + ": start column: " + descriptor + " count=" + valueCount);
     currentEncodings = new HashSet<parquet.column.Encoding>();
-    currentColumn = new ColumnChunkMetaData(descriptor.getPath(), descriptor.getType(), compressionCodecName, new ArrayList<parquet.column.Encoding>());
-    currentColumn.setValueCount(valueCount);
-    currentColumn.setFirstDataPageOffset(out.getPos());
+    currentChunkPath = ColumnPath.get(descriptor.getPath());
+    currentChunkType = descriptor.getType();
+    currentChunkCodec = compressionCodecName;
+    currentChunkValueCount = valueCount;
+    currentChunkFirstDataPage = out.getPos();
     compressedLength = 0;
     uncompressedLength = 0;
   }
@@ -184,7 +194,7 @@ public class ParquetFileWriter {
   public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
     state = state.write();
     if (DEBUG) LOG.debug(out.getPos() + ": write dictionary page: " + dictionaryPage.getDictionarySize() + " values");
-    currentColumn.setDictionaryPageOffset(out.getPos());
+    currentChunkDictionaryPageOffset = out.getPos();
     int uncompressedSize = dictionaryPage.getUncompressedSize();
     int compressedPageSize = (int)dictionaryPage.getBytes().size(); // TODO: fix casts
     metadataConverter.writeDictionaryPageHeader(
@@ -261,10 +271,16 @@ public class ParquetFileWriter {
   public void endColumn() throws IOException {
     state = state.endColumn();
     if (DEBUG) LOG.debug(out.getPos() + ": end column");
-    currentColumn.setTotalUncompressedSize(uncompressedLength);
-    currentColumn.setTotalSize(compressedLength);
-    currentColumn.getEncodings().addAll(currentEncodings);
-    currentBlock.addColumn(currentColumn);
+    currentBlock.addColumn(ColumnChunkMetaData.get(
+        currentChunkPath,
+        currentChunkType,
+        currentChunkCodec,
+        currentEncodings,
+        currentChunkFirstDataPage,
+        currentChunkDictionaryPageOffset,
+        currentChunkValueCount,
+        compressedLength,
+        uncompressedLength));
     if (DEBUG) LOG.info("ended Column chumk: " + currentColumn);
     currentColumn = null;
     this.uncompressedLength = 0;

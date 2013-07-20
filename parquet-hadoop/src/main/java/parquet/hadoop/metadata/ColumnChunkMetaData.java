@@ -15,78 +15,143 @@
  */
 package parquet.hadoop.metadata;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.Set;
 
 import parquet.column.Encoding;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
-
 /**
  * Column meta data for a block stored in the file footer and passed in the InputSplit
  * @author Julien Le Dem
- *
  */
-public class ColumnChunkMetaData {
+abstract public class ColumnChunkMetaData {
 
-  private final CompressionCodecName codec;
-  private final String[] path;
-  private final PrimitiveTypeName type;
-  private final List<Encoding> encodings;
+  public static ColumnChunkMetaData get(
+      ColumnPath path, PrimitiveTypeName type, CompressionCodecName codec, Set<Encoding> encodings,
+      long firstDataPage,
+      long dictionaryPageOffset,
+      long valueCount,
+      long totalSize,
+      long totalUncompressedSize) {
+    if (firstDataPage < Integer.MAX_VALUE
+        && dictionaryPageOffset < Integer.MAX_VALUE
+        && valueCount < Integer.MAX_VALUE
+        && totalSize < Integer.MAX_VALUE
+        && totalUncompressedSize < Integer.MAX_VALUE) {
+      return new IntColumnChunkMetaData(
+          path, type, codec, encodings,
+          firstDataPage,
+          dictionaryPageOffset,
+          valueCount,
+          totalSize,
+          totalUncompressedSize);
+    } else {
+      return new LongColumnChunkMetaData(
+          path, type, codec, encodings,
+          firstDataPage,
+          dictionaryPageOffset,
+          valueCount,
+          totalSize,
+          totalUncompressedSize);
+    }
+  }
 
-  private long firstDataPage;
-  private long dictionaryPageOffset;
+  // we save 3 references by storing together the column properties that have few distinct values
+  private final ColumnChunkProperties properties;
 
-  // for info
-  private long valueCount;
-  private long totalSize;
-
-  private long totalUncompressedSize;
-
-
-  /**
-   * @param path column identifier
-   * @param type type of the column
-   * @param encodings
-   */
-  public ColumnChunkMetaData(String[] path, PrimitiveTypeName type, CompressionCodecName codec, List<Encoding> encodings) {
-    this.path = path;
-    this.type = type;
-    this.codec = codec;
-    this.encodings = encodings;
+  protected ColumnChunkMetaData(ColumnChunkProperties columnChunkProperties) {
+    this.properties = columnChunkProperties;
   }
 
   public CompressionCodecName getCodec() {
-    return codec;
+    return properties.getCodec();
   }
 
   /**
    *
    * @return column identifier
    */
-  public String[] getPath() {
-    return path;
+  public ColumnPath getPath() {
+    return properties.getPath();
   }
 
   /**
    * @return type of the column
    */
   public PrimitiveTypeName getType() {
-    return type;
+    return properties.getType();
   }
 
-  /**
-   * @param dataStart offset in the file where data starts
-   */
-  public void setFirstDataPageOffset(long firstDataPage) {
-    this.firstDataPage = firstDataPage;
-  }
 
   /**
-   * @param dictionaryPageOffset offset in the file of the dictionary page
+   * @return start of the column data offset
    */
-  public void setDictionaryPageOffset(long dictionaryPageOffset) {
-    this.dictionaryPageOffset = dictionaryPageOffset;
+  abstract public long getFirstDataPageOffset();
+
+  /**
+   * @return the location of the dictionary page if any
+   */
+  abstract public long getDictionaryPageOffset();
+
+  /**
+   * @return count of values in this block of the column
+   */
+  abstract public long getValueCount();
+
+  /**
+   * @return the totalUncompressedSize
+   */
+  abstract public long getTotalUncompressedSize();
+
+  /**
+   * @return the totalSize
+   */
+  abstract public long getTotalSize();
+
+  /**
+   * @return all the encodings used in this column
+   */
+  public Set<Encoding> getEncodings() {
+    return properties.getEncodings();
+  }
+
+  @Override
+  public String toString() {
+    return "ColumnMetaData{" + properties.toString() + ", " + getFirstDataPageOffset() + "}";
+  }
+}
+class IntColumnChunkMetaData extends ColumnChunkMetaData {
+
+  private final int firstDataPage;
+  private final int dictionaryPageOffset;
+  private final int valueCount;
+  private final int totalSize;
+  private final int totalUncompressedSize;
+
+  /**
+   * @param path column identifier
+   * @param type type of the column
+   * @param codec
+   * @param encodings
+   * @param firstDataPage
+   * @param dictionaryPageOffset
+   * @param valueCount
+   * @param totalSize
+   * @param totalUncompressedSize
+   */
+  IntColumnChunkMetaData(
+      ColumnPath path, PrimitiveTypeName type, CompressionCodecName codec, Set<Encoding> encodings,
+      long firstDataPage,
+      long dictionaryPageOffset,
+      long valueCount,
+      long totalSize,
+      long totalUncompressedSize) {
+    super(ColumnChunkProperties.get(path, type, codec, encodings));
+    this.firstDataPage = (int)firstDataPage;
+    this.dictionaryPageOffset = (int)dictionaryPageOffset;
+    this.valueCount = (int)valueCount;
+    this.totalSize = (int)totalSize;
+    this.totalUncompressedSize = (int)totalUncompressedSize;
   }
 
   /**
@@ -104,10 +169,73 @@ public class ColumnChunkMetaData {
   }
 
   /**
-   * @param valueCount count of values in this block of the column
+   * @return count of values in this block of the column
    */
-  public void setValueCount(long valueCount) {
+  public long getValueCount() {
+    return valueCount;
+  }
+
+  /**
+   * @return the totalUncompressedSize
+   */
+  public long getTotalUncompressedSize() {
+    return totalUncompressedSize;
+  }
+
+  /**
+   * @return the totalSize
+   */
+  public long getTotalSize() {
+    return totalSize;
+  }
+
+}
+class LongColumnChunkMetaData extends ColumnChunkMetaData {
+
+  private final long firstDataPage;
+  private final long dictionaryPageOffset;
+  private final long valueCount;
+  private final long totalSize;
+  private final long totalUncompressedSize;
+
+  /**
+   * @param path column identifier
+   * @param type type of the column
+   * @param codec
+   * @param encodings
+   * @param firstDataPage
+   * @param dictionaryPageOffset
+   * @param valueCount
+   * @param totalSize
+   * @param totalUncompressedSize
+   */
+  LongColumnChunkMetaData(
+      ColumnPath path, PrimitiveTypeName type, CompressionCodecName codec, Set<Encoding> encodings,
+      long firstDataPage,
+      long dictionaryPageOffset,
+      long valueCount,
+      long totalSize,
+      long totalUncompressedSize) {
+    super(ColumnChunkProperties.get(path, type, codec, encodings));
+    this.firstDataPage = firstDataPage;
+    this.dictionaryPageOffset = dictionaryPageOffset;
     this.valueCount = valueCount;
+    this.totalSize = totalSize;
+    this.totalUncompressedSize = totalUncompressedSize;
+  }
+
+  /**
+   * @return start of the column data offset
+   */
+  public long getFirstDataPageOffset() {
+    return firstDataPage;
+  }
+
+  /**
+   * @return the location of the dictionary page if any
+   */
+  public long getDictionaryPageOffset() {
+    return dictionaryPageOffset;
   }
 
   /**
@@ -125,36 +253,10 @@ public class ColumnChunkMetaData {
   }
 
   /**
-   * @param totalUncompressedSize the totalUncompressedSize to set
-   */
-  public void setTotalUncompressedSize(long totalUncompressedSize) {
-    this.totalUncompressedSize = totalUncompressedSize;
-  }
-
-  /**
    * @return the totalSize
    */
   public long getTotalSize() {
     return totalSize;
-  }
-
-  /**
-   * @param totalSize the totalSize to set
-   */
-  public void setTotalSize(long totalSize) {
-    this.totalSize = totalSize;
-  }
-
-  /**
-   * @return all the encodings used in this column
-   */
-  public List<Encoding> getEncodings() {
-    return encodings;
-  }
-
-  @Override
-  public String toString() {
-    return "ColumnMetaData{" + codec + ", " + firstDataPage + ", " + Arrays.toString(path) + "}";
   }
 
 }

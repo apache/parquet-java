@@ -56,6 +56,7 @@ import parquet.hadoop.CodecFactory.BytesDecompressor;
 import parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
+import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.ParquetDecodingException;
 
@@ -274,7 +275,7 @@ public class ParquetFileReader implements Closeable {
   private final FSDataInputStream f;
   private final Path filePath;
   private int currentBlock = 0;
-  private Map<String, ColumnDescriptor> paths = new HashMap<String, ColumnDescriptor>();
+  private Map<ColumnPath, ColumnDescriptor> paths = new HashMap<ColumnPath, ColumnDescriptor>();
 
   /**
    *
@@ -290,7 +291,7 @@ public class ParquetFileReader implements Closeable {
     this.f = fs.open(filePath);
     this.blocks = blocks;
     for (ColumnDescriptor col : columns) {
-      paths.put(Arrays.toString(col.getPath()), col);
+      paths.put(ColumnPath.get(col.getPath()), col);
     }
     this.codecFactory = new CodecFactory(configuration);
   }
@@ -310,7 +311,7 @@ public class ParquetFileReader implements Closeable {
     }
     ColumnChunkPageReadStore columnChunkPageReadStore = new ColumnChunkPageReadStore(block.getRowCount());
     for (ColumnChunkMetaData mc : block.getColumns()) {
-      String pathKey = Arrays.toString(mc.getPath());
+      ColumnPath pathKey = mc.getPath();
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
       if (columnDescriptor != null) {
         List<Page> pagesInChunk = new ArrayList<Page>();
@@ -341,7 +342,7 @@ public class ParquetFileReader implements Closeable {
     }
     f.seek(startingPos);
     if (DEBUG) {
-      LOG.debug(f.getPos() + ": start column chunk " + Arrays.toString(metadata.getPath()) +
+      LOG.debug(f.getPos() + ": start column chunk " + metadata.getPath() +
         " " + metadata.getType() + " count=" + metadata.getValueCount());
     }
     long valuesCountReadSoFar = 0;
