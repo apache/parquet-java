@@ -27,36 +27,47 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.junit.Test;
 import parquet.Log;
+import parquet.column.ColumnReader;
+import parquet.filter.ColumnPredicates;
+import parquet.filter.ColumnRecordFilter;
+import parquet.filter.RecordFilter;
+import parquet.filter.UnboundRecordFilter;
 
 import java.io.IOException;
 import java.util.List;
 
 import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class TestSpecificInputOutputFormat {
   private static final Log LOG = Log.getLog(TestSpecificInputOutputFormat.class);
 
   public static Car nextRecord(int i) {
-      Car.Builder carBuilder = Car.newBuilder()
-              .setDoors(2)
-              .setEngine(Engine.newBuilder()
-                      .setCapacity(85.0f)
-                      .setHasTurboCharger(false)
-                      .setType(EngineType.ELECTRIC).build())
-              .setMake("Tesla")
-              .setModel("Model X")
-              .setYear(2014)
-              .setOptionalExtra(LeatherTrim.newBuilder().setColour("black").build())
-              .setRegistration("Calfornia");
-      if (i % 4 == 0) {
-          List<Service> serviceList = Lists.newArrayList();
-              serviceList.add(Service.newBuilder()
-                      .setDate(1374084640)
-                      .setMechanic("Elon Musk").build());
-          carBuilder.setServiceHistory(serviceList);
-      }
-      return carBuilder.build();
+    Car.Builder carBuilder = Car.newBuilder()
+            .setDoors(2)
+            .setMake("Tesla")
+            .setModel("Model X")
+            .setYear(2014)
+            .setOptionalExtra(LeatherTrim.newBuilder().setColour("black").build())
+            .setRegistration("Calfornia");
+    Engine.Builder engineBuilder = Engine.newBuilder()
+            .setCapacity(85.0f)
+            .setHasTurboCharger(false);
+    if (i % 2 == 0) {
+      engineBuilder.setType(EngineType.ELECTRIC);
+    } else {
+      engineBuilder.setType(EngineType.PETROL);
+    }
+    carBuilder.setEngine(engineBuilder.build());
+    if (i % 4 == 0) {
+      List<Service> serviceList = Lists.newArrayList();
+      serviceList.add(Service.newBuilder()
+              .setDate(1374084640)
+              .setMechanic("Elon Musk").build());
+      carBuilder.setServiceHistory(serviceList);
+    }
+    return carBuilder.build();
   }
 
   public static class MyMapper extends Mapper<LongWritable, Text, Void, Car> {
@@ -71,9 +82,26 @@ public class TestSpecificInputOutputFormat {
   public static class MyMapper2 extends Mapper<Void, Car, Void, Car> {
     @Override
     protected void map(Void key, Car car, Context context) throws IOException ,InterruptedException {
-      context.write(null, car);
+      // Note: Car can be null because of predicate pushdown defined by an UnboundedRecordFilter (see below)
+      if (car != null) {
+        context.write(null, car);
+      }
     }
 
+  }
+
+  public static class ElectricCarFilter implements UnboundRecordFilter {
+
+    private UnboundRecordFilter filter;
+
+    public ElectricCarFilter() {
+      filter = ColumnRecordFilter.column("engine.type", ColumnPredicates.equalTo(EngineType.ELECTRIC));
+    }
+
+    @Override
+    public RecordFilter bind(Iterable<ColumnReader> readers) {
+      return filter.bind(readers);
+    }
   }
 
   @Test
@@ -106,6 +134,8 @@ public class TestSpecificInputOutputFormat {
       final Job job = new Job(conf, "read");
       job.setInputFormatClass(AvroParquetInputFormat.class);
       AvroParquetInputFormat.setInputPaths(job, parquetPath);
+      // Test push-down predicates by using an electric car filter
+      AvroParquetInputFormat.setUnboundRecordFilter(job, ElectricCarFilter.class);
 
       // Test schema projection by dropping the optional extras
       Schema projection = Schema.createRecord(Car.SCHEMA$.getName(), Car.SCHEMA$.getDoc(), Car.SCHEMA$.getNamespace(), false);
@@ -133,7 +163,12 @@ public class TestSpecificInputOutputFormat {
     Car car;
     int lineNumber = 0;
     while ((car = out.read()) != null) {
-      Car expectedCar = nextRecord(lineNumber);
+      // Make sure that predicate push down worked as expected
+      if (car.getEngine().getType() == EngineType.PETROL) {
+        fail("UnboundRecordFilter failed to remove cars with PETROL engines");
+      }
+      // Note we use lineNumber * 2 because of predicate push down
+      Car expectedCar = nextRecord(lineNumber * 2);
       // We removed the optional extra field using projection so we shouldn't see it here...
       expectedCar.setOptionalExtra(null);
       assertEquals("line " + lineNumber, expectedCar, car);

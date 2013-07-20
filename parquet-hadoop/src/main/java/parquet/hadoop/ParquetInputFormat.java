@@ -39,12 +39,14 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
 import parquet.Log;
+import parquet.filter.UnboundRecordFilter;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.hadoop.util.ConfigurationUtil;
 import parquet.hadoop.util.ContextUtil;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
@@ -66,9 +68,21 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   private static final Log LOG = Log.getLog(ParquetInputFormat.class);
 
   public static final String READ_SUPPORT_CLASS = "parquet.read.support.class";
+  public static final String UNBOUND_RECORD_FILTER = "parquet.read.filter";
+
+  private Class<?> readSupportClass;
+  private List<Footer> footers;
 
   public static void setReadSupportClass(Job job,  Class<?> readSupportClass) {
     ContextUtil.getConfiguration(job).set(READ_SUPPORT_CLASS, readSupportClass.getName());
+  }
+
+  public static void setUnboundRecordFilter(Job job, Class<? extends UnboundRecordFilter> filterClass) {
+    ContextUtil.getConfiguration(job).set(UNBOUND_RECORD_FILTER, filterClass.getName());
+  }
+
+  public static Class<?> getUnboundRecordFilter(Configuration configuration) {
+    return ConfigurationUtil.getClassFromConfig(configuration, UNBOUND_RECORD_FILTER, UnboundRecordFilter.class);
   }
 
   public static void setReadSupportClass(JobConf conf, Class<?> readSupportClass) {
@@ -76,24 +90,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   public static Class<?> getReadSupportClass(Configuration configuration) {
-    final String className = configuration.get(READ_SUPPORT_CLASS);
-    if (className == null) {
-      return null;
-    }
-    try {
-      final Class<?> readSupportClass = Class.forName(className);
-      if (!ReadSupport.class.isAssignableFrom(readSupportClass)) {
-        throw new BadConfigurationException("class " + className + " set in job conf at " + READ_SUPPORT_CLASS + " is not a subclass of ReadSupport");
-      }
-      return readSupportClass;
-    } catch (ClassNotFoundException e) {
-      throw new BadConfigurationException("could not instanciate class " + className + " set in job conf at " + READ_SUPPORT_CLASS , e);
-    }
+    return ConfigurationUtil.getClassFromConfig(configuration, READ_SUPPORT_CLASS, ReadSupport.class);
   }
-
-  private Class<?> readSupportClass;
-
-  private List<Footer> footers;
 
   /**
    * Hadoop will instantiate using this constructor
@@ -116,7 +114,19 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public RecordReader<Void, T> createRecordReader(
       InputSplit inputSplit,
       TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
-    return new ParquetRecordReader<T>(getReadSupport(ContextUtil.getConfiguration(taskAttemptContext)));
+    ReadSupport<T> readSupport = getReadSupport(ContextUtil.getConfiguration(taskAttemptContext));
+    Class<?> unboundRecordFilterClass = getUnboundRecordFilter(ContextUtil.getConfiguration(taskAttemptContext));
+    if (unboundRecordFilterClass == null) {
+      return new ParquetRecordReader<T>(readSupport);
+    } else {
+      try {
+        return new ParquetRecordReader<T>(readSupport, (UnboundRecordFilter)unboundRecordFilterClass.newInstance());
+      } catch (InstantiationException e) {
+        throw new BadConfigurationException("could not instantiate unbound record filter class", e);
+      } catch (IllegalAccessException e) {
+        throw new BadConfigurationException("could not instantiate unbound record filter class", e);
+      }
+    }
   }
 
   public ReadSupport<T> getReadSupport(Configuration configuration){
@@ -124,13 +134,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       if (readSupportClass == null) {
         readSupportClass = getReadSupportClass(configuration);
       }
-      @SuppressWarnings("unchecked") // I know
-      ReadSupport<T> readSupport = (ReadSupport<T>)readSupportClass.newInstance();
-      return readSupport;
+      return (ReadSupport<T>)readSupportClass.newInstance();
     } catch (InstantiationException e) {
-      throw new BadConfigurationException("could not instanciate read support class", e);
+      throw new BadConfigurationException("could not instantiate read support class", e);
     } catch (IllegalAccessException e) {
-      throw new BadConfigurationException("could not instanciate read support class", e);
+      throw new BadConfigurationException("could not instantiate read support class", e);
     }
   }
 
