@@ -125,6 +125,25 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     }
   }
 
+  private static class UnregisteringParquetInputFormat extends ParquetInputFormat<Tuple> {
+
+    private final String location;
+
+    public UnregisteringParquetInputFormat(String loction) {
+      super(TupleReadSupport.class);
+      this.location = loction;
+    }
+
+    @Override
+    public RecordReader<Void, Tuple> createRecordReader(
+        InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
+        throws IOException, InterruptedException {
+      // for local mode we don't want to keep that around
+      inputFormatCache.remove(location);
+      return super.createRecordReader(inputSplit, taskAttemptContext);
+    }
+  };
+
   private ParquetInputFormat<Tuple> getParquetInputFormat() throws ParserException {
     checkSetLocationHasBeenCalled();
     if (parquetInputFormat == null) {
@@ -132,16 +151,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       // TODO: check cases where the same location is reused
       parquetInputFormat = inputFormatCache.get(location);
       if (parquetInputFormat == null) {
-        parquetInputFormat = new ParquetInputFormat<Tuple>(TupleReadSupport.class) {
-          @Override
-          public RecordReader<Void, Tuple> createRecordReader(
-              InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
-              throws IOException, InterruptedException {
-            // for local mpde we don't want to keep that around
-            inputFormatCache.remove(location);
-            return super.createRecordReader(inputSplit, taskAttemptContext);
-          }
-        };
+        parquetInputFormat = new UnregisteringParquetInputFormat(location);
         inputFormatCache.put(location, parquetInputFormat);
       }
     }
