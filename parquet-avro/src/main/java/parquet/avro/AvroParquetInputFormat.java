@@ -15,9 +15,11 @@
  */
 package parquet.avro;
 
+import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
-import parquet.avro.AvroReadSupport;
+import org.apache.hadoop.mapreduce.Job;
 import parquet.hadoop.ParquetInputFormat;
+import parquet.hadoop.util.ContextUtil;
 
 /**
  * A Hadoop {@link org.apache.hadoop.mapreduce.InputFormat} for Parquet files.
@@ -26,4 +28,9 @@ public class AvroParquetInputFormat extends ParquetInputFormat<IndexedRecord> {
   public AvroParquetInputFormat() {
     super(AvroReadSupport.class);
   }
+
+  public static void setRequestedProjection(Job job, Schema requestedProjection) {
+    AvroReadSupport.setRequestedProjection(ContextUtil.getConfiguration(job), requestedProjection);
+  }
+
 }
