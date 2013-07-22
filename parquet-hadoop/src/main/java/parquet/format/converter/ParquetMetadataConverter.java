@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +47,7 @@ import parquet.format.SchemaElement;
 import parquet.format.Type;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
+import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.ParquetDecodingException;
@@ -134,7 +136,7 @@ public class ParquetMetadataConverter {
       columnChunk.meta_data = new parquet.format.ColumnMetaData(
           getType(columnMetaData.getType()),
           toFormatEncodings(columnMetaData.getEncodings()),
-          Arrays.asList(columnMetaData.getPath()),
+          Arrays.asList(columnMetaData.getPath().toArray()),
           columnMetaData.getCodec().getParquetCompressionCodec(),
           columnMetaData.getValueCount(),
           columnMetaData.getTotalUncompressedSize(),
@@ -151,8 +153,8 @@ public class ParquetMetadataConverter {
     rowGroups.add(rowGroup);
   }
 
-  private List<Encoding> toFormatEncodings(List<parquet.column.Encoding> encodings) {
-    List<Encoding> converted = new ArrayList<Encoding>();
+  private List<Encoding> toFormatEncodings(Set<parquet.column.Encoding> encodings) {
+    List<Encoding> converted = new ArrayList<Encoding>(encodings.size());
     for (parquet.column.Encoding encoding : encodings) {
       converted.add(getEncoding(encoding));
     }
@@ -161,25 +163,17 @@ public class ParquetMetadataConverter {
 
   private static final class EncodingList {
 
-    private final List<parquet.column.Encoding> encodings;
+    private final Set<parquet.column.Encoding> encodings;
 
-    public EncodingList(List<parquet.column.Encoding> encodings) {
+    public EncodingList(Set<parquet.column.Encoding> encodings) {
       this.encodings = encodings;
     }
 
     @Override
     public boolean equals(Object obj) {
       if (obj instanceof EncodingList) {
-        List<parquet.column.Encoding> other = ((EncodingList)obj).encodings;
-        if (other.size() != encodings.size()) {
-          return false;
-        }
-        for (int i = 0; i < other.size(); i++) {
-          if (!other.get(i).equals(encodings.get(i))) {
-            return false;
-          }
-        }
-        return true;
+        Set<parquet.column.Encoding> other = ((EncodingList)obj).encodings;
+        return other.size() == encodings.size() && encodings.containsAll(other);
       }
       return false;
     }
@@ -193,16 +187,16 @@ public class ParquetMetadataConverter {
     }
   }
 
-  private Map<EncodingList, List<parquet.column.Encoding>> encodingLists = new HashMap<EncodingList, List<parquet.column.Encoding>>();
+  private Map<EncodingList, Set<parquet.column.Encoding>> encodingLists = new HashMap<EncodingList, Set<parquet.column.Encoding>>();
 
-  private List<parquet.column.Encoding> fromFormatEncodings(List<Encoding> encodings) {
-    List<parquet.column.Encoding> converted = new ArrayList<parquet.column.Encoding>();
+  private Set<parquet.column.Encoding> fromFormatEncodings(List<Encoding> encodings) {
+    Set<parquet.column.Encoding> converted = new HashSet<parquet.column.Encoding>();
     for (Encoding encoding : encodings) {
       converted.add(getEncoding(encoding));
     }
-    converted = Collections.unmodifiableList(converted);
+    converted = Collections.unmodifiableSet(converted);
     EncodingList key = new EncodingList(converted);
-    List<parquet.column.Encoding> cached = encodingLists.get(key);
+    Set<parquet.column.Encoding> cached = encodingLists.get(key);
     if (cached == null) {
       cached = converted;
       encodingLists.put(key, cached);
@@ -294,17 +288,17 @@ public class ParquetMetadataConverter {
           throw new ParquetDecodingException("all column chunks of the same row group must be in the same file for now");
         }
         parquet.format.ColumnMetaData metaData = columnChunk.meta_data;
-        String[] path = getPath(metaData);
-        ColumnChunkMetaData column = new ColumnChunkMetaData(
+        ColumnPath path = getPath(metaData);
+        ColumnChunkMetaData column = ColumnChunkMetaData.get(
             path,
-            messageType.getType(path).asPrimitiveType().getPrimitiveTypeName(),
+            messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName(),
             CompressionCodecName.fromParquet(metaData.codec),
-            fromFormatEncodings(metaData.encodings));
-        column.setFirstDataPageOffset(metaData.data_page_offset);
-        column.setDictionaryPageOffset(metaData.dictionary_page_offset);
-        column.setValueCount(metaData.num_values);
-        column.setTotalUncompressedSize(metaData.total_uncompressed_size);
-        column.setTotalSize(metaData.total_compressed_size);
+            fromFormatEncodings(metaData.encodings),
+            metaData.data_page_offset,
+            metaData.dictionary_page_offset,
+            metaData.num_values,
+            metaData.total_uncompressed_size,
+            metaData.total_compressed_size);
         // TODO
         // index_page_offset
         // key_value_metadata
@@ -325,43 +319,9 @@ public class ParquetMetadataConverter {
         blocks);
   }
 
-
-  private static final class Path {
-
-    private final String[] p;
-
-    public Path(String[] path) {
-      this.p = path;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (obj instanceof Path) {
-        Arrays.equals(p, ((Path)obj).p);
-      }
-      return false;
-    }
-
-    @Override
-    public int hashCode() {
-      return Arrays.hashCode(p);
-    }
-  }
-
-  private Map<Path, String[]> paths = new HashMap<Path, String[]>();
-
-  private String[] getPath(parquet.format.ColumnMetaData metaData) {
+  private ColumnPath getPath(parquet.format.ColumnMetaData metaData) {
     String[] path = metaData.path_in_schema.toArray(new String[metaData.path_in_schema.size()]);
-    Path key = new Path(path);
-    String[] cached = paths.get(path);
-    if (cached == null) {
-      for (int i = 0; i < path.length; i++) {
-        path[i] = path[i].intern();
-      }
-      cached = path;
-      paths.put(key, cached);
-    }
-    return cached;
+    return ColumnPath.get(path);
   }
 
   MessageType fromParquetSchema(List<SchemaElement> schema) {

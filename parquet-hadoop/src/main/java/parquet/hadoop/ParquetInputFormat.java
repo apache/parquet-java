@@ -205,7 +205,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
           MessageType requested = MessageTypeParser.parseMessageType(requestedSchema);
           List<ColumnChunkMetaData> columns = block.getColumns();
           for (ColumnChunkMetaData column : columns) {
-            if (requested.containsPath(column.getPath())) {
+            if (requested.containsPath(column.getPath().toArray())) {
               length += column.getTotalSize();
             }
           }

@@ -37,7 +37,7 @@
     <dependency>
       <groupId>org.apache.pig</groupId>
       <artifactId>pig</artifactId>
-      <version>0.11.0</version>
+      <version>0.11.1</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>

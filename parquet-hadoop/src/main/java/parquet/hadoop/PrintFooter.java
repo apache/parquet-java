@@ -20,6 +20,7 @@ import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -165,7 +166,7 @@ public class PrintFooter {
       recordCount += blockMetaData.getRowCount();
       List<ColumnChunkMetaData> columns = blockMetaData.getColumns();
       for (ColumnChunkMetaData columnMetaData : columns) {
-        ColumnDescriptor desc = schema.getColumnDescription(columnMetaData.getPath());
+        ColumnDescriptor desc = schema.getColumnDescription(columnMetaData.getPath().toArray());
         add(
             desc,
             columnMetaData.getValueCount(),
@@ -236,7 +237,7 @@ public class PrintFooter {
     Set<Encoding> encodings = new TreeSet<Encoding>();
     int blocks = 0;
 
-    public void add(long valueCount, long size, long uncSize, List<Encoding> encodings) {
+    public void add(long valueCount, long size, long uncSize, Collection<Encoding> encodings) {
       ++blocks;
       valueCountStats.add(valueCount);
       allStats.add(size);
@@ -255,7 +256,7 @@ public class PrintFooter {
 
   }
 
-  private static void add(ColumnDescriptor desc, long valueCount, long size, long uncSize, List<Encoding> encodings) {
+  private static void add(ColumnDescriptor desc, long valueCount, long size, long uncSize, Collection<Encoding> encodings) {
     ColStats colStats = stats.get(desc);
     if (colStats == null) {
       colStats = new ColStats();

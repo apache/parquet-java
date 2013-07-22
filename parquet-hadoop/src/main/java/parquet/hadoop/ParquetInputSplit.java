@@ -23,9 +23,11 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
@@ -34,6 +36,7 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import parquet.column.Encoding;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
+import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -248,23 +251,20 @@ public class ParquetInputSplit extends InputSplit implements Writable {
     }
     PrimitiveTypeName type = PrimitiveTypeName.values()[in.readInt()];
     int encodingsSize = in.readInt();
-    List<Encoding> encodings = new ArrayList<Encoding>(encodingsSize);
+    Set<Encoding> encodings = new HashSet<Encoding>(encodingsSize);
     for (int i = 0; i < encodingsSize; i++) {
       encodings.add(Encoding.values()[in.readInt()]);
     }
-    ColumnChunkMetaData column = new ColumnChunkMetaData(columnPath, type, codec, encodings);
-    column.setFirstDataPageOffset(in.readLong());
-    column.setDictionaryPageOffset(in.readLong());
-    column.setValueCount(in.readLong());
-    column.setTotalSize(in.readLong());
-    column.setTotalUncompressedSize(in.readLong());
+    ColumnChunkMetaData column = ColumnChunkMetaData.get(
+        ColumnPath.get(columnPath), type, codec, encodings,
+        in.readLong(), in.readLong(), in.readLong(), in.readLong(), in.readLong());
     return column;
   }
 
   private void writeColumn(DataOutput out, ColumnChunkMetaData column)
       throws IOException {
     out.writeInt(column.getCodec().ordinal());
-    out.writeInt(column.getPath().length);
+    out.writeInt(column.getPath().size());
     for (String s : column.getPath()) {
       out.writeUTF(s);
     }

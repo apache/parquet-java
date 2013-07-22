@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import org.apache.hadoop.fs.BlockLocation;
@@ -32,6 +33,7 @@ import parquet.column.Encoding;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
+import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.schema.MessageType;
@@ -69,9 +71,9 @@ public class TestInputFormat {
 
   private BlockMetaData newBlock(long start) {
     BlockMetaData blockMetaData = new BlockMetaData();
-    ColumnChunkMetaData column = new ColumnChunkMetaData(new String[] {"foo"}, PrimitiveTypeName.BINARY, CompressionCodecName.GZIP, Arrays.asList(Encoding.PLAIN));
-    column.setFirstDataPageOffset(start);
-    column.setTotalSize(2);
+    ColumnChunkMetaData column = ColumnChunkMetaData.get(
+        ColumnPath.get("foo"), PrimitiveTypeName.BINARY, CompressionCodecName.GZIP, new HashSet<Encoding>(Arrays.asList(Encoding.PLAIN)),
+        start, 0l, 0l, 2l, 0l);
     blockMetaData.addColumn(column);
     return blockMetaData;
   }
