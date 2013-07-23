@@ -121,6 +121,18 @@ The build runs in [Travis CI](http://travis-ci.org/Parquet/parquet-mr):
 ### Official releases
 We haven't published a 1.0.0 yet
 
+### How To Contribute
+
+If you are looking for some ideas on what to contribute, check out GitHub issues for this project labeled ["Pick me up!"](https://github.com/Parquet/parquet-mr/issues?labels=pick+me+up%21&state=open).
+Comment on the issue and/or contact [the parquet-dev group](https://groups.google.com/d/forum/parquet-dev) with your questions and ideas.
+
+We tend to do fairly close readings of pull requests, and you may get a lot of comments. Some common issues that are not code structure related, but still important:
+* Please make sure to add the license headers to all new files. You can do this automatically by using the `mvn license:format` command.
+* Use 2 spaces for whitespace. Not tabs, not 4 spaces. The number of the spacing shall be 2.
+* Give your operators some room. Not `a+b` but `a + b` and not `foo(int a,int b)` but `foo(int a, int b)`.
+* Generally speaking, stick to the [Sun Java Code Conventions](http://www.oracle.com/technetwork/java/javase/documentation/codeconvtoc-136057.html)
+* Make sure tests pass!
+
 ## Authors and contributors
 
 * Julien Le Dem [@J_](http://twitter.com/J_) <https://github.com/julienledem>
