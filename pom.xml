@@ -22,6 +22,14 @@
     </license>
   </licenses>
 
+  <mailingLists>
+    <mailingList>
+      <name>Dev List</name>
+      <post>parquet-dev@googlegroups.com</post>
+      <archive>https://groups.google.com/d/forum/parquet-dev</archive>
+    </mailingList>
+  </mailingLists>
+
   <developers>
     <developer>
       <name>Julien Le Dem</name>
@@ -40,6 +48,11 @@
       <name>Nexus Release Repository</name>
       <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
     </repository>
+    <site>
+      <id>github-pages-site</id>
+      <name>Deployment through GitHub's site deployment plugin</name>
+      <url>site/${project.version}</url>
+    </site>
   </distributionManagement>
 
   <repositories>
@@ -59,6 +72,7 @@
     <maven.compiler.source>1.6</maven.compiler.source>
     <maven.compiler.target>1.6</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <github.global.server>github</github.global.server>
     <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
     <jackson.version>1.9.11</jackson.version>
     <hadoop.version>1.1.0</hadoop.version>
@@ -92,6 +106,71 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <reporting>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-project-info-reports-plugin</artifactId>
+        <version>2.7</version>
+        <reportSets>
+          <reportSet>
+            <reports>
+              <report>index</report>
+              <report>mailing-list</report>
+              <report>dependency-info</report>
+              <report>project-team</report>
+              <report>dependencies</report>
+              <report>license</report>
+              <report>scm</report>
+            </reports>
+          </reportSet>
+        </reportSets>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>2.9</version>
+        <reportSets>
+          <reportSet><!-- by default, id = "default" -->
+            <reports><!-- select non-aggregate reports -->
+              <report>javadoc</report>
+              <report>test-javadoc</report>
+            </reports>
+          </reportSet>
+          <reportSet><!-- aggregate reportSet, to define in poms having modules -->
+            <id>aggregate</id>
+            <inherited>false</inherited><!-- don't run aggregate in child modules -->
+            <reports>
+              <report>aggregate</report>
+            </reports>
+          </reportSet>
+        </reportSets>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>cobertura-maven-plugin</artifactId>
+        <version>2.5.2</version>
+        <configuration>
+          <formats>
+            <format>html</format>
+          </formats>
+          <aggregate>true</aggregate>
+          <instrumentation>
+            <ignores>
+              <ignore>parquet.Log.*</ignore>
+              <ignore>java.lang.UnsupportedOperationException.*</ignore>
+            </ignores>
+            <excludes>
+              <exclude>parquet/Log.class</exclude>
+              <exclude>**/*Exception.class</exclude>
+              <exclude>parquet/example/**/*.class</exclude>
+            </excludes>
+          </instrumentation>
+        </configuration>
+      </plugin>
+    </plugins>
+  </reporting>
 
   <build>
     <pluginManagement>
@@ -146,32 +225,6 @@
       </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
-        <artifactId>cobertura-maven-plugin</artifactId>
-        <version>2.5.2</version>
-        <configuration>
-          <aggregate>true</aggregate>
-          <instrumentation>
-            <ignores>
-              <ignore>parquet.Log.*</ignore>
-              <ignore>java.lang.UnsupportedOperationException.*</ignore>
-            </ignores>
-            <excludes>
-              <exclude>parquet/Log.class</exclude>
-              <exclude>**/*Exception.class</exclude>
-              <exclude>parquet/example/**/*.class</exclude>
-            </excludes>
-          </instrumentation>
-        </configuration>
-        <executions>
-          <execution>
-            <goals>
-              <goal>clean</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
         <artifactId>buildnumber-maven-plugin</artifactId>
         <version>1.1</version>
         <executions>
@@ -182,6 +235,33 @@
             </goals>
          </execution>
        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-site-plugin</artifactId>
+        <version>3.1</version>
+        <configuration>
+          <skipDeploy>true</skipDeploy>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>com.github.github</groupId>
+        <artifactId>site-maven-plugin</artifactId>
+        <version>0.8</version>
+        <configuration>
+          <message>Creating site for ${project.version}</message>
+          <path>${project.distributionManagement.site.url}</path>
+          <merge>true</merge>
+        </configuration>
+        <executions>
+          <execution>
+            <id>github-site</id>
+            <goals>
+              <goal>site</goal>
+            </goals>
+            <phase>site-deploy</phase>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
