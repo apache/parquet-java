@@ -90,6 +90,7 @@
     <module>parquet-scrooge</module>
     <module>parquet-thrift</module>
     <module>parquet-test-hadoop2</module>
+    <module>parquet-hive</module>
   </modules>
 
   <dependencies>
