@@ -15,7 +15,7 @@ Parquet is a very active project, and new features are being added quickly; belo
 <table>
   <tr><th>Feature</th><th>In trunk</th><th>In dev</th><th>Planned</th><th>Expected release</th></tr>
   <tr><td>Type-specific encoding</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Hive integration</td><td></td><td>YES (<a href ="https://github.com/Parquet/parquet-mr/pull/28">28</a>)</td></td><td></td><td>1.0</td></tr>
+  <tr><td>Hive integration</td><td>YES (<a href ="https://github.com/Parquet/parquet-mr/pull/28">28</a>)</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Pig integration</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Cascading integration</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Impala integration</td><td>YES (non-nested)</td><td></td></td><td></td><td>1.0</td></tr>
