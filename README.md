@@ -75,7 +75,7 @@ If the data was stored using Pig, things will "just work". If the data was store
 
 ## Hive integration
 
-Hive integration is under development in <a href ="https://github.com/Parquet/parquet-mr/pull/28">Issue 28</a> and very close to being merged! Feel free to try out that branch and tell us what you think.
+Hive integration is provided via the [parquet-hive](https://github.com/Parquet/parquet-mr/tree/master/parquet-hive) sub-project.
 
 ## Build
 
@@ -137,6 +137,8 @@ We tend to do fairly close readings of pull requests, and you may get a lot of c
 
 * Julien Le Dem [@J_](http://twitter.com/J_) <https://github.com/julienledem>
 * Tom White <https://github.com/tomwhite>
+* Mickaël Lacour <https://github.com/mickaellcr>
+* Remy Pecqueur <https://github.com/Lordshinjo>
 * Avi Bryant <https://github.com/avibryant>
 * Dmitriy Ryaboy [@squarecog](https://twitter.com/squarecog) <https://github.com/dvryaboy>
 * Jonathan Coveney <http://twitter.com/jco>
