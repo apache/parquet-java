@@ -40,7 +40,7 @@ import parquet.schema.MessageType;
  */
 public class TupleReadSupport extends ReadSupport<Tuple> {
   static final String PARQUET_PIG_REQUESTED_SCHEMA = "parquet.pig.requested.schema";
-  static final String PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE =  "parquet.pig.elephantbird.compatible";
+  static final String PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE = "parquet.pig.elephantbird.compatible";
   private static final Log LOG = Log.getLog(TupleReadSupport.class);
 
   private static final PigSchemaConverter schemaConverter = new PigSchemaConverter();
@@ -106,11 +106,11 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
     if (requestedPigSchema == null) {
       requestedPigSchema = getPigSchemaFromFile(fileSchema, keyValueMetaData);
     }
-    boolean numbersDefaultToZero = configuration.getBoolean(PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE, false);
-    if (numbersDefaultToZero) {
-      LOG.info("Numbers will default to 0 instead of NULL");
+    boolean elephantBirdCompatible = configuration.getBoolean(PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE, false);
+    if (elephantBirdCompatible) {
+      LOG.info("Numbers will default to 0 instead of NULL; Boolean will be converted to Int");
     }
-    return new TupleRecordMaterializer(requestedSchema, requestedPigSchema, numbersDefaultToZero);
+    return new TupleRecordMaterializer(requestedSchema, requestedPigSchema, elephantBirdCompatible);
   }
 
 }

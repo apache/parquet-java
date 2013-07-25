@@ -198,8 +198,9 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
         final FileMetaData globalMetaData = getParquetInputFormat().getGlobalMetaData(job);
         // TODO: if no Pig schema in file: generate one from the Parquet schema
         schema = TupleReadSupport.getPigSchemaFromFile(globalMetaData.getSchema(), globalMetaData.getKeyValueMetaData());
-        if(isElephantBirdCompatible(job))
+        if(isElephantBirdCompatible(job)) {
          convertToElephantBirdCompatibleSchema(schema);
+        }
       } else {
         // there was a schema requested => use that
         schema = Utils.getSchemaFromString(requestedSchemaStr);
@@ -208,16 +209,15 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     return new ResourceSchema(schema);
   }
 
-  //TODO: check with aniket
   private void convertToElephantBirdCompatibleSchema(Schema schema) {
     for(FieldSchema fieldSchema:schema.getFields()){
-      if (fieldSchema.type== DataType.BOOLEAN)
+      if (fieldSchema.type== DataType.BOOLEAN) {
         fieldSchema.type=DataType.INTEGER;
+      }
     }
   }
 
   private boolean isElephantBirdCompatible(Job job) {
-
     return ContextUtil.getConfiguration(job).getBoolean(TupleReadSupport.PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE, false);
   }
 
