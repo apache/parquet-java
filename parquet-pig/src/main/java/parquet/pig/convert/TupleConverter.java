@@ -157,6 +157,9 @@ public class TupleConverter extends GroupConverter {
             case DOUBLE:
               currentTuple.set(i, DOUBLE_ZERO);
               break;
+            case BOOLEAN:
+              currentTuple.set(i, I32_ZERO);
+              break;
             }
           }
           ++ i;
