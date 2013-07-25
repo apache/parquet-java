@@ -16,15 +16,7 @@
 /**
  *
  * <p>
- * Provides classes to store use Parquet files in Hadoop
- *
- * In a map reduce job:
- * @see parquet.hadoop.ParquetInputFormat
- * @see parquet.hadoop.ParquetOutputFormat
- *
- * In a standalone java app:
- * @see parquet.hadoop.ParquetWriter
- * @see parquet.hadoop.ParquetReader
+ * APIs to integrate various type systems with Parquet
  *
  * </p>
  */
