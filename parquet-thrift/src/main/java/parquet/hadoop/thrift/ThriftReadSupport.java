@@ -43,6 +43,8 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
    */
   private static final String RECORD_CONVERTER_CLASS_KEY = "parquet.thrift.converter.class";
 
+  private Class<T> thriftClass;
+
   /**
    * A {@link ThriftRecordConverter} builds an object by working with {@link TProtocol}. The default
    * implementation creates standard Apache Thrift {@link TBase} objects; to support alternatives, such
@@ -52,6 +54,20 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
   public static void setRecordConverterClass(JobConf conf,
       Class<?> klass) {
     conf.set(RECORD_CONVERTER_CLASS_KEY, klass.getName());
+  }
+
+  /**
+   * used from hadoop
+   * the configuration must contain a "parquet.thrift.read.class" setting
+   */
+  public ThriftReadSupport() {
+  }
+
+  /**
+   * @param thriftClass the thrift class used to deserialize the records
+   */
+  public ThriftReadSupport(Class<T> thriftClass) {
+    this.thriftClass = thriftClass;
   }
 
 
@@ -66,6 +82,9 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
 
   @SuppressWarnings("unchecked")
   private Class<T> getThriftClass(ThriftMetaData metadata, Configuration conf) throws ClassNotFoundException {
+    if (thriftClass != null) {
+      return thriftClass;
+    }
     String className = conf.get(THRIFT_READ_CLASS_KEY, null);
     if (className == null) {
       return (Class<T>) metadata.getThriftClass();

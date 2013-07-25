@@ -56,13 +56,18 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   public <T> RecordReader<T> getRecordReader(PageReadStore columns, RecordMaterializer<T> recordMaterializer) {
-    return new RecordReaderImplementation<T>(
+    if (leaves.size() > 0) {
+      return new RecordReaderImplementation<T>(
         this,
         recordMaterializer,
         validating,
         new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType())
-    );
+      );
+    } else {
+      return new EmptyRecordReader<T>(recordMaterializer);
+    }
   }
+
   public <T> RecordReader<T> getRecordReader(PageReadStore columns, RecordMaterializer<T> recordMaterializer,
                                              UnboundRecordFilter unboundFilter) {
 
