@@ -51,7 +51,8 @@ import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
- * Writes a Parquet file
+ * Internal implementation of the Parquet file writer as a block container
+ *
  * @author Julien Le Dem
  *
  */

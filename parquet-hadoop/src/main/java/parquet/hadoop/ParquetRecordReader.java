@@ -80,14 +80,14 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   private long totalCountLoadedSoFar = 0;
 
   /**
-   * @param readSupport Object which helps reads files of the given tye, e.g. Thrift, Avro.
+   * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
    */
   public ParquetRecordReader(ReadSupport<T> readSupport) {
     this(readSupport, null);
   }
 
   /**
-   * @param readSupport Object which helps reads files of the given tye, e.g. Thrift, Avro.
+   * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
    * @param filter Optional filter for only returning matching records.
    */
   public ParquetRecordReader(ReadSupport<T> readSupport, UnboundRecordFilter filter) {
