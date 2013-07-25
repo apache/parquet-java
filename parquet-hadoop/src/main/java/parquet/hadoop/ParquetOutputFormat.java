@@ -51,7 +51,7 @@ import parquet.hadoop.metadata.CompressionCodecName;
  * # The block size is the size of a row group being buffered in memory
  * # this limits the memory usage when writing
  * # Larger values will improve the IO when reading but consume more memory when writing
- * parquet.block.size=52428800 # in bytes, default = 50 * 1024 * 1024
+ * parquet.block.size=270532608 # in bytes, default = 256 * 1024 * 1024
  *
  * # The page size is for compression. When reading, each page can be decompressed independently.
  * # A block is composed of pages. The page is the smallest unit that must be read fully to access a single record.

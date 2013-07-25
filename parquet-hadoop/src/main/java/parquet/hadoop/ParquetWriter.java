@@ -30,8 +30,8 @@ import parquet.schema.MessageType;
  */
 public class ParquetWriter<T> implements Closeable {
 
-  public static final int DEFAULT_BLOCK_SIZE = 50*1024*1024;
-  public static final int DEFAULT_PAGE_SIZE = 1*1024*1024;
+  public static final int DEFAULT_BLOCK_SIZE = 256 * 1024 * 1024;
+  public static final int DEFAULT_PAGE_SIZE = 1 * 1024 * 1024;
 
   private final ParquetRecordWriter<T> writer;
 
