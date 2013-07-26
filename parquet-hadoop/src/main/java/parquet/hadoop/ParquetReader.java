@@ -38,7 +38,7 @@ import parquet.schema.MessageType;
  */
 public class ParquetReader<T> implements Closeable {
 
-  private ParquetRecordReader<T> reader;
+  private InternalParquetRecordReader<T> reader;
 
   public ParquetReader(Path file, ReadSupport<T> readSupport) throws IOException {
     this(file, readSupport, null);
@@ -58,15 +58,9 @@ public class ParquetReader<T> implements Closeable {
     MessageType schema = fileMetaData.getSchema();
     Map<String, String> extraMetadata = fileMetaData.getKeyValueMetaData();
     final ReadContext readContext = readSupport.init(conf, extraMetadata, schema);
-    reader = new ParquetRecordReader<T>(readSupport, filter);
-    ParquetInputSplit inputSplit =
-        new ParquetInputSplit(
-            file, 0, 0, null, blocks,
-            readContext.getRequestedSchema().toString(),
-            schema.toString(),
-            extraMetadata,
-            readContext.getReadSupportMetadata());
-    reader.initialize(inputSplit, conf);
+    reader = new InternalParquetRecordReader<T>(readSupport, filter);
+    reader.initialize(readContext.getRequestedSchema(), schema, extraMetadata,
+        readContext.getReadSupportMetadata(), file, blocks, conf);
   }
 
   public T read() throws IOException {
