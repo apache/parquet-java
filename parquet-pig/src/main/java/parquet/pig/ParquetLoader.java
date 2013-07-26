@@ -198,8 +198,8 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
         final FileMetaData globalMetaData = getParquetInputFormat().getGlobalMetaData(job);
         // TODO: if no Pig schema in file: generate one from the Parquet schema
         schema = TupleReadSupport.getPigSchemaFromFile(globalMetaData.getSchema(), globalMetaData.getKeyValueMetaData());
-        if(isElephantBirdCompatible(job)) {
-         convertToElephantBirdCompatibleSchema(schema);
+        if (isElephantBirdCompatible(job)) {
+          convertToElephantBirdCompatibleSchema(schema);
         }
       } else {
         // there was a schema requested => use that

@@ -108,10 +108,11 @@ public class TupleConverter extends GroupConverter {
       case DataType.INTEGER:
         return new FieldIntegerConverter(parent);
       case DataType.BOOLEAN:
-        if (elephantBirdCompatible)
-        return new FieldIntegerConverter(parent);
-        else
-        return new FieldBooleanConverter(parent);
+        if (elephantBirdCompatible) {
+          return new FieldIntegerConverter(parent);
+        } else {
+          return new FieldBooleanConverter(parent);
+        }
       case DataType.FLOAT:
         return new FieldFloatConverter(parent);
       case DataType.DOUBLE:
