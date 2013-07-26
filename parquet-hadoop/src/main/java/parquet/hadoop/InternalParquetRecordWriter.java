@@ -17,8 +17,6 @@ package parquet.hadoop;
 
 import java.io.IOException;
 import java.util.Map;
-import org.apache.hadoop.mapreduce.RecordWriter;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import parquet.Log;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.hadoop.CodecFactory.BytesCompressor;
