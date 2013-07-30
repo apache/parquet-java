@@ -107,6 +107,16 @@ The build runs in [Travis CI](http://travis-ci.org/Parquet/parquet-mr):
   <dependencies>
     <dependency>
       <groupId>com.twitter</groupId>
+      <artifactId>parquet-common</artifactId>
+      <version>1.0.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-encoding</artifactId>
+      <version>1.0.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
       <artifactId>parquet-column</artifactId>
       <version>1.0.0-SNAPSHOT</version>
     </dependency>
@@ -119,7 +129,30 @@ The build runs in [Travis CI](http://travis-ci.org/Parquet/parquet-mr):
 ```
 
 ### Official releases
-We haven't published a 1.0.0 yet
+```xml
+  <dependencies>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-common</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-encoding</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-column</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-hadoop</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+  </dependencies>
+```
 
 ### How To Contribute
 
