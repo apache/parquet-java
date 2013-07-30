@@ -8,6 +8,7 @@
 
   <name>Parquet MR</name>
   <url>https://github.com/Parquet/parquet-mr</url>
+  <description>Parquet is a columnar storage format that supports nested data. This provides the java implementation.</description>
 
   <scm>
     <connection>scm:git:git@github.com:Parquet/parquet-mr.git</connection>
