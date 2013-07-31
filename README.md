@@ -91,6 +91,9 @@ The build runs in [Travis CI](http://travis-ci.org/Parquet/parquet-mr):
 ## Add Parquet as a dependency in Maven
 
 ### Snapshot releases
+* [apis documentation](http://parquet.io/parquet-mr/site/1.0.0-SNAPSHOT/apidocs/index.html)
+* maven dependency:
+
 ```xml
   <repositories>
     <repository>
@@ -129,6 +132,10 @@ The build runs in [Travis CI](http://travis-ci.org/Parquet/parquet-mr):
 ```
 
 ### Official releases
+#### 1.0.0
+* [apis documentation](http://parquet.io/parquet-mr/site/1.0.0/apidocs/index.html)
+* maven dependency:
+
 ```xml
   <dependencies>
     <dependency>
