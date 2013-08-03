@@ -131,8 +131,8 @@ class ColumnReaderImpl implements ColumnReader {
   private int definitionLevel;
   private int dictionaryId;
 
+  private long endOfPageValueCount;
   private int readValues;
-  private int readValuesInPage;
   private long pageValueCount;
 
   private final PrimitiveConverter converter;
@@ -450,7 +450,7 @@ class ColumnReaderImpl implements ColumnReader {
       throw new ParquetDecodingException(
           format(
               "Can't read value in column %s at value %d out of %d, %d out of %d in currentPage. repetition level: %d, definition level: %d",
-              path, readValues, totalValueCount, readValuesInPage, pageValueCount, repetitionLevel, definitionLevel),
+              path, readValues, totalValueCount, readValues - (endOfPageValueCount - pageValueCount), pageValueCount, repetitionLevel, definitionLevel),
           e);
     }
   }
@@ -481,7 +481,6 @@ class ColumnReaderImpl implements ColumnReader {
     repetitionLevel = repetitionLevelColumn.readInteger();
     definitionLevel = definitionLevelColumn.readInteger();
     ++readValues;
-    ++readValuesInPage;
   }
 
   private void checkRead() {
@@ -511,7 +510,7 @@ class ColumnReaderImpl implements ColumnReader {
         bind(path.getType());
       }
       this.pageValueCount = page.getValueCount();
-      this.readValuesInPage = 0;
+      this.endOfPageValueCount = readValues + pageValueCount;
       try {
         byte[] bytes = page.getBytes().toByteArray();
         if (DEBUG) LOG.debug("page size " + bytes.length + " bytes and " + pageValueCount + " records");
@@ -529,7 +528,7 @@ class ColumnReaderImpl implements ColumnReader {
   }
 
   private boolean isPageFullyConsumed() {
-    return readValuesInPage >= pageValueCount;
+    return readValues >= endOfPageValueCount;
   }
 
   /**
