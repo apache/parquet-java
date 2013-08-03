@@ -15,7 +15,6 @@
  */
 package parquet.filter;
 
-import parquet.column.ColumnReader;
 
 /**
  * Filter to be applied to a record to work out whether to skip it.
@@ -29,8 +28,4 @@ public interface RecordFilter {
    */
   boolean isMatch();
 
-  /**
-   * Whether the filter values are fully consumed.
-   */
-  boolean isFullyConsumed();
 }

@@ -21,8 +21,6 @@ import parquet.filter.RecordFilter;
 import parquet.filter.UnboundRecordFilter;
 import parquet.io.api.RecordMaterializer;
 
-import java.util.Arrays;
-
 /**
  * Extends the
  * @author Jacob Metcalf
@@ -31,6 +29,8 @@ import java.util.Arrays;
 class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
 
   private final RecordFilter recordFilter;
+  private final long recordCount;
+  private long recordsRead = 0;
 
   /**
    * @param root          the root of the schema
@@ -39,9 +39,9 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
    * @param unboundFilter Filter records, pass in NULL_FILTER to leave unfiltered.
    */
   public FilteredRecordReader(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating,
-                              ColumnReadStoreImpl columnStore, UnboundRecordFilter unboundFilter) {
+                              ColumnReadStoreImpl columnStore, UnboundRecordFilter unboundFilter, long recordCount) {
     super(root, recordMaterializer, validating, columnStore);
-
+    this.recordCount = recordCount;
     if ( unboundFilter != null ) {
       recordFilter = unboundFilter.bind(getColumnReaders());
     } else {
@@ -54,11 +54,12 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
    */
   @Override
   public T read() {
-    if ( skipToMatch()) {
-      return super.read();
-    } else {
+    skipToMatch();
+    if (recordsRead == recordCount) {
       return null;
     }
+    ++ recordsRead;
+    return super.read();
   }
 
 
@@ -66,11 +67,8 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
    * Skips forwards until the filter finds the first match. Returns false
    * if none found.
    */
-  private boolean skipToMatch() {
-    while ( !recordFilter.isMatch()) {
-      if ( recordFilter.isFullyConsumed()) {
-        return false;
-      }
+  private void skipToMatch() {
+    while (recordsRead < recordCount && !recordFilter.isMatch()) {
       State currentState = getState(0);
       do {
         ColumnReader columnReader = currentState.column;
@@ -86,7 +84,7 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
         int nextR = currentState.maxRepetitionLevel == 0 ? 0 : columnReader.getCurrentRepetitionLevel();
         currentState = currentState.getNextState(nextR);
       } while (currentState != null);
+      ++ recordsRead;
     }
-    return true;
   }
 }

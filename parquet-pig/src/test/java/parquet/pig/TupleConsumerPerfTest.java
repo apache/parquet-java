@@ -55,9 +55,9 @@ public class TupleConsumerPerfTest {
     PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
     MessageType schema = pigSchemaConverter.convert(Utils.getSchemaFromString(pigSchema));
 
-    MemPageStore memPageStore = new MemPageStore();
+    MemPageStore memPageStore = new MemPageStore(0);
     ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 50*1024*1024, 50*1024*1024, false);
-    write(columns, schema, pigSchema);
+    write(memPageStore, columns, schema, pigSchema);
     columns.flush();
     read(memPageStore, pigSchema, pigSchemaProjected, pigSchemaNoString);
     System.out.println(columns.memSize()+" bytes used total");
@@ -153,18 +153,18 @@ public class TupleConsumerPerfTest {
     return map;
   }
 
-  private static void write(ColumnWriteStoreImpl columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
+  private static void write(MemPageStore memPageStore, ColumnWriteStoreImpl columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
     MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     TupleWriteSupport tupleWriter = new TupleWriteSupport(schema, Utils.getSchemaFromString(pigSchemaString));
     tupleWriter.init(null);
     tupleWriter.prepareForWrite(columnIO.getRecordWriter(columns));
-    write(tupleWriter, 10000);
-    write(tupleWriter, 10000);
-    write(tupleWriter, 10000);
-    write(tupleWriter, 10000);
-    write(tupleWriter, 10000);
-    write(tupleWriter, 100000);
-    write(tupleWriter, 1000000);
+    write(memPageStore, tupleWriter, 10000);
+    write(memPageStore, tupleWriter, 10000);
+    write(memPageStore, tupleWriter, 10000);
+    write(memPageStore, tupleWriter, 10000);
+    write(memPageStore, tupleWriter, 10000);
+    write(memPageStore, tupleWriter, 100000);
+    write(memPageStore, tupleWriter, 1000000);
     System.out.println();
   }
 
@@ -190,7 +190,7 @@ public class TupleConsumerPerfTest {
     System.out.printf("read %,9d recs in %,5d ms at %,9d rec/s err: %3.2f%%\n", count , t, t == 0 ? 0 : count * 1000 / t, err);
   }
 
-  private static void write(TupleWriteSupport tupleWriter, int count) throws ExecException {
+  private static void write(MemPageStore memPageStore, TupleWriteSupport tupleWriter, int count) throws ExecException {
     Tuple tu = tuple();
     long t0 = System.currentTimeMillis();
     for (int i = 0; i < count; i++) {
@@ -198,6 +198,7 @@ public class TupleConsumerPerfTest {
     }
     long t1 = System.currentTimeMillis();
     long t = t1-t0;
+    memPageStore.addRowCount(count);
     System.out.printf("written %,9d recs in %,5d ms at %,9d rec/s\n", count, t, t == 0 ? 0 : count * 1000 / t );
   }
 

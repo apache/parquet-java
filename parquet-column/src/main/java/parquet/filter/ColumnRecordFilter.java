@@ -66,15 +66,7 @@ public final class ColumnRecordFilter implements RecordFilter {
    */
   @Override
   public boolean isMatch() {
-
-    return ( filterOnColumn.isFullyConsumed()) ? false : filterPredicate.apply( filterOnColumn );
+    return filterPredicate.apply(filterOnColumn);
   }
 
-  /**
-   * @return true if the column we are filtering on has no more values.
-   */
-  @Override
-  public boolean isFullyConsumed() {
-    return filterOnColumn.isFullyConsumed();
-  }
 }

@@ -58,7 +58,7 @@ public class GenerateIntTestFile {
     {
       MessageType schema = new MessageType("int_test_file", new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.INT32, "int_col"));
 
-      MemPageStore pageStore = new MemPageStore();
+      MemPageStore pageStore = new MemPageStore(100);
       ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 8*1024, 8*1024, false);
       MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
 

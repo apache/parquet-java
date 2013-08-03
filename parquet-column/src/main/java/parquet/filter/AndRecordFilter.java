@@ -55,11 +55,6 @@ public final class AndRecordFilter implements RecordFilter {
   }
 
   @Override
-  public boolean isFullyConsumed() {
-    return boundFilter1.isFullyConsumed() && boundFilter2.isFullyConsumed();
-  }
-
-  @Override
   public boolean isMatch() {
     return boundFilter1.isMatch() && boundFilter2.isMatch();
   }

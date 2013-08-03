@@ -45,28 +45,74 @@ import parquet.schema.PrimitiveType.PrimitiveTypeNameConverter;
 class ColumnReaderImpl implements ColumnReader {
   private static final Log LOG = Log.getLog(ColumnReaderImpl.class);
 
+  /**
+   * binds the lower level page decoder to the record converter materializing the records
+   *
+   * @author Julien Le Dem
+   *
+   */
   private static abstract class Binding {
+
+    /**
+     * read one value from the underlying page
+     */
     abstract void read();
+
+    /**
+     * skip one value from the underlying page
+     */
     abstract void skip();
+
+    /**
+     * write current value to converter
+     */
     abstract void writeValue();
+
+    /**
+     * @return current value
+     */
     public int getDictionaryId() {
       throw new UnsupportedOperationException();
     }
+
+    /**
+     * @return current value
+     */
     public int getInteger() {
       throw new UnsupportedOperationException();
     }
+
+    /**
+     * @return current value
+     */
     public boolean getBoolean() {
       throw new UnsupportedOperationException();
     }
+
+    /**
+     * @return current value
+     */
     public long getLong() {
       throw new UnsupportedOperationException();
     }
+
+    /**
+     * @return current value
+     */
     public Binary getBinary() {
       throw new UnsupportedOperationException();
     }
+
+    /**
+     * @return current value
+     */
     public float getFloat() {
       throw new UnsupportedOperationException();
     }
+
+    /**
+     * @return current value
+     */
     public double getDouble() {
       throw new UnsupportedOperationException();
     }
@@ -84,8 +130,6 @@ class ColumnReaderImpl implements ColumnReader {
   private int repetitionLevel;
   private int definitionLevel;
   private int dictionaryId;
-  private boolean valueRead = false;
-  private boolean consumed = true;
 
   private int readValues;
   private int readValuesInPage;
@@ -93,6 +137,10 @@ class ColumnReaderImpl implements ColumnReader {
 
   private final PrimitiveConverter converter;
   private Binding binding;
+
+  // this is needed because we will attempt to read the value twice when filtering
+  // TODO: rework that
+  private boolean valueRead;
 
   private void bindToDictionary(final Dictionary dictionary) {
     binding =
@@ -288,15 +336,11 @@ class ColumnReaderImpl implements ColumnReader {
     if (totalValueCount == 0) {
       throw new ParquetDecodingException("totalValueCount == 0");
     }
+    consume();
   }
 
-  /**
-   * {@inheritDoc}
-   * @see parquet.column.ColumnReader#isFullyConsumed()
-   */
-  @Override
-  public boolean isFullyConsumed() {
-    return ((readValues == totalValueCount) && consumed) || (readValues > totalValueCount);
+  private boolean isFullyConsumed() {
+    return readValues >= totalValueCount;
   }
 
   /**
@@ -305,13 +349,13 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public void writeCurrentValueToConverter() {
-    readIfPossible(false);
+    readValue();
     this.binding.writeValue();
   }
 
   @Override
   public int getCurrentValueDictionaryID() {
-    readIfPossible(false);
+    readValue();
     return binding.getDictionaryId();
   }
 
@@ -321,7 +365,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public int getInteger() {
-    readIfPossible(false);
+    readValue();
     return this.binding.getInteger();
   }
 
@@ -331,7 +375,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public boolean getBoolean() {
-    readIfPossible(false);
+    readValue();
     return this.binding.getBoolean();
   }
 
@@ -341,7 +385,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public long getLong() {
-    readIfPossible(false);
+    readValue();
     return this.binding.getLong();
   }
 
@@ -351,7 +395,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public Binary getBinary() {
-    readIfPossible(false);
+    readValue();
     return this.binding.getBinary();
   }
 
@@ -361,7 +405,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public float getFloat() {
-    readIfPossible(false);
+    readValue();
     return this.binding.getFloat();
   }
 
@@ -371,7 +415,7 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public double getDouble() {
-    readIfPossible(false);
+    readValue();
     return this.binding.getDouble();
   }
 
@@ -381,7 +425,6 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public int getCurrentRepetitionLevel() {
-    checkRead();
     return repetitionLevel;
   }
 
@@ -395,25 +438,12 @@ class ColumnReaderImpl implements ColumnReader {
   }
 
   /**
-   * reads the current value
+   * Reads the value into the binding.
    */
-  public void readCurrentValue() {
-    binding.read();
-  }
-
-  /**
-   * Reads the value into the binding or skips forwards.
-   * @param skip If true do not deserialize just skip forwards
-   */
-  protected void readIfPossible(boolean skip) {
+  public void readValue() {
     try {
-      checkRead();
-      if (!consumed && !valueRead) {
-        if ( skip ) {
-          binding.skip();
-        } else {
-          readCurrentValue();
-        }
+      if (!valueRead) {
+        binding.read();
         valueRead = true;
       }
     } catch (RuntimeException e) {
@@ -431,7 +461,10 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public void skip() {
-    readIfPossible(true);
+    if (!valueRead) {
+      binding.skip();
+      valueRead = true;
+    }
   }
 
   /**
@@ -440,23 +473,18 @@ class ColumnReaderImpl implements ColumnReader {
    */
   @Override
   public int getCurrentDefinitionLevel() {
-    checkRead();
     return definitionLevel;
   }
 
   // TODO: change the logic around read() to not tie together reading from the 3 columns
-  private void read() {
+  private void readRepetitionAndDefinitionLevels() {
     repetitionLevel = repetitionLevelColumn.readInteger();
     definitionLevel = definitionLevelColumn.readInteger();
     ++readValues;
     ++readValuesInPage;
-    consumed = false;
   }
 
-  protected void checkRead() {
-    if (!consumed) {
-      return;
-    }
+  private void checkRead() {
     if (isFullyConsumed()) {
       if (DEBUG) LOG.debug("end reached");
       repetitionLevel = 0; // the next repetition level
@@ -497,7 +525,7 @@ class ColumnReaderImpl implements ColumnReader {
         throw new ParquetDecodingException("could not read page " + page + " in col " + path, e);
       }
     }
-    read();
+    readRepetitionAndDefinitionLevels();
   }
 
   private boolean isPageFullyConsumed() {
@@ -505,14 +533,22 @@ class ColumnReaderImpl implements ColumnReader {
   }
 
   /**
-   *
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#consume()
    */
   @Override
   public void consume() {
-    consumed = true;
+    checkRead();
     valueRead = false;
+  }
+
+  /**
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#getTotalValueCount()
+   */
+  @Override
+  public long getTotalValueCount() {
+    return totalValueCount;
   }
 
 }

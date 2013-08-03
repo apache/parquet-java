@@ -155,7 +155,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
             new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "c_mktsegment"),
             new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "c_comment"));
 
-    final MemPageStore pageStore = new MemPageStore();
+    final MemPageStore pageStore = new MemPageStore(1000);
     final ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 8 * 1024, 8 * 1024, false);
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
 
