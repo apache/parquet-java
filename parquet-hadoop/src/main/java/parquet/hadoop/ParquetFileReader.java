@@ -61,7 +61,7 @@ import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.ParquetDecodingException;
 
 /**
- * Reads a Parquet file
+ * Internal implementation of the Parquet file reader as a block container
  *
  * @author Julien Le Dem
  *

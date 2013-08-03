@@ -59,11 +59,11 @@ public class TupleConverter extends GroupConverter {
 
   private final GroupType parquetSchema;
 
-  private final boolean numbersDefaultToZero;
+  private final boolean elephantBirdCompatible;
 
-  public TupleConverter(GroupType parquetSchema, Schema pigSchema, boolean numbersDefaultToZero) {
+  public TupleConverter(GroupType parquetSchema, Schema pigSchema, boolean elephantBirdCompatible) {
     this.parquetSchema = parquetSchema;
-    this.numbersDefaultToZero = numbersDefaultToZero;
+    this.elephantBirdCompatible = elephantBirdCompatible;
     try {
       this.schemaSize = parquetSchema.getFieldCount();
       if (schemaSize != pigSchema.size()) {
@@ -79,22 +79,22 @@ public class TupleConverter extends GroupConverter {
           void add(Object value) {
             TupleConverter.this.set(index, value);
           }
-        }, numbersDefaultToZero);
+        }, elephantBirdCompatible);
       }
     } catch (FrontendException e) {
       throw new ParquetDecodingException("can not initialize pig converter from:\n" + parquetSchema + "\n" + pigSchema, e);
     }
   }
 
-  static Converter newConverter(FieldSchema pigField, Type type, final ParentValueContainer parent, boolean numbersDefaultToZero) {
+  static Converter newConverter(FieldSchema pigField, Type type, final ParentValueContainer parent, boolean elephantBirdCompatible) {
     try {
       switch (pigField.type) {
       case DataType.BAG:
-        return new BagConverter(type.asGroupType(), pigField, parent, numbersDefaultToZero);
+        return new BagConverter(type.asGroupType(), pigField, parent, elephantBirdCompatible);
       case DataType.MAP:
-        return new MapConverter(type.asGroupType(), pigField, parent, numbersDefaultToZero);
+        return new MapConverter(type.asGroupType(), pigField, parent, elephantBirdCompatible);
       case DataType.TUPLE:
-        return new TupleConverter(type.asGroupType(), pigField.schema, numbersDefaultToZero) {
+        return new TupleConverter(type.asGroupType(), pigField.schema, elephantBirdCompatible) {
           @Override
           public void end() {
             super.end();
@@ -108,7 +108,11 @@ public class TupleConverter extends GroupConverter {
       case DataType.INTEGER:
         return new FieldIntegerConverter(parent);
       case DataType.BOOLEAN:
-        return new FieldBooleanConverter(parent);
+        if (elephantBirdCompatible) {
+          return new FieldIntegerConverter(parent);
+        } else {
+          return new FieldBooleanConverter(parent);
+        }
       case DataType.FLOAT:
         return new FieldFloatConverter(parent);
       case DataType.DOUBLE:
@@ -138,7 +142,7 @@ public class TupleConverter extends GroupConverter {
   @Override
   final public void start() {
     currentTuple = TF.newTuple(schemaSize);
-    if (numbersDefaultToZero) {
+    if (elephantBirdCompatible) {
       try {
         int i = 0;
         for (Type field : parquetSchema.getFields()) {
@@ -156,6 +160,9 @@ public class TupleConverter extends GroupConverter {
               break;
             case DOUBLE:
               currentTuple.set(i, DOUBLE_ZERO);
+              break;
+            case BOOLEAN:
+              currentTuple.set(i, I32_ZERO);
               break;
             }
           }

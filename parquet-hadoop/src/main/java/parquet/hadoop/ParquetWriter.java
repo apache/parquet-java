@@ -30,10 +30,10 @@ import parquet.schema.MessageType;
  */
 public class ParquetWriter<T> implements Closeable {
 
-  public static final int DEFAULT_BLOCK_SIZE = 50*1024*1024;
-  public static final int DEFAULT_PAGE_SIZE = 1*1024*1024;
+  public static final int DEFAULT_BLOCK_SIZE = 256 * 1024 * 1024;
+  public static final int DEFAULT_PAGE_SIZE = 1 * 1024 * 1024;
 
-  private final ParquetRecordWriter<T> writer;
+  private final InternalParquetRecordWriter<T> writer;
 
   /**
    * Create a new ParquetWriter.
@@ -81,7 +81,7 @@ public class ParquetWriter<T> implements Closeable {
 
     CodecFactory codecFactory = new CodecFactory(conf);
     CodecFactory.BytesCompressor compressor =	codecFactory.getCompressor(compressionCodecName, 0);
-    this.writer = new ParquetRecordWriter<T>(fileWriter, writeSupport, schema, writeContext.getExtraMetaData(), blockSize, pageSize, compressor, enableDictionary, validating);
+    this.writer = new InternalParquetRecordWriter<T>(fileWriter, writeSupport, schema, writeContext.getExtraMetaData(), blockSize, pageSize, compressor, enableDictionary, validating);
 
   }
 
@@ -99,7 +99,7 @@ public class ParquetWriter<T> implements Closeable {
 
   public void write(T object) throws IOException {
     try {
-      writer.write(null, object);
+      writer.write(object);
     } catch (InterruptedException e) {
       throw new IOException(e);
     }
@@ -108,7 +108,7 @@ public class ParquetWriter<T> implements Closeable {
   @Override
   public void close() throws IOException {
     try {
-      writer.close(null);
+      writer.close();
     } catch (InterruptedException e) {
       throw new IOException(e);
     }

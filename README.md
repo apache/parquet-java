@@ -75,7 +75,7 @@ If the data was stored using Pig, things will "just work". If the data was store
 
 ## Hive integration
 
-Hive integration is under development in <a href ="https://github.com/Parquet/parquet-mr/pull/28">Issue 28</a> and very close to being merged! Feel free to try out that branch and tell us what you think.
+Hive integration is provided via the [parquet-hive](https://github.com/Parquet/parquet-mr/tree/master/parquet-hive) sub-project.
 
 ## Build
 
@@ -91,6 +91,9 @@ The build runs in [Travis CI](http://travis-ci.org/Parquet/parquet-mr):
 ## Add Parquet as a dependency in Maven
 
 ### Snapshot releases
+* [apis documentation](http://parquet.io/parquet-mr/site/1.0.0-SNAPSHOT/apidocs/index.html)
+* maven dependency:
+
 ```xml
   <repositories>
     <repository>
@@ -107,6 +110,16 @@ The build runs in [Travis CI](http://travis-ci.org/Parquet/parquet-mr):
   <dependencies>
     <dependency>
       <groupId>com.twitter</groupId>
+      <artifactId>parquet-common</artifactId>
+      <version>1.0.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-encoding</artifactId>
+      <version>1.0.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
       <artifactId>parquet-column</artifactId>
       <version>1.0.0-SNAPSHOT</version>
     </dependency>
@@ -119,7 +132,34 @@ The build runs in [Travis CI](http://travis-ci.org/Parquet/parquet-mr):
 ```
 
 ### Official releases
-We haven't published a 1.0.0 yet
+#### 1.0.0
+* [apis documentation](http://parquet.io/parquet-mr/site/1.0.0/apidocs/index.html)
+* maven dependency:
+
+```xml
+  <dependencies>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-common</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-encoding</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-column</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-hadoop</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+  </dependencies>
+```
 
 ### How To Contribute
 
@@ -137,6 +177,8 @@ We tend to do fairly close readings of pull requests, and you may get a lot of c
 
 * Julien Le Dem [@J_](http://twitter.com/J_) <https://github.com/julienledem>
 * Tom White <https://github.com/tomwhite>
+* Mickaël Lacour <https://github.com/mickaellcr>
+* Remy Pecqueur <https://github.com/Lordshinjo>
 * Avi Bryant <https://github.com/avibryant>
 * Dmitriy Ryaboy [@squarecog](https://twitter.com/squarecog) <https://github.com/dvryaboy>
 * Jonathan Coveney <http://twitter.com/jco>

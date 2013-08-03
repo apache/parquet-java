@@ -61,17 +61,39 @@ public class ThriftWriteSupport<T extends TBase<?,?>> extends WriteSupport<T> {
   private MessageType schema;
   private StructType thriftStruct;
   private ParquetWriteProtocol parquetWriteProtocol;
+  private WriteContext writeContext;
 
-  @Override
-  public WriteContext init(Configuration configuration) {
-    Class<? extends TBase<?,?>> thriftClass = getThriftClass(configuration);
+  /**
+   * used from hadoop
+   * the configuration must contain a thriftClass setting
+   * @see ThriftWriteSupport#setThriftClass(Configuration, Class)
+   */
+  public ThriftWriteSupport() {
+  }
+
+  /**
+   * @param thriftClass the thrift class used for writing values
+   */
+  public ThriftWriteSupport(Class<T> thriftClass) {
+    init(thriftClass);
+  }
+
+  private <S extends TBase<?, ?>> void init(Class<S> thriftClass) {
     ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter();
     this.thriftStruct = thriftSchemaConverter.toStructType(thriftClass);
     this.schema = thriftSchemaConverter.convert(thriftClass);
     final Map<String, String> extraMetaData = new ThriftMetaData(thriftClass.getName(), thriftStruct).toExtraMetaData();
     // adding the Pig schema as it would have been mapped from thrift
-    new PigMetaData(new ThriftToPig(thriftClass).toSchema()).addToMetaData(extraMetaData);
-    return new WriteContext(schema, extraMetaData);
+    new PigMetaData(new ThriftToPig<S>(thriftClass).toSchema()).addToMetaData(extraMetaData);
+    writeContext = new WriteContext(schema, extraMetaData);
+  }
+
+  @Override
+  public WriteContext init(Configuration configuration) {
+    if (writeContext == null) {
+      init(getThriftClass(configuration));
+    }
+    return writeContext;
   }
 
   @Override

@@ -15,6 +15,7 @@
  */
 package parquet.pig;
 
+import static parquet.Log.DEBUG;
 import static parquet.pig.TupleReadSupport.PARQUET_PIG_REQUESTED_SCHEMA;
 
 import java.io.IOException;
@@ -36,6 +37,7 @@ import org.apache.pig.LoadPushDown;
 import org.apache.pig.ResourceSchema;
 import org.apache.pig.ResourceStatistics;
 import org.apache.pig.backend.hadoop.executionengine.mapReduceLayer.PigSplit;
+import org.apache.pig.data.DataType;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
@@ -89,7 +91,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public void setLocation(String location, Job job) throws IOException {
-    LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
+    if (DEBUG) LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
     setInput(location, job);
     if (requestedSchema != null) {
       ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, ObjectSerializer.serialize(requestedSchema));
@@ -115,7 +117,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public InputFormat<Void, Tuple> getInputFormat() throws IOException {
-    LOG.debug("LoadFunc.getInputFormat()");
+    if (DEBUG) LOG.debug("LoadFunc.getInputFormat()");
     return getParquetInputFormat();
   }
 
@@ -162,7 +164,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   @Override
   public void prepareToRead(@SuppressWarnings("rawtypes") RecordReader reader, PigSplit split)
       throws IOException {
-    LOG.debug("LoadFunc.prepareToRead(" + reader + ", " + split + ")");
+    if (DEBUG) LOG.debug("LoadFunc.prepareToRead(" + reader + ", " + split + ")");
     this.reader = reader;
   }
 
@@ -182,14 +184,14 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public String[] getPartitionKeys(String location, Job job) throws IOException {
-    LOG.debug("LoadMetadata.getPartitionKeys(" + location + ", " + job + ")");
+    if (DEBUG) LOG.debug("LoadMetadata.getPartitionKeys(" + location + ", " + job + ")");
     setInput(location, job);
     return null;
   }
 
   @Override
   public ResourceSchema getSchema(String location, Job job) throws IOException {
-    LOG.debug("LoadMetadata.getSchema(" + location + ", " + job + ")");
+    if (DEBUG) LOG.debug("LoadMetadata.getSchema(" + location + ", " + job + ")");
     setInput(location, job);
     if (schema == null) {
       if (requestedSchemaStr == null) {
@@ -197,6 +199,9 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
         final FileMetaData globalMetaData = getParquetInputFormat().getGlobalMetaData(job);
         // TODO: if no Pig schema in file: generate one from the Parquet schema
         schema = TupleReadSupport.getPigSchemaFromFile(globalMetaData.getSchema(), globalMetaData.getKeyValueMetaData());
+        if (isElephantBirdCompatible(job)) {
+          convertToElephantBirdCompatibleSchema(schema);
+        }
       } else {
         // there was a schema requested => use that
         schema = Utils.getSchemaFromString(requestedSchemaStr);
@@ -205,17 +210,29 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     return new ResourceSchema(schema);
   }
 
+  private void convertToElephantBirdCompatibleSchema(Schema schema) {
+    for(FieldSchema fieldSchema:schema.getFields()){
+      if (fieldSchema.type== DataType.BOOLEAN) {
+        fieldSchema.type=DataType.INTEGER;
+      }
+    }
+  }
+
+  private boolean isElephantBirdCompatible(Job job) {
+    return ContextUtil.getConfiguration(job).getBoolean(TupleReadSupport.PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE, false);
+  }
+
   @Override
   public ResourceStatistics getStatistics(String location, Job job)
       throws IOException {
-    LOG.debug("LoadMetadata.getStatistics(" + location + ", " + job + ")");
+    if (DEBUG) LOG.debug("LoadMetadata.getStatistics(" + location + ", " + job + ")");
     setInput(location, job);
     return null;
   }
 
   @Override
   public void setPartitionFilter(Expression expression) throws IOException {
-    LOG.debug("LoadMetadata.setPartitionFilter(" + expression + ")");
+    if (DEBUG) LOG.debug("LoadMetadata.setPartitionFilter(" + expression + ")");
   }
 
   @Override
