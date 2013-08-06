@@ -30,7 +30,7 @@ import cascading.flow.FlowProcess;
 import cascading.scheme.SinkCall;
 import cascading.tap.Tap;
 
-public class ParquetTBaseScheme<T extends TBase> extends ParquetValueScheme<T> {
+public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme<T> {
 
   @SuppressWarnings("rawtypes")
   @Override
