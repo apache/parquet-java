@@ -32,7 +32,7 @@ import parquet.column.values.bitpacking.Packer;
  * @author Alex Levenson
  */
 public class TestRunLengthBitPackingHybridEncoder {
-
+  
   @Test
   public void testRLEOnly() throws Exception {
     RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(3, 5);
@@ -274,6 +274,22 @@ public class TestRunLengthBitPackingHybridEncoder {
 
     // end of stream
     assertEquals(-1, is.read());
+  }
+  
+
+  @Test
+  public void testGroupBoundary() throws Exception {
+	byte[] bytes = new byte[2];
+	// Create an RLE byte stream that has 3 values (1 literal group) with
+	// bit width 2.
+	bytes[0] = (1 << 1 )| 1; 
+	bytes[1] = (1 << 0) | (2 << 2) | (3 << 4);
+    ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
+    RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(3, 2, stream);
+    assertEquals(decoder.readInt(), 1);
+    assertEquals(decoder.readInt(), 2);
+    assertEquals(decoder.readInt(), 3);
+    assertEquals(stream.available(), 0);
   }
 
   private static List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is)
