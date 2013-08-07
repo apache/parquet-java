@@ -25,7 +25,7 @@ import org.apache.thrift.TBase;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
 import parquet.hadoop.thrift.ThriftReadSupport;
-import parquet.thrift.ThriftRecordConverter;
+import parquet.thrift.TBaseRecordConverter;
 import cascading.flow.FlowProcess;
 import cascading.scheme.SinkCall;
 import cascading.tap.Tap;
@@ -54,7 +54,7 @@ public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
     jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
     ParquetInputFormat.setReadSupportClass(jobConf, ThriftReadSupport.class);
-    ThriftReadSupport.setRecordConverterClass(jobConf, ThriftRecordConverter.class);
+    ThriftReadSupport.setRecordConverterClass(jobConf, TBaseRecordConverter.class);
   }
 
 
