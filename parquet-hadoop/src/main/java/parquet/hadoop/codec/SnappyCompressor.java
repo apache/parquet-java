@@ -90,11 +90,13 @@ public class SnappyCompressor implements Compressor {
     Preconditions.checkArgument(!outputBuffer.hasRemaining(), 
         "Output buffer should be empty. Caller must call compress()");
 
-    if (inputBuffer.remaining() < len) {
-      ByteBuffer tmp = ByteBuffer.allocateDirect(inputBuffer.capacity() + len);
+    if (inputBuffer.capacity() - inputBuffer.position() < len) {
+      ByteBuffer tmp = ByteBuffer.allocateDirect(inputBuffer.position() + len);
       inputBuffer.rewind();
       tmp.put(inputBuffer);
       inputBuffer = tmp;
+    } else {
+      inputBuffer.limit(inputBuffer.position() + len);
     }
 
     // Append the current bytes to the input buffer
@@ -143,10 +145,10 @@ public class SnappyCompressor implements Compressor {
   public synchronized void reset() {
     finishCalled = false;
     bytesRead = bytesWritten = 0;
-    inputBuffer.clear();
+    inputBuffer.rewind();
+    outputBuffer.rewind();
     inputBuffer.limit(0);
-    outputBuffer.clear();
-    outputBuffer.limit(0);		
+    outputBuffer.limit(0);
   }
 
   @Override

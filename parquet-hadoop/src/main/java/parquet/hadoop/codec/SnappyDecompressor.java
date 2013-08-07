@@ -47,13 +47,12 @@ public class SnappyDecompressor implements Decompressor {
   @Override
   public synchronized int decompress(byte[] buffer, int off, int len) throws IOException {
     SnappyUtil.validateBuffer(buffer, off, len);
-
-    if (needsInput()) {    	
-      // No buffered output bytes and no input to consume, need more input
+	if (inputBuffer.position() == 0 && !outputBuffer.hasRemaining()) {
       return 0;
     }
     
     if (!outputBuffer.hasRemaining()) {
+      inputBuffer.rewind();
       Preconditions.checkArgument(inputBuffer.position() == 0, "Invalid position of 0.");
       Preconditions.checkArgument(outputBuffer.position() == 0, "Invalid position of 0.");
       // There is compressed input, decompress it now.
@@ -66,14 +65,13 @@ public class SnappyDecompressor implements Decompressor {
       outputBuffer.clear();
       int size = Snappy.uncompress(inputBuffer, outputBuffer);
       outputBuffer.limit(size);
-      // We've compressed the entire input, reset the input now
+      // We've decompressed the entire input, reset the input now
       inputBuffer.clear();
       inputBuffer.limit(0);
       finished = true;
     }
 
     // Return compressed output up to 'len'
-
     int numBytes = Math.min(len, outputBuffer.remaining());
     outputBuffer.get(buffer, off, numBytes);
     return numBytes;	    
@@ -97,15 +95,15 @@ public class SnappyDecompressor implements Decompressor {
   public synchronized void setInput(byte[] buffer, int off, int len) {
     SnappyUtil.validateBuffer(buffer, off, len);
 
-    if (inputBuffer.capacity() < len) {
-      inputBuffer = ByteBuffer.allocateDirect(len);
+    if (inputBuffer.capacity() - inputBuffer.position() < len) {
+      ByteBuffer newBuffer = ByteBuffer.allocateDirect(inputBuffer.position() + len);
+      inputBuffer.rewind();
+      newBuffer.put(inputBuffer);
+      inputBuffer = newBuffer;      
+    } else {
+      inputBuffer.limit(inputBuffer.position() + len);
     }
-
-    // Clear the input direct buffer and put all the input data there.
-    inputBuffer.clear();
     inputBuffer.put(buffer, off, len);
-    inputBuffer.rewind();
-    inputBuffer.limit(len);
   }
 
   @Override
@@ -114,7 +112,7 @@ public class SnappyDecompressor implements Decompressor {
   }
 
   @Override
-  public boolean finished() {
+  public synchronized boolean finished() {
     return finished && !outputBuffer.hasRemaining();
   }
 
@@ -131,10 +129,10 @@ public class SnappyDecompressor implements Decompressor {
   @Override
   public synchronized void reset() {
     finished = false;
-    inputBuffer.clear();
+    inputBuffer.rewind();
+    outputBuffer.rewind();
     inputBuffer.limit(0);
-    outputBuffer.clear();
-    outputBuffer.limit(0);		
+    outputBuffer.limit(0);
   }
 
   @Override
