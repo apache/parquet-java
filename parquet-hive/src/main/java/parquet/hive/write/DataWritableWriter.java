@@ -12,7 +12,9 @@
 package parquet.hive.write;
 
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.hadoop.hive.serde2.io.ByteWritable;
 import org.apache.hadoop.hive.serde2.io.DoubleWritable;
+import org.apache.hadoop.hive.serde2.io.ShortWritable;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.BooleanWritable;
 import org.apache.hadoop.io.FloatWritable;
@@ -145,6 +147,10 @@ public class DataWritableWriter {
       recordConsumer.addInteger(((IntWritable) value).get());
     } else if (value instanceof LongWritable) {
       recordConsumer.addLong(((LongWritable) value).get());
+    } else if (value instanceof ShortWritable) {
+      recordConsumer.addInteger(((ShortWritable) value).get());
+    } else if (value instanceof ByteWritable) {
+      recordConsumer.addInteger(((ByteWritable) value).get());
     } else if (value instanceof BigDecimalWritable) {
       throw new NotImplementedException("BigDecimal writing not implemented");
     } else if (value instanceof BinaryWritable) {

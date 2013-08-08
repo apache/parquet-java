@@ -28,13 +28,18 @@ import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.AbstractPrimitiveJavaObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.SettableByteObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.SettableStringObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.SettableShortObjectInspector;
+import org.apache.hadoop.hive.serde2.io.ByteWritable;
+import org.apache.hadoop.hive.serde2.io.ShortWritable;
 import org.apache.hadoop.hive.serde2.typeinfo.ListTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.MapTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.io.ArrayWritable;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.Utils;
 
@@ -100,9 +105,9 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
     } else if (typeInfo.equals(TypeInfoFactory.timestampTypeInfo)) {
       throw new NotImplementedException("timestamp not implemented yet");
     } else if (typeInfo.equals(TypeInfoFactory.byteTypeInfo)) {
-      return PrimitiveObjectInspectorFactory.writableByteObjectInspector;
+      return new ParquetByteInspector();
     } else if (typeInfo.equals(TypeInfoFactory.shortTypeInfo)) {
-      return PrimitiveObjectInspectorFactory.writableShortObjectInspector;
+      return new ParquetShortInspector();
     } else {
       throw new RuntimeException("Unknown field info: " + typeInfo);
     }
@@ -179,6 +184,72 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
     @Override
     public ObjectInspector getFieldObjectInspector() {
       return inspector;
+    }
+  }
+
+  public class ParquetShortInspector
+      extends AbstractPrimitiveJavaObjectInspector
+      implements SettableShortObjectInspector {
+    ParquetShortInspector() {
+      super(PrimitiveObjectInspectorUtils.shortTypeEntry);
+    }
+
+    @Override
+    public Object getPrimitiveWritableObject(final Object o) {
+      return o == null ? null : new ShortWritable(get(o));
+    }
+
+    @Override
+    public Object create(final short val) {
+      return new ShortWritable(val);
+    }
+
+    @Override
+    public Object set(final Object o, final short val) {
+      ((ShortWritable)o).set(val);
+      return o;
+    }
+
+    @Override
+    public short get(Object o) {
+      // Accept int writables and convert them.
+      if (o instanceof IntWritable) {
+        return (short)((IntWritable)o).get();
+      }
+      return ((ShortWritable)o).get();
+    }
+  }
+
+  public class ParquetByteInspector
+      extends AbstractPrimitiveJavaObjectInspector
+      implements SettableByteObjectInspector {
+    ParquetByteInspector() {
+      super(PrimitiveObjectInspectorUtils.byteTypeEntry);
+    }
+
+    @Override
+    public Object getPrimitiveWritableObject(final Object o) {
+      return o == null ? null : new ByteWritable(get(o));
+    }
+
+    @Override
+    public Object create(final byte val) {
+      return new ByteWritable(val);
+    }
+
+    @Override
+    public Object set(final Object o, final byte val) {
+      ((ByteWritable)o).set(val);
+      return o;
+    }
+
+    @Override
+    public byte get(Object o) {
+      // Accept int writables and convert them.
+      if (o instanceof IntWritable) {
+        return (byte)((IntWritable)o).get();
+      }
+      return ((ByteWritable)o).get();
     }
   }
 
