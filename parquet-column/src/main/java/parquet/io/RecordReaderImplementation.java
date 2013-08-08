@@ -235,11 +235,10 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
   private ColumnReader[] columns;
 
   /**
-   *
    * @param root the root of the schema
-   * @param validating
-   * @param columnStore
-   * @param rowCOunt
+   * @param recordMaterializer responsible of materializing the records
+   * @param validating whether we should validate against the schema
+   * @param columnStore where to read the column data from
    */
   public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnReadStoreImpl columnStore) {
     this.recordMaterializer = recordMaterializer;
