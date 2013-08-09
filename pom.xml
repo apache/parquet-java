@@ -49,11 +49,6 @@
       <name>Nexus Release Repository</name>
       <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
     </repository>
-    <site>
-      <id>github-pages-site</id>
-      <name>Deployment through GitHub's site deployment plugin</name>
-      <url>site/${project.version}</url>
-    </site>
   </distributionManagement>
 
   <repositories>
