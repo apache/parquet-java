@@ -8,8 +8,10 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.RecordReader;
 import org.junit.Test;
+
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
+
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.thrift.ThriftReadSupport;
 import parquet.io.api.RecordMaterializer;
@@ -46,22 +48,22 @@ public class TestParquetTBaseScheme {
   }
 
   @Test
-  public void testNotSupportSink(){
-    ParquetTBaseScheme<AddressBook> scheme=new ParquetTBaseScheme<AddressBook>();
+  public void testNotSupportSink() {
+    ParquetTBaseScheme<AddressBook> scheme = new ParquetTBaseScheme<AddressBook>();
     assertFalse(scheme.isSink());
   }
 
   @Test(expected = UnsupportedOperationException.class)
-  public void testNotSinkConfInit(){
-    ParquetTBaseScheme<AddressBook> scheme=new ParquetTBaseScheme<AddressBook>();
+  public void testNotSinkConfInit() {
+    ParquetTBaseScheme<AddressBook> scheme = new ParquetTBaseScheme<AddressBook>();
     scheme.sinkConfInit(mock(FlowProcess.class),
-                        mock(Tap.class),
-                        mock(JobConf.class));
+            mock(Tap.class),
+            mock(JobConf.class));
   }
 
   @Test(expected = UnsupportedOperationException.class)
   public void testNotSink() throws IOException {
-    ParquetTBaseScheme<AddressBook> scheme=new ParquetTBaseScheme<AddressBook>();
-    scheme.sink(mock(FlowProcess.class),mock(SinkCall.class));
+    ParquetTBaseScheme<AddressBook> scheme = new ParquetTBaseScheme<AddressBook>();
+    scheme.sink(mock(FlowProcess.class), mock(SinkCall.class));
   }
 }
