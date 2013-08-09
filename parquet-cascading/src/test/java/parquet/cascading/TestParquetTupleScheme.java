@@ -22,7 +22,7 @@ import parquet.hadoop.ParquetInputFormat;
 
 import java.net.URL;
 
-public class ParquetTupleSchemeTest {
+public class TestParquetTupleScheme {
   Tap tap;
   FlowProcess fp;
 
