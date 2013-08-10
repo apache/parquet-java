@@ -55,7 +55,7 @@ public class DictionaryValuesReader extends ValuesReader {
     this.in = new ByteArrayInputStream(page, offset, page.length - offset);
     int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
     if (DEBUG) LOG.debug("bit width " + bitWidth);
-    decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
+    decoder = new RunLengthBitPackingHybridDecoder((int)valueCount, bitWidth, in);
     return page.length;
   }
 

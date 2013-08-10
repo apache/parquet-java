@@ -43,25 +43,28 @@ public class RunLengthBitPackingHybridDecoder {
   private final InputStream in;
 
   private MODE mode;
-
+  private int valuesRemaining;
   private int currentCount;
   private int currentValue;
   private int[] currentBuffer;
 
-  public RunLengthBitPackingHybridDecoder(int bitWidth, InputStream in) {
+  public RunLengthBitPackingHybridDecoder(int numValues, int bitWidth, InputStream in) {
     if (DEBUG) LOG.debug("decoding bitWidth " + bitWidth);
 
     Preconditions.checkArgument(bitWidth >= 0 && bitWidth <= 32, "bitWidth must be >= 0 and <= 32");
     this.bitWidth = bitWidth;
     this.packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
     this.in = in;
+    this.valuesRemaining = numValues;
   }
 
   public int readInt() throws IOException {
+	Preconditions.checkArgument(valuesRemaining > 0, "Reading past RLE/BitPacking stream.");
     if (currentCount == 0) {
       readNext();
     }
     -- currentCount;
+    --valuesRemaining;
     int result;
     switch (mode) {
     case RLE:
@@ -91,7 +94,13 @@ public class RunLengthBitPackingHybridDecoder {
       if (DEBUG) LOG.debug("reading " + currentCount + " values BIT PACKED");
       currentBuffer = new int[currentCount]; // TODO: reuse a buffer
       byte[] bytes = new byte[numGroups * bitWidth];
-      new DataInputStream(in).readFully(bytes);
+      // At the end of the file RLE data though, there might not be that many bytes left. 
+      // For example, if the number of values is 3, with bitwidth 2, this is encoded as 1 
+      // group (even though it's really 3/8 of a group). We only need 1 byte to encode the 
+      // group values (2 * 3 = 6 bits) but using the numGroups data, we'd think we needed 
+      // 2 bytes (1 * 2 = 2 Bytes).
+      int valuesLeft = Math.min(currentCount, valuesRemaining);
+      new DataInputStream(in).readFully(bytes, 0, (int)Math.ceil(valuesLeft * bitWidth / 8.0));
       for (int valueIndex = 0, byteIndex = 0; valueIndex < currentCount; valueIndex += 8, byteIndex += bitWidth) {
         packer.unpack8Values(bytes, byteIndex, currentBuffer, valueIndex);
       }
