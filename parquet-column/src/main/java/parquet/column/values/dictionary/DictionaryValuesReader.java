@@ -78,6 +78,42 @@ public class DictionaryValuesReader extends ValuesReader {
   }
 
   @Override
+  public float readFloat() {
+    try {
+      return dictionary.decodeToFloat(decoder.readInt());
+    } catch (IOException e) {
+      throw new ParquetDecodingException(e);
+    }
+  }
+
+  @Override
+  public double readDouble() {
+    try {
+      return dictionary.decodeToDouble(decoder.readInt());
+    } catch (IOException e) {
+      throw new ParquetDecodingException(e);
+    }
+  }
+
+  @Override
+  public int readInteger() {
+    try {
+      return dictionary.decodeToInt(decoder.readInt());
+    } catch (IOException e) {
+      throw new ParquetDecodingException(e);
+    }
+  }
+
+  @Override
+  public long readLong() {
+    try {
+      return dictionary.decodeToLong(decoder.readInt());
+    } catch (IOException e) {
+      throw new ParquetDecodingException(e);
+    }
+  }
+
+  @Override
   public void skip() {
     try {
       decoder.readInt(); // Type does not matter as we are just skipping dictionary keys

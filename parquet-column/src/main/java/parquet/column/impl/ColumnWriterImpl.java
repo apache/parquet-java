@@ -71,15 +71,19 @@ final class ColumnWriterImpl implements ColumnWriter {
       this.dataColumn = new BooleanPlainValuesWriter();
       break;
     case BINARY:
+    case INT64:
+    case DOUBLE:
+    case INT32:
+    case FLOAT:
       if (enableDictionary) {
-        this.dataColumn = new DictionaryValuesWriter(applyRatioInPercent(pageSizeThreshold, DICTIONARY_PAGE_MAX_SIZE_PERCENT), initialSizePerCol);
+        this.dataColumn = new DictionaryValuesWriter(path.getType(), applyRatioInPercent(pageSizeThreshold, DICTIONARY_PAGE_MAX_SIZE_PERCENT), initialSizePerCol);
       } else {
         this.dataColumn = new PlainValuesWriter(initialSizePerCol);
       }
       break;
     default:
       this.dataColumn = new PlainValuesWriter(initialSizePerCol);
-    }
+    }     
   }
 
   private ValuesWriter getColumnDescriptorValuesWriter(int maxLevel) {
