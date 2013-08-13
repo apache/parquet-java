@@ -48,6 +48,7 @@ public class PerfTest {
 
   private static void read(MemPageStore memPageStore) {
     read(memPageStore, schema, "read all");
+    read(memPageStore, schema, "read all");
     read(memPageStore, schema2, "read projected");
     read(memPageStore, schema3, "read projected no Strings");
   }
