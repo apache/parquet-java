@@ -15,7 +15,8 @@
  */
 package parquet.column.values.dictionary;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static parquet.column.Encoding.PLAIN_DICTIONARY;
 
 import java.io.IOException;
@@ -30,6 +31,11 @@ import parquet.column.Encoding;
 import parquet.column.page.DictionaryPage;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.ValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDictionaryValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
 import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.DoublePlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.FloatPlainValuesReader;
@@ -45,7 +51,7 @@ public class TestDictionary {
   public void testBinaryDictionary() throws IOException {
     
     int COUNT = 100;
-    ValuesWriter cw = new DictionaryValuesWriter(PrimitiveTypeName.BINARY, 10000, 10000);
+    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(10000, 10000);
     for (int i = 0; i < COUNT; i++) {
       cw.writeBytes(Binary.fromString("a" + i % 10));
     }
@@ -82,7 +88,7 @@ public class TestDictionary {
   public void testBinaryDictionaryInefficiency() throws IOException {
     
     int COUNT = 40000;
-    ValuesWriter cw = new DictionaryValuesWriter(PrimitiveTypeName.BINARY, 2000000, 10000);
+    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(2000000, 10000);
     for (int i = 0; i < COUNT; i++) {
       cw.writeBytes(Binary.fromString("a" + i ));
     }
@@ -139,7 +145,7 @@ public class TestDictionary {
     
     int COUNT = 1000;
     int COUNT2 = 2000;
-    final DictionaryValuesWriter cw = new DictionaryValuesWriter(PrimitiveTypeName.INT64, 10000, 10000);
+    final DictionaryValuesWriter cw = new PlainLongDictionaryValuesWriter(10000, 10000);
     
     for (long i = 0; i < COUNT; i++) {
       cw.writeLong(i % 50);
@@ -181,7 +187,7 @@ public class TestDictionary {
   public void testLongDictionaryInefficiency() throws IOException {
     
     int COUNT = 50000;
-    final DictionaryValuesWriter cw = new DictionaryValuesWriter(PrimitiveTypeName.INT64, 2000000, 10000);
+    final DictionaryValuesWriter cw = new PlainLongDictionaryValuesWriter(2000000, 10000);
     for (long i = 0; i < COUNT; i++) {
       cw.writeLong(i);
     }
@@ -227,7 +233,7 @@ public class TestDictionary {
     
     int COUNT = 1000;
     int COUNT2 = 2000;
-    final DictionaryValuesWriter cw = new DictionaryValuesWriter(PrimitiveTypeName.DOUBLE, 10000, 10000);
+    final DictionaryValuesWriter cw = new PlainDoubleDictionaryValuesWriter(10000, 10000);
     
     for (double i = 0; i < COUNT; i++) {
       cw.writeDouble(i % 50);
@@ -269,7 +275,7 @@ public class TestDictionary {
   public void testDoubleDictionaryInefficiency() throws IOException {
     
     int COUNT = 30000;
-    final DictionaryValuesWriter cw = new DictionaryValuesWriter(PrimitiveTypeName.DOUBLE, 2000000, 10000);
+    final DictionaryValuesWriter cw = new PlainDoubleDictionaryValuesWriter(2000000, 10000);
     for (double i = 0; i < COUNT; i++) {
       cw.writeDouble(i);
     }
@@ -315,7 +321,7 @@ public class TestDictionary {
     
     int COUNT = 2000;
     int COUNT2 = 4000;
-    final DictionaryValuesWriter cw = new DictionaryValuesWriter(PrimitiveTypeName.INT32, 10000, 10000);
+    final DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(10000, 10000);
     
     for (int i = 0; i < COUNT; i++) {
       cw.writeInteger(i % 50);
@@ -357,7 +363,7 @@ public class TestDictionary {
   public void testIntDictionaryInefficiency() throws IOException {
     
     int COUNT = 20000;
-    final DictionaryValuesWriter cw = new DictionaryValuesWriter(PrimitiveTypeName.INT32, 2000000, 10000);
+    final DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(2000000, 10000);
     for (int i = 0; i < COUNT; i++) {
       cw.writeInteger(i);
     }
@@ -403,7 +409,7 @@ public class TestDictionary {
     
     int COUNT = 2000;
     int COUNT2 = 4000;
-    final DictionaryValuesWriter cw = new DictionaryValuesWriter(PrimitiveTypeName.FLOAT, 10000, 10000);
+    final DictionaryValuesWriter cw = new PlainFloatDictionaryValuesWriter(10000, 10000);
     
     for (float i = 0; i < COUNT; i++) {
       cw.writeFloat(i % 50);
@@ -445,7 +451,7 @@ public class TestDictionary {
   public void testFloatDictionaryInefficiency() throws IOException {
     
     int COUNT = 60000;
-    final DictionaryValuesWriter cw = new DictionaryValuesWriter(PrimitiveTypeName.FLOAT, 2000000, 10000);
+    final DictionaryValuesWriter cw = new PlainFloatDictionaryValuesWriter(2000000, 10000);
     for (float i = 0; i < COUNT; i++) {
       cw.writeFloat(i);
     }

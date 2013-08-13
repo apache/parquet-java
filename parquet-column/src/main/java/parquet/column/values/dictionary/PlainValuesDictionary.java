@@ -16,11 +16,6 @@ package parquet.column.values.dictionary;
 
 import static parquet.bytes.BytesUtils.readIntLittleEndian;
 import static parquet.column.Encoding.PLAIN_DICTIONARY;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
 import java.io.IOException;
 
@@ -32,36 +27,38 @@ import parquet.column.values.plain.PlainValuesReader.IntegerPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.LongPlainValuesReader;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
-import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
- * 
- * a simple implementation of dictionary for plain encoded binary, long, double, int and float dictionaries
+ * a simple implementation of dictionary for plain encoded values
  *
  */
-public class PlainValuesDictionary extends Dictionary {
-
-  private PrimitiveTypeName dictionaryType;
-  
-  private Binary[] binaryDictionaryContent = null;
-  private int[] intDictionaryContent = null;
-  private long[] longDictionaryContent = null;
-  private double[] doubleDictionaryContent = null;
-  private float[] floatDictionaryContent = null;
+public abstract class PlainValuesDictionary extends Dictionary {
 
   /**
    * @param dictionaryPage the PLAIN encoded content of the dictionary
    * @throws IOException
    */
-  public PlainValuesDictionary(PrimitiveTypeName dictionaryType, DictionaryPage dictionaryPage) throws IOException {
+  protected PlainValuesDictionary(DictionaryPage dictionaryPage) throws IOException {
     super(dictionaryPage.getEncoding());
     if (dictionaryPage.getEncoding() != PLAIN_DICTIONARY) {
-      throw new ParquetDecodingException("Dictionary data encoding not supported: " + dictionaryPage.getEncoding());
+      throw new ParquetDecodingException("Dictionary data encoding type not supported: " + dictionaryPage.getEncoding());
     }
-    this.dictionaryType = dictionaryType;
-    final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
-    switch(dictionaryType) {
-    case BINARY:
+  }
+
+  /**
+   * a simple implementation of dictionary for plain encoded binary
+   */
+  public static class PlainBinaryDictionary extends PlainValuesDictionary {
+
+    private Binary[] binaryDictionaryContent = null;
+
+    /**
+     * @param dictionaryPage
+     * @throws IOException
+     */
+    public PlainBinaryDictionary(DictionaryPage dictionaryPage) throws IOException {
+      super(dictionaryPage);
+      final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
       binaryDictionaryContent = new Binary[dictionaryPage.getDictionarySize()];
       // dictionary values are stored in order: size (4 bytes LE) followed by {size} bytes
       int offset = 0;
@@ -74,135 +71,199 @@ public class PlainValuesDictionary extends Dictionary {
         // increment to the next value
         offset += length;
       }
-      break;
-    case INT64:
+    }
+
+    @Override
+    public Binary decodeToBinary(int id) {
+      return binaryDictionaryContent[id];
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder sb = new StringBuilder("PlainBinaryDictionary {\n");
+      for (int i = 0; i < binaryDictionaryContent.length; i++) {
+        sb.append(i).append(" => ").append(binaryDictionaryContent[i]).append("\n");
+      }
+      return sb.append("}").toString();
+    }
+
+    @Override
+    public int getMaxId() {
+      return binaryDictionaryContent.length - 1;
+    }
+
+  }
+
+  /**
+   * a simple implementation of dictionary for plain encoded long values
+   */
+  public static class PlainLongDictionary extends PlainValuesDictionary {
+
+    private long[] longDictionaryContent = null;
+
+    /**
+     * @param dictionaryPage
+     * @throws IOException
+     */
+    public PlainLongDictionary(DictionaryPage dictionaryPage) throws IOException {
+      super(dictionaryPage);
+      final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
       longDictionaryContent = new long[dictionaryPage.getDictionarySize()];
       LongPlainValuesReader longReader = new LongPlainValuesReader();
       longReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0);
       for (int i = 0; i < longDictionaryContent.length; i++) {
         longDictionaryContent[i] = longReader.readLong();
       }
-      break;
-    case DOUBLE:
+    }
+
+    @Override
+    public long decodeToLong(int id) {
+      return longDictionaryContent[id];
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder sb = new StringBuilder("PlainLongDictionary {\n");
+      for (int i = 0; i < longDictionaryContent.length; i++) {
+        sb.append(i).append(" => ").append(longDictionaryContent[i]).append("\n");
+      }
+      return sb.append("}").toString();
+    }
+
+    @Override
+    public int getMaxId() {
+      return longDictionaryContent.length - 1;
+    }
+
+  }
+
+  /**
+   * a simple implementation of dictionary for plain encoded double values
+   */
+  public static class PlainDoubleDictionary extends PlainValuesDictionary {
+
+    private double[] doubleDictionaryContent = null;
+
+    /**
+     * @param dictionaryPage
+     * @throws IOException
+     */
+    public PlainDoubleDictionary(DictionaryPage dictionaryPage) throws IOException {
+      super(dictionaryPage);
+      final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
       doubleDictionaryContent = new double[dictionaryPage.getDictionarySize()];
       DoublePlainValuesReader doubleReader = new DoublePlainValuesReader();
       doubleReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0);
       for (int i = 0; i < doubleDictionaryContent.length; i++) {
         doubleDictionaryContent[i] = doubleReader.readDouble();
       }
-      break;
-    case INT32:
+    }
+
+    @Override
+    public double decodeToDouble(int id) {
+      return doubleDictionaryContent[id];
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder sb = new StringBuilder("PlainDoubleDictionary {\n");
+      for (int i = 0; i < doubleDictionaryContent.length; i++) {
+        sb.append(i).append(" => ").append(doubleDictionaryContent[i]).append("\n");
+      }
+      return sb.append("}").toString();
+    }
+
+    @Override
+    public int getMaxId() {
+      return doubleDictionaryContent.length - 1;
+    }
+
+  }
+
+  /**
+   * a simple implementation of dictionary for plain encoded integer values
+   */
+  public static class PlainIntegerDictionary extends PlainValuesDictionary {
+
+    private int[] intDictionaryContent = null;
+
+    /**
+     * @param dictionaryPage
+     * @throws IOException
+     */
+    public PlainIntegerDictionary(DictionaryPage dictionaryPage) throws IOException {
+      super(dictionaryPage);
+      final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
       intDictionaryContent = new int[dictionaryPage.getDictionarySize()];
       IntegerPlainValuesReader intReader = new IntegerPlainValuesReader();
       intReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0);
       for (int i = 0; i < intDictionaryContent.length; i++) {
         intDictionaryContent[i] = intReader.readInteger();
       }
-      break;
-    case FLOAT:
+    }
+
+    @Override
+    public int decodeToInt(int id) {
+      return intDictionaryContent[id];
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder sb = new StringBuilder("PlainIntegerDictionary {\n");
+      for (int i = 0; i < intDictionaryContent.length; i++) {
+        sb.append(i).append(" => ").append(intDictionaryContent[i]).append("\n");
+      }
+      return sb.append("}").toString();
+    }
+
+    @Override
+    public int getMaxId() {
+      return intDictionaryContent.length - 1;
+    }
+
+  }
+
+  /**
+   * a simple implementation of dictionary for plain encoded float values
+   */
+  public static class PlainFloatDictionary extends PlainValuesDictionary {
+
+    private float[] floatDictionaryContent = null;
+
+    /**
+     * @param dictionaryPage
+     * @throws IOException
+     */
+    public PlainFloatDictionary(DictionaryPage dictionaryPage) throws IOException {
+      super(dictionaryPage);
+      final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
       floatDictionaryContent = new float[dictionaryPage.getDictionarySize()];
       FloatPlainValuesReader floatReader = new FloatPlainValuesReader();
       floatReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0);
       for (int i = 0; i < floatDictionaryContent.length; i++) {
         floatDictionaryContent[i] = floatReader.readFloat();
       }
-      break;
-      default:
-        throw new ParquetDecodingException("Dictionary type not supported: " + dictionaryType);
-    }  
-  }
-
-  @Override
-  public Binary decodeToBinary(int id) {
-    if (dictionaryType != BINARY) {
-      throw new UnsupportedOperationException("cannot decodeToBinary from a " + dictionaryType + " dictionary");
     }
-    return binaryDictionaryContent[id];
-  }
 
-  
-  @Override
-  public int decodeToInt(int id) {
-    if (dictionaryType != INT32) {
-      throw new UnsupportedOperationException("cannot decodeToInt from a " + dictionaryType + " dictionary");
+    @Override
+    public float decodeToFloat(int id) {
+      return floatDictionaryContent[id];
     }
-    return intDictionaryContent[id];
-  }
 
-  @Override
-  public long decodeToLong(int id) {
-    if (dictionaryType != INT64) {
-      throw new UnsupportedOperationException("cannot decodeToLong from a " + dictionaryType + " dictionary");
-    }
-    return longDictionaryContent[id];
-  }
-
-  @Override
-  public float decodeToFloat(int id) {
-    if (dictionaryType != FLOAT) {
-      throw new UnsupportedOperationException("cannot decodeToFloat from a " + dictionaryType + " dictionary");
-    }
-    return floatDictionaryContent[id];
-  }
-
-  @Override
-  public double decodeToDouble(int id) {
-    if (dictionaryType != DOUBLE) {
-      throw new UnsupportedOperationException("cannot decodeToDouble from a " + dictionaryType + " dictionary");
-    }
-    return doubleDictionaryContent[id];
-  }
-
-  @Override
-  public String toString() {
-    StringBuilder sb = new StringBuilder("PlainValuesDictionary {\n");
-    switch(dictionaryType) {
-    case BINARY:
-      for (int i = 0; i < binaryDictionaryContent.length; i++) {
-        sb.append(i).append(" => ").append(binaryDictionaryContent[i]).append("\n");
-      }
-      break;
-    case INT64:
-      for (int i = 0; i < longDictionaryContent.length; i++) {
-        sb.append(i).append(" => ").append(longDictionaryContent[i]).append("\n");
-      }
-      break;
-    case INT32:
-      for (int i = 0; i < intDictionaryContent.length; i++) {
-        sb.append(i).append(" => ").append(intDictionaryContent[i]).append("\n");
-      }
-      break;
-    case FLOAT:
+    @Override
+    public String toString() {
+      StringBuilder sb = new StringBuilder("PlainFloatDictionary {\n");
       for (int i = 0; i < floatDictionaryContent.length; i++) {
         sb.append(i).append(" => ").append(floatDictionaryContent[i]).append("\n");
       }
-      break;
-    case DOUBLE:
-      for (int i = 0; i < doubleDictionaryContent.length; i++) {
-        sb.append(i).append(" => ").append(doubleDictionaryContent[i]).append("\n");
-      }
-      break;
-    default:
+      return sb.append("}").toString();
     }
-    return sb.append("}").toString();
-  }
 
-  @Override
-  public int getMaxId() {
-    switch(dictionaryType) {
-    case BINARY: 
-      return binaryDictionaryContent.length -1;
-    case INT64: 
-      return longDictionaryContent.length -1;   
-    case INT32: 
-      return intDictionaryContent.length -1;
-    case FLOAT: 
-      return floatDictionaryContent.length -1;
-    case DOUBLE: 
-      return doubleDictionaryContent.length -1;
-    default: 
-      throw new ParquetDecodingException("failed to determine maxId for dictionary of type: " + dictionaryType);
+    @Override
+    public int getMaxId() {
+      return floatDictionaryContent.length - 1;
     }
+
   }
 
 }

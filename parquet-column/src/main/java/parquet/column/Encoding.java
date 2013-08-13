@@ -25,7 +25,11 @@ import parquet.column.values.ValuesReader;
 import parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 import parquet.column.values.boundedint.ZeroIntegerValuesReader;
 import parquet.column.values.dictionary.DictionaryValuesReader;
-import parquet.column.values.dictionary.PlainValuesDictionary;
+import parquet.column.values.dictionary.PlainValuesDictionary.PlainBinaryDictionary;
+import parquet.column.values.dictionary.PlainValuesDictionary.PlainDoubleDictionary;
+import parquet.column.values.dictionary.PlainValuesDictionary.PlainFloatDictionary;
+import parquet.column.values.dictionary.PlainValuesDictionary.PlainIntegerDictionary;
+import parquet.column.values.dictionary.PlainValuesDictionary.PlainLongDictionary;
 import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.BooleanPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.DoublePlainValuesReader;
@@ -118,11 +122,15 @@ public enum Encoding {
     public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage) throws IOException {
       switch (descriptor.getType()) {
       case BINARY:
+        return new PlainBinaryDictionary(dictionaryPage);
       case INT64:
+        return new PlainLongDictionary(dictionaryPage);
       case DOUBLE:
+        return new PlainDoubleDictionary(dictionaryPage);
       case INT32:
+        return new PlainIntegerDictionary(dictionaryPage);
       case FLOAT:
-        return new PlainValuesDictionary(descriptor.getType(), dictionaryPage);
+        return new PlainFloatDictionary(dictionaryPage);
       default:
         throw new ParquetDecodingException("Dictionary encoding not supported for type: " + descriptor.getType());
       }
