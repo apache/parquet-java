@@ -27,7 +27,11 @@ import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.boundedint.DevNullValuesWriter;
-import parquet.column.values.dictionary.DictionaryValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDictionaryValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
@@ -66,20 +70,40 @@ final class ColumnWriterImpl implements ColumnWriter {
 
     definitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel());
 
-    switch (path.getType()) {
-    case BOOLEAN:
-      this.dataColumn = new BooleanPlainValuesWriter();
-      break;
-    case BINARY:
-      if (enableDictionary) {
-        this.dataColumn = new DictionaryValuesWriter(applyRatioInPercent(pageSizeThreshold, DICTIONARY_PAGE_MAX_SIZE_PERCENT), initialSizePerCol);
-      } else {
+    if(enableDictionary) {
+      int maxDictByteSize = applyRatioInPercent(pageSizeThreshold, DICTIONARY_PAGE_MAX_SIZE_PERCENT);
+      switch (path.getType()) {
+      case BOOLEAN:
+        this.dataColumn = new BooleanPlainValuesWriter();
+        break;
+      case BINARY:
+        this.dataColumn = new PlainBinaryDictionaryValuesWriter(maxDictByteSize, initialSizePerCol);
+        break;
+      case INT64:
+        this.dataColumn = new PlainLongDictionaryValuesWriter(maxDictByteSize, initialSizePerCol);
+        break;
+      case DOUBLE:
+        this.dataColumn = new PlainDoubleDictionaryValuesWriter(maxDictByteSize, initialSizePerCol);
+        break;
+      case INT32:
+        this.dataColumn = new PlainIntegerDictionaryValuesWriter(maxDictByteSize, initialSizePerCol);
+        break;
+      case FLOAT:
+        this.dataColumn = new PlainFloatDictionaryValuesWriter(maxDictByteSize, initialSizePerCol);
+        break;
+      default:
         this.dataColumn = new PlainValuesWriter(initialSizePerCol);
-      }
-      break;
-    default:
-      this.dataColumn = new PlainValuesWriter(initialSizePerCol);
+      }     
+    } else {
+      switch (path.getType()) {
+      case BOOLEAN:
+        this.dataColumn = new BooleanPlainValuesWriter();
+        break;
+      default:
+        this.dataColumn = new PlainValuesWriter(initialSizePerCol);
+      }     
     }
+    
   }
 
   private ValuesWriter getColumnDescriptorValuesWriter(int maxLevel) {

@@ -15,6 +15,8 @@
  */
 package parquet.column;
 
+import static parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
+
 import java.io.IOException;
 
 import parquet.bytes.BytesUtils;
@@ -23,7 +25,11 @@ import parquet.column.values.ValuesReader;
 import parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 import parquet.column.values.boundedint.ZeroIntegerValuesReader;
 import parquet.column.values.dictionary.DictionaryValuesReader;
-import parquet.column.values.dictionary.PlainBinaryDictionary;
+import parquet.column.values.dictionary.PlainValuesDictionary.PlainBinaryDictionary;
+import parquet.column.values.dictionary.PlainValuesDictionary.PlainDoubleDictionary;
+import parquet.column.values.dictionary.PlainValuesDictionary.PlainFloatDictionary;
+import parquet.column.values.dictionary.PlainValuesDictionary.PlainIntegerDictionary;
+import parquet.column.values.dictionary.PlainValuesDictionary.PlainLongDictionary;
 import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.BooleanPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.DoublePlainValuesReader;
@@ -32,9 +38,6 @@ import parquet.column.values.plain.PlainValuesReader.IntegerPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.LongPlainValuesReader;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
 import parquet.io.ParquetDecodingException;
-import parquet.schema.PrimitiveType.PrimitiveTypeName;
-
-import static parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
 
 /**
  * encoding of the data
@@ -105,6 +108,10 @@ public enum Encoding {
     public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
       switch (descriptor.getType()) {
       case BINARY:
+      case INT64:
+      case DOUBLE:
+      case INT32:
+      case FLOAT:
         return new DictionaryValuesReader(dictionary);
       default:
         throw new ParquetDecodingException("Dictionary encoding not supported for type: " + descriptor.getType());
@@ -113,10 +120,21 @@ public enum Encoding {
 
     @Override
     public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage) throws IOException {
-      if (descriptor.getType() != PrimitiveTypeName.BINARY) {
-        throw new UnsupportedOperationException("only Binary dictionaries are supported for now");
+      switch (descriptor.getType()) {
+      case BINARY:
+        return new PlainBinaryDictionary(dictionaryPage);
+      case INT64:
+        return new PlainLongDictionary(dictionaryPage);
+      case DOUBLE:
+        return new PlainDoubleDictionary(dictionaryPage);
+      case INT32:
+        return new PlainIntegerDictionary(dictionaryPage);
+      case FLOAT:
+        return new PlainFloatDictionary(dictionaryPage);
+      default:
+        throw new ParquetDecodingException("Dictionary encoding not supported for type: " + descriptor.getType());
       }
-      return new PlainBinaryDictionary(dictionaryPage);
+      
     }
 
     @Override
