@@ -39,13 +39,13 @@ public class TestMemColumn {
   public void testMemColumn() throws Exception {
     MessageType schema = MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
     ColumnDescriptor path = schema.getColumnDescription(new String[] {"foo", "bar"});
-    MemPageStore memPageStore = new MemPageStore();
+    MemPageStore memPageStore = new MemPageStore(10);
     ColumnWriter columnWriter = getColumnWriter(path, memPageStore);
     columnWriter.write(42l, 0, 0);
     columnWriter.flush();
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, schema);
-    while (!columnReader.isFullyConsumed()) {
+    for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
       assertEquals(columnReader.getCurrentRepetitionLevel(), 0);
       assertEquals(columnReader.getCurrentDefinitionLevel(), 0);
       assertEquals(columnReader.getLong(), 42);
@@ -71,7 +71,7 @@ public class TestMemColumn {
   public void testMemColumnBinary() throws Exception {
     MessageType mt = MessageTypeParser.parseMessageType("message msg { required group foo { required binary bar; } }");
     String[] col = new String[]{"foo", "bar"};
-    MemPageStore memPageStore = new MemPageStore();
+    MemPageStore memPageStore = new MemPageStore(10);
 
     ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048, 2048, false);
     ColumnDescriptor path1 = mt.getColumnDescription(col);
@@ -82,7 +82,7 @@ public class TestMemColumn {
     columnWriter.flush();
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
-    while (!columnReader.isFullyConsumed()) {
+    for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
       assertEquals(columnReader.getCurrentRepetitionLevel(), 0);
       assertEquals(columnReader.getCurrentDefinitionLevel(), 0);
       assertEquals(columnReader.getBinary().toStringUsingUTF8(), "42");
@@ -94,7 +94,7 @@ public class TestMemColumn {
   public void testMemColumnSeveralPages() throws Exception {
     MessageType mt = MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
     String[] col = new String[]{"foo", "bar"};
-    MemPageStore memPageStore = new MemPageStore();
+    MemPageStore memPageStore = new MemPageStore(10);
     ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048, 2048, false);
     ColumnDescriptor path1 = mt.getColumnDescription(col);
     ColumnDescriptor path = path1;
@@ -106,7 +106,7 @@ public class TestMemColumn {
     columnWriter.flush();
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
-    while (!columnReader.isFullyConsumed()) {
+    for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
       assertEquals(columnReader.getCurrentRepetitionLevel(), 0);
       assertEquals(columnReader.getCurrentDefinitionLevel(), 0);
       assertEquals(columnReader.getLong(), 42);
@@ -118,7 +118,7 @@ public class TestMemColumn {
   public void testMemColumnSeveralPagesRepeated() throws Exception {
     MessageType mt = MessageTypeParser.parseMessageType("message msg { repeated group foo { repeated int64 bar; } }");
     String[] col = new String[]{"foo", "bar"};
-    MemPageStore memPageStore = new MemPageStore();
+    MemPageStore memPageStore = new MemPageStore(10);
     ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048, 2048, false);
     ColumnDescriptor path1 = mt.getColumnDescription(col);
     ColumnDescriptor path = path1;
@@ -140,7 +140,7 @@ public class TestMemColumn {
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
     int i = 0;
-    while (!columnReader.isFullyConsumed()) {
+    for (int j = 0; j < columnReader.getTotalValueCount(); j++) {
       int r = rs[i % rs.length];
       int d = ds[i % ds.length];
       LOG.debug("read i: " + i);

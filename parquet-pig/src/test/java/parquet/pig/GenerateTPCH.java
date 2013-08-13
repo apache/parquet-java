@@ -60,7 +60,7 @@ public class GenerateTPCH {
         new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "c_comment")
         );
 
-    MemPageStore pageStore = new MemPageStore();
+    MemPageStore pageStore = new MemPageStore(150000);
     ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 20*1024, 1*1024, false);
     MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
 

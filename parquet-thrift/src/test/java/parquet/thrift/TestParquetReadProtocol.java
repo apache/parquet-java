@@ -137,7 +137,7 @@ public class TestParquetReadProtocol {
   private <T extends TBase<?,?>> void validate(T expected) throws TException {
     @SuppressWarnings("unchecked")
     final Class<T> thriftClass = (Class<T>)expected.getClass();
-    final MemPageStore memPageStore = new MemPageStore();
+    final MemPageStore memPageStore = new MemPageStore(1);
     final ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final MessageType schema = schemaConverter.convert(thriftClass);
     LOG.info(schema);

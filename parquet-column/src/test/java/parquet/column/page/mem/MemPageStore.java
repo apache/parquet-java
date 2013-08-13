@@ -35,6 +35,13 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
 
   private Map<ColumnDescriptor, MemPageWriter> pageWriters = new HashMap<ColumnDescriptor, MemPageWriter>();
 
+  private long rowCount;
+
+  public MemPageStore(long rowCount) {
+    super();
+    this.rowCount = rowCount;
+  }
+
   @Override
   public PageWriter getPageWriter(ColumnDescriptor path) {
     MemPageWriter pageWriter = pageWriters.get(path);
@@ -58,7 +65,10 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
 
   @Override
   public long getRowCount() {
-    throw new UnsupportedOperationException();
+    return rowCount;
   }
 
+  public void addRowCount(long count) {
+    rowCount += count;
+  }
 }

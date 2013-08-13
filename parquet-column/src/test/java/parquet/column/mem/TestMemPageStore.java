@@ -35,7 +35,7 @@ public class TestMemPageStore {
 
   @Test
   public void test() throws IOException {
-    MemPageStore memPageStore = new MemPageStore();
+    MemPageStore memPageStore = new MemPageStore(10);
     ColumnDescriptor col = new ColumnDescriptor(path , PrimitiveTypeName.INT64, 2, 2);
     PageWriter pageWriter = memPageStore.getPageWriter(col);
     pageWriter.writePage(BytesInput.from(new byte[735]), 209, BIT_PACKED, BIT_PACKED, PLAIN);

@@ -149,9 +149,9 @@ public class TestColumnIO {
     MessageType schema3 = new MessageType("schema",
         new PrimitiveType(OPTIONAL, INT32, "c"));
 
-    MemPageStore memPageStore1 = new MemPageStore();
-    MemPageStore memPageStore2 = new MemPageStore();
-    MemPageStore memPageStore3 = new MemPageStore();
+    MemPageStore memPageStore1 = new MemPageStore(1);
+    MemPageStore memPageStore2 = new MemPageStore(1);
+    MemPageStore memPageStore3 = new MemPageStore(1);
 
     SimpleGroupFactory groupFactory1 = new SimpleGroupFactory(schema1);
     writeGroups(schema1, memPageStore1, groupFactory1.newGroup().append("a", 1));
@@ -263,7 +263,7 @@ public class TestColumnIO {
     log("r2");
     log(r2);
 
-    MemPageStore memPageStore = new MemPageStore();
+    MemPageStore memPageStore = new MemPageStore(2);
     ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
@@ -409,7 +409,7 @@ public class TestColumnIO {
   }
 
   private void testSchema(MessageType messageSchema, List<Group> groups) {
-    MemPageStore memPageStore = new MemPageStore();
+    MemPageStore memPageStore = new MemPageStore(groups.size());
     ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
@@ -457,7 +457,7 @@ public class TestColumnIO {
 
   @Test
   public void testPushParser() {
-    MemPageStore memPageStore = new MemPageStore();
+    MemPageStore memPageStore = new MemPageStore(1);
     ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
@@ -470,7 +470,7 @@ public class TestColumnIO {
 
   @Test
   public void testEmptyField() {
-    MemPageStore memPageStore = new MemPageStore();
+    MemPageStore memPageStore = new MemPageStore(1);
     ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
     MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     final RecordConsumer recordWriter = columnIO.getRecordWriter(columns);

@@ -38,9 +38,9 @@ import parquet.io.api.Binary;
 public interface ColumnReader {
 
   /**
-   * @return true if the data has been fully consumed
+   * @return the totalCount of values to be consumed
    */
-  boolean isFullyConsumed();
+  long getTotalValueCount();
 
   /**
    * Consume the current triplet, moving to the next value.
@@ -62,6 +62,11 @@ public interface ColumnReader {
    * writes the current value to the converter
    */
   void writeCurrentValueToConverter();
+
+  /**
+   * Skip the current value
+   */
+  void skip();
 
   /**
    * available when the underlying encoding is dictionary based
@@ -104,8 +109,4 @@ public interface ColumnReader {
    */
   ColumnDescriptor getDescriptor();
 
-  /**
-   * Skip the current value
-   */
-  void skip();
 }

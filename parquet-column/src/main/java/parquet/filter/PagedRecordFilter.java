@@ -49,14 +49,6 @@ public final class PagedRecordFilter implements RecordFilter {
   }
 
   /**
-   * Terminate early when we have got our page.
-   */
-  @Override
-  public boolean isFullyConsumed() {
-    return ( currentPos >= endPos );
-  }
-
-  /**
    * Keeps track of how many times it is called. Only returns matches when the
    * record number is in the range.
    */

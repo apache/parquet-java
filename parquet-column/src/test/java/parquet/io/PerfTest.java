@@ -41,12 +41,13 @@ import parquet.schema.MessageType;
 public class PerfTest {
 
   public static void main(String[] args) {
-    MemPageStore memPageStore = new MemPageStore();
+    MemPageStore memPageStore = new MemPageStore(0);
     write(memPageStore);
     read(memPageStore);
   }
 
   private static void read(MemPageStore memPageStore) {
+    read(memPageStore, schema, "read all");
     read(memPageStore, schema, "read all");
     read(memPageStore, schema2, "read projected");
     read(memPageStore, schema3, "read projected no Strings");
@@ -79,13 +80,13 @@ public class PerfTest {
     groupWriter.write(r1);
     groupWriter.write(r2);
 
-    write(groupWriter, 10000);
-    write(groupWriter, 10000);
-    write(groupWriter, 10000);
-    write(groupWriter, 10000);
-    write(groupWriter, 10000);
-    write(groupWriter, 100000);
-    write(groupWriter, 1000000);
+    write(memPageStore, groupWriter, 10000);
+    write(memPageStore, groupWriter, 10000);
+    write(memPageStore, groupWriter, 10000);
+    write(memPageStore, groupWriter, 10000);
+    write(memPageStore, groupWriter, 10000);
+    write(memPageStore, groupWriter, 100000);
+    write(memPageStore, groupWriter, 1000000);
     columns.flush();
     System.out.println();
     System.out.println(columns.memSize()+" bytes used total");
@@ -113,13 +114,14 @@ public class PerfTest {
     }
   }
 
-  private static void write(GroupWriter groupWriter, int count) {
+  private static void write(MemPageStore memPageStore, GroupWriter groupWriter, int count) {
     long t0 = System.currentTimeMillis();
     for (int i = 0; i < count; i++) {
       groupWriter.write(r1);
     }
     long t1 = System.currentTimeMillis();
     long t = t1-t0;
+    memPageStore.addRowCount(count);
     System.out.printf("written %,9d recs in %,5d ms at %,9d rec/s\n", count, t, t == 0 ? 0 : count * 1000 / t );
   }
 
