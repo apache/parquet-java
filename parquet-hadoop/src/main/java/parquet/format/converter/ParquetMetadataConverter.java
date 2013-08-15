@@ -297,8 +297,8 @@ public class ParquetMetadataConverter {
             metaData.data_page_offset,
             metaData.dictionary_page_offset,
             metaData.num_values,
-            metaData.total_uncompressed_size,
-            metaData.total_compressed_size);
+            metaData.total_compressed_size,
+            metaData.total_uncompressed_size);
         // TODO
         // index_page_offset
         // key_value_metadata
