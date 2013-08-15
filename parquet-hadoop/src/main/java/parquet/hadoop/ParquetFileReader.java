@@ -58,6 +58,7 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.hadoop.util.BenchmarkCounter;
 import parquet.io.ParquetDecodingException;
 
 /**
@@ -312,8 +313,10 @@ public class ParquetFileReader implements Closeable {
     ColumnChunkPageReadStore columnChunkPageReadStore = new ColumnChunkPageReadStore(block.getRowCount());
     for (ColumnChunkMetaData mc : block.getColumns()) {
       ColumnPath pathKey = mc.getPath();
+      BenchmarkCounter.incrementTotalBytes(mc.getTotalSize());
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
       if (columnDescriptor != null) {
+        BenchmarkCounter.incrementBytesRead(mc.getTotalSize());
         List<Page> pagesInChunk = new ArrayList<Page>();
         List<DictionaryPage> dictionaryPagesInChunk = new ArrayList<DictionaryPage>();
         readColumnChunkPages(columnDescriptor, mc, pagesInChunk, dictionaryPagesInChunk);

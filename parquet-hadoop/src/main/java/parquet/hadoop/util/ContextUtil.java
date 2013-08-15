@@ -32,6 +32,7 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.StatusReporter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
+import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 
 /*
  * This is based on ContextFactory.java from hadoop-2.0.x sources.
@@ -57,6 +58,7 @@ public class ContextUtil {
   private static final Field WRAPPED_CONTEXT_FIELD;
 
   private static final Method GET_CONFIGURATION_METHOD;
+  private static final Method GET_COUNTER_METHOD;
 
   static {
     boolean v21 = true;
@@ -134,7 +136,7 @@ public class ContextUtil {
         WRAPPED_CONTEXT_FIELD =
             innerMapContextCls.getDeclaredField("mapContext");
         WRAPPED_CONTEXT_FIELD.setAccessible(true);
-
+        GET_COUNTER_METHOD = taskContextCls.getMethod("getCounter", String.class, String.class);
       } else {
         MAP_CONTEXT_CONSTRUCTOR =
             innerMapContextCls.getConstructor(mapCls,
@@ -147,6 +149,7 @@ public class ContextUtil {
                 InputSplit.class);
         MAP_CONTEXT_IMPL_CONSTRUCTOR = null;
         WRAPPED_CONTEXT_FIELD = null;
+        GET_COUNTER_METHOD=taskIOContextCls.getMethod("getCounter", String.class, String.class);
       }
       MAP_CONTEXT_CONSTRUCTOR.setAccessible(true);
       READER_FIELD = mapContextCls.getDeclaredField("reader");
@@ -231,6 +234,24 @@ public class ContextUtil {
       throw new IllegalArgumentException("Can't invoke method", e);
     } catch (InvocationTargetException e) {
       throw new IllegalArgumentException("Can't invoke method", e);
+    }
+  }
+
+  public static Counter getCounter(TaskInputOutputContext context,
+                                   String groupName, String counterName) {
+    return (Counter) invoke(GET_COUNTER_METHOD, context, groupName, counterName);
+  }
+
+  /**
+   * Invokes a method and rethrows any exception as runtime exceptions.
+   */
+  private static Object invoke(Method method, Object obj, Object... args) {
+    try {
+      return method.invoke(obj, args);
+    } catch (IllegalAccessException e) {
+      throw new IllegalArgumentException("Can't invoke method " + method.getName(), e);
+    } catch (InvocationTargetException e) {
+      throw new IllegalArgumentException("Can't invoke method " + method.getName(), e);
     }
   }
 }

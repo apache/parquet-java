@@ -16,8 +16,7 @@
 package parquet.hadoop.example;
 
 import static java.lang.Thread.sleep;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.*;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -33,19 +32,42 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.junit.Before;
 import org.junit.Test;
 
 import parquet.Log;
 import parquet.example.data.Group;
 import parquet.example.data.simple.SimpleGroupFactory;
+import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.CompressionCodecName;
+import parquet.hadoop.util.BenchmarkCounter;
 import parquet.hadoop.util.ContextUtil;
 import parquet.schema.MessageTypeParser;
 
 public class TestInputOutputFormat {
   private static final Log LOG = Log.getLog(TestInputOutputFormat.class);
+  final Path parquetPath = new Path("target/test/example/TestInputOutputFormat/parquet");
+  final Path inputPath = new Path("parquet-hadoop/src/test/java/parquet/hadoop/example/TestInputOutputFormat.java");
+  final Path outputPath = new Path("target/test/example/TestInputOutputFormat/out");
+  Job writeJob;
+  Job readJob;
+  private String writeSchema;
+  private String readSchema;
 
-  public static class MyMapper extends Mapper<LongWritable, Text, Void, Group> {
+  @Before
+  public void setUp(){
+    writeSchema = "message example {\n" +
+            "required int32 line;\n" +
+            "required binary content;\n" +
+            "}";
+
+    readSchema= "message example {\n" +
+            "required int32 line;\n" +
+              "required binary content;\n" +
+            "}";
+  }
+
+  public static class ReadMapper extends Mapper<LongWritable, Text, Void, Group> {
     private SimpleGroupFactory factory;
     protected void setup(org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,Group>.Context context) throws java.io.IOException ,InterruptedException {
       factory = new SimpleGroupFactory(GroupWriteSupport.getSchema(ContextUtil.getConfiguration(context)));
@@ -58,51 +80,53 @@ public class TestInputOutputFormat {
     }
   }
 
-  public static class MyMapper2 extends Mapper<Void, Group, LongWritable, Text> {
+  public static class WriteMapper extends Mapper<Void, Group, LongWritable, Text> {
     protected void map(Void key, Group value, Mapper<Void,Group,LongWritable,Text>.Context context) throws IOException ,InterruptedException {
       context.write(new LongWritable(value.getInteger("line", 0)), new Text(value.getString("content", 0)));
     }
   }
 
-  private void testReadWrite(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException {
+  private void runMapReduceJob(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException{
     final Configuration conf = new Configuration();
-    final Path inputPath = new Path("src/test/java/parquet/hadoop/example/TestInputOutputFormat.java");
-    final Path parquetPath = new Path("target/test/example/TestInputOutputFormat/parquet");
-    final Path outputPath = new Path("target/test/example/TestInputOutputFormat/out");
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);
     fileSystem.delete(outputPath, true);
     {
-      final Job job = new Job(conf, "write");
-      TextInputFormat.addInputPath(job, inputPath);
-      job.setInputFormatClass(TextInputFormat.class);
-      job.setNumReduceTasks(0);
-      ExampleOutputFormat.setCompression(job, codec);
-      ExampleOutputFormat.setOutputPath(job, parquetPath);
-      job.setOutputFormatClass(ExampleOutputFormat.class);
-      job.setMapperClass(TestInputOutputFormat.MyMapper.class);
+      writeJob = new Job(conf, "write");
+      TextInputFormat.addInputPath(writeJob, inputPath);
+      writeJob.setInputFormatClass(TextInputFormat.class);
+      writeJob.setNumReduceTasks(0);
+      ExampleOutputFormat.setCompression(writeJob, codec);
+      ExampleOutputFormat.setOutputPath(writeJob, parquetPath);
+      writeJob.setOutputFormatClass(ExampleOutputFormat.class);
+      writeJob.setMapperClass(ReadMapper.class);
+
       ExampleOutputFormat.setSchema(
-          job,
-          MessageTypeParser.parseMessageType(
-              "message example {\n" +
-              "required int32 line;\n" +
-              "required binary content;\n" +
-              "}"));
-      job.submit();
-      waitForJob(job);
+              writeJob,
+              MessageTypeParser.parseMessageType(
+                      writeSchema));
+      writeJob.submit();
+      waitForJob(writeJob);
     }
     {
-      final Job job = new Job(conf, "read");
-      job.setInputFormatClass(ExampleInputFormat.class);
-      ExampleInputFormat.setInputPaths(job, parquetPath);
-      job.setOutputFormatClass(TextOutputFormat.class);
-      TextOutputFormat.setOutputPath(job, outputPath);
-      job.setMapperClass(TestInputOutputFormat.MyMapper2.class);
-      job.setNumReduceTasks(0);
-      job.submit();
-      waitForJob(job);
-    }
 
+      conf.set(ReadSupport.PARQUET_READ_SCHEMA,readSchema);
+      readJob = new Job(conf, "read");
+
+      readJob.setInputFormatClass(ExampleInputFormat.class);
+
+      ExampleInputFormat.setInputPaths(readJob, parquetPath);
+      readJob.setOutputFormatClass(TextOutputFormat.class);
+      TextOutputFormat.setOutputPath(readJob, outputPath);
+      readJob.setMapperClass(WriteMapper.class);
+      readJob.setNumReduceTasks(0);
+      readJob.submit();
+      waitForJob(readJob);
+    }
+  }
+
+  private void testReadWrite(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException {
+    runMapReduceJob(codec);
     final BufferedReader in = new BufferedReader(new FileReader(new File(inputPath.toString())));
     final BufferedReader out = new BufferedReader(new FileReader(new File(outputPath.toString(), "part-m-00000")));
     String lineIn;
@@ -118,6 +142,7 @@ public class TestInputOutputFormat {
     in.close();
     out.close();
   }
+
   @Test
   public void testReadWrite() throws IOException, ClassNotFoundException, InterruptedException {
     // TODO: Lzo requires additional external setup steps so leave it out for now
@@ -125,6 +150,16 @@ public class TestInputOutputFormat {
     testReadWrite(CompressionCodecName.UNCOMPRESSED);
     testReadWrite(CompressionCodecName.SNAPPY);
   }
+
+  @Test
+  public void testReadWriteWithCounter() throws Exception{
+     runMapReduceJob(CompressionCodecName.GZIP);
+      assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("byteread").getValue()>=0L);
+      assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("totalbyte").getValue()>=0L);
+      assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("totalbyte").getValue() == readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("byteread").getValue());
+      assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("readingtime").getValue()>=0L);
+  }
+
 
   private void waitForJob(Job job) throws InterruptedException, IOException {
     while (!job.isComplete()) {

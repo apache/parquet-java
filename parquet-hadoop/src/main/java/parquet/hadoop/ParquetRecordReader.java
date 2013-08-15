@@ -20,8 +20,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 import parquet.filter.UnboundRecordFilter;
 import parquet.hadoop.api.ReadSupport;
+import parquet.hadoop.util.BenchmarkCounter;
 import parquet.hadoop.util.ContextUtil;
 import parquet.schema.MessageTypeParser;
 
@@ -92,6 +94,9 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   @Override
   public void initialize(InputSplit inputSplit, TaskAttemptContext context)
       throws IOException, InterruptedException {
+    if (context instanceof TaskInputOutputContext<?, ?, ?, ?>) {
+      BenchmarkCounter.initCounterFromContext((TaskInputOutputContext<?, ?, ?, ?>) context);
+    }
     initialize(inputSplit, ContextUtil.getConfiguration(context));
   }
 
