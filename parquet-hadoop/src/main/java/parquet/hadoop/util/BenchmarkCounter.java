@@ -20,9 +20,7 @@ public class BenchmarkCounter {
   static Counter totalBytesCounter = null;
   static Counter timeCounter = null;
 
-  //TODO: read flags from configuration
   public static void initCounterFromContext(TaskInputOutputContext<?, ?, ?, ?> context) {
-
     bytesReadCounter = getCounterWhenFlagIsSet(context, COUNTER_GROUP_NAME, "byteread", ENABLE_BYTES_READ_COUNTER);
     totalBytesCounter = getCounterWhenFlagIsSet(context, COUNTER_GROUP_NAME, "totalbyte", ENABLE_BYTES_TOTAL_COUNTER);
     timeCounter = getCounterWhenFlagIsSet(context, COUNTER_GROUP_NAME, "readingtime", ENABLE_TIME_READ_COUNTER);
@@ -36,7 +34,6 @@ public class BenchmarkCounter {
     }
   }
 
-  //TODO handle when the variable is empty
   public static void incrementTotalBytes(long val) {
     if (totalBytesCounter != null) {
       totalBytesCounter.increment(val);
