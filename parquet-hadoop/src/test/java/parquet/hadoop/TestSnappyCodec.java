@@ -15,12 +15,20 @@
  */
 package parquet.hadoop;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.compress.CompressionInputStream;
+import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.junit.Test;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
+import org.xerial.snappy.Snappy;
+
+import parquet.hadoop.codec.SnappyCodec;
 import parquet.hadoop.codec.SnappyCompressor;
 import parquet.hadoop.codec.SnappyDecompressor;
 
@@ -38,6 +46,53 @@ public class TestSnappyCodec {
     TestSnappy(compressor, decompressor, "a", "blahblahblah", "abcdef");    
     TestSnappy(compressor, decompressor, "");
     TestSnappy(compressor, decompressor, "FooBar");
+  }
+  
+  @Test
+  public void TestSnappyStream() throws IOException {
+    SnappyCodec codec = new SnappyCodec();
+    codec.setConf(new Configuration());
+    
+    int blockSize = 1024;
+    int inputSize = blockSize * 1024;
+ 
+    byte[] input = new byte[inputSize];
+    for (int i = 0; i < inputSize; ++i) {
+      input[i] = (byte)i;
+    }
+
+    ByteArrayOutputStream compressedStream = new ByteArrayOutputStream();
+    
+    CompressionOutputStream compressor = codec.createOutputStream(compressedStream);
+    int bytesCompressed = 0;
+    while (bytesCompressed < inputSize) {
+      int len = Math.min(inputSize - bytesCompressed, blockSize);
+      compressor.write(input, bytesCompressed, len);
+      bytesCompressed += len;
+    }
+    compressor.finish();
+    
+    byte[] rawCompressed = Snappy.compress(input);
+    byte[] codecCompressed = compressedStream.toByteArray();
+    
+    // Validate that the result from the codec is the same as if we compressed the 
+    // buffer directly.
+    assertArrayEquals(rawCompressed, codecCompressed);
+
+    ByteArrayInputStream inputStream = new ByteArrayInputStream(codecCompressed);    
+    CompressionInputStream decompressor = codec.createInputStream(inputStream);
+    byte[] codecDecompressed = new byte[inputSize];
+    int bytesDecompressed = 0;
+    int numBytes;
+    while ((numBytes = decompressor.read(codecDecompressed, bytesDecompressed, blockSize)) != 0) {
+      bytesDecompressed += numBytes;
+      if (bytesDecompressed == inputSize) break;
+    }
+    
+    byte[] rawDecompressed = Snappy.uncompress(rawCompressed);
+    
+    assertArrayEquals(input, rawDecompressed);
+    assertArrayEquals(input, codecDecompressed);
   }
 
   private void TestSnappy(SnappyCompressor compressor, SnappyDecompressor decompressor, 
