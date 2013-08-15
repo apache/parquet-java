@@ -47,47 +47,52 @@ import parquet.schema.MessageTypeParser;
 public class TestInputOutputFormat {
   private static final Log LOG = Log.getLog(TestInputOutputFormat.class);
   final Path parquetPath = new Path("target/test/example/TestInputOutputFormat/parquet");
-  final Path inputPath = new Path("parquet-hadoop/src/test/java/parquet/hadoop/example/TestInputOutputFormat.java");
+  final Path inputPath = new Path("src/test/java/parquet/hadoop/example/TestInputOutputFormat.java");
   final Path outputPath = new Path("target/test/example/TestInputOutputFormat/out");
   Job writeJob;
   Job readJob;
   private String writeSchema;
   private String readSchema;
   private Configuration conf;
+
   @Before
-  public void setUp(){
+  public void setUp() {
     conf = new Configuration();
     writeSchema = "message example {\n" +
             "required int32 line;\n" +
             "required binary content;\n" +
             "}";
 
-    readSchema= "message example {\n" +
+    readSchema = "message example {\n" +
             "required int32 line;\n" +
-              "required binary content;\n" +
+            "required binary content;\n" +
             "}";
   }
 
   public static class ReadMapper extends Mapper<LongWritable, Text, Void, Group> {
     private SimpleGroupFactory factory;
-    protected void setup(org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,Group>.Context context) throws java.io.IOException ,InterruptedException {
+
+    protected void setup(org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, Void, Group>.Context context) throws java.io.IOException, InterruptedException {
       factory = new SimpleGroupFactory(GroupWriteSupport.getSchema(ContextUtil.getConfiguration(context)));
-    };
-    protected void map(LongWritable key, Text value, Mapper<LongWritable,Text,Void,Group>.Context context) throws java.io.IOException ,InterruptedException {
+    }
+
+    ;
+
+    protected void map(LongWritable key, Text value, Mapper<LongWritable, Text, Void, Group>.Context context) throws java.io.IOException, InterruptedException {
       Group group = factory.newGroup()
-          .append("line", (int)key.get())
-          .append("content", value.toString());
+              .append("line", (int) key.get())
+              .append("content", value.toString());
       context.write(null, group);
     }
   }
 
   public static class WriteMapper extends Mapper<Void, Group, LongWritable, Text> {
-    protected void map(Void key, Group value, Mapper<Void,Group,LongWritable,Text>.Context context) throws IOException ,InterruptedException {
+    protected void map(Void key, Group value, Mapper<Void, Group, LongWritable, Text>.Context context) throws IOException, InterruptedException {
       context.write(new LongWritable(value.getInteger("line", 0)), new Text(value.getString("content", 0)));
     }
   }
 
-  private void runMapReduceJob(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException{
+  private void runMapReduceJob(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException {
 
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);
@@ -111,7 +116,7 @@ public class TestInputOutputFormat {
     }
     {
 
-      conf.set(ReadSupport.PARQUET_READ_SCHEMA,readSchema);
+      conf.set(ReadSupport.PARQUET_READ_SCHEMA, readSchema);
       readJob = new Job(conf, "read");
 
       readJob.setInputFormatClass(ExampleInputFormat.class);
@@ -134,7 +139,7 @@ public class TestInputOutputFormat {
     String lineOut = null;
     int lineNumber = 0;
     while ((lineIn = in.readLine()) != null && (lineOut = out.readLine()) != null) {
-      ++ lineNumber;
+      ++lineNumber;
       lineOut = lineOut.substring(lineOut.indexOf("\t") + 1);
       assertEquals("line " + lineNumber, lineIn, lineOut);
     }
@@ -153,25 +158,25 @@ public class TestInputOutputFormat {
   }
 
   @Test
-  public void testReadWriteWithCounter() throws Exception{
-     runMapReduceJob(CompressionCodecName.GZIP);
-      assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("byteread").getValue()>0L);
-      assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("totalbyte").getValue()>0L);
-      assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("totalbyte").getValue() == readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("byteread").getValue());
-      assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("readingtime").getValue()>0L);
+  public void testReadWriteWithCounter() throws Exception {
+    runMapReduceJob(CompressionCodecName.GZIP);
+    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.BYTES_READ_COUNTER_NAME).getValue() > 0L);
+    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.BYTES_TOTAL_COUNTER_NAME).getValue() > 0L);
+    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.BYTES_TOTAL_COUNTER_NAME).getValue()
+            == readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.BYTES_TOTAL_COUNTER_NAME).getValue());
+    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.TIME_READ_COUNTER_NAME).getValue() > 0L);
   }
 
   @Test
-  public void testReadWriteWithoutCounter() throws Exception{
-    conf.set(BenchmarkCounter.ENABLE_TIME_READ_COUNTER,"false");
-    conf.set(BenchmarkCounter.ENABLE_BYTES_TOTAL_COUNTER,"false");
-    conf.set(BenchmarkCounter.ENABLE_BYTES_READ_COUNTER,"false");
+  public void testReadWriteWithoutCounter() throws Exception {
+    conf.set(BenchmarkCounter.ENABLE_TIME_READ_COUNTER, "false");
+    conf.set(BenchmarkCounter.ENABLE_BYTES_TOTAL_COUNTER, "false");
+    conf.set(BenchmarkCounter.ENABLE_BYTES_READ_COUNTER, "false");
     runMapReduceJob(CompressionCodecName.GZIP);
-    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("byteread").getValue()==0L);
-    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("totalbyte").getValue()==0L);
-    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("readingtime").getValue()==0L);
+    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.BYTES_READ_COUNTER_NAME).getValue() == 0L);
+    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.BYTES_TOTAL_COUNTER_NAME).getValue() == 0L);
+    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.TIME_READ_COUNTER_NAME).getValue() == 0L);
   }
-
 
   private void waitForJob(Job job) throws InterruptedException, IOException {
     while (!job.isComplete()) {
@@ -183,5 +188,4 @@ public class TestInputOutputFormat {
       throw new RuntimeException("job failed " + job.getJobName());
     }
   }
-
 }
