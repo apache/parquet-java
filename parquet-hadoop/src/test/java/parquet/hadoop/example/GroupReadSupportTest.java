@@ -5,10 +5,8 @@ import org.junit.Test;
 import parquet.hadoop.api.ReadSupport;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
-
 import java.util.HashMap;
 import java.util.Map;
-
 import static org.junit.Assert.assertEquals;
 
 public class GroupReadSupportTest {
