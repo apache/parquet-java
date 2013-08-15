@@ -47,15 +47,16 @@ import parquet.schema.MessageTypeParser;
 public class TestInputOutputFormat {
   private static final Log LOG = Log.getLog(TestInputOutputFormat.class);
   final Path parquetPath = new Path("target/test/example/TestInputOutputFormat/parquet");
-  final Path inputPath = new Path("src/test/java/parquet/hadoop/example/TestInputOutputFormat.java");
+  final Path inputPath = new Path("parquet-hadoop/src/test/java/parquet/hadoop/example/TestInputOutputFormat.java");
   final Path outputPath = new Path("target/test/example/TestInputOutputFormat/out");
   Job writeJob;
   Job readJob;
   private String writeSchema;
   private String readSchema;
-
+  private Configuration conf;
   @Before
   public void setUp(){
+    conf = new Configuration();
     writeSchema = "message example {\n" +
             "required int32 line;\n" +
             "required binary content;\n" +
@@ -87,7 +88,7 @@ public class TestInputOutputFormat {
   }
 
   private void runMapReduceJob(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException{
-    final Configuration conf = new Configuration();
+
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);
     fileSystem.delete(outputPath, true);
@@ -154,10 +155,21 @@ public class TestInputOutputFormat {
   @Test
   public void testReadWriteWithCounter() throws Exception{
      runMapReduceJob(CompressionCodecName.GZIP);
-      assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("byteread").getValue()>=0L);
-      assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("totalbyte").getValue()>=0L);
+      assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("byteread").getValue()>0L);
+      assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("totalbyte").getValue()>0L);
       assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("totalbyte").getValue() == readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("byteread").getValue());
-      assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("readingtime").getValue()>=0L);
+      assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("readingtime").getValue()>0L);
+  }
+
+  @Test
+  public void testReadWriteWithoutCounter() throws Exception{
+    conf.set(BenchmarkCounter.ENABLE_TIME_READ_COUNTER,"false");
+    conf.set(BenchmarkCounter.ENABLE_BYTES_TOTAL_COUNTER,"false");
+    conf.set(BenchmarkCounter.ENABLE_BYTES_READ_COUNTER,"false");
+    runMapReduceJob(CompressionCodecName.GZIP);
+    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("byteread").getValue()==0L);
+    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("totalbyte").getValue()==0L);
+    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter("readingtime").getValue()==0L);
   }
 
 
