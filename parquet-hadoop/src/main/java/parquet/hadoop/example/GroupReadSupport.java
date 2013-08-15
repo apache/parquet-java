@@ -31,8 +31,9 @@ public class GroupReadSupport extends ReadSupport<Group> {
   public parquet.hadoop.api.ReadSupport.ReadContext init(
       Configuration configuration, Map<String, String> keyValueMetaData,
       MessageType fileSchema) {
-    // TODO: support requestedSchema
-    return new ReadContext(fileSchema);
+    String partialSchemaString = configuration.get(ReadSupport.PARQUET_READ_SCHEMA);
+    MessageType requestedProjection = getSchemaForRead(fileSchema, partialSchemaString);
+    return new ReadContext(requestedProjection);
   }
 
   @Override
