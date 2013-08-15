@@ -27,6 +27,7 @@ public class GroupReadSupportTest {
     Configuration configuration = new Configuration();
     Map<String, String> keyValueMetaData = new HashMap<String, String>();
     MessageType fileSchema = MessageTypeParser.parseMessageType(fullSchemaStr);
+
     ReadSupport.ReadContext context = s.init(configuration, keyValueMetaData, fileSchema);
     assertEquals(context.getRequestedSchema(), fileSchema);
   }
@@ -38,8 +39,8 @@ public class GroupReadSupportTest {
     Map<String, String> keyValueMetaData = new HashMap<String, String>();
     MessageType fileSchema = MessageTypeParser.parseMessageType(fullSchemaStr);
     MessageType partialSchema = MessageTypeParser.parseMessageType(partialSchemaStr);
-
     configuration.set(ReadSupport.PARQUET_READ_SCHEMA, partialSchemaStr);
+
     ReadSupport.ReadContext context = s.init(configuration, keyValueMetaData, fileSchema);
     assertEquals(context.getRequestedSchema(), partialSchema);
   }
