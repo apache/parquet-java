@@ -92,6 +92,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   @Override
   public void initialize(InputSplit inputSplit, TaskAttemptContext context)
       throws IOException, InterruptedException {
+    context.getConfiguration();
     initialize(inputSplit, ContextUtil.getConfiguration(context));
   }
 
