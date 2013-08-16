@@ -7,12 +7,13 @@ public class BenchmarkCounter {
   public static final String ENABLE_BYTES_READ_COUNTER = "parquet.benchmark.bytes.read";
   public static final String ENABLE_BYTES_TOTAL_COUNTER = "parquet.benchmark.bytes.total";
   public static final String ENABLE_TIME_READ_COUNTER = "parquet.benchmark.time.read";
+
+  public static final String COUNTER_GROUP_NAME="parquet";
   public static final String BYTES_READ_COUNTER_NAME="bytesread";
   public static final String BYTES_TOTAL_COUNTER_NAME="bytestotal";
   public static final String TIME_READ_COUNTER_NAME="timeread";
 
 
-  public static final String COUNTER_GROUP_NAME="parquet";
   static Counter bytesReadCounter = null;
   static Counter totalBytesCounter = null;
   static Counter timeCounter = null;
@@ -39,13 +40,13 @@ public class BenchmarkCounter {
 
   public static void incrementBytesRead(long val) {
     if (bytesReadCounter != null) {
-      ContextUtil.incrementCounter(bytesReadCounter,val);
+      ContextUtil.incrementCounter(bytesReadCounter, val);
     }
   }
 
   public static void incrementTime(long val) {
     if (timeCounter != null) {
-      ContextUtil.incrementCounter(timeCounter,val);
+      ContextUtil.incrementCounter(timeCounter, val);
     }
   }
 
