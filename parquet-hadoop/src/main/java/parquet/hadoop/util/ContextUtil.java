@@ -59,6 +59,7 @@ public class ContextUtil {
 
   private static final Method GET_CONFIGURATION_METHOD;
   private static final Method GET_COUNTER_METHOD;
+  private static final Method INCREMENT_COUNTER_METHOD;
 
   static {
     boolean v21 = true;
@@ -136,7 +137,15 @@ public class ContextUtil {
         WRAPPED_CONTEXT_FIELD =
             innerMapContextCls.getDeclaredField("mapContext");
         WRAPPED_CONTEXT_FIELD.setAccessible(true);
-        GET_COUNTER_METHOD = taskContextCls.getMethod("getCounter", String.class, String.class);
+        Method get_counter_method;
+        try {
+          get_counter_method = Class.forName(PACKAGE + ".TaskAttemptContext").getMethod("getCounter", String.class,
+                  String.class);
+        } catch (Exception e) {
+          get_counter_method = Class.forName(PACKAGE + ".TaskInputOutputContext").getMethod("getCounter",
+                  String.class, String.class);
+        }
+        GET_COUNTER_METHOD=get_counter_method;
       } else {
         MAP_CONTEXT_CONSTRUCTOR =
             innerMapContextCls.getConstructor(mapCls,
@@ -160,6 +169,8 @@ public class ContextUtil {
       OUTER_MAP_FIELD.setAccessible(true);
       GET_CONFIGURATION_METHOD = Class.forName(PACKAGE+".JobContext")
           .getMethod("getConfiguration");
+      INCREMENT_COUNTER_METHOD = Class.forName(PACKAGE+".Counter")
+              .getMethod("increment", Long.TYPE);
     } catch (SecurityException e) {
       throw new IllegalArgumentException("Can't run constructor ", e);
     } catch (NoSuchMethodException e) {
@@ -253,5 +264,9 @@ public class ContextUtil {
     } catch (InvocationTargetException e) {
       throw new IllegalArgumentException("Can't invoke method " + method.getName(), e);
     }
+  }
+
+  public static void incrementCounter(Counter counter, long increment) {
+    invoke(INCREMENT_COUNTER_METHOD, counter, increment);
   }
 }

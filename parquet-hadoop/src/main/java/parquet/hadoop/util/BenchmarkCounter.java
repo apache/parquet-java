@@ -24,7 +24,7 @@ public class BenchmarkCounter {
   }
 
   private static Counter getCounterWhenFlagIsSet(TaskInputOutputContext<?, ?, ?, ?> context, String groupName, String counterName, String counterFlag) {
-    if (context.getConfiguration().getBoolean(counterFlag, true)) {
+    if (ContextUtil.getConfiguration(context).getBoolean(counterFlag, true)) {
       return ContextUtil.getCounter(context, groupName, counterName);
     } else {
       return null;
@@ -33,19 +33,19 @@ public class BenchmarkCounter {
 
   public static void incrementTotalBytes(long val) {
     if (totalBytesCounter != null) {
-      totalBytesCounter.increment(val);
+      ContextUtil.incrementCounter(totalBytesCounter,val);
     }
   }
 
   public static void incrementBytesRead(long val) {
     if (bytesReadCounter != null) {
-      bytesReadCounter.increment(val);
+      ContextUtil.incrementCounter(bytesReadCounter,val);
     }
   }
 
   public static void incrementTime(long val) {
     if (timeCounter != null) {
-      timeCounter.increment(val);
+      ContextUtil.incrementCounter(timeCounter,val);
     }
   }
 
