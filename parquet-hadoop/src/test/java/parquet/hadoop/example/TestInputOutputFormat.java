@@ -160,22 +160,22 @@ public class TestInputOutputFormat {
   @Test
   public void testReadWriteWithCounter() throws Exception {
     runMapReduceJob(CompressionCodecName.GZIP);
-    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.BYTES_READ_COUNTER_NAME).getValue() > 0L);
-    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.BYTES_TOTAL_COUNTER_NAME).getValue() > 0L);
-    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.BYTES_TOTAL_COUNTER_NAME).getValue()
-            == readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.BYTES_TOTAL_COUNTER_NAME).getValue());
-    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.TIME_READ_COUNTER_NAME).getValue() > 0L);
+    assertTrue(readJob.getCounters().getGroup("parquet").findCounter("bytesread").getValue() > 0L);
+    assertTrue(readJob.getCounters().getGroup("parquet").findCounter("bytestotal").getValue() > 0L);
+    assertTrue(readJob.getCounters().getGroup("parquet").findCounter("bytesread").getValue()
+            == readJob.getCounters().getGroup("parquet").findCounter("bytestotal").getValue());
+    assertTrue(readJob.getCounters().getGroup("parquet").findCounter("timeread").getValue() > 0L);
   }
 
   @Test
   public void testReadWriteWithoutCounter() throws Exception {
-    conf.set(BenchmarkCounter.ENABLE_TIME_READ_COUNTER, "false");
-    conf.set(BenchmarkCounter.ENABLE_BYTES_TOTAL_COUNTER, "false");
-    conf.set(BenchmarkCounter.ENABLE_BYTES_READ_COUNTER, "false");
+    conf.set("parquet.benchmark.time.read", "false");
+    conf.set("parquet.benchmark.bytes.total", "false");
+    conf.set("parquet.benchmark.bytes.read", "false");
     runMapReduceJob(CompressionCodecName.GZIP);
-    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.BYTES_READ_COUNTER_NAME).getValue() == 0L);
-    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.BYTES_TOTAL_COUNTER_NAME).getValue() == 0L);
-    assertTrue(readJob.getCounters().getGroup(BenchmarkCounter.COUNTER_GROUP_NAME).findCounter(BenchmarkCounter.TIME_READ_COUNTER_NAME).getValue() == 0L);
+    assertTrue(readJob.getCounters().getGroup("parquet").findCounter("bytesread").getValue() == 0L);
+    assertTrue(readJob.getCounters().getGroup("parquet").findCounter("bytestotal").getValue() == 0L);
+    assertTrue(readJob.getCounters().getGroup("parquet").findCounter("timeread").getValue() == 0L);
   }
 
   private void waitForJob(Job job) throws InterruptedException, IOException {
