@@ -4,6 +4,7 @@ import org.apache.hadoop.mapreduce.Counter;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 
 public class BenchmarkCounter {
+
   private static final String ENABLE_BYTES_READ_COUNTER = "parquet.benchmark.bytes.read";
   private static final String ENABLE_BYTES_TOTAL_COUNTER = "parquet.benchmark.bytes.total";
   private static final String ENABLE_TIME_READ_COUNTER = "parquet.benchmark.time.read";
@@ -39,13 +40,13 @@ public class BenchmarkCounter {
 
   public static void incrementBytesRead(long val) {
     if (bytesReadCounter != null) {
-      ContextUtil.incrementCounter(bytesReadCounter,val);
+      ContextUtil.incrementCounter(bytesReadCounter, val);
     }
   }
 
   public static void incrementTime(long val) {
     if (timeCounter != null) {
-      ContextUtil.incrementCounter(timeCounter,val);
+      ContextUtil.incrementCounter(timeCounter, val);
     }
   }
 

@@ -101,6 +101,7 @@ public class TestParquetFileWriter {
     assertEquals("footer: "+readFooter, 2, readFooter.getBlocks().size());
     assertEquals(c1Ends - c1Starts, readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize());
     assertEquals(c2Ends - c2Starts, readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize());
+    assertEquals(c2Ends - c1Starts, readFooter.getBlocks().get(0).getTotalByteSize());
 
 
     { // read first block of col #1
