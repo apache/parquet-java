@@ -73,15 +73,53 @@ public class TestHiveSchemaConverter {
   @Test
   public void testSimpleType() throws Exception {
     testConversion(
-        "a,b,c",
-        "int,double,boolean",
-        "message hive_schema {\n" +
-            "  optional int32 a;\n" +
-            "  optional double b;\n" +
-            "  optional boolean c;\n" +
-            "  }\n" +
-        "}\n");
+            "a,b,c",
+            "int,double,boolean",
+            "message hive_schema {\n"
+            + "  optional int32 a;\n"
+            + "  optional double b;\n"
+            + "  optional boolean c;\n"
+            + "  }\n"
+            + "}\n");
   }
 
-  // TODO : To be completed
+  @Test
+  public void testArray() throws Exception {
+    testConversion("arrayCol",
+            "array<int>",
+            "message hive_schema {\n"
+            + "  optional group arrayCol (LIST) {\n"
+            + "    repeated group bag {\n"
+            + "      optional int32 array_element;\n"
+            + "    }\n"
+            + "  }\n"
+            + "}\n");
+  }
+
+  @Test
+  public void testStruct() throws Exception {
+    testConversion("structCol",
+            "struct<a:int,b:double,c:boolean>",
+            "message hive_schema {\n"
+            + "  optional group structCol {\n"
+            + "    optional int32 a;\n"
+            + "    optional double b;\n"
+            + "    optional boolean c;\n"
+            + "  }\n"
+            + "}\n");
+  }
+
+  @Test
+  public void testMap() throws Exception {
+    testConversion("mapCol",
+            "map<string,string>",
+            "message hive_schema {\n"
+            + "  optional group mapCol (MAP_KEY_VALUE) {\n"
+            + "    repeated group map {\n"
+            + "      required binary key;\n"
+            + "      optional binary value;\n"
+            + "    }\n"
+            + "  }\n"
+            + "}\n");
+  }
 }

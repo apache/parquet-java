@@ -11,16 +11,11 @@
  */
 package parquet.hive;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertTrue;
 
 import junit.framework.TestCase;
 
@@ -192,7 +187,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
     UtilitiesTestMethods.writeField(recordWriter, 7, "c_comment", comment);
   }
 
-  private void readParquetHiveInputFormat(final String schemaRequested, Integer[] arrCheckIndexValues) throws Exception {
+  private void readParquetHiveInputFormat(final String schemaRequested, final Integer[] arrCheckIndexValues) throws Exception {
     final ParquetMetadata readFooter = ParquetFileReader.readFooter(conf, new Path(testFile.getAbsolutePath()));
     final MessageType schema = readFooter.getFileMetaData().getSchema();
 

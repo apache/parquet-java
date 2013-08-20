@@ -60,7 +60,8 @@ public class ParquetHiveMapInspector implements MapObjectInspector {
       return null;
     }
 
-    final Writable[] mapArray = ((ArrayWritable) data).get();
+    final Writable[] mapContainer = ((ArrayWritable) data).get();
+    final Writable[] mapArray = ((ArrayWritable) mapContainer[0]).get();
 
     for (final Writable obj : mapArray) {
       final ArrayWritable mapObj = (ArrayWritable) obj;
@@ -80,7 +81,8 @@ public class ParquetHiveMapInspector implements MapObjectInspector {
       return null;
     }
 
-    final Writable[] mapArray = ((ArrayWritable) data).get();
+    final Writable[] mapContainer = ((ArrayWritable) data).get();
+    final Writable[] mapArray = ((ArrayWritable) mapContainer[0]).get();
     final Map<Writable, Writable> map = new HashMap<Writable, Writable>();
 
     for (final Writable obj : mapArray) {
@@ -94,6 +96,7 @@ public class ParquetHiveMapInspector implements MapObjectInspector {
 
   @Override
   public int getMapSize(final Object data) {
-    return ((ArrayWritable) data).get().length;
+    final Writable[] mapContainer = ((ArrayWritable) data).get();
+    return ((ArrayWritable) mapContainer[0]).get().length;
   }
 }

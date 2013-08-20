@@ -15,6 +15,7 @@
  */
 package parquet.hive.convert;
 
+import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Writable;
 
 import parquet.io.ParquetDecodingException;
@@ -34,20 +35,23 @@ public class ArrayWritableGroupConverter extends HiveGroupConverter {
   private final Converter[] converters;
   private final HiveGroupConverter parent;
   private final int index;
+  private final boolean isMap;
   private Writable currentValue;
+  private Writable[] mapPairContainer;
 
   public ArrayWritableGroupConverter(final GroupType groupType, final HiveGroupConverter parent, final int index) {
     this.parent = parent;
     this.index = index;
 
     if (groupType.getFieldCount() == 2) {
-      final DataWritableGroupConverter intermediateConverter = new DataWritableGroupConverter(groupType, this, 0);
-      converters = new Converter[groupType.getFieldCount()];
-      converters[0] = getConverterFromDescription(groupType.getType(0), 0, intermediateConverter);
-      converters[1] = getConverterFromDescription(groupType.getType(1), 1, intermediateConverter);
+      converters = new Converter[2];
+      converters[0] = getConverterFromDescription(groupType.getType(0), 0, this);
+      converters[1] = getConverterFromDescription(groupType.getType(1), 1, this);
+      isMap = true;
     } else if (groupType.getFieldCount() == 1) {
       converters = new Converter[1];
       converters[0] = getConverterFromDescription(groupType.getType(0), 0, this);
+      isMap = false;
     } else {
       throw new RuntimeException("Invalid parquet hive schema: " + groupType);
     }
@@ -61,19 +65,30 @@ public class ArrayWritableGroupConverter extends HiveGroupConverter {
 
   @Override
   public void start() {
+    if (isMap) {
+      mapPairContainer = new Writable[2];
+    }
   }
 
   @Override
   public void end() {
+    if (isMap) {
+      currentValue = new ArrayWritable(Writable.class, mapPairContainer);
+    }
     parent.add(index, currentValue);
   }
 
   @Override
   protected void set(final int index, final Writable value) {
-    if (index != 0) {
-      throw new ParquetDecodingException("Repeated group can only have one field. Not allowed to set for the index : " + index);
+    if (index != 0 && mapPairContainer == null || index > 1) {
+      throw new ParquetDecodingException("Repeated group can only have one or two fields for maps. Not allowed to set for the index : " + index);
     }
-    currentValue = value;
+
+    if (isMap) {
+      mapPairContainer[index] = value;
+    } else {
+      currentValue = value;
+    }
   }
 
   @Override

@@ -17,9 +17,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertTrue;
+
 import junit.framework.TestCase;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -35,6 +35,7 @@ import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.Counter;
 import org.apache.hadoop.util.Progressable;
+
 import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.ParquetInputSplit;
 import parquet.hadoop.metadata.BlockMetaData;
@@ -85,7 +86,7 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
   }
 
   public void testParquetHiveOutputFormat() throws Exception {
-    final HiveOutputFormat format = new DeprecatedParquetOutputFormat();
+    final HiveOutputFormat<Void, ArrayWritable> format = new DeprecatedParquetOutputFormat();
     final Properties tableProperties = new Properties();
 
     // Set the configuration parameters
@@ -98,8 +99,8 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
     System.out.println("First part, write the data");
 
     job.set("mapred.task.id", "attempt_201304241759_32973_m_000002_0"); // FAKE ID
-    fakeStatus reporter = new fakeStatus();
-    org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter recordWriter = format.getHiveRecordWriter(
+    final fakeStatus reporter = new fakeStatus();
+    final org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter recordWriter = format.getHiveRecordWriter(
             job,
             new Path(testFile.getAbsolutePath()),
             NullWritable.class,
@@ -107,7 +108,7 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
             tableProperties,
             reporter);
     // create key/value
-    for (Map.Entry<Integer, ArrayWritable> entry : mapData.entrySet()) {
+    for (final Map.Entry<Integer, ArrayWritable> entry : mapData.entrySet()) {
       recordWriter.write(entry.getValue());
     }
     recordWriter.close(false);
@@ -184,12 +185,12 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
   private class fakeStatus extends org.apache.hadoop.mapreduce.StatusReporter implements Progressable {
 
     @Override
-    public Counter getCounter(Enum<?> e) {
+    public Counter getCounter(final Enum<?> e) {
       throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
-    public Counter getCounter(String string, String string1) {
+    public Counter getCounter(final String string, final String string1) {
       throw new UnsupportedOperationException("Not supported yet.");
     }
 
@@ -199,7 +200,7 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
     }
 
     @Override
-    public void setStatus(String string) {
+    public void setStatus(final String string) {
       throw new UnsupportedOperationException("Not supported yet.");
     }
 

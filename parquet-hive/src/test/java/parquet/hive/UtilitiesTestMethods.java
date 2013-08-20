@@ -36,10 +36,10 @@ public class UtilitiesTestMethods {
     w.end(new HashMap<String, String>());
   }
 
-  public static boolean smartCheckArray(Writable[] arrValue, Writable[] arrExpected, Integer[] arrCheckIndexValues) {
+  public static boolean smartCheckArray(final Writable[] arrValue, final Writable[] arrExpected, final Integer[] arrCheckIndexValues) {
 
     int i = 0;
-    for (Integer index : arrCheckIndexValues) {
+    for (final Integer index : arrCheckIndexValues) {
       if (index != Integer.MIN_VALUE) {
         final Writable value = arrValue[index];
         final Writable expectedValue = arrExpected[index];
@@ -62,7 +62,7 @@ public class UtilitiesTestMethods {
 
   static public ArrayWritable createArrayWritable(final Integer custkey, final String name, final String address, final Integer nationkey, final String phone, final Double acctbal, final String mktsegment, final String comment) {
 
-    Writable[] arr = new Writable[9]; // The last one is for the unknow column
+    final Writable[] arr = new Writable[9]; // The last one is for the unknown column
     arr[0] = new IntWritable(custkey);
     if (name != null) {
       arr[1] = new BinaryWritable(name);
