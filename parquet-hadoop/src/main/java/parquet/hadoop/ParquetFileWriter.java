@@ -284,7 +284,7 @@ public class ParquetFileWriter {
         uncompressedLength));
     if (DEBUG) LOG.info("ended Column chumk: " + currentColumn);
     currentColumn = null;
-    this.currentBlock.setTotalByteSize(currentBlock.getTotalByteSize()+uncompressedLength);
+    this.currentBlock.setTotalByteSize(currentBlock.getTotalByteSize() + uncompressedLength);
     this.uncompressedLength = 0;
     this.compressedLength = 0;
   }
