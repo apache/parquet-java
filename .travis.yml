@@ -1,1 +1,12 @@
 language: java
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq protobuf-compiler
+  - sudo apt-get install -qq libboost-dev libboost-test-dev libboost-program-options-dev libevent-dev automake libtool flex bison pkg-config g++ libssl-dev
+  - wget -nv http://archive.apache.org/dist/thrift/0.7.0/thrift-0.7.0.tar.gz
+  - tar zxf thrift-0.7.0.tar.gz
+  - cd thrift-0.7.0
+  - chmod +x ./configure
+  - ./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang
+  - sudo make install
+  - cd ..

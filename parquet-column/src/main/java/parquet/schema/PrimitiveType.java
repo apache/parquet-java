@@ -34,23 +34,23 @@ import parquet.io.api.RecordConsumer;
  */
 public final class PrimitiveType extends Type {
 
-  public static interface PrimitiveTypeNameConverter<T> {
+  public static interface PrimitiveTypeNameConverter<T, E extends Exception> {
 
-    T convertFLOAT(PrimitiveTypeName primitiveTypeName);
+    T convertFLOAT(PrimitiveTypeName primitiveTypeName) throws E;
 
-    T convertDOUBLE(PrimitiveTypeName primitiveTypeName);
+    T convertDOUBLE(PrimitiveTypeName primitiveTypeName) throws E;
 
-    T convertINT32(PrimitiveTypeName primitiveTypeName);
+    T convertINT32(PrimitiveTypeName primitiveTypeName) throws E;
 
-    T convertINT64(PrimitiveTypeName primitiveTypeName);
+    T convertINT64(PrimitiveTypeName primitiveTypeName) throws E;
 
-    T convertINT96(PrimitiveTypeName primitiveTypeName);
+    T convertINT96(PrimitiveTypeName primitiveTypeName) throws E;
 
-    T convertFIXED_LEN_BYTE_ARRAY(PrimitiveTypeName primitiveTypeName);
+    T convertFIXED_LEN_BYTE_ARRAY(PrimitiveTypeName primitiveTypeName) throws E;
 
-    T convertBOOLEAN(PrimitiveTypeName primitiveTypeName);
+    T convertBOOLEAN(PrimitiveTypeName primitiveTypeName) throws E;
 
-    T convertBINARY(PrimitiveTypeName primitiveTypeName);
+    T convertBINARY(PrimitiveTypeName primitiveTypeName) throws E;
 
   }
 
@@ -79,7 +79,7 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+      public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertINT64(this);
       }
     },
@@ -102,7 +102,7 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+      public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertINT32(this);
       }
     },
@@ -125,7 +125,7 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+      public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertBOOLEAN(this);
       }
     },
@@ -148,7 +148,7 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+      public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertBINARY(this);
       }
     },
@@ -171,7 +171,7 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+      public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertFLOAT(this);
       }
     },
@@ -194,7 +194,7 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+      public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertDOUBLE(this);
       }
     },
@@ -215,7 +215,7 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+      public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertINT96(this);
       }
     },
@@ -239,7 +239,7 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      public <T> T convert(PrimitiveTypeNameConverter<T> converter) {
+      public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E {
         return converter.convertFIXED_LEN_BYTE_ARRAY(this);
       }
     };
@@ -270,7 +270,7 @@ public final class PrimitiveType extends Type {
     abstract public void addValueToPrimitiveConverter(
         PrimitiveConverter primitiveConverter, ColumnReader columnReader);
 
-    abstract public <T> T convert(PrimitiveTypeNameConverter<T> converter);
+    abstract public <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E;
 
   }
 
