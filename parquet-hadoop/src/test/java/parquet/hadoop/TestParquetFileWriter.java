@@ -24,10 +24,7 @@ import static parquet.column.Encoding.PLAIN;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -39,6 +36,7 @@ import org.junit.Test;
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
+import parquet.column.Encoding;
 import parquet.column.page.Page;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
@@ -102,7 +100,10 @@ public class TestParquetFileWriter {
     assertEquals(c1Ends - c1Starts, readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize());
     assertEquals(c2Ends - c2Starts, readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize());
     assertEquals(c2Ends - c1Starts, readFooter.getBlocks().get(0).getTotalByteSize());
-
+    HashSet<Encoding> expectedEncoding=new HashSet<Encoding>();
+    expectedEncoding.add(PLAIN);
+    expectedEncoding.add(BIT_PACKED);
+    assertEquals(expectedEncoding,readFooter.getBlocks().get(0).getColumns().get(0).getEncodings());
 
     { // read first block of col #1
       ParquetFileReader r = new ParquetFileReader(configuration, path, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(path1)));
