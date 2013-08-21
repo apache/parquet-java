@@ -64,6 +64,15 @@
      </repository>
   </repositories>
 
+  <!-- this is needed for maven-thrift-plugin, would like to remove this.
+   see: https://issues.apache.org/jira/browse/THRIFT-1536  -->
+  <pluginRepositories>
+    <pluginRepository>
+      <id>Twitter public Maven repo</id>
+      <url>http://maven.twttr.com</url>
+    </pluginRepository>
+  </pluginRepositories>
+
   <properties>
     <maven.compiler.source>1.6</maven.compiler.source>
     <maven.compiler.target>1.6</maven.compiler.target>

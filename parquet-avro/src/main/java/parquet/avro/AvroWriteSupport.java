@@ -104,7 +104,7 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
         recordConsumer.startField(fieldType.getName(), index);
         writeValue(fieldType, avroField.schema(), value);
         recordConsumer.endField(fieldType.getName(), index);
-      } else if (fieldType.getRepetition() == Type.Repetition.REQUIRED) {
+      } else if (fieldType.isRepetition(Type.Repetition.REQUIRED)) {
         throw new RuntimeException("Null-value for required field: " + avroField.name());
       }
       index++;

@@ -27,9 +27,42 @@ import parquet.schema.MessageTypeParser;
 
 
 public class TestPigSchemaConverter {
+  
+  private final PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
+  
+  private void testPigConversion(String pigSchemaString) throws Exception {
+    Schema pigSchema = Utils.getSchemaFromString(pigSchemaString);
+    MessageType parquetSchema = pigSchemaConverter.convert(pigSchema);
+    Schema convertedSchema = pigSchemaConverter.convert(parquetSchema);  
+    assertEquals(pigSchema, convertedSchema);
+  }
+  
+  @Test
+  public void testSimpleBag() throws Exception {
+    testPigConversion("b:{t:(a:int)}");
+  }
+  
+  @Test
+  public void testMultiBag() throws Exception {
+    testPigConversion("x:int, b:{t:(a:int,b:chararray)}}");
+  }
+  
+  @Test
+  public void testMapSimple() throws Exception {
+    testPigConversion("b:[(c:int)]");
+  }
+  
+  @Test
+  public void testMapTuple() throws Exception {
+    testPigConversion("a:chararray, b:[(c:chararray, d:chararray)]");
+  }
+  
+  @Test
+  public void testMapOfList() throws Exception {
+    testPigConversion("a:map[{bag: (a:int)}]");
+  }
 
   private void testConversion(String pigSchemaString, String schemaString) throws Exception {
-    PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
     Schema pigSchema = Utils.getSchemaFromString(pigSchemaString);
     MessageType schema = pigSchemaConverter.convert(pigSchema);
     MessageType expectedMT = MessageTypeParser.parseMessageType(schemaString);

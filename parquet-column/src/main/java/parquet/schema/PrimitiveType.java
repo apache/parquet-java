@@ -362,7 +362,7 @@ public final class PrimitiveType extends Type {
     if (path.length != i) {
       throw new InvalidRecordException("Arrived at primitive node, path invalid");
     }
-    return getRepetition() == Repetition.REPEATED ? 1 : 0;
+    return isRepetition(Repetition.REPEATED)? 1 : 0;
   }
 
   @Override
@@ -370,7 +370,7 @@ public final class PrimitiveType extends Type {
     if (path.length != i) {
       throw new InvalidRecordException("Arrived at primitive node, path invalid");
     }
-    return getRepetition() == Repetition.REQUIRED ? 0 : 1;
+    return isRepetition(Repetition.REQUIRED) ? 0 : 1;
   }
 
   @Override

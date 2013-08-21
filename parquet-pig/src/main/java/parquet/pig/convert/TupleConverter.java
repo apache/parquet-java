@@ -146,7 +146,7 @@ public class TupleConverter extends GroupConverter {
       try {
         int i = 0;
         for (Type field : parquetSchema.getFields()) {
-          if (field.isPrimitive() && field.getRepetition() == Repetition.OPTIONAL) {
+          if (field.isPrimitive() && field.isRepetition(Repetition.OPTIONAL)) {
             PrimitiveType primitiveType = field.asPrimitiveType();
             switch (primitiveType.getPrimitiveTypeName()) {
             case INT32:

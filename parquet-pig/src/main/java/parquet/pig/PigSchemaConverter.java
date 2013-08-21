@@ -16,10 +16,12 @@
 package parquet.pig;
 
 import static parquet.Log.DEBUG;
-import static parquet.schema.OriginalType.LIST;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import javax.xml.datatype.DatatypeConfigurationException;
 
 import org.apache.pig.data.DataType;
 import org.apache.pig.impl.logicalLayer.FrontendException;
@@ -27,6 +29,7 @@ import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 
 import parquet.Log;
+import parquet.schema.ConversionPatterns;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
@@ -49,6 +52,108 @@ import parquet.schema.Type.Repetition;
  */
 public class PigSchemaConverter {
   private static final Log LOG = Log.getLog(PigSchemaConverter.class);
+
+  public Schema convert(MessageType parquetSchema) {
+    return convertFields(parquetSchema.getFields());
+  }
+  
+  public Schema convertField(Type parquetType) {
+    return convertFields(Arrays.asList(parquetType));
+  }
+
+  private Schema convertFields(List<Type> parquetFields) {
+    List<FieldSchema> fields = new ArrayList<Schema.FieldSchema>();
+    for (Type parquetType : parquetFields) {
+      try{
+        FieldSchema innerfieldSchema = getFieldSchema(parquetType);
+        if (parquetType.isRepetition(Repetition.REPEATED)) {
+          Schema bagSchema = new Schema(Arrays.asList(innerfieldSchema));
+          fields.add(new FieldSchema(null, bagSchema, DataType.BAG));
+        } else {
+          fields.add(innerfieldSchema);
+        }
+      }
+      catch (FrontendException fe) {
+        throw new SchemaConversionException("can't convert "+ parquetType, fe);
+      }
+    }
+    return new Schema(fields);
+  }
+
+  private FieldSchema getFieldSchema(Type parquetType) throws FrontendException {
+    String fieldName = parquetType.getName();
+    if(parquetType.isPrimitive()) {
+      PrimitiveTypeName parquetPrimitiveTypeName = parquetType.asPrimitiveType().getPrimitiveTypeName();
+      switch (parquetPrimitiveTypeName) {
+      case INT32:
+        return new FieldSchema(fieldName, null, DataType.INTEGER);
+      case INT64:
+        return new FieldSchema(fieldName, null, DataType.LONG);
+      case INT96:
+        //TODO
+        throw new UnsupportedOperationException("NYI");
+      case BINARY:
+        OriginalType originalType = parquetType.getOriginalType();
+        if(originalType != null && originalType == OriginalType.UTF8) {
+          return new FieldSchema(fieldName, null, DataType.CHARARRAY);
+        } else {
+          return new FieldSchema(fieldName, null, DataType.BYTEARRAY);
+        }
+      case BOOLEAN:
+        return new FieldSchema(fieldName, null, DataType.BOOLEAN);
+      case DOUBLE:
+        return new FieldSchema(fieldName, null, DataType.DOUBLE);
+      case FLOAT:
+        return new FieldSchema(fieldName, null, DataType.FLOAT);
+      case FIXED_LEN_BYTE_ARRAY:
+        throw new UnsupportedOperationException("NYI");
+      default:
+        new RuntimeException("Unknown type "+ parquetPrimitiveTypeName);
+      }
+    } else {
+      GroupType parquetGroupType = parquetType.asGroupType();
+      OriginalType originalType = parquetGroupType.getOriginalType();
+      if(originalType !=  null) {
+        switch(originalType) {
+        case MAP:
+          // verify that its a map
+          if (parquetGroupType.getFieldCount() != 1 || parquetGroupType.getType(0).isPrimitive()) {
+            throw new SchemaConversionException("Invalid map type");
+          }
+          GroupType mapKeyValType = parquetGroupType.getType(0).asGroupType();
+          if (!mapKeyValType.isRepetition(Repetition.REPEATED) ||
+              !mapKeyValType.getOriginalType().equals(OriginalType.MAP_KEY_VALUE) ||
+              mapKeyValType.getFieldCount()!=2) {
+            throw new RuntimeException("Invalid map type");
+          }
+          // if value is not primitive wrap it in a tuple
+          Type valueType = mapKeyValType.getType(1);
+          Schema s = convertField(valueType);
+          s.getField(0).alias = null;
+          return new FieldSchema(fieldName, s, DataType.MAP);
+        case LIST:
+          if(parquetGroupType.getFieldCount()!= 1 || parquetGroupType.getType(0).isPrimitive()) {
+            throw new SchemaConversionException("Invalid list type");
+          }
+          GroupType tupleType = parquetGroupType.getType(0).asGroupType();
+          if(!tupleType.isRepetition(Repetition.REPEATED)) {
+            throw new SchemaConversionException("Invalid list type");
+          }
+          Schema tupleSchema = new Schema(new FieldSchema(tupleType.getName(), convertFields(tupleType.getFields()), DataType.TUPLE));
+          return new FieldSchema(fieldName, tupleSchema, DataType.BAG);
+        case MAP_KEY_VALUE:
+        case ENUM:
+        case UTF8:
+        default:
+          throw new SchemaConversionException("Unexpected original type for " + parquetType + ": " + originalType);
+        }
+      } else {
+        // if original type is not set, we assume it to be tuple
+        return new FieldSchema(fieldName, convertFields(parquetGroupType.getFields()), DataType.TUPLE);
+      }
+    }
+    return null;
+  }
 
   /**
    *
@@ -122,9 +227,9 @@ public class PigSchemaConverter {
    */
   private GroupType convertBag(String name, FieldSchema fieldSchema) throws FrontendException {
     FieldSchema innerField = fieldSchema.schema.getField(0);
-    return listWrapper(
+    return ConversionPatterns.listType(
+        Repetition.OPTIONAL,
         name,
-        LIST,
         convertTuple(name(innerField.alias, "bag"), innerField, Repetition.REPEATED));
   }
 
@@ -141,17 +246,6 @@ public class PigSchemaConverter {
   }
 
   /**
-   * to preserve the difference between empty list and null
-   * @param alias
-   * @param originalType
-   * @param groupType
-   * @return an optional group
-   */
-  private GroupType listWrapper(String alias, OriginalType originalType, GroupType groupType) {
-    return new GroupType(Repetition.OPTIONAL, alias, originalType, groupType);
-  }
-
-  /**
    *
    * @param alias
    * @param fieldSchema
@@ -159,22 +253,14 @@ public class PigSchemaConverter {
    * @throws FrontendException
    */
   private GroupType convertMap(String alias, FieldSchema fieldSchema) throws FrontendException {
-    Type convertedKey = new PrimitiveType(Repetition.REQUIRED, PrimitiveTypeName.BINARY, "key");
     Schema innerSchema = fieldSchema.schema;
     if (innerSchema == null || innerSchema.size() != 1) {
       throw new FrontendException("Invalid map Schema, schema should contain exactly one field: " + fieldSchema);
     }
     FieldSchema innerField = innerSchema.getField(0);
     Type convertedValue = convertWithName(innerField, "value");
-    return listWrapper(
-        alias,
-        OriginalType.MAP,
-        new GroupType(
-            Repetition.REPEATED,
-            name(innerField.alias, "map"),
-            OriginalType.MAP_KEY_VALUE,
-            convertedKey,
-            convertedValue));
+    return ConversionPatterns.stringKeyMapType(Repetition.OPTIONAL, alias, name(innerField.alias, "map"), 
+        convertedValue);
   }
 
   private GroupType convertTuple(String alias, FieldSchema field, Repetition repetition) {

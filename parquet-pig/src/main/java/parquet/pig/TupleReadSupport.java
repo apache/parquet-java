@@ -42,9 +42,8 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
   static final String PARQUET_PIG_REQUESTED_SCHEMA = "parquet.pig.requested.schema";
   static final String PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE = "parquet.pig.elephantbird.compatible";
   private static final Log LOG = Log.getLog(TupleReadSupport.class);
-
-  private static final PigSchemaConverter schemaConverter = new PigSchemaConverter();
-
+  
+  private static final PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
 
   /**
    * @param configuration the configuration for the current job
@@ -76,8 +75,12 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
    */
   static Schema getPigSchemaFromFile(MessageType fileSchema, Map<String, String> keyValueMetaData) {
     PigMetaData pigMetaData = PigMetaData.fromMetaData(keyValueMetaData);
-    // TODO: if no Pig schema in file: generate one from the Parquet schema
-    return parsePigSchema(pigMetaData.getPigSchema());
+    Schema pigMetaDataSchema = parsePigSchema(pigMetaData.getPigSchema());
+    if (pigMetaDataSchema != null) {
+      return pigMetaDataSchema;
+    } else {
+      return pigSchemaConverter.convert(fileSchema);
+    }
   }
 
   @Override
@@ -88,7 +91,7 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
     } else {
       // project the file schema according to the requested Pig schema
       MessageType parquetRequestedSchema =
-          schemaConverter.filter(
+          pigSchemaConverter.filter(
           fileSchema,
           requestedPigSchema);
       return new ReadContext(parquetRequestedSchema);

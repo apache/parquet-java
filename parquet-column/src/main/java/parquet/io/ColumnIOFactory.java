@@ -79,7 +79,7 @@ public class ColumnIOFactory {
             incompatibleSchema(type, currentRequestedType);
           }
           type.accept(this);
-        } else if (type.getRepetition() == REQUIRED) {
+        } else if (type.isRepetition(REQUIRED)) {
           // if the missing field is required we fail
           // TODO: add support for default values
           throw new ParquetDecodingException("The requested schema is not compatible with the file schema. Missing required field in file " + type);

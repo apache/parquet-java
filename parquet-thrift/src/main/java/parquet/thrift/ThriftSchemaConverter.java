@@ -116,12 +116,10 @@ public class ThriftSchemaConverter {
       return new PrimitiveType(rep, BINARY, name, ENUM);
     } else if (field.isMap()) {
       final Field mapKeyField = field.getMapKeyField();
-      if (mapKeyField.getType() != TType.STRING &&
-          mapKeyField.getType() != TType.ENUM) {
-        throw new RuntimeException("map key field is not string: " + name + " " + mapKeyField.getType());
-      }
       final Field mapValueField = field.getMapValueField();
-      return ConversionPatterns.mapType(rep, name, toSchema("value", mapValueField, OPTIONAL));
+      return ConversionPatterns.mapType(rep, name, 
+          toSchema("key", mapKeyField, REQUIRED),
+          toSchema("value", mapValueField, OPTIONAL));
     } else {
       switch (field.getType()) {
       case TType.I64:

@@ -69,6 +69,10 @@ abstract public class Type {
   public String getName() {
     return name;
   }
+  
+  public boolean isRepetition(Repetition rep) {
+    return repetition == rep;
+  }
 
   public Repetition getRepetition() {
     return repetition;

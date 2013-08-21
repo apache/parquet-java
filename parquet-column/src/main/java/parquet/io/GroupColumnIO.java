@@ -60,7 +60,7 @@ public class GroupColumnIO extends ColumnIO {
       newFieldPath[fieldPath.length] = child.getType().getName();
       newIndexFieldPath[indexFieldPath.length] = child.getIndex();
       List<ColumnIO> newRepetition;
-      if (child.getType().getRepetition() == REPEATED) {
+      if (child.getType().isRepetition(REPEATED)) {
         newRepetition = new ArrayList<ColumnIO>(repetition);
         newRepetition.add(child);
       } else {
@@ -70,9 +70,9 @@ public class GroupColumnIO extends ColumnIO {
       newPath.add(child);
       child.setLevels(
           // the type repetition level increases whenever there's a possible repetition
-          child.getType().getRepetition() == REPEATED ? r + 1 : r,
+          child.getType().isRepetition(REPEATED) ? r + 1 : r,
           // the type definition level increases whenever a field can be missing (not required)
-          child.getType().getRepetition() != REQUIRED ? d + 1 : d,
+          !child.getType().isRepetition(REQUIRED) ? d + 1 : d,
           newFieldPath,
           newIndexFieldPath,
           newRepetition,

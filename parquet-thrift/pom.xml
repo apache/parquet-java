@@ -94,6 +94,21 @@
           </execution>
         </executions>
       </plugin>
+      <!-- thrift -->
+      <plugin>
+        <groupId>org.apache.thrift.tools</groupId>
+        <artifactId>maven-thrift-plugin</artifactId>
+        <version>0.1.10</version>
+        <executions>
+          <execution>
+            <id>thrift-sources</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>testCompile</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <artifactId>maven-shade-plugin</artifactId>
         <version>2.0</version>

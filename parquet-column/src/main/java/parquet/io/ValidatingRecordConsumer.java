@@ -88,7 +88,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   private void validateMissingFields(int index) {
     for (int i = previousField.peek() + 1; i < index; i++) {
       Type type = types.peek().asGroupType().getType(i);
-      if (type.getRepetition() == Repetition.REQUIRED) {
+      if (type.isRepetition(Repetition.REQUIRED)) {
         throw new InvalidRecordException("required field is missing " + type);
       }
     }

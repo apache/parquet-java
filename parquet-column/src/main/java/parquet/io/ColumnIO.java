@@ -115,7 +115,7 @@ abstract public class ColumnIO {
   abstract PrimitiveColumnIO getFirst();
 
   ColumnIO getParent(int r) {
-    if (getRepetitionLevel() == r && getType().getRepetition() == Repetition.REPEATED) {
+    if (getRepetitionLevel() == r && getType().isRepetition(Repetition.REPEATED)) {
       return this;
     } else  if (getParent()!=null && getParent().getDefinitionLevel()>=r) {
       return getParent().getParent(r);
