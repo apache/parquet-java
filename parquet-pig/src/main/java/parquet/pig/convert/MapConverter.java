@@ -33,6 +33,8 @@ import parquet.io.api.Binary;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
 import parquet.io.api.PrimitiveConverter;
+import parquet.pig.PigSchemaConverter;
+import parquet.pig.SchemaConversionException;
 import parquet.schema.GroupType;
 
 /**
@@ -48,7 +50,7 @@ final class MapConverter extends GroupConverter {
 
   private Map<String, Object> buffer = new BufferMap();
 
-  private String currentKey;
+  private Object currentKey;
   private Object currentValue;
 
   MapConverter(GroupType parquetSchema, FieldSchema pigSchema, ParentValueContainer parent, boolean numbersDefaultToZero) throws FrontendException {
@@ -124,7 +126,7 @@ final class MapConverter extends GroupConverter {
    */
   final class MapKeyValueConverter extends GroupConverter {
 
-    private final StringKeyConverter keyConverter = new StringKeyConverter();
+    private final Converter keyConverter;
     private final Converter valueConverter;
 
     MapKeyValueConverter(GroupType parquetSchema, Schema.FieldSchema pigSchema, boolean numbersDefaultToZero) {
@@ -132,6 +134,16 @@ final class MapConverter extends GroupConverter {
           || !parquetSchema.getType(0).getName().equals("key")
           || !parquetSchema.getType(1).getName().equals("value")) {
         throw new IllegalArgumentException("schema does not match map key/value " + parquetSchema);
+      }
+      try {
+        keyConverter = TupleConverter.newConverter(new PigSchemaConverter().convertField(parquetSchema.getType(0)).getField(0), 
+            parquetSchema.getType(0), new ParentValueContainer() {
+        void add(Object value) {
+          currentKey = value;
+        }
+      }, numbersDefaultToZero);
+      } catch (FrontendException fe) {
+        throw new SchemaConversionException("can't convert keytype "+ parquetSchema.getType(0), fe);
       }
       valueConverter = TupleConverter.newConverter(pigSchema, parquetSchema.getType(1), new ParentValueContainer() {
         void add(Object value) {
@@ -160,7 +172,7 @@ final class MapConverter extends GroupConverter {
 
     @Override
     public void end() {
-      buffer.put(currentKey, currentValue);
+      buffer.put(currentKey.toString(), currentValue);
       currentKey = null;
       currentValue = null;
     }

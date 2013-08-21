@@ -52,8 +52,7 @@ public class TupleConsumerPerfTest {
     String pigSchema = pigSchema(false, false);
     String pigSchemaProjected = pigSchema(true, false);
     String pigSchemaNoString = pigSchema(true, true);
-    PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
-    MessageType schema = pigSchemaConverter.convert(Utils.getSchemaFromString(pigSchema));
+    MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchema));
 
     MemPageStore memPageStore = new MemPageStore(0);
     ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 50*1024*1024, 50*1024*1024, false);

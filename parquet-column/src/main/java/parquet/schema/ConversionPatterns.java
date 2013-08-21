@@ -35,13 +35,25 @@ public abstract class ConversionPatterns {
    * @return a group type
    */
   private static GroupType listWrapper(Repetition repetition, String alias, OriginalType originalType, Type nested) {
-    if (nested.getRepetition() != Repetition.REPEATED) {
+    if (!nested.isRepetition(Repetition.REPEATED)) {
       throw new IllegalArgumentException("Nested type should be repeated: " + nested);
     }
     return new GroupType(repetition, alias, originalType, nested);
   }
-
-  public static GroupType mapType(Repetition repetition, String alias, Type valueType) {
+  
+  public static GroupType mapType(Repetition repetition, String alias, Type keyType, Type valueType) {
+    return mapType(repetition, alias, "map", keyType, valueType);
+  }
+  
+  public static GroupType stringKeyMapType(Repetition repetition, String alias, String mapAlias, Type valueType) {
+    return mapType(repetition, alias, mapAlias, new PrimitiveType(Repetition.REQUIRED, PrimitiveTypeName.BINARY, "key", OriginalType.UTF8), valueType);
+  }
+  
+  public static GroupType stringKeyMapType(Repetition repetition, String alias, Type valueType) {
+    return stringKeyMapType(repetition, alias, "map", valueType);
+  }
+  
+  public static GroupType mapType(Repetition repetition, String alias, String mapAlias, Type keyType, Type valueType) {
     if (!valueType.getName().equals("value")) {
       throw new RuntimeException(valueType.getName() + " should be value");
     }
@@ -51,9 +63,9 @@ public abstract class ConversionPatterns {
         MAP,
         new GroupType(
             Repetition.REPEATED,
-            "map",
+            mapAlias,
             MAP_KEY_VALUE,
-            new PrimitiveType(Repetition.REQUIRED, PrimitiveTypeName.BINARY, "key"),
+            keyType,
             valueType)
         );
   }

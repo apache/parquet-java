@@ -179,9 +179,9 @@ class ColumnReaderImpl implements ColumnReader {
   }
 
   private void bind(PrimitiveTypeName type) {
-    binding = type.convert(new PrimitiveTypeNameConverter<Binding>() {
+    binding = type.convert(new PrimitiveTypeNameConverter<Binding, RuntimeException>() {
       @Override
-      public Binding convertFLOAT(PrimitiveTypeName primitiveTypeName) {
+      public Binding convertFLOAT(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           float current;
           void read() {
@@ -200,7 +200,7 @@ class ColumnReaderImpl implements ColumnReader {
         };
       }
       @Override
-      public Binding convertDOUBLE(PrimitiveTypeName primitiveTypeName) {
+      public Binding convertDOUBLE(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           double current;
           void read() {
@@ -219,7 +219,7 @@ class ColumnReaderImpl implements ColumnReader {
         };
       }
       @Override
-      public Binding convertINT32(PrimitiveTypeName primitiveTypeName) {
+      public Binding convertINT32(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           int current;
           void read() {
@@ -239,7 +239,7 @@ class ColumnReaderImpl implements ColumnReader {
         };
       }
       @Override
-      public Binding convertINT64(PrimitiveTypeName primitiveTypeName) {
+      public Binding convertINT64(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           long current;
           void read() {
@@ -259,16 +259,16 @@ class ColumnReaderImpl implements ColumnReader {
         };
       }
       @Override
-      public Binding convertINT96(PrimitiveTypeName primitiveTypeName) {
+      public Binding convertINT96(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         throw new UnsupportedOperationException("INT96 NYI");
       }
       @Override
       public Binding convertFIXED_LEN_BYTE_ARRAY(
-          PrimitiveTypeName primitiveTypeName) {
+          PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         throw new UnsupportedOperationException("FIXED_LEN_BYTE_ARRAY NYI");
       }
       @Override
-      public Binding convertBOOLEAN(PrimitiveTypeName primitiveTypeName) {
+      public Binding convertBOOLEAN(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           boolean current;
           void read() {
@@ -288,7 +288,7 @@ class ColumnReaderImpl implements ColumnReader {
         };
       }
       @Override
-      public Binding convertBINARY(PrimitiveTypeName primitiveTypeName) {
+      public Binding convertBINARY(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
           Binary current;
           void read() {

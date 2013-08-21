@@ -18,11 +18,15 @@ package parquet.avro;
 import java.util.*;
 
 import org.apache.avro.Schema;
+
+import parquet.schema.ConversionPatterns;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType;
 import parquet.schema.Type;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.schema.Type.Repetition;
 
 import static parquet.schema.OriginalType.*;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
@@ -104,13 +108,12 @@ public class AvroSchemaConverter {
     } else if (type.equals(Schema.Type.ENUM)) {
       return primitive(fieldName, BINARY, repetition, ENUM);
     } else if (type.equals(Schema.Type.ARRAY)) {
-      return new GroupType(repetition, fieldName, LIST,
+      return ConversionPatterns.listType(repetition, fieldName,
           convertField("array", schema.getElementType(), Type.Repetition.REPEATED));
     } else if (type.equals(Schema.Type.MAP)) {
-      Type keyType = convertField("key", Schema.create(Schema.Type.STRING));
       Type valType = convertField("value", schema.getValueType());
-      return new GroupType(repetition, fieldName, MAP,
-          new GroupType(Type.Repetition.REPEATED, "map", MAP_KEY_VALUE, keyType, valType));
+      // avro map key type is always string
+      return ConversionPatterns.stringKeyMapType(repetition, fieldName, valType);
     } else if (type.equals(Schema.Type.FIXED)) {
       return primitive(fieldName, FIXED_LEN_BYTE_ARRAY, repetition);
     } else if (type.equals(Schema.Type.UNION)) {
