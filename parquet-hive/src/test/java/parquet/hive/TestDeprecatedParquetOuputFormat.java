@@ -13,6 +13,7 @@ package parquet.hive;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,13 +76,22 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
       }
     }
     reporter = Reporter.NULL;
+
+    Map<String, String> map = new HashMap<String, String>();
+    map.put("testkey", "testvalue");
+    map.put("foo", "bar");
+
+    List<Integer> list = new ArrayList<Integer>();
+    list.add(0);
+    list.add(12);
+    list.add(17);
+
     mapData = new HashMap<Integer, ArrayWritable>();
     mapData.clear();
     for (int i = 0; i < 1000; i++) {
-      // yeah same test as pig one :)
       mapData.put(i, UtilitiesTestMethods.createArrayWritable(i, i % 11 == 0 ? null : "name_" + i, i % 12 == 0 ? null : "add_" + i,
               i % 13 == 0 ? null : i, i % 14 == 0 ? null : "phone_" + i, i % 15 == 0 ? null : 1.2d * i, i % 16 == 0 ? null : "mktsegment_" + i,
-              i % 17 == 0 ? null : "comment_" + i));
+              i % 17 == 0 ? null : "comment_" + i, i % 18 == 0 ? null : map, i % 19 == 0 ? null : list));
     }
   }
 
@@ -91,9 +101,9 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
 
     // Set the configuration parameters
     tableProperties.setProperty("columns",
-            "c_custkey,c_name,c_address,c_nationkey,c_phone,c_acctbal,c_mktsegment,c_comment");
+            "c_custkey,c_name,c_address,c_nationkey,c_phone,c_acctbal,c_mktsegment,c_comment,c_map,c_list");
     tableProperties.setProperty("columns.types",
-            "int:string:string:int:string:double:string:string");
+            "int:string:string:int:string:double:string:string:map<string,string>:array<int>");
     tableProperties.setProperty(org.apache.hadoop.hive.serde.serdeConstants.SERIALIZATION_NULL_FORMAT, "NULL");
 
     System.out.println("First part, write the data");
@@ -142,6 +152,17 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
             + "  optional double c_acctbal;\n"
             + "  optional binary c_mktsegment;\n"
             + "  optional binary c_comment;\n"
+            + "  optional group c_map (MAP_KEY_VALUE) {\n"
+            + "    repeated group map {\n"
+            + "      required binary key;\n"
+            + "      optional binary value;\n"
+            + "    }\n"
+            + "  }\n"
+            + "  optional group c_list (LIST) {\n"
+            + "    repeated group bag {\n"
+            + "      optional int32 array_element;\n"
+            + "    }\n"
+            + "  }\n"
             + "}";
 
 
@@ -168,9 +189,9 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
       final Writable[] writableArr = arrValue;
       final ArrayWritable expected = mapData.get(((IntWritable) writableArr[0]).get());
       final Writable[] arrExpected = expected.get();
-      assertEquals(arrValue.length, 8);
+      assertEquals(arrValue.length, 10);
 
-      final boolean deepEquals = UtilitiesTestMethods.smartCheckArray(arrValue, arrExpected, new Integer[] {0, 1, 2, 3, 4, 5, 6, 7});
+      final boolean deepEquals = UtilitiesTestMethods.smartCheckArray(arrValue, arrExpected, new Integer[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
 
       assertTrue(deepEquals);
       count++;

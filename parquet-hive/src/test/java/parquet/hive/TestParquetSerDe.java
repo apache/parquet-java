@@ -103,33 +103,7 @@ public class TestParquetSerDe extends TestCase {
     // Serialize
     final ArrayWritable serializedArr = (ArrayWritable) serDe.serialize(row, oi);
     assertEquals("size correct after serialization", serDe.getSerDeStats().getRawDataSize(), serializedArr.get().length);
-    assertTrue("serialized object should be equal to starting object", arrayWritableEquals(t, serializedArr));
-  }
-
-  private boolean arrayWritableEquals(final ArrayWritable a1, final ArrayWritable a2) {
-    final Writable[] a1Arr = a1.get();
-    final Writable[] a2Arr = a2.get();
-
-    if (a1Arr.length != a2Arr.length) {
-      return false;
-    }
-
-    for (int i = 0; i < a1Arr.length; ++i) {
-      if (a1Arr[i] instanceof ArrayWritable) {
-        if (!(a2Arr[i] instanceof ArrayWritable)) {
-          return false;
-        }
-        if (!arrayWritableEquals((ArrayWritable) a1Arr[i], (ArrayWritable) a2Arr[i])) {
-          return false;
-        }
-      } else {
-        if (!a1Arr[i].equals(a2Arr[i])) {
-          return false;
-        }
-      }
-
-    }
-    return true;
+    assertTrue("serialized object should be equal to starting object", UtilitiesTestMethods.arrayWritableEquals(t, serializedArr));
   }
 
   private Properties createProperties() {
