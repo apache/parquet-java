@@ -311,7 +311,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
      * gets a ParquetInputSplit corresponding to a split given by Hive
      *
      * @param oldSplit The split given by Hive
-     * @param conf The JobConf of the Hive job
+     * @param conf     The JobConf of the Hive job
      * @return a ParquetInputSplit corresponding to the oldSplit
      * @throws IOException if the config cannot be enhanced or if the footer cannot be read from the file
      */
