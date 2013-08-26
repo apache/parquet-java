@@ -139,7 +139,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     @Override
     public RecordReader<Void, Tuple> createRecordReader(
         InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
-        throws IOException, InterruptedException {
+            throws IOException, InterruptedException {
       // for local mode we don't want to keep that around
       inputFormatCache.remove(location);
       return super.createRecordReader(inputSplit, taskAttemptContext);
@@ -228,15 +228,16 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     // We do not need to call setInput 
     // as setLocation is guaranteed to be called before this
     long length = 0;
-    for (InputSplit split : getParquetInputFormat().getSplits(job)) {
-      try {
+    try {
+      for (InputSplit split : getParquetInputFormat().getSplits(job)) {
         length += split.getLength();
-      } catch (InterruptedException e) {
-        LOG.warn("Interrupted: ", e);
-        return null;
       }
+    } catch (InterruptedException e) {
+      LOG.warn("Interrupted: ", e);
+      return null;
     }
     ResourceStatistics stats = new ResourceStatistics();
+    // TODO use pig-0.12 setBytes api when its available
     stats.setmBytes(length / 1024 / 1024);
     return stats;
   }
@@ -266,7 +267,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     for (RequiredField rf : fieldList) {
       FieldSchema f;
       try {
-         f = schema.getField(rf.getAlias()).clone();
+        f = schema.getField(rf.getAlias()).clone();
       } catch (CloneNotSupportedException e) {
         throw new FrontendException("Clone not supported for the fieldschema", e);
       }
