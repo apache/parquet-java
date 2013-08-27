@@ -94,7 +94,7 @@ public class TestProtocolReadToWrite {
 
   private void writeReadCompare(TBase<?,?> a)
       throws TException, InstantiationException, IllegalAccessException {
-    ProtocolPipe[] pipes = {new ProtocolReadToWrite(), new BufferedProtocolReadToWrite()};
+    ProtocolPipe[] pipes = {new ProtocolReadToWrite(), new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType((Class<TBase<?,?>>)a.getClass()))};
     for (ProtocolPipe p : pipes) {
       final ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
       final ByteArrayOutputStream baos = baos2;
