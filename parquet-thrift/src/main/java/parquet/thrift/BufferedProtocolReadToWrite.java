@@ -45,6 +45,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
 
   private interface Action {
     void write(TProtocol out) throws TException;
+    String toDebugString();
   }
 
   private static final Action STRUCT_END = new Action() {
@@ -53,12 +54,21 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       out.writeFieldStop();
       out.writeStructEnd();
     }
+
+    @Override
+    public String toDebugString() {
+      return ")";
+    }
   };
 
   private static final Action FIELD_END = new Action() {
     @Override
     public void write(TProtocol out) throws TException {
       out.writeFieldEnd();
+    }
+    @Override
+    public String toDebugString() {
+      return ";";
     }
   };
 
@@ -67,6 +77,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     public void write(TProtocol out) throws TException {
       out.writeMapEnd();
     }
+    @Override
+    public String toDebugString() {
+      return "]";
+    }
   };
 
   private static final Action LIST_END = new Action() {
@@ -74,12 +88,20 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     public void write(TProtocol out) throws TException {
       out.writeListEnd();
     }
+    @Override
+    public String toDebugString() {
+      return "}";
+    }
   };
 
   private static final Action SET_END = new Action() {
     @Override
     public void write(TProtocol out) throws TException {
       out.writeSetEnd();
+    }
+    @Override
+    public String toDebugString() {
+      return ">";
     }
   };
 
@@ -101,9 +123,23 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
   public void readOne(TProtocol in, TProtocol out) throws TException {
     List<Action> buffer = new LinkedList<Action>();
     readOneStruct(in, buffer, thriftType);
-    for (Action a : buffer) {
-      a.write(out);
+    try {
+      for (Action a : buffer) {
+        a.write(out);
+      }
+    } catch (RuntimeException e) {
+      throw new TException(error(buffer),e);
+    } catch (TException e) {
+      throw new TException(error(buffer),e);
     }
+  }
+
+  private String error(List<Action> buffer) {
+    StringBuilder sb = new StringBuilder("Can not write record: ");
+    for (Action action : buffer) {
+      sb.append(action.toDebugString());
+    }
+    return sb.toString();
   }
 
   private void readOneValue(TProtocol in, byte type, List<Action> buffer, ThriftType expectedType)
@@ -133,6 +169,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         public void write(TProtocol out) throws TException {
           out.writeBool(bool);
         }
+        @Override
+        public String toDebugString() {
+          return String.valueOf(bool);
+        }
       });
       break;
     case TType.BYTE:
@@ -141,6 +181,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         @Override
         public void write(TProtocol out) throws TException {
           out.writeByte(b);
+        }
+        @Override
+        public String toDebugString() {
+          return String.valueOf(b);
         }
       });
       break;
@@ -151,6 +195,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         public void write(TProtocol out) throws TException {
           out.writeDouble(d);
         }
+        @Override
+        public String toDebugString() {
+          return String.valueOf(d);
+        }
       });
       break;
     case TType.I16:
@@ -159,6 +207,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         @Override
         public void write(TProtocol out) throws TException {
           out.writeI16(s);
+        }
+        @Override
+        public String toDebugString() {
+          return String.valueOf(s);
         }
       });
       break;
@@ -170,6 +222,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         public void write(TProtocol out) throws TException {
           out.writeI32(i);
         }
+        @Override
+        public String toDebugString() {
+          return String.valueOf(i);
+        }
       });
       break;
     case TType.I64:
@@ -179,6 +235,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         public void write(TProtocol out) throws TException {
           out.writeI64(l);
         }
+        @Override
+        public String toDebugString() {
+          return String.valueOf(l);
+        }
       });
       break;
     case TType.STRING:
@@ -187,6 +247,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         @Override
         public void write(TProtocol out) throws TException {
           out.writeBinary(bin);
+        }
+        @Override
+        public String toDebugString() {
+          return String.valueOf(bin);
         }
       });
       break;
@@ -204,6 +268,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       public void write(TProtocol out) throws TException {
         out.writeStructBegin(struct);
       }
+      @Override
+      public String toDebugString() {
+        return "(";
+      }
     });
     TField field;
     while ((field = in.readFieldBegin()).type != TType.STOP) {
@@ -212,6 +280,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         @Override
         public void write(TProtocol out) throws TException {
           out.writeFieldBegin(currentField);
+        }
+        @Override
+        public String toDebugString() {
+          return currentField.id + "<t="+currentField.type + ">: ";
         }
       });
       ThriftField expectedField = type.getChildById(field.id);
@@ -230,6 +302,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       public void write(TProtocol out) throws TException {
         out.writeMapBegin(map);
       }
+      @Override
+      public String toDebugString() {
+        return "<k=" + map.keyType + ", v=" + map.valueType + ", s=" + map.size + ">[";
+      }
     });
     for (int i = 0; i < map.size; i++) {
       readOneValue(in, map.keyType, buffer, mapType.getKey().getType());
@@ -246,6 +322,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       public void write(TProtocol out) throws TException {
         out.writeSetBegin(set);
       }
+      @Override
+      public String toDebugString() {
+        return "<e=" + set.elemType + ", s=" + set.size + "><";
+      }
     });
     readCollectionElements(in, set.size, set.elemType, buffer, expectedType.getValues().getType());
     in.readSetEnd();
@@ -258,6 +338,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       @Override
       public void write(TProtocol out) throws TException {
         out.writeListBegin(list);
+      }
+      @Override
+      public String toDebugString() {
+        return "<e=" + list.elemType + ", s=" + list.size + ">{";
       }
     });
     readCollectionElements(in, list.size, list.elemType, buffer, expectedType.getValues().getType());
