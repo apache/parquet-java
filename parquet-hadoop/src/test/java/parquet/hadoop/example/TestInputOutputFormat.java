@@ -40,20 +40,23 @@ import parquet.example.data.Group;
 import parquet.example.data.simple.SimpleGroupFactory;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.CompressionCodecName;
-import parquet.hadoop.util.BenchmarkCounter;
 import parquet.hadoop.util.ContextUtil;
 import parquet.schema.MessageTypeParser;
 
 public class TestInputOutputFormat {
   private static final Log LOG = Log.getLog(TestInputOutputFormat.class);
   final Path parquetPath = new Path("target/test/example/TestInputOutputFormat/parquet");
-  final Path inputPath = new Path("src/test/java/parquet/hadoop/example/TestInputOutputFormat.java");
+  final Path inputPath = new Path("parquet-hadoop/src/test/java/parquet/hadoop/example/TestInputOutputFormat.java");
   final Path outputPath = new Path("target/test/example/TestInputOutputFormat/out");
   Job writeJob;
   Job readJob;
   private String writeSchema;
   private String readSchema;
+  private String partialSchema;
   private Configuration conf;
+
+  private Class readMapperClass;
+  private Class writeMapperClass;
 
   @Before
   public void setUp() {
@@ -67,6 +70,13 @@ public class TestInputOutputFormat {
             "required int32 line;\n" +
             "required binary content;\n" +
             "}";
+
+    partialSchema = "message example {\n" +
+            "required int32 line;\n" +
+            "}";
+
+    readMapperClass =ReadMapper.class;
+    writeMapperClass=WriteMapper.class;
   }
 
   public static class ReadMapper extends Mapper<LongWritable, Text, Void, Group> {
@@ -91,6 +101,11 @@ public class TestInputOutputFormat {
       context.write(new LongWritable(value.getInteger("line", 0)), new Text(value.getString("content", 0)));
     }
   }
+  public static class PartialWriteMapper extends Mapper<Void, Group, LongWritable, Text> {
+    protected void map(Void key, Group value, Mapper<Void, Group, LongWritable, Text>.Context context) throws IOException, InterruptedException {
+      context.write(new LongWritable(value.getInteger("line", 0)), new Text("dummy"));
+    }
+  }
 
   private void runMapReduceJob(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException {
 
@@ -105,7 +120,7 @@ public class TestInputOutputFormat {
       ExampleOutputFormat.setCompression(writeJob, codec);
       ExampleOutputFormat.setOutputPath(writeJob, parquetPath);
       writeJob.setOutputFormatClass(ExampleOutputFormat.class);
-      writeJob.setMapperClass(ReadMapper.class);
+      writeJob.setMapperClass(readMapperClass);
 
       ExampleOutputFormat.setSchema(
               writeJob,
@@ -124,7 +139,7 @@ public class TestInputOutputFormat {
       ExampleInputFormat.setInputPaths(readJob, parquetPath);
       readJob.setOutputFormatClass(TextOutputFormat.class);
       TextOutputFormat.setOutputPath(readJob, outputPath);
-      readJob.setMapperClass(WriteMapper.class);
+      readJob.setMapperClass(writeMapperClass);
       readJob.setNumReduceTasks(0);
       readJob.submit();
       waitForJob(readJob);
@@ -155,6 +170,13 @@ public class TestInputOutputFormat {
     testReadWrite(CompressionCodecName.GZIP);
     testReadWrite(CompressionCodecName.UNCOMPRESSED);
     testReadWrite(CompressionCodecName.SNAPPY);
+  }
+
+  @Test
+  public void testProjection() throws Exception{
+    readSchema=partialSchema;
+    writeMapperClass=PartialWriteMapper.class;
+    runMapReduceJob(CompressionCodecName.GZIP);
   }
 
   @Test
