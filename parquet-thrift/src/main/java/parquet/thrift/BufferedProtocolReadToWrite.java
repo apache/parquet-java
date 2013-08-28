@@ -287,7 +287,11 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         }
       });
       ThriftField expectedField = type.getChildById(field.id);
-      readOneValue(in, field.type, buffer, expectedField.getType());
+      try {
+        readOneValue(in, field.type, buffer, expectedField.getType());
+      } catch (Exception e) {
+        throw new TException("Error while reading field " + field + " expected " + expectedField, e);
+      }
       in.readFieldEnd();
       buffer.add(FIELD_END);
     }
