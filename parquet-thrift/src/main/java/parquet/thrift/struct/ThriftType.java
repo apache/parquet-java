@@ -150,21 +150,39 @@ public abstract class ThriftType {
   public static class StructType extends ThriftType {
     private final List<ThriftField> children;
 
+    private final ThriftField[] childById;
+
     @JsonCreator
     public StructType(@JsonProperty("children") List<ThriftField> children) {
       super(STRUCT);
       this.children = children;
+      int maxId = 0;
+      if (children != null) {
+        for (ThriftField thriftField : children) {
+          maxId = Math.max(maxId, thriftField.getFieldId());
+        }
+        childById = new ThriftField[maxId + 1];
+        for (ThriftField thriftField : children) {
+          childById[thriftField.getFieldId()] = thriftField;
+        }
+      } else {
+        childById = null;
+      }
     }
 
     public List<ThriftField> getChildren() {
       return children;
     }
 
+    @JsonIgnore
+    public ThriftField getChildById(short id) {
+      return childById[id];
+    }
+
     @Override
     public void accept(TypeVisitor visitor) {
       visitor.visit(this);
     }
-
   }
 
   public static class MapType extends ThriftType {

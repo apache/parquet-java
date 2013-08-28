@@ -49,7 +49,7 @@ public enum ThriftTypeID {
   MAP (TType.MAP, true, MapType.class),
   SET (TType.SET, true, SetType.class),
   LIST (TType.LIST, true, ListType.class),
-  ENUM (TType.ENUM, EnumType.class);
+  ENUM (TType.ENUM, TType.I32, EnumType.class);
 
   private static ThriftTypeID[] types = new ThriftTypeID[17];
   static {
@@ -61,17 +61,27 @@ public enum ThriftTypeID {
   private final byte thriftType;
   private final boolean complex;
   private final Class<? extends ThriftType> clss;
+  private final byte serializedThriftType;
 
   private ThriftTypeID(byte thriftType, Class<? extends ThriftType> clss) {
-    this(thriftType, false, clss);
+    this(thriftType, thriftType, clss);
+  }
+
+  private ThriftTypeID(byte thriftType, byte serializedThriftType, Class<? extends ThriftType> clss) {
+    this(thriftType, serializedThriftType, false, clss);
   }
 
   private ThriftTypeID(byte thriftType) {
-    this(thriftType, false, null);
+    this(thriftType, thriftType, false, null);
   }
 
   private ThriftTypeID(byte thriftType, boolean complex, Class<? extends ThriftType> clss) {
+    this(thriftType, thriftType, complex, clss);
+  }
+
+  private ThriftTypeID(byte thriftType, byte serializedThriftType, boolean complex, Class<? extends ThriftType> clss) {
     this.thriftType = thriftType;
+    this.serializedThriftType = serializedThriftType;
     this.complex = complex;
     this.clss = clss;
   }
@@ -90,5 +100,9 @@ public enum ThriftTypeID {
 
   public static ThriftTypeID fromByte(byte type) {
     return types[type];
+  }
+
+  public byte getSerializedThriftType() {
+    return serializedThriftType;
   }
 }
