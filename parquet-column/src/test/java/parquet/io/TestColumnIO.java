@@ -138,79 +138,99 @@ public class TestColumnIO {
     assertEquals(schemaString, schema.toString());
   }
 
+
+
   @Test
-  public void testSchemaCompatibility() {
-    MessageType schema1 = new MessageType("schema",
-        new PrimitiveType(REQUIRED, INT32, "a"));
-    MessageType schema2 = new MessageType("schema",
-        new PrimitiveType(OPTIONAL, INT32, "b"),
-        new PrimitiveType(OPTIONAL, INT32, "a")
-        );
-    MessageType schema3 = new MessageType("schema",
-        new PrimitiveType(OPTIONAL, INT32, "c"));
+  public void testReadUsingRequestedSchemaWithExtraFields(){
+    MessageType orginalSchema = new MessageType("schema",
+            new PrimitiveType(REQUIRED, INT32, "a"),
+            new PrimitiveType(OPTIONAL, INT32, "b")
+    );
+    MessageType schemaWithExtraField = new MessageType("schema",
+            new PrimitiveType(OPTIONAL, INT32, "b"),
+            new PrimitiveType(OPTIONAL, INT32, "a"),
+            new PrimitiveType(OPTIONAL, INT32, "c")
+    );
+    MemPageStore memPageStoreForOriginalSchema = new MemPageStore(1);
+    MemPageStore memPageStoreForSchemaWithExtraField = new MemPageStore(1);
+    SimpleGroupFactory groupFactory = new SimpleGroupFactory(orginalSchema);
+    writeGroups(orginalSchema, memPageStoreForOriginalSchema, groupFactory.newGroup().append("a", 1).append("b", 2));
 
-    MemPageStore memPageStore1 = new MemPageStore(1);
-    MemPageStore memPageStore2 = new MemPageStore(1);
-    MemPageStore memPageStore3 = new MemPageStore(1);
-
-    SimpleGroupFactory groupFactory1 = new SimpleGroupFactory(schema1);
-    writeGroups(schema1, memPageStore1, groupFactory1.newGroup().append("a", 1));
-
-    SimpleGroupFactory groupFactory2 = new SimpleGroupFactory(schema2);
-    writeGroups(schema2, memPageStore2, groupFactory2.newGroup().append("a", 2).append("b", 3));
-
-    SimpleGroupFactory groupFactory3 = new SimpleGroupFactory(schema3);
-    writeGroups(schema3, memPageStore3, groupFactory3.newGroup().append("c", 4));
+    SimpleGroupFactory groupFactory2 = new SimpleGroupFactory(schemaWithExtraField);
+    writeGroups(schemaWithExtraField, memPageStoreForSchemaWithExtraField, groupFactory2.newGroup().append("a", 1).append("b", 2).append("c",3));
 
     {
-      List<Group> groups1 = new ArrayList<Group>();
-      groups1.addAll(readGroups(memPageStore1, schema1, schema2, 1));
-      groups1.addAll(readGroups(memPageStore2, schema2, schema2, 1));
+      List<Group> groups = new ArrayList<Group>();
+      groups.addAll(readGroups(memPageStoreForOriginalSchema, orginalSchema, schemaWithExtraField, 1));
+      groups.addAll(readGroups(memPageStoreForSchemaWithExtraField, schemaWithExtraField, schemaWithExtraField, 1));
       // TODO: add once we have the support for empty projection
 //      groups1.addAll(readGroups(memPageStore3, schema3, schema2, 1));
-      Object[][] e1 = {
-          { null, 1},
-          { 3, 2},
+      Object[][] expected = {
+              { 2, 1, null},
+              { 2, 1, 3},
 //          { null, null}
       };
-      validateGroups(groups1, e1);
+      validateGroups(groups, expected);
     }
+
+  }
+
+  @Test
+  public void testReadUsingRequestedSchemaWithIncompatibleField(){
+    MessageType originalSchema = new MessageType("schema",
+            new PrimitiveType(OPTIONAL, INT32, "e"));
+    MemPageStore store = new MemPageStore(1);
+    SimpleGroupFactory groupFactory = new SimpleGroupFactory(originalSchema);
+    writeGroups(originalSchema, store, groupFactory.newGroup().append("e", 4));
+
+    try {
+      MessageType schemaWithIncompatibleField = new MessageType("schema",
+              new PrimitiveType(OPTIONAL, BINARY, "e")); // Incompatible schema: different type
+      readGroups(store, originalSchema, schemaWithIncompatibleField, 1);
+      fail("should have thrown an incompatible schema exception");
+    } catch (ParquetDecodingException e) {
+      assertEquals("The requested schema is not compatible with the file schema. incompatible types: optional binary e != optional int32 e", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testReadUsingSchemaWithRequiredFieldThatWasOptional(){
+    MessageType originalSchema = new MessageType("schema",
+            new PrimitiveType(OPTIONAL, INT32, "e"));
+    MemPageStore store = new MemPageStore(1);
+    SimpleGroupFactory groupFactory = new SimpleGroupFactory(originalSchema);
+    writeGroups(originalSchema, store, groupFactory.newGroup().append("e", 4));
+
+    try {
+      MessageType schemaWithRequiredFieldThatWasOptional = new MessageType("schema",
+              new PrimitiveType(REQUIRED, INT32, "e")); // Incompatible schema: required when it was optional
+      readGroups(store, originalSchema, schemaWithRequiredFieldThatWasOptional, 1);
+      fail("should have thrown an incompatible schema exception");
+    } catch (ParquetDecodingException e) {
+      assertEquals("The requested schema is not compatible with the file schema. incompatible types: required int32 e != optional int32 e", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testReadUsingProjectedSchema(){
+    MessageType orginalSchema = new MessageType("schema",
+            new PrimitiveType(REQUIRED, INT32, "a"),
+            new PrimitiveType(REQUIRED, INT32, "b")
+    );
+    MessageType projectedSchema = new MessageType("schema",
+            new PrimitiveType(OPTIONAL, INT32, "b")
+    );
+    MemPageStore store = new MemPageStore(1);
+    SimpleGroupFactory groupFactory = new SimpleGroupFactory(orginalSchema);
+    writeGroups(orginalSchema, store, groupFactory.newGroup().append("a", 1).append("b", 2));
 
     {
-      MessageType schema4 = new MessageType("schema",
-          new PrimitiveType(OPTIONAL, INT32, "c"),
-          new PrimitiveType(OPTIONAL, INT32, "b"),
-          new PrimitiveType(OPTIONAL, INT32, "a"));
-
-      List<Group> groups2 = new ArrayList<Group>();
-      groups2.addAll(readGroups(memPageStore1, schema1, schema4, 1));
-      groups2.addAll(readGroups(memPageStore2, schema2, schema4, 1));
-      groups2.addAll(readGroups(memPageStore3, schema3, schema4, 1));
-
-      Object[][] e2 = {
-          { null, null, 1},
-          { null, 3, 2},
-          { 4, null, null}
+      List<Group> groups = new ArrayList<Group>();
+      groups.addAll(readGroups(store, orginalSchema, projectedSchema, 1));
+      Object[][] expected = {
+              {2},
       };
-      validateGroups(groups2, e2);
-    }
-
-    try {
-      MessageType schema5 = new MessageType("schema",
-          new PrimitiveType(OPTIONAL, BINARY, "c")); // Incompatible schema: different type
-      readGroups(memPageStore3, schema3, schema5, 1);
-      fail("should have thrown an incompatible schema exception");
-    } catch (ParquetDecodingException e) {
-      assertEquals("The requested schema is not compatible with the file schema. incompatible types: optional binary c != optional int32 c", e.getMessage());
-    }
-
-    try {
-      MessageType schema6 = new MessageType("schema",
-          new PrimitiveType(REQUIRED, INT32, "c")); // Incompatible schema: required when it was optional
-      readGroups(memPageStore3, schema3, schema6, 1);
-      fail("should have thrown an incompatible schema exception");
-    } catch (ParquetDecodingException e) {
-      assertEquals("The requested schema is not compatible with the file schema. incompatible types: required int32 c != optional int32 c", e.getMessage());
+      validateGroups(groups, expected);
     }
 
   }
