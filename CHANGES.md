@@ -1,4 +1,7 @@
 # Parquet #
+### Version 1.1.1 ###
+* ISSUE 150: add thrift validation on read
+
 ### Version 1.1.0 ###
 * ISSUE 149: changing default block size to 128mb  
 * ISSUE 146: Fix and add unit tests for Hive nested types  

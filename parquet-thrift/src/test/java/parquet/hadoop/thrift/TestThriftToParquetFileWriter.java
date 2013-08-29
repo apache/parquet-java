@@ -30,14 +30,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
-import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.JobContext;
-import org.apache.hadoop.mapreduce.JobID;
-import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
-import org.apache.hadoop.mapreduce.TaskID;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -50,7 +44,6 @@ import parquet.Log;
 import parquet.example.data.Group;
 import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.ParquetReader;
-import parquet.hadoop.example.ExampleInputFormat;
 import parquet.hadoop.example.GroupReadSupport;
 import parquet.hadoop.metadata.ParquetMetadata;
 
@@ -61,7 +54,6 @@ import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
 import com.twitter.elephantbird.thrift.test.TestListInMap;
 import com.twitter.elephantbird.thrift.test.TestMapInList;
 
-import parquet.hadoop.util.ContextUtil;
 import parquet.schema.MessageType;
 
 public class TestThriftToParquetFileWriter {
@@ -110,11 +102,11 @@ public class TestThriftToParquetFileWriter {
 
     Group g = null;
     while((g = reader.read()) != null) {
-      assertEquals(listMap.names.size(), 
+      assertEquals(listMap.names.size(),
           g.getGroup("names", 0).getFieldRepetitionCount("names_tuple"));
-      assertEquals(listMap.names.get(0).size(), 
+      assertEquals(listMap.names.get(0).size(),
           g.getGroup("names", 0).getGroup("names_tuple", 0).getFieldRepetitionCount("map"));
-      assertEquals(listMap.names.get(1).size(), 
+      assertEquals(listMap.names.get(1).size(),
           g.getGroup("names", 0).getGroup("names_tuple", 1).getFieldRepetitionCount("map"));
     }
   }
@@ -130,9 +122,9 @@ public class TestThriftToParquetFileWriter {
 
     Group g = null;
     while((g = reader.read()) != null) {
-      assertEquals("key", 
+      assertEquals("key",
           g.getGroup("names", 0).getGroup("map",0).getBinary("key", 0).toStringUsingUTF8());
-      assertEquals(map.get("key").size(), 
+      assertEquals(map.get("key").size(),
           g.getGroup("names", 0).getGroup("map",0).getGroup("value", 0).getFieldRepetitionCount(0));
     }
   }
@@ -148,13 +140,13 @@ public class TestThriftToParquetFileWriter {
 
     Group g = null;
     while((g = reader.read()) != null) {
-      assertEquals("key1", 
+      assertEquals("key1",
           g.getGroup("names", 0).getGroup("map",0).getGroup("key", 0).getBinary("key_tuple", 0).toStringUsingUTF8());
-      assertEquals("key2", 
+      assertEquals("key2",
           g.getGroup("names", 0).getGroup("map",0).getGroup("key", 0).getBinary("key_tuple", 1).toStringUsingUTF8());
-      assertEquals("val1", 
+      assertEquals("val1",
           g.getGroup("names", 0).getGroup("map",0).getGroup("value", 0).getBinary("value_tuple", 0).toStringUsingUTF8());
-      assertEquals("val2", 
+      assertEquals("val2",
           g.getGroup("names", 0).getGroup("map",0).getGroup("value", 0).getBinary("value_tuple", 1).toStringUsingUTF8());
     }
   }
