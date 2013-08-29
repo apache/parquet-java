@@ -18,7 +18,6 @@ package parquet.hadoop.thrift;
 import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -34,7 +33,6 @@ import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TaskID;
-import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -44,7 +42,6 @@ import org.junit.Test;
 import parquet.Log;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.util.ContextUtil;
-import parquet.thrift.ThriftSchemaConverter;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
@@ -78,7 +75,7 @@ public class TestParquetToThriftReadProjection {
   public void testThriftOptionalFieldsWithReadProjectionUsingFilter() throws Exception {
     Configuration conf = new Configuration();
     final String projectionFilterDesc = "persons/name/*;persons/{id}";
-    conf.set(ThriftSchemaConverter.THRIFT_READ_FILTER, projectionFilterDesc);
+    conf.set(ThriftReadSupport.THRIFT_READ_FILTER, projectionFilterDesc);
     shouldDoProjection(conf);
   }
 

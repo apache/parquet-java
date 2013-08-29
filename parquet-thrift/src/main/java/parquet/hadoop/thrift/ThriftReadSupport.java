@@ -35,6 +35,10 @@ import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftType.StructType;
 
 public class ThriftReadSupport<T extends TBase<?,?>> extends ReadSupport<T> {
+  /**
+   * configuration key for thrift read projection schema
+   */
+  public static final String THRIFT_READ_FILTER = "thrift.read.filter";
   private static final String RECORD_CONVERTER_DEFAULT = TBaseRecordConverter.class.getName();
   public static final String THRIFT_READ_CLASS_KEY = "parquet.thrift.read.class";
 
@@ -81,7 +85,7 @@ public class ThriftReadSupport<T extends TBase<?,?>> extends ReadSupport<T> {
           MessageType fileMessageType) {
     MessageType requestedProjection;
     String partialSchemaString = configuration.get(ReadSupport.PARQUET_READ_SCHEMA);
-    String projectionSchemaStr = configuration.get(ThriftSchemaConverter.THRIFT_READ_FILTER);
+    String projectionSchemaStr = configuration.get(THRIFT_READ_FILTER);
 
     if (partialSchemaString != null && projectionSchemaStr != null)
       throw new ThriftProjectionException("PARQUET_READ_SCHEMA and THRIFT_READ_FILTER are both specified, should use only one.");

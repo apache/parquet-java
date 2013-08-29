@@ -63,11 +63,6 @@ import com.twitter.elephantbird.thrift.TStructDescriptor.Field;
 
 public class ThriftSchemaConverter {
 
-  /**
-   * configuration key for thrift read projection schema
-   */
-  public static final String THRIFT_READ_FILTER = "thrift.read.filter";
-
   private final FieldProjectionFilter fieldProjectionFilter;
 
   public ThriftSchemaConverter() {
@@ -124,23 +119,25 @@ public class ThriftSchemaConverter {
   }
 
   private Type toSchema(String name, Field field, Type.Repetition rep, FieldProjectionFilter filter, List<String> currentFieldPath) {
-//    System.out.println(currentFieldPath);
     if (field.isList()) {
       final Field listElemField = field.getListElemField();
       Type nestedType = toSchema(name + "_tuple", listElemField, REPEATED, filter, currentFieldPath);
-      if (nestedType == null)
+      if (nestedType == null) {
         return null;
+      }
       return ConversionPatterns.listType(rep, name, nestedType);
     } else if (field.isSet()) {
       final Field setElemField = field.getSetElemField();
       Type nestedType = toSchema(name + "_tuple", setElemField, REPEATED, filter, currentFieldPath);
-      if (nestedType == null)
+      if (nestedType == null) {
         return null;
+      }
       return ConversionPatterns.listType(rep, name, nestedType);
     } else if (field.isStruct()) {
       Type[] fields = toSchema(field.gettStructDescriptor(), filter, currentFieldPath);//if all child nodes dont exist, simply return null for current layer
-      if (fields.length == 0)
+      if (fields.length == 0) {
         return null;
+      }
       return new GroupType(rep, name, fields);
 
     } else if (field.isMap()) {
@@ -155,7 +152,6 @@ public class ThriftSchemaConverter {
       Type valueType = toSchema("value", mapValueField, OPTIONAL, filter, currentFieldPath);
       currentFieldPath.remove(currentFieldPath.size() - 1);
 
-      //TODO: Throw exception when either is null
       if (keyType == null && valueType == null)
         return null;
       if (keyType == null)
@@ -181,7 +177,7 @@ public class ThriftSchemaConverter {
           case TType.STRING:
             return new PrimitiveType(rep, BINARY, name, UTF8);
           case TType.BOOL:
-            return new PrimitiveType(rep, BOOLEAN, name); // TODO: elephantbird does int
+            return new PrimitiveType(rep, BOOLEAN, name);
           case TType.I32:
             return new PrimitiveType(rep, INT32, name);
           case TType.BYTE:
