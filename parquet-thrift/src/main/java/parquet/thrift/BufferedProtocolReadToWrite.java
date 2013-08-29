@@ -34,6 +34,7 @@ import parquet.thrift.struct.ThriftType.ListType;
 import parquet.thrift.struct.ThriftType.MapType;
 import parquet.thrift.struct.ThriftType.SetType;
 import parquet.thrift.struct.ThriftType.StructType;
+import parquet.thrift.struct.ThriftTypeID;
 
 /**
  * Class to read from one protocol in a buffer and then write to another one
@@ -101,7 +102,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     }
     @Override
     public String toDebugString() {
-      return ">";
+      return "*}";
     }
   };
 
@@ -122,8 +123,8 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
   @Override
   public void readOne(TProtocol in, TProtocol out) throws TException {
     List<Action> buffer = new LinkedList<Action>();
-    readOneStruct(in, buffer, thriftType);
     try {
+      readOneStruct(in, buffer, thriftType);
       for (Action a : buffer) {
         a.write(out);
       }
@@ -145,7 +146,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
   private void readOneValue(TProtocol in, byte type, List<Action> buffer, ThriftType expectedType)
       throws TException {
     if (expectedType.getType().getSerializedThriftType() != type) {
-      throw new TException("the data type does not match the expected thrift structure: expected " + expectedType + " got " + type + "(See org.apache.thrift.protocol.TType)");
+      throw new TException("the data type does not match the expected thrift structure: expected " + expectedType + " got " + typeName(type));
     }
     switch (type) {
     case TType.LIST:
@@ -261,6 +262,14 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     }
   }
 
+  private String typeName(byte type) {
+    try {
+      return ThriftTypeID.fromByte(type).name();
+    } catch (RuntimeException e) {
+      return String.valueOf(type);
+    }
+  }
+
   private void readOneStruct(TProtocol in, List<Action> buffer, StructType type) throws TException {
     final TStruct struct = in.readStructBegin();
     buffer.add(new Action() {
@@ -283,7 +292,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         }
         @Override
         public String toDebugString() {
-          return currentField.id + "<t="+currentField.type + ">: ";
+          return "f=" + currentField.id + "<t=" + typeName(currentField.type) + ">: ";
         }
       });
       ThriftField expectedField = type.getChildById(field.id);
@@ -328,7 +337,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       }
       @Override
       public String toDebugString() {
-        return "<e=" + set.elemType + ", s=" + set.size + "><";
+        return "<e=" + set.elemType + ", s=" + set.size + ">{*";
       }
     });
     readCollectionElements(in, set.size, set.elemType, buffer, expectedType.getValues().getType());
