@@ -29,9 +29,12 @@ import parquet.schema.MessageType;
 import parquet.thrift.TBaseRecordConverter;
 import parquet.thrift.ThriftMetaData;
 import parquet.thrift.ThriftRecordConverter;
+import parquet.thrift.ThriftSchemaConverter;
+import parquet.thrift.projection.FieldProjectionFilter;
+import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftType.StructType;
 
-public class ThriftReadSupport<T> extends ReadSupport<T> {
+public class ThriftReadSupport<T extends TBase<?,?>> extends ReadSupport<T> {
   private static final String RECORD_CONVERTER_DEFAULT = TBaseRecordConverter.class.getName();
   public static final String THRIFT_READ_CLASS_KEY = "parquet.thrift.read.class";
 
@@ -71,13 +74,32 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
   }
 
 
+
   @Override
   public parquet.hadoop.api.ReadSupport.ReadContext init(
-      Configuration configuration, Map<String, String> keyValueMetaData,
-      MessageType fileMessageType) {
+          Configuration configuration, Map<String, String> keyValueMetaData,
+          MessageType fileMessageType) {
+    MessageType requestedProjection;
     String partialSchemaString = configuration.get(ReadSupport.PARQUET_READ_SCHEMA);
-    MessageType requestedProjection = getSchemaForRead(fileMessageType, partialSchemaString);
-    return new ReadContext(requestedProjection);
+    String projectionSchemaStr = configuration.get(ThriftSchemaConverter.THRIFT_READ_FILTER);
+
+    if (partialSchemaString != null && projectionSchemaStr != null)
+      throw new ThriftProjectionException("PARQUET_READ_SCHEMA and THRIFT_READ_FILTER are both specified, should use only one.");
+
+    if (partialSchemaString != null) {
+      requestedProjection = getSchemaForRead(fileMessageType, partialSchemaString);
+    } else {
+      FieldProjectionFilter fieldProjectionFilter = new FieldProjectionFilter(projectionSchemaStr);
+      ThriftMetaData thriftMetaData = ThriftMetaData.fromExtraMetaData(keyValueMetaData);
+      try {
+        requestedProjection = new ThriftSchemaConverter(fieldProjectionFilter).convert(getThriftClass(thriftMetaData, configuration));
+      } catch (ClassNotFoundException e) {
+        throw new ThriftProjectionException("can not find thriftClass from configuration");
+      }
+    }
+
+    MessageType schemaForRead = getSchemaForRead(fileMessageType, requestedProjection);
+    return new ReadContext(schemaForRead);
   }
 
   @SuppressWarnings("unchecked")

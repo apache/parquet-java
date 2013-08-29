@@ -41,6 +41,8 @@ import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType;
 import parquet.schema.Type;
+import parquet.thrift.projection.FieldProjectionFilter;
+import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftField.Requirement;
@@ -61,23 +63,43 @@ import com.twitter.elephantbird.thrift.TStructDescriptor.Field;
 
 public class ThriftSchemaConverter {
 
-  public MessageType convert(Class<? extends TBase<?, ?>> thriftClass) {
-    final TStructDescriptor struct = TStructDescriptor.getInstance(thriftClass);
-    return new MessageType(
-        thriftClass.getSimpleName(),
-        toSchema(struct));
+  /**
+   * configuration key for thrift read projection schema
+   */
+  public static final String THRIFT_READ_FILTER = "thrift.read.filter";
+
+  private final FieldProjectionFilter fieldProjectionFilter;
+
+  public ThriftSchemaConverter() {
+    this(new FieldProjectionFilter());
   }
 
-  private Type[] toSchema(TStructDescriptor struct) {
+  public ThriftSchemaConverter(FieldProjectionFilter fieldProjectionFilter) {
+    this.fieldProjectionFilter = fieldProjectionFilter;
+  }
+
+  public MessageType convert(Class<? extends TBase<?, ?>> thriftClass) {
+    final TStructDescriptor struct = TStructDescriptor.getInstance(thriftClass);
+    List<String> currentFieldPath = new ArrayList<String>();
+    return new MessageType(
+            thriftClass.getSimpleName(),
+            toSchema(struct, fieldProjectionFilter, currentFieldPath));
+  }
+
+  private Type[] toSchema(TStructDescriptor struct, FieldProjectionFilter filter, List<String> currentFieldPath) {
     List<Field> fields = struct.getFields();
-    Type[] result = new Type[fields.size()];
-    for (int i = 0; i < result.length; i++) {
+    List<Type> types = new ArrayList<Type>();
+    for (int i = 0; i < fields.size(); i++) {
       Field field = fields.get(i);
       FieldMetaData tField = field.getFieldMetaData();
       Type.Repetition rep = getRepetition(tField);
-      result[i] = toSchema(field.getName(), field, rep);
+      currentFieldPath.add(field.getName());
+      Type currentType = toSchema(field.getName(), field, rep, filter, currentFieldPath);
+      if (currentType != null)
+        types.add(currentType);
+      currentFieldPath.remove(currentFieldPath.size() - 1);
     }
-    return result;
+    return types.toArray(new Type[types.size()]);
   }
 
   /**
@@ -101,50 +123,83 @@ public class ThriftSchemaConverter {
     }
   }
 
-  private Type toSchema(String name, Field field, Type.Repetition rep) {
+  private Type toSchema(String name, Field field, Type.Repetition rep, FieldProjectionFilter filter, List<String> currentFieldPath) {
+//    System.out.println(currentFieldPath);
     if (field.isList()) {
       final Field listElemField = field.getListElemField();
-      return ConversionPatterns.listType(rep, name, toSchema(name + "_tuple", listElemField, REPEATED));
+      Type nestedType = toSchema(name + "_tuple", listElemField, REPEATED, filter, currentFieldPath);
+      if (nestedType == null)
+        return null;
+      return ConversionPatterns.listType(rep, name, nestedType);
     } else if (field.isSet()) {
       final Field setElemField = field.getSetElemField();
-      return ConversionPatterns.listType(rep, name, toSchema(name + "_tuple", setElemField, REPEATED));
+      Type nestedType = toSchema(name + "_tuple", setElemField, REPEATED, filter, currentFieldPath);
+      if (nestedType == null)
+        return null;
+      return ConversionPatterns.listType(rep, name, nestedType);
     } else if (field.isStruct()) {
-      return new GroupType(rep, name, toSchema(field.gettStructDescriptor()));
-    } else if (field.isBuffer()) {
-      return new PrimitiveType(rep, BINARY, name);
-    } else if (field.isEnum()) {
-      return new PrimitiveType(rep, BINARY, name, ENUM);
+      Type[] fields = toSchema(field.gettStructDescriptor(), filter, currentFieldPath);//if all child nodes dont exist, simply return null for current layer
+      if (fields.length == 0)
+        return null;
+      return new GroupType(rep, name, fields);
+
     } else if (field.isMap()) {
       final Field mapKeyField = field.getMapKeyField();
       final Field mapValueField = field.getMapValueField();
-      return ConversionPatterns.mapType(rep, name, 
-          toSchema("key", mapKeyField, REQUIRED),
-          toSchema("value", mapValueField, OPTIONAL));
+
+      currentFieldPath.add("key");
+      Type keyType = toSchema("key", mapKeyField, REQUIRED, filter, currentFieldPath);
+      currentFieldPath.remove(currentFieldPath.size() - 1);
+
+      currentFieldPath.add("value");
+      Type valueType = toSchema("value", mapValueField, OPTIONAL, filter, currentFieldPath);
+      currentFieldPath.remove(currentFieldPath.size() - 1);
+
+      //TODO: Throw exception when either is null
+      if (keyType == null && valueType == null)
+        return null;
+      if (keyType == null)
+        throw new ThriftProjectionException("key of map is not specified in projection: " + currentFieldPath);
+      if (valueType == null)
+        throw new ThriftProjectionException("value of map is not specified in projection: " + currentFieldPath);
+      return ConversionPatterns.mapType(rep, name,
+              keyType,
+              valueType);
     } else {
-      switch (field.getType()) {
-      case TType.I64:
-        return new PrimitiveType(rep, INT64, name);
-      case TType.STRING:
-        return new PrimitiveType(rep, BINARY, name, UTF8);
-      case TType.BOOL:
-        return new PrimitiveType(rep, BOOLEAN, name); // TODO: elephantbird does int
-      case TType.I32:
-        return new PrimitiveType(rep, INT32, name);
-      case TType.BYTE:
-        return new PrimitiveType(rep, INT32, name);
-      case TType.DOUBLE:
-        return new PrimitiveType(rep, DOUBLE, name);
-      case TType.I16:
-        return new PrimitiveType(rep, INT32, name);
-      case TType.MAP:
-      case TType.ENUM:
-      case TType.SET:
-      case TType.LIST:
-      case TType.STRUCT:
-      case TType.STOP:
-      case TType.VOID:
-      default:
-        throw new RuntimeException("unsupported type " + field.getType() + " " + field.getName());
+      //following for leaves
+      if (!fieldProjectionFilter.isMatched(currentFieldPath))
+        return null;
+
+      if (field.isBuffer()) {
+        return new PrimitiveType(rep, BINARY, name);
+      } else if (field.isEnum()) {
+        return new PrimitiveType(rep, BINARY, name, ENUM);
+      } else {
+        switch (field.getType()) {
+          case TType.I64:
+            return new PrimitiveType(rep, INT64, name);
+          case TType.STRING:
+            return new PrimitiveType(rep, BINARY, name, UTF8);
+          case TType.BOOL:
+            return new PrimitiveType(rep, BOOLEAN, name); // TODO: elephantbird does int
+          case TType.I32:
+            return new PrimitiveType(rep, INT32, name);
+          case TType.BYTE:
+            return new PrimitiveType(rep, INT32, name);
+          case TType.DOUBLE:
+            return new PrimitiveType(rep, DOUBLE, name);
+          case TType.I16:
+            return new PrimitiveType(rep, INT32, name);
+          case TType.MAP:
+          case TType.ENUM:
+          case TType.SET:
+          case TType.LIST:
+          case TType.STRUCT:
+          case TType.STOP:
+          case TType.VOID:
+          default:
+            throw new RuntimeException("unsupported type " + field.getType() + " " + field.getName());
+        }
       }
     }
   }

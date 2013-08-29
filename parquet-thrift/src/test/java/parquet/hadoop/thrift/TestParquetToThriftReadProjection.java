@@ -44,6 +44,7 @@ import org.junit.Test;
 import parquet.Log;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.util.ContextUtil;
+import parquet.thrift.ThriftSchemaConverter;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
@@ -51,20 +52,43 @@ import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
 
 public class TestParquetToThriftReadProjection {
-	
+
   private static final Log LOG = Log.getLog(TestParquetToThriftReadProjection.class);
 
-   
   @Test
-  public void testThriftOptionalFieldsWithReadProjection() throws IOException, InterruptedException, TException {
-  	
+  public void testThriftOptionalFieldsWithReadProjectionUsingParquetSchema() throws Exception {
+    // test with projection
+    Configuration conf = new Configuration();
+    final String readProjectionSchema = "message AddressBook {\n" +
+            "  optional group persons {\n" +
+            "    repeated group persons_tuple {\n" +
+            "      required group name {\n" +
+            "        optional binary first_name;\n" +
+            "        optional binary last_name;\n" +
+            "      }\n" +
+            "      optional int32 id;\n" +
+            "    }\n" +
+            "  }\n" +
+            "}";
+    conf.set(ReadSupport.PARQUET_READ_SCHEMA, readProjectionSchema);
+    shouldDoProjection(conf);
+  }
+
+  @Test
+  public void testThriftOptionalFieldsWithReadProjectionUsingFilter() throws Exception {
+    Configuration conf = new Configuration();
+    final String projectionFilterDesc = "persons/name/*;persons/{id}";
+    conf.set(ThriftSchemaConverter.THRIFT_READ_FILTER, projectionFilterDesc);
+    shouldDoProjection(conf);
+  }
+
+  private void shouldDoProjection(Configuration conf) throws Exception {
     final Path parquetFile = new Path("target/test/TestParquetToThriftReadProjection/file.parquet");
-    final Configuration conf = new Configuration();
     final FileSystem fs = parquetFile.getFileSystem(conf);
     if (fs.exists(parquetFile)) {
       fs.delete(parquetFile, true);
     }
-    
+
     //create a test file
     final TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
     final TaskAttemptID taskId = new TaskAttemptID("local", 0, true, 0, 0);
@@ -72,29 +96,17 @@ public class TestParquetToThriftReadProjection {
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));
     final AddressBook a = new AddressBook(
-        Arrays.asList(
-            new Person(
-                new Name("Bob", "Roberts"),
-                0,
-                "bob.roberts@example.com",
-                Arrays.asList(new PhoneNumber("1234567890")))));
+            Arrays.asList(
+                    new Person(
+                            new Name("Bob", "Roberts"),
+                            0,
+                            "bob.roberts@example.com",
+                            Arrays.asList(new PhoneNumber("1234567890")))));
     a.write(protocol);
     w.write(new BytesWritable(baos.toByteArray()));
     w.close();
 
-    // test with projection
-    final String readProjectionSchema = "message AddressBook {\n" + 
-    		"  optional group persons {\n" + 
-    		"    repeated group persons_tuple {\n" + 
-    		"      required group name {\n" + 
-    		"        optional binary first_name;\n" + 
-    		"        optional binary last_name;\n" + 
-    		"      }\n" + 
-    		"      optional int32 id;\n" + 
-    		"    }\n" + 
-    		"  }\n" + 
-    		"}";
-    conf.set(ReadSupport.PARQUET_READ_SCHEMA, readProjectionSchema);
+
     final ParquetThriftInputFormat<AddressBook> parquetThriftInputFormat = new ParquetThriftInputFormat<AddressBook>();
     final Job job = new Job(conf, "read");
     job.setInputFormatClass(ParquetThriftInputFormat.class);
@@ -114,7 +126,7 @@ public class TestParquetToThriftReadProjection {
       if (reader.nextKeyValue()) {
         readValue = reader.getCurrentValue();
         LOG.info(readValue);
-      } 
+      }
     }
     assertEquals(expected, readValue);
 

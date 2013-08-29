@@ -15,48 +15,197 @@
  */
 package parquet.thrift;
 
-import static org.junit.Assert.assertEquals;
-
+import com.twitter.data.proto.tutorial.thrift.AddressBook;
+import com.twitter.data.proto.tutorial.thrift.Person;
+import com.twitter.elephantbird.thrift.test.TestStructInMap;
 import org.junit.Test;
-
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
-import parquet.thrift.ThriftSchemaConverter;
+import parquet.thrift.projection.FieldProjectionFilter;
+import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftType.StructType;
 
-import com.twitter.data.proto.tutorial.thrift.AddressBook;
+import static org.junit.Assert.assertEquals;
 
 public class TestThriftSchemaConverter {
 
   @Test
   public void testToMessageType() throws Exception {
     String expected =
-    "message AddressBook {\n" +
-    "  optional group persons (LIST) {\n" +
-    "    repeated group persons_tuple {\n" +
-    "      required group name {\n" +
-    "        optional binary first_name (UTF8);\n" +
-    "        optional binary last_name (UTF8);\n" +
-    "      }\n" +
-    "      optional int32 id;\n" +
-    "      optional binary email (UTF8);\n" +
-    "      optional group phones (LIST) {\n" +
-    "        repeated group phones_tuple {\n" +
-    "          optional binary number (UTF8);\n" +
-    "          optional binary type (ENUM);\n" +
-    "        }\n" +
-    "      }\n" +
-    "    }\n" +
-    "  }\n" +
-    "}";
+            "message AddressBook {\n" +
+                    "  optional group persons (LIST) {\n" +
+                    "    repeated group persons_tuple {\n" +
+                    "      required group name {\n" +
+                    "        optional binary first_name (UTF8);\n" +
+                    "        optional binary last_name (UTF8);\n" +
+                    "      }\n" +
+                    "      optional int32 id;\n" +
+                    "      optional binary email (UTF8);\n" +
+                    "      optional group phones (LIST) {\n" +
+                    "        repeated group phones_tuple {\n" +
+                    "          optional binary number (UTF8);\n" +
+                    "          optional binary type (ENUM);\n" +
+                    "        }\n" +
+                    "      }\n" +
+                    "    }\n" +
+                    "  }\n" +
+                    "}";
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final MessageType converted = schemaConverter.convert(AddressBook.class);
     assertEquals(MessageTypeParser.parseMessageType(expected), converted);
   }
 
   @Test
-  public void testToThriftType() throws Exception {
+  public void testToProjectedThriftType() {
+
+    shouldGetProjectedSchema("name/first_name", "message Person {" +
+            "  required group name {" +
+            "    optional binary first_name (UTF8);" +
+            "  }}", Person.class);
+
+    shouldGetProjectedSchema("name/first_name;name/last_name", "message Person {" +
+            "  required group name {" +
+            "    optional binary first_name (UTF8);" +
+            "    optional binary last_name (UTF8);" +
+            "  }}", Person.class);
+
+    shouldGetProjectedSchema("name/{first,last}_name;", "message Person {" +
+            "  required group name {" +
+            "    optional binary first_name (UTF8);" +
+            "    optional binary last_name (UTF8);" +
+            "  }}", Person.class);
+
+    shouldGetProjectedSchema("name/*", "message Person {" +
+            "  required group name {" +
+            "    optional binary first_name (UTF8);" +
+            "    optional binary last_name (UTF8);" +
+            "  }" +
+            "}", Person.class);
+
+    shouldGetProjectedSchema("name/*", "message Person {" +
+            "  required group name {" +
+            "    optional binary first_name (UTF8);" +
+            "    optional binary last_name (UTF8);" +
+            "  }" +
+            "}", Person.class);
+
+    shouldGetProjectedSchema("*/*_name", "message Person {" +
+            "  required group name {" +
+            "    optional binary first_name (UTF8);" +
+            "    optional binary last_name (UTF8);" +
+            "  }" +
+            "}", Person.class);
+
+    shouldGetProjectedSchema("name/first_*", "message Person {" +
+            "  required group name {" +
+            "    optional binary first_name (UTF8);" +
+            "  }" +
+            "}", Person.class);
+
+    shouldGetProjectedSchema("*/*", "message Person {" +
+            "  required group name {" +
+            "  optional binary first_name (UTF8);" +
+            "  optional binary last_name (UTF8);" +
+            "} " +
+            "  optional group phones (LIST) {" +
+            "    repeated group phones_tuple {" +
+            "      optional binary number (UTF8);" +
+            "      optional binary type (ENUM);" +
+            "    }" +
+            "}}", Person.class);
+
+
+//    MessageType mapSchema=  MessageTypeParser.parseMessageType()
+
+  }
+
+  /* Original message type, before projection
+ message TestStructInMap {
+   optional binary name(UTF8);
+   optional group names(MAP) {
+     repeated group map(MAP_KEY_VALUE) {
+       required binary key(UTF8);
+       optional group value {
+         optional group name {
+           optional binary first_name(UTF8);
+           optional binary last_name(UTF8);
+         }
+         optional group phones(MAP) {
+           repeated group map(MAP_KEY_VALUE) {
+             required binary key(ENUM);
+             optional binary value(UTF8);
+           }
+         }
+       }
+     }
+   }
+ }
+ */
+  @Test
+  public void testProjectMapThriftType() {
+    //project nested map
+    shouldGetProjectedSchema("name;names/key*;names/value/**", "message TestStructInMap {\n" +
+            "  optional binary name (UTF8);\n" +
+            "  optional group names (MAP) {\n" +
+            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "      required binary key (UTF8);\n" +
+            "      optional group value {\n" +
+            "        optional group name {\n" +
+            "          optional binary first_name (UTF8);\n" +
+            "          optional binary last_name (UTF8);\n" +
+            "        }\n" +
+            "        optional group phones (MAP) {\n" +
+            "          repeated group map (MAP_KEY_VALUE) {\n" +
+            "            required binary key (ENUM);\n" +
+            "            optional binary value (UTF8);\n" +
+            "          }\n" +
+            "        }\n" +
+            "      }\n" +
+            "    }\n" +
+            "  }\n" +
+            "}", TestStructInMap.class);
+
+    //project only one level of nested map
+    shouldGetProjectedSchema("name;names/key;names/value/name/*", "message TestStructInMap {\n" +
+            "  optional binary name (UTF8);\n" +
+            "  optional group names (MAP) {\n" +
+            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "      required binary key (UTF8);\n" +
+            "      optional group value {\n" +
+            "        optional group name {\n" +
+            "          optional binary first_name (UTF8);\n" +
+            "          optional binary last_name (UTF8);\n" +
+            "        }\n" +
+            "      }\n" +
+            "    }\n" +
+            "  }\n" +
+            "}", TestStructInMap.class);
+  }
+
+  @Test(expected = ThriftProjectionException.class)
+  public void testProjectOnlyKeyInMap() {
+    getFilteredSchema("name;names/key", TestStructInMap.class);
+  }
+
+  @Test(expected = ThriftProjectionException.class)
+  public void testProjectOnlyValueInMap() {
+    getFilteredSchema("name;names/value/**", TestStructInMap.class);
+  }
+
+  private void shouldGetProjectedSchema(String filterDesc, String expectedSchemaStr, Class thriftClass) {
+    MessageType requestedSchema = getFilteredSchema(filterDesc, thriftClass);
+    MessageType expectedSchema = MessageTypeParser.parseMessageType(expectedSchemaStr);
+    assertEquals(expectedSchema, requestedSchema);
+  }
+
+  private MessageType getFilteredSchema(String filterDesc, Class thriftClass) {
+    FieldProjectionFilter fieldProjectionFilter = new FieldProjectionFilter(filterDesc);
+    return new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftClass);
+  }
+
+  @Test
+  public void testToThriftTypeWithoutManualProjection() throws Exception {
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final StructType converted = schemaConverter.toStructType(AddressBook.class);
     final String json = converted.toJSON();

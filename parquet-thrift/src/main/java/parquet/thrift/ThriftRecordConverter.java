@@ -778,14 +778,14 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    *
    * @param thriftReader the class responsible for instantiating the final object and read from the protocol
    * @param name the name of that type ( the thrift class simple name)
-   * @param parquetSchema the schema for the incoming columnar events
+   * @param requestedParquetSchema the schema for the incoming columnar events
    * @param thriftType the thrift type descriptor
    */
-  public ThriftRecordConverter(ThriftReader<T> thriftReader, String name, MessageType parquetSchema, ThriftType.StructType thriftType) {
+  public ThriftRecordConverter(ThriftReader<T> thriftReader, String name, MessageType requestedParquetSchema, ThriftType.StructType thriftType) {
     super();
     this.thriftReader = thriftReader;
     this.protocol = new ParquetReadProtocol();
-    this.structConverter = new StructConverter(rootEvents, parquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
+    this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
   }
 
   /**
