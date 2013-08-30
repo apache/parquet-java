@@ -257,6 +257,13 @@
           </plugin>
         </plugins>
       </reporting>
+      <distributionManagement>
+	<site>
+	  <id>github-pages-site</id>
+	  <name>Deployment through GitHub's site deployment plugin</name>
+	  <url>site/${project.version}</url>
+	</site>
+      </distributionManagement>
       <build>
         <plugins>
           <plugin>
