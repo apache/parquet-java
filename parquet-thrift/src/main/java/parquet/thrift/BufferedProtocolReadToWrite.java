@@ -27,6 +27,7 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
+import org.mortbay.log.Log;
 
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
@@ -144,7 +145,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
 
   private void readOneValue(TProtocol in, byte type, List<Action> buffer, ThriftType expectedType)
       throws TException {
-    if (expectedType.getType().getSerializedThriftType() != type) {
+    if (expectedType!= null && expectedType.getType().getSerializedThriftType() != type) {
       throw new TException("the data type does not match the expected thrift structure: expected " + expectedType + " got " + type + "(See org.apache.thrift.protocol.TType)");
     }
     switch (type) {
@@ -276,6 +277,14 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     TField field;
     while ((field = in.readFieldBegin()).type != TType.STOP) {
       final TField currentField = field;
+      ThriftField expectedField = null;
+      try {
+        expectedField = type.getChildById(field.id);
+      } catch (ArrayIndexOutOfBoundsException ae) {
+        Log.warn("Extra field found during parquet conversion: " + field + ".. ignoring");
+        readOneValue(in, field.type, new LinkedList<Action>(), null);
+        continue;
+      }
       buffer.add(new Action() {
         @Override
         public void write(TProtocol out) throws TException {
@@ -286,7 +295,6 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
           return currentField.id + "<t="+currentField.type + ">: ";
         }
       });
-      ThriftField expectedField = type.getChildById(field.id);
       try {
         readOneValue(in, field.type, buffer, expectedField.getType());
       } catch (Exception e) {
