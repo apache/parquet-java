@@ -51,7 +51,7 @@ import static org.junit.Assert.assertTrue;
  */
 public class DeprecatedInputFormatTest {
   final Path parquetPath = new Path("target/test/example/TestInputOutputFormat/parquet");
-  final Path inputPath = new Path("parquet-hadoop/src/test/java/parquet/hadoop/example/TestInputOutputFormat.java");
+  final Path inputPath = new Path("src/test/java/parquet/hadoop/example/TestInputOutputFormat.java");
   final Path outputPath = new Path("target/test/example/TestInputOutputFormat/out");
   Job writeJob;
   JobConf jobConf;

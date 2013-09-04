@@ -59,7 +59,6 @@ public class BenchmarkCounter {
   public static void initCounterFromReporter(Reporter reporter, Configuration configuration) {
     counterLoader = new MapRedCounterLoader(reporter, configuration);
     loadCounters();
-    System.out.println("counter is inited using reporter");
   }
 
   private static void loadCounters() {
