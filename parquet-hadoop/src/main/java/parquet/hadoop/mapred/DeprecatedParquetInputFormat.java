@@ -84,7 +84,7 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
 
       try {
         realReader = new ParquetRecordReader<V>(newInputFormat.getReadSupport(oldJobConf));
-        realReader.initialize(((ParquetInputSplitWrapper)oldSplit).realSplit, oldJobConf);
+        realReader.initialize(((ParquetInputSplitWrapper)oldSplit).realSplit, oldJobConf, reporter);
 
         // read once to gain access to key and value objects
         if (realReader.nextKeyValue()) {

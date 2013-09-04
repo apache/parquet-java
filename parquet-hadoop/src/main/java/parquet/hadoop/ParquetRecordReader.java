@@ -17,13 +17,15 @@ package parquet.hadoop;
 
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
+import parquet.Log;
 import parquet.filter.UnboundRecordFilter;
 import parquet.hadoop.api.ReadSupport;
-import parquet.hadoop.util.BenchmarkCounter;
+import parquet.hadoop.util.counters.BenchmarkCounter;
 import parquet.hadoop.util.ContextUtil;
 import parquet.schema.MessageTypeParser;
 
@@ -38,6 +40,7 @@ import parquet.schema.MessageTypeParser;
  */
 public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
+  private static final Log LOG= Log.getLog(ParquetRecordReader.class);
   private InternalParquetRecordReader<T> internalReader;
 
   /**
@@ -96,13 +99,22 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       throws IOException, InterruptedException {
     if (context instanceof TaskInputOutputContext<?, ?, ?, ?>) {
       BenchmarkCounter.initCounterFromContext((TaskInputOutputContext<?, ?, ?, ?>) context);
+    }else{
+      LOG.error("Can not initialize counter due to context is not a instance of TaskInputOutputContext, but is "
+              +context.getClass().getCanonicalName());
     }
-    initialize(inputSplit, ContextUtil.getConfiguration(context));
+
+    initializeInternalReader((ParquetInputSplit)inputSplit, ContextUtil.getConfiguration(context));
   }
 
-  public void initialize(InputSplit inputSplit, Configuration configuration)
+  public void initialize(InputSplit inputSplit, Configuration configuration, Reporter reporter)
       throws IOException, InterruptedException {
-    ParquetInputSplit split = (ParquetInputSplit) inputSplit;
+    BenchmarkCounter.initCounterFromReporter(reporter,configuration);
+    initializeInternalReader((ParquetInputSplit) inputSplit, configuration);
+  }
+
+  private void initializeInternalReader(ParquetInputSplit split, Configuration configuration) throws IOException {
+
     internalReader.initialize(
         MessageTypeParser.parseMessageType(split.getRequestedSchema()),
         MessageTypeParser.parseMessageType(split.getFileSchema()),

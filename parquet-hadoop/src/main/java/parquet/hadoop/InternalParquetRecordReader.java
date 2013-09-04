@@ -26,7 +26,7 @@ import parquet.column.page.PageReadStore;
 import parquet.filter.UnboundRecordFilter;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
-import parquet.hadoop.util.BenchmarkCounter;
+import parquet.hadoop.util.counters.BenchmarkCounter;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.io.ParquetDecodingException;

@@ -186,7 +186,7 @@ public class TestInputOutputFormat {
     assertTrue(readJob.getCounters().getGroup("parquet").findCounter("bytestotal").getValue() > 0L);
     assertTrue(readJob.getCounters().getGroup("parquet").findCounter("bytesread").getValue()
             == readJob.getCounters().getGroup("parquet").findCounter("bytestotal").getValue());
-    assertTrue(readJob.getCounters().getGroup("parquet").findCounter("timeread").getValue() > 0L);
+    //not testing the time read counter since it could be zero due to the size of data is too small
   }
 
   @Test
