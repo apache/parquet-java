@@ -78,10 +78,10 @@ public class ThriftSchemaConverter {
     List<String> currentFieldPath = new ArrayList<String>();
     return new MessageType(
             thriftClass.getSimpleName(),
-            toSchema(struct, fieldProjectionFilter, currentFieldPath));
+            toSchema(struct, currentFieldPath));
   }
 
-  private Type[] toSchema(TStructDescriptor struct, FieldProjectionFilter filter, List<String> currentFieldPath) {
+  private Type[] toSchema(TStructDescriptor struct, List<String> currentFieldPath) {
     List<Field> fields = struct.getFields();
     List<Type> types = new ArrayList<Type>();
     for (int i = 0; i < fields.size(); i++) {
@@ -89,7 +89,7 @@ public class ThriftSchemaConverter {
       FieldMetaData tField = field.getFieldMetaData();
       Type.Repetition rep = getRepetition(tField);
       currentFieldPath.add(field.getName());
-      Type currentType = toSchema(field.getName(), field, rep, filter, currentFieldPath);
+      Type currentType = toSchema(field.getName(), field, rep, currentFieldPath);
       if (currentType != null)
         types.add(currentType);
       currentFieldPath.remove(currentFieldPath.size() - 1);
@@ -118,23 +118,23 @@ public class ThriftSchemaConverter {
     }
   }
 
-  private Type toSchema(String name, Field field, Type.Repetition rep, FieldProjectionFilter filter, List<String> currentFieldPath) {
+  private Type toSchema(String name, Field field, Type.Repetition rep, List<String> currentFieldPath) {
     if (field.isList()) {
       final Field listElemField = field.getListElemField();
-      Type nestedType = toSchema(name + "_tuple", listElemField, REPEATED, filter, currentFieldPath);
+      Type nestedType = toSchema(name + "_tuple", listElemField, REPEATED, currentFieldPath);
       if (nestedType == null) {
         return null;
       }
       return ConversionPatterns.listType(rep, name, nestedType);
     } else if (field.isSet()) {
       final Field setElemField = field.getSetElemField();
-      Type nestedType = toSchema(name + "_tuple", setElemField, REPEATED, filter, currentFieldPath);
+      Type nestedType = toSchema(name + "_tuple", setElemField, REPEATED, currentFieldPath);
       if (nestedType == null) {
         return null;
       }
       return ConversionPatterns.listType(rep, name, nestedType);
     } else if (field.isStruct()) {
-      Type[] fields = toSchema(field.gettStructDescriptor(), filter, currentFieldPath);//if all child nodes dont exist, simply return null for current layer
+      Type[] fields = toSchema(field.gettStructDescriptor(), currentFieldPath);//if all child nodes dont exist, simply return null for current layer
       if (fields.length == 0) {
         return null;
       }
@@ -145,11 +145,11 @@ public class ThriftSchemaConverter {
       final Field mapValueField = field.getMapValueField();
 
       currentFieldPath.add("key");
-      Type keyType = toSchema("key", mapKeyField, REQUIRED, filter, currentFieldPath);
+      Type keyType = toSchema("key", mapKeyField, REQUIRED, currentFieldPath);
       currentFieldPath.remove(currentFieldPath.size() - 1);
 
       currentFieldPath.add("value");
-      Type valueType = toSchema("value", mapValueField, OPTIONAL, filter, currentFieldPath);
+      Type valueType = toSchema("value", mapValueField, OPTIONAL, currentFieldPath);
       currentFieldPath.remove(currentFieldPath.size() - 1);
 
       if (keyType == null && valueType == null)

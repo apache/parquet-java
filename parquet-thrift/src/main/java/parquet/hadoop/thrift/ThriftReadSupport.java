@@ -38,7 +38,7 @@ public class ThriftReadSupport<T extends TBase<?,?>> extends ReadSupport<T> {
   /**
    * configuration key for thrift read projection schema
    */
-  public static final String THRIFT_READ_FILTER = "thrift.read.filter";
+  public static final String THRIFT_COLUMN_FILTER_KEY = "parquet.thrift.column.filter";
   private static final String RECORD_CONVERTER_DEFAULT = TBaseRecordConverter.class.getName();
   public static final String THRIFT_READ_CLASS_KEY = "parquet.thrift.read.class";
 
@@ -85,10 +85,10 @@ public class ThriftReadSupport<T extends TBase<?,?>> extends ReadSupport<T> {
           MessageType fileMessageType) {
     MessageType requestedProjection;
     String partialSchemaString = configuration.get(ReadSupport.PARQUET_READ_SCHEMA);
-    String projectionSchemaStr = configuration.get(THRIFT_READ_FILTER);
+    String projectionSchemaStr = configuration.get(THRIFT_COLUMN_FILTER_KEY);
 
     if (partialSchemaString != null && projectionSchemaStr != null)
-      throw new ThriftProjectionException("PARQUET_READ_SCHEMA and THRIFT_READ_FILTER are both specified, should use only one.");
+      throw new ThriftProjectionException("PARQUET_READ_SCHEMA and THRIFT_COLUMN_FILTER_KEY are both specified, should use only one.");
 
     if (partialSchemaString != null) {
       requestedProjection = getSchemaForRead(fileMessageType, partialSchemaString);

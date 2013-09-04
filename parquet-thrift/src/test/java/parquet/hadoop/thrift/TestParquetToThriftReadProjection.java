@@ -75,7 +75,7 @@ public class TestParquetToThriftReadProjection {
   public void testThriftOptionalFieldsWithReadProjectionUsingFilter() throws Exception {
     Configuration conf = new Configuration();
     final String projectionFilterDesc = "persons/name/*;persons/{id}";
-    conf.set(ThriftReadSupport.THRIFT_READ_FILTER, projectionFilterDesc);
+    conf.set(ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY, projectionFilterDesc);
     shouldDoProjection(conf);
   }
 
