@@ -25,7 +25,7 @@ import parquet.thrift.struct.ThriftType.StructType;
 
 public class TBaseRecordConverter<T extends TBase<?,?>> extends ThriftRecordConverter<T> {
 
-  public TBaseRecordConverter(final Class<T> thriftClass, MessageType parquetSchema, StructType thriftType) {
+  public TBaseRecordConverter(final Class<T> thriftClass, MessageType requestedParquetSchema, StructType thriftType) {
     super(new ThriftReader<T>() {
       @Override
       public T readOneRecord(TProtocol protocol) throws TException {
@@ -39,7 +39,7 @@ public class TBaseRecordConverter<T extends TBase<?,?>> extends ThriftRecordConv
             throw new ParquetDecodingException("Thrift class or constructor not public " + thriftClass, e);
           }
       }
-    }, thriftClass.getSimpleName(), parquetSchema, thriftType);
+    }, thriftClass.getSimpleName(), requestedParquetSchema, thriftType);
   }
 
 }

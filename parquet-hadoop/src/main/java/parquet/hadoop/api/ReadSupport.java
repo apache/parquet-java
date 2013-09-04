@@ -36,7 +36,55 @@ abstract public class ReadSupport<T> {
    * configuration key for a parquet read projection schema
    */
 	public static final String PARQUET_READ_SCHEMA = "parquet.read.schema";
-  
+
+  /**
+   * attempts to validate and construct a {@link MessageType} from a read projection schema
+   *
+   * @param fileMessageType         the typed schema of the source
+   * @param partialReadSchemaString the requested projection schema
+   * @return the typed schema that should be used to read
+   */
+  public static MessageType getSchemaForRead(MessageType fileMessageType, String partialReadSchemaString) {
+    if (partialReadSchemaString == null)
+      return fileMessageType;
+    MessageType requestedMessageType = MessageTypeParser.parseMessageType(partialReadSchemaString);
+    return getSchemaForRead(fileMessageType, requestedMessageType);
+  }
+
+  public static MessageType getSchemaForRead(MessageType fileMessageType, MessageType projectedMessageType) {
+    fileMessageType.checkContains(projectedMessageType);
+    return projectedMessageType;
+  }
+
+  /**
+   * called in {@link org.apache.hadoop.mapreduce.InputFormat#getSplits(org.apache.hadoop.mapreduce.JobContext)} in the front end
+   *
+   * @param configuration    the job configuration
+   * @param keyValueMetaData the app specific metadata from the file
+   * @param fileSchema       the schema of the file
+   * @return the readContext that defines how to read the file
+   */
+  abstract public ReadContext init(
+          Configuration configuration,
+          Map<String, String> keyValueMetaData,
+          MessageType fileSchema);
+
+  /**
+   * called in {@link org.apache.hadoop.mapreduce.RecordReader#initialize(org.apache.hadoop.mapreduce.InputSplit, org.apache.hadoop.mapreduce.TaskAttemptContext)} in the back end
+   * the returned RecordConsumer will materialize the records and add them to the destination
+   *
+   * @param configuration    the job configuration
+   * @param keyValueMetaData the app specific metadata from the file
+   * @param fileSchema       the schema of the file
+   * @param readContext      returned by the init method
+   * @return the recordConsumer that will receive the events
+   */
+  abstract public RecordMaterializer<T> prepareForRead(
+          Configuration configuration,
+          Map<String, String> keyValueMetaData,
+          MessageType fileSchema,
+          ReadContext readContext);
+
   /**
    * information to read the file
    *
@@ -81,49 +129,4 @@ abstract public class ReadSupport<T> {
       return readSupportMetadata;
     }
   }
-
-  /**
-   * called in {@link org.apache.hadoop.mapreduce.InputFormat#getSplits(org.apache.hadoop.mapreduce.JobContext)} in the front end
-   *
-   * @param configuration the job configuration
-   * @param keyValueMetaData the app specific metadata from the file
-   * @param fileSchema the schema of the file
-   * @return the readContext that defines how to read the file
-   */
-  abstract public ReadContext init(
-      Configuration configuration,
-      Map<String, String> keyValueMetaData,
-      MessageType fileSchema);
-
-  /**
-   * called in {@link org.apache.hadoop.mapreduce.RecordReader#initialize(org.apache.hadoop.mapreduce.InputSplit, org.apache.hadoop.mapreduce.TaskAttemptContext)} in the back end
-   * the returned RecordConsumer will materialize the records and add them to the destination
-   * @param configuration the job configuration
-   * @param keyValueMetaData the app specific metadata from the file
-   * @param fileSchema the schema of the file
-   * @param readContext returned by the init method
-   * @return the recordConsumer that will receive the events
-   */
-  abstract public RecordMaterializer<T> prepareForRead(
-      Configuration configuration,
-      Map<String, String> keyValueMetaData,
-      MessageType fileSchema,
-      ReadContext readContext);
-  
-  /**
-   * attempts to validate and construct a {@link MessageType} from a read projection schema
-   * @param fileMessageType the typed schema of the source
-   * @param partialReadSchemaString the requested projection schema 
-   * @return the typed schema that should be used to read
-   */
-  public static MessageType getSchemaForRead(MessageType fileMessageType, String partialReadSchemaString) {
-  	MessageType forRead = fileMessageType;
-    if (partialReadSchemaString != null) {
-      MessageType requestedMessageType = MessageTypeParser.parseMessageType(partialReadSchemaString);
-      fileMessageType.checkContains(requestedMessageType);
-      forRead = requestedMessageType;
-    }
-    return forRead;
-  }
-
 }
