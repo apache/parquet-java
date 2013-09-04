@@ -51,7 +51,7 @@ public class BenchmarkCounter {
   }
 
   /**
-   * Init counters in hadoop's mapred API, which is used by cascading
+   * Init counters in hadoop's mapred API, which is used by cascading and Hive.
    *
    * @param reporter
    * @param configuration
