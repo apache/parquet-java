@@ -49,6 +49,7 @@ abstract public class Type {
     ;
 
     abstract public boolean isMoreRestrictiveThan(Repetition other);
+
   }
 
   private final String name;
@@ -69,7 +70,7 @@ abstract public class Type {
   public String getName() {
     return name;
   }
-  
+
   public boolean isRepetition(Repetition rep) {
     return repetition == rep;
   }
@@ -137,6 +138,8 @@ abstract public class Type {
   protected abstract List<String[]> getPaths(int depth);
 
   protected abstract boolean containsPath(String[] path, int depth);
+
+  protected abstract Type union(Type toMerge);
 
   /**
    * {@inheritDoc}

@@ -16,11 +16,16 @@
 package parquet.schema;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static parquet.schema.Type.Repetition.OPTIONAL;
+import static parquet.schema.Type.Repetition.REPEATED;
+import static parquet.schema.Type.Repetition.REQUIRED;
 
 import org.junit.Test;
 
 import parquet.example.Paper;
-import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 
@@ -32,7 +37,7 @@ public class TestMessageType {
     assertEquals(Paper.schema, schema);
     assertEquals(schema.toString(), Paper.schema.toString());
   }
-  
+
   @Test
   public void testNestedTypes() {
     MessageType schema = MessageTypeParser.parseMessageType(Paper.schema.toString());
@@ -45,5 +50,64 @@ public class TestMessageType {
     assertEquals(0, schema.getMaxDefinitionLevel("DocId"));
     assertEquals(1, schema.getMaxDefinitionLevel("Links"));
     assertEquals(2, schema.getMaxDefinitionLevel("Links", "Backward"));
+  }
+
+
+  @Test
+  public void testMergeSchema() {
+    MessageType t1 = new MessageType("root1", new PrimitiveType(REPEATED, BINARY, "a"), new PrimitiveType(OPTIONAL, BINARY, "b"));
+    MessageType t2 = new MessageType("root2", new PrimitiveType(REQUIRED, BINARY, "c"));
+
+    assertEquals(
+        t1.union(t2),
+        new MessageType("root1", new PrimitiveType(REPEATED, BINARY, "a"), new PrimitiveType(OPTIONAL, BINARY, "b"), new PrimitiveType(REQUIRED, BINARY, "c"))
+        );
+
+    assertEquals(
+        t2.union(t1),
+        new MessageType("root2", new PrimitiveType(REQUIRED, BINARY, "c"), new PrimitiveType(REPEATED, BINARY, "a"), new PrimitiveType(OPTIONAL, BINARY, "b"))
+        );
+
+    MessageType t3 = new MessageType("root1", new PrimitiveType(OPTIONAL, BINARY, "a"));
+    MessageType t4 = new MessageType("root2", new PrimitiveType(REQUIRED, BINARY, "a"));
+
+    try {
+      t3.union(t4);
+      fail("moving from optional to required");
+    } catch (IncompatibleSchemaModificationException e) {
+      assertEquals("can not merge type required binary a into optional binary a", e.getMessage());
+    }
+
+    assertEquals(
+        t4.union(t3),
+        new MessageType("root2", new PrimitiveType(OPTIONAL, BINARY, "a"))
+        );
+
+    MessageType t5 = new MessageType("root1",
+        new GroupType(REQUIRED, "g1", new PrimitiveType(OPTIONAL, BINARY, "a")),
+        new GroupType(REQUIRED, "g2", new PrimitiveType(OPTIONAL, BINARY, "b")));
+    MessageType t6 = new MessageType("root1",
+        new GroupType(REQUIRED, "g1", new PrimitiveType(OPTIONAL, BINARY, "a")),
+        new GroupType(REQUIRED, "g2",
+              new GroupType(REQUIRED, "g3", new PrimitiveType(OPTIONAL, BINARY, "c")),
+              new PrimitiveType(OPTIONAL, BINARY, "b")));
+
+    assertEquals(
+        t5.union(t6),
+        new MessageType("root1",
+            new GroupType(REQUIRED, "g1", new PrimitiveType(OPTIONAL, BINARY, "a")),
+            new GroupType(REQUIRED, "g2",
+                new PrimitiveType(OPTIONAL, BINARY, "b"),
+                new GroupType(REQUIRED, "g3", new PrimitiveType(OPTIONAL, BINARY, "c"))))
+        );
+
+    MessageType t7 = new MessageType("root1", new PrimitiveType(OPTIONAL, BINARY, "a"));
+    MessageType t8 = new MessageType("root2", new PrimitiveType(OPTIONAL, INT32, "a"));
+    try {
+      t7.union(t8);
+      fail("moving from BINARY to INT32");
+    } catch (IncompatibleSchemaModificationException e) {
+      assertEquals("can not merge type optional int32 a into optional binary a", e.getMessage());
+    }
   }
 }

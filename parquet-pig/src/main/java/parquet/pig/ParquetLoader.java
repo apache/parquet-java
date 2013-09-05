@@ -16,7 +16,8 @@
 package parquet.pig;
 
 import static parquet.Log.DEBUG;
-import static parquet.pig.TupleReadSupport.PARQUET_PIG_REQUESTED_SCHEMA;
+import static parquet.pig.PigSchemaConverter.pigSchemaToString;
+import static parquet.pig.TupleReadSupport.PARQUET_PIG_SCHEMA;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -42,13 +43,11 @@ import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
-import org.apache.pig.impl.util.ObjectSerializer;
-import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
 import parquet.Log;
 import parquet.hadoop.ParquetInputFormat;
-import parquet.hadoop.metadata.FileMetaData;
+import parquet.hadoop.metadata.GlobalMetaData;
 import parquet.hadoop.util.ContextUtil;
 import parquet.io.ParquetDecodingException;
 
@@ -65,7 +64,6 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   private static final Map<String, ParquetInputFormat<Tuple>> inputFormatCache = new HashMap<String, ParquetInputFormat<Tuple>>();
 
-  private final String requestedSchemaStr;
   private Schema requestedSchema;
 
   private String location;
@@ -86,27 +84,17 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
    * @param requestedSchemaStr a subset of the original pig schema in the file
    */
   public ParquetLoader(String requestedSchemaStr) {
-    this.requestedSchemaStr = requestedSchemaStr;
+    this.requestedSchema = PigSchemaConverter.parsePigSchema(requestedSchemaStr);
   }
 
   @Override
   public void setLocation(String location, Job job) throws IOException {
     if (DEBUG) LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
     setInput(location, job);
-    if (requestedSchema != null) {
-      ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, ObjectSerializer.serialize(requestedSchema));
-    } else if (requestedSchemaStr != null){
-      // request for the full schema (or requestedschema )
-      ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, ObjectSerializer.serialize(schema));
+    if (schema == null) {
+      initSchema(job);
     }
-  }
-
-  static Schema parsePigSchema(String pigSchemaString) {
-    try {
-      return pigSchemaString == null ? null : Utils.getSchemaFromString(pigSchemaString);
-    } catch (ParserException e) {
-      throw new SchemaConversionException("could not parse Pig schema: " + pigSchemaString, e);
-    }
+    ContextUtil.getConfiguration(job).set(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
   }
 
   private void setInput(String location, Job job) throws IOException {
@@ -194,19 +182,23 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     if (DEBUG) LOG.debug("LoadMetadata.getSchema(" + location + ", " + job + ")");
     setInput(location, job);
     if (schema == null) {
-      if (requestedSchemaStr == null) {
-        // no requested schema => use the schema from the file
-        final FileMetaData globalMetaData = getParquetInputFormat().getGlobalMetaData(job);
-        schema = TupleReadSupport.getPigSchemaFromFile(globalMetaData.getSchema(), globalMetaData.getKeyValueMetaData());
-        if (isElephantBirdCompatible(job)) {
-          convertToElephantBirdCompatibleSchema(schema);
-        }
-      } else {
-        // there was a schema requested => use that
-        schema = Utils.getSchemaFromString(requestedSchemaStr);
-      }
+      initSchema(job);
     }
     return new ResourceSchema(schema);
+  }
+
+  private void initSchema(Job job) throws IOException {
+    if (requestedSchema == null) {
+      // no requested schema => use the schema from the file
+      final GlobalMetaData globalMetaData = getParquetInputFormat().getGlobalMetaData(job);
+      schema = TupleReadSupport.getPigSchemaFromMultipleFiles(globalMetaData.getSchema(), globalMetaData.getKeyValueMetaData());
+      if (isElephantBirdCompatible(job)) {
+        convertToElephantBirdCompatibleSchema(schema);
+      }
+    } else {
+      // there was a schema requested => use that
+      schema = requestedSchema;
+    }
   }
 
   private void convertToElephantBirdCompatibleSchema(Schema schema) {
@@ -225,7 +217,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   public ResourceStatistics getStatistics(String location, Job job)
       throws IOException {
     if (DEBUG) LOG.debug("LoadMetadata.getStatistics(" + location + ", " + job + ")");
-    // We do not need to call setInput 
+    // We do not need to call setInput
     // as setLocation is guaranteed to be called before this
     long length = 0;
     try {
@@ -257,7 +249,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       throws FrontendException {
     if (requiredFieldList == null)
       return null;
-    requestedSchema = getSchemaFromRequiredFieldList(schema, requiredFieldList.getFields());
+    schema = getSchemaFromRequiredFieldList(schema, requiredFieldList.getFields());
     return new RequiredFieldResponse(true);
   }
 

@@ -35,16 +35,16 @@ public class TestParquetLoader {
     RequiredFieldList list = new RequiredFieldList();
     RequiredField field = new RequiredField("a", 0, null, DataType.CHARARRAY);
     list.add(field);
-    field = new RequiredField("b", 0, 
-        Arrays.asList(new RequiredField("t", 0, 
-            Arrays.asList(new RequiredField("d", 1, null, DataType.CHARARRAY)), 
-                DataType.TUPLE)), 
+    field = new RequiredField("b", 0,
+        Arrays.asList(new RequiredField("t", 0,
+            Arrays.asList(new RequiredField("d", 1, null, DataType.CHARARRAY)),
+                DataType.TUPLE)),
                 DataType.BAG);
     list.add(field);
     pLoader.pushProjection(list);
     pLoader.setLocation(location, job);
-    
+
     assertEquals("{a: chararray,b: {t: (d: chararray)}}",
-        TupleReadSupport.getRequestedPigSchema(job.getConfiguration()).toString());
+        TupleReadSupport.getPigSchema(job.getConfiguration()).toString());
   }
 }

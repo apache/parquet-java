@@ -25,6 +25,8 @@ import org.apache.pig.data.DataType;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
+import org.apache.pig.impl.util.Utils;
+import org.apache.pig.parser.ParserException;
 
 import parquet.Log;
 import parquet.schema.ConversionPatterns;
@@ -52,10 +54,23 @@ import parquet.schema.Type.Repetition;
 public class PigSchemaConverter {
   private static final Log LOG = Log.getLog(PigSchemaConverter.class);
 
+  static Schema parsePigSchema(String pigSchemaString) {
+    try {
+      return pigSchemaString == null ? null : Utils.getSchemaFromString(pigSchemaString);
+    } catch (ParserException e) {
+      throw new SchemaConversionException("could not parse Pig schema: " + pigSchemaString, e);
+    }
+  }
+
+  static String pigSchemaToString(Schema pigSchema) {
+    final String pigSchemaString = pigSchema.toString();
+    return pigSchemaString.substring(1, pigSchemaString.length() - 1);
+  }
+
   public Schema convert(MessageType parquetSchema) {
     return convertFields(parquetSchema.getFields());
   }
-  
+
   public Schema convertField(Type parquetType) {
     return convertFields(Arrays.asList(parquetType));
   }
@@ -87,7 +102,7 @@ public class PigSchemaConverter {
       return parquetPrimitiveTypeName.convert(new PrimitiveTypeNameConverter<Schema.FieldSchema, FrontendException>() {
         @Override
         public FieldSchema convertFLOAT(PrimitiveTypeName primitiveTypeName) throws FrontendException {
-          return new FieldSchema(fieldName, null, DataType.FLOAT); 
+          return new FieldSchema(fieldName, null, DataType.FLOAT);
         }
 
         @Override
@@ -227,7 +242,7 @@ public class PigSchemaConverter {
       }
     } catch (FrontendException e) {
       throw new SchemaConversionException("can't convert "+fieldSchema, e);
-    } 
+    }
   }
 
 
@@ -281,7 +296,7 @@ public class PigSchemaConverter {
       throw new SchemaConversionException("Invalid map schema, cannot infer innerschema: ", fe);
     }
     Type convertedValue = convertWithName(innerField, "value");
-    return ConversionPatterns.stringKeyMapType(Repetition.OPTIONAL, alias, name(innerField.alias, "map"), 
+    return ConversionPatterns.stringKeyMapType(Repetition.OPTIONAL, alias, name(innerField.alias, "map"),
         convertedValue);
   }
 

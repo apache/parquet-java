@@ -17,9 +17,12 @@ package parquet.hadoop;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -27,10 +30,11 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import parquet.filter.UnboundRecordFilter;
+import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
 import parquet.hadoop.metadata.BlockMetaData;
-import parquet.hadoop.metadata.FileMetaData;
+import parquet.hadoop.metadata.GlobalMetaData;
 import parquet.schema.MessageType;
 
 /**
@@ -38,41 +42,70 @@ import parquet.schema.MessageType;
  */
 public class ParquetReader<T> implements Closeable {
 
+  private ReadSupport<T> readSupport;
+  private UnboundRecordFilter filter;
+  private Configuration conf;
+  private ReadContext readContext;
+  private Iterator<Footer> footersIterator;
   private InternalParquetRecordReader<T> reader;
+  private GlobalMetaData globalMetaData;
 
   public ParquetReader(Path file, ReadSupport<T> readSupport) throws IOException {
     this(file, readSupport, null);
   }
 
   public ParquetReader(Path file, ReadSupport<T> readSupport, UnboundRecordFilter filter) throws IOException {
-    Configuration conf = new Configuration();
+    this.readSupport = readSupport;
+    this.filter = filter;
+    conf = new Configuration();
 
     FileSystem fs = FileSystem.get(conf);
     List<FileStatus> statuses = Arrays.asList(fs.listStatus(file));
     List<Footer> footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(conf, statuses);
-    Footer footer = footers.get(0); // TODO: check only one
+    this.footersIterator = footers.iterator();
+    globalMetaData = ParquetFileWriter.getGlobalMetaData(footers);
 
-    List<BlockMetaData> blocks = footer.getParquetMetadata().getBlocks();
-    FileMetaData fileMetaData = footer.getParquetMetadata().getFileMetaData();
-    // TODO: this assumes all files have the same schema
-    MessageType schema = fileMetaData.getSchema();
-    Map<String, String> extraMetadata = fileMetaData.getKeyValueMetaData();
-    final ReadContext readContext = readSupport.init(conf, extraMetadata, schema);
-    reader = new InternalParquetRecordReader<T>(readSupport, filter);
-    reader.initialize(readContext.getRequestedSchema(), schema, extraMetadata,
-        readContext.getReadSupportMetadata(), file, blocks, conf);
+    List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
+    for (Footer footer : footers) {
+      blocks.addAll(footer.getParquetMetadata().getBlocks());
+    }
+
+    MessageType schema = globalMetaData.getSchema();
+    Map<String, Set<String>> extraMetadata = globalMetaData.getKeyValueMetaData();
+    readContext = readSupport.init(new InitContext(conf, extraMetadata, schema));
   }
 
   public T read() throws IOException {
     try {
-      return reader.nextKeyValue() ? reader.getCurrentValue() : null;
+      if (reader != null && reader.nextKeyValue()) {
+        return reader.getCurrentValue();
+      } else {
+        initReader();
+        return reader == null ? null : read();
+      }
     } catch (InterruptedException e) {
       throw new IOException(e);
     }
   }
 
+  private void initReader() throws IOException {
+    if (reader != null) {
+      reader.close();
+      reader = null;
+    }
+    if (footersIterator.hasNext()) {
+      Footer footer = footersIterator.next();
+      reader = new InternalParquetRecordReader<T>(readSupport, filter);
+      reader.initialize(
+          readContext.getRequestedSchema(), globalMetaData.getSchema(), footer.getParquetMetadata().getFileMetaData().getKeyValueMetaData(),
+          readContext.getReadSupportMetadata(), footer.getFile(), footer.getParquetMetadata().getBlocks(), conf);
+    }
+  }
+
   @Override
   public void close() throws IOException {
-    reader.close();
+    if (reader != null) {
+      reader.close();
+    }
   }
 }

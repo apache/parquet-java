@@ -128,4 +128,9 @@ public final class MessageType extends GroupType {
   public boolean containsPath(String[] path) {
     return containsPath(path, 0);
   }
+
+  public MessageType union(MessageType toMerge) {
+    return new MessageType(this.getName(), mergeFields(toMerge));
+  }
+
 }

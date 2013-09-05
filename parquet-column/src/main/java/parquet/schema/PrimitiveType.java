@@ -408,4 +408,12 @@ public final class PrimitiveType extends Type {
   protected boolean containsPath(String[] path, int depth) {
     return path.length == depth;
   }
+
+  @Override
+  protected Type union(Type toMerge) {
+    if (!toMerge.isPrimitive() || !primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName())) {
+      throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " into " + this);
+    }
+    return new PrimitiveType(toMerge.getRepetition(), primitive, getName());
+  }
 }

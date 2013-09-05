@@ -40,11 +40,13 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
 import parquet.Log;
 import parquet.filter.UnboundRecordFilter;
+import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.FileMetaData;
+import parquet.hadoop.metadata.GlobalMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.ConfigurationUtil;
 import parquet.hadoop.util.ContextUtil;
@@ -238,11 +240,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   public List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers) throws IOException {
     List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
-    FileMetaData globalMetaData = getGlobalMetaData(footers);
-    ReadContext readContext = getReadSupport(configuration).init(
+    GlobalMetaData globalMetaData = ParquetFileWriter.getGlobalMetaData(footers);
+    ReadContext readContext = getReadSupport(configuration).init(new InitContext(
         configuration,
         globalMetaData.getKeyValueMetaData(),
-        globalMetaData.getSchema());
+        globalMetaData.getSchema()));
     for (Footer footer : footers) {
       final Path file = footer.getFile();
       LOG.debug(file);
@@ -335,16 +337,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @return the merged metadata from the footers
    * @throws IOException
    */
-  public FileMetaData getGlobalMetaData(JobContext jobContext) throws IOException {
-    return getGlobalMetaData(getFooters(jobContext));
+  public GlobalMetaData getGlobalMetaData(JobContext jobContext) throws IOException {
+    return ParquetFileWriter.getGlobalMetaData(getFooters(jobContext));
   }
 
-  private FileMetaData getGlobalMetaData(List<Footer> footers) throws IOException {
-    FileMetaData fileMetaData = null;
-    for (Footer footer : footers) {
-      ParquetMetadata currentMetadata = footer.getParquetMetadata();
-      fileMetaData = mergeInto(currentMetadata.getFileMetaData(), fileMetaData);
-    }
-    return fileMetaData;
-  }
 }

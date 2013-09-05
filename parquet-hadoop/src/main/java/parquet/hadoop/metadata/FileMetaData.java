@@ -16,6 +16,7 @@
 package parquet.hadoop.metadata;
 
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.Map;
 
 import parquet.schema.MessageType;
@@ -50,7 +51,7 @@ public final class FileMetaData implements Serializable {
       throw new NullPointerException("keyValueMetaData");
     }
     this.schema = schema;
-    this.keyValueMetaData = keyValueMetaData;
+    this.keyValueMetaData = Collections.unmodifiableMap(keyValueMetaData);
     this.createdBy = createdBy;
   }
 

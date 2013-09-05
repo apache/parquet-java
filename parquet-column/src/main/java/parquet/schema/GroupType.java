@@ -270,4 +270,37 @@ public class GroupType extends Type {
     }
     return children;
   }
+
+  @Override
+  protected Type union(Type toMerge) {
+    if (toMerge.isPrimitive()) {
+      throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " into " + this);
+    }
+    return new GroupType(toMerge.getRepetition(), getName(), mergeFields(toMerge.asGroupType()));
+  }
+
+  List<Type> mergeFields(GroupType toMerge) {
+    List<Type> newFields = new ArrayList<Type>();
+    // merge existing fields
+    for (Type type : this.getFields()) {
+      Type merged;
+      if (toMerge.containsField(type.getName())) {
+        Type fieldToMerge = toMerge.getType(type.getName());
+        if (!fieldToMerge.getName().equals(type.getName()) || fieldToMerge.getRepetition().isMoreRestrictiveThan(type.getRepetition())) {
+          throw new IncompatibleSchemaModificationException("can not merge type " + fieldToMerge + " into " + type);
+        }
+        merged = type.union(fieldToMerge);
+      } else {
+        merged = type;
+      }
+      newFields.add(merged);
+    }
+    // add new fields
+    for (Type type : toMerge.getFields()) {
+      if (!this.containsField(type.getName())) {
+        newFields.add(type);
+      }
+    }
+    return newFields;
+  }
 }

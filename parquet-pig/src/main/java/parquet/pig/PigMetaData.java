@@ -15,7 +15,10 @@
  */
 package parquet.pig;
 
+import static parquet.pig.PigSchemaConverter.pigSchemaToString;
+
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 
@@ -30,11 +33,14 @@ public class PigMetaData {
     return null;
   }
 
+  public static Set<String> getPigSchemas(Map<String, Set<String>> keyValueMetaData) {
+    return keyValueMetaData.get(PIG_SCHEMA);
+  }
+
   private String pigSchema;
 
   public PigMetaData(Schema pigSchema) {
-    final String pigSchemaString = pigSchema.toString();
-    this.pigSchema = pigSchemaString.substring(1, pigSchemaString.length() - 1);
+    this.pigSchema = pigSchemaToString(pigSchema);
   }
 
   public PigMetaData(String pigSchema) {

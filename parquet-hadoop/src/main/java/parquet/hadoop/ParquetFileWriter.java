@@ -17,6 +17,7 @@ package parquet.hadoop;
 
 import static parquet.Log.DEBUG;
 import static parquet.format.Util.writeFileMetaData;
+import static parquet.hadoop.ParquetFileWriter.mergeInto;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -45,10 +46,13 @@ import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
+import parquet.hadoop.metadata.GlobalMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.ParquetEncodingException;
+import parquet.schema.IncompatibleSchemaModificationException;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.schema.Type;
 
 /**
  * Internal implementation of the Parquet file writer as a block container
@@ -337,7 +341,7 @@ public class ParquetFileWriter {
 
   private static ParquetMetadata mergeFooters(Path root, List<Footer> footers) {
     String rootPath = root.toString();
-    FileMetaData fileMetaData = null;
+    GlobalMetaData fileMetaData = null;
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     for (Footer footer : footers) {
       String path = footer.getFile().toString();
@@ -354,7 +358,7 @@ public class ParquetFileWriter {
         blocks.add(block);
       }
     }
-    return new ParquetMetadata(fileMetaData, blocks);
+    return new ParquetMetadata(fileMetaData.merge(), blocks);
   }
 
   /**
@@ -365,32 +369,51 @@ public class ParquetFileWriter {
     return out.getPos();
   }
 
-  static FileMetaData mergeInto(
-      FileMetaData toMerge,
-      FileMetaData mergedMetadata) {
-    if (mergedMetadata == null) {
-      return new FileMetaData(
-          toMerge.getSchema(),
-          new HashMap<String, String>(toMerge.getKeyValueMetaData()),
-          Version.FULL_VERSION);
-    } else if (
-        (mergedMetadata.getSchema() == null && toMerge.getSchema() != null)
-        || (mergedMetadata.getSchema() != null && !mergedMetadata.getSchema().equals(toMerge.getSchema()))) {
-      throw new RuntimeException("could not merge metadata when the schema is different:"
-          + mergedMetadata.getSchema() + " != " + toMerge.getSchema());
-    } else {
-      for (Entry<String, String> entry : toMerge.getKeyValueMetaData().entrySet()) {
-        final String value = mergedMetadata.getKeyValueMetaData().get(entry.getKey());
-        if (value == null) {
-          mergedMetadata.getKeyValueMetaData().put(entry.getKey(), entry.getValue());
-        } else if (!value.equals(entry.getValue())) {
-          throw new RuntimeException(
-              "could not merge metadata: key "+entry.getKey()
-              + " has conflicting values " + value + " and " + entry.getValue());
-        }
-      }
+
+  static GlobalMetaData getGlobalMetaData(List<Footer> footers) throws IOException {
+    GlobalMetaData fileMetaData = null;
+    for (Footer footer : footers) {
+      ParquetMetadata currentMetadata = footer.getParquetMetadata();
+      fileMetaData = mergeInto(currentMetadata.getFileMetaData(), fileMetaData);
     }
-    return mergedMetadata;
+    return fileMetaData;
+  }
+
+  static GlobalMetaData mergeInto(
+      FileMetaData toMerge,
+      GlobalMetaData mergedMetadata) {
+    MessageType schema = null;
+    Map<String, Set<String>> newKeyValues = new HashMap<String, Set<String>>();
+    Set<String> createdBy = new HashSet<String>();
+    if (mergedMetadata != null) {
+      schema = mergedMetadata.getSchema();
+      newKeyValues.putAll(mergedMetadata.getKeyValueMetaData());
+      createdBy.addAll(mergedMetadata.getCreatedBy());
+    }
+    if ((schema == null && toMerge.getSchema() != null)
+        || (schema != null && !schema.equals(toMerge.getSchema()))) {
+      schema = mergeInto(toMerge.getSchema(), schema);
+    }
+    for (Entry<String, String> entry : toMerge.getKeyValueMetaData().entrySet()) {
+      Set<String> values = newKeyValues.get(entry.getKey());
+      if (values == null) {
+        values = new HashSet<String>();
+        newKeyValues.put(entry.getKey(), values);
+      }
+      values.add(entry.getValue());
+    }
+    createdBy.add(toMerge.getCreatedBy());
+    return new GlobalMetaData(
+        schema,
+        newKeyValues,
+        createdBy);
+  }
+
+  static MessageType mergeInto(MessageType toMerge, MessageType mergedSchema) {
+    if (mergedSchema == null) {
+      return toMerge;
+    }
+    return mergedSchema.union(toMerge);
   }
 
 }
