@@ -722,7 +722,10 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
           }
         }
         if (matchingThrift == null) {
-        	throw new IllegalArgumentException("schema mismatch :: cannot find Thrift field for column [" + fieldName + "]");
+        	// this means the file did not contain that field
+          // it will never be populated in this instance
+          // other files might populate it
+        	continue;
         }
         if (schemaType.isPrimitive()) {
         	converters[i] = new PrimitiveFieldHandler(newConverter(events, schemaType, matchingThrift).asPrimitiveConverter(), matchingThrift, events);

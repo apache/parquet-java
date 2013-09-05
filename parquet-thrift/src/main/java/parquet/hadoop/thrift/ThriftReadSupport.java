@@ -17,13 +17,16 @@ package parquet.hadoop.thrift;
 
 import java.lang.reflect.Constructor;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.thrift.TBase;
 import org.apache.thrift.protocol.TProtocol;
 
+import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
+import parquet.io.ParquetDecodingException;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 import parquet.thrift.TBaseRecordConverter;
@@ -80,10 +83,10 @@ public class ThriftReadSupport<T extends TBase<?,?>> extends ReadSupport<T> {
 
 
   @Override
-  public parquet.hadoop.api.ReadSupport.ReadContext init(
-          Configuration configuration, Map<String, String> keyValueMetaData,
-          MessageType fileMessageType) {
+  public parquet.hadoop.api.ReadSupport.ReadContext init(InitContext context) {
     MessageType requestedProjection;
+    final Configuration configuration = context.getConfiguration();
+    final MessageType fileMessageType = context.getFileSchema();
     String partialSchemaString = configuration.get(ReadSupport.PARQUET_READ_SCHEMA);
     String projectionSchemaStr = configuration.get(THRIFT_COLUMN_FILTER_KEY);
 
@@ -94,9 +97,9 @@ public class ThriftReadSupport<T extends TBase<?,?>> extends ReadSupport<T> {
       requestedProjection = getSchemaForRead(fileMessageType, partialSchemaString);
     } else {
       FieldProjectionFilter fieldProjectionFilter = new FieldProjectionFilter(projectionSchemaStr);
-      ThriftMetaData thriftMetaData = ThriftMetaData.fromExtraMetaData(keyValueMetaData);
       try {
-        requestedProjection = new ThriftSchemaConverter(fieldProjectionFilter).convert(getThriftClass(thriftMetaData, configuration));
+        initThriftClassFromMultipleFiles(context.getKeyValueMetadata(), configuration);
+        requestedProjection = new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftClass);
       } catch (ClassNotFoundException e) {
         throw new ThriftProjectionException("can not find thriftClass from configuration");
       }
@@ -107,15 +110,35 @@ public class ThriftReadSupport<T extends TBase<?,?>> extends ReadSupport<T> {
   }
 
   @SuppressWarnings("unchecked")
-  private Class<T> getThriftClass(ThriftMetaData metadata, Configuration conf) throws ClassNotFoundException {
+  private void initThriftClassFromMultipleFiles(Map<String, Set<String>> fileMetadata, Configuration conf) throws ClassNotFoundException {
     if (thriftClass != null) {
-      return thriftClass;
+      return;
     }
     String className = conf.get(THRIFT_READ_CLASS_KEY, null);
     if (className == null) {
-      return (Class<T>) metadata.getThriftClass();
+      Set<String> names = ThriftMetaData.getThriftClassNames(fileMetadata);
+      if (names == null || names.size() != 1) {
+        throw new ParquetDecodingException("Could not read file as the Thrift class is not provided and could not be resolved from the file: " + names);
+      }
+      className = names.iterator().next();
+    }
+    thriftClass = (Class<T>)Class.forName(className);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void initThriftClass(Map<String, String> fileMetadata, Configuration conf) throws ClassNotFoundException {
+    if (thriftClass != null) {
+      return;
+    }
+    String className = conf.get(THRIFT_READ_CLASS_KEY, null);
+    if (className == null) {
+      final ThriftMetaData metaData = ThriftMetaData.fromExtraMetaData(fileMetadata);
+      if (metaData == null) {
+        throw new ParquetDecodingException("Could not read file as the Thrift class is not provided and could not be resolved from the file");
+      }
+      thriftClass = (Class<T>)metaData.getThriftClass();
     } else {
-        return (Class<T>) Class.forName(className);
+      thriftClass = (Class<T>)Class.forName(className);
     }
   }
 
@@ -123,9 +146,9 @@ public class ThriftReadSupport<T extends TBase<?,?>> extends ReadSupport<T> {
   public RecordMaterializer<T> prepareForRead(Configuration configuration,
       Map<String, String> keyValueMetaData, MessageType fileSchema,
       parquet.hadoop.api.ReadSupport.ReadContext readContext) {
-    final ThriftMetaData thriftMetaData = ThriftMetaData.fromExtraMetaData(keyValueMetaData);
+    ThriftMetaData thriftMetaData = ThriftMetaData.fromExtraMetaData(keyValueMetaData);
     try {
-      final Class<T> thriftClass = getThriftClass(thriftMetaData, configuration);
+      initThriftClass(keyValueMetaData, configuration);
 
       String converterClassName = configuration.get(RECORD_CONVERTER_CLASS_KEY, RECORD_CONVERTER_DEFAULT);
       @SuppressWarnings("unchecked")

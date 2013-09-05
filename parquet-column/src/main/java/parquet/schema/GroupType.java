@@ -245,6 +245,10 @@ public class GroupType extends Type {
   @Override
   void checkContains(Type subType) {
     super.checkContains(subType);
+    checkGroupContains(subType);
+  }
+
+  void checkGroupContains(Type subType) {
     if (subType.isPrimitive()) {
       throw new InvalidRecordException(subType + " found: expected " + this);
     }

@@ -16,6 +16,7 @@
 package parquet.thrift;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.thrift.TBase;
 
@@ -47,16 +48,21 @@ public class ThriftMetaData {
    */
   public Class<?> getThriftClass() {
     if (thriftClass == null) {
-      try {
-        thriftClass = Class.forName(thriftClassName);
-        if (!TBase.class.isAssignableFrom(thriftClass)) {
-          throw new BadConfigurationException("Provided class " + thriftClassName + " does not extend TBase");
-        }
-      } catch (ClassNotFoundException e) {
-        throw new BadConfigurationException("Could not instantiate thrift class " + thriftClassName, e);
-      }
+      thriftClass = getThriftClass(thriftClassName);
     }
     return thriftClass;
+  }
+
+  public static Class<?> getThriftClass(String thriftClassName) {
+    try {
+      Class<?> thriftClass = Class.forName(thriftClassName);
+      if (!TBase.class.isAssignableFrom(thriftClass)) {
+        throw new BadConfigurationException("Provided class " + thriftClassName + " does not extend TBase");
+      }
+      return thriftClass;
+    } catch (ClassNotFoundException e) {
+      throw new BadConfigurationException("Could not instantiate thrift class " + thriftClassName, e);
+    }
   }
 
   public StructType getDescriptor() {
@@ -91,6 +97,15 @@ public class ThriftMetaData {
     map.put(THRIFT_CLASS, getThriftClass().getName());
     map.put(THRIFT_DESCRIPTOR, descriptor.toJSON());
     return map;
+  }
+
+  public static Set<String> getThriftClassNames(Map<String, Set<String>> fileMetadata) {
+    return fileMetadata.get(THRIFT_CLASS);
+  }
+
+  @Override
+  public String toString() {
+    return "ThriftMetaData" + toExtraMetaData();
   }
 
 }
