@@ -24,6 +24,7 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.thrift.TBase;
 import org.apache.thrift.protocol.TProtocol;
 
+import parquet.Log;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.io.ParquetDecodingException;
@@ -37,13 +38,16 @@ import parquet.thrift.projection.FieldProjectionFilter;
 import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftType.StructType;
 
-public class ThriftReadSupport<T extends TBase<?,?>> extends ReadSupport<T> {
+public class ThriftReadSupport<T> extends ReadSupport<T> {
+  private static final Log LOG = Log.getLog(ThriftReadSupport.class);
+
   /**
    * configuration key for thrift read projection schema
    */
   public static final String THRIFT_COLUMN_FILTER_KEY = "parquet.thrift.column.filter";
   private static final String RECORD_CONVERTER_DEFAULT = TBaseRecordConverter.class.getName();
   public static final String THRIFT_READ_CLASS_KEY = "parquet.thrift.read.class";
+
 
   /**
    * A {@link ThriftRecordConverter} builds an object by working with {@link TProtocol}. The default
@@ -84,9 +88,9 @@ public class ThriftReadSupport<T extends TBase<?,?>> extends ReadSupport<T> {
 
   @Override
   public parquet.hadoop.api.ReadSupport.ReadContext init(InitContext context) {
-    MessageType requestedProjection;
     final Configuration configuration = context.getConfiguration();
     final MessageType fileMessageType = context.getFileSchema();
+    MessageType requestedProjection = fileMessageType;
     String partialSchemaString = configuration.get(ReadSupport.PARQUET_READ_SCHEMA);
     String projectionSchemaStr = configuration.get(THRIFT_COLUMN_FILTER_KEY);
 
@@ -99,7 +103,11 @@ public class ThriftReadSupport<T extends TBase<?,?>> extends ReadSupport<T> {
       FieldProjectionFilter fieldProjectionFilter = new FieldProjectionFilter(projectionSchemaStr);
       try {
         initThriftClassFromMultipleFiles(context.getKeyValueMetadata(), configuration);
-        requestedProjection = new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftClass);
+        if (TBase.class.isAssignableFrom(thriftClass)) {
+          requestedProjection = new ThriftSchemaConverter(fieldProjectionFilter).convert((Class<TBase<?,?>>)thriftClass);
+        } else if (projectionSchemaStr != null) {
+          LOG.warn("Projection string not supported for Scrooge: " + projectionSchemaStr);
+        }
       } catch (ClassNotFoundException e) {
         throw new ThriftProjectionException("can not find thriftClass from configuration");
       }
