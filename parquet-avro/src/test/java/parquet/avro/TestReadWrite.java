@@ -99,9 +99,9 @@ public class TestReadWrite {
   }
 
   @Test
-  public void testEmptyMap() throws Exception {
+  public void testEmptyArray() throws Exception {
     Schema schema = new Schema.Parser().parse(
-        Resources.getResource("map.avsc").openStream());
+        Resources.getResource("array.avsc").openStream());
 
     File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
     tmp.deleteOnExit();
@@ -111,7 +111,7 @@ public class TestReadWrite {
     AvroParquetWriter<GenericRecord> writer = 
         new AvroParquetWriter<GenericRecord>(file, schema);
 
-    // Write a record with an empty map.
+    // Write a record with an empty array.
     List<Integer> emptyArray = new ArrayList<Integer>();
     GenericData.Record record = new GenericRecordBuilder(schema)
         .set("myarray", emptyArray).build();
@@ -126,9 +126,9 @@ public class TestReadWrite {
   }
 
   @Test
-  public void testEmptyArray() throws Exception {
+  public void testEmptyMap() throws Exception {
     Schema schema = new Schema.Parser().parse(
-        Resources.getResource("array.avsc").openStream());
+        Resources.getResource("map.avsc").openStream());
 
     File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
     tmp.deleteOnExit();
@@ -138,7 +138,7 @@ public class TestReadWrite {
     AvroParquetWriter<GenericRecord> writer = 
         new AvroParquetWriter<GenericRecord>(file, schema);
 
-    // Write a record with an empty array.
+    // Write a record with an empty map.
     ImmutableMap emptyMap = new ImmutableMap.Builder<String, Integer>().build();
     GenericData.Record record = new GenericRecordBuilder(schema)
         .set("mymap", emptyMap).build();
