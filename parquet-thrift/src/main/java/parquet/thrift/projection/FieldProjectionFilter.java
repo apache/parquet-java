@@ -44,7 +44,7 @@ public class FieldProjectionFilter {
     }
   }
 
-  public boolean isMatched(List<String> path) {
+  public boolean isMatched(FieldsPath path) {
     if (filterPatterns.size() == 0)
       return true;
 
@@ -55,14 +55,8 @@ public class FieldProjectionFilter {
     return false;
   }
 
-  private boolean matchPattern(List<String> path, PathGlobPattern filterPattern) {
-    StringBuffer pathStrBuffer = new StringBuffer();
-    for (String p : path) {
-      pathStrBuffer.append(p).append("/");
-    }
-
-    String pathStr = pathStrBuffer.substring(0, pathStrBuffer.length() - 1);
-    if (filterPattern.matches(pathStr)) {
+  private boolean matchPattern(FieldsPath path, PathGlobPattern filterPattern) {
+    if (filterPattern.matches(path.toString())) {
       return true;
     } else {
       return false;
