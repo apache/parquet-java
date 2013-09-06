@@ -183,9 +183,16 @@ public class TestThriftSchemaConverter {
             "}", TestStructInMap.class);
   }
 
-  @Test(expected = ThriftProjectionException.class)
+  @Test
   public void testProjectOnlyKeyInMap() {
-    getFilteredSchema("name;names/key", TestStructInMap.class);
+    shouldGetProjectedSchema("name;names/key","message TestStructInMap {\n" +
+            "  optional binary name (UTF8);\n" +
+            "  optional group names (MAP) {\n" +
+            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "      required binary key (UTF8);\n" +
+            "    }\n" +
+            "  }\n" +
+            "}",TestStructInMap.class);
   }
 
   @Test(expected = ThriftProjectionException.class)

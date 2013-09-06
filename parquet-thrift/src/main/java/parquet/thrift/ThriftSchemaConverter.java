@@ -136,7 +136,6 @@ public class ThriftSchemaConverter {
   private Type convertPrimitiveType(String name, Field field, Type.Repetition rep, FieldsPath currentFieldPath) {
     //following for leaves
     if (!fieldProjectionFilter.isMatched(currentFieldPath)){
-      System.out.println(currentFieldPath.toString());
       return null;
     }
 
@@ -215,8 +214,6 @@ public class ThriftSchemaConverter {
       return null;
     if (keyType == null)
       throw new ThriftProjectionException("key of map is not specified in projection: " + currentFieldPath);
-    if (valueType == null)
-      throw new ThriftProjectionException("value of map is not specified in projection: " + currentFieldPath);
     return ConversionPatterns.mapType(rep, name,
             keyType,
             valueType);

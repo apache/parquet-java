@@ -54,6 +54,19 @@ public abstract class ConversionPatterns {
   }
   
   public static GroupType mapType(Repetition repetition, String alias, String mapAlias, Type keyType, Type valueType) {
+    //support projection only on key of a map
+    if (valueType==null)
+      return listWrapper(
+              repetition,
+              alias,
+              MAP,
+              new GroupType(
+                      Repetition.REPEATED,
+                      mapAlias,
+                      MAP_KEY_VALUE,
+                      keyType)
+      );
+
     if (!valueType.getName().equals("value")) {
       throw new RuntimeException(valueType.getName() + " should be value");
     }
@@ -69,6 +82,7 @@ public abstract class ConversionPatterns {
             valueType)
         );
   }
+
 
   /**
    *
