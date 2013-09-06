@@ -21,9 +21,12 @@ import static org.junit.Assert.assertNull;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+
+import junit.framework.Assert;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -139,13 +142,13 @@ public class TestInputOutputFormat {
 
   public static class SchemaEvolutionMapper1 extends Mapper<LongWritable, Text, Void, StructV1> {
     protected void map(LongWritable key, Text value, org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,StructV1>.Context context) throws IOException ,InterruptedException {
-      context.write(null, new StructV1(value.toString()));
+      context.write(null, new StructV1(value.toString() + 1));
     };
   }
 
   public static class SchemaEvolutionMapper2 extends Mapper<LongWritable, Text, Void, StructV2> {
     protected void map(LongWritable key, Text value, org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,StructV2>.Context context) throws IOException ,InterruptedException {
-      final StructV2 s = new StructV2(value.toString());
+      final StructV2 s = new StructV2(value.toString() + 2);
       s.setAge("undetermined");
       context.write(null, s);
     };
@@ -153,7 +156,7 @@ public class TestInputOutputFormat {
 
   public static class SchemaEvolutionMapper3 extends Mapper<LongWritable, Text, Void, StructV3> {
     protected void map(LongWritable key, Text value, org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,StructV3>.Context context) throws IOException ,InterruptedException {
-      final StructV3 s = new StructV3(value.toString());
+      final StructV3 s = new StructV3(value.toString() + 3);
       s.setAge("average");
       s.setGender("unavailable");
       context.write(null, s);
@@ -187,7 +190,7 @@ public class TestInputOutputFormat {
     {
       final Job job = new Job(conf, "read");
       job.setInputFormatClass(ParquetThriftInputFormat.class);
-      ParquetThriftInputFormat.setInputPaths(job, parquetPath);
+      ParquetThriftInputFormat.setInputPaths(job, new Path(parquetPath, "*"));
       ParquetThriftInputFormat.setThriftClass(job.getConfiguration(), StructV3.class);
       job.setMapperClass(TestInputOutputFormat.SchemaEvolutionReadMapper.class);
       job.setNumReduceTasks(0);
@@ -198,7 +201,14 @@ public class TestInputOutputFormat {
       waitForJob(job);
     }
 
-    final BufferedReader out = new BufferedReader(new FileReader(new File(outputPath.toString(), "part-m-00000")));
+    read(outputPath + "/part-m-00000", 3);
+    read(outputPath + "/part-m-00001", 3);
+    read(outputPath + "/part-m-00002", 3);
+  }
+
+  private void read(String outputPath, int expected) throws FileNotFoundException,
+      IOException {
+    final BufferedReader out = new BufferedReader(new FileReader(new File(outputPath.toString())));
     String lineOut = null;
     int lineNumber = 0;
     while ((lineOut = out.readLine()) != null) {
@@ -207,6 +217,7 @@ public class TestInputOutputFormat {
       ++ lineNumber;
     }
     out.close();
+    Assert.assertEquals(expected, lineNumber);
   }
 
   private void write(final Configuration conf, final Path inputPath,
