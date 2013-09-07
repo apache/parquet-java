@@ -86,7 +86,7 @@ public class TestMessageType {
       t3.union(t4);
       fail("moving from optional to required");
     } catch (IncompatibleSchemaModificationException e) {
-      assertEquals("can not merge type required binary a into optional binary a", e.getMessage());
+      assertEquals("repetition constraint is more restrictive: can not merge type required binary a into optional binary a", e.getMessage());
     }
 
     assertEquals(
