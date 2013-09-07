@@ -35,11 +35,10 @@ import org.apache.thrift.protocol.TStruct;
  */
 abstract class ParquetProtocol extends TProtocol {
 
-  private final String message;
+  private String name;
 
   ParquetProtocol() {
     super(null);
-    this.message = "in " + getClassInfo();
   }
 
   private String getClassInfo() {
@@ -56,10 +55,13 @@ abstract class ParquetProtocol extends TProtocol {
    */
   ParquetProtocol(String name) {
     super(null);
-    this.message = "when we expected " + name + " in " + getClassInfo();
+    this.name = name;
   }
 
   private UnsupportedOperationException exception() {
+    String message = name == null ?
+        "in " + getClassInfo() :
+        "when we expected " + name + " in " + getClassInfo();
     return new UnsupportedOperationException(new Exception().getStackTrace()[1].getMethodName() + " was called " + message);
   }
 
@@ -67,7 +69,7 @@ abstract class ParquetProtocol extends TProtocol {
 
   @Override
   public void writeMessageBegin(TMessage message) throws TException {
-    throw new UnsupportedOperationException(this.message);
+    throw exception();
   }
 
   @Override
