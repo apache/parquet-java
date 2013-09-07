@@ -254,12 +254,22 @@ public class TestParquetFileWriter {
 
   @Test
   public void testMergeMetadata() {
-    FileMetaData md1 = new FileMetaData(new MessageType("root1", new PrimitiveType(REPEATED, BINARY, "a"), new PrimitiveType(OPTIONAL, BINARY, "b")), new HashMap<String, String>(), "test");
-    FileMetaData md2 = new FileMetaData(new MessageType("root2", new PrimitiveType(REQUIRED, BINARY, "c")), new HashMap<String, String>(), "test2");
+    FileMetaData md1 = new FileMetaData(
+        new MessageType("root1",
+            new PrimitiveType(REPEATED, BINARY, "a"),
+            new PrimitiveType(OPTIONAL, BINARY, "b")),
+        new HashMap<String, String>(), "test");
+    FileMetaData md2 = new FileMetaData(
+        new MessageType("root2",
+            new PrimitiveType(REQUIRED, BINARY, "c")),
+        new HashMap<String, String>(), "test2");
     GlobalMetaData merged = ParquetFileWriter.mergeInto(md2, ParquetFileWriter.mergeInto(md1, null));
     assertEquals(
         merged.getSchema(),
-        new MessageType("root1", new PrimitiveType(REPEATED, BINARY, "a"), new PrimitiveType(OPTIONAL, BINARY, "b"), new PrimitiveType(REQUIRED, BINARY, "c"))
+        new MessageType("root1",
+            new PrimitiveType(REPEATED, BINARY, "a"),
+            new PrimitiveType(OPTIONAL, BINARY, "b"),
+            new PrimitiveType(REQUIRED, BINARY, "c"))
         );
 
   }

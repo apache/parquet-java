@@ -278,7 +278,7 @@ public class GroupType extends Type {
   @Override
   protected Type union(Type toMerge) {
     if (toMerge.isPrimitive()) {
-      throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " into " + this);
+      throw new IncompatibleSchemaModificationException("can not merge primitive type " + toMerge + " into group type " + this);
     }
     return new GroupType(toMerge.getRepetition(), getName(), mergeFields(toMerge.asGroupType()));
   }
@@ -290,8 +290,8 @@ public class GroupType extends Type {
       Type merged;
       if (toMerge.containsField(type.getName())) {
         Type fieldToMerge = toMerge.getType(type.getName());
-        if (!fieldToMerge.getName().equals(type.getName()) || fieldToMerge.getRepetition().isMoreRestrictiveThan(type.getRepetition())) {
-          throw new IncompatibleSchemaModificationException("can not merge type " + fieldToMerge + " into " + type);
+        if (fieldToMerge.getRepetition().isMoreRestrictiveThan(type.getRepetition())) {
+          throw new IncompatibleSchemaModificationException("repetition constraint is more restrictive: can not merge type " + fieldToMerge + " into " + type);
         }
         merged = type.union(fieldToMerge);
       } else {

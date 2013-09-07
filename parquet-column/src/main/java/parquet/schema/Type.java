@@ -139,6 +139,10 @@ abstract public class Type {
 
   protected abstract boolean containsPath(String[] path, int depth);
 
+  /**
+   * @param toMerge the type to merge into this one
+   * @return the union result of merging toMerge into this
+   */
   protected abstract Type union(Type toMerge);
 
   /**

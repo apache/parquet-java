@@ -370,7 +370,12 @@ public class ParquetFileWriter {
   }
 
 
-  static GlobalMetaData getGlobalMetaData(List<Footer> footers) throws IOException {
+  /**
+   * Will merge the metadata of all the footers together
+   * @param footers the list files footers to merge
+   * @return the global meta data for all the footers
+   */
+  static GlobalMetaData getGlobalMetaData(List<Footer> footers) {
     GlobalMetaData fileMetaData = null;
     for (Footer footer : footers) {
       ParquetMetadata currentMetadata = footer.getParquetMetadata();
@@ -379,6 +384,12 @@ public class ParquetFileWriter {
     return fileMetaData;
   }
 
+  /**
+   * Will return the result of merging toMerge into mergedMetadata
+   * @param toMerge the metadata toMerge
+   * @param mergedMetadata the reference metadata to merge into
+   * @return the result of the merge
+   */
   static GlobalMetaData mergeInto(
       FileMetaData toMerge,
       GlobalMetaData mergedMetadata) {
@@ -409,6 +420,12 @@ public class ParquetFileWriter {
         createdBy);
   }
 
+  /**
+   * will return the result of merging toMerge into mergedSchema
+   * @param toMerge the schema to merge into mergedSchema
+   * @param mergedSchema the schema to append the fields to
+   * @return the resulting schema
+   */
   static MessageType mergeInto(MessageType toMerge, MessageType mergedSchema) {
     if (mergedSchema == null) {
       return toMerge;

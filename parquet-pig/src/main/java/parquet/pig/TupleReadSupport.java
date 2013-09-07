@@ -35,6 +35,7 @@ import org.apache.pig.parser.ParserException;
 import parquet.Log;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
+import parquet.io.ParquetDecodingException;
 import parquet.io.api.RecordMaterializer;
 import parquet.pig.convert.TupleRecordMaterializer;
 import parquet.schema.IncompatibleSchemaModificationException;
@@ -152,7 +153,7 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
     MessageType requestedSchema = readContext.getRequestedSchema();
     Schema requestedPigSchema = getPigSchema(configuration);
     if (requestedPigSchema == null) {
-      throw new RuntimeException("Missing Pig schema");
+      throw new ParquetDecodingException("Missing Pig schema: ParquetLoader sets the schema in the job conf");
     }
     boolean elephantBirdCompatible = configuration.getBoolean(PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE, false);
     if (elephantBirdCompatible) {
