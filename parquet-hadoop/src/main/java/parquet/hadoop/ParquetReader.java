@@ -50,10 +50,21 @@ public class ParquetReader<T> implements Closeable {
   private InternalParquetRecordReader<T> reader;
   private GlobalMetaData globalMetaData;
 
+  /**
+   * @param file the file to read
+   * @param readSupport to materialize records
+   * @throws IOException
+   */
   public ParquetReader(Path file, ReadSupport<T> readSupport) throws IOException {
     this(file, readSupport, null);
   }
 
+  /**
+   * @param file the file to read
+   * @param readSupport to materialize records
+   * @param filter the filter to use to filter records
+   * @throws IOException
+   */
   public ParquetReader(Path file, ReadSupport<T> readSupport, UnboundRecordFilter filter) throws IOException {
     this.readSupport = readSupport;
     this.filter = filter;
@@ -75,6 +86,10 @@ public class ParquetReader<T> implements Closeable {
     readContext = readSupport.init(new InitContext(conf, extraMetadata, schema));
   }
 
+  /**
+   * @return the next record or null if finished
+   * @throws IOException
+   */
   public T read() throws IOException {
     try {
       if (reader != null && reader.nextKeyValue()) {

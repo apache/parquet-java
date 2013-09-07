@@ -17,7 +17,6 @@ package parquet.hadoop;
 
 import static parquet.Log.DEBUG;
 import static parquet.format.Util.writeFileMetaData;
-import static parquet.hadoop.ParquetFileWriter.mergeInto;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -49,10 +48,8 @@ import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.GlobalMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.ParquetEncodingException;
-import parquet.schema.IncompatibleSchemaModificationException;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
-import parquet.schema.Type;
 
 /**
  * Internal implementation of the Parquet file writer as a block container
@@ -328,6 +325,13 @@ public class ParquetFileWriter {
     out.write(MAGIC);
   }
 
+  /**
+   * writes a _metadata file
+   * @param configuration the configuration to use to get the FileSystem
+   * @param outputPath the directory to write the _metadata file to
+   * @param footers the list of footers to merge
+   * @throws IOException
+   */
   public static void writeMetadataFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
     Path metaDataPath = new Path(outputPath, PARQUET_METADATA_FILE);
     FileSystem fs = outputPath.getFileSystem(configuration);
@@ -368,7 +372,6 @@ public class ParquetFileWriter {
   public long getPos() throws IOException {
     return out.getPos();
   }
-
 
   /**
    * Will merge the metadata of all the footers together

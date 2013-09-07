@@ -44,19 +44,30 @@ public class GroupType extends Type {
   }
 
   /**
-   * @see GroupType#GroupType(Repetition, String, List)
-   * @param required
-   * @param name
-   * @param fields
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param name the name of the field
+   * @param fields the contained fields
    */
   public GroupType(Repetition repetition, String name, Type... fields) {
     this(repetition, name, null, fields);
   }
 
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param name the name of the field
+   * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
+   * @param fields the contained fields
+   */
   public GroupType(Repetition repetition, String name, OriginalType originalType, Type... fields) {
     this(repetition, name, originalType, Arrays.asList(fields));
   }
 
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param name the name of the field
+   * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
+   * @param fields the contained fields
+   */
   public GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields) {
     super(name, repetition, originalType);
     this.fields = fields;
@@ -133,6 +144,11 @@ public class GroupType extends Type {
     return fields.get(index);
   }
 
+  /**
+   * appends a display string for of the members of this group to sb
+   * @param sb where to append
+   * @param indent the indentation level
+   */
   void membersDisplayString(StringBuilder sb, String indent) {
     for (Type field : fields) {
       field.writeToStringBuilder(sb, indent);
@@ -283,6 +299,11 @@ public class GroupType extends Type {
     return new GroupType(toMerge.getRepetition(), getName(), mergeFields(toMerge.asGroupType()));
   }
 
+  /**
+   * produces the list of fields resulting from merging toMerge into the fields of this
+   * @param toMerge the group containing the fields to merge
+   * @return the merged list
+   */
   List<Type> mergeFields(GroupType toMerge) {
     List<Type> newFields = new ArrayList<Type>();
     // merge existing fields

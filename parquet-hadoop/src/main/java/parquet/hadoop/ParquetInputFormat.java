@@ -69,7 +69,14 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   private static final Log LOG = Log.getLog(ParquetInputFormat.class);
 
+  /**
+   * key to configure the ReadSupport implementation
+   */
   public static final String READ_SUPPORT_CLASS = "parquet.read.support.class";
+
+  /**
+   * key to configure the filter
+   */
   public static final String UNBOUND_RECORD_FILTER = "parquet.read.filter";
 
   private Class<?> readSupportClass;
@@ -131,6 +138,10 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     }
   }
 
+  /**
+   * @param configuration to find the configuration for the read support
+   * @return the configured read support
+   */
   public ReadSupport<T> getReadSupport(Configuration configuration){
     try {
       if (readSupportClass == null) {
@@ -238,6 +249,12 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     return splits;
   }
 
+  /**
+   * @param configuration the configuration to connect to the file system
+   * @param footers the footers of the files to read
+   * @return the splits for the footers
+   * @throws IOException
+   */
   public List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers) throws IOException {
     List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
     GlobalMetaData globalMetaData = ParquetFileWriter.getGlobalMetaData(footers);
@@ -327,6 +344,13 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     return footers;
   }
 
+  /**
+   * the footers for the files
+   * @param configuration to connect to the file system
+   * @param statuses the files to open
+   * @return the footers of the files
+   * @throws IOException
+   */
   public List<Footer> getFooters(Configuration configuration, List<FileStatus> statuses) throws IOException {
     LOG.debug("reading " + statuses.size() + " files");
     return ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses);

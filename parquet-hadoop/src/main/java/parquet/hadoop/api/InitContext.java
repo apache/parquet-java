@@ -24,6 +24,13 @@ import org.apache.hadoop.conf.Configuration;
 
 import parquet.schema.MessageType;
 
+/**
+ *
+ * Context passed when initializing for read
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class InitContext {
 
   private final Map<String,Set<String>> keyValueMetadata;
@@ -31,6 +38,11 @@ public class InitContext {
   private final Configuration configuration;
   private final MessageType fileSchema;
 
+  /**
+   * @param configuration the hadoop configuration
+   * @param keyValueMetadata extra metadata from file footers
+   * @param fileSchema the merged schema from the files
+   */
   public InitContext(
       Configuration configuration,
       Map<String, Set<String>> keyValueMetadata,

@@ -27,20 +27,34 @@ import parquet.io.InvalidRecordException;
  */
 abstract public class Type {
 
+  /**
+   * Constraint on the repetition of a field
+   *
+   * @author Julien Le Dem
+   */
   public static enum Repetition {
-    REQUIRED { // exactly 1
+    /**
+     * exactly 1
+     */
+    REQUIRED {
       @Override
       public boolean isMoreRestrictiveThan(Repetition other) {
         return other != REQUIRED;
       }
     },
-    OPTIONAL { // 0 or 1
+    /**
+     * 0 or 1
+     */
+    OPTIONAL {
       @Override
       public boolean isMoreRestrictiveThan(Repetition other) {
         return other == REPEATED;
       }
     },
-    REPEATED {  // 0 or more
+    /**
+     * 0 or more
+     */
+    REPEATED {
       @Override
       public boolean isMoreRestrictiveThan(Repetition other) {
         return false;
@@ -48,6 +62,10 @@ abstract public class Type {
     }
     ;
 
+    /**
+     * @param other
+     * @return true if it is strictly more restrictive than other
+     */
     abstract public boolean isMoreRestrictiveThan(Repetition other);
 
   }
@@ -56,10 +74,19 @@ abstract public class Type {
   private final Repetition repetition;
   private final OriginalType originalType;
 
+  /**
+   * @param name the name of the type
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   */
   public Type(String name, Repetition repetition) {
     this(name, repetition, null);
   }
 
+  /**
+   * @param name the name of the type
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
+   */
   public Type(String name, Repetition repetition, OriginalType originalType) {
     super();
     this.name = name;
@@ -67,24 +94,44 @@ abstract public class Type {
     this.originalType = originalType;
   }
 
+  /**
+   * @return the name of the type
+   */
   public String getName() {
     return name;
   }
 
+  /**
+   * @param rep
+   * @return if repretition of the type is rep
+   */
   public boolean isRepetition(Repetition rep) {
     return repetition == rep;
   }
 
+  /**
+   * @return the repetition constraint
+   */
   public Repetition getRepetition() {
     return repetition;
   }
 
+  /**
+   * @return the original type (LIST, MAP, ...)
+   */
   public OriginalType getOriginalType() {
     return originalType;
   }
 
+  /**
+   * @return if this is a primitive type
+   */
   abstract public boolean isPrimitive();
 
+  /**
+   * @return this if it's a group type
+   * @throws ClassCastException if not
+   */
   public GroupType asGroupType() {
     if (isPrimitive()) {
       throw new ClassCastException(this + " is not a group");
@@ -92,6 +139,10 @@ abstract public class Type {
     return (GroupType)this;
   }
 
+  /**
+   * @return this if it's a primitive type
+   * @throws ClassCastException if not
+   */
   public PrimitiveType asPrimitiveType() {
     if (!isPrimitive()) {
       throw new ClassCastException(this + " is not a primititve");
