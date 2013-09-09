@@ -16,6 +16,17 @@
 package parquet.pig;
 
 import static org.junit.Assert.assertEquals;
+import static parquet.pig.PigSchemaConverter.parsePigSchema;
+import static parquet.pig.PigSchemaConverter.pigSchemaToString;
+import static parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import junit.framework.Assert;
 
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
@@ -27,36 +38,36 @@ import parquet.schema.MessageTypeParser;
 
 
 public class TestPigSchemaConverter {
-  
+
   private final PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
-  
+
   private void testPigConversion(String pigSchemaString) throws Exception {
     Schema pigSchema = Utils.getSchemaFromString(pigSchemaString);
     MessageType parquetSchema = pigSchemaConverter.convert(pigSchema);
-    Schema convertedSchema = pigSchemaConverter.convert(parquetSchema);  
+    Schema convertedSchema = pigSchemaConverter.convert(parquetSchema);
     assertEquals(pigSchema, convertedSchema);
   }
-  
+
   @Test
   public void testSimpleBag() throws Exception {
     testPigConversion("b:{t:(a:int)}");
   }
-  
+
   @Test
   public void testMultiBag() throws Exception {
     testPigConversion("x:int, b:{t:(a:int,b:chararray)}}");
   }
-  
+
   @Test
   public void testMapSimple() throws Exception {
     testPigConversion("b:[(c:int)]");
   }
-  
+
   @Test
   public void testMapTuple() throws Exception {
     testPigConversion("a:chararray, b:[(c:chararray, d:chararray)]");
   }
-  
+
   @Test
   public void testMapOfList() throws Exception {
     testPigConversion("a:map[{bag: (a:int)}]");
@@ -177,4 +188,15 @@ public class TestPigSchemaConverter {
         "  optional int32 val_0;\n" +
         "}\n");
   }
+
+  @Test
+  public void testSchemaEvolution() {
+    Map<String, Set<String>> map = new HashMap<String, Set<String>>();
+    map.put("pig.schema", new HashSet<String>(Arrays.asList(
+        "a:int, b:int, c:int, d:int, e:int, f:int",
+        "aa:int, aaa:int, b:int, c:int, ee:int")));
+    Schema result = getPigSchemaFromMultipleFiles(new MessageType("empty"), map);
+    assertEquals("a: int,b: int,c: int,d: int,e: int,f: int,aa: int,aaa: int,ee: int", pigSchemaToString(result));
+  }
+
 }

@@ -60,7 +60,7 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
    * @return the pig schema requested by the user or null if none.
    */
   static Schema getPigSchema(Configuration configuration) {
-    return PigSchemaConverter.parsePigSchema(configuration.get(PARQUET_PIG_SCHEMA));
+    return parsePigSchema(configuration.get(PARQUET_PIG_SCHEMA));
   }
 
   /**
@@ -75,7 +75,11 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
     }
     Schema mergedPigSchema = null;
     for (String pigSchemaString : pigSchemas) {
-      mergedPigSchema = union(mergedPigSchema, parsePigSchema(pigSchemaString));
+      try {
+        mergedPigSchema = union(mergedPigSchema, parsePigSchema(pigSchemaString));
+      } catch (FrontendException e) {
+        throw new ParquetDecodingException("can not merge " + pigSchemaString + " into " + mergedPigSchema, e);
+      }
     }
     return mergedPigSchema;
   }
@@ -93,14 +97,14 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
     return parsePigSchema(pigMetaData.getPigSchema());
   }
 
-  private static Schema union(Schema merged, Schema pigSchema) {
+  private static Schema union(Schema merged, Schema pigSchema) throws FrontendException {
     List<FieldSchema> fields = new ArrayList<Schema.FieldSchema>();
     if (merged == null) {
       return pigSchema;
     }
     // merging existing fields
     for (FieldSchema fieldSchema : merged.getFields()) {
-      FieldSchema newFieldSchema = pigSchema.findFieldSchema(fieldSchema.alias);
+      FieldSchema newFieldSchema = pigSchema.getField(fieldSchema.alias);
       if (newFieldSchema == null) {
         fields.add(fieldSchema);
       } else {
@@ -109,7 +113,7 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
     }
     // adding new fields
     for (FieldSchema newFieldSchema : pigSchema.getFields()) {
-      FieldSchema oldFieldSchema = merged.findFieldSchema(newFieldSchema.alias);
+      FieldSchema oldFieldSchema = merged.getField(newFieldSchema.alias);
       if (oldFieldSchema == null) {
         fields.add(newFieldSchema);
       }
