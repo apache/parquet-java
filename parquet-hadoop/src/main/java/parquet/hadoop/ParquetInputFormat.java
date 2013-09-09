@@ -15,8 +15,6 @@
  */
 package parquet.hadoop;
 
-import static parquet.hadoop.ParquetFileWriter.mergeInto;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -211,7 +209,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       BlockLocation hdfsBlock = hdfsBlocks[i];
       List<BlockMetaData> blocksForCurrentSplit = splitGroups.get(i);
       if (blocksForCurrentSplit.size() == 0) {
-        LOG.warn("HDFS block without row group: " + hdfsBlocks[i]);
+        LOG.debug("HDFS block without row group: " + hdfsBlocks[i]);
       } else {
         long length = 0;
         for (BlockMetaData block : blocksForCurrentSplit) {
