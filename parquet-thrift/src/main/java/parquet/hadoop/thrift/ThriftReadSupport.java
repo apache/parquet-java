@@ -95,7 +95,7 @@ public class ThriftReadSupport<T extends TBase<?,?>> extends ReadSupport<T> {
     } else {
       FieldProjectionFilter fieldProjectionFilter = new FieldProjectionFilter(projectionSchemaStr);
       ThriftMetaData thriftMetaData = ThriftMetaData.fromExtraMetaData(keyValueMetaData);
-        requestedProjection = new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftMetaData.getThriftClass());
+        requestedProjection = new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftMetaData.getDescriptor());
 
     }
 

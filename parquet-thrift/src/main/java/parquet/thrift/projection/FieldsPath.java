@@ -16,6 +16,8 @@
 package parquet.thrift.projection;
 
 import com.twitter.elephantbird.thrift.TStructDescriptor;
+import parquet.thrift.struct.ThriftField;
+import parquet.thrift.struct.ThriftType;
 
 import java.util.ArrayList;
 
@@ -25,13 +27,13 @@ import java.util.ArrayList;
  * @author Tianshuo Deng
  */
 public class FieldsPath {
-  ArrayList<TStructDescriptor.Field> fields = new ArrayList<TStructDescriptor.Field>();
+  ArrayList<ThriftField> fields = new ArrayList<ThriftField>();
 
-  public void push(TStructDescriptor.Field field) {
+  public void push(ThriftField field) {
     this.fields.add(field);
   }
 
-  public TStructDescriptor.Field pop() {
+  public ThriftField pop() {
     return this.fields.remove(fields.size() - 1);
   }
 
@@ -39,10 +41,9 @@ public class FieldsPath {
   public String toString() {
     StringBuffer pathStrBuffer = new StringBuffer();
     for (int i = 0; i < fields.size(); i++) {
-      TStructDescriptor.Field currentField = fields.get(i);
-
+      ThriftField currentField = fields.get(i);
       if (i > 0) {
-        TStructDescriptor.Field previousField = fields.get(i - 1);
+        ThriftField previousField = fields.get(i - 1);
         if (isKeyFieldOfMap(currentField, previousField)) {
           pathStrBuffer.append("key/");
           continue;
@@ -52,7 +53,7 @@ public class FieldsPath {
         }
       }
 
-      pathStrBuffer.append(currentField.getFieldMetaData().fieldName).append("/");
+      pathStrBuffer.append(currentField.getName()).append("/");
     }
 
     if (pathStrBuffer.length() == 0) {
@@ -63,11 +64,19 @@ public class FieldsPath {
     }
   }
 
-  private boolean isValueFieldOfMap(TStructDescriptor.Field currentField, TStructDescriptor.Field previousField) {
-    return previousField.getMapValueField()==currentField;
+  private boolean isValueFieldOfMap(ThriftField currentField, ThriftField previousField) {
+    ThriftType previousType = previousField.getType();
+    if(!(previousType instanceof ThriftType.MapType)) {
+      return false;
+    }
+    return ((ThriftType.MapType)previousType).getValue()==currentField;
   }
 
-  private boolean isKeyFieldOfMap(TStructDescriptor.Field currentField, TStructDescriptor.Field previousField) {
-    return previousField.getMapKeyField()==currentField;
+  private boolean isKeyFieldOfMap(ThriftField currentField, ThriftField previousField) {
+    ThriftType previousType = previousField.getType();
+    if(!(previousType instanceof ThriftType.MapType)) {
+      return false;
+    }
+    return ((ThriftType.MapType)previousType).getKey()==currentField;
   }
 }

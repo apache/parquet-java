@@ -34,7 +34,7 @@ public class TestThriftSchemaConverter {
   @Test
   public void testToMessageType() throws Exception {
     String expected =
-            "message AddressBook {\n" +
+            "message ParquetSchema {\n" +
                     "  optional group persons (LIST) {\n" +
                     "    repeated group persons_tuple {\n" +
                     "      required group name {\n" +
@@ -53,58 +53,59 @@ public class TestThriftSchemaConverter {
                     "  }\n" +
                     "}";
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
-    final MessageType converted = schemaConverter.convert(AddressBook.class);
+    StructType messageStruct=schemaConverter.toStructType(AddressBook.class);
+    final MessageType converted = schemaConverter.convert(messageStruct);
     assertEquals(MessageTypeParser.parseMessageType(expected), converted);
   }
 
   @Test
   public void testToProjectedThriftType() {
 
-    shouldGetProjectedSchema("name/first_name", "message Person {" +
+    shouldGetProjectedSchema("name/first_name", "message ParquetSchema {" +
             "  required group name {" +
             "    optional binary first_name (UTF8);" +
             "  }}", Person.class);
 
-    shouldGetProjectedSchema("name/first_name;name/last_name", "message Person {" +
-            "  required group name {" +
-            "    optional binary first_name (UTF8);" +
-            "    optional binary last_name (UTF8);" +
-            "  }}", Person.class);
-
-    shouldGetProjectedSchema("name/{first,last}_name;", "message Person {" +
+    shouldGetProjectedSchema("name/first_name;name/last_name", "message ParquetSchema {" +
             "  required group name {" +
             "    optional binary first_name (UTF8);" +
             "    optional binary last_name (UTF8);" +
             "  }}", Person.class);
 
-    shouldGetProjectedSchema("name/*", "message Person {" +
+    shouldGetProjectedSchema("name/{first,last}_name;", "message ParquetSchema {" +
+            "  required group name {" +
+            "    optional binary first_name (UTF8);" +
+            "    optional binary last_name (UTF8);" +
+            "  }}", Person.class);
+
+    shouldGetProjectedSchema("name/*", "message ParquetSchema {" +
             "  required group name {" +
             "    optional binary first_name (UTF8);" +
             "    optional binary last_name (UTF8);" +
             "  }" +
             "}", Person.class);
 
-    shouldGetProjectedSchema("name/*", "message Person {" +
+    shouldGetProjectedSchema("name/*", "message ParquetSchema {" +
             "  required group name {" +
             "    optional binary first_name (UTF8);" +
             "    optional binary last_name (UTF8);" +
             "  }" +
             "}", Person.class);
 
-    shouldGetProjectedSchema("*/*_name", "message Person {" +
+    shouldGetProjectedSchema("*/*_name", "message ParquetSchema {" +
             "  required group name {" +
             "    optional binary first_name (UTF8);" +
             "    optional binary last_name (UTF8);" +
             "  }" +
             "}", Person.class);
 
-    shouldGetProjectedSchema("name/first_*", "message Person {" +
+    shouldGetProjectedSchema("name/first_*", "message ParquetSchema {" +
             "  required group name {" +
             "    optional binary first_name (UTF8);" +
             "  }" +
             "}", Person.class);
 
-    shouldGetProjectedSchema("*/*", "message Person {" +
+    shouldGetProjectedSchema("*/*", "message ParquetSchema {" +
             "  required group name {" +
             "  optional binary first_name (UTF8);" +
             "  optional binary last_name (UTF8);" +
