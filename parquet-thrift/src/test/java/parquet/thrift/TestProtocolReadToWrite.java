@@ -121,7 +121,7 @@ public class TestProtocolReadToWrite {
       p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
       fail("exception expected");
     } catch (TException e) {
-      Assert.assertEquals("Can not write record: (f=1<t=BOOL>:", e.getMessage());
+      Assert.assertEquals("Can not write record: (f=1<t=BOOL>: ", e.getMessage());
     }
   }
 
