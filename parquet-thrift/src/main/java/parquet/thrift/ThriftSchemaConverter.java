@@ -62,7 +62,7 @@ public class ThriftSchemaConverter {
     FieldsPath currentFieldPath = new FieldsPath();
     return new MessageType(
             "ParquetSchema",
-            getMatchedAndRequiredFields(toSchema(thriftClass, currentFieldPath)).fields);
+            getMatchedFields(toSchema(thriftClass, currentFieldPath)).fields);
   }
 
   private ConvertedType[] toSchema(StructType structType, FieldsPath currentFieldPath) {
@@ -199,17 +199,17 @@ public class ThriftSchemaConverter {
     ConvertedType[] fields = toSchema(field, currentFieldPath);//if all child nodes dont exist, simply return null for current layer
     //A struct must have at least one required field
 
-    MatchAndRequiredFields matchedAndRequiredFields = getMatchedAndRequiredFields(fields);
+    MatchAndRequiredFields matchedAndRequiredFields = getMatchedFields(fields);
     return new ConvertedType(matchedAndRequiredFields.hasMatched, new GroupType(rep, name, matchedAndRequiredFields.fields));
   }
 
-  private MatchAndRequiredFields getMatchedAndRequiredFields(ConvertedType[] fields) {
+  private MatchAndRequiredFields getMatchedFields(ConvertedType[] fields) {
     List<Type> matchedAndRequiredFields = new ArrayList<Type>();
     boolean hasMatched = false;
     for (ConvertedType ct : fields) {
       if (ct.isMatchedFilter)
         hasMatched = true;
-      if (ct.resultTupe.getRepetition() == REQUIRED || ct.isMatchedFilter == true) {
+      if (ct.isMatchedFilter == true) {
         matchedAndRequiredFields.add(ct.resultTupe);
       }
     }
