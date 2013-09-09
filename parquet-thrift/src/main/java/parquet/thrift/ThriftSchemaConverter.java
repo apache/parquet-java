@@ -53,7 +53,7 @@ public class ThriftSchemaConverter {
   }
 
   //TODO: check TBase??
-  public MessageType convert(Class thriftClass){
+  public MessageType convert(Class thriftClass) {
     return convert(toStructType(thriftClass));
   }
 
@@ -128,7 +128,7 @@ public class ThriftSchemaConverter {
     //following for leaves
     ConvertedType convertedType = new ConvertedType();
     if (!fieldProjectionFilter.isMatched(currentFieldPath)) {
-      System.out.println(currentFieldPath.toString());
+      System.out.println("not matching:" + currentFieldPath.toString());
       convertedType.isMatchedFilter = false;
 //      return null;
     } else {
@@ -214,10 +214,10 @@ public class ThriftSchemaConverter {
       }
     }
     //struct should has at least one field
-    if (matchedAndRequiredFields.size() == 0) {
-      System.out.println("no mathching, using first one!!!");
-      matchedAndRequiredFields.add(fields[0].resultTupe);
-    }
+//    if (matchedAndRequiredFields.size() == 0) {
+//      System.out.println("no mathching, using first one!!!");
+//      matchedAndRequiredFields.add(fields[0].resultTupe);
+//    }
     return new MatchAndRequiredFields(matchedAndRequiredFields, hasMatched);
   }
 
@@ -235,8 +235,16 @@ public class ThriftSchemaConverter {
 
     if (keyType == null && valueType == null)
       return null;
-    if (keyType == null)
+    if (!keyType.isMatchedFilter && valueType.isMatchedFilter)
       throw new ThriftProjectionException("key of map is not specified in projection: " + currentFieldPath);
+
+    //TODO if not matched, then don't convert, maybe check in leaf node??
+    //TODO: refactor, null is also checked in mapType method
+    if (!valueType.isMatchedFilter) {
+      return new ConvertedType(keyType.isMatchedFilter, ConversionPatterns.mapType(rep, name,
+              keyType.resultTupe,
+              null));
+    }
     return new ConvertedType(keyType.isMatchedFilter, ConversionPatterns.mapType(rep, name,
             keyType.resultTupe,
             valueType.resultTupe));
@@ -318,7 +326,6 @@ public class ThriftSchemaConverter {
     }
     return new ThriftField(name, field.getId(), requirement, type);
   }
-
 
   static class ConvertedType {
     boolean isMatchedFilter;
