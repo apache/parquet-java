@@ -58,6 +58,10 @@ import parquet.hadoop.metadata.CompressionCodecName;
  * # If this value is too small, the compression will deteriorate
  * parquet.page.size=1048576 # in bytes, default = 1 * 1024 * 1024
  *
+ * # There is one dictionary page per column per row group when dictionary encoding is used.
+ * # The dictionary page size works like the page size but for dictionary
+ * parquet.dictionary.page.size=1048576 # in bytes, default = 1 * 1024 * 1024
+ *
  * # The compression algorithm used to compress pages
  * parquet.compression=UNCOMPRESSED # one of: UNCOMPRESSED, SNAPPY, GZIP, LZO. Default: UNCOMPRESSED. Supersedes mapred.output.compress*
  *
@@ -65,8 +69,8 @@ import parquet.hadoop.metadata.CompressionCodecName;
  * # Usually provided by a specific ParquetOutputFormat subclass
  * parquet.write.support.class= # fully qualified name
  *
- * # To enable dictionary encoding
- * parquet.enable.dictionary=false # true to enable dictionary encoding
+ * # To enable/disable dictionary encoding
+ * parquet.enable.dictionary=true # false to disable dictionary encoding
  * </pre>
  *
  * If parquet.compression is not set, the following properties are checked (FileOutputFormat behavior).
@@ -85,12 +89,13 @@ import parquet.hadoop.metadata.CompressionCodecName;
 public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   private static final Log LOG = Log.getLog(ParquetOutputFormat.class);
 
-  public static final String BLOCK_SIZE          = "parquet.block.size";
-  public static final String PAGE_SIZE           = "parquet.page.size";
-  public static final String COMPRESSION         = "parquet.compression";
-  public static final String WRITE_SUPPORT_CLASS = "parquet.write.support.class";
-  public static final String ENABLE_DICTIONARY   = "parquet.enable.dictionary";
-  public static final String VALIDATION          = "parquet.validation";
+  public static final String BLOCK_SIZE           = "parquet.block.size";
+  public static final String PAGE_SIZE            = "parquet.page.size";
+  public static final String COMPRESSION          = "parquet.compression";
+  public static final String WRITE_SUPPORT_CLASS  = "parquet.write.support.class";
+  public static final String DICTIONARY_PAGE_SIZE = "parquet.dictionary.page.size";
+  public static final String ENABLE_DICTIONARY    = "parquet.enable.dictionary";
+  public static final String VALIDATION           = "parquet.validation";
 
   public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
     getConfiguration(job).set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
@@ -120,6 +125,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     getConfiguration(job).setInt(PAGE_SIZE, pageSize);
   }
 
+  public static void setDictionaryPageSize(Job job, int pageSize) {
+    getConfiguration(job).setInt(DICTIONARY_PAGE_SIZE, pageSize);
+  }
+
   public static void setCompression(Job job, CompressionCodecName compression) {
     getConfiguration(job).set(COMPRESSION, compression.name());
   }
@@ -129,7 +138,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public static boolean getEnableDictionary(JobContext jobContext) {
-    return getConfiguration(jobContext).getBoolean(ENABLE_DICTIONARY, false);
+    return getConfiguration(jobContext).getBoolean(ENABLE_DICTIONARY, true);
   }
 
   public static int getBlockSize(JobContext jobContext) {
@@ -138,6 +147,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static int getPageSize(JobContext jobContext) {
     return getConfiguration(jobContext).getInt(PAGE_SIZE, DEFAULT_PAGE_SIZE);
+  }
+
+  public static int getDictionaryPageSize(JobContext jobContext) {
+    return getConfiguration(jobContext).getInt(DICTIONARY_PAGE_SIZE, DEFAULT_PAGE_SIZE);
   }
 
   public static CompressionCodecName getCompression(JobContext jobContext) {
@@ -194,6 +207,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (INFO) LOG.info("Parquet block size to " + blockSize);
     int pageSize = getPageSize(taskAttemptContext);
     if (INFO) LOG.info("Parquet page size to " + pageSize);
+    int dictionaryPageSize = getDictionaryPageSize(taskAttemptContext);
+    if (INFO) LOG.info("Parquet dictionary page size to " + pageSize);
 
     if (writeSupport == null) {
       Class<?> writeSupportClass = getWriteSupportClass(taskAttemptContext);
@@ -237,6 +252,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         init.getExtraMetaData(),
         blockSize, pageSize,
         codecFactory.getCompressor(codec, pageSize),
+        dictionaryPageSize,
         enableDictionary,
         validating);
   }

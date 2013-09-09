@@ -56,19 +56,19 @@ import parquet.io.api.Binary;
  */
 public abstract class DictionaryValuesWriter extends ValuesWriter {
   private static final Log LOG = Log.getLog(DictionaryValuesWriter.class);
-  
+
   /* max entries allowed for the dictionary will fail over to plain encoding if reached */
-  private static final int MAX_DICTIONARY_ENTRIES = 65535 /* 2^16 - 1 */;
-  
+  private static final int MAX_DICTIONARY_ENTRIES = Integer.MAX_VALUE - 1;
+
   /* maximum size in bytes allowed for the dictionary will fail over to plain encoding if reached */
   protected final int maxDictionaryByteSize;
-  
+
   /* contains the values encoded in plain if the dictionary grows too big */
   protected final PlainValuesWriter plainValuesWriter;
-  
+
   /* will become true if the dictionary becomes too big */
   protected boolean dictionaryTooBig;
-  
+
   /* current size in bytes the dictionary will take once serialized */
   protected int dictionaryByteSize;
 
@@ -81,7 +81,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
   /* dictionary encoded values */
   protected IntList encodedValues = new IntList();
 
-  /*
+  /**
    * @param maxDictionaryByteSize
    * @param initialSize
    */
@@ -90,7 +90,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
     this.plainValuesWriter = new PlainValuesWriter(initialSize);
   }
 
-  /*
+  /**
    * check the size constraints of the dictionary and fail over to plain values encoding if threshold reached
    */
   protected void checkAndFallbackIfNeeded() {
@@ -182,7 +182,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
    * clear/free the underlying dictionary content
    */
   protected abstract void clearDictionaryContent();
-  
+
   /**
    * @return size in items
    */
@@ -190,16 +190,16 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
   @Override
   public String memUsageString(String prefix) {
-    return String.format("%s DictionaryValuesWriter{\n%s\n%s\n%s\n%s}\n", 
-        prefix, 
+    return String.format("%s DictionaryValuesWriter{\n%s\n%s\n%s\n%s}\n",
+        prefix,
         plainValuesWriter.
         memUsageString(prefix + " plain:"),
-        prefix + " dict:" + dictionaryByteSize, 
-        prefix + " values:" + (encodedValues.size() * 4), 
+        prefix + " dict:" + dictionaryByteSize,
+        prefix + " values:" + (encodedValues.size() * 4),
         prefix
         );
   }
-  
+
   /**
    *
    */

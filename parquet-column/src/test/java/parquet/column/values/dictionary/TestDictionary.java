@@ -49,7 +49,7 @@ public class TestDictionary {
 
   @Test
   public void testBinaryDictionary() throws IOException {
-    
+
     int COUNT = 100;
     ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(10000, 10000);
     for (int i = 0; i < COUNT; i++) {
@@ -86,7 +86,7 @@ public class TestDictionary {
 
   @Test
   public void testBinaryDictionaryInefficiency() throws IOException {
-    
+
     int COUNT = 40000;
     ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(2000000, 10000);
     for (int i = 0; i < COUNT; i++) {
@@ -134,28 +134,28 @@ public class TestDictionary {
       final String str = cr.readBytes().toStringUsingUTF8();
       Assert.assertEquals("b" + i, str);
     }
-    
-    assertTrue(bytes1.size() < bytes2.size()); // encoded int values smaller (w/o considering dictionary size)
-    assertEquals(dictPageSize, bytes2.size()); // but dictionary is same size as full plain when no repeated values
+
+    assertTrue("encoded int values smaller (w/o considering dictionary size)", bytes1.size() < bytes2.size());
+    assertEquals("dict page size", dictPageSize, bytes2.size()); // but dictionary is same size as full plain when no repeated values
 
   }
-  
+
   @Test
   public void testLongDictionary() throws IOException {
-    
+
     int COUNT = 1000;
     int COUNT2 = 2000;
     final DictionaryValuesWriter cw = new PlainLongDictionaryValuesWriter(10000, 10000);
-    
+
     for (long i = 0; i < COUNT; i++) {
       cw.writeLong(i % 50);
     }
     assertEquals(PLAIN_DICTIONARY, cw.getEncoding());
     assertEquals(50, cw.getDictionarySize());
-    
+
     final BytesInput bytes1 = BytesInput.copy(cw.getBytes());
     cw.reset();
-    
+
     for (long i = COUNT2; i > 0; i--) {
       cw.writeLong(i % 50);
     }
@@ -182,27 +182,27 @@ public class TestDictionary {
     }
 
   }
-  
+
   @Test
   public void testLongDictionaryInefficiency() throws IOException {
-    
+
     int COUNT = 50000;
     final DictionaryValuesWriter cw = new PlainLongDictionaryValuesWriter(2000000, 10000);
     for (long i = 0; i < COUNT; i++) {
       cw.writeLong(i);
     }
-    
+
     final BytesInput bytes1 = BytesInput.copy(cw.getBytes());
     final Encoding encoding1 = cw.getEncoding();
     System.out.println(PrimitiveTypeName.INT64.name() + " " + encoding1 + "  " + bytes1.size());
-    
+
     final PlainValuesWriter pw = new PlainValuesWriter(64 * 1024);
     for (long i = 0; i < COUNT; i++) {
       pw.writeLong(i);
     }
     final BytesInput bytes2 = pw.getBytes();
     System.out.println(PrimitiveTypeName.INT64.name() + " " + pw.getEncoding() + "  " + bytes2.size());
-    
+
     final DictionaryPage dictionaryPage = cw.createDictionaryPage();
     Dictionary dictionary = null;
     long dictPageSize = 0;
@@ -222,28 +222,28 @@ public class TestDictionary {
       long back = cr.readLong();
       assertEquals(i, back);
     }
-    
+
     assertTrue(bytes1.size() < bytes2.size()); // encoded int values smaller (w/o considering dictionary size)
     assertEquals(dictPageSize, bytes2.size()); // but dictionary is same size as full plain when no repeated values
 
   }
-   
+
   @Test
   public void testDoubleDictionary() throws IOException {
-    
+
     int COUNT = 1000;
     int COUNT2 = 2000;
     final DictionaryValuesWriter cw = new PlainDoubleDictionaryValuesWriter(10000, 10000);
-    
+
     for (double i = 0; i < COUNT; i++) {
       cw.writeDouble(i % 50);
     }
     assertEquals(PLAIN_DICTIONARY, cw.getEncoding());
     assertEquals(50, cw.getDictionarySize());
-    
+
     final BytesInput bytes1 = BytesInput.copy(cw.getBytes());
     cw.reset();
-    
+
     for (double i = COUNT2; i > 0; i--) {
       cw.writeDouble(i % 50);
     }
@@ -270,27 +270,27 @@ public class TestDictionary {
     }
 
   }
-  
+
   @Test
   public void testDoubleDictionaryInefficiency() throws IOException {
-    
+
     int COUNT = 30000;
     final DictionaryValuesWriter cw = new PlainDoubleDictionaryValuesWriter(2000000, 10000);
     for (double i = 0; i < COUNT; i++) {
       cw.writeDouble(i);
     }
-    
+
     final BytesInput bytes1 = BytesInput.copy(cw.getBytes());
     final Encoding encoding1 = cw.getEncoding();
     System.out.println(PrimitiveTypeName.DOUBLE.name() + " " + encoding1 + "  " + bytes1.size());
-    
+
     final PlainValuesWriter pw = new PlainValuesWriter(64 * 1024);
     for (double i = 0; i < COUNT; i++) {
       pw.writeDouble(i);
     }
     final BytesInput bytes2 = pw.getBytes();
     System.out.println(PrimitiveTypeName.DOUBLE.name() + " " + pw.getEncoding() + "  " + bytes2.size());
-    
+
     final DictionaryPage dictionaryPage = cw.createDictionaryPage();
     Dictionary dictionary = null;
     long dictPageSize = 0;
@@ -310,28 +310,28 @@ public class TestDictionary {
       double back = cr.readDouble();
       assertEquals(i, back, 0.0);
     }
-    
+
     assertTrue(bytes1.size() < bytes2.size()); // encoded int values smaller (w/o considering dictionary size)
     assertEquals(dictPageSize, bytes2.size()); // but dictionary is same size as full plain when no repeated values
 
   }
-  
+
   @Test
   public void testIntDictionary() throws IOException {
-    
+
     int COUNT = 2000;
     int COUNT2 = 4000;
     final DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(10000, 10000);
-    
+
     for (int i = 0; i < COUNT; i++) {
       cw.writeInteger(i % 50);
     }
     assertEquals(PLAIN_DICTIONARY, cw.getEncoding());
     assertEquals(50, cw.getDictionarySize());
-    
+
     final BytesInput bytes1 = BytesInput.copy(cw.getBytes());
     cw.reset();
-    
+
     for (int i = COUNT2; i > 0; i--) {
       cw.writeInteger(i % 50);
     }
@@ -358,27 +358,27 @@ public class TestDictionary {
     }
 
   }
-  
+
   @Test
   public void testIntDictionaryInefficiency() throws IOException {
-    
+
     int COUNT = 20000;
     final DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(2000000, 10000);
     for (int i = 0; i < COUNT; i++) {
       cw.writeInteger(i);
     }
-    
+
     final BytesInput bytes1 = BytesInput.copy(cw.getBytes());
     final Encoding encoding1 = cw.getEncoding();
     System.out.println(PrimitiveTypeName.INT32.name() + " " + encoding1 + "  " + bytes1.size());
-    
+
     final PlainValuesWriter pw = new PlainValuesWriter(64 * 1024);
     for (int i = 0; i < COUNT; i++) {
       pw.writeInteger(i);
     }
     final BytesInput bytes2 = pw.getBytes();
     System.out.println(PrimitiveTypeName.INT32.name() + " " + pw.getEncoding() + "  " + bytes2.size());
-    
+
     final DictionaryPage dictionaryPage = cw.createDictionaryPage();
     Dictionary dictionary = null;
     long dictPageSize = 0;
@@ -398,28 +398,28 @@ public class TestDictionary {
       int back = cr.readInteger();
       assertEquals(i, back);
     }
-    
+
     assertTrue(bytes1.size() < bytes2.size()); // encoded int values smaller (w/o considering dictionary size)
     assertEquals(dictPageSize, bytes2.size()); // but dictionary is same size as full plain when no repeated values
 
   }
-  
+
   @Test
   public void testFloatDictionary() throws IOException {
-    
+
     int COUNT = 2000;
     int COUNT2 = 4000;
     final DictionaryValuesWriter cw = new PlainFloatDictionaryValuesWriter(10000, 10000);
-    
+
     for (float i = 0; i < COUNT; i++) {
       cw.writeFloat(i % 50);
     }
     assertEquals(PLAIN_DICTIONARY, cw.getEncoding());
     assertEquals(50, cw.getDictionarySize());
-    
+
     final BytesInput bytes1 = BytesInput.copy(cw.getBytes());
     cw.reset();
-    
+
     for (float i = COUNT2; i > 0; i--) {
       cw.writeFloat(i % 50);
     }
@@ -446,27 +446,27 @@ public class TestDictionary {
     }
 
   }
-  
+
   @Test
   public void testFloatDictionaryInefficiency() throws IOException {
-    
+
     int COUNT = 60000;
     final DictionaryValuesWriter cw = new PlainFloatDictionaryValuesWriter(2000000, 10000);
     for (float i = 0; i < COUNT; i++) {
       cw.writeFloat(i);
     }
-    
+
     final BytesInput bytes1 = BytesInput.copy(cw.getBytes());
     final Encoding encoding1 = cw.getEncoding();
     System.out.println(PrimitiveTypeName.FLOAT.name() + " " + encoding1 + "  " + bytes1.size());
-    
+
     final PlainValuesWriter pw = new PlainValuesWriter(64 * 1024);
     for (float i = 0; i < COUNT; i++) {
       pw.writeFloat(i);
     }
     final BytesInput bytes2 = pw.getBytes();
     System.out.println(PrimitiveTypeName.FLOAT.name() + " " + pw.getEncoding() + "  " + bytes2.size());
-    
+
     final DictionaryPage dictionaryPage = cw.createDictionaryPage();
     Dictionary dictionary = null;
     long dictPageSize = 0;
@@ -486,7 +486,7 @@ public class TestDictionary {
       float back = cr.readFloat();
       assertEquals(i, back, 0.0f);
     }
-    
+
     assertTrue(bytes1.size() < bytes2.size()); // encoded int values smaller (w/o considering dictionary size)
     assertEquals(dictPageSize, bytes2.size()); // but dictionary is same size as full plain when no repeated values
 
