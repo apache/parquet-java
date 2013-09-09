@@ -74,10 +74,15 @@ abstract public class ReadSupport<T> {
     throw new UnsupportedOperationException("Override init(InitContext)");
   }
 
+  /**
+   * called in {@link org.apache.hadoop.mapreduce.InputFormat#getSplits(org.apache.hadoop.mapreduce.JobContext)} in the front end
+   *
+   * @param context the initialisation context
+   * @return the readContext that defines how to read the file
+   */
   public ReadContext init(InitContext context) {
     return init(context.getConfiguration(), context.getMergedKeyValueMetaData(), context.getFileSchema());
   }
-
 
   /**
    * called in {@link org.apache.hadoop.mapreduce.RecordReader#initialize(org.apache.hadoop.mapreduce.InputSplit, org.apache.hadoop.mapreduce.TaskAttemptContext)} in the back end

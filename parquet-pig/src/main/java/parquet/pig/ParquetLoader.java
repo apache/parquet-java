@@ -15,12 +15,16 @@
  */
 package parquet.pig;
 
+import static java.util.Arrays.asList;
+import static org.apache.hadoop.mapreduce.lib.input.FileInputFormat.setInputPaths;
 import static parquet.Log.DEBUG;
+import static parquet.hadoop.util.ContextUtil.getConfiguration;
+import static parquet.pig.PigSchemaConverter.parsePigSchema;
 import static parquet.pig.PigSchemaConverter.pigSchemaToString;
 import static parquet.pig.TupleReadSupport.PARQUET_PIG_SCHEMA;
+import static parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,7 +88,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
    * @param requestedSchemaStr a subset of the original pig schema in the file
    */
   public ParquetLoader(String requestedSchemaStr) {
-    this.requestedSchema = PigSchemaConverter.parsePigSchema(requestedSchemaStr);
+    this.requestedSchema = parsePigSchema(requestedSchemaStr);
   }
 
   @Override
@@ -94,13 +98,13 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     if (schema == null) {
       initSchema(job);
     }
-    ContextUtil.getConfiguration(job).set(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
+    getConfiguration(job).set(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
   }
 
   private void setInput(String location, Job job) throws IOException {
     this.setLocationHasBeenCalled  = true;
     this.location = location;
-    FileInputFormat.setInputPaths(job, location);
+    setInputPaths(job, location);
   }
 
   @Override
@@ -191,7 +195,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     if (requestedSchema == null) {
       // no requested schema => use the schema from the file
       final GlobalMetaData globalMetaData = getParquetInputFormat().getGlobalMetaData(job);
-      schema = TupleReadSupport.getPigSchemaFromMultipleFiles(globalMetaData.getSchema(), globalMetaData.getKeyValueMetaData());
+      schema = getPigSchemaFromMultipleFiles(globalMetaData.getSchema(), globalMetaData.getKeyValueMetaData());
       if (isElephantBirdCompatible(job)) {
         convertToElephantBirdCompatibleSchema(schema);
       }
@@ -210,7 +214,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   }
 
   private boolean isElephantBirdCompatible(Job job) {
-    return ContextUtil.getConfiguration(job).getBoolean(TupleReadSupport.PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE, false);
+    return getConfiguration(job).getBoolean(TupleReadSupport.PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE, false);
   }
 
   @Override
@@ -241,7 +245,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public List<OperatorSet> getFeatures() {
-    return Arrays.asList(LoadPushDown.OperatorSet.PROJECTION);
+    return asList(LoadPushDown.OperatorSet.PROJECTION);
   }
 
   @Override

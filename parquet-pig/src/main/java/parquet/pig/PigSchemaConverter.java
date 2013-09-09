@@ -54,6 +54,10 @@ import parquet.schema.Type.Repetition;
 public class PigSchemaConverter {
   private static final Log LOG = Log.getLog(PigSchemaConverter.class);
 
+  /**
+   * @param pigSchemaString the pig schema to parse
+   * @return the parsed pig schema
+   */
   static Schema parsePigSchema(String pigSchemaString) {
     try {
       return pigSchemaString == null ? null : Utils.getSchemaFromString(pigSchemaString);
@@ -62,15 +66,28 @@ public class PigSchemaConverter {
     }
   }
 
+  /**
+   * @param pigSchema the pig schema to turn into a string representation
+   * @return the sctring representation of the schema
+   */
   static String pigSchemaToString(Schema pigSchema) {
     final String pigSchemaString = pigSchema.toString();
     return pigSchemaString.substring(1, pigSchemaString.length() - 1);
   }
 
+  /**
+   * converts a parquet schema into a pig schema
+   * @param parquetSchema the parquet schema to convert to Pig schema
+   * @return the resulting schema
+   */
   public Schema convert(MessageType parquetSchema) {
     return convertFields(parquetSchema.getFields());
   }
 
+  /**
+   * @param parquetType the type to convert
+   * @return the resulting schema (containing one field)
+   */
   public Schema convertField(Type parquetType) {
     return convertFields(Arrays.asList(parquetType));
   }
@@ -245,7 +262,6 @@ public class PigSchemaConverter {
     }
   }
 
-
   private Type convert(FieldSchema fieldSchema, int index) {
     return convert(fieldSchema, "field_"+index);
   }
@@ -304,6 +320,12 @@ public class PigSchemaConverter {
     return new GroupType(repetition, alias, convertTypes(field.schema));
   }
 
+  /**
+   * filters a Parquet schema based on a pig schema for projection
+   * @param schemaToFilter the schema to be filter
+   * @param requestedPigSchema the pig schema to filter it with
+   * @return the resulting filtered schema
+   */
   public MessageType filter(MessageType schemaToFilter, Schema requestedPigSchema) {
     try {
       if (DEBUG) LOG.debug("filtering schema:\n" + schemaToFilter + "\nwith requested pig schema:\n " + requestedPigSchema);

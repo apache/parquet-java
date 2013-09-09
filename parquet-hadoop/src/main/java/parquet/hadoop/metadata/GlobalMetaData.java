@@ -15,8 +15,10 @@
  */
 package parquet.hadoop.metadata;
 
+import static java.util.Collections.unmodifiableMap;
+import static parquet.Preconditions.checkNotNull;
+
 import java.io.Serializable;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -24,6 +26,13 @@ import java.util.Set;
 
 import parquet.schema.MessageType;
 
+/**
+ * Merged metadata when reading from multiple files.
+ * THis is to allow schema evolution
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class GlobalMetaData implements Serializable {
   private static final long serialVersionUID = 1L;
 
@@ -34,20 +43,14 @@ public class GlobalMetaData implements Serializable {
   private final Set<String> createdBy;
 
   /**
-   * @param schema the schema for the file
-   * @param keyValueMetaData the app specific metadata
+   * @param schema the union of the schemas for all the files
+   * @param keyValueMetaData the merged app specific metadata
    * @param createdBy the description of the library that created the file
    */
   public GlobalMetaData(MessageType schema, Map<String, Set<String>> keyValueMetaData, Set<String> createdBy) {
     super();
-    if (schema == null) {
-      throw new NullPointerException("schema");
-    }
-    if (keyValueMetaData == null) {
-      throw new NullPointerException("keyValueMetaData");
-    }
-    this.schema = schema;
-    this.keyValueMetaData = Collections.unmodifiableMap(keyValueMetaData);
+    this.schema = checkNotNull(schema, "schema");
+    this.keyValueMetaData = unmodifiableMap(checkNotNull(keyValueMetaData, "keyValueMetaData"));
     this.createdBy = createdBy;
   }
 
@@ -77,6 +80,12 @@ public class GlobalMetaData implements Serializable {
     return createdBy;
   }
 
+  /**
+   * Will merge the metadata as if it was coming from a single file.
+   * (for all part files written together this will always work)
+   * If there are conflicting values an exception will be thrown
+   * @return the merged version of this
+   */
   public FileMetaData merge() {
     String createdByString = createdBy.size() == 1 ?
       createdBy.iterator().next() :

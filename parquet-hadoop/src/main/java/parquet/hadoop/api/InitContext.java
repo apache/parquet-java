@@ -26,7 +26,7 @@ import parquet.schema.MessageType;
 
 /**
  *
- * Context passed when initializing for read
+ * Context passed to ReadSupport when initializing for read
  *
  * @author Julien Le Dem
  *
@@ -53,6 +53,11 @@ public class InitContext {
     this.fileSchema = fileSchema;
   }
 
+  /**
+   * If there is a conflicting value when reading from multiple files,
+   * an exception will be thrown
+   * @return the merged key values metadata form the file footers
+   */
   @Deprecated
   public Map<String, String> getMergedKeyValueMetaData() {
     if (mergedKeyValueMetadata == null) {
@@ -68,15 +73,25 @@ public class InitContext {
     return mergedKeyValueMetadata;
   }
 
-  @Deprecated
+  /**
+   * @return the configuration for this job
+   */
   public Configuration getConfiguration() {
     return configuration;
   }
 
+  /**
+   * this is the union of all the schemas when reading multiple files.
+   * @return the schema of the files being read
+   */
   public MessageType getFileSchema() {
     return fileSchema;
   }
 
+  /**
+   * each key is associated with the list of distinct values found in footers
+   * @return the merged metadata from the footer of the file
+   */
   public Map<String, Set<String>> getKeyValueMetadata() {
     return keyValueMetadata;
   }

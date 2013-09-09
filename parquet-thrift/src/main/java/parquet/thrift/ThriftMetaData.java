@@ -25,7 +25,13 @@ import parquet.hadoop.BadConfigurationException;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftType.StructType;
 
-
+/**
+ *
+ * Metadata for thrift stored in the file footer
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class ThriftMetaData {
   private static final Log LOG = Log.getLog(ThriftMetaData.class);
 
@@ -35,6 +41,10 @@ public class ThriftMetaData {
   private final String thriftClassName;
   private final StructType descriptor;
 
+  /**
+   * @param thriftClassName the class used to serialize
+   * @param descriptor the json representation of the thrift structure
+   */
   public ThriftMetaData(String thriftClassName, StructType descriptor) {
     this.thriftClassName = thriftClassName;
     this.descriptor = descriptor;
@@ -53,6 +63,10 @@ public class ThriftMetaData {
     return thriftClass;
   }
 
+  /**
+   * @param thriftClassName the name of the thrift class
+   * @return the class
+   */
   public static Class<?> getThriftClass(String thriftClassName) {
     try {
       Class<?> thriftClass = Class.forName(thriftClassName);
@@ -65,13 +79,15 @@ public class ThriftMetaData {
     }
   }
 
+  /**
+   * @return the thrift descriptor
+   */
   public StructType getDescriptor() {
     return descriptor;
   }
 
   /**
    * Reads ThriftMetadata from the parquet file footer.
-   *
    *
    * @param extraMetaData  extraMetaData field of the parquet footer
    * @return
@@ -92,6 +108,10 @@ public class ThriftMetaData {
     return new ThriftMetaData(thriftClassName, descriptor);
   }
 
+  /**
+   * generates a map of key values to store in the footer
+   * @return the key values
+   */
   public Map<String, String> toExtraMetaData() {
     final Map<String, String> map = new HashMap<String, String>();
     map.put(THRIFT_CLASS, getThriftClass().getName());
@@ -99,6 +119,10 @@ public class ThriftMetaData {
     return map;
   }
 
+  /**
+   * @param fileMetadata the merged metadata from ultiple files
+   * @return the list of thrift classes used to write them
+   */
   public static Set<String> getThriftClassNames(Map<String, Set<String>> fileMetadata) {
     return fileMetadata.get(THRIFT_CLASS);
   }
