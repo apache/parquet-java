@@ -63,7 +63,19 @@ import com.twitter.elephantbird.thrift.TStructDescriptor.Field;
 public class ThriftSchemaConverter {
 
   private final FieldProjectionFilter fieldProjectionFilter;
+  static class ConvertedType{
+    boolean isMatchedFilter;
+    boolean isRequired;
+    Type resultTupe;
 
+    ConvertedType() {
+    }
+
+    ConvertedType(boolean matchedFilter, Type resultTupe) {
+      isMatchedFilter = matchedFilter;
+      this.resultTupe = resultTupe;
+    }
+  }
   public ThriftSchemaConverter() {
     this(new FieldProjectionFilter());
   }
@@ -72,28 +84,29 @@ public class ThriftSchemaConverter {
     this.fieldProjectionFilter = fieldProjectionFilter;
   }
 
-  public MessageType convert(Class<? extends TBase<?, ?>> thriftClass) {
+  public MessageType convert(Class thriftClass) {
     final TStructDescriptor struct = TStructDescriptor.getInstance(thriftClass);
     FieldsPath currentFieldPath = new FieldsPath();
     return new MessageType(
             thriftClass.getSimpleName(),
-            toSchema(struct, currentFieldPath));
+            getMatchedAndRequiredFields(toSchema(struct, currentFieldPath)).fields);
   }
 
-  private Type[] toSchema(TStructDescriptor struct, FieldsPath currentFieldPath) {
+  private ConvertedType[] toSchema(TStructDescriptor struct, FieldsPath currentFieldPath) {
     List<Field> fields = struct.getFields();
-    List<Type> types = new ArrayList<Type>();
+    List<ConvertedType> types = new ArrayList<ConvertedType>();
+    boolean hasMatched=false;
     for (int i = 0; i < fields.size(); i++) {
       Field field = fields.get(i);
       FieldMetaData tField = field.getFieldMetaData();
       Type.Repetition rep = getRepetition(tField);
       currentFieldPath.push(field);
-      Type currentType = toSchema(field.getName(), field, rep, currentFieldPath);
-      if (currentType != null)
-        types.add(currentType);
+      ConvertedType currentType = toSchema(field.getName(), field, rep, currentFieldPath);
+      types.add(currentType);
       currentFieldPath.pop();
     }
-    return types.toArray(new Type[types.size()]);
+
+    return types.toArray(new ConvertedType[types.size()]);
   }
 
   /**
@@ -117,7 +130,7 @@ public class ThriftSchemaConverter {
     }
   }
 
-  private Type toSchema(String name, Field field, Type.Repetition rep, FieldsPath currentFieldPath) {
+  private ConvertedType toSchema(String name, Field field, Type.Repetition rep, FieldsPath currentFieldPath) {
     if (field.isList()) {
       return convertList(name, field, rep, currentFieldPath);
     } else if (field.isSet()) {
@@ -133,32 +146,44 @@ public class ThriftSchemaConverter {
     }
   }
 
-  private Type convertPrimitiveType(String name, Field field, Type.Repetition rep, FieldsPath currentFieldPath) {
+  private ConvertedType convertPrimitiveType(String name, Field field, Type.Repetition rep, FieldsPath currentFieldPath) {
     //following for leaves
+    ConvertedType convertedType=new ConvertedType();
     if (!fieldProjectionFilter.isMatched(currentFieldPath)){
-      return null;
+      System.out.println(currentFieldPath.toString());
+      convertedType.isMatchedFilter=false;
+//      return null;
+    }else{
+      convertedType.isMatchedFilter=true;
     }
 
     if (field.isBuffer()) {
-      return new PrimitiveType(rep, BINARY, name);
+      convertedType.resultTupe = new PrimitiveType(rep, BINARY, name);
     } else if (field.isEnum()) {
-      return new PrimitiveType(rep, BINARY, name, ENUM);
+      convertedType.resultTupe = new PrimitiveType(rep, BINARY, name, ENUM);
     } else {
       switch (field.getType()) {
         case TType.I64:
-          return new PrimitiveType(rep, INT64, name);
+          convertedType.resultTupe = new PrimitiveType(rep, INT64, name);
+          break;
         case TType.STRING:
-          return new PrimitiveType(rep, BINARY, name, UTF8);
+          convertedType.resultTupe = new PrimitiveType(rep, BINARY, name, UTF8);
+          break;
         case TType.BOOL:
-          return new PrimitiveType(rep, BOOLEAN, name);
+          convertedType.resultTupe = new PrimitiveType(rep, BOOLEAN, name);
+          break;
         case TType.I32:
-          return new PrimitiveType(rep, INT32, name);
+          convertedType.resultTupe = new PrimitiveType(rep, INT32, name);
+          break;
         case TType.BYTE:
-          return new PrimitiveType(rep, INT32, name);
+          convertedType.resultTupe = new PrimitiveType(rep, INT32, name);
+          break;
         case TType.DOUBLE:
-          return new PrimitiveType(rep, DOUBLE, name);
+          convertedType.resultTupe = new PrimitiveType(rep, DOUBLE, name);
+          break;
         case TType.I16:
-          return new PrimitiveType(rep, INT32, name);
+          convertedType.resultTupe = new PrimitiveType(rep, INT32, name);
+          break;
         case TType.MAP:
         case TType.ENUM:
         case TType.SET:
@@ -170,53 +195,81 @@ public class ThriftSchemaConverter {
           throw new RuntimeException("unsupported type " + field.getType() + " " + field.getName());
       }
     }
+    return convertedType;
   }
 
-  private Type convertList(String name, Field field, Type.Repetition rep, FieldsPath currentFieldPath) {
+  private ConvertedType convertList(String name, Field field, Type.Repetition rep, FieldsPath currentFieldPath) {
     final Field listElemField = field.getListElemField();
-    Type nestedType = toSchema(name + "_tuple", listElemField, REPEATED, currentFieldPath);
+    ConvertedType nestedType = toSchema(name + "_tuple", listElemField, REPEATED, currentFieldPath);
     if (nestedType == null) {
       return null;
     }
-    return ConversionPatterns.listType(rep, name, nestedType);
+    return new ConvertedType(nestedType.isMatchedFilter,ConversionPatterns.listType(rep, name, nestedType.resultTupe));
   }
 
-  private Type convertSet(String name, Field field, Type.Repetition rep, FieldsPath currentFieldPath) {
+  private ConvertedType convertSet(String name, Field field, Type.Repetition rep, FieldsPath currentFieldPath) {
     final Field setElemField = field.getSetElemField();
-    Type nestedType = toSchema(name + "_tuple", setElemField, REPEATED, currentFieldPath);
+    ConvertedType nestedType = toSchema(name + "_tuple", setElemField, REPEATED, currentFieldPath);
     if (nestedType == null) {
       return null;
     }
-    return ConversionPatterns.listType(rep, name, nestedType);
+    return new ConvertedType(nestedType.isMatchedFilter,ConversionPatterns.listType(rep, name, nestedType.resultTupe));
   }
 
-  private Type convertStruct(String name, Field field, Type.Repetition rep, FieldsPath currentFieldPath) {
-    Type[] fields = toSchema(field.gettStructDescriptor(), currentFieldPath);//if all child nodes dont exist, simply return null for current layer
-    if (fields.length == 0) {
-      return null;
+  private ConvertedType convertStruct(String name, Field field, Type.Repetition rep, FieldsPath currentFieldPath) {
+    ConvertedType[] fields = toSchema(field.gettStructDescriptor(), currentFieldPath);//if all child nodes dont exist, simply return null for current layer
+
+    //A struct must have at least one required field
+
+    MatchAndRequiredFields matchedAndRequiredFields = getMatchedAndRequiredFields(fields);
+    return new ConvertedType(matchedAndRequiredFields.hasMatched,new GroupType(rep, name, matchedAndRequiredFields.fields));
+  }
+  static class MatchAndRequiredFields{
+    List<Type> fields;
+    boolean hasMatched;
+
+    MatchAndRequiredFields(List<Type> fields, boolean hasMatched) {
+      this.fields = fields;
+      this.hasMatched = hasMatched;
     }
-    return new GroupType(rep, name, fields);
+  }
+  private MatchAndRequiredFields getMatchedAndRequiredFields(ConvertedType[] fields) {
+    List<Type> matchedAndRequiredFields=new ArrayList<Type>();
+    boolean hasMatched=false;
+    for(ConvertedType ct:fields){
+      if(ct.isMatchedFilter)
+        hasMatched=true;
+      if (ct.resultTupe.getRepetition()==REQUIRED || ct.isMatchedFilter==true){
+        matchedAndRequiredFields.add(ct.resultTupe);
+      }
+    }
+    //struct should has at least one field
+    if (matchedAndRequiredFields.size()==0){
+      System.out.println("no mathching, using first one!!!");
+      matchedAndRequiredFields.add(fields[0].resultTupe);
+    }
+    return new MatchAndRequiredFields(matchedAndRequiredFields,hasMatched);
   }
 
-  private Type convertMap(String name, Field field, Type.Repetition rep, FieldsPath currentFieldPath) {
+  private ConvertedType convertMap(String name, Field field, Type.Repetition rep, FieldsPath currentFieldPath) {
     final Field mapKeyField = field.getMapKeyField();
     final Field mapValueField = field.getMapValueField();
 
     currentFieldPath.push(mapKeyField);
-    Type keyType = toSchema("key", mapKeyField, REQUIRED, currentFieldPath);
+    ConvertedType keyType = toSchema("key", mapKeyField, REQUIRED, currentFieldPath);
     currentFieldPath.pop();
 
     currentFieldPath.push(mapValueField);
-    Type valueType = toSchema("value", mapValueField, OPTIONAL, currentFieldPath);
+    ConvertedType valueType = toSchema("value", mapValueField, OPTIONAL, currentFieldPath);
     currentFieldPath.pop();
 
     if (keyType == null && valueType == null)
       return null;
     if (keyType == null)
       throw new ThriftProjectionException("key of map is not specified in projection: " + currentFieldPath);
-    return ConversionPatterns.mapType(rep, name,
-            keyType,
-            valueType);
+    return new ConvertedType(keyType.isMatchedFilter,ConversionPatterns.mapType(rep, name,
+            keyType.resultTupe,
+            valueType.resultTupe));
   }
 
   public ThriftType.StructType toStructType(Class<? extends TBase<?, ?>> thriftClass) {

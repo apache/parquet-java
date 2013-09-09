@@ -25,6 +25,7 @@ import parquet.thrift.projection.FieldProjectionFilter;
 import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftType.StructType;
+import parquet.thrift.test.TestPerson;
 
 import static org.junit.Assert.assertEquals;
 
@@ -181,6 +182,24 @@ public class TestThriftSchemaConverter {
             "    }\n" +
             "  }\n" +
             "}", TestStructInMap.class);
+  }
+
+  @Test
+  public void testPullInRequiredFields(){
+    shouldGetProjectedSchema("age","message TestPerson {\n" +
+            "  required group name {\n" +
+            "    required binary first_name (UTF8);\n" +
+            "  }\n" +
+            "  optional int32 age;\n" +
+            "}",TestPerson.class);
+
+    shouldGetProjectedSchema("age","message TestPerson {\n" +
+            "  required group name {\n" +
+            "    required binary first_name (UTF8);\n" +
+            "  }\n" +
+            "  optional int32 age;\n" +
+            "}",TestPerson.class);
+//    System.out.println(getFilteredSchema("**",TestPerson.class));
   }
 
   @Test

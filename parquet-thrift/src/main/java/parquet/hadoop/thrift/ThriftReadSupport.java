@@ -95,11 +95,8 @@ public class ThriftReadSupport<T extends TBase<?,?>> extends ReadSupport<T> {
     } else {
       FieldProjectionFilter fieldProjectionFilter = new FieldProjectionFilter(projectionSchemaStr);
       ThriftMetaData thriftMetaData = ThriftMetaData.fromExtraMetaData(keyValueMetaData);
-      try {
-        requestedProjection = new ThriftSchemaConverter(fieldProjectionFilter).convert(getThriftClass(thriftMetaData, configuration));
-      } catch (ClassNotFoundException e) {
-        throw new ThriftProjectionException("can not find thriftClass from configuration");
-      }
+        requestedProjection = new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftMetaData.getThriftClass());
+
     }
 
     MessageType schemaForRead = getSchemaForRead(fileMessageType, requestedProjection);
@@ -111,6 +108,7 @@ public class ThriftReadSupport<T extends TBase<?,?>> extends ReadSupport<T> {
     if (thriftClass != null) {
       return thriftClass;
     }
+
     String className = conf.get(THRIFT_READ_CLASS_KEY, null);
     if (className == null) {
       return (Class<T>) metadata.getThriftClass();
