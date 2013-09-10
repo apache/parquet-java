@@ -38,7 +38,6 @@ import static parquet.schema.OriginalType.ENUM;
 import static parquet.schema.OriginalType.UTF8;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 import static parquet.schema.Type.Repetition.*;
-import static parquet.thrift.struct.ThriftField.Requirement.fromType;
 
 public class ThriftSchemaConverter {
 
@@ -52,13 +51,11 @@ public class ThriftSchemaConverter {
     this.fieldProjectionFilter = fieldProjectionFilter;
   }
 
-  //TODO: check TBase??
   public MessageType convert(Class thriftClass) {
     return convert(toStructType(thriftClass));
   }
 
   public MessageType convert(StructType thriftClass) {
-//    final TStructDescriptor struct = TStructDescriptor.getInstance(thriftClass);
     FieldsPath currentFieldPath = new FieldsPath();
     return new MessageType(
             "ParquetSchema",
@@ -71,7 +68,6 @@ public class ThriftSchemaConverter {
     for (int i = 0; i < fields.size(); i++) {
       ThriftField field = fields.get(i);
       Type.Repetition rep = getRepetition(field);
-
       currentFieldPath.push(field);
       Type currentType = toSchema(field.getName(), field, rep, currentFieldPath);
       if (currentType!=null) {
@@ -84,7 +80,6 @@ public class ThriftSchemaConverter {
 
   /**
    * by default we can make everything optional
-   *
    * @param thriftField
    * @return
    */
@@ -183,8 +178,6 @@ public class ThriftSchemaConverter {
 
   private Type convertStruct(String name, StructType field, Type.Repetition rep, FieldsPath currentFieldPath) {
     Type[] fields = toSchema(field, currentFieldPath);//if all child nodes dont exist, simply return null for current layer
-    //A struct must have at least one required field
-    //TODO if fields are empty, return null
     if (fields.length==0) {
       return null;
     }
@@ -210,8 +203,6 @@ public class ThriftSchemaConverter {
     if (keyType==null && valueType!=null)
       throw new ThriftProjectionException("key of map is not specified in projection: " + currentFieldPath);
 
-    //TODO if not matched, then don't convert, maybe check in leaf node??
-    //TODO: refactor, null is also checked in mapType method
     return  ConversionPatterns.mapType(rep, name,
             keyType,
             valueType);
@@ -228,9 +219,9 @@ public class ThriftSchemaConverter {
     for (int i = 0; i < fields.size(); i++) {
       Field field = fields.get(i);
       Requirement req =
-              field.getFieldMetaData() == null ?
-                      Requirement.OPTIONAL :
-                      fromType(field.getFieldMetaData().requirementType);
+          field.getFieldMetaData() == null ?
+              Requirement.OPTIONAL :
+                Requirement.fromType(field.getFieldMetaData().requirementType);
       children.add(toThriftField(field.getName(), field, req));
     }
     return new StructType(children);
@@ -239,71 +230,60 @@ public class ThriftSchemaConverter {
   private ThriftField toThriftField(String name, Field field, ThriftField.Requirement requirement) {
     ThriftType type;
     switch (ThriftTypeID.fromByte(field.getType())) {
-      case STOP:
-      case VOID:
-      default:
-        throw new UnsupportedOperationException("can't convert type of " + field);
-      case BOOL:
-        type = new BoolType();
-        break;
-      case BYTE:
-        type = new ByteType();
-        break;
-      case DOUBLE:
-        type = new DoubleType();
-        break;
-      case I16:
-        type = new I16Type();
-        break;
-      case I32:
-        type = new I32Type();
-        break;
-      case I64:
-        type = new I64Type();
-        break;
-      case STRING:
-        type = new StringType();
-        break;
-      case STRUCT:
-        type = toStructType(field.gettStructDescriptor());
-        break;
-      case MAP:
-        final Field mapKeyField = field.getMapKeyField();
-        final Field mapValueField = field.getMapValueField();
-        type = new ThriftType.MapType(
-                toThriftField(mapKeyField.getName(), mapKeyField, requirement),
-                toThriftField(mapValueField.getName(), mapValueField, requirement));
-        break;
-      case SET:
-        final Field setElemField = field.getSetElemField();
-        type = new ThriftType.SetType(toThriftField(name, setElemField, requirement));
-        break;
-      case LIST:
-        final Field listElemField = field.getListElemField();
-        type = new ThriftType.ListType(toThriftField(name, listElemField, requirement));
-        break;
-      case ENUM:
-        Collection<TEnum> enumValues = field.getEnumValues();
-        List<EnumValue> values = new ArrayList<ThriftType.EnumValue>();
-        for (TEnum tEnum : enumValues) {
-          values.add(new EnumValue(tEnum.getValue(), tEnum.toString()));
-        }
-        type = new EnumType(values);
-        break;
+    case STOP:
+    case VOID:
+    default:
+      throw new UnsupportedOperationException("can't convert type of " + field);
+    case BOOL:
+      type = new BoolType();
+      break;
+    case BYTE:
+      type = new ByteType();
+      break;
+    case DOUBLE:
+      type = new DoubleType();
+      break;
+    case I16:
+      type = new I16Type();
+      break;
+    case I32:
+      type = new I32Type();
+      break;
+    case I64:
+      type = new I64Type();
+      break;
+    case STRING:
+      type = new StringType();
+      break;
+    case STRUCT:
+      type = toStructType(field.gettStructDescriptor());
+      break;
+    case MAP:
+      final Field mapKeyField = field.getMapKeyField();
+      final Field mapValueField = field.getMapValueField();
+      type = new ThriftType.MapType(
+          toThriftField(mapKeyField.getName(), mapKeyField, requirement),
+          toThriftField(mapValueField.getName(), mapValueField, requirement));
+      break;
+    case SET:
+      final Field setElemField = field.getSetElemField();
+      type = new ThriftType.SetType(toThriftField(name, setElemField, requirement));
+      break;
+    case LIST:
+      final Field listElemField = field.getListElemField();
+      type = new ThriftType.ListType(toThriftField(name, listElemField, requirement));
+      break;
+    case ENUM:
+      Collection<TEnum> enumValues = field.getEnumValues();
+      List<EnumValue> values = new ArrayList<ThriftType.EnumValue>();
+      for (TEnum tEnum : enumValues) {
+        values.add(new EnumValue(tEnum.getValue(), tEnum.toString()));
+      }
+      type = new EnumType(values);
+      break;
     }
     return new ThriftField(name, field.getId(), requirement, type);
   }
-
-
-//  static class MatchAndRequiredFields {
-//    List<Type> fields;
-//    boolean hasMatched;
-//
-//    MatchAndRequiredFields(List<Type> fields, boolean hasMatched) {
-//      this.fields = fields;
-//      this.hasMatched = hasMatched;
-//    }
-//  }
 
 }
 
