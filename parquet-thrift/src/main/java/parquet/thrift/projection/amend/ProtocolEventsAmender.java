@@ -1,29 +1,45 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package parquet.thrift.projection.amend;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.*;
-import parquet.thrift.projection.amend.ProtocolEventsGenerator;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
-import parquet.thrift.struct.ThriftType.*;
+import parquet.thrift.struct.ThriftType.StructType;
 
 import java.util.*;
 
 /**
- * fill in dummy value for required fields in TProtocols after projection is specified.
+ * fill in default value for required fields in TProtocols after projection is specified.
  *
+ * @author Tianshuo Deng
  */
 public class ProtocolEventsAmender {
-   List<TProtocol> rootEvents;
-   List<TProtocol> fixedEvents=new ArrayList<TProtocol>();
+  List<TProtocol> rootEvents;
+  List<TProtocol> fixedEvents = new ArrayList<TProtocol>();
 
   public ProtocolEventsAmender(List<TProtocol> rootEvents) {
-    this.rootEvents=rootEvents;
+    this.rootEvents = rootEvents;
   }
 
   /**
    * Given a thrift definition, protocols events, it checks all the required fields,
    * and create default value if a required field is missing
+   *
    * @param recordThriftType the Thrift Struct definition for events
    * @return
    * @throws TException
@@ -74,8 +90,6 @@ public class ProtocolEventsAmender {
     acceptProtocol(eventIter.next()).readStructEnd();
   }
 
-
-
   private void checkField(byte type, Iterator<TProtocol> eventIter, ThriftField fieldDefinition) throws TException {
     switch (type) {
       case TType.STRUCT:
@@ -96,6 +110,7 @@ public class ProtocolEventsAmender {
 
   /**
    * check each element of the Set, make sure all the element contain required fields
+   *
    * @param eventIter
    * @param setFieldDefinition
    * @throws TException
@@ -125,7 +140,6 @@ public class ProtocolEventsAmender {
     acceptProtocol(eventIter.next()).readMapEnd();
   }
 
-  //TODO: all the checkXX method should have acceptProtocol around it
   private void checkList(Iterator<TProtocol> eventIter, ThriftField listFieldUsedForWriting) throws TException {
     ThriftField valueFieldForWriting = ((ThriftType.ListType) listFieldUsedForWriting.getType()).getValues();
     TList thriftList = acceptProtocol(eventIter.next()).readListBegin();
@@ -140,37 +154,13 @@ public class ProtocolEventsAmender {
 
   /**
    * Once reached primitive field, just the copy the event.
+   *
    * @param type
    * @param eventIter
    * @throws TException
    */
   private void checkPrimitiveField(byte type, Iterator<TProtocol> eventIter) throws TException {
-   acceptProtocol(eventIter.next());
-//    switch (type) {
-//      case TType.BOOL:
-//        p.readBool();
-//        break;
-////         return "BOOL";
-//      case TType.BYTE:
-//        p.readByte();
-//        break;
-////        return "Byte";
-//      case TType.DOUBLE:
-//        p.readDouble();
-////        return "Double";
-//      case TType.ENUM:
-////        return "Enum";
-//      case TType.I16:
-////        return "I16";
-//      case TType.I32:
-////        return "I32";
-//      case TType.I64:
-////        return "I64";
-//      case TType.STRING:
-////        return "String";
-//      case TType.VOID:
-////        return "VOID";
-//    }
+    acceptProtocol(eventIter.next());
     System.out.println("read primitive");
   }
 

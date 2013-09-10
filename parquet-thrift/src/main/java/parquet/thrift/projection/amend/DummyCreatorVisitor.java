@@ -1,3 +1,18 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package parquet.thrift.projection.amend;
 
 import org.apache.thrift.TException;
@@ -12,12 +27,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
-* Created with IntelliJ IDEA.
-* User: tdeng
-* Date: 9/10/13
-* Time: 10:32 AM
-* To change this template use File | Settings | File Templates.
-*/
+ * Create a dummy events for all required fields according to thrift definition
+ */
 class DummyCreatorVisitor implements ThriftType.TypeVisitor {
   List<ParquetProtocol> dummyEvents= new ArrayList<ParquetProtocol>();
   @Override
@@ -41,7 +52,7 @@ class DummyCreatorVisitor implements ThriftType.TypeVisitor {
   }
 
 
-  //TODO, unit tests for thie
+  //TODO, unit tests for this
   @Override
   public void visit(final ThriftType.ListType listType) {
     dummyEvents.add(new ParquetProtocol("readListBegin()") {
@@ -50,7 +61,6 @@ class DummyCreatorVisitor implements ThriftType.TypeVisitor {
         return new TList();
       }
     });
-    //To change body of implemented methods use File | Settings | File Templates.
   }
 
   @Override

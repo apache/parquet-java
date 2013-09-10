@@ -5,13 +5,6 @@ import parquet.thrift.ParquetProtocol;
 
 import java.nio.ByteBuffer;
 
-/**
-* Created with IntelliJ IDEA.
-* User: tdeng
-* Date: 9/10/13
-* Time: 10:33 AM
-* To change this template use File | Settings | File Templates.
-*/
 class StringProtocol extends ParquetProtocol {
 
   private final String str;
@@ -23,7 +16,7 @@ class StringProtocol extends ParquetProtocol {
 
   @Override
   public String readString() throws TException {
-    return "str";
+    return str;
   }
 
   @Override
