@@ -18,12 +18,17 @@ package parquet.pig;
 import static org.apache.pig.builtin.mock.Storage.bag;
 import static org.apache.pig.builtin.mock.Storage.tuple;
 import static org.junit.Assert.assertEquals;
+import static parquet.pig.PigSchemaConverter.pigSchemaToString;
+import static parquet.pig.TupleReadSupport.PARQUET_PIG_SCHEMA;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.pig.backend.executionengine.ExecException;
@@ -38,7 +43,9 @@ import parquet.example.data.Group;
 import parquet.example.data.GroupWriter;
 import parquet.example.data.simple.SimpleGroup;
 import parquet.example.data.simple.convert.GroupRecordConverter;
+import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport.ReadContext;
+import parquet.hadoop.util.ContextUtil;
 import parquet.io.ConverterConsumer;
 import parquet.io.RecordConsumerLoggingWrapper;
 import parquet.io.api.RecordMaterializer;
@@ -184,7 +191,12 @@ public class TestTupleRecordConsumer {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
     final Configuration configuration = new Configuration(false);
     final Map<String, String> pigMetaData = pigMetaData(pigSchemaString);
-    final ReadContext init = tupleReadSupport.init(configuration, pigMetaData, parquetSchema);
+    Map<String, Set<String>> globalMetaData = new HashMap<String, Set<String>>();
+    for (Entry<String, String> entry : pigMetaData.entrySet()) {
+      globalMetaData.put(entry.getKey(), new HashSet<String>(Arrays.asList(entry.getValue())));
+    }
+    configuration.set(PARQUET_PIG_SCHEMA, pigSchemaString);
+    final ReadContext init = tupleReadSupport.init(new InitContext(configuration, globalMetaData, parquetSchema));
     return tupleReadSupport.prepareForRead(configuration, pigMetaData, parquetSchema, init);
   }
 
