@@ -802,8 +802,8 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   @Override
   public T getCurrentRecord() {
     try {
-      rootEvents=new ProtocolEventsAmender(rootEvents).amendMissingRequiredFields(thriftType);
-      protocol.addAll(rootEvents);
+      List<TProtocol> fixedEvents=new ProtocolEventsAmender(rootEvents).amendMissingRequiredFields(thriftType);
+      protocol.addAll(fixedEvents);
       rootEvents.clear();
       return thriftReader.readOneRecord(protocol);
     } catch (TException e) {

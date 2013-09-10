@@ -54,7 +54,7 @@ class ProtocolEventsGenerator {
     TProtocol fieldBegin = new ReadFieldBeginProtocol(missingField);
     createdEvents.add(fieldBegin);
 
-    DummyCreatorVisitor dummyCreatorvisitor = new DummyCreatorVisitor();
+    DefaultEventsVisitor dummyCreatorvisitor = new DefaultEventsVisitor();
     missingField.getType().accept(dummyCreatorvisitor);
     createdEvents.addAll(dummyCreatorvisitor.getEvents());
     createdEvents.add(READ_FIELD_END);

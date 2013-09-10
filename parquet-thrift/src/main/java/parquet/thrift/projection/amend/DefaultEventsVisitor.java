@@ -29,7 +29,7 @@ import java.util.List;
 /**
  * Create a dummy events for all required fields according to thrift definition
  */
-class DummyCreatorVisitor implements ThriftType.TypeVisitor {
+class DefaultEventsVisitor implements ThriftType.TypeVisitor {
   List<ParquetProtocol> dummyEvents= new ArrayList<ParquetProtocol>();
   @Override
   public void visit(ThriftType.MapType mapType) {
