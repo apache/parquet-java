@@ -15,47 +15,28 @@
  */
 package parquet.thrift;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TField;
-import org.apache.thrift.protocol.TList;
-import org.apache.thrift.protocol.TMap;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.protocol.TSet;
-import org.apache.thrift.protocol.TStruct;
-import org.apache.thrift.protocol.TType;
-
+import org.apache.thrift.protocol.*;
 import parquet.io.ParquetDecodingException;
-import parquet.io.api.Binary;
-import parquet.io.api.Converter;
-import parquet.io.api.GroupConverter;
-import parquet.io.api.PrimitiveConverter;
-import parquet.io.api.RecordMaterializer;
+import parquet.io.api.*;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
+import parquet.thrift.projection.ProtocolEventsAmender;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftField.Requirement;
 import parquet.thrift.struct.ThriftType;
-import parquet.thrift.struct.ThriftType.EnumType;
-import parquet.thrift.struct.ThriftType.EnumValue;
-import parquet.thrift.struct.ThriftType.ListType;
-import parquet.thrift.struct.ThriftType.MapType;
-import parquet.thrift.struct.ThriftType.SetType;
-import parquet.thrift.struct.ThriftType.StructType;
+import parquet.thrift.struct.ThriftType.*;
 import parquet.thrift.struct.ThriftTypeID;
+
+import java.nio.ByteBuffer;
+import java.util.*;
 
 /**
  * converts the columnar events into a Thrift protocol.
  *
- * @author Julien Le Dem
- *
  * @param <T>
+ * @author Julien Le Dem
  */
 public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
@@ -64,12 +45,87 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     public void readFieldEnd() throws TException {
     }
   };
+  private final ThriftReader<T> thriftReader;
+  private final ParquetReadProtocol protocol;
+  private final GroupConverter structConverter;
+  private List<TProtocol> rootEvents = new ArrayList<TProtocol>();
+  // the data structure of the thrift object, contains nested definition
+  private StructType recordThriftType;
+
+  /**
+   * @param thriftReader           the class responsible for instantiating the final object and read from the protocol
+   * @param name                   the name of that type ( the thrift class simple name)
+   * @param requestedParquetSchema the schema for the incoming columnar events
+   * @param thriftType             the thrift type descriptor
+   */
+  public ThriftRecordConverter(ThriftReader<T> thriftReader, String name, MessageType requestedParquetSchema, ThriftType.StructType thriftType) {
+    super();
+    this.thriftReader = thriftReader;
+    this.protocol = new ParquetReadProtocol();
+    this.recordThriftType = thriftType;
+    this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short) 0, Requirement.REQUIRED, thriftType));
+  }
+
+  /**
+   * {@inheritDoc}
+   *
+   * @see parquet.io.api.RecordMaterializer#getCurrentRecord()
+   */
+  @Override
+  public T getCurrentRecord() {
+    try {
+      rootEvents=new ProtocolEventsAmender(rootEvents).amendMissingRequiredFields(recordThriftType);
+      protocol.addAll(rootEvents);
+      rootEvents.clear();
+      return thriftReader.readOneRecord(protocol);
+    } catch (TException e) {
+      throw new ParquetDecodingException("Could not read thrift object from protocol", e);
+    }
+  }
+
+
+
+  /**
+   * {@inheritDoc}
+   *
+   * @see parquet.io.api.RecordMaterializer#getRootConverter()
+   */
+  @Override
+  public GroupConverter getRootConverter() {
+    return structConverter;
+  }
+
+  private Converter newConverter(List<TProtocol> events, Type type, ThriftField field) {
+    switch (field.getType().getType()) {
+      case LIST:
+        return new ListConverter(events, type.asGroupType(), field);
+      case SET:
+        return new SetConverter(events, type.asGroupType(), field);
+      case MAP:
+        return new MapConverter(events, type.asGroupType(), field);
+      case STRUCT:
+        return new StructConverter(events, type.asGroupType(), field);
+      case STRING:
+        return new FieldStringConverter(events, field);
+      case ENUM:
+        return new FieldEnumConverter(events, field);
+      default:
+        return new FieldPrimitiveConverter(events, field);
+    }
+  }
+
+  interface Counter {
+
+    void startCounting();
+
+    int getCount();
+
+  }
 
   /**
    * Handles field events creation by wrapping the converter for the actual type
    *
    * @author Julien Le Dem
-   *
    */
   class PrimitiveFieldHandler extends PrimitiveConverter {
 
@@ -77,27 +133,27 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     private final List<TProtocol> events;
     private final ParquetProtocol readFieldBegin;
 
-    private void startField() {
-      events.add(readFieldBegin);
-    }
-
-    private void endField() {
-      events.add(readFieldEnd);
-    }
-
     public PrimitiveFieldHandler(PrimitiveConverter delegate, final ThriftField field, List<TProtocol> events) {
       this.delegate = delegate;
       this.events = events;
       final byte thriftType =
-          field.getType().getType() == ThriftTypeID.ENUM ?
-              ThriftTypeID.I32.getThriftType() : // enums are serialized as I32
-              field.getType().getType().getThriftType();
+              field.getType().getType() == ThriftTypeID.ENUM ?
+                      ThriftTypeID.I32.getThriftType() : // enums are serialized as I32
+                      field.getType().getType().getThriftType();
       this.readFieldBegin = new ParquetProtocol("readFieldBegin()") {
         @Override
         public TField readFieldBegin() throws TException {
           return new TField(field.getName(), thriftType, field.getFieldId());
         }
       };
+    }
+
+    private void startField() {
+      events.add(readFieldBegin);
+    }
+
+    private void endField() {
+      events.add(readFieldEnd);
     }
 
     @Override
@@ -148,7 +204,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * Handles field events creation by wrapping the converter for the actual type
    *
    * @author Julien Le Dem
-   *
    */
   class GroupFieldhandler extends GroupConverter {
 
@@ -169,7 +224,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
     @Override
     public Converter getConverter(int fieldIndex) {
-       return delegate.getConverter(fieldIndex);
+      return delegate.getConverter(fieldIndex);
     }
 
     @Override
@@ -186,18 +241,10 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   }
 
-  interface Counter {
-
-    void startCounting();
-    int getCount();
-
-  }
-
   /**
    * counts the instances created to use in List/Set/Map that need to inform of the element count in the protocol
    *
    * @author Julien Le Dem
-   *
    */
   class GroupCounter extends GroupConverter implements Counter {
 
@@ -210,7 +257,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
     @Override
     public Converter getConverter(int fieldIndex) {
-       return delegate.getConverter(fieldIndex);
+      return delegate.getConverter(fieldIndex);
     }
 
     @Override
@@ -221,7 +268,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     @Override
     public void end() {
       delegate.end();
-      ++ count;
+      ++count;
     }
 
     @Override
@@ -240,7 +287,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * counts the instances created to use in List/Set/Map that need to inform of the element count in the protocol
    *
    * @author Julien Le Dem
-   *
    */
   class PrimitiveCounter extends PrimitiveConverter implements Counter {
 
@@ -254,37 +300,37 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     @Override
     public void addBinary(Binary value) {
       delegate.addBinary(value);
-      ++ count;
+      ++count;
     }
 
     @Override
     public void addBoolean(boolean value) {
       delegate.addBoolean(value);
-      ++ count;
+      ++count;
     }
 
     @Override
     public void addDouble(double value) {
       delegate.addDouble(value);
-      ++ count;
+      ++count;
     }
 
     @Override
     public void addFloat(float value) {
       delegate.addFloat(value);
-      ++ count;
+      ++count;
     }
 
     @Override
     public void addInt(int value) {
       delegate.addInt(value);
-      ++ count;
+      ++count;
     }
 
     @Override
     public void addLong(long value) {
       delegate.addLong(value);
-      ++ count;
+      ++count;
     }
 
     @Override
@@ -303,7 +349,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * convert primitive values
    *
    * @author Julien Le Dem
-   *
    */
   class FieldPrimitiveConverter extends PrimitiveConverter {
 
@@ -350,30 +395,30 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     public void addInt(final int value) {
       // TODO: make subclass per type
       switch (type) {
-      case BYTE:
-        events.add(new ParquetProtocol("readByte() int") {
-          @Override
-          public byte readByte() throws TException {
-            return (byte)value;
-          }
-        });
-        break;
-      case I16:
-        events.add(new ParquetProtocol("readI16()") {
-          @Override
-          public short readI16() throws TException {
-            return (short)value;
-          }
-        });
-        break;
-      case I32:
-        events.add(new ParquetProtocol("readI32()") {
-          @Override
-          public int readI32() throws TException {
-            return value;
-          }
-        });
-        break;
+        case BYTE:
+          events.add(new ParquetProtocol("readByte() int") {
+            @Override
+            public byte readByte() throws TException {
+              return (byte) value;
+            }
+          });
+          break;
+        case I16:
+          events.add(new ParquetProtocol("readI16()") {
+            @Override
+            public short readI16() throws TException {
+              return (short) value;
+            }
+          });
+          break;
+        case I32:
+          events.add(new ParquetProtocol("readI32()") {
+            @Override
+            public int readI32() throws TException {
+              return value;
+            }
+          });
+          break;
         default:
           throw new UnsupportedOperationException("not convertible type " + type);
       }
@@ -393,8 +438,8 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * converts Binary into String
-   * @author Julien Le Dem
    *
+   * @author Julien Le Dem
    */
   class FieldStringConverter extends PrimitiveConverter {
 
@@ -411,6 +456,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
         public String readString() throws TException {
           return value.toStringUsingUTF8();
         }
+
         @Override
         public ByteBuffer readBinary() throws TException {
           return value.toByteBuffer();
@@ -422,18 +468,17 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * converts Binary into Enum
-   * @author Julien Le Dem
    *
+   * @author Julien Le Dem
    */
   class FieldEnumConverter extends PrimitiveConverter {
 
     private final List<TProtocol> events;
-
     private Map<Binary, Integer> enumLookup = new HashMap<Binary, Integer>();
 
     public FieldEnumConverter(List<TProtocol> events, ThriftField field) {
       this.events = events;
-      final List<EnumValue> values = ((EnumType)field.getType()).getValues();
+      final List<EnumValue> values = ((EnumType) field.getType()).getValues();
       for (EnumValue enumValue : values) {
         enumLookup.put(Binary.fromString(enumValue.getName()), enumValue.getId());
       }
@@ -454,11 +499,16 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * convert to Maps
-   * @author Julien Le Dem
    *
+   * @author Julien Le Dem
    */
   class MapConverter extends GroupConverter {
 
+    final ParquetProtocol readMapEnd = new ParquetProtocol("readMapEnd()") {
+      @Override
+      public void readMapEnd() throws TException {
+      }
+    };
     private final GroupCounter child;
     private final List<TProtocol> mapEvents = new ArrayList<TProtocol>();
     private final List<TProtocol> parentEvents;
@@ -471,9 +521,9 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
         throw new IllegalArgumentException("maps have only one field. " + parquetSchema + " size = " + parquetSchema.getFieldCount());
       }
       Type nestedType = parquetSchema.getType(0);
-      final ThriftField key = ((MapType)field.getType()).getKey();
+      final ThriftField key = ((MapType) field.getType()).getKey();
       keyType = key.getType().getType().getThriftType();
-      final ThriftField value = ((MapType)field.getType()).getValue();
+      final ThriftField value = ((MapType) field.getType()).getValue();
       valueType = value.getType().getType().getThriftType();
       child = new GroupCounter(new MapKeyValueConverter(mapEvents, nestedType, key, value));
     }
@@ -491,12 +541,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
       child.startCounting();
       // we'll add the events in the end as we need to count elements
     }
-
-    final ParquetProtocol readMapEnd = new ParquetProtocol("readMapEnd()") {
-      @Override
-      public void readMapEnd() throws TException {
-      }
-    };
 
     @Override
     public void end() {
@@ -516,8 +560,8 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * converts to a key value pair (in maps)
-   * @author Julien Le Dem
    *
+   * @author Julien Le Dem
    */
   class MapKeyValueConverter extends GroupConverter {
 
@@ -525,7 +569,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     private Converter valueConverter;
 
     public MapKeyValueConverter(List<TProtocol> mapEvents, Type nestedType,
-        ThriftField key, ThriftField value) {
+                                ThriftField key, ThriftField value) {
       keyConverter = newConverter(mapEvents, nestedType.asGroupType().getType(0), key);
       valueConverter = newConverter(mapEvents, nestedType.asGroupType().getType(1), value);
     }
@@ -533,12 +577,12 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     @Override
     public Converter getConverter(int fieldIndex) {
       switch (fieldIndex) {
-      case 0:
-        return keyConverter;
-      case 1:
-        return valueConverter;
-      default:
-        throw new IllegalArgumentException("only key (0) and value (1) are supported. got " + fieldIndex);
+        case 0:
+          return keyConverter;
+        case 1:
+          return valueConverter;
+        default:
+          throw new IllegalArgumentException("only key (0) and value (1) are supported. got " + fieldIndex);
       }
     }
 
@@ -554,8 +598,8 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * converts to a Set
-   * @author Julien Le Dem
    *
+   * @author Julien Le Dem
    */
   class SetConverter extends CollectionConverter {
 
@@ -564,11 +608,10 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
       public void readSetEnd() throws TException {
       }
     };
-
     private final List<TProtocol> parentEvents;
 
     public SetConverter(List<TProtocol> parentEvents, GroupType parquetSchema, ThriftField field) {
-      super(parentEvents, parquetSchema, ((SetType)field.getType()).getValues());
+      super(parentEvents, parquetSchema, ((SetType) field.getType()).getValues());
       this.parentEvents = parentEvents;
     }
 
@@ -591,8 +634,8 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * converts to a List
-   * @author Julien Le Dem
    *
+   * @author Julien Le Dem
    */
   class ListConverter extends CollectionConverter {
 
@@ -601,11 +644,10 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
       public void readListEnd() throws TException {
       }
     };
-
     private final List<TProtocol> parentEvents;
 
     ListConverter(List<TProtocol> parentEvents, GroupType parquetSchema, ThriftField field) {
-      super(parentEvents, parquetSchema, ((ListType)field.getType()).getValues());
+      super(parentEvents, parquetSchema, ((ListType) field.getType()).getValues());
       this.parentEvents = parentEvents;
     }
 
@@ -628,17 +670,17 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * Base class to convert List and Set which basically work the same
-   * @author Julien Le Dem
    *
+   * @author Julien Le Dem
    */
   abstract class CollectionConverter extends GroupConverter {
 
     private final Converter child;
     private final Counter childCounter;
-    private List<TProtocol> listEvents = new ArrayList<TProtocol>();
     private final List<TProtocol> parentEvents;
-    private ThriftTypeID valuesType;
     private final Type nestedType;
+    private List<TProtocol> listEvents = new ArrayList<TProtocol>();
+    private ThriftTypeID valuesType;
 
     CollectionConverter(List<TProtocol> parentEvents, GroupType parquetSchema, ThriftField values) {
       this.parentEvents = parentEvents;
@@ -689,53 +731,10 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   /**
    * converts to Struct
-   * @author Julien Le Dem
    *
+   * @author Julien Le Dem
    */
   class StructConverter extends GroupConverter {
-
-    private final int schemaSize;
-
-    private final Converter[] converters;
-    private final StructType thriftType;
-    private final String name;
-    private final TStruct tStruct;
-    private final List<TProtocol> events;
-
-    private StructConverter(List<TProtocol> events, GroupType parquetSchema, ThriftField field) {
-      this.events = events;
-      this.name = field.getName();
-      this.tStruct = new TStruct(name);
-      this.thriftType = (StructType)field.getType();
-      this.schemaSize = parquetSchema.getFieldCount();
-      this.converters = new Converter[this.schemaSize];
-      List<ThriftField> thriftChildren = thriftType.getChildren();
-      for (int i = 0; i < schemaSize; i++) {
-        Type schemaType = parquetSchema.getType(i);
-        String fieldName = schemaType.getName();
-        ThriftField matchingThrift = null;
-        for (ThriftField childField: thriftChildren) {
-          String thriftChildName = childField.getName();
-          if (thriftChildName != null && thriftChildName.equalsIgnoreCase(fieldName)) {
-            matchingThrift = childField;
-            break;
-          }
-        }
-        if (matchingThrift == null) {
-        	throw new IllegalArgumentException("schema mismatch :: cannot find Thrift field for column [" + fieldName + "]");
-        }
-        if (schemaType.isPrimitive()) {
-        	converters[i] = new PrimitiveFieldHandler(newConverter(events, schemaType, matchingThrift).asPrimitiveConverter(), matchingThrift, events);
-        } else {
-        	converters[i] = new GroupFieldhandler(newConverter(events, schemaType, matchingThrift).asGroupConverter(), matchingThrift, events);
-        }
-      }
-    }
-
-    @Override
-    public Converter getConverter(int fieldIndex) {
-      return converters[fieldIndex];
-    }
 
     final ParquetProtocol readStructBegin = new ParquetProtocol("readStructBegin()") {
       @Override
@@ -743,14 +742,15 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
         return tStruct;
       }
     };
-
-    @Override
-    public void start() {
-      events.add(readStructBegin);
-    }
-
+    private final int schemaSize;
+    private final Converter[] converters;
+    private final StructType thriftType;
+    private final String name;
+    private final TStruct tStruct;
+    private final List<TProtocol> events;
     private final ParquetProtocol readFieldStop = new ParquetProtocol("readFieldBegin() => STOP") {
-      final TField stop = new TField("", TType.STOP, (short)0);
+      final TField stop = new TField("", TType.STOP, (short) 0);
+
       @Override
       public TField readFieldBegin() throws TException {
         return stop;
@@ -762,74 +762,51 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
       }
     };
 
+    private StructConverter(List<TProtocol> events, GroupType parquetSchema, ThriftField field) {
+      this.events = events;
+      this.name = field.getName();
+      this.tStruct = new TStruct(name);
+      this.thriftType = (StructType) field.getType();
+      this.schemaSize = parquetSchema.getFieldCount();
+      this.converters = new Converter[this.schemaSize];
+      List<ThriftField> thriftChildren = thriftType.getChildren();
+      for (int i = 0; i < schemaSize; i++) {
+        Type schemaType = parquetSchema.getType(i);
+        String fieldName = schemaType.getName();
+        ThriftField matchingThrift = null;
+        for (ThriftField childField : thriftChildren) {
+          String thriftChildName = childField.getName();
+          if (thriftChildName != null && thriftChildName.equalsIgnoreCase(fieldName)) {
+            matchingThrift = childField;
+            break;
+          }
+        }
+        if (matchingThrift == null) {
+          throw new IllegalArgumentException("schema mismatch :: cannot find Thrift field for column [" + fieldName + "]");
+        }
+        if (schemaType.isPrimitive()) {
+          converters[i] = new PrimitiveFieldHandler(newConverter(events, schemaType, matchingThrift).asPrimitiveConverter(), matchingThrift, events);
+        } else {
+          converters[i] = new GroupFieldhandler(newConverter(events, schemaType, matchingThrift).asGroupConverter(), matchingThrift, events);
+        }
+      }
+    }
+
+    @Override
+    public Converter getConverter(int fieldIndex) {
+      return converters[fieldIndex];
+    }
+
+    @Override
+    public void start() {
+      events.add(readStructBegin);
+    }
+
     @Override
     public void end() {
       events.add(readFieldStop);
       events.add(readStructEnd);
     }
 
-  }
-  private final ThriftReader<T> thriftReader;
-  private final ParquetReadProtocol protocol;
-  private final GroupConverter structConverter;
-  private List<TProtocol> rootEvents = new ArrayList<TProtocol>();
-
-  /**
-   *
-   * @param thriftReader the class responsible for instantiating the final object and read from the protocol
-   * @param name the name of that type ( the thrift class simple name)
-   * @param requestedParquetSchema the schema for the incoming columnar events
-   * @param thriftType the thrift type descriptor
-   */
-  public ThriftRecordConverter(ThriftReader<T> thriftReader, String name, MessageType requestedParquetSchema, ThriftType.StructType thriftType) {
-    super();
-    this.thriftReader = thriftReader;
-    this.protocol = new ParquetReadProtocol();
-    this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
-  }
-
-  /**
-   *
-   * {@inheritDoc}
-   * @see parquet.io.api.RecordMaterializer#getCurrentRecord()
-   */
-  @Override
-  public T getCurrentRecord() {
-    try {
-      protocol.addAll(rootEvents);
-      rootEvents.clear();
-      return thriftReader.readOneRecord(protocol);
-    } catch (TException e) {
-      throw new ParquetDecodingException("Could not read thrift object from protocol", e);
-    }
-  }
-
-  /**
-   *
-   * {@inheritDoc}
-   * @see parquet.io.api.RecordMaterializer#getRootConverter()
-   */
-  @Override
-  public GroupConverter getRootConverter() {
-    return structConverter;
-  }
-
-  private Converter newConverter(List<TProtocol> events, Type type, ThriftField field) {
-    switch (field.getType().getType()) {
-    case LIST:
-      return new ListConverter(events, type.asGroupType(), field);
-    case SET:
-      return new SetConverter(events, type.asGroupType(), field);
-    case MAP:
-      return new MapConverter(events, type.asGroupType(), field);
-    case STRUCT:
-      return new StructConverter(events, type.asGroupType(), field);
-    case STRING:
-      return new FieldStringConverter(events, field);
-    case ENUM:
-      return new FieldEnumConverter(events, field);
-    default:
-      return new FieldPrimitiveConverter(events, field);
-    }
   }
 }

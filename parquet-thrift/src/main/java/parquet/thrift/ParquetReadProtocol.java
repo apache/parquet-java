@@ -18,18 +18,10 @@ package parquet.thrift;
 import static parquet.Log.DEBUG;
 
 import java.nio.ByteBuffer;
-import java.util.Collection;
-import java.util.Deque;
-import java.util.LinkedList;
+import java.util.*;
 
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TField;
-import org.apache.thrift.protocol.TList;
-import org.apache.thrift.protocol.TMap;
-import org.apache.thrift.protocol.TMessage;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.protocol.TSet;
-import org.apache.thrift.protocol.TStruct;
+import org.apache.thrift.protocol.*;
 
 import parquet.Log;
 
@@ -42,6 +34,8 @@ class ParquetReadProtocol extends ParquetProtocol {
   }
 
   private Deque<TProtocol> events = new  LinkedList<TProtocol>();
+
+
 
   public void add(TProtocol p) {
     events.addLast(p);

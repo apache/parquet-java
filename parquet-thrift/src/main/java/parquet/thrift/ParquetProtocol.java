@@ -33,7 +33,7 @@ import org.apache.thrift.protocol.TStruct;
  * @author Julien Le Dem
  *
  */
-abstract class ParquetProtocol extends TProtocol {
+public abstract class ParquetProtocol extends TProtocol {
 
   private final String message;
 
@@ -54,7 +54,7 @@ abstract class ParquetProtocol extends TProtocol {
   /**
    * @param name a meaningful debugging name for anonymous inner classes
    */
-  ParquetProtocol(String name) {
+  public ParquetProtocol(String name) {
     super(null);
     this.message = "when we expected " + name + " in " + getClassInfo();
   }
