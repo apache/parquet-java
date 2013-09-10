@@ -570,7 +570,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     private final List<TProtocol> parentEvents;
 
     public SetConverter(List<TProtocol> parentEvents, GroupType parquetSchema, ThriftField field) {
-      super(parentEvents, parquetSchema, ((SetType) field.getType()).getValues());
+      super(parentEvents, parquetSchema, ((SetType)field.getType()).getValues());
       this.parentEvents = parentEvents;
     }
 
