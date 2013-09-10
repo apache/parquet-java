@@ -42,7 +42,6 @@ class ProtocolEventsGenerator {
 
     DummyCreatorVisitor dummyCreatorvisitor = new DummyCreatorVisitor();
     missingField.getType().accept(dummyCreatorvisitor);
-    //....struct should handle the field begin and field end stuff
     createdEvents.addAll(dummyCreatorvisitor.getEvents());
     createdEvents.add(READ_FIELD_END);
     return createdEvents;

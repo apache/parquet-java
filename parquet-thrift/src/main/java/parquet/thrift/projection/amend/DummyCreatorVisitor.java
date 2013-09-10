@@ -1,5 +1,9 @@
 package parquet.thrift.projection.amend;
 
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TList;
+import org.apache.thrift.protocol.TMap;
+import org.apache.thrift.protocol.TSet;
 import parquet.thrift.ParquetProtocol;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
@@ -18,16 +22,34 @@ class DummyCreatorVisitor implements ThriftType.TypeVisitor {
   List<ParquetProtocol> dummyEvents= new ArrayList<ParquetProtocol>();
   @Override
   public void visit(ThriftType.MapType mapType) {
-    //To change body of implemented methods use File | Settings | File Templates.
+     dummyEvents.add(new ParquetProtocol("readMapBegin()") {
+       @Override
+       public TMap readMapBegin() throws TException {
+         return new TMap();
+       }
+     });
   }
 
   @Override
-  public void visit(ThriftType.SetType setType) {
-    //To change body of implemented methods use File | Settings | File Templates.
+  public void visit(final ThriftType.SetType setType) {
+    dummyEvents.add(new ParquetProtocol("readSetBegin()") {
+      @Override
+      public TSet readSetBegin() throws TException {
+        return new TSet();
+      }
+    });
   }
 
+
+  //TODO, unit tests for thie
   @Override
-  public void visit(ThriftType.ListType listType) {
+  public void visit(final ThriftType.ListType listType) {
+    dummyEvents.add(new ParquetProtocol("readListBegin()") {
+      @Override
+      public TList readListBegin() throws TException {
+        return new TList();
+      }
+    });
     //To change body of implemented methods use File | Settings | File Templates.
   }
 
@@ -45,39 +67,76 @@ class DummyCreatorVisitor implements ThriftType.TypeVisitor {
 
   }
 
+  //TODO: confirm with julien
   @Override
   public void visit(ThriftType.EnumType enumType) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    dummyEvents.add(new ParquetProtocol("readI32() enum") {
+      @Override
+      public int readI32() throws TException {
+        return 0;
+      }
+    });
   }
 
   @Override
   public void visit(ThriftType.BoolType boolType) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    dummyEvents.add(new ParquetProtocol("readBool()") {
+      @Override
+      public boolean readBool() throws TException {
+        return false;
+      }
+    });
   }
+
 
   @Override
   public void visit(ThriftType.ByteType byteType) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    dummyEvents.add(new ParquetProtocol("readByte() int") {
+      @Override
+      public byte readByte() throws TException {
+        return (byte) 0;
+      }
+    });
   }
 
   @Override
   public void visit(ThriftType.DoubleType doubleType) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    dummyEvents.add(new ParquetProtocol("readDouble()") {
+      @Override
+      public double readDouble() throws TException {
+        return 1.0;
+      }
+    });
   }
 
   @Override
   public void visit(ThriftType.I16Type i16Type) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    dummyEvents.add(new ParquetProtocol("readI16()") {
+      @Override
+      public short readI16() throws TException {
+        return (short) 0;
+      }
+    });
   }
 
   @Override
   public void visit(ThriftType.I32Type i32Type) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    dummyEvents.add(new ParquetProtocol("readI32()") {
+      @Override
+      public int readI32() throws TException {
+        return 0;
+      }
+    });
   }
 
   @Override
   public void visit(ThriftType.I64Type i64Type) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    dummyEvents.add(new ParquetProtocol("readI64()") {
+      @Override
+      public long readI64() throws TException {
+        return 1;
+      }
+    });
   }
 
   @Override
