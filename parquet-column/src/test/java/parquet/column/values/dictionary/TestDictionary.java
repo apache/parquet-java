@@ -88,7 +88,7 @@ public class TestDictionary {
   public void testBinaryDictionaryInefficiency() throws IOException {
 
     int COUNT = 40000;
-    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(2000000, 10000);
+    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(500000, 10000);
     for (int i = 0; i < COUNT; i++) {
       cw.writeBytes(Binary.fromString("a" + i ));
     }
