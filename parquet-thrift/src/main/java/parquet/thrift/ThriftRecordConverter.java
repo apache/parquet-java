@@ -22,7 +22,7 @@ import parquet.io.api.*;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
-import parquet.thrift.projection.ProtocolEventsAmender;
+import parquet.thrift.projection.amend.ProtocolEventsAmender;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftField.Requirement;
 import parquet.thrift.struct.ThriftType;

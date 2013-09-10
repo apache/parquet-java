@@ -1,7 +1,8 @@
-package parquet.thrift.projection;
+package parquet.thrift.projection.amend;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.*;
+import parquet.thrift.projection.amend.ProtocolEventsGenerator;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftType.*;
