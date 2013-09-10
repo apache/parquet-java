@@ -44,19 +44,30 @@ public class GroupType extends Type {
   }
 
   /**
-   * @see GroupType#GroupType(Repetition, String, List)
-   * @param required
-   * @param name
-   * @param fields
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param name the name of the field
+   * @param fields the contained fields
    */
   public GroupType(Repetition repetition, String name, Type... fields) {
     this(repetition, name, null, fields);
   }
 
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param name the name of the field
+   * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
+   * @param fields the contained fields
+   */
   public GroupType(Repetition repetition, String name, OriginalType originalType, Type... fields) {
     this(repetition, name, originalType, Arrays.asList(fields));
   }
 
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param name the name of the field
+   * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
+   * @param fields the contained fields
+   */
   public GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields) {
     super(name, repetition, originalType);
     this.fields = fields;
@@ -133,6 +144,11 @@ public class GroupType extends Type {
     return fields.get(index);
   }
 
+  /**
+   * appends a display string for of the members of this group to sb
+   * @param sb where to append
+   * @param indent the indentation level
+   */
   void membersDisplayString(StringBuilder sb, String indent) {
     for (Type field : fields) {
       field.writeToStringBuilder(sb, indent);
@@ -245,6 +261,10 @@ public class GroupType extends Type {
   @Override
   void checkContains(Type subType) {
     super.checkContains(subType);
+    checkGroupContains(subType);
+  }
+
+  void checkGroupContains(Type subType) {
     if (subType.isPrimitive()) {
       throw new InvalidRecordException(subType + " found: expected " + this);
     }
@@ -269,5 +289,43 @@ public class GroupType extends Type {
       children.add(field.convert(path, converter));
     }
     return children;
+  }
+
+  @Override
+  protected Type union(Type toMerge) {
+    if (toMerge.isPrimitive()) {
+      throw new IncompatibleSchemaModificationException("can not merge primitive type " + toMerge + " into group type " + this);
+    }
+    return new GroupType(toMerge.getRepetition(), getName(), mergeFields(toMerge.asGroupType()));
+  }
+
+  /**
+   * produces the list of fields resulting from merging toMerge into the fields of this
+   * @param toMerge the group containing the fields to merge
+   * @return the merged list
+   */
+  List<Type> mergeFields(GroupType toMerge) {
+    List<Type> newFields = new ArrayList<Type>();
+    // merge existing fields
+    for (Type type : this.getFields()) {
+      Type merged;
+      if (toMerge.containsField(type.getName())) {
+        Type fieldToMerge = toMerge.getType(type.getName());
+        if (fieldToMerge.getRepetition().isMoreRestrictiveThan(type.getRepetition())) {
+          throw new IncompatibleSchemaModificationException("repetition constraint is more restrictive: can not merge type " + fieldToMerge + " into " + type);
+        }
+        merged = type.union(fieldToMerge);
+      } else {
+        merged = type;
+      }
+      newFields.add(merged);
+    }
+    // add new fields
+    for (Type type : toMerge.getFields()) {
+      if (!this.containsField(type.getName())) {
+        newFields.add(type);
+      }
+    }
+    return newFields;
   }
 }

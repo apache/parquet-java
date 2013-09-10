@@ -277,8 +277,7 @@ public final class PrimitiveType extends Type {
   private final PrimitiveTypeName primitive;
 
   /**
-   *
-   * @param repetition the OPTIONAL, REPEATED, REQUIRED
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param primitive STRING, INT64, ...
    * @param name the name of the type
    */
@@ -286,6 +285,12 @@ public final class PrimitiveType extends Type {
     this(repetition, primitive, name, null);
   }
 
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param primitive STRING, INT64, ...
+   * @param name the name of the type
+   * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
+   */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, String name, OriginalType originalType) {
     super(name, repetition, originalType);
     this.primitive = primitive;
@@ -407,5 +412,13 @@ public final class PrimitiveType extends Type {
   @Override
   protected boolean containsPath(String[] path, int depth) {
     return path.length == depth;
+  }
+
+  @Override
+  protected Type union(Type toMerge) {
+    if (!toMerge.isPrimitive() || !primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName())) {
+      throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " into " + this);
+    }
+    return new PrimitiveType(toMerge.getRepetition(), primitive, getName());
   }
 }

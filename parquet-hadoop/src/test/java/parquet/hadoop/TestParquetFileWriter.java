@@ -21,6 +21,10 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static parquet.column.Encoding.BIT_PACKED;
 import static parquet.column.Encoding.PLAIN;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static parquet.schema.Type.Repetition.OPTIONAL;
+import static parquet.schema.Type.Repetition.REPEATED;
+import static parquet.schema.Type.Repetition.REQUIRED;
 
 import java.io.File;
 import java.io.IOException;
@@ -41,9 +45,12 @@ import parquet.column.page.Page;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
 import parquet.hadoop.metadata.CompressionCodecName;
+import parquet.hadoop.metadata.FileMetaData;
+import parquet.hadoop.metadata.GlobalMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
+import parquet.schema.PrimitiveType;
 
 public class TestParquetFileWriter {
   private static final Log LOG = Log.getLog(TestParquetFileWriter.class);
@@ -243,6 +250,28 @@ public class TestParquetFileWriter {
     Page page = pageReader.readPage();
     assertEquals(values, page.getValueCount());
     assertArrayEquals(bytes.toByteArray(), page.getBytes().toByteArray());
+  }
+
+  @Test
+  public void testMergeMetadata() {
+    FileMetaData md1 = new FileMetaData(
+        new MessageType("root1",
+            new PrimitiveType(REPEATED, BINARY, "a"),
+            new PrimitiveType(OPTIONAL, BINARY, "b")),
+        new HashMap<String, String>(), "test");
+    FileMetaData md2 = new FileMetaData(
+        new MessageType("root2",
+            new PrimitiveType(REQUIRED, BINARY, "c")),
+        new HashMap<String, String>(), "test2");
+    GlobalMetaData merged = ParquetFileWriter.mergeInto(md2, ParquetFileWriter.mergeInto(md1, null));
+    assertEquals(
+        merged.getSchema(),
+        new MessageType("root1",
+            new PrimitiveType(REPEATED, BINARY, "a"),
+            new PrimitiveType(OPTIONAL, BINARY, "b"),
+            new PrimitiveType(REQUIRED, BINARY, "c"))
+        );
+
   }
 
 }

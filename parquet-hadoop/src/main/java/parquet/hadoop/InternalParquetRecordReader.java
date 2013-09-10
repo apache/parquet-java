@@ -64,6 +64,8 @@ class InternalParquetRecordReader<T> {
 
   private long totalCountLoadedSoFar = 0;
 
+  private Path file;
+
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
    */
@@ -135,6 +137,7 @@ class InternalParquetRecordReader<T> {
       throws IOException {
     this.requestedSchema = requestedSchema;
     this.fileSchema = fileSchema;
+    this.file = file;
     this.columnCount = this.requestedSchema.getPaths().size();
     this.recordConverter = readSupport.prepareForRead(
         configuration, extraMetadata, fileSchema,
@@ -171,7 +174,7 @@ class InternalParquetRecordReader<T> {
         if (DEBUG) LOG.debug("read value: " + currentValue);
         current ++;
       } catch (RuntimeException e) {
-        throw new ParquetDecodingException(format("Can not read value at %d in block %d", current, currentBlock), e);
+        throw new ParquetDecodingException(format("Can not read value at %d in block %d in file %s", current, currentBlock, file), e);
       }
       return true;
     }

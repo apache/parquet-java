@@ -55,7 +55,7 @@ public class TestParquetStorer {
     Data data = Storage.resetData(pigServer);
     Collection<Tuple> list = new ArrayList<Tuple>();
     for (int i = 0; i < rows; i++) {
-      list.add(Storage.tuple("a"+i));
+      list.add(tuple("a"+i));
     }
     data.set("in", "a:chararray", list );
     pigServer.setBatchOn();
@@ -80,6 +80,67 @@ public class TestParquetStorer {
       assertEquals("a"+i, tuple.get(0));
       ++i;
     }
+  }
+
+  @Test
+  public void testMultipleSchema() throws ExecException, Exception {
+    String out = "target/out";
+    int rows = 1000;
+    Properties props = new Properties();
+    props.setProperty("parquet.compression", "uncompressed");
+    props.setProperty("parquet.page.size", "1000");
+    PigServer pigServer = new PigServer(ExecType.LOCAL, props);
+    Data data = Storage.resetData(pigServer);
+    Collection<Tuple> list1 = new ArrayList<Tuple>();
+    for (int i = 0; i < rows; i++) {
+      list1.add(tuple("a"+i));
+    }
+    Collection<Tuple> list2 = new ArrayList<Tuple>();
+    for (int i = 0; i < rows; i++) {
+      list2.add(tuple("b"+i));
+    }
+    data.set("a", "a:chararray", list1);
+    data.set("b", "b:chararray", list2);
+    pigServer.setBatchOn();
+    pigServer.registerQuery("A = LOAD 'a' USING mock.Storage();");
+    pigServer.registerQuery("B = LOAD 'b' USING mock.Storage();");
+    pigServer.deleteFile(out);
+    pigServer.registerQuery("Store A into '"+out+"/a' using "+ParquetStorer.class.getName()+"();");
+    pigServer.registerQuery("Store B into '"+out+"/b' using "+ParquetStorer.class.getName()+"();");
+    if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
+      throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
+    }
+
+    pigServer.registerQuery("B = LOAD '"+out+"/*' USING "+ParquetLoader.class.getName()+"();");
+    pigServer.registerQuery("Store B into 'out' using mock.Storage();");
+    if (pigServer.executeBatch().get(0).getStatus() != JOB_STATUS.COMPLETED) {
+      throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
+    }
+
+    List<Tuple> result = data.get("out");
+
+    final Schema schema = data.getSchema("out");
+    assertEquals(2, schema.size());
+    assertEquals("a", schema.getField(0).alias);
+    assertEquals("b", schema.getField(1).alias);
+
+    assertEquals(rows * 2, result.size());
+
+    int a = 0;
+    int b = 0;
+    for (Tuple tuple : result) {
+      String fa = (String) tuple.get(0);
+      String fb = (String) tuple.get(1);
+      if (fa != null) {
+        assertEquals("a" + a, fa);
+        ++a;
+      }
+      if (fb != null) {
+        assertEquals("b" + b, fb);
+        ++b;
+      }
+    }
+
   }
 
   @Test
@@ -118,6 +179,7 @@ public class TestParquetStorer {
       assertEquals("a"+i, tuple.get(0));
       ++i;
     }
+
   }
 
   @Test
