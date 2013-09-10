@@ -15,20 +15,30 @@
  */
 package parquet.pig;
 
+import static parquet.pig.PigSchemaConverter.parsePigSchema;
+
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.pig.data.Tuple;
+import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
+import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import org.apache.pig.impl.util.ObjectSerializer;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
 import parquet.Log;
+import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
+import parquet.io.ParquetDecodingException;
 import parquet.io.api.RecordMaterializer;
 import parquet.pig.convert.TupleRecordMaterializer;
+import parquet.schema.IncompatibleSchemaModificationException;
 import parquet.schema.MessageType;
 
 /**
@@ -39,33 +49,39 @@ import parquet.schema.MessageType;
  *
  */
 public class TupleReadSupport extends ReadSupport<Tuple> {
-  static final String PARQUET_PIG_REQUESTED_SCHEMA = "parquet.pig.requested.schema";
+  static final String PARQUET_PIG_SCHEMA = "parquet.pig.schema";
   static final String PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE = "parquet.pig.elephantbird.compatible";
   private static final Log LOG = Log.getLog(TupleReadSupport.class);
-  
+
   private static final PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
 
   /**
    * @param configuration the configuration for the current job
    * @return the pig schema requested by the user or null if none.
    */
-  static Schema getRequestedPigSchema(Configuration configuration) {
-    Schema pigSchema = null;
-    try {
-      String schemaStr = configuration.get(PARQUET_PIG_REQUESTED_SCHEMA);
-      pigSchema = (Schema)ObjectSerializer.deserialize(schemaStr);
-    } catch (IOException ioe) {
-      throw new SchemaConversionException("could not get pig schema from configuration ", ioe);
-    }
-    return pigSchema;
+  static Schema getPigSchema(Configuration configuration) {
+    return parsePigSchema(configuration.get(PARQUET_PIG_SCHEMA));
   }
 
-  static Schema parsePigSchema(String pigSchemaString) {
-    try {
-      return pigSchemaString == null ? null : Utils.getSchemaFromString(pigSchemaString);
-    } catch (ParserException e) {
-      throw new SchemaConversionException("could not parse Pig schema: " + pigSchemaString, e);
+  /**
+   * @param fileSchema the parquet schema from the file
+   * @param keyValueMetaData the extra meta data from the files
+   * @return the pig schema according to the file
+   */
+  static Schema getPigSchemaFromMultipleFiles(MessageType fileSchema, Map<String, Set<String>> keyValueMetaData) {
+    Set<String> pigSchemas = PigMetaData.getPigSchemas(keyValueMetaData);
+    if (pigSchemas == null) {
+      return pigSchemaConverter.convert(fileSchema);
     }
+    Schema mergedPigSchema = null;
+    for (String pigSchemaString : pigSchemas) {
+      try {
+        mergedPigSchema = union(mergedPigSchema, parsePigSchema(pigSchemaString));
+      } catch (FrontendException e) {
+        throw new ParquetDecodingException("can not merge " + pigSchemaString + " into " + mergedPigSchema, e);
+      }
+    }
+    return mergedPigSchema;
   }
 
   /**
@@ -75,24 +91,58 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
    */
   static Schema getPigSchemaFromFile(MessageType fileSchema, Map<String, String> keyValueMetaData) {
     PigMetaData pigMetaData = PigMetaData.fromMetaData(keyValueMetaData);
-    Schema pigMetaDataSchema = parsePigSchema(pigMetaData.getPigSchema());
-    if (pigMetaDataSchema != null) {
-      return pigMetaDataSchema;
-    } else {
+    if (pigMetaData == null) {
       return pigSchemaConverter.convert(fileSchema);
+    }
+    return parsePigSchema(pigMetaData.getPigSchema());
+  }
+
+  private static Schema union(Schema merged, Schema pigSchema) throws FrontendException {
+    List<FieldSchema> fields = new ArrayList<Schema.FieldSchema>();
+    if (merged == null) {
+      return pigSchema;
+    }
+    // merging existing fields
+    for (FieldSchema fieldSchema : merged.getFields()) {
+      FieldSchema newFieldSchema = pigSchema.getField(fieldSchema.alias);
+      if (newFieldSchema == null) {
+        fields.add(fieldSchema);
+      } else {
+        fields.add(union(fieldSchema, newFieldSchema));
+      }
+    }
+    // adding new fields
+    for (FieldSchema newFieldSchema : pigSchema.getFields()) {
+      FieldSchema oldFieldSchema = merged.getField(newFieldSchema.alias);
+      if (oldFieldSchema == null) {
+        fields.add(newFieldSchema);
+      }
+    }
+    return new Schema(fields);
+  }
+
+  private static FieldSchema union(FieldSchema mergedFieldSchema, FieldSchema newFieldSchema) {
+    if (!mergedFieldSchema.alias.equals(newFieldSchema.alias)
+        || mergedFieldSchema.type != newFieldSchema.type) {
+      throw new IncompatibleSchemaModificationException("Incompatible Pig schema change: " + mergedFieldSchema + " can not accept");
+    }
+    try {
+      return new FieldSchema(mergedFieldSchema.alias, union(mergedFieldSchema.schema, newFieldSchema.schema), mergedFieldSchema.type);
+    } catch (FrontendException e) {
+      throw new SchemaConversionException(e);
     }
   }
 
   @Override
-  public ReadContext init(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
-    Schema requestedPigSchema = getRequestedPigSchema(configuration);
+  public ReadContext init(InitContext initContext) {
+    Schema requestedPigSchema = getPigSchema(initContext.getConfiguration());
     if (requestedPigSchema == null) {
-      return new ReadContext(fileSchema);
+      return new ReadContext(initContext.getFileSchema());
     } else {
       // project the file schema according to the requested Pig schema
       MessageType parquetRequestedSchema =
           pigSchemaConverter.filter(
-          fileSchema,
+          initContext.getFileSchema(),
           requestedPigSchema);
       return new ReadContext(parquetRequestedSchema);
     }
@@ -105,9 +155,9 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
       MessageType fileSchema,
       ReadContext readContext) {
     MessageType requestedSchema = readContext.getRequestedSchema();
-    Schema requestedPigSchema = getRequestedPigSchema(configuration);
+    Schema requestedPigSchema = getPigSchema(configuration);
     if (requestedPigSchema == null) {
-      requestedPigSchema = getPigSchemaFromFile(fileSchema, keyValueMetaData);
+      throw new ParquetDecodingException("Missing Pig schema: ParquetLoader sets the schema in the job conf");
     }
     boolean elephantBirdCompatible = configuration.getBoolean(PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE, false);
     if (elephantBirdCompatible) {

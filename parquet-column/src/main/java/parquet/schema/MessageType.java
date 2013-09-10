@@ -116,7 +116,7 @@ public final class MessageType extends GroupType {
     if (!(subType instanceof MessageType)) {
       throw new InvalidRecordException(subType + " found: expected " + this);
     }
-    super.checkContains(subType);
+    checkGroupContains(subType);
   }
 
   public <T> T convertWith(TypeConverter<T> converter) {
@@ -128,4 +128,9 @@ public final class MessageType extends GroupType {
   public boolean containsPath(String[] path) {
     return containsPath(path, 0);
   }
+
+  public MessageType union(MessageType toMerge) {
+    return new MessageType(this.getName(), mergeFields(toMerge));
+  }
+
 }

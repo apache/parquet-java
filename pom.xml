@@ -3,7 +3,7 @@
 
   <groupId>com.twitter</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.1.2-SNAPSHOT</version>
+  <version>1.2.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Parquet MR</name>
@@ -257,6 +257,13 @@
           </plugin>
         </plugins>
       </reporting>
+      <distributionManagement>
+        <site>
+          <id>github-pages-site</id>
+          <name>Deployment through GitHub's site deployment plugin</name>
+          <url>site/${project.version}</url>
+        </site>
+      </distributionManagement>
       <build>
         <plugins>
           <plugin>

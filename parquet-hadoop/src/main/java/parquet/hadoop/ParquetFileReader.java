@@ -58,7 +58,7 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.ParquetMetadata;
-import parquet.hadoop.util.BenchmarkCounter;
+import parquet.hadoop.util.counters.BenchmarkCounter;
 import parquet.io.ParquetDecodingException;
 
 /**
@@ -245,30 +245,33 @@ public class ParquetFileReader implements Closeable {
   public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file) throws IOException {
     FileSystem fileSystem = file.getPath().getFileSystem(configuration);
     FSDataInputStream f = fileSystem.open(file.getPath());
-    long l = file.getLen();
-    if (Log.DEBUG) LOG.debug("File length " + l);
-    int FOOTER_LENGTH_SIZE = 4;
-    if (l < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
-      throw new RuntimeException(file.getPath() + " is not a Parquet file (too small)");
-    }
-    long footerLengthIndex = l - FOOTER_LENGTH_SIZE - MAGIC.length;
-    if (Log.DEBUG) LOG.debug("reading footer index at " + footerLengthIndex);
+    try {
+      long l = file.getLen();
+      if (Log.DEBUG) LOG.debug("File length " + l);
+      int FOOTER_LENGTH_SIZE = 4;
+      if (l < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
+        throw new RuntimeException(file.getPath() + " is not a Parquet file (too small)");
+      }
+      long footerLengthIndex = l - FOOTER_LENGTH_SIZE - MAGIC.length;
+      if (Log.DEBUG) LOG.debug("reading footer index at " + footerLengthIndex);
 
-    f.seek(footerLengthIndex);
-    int footerLength = readIntLittleEndian(f);
-    byte[] magic = new byte[MAGIC.length];
-    f.readFully(magic);
-    if (!Arrays.equals(MAGIC, magic)) {
-      throw new RuntimeException(file.getPath() + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
+      f.seek(footerLengthIndex);
+      int footerLength = readIntLittleEndian(f);
+      byte[] magic = new byte[MAGIC.length];
+      f.readFully(magic);
+      if (!Arrays.equals(MAGIC, magic)) {
+        throw new RuntimeException(file.getPath() + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
+      }
+      long footerIndex = footerLengthIndex - footerLength;
+      if (Log.DEBUG) LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
+      if (footerIndex < MAGIC.length || footerIndex >= footerLengthIndex) {
+        throw new RuntimeException("corrupted file: the footer index is not within the file");
+      }
+      f.seek(footerIndex);
+      return parquetMetadataConverter.readParquetMetadata(f);
+    } finally {
+      f.close();
     }
-    long footerIndex = footerLengthIndex - footerLength;
-    if (Log.DEBUG) LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
-    if (footerIndex < MAGIC.length || footerIndex >= footerLengthIndex) {
-      throw new RuntimeException("corrupted file: the footer index is not within the file");
-    }
-    f.seek(footerIndex);
-    return parquetMetadataConverter.readParquetMetadata(f);
-
   }
   private CodecFactory codecFactory;
 
