@@ -39,6 +39,7 @@ import parquet.io.api.RecordMaterializer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
+import parquet.thrift.projection.amend.ProtocolEventsAmender;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftField.Requirement;
 import parquet.thrift.struct.ThriftType;
@@ -64,6 +65,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     public void readFieldEnd() throws TException {
     }
   };
+  private final StructType thriftType;
 
   /**
    * Handles field events creation by wrapping the converter for the actual type
@@ -568,7 +570,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     private final List<TProtocol> parentEvents;
 
     public SetConverter(List<TProtocol> parentEvents, GroupType parquetSchema, ThriftField field) {
-      super(parentEvents, parquetSchema, ((SetType)field.getType()).getValues());
+      super(parentEvents, parquetSchema, ((SetType) field.getType()).getValues());
       this.parentEvents = parentEvents;
     }
 
@@ -788,6 +790,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     super();
     this.thriftReader = thriftReader;
     this.protocol = new ParquetReadProtocol();
+    this.thriftType=thriftType;
     this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
   }
 
@@ -799,6 +802,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   @Override
   public T getCurrentRecord() {
     try {
+      rootEvents=new ProtocolEventsAmender(rootEvents).amendMissingRequiredFields(thriftType);
       protocol.addAll(rootEvents);
       rootEvents.clear();
       return thriftReader.readOneRecord(protocol);
