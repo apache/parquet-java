@@ -67,7 +67,6 @@ class DefaultEventsVisitor implements ThriftType.TypeVisitor {
   }
 
 
-  //TODO, unit tests for this
   @Override
   public void visit(final ThriftType.ListType listType) {
     dummyEvents.add(new ParquetProtocol("readListBegin()") {
@@ -86,19 +85,18 @@ class DefaultEventsVisitor implements ThriftType.TypeVisitor {
 
   @Override
   public void visit(ThriftType.StructType structType) {
-    dummyEvents.add(new StructBeginProtocol("struct"));//TODO: name of a field doesn't matter??
+    dummyEvents.add(new StructBeginProtocol("struct"));
     List<ThriftField> children = structType.getChildren();
     for (ThriftField child : children) {
       dummyEvents.add(new ReadFieldBeginProtocol(child));
       child.getType().accept(this); //currently will create all the attributes in struct, it's safer
-      dummyEvents.add(ProtocolEventsGenerator.READ_FIELD_END);
+      dummyEvents.add(DefaultProtocolEventsGenerator.READ_FIELD_END);
     }
-    dummyEvents.add(ProtocolEventsGenerator.READ_FIELD_STOP);
-    dummyEvents.add(ProtocolEventsGenerator.READ_STRUCT_END);
+    dummyEvents.add(DefaultProtocolEventsGenerator.READ_FIELD_STOP);
+    dummyEvents.add(DefaultProtocolEventsGenerator.READ_STRUCT_END);
 
   }
 
-  //TODO: confirm with julien
   @Override
   public void visit(ThriftType.EnumType enumType) {
     dummyEvents.add(new ParquetProtocol("readI32() enum") {

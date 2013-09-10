@@ -30,7 +30,7 @@ import java.util.List;
  * when required fields are missing.
  * {@link ProtocolEventsAmender} will use this class to generate events for missing required fields
  */
-class ProtocolEventsGenerator {
+class DefaultProtocolEventsGenerator {
   public static ParquetProtocol READ_FIELD_STOP = new ParquetProtocol("readFieldBegin() => STOP") {
     final TField stop = new TField("", TType.STOP, (short) 0);
 

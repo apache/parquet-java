@@ -80,11 +80,11 @@ public class ProtocolEventsAmender {
         continue;
       }
       if (!includedFieldsIds.contains(requiredField.getFieldId())) {
-        fixedEvents.addAll(new ProtocolEventsGenerator().createProtocolEventsForField(requiredField));
+        fixedEvents.addAll(new DefaultProtocolEventsGenerator().createProtocolEventsForField(requiredField));
       }
     }
 
-    acceptProtocol(ProtocolEventsGenerator.READ_FIELD_STOP);
+    acceptProtocol(DefaultProtocolEventsGenerator.READ_FIELD_STOP);
     acceptProtocol(eventIter.next()).readStructEnd();
   }
 
