@@ -28,6 +28,7 @@ import java.util.List;
 /**
  * Generate events for Parquet Protocol for a Thrift Field. The generated events are used for default values
  * when required fields are missing.
+ * {@link ProtocolEventsAmender} will use this class to generate events for missing required fields
  */
 class ProtocolEventsGenerator {
   public static ParquetProtocol READ_FIELD_STOP = new ParquetProtocol("readFieldBegin() => STOP") {

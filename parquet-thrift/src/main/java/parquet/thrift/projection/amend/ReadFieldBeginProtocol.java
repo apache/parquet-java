@@ -21,7 +21,7 @@ import parquet.thrift.ParquetProtocol;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftTypeID;
 
-class ReadFieldBeginProtocol extends ParquetProtocol {
+public class ReadFieldBeginProtocol extends ParquetProtocol {
   private final ThriftField field;
   private final byte thriftType;
 

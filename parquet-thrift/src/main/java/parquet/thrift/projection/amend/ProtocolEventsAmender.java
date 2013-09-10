@@ -69,9 +69,7 @@ public class ProtocolEventsAmender {
       if (isStopField(field))
         break;
       acceptProtocol(next);
-//      System.out.println(field.id);
       includedFieldsIds.add(field.id);
-//      System.out.println(field.name);
       ThriftField fieldDefinition = thriftStructType.getChildById(field.id);
       checkField(field.type, eventIter, fieldDefinition);
       acceptProtocol(eventIter.next()).readFieldEnd();
@@ -144,12 +142,10 @@ public class ProtocolEventsAmender {
     ThriftField valueFieldForWriting = ((ThriftType.ListType) listFieldUsedForWriting.getType()).getValues();
     TList thriftList = acceptProtocol(eventIter.next()).readListBegin();
     int listSize = thriftList.size;
-//    System.out.println("<list start> " + listSize);
     for (int i = 0; i < listSize; i++) {
       checkField(thriftList.elemType, eventIter, valueFieldForWriting);
     }
     acceptProtocol(eventIter.next()).readListEnd();
-//    System.out.println("<list end>");
   }
 
   /**
@@ -161,7 +157,6 @@ public class ProtocolEventsAmender {
    */
   private void checkPrimitiveField(byte type, Iterator<TProtocol> eventIter) throws TException {
     acceptProtocol(eventIter.next());
-    System.out.println("read primitive");
   }
 
   private boolean isStopField(TField field) {

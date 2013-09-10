@@ -19,10 +19,12 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TList;
 import org.apache.thrift.protocol.TMap;
 import org.apache.thrift.protocol.TSet;
+import org.apache.thrift.protocol.TStruct;
 import parquet.thrift.ParquetProtocol;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -175,5 +177,38 @@ class DefaultEventsVisitor implements ThriftType.TypeVisitor {
 
   public List<ParquetProtocol> getEvents() {
     return dummyEvents;
+  }
+
+  private static class StructBeginProtocol extends ParquetProtocol {
+    private final String structName;
+
+    public StructBeginProtocol(String structName) {
+      super("readStructBegin()");
+      this.structName=structName;
+    }
+    @Override
+    public TStruct readStructBegin() throws TException {
+      return new TStruct(structName);
+    }
+  }
+
+  public static class StringProtocol extends ParquetProtocol {
+
+    private final String str;
+
+    public StringProtocol(String str) {
+      super("readString() binary");
+      this.str = str;
+    }
+
+    @Override
+    public String readString() throws TException {
+      return str;
+    }
+
+    @Override
+    public ByteBuffer readBinary() throws TException {
+      return ByteBuffer.wrap("str".getBytes());
+    }
   }
 }
