@@ -39,6 +39,13 @@ class DummyCreatorVisitor implements ThriftType.TypeVisitor {
          return new TMap();
        }
      });
+
+    dummyEvents.add(new ParquetProtocol("readMapEnd()") {
+      @Override
+      public void readMapEnd() throws TException {
+      }
+    });
+
   }
 
   @Override
@@ -47,6 +54,12 @@ class DummyCreatorVisitor implements ThriftType.TypeVisitor {
       @Override
       public TSet readSetBegin() throws TException {
         return new TSet();
+      }
+    });
+
+    dummyEvents.add(new ParquetProtocol("readSetEnd()") {
+      @Override
+      public void readSetEnd() throws TException {
       }
     });
   }
@@ -61,6 +74,12 @@ class DummyCreatorVisitor implements ThriftType.TypeVisitor {
         return new TList();
       }
     });
+
+    dummyEvents.add(new ParquetProtocol("readListEnd()") {
+      @Override
+      public void readListEnd() throws TException {
+      }
+    });
   }
 
   @Override
@@ -69,7 +88,7 @@ class DummyCreatorVisitor implements ThriftType.TypeVisitor {
     List<ThriftField> children = structType.getChildren();
     for (ThriftField child : children) {
       dummyEvents.add(new ReadFieldBeginProtocol(child));
-      child.getType().accept(this);
+      child.getType().accept(this); //currently will create all the attributes in struct, it's safer
       dummyEvents.add(ProtocolEventsGenerator.READ_FIELD_END);
     }
     dummyEvents.add(ProtocolEventsGenerator.READ_FIELD_STOP);
@@ -114,7 +133,7 @@ class DummyCreatorVisitor implements ThriftType.TypeVisitor {
     dummyEvents.add(new ParquetProtocol("readDouble()") {
       @Override
       public double readDouble() throws TException {
-        return 1.0;
+        return 0.0;
       }
     });
   }
@@ -144,14 +163,14 @@ class DummyCreatorVisitor implements ThriftType.TypeVisitor {
     dummyEvents.add(new ParquetProtocol("readI64()") {
       @Override
       public long readI64() throws TException {
-        return 1;
+        return 0;
       }
     });
   }
 
   @Override
   public void visit(ThriftType.StringType stringType) {
-    dummyEvents.add(new StringProtocol("dummy"));
+    dummyEvents.add(new StringProtocol(""));
   }
 
   public List<ParquetProtocol> getEvents() {

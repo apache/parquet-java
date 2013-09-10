@@ -27,6 +27,34 @@ struct TestPerson {
 }
 
 
+struct RequiredMapFixture {
+  1: optional string name,
+  2: required map<string,string> mavalue
+}
+
+struct RequiredListFixture {
+  1: optional string info,
+  2: required list<Name> names
+}
+
+struct RequiredSetFixture {
+  1: optional string info,
+  2: required set<Name> names
+}
+
+struct RequiredPrimitiveFixture {
+  1: required bool test_bool,
+  2: required byte test_byte,
+  3: required i16 test_i16,
+  4: required i32 test_i32,
+  5: required i64 test_i64,
+  6: required double test_double,
+  7: required string test_string,
+  8: optional string info_string
+}
+
+
+
 struct TestPersonWithRequiredPhone {
   1: required Name name,
   2: optional i32 age,

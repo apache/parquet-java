@@ -18,8 +18,7 @@ package parquet.hadoop.thrift;
 import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayOutputStream;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -33,6 +32,7 @@ import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TaskID;
+import org.apache.thrift.TBase;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -47,6 +47,10 @@ import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
+import parquet.thrift.test.RequiredListFixture;
+import parquet.thrift.test.RequiredMapFixture;
+import parquet.thrift.test.RequiredPrimitiveFixture;
+import parquet.thrift.test.RequiredSetFixture;
 
 public class TestParquetToThriftReadProjection {
 
@@ -68,18 +72,123 @@ public class TestParquetToThriftReadProjection {
             "  }\n" +
             "}";
     conf.set(ReadSupport.PARQUET_READ_SCHEMA, readProjectionSchema);
-    shouldDoProjection(conf);
+    TBase toWrite=new AddressBook(
+            Arrays.asList(
+                    new Person(
+                            new Name("Bob", "Roberts"),
+                            0,
+                            "bob.roberts@example.com",
+                            Arrays.asList(new PhoneNumber("1234567890")))));
+
+    TBase toRead=new AddressBook(
+            Arrays.asList(
+                    new Person(
+                            new Name("Bob", "Roberts"),
+                            0,
+                            null,
+                            null)));
+    shouldDoProjection(conf,toWrite,toRead,AddressBook.class);
   }
 
   @Test
-  public void testThriftOptionalFieldsWithReadProjectionUsingFilter() throws Exception {
-    Configuration conf = new Configuration();
+  public void testPullingInRequiredStructWithFilter() throws Exception {
     final String projectionFilterDesc = "persons/{id};persons/email";
-    conf.set(ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY, projectionFilterDesc);
-    shouldDoProjection(conf);
+    TBase toWrite=new AddressBook(
+            Arrays.asList(
+                    new Person(
+                            new Name("Bob", "Roberts"),
+                            0,
+                            "bob.roberts@example.com",
+                            Arrays.asList(new PhoneNumber("1234567890")))));
+
+    TBase toRead=new AddressBook(
+            Arrays.asList(
+                    new Person(
+                            new Name("", ""),
+                            0,
+                            "bob.roberts@example.com",
+                            null)));
+    shouldDoProjectionWithThriftColumnFilter(projectionFilterDesc,toWrite,toRead,AddressBook.class);
   }
 
-  private void shouldDoProjection(Configuration conf) throws Exception {
+  @Test
+  public void testNotPullInOptionalFields() throws Exception {
+    final String projectionFilterDesc = "nomatch";
+    TBase toWrite=new AddressBook(
+            Arrays.asList(
+                    new Person(
+                            new Name("Bob", "Roberts"),
+                            0,
+                            "bob.roberts@example.com",
+                            Arrays.asList(new PhoneNumber("1234567890")))));
+
+    TBase toRead=new AddressBook();
+    shouldDoProjectionWithThriftColumnFilter(projectionFilterDesc, toWrite, toRead,AddressBook.class);
+  }
+
+  @Test
+  public void testPullInRequiredMaps() throws Exception{
+    String filter="name";
+
+    Map<String,String> mapValue=new HashMap<String,String>();
+    mapValue.put("a","1");
+    mapValue.put("b","2");
+    RequiredMapFixture toWrite= new RequiredMapFixture(mapValue);
+    toWrite.setName("testName");
+
+    RequiredMapFixture toRead=new RequiredMapFixture(new HashMap<String,String>());
+    toRead.setName("testName");
+
+    shouldDoProjectionWithThriftColumnFilter(filter,toWrite,toRead,RequiredMapFixture.class);
+  }
+
+  @Test
+  public void testPullInRequiredLists() throws Exception{
+    String filter="info";
+
+    RequiredListFixture toWrite=new RequiredListFixture(Arrays.asList(new parquet.thrift.test.Name("first_name")));
+    toWrite.setInfo("test_info");
+
+    RequiredListFixture toRead=new RequiredListFixture(new ArrayList<parquet.thrift.test.Name>());
+    toRead.setInfo("test_info");
+
+    shouldDoProjectionWithThriftColumnFilter(filter,toWrite,toRead,RequiredListFixture.class);
+  }
+
+  @Test
+  public void testPullInRequiredSets() throws Exception{
+    String filter="info";
+
+    RequiredSetFixture toWrite=new RequiredSetFixture(new HashSet<parquet.thrift.test.Name>(Arrays.asList(new parquet.thrift.test.Name("first_name"))));
+    toWrite.setInfo("test_info");
+
+    RequiredSetFixture toRead=new RequiredSetFixture(new HashSet<parquet.thrift.test.Name>());
+    toRead.setInfo("test_info");
+
+    shouldDoProjectionWithThriftColumnFilter(filter,toWrite,toRead,RequiredSetFixture.class);
+  }
+
+  @Test
+  public void testPullInPrimitiveValues() throws Exception{
+    String filter="info_string";
+
+    RequiredPrimitiveFixture toWrite= new RequiredPrimitiveFixture(true,(byte)2,(short)3,4,(long)5,(double)6.0,"7");
+    toWrite.setInfo_string("it's info");
+
+    RequiredPrimitiveFixture toRead= new RequiredPrimitiveFixture(false,(byte)0,(short)0,0,(long)0,(double)0.0,"");
+    toRead.setInfo_string("it's info");
+
+    shouldDoProjectionWithThriftColumnFilter(filter,toWrite,toRead,RequiredPrimitiveFixture.class);
+  }
+
+  private void shouldDoProjectionWithThriftColumnFilter(String filterDesc,TBase toWrite, TBase toRead,Class<? extends TBase<?,?>> thriftClass) throws Exception {
+    Configuration conf = new Configuration();
+    conf.set(ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY, filterDesc);
+    shouldDoProjection(conf,toWrite,toRead,thriftClass);
+  }
+
+
+  private <T extends TBase<?,?>> void shouldDoProjection(Configuration conf,T recordToWrite,T exptectedReadResult, Class<? extends TBase<?,?>> thriftClass) throws Exception {
     final Path parquetFile = new Path("target/test/TestParquetToThriftReadProjection/file.parquet");
     final FileSystem fs = parquetFile.getFileSystem(conf);
     if (fs.exists(parquetFile)) {
@@ -89,43 +198,32 @@ public class TestParquetToThriftReadProjection {
     //create a test file
     final TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
     final TaskAttemptID taskId = new TaskAttemptID("local", 0, true, 0, 0);
-    final ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(parquetFile, new TaskAttemptContext(conf, taskId), protocolFactory, AddressBook.class);
+    final ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(parquetFile, new TaskAttemptContext(conf, taskId), protocolFactory, thriftClass);
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));
-    final AddressBook a = new AddressBook(
-            Arrays.asList(
-                    new Person(
-                            new Name("Bob", "Roberts"),
-                            0,
-                            "bob.roberts@example.com",
-                            Arrays.asList(new PhoneNumber("1234567890")))));
-    a.write(protocol);
+
+    recordToWrite.write(protocol);
     w.write(new BytesWritable(baos.toByteArray()));
     w.close();
 
 
-    final ParquetThriftInputFormat<AddressBook> parquetThriftInputFormat = new ParquetThriftInputFormat<AddressBook>();
+    final ParquetThriftInputFormat<T> parquetThriftInputFormat = new ParquetThriftInputFormat<T>();
     final Job job = new Job(conf, "read");
     job.setInputFormatClass(ParquetThriftInputFormat.class);
     ParquetThriftInputFormat.setInputPaths(job, parquetFile);
     final JobID jobID = new JobID("local", 1);
     List<InputSplit> splits = parquetThriftInputFormat.getSplits(new JobContext(ContextUtil.getConfiguration(job), jobID));
-    AddressBook expected = a.deepCopy();
-    for (Person person: expected.getPersons()) {
-    	person.unsetEmail();
-    	person.unsetPhones();
-    }
-    AddressBook readValue = null;
+    T readValue = null;
     for (InputSplit split : splits) {
       TaskAttemptContext taskAttemptContext = new TaskAttemptContext(ContextUtil.getConfiguration(job), new TaskAttemptID(new TaskID(jobID, true, 1), 0));
-      final RecordReader<Void, AddressBook> reader = parquetThriftInputFormat.createRecordReader(split, taskAttemptContext);
+      final RecordReader<Void, T> reader = parquetThriftInputFormat.createRecordReader(split, taskAttemptContext);
       reader.initialize(split, taskAttemptContext);
       if (reader.nextKeyValue()) {
         readValue = reader.getCurrentValue();
         LOG.info(readValue);
       }
     }
-    assertEquals(expected, readValue);
+    assertEquals(exptectedReadResult, readValue);
 
   }
 
