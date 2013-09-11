@@ -38,7 +38,7 @@ public class TestReadWrite {
   @Test
   public void test() throws Exception {
     Schema schema = new Schema.Parser().parse(
-        Resources.getResource("all-minus-fixed.avsc").openStream());
+        Resources.getResource("all.avsc").openStream());
 
     File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
     tmp.deleteOnExit();
@@ -70,9 +70,8 @@ public class TestReadWrite {
         .set("myarray", genericIntegerArray)
         .set("myoptionalarray", genericIntegerArray)
         .set("mymap", ImmutableMap.of("a", 1, "b", 2))
-        // TODO: support fixed encoding by plumbing in FIXED_LEN_BYTE_ARRAY
-        //.set("myfixed", new GenericData.Fixed(Schema.createFixed("ignored", null, null, 1),
-        //    new byte[] { (byte) 65 }))
+        .set("myfixed", new GenericData.Fixed(Schema.createFixed("ignored", null, null, 1),
+            new byte[] { (byte) 65 }))
         .build();
     writer.write(record);
     writer.close();
@@ -94,6 +93,6 @@ public class TestReadWrite {
     assertEquals(integerArray, nextRecord.get("myarray"));
     assertEquals(integerArray, nextRecord.get("myoptionalarray"));
     assertEquals(ImmutableMap.of("a", 1, "b", 2), nextRecord.get("mymap"));
-    //assertEquals(new byte[] { (byte) 65 }, nextRecord.get("myfixed"));
+    assertEquals(new byte[] { (byte) 65 }, nextRecord.get("myfixed"));
   }
 }
