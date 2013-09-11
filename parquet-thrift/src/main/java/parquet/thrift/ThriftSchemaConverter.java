@@ -62,8 +62,6 @@ public class ThriftSchemaConverter {
     return convertedMessageType;
   }
 
-
-
   public ThriftType.StructType toStructType(Class<? extends TBase<?, ?>> thriftClass) {
     final TStructDescriptor struct = TStructDescriptor.getInstance(thriftClass);
     return toStructType(struct);

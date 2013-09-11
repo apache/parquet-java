@@ -1,3 +1,19 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package parquet.thrift;
 
 import parquet.schema.*;
@@ -16,19 +32,18 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 import static parquet.schema.Type.Repetition.*;
 
 /**
- * Created with IntelliJ IDEA.
- * User: tdeng
- * Date: 9/10/13
- * Time: 4:24 PM
- * To change this template use File | Settings | File Templates.
+ * Visitor Class for converting a thrift definiton to parquet message type.
+ * Projection can be done by providing a {@link FieldProjectionFilter}
+ *
+ * @author Tianshuo Deng
  */
 public class SchemaConvertVisitor implements ThriftType.TypeVisitor {
 
   FieldProjectionFilter fieldProjectionFilter;
   Type currentType;
   FieldsPath currentFieldPath = new FieldsPath();
-  Type.Repetition currentRepetition = Type.Repetition.REPEATED;//MessageType is Prepeated GroupType
-  String currentName = "ParquetSchema";//TODO change this to "ParquetSchema"
+  Type.Repetition currentRepetition = Type.Repetition.REPEATED;//MessageType is repeated GroupType
+  String currentName = "ParquetSchema";
 
   public SchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter) {
     this.fieldProjectionFilter = fieldProjectionFilter;
@@ -45,7 +60,6 @@ public class SchemaConvertVisitor implements ThriftType.TypeVisitor {
 
     //=========handle key
     currentFieldPath.push(mapKeyField);
-    //Type keyType = toSchema("key", mapKeyField, REQUIRED, currentFieldPath);
     currentName = "key";
     currentRepetition = REQUIRED;
     mapKeyField.getType().accept(this);
@@ -54,7 +68,6 @@ public class SchemaConvertVisitor implements ThriftType.TypeVisitor {
 
     //=========handle value
     currentFieldPath.push(mapValueField);
-//    Type valueType = toSchema("value", mapValueField, OPTIONAL, currentFieldPath);
     currentName = "value";
     currentRepetition = OPTIONAL;
     mapValueField.getType().accept(this);
@@ -82,11 +95,10 @@ public class SchemaConvertVisitor implements ThriftType.TypeVisitor {
     final ThriftField setElemField = setType.getValues();
     String setName = currentName;
     Type.Repetition setRepetition = currentRepetition;
-    currentName = currentName + "_tuple";//TODO: do I need to recover the env??
+    currentName = currentName + "_tuple";
     currentRepetition = REPEATED;
     setElemField.getType().accept(this);
     //after convertion, currentType is the nested type
-    //Type nestedType = toSchema(name + "_tuple", setElemField, REPEATED, currentFieldPath);
     if (currentType == null) {
       return;
     } else {
@@ -99,11 +111,10 @@ public class SchemaConvertVisitor implements ThriftType.TypeVisitor {
     final ThriftField setElemField = listType.getValues();
     String listName = currentName;
     Type.Repetition listRepetition = currentRepetition;
-    currentName = currentName + "_tuple";//TODO: do I need to recover the env??
+    currentName = currentName + "_tuple";
     currentRepetition = REPEATED;
     setElemField.getType().accept(this);
     //after convertion, currentType is the nested type
-    //Type nestedType = toSchema(name + "_tuple", setElemField, REPEATED, currentFieldPath);
     if (currentType == null) {
       return;
     } else {
@@ -114,11 +125,10 @@ public class SchemaConvertVisitor implements ThriftType.TypeVisitor {
 
   public MessageType getConvertedMessageType() {
     // the root should be a GroupType
-    if(currentType==null)
-      return new MessageType(currentName,new ArrayList<Type>());
+    if (currentType == null)
+      return new MessageType(currentName, new ArrayList<Type>());
 
     GroupType rootType = (GroupType) currentType;
-
     return new MessageType(currentName, rootType.getFields());
   }
 
@@ -133,10 +143,10 @@ public class SchemaConvertVisitor implements ThriftType.TypeVisitor {
 
     currentName = oldName;
     currentRepetition = oldRepetition;
-    if (types.size()>0){
-    currentType = new GroupType(currentRepetition, currentName, types);
-    }else{
-      currentType=null;
+    if (types.size() > 0) {
+      currentType = new GroupType(currentRepetition, currentName, types);
+    } else {
+      currentType = null;
     }
   }
 
@@ -157,82 +167,66 @@ public class SchemaConvertVisitor implements ThriftType.TypeVisitor {
     return types;
   }
 
+  private boolean isCurrentlyMatchedFilter(){
+     if(!fieldProjectionFilter.isMatched(currentFieldPath)){
+       currentType=null;
+       return false;
+     }
+    return true;
+  }
+
   @Override
   public void visit(ThriftType.EnumType enumType) {
-    if (!fieldProjectionFilter.isMatched(currentFieldPath)) {
-      System.out.println("not matching:" + currentFieldPath.toString());
-      currentType = null;
-    } else {
+    if (isCurrentlyMatchedFilter()){
       currentType = new PrimitiveType(currentRepetition, BINARY, currentName, ENUM);
     }
   }
 
   @Override
   public void visit(ThriftType.BoolType boolType) {
-    if (!fieldProjectionFilter.isMatched(currentFieldPath)) {
-      System.out.println("not matching:" + currentFieldPath.toString());
-      currentType = null;
-    } else {
+    if (isCurrentlyMatchedFilter()){
       currentType = new PrimitiveType(currentRepetition, BOOLEAN, currentName);
     }
   }
 
   @Override
   public void visit(ThriftType.ByteType byteType) {
-    if (!fieldProjectionFilter.isMatched(currentFieldPath)) {
-      System.out.println("not matching:" + currentFieldPath.toString());
-      currentType = null;
-    } else {
+    if (isCurrentlyMatchedFilter()){
       currentType = new PrimitiveType(currentRepetition, INT32, currentName);
     }
   }
 
   @Override
   public void visit(ThriftType.DoubleType doubleType) {
-    if (!fieldProjectionFilter.isMatched(currentFieldPath)) {
-      System.out.println("not matching:" + currentFieldPath.toString());
-      currentType = null;
-    } else {
+    if (isCurrentlyMatchedFilter()){
       currentType = new PrimitiveType(currentRepetition, DOUBLE, currentName);
     }
   }
 
   @Override
   public void visit(ThriftType.I16Type i16Type) {
-    if (!fieldProjectionFilter.isMatched(currentFieldPath)) {
-      System.out.println("not matching:" + currentFieldPath.toString());
-      currentType = null;
-    } else {
+    if (isCurrentlyMatchedFilter()){
       currentType = new PrimitiveType(currentRepetition, INT32, currentName);
     }
   }
 
   @Override
   public void visit(ThriftType.I32Type i32Type) {
-    if (!fieldProjectionFilter.isMatched(currentFieldPath)) {
-      System.out.println("not matching:" + currentFieldPath.toString());
-      currentType = null;
-    } else {
+    if (isCurrentlyMatchedFilter()){
       currentType = new PrimitiveType(currentRepetition, INT32, currentName);
     }
   }
 
   @Override
   public void visit(ThriftType.I64Type i64Type) {
-    if (!fieldProjectionFilter.isMatched(currentFieldPath)) {
-      System.out.println("not matching:" + currentFieldPath.toString());
-      currentType = null;
-    } else {
+    if (isCurrentlyMatchedFilter()){
       currentType = new PrimitiveType(currentRepetition, INT64, currentName);
     }
   }
 
   @Override
   public void visit(ThriftType.StringType stringType) {
-    if (!fieldProjectionFilter.isMatched(currentFieldPath)) {
-      System.out.println("not matching:" + currentFieldPath.toString());
-      currentType = null;
-    } else {
+    if (isCurrentlyMatchedFilter()){
       currentType = new PrimitiveType(currentRepetition, BINARY, currentName, UTF8);
     }
   }
