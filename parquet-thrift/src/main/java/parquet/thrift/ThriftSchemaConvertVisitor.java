@@ -37,7 +37,7 @@ import static parquet.schema.Type.Repetition.*;
  *
  * @author Tianshuo Deng
  */
-public class SchemaConvertVisitor implements ThriftType.TypeVisitor {
+public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
 
   FieldProjectionFilter fieldProjectionFilter;
   Type currentType;
@@ -45,7 +45,7 @@ public class SchemaConvertVisitor implements ThriftType.TypeVisitor {
   Type.Repetition currentRepetition = Type.Repetition.REPEATED;//MessageType is repeated GroupType
   String currentName = "ParquetSchema";
 
-  public SchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter) {
+  public ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter) {
     this.fieldProjectionFilter = fieldProjectionFilter;
   }
 

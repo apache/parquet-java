@@ -19,11 +19,8 @@ import com.twitter.elephantbird.thrift.TStructDescriptor;
 import com.twitter.elephantbird.thrift.TStructDescriptor.Field;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TEnum;
-import org.apache.thrift.protocol.TType;
 import parquet.schema.*;
 import parquet.thrift.projection.FieldProjectionFilter;
-import parquet.thrift.projection.FieldsPath;
-import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftField.Requirement;
 import parquet.thrift.struct.ThriftType;
@@ -33,11 +30,6 @@ import parquet.thrift.struct.ThriftTypeID;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
-import static parquet.schema.OriginalType.ENUM;
-import static parquet.schema.OriginalType.UTF8;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
-import static parquet.schema.Type.Repetition.*;
 
 public class ThriftSchemaConverter {
 
@@ -56,7 +48,7 @@ public class ThriftSchemaConverter {
   }
 
   public MessageType convert(StructType thriftClass) {
-    SchemaConvertVisitor visitor = new SchemaConvertVisitor(fieldProjectionFilter);
+    ThriftSchemaConvertVisitor visitor = new ThriftSchemaConvertVisitor(fieldProjectionFilter);
     thriftClass.accept(visitor);
     MessageType convertedMessageType = visitor.getConvertedMessageType();
     return convertedMessageType;
