@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 package parquet.thrift;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import org.apache.thrift.TBase;
 
@@ -99,13 +97,16 @@ public class ThriftMetaData {
     if (thriftClassName == null && thriftDescriptorString == null) {
       return null;
     }
-    final StructType descriptor;
-    try {
-      descriptor = (StructType)ThriftType.fromJSON(thriftDescriptorString);
-    } catch (RuntimeException e) {
-      throw new BadConfigurationException("Could not read the thrift descriptor " + thriftDescriptorString, e);
-    }
+    final StructType descriptor = parseDescriptor(thriftDescriptorString);
     return new ThriftMetaData(thriftClassName, descriptor);
+  }
+
+  private static StructType parseDescriptor(String json) {
+    try {
+      return (StructType)ThriftType.fromJSON(json);
+    } catch (RuntimeException e) {
+      throw new BadConfigurationException("Could not read the thrift descriptor " + json, e);
+    }
   }
 
   /**
@@ -125,6 +126,15 @@ public class ThriftMetaData {
    */
   public static Set<String> getThriftClassNames(Map<String, Set<String>> fileMetadata) {
     return fileMetadata.get(THRIFT_CLASS);
+  }
+
+  public static List<StructType> getDescriptor(Map<String, Set<String>> fileMetadata) {
+    Set<String> jsons = fileMetadata.get(THRIFT_DESCRIPTOR);
+    List<StructType> result = new ArrayList<StructType>(jsons.size());
+    for (String json : jsons) {
+      result.add(parseDescriptor(json));
+    }
+    return result;
   }
 
   @Override

@@ -188,7 +188,7 @@ public class TestParquetToThriftReadProjection {
   }
 
 
-  private <T extends TBase<?,?>> void shouldDoProjection(Configuration conf,T recordToWrite,T exptectedReadResult, Class<? extends TBase<?,?>> thriftClass) throws Exception {
+  private <T extends TBase<?,?>,S> void shouldDoProjection(Configuration conf,T recordToWrite,S exptectedReadResult, Class<? extends TBase<?,?>> thriftClass) throws Exception {
     final Path parquetFile = new Path("target/test/TestParquetToThriftReadProjection/file.parquet");
     final FileSystem fs = parquetFile.getFileSystem(conf);
     if (fs.exists(parquetFile)) {
@@ -206,17 +206,17 @@ public class TestParquetToThriftReadProjection {
     w.write(new BytesWritable(baos.toByteArray()));
     w.close();
 
-
-    final ParquetThriftInputFormat<T> parquetThriftInputFormat = new ParquetThriftInputFormat<T>();
+    //S could be TBASE or Scrooge
+    final ParquetThriftInputFormat<S> parquetThriftInputFormat = new ParquetThriftInputFormat<S>();
     final Job job = new Job(conf, "read");
     job.setInputFormatClass(ParquetThriftInputFormat.class);
     ParquetThriftInputFormat.setInputPaths(job, parquetFile);
     final JobID jobID = new JobID("local", 1);
     List<InputSplit> splits = parquetThriftInputFormat.getSplits(new JobContext(ContextUtil.getConfiguration(job), jobID));
-    T readValue = null;
+    S readValue = null;
     for (InputSplit split : splits) {
       TaskAttemptContext taskAttemptContext = new TaskAttemptContext(ContextUtil.getConfiguration(job), new TaskAttemptID(new TaskID(jobID, true, 1), 0));
-      final RecordReader<Void, T> reader = parquetThriftInputFormat.createRecordReader(split, taskAttemptContext);
+      final RecordReader<Void, S> reader = parquetThriftInputFormat.createRecordReader(split, taskAttemptContext);
       reader.initialize(split, taskAttemptContext);
       if (reader.nextKeyValue()) {
         readValue = reader.getCurrentValue();

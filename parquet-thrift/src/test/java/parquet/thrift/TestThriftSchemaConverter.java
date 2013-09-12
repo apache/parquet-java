@@ -21,6 +21,7 @@ import com.twitter.elephantbird.thrift.test.TestStructInMap;
 import org.junit.Test;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
+import parquet.scrooge.test.Name$;
 import parquet.thrift.projection.FieldProjectionFilter;
 import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftType;
@@ -185,24 +186,6 @@ public class TestThriftSchemaConverter {
             "}", TestStructInMap.class);
   }
 
-//  @Test
-//  public void testPullInRequiredFields(){
-//    shouldGetProjectedSchema("age","message TestPerson {\n" +
-//            "  required group name {\n" +
-//            "    required binary first_name (UTF8);\n" +
-//            "  }\n" +
-//            "  optional int32 age;\n" +
-//            "}",TestPerson.class);
-//
-//    shouldGetProjectedSchema("age","message TestPerson {\n" +
-//            "  required group name {\n" +
-//            "    required binary first_name (UTF8);\n" +
-//            "  }\n" +
-//            "  optional int32 age;\n" +
-//            "}",TestPerson.class);
-////    System.out.println(getFilteredSchema("**",TestPerson.class));
-//  }
-
   @Test
   public void testProjectOnlyKeyInMap() {
     shouldGetProjectedSchema("name;names/key","message ParquetSchema {\n" +
@@ -229,6 +212,11 @@ public class TestThriftSchemaConverter {
   private MessageType getFilteredSchema(String filterDesc, Class thriftClass) {
     FieldProjectionFilter fieldProjectionFilter = new FieldProjectionFilter(filterDesc);
     return new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftClass);
+  }
+
+  @Test
+  public void testScrooge(){
+    System.out.println("!!!!!!!!!!!!!!!!!!!!!!"+Name$.class.getCanonicalName());
   }
 
   @Test
