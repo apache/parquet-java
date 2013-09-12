@@ -40,8 +40,6 @@ import static org.junit.Assert.assertEquals;
  * To change this template use File | Settings | File Templates.
  */
 public class ParquetScroogeSchemeTest {
-  private static final Log LOG = Log.getLog(TestParquetToThriftReadProjection.class);
-
   @Test
   public void testThriftOptionalFieldsWithReadProjectionUsingParquetSchema() throws Exception {
     // test with projection
@@ -167,6 +165,55 @@ public class ParquetScroogeSchemeTest {
     shouldDoProjectionWithThriftColumnFilter(filter,toWrite,toRead,RequiredPrimitiveFixture.class);
   }
 
+  @Test
+  public void testScroogeRead() throws Exception{
+    Configuration conf = new Configuration();
+    conf.set(ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY, "**");
+    conf.set("parquet.thrift.converter.class",ScroogeRecordConverter.class.getCanonicalName());
+    conf.set(ThriftReadSupport.THRIFT_READ_CLASS_KEY,"parquet.scrooge.test.RequiredPrimitiveFixture");
+
+    RequiredPrimitiveFixture recordToWrite= new RequiredPrimitiveFixture(true,(byte)2,(short)3,4,(long)5,(double)6.0,"7");
+
+    final Path parquetFile = new Path("target/test/TestParquetToThriftReadProjection/file.parquet");
+    final FileSystem fs = parquetFile.getFileSystem(conf);
+    if (fs.exists(parquetFile)) {
+      fs.delete(parquetFile, true);
+    }
+
+    //create a test file
+    final TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
+    final TaskAttemptID taskId = new TaskAttemptID("local", 0, true, 0, 0);
+    final ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(parquetFile, new TaskAttemptContext(conf, taskId), protocolFactory, RequiredPrimitiveFixture.class);
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));
+
+    recordToWrite.write(protocol);
+    w.write(new BytesWritable(baos.toByteArray()));
+    w.close();
+
+    //S could be TBASE or Scrooge
+    final ParquetThriftInputFormat<parquet.scrooge.test.RequiredPrimitiveFixture> parquetThriftInputFormat = new ParquetThriftInputFormat<parquet.scrooge.test.RequiredPrimitiveFixture>();
+    final Job job = new Job(conf, "read");
+    job.setInputFormatClass(ParquetThriftInputFormat.class);
+    ParquetThriftInputFormat.setInputPaths(job, parquetFile);
+    final JobID jobID = new JobID("local", 1);
+    List<InputSplit> splits = parquetThriftInputFormat.getSplits(new JobContext(ContextUtil.getConfiguration(job), jobID));
+    parquet.scrooge.test.RequiredPrimitiveFixture readValue = null;
+    for (InputSplit split : splits) {
+      TaskAttemptContext taskAttemptContext = new TaskAttemptContext(ContextUtil.getConfiguration(job), new TaskAttemptID(new TaskID(jobID, true, 1), 0));
+      final RecordReader<Void, parquet.scrooge.test.RequiredPrimitiveFixture> reader = parquetThriftInputFormat.createRecordReader(split, taskAttemptContext);
+      reader.initialize(split, taskAttemptContext);
+      if (reader.nextKeyValue()) {
+        readValue = reader.getCurrentValue();
+//        LOG.info(readValue);
+      }
+    }
+    System.out.println(readValue);
+
+
+
+  }
+
   private void shouldDoProjectionWithThriftColumnFilter(String filterDesc,TBase toWrite, TBase toRead,Class<? extends TBase<?,?>> thriftClass) throws Exception {
     Configuration conf = new Configuration();
     conf.set(ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY, filterDesc);
@@ -206,7 +253,7 @@ public class ParquetScroogeSchemeTest {
       reader.initialize(split, taskAttemptContext);
       if (reader.nextKeyValue()) {
         readValue = reader.getCurrentValue();
-        LOG.info(readValue);
+//        LOG.info(readValue);
       }
     }
     assertEquals(exptectedReadResult, readValue);
