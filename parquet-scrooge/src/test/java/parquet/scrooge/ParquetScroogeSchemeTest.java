@@ -186,28 +186,28 @@ public class ParquetScroogeSchemeTest {
   @Test
   public void testScroogeRead() throws Exception{
 //    Class<?> companionClass=Class.forName(parquet.scrooge.test.RequiredPrimitiveFixture.class.getName()+"$");
-    Class<?> companionClass=Class.forName(parquet.scrooge.test.TestPersonWithRequiredPhone.class.getName()+"$");
-    ThriftStructCodec cObject=(ThriftStructCodec<?>)companionClass.getField("MODULE$").get(null);
-
-    Iterable<ThriftStructField> ss = JavaConversions.asIterable(cObject.metaData().fields());
-    for(ThriftStructField f:ss){
-      System.out.println(f.tfield().name);
-      String fieldName=f.tfield().name;
-      short fieldId=f.tfield().id;
-      byte thriftType=f.tfield().type;
-      System.out.println("ho");
-    }
+//    Class<?> companionClass=Class.forName(parquet.scrooge.test.TestPersonWithRequiredPhone.class.getName()+"$");
+//    ThriftStructCodec cObject=(ThriftStructCodec<?>)companionClass.getField("MODULE$").get(null);
+//
+//    Iterable<ThriftStructField> ss = JavaConversions.asIterable(cObject.metaData().fields());
+//    for(ThriftStructField f:ss){
+//      System.out.println(f.tfield().name);
+//      String fieldName=f.tfield().name;
+//      short fieldId=f.tfield().id;
+//      byte thriftType=f.tfield().type;
+//      System.out.println("ho");
+//    }
 
 
 
 
     Configuration conf = new Configuration();
-    conf.set(ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY, "**");
+//    conf.set(ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY, "**");
     conf.set("parquet.thrift.converter.class",ScroogeRecordConverter.class.getCanonicalName());
     conf.set(ThriftReadSupport.THRIFT_READ_CLASS_KEY,"parquet.scrooge.test.RequiredPrimitiveFixture");
 
     RequiredPrimitiveFixture recordToWrite= new RequiredPrimitiveFixture(true,(byte)2,(short)3,4,(long)5,(double)6.0,"7");
-
+    recordToWrite.setInfo_string("ss");
     final Path parquetFile = new Path("target/test/TestParquetToThriftReadProjection/file.parquet");
     final FileSystem fs = parquetFile.getFileSystem(conf);
     if (fs.exists(parquetFile)) {

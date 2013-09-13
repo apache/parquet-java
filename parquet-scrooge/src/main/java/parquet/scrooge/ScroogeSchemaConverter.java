@@ -18,7 +18,7 @@ public class ScroogeSchemaConverter {
     Class<?> companionClass = Class.forName(className + "$");
     ThriftStructCodec cObject = (ThriftStructCodec<?>) companionClass.getField("MODULE$").get(null);
 
-    List<ThriftField> children=new ArrayList<ThriftField>();
+    List<ThriftField> children = new ArrayList<ThriftField>();
     Iterable<ThriftStructField> ss = JavaConversions.asIterable(cObject.metaData().fields());
     for (ThriftStructField f : ss) {
       children.add(toThriftField(f));//TODO should I check requirement here?
@@ -27,18 +27,27 @@ public class ScroogeSchemaConverter {
   }
 
   public ThriftField toThriftField(ThriftStructField f) throws Exception {
+    //TODO: if the return type is Option then set the requirement to be Optional
+    ThriftField.Requirement requirement = ThriftField.Requirement.REQUIRED;
+    if (isOptional(f)) {
+        requirement=ThriftField.Requirement.OPTIONAL;
+    }
+    //TODO: default to optional or required????
+
     String fieldName = f.tfield().name;
     short fieldId = f.tfield().id;
     byte thriftTypeByte = f.tfield().type;
     ThriftTypeID typeId = ThriftTypeID.fromByte(thriftTypeByte);
     System.out.println(fieldName);
 
-    ThriftType resultType=null;
+
+    ThriftType resultType = null;
     switch (ThriftTypeID.fromByte(thriftTypeByte)) {
       case STOP:
       case VOID:
       default:
         throw new UnsupportedOperationException("can't convert type");
+        // Primitive type can be inspected from type of TField, it should be accurate
       case BOOL:
         resultType = new ThriftType.BoolType();
         break;
@@ -61,10 +70,11 @@ public class ScroogeSchemaConverter {
         resultType = new ThriftType.StringType();
         break;
       case STRUCT:
-        String innerName = f.method().getReturnType().getName();
-        System.out.println(">>>" + innerName);
-        traverseStruct(innerName);
-        System.out.println("<<<" + innerName);
+        resultType= convertStructTypeField(f);
+//        String innerName = f.method().getReturnType().getName();
+//        System.out.println(">>>" + innerName);
+//        traverseStruct(innerName);
+//        System.out.println("<<<" + innerName);
         break;
       case MAP:
         Type[] gTypes = ((ParameterizedType) (f.method().getGenericReturnType())).getActualTypeArguments();
@@ -101,13 +111,31 @@ public class ScroogeSchemaConverter {
     if (ThriftTypeID.fromByte(f.tfield().type) == ThriftTypeID.STRUCT) {
       String innerName = f.method().getReturnType().getName();
       System.out.println(">>>" + innerName);
-      traverseStruct(innerName);
+//      traverseStruct(innerName);
       System.out.println("<<<" + innerName);
     }
-    return new ThriftField(fieldName,fieldId, ThriftField.Requirement.DEFAULT,resultType);
+    return new ThriftField(fieldName, fieldId, ThriftField.Requirement.DEFAULT, resultType);
+  }
+
+  private ThriftType convertStructTypeField(ThriftStructField f) {
+    //TODO;can struct be optional??
+    Type structClassType=f.method().getReturnType();
+    if(isOptional(f)){
+      structClassType=extractClassFromOption(structClassType);
+    }
+    return null;
+  }
+
+  private Type extractClassFromOption(Type structClassType) {
+    System.out.println("TODO");
+    return null;
+  }
+
+  private boolean isOptional(ThriftStructField f) {
+    return f.method().getReturnType() == scala.Option.class;
   }
 
   public ThriftType.StructType convert(Class scroogeClass) throws Exception {
-      return traverseStruct(scroogeClass.getName());
+    return convertStruct(scroogeClass.getName());
   }
 }
