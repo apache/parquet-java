@@ -790,7 +790,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     super();
     this.thriftReader = thriftReader;
     this.protocol = new ParquetReadProtocol();
-    this.thriftType=thriftType;
+    this.thriftType = thriftType;
     this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
   }
 
@@ -802,7 +802,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   @Override
   public T getCurrentRecord() {
     try {
-      List<TProtocol> fixedEvents=new ProtocolEventsAmender(rootEvents).amendMissingRequiredFields(thriftType);
+      List<TProtocol> fixedEvents = new ProtocolEventsAmender(rootEvents).amendMissingRequiredFields(thriftType);
       protocol.addAll(fixedEvents);
       rootEvents.clear();
       return thriftReader.readOneRecord(protocol);

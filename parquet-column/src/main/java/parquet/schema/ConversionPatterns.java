@@ -15,23 +15,23 @@
  */
 package parquet.schema;
 
-import static parquet.schema.OriginalType.*;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type.Repetition;
+
+import static parquet.schema.OriginalType.*;
 
 /**
  * Utility functions to convert from Java-like map and list types
  * to equivalent Parquet types.
- *
- * TODO(julien): this class appears to be unused. Is it dead code?
  */
 public abstract class ConversionPatterns {
   /**
    * to preserve the difference between empty list and null when optional
+   *
    * @param repetition
-   * @param alias name of the field
+   * @param alias        name of the field
    * @param originalType
-   * @param nested the nested repeated field
+   * @param nested       the nested repeated field
    * @return a group type
    */
   private static GroupType listWrapper(Repetition repetition, String alias, OriginalType originalType, Type nested) {
@@ -40,22 +40,22 @@ public abstract class ConversionPatterns {
     }
     return new GroupType(repetition, alias, originalType, nested);
   }
-  
+
   public static GroupType mapType(Repetition repetition, String alias, Type keyType, Type valueType) {
     return mapType(repetition, alias, "map", keyType, valueType);
   }
-  
+
   public static GroupType stringKeyMapType(Repetition repetition, String alias, String mapAlias, Type valueType) {
     return mapType(repetition, alias, mapAlias, new PrimitiveType(Repetition.REQUIRED, PrimitiveTypeName.BINARY, "key", OriginalType.UTF8), valueType);
   }
-  
+
   public static GroupType stringKeyMapType(Repetition repetition, String alias, Type valueType) {
     return stringKeyMapType(repetition, alias, "map", valueType);
   }
-  
+
   public static GroupType mapType(Repetition repetition, String alias, String mapAlias, Type keyType, Type valueType) {
     //support projection only on key of a map
-    if (valueType==null)
+    if (valueType == null) {
       return listWrapper(
               repetition,
               alias,
@@ -66,37 +66,36 @@ public abstract class ConversionPatterns {
                       MAP_KEY_VALUE,
                       keyType)
       );
-
-    if (!valueType.getName().equals("value")) {
-      throw new RuntimeException(valueType.getName() + " should be value");
+    } else {
+      if (!valueType.getName().equals("value")) {
+        throw new RuntimeException(valueType.getName() + " should be value");
+      }
+      return listWrapper(
+              repetition,
+              alias,
+              MAP,
+              new GroupType(
+                      Repetition.REPEATED,
+                      mapAlias,
+                      MAP_KEY_VALUE,
+                      keyType,
+                      valueType)
+      );
     }
-    return listWrapper(
-        repetition,
-        alias,
-        MAP,
-        new GroupType(
-            Repetition.REPEATED,
-            mapAlias,
-            MAP_KEY_VALUE,
-            keyType,
-            valueType)
-        );
   }
 
-
   /**
-   *
    * @param repetition
-   * @param alias name of the field
+   * @param alias      name of the field
    * @param nestedType
    * @return
    */
   public static GroupType listType(Repetition repetition, String alias, Type nestedType) {
     return listWrapper(
-        repetition,
-        alias,
-        LIST,
-        nestedType
-        );
+            repetition,
+            alias,
+            LIST,
+            nestedType
+    );
   }
 }

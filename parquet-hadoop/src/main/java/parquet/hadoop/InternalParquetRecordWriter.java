@@ -27,11 +27,14 @@ import parquet.schema.MessageType;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
+import static parquet.Log.DEBUG;
 
 class InternalParquetRecordWriter<T> {
   private static final Log LOG = Log.getLog(InternalParquetRecordWriter.class);
 
   private static final int MINIMUM_BUFFER_SIZE = 64 * 1024;
+  private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
+  private static final int MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
 
   private final ParquetFileWriter w;
   private final WriteSupport<T> writeSupport;
@@ -44,7 +47,7 @@ class InternalParquetRecordWriter<T> {
   private final boolean validating;
 
   private long recordCount = 0;
-  private long recordCountForNextMemCheck = 100;
+  private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
 
   private ColumnWriteStoreImpl store;
   private ColumnChunkPageWriteStore pageStore;
@@ -110,11 +113,14 @@ class InternalParquetRecordWriter<T> {
         LOG.info("mem size " + memSize + " > " + blockSize + ": flushing " + recordCount + " records to disk.");
         flushStore();
         initStore();
-        recordCountForNextMemCheck = Math.max(100, recordCount / 2);
+        recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
       } else {
         float recordSize = (float) memSize / recordCount;
-        recordCountForNextMemCheck = Math.max(100, (recordCount + (long)(blockSize / recordSize)) / 2); // will check halfway
-        LOG.debug("Checked mem at " + recordCount + " will check again at: " + recordCountForNextMemCheck);
+        recordCountForNextMemCheck = min(
+            max(MINIMUM_RECORD_COUNT_FOR_CHECK, (recordCount + (long)(blockSize / recordSize)) / 2), // will check halfway
+            recordCount + MAXIMUM_RECORD_COUNT_FOR_CHECK // will not look more than max records ahead
+            );
+        if (DEBUG) LOG.debug("Checked mem at " + recordCount + " will check again at: " + recordCountForNextMemCheck);
       }
     }
   }
@@ -122,6 +128,9 @@ class InternalParquetRecordWriter<T> {
   private void flushStore()
       throws IOException {
     LOG.info("Flushing mem store to file. allocated memory: " + store.allocatedSize());
+    if (store.allocatedSize() > 3 * blockSize) {
+      LOG.warn("Too much memory used: " + store.memUsageString());
+    }
     w.startBlock(recordCount);
     store.flush();
     pageStore.flushToFileWriter(w);
