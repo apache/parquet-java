@@ -239,17 +239,16 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
    */
   private Type.Repetition getRepetition(ThriftField thriftField) {
     if (thriftField == null) {
-      return OPTIONAL; // TODO: check this
+      return OPTIONAL;
     }
 
-    //TODO: confirm with Julien
     switch (thriftField.getRequirement()) {
       case REQUIRED:
         return REQUIRED;
       case OPTIONAL:
         return OPTIONAL;
       case DEFAULT:
-        return OPTIONAL; // ??? TODO: check this
+        return OPTIONAL;
       default:
         throw new IllegalArgumentException("unknown requirement type: " + thriftField.getRequirement());
     }
