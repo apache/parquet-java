@@ -23,8 +23,6 @@ import static parquet.schema.OriginalType.*;
 /**
  * Utility functions to convert from Java-like map and list types
  * to equivalent Parquet types.
- * <p/>
- * TODO(julien): this class appears to be unused. Is it dead code?
  */
 public abstract class ConversionPatterns {
   /**
