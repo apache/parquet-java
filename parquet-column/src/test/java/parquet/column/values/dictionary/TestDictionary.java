@@ -17,6 +17,7 @@ package parquet.column.values.dictionary;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static parquet.column.Encoding.PLAIN;
 import static parquet.column.Encoding.PLAIN_DICTIONARY;
 
 import java.io.IOException;
@@ -37,6 +38,7 @@ import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDiction
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
 import parquet.column.values.plain.BinaryPlainValuesReader;
+import parquet.column.values.plain.PlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.DoublePlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.FloatPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.IntegerPlainValuesReader;
@@ -51,7 +53,7 @@ public class TestDictionary {
   public void testBinaryDictionary() throws IOException {
 
     int COUNT = 100;
-    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(10000, 10000);
+    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(100, 10000);
     for (int i = 0; i < COUNT; i++) {
       cw.writeBytes(Binary.fromString("a" + i % 10));
     }
@@ -62,6 +64,61 @@ public class TestDictionary {
       cw.writeBytes(Binary.fromString("b" + i % 10));
     }
     assertEquals(PLAIN_DICTIONARY, cw.getEncoding());
+    final BytesInput bytes2 = BytesInput.copy(cw.getBytes());
+    cw.reset();
+
+    // now we will fall back
+    for (int i = 0; i < COUNT; i++) {
+      cw.writeBytes(Binary.fromString("c" + i));
+    }
+    assertEquals(PLAIN, cw.getEncoding());
+    final BytesInput bytes3 = BytesInput.copy(cw.getBytes());
+    cw.reset();
+
+    final DictionaryPage dictionaryPage = cw.createDictionaryPage().copy();
+    final ColumnDescriptor descriptor = new ColumnDescriptor(new String[] {"foo"}, PrimitiveTypeName.BINARY, 0, 0);
+    final Dictionary dictionary = PLAIN_DICTIONARY.initDictionary(descriptor, dictionaryPage);
+    final DictionaryValuesReader cr = new DictionaryValuesReader(dictionary);
+
+    cr.initFromPage(COUNT, bytes1.toByteArray(), 0);
+    for (int i = 0; i < COUNT; i++) {
+      final String str = cr.readBytes().toStringUsingUTF8();
+      Assert.assertEquals("a" + i % 10, str);
+    }
+
+    cr.initFromPage(COUNT, bytes2.toByteArray(), 0);
+    for (int i = 0; i < COUNT; i++) {
+      final String str = cr.readBytes().toStringUsingUTF8();
+      Assert.assertEquals("b" + i % 10, str);
+    }
+
+    BinaryPlainValuesReader cr2 = new BinaryPlainValuesReader();
+    cr2.initFromPage(COUNT, bytes3.toByteArray(), 0);
+    for (int i = 0; i < COUNT; i++) {
+      final String str = cr2.readBytes().toStringUsingUTF8();
+      Assert.assertEquals("c" + i, str);
+    }
+
+  }
+
+
+  @Test
+  public void testFirstPageFallBack() throws IOException {
+
+    int COUNT = 100;
+    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(10000, 10000);
+    for (int i = 0; i < COUNT; i++) {
+      cw.writeBytes(Binary.fromString("a" + i)); // all distinct
+    }
+    // not efficient so falls back
+    assertEquals(PLAIN, cw.getEncoding());
+    final BytesInput bytes1 = BytesInput.copy(cw.getBytes());
+    cw.reset();
+    for (int i = 0; i < COUNT; i++) {
+      cw.writeBytes(Binary.fromString("b" + i % 10)); // many repeated values
+    }
+    // still plain because we fell back on first page
+    assertEquals(PLAIN, cw.getEncoding());
     final BytesInput bytes2 = BytesInput.copy(cw.getBytes());
     cw.reset();
 
@@ -82,19 +139,27 @@ public class TestDictionary {
       Assert.assertEquals("b" + i % 10, str);
     }
 
+    BinaryPlainValuesReader cr2 = new BinaryPlainValuesReader();
+    cr2.initFromPage(COUNT, bytes3.toByteArray(), 0);
+    for (int i = 0; i < COUNT; i++) {
+      final String str = cr2.readBytes().toStringUsingUTF8();
+      Assert.assertEquals("c" + i, str);
+    }
+
   }
 
   @Test
   public void testBinaryDictionaryInefficiency() throws IOException {
 
     int COUNT = 40000;
-    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(500000, 10000);
+    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(10000, 10000);
     for (int i = 0; i < COUNT; i++) {
-      cw.writeBytes(Binary.fromString("a" + i ));
+      cw.writeBytes(Binary.fromString("a" + i%10 ));
     }
     final BytesInput bytes1 = BytesInput.copy(cw.getBytes());
     final Encoding encoding1 = cw.getEncoding();
     System.out.println(PrimitiveTypeName.BINARY.name() + " " + encoding1 + "  " + bytes1.size());
+    Assert.assertEquals(Encoding.PLAIN_DICTIONARY, encoding1);
     cw.reset();
     for (int i = 0; i < COUNT; i++) {
       cw.writeBytes(Binary.fromString("b" + i ));
@@ -102,6 +167,7 @@ public class TestDictionary {
     final BytesInput bytes2 = BytesInput.copy(cw.getBytes());
     final Encoding encoding2 = cw.getEncoding();
     System.out.println(PrimitiveTypeName.BINARY.name() + " " + encoding2 + "  " + bytes2.size());
+    Assert.assertEquals(PLAIN, encoding2);
     cw.reset();
 
     final DictionaryPage dictionaryPage = cw.createDictionaryPage();
@@ -121,7 +187,7 @@ public class TestDictionary {
     cr.initFromPage(COUNT, bytes1.toByteArray(), 0);
     for (int i = 0; i < COUNT; i++) {
       final String str = cr.readBytes().toStringUsingUTF8();
-      Assert.assertEquals("a" + i, str);
+      Assert.assertEquals("a" + i%10, str);
     }
 
     if (dictionary != null && encoding2 == Encoding.PLAIN_DICTIONARY) {
@@ -223,7 +289,7 @@ public class TestDictionary {
       assertEquals(i, back);
     }
 
-    assertTrue(bytes1.size() < bytes2.size()); // encoded int values smaller (w/o considering dictionary size)
+    assertTrue("encoded int values smaller (w/o considering dictionary size)", bytes1.size() < bytes2.size()); // encoded int values smaller (w/o considering dictionary size)
     assertEquals(dictPageSize, bytes2.size()); // but dictionary is same size as full plain when no repeated values
 
   }
@@ -311,7 +377,7 @@ public class TestDictionary {
       assertEquals(i, back, 0.0);
     }
 
-    assertTrue(bytes1.size() < bytes2.size()); // encoded int values smaller (w/o considering dictionary size)
+    assertTrue("encoded int values smaller (w/o considering dictionary size)", bytes1.size() < bytes2.size()); // encoded int values smaller (w/o considering dictionary size)
     assertEquals(dictPageSize, bytes2.size()); // but dictionary is same size as full plain when no repeated values
 
   }
@@ -399,7 +465,7 @@ public class TestDictionary {
       assertEquals(i, back);
     }
 
-    assertTrue(bytes1.size() < bytes2.size()); // encoded int values smaller (w/o considering dictionary size)
+    assertTrue("encoded int values smaller (w/o considering dictionary size)", bytes1.size() < bytes2.size()); // encoded int values smaller (w/o considering dictionary size)
     assertEquals(dictPageSize, bytes2.size()); // but dictionary is same size as full plain when no repeated values
 
   }
@@ -487,7 +553,7 @@ public class TestDictionary {
       assertEquals(i, back, 0.0f);
     }
 
-    assertTrue(bytes1.size() < bytes2.size()); // encoded int values smaller (w/o considering dictionary size)
+    assertTrue("encoded int values smaller (w/o considering dictionary size)", bytes1.size() < bytes2.size()); // encoded int values smaller (w/o considering dictionary size)
     assertEquals(dictPageSize, bytes2.size()); // but dictionary is same size as full plain when no repeated values
 
   }
