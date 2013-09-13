@@ -15,10 +15,10 @@
  */
 package parquet.scrooge;
 
+import com.twitter.scrooge.ThriftStruct;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 
-import com.twitter.scrooge.ThriftStruct;
 import com.twitter.scrooge.ThriftStructCodec;
 
 import parquet.schema.MessageType;

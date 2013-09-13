@@ -21,7 +21,6 @@ import com.twitter.elephantbird.thrift.test.TestStructInMap;
 import org.junit.Test;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
-import parquet.scrooge.test.Name$;
 import parquet.thrift.projection.FieldProjectionFilter;
 import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftType;
@@ -214,10 +213,6 @@ public class TestThriftSchemaConverter {
     return new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftClass);
   }
 
-  @Test
-  public void testScrooge(){
-    System.out.println("!!!!!!!!!!!!!!!!!!!!!!"+Name$.class.getCanonicalName());
-  }
 
   @Test
   public void testToThriftTypeWithoutManualProjection() throws Exception {

@@ -63,3 +63,13 @@ struct TestPersonWithRequiredPhone {
   5: required Phone phone
 }
 
+struct TestPersonWithAllInformation {
+ 1: required Name name,
+   2: optional i32 age,
+   3: Address address,
+   4: string info,
+   5: required map<string,Phone> phone_map,
+   6: optional set<string> interests,
+   7: optional list<string> key_words
+}
+

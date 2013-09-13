@@ -4,12 +4,17 @@ import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
+import com.twitter.elephantbird.thrift.TStructDescriptor;
+import com.twitter.scrooge.ThriftStructCodec;
+import com.twitter.scrooge.ThriftStructField;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.record.meta.TypeID;
 import org.apache.thrift.TBase;
+import org.apache.thrift.TEnum;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -22,12 +27,18 @@ import parquet.hadoop.thrift.TestParquetToThriftReadProjection;
 import parquet.hadoop.thrift.ThriftReadSupport;
 import parquet.hadoop.thrift.ThriftToParquetFileWriter;
 import parquet.hadoop.util.ContextUtil;
+import parquet.scrooge.test.TestPersonWithAllInformation;
+import parquet.thrift.struct.ThriftType;
+import parquet.thrift.struct.ThriftTypeID;
 import parquet.thrift.test.RequiredListFixture;
 import parquet.thrift.test.RequiredMapFixture;
 import parquet.thrift.test.RequiredPrimitiveFixture;
 import parquet.thrift.test.RequiredSetFixture;
+import scala.collection.JavaConversions;
 
 import java.io.ByteArrayOutputStream;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.*;
 
 import static org.junit.Assert.assertEquals;
@@ -165,8 +176,31 @@ public class ParquetScroogeSchemeTest {
     shouldDoProjectionWithThriftColumnFilter(filter,toWrite,toRead,RequiredPrimitiveFixture.class);
   }
 
+
+  @Test
+  public void testTraverse() throws Exception{
+    new ScroogeSchemaConverter().convert(TestPersonWithAllInformation.class);
+//    traverseStruct(parquet.scrooge.test.RequiredPrimitiveFixture.class.getName());
+  }
+
   @Test
   public void testScroogeRead() throws Exception{
+//    Class<?> companionClass=Class.forName(parquet.scrooge.test.RequiredPrimitiveFixture.class.getName()+"$");
+    Class<?> companionClass=Class.forName(parquet.scrooge.test.TestPersonWithRequiredPhone.class.getName()+"$");
+    ThriftStructCodec cObject=(ThriftStructCodec<?>)companionClass.getField("MODULE$").get(null);
+
+    Iterable<ThriftStructField> ss = JavaConversions.asIterable(cObject.metaData().fields());
+    for(ThriftStructField f:ss){
+      System.out.println(f.tfield().name);
+      String fieldName=f.tfield().name;
+      short fieldId=f.tfield().id;
+      byte thriftType=f.tfield().type;
+      System.out.println("ho");
+    }
+
+
+
+
     Configuration conf = new Configuration();
     conf.set(ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY, "**");
     conf.set("parquet.thrift.converter.class",ScroogeRecordConverter.class.getCanonicalName());
