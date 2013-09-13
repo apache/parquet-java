@@ -207,9 +207,13 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
     CompressionCodecName codec = getCodec(taskAttemptContext);
     String extension = codec.getExtension() + ".parquet";
-
     Path file = getDefaultWorkFile(taskAttemptContext, extension);
     return getRecordWriter(conf, file, codec);
+  }
+
+  public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Path file)
+      throws IOException, InterruptedException {
+    return getRecordWriter(getConfiguration(taskAttemptContext), file, getCodec(taskAttemptContext));
   }
 
   @SuppressWarnings("unchecked") // writeSupport instantiation
