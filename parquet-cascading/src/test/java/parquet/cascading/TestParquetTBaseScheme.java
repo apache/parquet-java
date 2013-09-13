@@ -42,7 +42,7 @@ public class TestParquetTBaseScheme {
   @Test
   public void testGetRecordMaterializer() throws Exception {
     ThriftReadSupport<AddressBook> readSupport = new ThriftReadSupport<AddressBook>();
-    ParquetTBaseScheme tBaseScheme = new ParquetTBaseScheme();
+    ParquetTBaseScheme tBaseScheme = new ParquetTBaseScheme(AddressBook.class);
     String descriptorKey = "thrift.descriptor";
     String mockDescriptor = "{\"id\":\"STRUCT\"}";
     Map<String, String> metaData = new HashMap<String, String>();
@@ -64,13 +64,13 @@ public class TestParquetTBaseScheme {
 
   @Test
   public void testNotSupportSink() {
-    ParquetTBaseScheme<AddressBook> scheme = new ParquetTBaseScheme<AddressBook>();
+    ParquetTBaseScheme<AddressBook> scheme = new ParquetTBaseScheme<AddressBook>(AddressBook.class);
     assertFalse(scheme.isSink());
   }
 
   @Test(expected = UnsupportedOperationException.class)
   public void testNotSinkConfInit() {
-    ParquetTBaseScheme<AddressBook> scheme = new ParquetTBaseScheme<AddressBook>();
+    ParquetTBaseScheme<AddressBook> scheme = new ParquetTBaseScheme<AddressBook>(AddressBook.class);
     scheme.sinkConfInit(mock(FlowProcess.class),
             mock(Tap.class),
             mock(JobConf.class));
@@ -78,7 +78,7 @@ public class TestParquetTBaseScheme {
 
   @Test(expected = UnsupportedOperationException.class)
   public void testNotSink() throws IOException {
-    ParquetTBaseScheme<AddressBook> scheme = new ParquetTBaseScheme<AddressBook>();
+    ParquetTBaseScheme<AddressBook> scheme = new ParquetTBaseScheme<AddressBook>(AddressBook.class);
     scheme.sink(mock(FlowProcess.class), mock(SinkCall.class));
   }
 }
