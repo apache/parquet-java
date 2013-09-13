@@ -73,8 +73,7 @@ public class ParquetMetadataConverter {
         currentVersion,
         toParquetSchema(parquetMetadata.getFileMetaData().getSchema()),
         numRows,
-        rowGroups
-        );
+        rowGroups);
 
     Set<Entry<String, String>> keyValues = parquetMetadata.getFileMetaData().getKeyValueMetaData().entrySet();
     for (Entry<String, String> keyValue : keyValues) {
@@ -82,7 +81,6 @@ public class ParquetMetadataConverter {
     }
 
     fileMetaData.setCreated_by(parquetMetadata.getFileMetaData().getCreatedBy());
-
     return fileMetaData;
   }
 
@@ -141,8 +139,7 @@ public class ParquetMetadataConverter {
           columnMetaData.getValueCount(),
           columnMetaData.getTotalUncompressedSize(),
           columnMetaData.getTotalSize(),
-          columnMetaData.getFirstDataPageOffset()
-          );
+          columnMetaData.getFirstDataPageOffset());
       columnChunk.meta_data.dictionary_page_offset = columnMetaData.getDictionaryPageOffset();
 //      columnChunk.meta_data.index_page_offset = ;
 //      columnChunk.meta_data.key_value_metadata = ; // nothing yet
@@ -325,7 +322,6 @@ public class ParquetMetadataConverter {
   }
 
   MessageType fromParquetSchema(List<SchemaElement> schema) {
-
     Iterator<SchemaElement> iterator = schema.iterator();
     SchemaElement root = iterator.next();
     return new MessageType(root.getName(), convertChildren(iterator, root.getNum_children()));
@@ -335,6 +331,11 @@ public class ParquetMetadataConverter {
     parquet.schema.Type[] result = new parquet.schema.Type[childrenCount];
     for (int i = 0; i < result.length; i++) {
       SchemaElement schemaElement = schema.next();
+      if (schemaElement.getType() == Type.FIXED_LEN_BYTE_ARRAY) {
+        System.out.println(">>> SchemaElement " + schemaElement.getName() +
+                           " is FIXED type of size " + schemaElement.type_length);
+      }
+
       if ((!schemaElement.isSetType() && !schemaElement.isSetNum_children())
           || (schemaElement.isSetType() && schemaElement.isSetNum_children())) {
         throw new RuntimeException("bad element " + schemaElement);
@@ -398,6 +399,5 @@ public class ParquetMetadataConverter {
     pageHeader.dictionary_page_header = new DictionaryPageHeader(valueCount, getEncoding(valuesEncoding));
     writePageHeader(pageHeader, to);
   }
-
 
 }

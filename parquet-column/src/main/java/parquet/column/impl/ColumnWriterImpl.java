@@ -67,10 +67,9 @@ final class ColumnWriterImpl implements ColumnWriter {
     this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
 
     repetitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel());
-
     definitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel());
-
-    if(enableDictionary) {
+    System.out.println(">>> ColumnWriterImpl for " + path + " dictionary " + enableDictionary);
+    if (enableDictionary) {
       int maxDictByteSize = applyRatioInPercent(pageSizeThreshold, DICTIONARY_PAGE_MAX_SIZE_PERCENT);
       switch (path.getType()) {
       case BOOLEAN:
@@ -103,18 +102,16 @@ final class ColumnWriterImpl implements ColumnWriter {
         this.dataColumn = new PlainValuesWriter(initialSizePerCol);
       }     
     }
-    
   }
 
   private ValuesWriter getColumnDescriptorValuesWriter(int maxLevel) {
-    if(maxLevel == 0) {
+    if (maxLevel == 0) {
       return new DevNullValuesWriter();
-    }
-    else {
+    } else {
       // TODO: what is a good initialCapacity?
       return new RunLengthBitPackingHybridValuesWriter(
-        BytesUtils.getWidthFromMaxInt(maxLevel),
-        64 * 1024);
+          BytesUtils.getWidthFromMaxInt(maxLevel),
+          64 * 1024);
     }
   }
 
@@ -126,7 +123,7 @@ final class ColumnWriterImpl implements ColumnWriter {
   }
 
   private void log(Object value, int r, int d) {
-    LOG.debug(path+" "+value+" r:"+r+" d:"+d);
+    LOG.debug(path + " " + value + " r:" + r + " d:" + d);
   }
 
   /**

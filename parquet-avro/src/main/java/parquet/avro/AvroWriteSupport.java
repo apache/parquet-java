@@ -147,7 +147,6 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
   }
 
   private void writeUnion(GroupType parquetSchema, Schema avroSchema, Object value) {
-
     recordConsumer.startGroup();
 
     // ResolveUnion will tell us which of the union member types to deserialise
