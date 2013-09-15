@@ -15,8 +15,6 @@
  */
 package parquet.cascading;
 
-import java.io.IOException;
-
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.RecordReader;
@@ -29,7 +27,6 @@ import parquet.hadoop.thrift.ThriftReadSupport;
 import parquet.hadoop.thrift.ThriftWriteSupport;
 import parquet.thrift.TBaseRecordConverter;
 import cascading.flow.FlowProcess;
-import cascading.scheme.SinkCall;
 import cascading.tap.Tap;
 
 public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme<T> {
