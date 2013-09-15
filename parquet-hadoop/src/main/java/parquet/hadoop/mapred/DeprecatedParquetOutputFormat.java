@@ -8,6 +8,7 @@ import parquet.hadoop.metadata.CompressionCodecName;
 
 import java.io.IOException;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.compress.DefaultCodec;
@@ -20,12 +21,24 @@ import org.apache.hadoop.util.Progressable;
 public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.FileOutputFormat<Void, V> {
   private static final Log LOG = Log.getLog(ParquetOutputFormat.class);
 
-  protected ParquetOutputFormat<V> realOutputFormat = new ParquetOutputFormat<V>();
+  public static void setWriteSupportClass(Configuration configuration,  Class<?> writeSupportClass) {
+    configuration.set(ParquetOutputFormat.WRITE_SUPPORT_CLASS, writeSupportClass.getName());
+  }
 
-  @Override
-  public RecordWriter<Void, V> getRecordWriter(FileSystem fs,
-      JobConf conf, String name, Progressable progress) throws IOException {
-    return new RecordWriterWrapper<V>(realOutputFormat, fs, conf, name, progress);
+  public static void setBlockSize(Configuration configuration, int blockSize) {
+    configuration.setInt(ParquetOutputFormat.BLOCK_SIZE, blockSize);
+  }
+
+  public static void setPageSize(Configuration configuration, int pageSize) {
+    configuration.setInt(ParquetOutputFormat.PAGE_SIZE, pageSize);
+  }
+
+  public static void setCompression(Configuration configuration, CompressionCodecName compression) {
+    configuration.set(ParquetOutputFormat.COMPRESSION, compression.name());
+  }
+
+  public static void setEnableDictionary(Configuration configuration, boolean enableDictionary) {
+    configuration.setBoolean(ParquetOutputFormat.ENABLE_DICTIONARY, enableDictionary);
   }
 
   private static CompressionCodecName getCodec(JobConf conf) {
@@ -50,6 +63,14 @@ public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.F
   private static Path getDefaultWorkFile(JobConf conf, String name, String extension) {
     String file = getUniqueName(conf, name) + extension;
     return new Path(getWorkOutputPath(conf), file);
+  }
+
+  protected ParquetOutputFormat<V> realOutputFormat = new ParquetOutputFormat<V>();
+
+  @Override
+  public RecordWriter<Void, V> getRecordWriter(FileSystem fs,
+      JobConf conf, String name, Progressable progress) throws IOException {
+    return new RecordWriterWrapper<V>(realOutputFormat, fs, conf, name, progress);
   }
 
   private static class RecordWriterWrapper<V> implements RecordWriter<Void, V> {
