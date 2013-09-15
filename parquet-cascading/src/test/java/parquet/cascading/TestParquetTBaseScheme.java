@@ -61,24 +61,4 @@ public class TestParquetTBaseScheme {
     assertNotNull(recordMaterializer);
     assertEquals(TBaseRecordConverter.class, recordMaterializer.getClass());
   }
-
-  @Test
-  public void testNotSupportSink() {
-    ParquetTBaseScheme<AddressBook> scheme = new ParquetTBaseScheme<AddressBook>(AddressBook.class);
-    assertFalse(scheme.isSink());
-  }
-
-  @Test(expected = UnsupportedOperationException.class)
-  public void testNotSinkConfInit() {
-    ParquetTBaseScheme<AddressBook> scheme = new ParquetTBaseScheme<AddressBook>(AddressBook.class);
-    scheme.sinkConfInit(mock(FlowProcess.class),
-            mock(Tap.class),
-            mock(JobConf.class));
-  }
-
-  @Test(expected = UnsupportedOperationException.class)
-  public void testNotSink() throws IOException {
-    ParquetTBaseScheme<AddressBook> scheme = new ParquetTBaseScheme<AddressBook>(AddressBook.class);
-    scheme.sink(mock(FlowProcess.class), mock(SinkCall.class));
-  }
 }
