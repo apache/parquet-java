@@ -25,6 +25,7 @@ import parquet.thrift.projection.FieldProjectionFilter;
 import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftType.StructType;
+import parquet.thrift.test.TestPerson;
 
 import static org.junit.Assert.assertEquals;
 
@@ -33,7 +34,7 @@ public class TestThriftSchemaConverter {
   @Test
   public void testToMessageType() throws Exception {
     String expected =
-            "message AddressBook {\n" +
+            "message ParquetSchema {\n" +
                     "  optional group persons (LIST) {\n" +
                     "    repeated group persons_tuple {\n" +
                     "      required group name {\n" +
@@ -52,58 +53,59 @@ public class TestThriftSchemaConverter {
                     "  }\n" +
                     "}";
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
-    final MessageType converted = schemaConverter.convert(AddressBook.class);
+    StructType messageStruct=schemaConverter.toStructType(AddressBook.class);
+    final MessageType converted = schemaConverter.convert(messageStruct);
     assertEquals(MessageTypeParser.parseMessageType(expected), converted);
   }
 
   @Test
   public void testToProjectedThriftType() {
 
-    shouldGetProjectedSchema("name/first_name", "message Person {" +
+    shouldGetProjectedSchema("name/first_name", "message ParquetSchema {" +
             "  required group name {" +
             "    optional binary first_name (UTF8);" +
             "  }}", Person.class);
 
-    shouldGetProjectedSchema("name/first_name;name/last_name", "message Person {" +
-            "  required group name {" +
-            "    optional binary first_name (UTF8);" +
-            "    optional binary last_name (UTF8);" +
-            "  }}", Person.class);
-
-    shouldGetProjectedSchema("name/{first,last}_name;", "message Person {" +
+    shouldGetProjectedSchema("name/first_name;name/last_name", "message ParquetSchema {" +
             "  required group name {" +
             "    optional binary first_name (UTF8);" +
             "    optional binary last_name (UTF8);" +
             "  }}", Person.class);
 
-    shouldGetProjectedSchema("name/*", "message Person {" +
+    shouldGetProjectedSchema("name/{first,last}_name;", "message ParquetSchema {" +
+            "  required group name {" +
+            "    optional binary first_name (UTF8);" +
+            "    optional binary last_name (UTF8);" +
+            "  }}", Person.class);
+
+    shouldGetProjectedSchema("name/*", "message ParquetSchema {" +
             "  required group name {" +
             "    optional binary first_name (UTF8);" +
             "    optional binary last_name (UTF8);" +
             "  }" +
             "}", Person.class);
 
-    shouldGetProjectedSchema("name/*", "message Person {" +
+    shouldGetProjectedSchema("name/*", "message ParquetSchema {" +
             "  required group name {" +
             "    optional binary first_name (UTF8);" +
             "    optional binary last_name (UTF8);" +
             "  }" +
             "}", Person.class);
 
-    shouldGetProjectedSchema("*/*_name", "message Person {" +
+    shouldGetProjectedSchema("*/*_name", "message ParquetSchema {" +
             "  required group name {" +
             "    optional binary first_name (UTF8);" +
             "    optional binary last_name (UTF8);" +
             "  }" +
             "}", Person.class);
 
-    shouldGetProjectedSchema("name/first_*", "message Person {" +
+    shouldGetProjectedSchema("name/first_*", "message ParquetSchema {" +
             "  required group name {" +
             "    optional binary first_name (UTF8);" +
             "  }" +
             "}", Person.class);
 
-    shouldGetProjectedSchema("*/*", "message Person {" +
+    shouldGetProjectedSchema("*/*", "message ParquetSchema {" +
             "  required group name {" +
             "  optional binary first_name (UTF8);" +
             "  optional binary last_name (UTF8);" +
@@ -145,7 +147,7 @@ public class TestThriftSchemaConverter {
   @Test
   public void testProjectMapThriftType() {
     //project nested map
-    shouldGetProjectedSchema("name;names/key*;names/value/**", "message TestStructInMap {\n" +
+    shouldGetProjectedSchema("name;names/key*;names/value/**", "message ParquetSchema {\n" +
             "  optional binary name (UTF8);\n" +
             "  optional group names (MAP) {\n" +
             "    repeated group map (MAP_KEY_VALUE) {\n" +
@@ -167,7 +169,7 @@ public class TestThriftSchemaConverter {
             "}", TestStructInMap.class);
 
     //project only one level of nested map
-    shouldGetProjectedSchema("name;names/key;names/value/name/*", "message TestStructInMap {\n" +
+    shouldGetProjectedSchema("name;names/key;names/value/name/*", "message ParquetSchema {\n" +
             "  optional binary name (UTF8);\n" +
             "  optional group names (MAP) {\n" +
             "    repeated group map (MAP_KEY_VALUE) {\n" +
@@ -183,14 +185,39 @@ public class TestThriftSchemaConverter {
             "}", TestStructInMap.class);
   }
 
-  @Test(expected = ThriftProjectionException.class)
+//  @Test
+//  public void testPullInRequiredFields(){
+//    shouldGetProjectedSchema("age","message TestPerson {\n" +
+//            "  required group name {\n" +
+//            "    required binary first_name (UTF8);\n" +
+//            "  }\n" +
+//            "  optional int32 age;\n" +
+//            "}",TestPerson.class);
+//
+//    shouldGetProjectedSchema("age","message TestPerson {\n" +
+//            "  required group name {\n" +
+//            "    required binary first_name (UTF8);\n" +
+//            "  }\n" +
+//            "  optional int32 age;\n" +
+//            "}",TestPerson.class);
+////    System.out.println(getFilteredSchema("**",TestPerson.class));
+//  }
+
+  @Test
   public void testProjectOnlyKeyInMap() {
-    getFilteredSchema("name;names/key", TestStructInMap.class);
+    shouldGetProjectedSchema("name;names/key","message ParquetSchema {\n" +
+            "  optional binary name (UTF8);\n" +
+            "  optional group names (MAP) {\n" +
+            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "      required binary key (UTF8);\n" +
+            "    }\n" +
+            "  }\n" +
+            "}",TestStructInMap.class);
   }
 
   @Test(expected = ThriftProjectionException.class)
   public void testProjectOnlyValueInMap() {
-    getFilteredSchema("name;names/value/**", TestStructInMap.class);
+    System.out.println(getFilteredSchema("name;names/value/**", TestStructInMap.class));
   }
 
   private void shouldGetProjectedSchema(String filterDesc, String expectedSchemaStr, Class thriftClass) {
