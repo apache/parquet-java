@@ -40,9 +40,8 @@ public class ScroogeSchemaConverter {
     ThriftTypeID typeId = ThriftTypeID.fromByte(thriftTypeByte);
     System.out.println(fieldName);
 
-
     ThriftType resultType = null;
-    switch (ThriftTypeID.fromByte(thriftTypeByte)) {
+    switch (typeId) {
       case STOP:
       case VOID:
       default:
@@ -71,10 +70,6 @@ public class ScroogeSchemaConverter {
         break;
       case STRUCT:
         resultType= convertStructTypeField(f);
-//        String innerName = f.method().getReturnType().getName();
-//        System.out.println(">>>" + innerName);
-//        traverseStruct(innerName);
-//        System.out.println("<<<" + innerName);
         break;
       case MAP:
         Type[] gTypes = ((ParameterizedType) (f.method().getGenericReturnType())).getActualTypeArguments();
@@ -117,18 +112,16 @@ public class ScroogeSchemaConverter {
     return new ThriftField(fieldName, fieldId, requirement, resultType);
   }
 
-  private ThriftType convertStructTypeField(ThriftStructField f) {
-    //TODO;can struct be optional??
+  private ThriftType convertStructTypeField(ThriftStructField f) throws Exception {
     Type structClassType=f.method().getReturnType();
     if(isOptional(f)){
-      structClassType=extractClassFromOption(structClassType);
+      structClassType=extractClassFromOption(f.method().getGenericReturnType());
     }
-    return null;
+    return convertStructFromClassName(((Class) structClassType).getName());
   }
 
-  private Type extractClassFromOption(Type structClassType) {
-    System.out.println("TODO");
-    return null;
+  private Type extractClassFromOption(Type genericReturnType) {
+    return ((ParameterizedType)genericReturnType).getActualTypeArguments()[0];
   }
 
   private boolean isOptional(ThriftStructField f) {

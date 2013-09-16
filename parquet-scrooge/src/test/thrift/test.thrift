@@ -70,7 +70,8 @@ struct TestPersonWithAllInformation {
    4: optional Address working_address,
    5: string info,
    6: required map<string,Phone> phone_map,
-   7: optional set<string> interests,
-   8: optional list<string> key_words
+   7: optional map<string,Phone> opt_phone_map,
+   8: optional set<string> interests,
+   9: optional list<string> key_words
 }
 
