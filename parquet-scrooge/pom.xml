@@ -67,7 +67,7 @@
     <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>scrooge-core</artifactId>
-      <version>3.8.0</version>
+      <version>3.6.0</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
@@ -160,7 +160,7 @@
         <plugin>
             <groupId>com.twitter</groupId>
             <artifactId>scrooge-maven-plugin</artifactId>
-            <version>3.8.0</version>
+            <version>3.6.0</version>
             <configuration>
                 <outputDirectory>${project.build.directory}/generated-test-sources/scrooge</outputDirectory>
                 <thriftNamespaceMappings>
