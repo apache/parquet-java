@@ -111,11 +111,16 @@ public class ScroogeSchemaConverter {
       mapType=f.method().getGenericReturnType();
     }
     Type[] gTypes = ((ParameterizedType)mapType).getActualTypeArguments();
-    Type keyType = gTypes[0];
-    Type valueType = gTypes[1];
+    Class keyClass = (Class) gTypes[0];
+    //TODO requirement should be the requirement of the map
+    ThriftType keyType=convertBasedOnClass(keyClass);
+    Class valueClass = (Class) gTypes[1];
+    ThriftType valueType=convertBasedOnClass(valueClass);
+    return new ThriftType.MapType()
+
+    //TODO notice the key and value field could be String..boolean, or complexType
 //        traverseType(keyType,fieldName,fieldId);
 //        traverseType(valueType,fieldName,fieldId);
-    System.out.println("fuck");
 //        final TStructDescriptor.Field mapKeyField = field.getMapKeyField();
 //        final TStructDescriptor.Field mapValueField = field.getMapValueField();
 //        resultType = new ThriftType.MapType(
