@@ -14,7 +14,7 @@ import java.util.List;
 
 public class ScroogeSchemaConverter {
 
-  public ThriftType.StructType convertStruct(String className) throws Exception {
+  public ThriftType.StructType convertStructFromClassName(String className) throws Exception {
     Class<?> companionClass = Class.forName(className + "$");
     ThriftStructCodec cObject = (ThriftStructCodec<?>) companionClass.getField("MODULE$").get(null);
 
@@ -114,7 +114,7 @@ public class ScroogeSchemaConverter {
 //      traverseStruct(innerName);
       System.out.println("<<<" + innerName);
     }
-    return new ThriftField(fieldName, fieldId, ThriftField.Requirement.DEFAULT, resultType);
+    return new ThriftField(fieldName, fieldId, requirement, resultType);
   }
 
   private ThriftType convertStructTypeField(ThriftStructField f) {
@@ -136,6 +136,6 @@ public class ScroogeSchemaConverter {
   }
 
   public ThriftType.StructType convert(Class scroogeClass) throws Exception {
-    return convertStruct(scroogeClass.getName());
+    return convertStructFromClassName(scroogeClass.getName());
   }
 }
