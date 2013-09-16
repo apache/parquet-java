@@ -275,13 +275,15 @@ public final class PrimitiveType extends Type {
   }
 
   private final PrimitiveTypeName primitive;
+  private final int length;
 
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param primitive STRING, INT64, ...
    * @param name the name of the type
    */
-  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, String name) {
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, 
+                       String name) {
     this(repetition, primitive, name, null);
   }
 
@@ -291,9 +293,17 @@ public final class PrimitiveType extends Type {
    * @param name the name of the type
    * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
    */
-  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, String name, OriginalType originalType) {
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, 
+                       String name, OriginalType originalType) {
+    this(repetition, primitive, name, 0, originalType);
+  }
+
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
+                       String name, int typeLength, 
+                       OriginalType originalType) {
     super(name, repetition, originalType);
     this.primitive = primitive;
+    this.length = typeLength;
   }
 
   /**
@@ -301,6 +311,13 @@ public final class PrimitiveType extends Type {
    */
   public PrimitiveTypeName getPrimitiveTypeName() {
     return primitive;
+  }
+
+  /**
+   * @return the type length
+   */
+  public int getLength() {
+    return length;
   }
 
   /**

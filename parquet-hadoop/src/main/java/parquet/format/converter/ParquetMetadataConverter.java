@@ -97,6 +97,11 @@ public class ParquetMetadataConverter {
         SchemaElement element = new SchemaElement(primitiveType.getName());
         element.setRepetition_type(toParquetRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
+        if (primitiveType.getLength() > 0) {
+          System.out.println(">>> Set type_length of SchemaElement " + primitiveType.getName() +
+                             " size " + primitiveType.getLength());
+          element.setType_length(primitiveType.getLength());
+        }
         result.add(element);
       }
 
@@ -281,7 +286,7 @@ public class ParquetMetadataConverter {
       String filePath = columns.get(0).getFile_path();
       for (ColumnChunk columnChunk : columns) {
         if ((filePath == null && columnChunk.getFile_path() != null)
-            || (filePath !=null && !filePath.equals(columnChunk.getFile_path()))) {
+            || (filePath != null && !filePath.equals(columnChunk.getFile_path()))) {
           throw new ParquetDecodingException("all column chunks of the same row group must be in the same file for now");
         }
         parquet.format.ColumnMetaData metaData = columnChunk.meta_data;
