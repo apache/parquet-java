@@ -72,17 +72,8 @@ public class ScroogeSchemaConverter {
         resultType= convertStructTypeField(f);
         break;
       case MAP:
-        Type[] gTypes = ((ParameterizedType) (f.method().getGenericReturnType())).getActualTypeArguments();
-        Type keyType = gTypes[0];
-        Type valueType = gTypes[1];
-//        traverseType(keyType,fieldName,fieldId);
-//        traverseType(valueType,fieldName,fieldId);
-        System.out.println("fuck");
-//        final TStructDescriptor.Field mapKeyField = field.getMapKeyField();
-//        final TStructDescriptor.Field mapValueField = field.getMapValueField();
-//        resultType = new ThriftType.MapType(
-//                toThriftField(mapKeyField.getName(), mapKeyField, requirement),
-//                toThriftField(mapValueField.getName(), mapValueField, requirement));
+        resultType=convertMapTypeField(f);
+
         break;
       case SET:
 //        final TStructDescriptor.Field setElemField = field.getSetElemField();
@@ -110,6 +101,27 @@ public class ScroogeSchemaConverter {
       System.out.println("<<<" + innerName);
     }
     return new ThriftField(fieldName, fieldId, requirement, resultType);
+  }
+
+  private ThriftType convertMapTypeField(ThriftStructField f) {
+    Type mapType=null;
+    if (isOptional(f)){
+      mapType=extractClassFromOption(f.method().getGenericReturnType());
+    }else{
+      mapType=f.method().getGenericReturnType();
+    }
+    Type[] gTypes = ((ParameterizedType)mapType).getActualTypeArguments();
+    Type keyType = gTypes[0];
+    Type valueType = gTypes[1];
+//        traverseType(keyType,fieldName,fieldId);
+//        traverseType(valueType,fieldName,fieldId);
+    System.out.println("fuck");
+//        final TStructDescriptor.Field mapKeyField = field.getMapKeyField();
+//        final TStructDescriptor.Field mapValueField = field.getMapValueField();
+//        resultType = new ThriftType.MapType(
+//                toThriftField(mapKeyField.getName(), mapKeyField, requirement),
+//                toThriftField(mapValueField.getName(), mapValueField, requirement));
+    return null;
   }
 
   private ThriftType convertStructTypeField(ThriftStructField f) throws Exception {
