@@ -1,6 +1,7 @@
 package parquet.scrooge;
 
 import org.junit.Test;
+import parquet.scrooge.test.TestMap;
 import parquet.scrooge.test.TestPersonWithAllInformation;
 
 /**
@@ -9,7 +10,7 @@ import parquet.scrooge.test.TestPersonWithAllInformation;
 public class ScroogeSchemaConverterTest {
   @Test
   public void testTraverse() throws Exception{
-    new ScroogeSchemaConverter().convert(TestPersonWithAllInformation.class);
+    new ScroogeSchemaConverter().convert(TestMap.class);
 //    traverseStruct(parquet.scrooge.test.RequiredPrimitiveFixture.class.getName());
   }
 }

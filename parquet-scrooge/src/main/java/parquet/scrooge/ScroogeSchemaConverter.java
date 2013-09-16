@@ -115,8 +115,12 @@ public class ScroogeSchemaConverter {
     //TODO requirement should be the requirement of the map
     ThriftType keyType=convertBasedOnClass(keyClass);
     Class valueClass = (Class) gTypes[1];
+    //TODO: what is the id of a key???default to 1, this is the behavior in elephant bird
+    //TODO:requirementType??
+    ThriftField keyField=new ThriftField(f.name()+"_map_key", (short) 1, ThriftField.Requirement.OPTIONAL,keyType);
     ThriftType valueType=convertBasedOnClass(valueClass);
-    return new ThriftType.MapType()
+    ThriftField valueField=new ThriftField(f.name()+"_map_value", (short) 1, ThriftField.Requirement.OPTIONAL,valueType);
+    return new ThriftType.MapType(keyField,valueField);
 
     //TODO notice the key and value field could be String..boolean, or complexType
 //        traverseType(keyType,fieldName,fieldId);
@@ -126,6 +130,18 @@ public class ScroogeSchemaConverter {
 //        resultType = new ThriftType.MapType(
 //                toThriftField(mapKeyField.getName(), mapKeyField, requirement),
 //                toThriftField(mapValueField.getName(), mapValueField, requirement));
+  }
+
+  private ThriftType convertBasedOnClass(Class keyClass) {
+    if (keyClass==Boolean.class){
+      return new ThriftType.BoolType();
+    }else if (keyClass==Byte.class){
+      return new ThriftType.ByteType();
+    }else if (keyClass==Double.class){
+      return new ThriftType.DoubleType();
+    }else if (keyClass==Short.class){
+      return new ThriftType.I16Type();
+    }
     return null;
   }
 

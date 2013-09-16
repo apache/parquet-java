@@ -75,3 +75,8 @@ struct TestPersonWithAllInformation {
    9: optional list<string> key_words
 }
 
+struct TestMap {
+  1: required map<i16,string> short_map;
+  2: required map<i32,string> int_map;
+  3: required map<byte,string> byt_map;
+}
