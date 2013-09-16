@@ -94,6 +94,7 @@ public class ThriftSchemaConverter {
       break;
     case I32:
       type = new I32Type();
+      break;
      case I64:
       type = new I64Type();
       break;
