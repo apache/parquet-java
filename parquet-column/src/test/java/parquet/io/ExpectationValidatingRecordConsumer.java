@@ -88,6 +88,11 @@ final public class ExpectationValidatingRecordConsumer extends
   }
 
   @Override
+  public void addFixedBinary(Binary value) {
+    validate("addFixedBinary("+value.toStringUsingUTF8()+")");
+  }
+
+  @Override
   public void addFloat(float value) {
     validate("addFloat("+value+")");
   }

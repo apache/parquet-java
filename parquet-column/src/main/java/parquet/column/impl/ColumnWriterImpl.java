@@ -207,6 +207,15 @@ final class ColumnWriterImpl implements ColumnWriter {
   }
 
   @Override
+  public void writeFixed(Binary value, int repetitionLevel, int definitionLevel) {
+    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+    repetitionLevelColumn.writeInteger(repetitionLevel);
+    definitionLevelColumn.writeInteger(definitionLevel);
+    dataColumn.writeFixedBytes(value);
+    accountForValueWritten();
+  }
+
+  @Override
   public void write(boolean value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     repetitionLevelColumn.writeInteger(repetitionLevel);

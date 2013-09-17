@@ -116,6 +116,15 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      * {@inheritDoc}
      */
     @Override
+    public void addFixedBinary(Binary value) {
+      if (DEBUG) log(value.toStringUsingUTF8());
+      delegate.addFixedBinary(value);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void addFloat(float value) {
       if (DEBUG) log(value);
       delegate.addFloat(value);

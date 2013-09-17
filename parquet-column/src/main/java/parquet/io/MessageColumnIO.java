@@ -256,6 +256,16 @@ public class MessageColumnIO extends GroupColumnIO {
       setRepetitionLevel();
       if (DEBUG) printState();
     }
+    
+    @Override
+    public void addFixedBinary(Binary value) {
+      if (DEBUG) log("addFixedBinary(" + value.length() + " bytes)");
+      emptyField = false;
+      getColumnWriter().writeFixed(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
+
+      setRepetitionLevel();
+      if (DEBUG) printState();
+    }
 
     @Override
     public void addFloat(float value) {

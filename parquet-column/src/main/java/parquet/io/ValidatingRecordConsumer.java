@@ -175,6 +175,14 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     validate(PrimitiveTypeName.BINARY);
     delegate.addBinary(value);
   }
+  
+  /**
+   * {@inheritDoc}
+   */
+  public void addFixedBinary(Binary value) {
+    validate(PrimitiveTypeName.BINARY);
+    delegate.addFixedBinary(value);
+  }
 
   /**
    * {@inheritDoc}

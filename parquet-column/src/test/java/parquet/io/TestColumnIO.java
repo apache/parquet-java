@@ -574,6 +574,11 @@ public class TestColumnIO {
           public void write(Binary value, int repetitionLevel, int definitionLevel) {
             validate(value.toStringUsingUTF8(), repetitionLevel, definitionLevel);
           }
+          
+          @Override
+          public void writeFixed(Binary value, int repetitionLevel, int definitionLevel) {
+            validate(value.toStringUsingUTF8(), repetitionLevel, definitionLevel);
+          }
 
           @Override
           public void write(boolean value, int repetitionLevel, int definitionLevel) {

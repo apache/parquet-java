@@ -199,7 +199,7 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
     } else if (avroType.equals(Schema.Type.UNION)) {
       writeUnion((GroupType) type, nonNullAvroSchema, value);
     } else if (avroType.equals(Schema.Type.FIXED)) {
-      recordConsumer.addBinary(Binary.fromByteArray(((GenericFixed) value).bytes()));
+      recordConsumer.addFixedBinary(Binary.fromByteArray(((GenericFixed) value).bytes()));
     }
   }
 

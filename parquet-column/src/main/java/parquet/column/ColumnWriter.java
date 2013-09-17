@@ -56,6 +56,14 @@ public interface ColumnWriter {
    * @param definitionLevel
    */
   void write(Binary value, int repetitionLevel, int definitionLevel);
+  
+  /**
+   * writes the current value
+   * @param value
+   * @param repetitionLevel
+   * @param definitionLevel
+   */
+  void writeFixed(Binary value, int repetitionLevel, int definitionLevel);
 
   /**
    * writes the current value
