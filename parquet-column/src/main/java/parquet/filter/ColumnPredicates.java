@@ -18,6 +18,10 @@ package parquet.filter;
 import parquet.Preconditions;
 import parquet.column.ColumnReader;
 
+public static interface PredicateFunction <T> {
+    boolean applyFunction (T input);
+}
+
 /**
  * ColumnPredicates class provides checks for column values. Factory methods
  * are provided for standard predicates which wrap the job of getting the
@@ -39,11 +43,29 @@ public class ColumnPredicates {
     };
   }
 
+  public static Predicate applyFunction (final PredicateFunction <String> fn) {
+    return new Predicate() {
+      @Override
+      public boolean apply(ColumnReader input) {
+	return fn.applyFunction(input.getBinary.toStringUsingUTF8());
+      }
+    };
+  }
+
   public static Predicate equalTo(final int target) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
         return input.getInteger() == target;
+      }
+    };
+  }
+
+  public static Predicate applyFunction (final PredicateFunction <int> fn) {
+    return new Predicate() {
+      @Override
+      public boolean apply(ColumnReader input) {
+	return fn.applyFunction(input.getInteger());
       }
     };
   }
@@ -57,11 +79,29 @@ public class ColumnPredicates {
     };
   }
 
+  public static Predicate applyFunction (final PredicateFunction <long> fn) {
+    return new Predicate() {
+      @Override
+      public boolean apply(ColumnReader input) {
+	return fn.applyFunction(input.getLong());
+      }
+    };
+  }
+
   public static Predicate equalTo(final float target) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
         return input.getFloat() == target;
+      }
+    };
+  }
+
+  public static Predicate applyFunction (final PredicateFunction <float> fn) {
+    return new Predicate() {
+      @Override
+      public boolean apply(ColumnReader input) {
+	return fn.applyFunction(input.getFloat());
       }
     };
   }
@@ -75,6 +115,15 @@ public class ColumnPredicates {
     };
   }
 
+  public static Predicate applyFunction (final PredicateFunction <double> fn) {
+    return new Predicate() {
+      @Override
+      public boolean apply(ColumnReader input) {
+	return fn.applyFunction(input.getDouble());
+      }
+    };
+  }
+
   public static Predicate equalTo(final boolean target) {
     return new Predicate() {
       @Override
@@ -84,8 +133,16 @@ public class ColumnPredicates {
     };
   }
 
+  public static Predicate applyFunction (final PredicateFunction <boolean> fn) {
+    return new Predicate() {
+      @Override
+      public boolean apply(ColumnReader input) {
+	return fn.applyFunction(input.getBoolean());
+      }
+    };
+  }
+
   public static <E extends Enum> Predicate equalTo(final E target) {
-    Preconditions.checkNotNull(target,"target");
     final String targetAsString = target.name();
     return new Predicate() {
       @Override
