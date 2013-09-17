@@ -279,8 +279,7 @@ class ColumnReaderImpl implements ColumnReader {
             return current;
           }
           void writeValue() {
-            // XXX
-            converter.addBinary(current);
+            converter.addFixedBinary(current);
           }
         };
       }
