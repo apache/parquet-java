@@ -290,20 +290,36 @@ public final class PrimitiveType extends Type {
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param primitive STRING, INT64, ...
+   * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise (XXX)
+   * @param name the name of the type
+   */
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, int length, String name) {
+    this(repetition, primitive, length, name, null);
+  }
+
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param primitive STRING, INT64, ...
    * @param name the name of the type
    * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
    */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, 
                        String name, OriginalType originalType) {
-    this(repetition, primitive, name, 0, originalType);
+    this(repetition, primitive, 0, name, originalType);
   }
 
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRD
+   * @param primitive STRING, INT64, ...
+   * @param name the name of the type
+   * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise (XXX)
+   * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
+   */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
-                       String name, int typeLength, 
-                       OriginalType originalType) {
+                       int length, String name, OriginalType originalType) {
     super(name, repetition, originalType);
     this.primitive = primitive;
-    this.length = typeLength;
+    this.length = length;
   }
 
   /**
@@ -316,7 +332,7 @@ public final class PrimitiveType extends Type {
   /**
    * @return the type length
    */
-  public int getLength() {
+  public int getTypeLength() {
     return length;
   }
 

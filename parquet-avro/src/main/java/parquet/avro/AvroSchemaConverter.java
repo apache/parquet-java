@@ -158,7 +158,7 @@ public class AvroSchemaConverter {
   private PrimitiveType primitive(String name, 
       PrimitiveType.PrimitiveTypeName primitive, Type.Repetition repetition,
       int typeLength, OriginalType originalType) {
-    return new PrimitiveType(repetition, primitive, name, typeLength,
+    return new PrimitiveType(repetition, primitive, typeLength, name,
                              originalType);
   }
 

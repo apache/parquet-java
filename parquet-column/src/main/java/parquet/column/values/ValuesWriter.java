@@ -89,6 +89,13 @@ public abstract class ValuesWriter {
   /**
    * @param value the value to encode
    */
+  public void writeFixedBytes(Binary v) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /**
+   * @param value the value to encode
+   */
   public void writeBytes(Binary v) {
     throw new UnsupportedOperationException(getClass().getName());
   }

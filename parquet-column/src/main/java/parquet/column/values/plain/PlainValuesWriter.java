@@ -48,6 +48,16 @@ public class PlainValuesWriter extends ValuesWriter {
   }
 
   @Override
+  public final void writeFixedBytes(Binary v) {
+    try {
+      v.writeTo(out);
+    } catch (IOException e) {
+      throw new ParquetEncodingException("could not write fixed bytes", e);
+    }
+  }
+
+  // XXX Find where this is being called for writing FIXED_LEN_BYTE_ARRAY!!
+  @Override
   public final void writeBytes(Binary v) {
     try {
       out.writeInt(v.length());

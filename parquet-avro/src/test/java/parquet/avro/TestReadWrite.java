@@ -44,6 +44,8 @@ public class TestReadWrite {
     tmp.deleteOnExit();
     tmp.delete();
     Path file = new Path(tmp.getPath());
+    
+    System.out.println("+++ Write");
 
     AvroParquetWriter<GenericRecord> writer = new
         AvroParquetWriter<GenericRecord>(file, schema);
@@ -75,6 +77,8 @@ public class TestReadWrite {
         .build();
     writer.write(record);
     writer.close();
+
+    System.out.println("+++ Read");
 
     AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(file);
     GenericRecord nextRecord = reader.read();

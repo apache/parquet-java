@@ -97,10 +97,10 @@ public class ParquetMetadataConverter {
         SchemaElement element = new SchemaElement(primitiveType.getName());
         element.setRepetition_type(toParquetRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
-        if (primitiveType.getLength() > 0) {
+        if (primitiveType.getTypeLength() > 0) {
           System.out.println(">>> Set type_length of SchemaElement " + primitiveType.getName() +
-                             " size " + primitiveType.getLength());
-          element.setType_length(primitiveType.getLength());
+                             " size " + primitiveType.getTypeLength());
+          element.setType_length(primitiveType.getTypeLength());
         }
         result.add(element);
       }
@@ -348,10 +348,18 @@ public class ParquetMetadataConverter {
       Repetition repetition = fromParquetRepetition(schemaElement.getRepetition_type());
       String name = schemaElement.getName();
       if (schemaElement.type != null) {
-        result[i] = new PrimitiveType(
-            repetition,
-            getPrimitive(schemaElement.getType()),
-            name);
+        if (schemaElement.isSetType_length()) {
+          result[i] = new PrimitiveType(
+              repetition,
+              getPrimitive(schemaElement.getType()),
+              schemaElement.type_length,
+              name);
+        } else {
+          result[i] = new PrimitiveType(
+              repetition,
+              getPrimitive(schemaElement.getType()),
+              name);
+        }
       } else {
         result[i] = new GroupType(
             repetition,
