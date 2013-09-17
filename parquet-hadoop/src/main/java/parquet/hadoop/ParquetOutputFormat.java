@@ -186,7 +186,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
    * @param extraMetaData extra meta data to be stored in the footer of the file
    */
   public <S extends WriteSupport<T>> ParquetOutputFormat(S writeSupport) {
-    this.writeSupport= writeSupport;
+    this.writeSupport = writeSupport;
   }
 
   /**
