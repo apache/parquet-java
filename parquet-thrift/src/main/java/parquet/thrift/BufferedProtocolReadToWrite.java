@@ -118,25 +118,28 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
    * An Exception can be used to skip a bad record
    * @param in input protocol
    * @param out output protocol
-   * @throws TException
+   * @throws TException when an error happened while writing. Those are usualy not recoverable
+   * @throws SkippableException when an error happened while reading. Ignoring those will skip the bad records.
    */
   @Override
   public void readOne(TProtocol in, TProtocol out) throws TException {
     List<Action> buffer = new LinkedList<Action>();
     try {
       readOneStruct(in, buffer, thriftType);
+    } catch (Exception e) {
+      throw new SkippableException(error("Error while reading", buffer), e);
+    }
+    try {
       for (Action a : buffer) {
         a.write(out);
       }
-    } catch (RuntimeException e) {
-      throw new TException(error(buffer),e);
-    } catch (TException e) {
-      throw new TException(error(buffer),e);
+    } catch (Exception e) {
+      throw new TException(error("Can not write record", buffer),e);
     }
   }
 
-  private String error(List<Action> buffer) {
-    StringBuilder sb = new StringBuilder("Can not write record: ");
+  private String error(String message, List<Action> buffer) {
+    StringBuilder sb = new StringBuilder(message).append(": ");
     for (Action action : buffer) {
       sb.append(action.toDebugString());
     }
