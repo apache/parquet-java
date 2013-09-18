@@ -59,7 +59,6 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type;
 import parquet.schema.Type.Repetition;
 
-
 public class TestColumnIO {
   private static final Log LOG = Log.getLog(TestColumnIO.class);
 
@@ -71,6 +70,7 @@ public class TestColumnIO {
   + "  required double d;\n"
   + "  required boolean e;\n"
   + "  required binary f;\n"
+  + "  required fixed_len_byte_array g;\n"
   + "}\n";
 
   private static final String schemaString =
@@ -138,8 +138,6 @@ public class TestColumnIO {
     assertEquals(schemaString, schema.toString());
   }
 
-
-
   @Test
   public void testReadUsingRequestedSchemaWithExtraFields(){
     MessageType orginalSchema = new MessageType("schema",
@@ -172,7 +170,6 @@ public class TestColumnIO {
       };
       validateGroups(groups, expected);
     }
-
   }
 
   @Test
@@ -232,7 +229,6 @@ public class TestColumnIO {
       };
       validateGroups(groups, expected);
     }
-
   }
 
   private void validateGroups(List<Group> groups1, Object[][] e1) {
@@ -274,7 +270,6 @@ public class TestColumnIO {
     columns.flush();
   }
 
-
   @Test
   public void testColumnIO() {
     log(schema);
@@ -310,13 +305,11 @@ public class TestColumnIO {
         log("r" + (++i));
         log(record);
       }
-
       assertEquals("deserialization does not display the same result", r1.toString(), records.get(0).toString());
       assertEquals("deserialization does not display the same result", r2.toString(), records.get(1).toString());
     }
     {
       MessageColumnIO columnIO2 = columnIOFactory.getColumnIO(schema2);
-
 
       List<Group> records = new ArrayList<Group>();
       RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO2, schema2, memPageStore);
@@ -340,15 +333,20 @@ public class TestColumnIO {
   public void testOneOfEach() {
     MessageType oneOfEachSchema = MessageTypeParser.parseMessageType(oneOfEach);
     GroupFactory gf = new SimpleGroupFactory(oneOfEachSchema);
-    Group g1 = gf.newGroup().append("a", 1l).append("b", 2).append("c", 3.0f).append("d", 4.0d).append("e", true).append("f", Binary.fromString("6"));
+    Group g1 = gf.newGroup()
+        .append("a", 1l)
+        .append("b", 2)
+        .append("c", 3.0f)
+        .append("d", 4.0d)
+        .append("e", true)
+        .append("f", Binary.fromString("6"))
+        .append("g", Binary.fromString("7"));
 
     testSchema(oneOfEachSchema, Arrays.asList(g1));
   }
 
   @Test
   public void testRequiredOfRequired() {
-
-
     MessageType reqreqSchema = MessageTypeParser.parseMessageType(
           "message Document {\n"
         + "  required group foo {\n"
@@ -550,9 +548,7 @@ public class TestColumnIO {
         "[Name, Url]: http://C, r:0, d:2"
     };
 
-
     ColumnWriteStore columns = new ColumnWriteStore() {
-
       int counter = 0;
 
       @Override
