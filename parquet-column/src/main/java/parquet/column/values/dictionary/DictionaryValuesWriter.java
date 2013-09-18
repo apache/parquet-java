@@ -29,11 +29,11 @@ import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
 import it.unimi.dsi.fastutil.longs.LongIterator;
+import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
 
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
@@ -216,7 +216,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
   public static class PlainBinaryDictionaryValuesWriter extends DictionaryValuesWriter {
 
     /* type specific dictionary content */
-    private Map<Binary, Integer> binaryDictionaryContent = new LinkedHashMap<Binary, Integer>();
+    private Object2IntMap<Binary> binaryDictionaryContent = new Object2IntLinkedOpenHashMap<Binary>();
 
     /**
      * @param maxDictionaryByteSize
@@ -224,17 +224,18 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
      */
     public PlainBinaryDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
       super(maxDictionaryByteSize, initialSize);
+      binaryDictionaryContent.defaultReturnValue(-1);
     }
 
     @Override
     public void writeBytes(Binary v) {
       if (!dictionaryTooBig) {
-        Integer id = binaryDictionaryContent.get(v);
-        if (id == null) {
+        int id = binaryDictionaryContent.getInt(v);
+        if (id == -1) {
           id = binaryDictionaryContent.size();
           binaryDictionaryContent.put(v, id);
-          // length as int (2 bytes) + actual bytes
-          dictionaryByteSize += 2 + v.length();
+          // length as int (4 bytes) + actual bytes
+          dictionaryByteSize += 4 + v.length();
         }
         encodedValues.add(id);
         checkAndFallbackIfNeeded();
