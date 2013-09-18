@@ -25,12 +25,15 @@ import java.util.List;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericData.Fixed;
+import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertNotNull;
 
 public class TestReadWrite {
@@ -45,18 +48,19 @@ public class TestReadWrite {
     tmp.delete();
     Path file = new Path(tmp.getPath());
     
-    System.out.println("+++ Write");
-
     AvroParquetWriter<GenericRecord> writer = new
         AvroParquetWriter<GenericRecord>(file, schema);
 
     GenericData.Record nestedRecord = new GenericRecordBuilder(
-          schema.getField("mynestedrecord").schema())
-        .set("mynestedint", 1).build();
+        schema.getField("mynestedrecord").schema())
+            .set("mynestedint", 1).build();
 
     List<Integer> integerArray = Arrays.asList(1, 2, 3);
     GenericData.Array<Integer> genericIntegerArray = new GenericData.Array<Integer>(
-                Schema.createArray(Schema.create(Schema.Type.INT)), integerArray);
+        Schema.createArray(Schema.create(Schema.Type.INT)), integerArray);
+
+    GenericFixed genericFixed = new GenericData.Fixed(
+        Schema.createFixed("fixed", null, null, 1), new byte[] { (byte) 65 });
 
     GenericData.Record record = new GenericRecordBuilder(schema)
         .set("mynull", null)
@@ -72,13 +76,10 @@ public class TestReadWrite {
         .set("myarray", genericIntegerArray)
         .set("myoptionalarray", genericIntegerArray)
         .set("mymap", ImmutableMap.of("a", 1, "b", 2))
-        .set("myfixed", new GenericData.Fixed(Schema.createFixed("ignored", null, null, 1),
-            new byte[] { (byte) 65 }))
+        .set("myfixed", genericFixed)
         .build();
     writer.write(record);
     writer.close();
-
-    System.out.println("+++ Read");
 
     AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(file);
     GenericRecord nextRecord = reader.read();
@@ -97,6 +98,6 @@ public class TestReadWrite {
     assertEquals(integerArray, nextRecord.get("myarray"));
     assertEquals(integerArray, nextRecord.get("myoptionalarray"));
     assertEquals(ImmutableMap.of("a", 1, "b", 2), nextRecord.get("mymap"));
-    assertEquals(new byte[] { (byte) 65 }, nextRecord.get("myfixed"));
+    assertEquals(genericFixed, nextRecord.get("myfixed"));
   }
 }

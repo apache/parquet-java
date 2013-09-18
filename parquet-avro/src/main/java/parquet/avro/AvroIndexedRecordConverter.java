@@ -283,10 +283,9 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     }
 
     @Override
-    final public void addBinary(Binary value) {
+    final public void addFixedBinary(Binary value) {
       parent.add(new GenericData.Fixed(avroSchema, value.getBytes()));
     }
-
   }
 
   static final class AvroArrayConverter<T> extends GroupConverter {

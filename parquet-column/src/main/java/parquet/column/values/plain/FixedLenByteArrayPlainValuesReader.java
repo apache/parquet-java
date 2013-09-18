@@ -31,6 +31,10 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
   private int offset;
   private int length;
 
+  public FixedLenByteArrayPlainValuesReader(int length) {
+    this.length = length;
+  }
+
   @Override
   public Binary readBytes() {
     try {
@@ -55,5 +59,4 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
     this.offset = offset;
     return in.length;
   }
-
 }
