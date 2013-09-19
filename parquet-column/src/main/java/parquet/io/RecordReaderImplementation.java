@@ -266,38 +266,38 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       int maxRepetitionLevel = leafColumnIO.getRepetitionLevel();
       nextColumnIdxForRepLevel[i] = new int[maxRepetitionLevel+1];
 
-      //which level to close????
       levelToClose[i] = new int[maxRepetitionLevel+1]; //next level
-      for (int r = 0; r <= maxRepetitionLevel; ++r) {
+      for (int nextRepLevel = 0; nextRepLevel <= maxRepetitionLevel; ++nextRepLevel) {
         // remember which is the first for this level
-        if (leafColumnIO.isFirst(r)) {
-          firstIndexForLevel[r] = i;
+        if (leafColumnIO.isFirst(nextRepLevel)) {
+          firstIndexForLevel[nextRepLevel] = i;
         }
-        int next;
+        int nextColIdx;
+        //TODO: when we use nextColumnIdxForRepLevel, should we provide current rep level or the rep level for next item
         // figure out automaton transition
-        if (r == 0) { // 0 always means jump to the next (the last one being a special case)
-          next = i + 1;
-        } else if (leafColumnIO.isLast(r)) { // when we are at the last of the current repetition level we jump back to the first
-          next = firstIndexForLevel[r];
+        if (nextRepLevel == 0) { // 0 always means jump to the next (the last one being a special case)
+          nextColIdx = i + 1;
+        } else if (leafColumnIO.isLast(nextRepLevel)) { // when we are at the last of the next repetition level we jump back to the first
+          nextColIdx = firstIndexForLevel[nextRepLevel];
         } else { // otherwise we just go back to the next.
-          next = i + 1;
+          nextColIdx = i + 1;
         }
         // figure out which level down the tree we need to go back
-        if (next == leaves.length) { // reached the end of the record => close all levels
-          levelToClose[i][r] = 0;
-        } else if (leafColumnIO.isLast(r)) { // reached the end of this level => close the repetition level
-          ColumnIO parent = leafColumnIO.getParent(r);
-          levelToClose[i][r] = parent.getFieldPath().length - 1;
+        if (nextColIdx == leaves.length) { // reached the end of the record => close all levels
+          levelToClose[i][nextRepLevel] = 0;
+        } else if (leafColumnIO.isLast(nextRepLevel)) { // reached the end of this level => close the repetition level
+          ColumnIO parent = leafColumnIO.getParent(nextRepLevel);
+          levelToClose[i][nextRepLevel] = parent.getFieldPath().length - 1;
         } else { // otherwise close until the next common parent
-          levelToClose[i][r] = getCommonParentLevel(
+          levelToClose[i][nextRepLevel] = getCommonParentLevel(
               leafColumnIO.getFieldPath(),
-              leaves[next].getFieldPath());
+              leaves[nextColIdx].getFieldPath());
         }
         // sanity check: that would be a bug
-        if (levelToClose[i][r] > leaves[i].getFieldPath().length-1) {
-          throw new ParquetEncodingException(Arrays.toString(leaves[i].getFieldPath())+" -("+r+")-> "+levelToClose[i][r]);
+        if (levelToClose[i][nextRepLevel] > leaves[i].getFieldPath().length-1) {
+          throw new ParquetEncodingException(Arrays.toString(leaves[i].getFieldPath())+" -("+nextRepLevel+")-> "+levelToClose[i][nextRepLevel]);
         }
-        nextColumnIdxForRepLevel[i][r] = next;
+        nextColumnIdxForRepLevel[i][nextRepLevel] = nextColIdx;
       }
     }
     states = new State[leaves.length];
