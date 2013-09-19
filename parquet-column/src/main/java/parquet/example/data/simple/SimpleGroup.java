@@ -20,10 +20,10 @@ import java.util.List;
 
 import parquet.example.data.Group;
 import parquet.io.api.Binary;
+import parquet.io.api.FixedBinary;
 import parquet.io.api.RecordConsumer;
 import parquet.schema.GroupType;
 import parquet.schema.Type;
-
 
 public class SimpleGroup extends Group {
 
@@ -137,6 +137,11 @@ public class SimpleGroup extends Group {
   }
 
   @Override
+  public FixedBinary getFixedBinary(int fieldIndex, int index) {
+    return ((FixedBinaryValue)getValue(fieldIndex, index)).getFixedBinary();
+  }
+
+  @Override
   public void add(int fieldIndex, int value) {
     add(fieldIndex, new IntegerValue(value));
   }
@@ -159,6 +164,11 @@ public class SimpleGroup extends Group {
   @Override
   public void add(int fieldIndex, Binary value) {
     add(fieldIndex, new BinaryValue(value));
+  }
+
+  @Override
+  public void add(int fieldIndex, FixedBinary value) {
+    add(fieldIndex, new FixedBinaryValue(value));
   }
 
   @Override

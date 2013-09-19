@@ -71,6 +71,7 @@ public class TestColumnIO {
   + "  required double d;\n"
   + "  required boolean e;\n"
   + "  required binary f;\n"
+  + "  required fixed_len_byte_array g;\n"
   + "}\n";
 
   private static final String schemaString =
@@ -339,7 +340,8 @@ public class TestColumnIO {
         .append("c", 3.0f)
         .append("d", 4.0d)
         .append("e", true)
-        .append("f", Binary.fromString("6"));
+        .append("f", Binary.fromString("6"))
+        .append("g", FixedBinary.fromString("7"));
 
     testSchema(oneOfEachSchema, Arrays.asList(g1));
   }
@@ -427,23 +429,28 @@ public class TestColumnIO {
 
   private void testSchema(MessageType messageSchema, List<Group> groups) {
     MemPageStore memPageStore = new MemPageStore(groups.size());
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
+    ColumnWriteStoreImpl columns = 
+        new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
-
     MessageColumnIO columnIO = columnIOFactory.getColumnIO(messageSchema);
     log(columnIO);
-    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), messageSchema);
+   
+    // Write groups.
+    GroupWriter groupWriter = 
+        new GroupWriter(columnIO.getRecordWriter(columns), messageSchema);
     for (Group group : groups) {
       groupWriter.write(group);
     }
     columns.flush();
 
-    RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, messageSchema, memPageStore);
-
+    // Read groups and verify.
+    RecordReaderImplementation<Group> recordReader = 
+        getRecordReader(columnIO, messageSchema, memPageStore);
     for (Group group : groups) {
       final Group got = recordReader.read();
-      assertEquals("deserialization does not display the same result", group.toString(), got.toString());
+      assertEquals("deserialization does not display the same result", 
+                   group.toString(), got.toString());
     }
   }
 

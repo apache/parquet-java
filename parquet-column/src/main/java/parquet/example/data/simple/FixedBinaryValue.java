@@ -15,44 +15,34 @@
  */
 package parquet.example.data.simple;
 
-import parquet.io.api.Binary;
 import parquet.io.api.FixedBinary;
 import parquet.io.api.RecordConsumer;
 
-public abstract class Primitive {
+public class FixedBinaryValue extends Primitive {
 
-  public String getString() {
-    throw new UnsupportedOperationException();
+  private final FixedBinary fixedBinary;
+
+  public FixedBinaryValue(FixedBinary fixedBinary) {
+    this.fixedBinary = fixedBinary;
   }
 
-  public int getInteger() {
-    throw new UnsupportedOperationException();
-  }
-
-  public long getLong() {
-    throw new UnsupportedOperationException();
-  }
-
-  public boolean getBoolean() {
-    throw new UnsupportedOperationException();
-  }
-
-  public Binary getBinary() {
-    throw new UnsupportedOperationException();
-  }
-
+  @Override
   public FixedBinary getFixedBinary() {
-    throw new UnsupportedOperationException();
+    return fixedBinary;
   }
 
-  public float getFloat() {
-    throw new UnsupportedOperationException();
+  @Override
+  public String getString() {
+    return fixedBinary.toStringUsingUTF8();
   }
 
-  public double getDouble() {
-    throw new UnsupportedOperationException();
+  @Override
+  public void writeValue(RecordConsumer recordConsumer) {
+    recordConsumer.addFixedBinary(fixedBinary);
   }
 
-  abstract public void writeValue(RecordConsumer recordConsumer);
-
+  @Override
+  public String toString() {
+    return getString();
+  }
 }
