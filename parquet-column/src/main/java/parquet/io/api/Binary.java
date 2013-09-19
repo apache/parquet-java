@@ -77,7 +77,6 @@ abstract public class Binary {
       public ByteBuffer toByteBuffer() {
         return ByteBuffer.wrap(value, offset, length);
       }
-
     };
   }
 

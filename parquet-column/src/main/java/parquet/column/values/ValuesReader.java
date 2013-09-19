@@ -18,6 +18,7 @@ package parquet.column.values;
 import java.io.IOException;
 
 import parquet.io.api.Binary;
+import parquet.io.api.FixedBinary;
 
 /**
  * Base class to implement an encoding for a given column type.
@@ -75,6 +76,13 @@ public abstract class ValuesReader {
    * @return the next Binary from the page
    */
   public Binary readBytes() {
+    throw new UnsupportedOperationException();
+  }
+  
+  /**
+   * @return the next Binary from the page
+   */
+  public FixedBinary readFixedBytes() {
     throw new UnsupportedOperationException();
   }
 

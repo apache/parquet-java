@@ -114,7 +114,7 @@ abstract public class RecordConsumer {
    * add a fixed binary value in the current field
    * @param value
    */
-  abstract public void addFixedBinary(Binary value);
+  abstract public void addFixedBinary(FixedBinary value);
 
   /**
    * add a float value in the current field

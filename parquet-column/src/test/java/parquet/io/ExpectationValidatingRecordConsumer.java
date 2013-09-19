@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import java.util.Deque;
 
 import parquet.io.api.Binary;
+import parquet.io.api.FixedBinary;
 import parquet.io.api.RecordConsumer;
 
 final public class ExpectationValidatingRecordConsumer extends
@@ -88,7 +89,7 @@ final public class ExpectationValidatingRecordConsumer extends
   }
 
   @Override
-  public void addFixedBinary(Binary value) {
+  public void addFixedBinary(FixedBinary value) {
     validate("addFixedBinary("+value.toStringUsingUTF8()+")");
   }
 

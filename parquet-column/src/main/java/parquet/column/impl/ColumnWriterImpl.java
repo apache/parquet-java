@@ -37,6 +37,7 @@ import parquet.column.values.plain.PlainValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
+import parquet.io.api.FixedBinary;
 
 /**
  * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
@@ -207,7 +208,7 @@ final class ColumnWriterImpl implements ColumnWriter {
   }
 
   @Override
-  public void writeFixed(Binary value, int repetitionLevel, int definitionLevel) {
+  public void write(FixedBinary value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);

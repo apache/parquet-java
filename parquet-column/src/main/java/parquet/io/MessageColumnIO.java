@@ -25,6 +25,7 @@ import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.column.page.PageReadStore;
 import parquet.filter.UnboundRecordFilter;
 import parquet.io.api.Binary;
+import parquet.io.api.FixedBinary;
 import parquet.io.api.RecordConsumer;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
@@ -258,10 +259,10 @@ public class MessageColumnIO extends GroupColumnIO {
     }
     
     @Override
-    public void addFixedBinary(Binary value) {
+    public void addFixedBinary(FixedBinary value) {
       if (DEBUG) log("addFixedBinary(" + value.length() + " bytes)");
       emptyField = false;
-      getColumnWriter().writeFixed(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
+      getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 
       setRepetitionLevel();
       if (DEBUG) printState();

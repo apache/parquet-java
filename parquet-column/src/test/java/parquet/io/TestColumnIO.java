@@ -49,6 +49,7 @@ import parquet.example.data.GroupWriter;
 import parquet.example.data.simple.SimpleGroupFactory;
 import parquet.example.data.simple.convert.GroupRecordConverter;
 import parquet.io.api.Binary;
+import parquet.io.api.FixedBinary;
 import parquet.io.api.RecordConsumer;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.GroupType;
@@ -70,7 +71,6 @@ public class TestColumnIO {
   + "  required double d;\n"
   + "  required boolean e;\n"
   + "  required binary f;\n"
-  + "  required fixed_len_byte_array g;\n"
   + "}\n";
 
   private static final String schemaString =
@@ -339,8 +339,7 @@ public class TestColumnIO {
         .append("c", 3.0f)
         .append("d", 4.0d)
         .append("e", true)
-        .append("f", Binary.fromString("6"))
-        .append("g", Binary.fromString("7"));
+        .append("f", Binary.fromString("6"));
 
     testSchema(oneOfEachSchema, Arrays.asList(g1));
   }
@@ -572,7 +571,7 @@ public class TestColumnIO {
           }
           
           @Override
-          public void writeFixed(Binary value, int repetitionLevel, int definitionLevel) {
+          public void write(FixedBinary value, int repetitionLevel, int definitionLevel) {
             validate(value.toStringUsingUTF8(), repetitionLevel, definitionLevel);
           }
 

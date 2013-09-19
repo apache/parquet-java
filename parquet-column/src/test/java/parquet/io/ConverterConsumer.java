@@ -19,6 +19,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 
 import parquet.io.api.Binary;
+import parquet.io.api.FixedBinary;
 import parquet.io.api.GroupConverter;
 import parquet.io.api.PrimitiveConverter;
 import parquet.io.api.RecordConsumer;
@@ -102,7 +103,7 @@ public class ConverterConsumer extends RecordConsumer {
   }
 
   @Override
-  public void addFixedBinary(Binary value) {
+  public void addFixedBinary(FixedBinary value) {
     currentPrimitive.addFixedBinary(value);
   }
 

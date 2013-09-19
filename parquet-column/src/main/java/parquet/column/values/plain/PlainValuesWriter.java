@@ -26,6 +26,7 @@ import parquet.column.Encoding;
 import parquet.column.values.ValuesWriter;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
+import parquet.io.api.FixedBinary;
 
 
 /**
@@ -48,7 +49,7 @@ public class PlainValuesWriter extends ValuesWriter {
   }
 
   @Override
-  public final void writeFixedBytes(Binary v) {
+  public final void writeFixedBytes(FixedBinary v) {
     try {
       v.writeTo(out);
     } catch (IOException e) {

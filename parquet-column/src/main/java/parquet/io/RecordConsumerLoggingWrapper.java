@@ -17,6 +17,7 @@ package parquet.io;
 
 import parquet.Log;
 import parquet.io.api.Binary;
+import parquet.io.api.FixedBinary;
 import parquet.io.api.RecordConsumer;
 
 /**
@@ -116,7 +117,7 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      * {@inheritDoc}
      */
     @Override
-    public void addFixedBinary(Binary value) {
+    public void addFixedBinary(FixedBinary value) {
       if (DEBUG) log(value.toStringUsingUTF8());
       delegate.addFixedBinary(value);
     }
