@@ -28,6 +28,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.compress.DefaultCodec;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.OutputCommitter;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
@@ -125,6 +126,34 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static void setEnableDictionary(Job job, boolean enableDictionary) {
     getConfiguration(job).setBoolean(ENABLE_DICTIONARY, enableDictionary);
+  }
+
+  public static boolean getEnableDictionary(JobContext jobContext) {
+    return getEnableDictionary(getConfiguration(jobContext));
+  }
+
+  public static int getBlockSize(JobContext jobContext) {
+    return getBlockSize(getConfiguration(jobContext));
+  }
+
+  public static int getPageSize(JobContext jobContext) {
+    return getPageSize(getConfiguration(jobContext));
+  }
+
+  public static CompressionCodecName getCompression(JobContext jobContext) {
+    return getCompression(getConfiguration(jobContext));
+  }
+
+  public static boolean isCompressionSet(JobContext jobContext) {
+    return isCompressionSet(getConfiguration(jobContext));
+  }
+
+  public static void setValidation(JobContext jobContext, boolean validating) {
+    setValidation(getConfiguration(jobContext), validating);
+  }
+
+  public static boolean getValidation(JobContext jobContext) {
+    return getValidation(getConfiguration(jobContext));
   }
 
   public static boolean getEnableDictionary(Configuration configuration) {
