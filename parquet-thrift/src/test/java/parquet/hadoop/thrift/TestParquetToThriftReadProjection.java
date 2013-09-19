@@ -32,6 +32,12 @@ import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TaskID;
+import org.apache.pig.ExecType;
+import org.apache.pig.PigServer;
+import org.apache.pig.backend.executionengine.ExecException;
+import org.apache.pig.backend.executionengine.ExecJob;
+import org.apache.pig.builtin.mock.Storage;
+import org.apache.pig.data.Tuple;
 import org.apache.thrift.TBase;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -47,6 +53,8 @@ import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
+import parquet.pig.ParquetLoader;
+import parquet.pig.ParquetStorer;
 import parquet.thrift.test.RequiredListFixture;
 import parquet.thrift.test.RequiredMapFixture;
 import parquet.thrift.test.RequiredPrimitiveFixture;
@@ -89,6 +97,74 @@ public class TestParquetToThriftReadProjection {
                             null)));
     shouldDoProjection(conf,toWrite,toRead,AddressBook.class);
   }
+
+
+
+  public void writeIt() throws Exception{
+    final Path parquetFile = new Path("target/out.parquet");
+    Configuration conf=new Configuration();
+    final FileSystem fs = parquetFile.getFileSystem(conf);
+    if (fs.exists(parquetFile)) {
+      fs.delete(parquetFile, true);
+    }
+
+    //create a test file
+    final TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
+    final TaskAttemptID taskId = new TaskAttemptID("local", 0, true, 0, 0);
+    final ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(parquetFile, new TaskAttemptContext(conf, taskId), protocolFactory, Person.class);
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));
+    final Person a =
+                    new Person(
+                            new Name("Bob", "Roberts"),
+                            0,
+                            "bob.roberts@example.com",
+                            Arrays.asList(new PhoneNumber("1234567890")));
+    a.write(protocol);
+    w.write(new BytesWritable(baos.toByteArray()));
+    w.close();
+  }
+
+  @Test
+  public void testStorer() throws ExecException, Exception {
+    writeIt();
+    String out = "target/out.parquet";
+    int rows = 1000;
+    Properties props = new Properties();
+    props.setProperty("parquet.compression", "uncompressed");
+    props.setProperty("parquet.page.size", "1000");
+    PigServer pigServer = new PigServer(ExecType.LOCAL, props);
+    Storage.Data data = Storage.resetData(pigServer);
+//    Collection<Tuple> list = new ArrayList<Tuple>();
+//    for (int i = 0; i < rows; i++) {
+//      list.add(tuple("a"+i));
+//    }
+//    data.set("in", "a:chararray", list );
+    pigServer.setBatchOn();
+//    pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
+//    pigServer.deleteFile(out);
+//    pigServer.registerQuery("Store A into '"+out+"' using "+ParquetStorer.class.getName()+"();");
+//    if (pigServer.executeBatch().get(0).getStatus() != ExecJob.JOB_STATUS.COMPLETED) {
+//      throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
+//    }
+
+    pigServer.registerQuery("B = LOAD '"+out+"' USING "+ParquetLoader.class.getName()+"();");
+    pigServer.registerQuery("C = foreach B generate email;");
+    pigServer.registerQuery("Store C into 'out' using mock.Storage();");
+    if (pigServer.executeBatch().get(0).getStatus() != ExecJob.JOB_STATUS.COMPLETED) {
+      throw new RuntimeException("Job failed", pigServer.executeBatch().get(0).getException());
+    }
+
+    List<Tuple> result = data.get("out");
+
+//    assertEquals(rows, result.size());
+    int i = 0;
+    for (Tuple tuple : result) {
+      assertEquals("(Bob,Roberts)", tuple.get(0).toString());
+      ++i;
+    }
+  }
+
 
   @Test
   public void testPullingInRequiredStructWithFilter() throws Exception {
