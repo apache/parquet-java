@@ -281,13 +281,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   @SuppressWarnings("unchecked")
   public WriteSupport<T> getWriteSupport(Configuration configuration){
     if (writeSupport != null) return writeSupport;
+    Class<?> writeSupportClass = getWriteSupportClass(configuration);
+
     try {
-      Class<?> writeSupportClass = getWriteSupportClass(configuration);
       return (WriteSupport<T>)writeSupportClass.newInstance();
     } catch (InstantiationException e) {
-      throw new BadConfigurationException("could not instantiate write support class", e);
+      throw new BadConfigurationException("could not instantiate write support class: " + writeSupportClass, e);
     } catch (IllegalAccessException e) {
-      throw new BadConfigurationException("could not instantiate write support class", e);
+      throw new BadConfigurationException("could not instantiate write support class: " + writeSupportClass, e);
     }
   }
 
