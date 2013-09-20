@@ -23,6 +23,7 @@ import static parquet.pig.PigSchemaConverter.parsePigSchema;
 import static parquet.pig.PigSchemaConverter.pigSchemaToString;
 import static parquet.pig.TupleReadSupport.PARQUET_PIG_SCHEMA;
 import static parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -33,7 +34,6 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.pig.Expression;
 import org.apache.pig.LoadFunc;
 import org.apache.pig.LoadMetadata;
@@ -52,7 +52,6 @@ import org.apache.pig.parser.ParserException;
 import parquet.Log;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.metadata.GlobalMetaData;
-import parquet.hadoop.util.ContextUtil;
 import parquet.io.ParquetDecodingException;
 
 /**
@@ -196,7 +195,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       schema = requestedSchema;
       return;
     }
-    schema = PigSchemaConverter.parsePigSchema(UDFContext.getUDFContext().getUDFProperties(this.getClass(),  new String[]{signature}).getProperty(PARQUET_PIG_SCHEMA));
+    schema = PigSchemaConverter.parsePigSchema(getPropertyFromUDFContext(PARQUET_PIG_SCHEMA));
     if (schema == null) {
       // no requested schema => use the schema from the file
       final GlobalMetaData globalMetaData = getParquetInputFormat().getGlobalMetaData(job);
