@@ -44,10 +44,12 @@ public class TestSpecificInputOutputFormat {
   private static final Log LOG = Log.getLog(TestSpecificInputOutputFormat.class);
 
   public static Car nextRecord(int i) {
+    String vin = "1VXBR12EXCP000000";
     Car.Builder carBuilder = Car.newBuilder()
             .setDoors(2)
             .setMake("Tesla")
             .setModel("Model X")
+            .setVin(new Vin(vin.getBytes()))
             .setYear(2014)
             .setOptionalExtra(LeatherTrim.newBuilder().setColour("black").build())
             .setRegistration("Calfornia");
