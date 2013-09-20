@@ -6,7 +6,7 @@
 * ISSUE 171: add unit test for parquet-scrooge
 * ISSUE 165: distinguish recoverable exception in BufferedProtocolReadToWrite
 * ISSUE 166: support projection when required fields in thrift class are not projected
-* 
+
 ### Version 1.2.1 ###
 * ISSUE 167: fix oom error dues to bad estimation
 
