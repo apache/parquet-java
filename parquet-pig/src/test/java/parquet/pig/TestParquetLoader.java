@@ -91,13 +91,11 @@ public class TestParquetLoader {
     
     pigServer.registerQuery("C = LOAD '" + out + "' using " + ParquetLoader.class.getName()+"('a:chararray, b:int');");
     Assert.assertEquals("{a: chararray,b: int}", pigServer.dumpSchema("C").toString());
-    boolean here = false;
     try {
       pigServer.registerQuery("D = foreach C generate i;");
+      Assert.fail("Frontend Exception expected");
     } catch (FrontendException fe) {
-      here = true;
     }
-    Assert.assertTrue(here);
     
     // we need to reset pigserver here as there is some problem is pig 
     // that causes pigserver to behave mysteriously after the exception
