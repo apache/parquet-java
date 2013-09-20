@@ -58,7 +58,7 @@ public class PigSchemaConverter {
    * @param pigSchemaString the pig schema to parse
    * @return the parsed pig schema
    */
-  static Schema parsePigSchema(String pigSchemaString) {
+  public static Schema parsePigSchema(String pigSchemaString) {
     try {
       return pigSchemaString == null ? null : Utils.getSchemaFromString(pigSchemaString);
     } catch (ParserException e) {
