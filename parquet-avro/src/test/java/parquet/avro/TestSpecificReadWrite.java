@@ -128,11 +128,13 @@ public class TestSpecificReadWrite {
   }
 
   public static Car getVwPolo() {
+    String vin = "WVWDB4505LK000000";
     return Car.newBuilder()
         .setYear(2010)
         .setRegistration("A123 GTR")
         .setMake("Volkswagen")
         .setModel("Polo")
+        .setVin(new Vin(vin.getBytes()))
         .setDoors(4)
         .setEngine(Engine.newBuilder().setType(EngineType.PETROL)
                   .setCapacity(1.4f).setHasTurboCharger(false).build())
@@ -140,41 +142,42 @@ public class TestSpecificReadWrite {
             Stereo.newBuilder().setMake("Blaupunkt").setSpeakers(4).build())
         .setServiceHistory(ImmutableList.of(
             Service.newBuilder().setDate(1325376000l).setMechanic("Jim").build(),
-            Service.newBuilder().setDate(1356998400l).setMechanic("Mike").build()
-            ))
+            Service.newBuilder().setDate(1356998400l).setMechanic("Mike").build()))
         .build();
   }
 
   public static Car getVwPassat() {
+    String vin = "WVWDB4505LK000001";
     return Car.newBuilder()
         .setYear(2010)
         .setRegistration("A123 GXR")
         .setMake("Volkswagen")
         .setModel("Passat")
+        .setVin(new Vin(vin.getBytes()))
         .setDoors(5)
         .setEngine(Engine.newBuilder().setType(EngineType.DIESEL)
             .setCapacity(2.0f).setHasTurboCharger(false).build())
         .setOptionalExtra(
             LeatherTrim.newBuilder().setColour("Black").build())
         .setServiceHistory(ImmutableList.of(
-            Service.newBuilder().setDate(1325376000l).setMechanic("Jim").build()
-        ))
+            Service.newBuilder().setDate(1325376000l).setMechanic("Jim").build()))
         .build();
   }
 
   public static Car getBmwMini() {
+    String vin = "WBABA91060AL00000";
     return Car.newBuilder()
         .setYear(2010)
         .setRegistration("A124 GSR")
         .setMake("BMW")
         .setModel("Mini")
+        .setVin(new Vin(vin.getBytes()))
         .setDoors(4)
         .setEngine(Engine.newBuilder().setType(EngineType.PETROL)
             .setCapacity(1.6f).setHasTurboCharger(true).build())
         .setOptionalExtra(null)
         .setServiceHistory(ImmutableList.of(
-            Service.newBuilder().setDate(1356998400l).setMechanic("Mike").build()
-        ))
+            Service.newBuilder().setDate(1356998400l).setMechanic("Mike").build()))
         .build();
   }
 }
