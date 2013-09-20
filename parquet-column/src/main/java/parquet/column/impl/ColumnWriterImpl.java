@@ -33,11 +33,11 @@ import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDiction
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
+import parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
-import parquet.io.api.FixedBinary;
 
 /**
  * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
@@ -98,6 +98,9 @@ final class ColumnWriterImpl implements ColumnWriter {
       switch (path.getType()) {
       case BOOLEAN:
         this.dataColumn = new BooleanPlainValuesWriter();
+        break;
+      case FIXED_LEN_BYTE_ARRAY:
+        this.dataColumn = new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol);
         break;
       default:
         this.dataColumn = new PlainValuesWriter(initialSizePerCol);
@@ -204,15 +207,6 @@ final class ColumnWriterImpl implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeBytes(value);
-    accountForValueWritten();
-  }
-
-  @Override
-  public void write(FixedBinary value, int repetitionLevel, int definitionLevel) {
-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevelColumn.writeInteger(repetitionLevel);
-    definitionLevelColumn.writeInteger(definitionLevel);
-    dataColumn.writeFixedBytes(value);
     accountForValueWritten();
   }
 

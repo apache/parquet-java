@@ -30,7 +30,6 @@ import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import parquet.hadoop.api.WriteSupport;
 import parquet.io.api.Binary;
-import parquet.io.api.FixedBinary;
 import parquet.io.api.RecordConsumer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
@@ -200,8 +199,7 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
     } else if (avroType.equals(Schema.Type.UNION)) {
       writeUnion((GroupType) type, nonNullAvroSchema, value);
     } else if (avroType.equals(Schema.Type.FIXED)) {
-      recordConsumer.addFixedBinary(
-          FixedBinary.fromByteArray(((GenericFixed) value).bytes()));
+      recordConsumer.addBinary(Binary.fromByteArray(((GenericFixed) value).bytes()));
     }
   }
 

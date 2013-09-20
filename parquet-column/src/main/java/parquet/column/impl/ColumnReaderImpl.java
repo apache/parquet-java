@@ -32,7 +32,6 @@ import parquet.column.page.PageReader;
 import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
-import parquet.io.api.FixedBinary;
 import parquet.io.api.PrimitiveConverter;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.PrimitiveType.PrimitiveTypeNameConverter;
@@ -101,13 +100,6 @@ class ColumnReaderImpl implements ColumnReader {
      * @return current value
      */
     public Binary getBinary() {
-      throw new UnsupportedOperationException();
-    }
-
-    /**
-     * @return current value
-     */
-    public FixedBinary getFixedBinary() {
       throw new UnsupportedOperationException();
     }
 
@@ -274,20 +266,20 @@ class ColumnReaderImpl implements ColumnReader {
       public Binding convertFIXED_LEN_BYTE_ARRAY(
           PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
-          FixedBinary current;
+          Binary current;
           void read() {
-            current = dataColumn.readFixedBytes();
+            current = dataColumn.readBytes();
           }
           public void skip() {
             current = null;
             dataColumn.skip();
           }
           @Override
-          public FixedBinary getFixedBinary() {
+          public Binary getBinary() {
             return current;
           }
           void writeValue() {
-            converter.addFixedBinary(current);
+            converter.addBinary(current);
           }
         };
       }
@@ -423,16 +415,6 @@ class ColumnReaderImpl implements ColumnReader {
     return this.binding.getBinary();
   }
   
-  /**
-   * {@inheritDoc}
-   * @see parquet.column.ColumnReader#getFixedBinary()
-   */
-  @Override
-  public FixedBinary getFixedBinary() {
-    readValue();
-    return this.binding.getFixedBinary();
-  }
-
   /**
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#getFloat()

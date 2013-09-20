@@ -15,7 +15,6 @@
  */
 package parquet.column;
 
-import parquet.io.api.FixedBinary;
 import parquet.io.api.Binary;
 
 /**
@@ -94,11 +93,6 @@ public interface ColumnReader {
    * @return the current value
    */
   Binary getBinary();
-
-  /**
-   * @return the current value
-   */
-  FixedBinary getFixedBinary();
 
   /**
    * @return the current value

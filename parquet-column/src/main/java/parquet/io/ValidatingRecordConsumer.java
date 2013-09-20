@@ -20,7 +20,6 @@ import java.util.Deque;
 
 import parquet.Log;
 import parquet.io.api.Binary;
-import parquet.io.api.FixedBinary;
 import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
@@ -175,14 +174,6 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   public void addBinary(Binary value) {
     validate(PrimitiveTypeName.BINARY);
     delegate.addBinary(value);
-  }
-  
-  /**
-   * {@inheritDoc}
-   */
-  public void addFixedBinary(FixedBinary value) {
-    validate(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY);
-    delegate.addFixedBinary(value);
   }
 
   /**

@@ -26,7 +26,6 @@ import org.apache.avro.specific.SpecificData;
 import parquet.Preconditions;
 import parquet.io.InvalidRecordException;
 import parquet.io.api.Binary;
-import parquet.io.api.FixedBinary;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
 import parquet.io.api.PrimitiveConverter;
@@ -284,7 +283,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     }
 
     @Override
-    final public void addFixedBinary(FixedBinary value) {
+    final public void addBinary(Binary value) {
       parent.add(new GenericData.Fixed(avroSchema, value.getBytes()));
     }
   }

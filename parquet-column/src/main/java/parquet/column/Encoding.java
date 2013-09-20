@@ -65,9 +65,6 @@ public enum Encoding {
       case INT64:
         return new LongPlainValuesReader();
       case FIXED_LEN_BYTE_ARRAY:
-        String[] path = descriptor.getPath();
-        System.out.println("Encoding.getValuesReader FIXED type field " + path[path.length - 1] + 
-                           " length: " + descriptor.getTypeLength());
         return new FixedLenByteArrayPlainValuesReader(descriptor.getTypeLength());
       default:
         throw new ParquetDecodingException("no plain reader for type " + descriptor.getType());

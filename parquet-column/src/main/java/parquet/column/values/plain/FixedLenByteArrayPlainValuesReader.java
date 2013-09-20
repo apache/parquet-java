@@ -23,7 +23,7 @@ import parquet.Log;
 import parquet.bytes.BytesUtils;
 import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;
-import parquet.io.api.FixedBinary;
+import parquet.io.api.Binary;
 
 public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
   private static final Log LOG = Log.getLog(FixedLenByteArrayPlainValuesReader.class);
@@ -36,11 +36,11 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
   }
 
   @Override
-  public FixedBinary readFixedBytes() {
+  public Binary readBytes() {
     try {
       int start = offset;
       offset = start + length;
-      return FixedBinary.fromByteArray(in, start, length);
+      return Binary.fromByteArray(in, start, length);
     } catch (RuntimeException e) {
       throw new ParquetDecodingException("could not read bytes at offset " + offset, e);
     }
