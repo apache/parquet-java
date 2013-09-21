@@ -24,15 +24,17 @@ protocol Cars {
         float capacity;
         boolean hasTurboCharger;
     }
-      
-    fixed Vin(17);
+    
+    // TODO: FIXED type fields are not supported with Specific Avro schema
+    //       right now.
+    //fixed Vin(17);
 
     record Car {
         long year;
         string registration;
         string make;
         string model;
-        Vin vin;
+    //    Vin vin;
         int doors;
         Engine engine;
         union { null, Stereo, LeatherTrim } optionalExtra = null;

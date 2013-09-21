@@ -284,6 +284,12 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
 
     @Override
     final public void addBinary(Binary value) {
+      // TODO: This prevents FIXED fields from being supported for Specific 
+      //       Avro records. A class extending SpecificFixed is generated from 
+      //       the IDL but because we are deserializing the value into a
+      //       GenericData.Fixed here, we end up attempting to cast it to
+      //       to the generated IDL class that extends SpecificFixed when we
+      //       call set() later.
       parent.add(new GenericData.Fixed(avroSchema, value.getBytes()));
     }
   }
