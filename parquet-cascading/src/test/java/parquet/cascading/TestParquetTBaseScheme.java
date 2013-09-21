@@ -24,7 +24,6 @@ import cascading.operation.FunctionCall;
 import cascading.pipe.Each;
 import cascading.pipe.Pipe;
 import cascading.scheme.Scheme;
-import cascading.scheme.SinkCall;
 import cascading.scheme.hadoop.TextLine;
 import cascading.tap.Tap;
 import cascading.tap.hadoop.Hfs;
@@ -36,62 +35,24 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
-import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.OutputCollector;
-import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
-import org.apache.thrift.TBase;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.mock;
-import parquet.hadoop.api.ReadSupport;
-import parquet.hadoop.thrift.ThriftReadSupport;
 import parquet.hadoop.thrift.ThriftToParquetFileWriter;
-import parquet.io.api.RecordMaterializer;
-import parquet.schema.MessageType;
-import parquet.thrift.TBaseRecordConverter;
 import parquet.thrift.test.Name;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 public class TestParquetTBaseScheme {
   final String txtInputPath = "src/test/resources/names.txt";
   final String parquetInputPath = "target/test/ParquetTBaseScheme/names-parquet-in";
   final String parquetOutputPath = "target/test/ParquetTBaseScheme/names-parquet-out";
   final String txtOutputPath = "target/test/ParquetTBaseScheme/names-txt-out";
-
-  @Test
-  public void testGetRecordMaterializer() throws Exception {
-    ThriftReadSupport<Name> readSupport = new ThriftReadSupport<Name>();
-    ParquetTBaseScheme tBaseScheme = new ParquetTBaseScheme(Name.class);
-    String descriptorKey = "thrift.descriptor";
-    String mockDescriptor = "{\"id\":\"STRUCT\"}";
-    Map<String, String> metaData = new HashMap<String, String>();
-    metaData.put(descriptorKey, mockDescriptor);
-    FlowProcess<JobConf> flowProcess = mock(FlowProcess.class);
-    Tap<JobConf, RecordReader, OutputCollector> tap = mock(Tap.class);
-    JobConf jobConf = new JobConf();
-    jobConf.set(ThriftReadSupport.THRIFT_READ_CLASS_KEY, Name.class.getName());
-    MessageType fileSchema = new MessageType("Test");
-    ReadSupport.ReadContext readContext = new ReadSupport.ReadContext(fileSchema);
-
-    //Mock the method call by cascading
-    tBaseScheme.sourceConfInit(flowProcess, tap, jobConf);
-
-    RecordMaterializer recordMaterializer = readSupport.prepareForRead(jobConf, metaData, fileSchema, readContext);
-    assertNotNull(recordMaterializer);
-    assertEquals(TBaseRecordConverter.class, recordMaterializer.getClass());
-  }
 
   @Test
   public void testWrite() throws Exception {
