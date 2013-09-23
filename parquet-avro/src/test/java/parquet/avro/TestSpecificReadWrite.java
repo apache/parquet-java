@@ -65,9 +65,7 @@ public class TestSpecificReadWrite {
 
   @Test
   public void testFilterMatchesMultiple() throws IOException {
-
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
-
     ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Volkswagen")));
     for (int i = 0; i < 10; i++) {
       assertEquals(getVwPolo().toString(), reader.read().toString());
@@ -78,9 +76,7 @@ public class TestSpecificReadWrite {
 
   @Test
   public void testFilterWithDictionary() throws IOException {
-
     Path path = writeCarsToParquetFile(1,CompressionCodecName.UNCOMPRESSED,true);
-
     ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Volkswagen")));
     assertEquals(getVwPolo().toString(), reader.read().toString());
     assertEquals(getVwPassat().toString(), reader.read().toString());
@@ -90,7 +86,7 @@ public class TestSpecificReadWrite {
   @Test
   public void testFilterOnSubAttribute() throws IOException {
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
-
+    
     ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("engine.type", equalTo(EngineType.DIESEL)));
     assertEquals(reader.read().toString(), getVwPassat().toString());
     assertNull(reader.read());
@@ -126,7 +122,7 @@ public class TestSpecificReadWrite {
   }
 
   public static Car getVwPolo() {
-    String vin = "WVWDB4505LK000000";
+    String vin = "WVWDB4505LK000001";
     return Car.newBuilder()
         .setYear(2010)
         .setRegistration("A123 GTR")
@@ -145,7 +141,7 @@ public class TestSpecificReadWrite {
   }
 
   public static Car getVwPassat() {
-    String vin = "WVWDB4505LK000001";
+    String vin = "WVWDB4505LK000002";
     return Car.newBuilder()
         .setYear(2010)
         .setRegistration("A123 GXR")
@@ -163,7 +159,7 @@ public class TestSpecificReadWrite {
   }
 
   public static Car getBmwMini() {
-    String vin = "WBABA91060AL00000";
+    String vin = "WBABA91060AL00003";
     return Car.newBuilder()
         .setYear(2010)
         .setRegistration("A124 GSR")

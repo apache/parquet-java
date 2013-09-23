@@ -91,6 +91,9 @@ final class ColumnWriterImpl implements ColumnWriter {
       case FLOAT:
         this.dataColumn = new PlainFloatDictionaryValuesWriter(maxDictByteSize, initialSizePerCol);
         break;
+      case FIXED_LEN_BYTE_ARRAY:
+        this.dataColumn = new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol);
+        break;
       default:
         this.dataColumn = new PlainValuesWriter(initialSizePerCol);
       }     

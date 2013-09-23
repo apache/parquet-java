@@ -15,6 +15,7 @@
  */
 package parquet.avro;
 
+import java.lang.reflect.Constructor;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,6 +24,7 @@ import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.specific.SpecificData;
+import org.apache.avro.specific.SpecificFixed;
 import parquet.Preconditions;
 import parquet.io.InvalidRecordException;
 import parquet.io.api.Binary;
@@ -284,10 +286,19 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
 
     @Override
     final public void addBinary(Binary value) {
-      if (SpecificData.get().getClass(avroSchema) == null) {
+      System.out.println(">>> FixedFieldConverter: " + value);
+      Class fixedClass = SpecificData.get().getClass(avroSchema);
+      if (fixedClass == null) {
         parent.add(new GenericData.Fixed(avroSchema, value.getBytes()));
       } else {
-        parent.add(SpecificData.get().createFixed(value.getBytes(), avroSchema));
+        try {
+          Constructor ctor = fixedClass.getConstructor(new Class[] { byte[].class });
+          Object fixed = ctor.newInstance(value.getBytes());
+          System.out.println("FixedFieldConverter add specific fixed type " + fixed.getClass().getName() + ":" + fixed);
+          parent.add(fixed);
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
       }
     }
   }

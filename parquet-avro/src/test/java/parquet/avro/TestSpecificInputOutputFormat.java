@@ -117,6 +117,7 @@ public class TestSpecificInputOutputFormat {
     fileSystem.delete(parquetPath, true);
     fileSystem.delete(outputPath, true);
     {
+      System.out.println("+++ Write");
       final Job job = new Job(conf, "write");
 
       // input not really used
@@ -133,6 +134,7 @@ public class TestSpecificInputOutputFormat {
       waitForJob(job);
     }
     {
+      System.out.println("+++ Read");
       final Job job = new Job(conf, "read");
       job.setInputFormatClass(AvroParquetInputFormat.class);
       AvroParquetInputFormat.setInputPaths(job, parquetPath);

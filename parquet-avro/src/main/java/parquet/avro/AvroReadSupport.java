@@ -39,7 +39,6 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
   @Override
   public ReadContext init(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
     String requestedProjectionString = configuration.get(AVRO_REQUESTED_PROJECTION);
-    System.out.println("AvroReadSupport.init: requested projection: " + requestedProjectionString);
     if (requestedProjectionString != null) {
       Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);
       MessageType requestedProjection = new AvroSchemaConverter().convert(avroRequestedProjection);
