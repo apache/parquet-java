@@ -77,7 +77,7 @@ public abstract class ValuesReader {
   public Binary readBytes() {
     throw new UnsupportedOperationException();
   }
-  
+
   /**
    * @return the next float from the page
    */
@@ -111,3 +111,4 @@ public abstract class ValuesReader {
    */
   abstract public void skip();
 }
+

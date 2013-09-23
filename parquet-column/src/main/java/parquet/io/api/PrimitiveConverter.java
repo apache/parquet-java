@@ -69,7 +69,7 @@ abstract public class PrimitiveConverter extends Converter {
   public void addBinary(Binary value) {
     throw new UnsupportedOperationException(getClass().getName());
   }
-  
+
   /**
    * @param value value to set
    */

@@ -56,7 +56,7 @@ public interface ColumnWriter {
    * @param definitionLevel
    */
   void write(Binary value, int repetitionLevel, int definitionLevel);
-  
+
   /**
    * writes the current value
    * @param value
@@ -93,3 +93,4 @@ public interface ColumnWriter {
   long getBufferedSizeInMemory();
 
 }
+

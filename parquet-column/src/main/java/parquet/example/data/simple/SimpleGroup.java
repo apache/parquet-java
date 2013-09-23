@@ -24,6 +24,7 @@ import parquet.io.api.RecordConsumer;
 import parquet.schema.GroupType;
 import parquet.schema.Type;
 
+
 public class SimpleGroup extends Group {
 
   private final GroupType schema;

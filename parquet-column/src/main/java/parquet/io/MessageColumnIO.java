@@ -256,7 +256,7 @@ public class MessageColumnIO extends GroupColumnIO {
       setRepetitionLevel();
       if (DEBUG) printState();
     }
-    
+
     @Override
     public void addFloat(float value) {
       if (DEBUG) log("addFloat(" + value + ")");
