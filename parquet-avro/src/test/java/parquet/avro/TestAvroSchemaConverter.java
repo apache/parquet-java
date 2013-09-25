@@ -72,7 +72,7 @@ public class TestAvroSchemaConverter {
         "      required int32 value;\n" +
         "    }\n" +
         "  }\n" +
-        "  required fixed_len_byte_array myfixed;\n" +
+        "  required fixed_len_byte_array myfixed(1);\n" +
         "}\n");
   }
 
@@ -100,17 +100,16 @@ public class TestAvroSchemaConverter {
         Schema.create(Schema.Type.INT),
         Schema.create(Schema.Type.FLOAT)));
     schema.setFields(Arrays.asList(
-        new Schema.Field("myunion", multipleTypes, null, NullNode.getInstance())
-    ));
+        new Schema.Field("myunion", multipleTypes, null, NullNode.getInstance())));
 
     // Avro union is modelled using optional data members of thw different types;
     testConversion(
         schema,
         "message record2 {\n" +
-            "  optional group myunion {\n" +
-            "    optional int32 member0;\n" +
-            "    optional float member1;\n" +
-            "  }\n" +
-            "}\n");
+        "  optional group myunion {\n" +
+        "    optional int32 member0;\n" +
+        "    optional float member1;\n" +
+        "  }\n" +
+        "}\n");
   }
 }

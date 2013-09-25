@@ -219,23 +219,22 @@ public final class PrimitiveType extends Type {
         return converter.convertINT96(this);
       }
     },
-    FIXED_LEN_BYTE_ARRAY(null, null) { // TODO: support for FIXED_LEN_BYTE_ARRAY
-
+    FIXED_LEN_BYTE_ARRAY("getBinary", Binary.class) {
       @Override
       public String toString(ColumnReader columnReader) {
-        throw new UnsupportedOperationException("NYI");
+        return String.valueOf(columnReader.getBinary());
       }
 
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
-        throw new UnsupportedOperationException("NYI");
+        recordConsumer.addBinary(columnReader.getBinary());
       }
 
       @Override
       public void addValueToPrimitiveConverter(
           PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
-        throw new UnsupportedOperationException("NYI");
+        primitiveConverter.addBinary(columnReader.getBinary());
       }
 
       @Override
@@ -358,11 +357,14 @@ public final class PrimitiveType extends Type {
   @Override
   public void writeToStringBuilder(StringBuilder sb, String indent) {
     sb.append(indent)
-    .append(getRepetition().name().toLowerCase())
-    .append(" ")
-    .append(primitive.name().toLowerCase())
-    .append(" ")
-    .append(getName());
+        .append(getRepetition().name().toLowerCase())
+        .append(" ")
+        .append(primitive.name().toLowerCase())
+        .append(" ")
+        .append(getName());
+    if (primitive == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
+      sb.append("(" + length + ")");
+    }
     if (getOriginalType() != null) {
       sb.append(" (").append(getOriginalType()).append(")");
     }
