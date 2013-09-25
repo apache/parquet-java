@@ -52,7 +52,7 @@ public class ParquetScroogeSchemeTest {
 
   public <T> void verifyScroogeRead(TBase recordToWrite, Class<T> readClass, String expectedStr) throws Exception {
     Configuration conf = new Configuration();
-    conf.set("parquet.thrift.converter.class", ScroogeRecordConverter.class.getCanonicalName());
+    conf.set("parquet.thrift.converter.class", ScroogeRecordConverter.class.getName());
     conf.set(ThriftReadSupport.THRIFT_READ_CLASS_KEY, readClass.getName());
 
     final Path parquetFile = new Path("target/test/TestParquetToThriftReadProjection/file.parquet");
