@@ -80,6 +80,7 @@ public class ScroogeSchemaConverter {
       case SET:
 //        final TStructDescriptor.Field setElemField = field.getSetElemField();
 //        resultType = new ThriftType.SetType(toThriftField(name, setElemField, requirement));
+        resultType=convertSetTypeField(f);
         break;
       case LIST:
 //        final TStructDescriptor.Field listElemField = field.getListElemField();
@@ -104,6 +105,13 @@ public class ScroogeSchemaConverter {
       System.out.println("<<<" + innerName);
     }
     return new ThriftField(fieldName, fieldId, requirement, resultType);
+  }
+
+  private ThriftType convertSetTypeField(ThriftStructField f) {
+    List<Class> typeArguments=getTypeArguments(f);
+    ThriftType elementType= convertBasedOnClass(typeArguments.get(0));
+    ThriftField elementField=new ThriftField(f.name(),(short) 1,ThriftField.Requirement.REQUIRED,elementType);
+    return new ThriftType.SetType(elementField);
   }
 
   private List<Class> getTypeArguments(ThriftStructField f){

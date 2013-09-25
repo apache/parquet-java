@@ -1,12 +1,15 @@
 package parquet.scrooge;
 
 import org.junit.Test;
+import parquet.scrooge.test.*;
 import parquet.scrooge.test.TestListPrimitive;
 import parquet.scrooge.test.TestMapPrimitiveKey;
 import parquet.scrooge.test.TestMapPrimitiveValue;
 import parquet.scrooge.test.TestOptionalMap;
+import parquet.scrooge.test.TestSetPrimitive;
 import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType;
+import parquet.thrift.test.*;
 
 import static junit.framework.Assert.assertEquals;
 
@@ -32,6 +35,13 @@ public class ScroogeSchemaConverterTest {
   public void testConvertPrimitiveList() throws Exception{
     ThriftType.StructType scroogeList = new ScroogeSchemaConverter().convert(TestListPrimitive.class);
     ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestListPrimitive.class);
+    assertEquals(expected, scroogeList);
+  }
+
+  @Test
+  public void testConvertPrimitiveSet() throws Exception{
+    ThriftType.StructType scroogeList = new ScroogeSchemaConverter().convert(TestSetPrimitive.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestSetPrimitive.class);
     assertEquals(expected, scroogeList);
   }
 

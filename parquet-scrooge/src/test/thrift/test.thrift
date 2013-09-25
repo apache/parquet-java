@@ -103,6 +103,17 @@ struct TestListPrimitive {
   6: required list<bool> bool_list;
   7: required list<double> double_list;
 }
+
+struct TestSetPrimitive {
+  1: required set<i16> short_list;
+  2: required set<i32> int_list;
+  3: required set<i64> long_list;
+  4: required set<byte> byte_list;
+  5: required set<string> string_list;
+  6: required set<bool> bool_list;
+  7: required set<double> double_list;
+}
+
 struct TestMapPrimitiveValue {
   1: required map<string,i16> short_map;
   2: required map<string,i32> int_map;
