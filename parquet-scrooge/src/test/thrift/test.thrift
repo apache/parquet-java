@@ -93,6 +93,16 @@ struct TestOptionalMap {
    6: optional map<double,string> double_map;
    7: optional map<string,string> string_map;
 }
+
+struct TestListPrimitive {
+  1: required list<i16> short_list;
+  2: required list<i32> int_list;
+  3: required list<i64> long_list;
+  4: required list<byte> byte_list;
+  5: required list<string> string_list;
+  6: required list<bool> bool_list;
+  7: required list<double> double_list;
+}
 struct TestMapPrimitiveValue {
   1: required map<string,i16> short_map;
   2: required map<string,i32> int_map;

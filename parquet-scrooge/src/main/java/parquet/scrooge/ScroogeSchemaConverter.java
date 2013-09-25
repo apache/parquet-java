@@ -84,6 +84,7 @@ public class ScroogeSchemaConverter {
       case LIST:
 //        final TStructDescriptor.Field listElemField = field.getListElemField();
 //        resultType = new ThriftType.ListType(toThriftField(name, listElemField, requirement));
+        resultType=convertListTypeField(f);
         break;
       case ENUM:
 //        Collection<TEnum> enumValues = field.getEnumValues();
@@ -106,13 +107,19 @@ public class ScroogeSchemaConverter {
   }
 
   private List<Class> getTypeArguments(ThriftStructField f){
-//    ((scala.reflect.Manifest)(((scala.reflect.Manifest)f.manifest().get()).typeArguments().first())).erasure()==short.class
     Iterator<Manifest> it = ((Manifest) f.manifest().get()).typeArguments().iterator();
     List<Class> types=new ArrayList<Class>();
     while(it.hasNext()){
       types.add(it.next().erasure());
     }
     return types;
+  }
+
+  private ThriftType convertListTypeField(ThriftStructField f) {
+    List<Class> typeArguments=getTypeArguments(f);
+    ThriftType elementType= convertBasedOnClass(typeArguments.get(0));
+    ThriftField elementField=new ThriftField(f.name(),(short) 1,ThriftField.Requirement.REQUIRED,elementType);
+    return new ThriftType.ListType(elementField);
   }
 
   private ThriftType convertMapTypeField(ThriftStructField f) {
