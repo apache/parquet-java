@@ -26,6 +26,11 @@ import parquet.column.Encoding;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
 
+/**
+ * ValuesWriter for FIXED_LEN_BYTE_ARRAY.
+ *
+ * @author David Z. Chen <dchen@linkedin.com>
+ */
 public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
   private static final Log LOG = Log.getLog(PlainValuesWriter.class);
   

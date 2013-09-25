@@ -25,6 +25,11 @@ import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
 
+/**
+ * ValuesReader for FIXED_LEN_BYTE_ARRAY.
+ *
+ * @author David Z. Chen <dchen@linkedin.com>
+ */
 public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
   private static final Log LOG = Log.getLog(FixedLenByteArrayPlainValuesReader.class);
   private byte[] in;
