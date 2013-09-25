@@ -1,4 +1,11 @@
 # Parquet #
+### Version 1.2.2 ###
+* ISSUE 175: fix problem with projection pushdown in parquetloader
+* ISSUE 174: improve readability by renaming variables
+* ISSUE 173: make numbers in log messages easy to read in InternalParquetRecordWriter
+* ISSUE 171: add unit test for parquet-scrooge
+* ISSUE 165: distinguish recoverable exception in BufferedProtocolReadToWrite
+* ISSUE 166: support projection when required fields in thrift class are not projected
 
 ### Version 1.2.1 ###
 * ISSUE 167: fix oom error dues to bad estimation
