@@ -78,5 +78,9 @@ struct TestMap {
   1: required map<i16,string> short_map;
   2: required map<i32,string> int_map;
   3: required map<byte,string> byt_map;
+  4: required map<bool,string> bool_map;
+  5: required map<i64,string> long_map;
+  6: required map<double,string> double_map;
+  7: required map<string,string> string_map;
 }
 
