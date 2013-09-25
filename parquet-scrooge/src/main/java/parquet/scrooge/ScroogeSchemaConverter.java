@@ -5,7 +5,9 @@ import com.twitter.scrooge.ThriftStructField;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftTypeID;
+import scala.collection.Iterator;
 import scala.collection.JavaConversions;
+import scala.reflect.Manifest;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -103,6 +105,16 @@ public class ScroogeSchemaConverter {
     return new ThriftField(fieldName, fieldId, requirement, resultType);
   }
 
+  private List<Class> getTypeArguments(ThriftStructField f){
+//    ((scala.reflect.Manifest)(((scala.reflect.Manifest)f.manifest().get()).typeArguments().first())).erasure()==short.class
+    Iterator<Manifest> it = ((Manifest) f.manifest().get()).typeArguments().iterator();
+    List<Class> types=new ArrayList<Class>();
+    while(it.hasNext()){
+      types.add(it.next().erasure());
+    }
+    return types;
+  }
+
   private ThriftType convertMapTypeField(ThriftStructField f) {
     Type mapType=null;
     if (isOptional(f)){
@@ -110,16 +122,16 @@ public class ScroogeSchemaConverter {
     }else{
       mapType=f.method().getGenericReturnType();
     }
-    Type[] gTypes = ((ParameterizedType)mapType).getActualTypeArguments();
-    Class keyClass = (Class) gTypes[0];
+    List<Class> typeArguments=getTypeArguments(f);//TODO test optional fields
+    Class keyClass = typeArguments.get(0);
     //TODO requirement should be the requirement of the map
     ThriftType keyType=convertBasedOnClass(keyClass);
-    Class valueClass = (Class) gTypes[1];
+    Class valueClass = typeArguments.get(1);
     //TODO: what is the id of a key???default to 1, this is the behavior in elephant bird
     //TODO:requirementType??
-    ThriftField keyField=new ThriftField(f.name()+"_map_key", (short) 1, ThriftField.Requirement.OPTIONAL,keyType);
+    ThriftField keyField=new ThriftField(f.name()+"_map_key", (short) 1, ThriftField.Requirement.REQUIRED,keyType);
     ThriftType valueType=convertBasedOnClass(valueClass);
-    ThriftField valueField=new ThriftField(f.name()+"_map_value", (short) 1, ThriftField.Requirement.OPTIONAL,valueType);
+    ThriftField valueField=new ThriftField(f.name()+"_map_value", (short) 1, ThriftField.Requirement.REQUIRED,valueType);
     return new ThriftType.MapType(keyField,valueField);
 
     //TODO notice the key and value field could be String..boolean, or complexType
@@ -133,14 +145,30 @@ public class ScroogeSchemaConverter {
   }
 
   private ThriftType convertBasedOnClass(Class keyClass) {
-    if (keyClass==Boolean.class){
+//    if (keyClass==Boolean.class){
+//      return new ThriftType.BoolType();
+//    }else if (keyClass==Byte.class){
+//      return new ThriftType.ByteType();
+//    }else if (keyClass==Double.class){
+//      return new ThriftType.DoubleType();
+//    }else if (keyClass==Short.class){
+//      return new ThriftType.I16Type();
+//    }
+     //This will be used by generic types, like map, list, set
+    if (keyClass==boolean.class){
       return new ThriftType.BoolType();
-    }else if (keyClass==Byte.class){
+    }else if (keyClass==byte.class){
       return new ThriftType.ByteType();
-    }else if (keyClass==Double.class){
+    }else if (keyClass==double.class){
       return new ThriftType.DoubleType();
-    }else if (keyClass==Short.class){
+    }else if (keyClass==short.class){
       return new ThriftType.I16Type();
+    }else if (keyClass==int.class){
+      return new ThriftType.I32Type();
+    }else if (keyClass==long.class){
+      return new ThriftType.I64Type();
+    }else if (keyClass==String.class){
+      return new ThriftType.StringType();
     }
     return null;
   }

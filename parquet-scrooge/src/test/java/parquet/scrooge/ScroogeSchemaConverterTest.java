@@ -3,6 +3,10 @@ package parquet.scrooge;
 import org.junit.Test;
 import parquet.scrooge.test.TestMap;
 import parquet.scrooge.test.TestPersonWithAllInformation;
+import parquet.thrift.ThriftSchemaConverter;
+import parquet.thrift.struct.ThriftType;
+
+import static junit.framework.Assert.assertEquals;
 
 /**
  * Test convert scrooge schema to Parquet Schema
@@ -10,7 +14,8 @@ import parquet.scrooge.test.TestPersonWithAllInformation;
 public class ScroogeSchemaConverterTest {
   @Test
   public void testTraverse() throws Exception{
-    new ScroogeSchemaConverter().convert(TestMap.class);
-//    traverseStruct(parquet.scrooge.test.RequiredPrimitiveFixture.class.getName());
+    ThriftType.StructType scroogeMap = new ScroogeSchemaConverter().convert(TestMap.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestMap.class);
+    assertEquals(expected.toJSON(),scroogeMap.toJSON());
   }
 }
