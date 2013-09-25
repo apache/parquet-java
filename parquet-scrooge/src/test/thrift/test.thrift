@@ -84,6 +84,15 @@ struct TestMapPrimitiveKey {
   7: required map<string,string> string_map;
 }
 
+struct TestOptionalMap {
+   1: optional map<i16,string> short_map;
+   2: optional map<i32,string> int_map;
+   3: optional map<byte,string> byt_map;
+   4: optional map<bool,string> bool_map;
+   5: optional map<i64,string> long_map;
+   6: optional map<double,string> double_map;
+   7: optional map<string,string> string_map;
+}
 struct TestMapPrimitiveValue {
   1: required map<string,i16> short_map;
   2: required map<string,i32> int_map;
