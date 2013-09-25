@@ -74,13 +74,23 @@ struct TestPersonWithAllInformation {
    8: optional list<string> key_words
 }
 
-struct TestMap {
+struct TestMapPrimitiveKey {
   1: required map<i16,string> short_map;
   2: required map<i32,string> int_map;
   3: required map<byte,string> byt_map;
   4: required map<bool,string> bool_map;
   5: required map<i64,string> long_map;
   6: required map<double,string> double_map;
+  7: required map<string,string> string_map;
+}
+
+struct TestMapPrimitiveValue {
+  1: required map<string,i16> short_map;
+  2: required map<string,i32> int_map;
+  3: required map<string,byte> byt_map;
+  4: required map<string,bool> bool_map;
+  5: required map<string,i64> long_map;
+  6: required map<string,double> double_map;
   7: required map<string,string> string_map;
 }
 
