@@ -69,7 +69,6 @@ final class ColumnWriterImpl implements ColumnWriter {
 
     repetitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel());
     definitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel());
-    System.out.println(">>> ColumnWriterImpl for " + path + " dictionary " + enableDictionary);
     if (enableDictionary) {
       int maxDictByteSize = applyRatioInPercent(pageSizeThreshold, DICTIONARY_PAGE_MAX_SIZE_PERCENT);
       switch (path.getType()) {

@@ -286,7 +286,6 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
 
     @Override
     final public void addBinary(Binary value) {
-      System.out.println(">>> FixedFieldConverter: " + value);
       Class fixedClass = SpecificData.get().getClass(avroSchema);
       if (fixedClass == null) {
         parent.add(new GenericData.Fixed(avroSchema, value.getBytes()));

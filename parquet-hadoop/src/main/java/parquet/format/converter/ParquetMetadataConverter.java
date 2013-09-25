@@ -98,8 +98,6 @@ public class ParquetMetadataConverter {
         element.setRepetition_type(toParquetRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
         if (primitiveType.getTypeLength() > 0) {
-          System.out.println(">>> Set type_length of SchemaElement " + primitiveType.getName() +
-                             " size " + primitiveType.getTypeLength());
           element.setType_length(primitiveType.getTypeLength());
         }
         result.add(element);
@@ -336,11 +334,6 @@ public class ParquetMetadataConverter {
     parquet.schema.Type[] result = new parquet.schema.Type[childrenCount];
     for (int i = 0; i < result.length; i++) {
       SchemaElement schemaElement = schema.next();
-      if (schemaElement.getType() == Type.FIXED_LEN_BYTE_ARRAY) {
-        System.out.println(">>> SchemaElement " + schemaElement.getName() +
-                           " is FIXED type of size " + schemaElement.type_length);
-      }
-
       if ((!schemaElement.isSetType() && !schemaElement.isSetNum_children())
           || (schemaElement.isSetType() && schemaElement.isSetNum_children())) {
         throw new RuntimeException("bad element " + schemaElement);
