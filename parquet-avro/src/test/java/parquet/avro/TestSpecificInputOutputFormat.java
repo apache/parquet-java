@@ -46,16 +46,16 @@ public class TestSpecificInputOutputFormat {
   public static Car nextRecord(int i) {
     String vin = "1VXBR12EXCP000000";
     Car.Builder carBuilder = Car.newBuilder()
-            .setDoors(2)
-            .setMake("Tesla")
-            .setModel("Model X")
-            .setVin(new Vin(vin.getBytes()))
-            .setYear(2014)
-            .setOptionalExtra(LeatherTrim.newBuilder().setColour("black").build())
-            .setRegistration("Calfornia");
+        .setDoors(2)
+        .setMake("Tesla")
+        .setModel("Model X")
+        .setVin(new Vin(vin.getBytes()))
+        .setYear(2014)
+        .setOptionalExtra(LeatherTrim.newBuilder().setColour("black").build())
+        .setRegistration("Calfornia");
     Engine.Builder engineBuilder = Engine.newBuilder()
-            .setCapacity(85.0f)
-            .setHasTurboCharger(false);
+        .setCapacity(85.0f)
+        .setHasTurboCharger(false);
     if (i % 2 == 0) {
       engineBuilder.setType(EngineType.ELECTRIC);
     } else {
@@ -65,8 +65,8 @@ public class TestSpecificInputOutputFormat {
     if (i % 4 == 0) {
       List<Service> serviceList = Lists.newArrayList();
       serviceList.add(Service.newBuilder()
-              .setDate(1374084640)
-              .setMechanic("Elon Musk").build());
+          .setDate(1374084640)
+          .setMechanic("Elon Musk").build());
       carBuilder.setServiceHistory(serviceList);
     }
     return carBuilder.build();
@@ -117,7 +117,6 @@ public class TestSpecificInputOutputFormat {
     fileSystem.delete(parquetPath, true);
     fileSystem.delete(outputPath, true);
     {
-      System.out.println("+++ Write");
       final Job job = new Job(conf, "write");
 
       // input not really used
@@ -134,7 +133,6 @@ public class TestSpecificInputOutputFormat {
       waitForJob(job);
     }
     {
-      System.out.println("+++ Read");
       final Job job = new Job(conf, "read");
       job.setInputFormatClass(AvroParquetInputFormat.class);
       AvroParquetInputFormat.setInputPaths(job, parquetPath);
