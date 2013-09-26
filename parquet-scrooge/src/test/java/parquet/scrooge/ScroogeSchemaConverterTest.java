@@ -2,6 +2,7 @@ package parquet.scrooge;
 
 import org.junit.Test;
 import parquet.scrooge.test.*;
+import parquet.scrooge.test.TestFieldOfEnum;
 import parquet.scrooge.test.TestListPrimitive;
 import parquet.scrooge.test.TestMapPrimitiveKey;
 import parquet.scrooge.test.TestMapPrimitiveValue;
@@ -39,10 +40,18 @@ public class ScroogeSchemaConverterTest {
   }
 
   @Test
-  public void testConvertPrimitiveSet() throws Exception{
+     public void testConvertPrimitiveSet() throws Exception{
     ThriftType.StructType scroogeList = new ScroogeSchemaConverter().convert(TestSetPrimitive.class);
     ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestSetPrimitive.class);
     assertEquals(expected, scroogeList);
+  }
+
+  @Test
+  public void testConvertEnum() throws Exception{
+    ThriftType.StructType scroogeList = new ScroogeSchemaConverter().convert(TestFieldOfEnum.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestFieldOfEnum.class);
+    assertEquals(expected, scroogeList);
+    assertEquals(expected.toJSON(), scroogeList.toJSON());
   }
 
   @Test

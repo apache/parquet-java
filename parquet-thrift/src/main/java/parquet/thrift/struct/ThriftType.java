@@ -363,6 +363,26 @@ public abstract class ThriftType {
     public String getName() {
       return name;
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (!(o instanceof EnumValue)) return false;
+
+      EnumValue enumValue = (EnumValue) o;
+
+      if (id != enumValue.id) return false;
+      if (name != null ? !name.equals(enumValue.name) : enumValue.name != null) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = id;
+      result = 31 * result + (name != null ? name.hashCode() : 0);
+      return result;
+    }
   }
 
   public static class EnumType extends ThriftType {
@@ -381,6 +401,26 @@ public abstract class ThriftType {
     @Override
     public void accept(TypeVisitor visitor) {
       visitor.visit(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (!(o instanceof EnumType)) return false;
+      if (!super.equals(o)) return false;
+
+      EnumType enumType = (EnumType) o;
+
+      if (!values.equals(enumType.values)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = super.hashCode();
+      result = 31 * result + values.hashCode();
+      return result;
     }
   }
 

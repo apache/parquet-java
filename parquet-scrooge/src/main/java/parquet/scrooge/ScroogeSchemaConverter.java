@@ -5,13 +5,17 @@ import com.twitter.scrooge.ThriftStructField;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftTypeID;
-import scala.collection.Iterator;
+import scala.collection.*;
 import scala.collection.JavaConversions;
 import scala.reflect.Manifest;
 
+import java.lang.Iterable;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public class ScroogeSchemaConverter {
@@ -94,6 +98,7 @@ public class ScroogeSchemaConverter {
 //          values.add(new ThriftType.EnumValue(tEnum.getValue(), tEnum.toString()));
 //        }
 //        resultType = new ThriftType.EnumType(values);
+        resultType=convertEnumTypeField(f);
         break;
     }
 
@@ -105,6 +110,63 @@ public class ScroogeSchemaConverter {
       System.out.println("<<<" + innerName);
     }
     return new ThriftField(fieldName, fieldId, requirement, resultType);
+  }
+
+
+  private static class ScroogeEnumDesc{
+    private int id;
+    private String name;
+    public static ScroogeEnumDesc getEnumDesc(Object rawScroogeEnum) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+      Class enumClass=rawScroogeEnum.getClass();
+      Method valueMethod= enumClass.getMethod("value",new Class[]{});
+      Method nameMethod=enumClass.getMethod("name",new Class[]{});
+      ScroogeEnumDesc result= new ScroogeEnumDesc();
+      result.id=(Integer)valueMethod.invoke(rawScroogeEnum,null);
+      result.name=(String)nameMethod.invoke(rawScroogeEnum,null);
+      return result;
+    }
+  }
+  private ThriftType convertEnumTypeField(ThriftStructField f) {
+    //TODO arrayList or linked List
+    List<ThriftType.EnumValue> enumValues=new ArrayList<ThriftType.EnumValue>();
+    String enumName = f.method().getReturnType().getName()+"$";
+    try {
+      Class companionObjectClass= Class.forName(enumName);
+      Object cObject=companionObjectClass.getField("MODULE$").get(null);
+
+      try {
+        Method listMethod = companionObjectClass.getMethod("list",new Class[]{});
+        try {
+          Object result=listMethod.invoke(cObject,null);
+          List enumCollection = JavaConversions.asJavaList((Seq) result);
+          for(Object enumObj:enumCollection){
+            ScroogeEnumDesc enumDesc=ScroogeEnumDesc.getEnumDesc(enumObj);
+            //TODO for compatible with thrift generated enum which have Capitalized name
+            enumValues.add(new ThriftType.EnumValue(enumDesc.id,enumDesc.name.toUpperCase()));
+          }
+          return new ThriftType.EnumType(enumValues);
+        } catch (InvocationTargetException e) {
+          e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
+
+
+      } catch (NoSuchMethodException e) {
+        e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+      }
+
+
+    } catch (IllegalAccessException e) {
+      e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+    } catch (NoSuchFieldException e) {
+      e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+    }
+
+    List<Class> typeArguments=getTypeArguments(f);
+//    String enumName=f.method().getReturnType().getName();
+//    ThriftType elementType= convertBasedOnClass(typeArguments.get(0));
+    return null;
   }
 
   private ThriftType convertSetTypeField(ThriftStructField f) {
