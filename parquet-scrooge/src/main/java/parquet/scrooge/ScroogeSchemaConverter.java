@@ -82,22 +82,12 @@ public class ScroogeSchemaConverter {
 
         break;
       case SET:
-//        final TStructDescriptor.Field setElemField = field.getSetElemField();
-//        resultType = new ThriftType.SetType(toThriftField(name, setElemField, requirement));
         resultType=convertSetTypeField(f);
         break;
       case LIST:
-//        final TStructDescriptor.Field listElemField = field.getListElemField();
-//        resultType = new ThriftType.ListType(toThriftField(name, listElemField, requirement));
         resultType=convertListTypeField(f);
         break;
       case ENUM:
-//        Collection<TEnum> enumValues = field.getEnumValues();
-//        List<ThriftType.EnumValue> values = new ArrayList<ThriftType.EnumValue>();
-//        for (TEnum tEnum : enumValues) {
-//          values.add(new ThriftType.EnumValue(tEnum.getValue(), tEnum.toString()));
-//        }
-//        resultType = new ThriftType.EnumType(values);
         resultType=convertEnumTypeField(f);
         break;
     }
@@ -134,9 +124,7 @@ public class ScroogeSchemaConverter {
       Class companionObjectClass= Class.forName(enumName);
       Object cObject=companionObjectClass.getField("MODULE$").get(null);
 
-      try {
         Method listMethod = companionObjectClass.getMethod("list",new Class[]{});
-        try {
           Object result=listMethod.invoke(cObject,null);
           List enumCollection = JavaConversions.asJavaList((Seq) result);
           for(Object enumObj:enumCollection){
@@ -145,31 +133,14 @@ public class ScroogeSchemaConverter {
             enumValues.add(new ThriftType.EnumValue(enumDesc.id,enumDesc.name.toUpperCase()));
           }
           return new ThriftType.EnumType(enumValues);
-        } catch (InvocationTargetException e) {
-          e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-        }
 
-
-      } catch (NoSuchMethodException e) {
-        e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-      }
-
-
-    } catch (IllegalAccessException e) {
-      e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-    } catch (NoSuchFieldException e) {
-      e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+    } catch (Exception e) {
+      return null;//TODO rethrow the right exception
+//      throw new Exception("fucked",e);
     }
-
-    List<Class> typeArguments=getTypeArguments(f);
-//    String enumName=f.method().getReturnType().getName();
-//    ThriftType elementType= convertBasedOnClass(typeArguments.get(0));
-    return null;
   }
 
-  private ThriftType convertSetTypeField(ThriftStructField f) {
+  private ThriftType convertSetTypeField(ThriftStructField f) throws Exception {
     List<Class> typeArguments=getTypeArguments(f);
     ThriftType elementType= convertBasedOnClass(typeArguments.get(0));
     ThriftField elementField=new ThriftField(f.name(),(short) 1,ThriftField.Requirement.REQUIRED,elementType);
@@ -185,14 +156,14 @@ public class ScroogeSchemaConverter {
     return types;
   }
 
-  private ThriftType convertListTypeField(ThriftStructField f) {
+  private ThriftType convertListTypeField(ThriftStructField f) throws Exception {
     List<Class> typeArguments=getTypeArguments(f);
     ThriftType elementType= convertBasedOnClass(typeArguments.get(0));
     ThriftField elementField=new ThriftField(f.name(),(short) 1,ThriftField.Requirement.REQUIRED,elementType);
     return new ThriftType.ListType(elementField);
   }
 
-  private ThriftType convertMapTypeField(ThriftStructField f) {
+  private ThriftType convertMapTypeField(ThriftStructField f) throws Exception {
     Type mapType=null;
     if (isOptional(f)){
       mapType=extractClassFromOption(f.method().getGenericReturnType());
@@ -221,7 +192,7 @@ public class ScroogeSchemaConverter {
 //                toThriftField(mapValueField.getName(), mapValueField, requirement));
   }
 
-  private ThriftType convertBasedOnClass(Class keyClass) {
+  private ThriftType convertBasedOnClass(Class keyClass) throws Exception {
 //    if (keyClass==Boolean.class){
 //      return new ThriftType.BoolType();
 //    }else if (keyClass==Byte.class){
@@ -246,8 +217,9 @@ public class ScroogeSchemaConverter {
       return new ThriftType.I64Type();
     }else if (keyClass==String.class){
       return new ThriftType.StringType();
+    }else{
+      return convertStructFromClassName(keyClass.getName());
     }
-    return null;
   }
 
   private ThriftType convertStructTypeField(ThriftStructField f) throws Exception {

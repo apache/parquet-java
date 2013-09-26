@@ -74,6 +74,10 @@ struct TestPersonWithAllInformation {
    8: optional list<string> key_words
 }
 
+struct TestMapComplex{
+  1: required map<Phone,Address> phone_address_map
+}
+
 struct TestMapPrimitiveKey {
   1: required map<i16,string> short_map,
   2: required map<i32,string> int_map,

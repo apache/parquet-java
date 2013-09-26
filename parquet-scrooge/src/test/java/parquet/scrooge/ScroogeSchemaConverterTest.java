@@ -2,11 +2,14 @@ package parquet.scrooge;
 
 import org.junit.Test;
 import parquet.scrooge.test.*;
+import parquet.scrooge.test.Phone;
 import parquet.scrooge.test.TestFieldOfEnum;
 import parquet.scrooge.test.TestListPrimitive;
+import parquet.scrooge.test.TestMapComplex;
 import parquet.scrooge.test.TestMapPrimitiveKey;
 import parquet.scrooge.test.TestMapPrimitiveValue;
 import parquet.scrooge.test.TestOptionalMap;
+import parquet.scrooge.test.TestPersonWithAllInformation;
 import parquet.scrooge.test.TestSetPrimitive;
 import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType;
@@ -52,6 +55,22 @@ public class ScroogeSchemaConverterTest {
     ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestFieldOfEnum.class);
     assertEquals(expected, scroogeList);
     assertEquals(expected.toJSON(), scroogeList.toJSON());
+  }
+
+  @Test //TODO fix
+  public void testMapComplex() throws Exception{
+    ThriftType.StructType scroogePerson = new ScroogeSchemaConverter().convert(TestMapComplex.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestMapComplex.class);
+    assertEquals(expected, scroogePerson);
+    assertEquals(expected.toJSON(), scroogePerson.toJSON());
+  }
+
+  @Test
+  public void testDefaultFields() throws Exception{
+    ThriftType.StructType scroogePerson = new ScroogeSchemaConverter().convert(Phone.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.Phone.class);
+    assertEquals(expected, scroogePerson);
+    assertEquals(expected.toJSON(), scroogePerson.toJSON());
   }
 
   @Test
