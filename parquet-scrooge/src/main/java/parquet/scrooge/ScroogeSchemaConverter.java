@@ -5,17 +5,13 @@ import com.twitter.scrooge.ThriftStructField;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftTypeID;
-import scala.collection.*;
+import scala.collection.Iterator;
 import scala.collection.JavaConversions;
 import scala.reflect.Manifest;
 
-import java.lang.Iterable;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 public class ScroogeSchemaConverter {
@@ -33,12 +29,11 @@ public class ScroogeSchemaConverter {
   }
 
   public ThriftField toThriftField(ThriftStructField f) throws Exception {
-    //TODO: if the return type is Option then set the requirement to be Optional
     ThriftField.Requirement requirement = ThriftField.Requirement.REQUIRED;
     if (isOptional(f)) {
-        requirement=ThriftField.Requirement.OPTIONAL;
+      requirement = ThriftField.Requirement.OPTIONAL;
     }
-    //TODO: default to optional or required????
+    //TODO: default to optional or required???? Better solution: ask CSL to add Requirement for field
 
     String fieldName = f.tfield().name;
     short fieldId = f.tfield().id;
@@ -75,163 +70,104 @@ public class ScroogeSchemaConverter {
         resultType = new ThriftType.StringType();
         break;
       case STRUCT:
-        resultType= convertStructTypeField(f);
+        resultType = convertStructTypeField(f);
         break;
       case MAP:
-        resultType=convertMapTypeField(f);
+        resultType = convertMapTypeField(f);
 
         break;
       case SET:
-        resultType=convertSetTypeField(f);
+        resultType = convertSetTypeField(f);
         break;
       case LIST:
-        resultType=convertListTypeField(f);
+        resultType = convertListTypeField(f);
         break;
       case ENUM:
-        resultType=convertEnumTypeField(f);
+        resultType = convertEnumTypeField(f);
         break;
     }
 
-
-    if (ThriftTypeID.fromByte(f.tfield().type) == ThriftTypeID.STRUCT) {
-      String innerName = f.method().getReturnType().getName();
-      System.out.println(">>>" + innerName);
-//      traverseStruct(innerName);
-      System.out.println("<<<" + innerName);
-    }
     return new ThriftField(fieldName, fieldId, requirement, resultType);
   }
 
-
-  private static class ScroogeEnumDesc{
-    private int id;
-    private String name;
-    public static ScroogeEnumDesc getEnumDesc(Object rawScroogeEnum) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-      Class enumClass=rawScroogeEnum.getClass();
-      Method valueMethod= enumClass.getMethod("value",new Class[]{});
-      Method nameMethod=enumClass.getMethod("name",new Class[]{});
-      ScroogeEnumDesc result= new ScroogeEnumDesc();
-      result.id=(Integer)valueMethod.invoke(rawScroogeEnum,null);
-      result.name=(String)nameMethod.invoke(rawScroogeEnum,null);
-      return result;
-    }
-  }
   private ThriftType convertEnumTypeField(ThriftStructField f) {
-    //TODO arrayList or linked List
-    List<ThriftType.EnumValue> enumValues=new ArrayList<ThriftType.EnumValue>();
-    String enumName = f.method().getReturnType().getName()+"$";
-    try {
-      Class companionObjectClass= Class.forName(enumName);
-      Object cObject=companionObjectClass.getField("MODULE$").get(null);
-
-        Method listMethod = companionObjectClass.getMethod("list",new Class[]{});
-          Object result=listMethod.invoke(cObject,null);
-          List enumCollection = JavaConversions.asJavaList((Seq) result);
-          for(Object enumObj:enumCollection){
-            ScroogeEnumDesc enumDesc=ScroogeEnumDesc.getEnumDesc(enumObj);
-            //TODO for compatible with thrift generated enum which have Capitalized name
-            enumValues.add(new ThriftType.EnumValue(enumDesc.id,enumDesc.name.toUpperCase()));
-          }
-          return new ThriftType.EnumType(enumValues);
-
-    } catch (Exception e) {
-      return null;//TODO rethrow the right exception
-//      throw new Exception("fucked",e);
-    }
+    return new EnumConverter().convertEnumTypeField(f);
   }
 
   private ThriftType convertSetTypeField(ThriftStructField f) throws Exception {
-    List<Class> typeArguments=getTypeArguments(f);
-    ThriftType elementType= convertBasedOnClass(typeArguments.get(0));
-    ThriftField elementField=new ThriftField(f.name(),(short) 1,ThriftField.Requirement.REQUIRED,elementType);
+    List<Class> typeArguments = getTypeArguments(f);
+    ThriftType elementType = convertBasedOnClass(typeArguments.get(0));
+    ThriftField elementField = new ThriftField(f.name(), (short) 1, ThriftField.Requirement.REQUIRED, elementType);
     return new ThriftType.SetType(elementField);
   }
 
-  private List<Class> getTypeArguments(ThriftStructField f){
+  private List<Class> getTypeArguments(ThriftStructField f) {
     Iterator<Manifest> it = ((Manifest) f.manifest().get()).typeArguments().iterator();
-    List<Class> types=new ArrayList<Class>();
-    while(it.hasNext()){
+    List<Class> types = new ArrayList<Class>();
+    while (it.hasNext()) {
       types.add(it.next().erasure());
     }
     return types;
   }
 
   private ThriftType convertListTypeField(ThriftStructField f) throws Exception {
-    List<Class> typeArguments=getTypeArguments(f);
-    ThriftType elementType= convertBasedOnClass(typeArguments.get(0));
-    ThriftField elementField=new ThriftField(f.name(),(short) 1,ThriftField.Requirement.REQUIRED,elementType);
+    List<Class> typeArguments = getTypeArguments(f);
+    ThriftType elementType = convertBasedOnClass(typeArguments.get(0));
+    ThriftField elementField = new ThriftField(f.name(), (short) 1, ThriftField.Requirement.REQUIRED, elementType);
     return new ThriftType.ListType(elementField);
   }
 
   private ThriftType convertMapTypeField(ThriftStructField f) throws Exception {
-    Type mapType=null;
-    if (isOptional(f)){
-      mapType=extractClassFromOption(f.method().getGenericReturnType());
-    }else{
-      mapType=f.method().getGenericReturnType();
+    Type mapType = null;
+    if (isOptional(f)) {
+      mapType = extractClassFromOption(f.method().getGenericReturnType());
+    } else {
+      mapType = f.method().getGenericReturnType();
     }
-    List<Class> typeArguments=getTypeArguments(f);//TODO test optional fields
+    List<Class> typeArguments = getTypeArguments(f);
     Class keyClass = typeArguments.get(0);
     //TODO requirement should be the requirement of the map
-    ThriftType keyType=convertBasedOnClass(keyClass);
+    ThriftType keyType = convertBasedOnClass(keyClass);
     Class valueClass = typeArguments.get(1);
-    //TODO: what is the id of a key???default to 1, this is the behavior in elephant bird
-    //TODO:requirementType??
-    ThriftField keyField=new ThriftField(f.name()+"_map_key", (short) 1, ThriftField.Requirement.REQUIRED,keyType);
-    ThriftType valueType=convertBasedOnClass(valueClass);
-    ThriftField valueField=new ThriftField(f.name()+"_map_value", (short) 1, ThriftField.Requirement.REQUIRED,valueType);
-    return new ThriftType.MapType(keyField,valueField);
-
-    //TODO notice the key and value field could be String..boolean, or complexType
-//        traverseType(keyType,fieldName,fieldId);
-//        traverseType(valueType,fieldName,fieldId);
-//        final TStructDescriptor.Field mapKeyField = field.getMapKeyField();
-//        final TStructDescriptor.Field mapValueField = field.getMapValueField();
-//        resultType = new ThriftType.MapType(
-//                toThriftField(mapKeyField.getName(), mapKeyField, requirement),
-//                toThriftField(mapValueField.getName(), mapValueField, requirement));
+    //id of a key:default to 1, this is the behavior in elephant bird
+    //requirementType will be required TODO: check compatible with elephantbird
+    ThriftField keyField = new ThriftField(f.name() + "_map_key", (short) 1, ThriftField.Requirement.REQUIRED, keyType);
+    ThriftType valueType = convertBasedOnClass(valueClass);
+    ThriftField valueField = new ThriftField(f.name() + "_map_value", (short) 1, ThriftField.Requirement.REQUIRED, valueType);
+    return new ThriftType.MapType(keyField, valueField);
   }
 
   private ThriftType convertBasedOnClass(Class keyClass) throws Exception {
-//    if (keyClass==Boolean.class){
-//      return new ThriftType.BoolType();
-//    }else if (keyClass==Byte.class){
-//      return new ThriftType.ByteType();
-//    }else if (keyClass==Double.class){
-//      return new ThriftType.DoubleType();
-//    }else if (keyClass==Short.class){
-//      return new ThriftType.I16Type();
-//    }
-     //This will be used by generic types, like map, list, set
-    if (keyClass==boolean.class){
+    //This will be used by generic type containers, like map, list, set
+    if (keyClass == boolean.class) {
       return new ThriftType.BoolType();
-    }else if (keyClass==byte.class){
+    } else if (keyClass == byte.class) {
       return new ThriftType.ByteType();
-    }else if (keyClass==double.class){
+    } else if (keyClass == double.class) {
       return new ThriftType.DoubleType();
-    }else if (keyClass==short.class){
+    } else if (keyClass == short.class) {
       return new ThriftType.I16Type();
-    }else if (keyClass==int.class){
+    } else if (keyClass == int.class) {
       return new ThriftType.I32Type();
-    }else if (keyClass==long.class){
+    } else if (keyClass == long.class) {
       return new ThriftType.I64Type();
-    }else if (keyClass==String.class){
+    } else if (keyClass == String.class) {
       return new ThriftType.StringType();
-    }else{
+    } else {
       return convertStructFromClassName(keyClass.getName());
     }
   }
 
   private ThriftType convertStructTypeField(ThriftStructField f) throws Exception {
-    Type structClassType=f.method().getReturnType();
-    if(isOptional(f)){
-      structClassType=extractClassFromOption(f.method().getGenericReturnType());
+    Type structClassType = f.method().getReturnType();
+    if (isOptional(f)) {
+      structClassType = extractClassFromOption(f.method().getGenericReturnType());
     }
     return convertStructFromClassName(((Class) structClassType).getName());
   }
 
   private Type extractClassFromOption(Type genericReturnType) {
-    return ((ParameterizedType)genericReturnType).getActualTypeArguments()[0];
+    return ((ParameterizedType) genericReturnType).getActualTypeArguments()[0];
   }
 
   private boolean isOptional(ThriftStructField f) {
