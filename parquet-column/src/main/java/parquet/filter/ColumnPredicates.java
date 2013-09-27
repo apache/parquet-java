@@ -29,25 +29,12 @@ public class ColumnPredicates {
     boolean apply(ColumnReader input);
   }
 
-  public static interface PredicateFunction <T> {
-    boolean functionToApply(T input);
-  }
-
   public static Predicate equalTo(final String target) {
     Preconditions.checkNotNull(target,"target");
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
         return target.equals(input.getBinary().toStringUsingUTF8());
-      }
-    };
-  }
-
-  public static Predicate applyFunctionToString(final PredicateFunction<String> fn) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-	  return fn.functionToApply(input.getBinary().toStringUsingUTF8());
       }
     };
   }
@@ -61,29 +48,11 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunctionToInteger(final PredicateFunction<Integer> fn) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-	return fn.functionToApply(input.getInteger());
-      }
-    };
-  }
-
   public static Predicate equalTo(final long target) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
         return input.getLong() == target;
-      }
-    };
-  }
-
-  public static Predicate applyFunctionToLong(final PredicateFunction<Long> fn) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-	return fn.functionToApply(input.getLong());
       }
     };
   }
@@ -97,29 +66,11 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunctionToFloat(final PredicateFunction<Float> fn) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-	return fn.functionToApply(input.getFloat());
-      }
-    };
-  }
-
   public static Predicate equalTo(final double target) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
         return input.getDouble() == target;
-      }
-    };
-  }
-
-  public static Predicate applyFunctionToDouble(final PredicateFunction<Double> fn) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-	return fn.functionToApply(input.getDouble());
       }
     };
   }
@@ -133,16 +84,8 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunctionToBoolean (final PredicateFunction<Boolean> fn) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-	return fn.functionToApply(input.getBoolean());
-      }
-    };
-  }
-
   public static <E extends Enum> Predicate equalTo(final E target) {
+    Preconditions.checkNotNull(target,"target");
     final String targetAsString = target.name();
     return new Predicate() {
       @Override
