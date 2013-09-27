@@ -45,7 +45,7 @@ public final class OrRecordFilter implements RecordFilter {
   }
 
   /**
-   * Private constructor, use AndRecordFilter.and() instead.
+   * Private constructor, use OrRecordFilter.or() instead.
    */
   private OrRecordFilter( RecordFilter boundFilter1, RecordFilter boundFilter2 ) {
     this.boundFilter1 = boundFilter1;

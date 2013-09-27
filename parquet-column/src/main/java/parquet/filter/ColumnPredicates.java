@@ -18,10 +18,6 @@ package parquet.filter;
 import parquet.Preconditions;
 import parquet.column.ColumnReader;
 
-public static interface PredicateFunction <T> {
-    boolean applyFunction (T input);
-}
-
 /**
  * ColumnPredicates class provides checks for column values. Factory methods
  * are provided for standard predicates which wrap the job of getting the
@@ -31,6 +27,10 @@ public class ColumnPredicates {
 
   public static interface Predicate {
     boolean apply(ColumnReader input);
+  }
+
+  public static interface PredicateFunction <T> {
+    boolean functionToApply(T input);
   }
 
   public static Predicate equalTo(final String target) {
@@ -43,11 +43,11 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunction (final PredicateFunction <String> fn) {
+  public static Predicate applyFunctionToString(final PredicateFunction<String> fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-	return fn.applyFunction(input.getBinary.toStringUsingUTF8());
+	  return fn.functionToApply(input.getBinary().toStringUsingUTF8());
       }
     };
   }
@@ -61,11 +61,11 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunction (final PredicateFunction <int> fn) {
+  public static Predicate applyFunctionToInteger(final PredicateFunction<Integer> fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-	return fn.applyFunction(input.getInteger());
+	return fn.functionToApply(input.getInteger());
       }
     };
   }
@@ -79,11 +79,11 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunction (final PredicateFunction <long> fn) {
+  public static Predicate applyFunctionToLong(final PredicateFunction<Long> fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-	return fn.applyFunction(input.getLong());
+	return fn.functionToApply(input.getLong());
       }
     };
   }
@@ -97,11 +97,11 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunction (final PredicateFunction <float> fn) {
+  public static Predicate applyFunctionToFloat(final PredicateFunction<Float> fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-	return fn.applyFunction(input.getFloat());
+	return fn.functionToApply(input.getFloat());
       }
     };
   }
@@ -115,11 +115,11 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunction (final PredicateFunction <double> fn) {
+  public static Predicate applyFunctionToDouble(final PredicateFunction<Double> fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-	return fn.applyFunction(input.getDouble());
+	return fn.functionToApply(input.getDouble());
       }
     };
   }
@@ -133,11 +133,11 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunction (final PredicateFunction <boolean> fn) {
+  public static Predicate applyFunctionToBoolean (final PredicateFunction<Boolean> fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-	return fn.applyFunction(input.getBoolean());
+	return fn.functionToApply(input.getBoolean());
       }
     };
   }

@@ -42,7 +42,7 @@ public final class NotRecordFilter implements RecordFilter {
   }
 
   /**
-   * Private constructor, use AndRecordFilter.and() instead.
+   * Private constructor, use NotRecordFilter.not() instead.
    */
   private NotRecordFilter( RecordFilter boundFilter) {
     this.boundFilter = boundFilter;
@@ -50,6 +50,6 @@ public final class NotRecordFilter implements RecordFilter {
 
   @Override
   public boolean isMatch() {
-    return !boundFilter.isMatch();
+    return !(boundFilter.isMatch());
   }
 }
