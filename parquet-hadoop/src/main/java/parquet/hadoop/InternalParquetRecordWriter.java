@@ -27,6 +27,7 @@ import parquet.schema.MessageType;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
+import static java.lang.String.format;
 import static parquet.Log.DEBUG;
 
 class InternalParquetRecordWriter<T> {
@@ -110,7 +111,7 @@ class InternalParquetRecordWriter<T> {
     if (recordCount >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it for every record.
       long memSize = store.memSize();
       if (memSize > blockSize) {
-        LOG.info("mem size " + memSize + " > " + blockSize + ": flushing " + recordCount + " records to disk.");
+        LOG.info(format("mem size %,d > %,d: flushing %,d records to disk.", memSize, blockSize, recordCount));
         flushStore();
         initStore();
         recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
@@ -120,14 +121,14 @@ class InternalParquetRecordWriter<T> {
             max(MINIMUM_RECORD_COUNT_FOR_CHECK, (recordCount + (long)(blockSize / recordSize)) / 2), // will check halfway
             recordCount + MAXIMUM_RECORD_COUNT_FOR_CHECK // will not look more than max records ahead
             );
-        if (DEBUG) LOG.debug("Checked mem at " + recordCount + " will check again at: " + recordCountForNextMemCheck);
+        if (DEBUG) LOG.debug(format("Checked mem at %,d will check again at: %,d ", recordCount, recordCountForNextMemCheck));
       }
     }
   }
 
   private void flushStore()
       throws IOException {
-    LOG.info("Flushing mem store to file. allocated memory: " + store.allocatedSize());
+    LOG.info(format("Flushing mem store to file. allocated memory: %,d", store.allocatedSize()));
     if (store.allocatedSize() > 3 * blockSize) {
       LOG.warn("Too much memory used: " + store.memUsageString());
     }
