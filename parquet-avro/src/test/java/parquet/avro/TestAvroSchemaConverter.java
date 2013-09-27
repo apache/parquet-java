@@ -63,10 +63,19 @@ public class TestAvroSchemaConverter {
         "  required group myarray (LIST) {\n" +
         "    repeated int32 array;\n" +
         "  }\n" +
+        "  required group myemptyarray (LIST) {\n" +
+        "    repeated int32 array;\n" +
+        "  }\n" +
         "  optional group myoptionalarray (LIST) {\n" +
         "    repeated int32 array;\n" +
         "  }\n" +
         "  required group mymap (MAP) {\n" +
+        "    repeated group map (MAP_KEY_VALUE) {\n" +
+        "      required binary key (UTF8);\n" +
+        "      required int32 value;\n" +
+        "    }\n" +
+        "  }\n" +
+        "  required group myemptymap (MAP) {\n" +
         "    repeated group map (MAP_KEY_VALUE) {\n" +
         "      required binary key (UTF8);\n" +
         "      required int32 value;\n" +
