@@ -35,10 +35,29 @@ import static parquet.example.Paper.r2;
 import static parquet.example.Paper.schema;
 import static parquet.filter.AndRecordFilter.and;
 import static parquet.filter.PagedRecordFilter.page;
+import static parquet.filter.ColumnPredicates.PredicateFunction;
 import static parquet.filter.ColumnPredicates.equalTo;
+import static parquet.filter.ColumnPredicates.applyFunctionToInteger;
+import static parquet.filter.ColumnPredicates.applyFunctionToString;
 import static parquet.filter.ColumnRecordFilter.column;
 
 public class TestFiltered {
+
+  /* Class that implements applyFunction filter for integer. Checks for integer greater than 15. */
+  public class IntegerGreaterThan15Predicate implements PredicateFunction<Integer> {
+    @Override
+    public boolean functionToApply(Integer input) {
+	return input > 15;
+    }
+  };
+
+  /* Class that implements applyFunction filter for string. Checks for string ending in 'A'. */
+  public class StringEndsWithAPredicate implements PredicateFunction<String> {
+    @Override
+    public boolean functionToApply(String input) {
+	return input.endsWith("A");
+    }
+  };
 
   private List<Group> readAll(RecordReader<Group> reader) {
     List<Group> result = new ArrayList<Group>();
@@ -78,6 +97,27 @@ public class TestFiltered {
   }
 
   @Test
+  public void testApplyFunctionFilterOnInteger() {
+    MessageColumnIO columnIO =  new ColumnIOFactory(true).getColumnIO(schema);
+    MemPageStore memPageStore = writeTestRecords(columnIO, 1);
+
+    // Get first record
+    RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
+    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
+        columnIO.getRecordReader(memPageStore, recordConverter,
+            column("DocId", equalTo(10l)));
+
+    readOne(recordReader, "r2 filtered out", r1);
+
+    // Get second record    
+    recordReader = (RecordReaderImplementation<Group>)
+        columnIO.getRecordReader(memPageStore, recordConverter,
+				 column("DocId", applyFunctionToInteger (new IntegerGreaterThan15Predicate())));
+
+    readOne(recordReader, "r1 filtered out", r2);
+  }
+
+  @Test
   public void testFilterOnString() {
     MessageColumnIO columnIO =  new ColumnIOFactory(true).getColumnIO(schema);
     MemPageStore memPageStore = writeTestRecords(columnIO, 1);
@@ -87,6 +127,37 @@ public class TestFiltered {
     RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
             column("Name.Url", equalTo("http://A")));
+
+    readOne(recordReader, "r2 filtered out", r1);
+
+    // Second try matching against the B url in record 1 - it should fail as we only match
+    // against the first instance of a
+    recordReader = (RecordReaderImplementation<Group>)
+        columnIO.getRecordReader(memPageStore, recordConverter,
+            column("Name.Url", equalTo("http://B")));
+
+    List<Group> all = readAll(recordReader);
+    assertEquals("There should be no matching records: " + all , 0, all.size());
+
+    // Finally try matching against the C url in record 2
+    recordReader = (RecordReaderImplementation<Group>)
+        columnIO.getRecordReader(memPageStore, recordConverter,
+            column("Name.Url", equalTo("http://C")));
+
+    readOne(recordReader, "r1 filtered out", r2);
+
+  }
+
+  @Test
+  public void testApplyFunctionFilterOnString() {
+    MessageColumnIO columnIO =  new ColumnIOFactory(true).getColumnIO(schema);
+    MemPageStore memPageStore = writeTestRecords(columnIO, 1);
+
+    // First try matching against the A url in record 1
+    RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
+    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
+        columnIO.getRecordReader(memPageStore, recordConverter,
+				 column("Name.Url", applyFunctionToString (new StringEndsWithAPredicate ())));
 
     readOne(recordReader, "r2 filtered out", r1);
 
@@ -142,7 +213,7 @@ public class TestFiltered {
     }
 
   }
-
+    
   private MemPageStore writeTestRecords(MessageColumnIO columnIO, int number) {
     MemPageStore memPageStore = new MemPageStore(number * 2);
     ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
