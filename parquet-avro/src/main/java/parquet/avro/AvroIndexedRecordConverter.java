@@ -293,7 +293,6 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
         try {
           Constructor ctor = fixedClass.getConstructor(new Class[] { byte[].class });
           Object fixed = ctor.newInstance(value.getBytes());
-          System.out.println("FixedFieldConverter add specific fixed type " + fixed.getClass().getName() + ":" + fixed);
           parent.add(fixed);
         } catch (Exception e) {
           throw new RuntimeException(e);
