@@ -278,21 +278,36 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
 
     private final ParentValueContainer parent;
     private final Schema avroSchema;
+    private final Class<? extends GenericData.Fixed> fixedClass;
+    private final Constructor fixedClassCtor;
 
     public FieldFixedConverter(ParentValueContainer parent, Schema avroSchema) {
       this.parent = parent;
       this.avroSchema = avroSchema;
+      this.fixedClass = SpecificData.get().getClass(avroSchema);
+      if (fixedClass != null) {
+        try {
+          this.fixedClassCtor = 
+              fixedClass.getConstructor(new Class[] { byte[].class });
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+      } else {
+        this.fixedClassCtor = null;
+      }
     }
 
     @Override
     final public void addBinary(Binary value) {
-      Class fixedClass = SpecificData.get().getClass(avroSchema);
       if (fixedClass == null) {
         parent.add(new GenericData.Fixed(avroSchema, value.getBytes()));
       } else {
+        if (fixedClassCtor == null) {
+          throw new IllegalArgumentException(
+              "fixedClass specified but fixedClassCtor is null.");
+        }
         try {
-          Constructor ctor = fixedClass.getConstructor(new Class[] { byte[].class });
-          Object fixed = ctor.newInstance(value.getBytes());
+          Object fixed = fixedClassCtor.newInstance(value.getBytes());
           parent.add(fixed);
         } catch (Exception e) {
           throw new RuntimeException(e);
