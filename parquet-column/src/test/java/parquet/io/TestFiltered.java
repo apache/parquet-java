@@ -34,6 +34,8 @@ import static parquet.example.Paper.r1;
 import static parquet.example.Paper.r2;
 import static parquet.example.Paper.schema;
 import static parquet.filter.AndRecordFilter.and;
+import static parquet.filter.OrRecordFilter.or;
+import static parquet.filter.NotRecordFilter.not;
 import static parquet.filter.PagedRecordFilter.page;
 import static parquet.filter.ColumnPredicates.equalTo;
 import static parquet.filter.ColumnRecordFilter.column;
@@ -141,6 +143,42 @@ public class TestFiltered {
       assertEquals("expecting record1", r1.toString(), all.get(i).toString());
     }
 
+  }
+
+  @Test
+  public void testFilteredOrPaged() {
+    MessageColumnIO columnIO =  new ColumnIOFactory(true).getColumnIO(schema);
+    MemPageStore memPageStore = writeTestRecords(columnIO, 8);
+
+    RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
+    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
+        columnIO.getRecordReader(memPageStore, recordConverter,
+				 or(column("DocId", equalTo(10l)), 
+				    column("DocId", equalTo(20l))));
+
+    List<Group> all = readAll(recordReader);
+    assertEquals("expecting 8 records " + all, 16, all.size());
+    for (int i = 0; i < all.size () / 2; i++) {
+      assertEquals("expecting record1", r1.toString(), all.get(2 * i).toString());
+      assertEquals("expecting record2", r2.toString(), all.get(2 * i + 1).toString());
+    }
+  }
+
+  @Test
+  public void testFilteredNotPaged() {
+    MessageColumnIO columnIO =  new ColumnIOFactory(true).getColumnIO(schema);
+    MemPageStore memPageStore = writeTestRecords(columnIO, 8);
+
+    RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
+    RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
+        columnIO.getRecordReader(memPageStore, recordConverter,
+				 not(column("DocId", equalTo(10l))));
+
+    List<Group> all = readAll(recordReader);
+    assertEquals("expecting 8 records " + all, 8, all.size());
+    for (int i = 0; i < all.size(); i++) {
+      assertEquals("expecting record2", r2.toString(), all.get(i).toString());
+    }
   }
 
   private MemPageStore writeTestRecords(MessageColumnIO columnIO, int number) {
