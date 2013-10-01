@@ -96,8 +96,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     getConfiguration(job).set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
   }
 
-  public static Class<?> getWriteSupportClass(JobContext jobContext) {
-    final String className = getConfiguration(jobContext).get(WRITE_SUPPORT_CLASS);
+  public static Class<?> getWriteSupportClass(Configuration configuration) {
+    final String className = configuration.get(WRITE_SUPPORT_CLASS);
     if (className == null) {
       return null;
     }
@@ -129,32 +129,81 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public static boolean getEnableDictionary(JobContext jobContext) {
-    return getConfiguration(jobContext).getBoolean(ENABLE_DICTIONARY, false);
+    return getEnableDictionary(getConfiguration(jobContext));
   }
 
   public static int getBlockSize(JobContext jobContext) {
-    return getConfiguration(jobContext).getInt(BLOCK_SIZE, DEFAULT_BLOCK_SIZE);
+    return getBlockSize(getConfiguration(jobContext));
   }
 
   public static int getPageSize(JobContext jobContext) {
-    return getConfiguration(jobContext).getInt(PAGE_SIZE, DEFAULT_PAGE_SIZE);
+    return getPageSize(getConfiguration(jobContext));
   }
 
   public static CompressionCodecName getCompression(JobContext jobContext) {
-    return fromConf(getConfiguration(jobContext).get(COMPRESSION, UNCOMPRESSED.name()));
+    return getCompression(getConfiguration(jobContext));
   }
 
   public static boolean isCompressionSet(JobContext jobContext) {
-    return getConfiguration(jobContext).get(COMPRESSION) != null;
+    return isCompressionSet(getConfiguration(jobContext));
   }
 
   public static void setValidation(JobContext jobContext, boolean validating) {
-    getConfiguration(jobContext).setBoolean(VALIDATION, validating);
+    setValidation(getConfiguration(jobContext), validating);
   }
 
   public static boolean getValidation(JobContext jobContext) {
-    return getConfiguration(jobContext).getBoolean(VALIDATION, false);
+    return getValidation(getConfiguration(jobContext));
   }
+
+  public static boolean getEnableDictionary(Configuration configuration) {
+    return configuration.getBoolean(ENABLE_DICTIONARY, false);
+  }
+
+  public static int getBlockSize(Configuration configuration) {
+    return configuration.getInt(BLOCK_SIZE, DEFAULT_BLOCK_SIZE);
+  }
+
+  public static int getPageSize(Configuration configuration) {
+    return configuration.getInt(PAGE_SIZE, DEFAULT_PAGE_SIZE);
+  }
+
+  public static CompressionCodecName getCompression(Configuration configuration) {
+    return fromConf(configuration.get(COMPRESSION, UNCOMPRESSED.name()));
+  }
+
+  public static boolean isCompressionSet(Configuration configuration) {
+    return configuration.get(COMPRESSION) != null;
+  }
+
+  public static void setValidation(Configuration configuration, boolean validating) {
+    configuration.setBoolean(VALIDATION, validating);
+  }
+
+  public static boolean getValidation(Configuration configuration) {
+    return configuration.getBoolean(VALIDATION, false);
+  }
+
+  private static CompressionCodecName getCodec(TaskAttemptContext taskAttemptContext) {
+    Configuration conf = getConfiguration(taskAttemptContext);
+    CompressionCodecName codec;
+
+    if (isCompressionSet(conf)) { // explicit parquet config
+      codec = getCompression(conf);
+    } else if (getCompressOutput(taskAttemptContext)) { // from hadoop config
+      // find the right codec
+      Class<?> codecClass = getOutputCompressorClass(taskAttemptContext, DefaultCodec.class);
+      if (INFO) LOG.info("Compression set through hadoop codec: " + codecClass.getName());
+      codec = CompressionCodecName.fromCompressionCodec(codecClass);
+    } else {
+      if (INFO) LOG.info("Compression set to false");
+      codec = CompressionCodecName.UNCOMPRESSED;
+    }
+
+    if (INFO) LOG.info("Compression: " + codec.name());
+    return codec;
+  }
+
 
   private WriteSupport<T> writeSupport;
   private ParquetOutputCommitter committer;
@@ -182,54 +231,38 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   @Override
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
-    return getRecordWriter(taskAttemptContext, null);
+
+    final Configuration conf = getConfiguration(taskAttemptContext);
+
+    CompressionCodecName codec = getCodec(taskAttemptContext);
+    String extension = codec.getExtension() + ".parquet";
+    Path file = getDefaultWorkFile(taskAttemptContext, extension);
+    return getRecordWriter(conf, file, codec);
+  }
+
+  public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Path file)
+      throws IOException, InterruptedException {
+    return getRecordWriter(getConfiguration(taskAttemptContext), file, getCodec(taskAttemptContext));
   }
 
   @SuppressWarnings("unchecked") // writeSupport instantiation
-  public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Path file)
+  public RecordWriter<Void, T> getRecordWriter(Configuration conf, Path file, CompressionCodecName codec)
         throws IOException, InterruptedException {
-    final Configuration conf = getConfiguration(taskAttemptContext);
+    final WriteSupport<T> writeSupport = getWriteSupport(conf);
+
     CodecFactory codecFactory = new CodecFactory(conf);
-    int blockSize = getBlockSize(taskAttemptContext);
+    int blockSize = getBlockSize(conf);
     if (INFO) LOG.info("Parquet block size to " + blockSize);
-    int pageSize = getPageSize(taskAttemptContext);
+    int pageSize = getPageSize(conf);
     if (INFO) LOG.info("Parquet page size to " + pageSize);
 
-    if (writeSupport == null) {
-      Class<?> writeSupportClass = getWriteSupportClass(taskAttemptContext);
-      try {
-        writeSupport = (WriteSupport<T>) writeSupportClass.newInstance();
-      } catch (InstantiationException e) {
-        throw new BadConfigurationException("could not instantiate " + writeSupportClass.getName(), e);
-      } catch (IllegalAccessException e) {
-        throw new BadConfigurationException("Illegal access to class " + writeSupportClass.getName(), e);
-      }
-    }
-
-    String extension = ".parquet";
-    CompressionCodecName codec;
-    if (isCompressionSet(taskAttemptContext)) { // explicit parquet config
-      codec = getCompression(taskAttemptContext);
-    } else if (getCompressOutput(taskAttemptContext)) { // from hadoop config
-      // find the right codec
-      Class<?> codecClass = getOutputCompressorClass(taskAttemptContext, DefaultCodec.class);
-      if (INFO) LOG.info("Compression set through hadoop codec: " + codecClass.getName());
-      codec = CompressionCodecName.fromCompressionCodec(codecClass);
-    } else {
-      if (INFO) LOG.info("Compression set to false");
-      codec = CompressionCodecName.UNCOMPRESSED;
-    }
-    if (INFO) LOG.info("Compression: " + codec.name());
-    extension = codec.getExtension() + extension;
-    if (file == null) {
-      file = getDefaultWorkFile(taskAttemptContext, extension);
-    }
-    boolean enableDictionary = getEnableDictionary(taskAttemptContext);
+    boolean enableDictionary = getEnableDictionary(conf);
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(conf, init.getSchema(), file);
     w.start();
-    boolean validating = getValidation(taskAttemptContext);
+    boolean validating = getValidation(conf);
     if (INFO) LOG.info("Validation is " + (validating ? "on" : "off"));
+
     return new ParquetRecordWriter<T>(
         w,
         writeSupport,
@@ -239,6 +272,24 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         codecFactory.getCompressor(codec, pageSize),
         enableDictionary,
         validating);
+  }
+
+  /**
+   * @param configuration to find the configuration for the write support class
+   * @return the configured write support
+   */
+  @SuppressWarnings("unchecked")
+  public WriteSupport<T> getWriteSupport(Configuration configuration){
+    if (writeSupport != null) return writeSupport;
+    Class<?> writeSupportClass = getWriteSupportClass(configuration);
+
+    try {
+      return (WriteSupport<T>)writeSupportClass.newInstance();
+    } catch (InstantiationException e) {
+      throw new BadConfigurationException("could not instantiate write support class: " + writeSupportClass, e);
+    } catch (IllegalAccessException e) {
+      throw new BadConfigurationException("could not instantiate write support class: " + writeSupportClass, e);
+    }
   }
 
   @Override
