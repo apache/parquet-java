@@ -60,15 +60,36 @@ public class ParquetReader<T> implements Closeable {
   }
 
   /**
+   * @param conf the configuration
+   * @param file the file to read
+   * @param readSupport to materialize records
+   * @throws IOException
+   */
+  public ParquetReader(Configuration conf, Path file, ReadSupport<T> readSupport) throws IOException {
+    this(conf, file, readSupport, null);
+  }
+
+  /**
    * @param file the file to read
    * @param readSupport to materialize records
    * @param filter the filter to use to filter records
    * @throws IOException
    */
   public ParquetReader(Path file, ReadSupport<T> readSupport, UnboundRecordFilter filter) throws IOException {
+    this(new Configuration(), file, readSupport, filter);
+  }
+
+  /**
+   * @param conf the configuration
+   * @param file the file to read
+   * @param readSupport to materialize records
+   * @param filter the filter to use to filter records
+   * @throws IOException
+   */
+  public ParquetReader(Configuration conf, Path file, ReadSupport<T> readSupport, UnboundRecordFilter filter) throws IOException {
     this.readSupport = readSupport;
     this.filter = filter;
-    conf = new Configuration();
+    this.conf = conf;
 
     FileSystem fs = FileSystem.get(conf);
     List<FileStatus> statuses = Arrays.asList(fs.listStatus(file));
