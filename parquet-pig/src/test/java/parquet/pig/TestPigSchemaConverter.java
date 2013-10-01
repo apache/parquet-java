@@ -197,8 +197,8 @@ public class TestPigSchemaConverter {
         "    repeated group map (MAP_KEY_VALUE) {\n" +
         "      required binary key;\n" +
         "      optional group value {\n" +
-        "        optional fixed_len_byte_array c(5);\n" +
-        "        optional fixed_len_byte_array d(7);\n" +
+        "        optional fixed_len_byte_array(5) c;\n" +
+        "        optional fixed_len_byte_array(7) d;\n" +
         "      }\n" +
         "    }\n" +
         "  }\n" +

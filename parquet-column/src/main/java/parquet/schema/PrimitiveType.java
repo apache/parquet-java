@@ -359,12 +359,11 @@ public final class PrimitiveType extends Type {
     sb.append(indent)
         .append(getRepetition().name().toLowerCase())
         .append(" ")
-        .append(primitive.name().toLowerCase())
-        .append(" ")
-        .append(getName());
+        .append(primitive.name().toLowerCase());
     if (primitive == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
       sb.append("(" + length + ")");
     }
+    sb.append(" ").append(getName());
     if (getOriginalType() != null) {
       sb.append(" (").append(getOriginalType()).append(")");
     }

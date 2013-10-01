@@ -81,7 +81,7 @@ public class TestAvroSchemaConverter {
         "      required int32 value;\n" +
         "    }\n" +
         "  }\n" +
-        "  required fixed_len_byte_array myfixed(1);\n" +
+        "  required fixed_len_byte_array(1) myfixed;\n" +
         "}\n");
   }
 

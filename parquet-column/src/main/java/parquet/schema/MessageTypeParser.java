@@ -100,8 +100,11 @@ public class MessageTypeParser {
 
   private static Type readType(String t, Tokenizer st) {
     Repetition r = asRepetition(t, st);
+
+    // Read type.
     String type = st.nextToken();
-    String name = st.nextToken();
+
+    // Read type length if the type is fixed_len_byte_array.
     int typeLength = 0;
     if (type.equalsIgnoreCase("fixed_len_byte_array")) {
       t = st.nextToken();
@@ -112,6 +115,10 @@ public class MessageTypeParser {
       check(st.nextToken(), ")", "type length ended by )", st);
     }
 
+    // Read name.
+    String name = st.nextToken();
+
+    // Read annotation, if any.
     t = st.nextToken();
     OriginalType originalType = null;
     if (t.equalsIgnoreCase("(")) {
