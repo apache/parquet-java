@@ -31,6 +31,7 @@ import cascading.tuple.Fields;
 import cascading.tuple.Tuple;
 import cascading.tuple.TupleEntry;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -42,10 +43,12 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.junit.Test;
+import static org.junit.Assert.*;
 
 import parquet.hadoop.thrift.ThriftToParquetFileWriter;
 import parquet.thrift.test.Name;
 
+import java.io.File;
 import java.io.ByteArrayOutputStream;
 
 public class TestParquetTBaseScheme {
@@ -100,6 +103,8 @@ public class TestParquetTBaseScheme {
     Flow flow  = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
 
     flow.complete();
+    String result = FileUtils.readFileToString(new File(txtOutputPath+"/part-00000"));
+    assertEquals("Alice\tPractice\nBob\tHope\nCharlie\tHorse\n", result);
   }
 
 
