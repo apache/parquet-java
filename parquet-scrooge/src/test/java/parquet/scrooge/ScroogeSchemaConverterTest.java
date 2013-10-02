@@ -1,5 +1,6 @@
 package parquet.scrooge;
 
+import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Test;
 import parquet.scrooge.test.*;
 import parquet.scrooge.test.Phone;
@@ -14,6 +15,8 @@ import parquet.scrooge.test.TestSetPrimitive;
 import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.test.*;
+
+import java.io.File;
 
 import static junit.framework.Assert.assertEquals;
 
@@ -61,6 +64,15 @@ public class ScroogeSchemaConverterTest {
   public void testMapComplex() throws Exception{
     ThriftType.StructType scroogePerson = new ScroogeSchemaConverter().convert(TestMapComplex.class);
     ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestMapComplex.class);
+    assertEquals(expected, scroogePerson);
+    assertEquals(expected.toJSON(), scroogePerson.toJSON());
+  }
+
+
+  @Test //TODO: last 1 mile: the requirement
+  public void testAwesome() throws Exception{
+    ThriftType.StructType scroogePerson = new ScroogeSchemaConverter().convert(TestPersonWithAllInformation.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestPersonWithAllInformation.class);
     assertEquals(expected, scroogePerson);
     assertEquals(expected.toJSON(), scroogePerson.toJSON());
   }

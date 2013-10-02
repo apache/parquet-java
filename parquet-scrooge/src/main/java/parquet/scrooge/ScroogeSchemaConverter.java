@@ -21,9 +21,9 @@ public class ScroogeSchemaConverter {
     ThriftStructCodec cObject = (ThriftStructCodec<?>) companionClass.getField("MODULE$").get(null);
 
     List<ThriftField> children = new ArrayList<ThriftField>();
-    Iterable<ThriftStructField> ss = JavaConversions.asIterable(cObject.metaData().fields());
-    for (ThriftStructField f : ss) {
-      children.add(toThriftField(f));//TODO should I check requirement here?
+    Iterable<ThriftStructField> scroogeFields = JavaConversions.asIterable(cObject.metaData().fields());
+    for (ThriftStructField field : scroogeFields) {
+      children.add(toThriftField(field));//TODO should I check requirement here?
     }  //StructType could it self be wrapped by StructField, so no worry
     return new ThriftType.StructType(children);
   }
@@ -41,12 +41,8 @@ public class ScroogeSchemaConverter {
     ThriftTypeID typeId = ThriftTypeID.fromByte(thriftTypeByte);
     System.out.println(fieldName);
 
-    ThriftType resultType = null;
+    ThriftType resultType;
     switch (typeId) {
-      case STOP:
-      case VOID:
-      default:
-        throw new UnsupportedOperationException("can't convert type");
         // Primitive type can be inspected from type of TField, it should be accurate
       case BOOL:
         resultType = new ThriftType.BoolType();
@@ -74,7 +70,6 @@ public class ScroogeSchemaConverter {
         break;
       case MAP:
         resultType = convertMapTypeField(f);
-
         break;
       case SET:
         resultType = convertSetTypeField(f);
@@ -85,6 +80,10 @@ public class ScroogeSchemaConverter {
       case ENUM:
         resultType = convertEnumTypeField(f);
         break;
+      case STOP:
+      case VOID:
+      default:
+        throw new UnsupportedOperationException("can't convert type");
     }
 
     return new ThriftField(fieldName, fieldId, requirement, resultType);
@@ -118,12 +117,6 @@ public class ScroogeSchemaConverter {
   }
 
   private ThriftType convertMapTypeField(ThriftStructField f) throws Exception {
-    Type mapType = null;
-    if (isOptional(f)) {
-      mapType = extractClassFromOption(f.method().getGenericReturnType());
-    } else {
-      mapType = f.method().getGenericReturnType();
-    }
     List<Class> typeArguments = getTypeArguments(f);
     Class keyClass = typeArguments.get(0);
     //TODO requirement should be the requirement of the map
