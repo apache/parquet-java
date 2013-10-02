@@ -1,13 +1,14 @@
 /**
  * Copyright 2013 Criteo.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License
- * at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
- * OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package parquet.hive.read;
 
@@ -19,6 +20,7 @@ import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.io.ArrayWritable;
+import parquet.Log;
 
 import parquet.hadoop.api.ReadSupport;
 import parquet.hive.ManageJobConfig;
@@ -48,49 +50,53 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
    *
    * It creates the readContext for Parquet side with the requested schema during the init phase.
    *
-   * @param configuration    needed to get the wanted columns
+   * @param configuration needed to get the wanted columns
    * @param keyValueMetaData // unused
-   * @param fileSchema       parquet file schema
+   * @param fileSchema parquet file schema
    * @return the parquet ReadContext
    */
   @Override
   public parquet.hadoop.api.ReadSupport.ReadContext init(final Configuration configuration, final Map<String, String> keyValueMetaData, final MessageType fileSchema) {
     final String columns = configuration.get("columns");
-    final List<String> listColumns = ManageJobConfig.getColumns(columns);
     final Map<String, String> contextMetadata = new HashMap<String, String>();
+    if (columns != null) {
+      final List<String> listColumns = ManageJobConfig.getColumns(columns);
 
-    final List<Type> typeListTable = new ArrayList<Type>();
-    for (final String col : listColumns) {
-      if (fileSchema.containsField(col)) {
-        typeListTable.add(fileSchema.getType(col));
-      } else { // dummy type, should not be called
-        typeListTable.add(new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, col));
+      final List<Type> typeListTable = new ArrayList<Type>();
+      for (final String col : listColumns) {
+        if (fileSchema.containsField(col)) {
+          typeListTable.add(fileSchema.getType(col));
+        } else { // dummy type, should not be called
+          typeListTable.add(new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, col));
+        }
       }
+      MessageType tableSchema = new MessageType("table_schema", typeListTable);
+      contextMetadata.put(HIVE_SCHEMA_KEY, tableSchema.toString());
+
+      MessageType requestedSchemaByUser = tableSchema;
+      final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(configuration);
+
+      final List<Type> typeListWanted = new ArrayList<Type>();
+      for (final Integer idx : indexColumnsWanted) {
+        typeListWanted.add(tableSchema.getType(listColumns.get(idx)));
+      }
+      requestedSchemaByUser = new MessageType(fileSchema.getName(), typeListWanted);
+
+      return new ReadContext(requestedSchemaByUser, contextMetadata);
+    } else {
+      contextMetadata.put(HIVE_SCHEMA_KEY, fileSchema.toString());
+      return new ReadContext(fileSchema, contextMetadata);
     }
-    final MessageType tableSchema = new MessageType("table_schema", typeListTable);
-    contextMetadata.put(HIVE_SCHEMA_KEY, tableSchema.toString());
-
-    MessageType requestedSchemaByUser = tableSchema;
-    final List<Integer> indexColumnsWanted = ColumnProjectionUtils.getReadColumnIDs(configuration);
-
-    final List<Type> typeListWanted = new ArrayList<Type>();
-    for (final Integer idx : indexColumnsWanted) {
-      typeListWanted.add(tableSchema.getType(listColumns.get(idx)));
-    }
-    requestedSchemaByUser = new MessageType(fileSchema.getName(), typeListWanted);
-
-
-    return new ReadContext(requestedSchemaByUser, contextMetadata);
   }
 
   /**
    *
    * It creates the hive read support to interpret data from parquet to hive
    *
-   * @param configuration    // unused
+   * @param configuration // unused
    * @param keyValueMetaData
-   * @param fileSchema       // unused
-   * @param readContext      containing the requested schema and the schema of the hive table
+   * @param fileSchema // unused
+   * @param readContext containing the requested schema and the schema of the hive table
    * @return Record Materialize for Hive
    */
   @Override
