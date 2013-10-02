@@ -22,6 +22,6 @@ public class CompatibilityCheckerTest {
   @Test
   public void testReadJson() throws Exception{
     ObjectMapper mapper = new ObjectMapper();
-    mapper.readValue(new File("oh_yeah.json"),ThriftType.StringType.class);
+    mapper.readValue(new File("oh_yeah.json"),ThriftType.StructType.class);
   }
 }
