@@ -1,21 +1,45 @@
 package parquet.thrift.struct;
 
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class CompatibilityChecker {
      public boolean areCompatible(ThriftType.StructType oldStruct, ThriftType.StructType newStruct){
+        return checkCompatibility(oldStruct,newStruct).isCompatible();
+     }
 
-       newStruct.accept(new CompatibleCheckerVisitor(oldStruct));
-       return true;// TODO return report
+     public CompatibilityReport checkCompatibility(ThriftType.StructType oldStruct, ThriftType.StructType newStruct){
+       CompatibleCheckerVisitor visitor = new CompatibleCheckerVisitor(oldStruct);
+       newStruct.accept(visitor);
+       return  visitor.getReport();
      }
 
 }
 
+class CompatibilityReport{
+  boolean isCompatible;
+  List<String> messages=new ArrayList<String>();
+  public boolean isCompatible(){
+    return isCompatible;
+  }
+
+  public void fail(String message){
+    messages.add(message);
+    isCompatible=false;
+  }
+}
+
 class CompatibleCheckerVisitor implements ThriftType.TypeVisitor{
   ThriftType oldType;
-
+  CompatibilityReport report=new CompatibilityReport();
   CompatibleCheckerVisitor(ThriftType.StructType oldType) {
     this.oldType = oldType;
   }
 
+  public CompatibilityReport getReport() {
+    return report;
+  }
 
   @Override
   public void visit(ThriftType.MapType mapType) {
@@ -51,17 +75,23 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor{
     oldType=currentOldType;
   }
 
-  public void fail() throws RuntimeException{
-    throw new RuntimeException("fail!!!");
+  public void fail(String message) {
+    report.fail(message);
   }
 
   private void checkField(ThriftField oldField, ThriftField newField){
-    if (newField==null)
-      fail();
-    if (!newField.getType().getType().equals(oldField.getType().getType()))//TODO: check equals method for ThriftTypeID
-      fail();
-    if(!newField.getName().equals(oldField.getName()))
-      fail();
+//    if (newField==null)
+//      fail();//TODO: this will never happen
+    if (!newField.getType().getType().equals(oldField.getType().getType())){//TODO: check equals method for ThriftTypeID
+      fail("type is not compatible "+oldField.getType().getType()+" vs "+newField.getType().getType());
+      return;
+    }
+
+    if(!newField.getName().equals(oldField.getName())){
+      fail("field names are different "+oldField.getName()+" vs "+newField.getName());
+      return;
+    }
+
     oldType=oldField.getType();
     newField.getType().accept(this);
   }
@@ -72,7 +102,13 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor{
 
     for(ThriftField oldField: currentOldType.getChildren()){
       short fieldId = oldField.getFieldId();
-      ThriftField newField= newStruct.getChildById(fieldId);
+      ThriftField newField=null;
+      try{
+        newField = newStruct.getChildById(fieldId);
+      }catch(ArrayIndexOutOfBoundsException e){
+        fail("can not find index in new Struct: "+fieldId);
+        return;
+      }
       checkField(oldField,newField);
       //TODO: fail with message
       //TODO: check requirement

@@ -1,12 +1,17 @@
 package parquet.thrift.struct;
 
+import org.apache.thrift.TBase;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Test;
 import parquet.thrift.ThriftSchemaConverter;
+import parquet.thrift.test.compat.StructV1;
+import parquet.thrift.test.compat.StructV2;
 
 import java.io.File;
 
 import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertFalse;
+import static junit.framework.Assert.assertTrue;
 
 
 public class CompatibilityCheckerTest {
@@ -23,5 +28,23 @@ public class CompatibilityCheckerTest {
   public void testReadJson() throws Exception{
     ObjectMapper mapper = new ObjectMapper();
     mapper.readValue(new File("oh_yeah.json"),ThriftType.StructType.class);
+  }
+
+  @Test
+  public void testAddOptionalField(){
+    CompatibilityChecker checker=new CompatibilityChecker();
+    assertTrue(checker.areCompatible(struct(StructV1.class), struct(StructV2.class)));
+  }
+
+  @Test
+  public void testRemoveOptionalField(){
+    CompatibilityChecker checker=new CompatibilityChecker();
+    CompatibilityReport report=checker.checkCompatibility(struct(StructV2.class),struct(StructV1.class));
+    assertFalse(report.isCompatible());
+    System.out.println(report.messages);
+  }
+
+  private ThriftType.StructType struct(Class thriftClass){
+    return new ThriftSchemaConverter().toStructType(thriftClass);
   }
 }
