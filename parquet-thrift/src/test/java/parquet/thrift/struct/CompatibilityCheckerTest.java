@@ -22,7 +22,7 @@ public class CompatibilityCheckerTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.writeValue(new File("oh_yeah.json"),expected);
     ThriftType readResult=mapper.readValue(new File("oh_yeah.json"),ThriftType.StructType.class);
-    assertEquals(expected,readResult);
+    assertEquals(expected.toJSON(),readResult.toJSON());
   }
   @Test
   public void testReadJson() throws Exception{
@@ -33,7 +33,9 @@ public class CompatibilityCheckerTest {
   @Test
   public void testAddOptionalField(){
     CompatibilityChecker checker=new CompatibilityChecker();
-    assertTrue(checker.areCompatible(struct(StructV1.class), struct(StructV2.class)));
+    CompatibilityReport report = checker.checkCompatibility(struct(StructV1.class), struct(StructV2.class));
+    assertTrue(report.isCompatible);
+    System.out.println(report.messages);
   }
 
   @Test

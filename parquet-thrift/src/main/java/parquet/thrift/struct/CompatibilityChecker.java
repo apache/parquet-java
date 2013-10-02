@@ -18,7 +18,7 @@ public class CompatibilityChecker {
 }
 
 class CompatibilityReport{
-  boolean isCompatible;
+  boolean isCompatible=true;
   List<String> messages=new ArrayList<String>();
   public boolean isCompatible(){
     return isCompatible;
