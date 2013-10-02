@@ -30,21 +30,38 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor{
 
   @Override
   public void visit(ThriftType.MapType mapType) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    ThriftType.MapType currentOldType= ((ThriftType.MapType)oldType);
+    ThriftField oldKeyField=currentOldType.getKey();
+    ThriftField newKeyField=mapType.getKey();
+
+    ThriftField newValueField=mapType.getValue();
+    ThriftField oldValueField=currentOldType.getValue();
+
+    checkField(oldKeyField,newKeyField);
+    checkField(oldValueField,newValueField);
   }
 
   @Override
   public void visit(ThriftType.SetType setType) {
-    //To change body of implemented methods use File | Settings | File Templates.
   }
 
   @Override
   public void visit(ThriftType.ListType listType) {
-    //To change body of implemented methods use File | Settings | File Templates.
   }
 
   public void fail() throws RuntimeException{
     throw new RuntimeException("fail!!!");
+  }
+
+  private void checkField(ThriftField oldField, ThriftField newField){
+    if (newField==null)
+      fail();
+    if (!newField.getType().getType().equals(oldField.getType().getType()))//TODO: check equals method for ThriftTypeID
+      fail();
+    if(!newField.getName().equals(oldField.getName()))
+      fail();
+    oldType=oldField.getType();
+    newField.getType().accept(this);
   }
 
   @Override
@@ -54,14 +71,7 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor{
     for(ThriftField oldField: currentOldType.getChildren()){
       short fieldId = oldField.getFieldId();
       ThriftField newField= newStruct.getChildById(fieldId);
-      if (newField==null)
-        fail();
-      if (!newField.getType().equals(oldField.getType()))
-        fail();
-      if(!newField.getName().equals(oldField.getName()))
-        fail();
-      oldType=oldField.getType();
-      newField.getType().accept(this);
+      checkField(oldField,newField);
       //TODO: fail with message
       //TODO: check requirement
       //TODO: recursivly, visitor pattern?
@@ -73,42 +83,42 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor{
 
   @Override
   public void visit(ThriftType.EnumType enumType) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    return;
   }
 
   @Override
   public void visit(ThriftType.BoolType boolType) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    return;
   }
 
   @Override
   public void visit(ThriftType.ByteType byteType) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    return;
   }
 
   @Override
   public void visit(ThriftType.DoubleType doubleType) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    return;
   }
 
   @Override
   public void visit(ThriftType.I16Type i16Type) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    return;
   }
 
   @Override
   public void visit(ThriftType.I32Type i32Type) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    return;
   }
 
   @Override
   public void visit(ThriftType.I64Type i64Type) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    return;
   }
 
   @Override
   public void visit(ThriftType.StringType stringType) {
-    //To change body of implemented methods use File | Settings | File Templates.
+    return;
   }
 }
 
