@@ -39,10 +39,18 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor{
 
     checkField(oldKeyField,newKeyField);
     checkField(oldValueField,newValueField);
+
+    //restore TODO: is this necessary?
+    oldType=currentOldType;
   }
 
   @Override
   public void visit(ThriftType.SetType setType) {
+    ThriftType.SetType currentOldType= ((ThriftType.SetType)oldType);
+    ThriftField oldField=currentOldType.getValues();
+    ThriftField newField=setType.getValues();
+    checkField(oldField,newField);
+    oldType=currentOldType;
   }
 
   @Override
