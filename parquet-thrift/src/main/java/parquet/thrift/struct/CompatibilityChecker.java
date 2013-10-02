@@ -13,6 +13,7 @@ public class CompatibilityChecker {
          if(!newField.getName().equals(oldField.getName()))
            return false;
          //TODO: check requirement
+         //TODO: recursivly, visitor pattern?
        }
        return true;
      }
