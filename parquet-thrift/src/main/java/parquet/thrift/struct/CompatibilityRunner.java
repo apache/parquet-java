@@ -3,6 +3,7 @@ package parquet.thrift.struct;
 
 import org.apache.thrift.TBase;
 import org.codehaus.jackson.JsonGenerationException;
+import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.ObjectMapper;
 import parquet.thrift.ThriftSchemaConverter;
 
@@ -17,8 +18,37 @@ public class CompatibilityRunner {
     LinkedList<String> arguments = new LinkedList<String>(Arrays.asList(args));
     String operator = arguments.pollFirst();
     if (operator.equals("generate-json")){
+      //java CompatibilityRunner generate-json tfe_request com.twitter.logs.TfeRequestLog old_json/
       generateJson(arguments);
     }
+    if (operator.equals("compare")){
+      checkCompatible(arguments);
+    }
+  }
+
+  private static void checkCompatible(LinkedList<String> arguments) throws ClassNotFoundException, IOException {
+    String catName=arguments.pollFirst();
+    String className=arguments.pollFirst();
+    String storedPath=arguments.pollFirst();
+    File dirForOldJson=new File(storedPath);
+    String oldJsonName=catName+".json";
+
+    ThriftType.StructType newStruct = new ThriftSchemaConverter().toStructType((Class<? extends TBase<?, ?>>) Class.forName(className));
+
+    ObjectMapper mapper = new ObjectMapper();
+    File jsonFile = new File(dirForOldJson, oldJsonName);
+
+    if (!jsonFile.exists()){
+      System.out.println(jsonFile+"does not exist, nothing to check against to");
+      return;
+    }
+
+    ThriftType.StructType oldStruct= mapper.readValue(jsonFile,ThriftType.StructType.class);
+    boolean compatible= new CompatibilityChecker().areCompatible(oldStruct,newStruct);
+    if(!compatible){
+      throw new RuntimeException("schema not compatible");//TODO throw exception from compatibility checker for more detailed info
+    }
+    System.out.println("[success] schema is compatible");
   }
 
   private static void generateJson(LinkedList<String> arguments) throws ClassNotFoundException, IOException {
@@ -32,4 +62,6 @@ public class CompatibilityRunner {
     String fileName=catName+".json";
     mapper.writeValue(new File(storeDir,fileName),structType);
   }
+
+
 }
