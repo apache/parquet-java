@@ -1,17 +1,14 @@
 /**
  * Copyright 2013 Criteo.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package parquet.hive.serde;
 
@@ -24,8 +21,8 @@ import org.apache.commons.lang.NotImplementedException;
 import org.apache.hadoop.hive.serde2.io.ByteWritable;
 import org.apache.hadoop.hive.serde2.io.ShortWritable;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.SettableStructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
-import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.AbstractPrimitiveJavaObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils;
@@ -46,14 +43,14 @@ import parquet.io.api.Binary;
 
 /**
  *
- * A MapWritableObjectInspector for Hive (with the deprecated package mapred)
+ * An ArrayWritableObjectInspector for Hive (with the deprecated package mapred)
  *
  *
  * @author Mickaël Lacour <m.lacour@criteo.com>
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  *
  */
-public class ArrayWritableObjectInspector extends StructObjectInspector {
+public class ArrayWritableObjectInspector extends SettableStructObjectInspector {
 
   private final TypeInfo typeInfo;
   private final List<TypeInfo> fieldInfos;
@@ -130,11 +127,16 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
 
   @Override
   public Object getStructFieldData(final Object data, final StructField fieldRef) {
-    if (data != null && data instanceof ArrayWritable) {
+    if (data == null) {
+      return null;
+    }
+
+    if (data instanceof ArrayWritable) {
       final ArrayWritable arr = (ArrayWritable) data;
       return arr.get()[((StructFieldImpl) fieldRef).getIndex()];
     }
-    return null;
+
+    throw new UnsupportedOperationException("Cannot inspect " + data.getClass().getCanonicalName());
   }
 
   @Override
@@ -144,14 +146,55 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
 
   @Override
   public List<Object> getStructFieldsDataAsList(final Object data) {
-    ArrayList<Object> result = null;
+    if (data == null) {
+      return null;
+    }
 
-    if (data != null && data instanceof ArrayWritable) {
+    if (data instanceof ArrayWritable) {
       final ArrayWritable arr = (ArrayWritable) data;
       final Object[] arrWritable = arr.get();
-      result = new ArrayList<Object>(Arrays.asList(arrWritable));
+      return new ArrayList<Object>(Arrays.asList(arrWritable));
     }
-    return result;
+
+    throw new UnsupportedOperationException("Cannot inspect " + data.getClass().getCanonicalName());
+  }
+
+  @Override
+  public Object create() {
+    final ArrayList<Object> list = new ArrayList<Object>(fields.size());
+    for (int i = 0; i < fields.size(); ++i) {
+      list.add(null);
+    }
+    return list;
+  }
+
+  @Override
+  public Object setStructFieldData(Object struct, StructField field, Object fieldValue) {
+    final ArrayList<Object> list = (ArrayList<Object>) struct;
+    list.set(((StructFieldImpl) field).getIndex(), fieldValue);
+    return list;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    final ArrayWritableObjectInspector other = (ArrayWritableObjectInspector) obj;
+    if (this.typeInfo != other.typeInfo && (this.typeInfo == null || !this.typeInfo.equals(other.typeInfo))) {
+      return false;
+    }
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    int hash = 5;
+    hash = 29 * hash + (this.typeInfo != null ? this.typeInfo.hashCode() : 0);
+    return hash;
   }
 
   class StructFieldImpl implements StructField {
@@ -187,8 +230,9 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
   }
 
   public class ParquetShortInspector
-      extends AbstractPrimitiveJavaObjectInspector
-      implements SettableShortObjectInspector {
+          extends AbstractPrimitiveJavaObjectInspector
+          implements SettableShortObjectInspector {
+
     ParquetShortInspector() {
       super(PrimitiveObjectInspectorUtils.shortTypeEntry);
     }
@@ -205,7 +249,7 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
 
     @Override
     public Object set(final Object o, final short val) {
-      ((ShortWritable)o).set(val);
+      ((ShortWritable) o).set(val);
       return o;
     }
 
@@ -213,15 +257,16 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
     public short get(Object o) {
       // Accept int writables and convert them.
       if (o instanceof IntWritable) {
-        return (short)((IntWritable)o).get();
+        return (short) ((IntWritable) o).get();
       }
-      return ((ShortWritable)o).get();
+      return ((ShortWritable) o).get();
     }
   }
 
   public class ParquetByteInspector
-      extends AbstractPrimitiveJavaObjectInspector
-      implements SettableByteObjectInspector {
+          extends AbstractPrimitiveJavaObjectInspector
+          implements SettableByteObjectInspector {
+
     ParquetByteInspector() {
       super(PrimitiveObjectInspectorUtils.byteTypeEntry);
     }
@@ -238,7 +283,7 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
 
     @Override
     public Object set(final Object o, final byte val) {
-      ((ByteWritable)o).set(val);
+      ((ByteWritable) o).set(val);
       return o;
     }
 
@@ -246,9 +291,9 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
     public byte get(Object o) {
       // Accept int writables and convert them.
       if (o instanceof IntWritable) {
-        return (byte)((IntWritable)o).get();
+        return (byte) ((IntWritable) o).get();
       }
-      return ((ByteWritable)o).get();
+      return ((ByteWritable) o).get();
     }
   }
 
