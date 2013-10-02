@@ -55,6 +55,11 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor{
 
   @Override
   public void visit(ThriftType.ListType listType) {
+    ThriftType.ListType currentOldType= ((ThriftType.ListType)oldType);
+    ThriftField oldField=currentOldType.getValues();
+    ThriftField newField=listType.getValues();
+    checkField(oldField,newField);
+    oldType=currentOldType;
   }
 
   public void fail() throws RuntimeException{
