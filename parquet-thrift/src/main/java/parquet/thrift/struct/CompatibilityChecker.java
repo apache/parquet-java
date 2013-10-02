@@ -5,6 +5,7 @@ public class CompatibilityChecker {
 
        newStruct.accept(new CompatibleCheckerVisitor(oldStruct));
        return true;// TODO return report
+     }
 
 }
 
