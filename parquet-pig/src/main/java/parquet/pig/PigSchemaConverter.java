@@ -111,98 +111,117 @@ public class PigSchemaConverter {
     return new Schema(fields);
   }
 
+  private FieldSchema getSimpleFieldSchema(final String fieldName, Type parquetType)
+      throws FrontendException {
+    final PrimitiveTypeName parquetPrimitiveTypeName = 
+        parquetType.asPrimitiveType().getPrimitiveTypeName();
+    final OriginalType originalType = parquetType.getOriginalType();
+    return parquetPrimitiveTypeName.convert(
+        new PrimitiveTypeNameConverter<Schema.FieldSchema, FrontendException>() {
+      @Override
+      public FieldSchema convertFLOAT(PrimitiveTypeName primitiveTypeName) 
+          throws FrontendException {
+        return new FieldSchema(fieldName, null, DataType.FLOAT);
+      }
+
+      @Override
+      public FieldSchema convertDOUBLE(PrimitiveTypeName primitiveTypeName) 
+          throws FrontendException {
+        return new FieldSchema(fieldName, null, DataType.DOUBLE);
+      }
+
+      @Override
+      public FieldSchema convertINT32(PrimitiveTypeName primitiveTypeName) 
+          throws FrontendException {
+        return new FieldSchema(fieldName, null, DataType.INTEGER);
+      }
+
+      @Override
+      public FieldSchema convertINT64(PrimitiveTypeName primitiveTypeName) 
+          throws FrontendException {
+        return new FieldSchema(fieldName, null, DataType.LONG);
+      }
+
+      @Override
+      public FieldSchema convertINT96(PrimitiveTypeName primitiveTypeName) 
+          throws FrontendException {
+        throw new FrontendException("NYI");
+      }
+
+      @Override
+      public FieldSchema convertFIXED_LEN_BYTE_ARRAY(
+          PrimitiveTypeName primitiveTypeName) throws FrontendException {
+        return new FieldSchema(fieldName, null, DataType.BYTEARRAY);
+      }
+
+      @Override
+      public FieldSchema convertBOOLEAN(PrimitiveTypeName primitiveTypeName) 
+          throws FrontendException {
+        return new FieldSchema(fieldName, null, DataType.BOOLEAN);
+      }
+
+      @Override
+      public FieldSchema convertBINARY(PrimitiveTypeName primitiveTypeName) 
+          throws FrontendException {
+        if (originalType != null && originalType == OriginalType.UTF8) {
+          return new FieldSchema(fieldName, null, DataType.CHARARRAY);
+        } else {
+          return new FieldSchema(fieldName, null, DataType.BYTEARRAY);
+        }
+      }
+    });
+  }
+
+  private FieldSchema getComplexFieldSchema(String fieldName, Type parquetType)
+      throws FrontendException {
+    GroupType parquetGroupType = parquetType.asGroupType();
+    OriginalType originalType = parquetGroupType.getOriginalType();
+    if (originalType !=  null) {
+      switch(originalType) {
+      case MAP:
+        // verify that its a map
+        if (parquetGroupType.getFieldCount() != 1 || parquetGroupType.getType(0).isPrimitive()) {
+          throw new SchemaConversionException("Invalid map type " + parquetGroupType);
+        }
+        GroupType mapKeyValType = parquetGroupType.getType(0).asGroupType();
+        if (!mapKeyValType.isRepetition(Repetition.REPEATED) ||
+            !mapKeyValType.getOriginalType().equals(OriginalType.MAP_KEY_VALUE) ||
+            mapKeyValType.getFieldCount()!=2) {
+          throw new SchemaConversionException("Invalid map type " + parquetGroupType);
+        }
+        // if value is not primitive wrap it in a tuple
+        Type valueType = mapKeyValType.getType(1);
+        Schema s = convertField(valueType);
+        s.getField(0).alias = null;
+        return new FieldSchema(fieldName, s, DataType.MAP);
+      case LIST:
+        if (parquetGroupType.getFieldCount()!= 1 || parquetGroupType.getType(0).isPrimitive()) {
+          throw new SchemaConversionException("Invalid list type " + parquetGroupType );
+        }
+        GroupType tupleType = parquetGroupType.getType(0).asGroupType();
+        if (!tupleType.isRepetition(Repetition.REPEATED)) {
+          throw new SchemaConversionException("Invalid list type " + parquetGroupType);
+        }
+        Schema tupleSchema = new Schema(new FieldSchema(tupleType.getName(), convertFields(tupleType.getFields()), DataType.TUPLE));
+        return new FieldSchema(fieldName, tupleSchema, DataType.BAG);
+      case MAP_KEY_VALUE:
+      case ENUM:
+      case UTF8:
+      default:
+        throw new SchemaConversionException("Unexpected original type for " + parquetType + ": " + originalType);
+      }
+    } else {
+      // if original type is not set, we assume it to be tuple
+      return new FieldSchema(fieldName, convertFields(parquetGroupType.getFields()), DataType.TUPLE);
+    }
+  }
+
   private FieldSchema getFieldSchema(Type parquetType) throws FrontendException {
     final String fieldName = parquetType.getName();
-    if(parquetType.isPrimitive()) {
-      final PrimitiveTypeName parquetPrimitiveTypeName = parquetType.asPrimitiveType().getPrimitiveTypeName();
-      final OriginalType originalType = parquetType.getOriginalType();
-      return parquetPrimitiveTypeName.convert(new PrimitiveTypeNameConverter<Schema.FieldSchema, FrontendException>() {
-        @Override
-        public FieldSchema convertFLOAT(PrimitiveTypeName primitiveTypeName) throws FrontendException {
-          return new FieldSchema(fieldName, null, DataType.FLOAT);
-        }
-
-        @Override
-        public FieldSchema convertDOUBLE(PrimitiveTypeName primitiveTypeName) throws FrontendException {
-          return new FieldSchema(fieldName, null, DataType.DOUBLE);
-        }
-
-        @Override
-        public FieldSchema convertINT32(PrimitiveTypeName primitiveTypeName) throws FrontendException {
-          return new FieldSchema(fieldName, null, DataType.INTEGER);
-        }
-
-        @Override
-        public FieldSchema convertINT64(PrimitiveTypeName primitiveTypeName) throws FrontendException {
-          return new FieldSchema(fieldName, null, DataType.LONG);
-        }
-
-        @Override
-        public FieldSchema convertINT96(PrimitiveTypeName primitiveTypeName) throws FrontendException {
-          throw new FrontendException("NYI");
-        }
-
-        @Override
-        public FieldSchema convertFIXED_LEN_BYTE_ARRAY(
-            PrimitiveTypeName primitiveTypeName) throws FrontendException {
-          throw new FrontendException("NYI");
-        }
-
-        @Override
-        public FieldSchema convertBOOLEAN(PrimitiveTypeName primitiveTypeName) throws FrontendException {
-          return new FieldSchema(fieldName, null, DataType.BOOLEAN);
-        }
-
-        @Override
-        public FieldSchema convertBINARY(PrimitiveTypeName primitiveTypeName) throws FrontendException {
-          if(originalType != null && originalType == OriginalType.UTF8) {
-            return new FieldSchema(fieldName, null, DataType.CHARARRAY);
-          } else {
-            return new FieldSchema(fieldName, null, DataType.BYTEARRAY);
-          }
-        }
-      });
+    if (parquetType.isPrimitive()) {
+      return getSimpleFieldSchema(fieldName, parquetType);
     } else {
-      GroupType parquetGroupType = parquetType.asGroupType();
-      OriginalType originalType = parquetGroupType.getOriginalType();
-      if(originalType !=  null) {
-        switch(originalType) {
-        case MAP:
-          // verify that its a map
-          if (parquetGroupType.getFieldCount() != 1 || parquetGroupType.getType(0).isPrimitive()) {
-            throw new SchemaConversionException("Invalid map type " + parquetGroupType);
-          }
-          GroupType mapKeyValType = parquetGroupType.getType(0).asGroupType();
-          if (!mapKeyValType.isRepetition(Repetition.REPEATED) ||
-              !mapKeyValType.getOriginalType().equals(OriginalType.MAP_KEY_VALUE) ||
-              mapKeyValType.getFieldCount()!=2) {
-            throw new SchemaConversionException("Invalid map type " + parquetGroupType);
-          }
-          // if value is not primitive wrap it in a tuple
-          Type valueType = mapKeyValType.getType(1);
-          Schema s = convertField(valueType);
-          s.getField(0).alias = null;
-          return new FieldSchema(fieldName, s, DataType.MAP);
-        case LIST:
-          if(parquetGroupType.getFieldCount()!= 1 || parquetGroupType.getType(0).isPrimitive()) {
-            throw new SchemaConversionException("Invalid list type " + parquetGroupType );
-          }
-          GroupType tupleType = parquetGroupType.getType(0).asGroupType();
-          if(!tupleType.isRepetition(Repetition.REPEATED)) {
-            throw new SchemaConversionException("Invalid list type " + parquetGroupType);
-          }
-          Schema tupleSchema = new Schema(new FieldSchema(tupleType.getName(), convertFields(tupleType.getFields()), DataType.TUPLE));
-          return new FieldSchema(fieldName, tupleSchema, DataType.BAG);
-        case MAP_KEY_VALUE:
-        case ENUM:
-        case UTF8:
-        default:
-          throw new SchemaConversionException("Unexpected original type for " + parquetType + ": " + originalType);
-        }
-      } else {
-        // if original type is not set, we assume it to be tuple
-        return new FieldSchema(fieldName, convertFields(parquetGroupType.getFields()), DataType.TUPLE);
-      }
+      return getComplexFieldSchema(fieldName, parquetType);
     }
   }
 
@@ -255,7 +274,7 @@ public class PigSchemaConverter {
       case DataType.BYTEARRAY:
         return primitive(name, PrimitiveTypeName.BINARY);
       default:
-        throw new SchemaConversionException("Unknown type "+fieldSchema.type+" "+DataType.findTypeName(fieldSchema.type));
+        throw new SchemaConversionException("Unknown type " + fieldSchema.type + " " + DataType.findTypeName(fieldSchema.type));
       }
     } catch (FrontendException e) {
       throw new SchemaConversionException("can't convert "+fieldSchema, e);

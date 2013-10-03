@@ -33,6 +33,7 @@ import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDiction
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
+import parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import parquet.io.ParquetEncodingException;
@@ -67,10 +68,8 @@ final class ColumnWriterImpl implements ColumnWriter {
     this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
 
     repetitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel());
-
     definitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel());
-
-    if(enableDictionary) {
+    if (enableDictionary) {
       int maxDictByteSize = applyRatioInPercent(pageSizeThreshold, DICTIONARY_PAGE_MAX_SIZE_PERCENT);
       switch (path.getType()) {
       case BOOLEAN:
@@ -91,6 +90,9 @@ final class ColumnWriterImpl implements ColumnWriter {
       case FLOAT:
         this.dataColumn = new PlainFloatDictionaryValuesWriter(maxDictByteSize, initialSizePerCol);
         break;
+      case FIXED_LEN_BYTE_ARRAY:
+        this.dataColumn = new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol);
+        break;
       default:
         this.dataColumn = new PlainValuesWriter(initialSizePerCol);
       }     
@@ -99,22 +101,23 @@ final class ColumnWriterImpl implements ColumnWriter {
       case BOOLEAN:
         this.dataColumn = new BooleanPlainValuesWriter();
         break;
+      case FIXED_LEN_BYTE_ARRAY:
+        this.dataColumn = new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol);
+        break;
       default:
         this.dataColumn = new PlainValuesWriter(initialSizePerCol);
       }     
     }
-    
   }
 
   private ValuesWriter getColumnDescriptorValuesWriter(int maxLevel) {
-    if(maxLevel == 0) {
+    if (maxLevel == 0) {
       return new DevNullValuesWriter();
-    }
-    else {
+    } else {
       // TODO: what is a good initialCapacity?
       return new RunLengthBitPackingHybridValuesWriter(
-        BytesUtils.getWidthFromMaxInt(maxLevel),
-        64 * 1024);
+          BytesUtils.getWidthFromMaxInt(maxLevel),
+          64 * 1024);
     }
   }
 
@@ -126,7 +129,7 @@ final class ColumnWriterImpl implements ColumnWriter {
   }
 
   private void log(Object value, int r, int d) {
-    LOG.debug(path+" "+value+" r:"+r+" d:"+d);
+    LOG.debug(path + " " + value + " r:" + r + " d:" + d);
   }
 
   /**

@@ -24,12 +24,15 @@ protocol Cars {
         float capacity;
         boolean hasTurboCharger;
     }
+    
+    fixed Vin(17);
 
     record Car {
         long year;
         string registration;
         string make;
         string model;
+        Vin vin;
         int doors;
         Engine engine;
         union { null, Stereo, LeatherTrim } optionalExtra = null;

@@ -23,10 +23,9 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
   private final SimpleGroupConverter parent;
   private final int index;
 
-  SimplePrimitiveConverter(SimpleGroupConverter parent,
-      int index) {
-        this.parent = parent;
-        this.index = index;
+  SimplePrimitiveConverter(SimpleGroupConverter parent, int index) {
+    this.parent = parent;
+    this.index = index;
   }
 
   /**
@@ -37,7 +36,7 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
   public void addBinary(Binary value) {
     parent.getCurrentRecord().add(index, value);
   }
-
+  
   /**
    * {@inheritDoc}
    * @see parquet.io.api.PrimitiveConverter#addBoolean(boolean)

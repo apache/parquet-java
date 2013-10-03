@@ -98,3 +98,4 @@ final public class ExpectationValidatingRecordConsumer extends
   }
 
 }
+
