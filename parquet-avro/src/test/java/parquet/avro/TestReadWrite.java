@@ -28,6 +28,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.avro.util.Utf8;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
 
@@ -88,6 +89,33 @@ public class TestReadWrite {
 
     assertNotNull(nextRecord);
     assertEquals(emptyMap, nextRecord.get("mymap"));
+  }
+
+  @Test
+  public void testMapWithUtf8Key() throws Exception {
+    Schema schema = new Schema.Parser().parse(
+        Resources.getResource("map.avsc").openStream());
+
+    File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
+    tmp.deleteOnExit();
+    tmp.delete();
+    Path file = new Path(tmp.getPath());
+
+    AvroParquetWriter<GenericRecord> writer = 
+        new AvroParquetWriter<GenericRecord>(file, schema);
+
+    // Write a record with a map with Utf8 keys.
+    GenericData.Record record = new GenericRecordBuilder(schema)
+        .set("mymap", ImmutableMap.of(new Utf8("a"), 1, new Utf8("b"), 2))
+        .build();
+    writer.write(record);
+    writer.close();
+
+    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(file);
+    GenericRecord nextRecord = reader.read();
+
+    assertNotNull(nextRecord);
+    assertEquals(ImmutableMap.of("a", 1, "b", 2), nextRecord.get("mymap"));
   }
 
   @Test
