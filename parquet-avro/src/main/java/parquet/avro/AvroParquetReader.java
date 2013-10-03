@@ -36,7 +36,7 @@ public class AvroParquetReader<T extends IndexedRecord> extends ParquetReader<T>
     super(file, (ReadSupport<T>) new AvroReadSupport());
   }
 
-  public AvroParquetReader(Path file, UnboundRecordFilter recordFilter ) throws IOException {
+  public AvroParquetReader(Path file, UnboundRecordFilter recordFilter) throws IOException {
     super(file, (ReadSupport<T>) new AvroReadSupport(), recordFilter);
   }
 

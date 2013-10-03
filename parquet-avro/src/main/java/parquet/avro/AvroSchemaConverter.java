@@ -115,7 +115,8 @@ public class AvroSchemaConverter {
       // avro map key type is always string
       return ConversionPatterns.stringKeyMapType(repetition, fieldName, valType);
     } else if (type.equals(Schema.Type.FIXED)) {
-      return primitive(fieldName, FIXED_LEN_BYTE_ARRAY, repetition);
+      return primitive(fieldName, FIXED_LEN_BYTE_ARRAY, repetition,
+                       schema.getFixedSize(), null);
     } else if (type.equals(Schema.Type.UNION)) {
       return convertUnion(fieldName, schema, repetition);
     }
@@ -154,13 +155,21 @@ public class AvroSchemaConverter {
     return convertField(field.name(), field.schema());
   }
 
-  private Type primitive(String name, PrimitiveType.PrimitiveTypeName primitive,
-      Type.Repetition repetition, OriginalType originalType) {
+  private PrimitiveType primitive(String name, 
+      PrimitiveType.PrimitiveTypeName primitive, Type.Repetition repetition,
+      int typeLength, OriginalType originalType) {
+    return new PrimitiveType(repetition, primitive, typeLength, name,
+                             originalType);
+  }
+
+  private PrimitiveType primitive(String name,
+      PrimitiveType.PrimitiveTypeName primitive, Type.Repetition repetition, 
+      OriginalType originalType) {
     return new PrimitiveType(repetition, primitive, name, originalType);
   }
 
-  private PrimitiveType primitive(String name, PrimitiveType.PrimitiveTypeName
-      primitive, Type.Repetition repetition) {
+  private PrimitiveType primitive(String name, 
+      PrimitiveType.PrimitiveTypeName primitive, Type.Repetition repetition) {
     return new PrimitiveType(repetition, primitive, name, null);
   }
 

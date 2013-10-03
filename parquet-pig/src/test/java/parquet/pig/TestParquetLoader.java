@@ -41,7 +41,10 @@ public class TestParquetLoader {
   @Test
   public void testSchema() throws Exception {
     String location = "garbage";
-    ParquetLoader pLoader = new ParquetLoader("a:chararray, b:{t:(c:chararray, d:chararray)}, p:[(q:chararray, r:chararray)]");
+    ParquetLoader pLoader = new ParquetLoader(
+        "a:chararray, " +
+        "b:{t:(c:chararray, d:chararray)}, " +
+        "p:[(q:chararray, r:chararray)]");
     Job job = new Job();
     pLoader.getSchema(location, job);
     RequiredFieldList list = new RequiredFieldList();

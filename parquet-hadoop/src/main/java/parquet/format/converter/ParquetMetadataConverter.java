@@ -75,8 +75,7 @@ public class ParquetMetadataConverter {
         currentVersion,
         toParquetSchema(parquetMetadata.getFileMetaData().getSchema()),
         numRows,
-        rowGroups
-        );
+        rowGroups);
 
     Set<Entry<String, String>> keyValues = parquetMetadata.getFileMetaData().getKeyValueMetaData().entrySet();
     for (Entry<String, String> keyValue : keyValues) {
@@ -84,7 +83,6 @@ public class ParquetMetadataConverter {
     }
 
     fileMetaData.setCreated_by(parquetMetadata.getFileMetaData().getCreatedBy());
-
     return fileMetaData;
   }
 
@@ -103,6 +101,9 @@ public class ParquetMetadataConverter {
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
         if (primitiveType.getOriginalType() != null) {
           element.setConverted_type(getConvertedType(primitiveType.getOriginalType()));
+        }
+        if (primitiveType.getTypeLength() > 0) {
+          element.setType_length(primitiveType.getTypeLength());
         }
         result.add(element);
       }
@@ -149,8 +150,7 @@ public class ParquetMetadataConverter {
           columnMetaData.getValueCount(),
           columnMetaData.getTotalUncompressedSize(),
           columnMetaData.getTotalSize(),
-          columnMetaData.getFirstDataPageOffset()
-          );
+          columnMetaData.getFirstDataPageOffset());
       columnChunk.meta_data.dictionary_page_offset = columnMetaData.getDictionaryPageOffset();
 //      columnChunk.meta_data.index_page_offset = ;
 //      columnChunk.meta_data.key_value_metadata = ; // nothing yet
@@ -326,7 +326,7 @@ public class ParquetMetadataConverter {
       String filePath = columns.get(0).getFile_path();
       for (ColumnChunk columnChunk : columns) {
         if ((filePath == null && columnChunk.getFile_path() != null)
-            || (filePath !=null && !filePath.equals(columnChunk.getFile_path()))) {
+            || (filePath != null && !filePath.equals(columnChunk.getFile_path()))) {
           throw new ParquetDecodingException("all column chunks of the same row group must be in the same file for now");
         }
         parquet.format.ColumnMetaData metaData = columnChunk.meta_data;
@@ -367,7 +367,6 @@ public class ParquetMetadataConverter {
   }
 
   MessageType fromParquetSchema(List<SchemaElement> schema) {
-
     Iterator<SchemaElement> iterator = schema.iterator();
     SchemaElement root = iterator.next();
     return new MessageType(root.getName(), convertChildren(iterator, root.getNum_children()));
@@ -390,11 +389,20 @@ public class ParquetMetadataConverter {
 
       // Create Parquet Type.
       if (schemaElement.type != null) {
-        result[i] = new PrimitiveType(
-            repetition,
-            getPrimitive(schemaElement.getType()),
-            name,
-            originalType);
+        if (schemaElement.isSetType_length()) {
+          result[i] = new PrimitiveType(
+              repetition,
+              getPrimitive(schemaElement.getType()),
+              schemaElement.type_length,
+              name,
+              originalType);
+        } else {
+          result[i] = new PrimitiveType(
+              repetition,
+              getPrimitive(schemaElement.getType()),
+              name,
+              originalType);
+        }
       } else {
         result[i] = new GroupType(
             repetition,
@@ -448,6 +456,5 @@ public class ParquetMetadataConverter {
     pageHeader.dictionary_page_header = new DictionaryPageHeader(valueCount, getEncoding(valuesEncoding));
     writePageHeader(pageHeader, to);
   }
-
 
 }
