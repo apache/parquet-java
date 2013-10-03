@@ -4,8 +4,7 @@ import org.apache.thrift.TBase;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Test;
 import parquet.thrift.ThriftSchemaConverter;
-import parquet.thrift.test.compat.StructV1;
-import parquet.thrift.test.compat.StructV2;
+import parquet.thrift.test.compat.*;
 
 import java.io.File;
 
@@ -46,6 +45,35 @@ public class CompatibilityCheckerTest {
     System.out.println(report.messages);
   }
 
+  @Test
+  public void testRenameField(){
+    CompatibilityChecker checker=new CompatibilityChecker();
+    CompatibilityReport report=checker.checkCompatibility(struct(StructV1.class),struct(RenameStructV1.class));
+    assertFalse(report.isCompatible());
+    System.out.println(report.messages);
+  }
+
+  @Test
+  public void testTypeChange(){
+    CompatibilityChecker checker=new CompatibilityChecker();
+    CompatibilityReport report=checker.checkCompatibility(struct(StructV1.class),struct(TypeChangeStructV1.class));
+    assertFalse(report.isCompatible());
+    System.out.println(report.messages);
+  }
+
+  @Test
+  public void testReuirementChange(){
+    //required can become optional
+    CompatibilityChecker checker=new CompatibilityChecker();
+    CompatibilityReport report=checker.checkCompatibility(struct(StructV1.class),struct(OptionalStructV1.class));
+    assertTrue(report.isCompatible());
+    System.out.println(report.messages);
+
+    //optional can not become required
+    report=checker.checkCompatibility(struct(OptionalStructV1.class),struct(StructV1.class));
+    assertFalse(report.isCompatible());
+    System.out.println(report.messages);
+  }
   private ThriftType.StructType struct(Class thriftClass){
     return new ThriftSchemaConverter().toStructType(thriftClass);
   }

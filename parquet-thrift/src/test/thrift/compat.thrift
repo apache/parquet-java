@@ -11,3 +11,19 @@ struct StructV3 {
   2: optional string age,
   3: optional string gender
 }
+
+struct RenameStructV1 {
+  1: required string nameChanged
+}
+
+struct TypeChangeStructV1{
+  1: required i16 name
+}
+
+struct OptionalStructV1{
+  1: optional string name;
+}
+
+struct DefaultStructV1{
+  1: string name;
+}
