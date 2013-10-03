@@ -116,7 +116,7 @@ public class DeprecatedInputFormatTest {
     assertTrue(mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytestotal").getValue() > 0L);
     assertTrue(mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytesread").getValue()
             == mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytestotal").getValue());
-    assertTrue(mapRedJob.getCounters().getGroup("parquet").getCounterForName("timeread").getValue() > 0L);
+    //not testing the time read counter since it could be zero due to the size of data is too small
   }
 
   @Test
