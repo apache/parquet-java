@@ -29,6 +29,10 @@ class CompatibilityReport {
     messages.add(message);
     isCompatible = false;
   }
+
+  public List<String> getMessages() {
+    return messages;
+  }
 }
 
 class CompatibleCheckerVisitor implements ThriftType.TypeVisitor {

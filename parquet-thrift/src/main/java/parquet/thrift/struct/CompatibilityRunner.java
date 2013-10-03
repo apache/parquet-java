@@ -44,9 +44,11 @@ public class CompatibilityRunner {
     }
 
     ThriftType.StructType oldStruct= mapper.readValue(jsonFile,ThriftType.StructType.class);
-    boolean compatible= new CompatibilityChecker().areCompatible(oldStruct,newStruct);
-    if(!compatible){
-      throw new RuntimeException("schema not compatible");//TODO throw exception from compatibility checker for more detailed info
+    CompatibilityReport report= new CompatibilityChecker().checkCompatibility(oldStruct,newStruct);
+    if(!report.isCompatible){
+      System.err.println("schema not compatible");
+      System.err.println(report.getMessages());
+      System.exit(1);
     }
     System.out.println("[success] schema is compatible");
   }
