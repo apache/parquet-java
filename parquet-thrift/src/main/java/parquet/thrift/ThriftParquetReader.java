@@ -17,6 +17,7 @@ package parquet.thrift;
 
 import java.io.IOException;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.thrift.TBase;
 
@@ -41,12 +42,32 @@ public class ThriftParquetReader<T extends TBase<?,?>> extends ParquetReader<T> 
   }
 
   /**
+   * @param conf the configuration
+   * @param file the file to read
+   * @param thriftClass the class used to read
+   * @throws IOException
+   */
+  public ThriftParquetReader(Configuration conf, Path file, Class<T> thriftClass) throws IOException {
+    super(conf, file, new ThriftReadSupport<T>(thriftClass));
+  }
+
+  /**
    * will use the thrift class based on the file metadata if a thrift class information is present
    * @param file the file to read
    * @throws IOException
    */
   public ThriftParquetReader(Path file) throws IOException {
     super(file, new ThriftReadSupport<T>());
+  }
+
+  /**
+   * will use the thrift class based on the file metadata if a thrift class information is present
+   * @param conf the configuration
+   * @param file the file to read
+   * @throws IOException
+   */
+  public ThriftParquetReader(Configuration conf, Path file) throws IOException {
+    super(conf, file, new ThriftReadSupport<T>());
   }
 
 }

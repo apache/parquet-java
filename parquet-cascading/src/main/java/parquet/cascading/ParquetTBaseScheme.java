@@ -15,8 +15,6 @@
  */
 package parquet.cascading;
 
-import java.io.IOException;
-
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.RecordReader;
@@ -24,29 +22,25 @@ import org.apache.thrift.TBase;
 
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
+import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
+import parquet.hadoop.thrift.ParquetThriftInputFormat;
 import parquet.hadoop.thrift.ThriftReadSupport;
+import parquet.hadoop.thrift.ThriftWriteSupport;
 import parquet.thrift.TBaseRecordConverter;
 import cascading.flow.FlowProcess;
-import cascading.scheme.SinkCall;
 import cascading.tap.Tap;
 
 public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme<T> {
 
-  @SuppressWarnings("rawtypes")
-  @Override
-  public void sinkConfInit(FlowProcess<JobConf> arg0,
-      Tap<JobConf, RecordReader, OutputCollector> arg1, JobConf arg2) {
-    throw new UnsupportedOperationException("ParquetTBaseScheme does not support Sinks");
+  private Class<T> thriftClass;
 
+  // In the case of reads, we can read the thrift class from the file metadata
+  public ParquetTBaseScheme() {
   }
 
-  /**
-   * TODO: currently we cannot write Parquet files from TBase objects.
-   * All the underlying stuff exists, just need to link it.
-   */
-  @Override
-  public boolean isSink() { return false; }
-
+  public ParquetTBaseScheme(Class<T> thriftClass) {
+    this.thriftClass = thriftClass;
+  }
 
   @SuppressWarnings("rawtypes")
   @Override
@@ -55,12 +49,23 @@ public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme
     jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
     ParquetInputFormat.setReadSupportClass(jobConf, ThriftReadSupport.class);
     ThriftReadSupport.setRecordConverterClass(jobConf, TBaseRecordConverter.class);
+
+    if (thriftClass != null) {
+      ParquetThriftInputFormat.setThriftClass(jobConf, thriftClass);
+    }
   }
 
-
+  @SuppressWarnings("rawtypes")
   @Override
-  public void sink(FlowProcess<JobConf> arg0, SinkCall<Object[], OutputCollector> arg1)
-      throws IOException {
-    throw new UnsupportedOperationException("ParquetTBaseScheme does not support Sinks");
+  public void sinkConfInit(FlowProcess<JobConf> fp,
+      Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
+
+    if (thriftClass == null) {
+      throw new IllegalArgumentException("To use ParquetTBaseScheme as a sink, you must specify a thrift class in the constructor");
+    }
+
+    jobConf.setOutputFormat(DeprecatedParquetOutputFormat.class);
+    DeprecatedParquetOutputFormat.setWriteSupportClass(jobConf, ThriftWriteSupport.class);
+    ThriftWriteSupport.<T>setThriftClass(jobConf, thriftClass);
   }
 }

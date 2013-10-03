@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "myrecord",
+  "fields": [ {
+    "name": "myarray",
+    "type": {
+      "type": "array",
+      "items": "int"
+    }
+  } ]
+}
