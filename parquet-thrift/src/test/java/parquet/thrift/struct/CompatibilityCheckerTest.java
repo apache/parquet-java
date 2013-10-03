@@ -9,8 +9,6 @@ import parquet.thrift.test.compat.*;
 import java.io.File;
 
 import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertFalse;
-import static junit.framework.Assert.assertTrue;
 
 
 public class CompatibilityCheckerTest {
@@ -31,50 +29,42 @@ public class CompatibilityCheckerTest {
 
   @Test
   public void testAddOptionalField(){
-    CompatibilityChecker checker=new CompatibilityChecker();
-    CompatibilityReport report = checker.checkCompatibility(struct(StructV1.class), struct(StructV2.class));
-    assertTrue(report.isCompatible);
-    System.out.println(report.messages);
+    verifyCompatible(StructV1.class,StructV2.class,true);
   }
 
   @Test
   public void testRemoveOptionalField(){
-    CompatibilityChecker checker=new CompatibilityChecker();
-    CompatibilityReport report=checker.checkCompatibility(struct(StructV2.class),struct(StructV1.class));
-    assertFalse(report.isCompatible());
-    System.out.println(report.messages);
+    verifyCompatible(StructV2.class,StructV1.class,false);
   }
 
   @Test
   public void testRenameField(){
-    CompatibilityChecker checker=new CompatibilityChecker();
-    CompatibilityReport report=checker.checkCompatibility(struct(StructV1.class),struct(RenameStructV1.class));
-    assertFalse(report.isCompatible());
-    System.out.println(report.messages);
+    verifyCompatible(StructV1.class,RenameStructV1.class,false);
   }
 
   @Test
   public void testTypeChange(){
-    CompatibilityChecker checker=new CompatibilityChecker();
-    CompatibilityReport report=checker.checkCompatibility(struct(StructV1.class),struct(TypeChangeStructV1.class));
-    assertFalse(report.isCompatible());
-    System.out.println(report.messages);
+    verifyCompatible(StructV1.class,TypeChangeStructV1.class,false);
   }
 
   @Test
   public void testReuirementChange(){
-    //required can become optional
-    CompatibilityChecker checker=new CompatibilityChecker();
-    CompatibilityReport report=checker.checkCompatibility(struct(StructV1.class),struct(OptionalStructV1.class));
-    assertTrue(report.isCompatible());
-    System.out.println(report.messages);
+    //required can become optional or default
+    verifyCompatible(StructV1.class,OptionalStructV1.class,true);
+    verifyCompatible(StructV1.class,DefaultStructV1.class,true);
 
-    //optional can not become required
-    report=checker.checkCompatibility(struct(OptionalStructV1.class),struct(StructV1.class));
-    assertFalse(report.isCompatible());
-    System.out.println(report.messages);
+    //optional/deafult can not become required
+    verifyCompatible(OptionalStructV1.class,StructV1.class,false);
+    verifyCompatible(DefaultStructV1.class,StructV1.class,false);
   }
   private ThriftType.StructType struct(Class thriftClass){
     return new ThriftSchemaConverter().toStructType(thriftClass);
+  }
+
+  private void verifyCompatible(Class oldClass, Class newClass, boolean expectCompatible){
+    CompatibilityChecker checker=new CompatibilityChecker();
+    CompatibilityReport report=checker.checkCompatibility(struct(oldClass),struct(newClass));
+    assertEquals(expectCompatible,report.isCompatible());
+    System.out.println(report.messages);
   }
 }

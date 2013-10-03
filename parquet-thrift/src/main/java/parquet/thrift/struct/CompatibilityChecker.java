@@ -104,8 +104,8 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor {
   }
 
   private boolean firstIsMoreRestirctive(ThriftField.Requirement firstReq, ThriftField.Requirement secReq) {
-
-    if (firstReq == ThriftField.Requirement.REQUIRED && secReq == ThriftField.Requirement.OPTIONAL) {
+   //TODO: ask julien how about default vs optional
+    if (firstReq == ThriftField.Requirement.REQUIRED && secReq != ThriftField.Requirement.REQUIRED) {
       return true;
     } else {
       return false;
