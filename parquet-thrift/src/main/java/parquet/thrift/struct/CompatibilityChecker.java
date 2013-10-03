@@ -116,9 +116,12 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor {
   @Override
   public void visit(ThriftType.StructType newStruct) {
     ThriftType.StructType currentOldType = ((ThriftType.StructType) oldType);
-
+    short oldMaxId=0;
     for (ThriftField oldField : currentOldType.getChildren()) {
       short fieldId = oldField.getFieldId();
+      if (fieldId>oldMaxId){
+        oldMaxId=fieldId;
+      }
       ThriftField newField = null;
       try {
         newField = newStruct.getChildById(fieldId);
@@ -127,9 +130,24 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor {
         return;
       }
       checkField(oldField, newField);
-      //TODO: fail with message
-      //TODO: check requirement
-      //TODO: recursivly, visitor pattern?
+    }
+
+    //check for new added
+    for(ThriftField newField: newStruct.getChildren()){
+      //can not add required
+      if (newField.getRequirement()!= ThriftField.Requirement.REQUIRED)
+        continue;//can add optional field
+
+      short newFieldId = newField.getFieldId();
+      if (newFieldId >oldMaxId){
+        fail("new required field "+newField.getName()+" is added");
+        return;
+      }
+      if (newFieldId <oldMaxId && currentOldType.getChildById(newFieldId)==null){
+        fail("new required field "+newField.getName()+" is added");
+        return;
+      }
+
     }
 
     //restore

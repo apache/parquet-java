@@ -21,9 +21,14 @@ struct TypeChangeStructV1{
 }
 
 struct OptionalStructV1{
-  1: optional string name;
+  1: optional string name
 }
 
 struct DefaultStructV1{
-  1: string name;
+  1: string name
+}
+
+struct AddRequiredStructV1{
+  1: required string name,
+  2: required string anotherName
 }
