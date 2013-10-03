@@ -200,7 +200,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
   @Override
   public String memUsageString(String prefix) {
-    return String.format("%s DictionaryValuesWriter{\n%s\n%s\n%s\n%s}\n",
+    return String.format(
+        "%s DictionaryValuesWriter{\n%s\n%s\n%s\n%s}\n",
         prefix,
         plainValuesWriter.
         memUsageString(prefix + " plain:"),
