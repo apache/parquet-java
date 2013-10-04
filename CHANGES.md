@@ -1,4 +1,17 @@
 # Parquet #
+
+### Version 1.2.3 ###
+* ISSUE 186: add parquet-pig-bundle
+* ISSUE 184: Update ParquetReader to take Configuration as a constructor argument.
+* ISSUE 183: Disable the time read counter check in DeprecatedInputFormatTest.
+* ISSUE 182: Fix a maven warning about a missing version number.
+* ISSUE 181: FIXED_LEN_BYTE_ARRAY support
+* ISSUE 180: Support writing Avro records with maps with Utf8 keys
+* ISSUE 179: Added Or/Not logical filters for column predicates
+* ISSUE 172: Add sink support for parquet.cascading.ParquetTBaseScheme
+* ISSUE 169: Support avro records with empty maps and arrays
+* ISSUE 162: Avro schema with empty arrays and maps
+
 ### Version 1.2.2 ###
 * ISSUE 175: fix problem with projection pushdown in parquetloader
 * ISSUE 174: improve readability by renaming variables
