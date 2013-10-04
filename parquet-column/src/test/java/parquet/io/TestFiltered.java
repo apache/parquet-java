@@ -37,16 +37,16 @@ import static parquet.filter.AndRecordFilter.and;
 import static parquet.filter.PagedRecordFilter.page;
 import static parquet.filter.ColumnPredicates.PredicateFunction;
 import static parquet.filter.ColumnPredicates.equalTo;
-import static parquet.filter.ColumnPredicates.applyFunctionToInteger;
+import static parquet.filter.ColumnPredicates.applyFunctionToLong;
 import static parquet.filter.ColumnPredicates.applyFunctionToString;
 import static parquet.filter.ColumnRecordFilter.column;
 
 public class TestFiltered {
 
-  /* Class that implements applyFunction filter for integer. Checks for integer greater than 15. */
-  public class IntegerGreaterThan15Predicate implements PredicateFunction<Integer> {
+  /* Class that implements applyFunction filter for long. Checks for long greater than 15. */
+  public class LongGreaterThan15Predicate implements PredicateFunction<Long> {
     @Override
-    public boolean functionToApply(Integer input) {
+    public boolean functionToApply(Long input) {
 	return input > 15;
     }
   };
@@ -97,7 +97,7 @@ public class TestFiltered {
   }
 
   @Test
-  public void testApplyFunctionFilterOnInteger() {
+  public void testApplyFunctionFilterOnLong() {
     MessageColumnIO columnIO =  new ColumnIOFactory(true).getColumnIO(schema);
     MemPageStore memPageStore = writeTestRecords(columnIO, 1);
 
@@ -112,7 +112,7 @@ public class TestFiltered {
     // Get second record    
     recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
-				 column("DocId", applyFunctionToInteger (new IntegerGreaterThan15Predicate())));
+				 column("DocId", applyFunctionToLong (new LongGreaterThan15Predicate())));
 
     readOne(recordReader, "r1 filtered out", r2);
   }
