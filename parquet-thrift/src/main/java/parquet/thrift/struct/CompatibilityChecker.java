@@ -5,9 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CompatibilityChecker {
-  public boolean areCompatible(ThriftType.StructType oldStruct, ThriftType.StructType newStruct) {
-    return checkCompatibility(oldStruct, newStruct).isCompatible();
-  }
 
   public CompatibilityReport checkCompatibility(ThriftType.StructType oldStruct, ThriftType.StructType newStruct) {
     CompatibleCheckerVisitor visitor = new CompatibleCheckerVisitor(oldStruct);
