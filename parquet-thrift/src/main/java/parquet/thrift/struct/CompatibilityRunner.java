@@ -24,6 +24,38 @@ public class CompatibilityRunner {
     if (operator.equals("compare")){
       checkCompatible(arguments);
     }
+
+    if (operator.equals("compare-json")){
+      compareJson(arguments);
+    }
+  }
+
+  private static void compareJson(LinkedList<String> arguments) throws IOException {
+    String oldJsonPath=arguments.pollFirst();
+    String newJsonPath=arguments.pollFirst();
+
+    File oldJsonFile=new File(oldJsonPath);
+    checkExist(oldJsonFile);
+    File newJsonFile=new File(newJsonPath);
+    checkExist(newJsonFile);
+
+    ObjectMapper mapper=new ObjectMapper();
+    ThriftType.StructType oldStruct= mapper.readValue(oldJsonFile,ThriftType.StructType.class);
+    ThriftType.StructType newStruct= mapper.readValue(newJsonFile,ThriftType.StructType.class);
+
+    CompatibilityReport report= new CompatibilityChecker().checkCompatibility(oldStruct,newStruct);
+    if(!report.isCompatible){
+      System.err.println("schema not compatible");
+      System.err.println(report.getMessages());
+      System.exit(1);
+    }
+    System.out.println("[success] schema is compatible");
+
+  }
+
+  private static void checkExist(File f){
+     if(!f.exists())
+       throw new RuntimeException("can not find file "+f);
   }
 
   private static void checkCompatible(LinkedList<String> arguments) throws ClassNotFoundException, IOException {

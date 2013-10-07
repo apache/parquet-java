@@ -1,8 +1,13 @@
 package parquet.thrift.struct;
 
+import org.apache.thrift.TBase;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Test;
 import parquet.thrift.ThriftSchemaConverter;
+import parquet.thrift.test.TestPersonWithRequiredPhone;
 import parquet.thrift.test.compat.*;
+
+import java.io.File;
 
 import static junit.framework.Assert.assertEquals;
 
@@ -70,6 +75,26 @@ public class CompatibilityCheckerTest {
   public void testList() {
     verifyCompatible(ListStructV2.class, ListStructV1.class, false);
     verifyCompatible(ListStructV1.class, ListStructV2.class, true);
+  }
+
+
+  @Test
+  public void testWriteFile() throws Exception{
+    String path="test.json";
+    File f=new File(path);
+    ObjectMapper mapper=new ObjectMapper();
+    ThriftType.StructType structType = new ThriftSchemaConverter().toStructType(TestPersonWithRequiredPhone.class);
+    mapper.writeValue(f,structType);
+
+  }
+
+  @Test
+  public void testLoadFile() throws Exception{
+//    String path="/Users/tdeng/workspace/twadoop_config/compatibility/json/passbird_auth.json";
+    String path="test.json";
+    File f=new File(path);
+    ObjectMapper mapper=new ObjectMapper();
+    ThriftType.StructType oldStruct= mapper.readValue(f,ThriftType.StructType.class);
   }
 
   private ThriftType.StructType struct(Class thriftClass) {
