@@ -85,7 +85,7 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor {
   private void checkField(ThriftField oldField, ThriftField newField) {
 
     if (!newField.getType().getType().equals(oldField.getType().getType())) {
-      fail("type is not compatible " + oldField.getType().getType() + " vs " + newField.getType().getType());
+      fail("type is not compatible for "+oldField.getName()+ " "+ oldField.getType().getType() + " vs " + newField.getType().getType());
       return;
     }
 
