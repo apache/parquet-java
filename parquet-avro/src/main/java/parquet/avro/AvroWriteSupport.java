@@ -125,7 +125,7 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
   }
 
   private <V> void writeMap(GroupType schema, Schema avroSchema, 
-                            Map<String, V> map) {
+                            Map<CharSequence, V> map) {
     GroupType innerGroup = schema.getType(0).asGroupType();
     Type keyType = innerGroup.getType(0);
     Type valueType = innerGroup.getType(1);
@@ -136,7 +136,7 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
       recordConsumer.startField("map", 0);
       recordConsumer.startGroup(); // "repeated" group wrapper
       recordConsumer.startField("key", 0);
-      for (String key : map.keySet()) {
+      for (CharSequence key : map.keySet()) {
         writeValue(keyType, keySchema, key);
       }
       recordConsumer.endField("key", 0);
@@ -204,7 +204,7 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
     } else if (avroType.equals(Schema.Type.ARRAY)) {
       writeArray((GroupType) type, nonNullAvroSchema, (Iterable<?>) value);
     } else if (avroType.equals(Schema.Type.MAP)) {
-      writeMap((GroupType) type, nonNullAvroSchema, (Map<String, ?>) value);
+      writeMap((GroupType) type, nonNullAvroSchema, (Map<CharSequence, ?>) value);
     } else if (avroType.equals(Schema.Type.UNION)) {
       writeUnion((GroupType) type, nonNullAvroSchema, value);
     } else if (avroType.equals(Schema.Type.FIXED)) {

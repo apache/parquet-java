@@ -31,6 +31,7 @@ import parquet.column.values.dictionary.PlainValuesDictionary.PlainFloatDictiona
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainIntegerDictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainLongDictionary;
 import parquet.column.values.plain.BinaryPlainValuesReader;
+import parquet.column.values.plain.FixedLenByteArrayPlainValuesReader;
 import parquet.column.values.plain.BooleanPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.DoublePlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.FloatPlainValuesReader;
@@ -63,6 +64,8 @@ public enum Encoding {
         return new IntegerPlainValuesReader();
       case INT64:
         return new LongPlainValuesReader();
+      case FIXED_LEN_BYTE_ARRAY:
+        return new FixedLenByteArrayPlainValuesReader(descriptor.getTypeLength());
       default:
         throw new ParquetDecodingException("no plain reader for type " + descriptor.getType());
       }

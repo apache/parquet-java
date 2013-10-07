@@ -50,7 +50,25 @@
       "items" : "int"
     }
   }, {
+    "name" : "myemptyarray",
+    "type" : {
+      "type" : "array",
+      "items" : "int"
+    }
+  }, {
+    "name" : "myoptionalarray",
+    "type" : [ "null", {
+       "type" : "array",
+       "items" : "int"
+    }]
+  }, {
     "name" : "mymap",
+    "type" : {
+      "type" : "map",
+      "values" : "int"
+    }
+  }, {
+    "name" : "myemptymap",
     "type" : {
       "type" : "map",
       "values" : "int"
