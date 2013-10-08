@@ -31,7 +31,7 @@ import java.util.LinkedList;
  * java CompatibilityRunner generate-json {category_name} {class_name} {dest_dir}
  * The above command will generate json representaion of thrift schema and store it as {dest_dir}/{category_name}.json
  *
- * java CompatibilityRunner generate-json {old_json_path} {new_json_path}
+ * java CompatibilityRunner compare-json {old_json_path} {new_json_path}
  * The above command will succeed when the new schema is compatible with the old schema.
  * It will fail when they are not compatible. For compatibility rules: {@link CompatibilityChecker}
  *
