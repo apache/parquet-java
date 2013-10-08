@@ -1,9 +1,33 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package parquet.thrift.struct;
 
 
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * A checker for thrift struct, returns compatibility report based on following rules:
+ * 1. Should not add new REQUIRED field in new thrift struct. Adding optional field is OK
+ * 2. Should not change field type for an existing field
+ * 3. Should not delete existing field
+ * 4. Should not make requirement type more restrictive for a field in new thrift struct
+ *
+ * @author Tianshuo Deng
+ */
 public class CompatibilityChecker {
 
   public CompatibilityReport checkCompatibility(ThriftType.StructType oldStruct, ThriftType.StructType newStruct) {
@@ -56,7 +80,6 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor {
     checkField(oldKeyField, newKeyField);
     checkField(oldValueField, newValueField);
 
-    //restore TODO: is this necessary?
     oldType = currentOldType;
   }
 
@@ -85,27 +108,25 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor {
   private void checkField(ThriftField oldField, ThriftField newField) {
 
     if (!newField.getType().getType().equals(oldField.getType().getType())) {
-      fail("type is not compatible for "+oldField.getName()+ " "+ oldField.getType().getType() + " vs " + newField.getType().getType());
+      fail("type is not compatible: " + oldField.getName() + " " + oldField.getType().getType() + " vs " + newField.getType().getType());
       return;
     }
-
 
     if (!newField.getName().equals(oldField.getName())) {
-      fail("field names are different " + oldField.getName() + " vs " + newField.getName());
+      fail("field names are different: " + oldField.getName() + " vs " + newField.getName());
       return;
     }
 
-    if (firstIsMoreRestirctive(newField.getRequirement(), oldField.getRequirement())){
-      fail("new field is more restrictive "+ newField.getName());
+    if (firstIsMoreRestirctive(newField.getRequirement(), oldField.getRequirement())) {
+      fail("new field is more restrictive: " + newField.getName());
       return;
     }
 
-      oldType = oldField.getType();
+    oldType = oldField.getType();
     newField.getType().accept(this);
   }
 
   private boolean firstIsMoreRestirctive(ThriftField.Requirement firstReq, ThriftField.Requirement secReq) {
-   //TODO: ask julien how about default vs optional
     if (firstReq == ThriftField.Requirement.REQUIRED && secReq != ThriftField.Requirement.REQUIRED) {
       return true;
     } else {
@@ -117,35 +138,35 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor {
   @Override
   public void visit(ThriftType.StructType newStruct) {
     ThriftType.StructType currentOldType = ((ThriftType.StructType) oldType);
-    short oldMaxId=0;
+    short oldMaxId = 0;
     for (ThriftField oldField : currentOldType.getChildren()) {
       short fieldId = oldField.getFieldId();
-      if (fieldId>oldMaxId){
-        oldMaxId=fieldId;
+      if (fieldId > oldMaxId) {
+        oldMaxId = fieldId;
       }
       ThriftField newField = null;
       try {
         newField = newStruct.getChildById(fieldId);
       } catch (ArrayIndexOutOfBoundsException e) {
-        fail("can not find index in new Struct: " + fieldId);
+        fail("can not find index in new Struct: " + fieldId +" in " + newStruct);
         return;
       }
       checkField(oldField, newField);
     }
 
     //check for new added
-    for(ThriftField newField: newStruct.getChildren()){
+    for (ThriftField newField : newStruct.getChildren()) {
       //can not add required
-      if (newField.getRequirement()!= ThriftField.Requirement.REQUIRED)
+      if (newField.getRequirement() != ThriftField.Requirement.REQUIRED)
         continue;//can add optional field
 
       short newFieldId = newField.getFieldId();
-      if (newFieldId >oldMaxId){
-        fail("new required field "+newField.getName()+" is added");
+      if (newFieldId > oldMaxId) {
+        fail("new required field " + newField.getName() + " is added");
         return;
       }
-      if (newFieldId <oldMaxId && currentOldType.getChildById(newFieldId)==null){
-        fail("new required field "+newField.getName()+" is added");
+      if (newFieldId < oldMaxId && currentOldType.getChildById(newFieldId) == null) {
+        fail("new required field " + newField.getName() + " is added");
         return;
       }
 

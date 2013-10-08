@@ -1,39 +1,63 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package parquet.thrift.struct;
 
-import org.apache.thrift.TBase;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Test;
 import parquet.thrift.ThriftSchemaConverter;
-import parquet.thrift.test.TestPersonWithRequiredPhone;
 import parquet.thrift.test.compat.*;
-
-import java.io.File;
 
 import static junit.framework.Assert.assertEquals;
 
-
 public class CompatibilityCheckerTest {
 
+  /**
+   * Adding optional field is compatible
+   */
   @Test
   public void testAddOptionalField() {
     verifyCompatible(StructV1.class, StructV2.class, true);
   }
 
+  /**
+   * removing field is incompatible
+   */
   @Test
   public void testRemoveOptionalField() {
     verifyCompatible(StructV2.class, StructV1.class, false);
   }
 
+  /**
+   * renaming field is incompatible
+   */
   @Test
   public void testRenameField() {
     verifyCompatible(StructV1.class, RenameStructV1.class, false);
   }
 
+  /**
+   * changing field type is incompatible
+   */
   @Test
   public void testTypeChange() {
     verifyCompatible(StructV1.class, TypeChangeStructV1.class, false);
   }
 
+  /**
+   * Making requirement more restrictive is incompatible
+   */
   @Test
   public void testReuirementChange() {
     //required can become optional or default
@@ -45,6 +69,9 @@ public class CompatibilityCheckerTest {
     verifyCompatible(DefaultStructV1.class, StructV1.class, false);
   }
 
+  /**
+   * Adding required field is incompatible
+   */
   @Test
   public void testAddRequiredField() {
     verifyCompatible(StructV1.class, AddRequiredStructV1.class, false);
@@ -76,7 +103,6 @@ public class CompatibilityCheckerTest {
     verifyCompatible(ListStructV2.class, ListStructV1.class, false);
     verifyCompatible(ListStructV1.class, ListStructV2.class, true);
   }
-
 
   private ThriftType.StructType struct(Class thriftClass) {
     return new ThriftSchemaConverter().toStructType(thriftClass);
