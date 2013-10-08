@@ -1,5 +1,8 @@
 # Parquet #
 
+### Version 1.2.4 ###
+* ISSUE 191: Add compatibility checker for ThriftStruct to check for backward compatibility of two thrift structs
+
 ### Version 1.2.3 ###
 * ISSUE 186: add parquet-pig-bundle
 * ISSUE 184: Update ParquetReader to take Configuration as a constructor argument.
