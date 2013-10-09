@@ -109,7 +109,7 @@ public class ParquetHiveArrayInspector implements SettableListObjectInspector {
 
   @Override
   public Object set(final Object list, final int index, final Object element) {
-    final List l = (List) list;
+    final List<Object> l = (List<Object>) list;
     for (int i = l.size(); i < index + 1; ++i) {
       l.add(null);
     }
@@ -119,7 +119,7 @@ public class ParquetHiveArrayInspector implements SettableListObjectInspector {
 
   @Override
   public Object resize(final Object list, final int newSize) {
-    ((ArrayList) list).ensureCapacity(newSize);
+    ((ArrayList<?>)list).ensureCapacity(newSize);
     return list;
   }
 

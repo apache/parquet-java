@@ -154,7 +154,7 @@ public class DataWritableWriter {
     } else if (value instanceof BigDecimalWritable) {
       throw new NotImplementedException("BigDecimal writing not implemented");
     } else if (value instanceof BinaryWritable) {
-      recordConsumer.addBinary(Binary.fromByteArray(((BinaryWritable) value).getBytes()));
+      recordConsumer.addBinary(((BinaryWritable) value).getBinary());
     } else {
       throw new RuntimeException("Unknown value type: " + value + " " + value.getClass());
     }

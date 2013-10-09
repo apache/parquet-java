@@ -30,7 +30,6 @@ import parquet.schema.Type;
  */
 public class DataWritableGroupConverter extends HiveGroupConverter {
 
-  private final GroupType groupType;
   private final Converter[] converters;
   private final HiveGroupConverter parent;
   private final int index;
@@ -48,7 +47,6 @@ public class DataWritableGroupConverter extends HiveGroupConverter {
   }
 
   public DataWritableGroupConverter(final GroupType selectedGroupType, final HiveGroupConverter parent, final int index, final GroupType containingGroupType) {
-    this.groupType = selectedGroupType;
     this.parent = parent;
     this.index = index;
     final int totalFieldCount = containingGroupType.getFieldCount();
@@ -79,7 +77,7 @@ public class DataWritableGroupConverter extends HiveGroupConverter {
     for (int i = 0; i < currentArr.length; i++) {
       final Object obj = currentArr[i];
       if (obj instanceof List) {
-        final List<Object> objList = (List<Object>) (obj);
+        final List<?> objList = (List<?>)obj;
         final ArrayWritable arr = new ArrayWritable(Writable.class, objList.toArray(new Writable[objList.size()]));
         writableArr[i] = arr;
       } else {
