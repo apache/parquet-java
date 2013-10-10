@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.SettableMapObjectInspector;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Writable;
@@ -52,8 +53,7 @@ public class ParquetHiveMapInspector implements SettableMapObjectInspector {
 
   @Override
   public Object getMapValueElement(final Object data, final Object key) {
-
-    if (data == null) {
+    if (data == null || key == null) {
       return null;
     }
 
@@ -64,7 +64,9 @@ public class ParquetHiveMapInspector implements SettableMapObjectInspector {
       for (final Writable obj : mapArray) {
         final ArrayWritable mapObj = (ArrayWritable) obj;
         final Writable[] arr = mapObj.get();
-        if (arr[0] == key) {
+        if (key.equals(arr[0])
+                || key.equals(((PrimitiveObjectInspector) keyInspector).getPrimitiveJavaObject(arr[0]))
+                || key.equals(((PrimitiveObjectInspector) keyInspector).getPrimitiveWritableObject(arr[0]))) {
           return arr[1];
         }
       }
@@ -73,7 +75,20 @@ public class ParquetHiveMapInspector implements SettableMapObjectInspector {
     }
 
     if (data instanceof Map) {
-      return ((Map) data).get(key);
+      final Map<?, ?> map = (Map<?, ?>) data;
+
+      if (map.containsKey(key)) {
+        return map.get(key);
+      }
+
+      for (final Map.Entry<?, ?> entry : map.entrySet()) {
+        if (key.equals(((PrimitiveObjectInspector) keyInspector).getPrimitiveJavaObject(entry.getKey()))
+                || key.equals(((PrimitiveObjectInspector) keyInspector).getPrimitiveWritableObject(entry.getKey()))) {
+          return entry.getValue();
+        }
+      }
+
+      return null;
     }
 
     throw new UnsupportedOperationException("Cannot inspect " + data.getClass().getCanonicalName());
