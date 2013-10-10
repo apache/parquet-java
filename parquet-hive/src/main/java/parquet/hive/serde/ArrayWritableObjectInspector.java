@@ -18,28 +18,17 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.hadoop.hive.serde2.io.ByteWritable;
-import org.apache.hadoop.hive.serde2.io.ShortWritable;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.SettableStructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
-import org.apache.hadoop.hive.serde2.objectinspector.primitive.AbstractPrimitiveJavaObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
-import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils;
-import org.apache.hadoop.hive.serde2.objectinspector.primitive.SettableByteObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.primitive.SettableShortObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.primitive.SettableStringObjectInspector;
 import org.apache.hadoop.hive.serde2.typeinfo.ListTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.MapTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.io.ArrayWritable;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.Text;
-
-import parquet.hive.writable.BinaryWritable;
-import parquet.io.api.Binary;
+import parquet.hive.serde.primitive.ParquetPrimitiveInspectorFactory;
 
 /**
  *
@@ -88,7 +77,7 @@ public class ArrayWritableObjectInspector extends SettableStructObjectInspector 
     } else if (typeInfo.equals(TypeInfoFactory.longTypeInfo)) {
       return PrimitiveObjectInspectorFactory.writableLongObjectInspector;
     } else if (typeInfo.equals(TypeInfoFactory.stringTypeInfo)) {
-      return new JavaStringBinaryObjectInspector();
+      return ParquetPrimitiveInspectorFactory.parquetStringInspector;
     } else if (typeInfo.getCategory().equals(Category.STRUCT)) {
       return new ArrayWritableObjectInspector((StructTypeInfo) typeInfo);
     } else if (typeInfo.getCategory().equals(Category.LIST)) {
@@ -101,9 +90,9 @@ public class ArrayWritableObjectInspector extends SettableStructObjectInspector 
     } else if (typeInfo.equals(TypeInfoFactory.timestampTypeInfo)) {
       throw new NotImplementedException("timestamp not implemented yet");
     } else if (typeInfo.equals(TypeInfoFactory.byteTypeInfo)) {
-      return new ParquetByteInspector();
+      return ParquetPrimitiveInspectorFactory.parquetByteInspector;
     } else if (typeInfo.equals(TypeInfoFactory.shortTypeInfo)) {
-      return new ParquetShortInspector();
+      return ParquetPrimitiveInspectorFactory.parquetShortInspector;
     } else {
       throw new RuntimeException("Unknown field info: " + typeInfo);
     }
@@ -226,117 +215,6 @@ public class ArrayWritableObjectInspector extends SettableStructObjectInspector 
     @Override
     public ObjectInspector getFieldObjectInspector() {
       return inspector;
-    }
-  }
-
-  public class ParquetShortInspector
-          extends AbstractPrimitiveJavaObjectInspector
-          implements SettableShortObjectInspector {
-
-    ParquetShortInspector() {
-      super(PrimitiveObjectInspectorUtils.shortTypeEntry);
-    }
-
-    @Override
-    public Object getPrimitiveWritableObject(final Object o) {
-      return o == null ? null : new ShortWritable(get(o));
-    }
-
-    @Override
-    public Object create(final short val) {
-      return new ShortWritable(val);
-    }
-
-    @Override
-    public Object set(final Object o, final short val) {
-      ((ShortWritable) o).set(val);
-      return o;
-    }
-
-    @Override
-    public short get(Object o) {
-      // Accept int writables and convert them.
-      if (o instanceof IntWritable) {
-        return (short) ((IntWritable) o).get();
-      }
-      return ((ShortWritable) o).get();
-    }
-  }
-
-  public class ParquetByteInspector
-          extends AbstractPrimitiveJavaObjectInspector
-          implements SettableByteObjectInspector {
-
-    ParquetByteInspector() {
-      super(PrimitiveObjectInspectorUtils.byteTypeEntry);
-    }
-
-    @Override
-    public Object getPrimitiveWritableObject(final Object o) {
-      return o == null ? null : new ByteWritable(get(o));
-    }
-
-    @Override
-    public Object create(final byte val) {
-      return new ByteWritable(val);
-    }
-
-    @Override
-    public Object set(final Object o, final byte val) {
-      ((ByteWritable) o).set(val);
-      return o;
-    }
-
-    @Override
-    public byte get(Object o) {
-      // Accept int writables and convert them.
-      if (o instanceof IntWritable) {
-        return (byte) ((IntWritable) o).get();
-      }
-      return ((ByteWritable) o).get();
-    }
-  }
-
-  /**
-   * A JavaStringObjectInspector inspects a Java String Object.
-   */
-  public class JavaStringBinaryObjectInspector extends AbstractPrimitiveJavaObjectInspector implements SettableStringObjectInspector {
-
-    JavaStringBinaryObjectInspector() {
-      super(PrimitiveObjectInspectorUtils.stringTypeEntry);
-    }
-
-    @Override
-    public Text getPrimitiveWritableObject(final Object o) {
-      return o == null ? null : new Text(((BinaryWritable) o).getBytes());
-    }
-
-    @Override
-    public String getPrimitiveJavaObject(final Object o) {
-      return ((BinaryWritable) o).getString();
-    }
-
-    @Override
-    public Object set(final Object o, final Text text) {
-      return new BinaryWritable(text == null ? null : Binary.fromByteArray(text.getBytes()));
-    }
-
-    @Override
-    public Object set(final Object o, final String string) {
-      return new BinaryWritable(string == null ? null : Binary.fromString(string));
-    }
-
-    @Override
-    public Object create(final Text text) {
-      if (text == null) {
-        return null;
-      }
-      return text.toString();
-    }
-
-    @Override
-    public Object create(final String string) {
-      return string;
     }
   }
 }
