@@ -57,6 +57,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 
 import parquet.hive.writable.BinaryWritable;
+import parquet.io.api.Binary;
 
 /**
  *
@@ -253,7 +254,7 @@ public class ParquetHiveSerDe implements SerDe {
     case SHORT:
       return new ShortWritable((short) ((ShortObjectInspector) inspector).get(obj));
     case STRING:
-      return new BinaryWritable(((StringObjectInspector) inspector).getPrimitiveJavaObject(obj));
+      return new BinaryWritable(Binary.fromString(((StringObjectInspector) inspector).getPrimitiveJavaObject(obj)));
     default:
       throw new SerDeException("Unknown primitive : " + inspector.getPrimitiveCategory());
     }

@@ -15,13 +15,14 @@
  */
 package parquet.hive.serde;
 
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.hadoop.hive.serde2.io.ByteWritable;
+import org.apache.hadoop.hive.serde2.io.ShortWritable;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
@@ -29,10 +30,8 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.AbstractPrimitive
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.SettableByteObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.primitive.SettableStringObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.SettableShortObjectInspector;
-import org.apache.hadoop.hive.serde2.io.ByteWritable;
-import org.apache.hadoop.hive.serde2.io.ShortWritable;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.SettableStringObjectInspector;
 import org.apache.hadoop.hive.serde2.typeinfo.ListTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.MapTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
@@ -41,9 +40,9 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.Utils;
 
 import parquet.hive.writable.BinaryWritable;
+import parquet.io.api.Binary;
 
 /**
  *
@@ -269,32 +268,17 @@ public class ArrayWritableObjectInspector extends StructObjectInspector {
 
     @Override
     public String getPrimitiveJavaObject(final Object o) {
-      try {
-        final byte[] bytes = ((BinaryWritable) o).getBytes();
-        if (bytes == null) {
-          return null;
-        }
-        return new String(bytes, "UTF-8");
-      } catch (final UnsupportedEncodingException e) {
-        throw new RuntimeException("Not able to get a Java Primitive object from JavaStringObjectInspector object", e);
-      }
+      return ((BinaryWritable) o).getString();
     }
 
     @Override
     public Object set(final Object o, final Text text) {
-      final BinaryWritable binaryWritable = new BinaryWritable();
-      if (text != null) {
-        binaryWritable.set(text.getBytes(), 0, text.getLength());
-      }
-      return binaryWritable;
+      return new BinaryWritable(text == null ? null : Binary.fromByteArray(text.getBytes()));
     }
 
     @Override
     public Object set(final Object o, final String string) {
-      if (string != null) {
-        return new BinaryWritable(string);
-      }
-      return new BinaryWritable();
+      return new BinaryWritable(string == null ? null : Binary.fromString(string));
     }
 
     @Override

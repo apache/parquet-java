@@ -15,7 +15,11 @@
  */
 package parquet.hive.writable;
 
-import org.apache.hadoop.io.BytesWritable;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
+import org.apache.hadoop.io.Writable;
 
 import parquet.io.api.Binary;
 
@@ -30,17 +34,65 @@ import parquet.io.api.Binary;
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  *
  */
-public class BinaryWritable extends BytesWritable {
+public class BinaryWritable implements Writable {
+
+  private Binary binary;
 
   public BinaryWritable(final Binary binary) {
-    super(binary.getBytes());
+    this.binary = binary;
   }
 
-  public BinaryWritable(final String string) {
-    super(string.getBytes());
+  public Binary getBinary() {
+    return binary;
   }
 
-  public BinaryWritable() {
-    super();
+  public byte[] getBytes() {
+    return binary.getBytes();
   }
+
+  public String getString() {
+    return binary.toStringUsingUTF8();
+  }
+
+  @Override
+  public void readFields(DataInput input) throws IOException {
+    byte[] bytes = new byte[input.readInt()];
+    input.readFully(bytes);
+    binary = Binary.fromByteArray(bytes);
+  }
+
+  @Override
+  public void write(DataOutput output) throws IOException {
+    output.writeInt(binary.length());
+    binary.writeTo(output);
+  }
+
+  @Override
+  public int hashCode() {
+    return binary == null ? 0 : binary.hashCode();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj instanceof BinaryWritable) {
+      final BinaryWritable other = (BinaryWritable)obj;
+      return binary.equals(other.binary);
+    }
+    return false;
+  }
+
+  public static class DicBinaryWritable extends BinaryWritable {
+
+    private String string;
+
+    public DicBinaryWritable(Binary binary, String string) {
+      super(binary);
+      this.string = string;
+    }
+
+    public String getString() {
+      return string;
+    }
+  }
+
 }
