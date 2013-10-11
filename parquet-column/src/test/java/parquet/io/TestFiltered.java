@@ -38,6 +38,7 @@ import static parquet.filter.OrRecordFilter.or;
 import static parquet.filter.NotRecordFilter.not;
 import static parquet.filter.PagedRecordFilter.page;
 import static parquet.filter.ColumnPredicates.PredicateFunction;
+import static parquet.filter.ColumnPredicates.LongPredicateFunction;
 import static parquet.filter.ColumnPredicates.equalTo;
 import static parquet.filter.ColumnPredicates.applyFunctionToLong;
 import static parquet.filter.ColumnPredicates.applyFunctionToString;
@@ -46,9 +47,9 @@ import static parquet.filter.ColumnRecordFilter.column;
 public class TestFiltered {
 
   /* Class that implements applyFunction filter for long. Checks for long greater than 15. */
-  public class LongGreaterThan15Predicate implements PredicateFunction<Long> {
+  public class LongGreaterThan15Predicate implements LongPredicateFunction {
     @Override
-    public boolean functionToApply(Long input) {
+    public boolean functionToApply(long input) {
 	return input > 15;
     }
   };

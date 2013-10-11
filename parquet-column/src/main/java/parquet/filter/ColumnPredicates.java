@@ -33,6 +33,28 @@ public class ColumnPredicates {
     boolean functionToApply(T input);
   }
 
+  /* provide the following to avoid boxing primitives */
+
+  public static interface IntegerPredicateFunction {
+    boolean functionToApply(int input);
+  }
+
+  public static interface LongPredicateFunction {
+    boolean functionToApply(long input);
+  }
+
+  public static interface FloatPredicateFunction {
+    boolean functionToApply(float input);
+  }
+
+  public static interface DoublePredicateFunction {
+    boolean functionToApply(double input);
+  }
+
+  public static interface BooleanPredicateFunction {
+    boolean functionToApply(boolean input);
+  }
+
   public static Predicate equalTo(final String target) {
     Preconditions.checkNotNull(target,"target");
     return new Predicate() {
@@ -47,7 +69,7 @@ public class ColumnPredicates {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-	  return fn.functionToApply(input.getBinary().toStringUsingUTF8());
+          return fn.functionToApply(input.getBinary().toStringUsingUTF8());
       }
     };
   }
@@ -61,11 +83,11 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunctionToInteger(final PredicateFunction<Integer> fn) {
+  public static Predicate applyFunctionToInteger(final IntegerPredicateFunction fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-	return fn.functionToApply(new Integer (input.getInteger()));
+        return fn.functionToApply(input.getInteger());
       }
     };
   }
@@ -79,11 +101,11 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunctionToLong(final PredicateFunction<Long> fn) {
+  public static Predicate applyFunctionToLong(final LongPredicateFunction fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-	return fn.functionToApply(new Long (input.getLong()));
+        return fn.functionToApply(input.getLong());
       }
     };
   }
@@ -97,11 +119,11 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunctionToFloat(final PredicateFunction<Float> fn) {
+  public static Predicate applyFunctionToFloat(final FloatPredicateFunction fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-	return fn.functionToApply(new Float (input.getFloat()));
+        return fn.functionToApply(input.getFloat());
       }
     };
   }
@@ -115,11 +137,11 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunctionToDouble(final PredicateFunction<Double> fn) {
+  public static Predicate applyFunctionToDouble(final DoublePredicateFunction fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-	return fn.functionToApply(new Double (input.getDouble()));
+        return fn.functionToApply(input.getDouble());
       }
     };
   }
@@ -133,21 +155,31 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunctionToBoolean (final PredicateFunction<Boolean> fn) {
+  public static Predicate applyFunctionToBoolean (final BooleanPredicateFunction fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-	return fn.functionToApply(new Boolean (input.getBoolean()));
+        return fn.functionToApply(input.getBoolean());
       }
     };
   }
 
   public static <E extends Enum> Predicate equalTo(final E target) {
+    Preconditions.checkNotNull(target,"target");
     final String targetAsString = target.name();
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
         return targetAsString.equals(input.getBinary().toStringUsingUTF8());
+      }
+    };
+  }
+
+  public static <T> Predicate applyFunctionToBinary (final PredicateFunction<T> fn) {
+    return new Predicate() {
+      @Override
+      public boolean apply(ColumnReader input) {
+	  return fn.functionToApply((T)input.getBinary());
       }
     };
   }
