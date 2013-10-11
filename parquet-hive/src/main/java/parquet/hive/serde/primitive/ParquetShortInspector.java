@@ -22,6 +22,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.SettableShortObje
 import org.apache.hadoop.io.IntWritable;
 
 /**
+ * The ParquetShortInspector can inspect both ShortWritables and IntWritables into shorts.
  *
  * @author Nong Li
  */

@@ -20,6 +20,12 @@ import org.apache.hadoop.hive.serde2.objectinspector.SettableListObjectInspector
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Writable;
 
+/**
+ * The ParquetHiveArrayInspector will inspect an ArrayWritable, considering it as an Hive array.<br />
+ * It can also inspect a List if Hive decides to inspect the result of an inspection.
+ *
+ * @author Rémy Pecqueur <r.pecqueur@criteo.com>
+ */
 public class ParquetHiveArrayInspector implements SettableListObjectInspector {
 
   ObjectInspector arrayElementInspector;

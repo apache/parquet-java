@@ -32,8 +32,8 @@ import parquet.hive.serde.primitive.ParquetPrimitiveInspectorFactory;
 
 /**
  *
- * An ArrayWritableObjectInspector for Hive (with the deprecated package mapred)
- *
+ * The ArrayWritableObjectInspector will inspect an ArrayWritable, considering it as a Hive struct.<br />
+ * It can also inspect a List if Hive decides to inspect the result of an inspection.
  *
  * @author Mickaël Lacour <m.lacour@criteo.com>
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>

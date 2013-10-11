@@ -16,6 +16,7 @@
 package parquet.hive.serde.primitive;
 
 /**
+ * The ParquetPrimitiveInspectorFactory allows us to be sure that the same object is inspected by the same inspector.
  *
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  */
@@ -26,5 +27,6 @@ public class ParquetPrimitiveInspectorFactory {
   public static final ParquetStringInspector parquetStringInspector = new ParquetStringInspector();
 
   private ParquetPrimitiveInspectorFactory() {
+    // prevent instantiation
   }
 }

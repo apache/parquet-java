@@ -21,6 +21,12 @@ import org.apache.hadoop.hive.serde2.objectinspector.SettableMapObjectInspector;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Writable;
 
+/**
+ * The ParquetHiveMapInspector will inspect an ArrayWritable, considering it as a Hive map.<br />
+ * It can also inspect a Map if Hive decides to inspect the result of an inspection.
+ *
+ * @author Rémy Pecqueur <r.pecqueur@criteo.com>
+ */
 public class ParquetHiveMapInspector implements SettableMapObjectInspector {
 
   private final ObjectInspector keyInspector;

@@ -23,7 +23,9 @@ import parquet.hive.writable.BinaryWritable;
 import parquet.io.api.Binary;
 
 /**
- * A JavaStringObjectInspector inspects a Java String Object.
+ * The ParquetStringInspector inspects a BinaryWritable to give a Text or String.
+ *
+ * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  */
 public class ParquetStringInspector extends AbstractPrimitiveJavaObjectInspector implements SettableStringObjectInspector {
 
