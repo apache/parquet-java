@@ -93,25 +93,25 @@ public class UtilitiesTestMethods {
     final Writable[] arr = new Writable[11]; // The last one is for the unknown column
     arr[0] = new IntWritable(custkey);
     if (name != null) {
-      arr[1] = new BinaryWritable(name);
+      arr[1] = new BinaryWritable(Binary.fromString(name));
     }
     if (address != null) {
-      arr[2] = new BinaryWritable(address);
+      arr[2] = new BinaryWritable(Binary.fromString(address));
     }
     if (nationkey != null) {
       arr[3] = new IntWritable(nationkey);
     }
     if (phone != null) {
-      arr[4] = new BinaryWritable(phone);
+      arr[4] = new BinaryWritable(Binary.fromString(phone));
     }
     if (acctbal != null) {
       arr[5] = new DoubleWritable(acctbal);
     }
     if (mktsegment != null) {
-      arr[6] = new BinaryWritable(mktsegment);
+      arr[6] = new BinaryWritable(Binary.fromString(mktsegment));
     }
     if (comment != null) {
-      arr[7] = new BinaryWritable(comment);
+      arr[7] = new BinaryWritable(Binary.fromString(comment));
     }
     if (map != null) {
       final Writable[] mapContainer = new Writable[1];
@@ -119,8 +119,8 @@ public class UtilitiesTestMethods {
       int i = 0;
       for (Map.Entry<String, String> entry : map.entrySet()) {
         final Writable[] pair = new Writable[2];
-        pair[0] = new BinaryWritable(entry.getKey());
-        pair[1] = new BinaryWritable(entry.getValue());
+        pair[0] = new BinaryWritable(Binary.fromString(entry.getKey()));
+        pair[1] = new BinaryWritable(Binary.fromString(entry.getValue()));
         mapArr[i] = new ArrayWritable(Writable.class, pair);
         ++i;
       }
@@ -185,10 +185,10 @@ public class UtilitiesTestMethods {
       } else if (value instanceof Map) {
         recordWriter.startGroup();
         recordWriter.startField("map", 0);
-        for (Object entry : ((Map) value).entrySet()) {
+        for (Map.Entry<?,?> entry : ((Map<?,?>) value).entrySet()) {
           recordWriter.startGroup();
-          writeField(recordWriter, 0, "key", ((Map.Entry) entry).getKey());
-          writeField(recordWriter, 1, "value", ((Map.Entry) entry).getValue());
+          writeField(recordWriter, 0, "key", entry.getKey());
+          writeField(recordWriter, 1, "value", entry.getValue());
           recordWriter.endGroup();
         }
         recordWriter.endField("map", 0);
@@ -196,7 +196,7 @@ public class UtilitiesTestMethods {
       } else if (value instanceof List) {
         recordWriter.startGroup();
         recordWriter.startField("bag", 0);
-        for (Object element : (List) value) {
+        for (Object element : (List<?>) value) {
           recordWriter.startGroup();
           writeField(recordWriter, 0, "array_element", element);
           recordWriter.endGroup();

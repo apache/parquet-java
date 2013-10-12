@@ -195,7 +195,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         plainValuesWriter.
         memUsageString(prefix + " plain:"),
         prefix + " dict:" + dictionaryByteSize, 
-        prefix + " values:" + (encodedValues.size() * 4), 
+        prefix + " values:" + ((encodedValues == null ? 0 : encodedValues.size()) * 4), 
         prefix
         );
   }
