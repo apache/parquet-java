@@ -175,11 +175,11 @@ public class ColumnPredicates {
     };
   }
 
-  public static <T> Predicate applyFunctionToBinary (final PredicateFunction<T> fn) {
+  public static Predicate applyFunctionToBinary (final PredicateFunction fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-	  return fn.functionToApply((T)input.getBinary());
+	  return fn.functionToApply(input.getBinary());
       }
     };
   }
