@@ -17,6 +17,7 @@ package parquet.filter;
 
 import parquet.Preconditions;
 import parquet.column.ColumnReader;
+import parquet.io.api.Binary;
 
 /**
  * ColumnPredicates class provides checks for column values. Factory methods
@@ -175,7 +176,7 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunctionToBinary (final PredicateFunction fn) {
+  public static Predicate applyFunctionToBinary (final PredicateFunction<Binary> fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
