@@ -38,7 +38,7 @@ import parquet.io.api.Binary;
 public class DictionaryValuesReader extends ValuesReader {
   private static final Log LOG = Log.getLog(DictionaryValuesReader.class);
 
-  private InputStream in;
+  private ByteArrayInputStream in;
 
   private Dictionary dictionary;
 
@@ -55,7 +55,7 @@ public class DictionaryValuesReader extends ValuesReader {
     this.in = new ByteArrayInputStream(page, offset, page.length - offset);
     int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
     if (DEBUG) LOG.debug("bit width " + bitWidth);
-    decoder = new RunLengthBitPackingHybridDecoder((int)valueCount, bitWidth, in);
+    decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
     return page.length;
   }
 

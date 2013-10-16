@@ -52,7 +52,7 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
     ByteArrayInputStream in = new ByteArrayInputStream(page, offset, page.length);
     int length = BytesUtils.readIntLittleEndian(in);
 
-    decoder = new RunLengthBitPackingHybridDecoder(valueCount, bitWidth, in);
+    decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
 
     // 4 is for the length which is stored as 4 bytes little endian
     return offset + length + 4;
