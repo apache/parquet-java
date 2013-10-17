@@ -86,7 +86,12 @@ public class ArrayWritableObjectInspector extends SettableStructObjectInspector 
     } else if (typeInfo.getCategory().equals(Category.MAP)) {
       final TypeInfo keyTypeInfo = ((MapTypeInfo) typeInfo).getMapKeyTypeInfo();
       final TypeInfo valueTypeInfo = ((MapTypeInfo) typeInfo).getMapValueTypeInfo();
-      return new ParquetHiveMapInspector(getObjectInspector(keyTypeInfo), getObjectInspector(valueTypeInfo));
+      if (keyTypeInfo.equals(TypeInfoFactory.stringTypeInfo) || keyTypeInfo.equals(TypeInfoFactory.byteTypeInfo)
+              || keyTypeInfo.equals(TypeInfoFactory.shortTypeInfo)) {
+        return new DeepParquetHiveMapInspector(getObjectInspector(keyTypeInfo), getObjectInspector(valueTypeInfo));
+      } else {
+        return new StandardParquetHiveMapInspector(getObjectInspector(keyTypeInfo), getObjectInspector(valueTypeInfo));
+      }
     } else if (typeInfo.equals(TypeInfoFactory.timestampTypeInfo)) {
       throw new NotImplementedException("timestamp not implemented yet");
     } else if (typeInfo.equals(TypeInfoFactory.byteTypeInfo)) {

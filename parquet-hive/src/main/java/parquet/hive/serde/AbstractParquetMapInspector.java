@@ -14,25 +14,21 @@ package parquet.hive.serde;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.SettableMapObjectInspector;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Writable;
 
 /**
- * The ParquetHiveMapInspector will inspect an ArrayWritable, considering it as a Hive map.<br />
- * It can also inspect a Map if Hive decides to inspect the result of an inspection.
  *
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  */
-public class ParquetHiveMapInspector implements SettableMapObjectInspector {
+public abstract class AbstractParquetMapInspector implements SettableMapObjectInspector {
 
-  private final ObjectInspector keyInspector;
-  private final ObjectInspector valueInspector;
+  protected final ObjectInspector keyInspector;
+  protected final ObjectInspector valueInspector;
 
-  public ParquetHiveMapInspector(final ObjectInspector keyInspector, final ObjectInspector valueInspector) {
+  public AbstractParquetMapInspector(final ObjectInspector keyInspector, final ObjectInspector valueInspector) {
     this.keyInspector = keyInspector;
     this.valueInspector = valueInspector;
   }
@@ -58,51 +54,7 @@ public class ParquetHiveMapInspector implements SettableMapObjectInspector {
   }
 
   @Override
-  public Object getMapValueElement(final Object data, final Object key) {
-    if (data == null || key == null) {
-      return null;
-    }
-
-    if (data instanceof ArrayWritable) {
-      final Writable[] mapContainer = ((ArrayWritable) data).get();
-      final Writable[] mapArray = ((ArrayWritable) mapContainer[0]).get();
-
-      for (final Writable obj : mapArray) {
-        final ArrayWritable mapObj = (ArrayWritable) obj;
-        final Writable[] arr = mapObj.get();
-        if (key.equals(arr[0])
-                || key.equals(((PrimitiveObjectInspector) keyInspector).getPrimitiveJavaObject(arr[0]))
-                || key.equals(((PrimitiveObjectInspector) keyInspector).getPrimitiveWritableObject(arr[0]))) {
-          return arr[1];
-        }
-      }
-
-      return null;
-    }
-
-    if (data instanceof Map) {
-      final Map<?, ?> map = (Map<?, ?>) data;
-
-      if (map.containsKey(key)) {
-        return map.get(key);
-      }
-
-      for (final Map.Entry<?, ?> entry : map.entrySet()) {
-        if (key.equals(((PrimitiveObjectInspector) keyInspector).getPrimitiveJavaObject(entry.getKey()))
-                || key.equals(((PrimitiveObjectInspector) keyInspector).getPrimitiveWritableObject(entry.getKey()))) {
-          return entry.getValue();
-        }
-      }
-
-      return null;
-    }
-
-    throw new UnsupportedOperationException("Cannot inspect " + data.getClass().getCanonicalName());
-  }
-
-  @Override
   public Map<?, ?> getMap(final Object data) {
-
     if (data == null) {
       return null;
     }
@@ -171,5 +123,31 @@ public class ParquetHiveMapInspector implements SettableMapObjectInspector {
     Map<Object, Object> m = (HashMap<Object, Object>) map;
     m.clear();
     return m;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    final StandardParquetHiveMapInspector other = (StandardParquetHiveMapInspector) obj;
+    if (this.keyInspector != other.keyInspector && (this.keyInspector == null || !this.keyInspector.equals(other.keyInspector))) {
+      return false;
+    }
+    if (this.valueInspector != other.valueInspector && (this.valueInspector == null || !this.valueInspector.equals(other.valueInspector))) {
+      return false;
+    }
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    int hash = 7;
+    hash = 59 * hash + (this.keyInspector != null ? this.keyInspector.hashCode() : 0);
+    hash = 59 * hash + (this.valueInspector != null ? this.valueInspector.hashCode() : 0);
+    return hash;
   }
 }
