@@ -29,11 +29,11 @@ import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
 import it.unimi.dsi.fastutil.longs.LongIterator;
+import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
 
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
@@ -56,19 +56,19 @@ import parquet.io.api.Binary;
  */
 public abstract class DictionaryValuesWriter extends ValuesWriter {
   private static final Log LOG = Log.getLog(DictionaryValuesWriter.class);
-  
+
   /* max entries allowed for the dictionary will fail over to plain encoding if reached */
-  private static final int MAX_DICTIONARY_ENTRIES = 65535 /* 2^16 - 1 */;
-  
+  private static final int MAX_DICTIONARY_ENTRIES = Integer.MAX_VALUE - 1;
+
   /* maximum size in bytes allowed for the dictionary will fail over to plain encoding if reached */
   protected final int maxDictionaryByteSize;
-  
+
   /* contains the values encoded in plain if the dictionary grows too big */
   protected final PlainValuesWriter plainValuesWriter;
-  
+
   /* will become true if the dictionary becomes too big */
   protected boolean dictionaryTooBig;
-  
+
   /* current size in bytes the dictionary will take once serialized */
   protected int dictionaryByteSize;
 
@@ -81,7 +81,10 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
   /* dictionary encoded values */
   protected IntList encodedValues = new IntList();
 
-  /*
+  /** indicates if this is the first page being processed */
+  protected boolean firstPage = true;
+
+  /**
    * @param maxDictionaryByteSize
    * @param initialSize
    */
@@ -90,22 +93,26 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
     this.plainValuesWriter = new PlainValuesWriter(initialSize);
   }
 
-  /*
+  /**
    * check the size constraints of the dictionary and fail over to plain values encoding if threshold reached
    */
   protected void checkAndFallbackIfNeeded() {
     if (dictionaryByteSize > maxDictionaryByteSize || getDictionarySize() > MAX_DICTIONARY_ENTRIES) {
-      // if the dictionary reaches the max byte size or the values can not be encoded on two bytes anymore.
-      if (DEBUG)
-        LOG.debug("dictionary is now too big, falling back to plain: " + dictionaryByteSize + "B and " + getDictionarySize() + " entries");
-      dictionaryTooBig = true;
-      if (lastUsedDictionarySize == 0) {
-        // if we never used the dictionary
-        // we free dictionary encoded data
-        clearDictionaryContent();
-        dictionaryByteSize = 0;
-        encodedValues = null;
-      }
+      // if the dictionary reaches the max byte size or the values can not be encoded on 4 bytes anymore.
+      fallBackToPlainEncoding();
+    }
+  }
+
+  private void fallBackToPlainEncoding() {
+    if (DEBUG)
+      LOG.debug("dictionary is now too big, falling back to plain: " + dictionaryByteSize + "B and " + getDictionarySize() + " entries");
+    dictionaryTooBig = true;
+    if (lastUsedDictionarySize == 0) {
+      // if we never used the dictionary
+      // we free dictionary encoded data
+      clearDictionaryContent();
+      dictionaryByteSize = 0;
+      encodedValues = null;
     }
   }
 
@@ -125,17 +132,12 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
   @Override
   public BytesInput getBytes() {
     if (!dictionaryTooBig && getDictionarySize() > 0) {
-      // remember size of dictionary when we last wrote a page
-      lastUsedDictionarySize = getDictionarySize();
-      lastUsedDictionaryByteSize = dictionaryByteSize;
       int maxDicId = getDictionarySize() - 1;
-      if (DEBUG)
-        LOG.debug("max dic id " + maxDicId);
+      if (DEBUG) LOG.debug("max dic id " + maxDicId);
       int bitWidth = BytesUtils.getWidthFromMaxInt(maxDicId);
 
       // TODO: what is a good initialCapacity?
-      final RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(bitWidth,
-          64 * 1024);
+      RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(bitWidth, 64 * 1024);
       IntIterator iterator = encodedValues.iterator();
       try {
         while (iterator.hasNext()) {
@@ -144,9 +146,16 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         // encodes the bit width
         byte[] bytesHeader = new byte[] { (byte) bitWidth };
         BytesInput rleEncodedBytes = encoder.toBytes();
-        if (DEBUG)
-          LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
-        return concat(BytesInput.from(bytesHeader), rleEncodedBytes);
+        if (DEBUG) LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
+        BytesInput bytes = concat(BytesInput.from(bytesHeader), rleEncodedBytes);
+        if (firstPage && ((bytes.size() + dictionaryByteSize) > plainValuesWriter.getBufferedSize())) {
+          fallBackToPlainEncoding();
+        } else {
+          // remember size of dictionary when we last wrote a page
+          lastUsedDictionarySize = getDictionarySize();
+          lastUsedDictionaryByteSize = dictionaryByteSize;
+          return bytes;
+        }
       } catch (IOException e) {
         throw new ParquetEncodingException("could not encode the values", e);
       }
@@ -156,6 +165,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
   @Override
   public Encoding getEncoding() {
+    firstPage = false;
     if (!dictionaryTooBig && getDictionarySize() > 0) {
       return PLAIN_DICTIONARY;
     }
@@ -182,7 +192,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
    * clear/free the underlying dictionary content
    */
   protected abstract void clearDictionaryContent();
-  
+
   /**
    * @return size in items
    */
@@ -190,23 +200,24 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
   @Override
   public String memUsageString(String prefix) {
-    return String.format("%s DictionaryValuesWriter{\n%s\n%s\n%s\n%s}\n", 
-        prefix, 
+    return String.format(
+        "%s DictionaryValuesWriter{\n%s\n%s\n%s\n%s}\n",
+        prefix,
         plainValuesWriter.
         memUsageString(prefix + " plain:"),
-        prefix + " dict:" + dictionaryByteSize, 
-        prefix + " values:" + ((encodedValues == null ? 0 : encodedValues.size()) * 4), 
+        prefix + " dict:" + dictionaryByteSize,
+        prefix + " values:" + (encodedValues == null ? "null" : String.valueOf(encodedValues.size() * 4)),
         prefix
         );
   }
-  
+
   /**
    *
    */
   public static class PlainBinaryDictionaryValuesWriter extends DictionaryValuesWriter {
 
     /* type specific dictionary content */
-    private Map<Binary, Integer> binaryDictionaryContent = new LinkedHashMap<Binary, Integer>();
+    private Object2IntMap<Binary> binaryDictionaryContent = new Object2IntLinkedOpenHashMap<Binary>();
 
     /**
      * @param maxDictionaryByteSize
@@ -214,17 +225,18 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
      */
     public PlainBinaryDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
       super(maxDictionaryByteSize, initialSize);
+      binaryDictionaryContent.defaultReturnValue(-1);
     }
 
     @Override
     public void writeBytes(Binary v) {
       if (!dictionaryTooBig) {
-        Integer id = binaryDictionaryContent.get(v);
-        if (id == null) {
+        int id = binaryDictionaryContent.getInt(v);
+        if (id == -1) {
           id = binaryDictionaryContent.size();
           binaryDictionaryContent.put(v, id);
-          // length as int (2 bytes) + actual bytes
-          dictionaryByteSize += 2 + v.length();
+          // length as int (4 bytes) + actual bytes
+          dictionaryByteSize += 4 + v.length();
         }
         encodedValues.add(id);
         checkAndFallbackIfNeeded();

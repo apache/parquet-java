@@ -43,10 +43,23 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to write in the footer of the file
    * @param blockSize the size of a block in the file (this will be approximate)
+   * @param compressor the compressor used to compress the pages
+   * @param dictionaryPageSize the threshold for dictionary size
+   * @param enableDictionary to enable the dictionary
+   * @param validating if schema validation should be turned on
    */
-  public ParquetRecordWriter(ParquetFileWriter w, WriteSupport<T> writeSupport, MessageType schema,  Map<String, String> extraMetaData, int blockSize, int pageSize, BytesCompressor compressor, boolean enableDictionary, boolean validating) {
+  public ParquetRecordWriter(
+      ParquetFileWriter w,
+      WriteSupport<T> writeSupport,
+      MessageType schema,
+      Map<String, String> extraMetaData,
+      int blockSize, int pageSize,
+      BytesCompressor compressor,
+      int dictionaryPageSize,
+      boolean enableDictionary,
+      boolean validating) {
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
-        extraMetaData, blockSize, pageSize, compressor, enableDictionary, validating);
+        extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary, validating);
   }
 
   /**
