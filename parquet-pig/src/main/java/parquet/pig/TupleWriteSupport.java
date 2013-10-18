@@ -32,6 +32,8 @@ import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
+import org.apache.pig.impl.util.Utils;
+import org.apache.pig.parser.ParserException;
 
 import parquet.hadoop.api.WriteSupport;
 import parquet.io.ParquetEncodingException;
@@ -43,15 +45,31 @@ import parquet.schema.Type;
 
 public class TupleWriteSupport extends WriteSupport<Tuple> {
   private static final TupleFactory TF = TupleFactory.getInstance();
+  private static PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
+
+  public static TupleWriteSupport fromPigSchema(String pigSchemaString) throws ParserException {
+    return new TupleWriteSupport(Utils.getSchemaFromString(pigSchemaString));
+  }
 
   private RecordConsumer recordConsumer;
   private MessageType rootSchema;
   private Schema rootPigSchema;
 
-  public TupleWriteSupport(MessageType schema, Schema pigSchema) {
+  /**
+   * @param pigSchema the pigSchema
+   */
+  public TupleWriteSupport(Schema pigSchema) {
     super();
-    this.rootSchema = schema;
+    this.rootSchema = pigSchemaConverter.convert(pigSchema);
     this.rootPigSchema = pigSchema;
+  }
+
+  public Schema getPigSchema() {
+    return rootPigSchema;
+  }
+
+  public MessageType getParquetSchema() {
+    return rootSchema;
   }
 
   @Override
