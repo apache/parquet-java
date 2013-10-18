@@ -45,7 +45,7 @@ import parquet.schema.Type;
 
 public class TupleWriteSupport extends WriteSupport<Tuple> {
   private static final TupleFactory TF = TupleFactory.getInstance();
-  private static PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
+  private static final PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
 
   public static TupleWriteSupport fromPigSchema(String pigSchemaString) throws ParserException {
     return new TupleWriteSupport(Utils.getSchemaFromString(pigSchemaString));
