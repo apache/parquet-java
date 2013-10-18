@@ -15,11 +15,16 @@
  */
 package parquet.pig;
 
+import static java.util.Arrays.asList;
+import static org.apache.hadoop.mapreduce.lib.input.FileInputFormat.setInputPaths;
 import static parquet.Log.DEBUG;
-import static parquet.pig.TupleReadSupport.PARQUET_PIG_REQUESTED_SCHEMA;
+import static parquet.hadoop.util.ContextUtil.getConfiguration;
+import static parquet.pig.PigSchemaConverter.parsePigSchema;
+import static parquet.pig.PigSchemaConverter.pigSchemaToString;
+import static parquet.pig.TupleReadSupport.PARQUET_PIG_SCHEMA;
+import static parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +34,6 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.pig.Expression;
 import org.apache.pig.LoadFunc;
 import org.apache.pig.LoadMetadata;
@@ -42,14 +46,12 @@ import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
-import org.apache.pig.impl.util.ObjectSerializer;
-import org.apache.pig.impl.util.Utils;
+import org.apache.pig.impl.util.UDFContext;
 import org.apache.pig.parser.ParserException;
 
 import parquet.Log;
 import parquet.hadoop.ParquetInputFormat;
-import parquet.hadoop.metadata.FileMetaData;
-import parquet.hadoop.util.ContextUtil;
+import parquet.hadoop.metadata.GlobalMetaData;
 import parquet.io.ParquetDecodingException;
 
 /**
@@ -65,7 +67,6 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   private static final Map<String, ParquetInputFormat<Tuple>> inputFormatCache = new HashMap<String, ParquetInputFormat<Tuple>>();
 
-  private final String requestedSchemaStr;
   private Schema requestedSchema;
 
   private String location;
@@ -73,6 +74,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   private RecordReader<Void, Tuple> reader;
   private ParquetInputFormat<Tuple> parquetInputFormat;
   private Schema schema;
+  protected String signature;
 
   /**
    * To read the content in its original schema
@@ -86,33 +88,21 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
    * @param requestedSchemaStr a subset of the original pig schema in the file
    */
   public ParquetLoader(String requestedSchemaStr) {
-    this.requestedSchemaStr = requestedSchemaStr;
+    this.requestedSchema = parsePigSchema(requestedSchemaStr);
   }
 
   @Override
   public void setLocation(String location, Job job) throws IOException {
     if (DEBUG) LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
     setInput(location, job);
-    if (requestedSchema != null) {
-      ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, ObjectSerializer.serialize(requestedSchema));
-    } else if (requestedSchemaStr != null){
-      // request for the full schema (or requestedschema )
-      ContextUtil.getConfiguration(job).set(PARQUET_PIG_REQUESTED_SCHEMA, ObjectSerializer.serialize(schema));
-    }
-  }
-
-  static Schema parsePigSchema(String pigSchemaString) {
-    try {
-      return pigSchemaString == null ? null : Utils.getSchemaFromString(pigSchemaString);
-    } catch (ParserException e) {
-      throw new SchemaConversionException("could not parse Pig schema: " + pigSchemaString, e);
-    }
+    getConfiguration(job).set(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
   }
 
   private void setInput(String location, Job job) throws IOException {
     this.setLocationHasBeenCalled  = true;
     this.location = location;
-    FileInputFormat.setInputPaths(job, location);
+    setInputPaths(job, location);
+    initSchema(job);
   }
 
   @Override
@@ -193,39 +183,50 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   public ResourceSchema getSchema(String location, Job job) throws IOException {
     if (DEBUG) LOG.debug("LoadMetadata.getSchema(" + location + ", " + job + ")");
     setInput(location, job);
-    if (schema == null) {
-      if (requestedSchemaStr == null) {
-        // no requested schema => use the schema from the file
-        final FileMetaData globalMetaData = getParquetInputFormat().getGlobalMetaData(job);
-        schema = TupleReadSupport.getPigSchemaFromFile(globalMetaData.getSchema(), globalMetaData.getKeyValueMetaData());
-        if (isElephantBirdCompatible(job)) {
-          convertToElephantBirdCompatibleSchema(schema);
-        }
-      } else {
-        // there was a schema requested => use that
-        schema = Utils.getSchemaFromString(requestedSchemaStr);
-      }
-    }
     return new ResourceSchema(schema);
   }
 
+  private void initSchema(Job job) throws IOException {
+    if (schema != null) {
+      return;
+    }
+    if (requestedSchema != null) {
+      // this is only true in front-end
+      schema = requestedSchema;
+      return;
+    }
+    schema = PigSchemaConverter.parsePigSchema(getPropertyFromUDFContext(PARQUET_PIG_SCHEMA));
+    if (schema == null) {
+      // no requested schema => use the schema from the file
+      final GlobalMetaData globalMetaData = getParquetInputFormat().getGlobalMetaData(job);
+      schema = getPigSchemaFromMultipleFiles(globalMetaData.getSchema(), globalMetaData.getKeyValueMetaData());
+    }
+    if (isElephantBirdCompatible(job)) {
+      convertToElephantBirdCompatibleSchema(schema);
+    }
+  }
+
   private void convertToElephantBirdCompatibleSchema(Schema schema) {
+    if (schema == null) {
+      return;
+    }
     for(FieldSchema fieldSchema:schema.getFields()){
       if (fieldSchema.type== DataType.BOOLEAN) {
         fieldSchema.type=DataType.INTEGER;
       }
+      convertToElephantBirdCompatibleSchema(fieldSchema.schema);
     }
   }
 
   private boolean isElephantBirdCompatible(Job job) {
-    return ContextUtil.getConfiguration(job).getBoolean(TupleReadSupport.PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE, false);
+    return getConfiguration(job).getBoolean(TupleReadSupport.PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE, false);
   }
 
   @Override
   public ResourceStatistics getStatistics(String location, Job job)
       throws IOException {
     if (DEBUG) LOG.debug("LoadMetadata.getStatistics(" + location + ", " + job + ")");
-    // We do not need to call setInput 
+    // We do not need to call setInput
     // as setLocation is guaranteed to be called before this
     long length = 0;
     try {
@@ -249,7 +250,24 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public List<OperatorSet> getFeatures() {
-    return Arrays.asList(LoadPushDown.OperatorSet.PROJECTION);
+    return asList(LoadPushDown.OperatorSet.PROJECTION);
+  }
+  
+  protected String getPropertyFromUDFContext(String key) {
+    UDFContext udfContext = UDFContext.getUDFContext();
+    return udfContext.getUDFProperties(this.getClass(), new String[]{signature}).getProperty(key);
+  }
+  
+  protected Object getFromUDFContext(String key) {
+    UDFContext udfContext = UDFContext.getUDFContext();
+    return udfContext.getUDFProperties(this.getClass(), new String[]{signature}).get(key);
+  }
+
+  protected void storeInUDFContext(String key, Object value) {
+    UDFContext udfContext = UDFContext.getUDFContext();
+    java.util.Properties props = udfContext.getUDFProperties(
+        this.getClass(), new String[]{signature});
+    props.put(key, value);
   }
 
   @Override
@@ -257,8 +275,14 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       throws FrontendException {
     if (requiredFieldList == null)
       return null;
-    requestedSchema = getSchemaFromRequiredFieldList(schema, requiredFieldList.getFields());
+    schema = getSchemaFromRequiredFieldList(schema, requiredFieldList.getFields());
+    storeInUDFContext(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
     return new RequiredFieldResponse(true);
+  }
+  
+  @Override
+  public void setUDFContextSignature(String signature) {
+      this.signature = signature;
   }
 
   private Schema getSchemaFromRequiredFieldList(Schema schema, List<RequiredField> fieldList)

@@ -17,6 +17,7 @@ package parquet.io.api;
 
 import static parquet.bytes.BytesUtils.UTF8;
 
+import java.io.DataOutput;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -78,6 +79,11 @@ abstract public class Binary {
         return ByteBuffer.wrap(value, offset, length);
       }
 
+      @Override
+      public void writeTo(DataOutput out) throws IOException {
+        out.write(value, offset, length);
+      }
+
     };
   }
 
@@ -122,6 +128,11 @@ abstract public class Binary {
       public ByteBuffer toByteBuffer() {
         return ByteBuffer.wrap(value);
       }
+
+      @Override
+      public void writeTo(DataOutput out) throws IOException {
+        out.write(value);
+      }
     };
   }
 
@@ -139,6 +150,7 @@ abstract public class Binary {
 
       @Override
       public void writeTo(OutputStream out) throws IOException {
+        // TODO: should not have to materialize those bytes
         out.write(getBytes());
       }
 
@@ -184,6 +196,12 @@ abstract public class Binary {
       @Override
       public ByteBuffer toByteBuffer() {
         return value;
+      }
+
+      @Override
+      public void writeTo(DataOutput out) throws IOException {
+        // TODO: should not have to materialize those bytes
+        out.write(getBytes());
       }
     };
   }
@@ -239,6 +257,8 @@ abstract public class Binary {
   abstract public int length();
 
   abstract public void writeTo(OutputStream out) throws IOException;
+
+  abstract public void writeTo(DataOutput out) throws IOException;
 
   abstract public byte[] getBytes();
 

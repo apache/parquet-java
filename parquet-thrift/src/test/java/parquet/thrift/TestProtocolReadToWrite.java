@@ -16,6 +16,7 @@
 package parquet.thrift;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -29,13 +30,13 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-
 import thrift.test.OneOfEach;
 
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
@@ -96,14 +97,31 @@ public class TestProtocolReadToWrite {
       throws TException, InstantiationException, IllegalAccessException {
     ProtocolPipe[] pipes = {new ProtocolReadToWrite(), new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType((Class<TBase<?,?>>)a.getClass()))};
     for (ProtocolPipe p : pipes) {
-      final ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
-      final ByteArrayOutputStream baos = baos2;
-      a.write(protocol(baos));
-      p.readOne(protocol(new ByteArrayInputStream(baos.toByteArray())), protocol(baos2));
+      final ByteArrayOutputStream in = new ByteArrayOutputStream();
+      final ByteArrayOutputStream out = new ByteArrayOutputStream();
+      a.write(protocol(in));
+      p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
       TBase<?,?> b = a.getClass().newInstance();
-      b.read(protocol(new ByteArrayInputStream(baos2.toByteArray())));
+      b.read(protocol(new ByteArrayInputStream(out.toByteArray())));
 
       assertEquals(p.getClass().getSimpleName(), a, b);
+    }
+  }
+
+  @Test
+  public void testIncompatibleRecord() throws Exception {
+    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(AddressBook.class));
+    final ByteArrayOutputStream in = new ByteArrayOutputStream();
+    final ByteArrayOutputStream out = new ByteArrayOutputStream();
+    OneOfEach a = new OneOfEach(
+        true, false, (byte)8, (short)16, (int)32, (long)64, (double)1234, "string", "å", false,
+        ByteBuffer.wrap("a".getBytes()), new ArrayList<Byte>(), new ArrayList<Short>(), new ArrayList<Long>());
+    a.write(protocol(in));
+    try {
+      p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
+      fail("exception expected");
+    } catch (SkippableException e) {
+      Assert.assertEquals("Error while reading: (f=1<t=BOOL>: ", e.getMessage());
     }
   }
 

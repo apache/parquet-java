@@ -26,7 +26,9 @@ import parquet.hadoop.mapred.Container;
 import cascading.flow.FlowProcess;
 import cascading.scheme.Scheme;
 import cascading.scheme.SourceCall;
+import cascading.scheme.SinkCall;
 import cascading.tuple.Tuple;
+import cascading.tuple.TupleEntry;
 
 /**
  * A Cascading Scheme that returns a simple Tuple with a single value, the "value" object
@@ -52,6 +54,20 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
 
     sc.getIncomingEntry().setTuple(new Tuple(value.get()));
     return true;
+  }
+
+  @Override
+  public void sink(FlowProcess<JobConf> fp, SinkCall<Object[], OutputCollector> sc)
+      throws IOException {
+    TupleEntry tuple = sc.getOutgoingEntry();
+
+    if (tuple.size() != 1) {
+      throw new RuntimeException("ParquetValueScheme expects tuples with an arity of exactly 1, but found " + tuple.getFields());
+    }
+
+    T value = (T) tuple.getObject(0);
+    OutputCollector output = sc.getOutput();
+    output.collect(null, value);
   }
 
 }

@@ -59,7 +59,6 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type;
 import parquet.schema.Type.Repetition;
 
-
 public class TestColumnIO {
   private static final Log LOG = Log.getLog(TestColumnIO.class);
 
@@ -138,8 +137,6 @@ public class TestColumnIO {
     assertEquals(schemaString, schema.toString());
   }
 
-
-
   @Test
   public void testReadUsingRequestedSchemaWithExtraFields(){
     MessageType orginalSchema = new MessageType("schema",
@@ -172,7 +169,6 @@ public class TestColumnIO {
       };
       validateGroups(groups, expected);
     }
-
   }
 
   @Test
@@ -232,7 +228,6 @@ public class TestColumnIO {
       };
       validateGroups(groups, expected);
     }
-
   }
 
   private void validateGroups(List<Group> groups1, Object[][] e1) {
@@ -274,7 +269,6 @@ public class TestColumnIO {
     columns.flush();
   }
 
-
   @Test
   public void testColumnIO() {
     log(schema);
@@ -310,13 +304,11 @@ public class TestColumnIO {
         log("r" + (++i));
         log(record);
       }
-
       assertEquals("deserialization does not display the same result", r1.toString(), records.get(0).toString());
       assertEquals("deserialization does not display the same result", r2.toString(), records.get(1).toString());
     }
     {
       MessageColumnIO columnIO2 = columnIOFactory.getColumnIO(schema2);
-
 
       List<Group> records = new ArrayList<Group>();
       RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO2, schema2, memPageStore);
@@ -340,15 +332,19 @@ public class TestColumnIO {
   public void testOneOfEach() {
     MessageType oneOfEachSchema = MessageTypeParser.parseMessageType(oneOfEach);
     GroupFactory gf = new SimpleGroupFactory(oneOfEachSchema);
-    Group g1 = gf.newGroup().append("a", 1l).append("b", 2).append("c", 3.0f).append("d", 4.0d).append("e", true).append("f", Binary.fromString("6"));
+    Group g1 = gf.newGroup()
+        .append("a", 1l)
+        .append("b", 2)
+        .append("c", 3.0f)
+        .append("d", 4.0d)
+        .append("e", true)
+        .append("f", Binary.fromString("6"));
 
     testSchema(oneOfEachSchema, Arrays.asList(g1));
   }
 
   @Test
   public void testRequiredOfRequired() {
-
-
     MessageType reqreqSchema = MessageTypeParser.parseMessageType(
           "message Document {\n"
         + "  required group foo {\n"
@@ -433,20 +429,24 @@ public class TestColumnIO {
     ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
-
     MessageColumnIO columnIO = columnIOFactory.getColumnIO(messageSchema);
     log(columnIO);
-    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), messageSchema);
+
+    // Write groups.
+    GroupWriter groupWriter =
+        new GroupWriter(columnIO.getRecordWriter(columns), messageSchema);
     for (Group group : groups) {
       groupWriter.write(group);
     }
     columns.flush();
 
-    RecordReaderImplementation<Group> recordReader = getRecordReader(columnIO, messageSchema, memPageStore);
-
+    // Read groups and verify.
+    RecordReaderImplementation<Group> recordReader =
+        getRecordReader(columnIO, messageSchema, memPageStore);
     for (Group group : groups) {
       final Group got = recordReader.read();
-      assertEquals("deserialization does not display the same result", group.toString(), got.toString());
+      assertEquals("deserialization does not display the same result",
+                   group.toString(), got.toString());
     }
   }
 
@@ -554,9 +554,7 @@ public class TestColumnIO {
         "[Name, Url]: http://C, r:0, d:2"
     };
 
-
     ColumnWriteStore columns = new ColumnWriteStore() {
-
       int counter = 0;
 
       @Override

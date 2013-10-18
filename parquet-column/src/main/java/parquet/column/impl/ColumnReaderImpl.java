@@ -95,7 +95,7 @@ class ColumnReaderImpl implements ColumnReader {
     public long getLong() {
       throw new UnsupportedOperationException();
     }
-
+    
     /**
      * @return current value
      */
@@ -265,7 +265,23 @@ class ColumnReaderImpl implements ColumnReader {
       @Override
       public Binding convertFIXED_LEN_BYTE_ARRAY(
           PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-        throw new UnsupportedOperationException("FIXED_LEN_BYTE_ARRAY NYI");
+        return new Binding() {
+          Binary current;
+          void read() {
+            current = dataColumn.readBytes();
+          }
+          public void skip() {
+            current = null;
+            dataColumn.skip();
+          }
+          @Override
+          public Binary getBinary() {
+            return current;
+          }
+          void writeValue() {
+            converter.addBinary(current);
+          }
+        };
       }
       @Override
       public Binding convertBOOLEAN(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
@@ -398,7 +414,7 @@ class ColumnReaderImpl implements ColumnReader {
     readValue();
     return this.binding.getBinary();
   }
-
+  
   /**
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#getFloat()

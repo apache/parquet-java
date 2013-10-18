@@ -39,6 +39,7 @@ import parquet.io.api.RecordMaterializer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
+import parquet.thrift.projection.amend.ProtocolEventsAmender;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftField.Requirement;
 import parquet.thrift.struct.ThriftType;
@@ -64,6 +65,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     public void readFieldEnd() throws TException {
     }
   };
+  private final StructType thriftType;
 
   /**
    * Handles field events creation by wrapping the converter for the actual type
@@ -722,7 +724,10 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
           }
         }
         if (matchingThrift == null) {
-        	throw new IllegalArgumentException("schema mismatch :: cannot find Thrift field for column [" + fieldName + "]");
+        	// this means the file did not contain that field
+          // it will never be populated in this instance
+          // other files might populate it
+        	continue;
         }
         if (schemaType.isPrimitive()) {
         	converters[i] = new PrimitiveFieldHandler(newConverter(events, schemaType, matchingThrift).asPrimitiveConverter(), matchingThrift, events);
@@ -785,6 +790,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     super();
     this.thriftReader = thriftReader;
     this.protocol = new ParquetReadProtocol();
+    this.thriftType = thriftType;
     this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
   }
 
@@ -796,7 +802,8 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   @Override
   public T getCurrentRecord() {
     try {
-      protocol.addAll(rootEvents);
+      List<TProtocol> fixedEvents = new ProtocolEventsAmender(rootEvents).amendMissingRequiredFields(thriftType);
+      protocol.addAll(fixedEvents);
       rootEvents.clear();
       return thriftReader.readOneRecord(protocol);
     } catch (TException e) {

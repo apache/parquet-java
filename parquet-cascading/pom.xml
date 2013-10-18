@@ -3,7 +3,7 @@
     <groupId>com.twitter</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.1.2-SNAPSHOT</version>
+    <version>1.2.5-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -72,18 +72,17 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
-        <version>${maven-jar-plugin.version}</version>
-        <configuration>
-          <archive>
-            <manifestEntries>
-              <git-SHA-1>${buildNumber}</git-SHA-1>
-            </manifestEntries>
-          </archive>
-        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.thrift.tools</groupId>
+        <artifactId>maven-thrift-plugin</artifactId>
+        <version>0.1.10</version>
         <executions>
           <execution>
+            <id>thrift-sources</id>
+            <phase>generate-test-sources</phase>
             <goals>
-              <goal>test-jar</goal>
+              <goal>testCompile</goal>
             </goals>
           </execution>
         </executions>

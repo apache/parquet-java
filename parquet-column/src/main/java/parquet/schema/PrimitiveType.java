@@ -219,23 +219,22 @@ public final class PrimitiveType extends Type {
         return converter.convertINT96(this);
       }
     },
-    FIXED_LEN_BYTE_ARRAY(null, null) { // TODO: support for FIXED_LEN_BYTE_ARRAY
-
+    FIXED_LEN_BYTE_ARRAY("getBinary", Binary.class) {
       @Override
       public String toString(ColumnReader columnReader) {
-        throw new UnsupportedOperationException("NYI");
+        return String.valueOf(columnReader.getBinary());
       }
 
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
-        throw new UnsupportedOperationException("NYI");
+        recordConsumer.addBinary(columnReader.getBinary());
       }
 
       @Override
       public void addValueToPrimitiveConverter(
           PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
-        throw new UnsupportedOperationException("NYI");
+        primitiveConverter.addBinary(columnReader.getBinary());
       }
 
       @Override
@@ -275,20 +274,51 @@ public final class PrimitiveType extends Type {
   }
 
   private final PrimitiveTypeName primitive;
+  private final int length;
 
   /**
-   *
-   * @param repetition the OPTIONAL, REPEATED, REQUIRED
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param primitive STRING, INT64, ...
    * @param name the name of the type
    */
-  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, String name) {
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, 
+                       String name) {
     this(repetition, primitive, name, null);
   }
 
-  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, String name, OriginalType originalType) {
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param primitive STRING, INT64, ...
+   * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise (XXX)
+   * @param name the name of the type
+   */
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, int length, String name) {
+    this(repetition, primitive, length, name, null);
+  }
+
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param primitive STRING, INT64, ...
+   * @param name the name of the type
+   * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
+   */
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, 
+                       String name, OriginalType originalType) {
+    this(repetition, primitive, 0, name, originalType);
+  }
+
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRD
+   * @param primitive STRING, INT64, ...
+   * @param name the name of the type
+   * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise (XXX)
+   * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
+   */
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
+                       int length, String name, OriginalType originalType) {
     super(name, repetition, originalType);
     this.primitive = primitive;
+    this.length = length;
   }
 
   /**
@@ -296,6 +326,13 @@ public final class PrimitiveType extends Type {
    */
   public PrimitiveTypeName getPrimitiveTypeName() {
     return primitive;
+  }
+
+  /**
+   * @return the type length
+   */
+  public int getTypeLength() {
+    return length;
   }
 
   /**
@@ -320,11 +357,13 @@ public final class PrimitiveType extends Type {
   @Override
   public void writeToStringBuilder(StringBuilder sb, String indent) {
     sb.append(indent)
-    .append(getRepetition().name().toLowerCase())
-    .append(" ")
-    .append(primitive.name().toLowerCase())
-    .append(" ")
-    .append(getName());
+        .append(getRepetition().name().toLowerCase())
+        .append(" ")
+        .append(primitive.name().toLowerCase());
+    if (primitive == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
+      sb.append("(" + length + ")");
+    }
+    sb.append(" ").append(getName());
     if (getOriginalType() != null) {
       sb.append(" (").append(getOriginalType()).append(")");
     }
@@ -407,5 +446,13 @@ public final class PrimitiveType extends Type {
   @Override
   protected boolean containsPath(String[] path, int depth) {
     return path.length == depth;
+  }
+
+  @Override
+  protected Type union(Type toMerge) {
+    if (!toMerge.isPrimitive() || !primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName())) {
+      throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " into " + this);
+    }
+    return new PrimitiveType(toMerge.getRepetition(), primitive, getName());
   }
 }

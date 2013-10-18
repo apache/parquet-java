@@ -93,8 +93,9 @@ public final class MessageType extends GroupType {
   public ColumnDescriptor getColumnDescription(String[] path) {
     int maxRep = getMaxRepetitionLevel(path);
     int maxDef = getMaxDefinitionLevel(path);
-    PrimitiveTypeName type = getType(path).asPrimitiveType().getPrimitiveTypeName();
-    return new ColumnDescriptor(path, type, maxRep, maxDef);
+    PrimitiveType type = getType(path).asPrimitiveType();
+    return new ColumnDescriptor(path, type.getPrimitiveTypeName(),
+                                type.getTypeLength(), maxRep, maxDef);
   }
 
   public List<String[]> getPaths() {
@@ -106,7 +107,13 @@ public final class MessageType extends GroupType {
     List<ColumnDescriptor> columns = new ArrayList<ColumnDescriptor>(paths.size());
     for (String[] path : paths) {
       // TODO: optimize this
-      columns.add(new ColumnDescriptor(path, getType(path).asPrimitiveType().getPrimitiveTypeName(), getMaxRepetitionLevel(path), getMaxDefinitionLevel(path)));
+      PrimitiveType primitiveType = getType(path).asPrimitiveType();
+      columns.add(new ColumnDescriptor(
+                      path, 
+                      primitiveType.getPrimitiveTypeName(), 
+                      primitiveType.getTypeLength(),
+                      getMaxRepetitionLevel(path), 
+                      getMaxDefinitionLevel(path)));
     }
     return columns;
   }
@@ -116,7 +123,7 @@ public final class MessageType extends GroupType {
     if (!(subType instanceof MessageType)) {
       throw new InvalidRecordException(subType + " found: expected " + this);
     }
-    super.checkContains(subType);
+    checkGroupContains(subType);
   }
 
   public <T> T convertWith(TypeConverter<T> converter) {
@@ -128,4 +135,9 @@ public final class MessageType extends GroupType {
   public boolean containsPath(String[] path) {
     return containsPath(path, 0);
   }
+
+  public MessageType union(MessageType toMerge) {
+    return new MessageType(this.getName(), mergeFields(toMerge));
+  }
+
 }

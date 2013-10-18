@@ -15,14 +15,27 @@
  */
 package parquet.pig;
 
+import static parquet.pig.PigSchemaConverter.pigSchemaToString;
+
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 
+/**
+ * Represents Pig meta data stored in the file footer
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class PigMetaData {
 
   private static final String PIG_SCHEMA = "pig.schema";
 
+  /**
+   * @param keyValueMetaData the key values from the footer
+   * @return the parsed Pig metadata
+   */
   public static PigMetaData fromMetaData(Map<String, String> keyValueMetaData) {
     if (keyValueMetaData.containsKey(PIG_SCHEMA)) {
       return new PigMetaData(keyValueMetaData.get(PIG_SCHEMA));
@@ -30,25 +43,47 @@ public class PigMetaData {
     return null;
   }
 
-  private String pigSchema;
-
-  public PigMetaData(Schema pigSchema) {
-    final String pigSchemaString = pigSchema.toString();
-    this.pigSchema = pigSchemaString.substring(1, pigSchemaString.length() - 1);
+  /**
+   * @param keyValueMetaData the key values from the footers
+   * @return the list pig schemas from the footers
+   */
+  public static Set<String> getPigSchemas(Map<String, Set<String>> keyValueMetaData) {
+    return keyValueMetaData.get(PIG_SCHEMA);
   }
 
+  private String pigSchema;
+
+  /**
+   * @param pigSchema the pig schema of the file
+   */
+  public PigMetaData(Schema pigSchema) {
+    this.pigSchema = pigSchemaToString(pigSchema);
+  }
+
+  /**
+   * @param pigSchema the pig schema of the file
+   */
   public PigMetaData(String pigSchema) {
     this.pigSchema = pigSchema;
   }
 
+  /**
+   * @param pigSchema the pig schema of the file
+   */
   public void setPigSchema(String pigSchema) {
     this.pigSchema = pigSchema;
   }
 
+  /**
+   * @return the pig schema of the file
+   */
   public String getPigSchema() {
     return pigSchema;
   }
 
+  /**
+   * @param map where to add the key values representing this metadata
+   */
   public void addToMetaData(Map<String, String> map) {
     map.put(PIG_SCHEMA, pigSchema);
   }

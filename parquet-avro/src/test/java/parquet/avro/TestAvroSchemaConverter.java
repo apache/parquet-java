@@ -63,13 +63,25 @@ public class TestAvroSchemaConverter {
         "  required group myarray (LIST) {\n" +
         "    repeated int32 array;\n" +
         "  }\n" +
+        "  required group myemptyarray (LIST) {\n" +
+        "    repeated int32 array;\n" +
+        "  }\n" +
+        "  optional group myoptionalarray (LIST) {\n" +
+        "    repeated int32 array;\n" +
+        "  }\n" +
         "  required group mymap (MAP) {\n" +
         "    repeated group map (MAP_KEY_VALUE) {\n" +
         "      required binary key (UTF8);\n" +
         "      required int32 value;\n" +
         "    }\n" +
         "  }\n" +
-        "  required fixed_len_byte_array myfixed;\n" +
+        "  required group myemptymap (MAP) {\n" +
+        "    repeated group map (MAP_KEY_VALUE) {\n" +
+        "      required binary key (UTF8);\n" +
+        "      required int32 value;\n" +
+        "    }\n" +
+        "  }\n" +
+        "  required fixed_len_byte_array(1) myfixed;\n" +
         "}\n");
   }
 
@@ -97,17 +109,16 @@ public class TestAvroSchemaConverter {
         Schema.create(Schema.Type.INT),
         Schema.create(Schema.Type.FLOAT)));
     schema.setFields(Arrays.asList(
-        new Schema.Field("myunion", multipleTypes, null, NullNode.getInstance())
-    ));
+        new Schema.Field("myunion", multipleTypes, null, NullNode.getInstance())));
 
     // Avro union is modelled using optional data members of thw different types;
     testConversion(
         schema,
         "message record2 {\n" +
-            "  optional group myunion {\n" +
-            "    optional int32 member0;\n" +
-            "    optional float member1;\n" +
-            "  }\n" +
-            "}\n");
+        "  optional group myunion {\n" +
+        "    optional int32 member0;\n" +
+        "    optional float member1;\n" +
+        "  }\n" +
+        "}\n");
   }
 }

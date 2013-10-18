@@ -18,6 +18,7 @@ Parquet is a very active project, and new features are being added quickly; belo
   <tr><td>Hive integration</td><td>YES (<a href ="https://github.com/Parquet/parquet-mr/pull/28">28</a>)</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Pig integration</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Cascading integration</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
+  <tr><td>Crunch integration</td><td>YES (<a href ="https://issues.apache.org/jira/browse/CRUNCH-277">CRUNCH-277</a>)</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Impala integration</td><td>YES (non-nested)</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Java Map/Reduce API</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Native Avro support</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>

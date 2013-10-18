@@ -63,11 +63,26 @@ abstract public class ReadSupport<T> {
    * @param keyValueMetaData the app specific metadata from the file
    * @param fileSchema       the schema of the file
    * @return the readContext that defines how to read the file
+   *
+   * @deprecated override {@link ReadSupport#init(InitContext)} instead
    */
-  abstract public ReadContext init(
+  @Deprecated
+  public ReadContext init(
           Configuration configuration,
           Map<String, String> keyValueMetaData,
-          MessageType fileSchema);
+          MessageType fileSchema) {
+    throw new UnsupportedOperationException("Override init(InitContext)");
+  }
+
+  /**
+   * called in {@link org.apache.hadoop.mapreduce.InputFormat#getSplits(org.apache.hadoop.mapreduce.JobContext)} in the front end
+   *
+   * @param context the initialisation context
+   * @return the readContext that defines how to read the file
+   */
+  public ReadContext init(InitContext context) {
+    return init(context.getConfiguration(), context.getMergedKeyValueMetaData(), context.getFileSchema());
+  }
 
   /**
    * called in {@link org.apache.hadoop.mapreduce.RecordReader#initialize(org.apache.hadoop.mapreduce.InputSplit, org.apache.hadoop.mapreduce.TaskAttemptContext)} in the back end

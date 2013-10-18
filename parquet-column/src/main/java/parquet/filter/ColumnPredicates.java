@@ -17,6 +17,7 @@ package parquet.filter;
 
 import parquet.Preconditions;
 import parquet.column.ColumnReader;
+import parquet.io.api.Binary;
 
 /**
  * ColumnPredicates class provides checks for column values. Factory methods
@@ -29,12 +30,47 @@ public class ColumnPredicates {
     boolean apply(ColumnReader input);
   }
 
+  public static interface PredicateFunction <T> {
+    boolean functionToApply(T input);
+  }
+
+  /* provide the following to avoid boxing primitives */
+
+  public static interface IntegerPredicateFunction {
+    boolean functionToApply(int input);
+  }
+
+  public static interface LongPredicateFunction {
+    boolean functionToApply(long input);
+  }
+
+  public static interface FloatPredicateFunction {
+    boolean functionToApply(float input);
+  }
+
+  public static interface DoublePredicateFunction {
+    boolean functionToApply(double input);
+  }
+
+  public static interface BooleanPredicateFunction {
+    boolean functionToApply(boolean input);
+  }
+
   public static Predicate equalTo(final String target) {
     Preconditions.checkNotNull(target,"target");
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
         return target.equals(input.getBinary().toStringUsingUTF8());
+      }
+    };
+  }
+
+  public static Predicate applyFunctionToString(final PredicateFunction<String> fn) {
+    return new Predicate() {
+      @Override
+      public boolean apply(ColumnReader input) {
+          return fn.functionToApply(input.getBinary().toStringUsingUTF8());
       }
     };
   }
@@ -48,11 +84,29 @@ public class ColumnPredicates {
     };
   }
 
+  public static Predicate applyFunctionToInteger(final IntegerPredicateFunction fn) {
+    return new Predicate() {
+      @Override
+      public boolean apply(ColumnReader input) {
+        return fn.functionToApply(input.getInteger());
+      }
+    };
+  }
+
   public static Predicate equalTo(final long target) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
         return input.getLong() == target;
+      }
+    };
+  }
+
+  public static Predicate applyFunctionToLong(final LongPredicateFunction fn) {
+    return new Predicate() {
+      @Override
+      public boolean apply(ColumnReader input) {
+        return fn.functionToApply(input.getLong());
       }
     };
   }
@@ -66,11 +120,29 @@ public class ColumnPredicates {
     };
   }
 
+  public static Predicate applyFunctionToFloat(final FloatPredicateFunction fn) {
+    return new Predicate() {
+      @Override
+      public boolean apply(ColumnReader input) {
+        return fn.functionToApply(input.getFloat());
+      }
+    };
+  }
+
   public static Predicate equalTo(final double target) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
         return input.getDouble() == target;
+      }
+    };
+  }
+
+  public static Predicate applyFunctionToDouble(final DoublePredicateFunction fn) {
+    return new Predicate() {
+      @Override
+      public boolean apply(ColumnReader input) {
+        return fn.functionToApply(input.getDouble());
       }
     };
   }
@@ -84,6 +156,15 @@ public class ColumnPredicates {
     };
   }
 
+  public static Predicate applyFunctionToBoolean (final BooleanPredicateFunction fn) {
+    return new Predicate() {
+      @Override
+      public boolean apply(ColumnReader input) {
+        return fn.functionToApply(input.getBoolean());
+      }
+    };
+  }
+
   public static <E extends Enum> Predicate equalTo(final E target) {
     Preconditions.checkNotNull(target,"target");
     final String targetAsString = target.name();
@@ -91,6 +172,15 @@ public class ColumnPredicates {
       @Override
       public boolean apply(ColumnReader input) {
         return targetAsString.equals(input.getBinary().toStringUsingUTF8());
+      }
+    };
+  }
+
+  public static Predicate applyFunctionToBinary (final PredicateFunction<Binary> fn) {
+    return new Predicate() {
+      @Override
+      public boolean apply(ColumnReader input) {
+	  return fn.functionToApply(input.getBinary());
       }
     };
   }

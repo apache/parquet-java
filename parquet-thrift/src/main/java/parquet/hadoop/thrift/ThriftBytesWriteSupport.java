@@ -71,7 +71,7 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
   private ParquetWriteProtocol parquetWriteProtocol;
 
   public ThriftBytesWriteSupport() {
-    this.buffered = false;
+    this.buffered = true;
   }
 
   public ThriftBytesWriteSupport(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass, boolean buffered) {

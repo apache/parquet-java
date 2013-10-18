@@ -21,6 +21,7 @@ import java.util.List;
 
 import parquet.column.ColumnDescriptor;
 import parquet.schema.Type;
+import parquet.schema.PrimitiveType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 
@@ -46,7 +47,13 @@ public class PrimitiveColumnIO extends ColumnIO {
   @Override
   void setLevels(int r, int d, String[] fieldPath, int[] fieldIndexPath, List<ColumnIO> repetition, List<ColumnIO> path) {
     super.setLevels(r, d, fieldPath, fieldIndexPath, repetition, path);
-    this.columnDescriptor = new ColumnDescriptor(fieldPath, getType().asPrimitiveType().getPrimitiveTypeName(), getRepetitionLevel(), getDefinitionLevel());
+    PrimitiveType type = getType().asPrimitiveType();
+    this.columnDescriptor = new ColumnDescriptor(
+        fieldPath, 
+        type.getPrimitiveTypeName(),
+        type.getTypeLength(),
+        getRepetitionLevel(), 
+        getDefinitionLevel());
     this.path = path.toArray(new ColumnIO[path.size()]);
   }
 

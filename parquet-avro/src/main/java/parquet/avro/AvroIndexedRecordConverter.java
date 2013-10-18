@@ -15,6 +15,7 @@
  */
 package parquet.avro;
 
+import java.lang.reflect.Constructor;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,6 +24,7 @@ import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.specific.SpecificData;
+import org.apache.avro.specific.SpecificFixed;
 import parquet.Preconditions;
 import parquet.io.InvalidRecordException;
 import parquet.io.api.Binary;
@@ -276,17 +278,42 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
 
     private final ParentValueContainer parent;
     private final Schema avroSchema;
+    private final Class<? extends GenericData.Fixed> fixedClass;
+    private final Constructor fixedClassCtor;
 
     public FieldFixedConverter(ParentValueContainer parent, Schema avroSchema) {
       this.parent = parent;
       this.avroSchema = avroSchema;
+      this.fixedClass = SpecificData.get().getClass(avroSchema);
+      if (fixedClass != null) {
+        try {
+          this.fixedClassCtor = 
+              fixedClass.getConstructor(new Class[] { byte[].class });
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+      } else {
+        this.fixedClassCtor = null;
+      }
     }
 
     @Override
     final public void addBinary(Binary value) {
-      parent.add(new GenericData.Fixed(avroSchema, value.getBytes()));
+      if (fixedClass == null) {
+        parent.add(new GenericData.Fixed(avroSchema, value.getBytes()));
+      } else {
+        if (fixedClassCtor == null) {
+          throw new IllegalArgumentException(
+              "fixedClass specified but fixedClassCtor is null.");
+        }
+        try {
+          Object fixed = fixedClassCtor.newInstance(value.getBytes());
+          parent.add(fixed);
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+      }
     }
-
   }
 
   static final class AvroArrayConverter<T> extends GroupConverter {

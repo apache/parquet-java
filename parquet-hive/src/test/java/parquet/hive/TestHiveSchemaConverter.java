@@ -79,7 +79,6 @@ public class TestHiveSchemaConverter {
             + "  optional int32 a;\n"
             + "  optional double b;\n"
             + "  optional boolean c;\n"
-            + "  }\n"
             + "}\n");
   }
 
@@ -114,8 +113,8 @@ public class TestHiveSchemaConverter {
     testConversion("mapCol",
             "map<string,string>",
             "message hive_schema {\n"
-            + "  optional group mapCol (MAP_KEY_VALUE) {\n"
-            + "    repeated group map {\n"
+            + "  optional group mapCol (MAP) {\n"
+            + "    repeated group map (MAP_KEY_VALUE) {\n"
             + "      required binary key;\n"
             + "      optional binary value;\n"
             + "    }\n"

@@ -29,6 +29,7 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
 
   private final String[] path;
   private final PrimitiveTypeName type;
+  private final int typeLength;
   private final int maxRep;
   private final int maxDef;
 
@@ -39,10 +40,24 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
    * @param maxRep the maximum repetition level for that path
    * @param maxDef the maximum definition level for that path
    */
-  public ColumnDescriptor(String[] path, PrimitiveTypeName type, int maxRep, int maxDef) {
+  public ColumnDescriptor(String[] path, PrimitiveTypeName type, int maxRep, 
+                          int maxDef) {
+    this(path, type, 0, maxRep, maxDef);
+  }
+
+  /**
+   *
+   * @param path the path to the leaf field in the schema
+   * @param type the type of the field
+   * @param maxRep the maximum repetition level for that path
+   * @param maxDef the maximum definition level for that path
+   */
+  public ColumnDescriptor(String[] path, PrimitiveTypeName type, 
+                          int typeLength, int maxRep, int maxDef) {
     super();
     this.path = path;
     this.type = type;
+    this.typeLength = typeLength;
     this.maxRep = maxRep;
     this.maxDef = maxDef;
   }
@@ -75,6 +90,13 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
     return type;
   }
 
+  /**
+   * @return the size of the type
+   **/
+  public int getTypeLength() {
+    return typeLength;
+  }
+
   @Override
   public int hashCode() {
     return Arrays.hashCode(path);
@@ -99,6 +121,6 @@ public class ColumnDescriptor implements Comparable<ColumnDescriptor> {
 
   @Override
   public String toString() {
-    return Arrays.toString(path)+" "+type;
+    return Arrays.toString(path) + " " + type;
   }
 }
