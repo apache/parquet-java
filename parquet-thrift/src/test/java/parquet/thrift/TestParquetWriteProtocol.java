@@ -482,7 +482,7 @@ public class TestParquetWriteProtocol {
     LOG.info(pigSchema);
     MessageType schema = new PigSchemaConverter().convert(pigSchema);
     LOG.info(schema);
-    TupleWriteSupport tupleWriteSupport = new TupleWriteSupport(schema, pigSchema);
+    TupleWriteSupport tupleWriteSupport = new TupleWriteSupport(pigSchema);
     tupleWriteSupport.init(null);
     tupleWriteSupport.prepareForWrite(recordConsumer);
     final Tuple pigTuple = thriftToPig.getPigTuple(a);

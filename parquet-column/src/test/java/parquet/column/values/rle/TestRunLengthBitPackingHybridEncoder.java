@@ -285,7 +285,7 @@ public class TestRunLengthBitPackingHybridEncoder {
 	bytes[0] = (1 << 1 )| 1; 
 	bytes[1] = (1 << 0) | (2 << 2) | (3 << 4);
     ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
-    RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(3, 2, stream);
+    RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(2, stream);
     assertEquals(decoder.readInt(), 1);
     assertEquals(decoder.readInt(), 2);
     assertEquals(decoder.readInt(), 3);

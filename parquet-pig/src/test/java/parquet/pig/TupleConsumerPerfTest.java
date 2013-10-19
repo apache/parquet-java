@@ -55,7 +55,7 @@ public class TupleConsumerPerfTest {
     MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchema));
 
     MemPageStore memPageStore = new MemPageStore(0);
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 50*1024*1024, 50*1024*1024, false);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 50*1024*1024, 50*1024*1024, 50*1024*1024, false);
     write(memPageStore, columns, schema, pigSchema);
     columns.flush();
     read(memPageStore, pigSchema, pigSchemaProjected, pigSchemaNoString);
@@ -154,7 +154,7 @@ public class TupleConsumerPerfTest {
 
   private static void write(MemPageStore memPageStore, ColumnWriteStoreImpl columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
     MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
-    TupleWriteSupport tupleWriter = new TupleWriteSupport(schema, Utils.getSchemaFromString(pigSchemaString));
+    TupleWriteSupport tupleWriter = TupleWriteSupport.fromPigSchema(pigSchemaString);
     tupleWriter.init(null);
     tupleWriter.prepareForWrite(columnIO.getRecordWriter(columns));
     write(memPageStore, tupleWriter, 10000);

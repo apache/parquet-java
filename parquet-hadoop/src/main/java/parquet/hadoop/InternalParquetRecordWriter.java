@@ -15,8 +15,15 @@
  */
 package parquet.hadoop;
 
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+import static java.lang.String.format;
+import static parquet.Log.DEBUG;
+import static parquet.Preconditions.checkNotNull;
+
 import java.io.IOException;
 import java.util.Map;
+
 import parquet.Log;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.hadoop.CodecFactory.BytesCompressor;
@@ -24,11 +31,6 @@ import parquet.hadoop.api.WriteSupport;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.schema.MessageType;
-
-import static java.lang.Math.max;
-import static java.lang.Math.min;
-import static java.lang.String.format;
-import static parquet.Log.DEBUG;
 
 class InternalParquetRecordWriter<T> {
   private static final Log LOG = Log.getLog(InternalParquetRecordWriter.class);
@@ -44,6 +46,7 @@ class InternalParquetRecordWriter<T> {
   private final int blockSize;
   private final int pageSize;
   private final BytesCompressor compressor;
+  private final int dictionaryPageSize;
   private final boolean enableDictionary;
   private final boolean validating;
 
@@ -53,10 +56,7 @@ class InternalParquetRecordWriter<T> {
   private ColumnWriteStoreImpl store;
   private ColumnChunkPageWriteStore pageStore;
 
-
-
   /**
-   *
    * @param w the file to write to
    * @param writeSupport the class to convert incoming records
    * @param schema the schema of the records
@@ -64,19 +64,25 @@ class InternalParquetRecordWriter<T> {
    * @param blockSize the size of a block in the file (this will be approximate)
    * @param codec the codec used to compress
    */
-  public InternalParquetRecordWriter(ParquetFileWriter w, WriteSupport<T> writeSupport,
-      MessageType schema, Map<String, String> extraMetaData, int blockSize,
-      int pageSize, BytesCompressor compressor, boolean enableDictionary, boolean validating) {
-    if (writeSupport == null) {
-      throw new NullPointerException("writeSupport");
-    }
+  public InternalParquetRecordWriter(
+      ParquetFileWriter w,
+      WriteSupport<T> writeSupport,
+      MessageType schema,
+      Map<String, String> extraMetaData,
+      int blockSize,
+      int pageSize,
+      BytesCompressor compressor,
+      int dictionaryPageSize,
+      boolean enableDictionary,
+      boolean validating) {
     this.w = w;
-    this.writeSupport = writeSupport;
+    this.writeSupport = checkNotNull(writeSupport, "writeSupport");
     this.schema = schema;
     this.extraMetaData = extraMetaData;
     this.blockSize = blockSize;
     this.pageSize = pageSize;
     this.compressor = compressor;
+    this.dictionaryPageSize = dictionaryPageSize;
     this.enableDictionary = enableDictionary;
     this.validating = validating;
     initStore();
@@ -91,7 +97,7 @@ class InternalParquetRecordWriter<T> {
     // we don't want this number to be too small either
     // ideally, slightly bigger than the page size, but not bigger than the block buffer
     int initialPageBufferSize = max(MINIMUM_BUFFER_SIZE, min(pageSize + pageSize / 10, initialBlockBufferSize));
-    store = new ColumnWriteStoreImpl(pageStore, pageSize, initialPageBufferSize, enableDictionary);
+    store = new ColumnWriteStoreImpl(pageStore, pageSize, initialPageBufferSize, dictionaryPageSize, enableDictionary);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
     writeSupport.prepareForWrite(columnIO.getRecordWriter(store));
   }
