@@ -350,8 +350,8 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
                   splitLength,
                   ((FileSplit) oldSplit).getLocations(),
                   splitGroup,
-                  fileMetaData.getSchema().toString(),
                   readContext.getRequestedSchema().toString(),
+                  fileMetaData.getSchema().toString(),
                   fileMetaData.getKeyValueMetaData(),
                   readContext.getReadSupportMetadata());
         }
