@@ -25,9 +25,9 @@ import static parquet.pig.TupleReadSupport.PARQUET_PIG_SCHEMA;
 import static parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.InputSplit;
@@ -65,7 +65,7 @@ import parquet.io.ParquetDecodingException;
 public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDown {
   private static final Log LOG = Log.getLog(ParquetLoader.class);
 
-  private static final Map<String, ParquetInputFormat<Tuple>> inputFormatCache = new HashMap<String, ParquetInputFormat<Tuple>>();
+  private static final Map<String, ParquetInputFormat<Tuple>> inputFormatCache = new WeakHashMap<String, ParquetInputFormat<Tuple>>();
 
   private Schema requestedSchema;
 
