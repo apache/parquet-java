@@ -25,9 +25,9 @@ import static parquet.pig.TupleReadSupport.PARQUET_PIG_SCHEMA;
 import static parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.InputSplit;
@@ -65,7 +65,8 @@ import parquet.io.ParquetDecodingException;
 public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDown {
   private static final Log LOG = Log.getLog(ParquetLoader.class);
 
-  private static final Map<String, ParquetInputFormat<Tuple>> inputFormatCache = new HashMap<String, ParquetInputFormat<Tuple>>();
+  // Using a weak hash map will ensure that the cache will be gc'ed when there is memory pressure
+  static final Map<String, ParquetInputFormat<Tuple>> inputFormatCache = new WeakHashMap<String, ParquetInputFormat<Tuple>>();
 
   private Schema requestedSchema;
 
@@ -144,7 +145,8 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       parquetInputFormat = inputFormatCache.get(location);
       if (parquetInputFormat == null) {
         parquetInputFormat = new UnregisteringParquetInputFormat(location);
-        inputFormatCache.put(location, parquetInputFormat);
+        // Use new string to maintain unreferenced key
+        inputFormatCache.put(new String(location), parquetInputFormat);
       }
     }
     return parquetInputFormat;
