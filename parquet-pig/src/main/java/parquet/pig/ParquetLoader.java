@@ -65,7 +65,7 @@ import parquet.io.ParquetDecodingException;
 public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDown {
   private static final Log LOG = Log.getLog(ParquetLoader.class);
 
-  // Using a weak hash map will ensure that the cache size will be gc'ed when there is memory pressure
+  // Using a weak hash map will ensure that the cache will be gc'ed when there is memory pressure
   static final Map<String, ParquetInputFormat<Tuple>> inputFormatCache = new WeakHashMap<String, ParquetInputFormat<Tuple>>();
 
   private Schema requestedSchema;
