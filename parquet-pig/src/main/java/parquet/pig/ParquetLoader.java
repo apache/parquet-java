@@ -143,10 +143,10 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       // Using a weak hash map with an new, unreferenced string object will ensure that the cache size will be gc'ed if 
       //    it grows too large
       // TODO: check cases where the same location is reused
-      parquetInputFormat = inputFormatCache.get(new String(location));
+      parquetInputFormat = inputFormatCache.get(location);
       if (parquetInputFormat == null) {
         parquetInputFormat = new UnregisteringParquetInputFormat(location);
-        inputFormatCache.put(location, parquetInputFormat);
+        inputFormatCache.put(new String(location), parquetInputFormat);
       }
     }
     return parquetInputFormat;
