@@ -90,8 +90,8 @@ public class ParquetWriteProtocol extends ParquetProtocol {
     public void writeI32(int i32) throws TException {
       start();
       Binary value = enumLookup.get(i32);
-      if (value==null){
-        throw new RuntimeException("Can not find enum value of index "+i32+" for field:"+columnIO.toString());
+      if (value == null) {
+        throw new ParquetEncodingException("Can not find enum value of index " + i32 + " for field:" + columnIO.toString());
       }
       recordConsumer.addBinary(value);
       end();
