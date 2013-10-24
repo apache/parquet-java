@@ -65,6 +65,7 @@ import parquet.io.ParquetDecodingException;
 public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDown {
   private static final Log LOG = Log.getLog(ParquetLoader.class);
 
+  // Using a weak hash map will ensure that the cache size will be gc'ed if 
   private static final Map<String, ParquetInputFormat<Tuple>> inputFormatCache = new WeakHashMap<String, ParquetInputFormat<Tuple>>();
 
   private Schema requestedSchema;
@@ -140,12 +141,11 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     checkSetLocationHasBeenCalled();
     if (parquetInputFormat == null) {
       // unfortunately Pig will create many Loaders, so we cache the inputformat to avoid reading the metadata more than once
-      // Using a weak hash map with an new, unreferenced string object will ensure that the cache size will be gc'ed if 
-      //    it grows too large
       // TODO: check cases where the same location is reused
       parquetInputFormat = inputFormatCache.get(location);
       if (parquetInputFormat == null) {
         parquetInputFormat = new UnregisteringParquetInputFormat(location);
+        // Use new string to maintain unreferenced key
         inputFormatCache.put(new String(location), parquetInputFormat);
       }
     }
