@@ -89,30 +89,31 @@ public class ProtoSchemaConverter {
   }
 
   private Type convertScalarField(String fieldName, Descriptors.FieldDescriptor descriptor, Type.Repetition repetition) {
-    Descriptors.FieldDescriptor.Type type = descriptor.getType();
-    if (type.equals(Descriptors.FieldDescriptor.Type.BOOL)) {
+    Descriptors.FieldDescriptor.JavaType javaType = descriptor.getJavaType();
+
+    if (javaType.equals(Descriptors.FieldDescriptor.JavaType.BOOLEAN)) {
       return primitive(fieldName, BOOLEAN, repetition);
-    } else if (type.equals(Descriptors.FieldDescriptor.Type.INT32)) {
+    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.INT)) {
       return primitive(fieldName, INT32, repetition);
-    } else if (type.equals(Descriptors.FieldDescriptor.Type.INT64)) {
+    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.LONG)) {
       return primitive(fieldName, INT64, repetition);
-    } else if (type.equals(Descriptors.FieldDescriptor.Type.FLOAT)) {
+    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.FLOAT)) {
       return primitive(fieldName, FLOAT, repetition);
-    } else if (type.equals(Descriptors.FieldDescriptor.Type.DOUBLE)) {
+    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.DOUBLE)) {
       return primitive(fieldName, DOUBLE, repetition);
-    } else if (type.equals(Descriptors.FieldDescriptor.Type.BYTES)) {
+    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.BYTE_STRING)) {
       return primitive(fieldName, BINARY, repetition);
-    } else if (type.equals(Descriptors.FieldDescriptor.Type.STRING)) {
+    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.STRING)) {
       return primitive(fieldName, BINARY, repetition, UTF8);
-    } else if (type.equals(Descriptors.FieldDescriptor.Type.MESSAGE)) {
+    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.MESSAGE)) {
       Descriptors.Descriptor messageDescriptor = descriptor.getMessageType();
       List<Type> fields = convertFields(messageDescriptor.getFields());
       return new GroupType(repetition, fieldName, fields);
-    } else if (type.equals(Descriptors.FieldDescriptor.Type.ENUM)) {
+    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.ENUM)) {
       return primitive(fieldName, BINARY, repetition, ENUM);
     }
 
-    throw new UnsupportedOperationException("Cannot convert Protobuffer type " + type);
+    throw new UnsupportedOperationException("Cannot convert Protobuffer: type " + javaType + " fieldName " + fieldName);
   }
 
   /**
