@@ -31,9 +31,13 @@ import it.unimi.dsi.fastutil.longs.Long2IntMap;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
@@ -464,10 +468,18 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void clearDictionaryContent() {
+      List<Integer> reverseDictionary=new ArrayList<Integer>(getDictionarySize());
+
+      ObjectIterator<Map.Entry<Integer, Integer>> dictionaryIterator = intDictionaryContent.entrySet().iterator();
+      while (dictionaryIterator.hasNext()) {
+        Map.Entry<Integer, Integer> entry = dictionaryIterator.next();
+        reverseDictionary.add(entry.getValue(), entry.getKey());
+      }
+
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
-        int dicKey = iterator.next();
-        plainValuesWriter.writeInteger(intDictionaryContent.get(dicKey));
+        int id = iterator.next();
+        plainValuesWriter.writeInteger(reverseDictionary.get(id));
       }
       intDictionaryContent.clear();
     }
