@@ -278,6 +278,34 @@ public class TestDictionary {
 
   }
 
+  @Test
+  public void testFloatDictionaryFallBack() throws IOException {
+    int slabSize = 100;
+    int maxDictionaryByteSize = 50;
+    final DictionaryValuesWriter cw = new PlainFloatDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+
+    /**Dictionary size is 4bytes*numberOfEntries
+     * When numOfEntries=13, dicSize=13*4=52>50
+     */
+    int fallBackThreshold = 12;
+    for (float i = 0; i < 100; i++) {
+      cw.writeFloat(i);
+      if (i < fallBackThreshold) {
+        assertEquals(cw.getEncoding(), PLAIN_DICTIONARY);
+      } else {
+        assertEquals(cw.getEncoding(), PLAIN);
+      }
+    }
+
+    //Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
+    ValuesReader reader = new PlainValuesReader.FloatPlainValuesReader();
+    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+
+    for (float i = 0; i < 100; i++) {
+      assertEquals(i, reader.readFloat(), 0.00001);
+    }
+  }
+
   private DictionaryValuesReader initDicReader(ValuesWriter cw, PrimitiveTypeName type)
       throws IOException {
     final DictionaryPage dictionaryPage = cw.createDictionaryPage().copy();
