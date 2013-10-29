@@ -6,6 +6,10 @@ Who's using Parquet?
 
 <blockquote class="twitter-tweet"><p>We shipped Impala 0.7 (<a href="http://t.co/wxuV0wYShk">http://t.co/wxuV0wYShk</a>) - a whole ton of great new features including DDL, Parquet support and partitioned joins!</p>&mdash; Henry Robinson (@HenryR) <a href="https://twitter.com/HenryR/statuses/324222874011451392">April 16, 2013</a></blockquote>
 
+# Criteo
+
+<blockquote class="twitter-tweet"><p>Parquet: Efficient Columnar Storage for Apache <a href="https://twitter.com/search?q=%23Hadoop&amp;src=hash">#Hadoop</a> <a href="http://t.co/He1xyv6NC3">http://t.co/He1xyv6NC3</a> via <a href="https://twitter.com/cloudera">@cloudera</a> - <a href="https://twitter.com/search?q=%23Criteo&amp;src=hash">#Criteo</a> R&amp;D very happy to contribute!</p>&mdash; Julien SIMON (@julsimon) <a href="https://twitter.com/julsimon/statuses/312114074911666177">March 14, 2013</a></blockquote>
+
 ## Salesforce.com
 
 <blockquote class="twitter-tweet"><p>&quot;<a href="https://twitter.com/ParquetFormat">@ParquetFormat</a> at <a href="http://t.co/lro7m7quuc">Salesforce.com</a>&quot; <a href="http://t.co/IFskqF0FP3">http://t.co/IFskqF0FP3</a> via <a href="https://twitter.com/cloudera">@cloudera</a></p>&mdash; Twitter Open Source (@TwitterOSS) <a href="https://twitter.com/TwitterOSS/statuses/392734610116726784">October 22, 2013</a></blockquote>
