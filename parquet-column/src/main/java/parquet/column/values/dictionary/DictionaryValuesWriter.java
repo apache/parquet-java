@@ -421,9 +421,10 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         }
         encodedValues.add(id);
         checkAndFallbackIfNeeded();
+      } else {
+        // write also to plain encoding if we need to fall back
+        plainValuesWriter.writeInteger(v);
       }
-      // write also to plain encoding if we need to fall back
-      plainValuesWriter.writeInteger(v);
     }
 
     @Override
@@ -448,6 +449,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void clearDictionaryContent() {
+      IntIterator iterator = encodedValues.iterator();
+      while (iterator.hasNext()) {
+        int dicKey = iterator.next();
+        plainValuesWriter.writeInteger(intDictionaryContent.get(dicKey));
+      }
       intDictionaryContent.clear();
     }
 

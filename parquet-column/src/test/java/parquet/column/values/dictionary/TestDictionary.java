@@ -41,6 +41,7 @@ import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDiction
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
 import parquet.column.values.plain.BinaryPlainValuesReader;
+import parquet.column.values.plain.PlainValuesReader;
 import parquet.io.api.Binary;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -208,6 +209,39 @@ public class TestDictionary {
 
   }
 
+  /**
+   * Fallback strategy is to decode the dictionary and write
+   * the result to PlainWriter
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testIntDictionaryFallBack() throws IOException {
+    int slabSize = 100;
+    int maxDictionaryByteSize = 50;
+    final DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+
+    /**Dictionary size is 4bytes*numberOfEntries
+     * When numOfEntries=13, dicSize=13*4=52>50
+     */
+    int fallBackThreshold = 12;
+    for (int i = 0; i < 100; i++) {
+      cw.writeInteger(i);
+      if (i < fallBackThreshold) {
+        assertEquals(cw.getEncoding(), PLAIN_DICTIONARY);
+      } else {
+        assertEquals(cw.getEncoding(), PLAIN);
+      }
+    }
+
+    //Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
+    ValuesReader reader = new PlainValuesReader.IntegerPlainValuesReader();
+    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+
+    for (int i = 0; i < 100; i++) {
+      assertEquals(i, reader.readInteger());
+    }
+  }
 
   @Test
   public void testFloatDictionary() throws IOException {
