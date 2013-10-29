@@ -81,6 +81,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
   /* dictionary encoded values */
   protected IntList encodedValues = new IntList();
 
+  /* size of raw data, even if dictionary is used, it will not have effect on raw data size, it is used to decide
+   * if fall back to plain encoding is better by comparing rawDataByteSize with Encoded data size
+   */
+  protected int rawDataByteSize = 0;
+
   /** indicates if this is the first page being processed */
   protected boolean firstPage = true;
 
@@ -148,7 +153,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         BytesInput rleEncodedBytes = encoder.toBytes();
         if (DEBUG) LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
         BytesInput bytes = concat(BytesInput.from(bytesHeader), rleEncodedBytes);
-        if (firstPage && ((bytes.size() + dictionaryByteSize) > plainValuesWriter.getBufferedSize())) {
+        if (firstPage && ((bytes.size() + dictionaryByteSize) > rawDataByteSize)) {
           fallBackToPlainEncoding();
         } else {
           // remember size of dictionary when we last wrote a page
@@ -243,6 +248,9 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       }
       // write also to plain encoding if we need to fall back
       plainValuesWriter.writeBytes(v);
+
+      //for rawdata, length(4 bytes int) is stored, followed by the binary content itself
+      rawDataByteSize += v.length() + 4;
     }
 
     @Override
@@ -304,6 +312,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       }
       // write also to plain encoding if we need to fall back
       plainValuesWriter.writeLong(v);
+
+      rawDataByteSize += 8;
     }
 
     @Override
@@ -364,6 +374,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       }
       // write also to plain encoding if we need to fall back
       plainValuesWriter.writeDouble(v);
+
+      rawDataByteSize += 8;
     }
 
     @Override
@@ -425,6 +437,9 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         // write also to plain encoding if we need to fall back
         plainValuesWriter.writeInteger(v);
       }
+
+      //Each integer takes 4 bytes as raw data(plain encoding)
+      rawDataByteSize += 4;
     }
 
     @Override
@@ -490,6 +505,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       }
       // write also to plain encoding if we need to fall back
       plainValuesWriter.writeFloat(v);
+
+      rawDataByteSize += 4;
     }
 
     @Override
