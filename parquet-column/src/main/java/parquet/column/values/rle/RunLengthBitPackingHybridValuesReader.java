@@ -49,7 +49,7 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
       return offset;
     }
 
-    ByteArrayInputStream in = new ByteArrayInputStream(page, offset, page.length);
+    ByteArrayInputStream in = new ByteArrayInputStream(page, offset, page.length-offset);
     int length = BytesUtils.readIntLittleEndian(in);
 
     decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
