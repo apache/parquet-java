@@ -249,10 +249,9 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         }
         encodedValues.add(id);
         checkAndFallbackIfNeeded();
+      } else {
+        plainValuesWriter.writeBytes(v);
       }
-      // write also to plain encoding if we need to fall back
-      plainValuesWriter.writeBytes(v);
-
       //for rawdata, length(4 bytes int) is stored, followed by the binary content itself
       rawDataByteSize += v.length() + 4;
     }
@@ -280,6 +279,20 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void clearDictionaryContent() {
+      Binary[] reverseDictionary = new Binary[getDictionarySize()];
+      ObjectIterator<Binary> dicKeyIterator = binaryDictionaryContent.keySet().iterator();
+
+      while (dicKeyIterator.hasNext()) {
+        Binary key = dicKeyIterator.next();
+        int id = binaryDictionaryContent.get(key);
+        reverseDictionary[id] = key;
+      }
+
+      IntIterator iterator = encodedValues.iterator();
+      while (iterator.hasNext()) {
+        int id = iterator.next();
+        plainValuesWriter.writeBytes(reverseDictionary[id]);
+      }
       binaryDictionaryContent.clear();
     }
 

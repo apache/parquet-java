@@ -67,6 +67,33 @@ public class TestDictionary {
   }
 
   @Test
+  public void testBinaryDictionaryFallBack() throws IOException {
+    int slabSize = 100;
+    int maxDictionaryByteSize = 50;
+    final DictionaryValuesWriter cw = new PlainBinaryDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    int fallBackThreshold = maxDictionaryByteSize;
+    int dataSize=0;
+    for (long i = 0; i < 100; i++) {
+      Binary binary = Binary.fromString("str" + i);
+      cw.writeBytes(binary);
+      dataSize+=(binary.length()+4);
+      if (dataSize < fallBackThreshold) {
+        assertEquals( PLAIN_DICTIONARY,cw.getEncoding());
+      } else {
+        assertEquals(PLAIN,cw.getEncoding());
+      }
+    }
+
+    //Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
+    ValuesReader reader = new BinaryPlainValuesReader();
+    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+
+    for (long i = 0; i < 100; i++) {
+      assertEquals(Binary.fromString("str" + i), reader.readBytes());
+    }
+  }
+
+  @Test
   public void testFirstPageFallBack() throws IOException {
     int COUNT = 1000;
     ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(10000, 10000);
