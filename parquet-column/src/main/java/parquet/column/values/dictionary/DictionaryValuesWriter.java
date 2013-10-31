@@ -116,6 +116,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
     if (DEBUG)
       LOG.debug("dictionary is now too big, falling back to plain: " + dictionaryByteSize + "B and " + getDictionarySize() + " entries");
     dictionaryTooBig = true;
+    fallBackDictionaryEncodedData();
     if (lastUsedDictionarySize == 0) {
       // if we never used the dictionary
       // we free dictionary encoded data
@@ -124,6 +125,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       encodedValues = null;
     }
   }
+
+  protected abstract void fallBackDictionaryEncodedData();
 
   @Override
   public long getBufferedSize() {
@@ -279,6 +282,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void clearDictionaryContent() {
+      binaryDictionaryContent.clear();
+    }
+
+    @Override
+    protected void fallBackDictionaryEncodedData() {
       Binary[] reverseDictionary = new Binary[getDictionarySize()];
       ObjectIterator<Binary> dicKeyIterator = binaryDictionaryContent.keySet().iterator();
 
@@ -293,9 +301,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         int id = iterator.next();
         plainValuesWriter.writeBytes(reverseDictionary[id]);
       }
-      binaryDictionaryContent.clear();
     }
-
   }
 
   /**
@@ -355,6 +361,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void clearDictionaryContent() {
+      longDictionaryContent.clear();
+    }
+
+    @Override
+    protected void fallBackDictionaryEncodedData() {
       long[] reverseDictionary = new long[getDictionarySize()];
       LongIterator dicKeyIterator = longDictionaryContent.keySet().iterator();
 
@@ -369,9 +380,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         int id = iterator.next();
         plainValuesWriter.writeLong(reverseDictionary[id]);
       }
-      longDictionaryContent.clear();
     }
-
   }
 
   /**
@@ -431,6 +440,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void clearDictionaryContent() {
+      doubleDictionaryContent.clear();
+    }
+
+    @Override
+    protected void fallBackDictionaryEncodedData() {
       double[] reverseDictionary = new double[getDictionarySize()];
       it.unimi.dsi.fastutil.doubles.DoubleIterator dicKeyIterator = doubleDictionaryContent.keySet().iterator();
 
@@ -445,9 +459,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         int id = iterator.next();
         plainValuesWriter.writeDouble(reverseDictionary[id]);
       }
-      doubleDictionaryContent.clear();
-    }
 
+    }
   }
 
   /**
@@ -509,6 +522,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void clearDictionaryContent() {
+      intDictionaryContent.clear();
+    }
+
+    @Override
+    protected void fallBackDictionaryEncodedData() {
       int[] reverseDictionary = new int[getDictionarySize()];
       it.unimi.dsi.fastutil.ints.IntIterator dicKeyIterator = intDictionaryContent.keySet().iterator();
 
@@ -523,9 +541,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         int id = iterator.next();
         plainValuesWriter.writeInteger(reverseDictionary[id]);
       }
-      intDictionaryContent.clear();
     }
-
   }
 
   /**
@@ -585,6 +601,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void clearDictionaryContent() {
+      floatDictionaryContent.clear();
+    }
+
+    @Override
+    protected void fallBackDictionaryEncodedData() {
       float[] reverseDictionary = new float[getDictionarySize()];
       FloatIterator dicKeyIterator = floatDictionaryContent.keySet().iterator();
 
@@ -599,9 +620,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         int id = iterator.next();
         plainValuesWriter.writeFloat(reverseDictionary[id]);
       }
-      floatDictionaryContent.clear();
     }
-
   }
 
 }
