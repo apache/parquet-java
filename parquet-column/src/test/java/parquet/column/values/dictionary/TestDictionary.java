@@ -139,6 +139,31 @@ public class TestDictionary {
   }
 
   @Test
+  public void testLongDictionaryFallBack() throws IOException {
+    int slabSize = 100;
+    int maxDictionaryByteSize = 50;
+    final DictionaryValuesWriter cw = new PlainLongDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    int fallBackThreshold = maxDictionaryByteSize / 8;
+
+    for (long i = 0; i < 100; i++) {
+      cw.writeLong(i);
+      if (i < fallBackThreshold) {
+        assertEquals(cw.getEncoding(), PLAIN_DICTIONARY);
+      } else {
+        assertEquals(cw.getEncoding(), PLAIN);
+      }
+    }
+
+    //Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
+    ValuesReader reader = new PlainValuesReader.LongPlainValuesReader();
+    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+
+    for (long i = 0; i < 100; i++) {
+      assertEquals(i, reader.readLong());
+    }
+  }
+
+  @Test
   public void testDoubleDictionary() throws IOException {
 
     int COUNT = 1000;
