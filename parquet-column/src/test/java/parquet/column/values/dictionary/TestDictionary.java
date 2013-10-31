@@ -175,6 +175,31 @@ public class TestDictionary {
   }
 
   @Test
+  public void testDoubleDictionaryFallBack() throws IOException {
+    int slabSize = 100;
+    int maxDictionaryByteSize = 50;
+    final DictionaryValuesWriter cw = new PlainDoubleDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    int fallBackThreshold = maxDictionaryByteSize / 8;
+
+    for (double i = 0; i < 100; i++) {
+      cw.writeDouble(i);
+      if (i < fallBackThreshold) {
+        assertEquals(cw.getEncoding(), PLAIN_DICTIONARY);
+      } else {
+        assertEquals(cw.getEncoding(), PLAIN);
+      }
+    }
+
+    //Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
+    ValuesReader reader = new PlainValuesReader.DoublePlainValuesReader();
+    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+
+    for (float i = 0; i < 100; i++) {
+      assertEquals(i, reader.readDouble(), 0.00001);
+    }
+  }
+
+  @Test
   public void testIntDictionary() throws IOException {
 
     int COUNT = 2000;
@@ -220,11 +245,8 @@ public class TestDictionary {
     int slabSize = 100;
     int maxDictionaryByteSize = 50;
     final DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    int fallBackThreshold = maxDictionaryByteSize/4;
 
-    /**Dictionary size is 4bytes*numberOfEntries
-     * When numOfEntries=13, dicSize=13*4=52>50
-     */
-    int fallBackThreshold = 12;
     for (int i = 0; i < 100; i++) {
       cw.writeInteger(i);
       if (i < fallBackThreshold) {
@@ -283,11 +305,8 @@ public class TestDictionary {
     int slabSize = 100;
     int maxDictionaryByteSize = 50;
     final DictionaryValuesWriter cw = new PlainFloatDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    int fallBackThreshold = maxDictionaryByteSize/4;
 
-    /**Dictionary size is 4bytes*numberOfEntries
-     * When numOfEntries=13, dicSize=13*4=52>50
-     */
-    int fallBackThreshold = 12;
     for (float i = 0; i < 100; i++) {
       cw.writeFloat(i);
       if (i < fallBackThreshold) {

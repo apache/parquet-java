@@ -375,10 +375,10 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         }
         encodedValues.add(id);
         checkAndFallbackIfNeeded();
+      } else {
+        // write also to plain encoding if we need to fall back
+        plainValuesWriter.writeDouble(v);
       }
-      // write also to plain encoding if we need to fall back
-      plainValuesWriter.writeDouble(v);
-
       rawDataByteSize += 8;
     }
 
@@ -404,6 +404,20 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void clearDictionaryContent() {
+      List<Double> reverseDictionary = new ArrayList<Double>(getDictionarySize());
+
+      ObjectIterator<Map.Entry<Double, Integer>> dictionaryIterator = doubleDictionaryContent.entrySet().iterator();
+      while (dictionaryIterator.hasNext()) {
+        Map.Entry<Double, Integer> entry = dictionaryIterator.next();
+        reverseDictionary.add(entry.getValue(), entry.getKey());
+      }
+
+      IntIterator iterator = encodedValues.iterator();
+      while (iterator.hasNext()) {
+        int id = iterator.next();
+        plainValuesWriter.writeDouble(reverseDictionary.get(id));
+      }
+
       doubleDictionaryContent.clear();
     }
 
