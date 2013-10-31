@@ -404,20 +404,20 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void clearDictionaryContent() {
-      List<Double> reverseDictionary = new ArrayList<Double>(getDictionarySize());
+      double[] reverseDictionary = new double[getDictionarySize()];
+      it.unimi.dsi.fastutil.doubles.DoubleIterator dicKeyIterator = doubleDictionaryContent.keySet().iterator();
 
-      ObjectIterator<Map.Entry<Double, Integer>> dictionaryIterator = doubleDictionaryContent.entrySet().iterator();
-      while (dictionaryIterator.hasNext()) {
-        Map.Entry<Double, Integer> entry = dictionaryIterator.next();
-        reverseDictionary.add(entry.getValue(), entry.getKey());
+      while (dicKeyIterator.hasNext()) {
+        double key = dicKeyIterator.nextDouble();
+        int id = doubleDictionaryContent.get(key);
+        reverseDictionary[id] = key;
       }
 
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();
-        plainValuesWriter.writeDouble(reverseDictionary.get(id));
+        plainValuesWriter.writeDouble(reverseDictionary[id]);
       }
-
       doubleDictionaryContent.clear();
     }
 
@@ -482,18 +482,19 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void clearDictionaryContent() {
-      List<Integer> reverseDictionary=new ArrayList<Integer>(getDictionarySize());
+      int[] reverseDictionary = new int[getDictionarySize()];
+      it.unimi.dsi.fastutil.ints.IntIterator dicKeyIterator = intDictionaryContent.keySet().iterator();
 
-      ObjectIterator<Map.Entry<Integer, Integer>> dictionaryIterator = intDictionaryContent.entrySet().iterator();
-      while (dictionaryIterator.hasNext()) {
-        Map.Entry<Integer, Integer> entry = dictionaryIterator.next();
-        reverseDictionary.add(entry.getValue(), entry.getKey());
+      while (dicKeyIterator.hasNext()) {
+        int key = dicKeyIterator.nextInt();
+        int id = intDictionaryContent.get(key);
+        reverseDictionary[id] = key;
       }
 
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();
-        plainValuesWriter.writeInteger(reverseDictionary.get(id));
+        plainValuesWriter.writeInteger(reverseDictionary[id]);
       }
       intDictionaryContent.clear();
     }
@@ -557,20 +558,20 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void clearDictionaryContent() {
-      List<Float> reverseDictionary = new ArrayList<Float>(getDictionarySize());
+      float[] reverseDictionary = new float[getDictionarySize()];
+      FloatIterator dicKeyIterator = floatDictionaryContent.keySet().iterator();
 
-      ObjectIterator<Map.Entry<Float, Integer>> dictionaryIterator = floatDictionaryContent.entrySet().iterator();
-      while (dictionaryIterator.hasNext()) {
-        Map.Entry<Float, Integer> entry = dictionaryIterator.next();
-        reverseDictionary.add(entry.getValue(), entry.getKey());
+      while (dicKeyIterator.hasNext()) {
+        float key = dicKeyIterator.nextFloat();
+        int id = floatDictionaryContent.get(key);
+        reverseDictionary[id] = key;
       }
 
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();
-        plainValuesWriter.writeFloat(reverseDictionary.get(id));
+        plainValuesWriter.writeFloat(reverseDictionary[id]);
       }
-
       floatDictionaryContent.clear();
     }
 
