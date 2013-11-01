@@ -86,7 +86,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
    * if fall back to plain encoding is better by comparing rawDataByteSize with Encoded data size
    * It's also used in getBufferedSize, so the page will be written based on raw data size
    */
-  protected int rawDataByteSize = 0;
+  protected long rawDataByteSize = 0;
 
   /** indicates if this is the first page being processed */
   protected boolean firstPage = true;
@@ -128,10 +128,9 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
   @Override
   public long getBufferedSize() {
-    // use raw data size to decide if we want to flush the page
-    // so the acutual size of the page written could be much more smaller
-    // due to dictionary encoding. This prevents page being to big when fallback happens.
-    return rawDataByteSize;
+    // size that will be written to a page
+    // not including the dictionary size
+    return dictionaryTooBig ? plainValuesWriter.getBufferedSize() : encodedValues.size() * 4;
   }
 
   @Override
