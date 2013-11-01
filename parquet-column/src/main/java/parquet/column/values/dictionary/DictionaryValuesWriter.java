@@ -284,15 +284,15 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void fallBackDictionaryEncodedData() {
+      //build reverse dictionary
       Binary[] reverseDictionary = new Binary[getDictionarySize()];
-      ObjectIterator<Binary> dicKeyIterator = binaryDictionaryContent.keySet().iterator();
-
-      while (dicKeyIterator.hasNext()) {
-        Binary key = dicKeyIterator.next();
-        int id = binaryDictionaryContent.get(key);
-        reverseDictionary[id] = key;
+      ObjectIterator<Object2IntMap.Entry<Binary>> entryIterator = binaryDictionaryContent.object2IntEntrySet().iterator();
+      while (entryIterator.hasNext()) {
+        Object2IntMap.Entry<Binary> entry = entryIterator.next();
+        reverseDictionary[entry.getIntValue()] = entry.getKey();
       }
 
+      //fall back to plain encoding
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();
@@ -330,7 +330,6 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         encodedValues.add(id);
         checkAndFallbackIfNeeded();
       } else {
-        // write also to plain encoding if we need to fall back
         plainValuesWriter.writeLong(v);
       }
       rawDataByteSize += 8;
@@ -363,15 +362,15 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void fallBackDictionaryEncodedData() {
+      //build reverse dictionary
       long[] reverseDictionary = new long[getDictionarySize()];
-      LongIterator dicKeyIterator = longDictionaryContent.keySet().iterator();
-
-      while (dicKeyIterator.hasNext()) {
-        long key = dicKeyIterator.nextLong();
-        int id = longDictionaryContent.get(key);
-        reverseDictionary[id] = key;
+      ObjectIterator<Long2IntMap.Entry> entryIterator = longDictionaryContent.long2IntEntrySet().iterator();
+      while (entryIterator.hasNext()) {
+        Long2IntMap.Entry entry = entryIterator.next();
+        reverseDictionary[entry.getIntValue()] = entry.getLongKey();
       }
 
+      //fall back to plain encoding
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();
@@ -409,7 +408,6 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         encodedValues.add(id);
         checkAndFallbackIfNeeded();
       } else {
-        // write also to plain encoding if we need to fall back
         plainValuesWriter.writeDouble(v);
       }
       rawDataByteSize += 8;
@@ -442,21 +440,20 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void fallBackDictionaryEncodedData() {
+      //build reverse dictionary
       double[] reverseDictionary = new double[getDictionarySize()];
-      it.unimi.dsi.fastutil.doubles.DoubleIterator dicKeyIterator = doubleDictionaryContent.keySet().iterator();
-
-      while (dicKeyIterator.hasNext()) {
-        double key = dicKeyIterator.nextDouble();
-        int id = doubleDictionaryContent.get(key);
-        reverseDictionary[id] = key;
+      ObjectIterator<Double2IntMap.Entry> entryIterator = doubleDictionaryContent.double2IntEntrySet().iterator();
+      while (entryIterator.hasNext()) {
+        Double2IntMap.Entry entry = entryIterator.next();
+        reverseDictionary[entry.getIntValue()] = entry.getDoubleKey();
       }
 
+      //fall back to plain encoding
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();
         plainValuesWriter.writeDouble(reverseDictionary[id]);
       }
-
     }
   }
 
@@ -489,7 +486,6 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         encodedValues.add(id);
         checkAndFallbackIfNeeded();
       } else {
-        // write also to plain encoding if we need to fall back
         plainValuesWriter.writeInteger(v);
       }
 
@@ -524,15 +520,15 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void fallBackDictionaryEncodedData() {
+      //build reverse dictionary
       int[] reverseDictionary = new int[getDictionarySize()];
-      it.unimi.dsi.fastutil.ints.IntIterator dicKeyIterator = intDictionaryContent.keySet().iterator();
-
-      while (dicKeyIterator.hasNext()) {
-        int key = dicKeyIterator.nextInt();
-        int id = intDictionaryContent.get(key);
-        reverseDictionary[id] = key;
+      ObjectIterator<Int2IntMap.Entry> entryIterator = intDictionaryContent.int2IntEntrySet().iterator();
+      while (entryIterator.hasNext()) {
+        Int2IntMap.Entry entry = entryIterator.next();
+        reverseDictionary[entry.getIntValue()] = entry.getIntKey();
       }
 
+      //fall back to plain encoding
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();
@@ -570,7 +566,6 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         encodedValues.add(id);
         checkAndFallbackIfNeeded();
       } else {
-        // write also to plain encoding if we need to fall back
         plainValuesWriter.writeFloat(v);
       }
       rawDataByteSize += 4;
@@ -603,15 +598,15 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     protected void fallBackDictionaryEncodedData() {
+      //build reverse dictionary
       float[] reverseDictionary = new float[getDictionarySize()];
-      FloatIterator dicKeyIterator = floatDictionaryContent.keySet().iterator();
-
-      while (dicKeyIterator.hasNext()) {
-        float key = dicKeyIterator.nextFloat();
-        int id = floatDictionaryContent.get(key);
-        reverseDictionary[id] = key;
+      ObjectIterator<Float2IntMap.Entry> entryIterator = floatDictionaryContent.float2IntEntrySet().iterator();
+      while (entryIterator.hasNext()) {
+        Float2IntMap.Entry entry = entryIterator.next();
+        reverseDictionary[entry.getIntValue()] = entry.getFloatKey();
       }
 
+      //fall back to plain encoding
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();
