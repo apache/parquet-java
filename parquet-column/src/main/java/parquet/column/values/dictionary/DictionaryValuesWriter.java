@@ -84,6 +84,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
   /* size of raw data, even if dictionary is used, it will not have effect on raw data size, it is used to decide
    * if fall back to plain encoding is better by comparing rawDataByteSize with Encoded data size
+   * It's also used in getBufferedSize, so the page will be written based on raw data size
    */
   protected int rawDataByteSize = 0;
 
