@@ -128,9 +128,10 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
   @Override
   public long getBufferedSize() {
-    // size that will be written to a page
-    // not including the dictionary size
-    return dictionaryTooBig ? plainValuesWriter.getBufferedSize() : encodedValues.size() * 4;
+    // use raw data size to decide if we want to flush the page
+    // so the acutual size of the page written could be much more smaller
+    // due to dictionary encoding. This prevents page being to big when fallback happens.
+    return rawDataByteSize;
   }
 
   @Override
