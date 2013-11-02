@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Twitter, Inc.
+ * Copyright 2013 Lukas Nalezenec
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,11 +46,22 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   public ProtoWriteSupport(Class<? extends Message> protobufClass) {
     this.protoMessage = protobufClass;
-    rootSchema = new ProtoSchemaConverter().convert(protobufClass);
+    rootSchema = new ProtoSchemaConverter().convert(protoMessage);
   }
 
   @Override
   public WriteContext init(Configuration configuration) {
+    if (protoMessage  == null) {
+      Class<? extends Message> pbClass = configuration.getClass(PB_CLASS_WRITE, null, Message.class);
+      if (pbClass != null) {
+        rootSchema = new ProtoSchemaConverter().convert(protoMessage);
+      } else {
+        String msg = "Protobuffer class not specified.";
+        String hint = " Please use method ProtoParquetOutputFormat.setProtobufferClass(...) or other similar method.";
+        throw new RuntimeException(msg + hint);
+      }
+    }
+
     Map<String, String> extraMetaData = new HashMap<String, String>();
     extraMetaData.put(ProtoReadSupport.PB_CLASS, protoMessage.getName());
     extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(protoMessage));

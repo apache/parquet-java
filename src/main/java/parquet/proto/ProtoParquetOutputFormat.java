@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Twitter, Inc.
+ * Copyright 2013 Lukas Nalezenec
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,12 +22,29 @@ import parquet.hadoop.ParquetOutputFormat;
 import parquet.hadoop.util.ContextUtil;
 
 /**
- * A Hadoop {@link org.apache.hadoop.mapreduce.OutputFormat} for Parquet files.
+ * A Hadoop {@link org.apache.hadoop.mapreduce.OutputFormat} for Protobuffer Parquet files.
+ *
+ * Usage:
+ *
+ * <pre>
+ * {@code
+ * final Job job = new Job(conf, "Parquet writing job");
+ * job.setOutputFormatClass(ProtoParquetOutputFormat.class);
+ * ProtoParquetOutputFormat.setOutputPath(job, parquetPath);
+ * ProtoParquetOutputFormat.setProtobufferClass(job, YourProtobuffer.class);
+ * }
+ * </pre>
+ *
+ * @author Lukas Nalezenec
  */
 public class ProtoParquetOutputFormat<T extends MessageOrBuilder> extends ParquetOutputFormat<T> {
 
-  public static void setSchema(Job job, Class<? extends Message> protoClass) {
+  public static void setProtobufferClass(Job job, Class<? extends Message> protoClass) {
     ProtoWriteSupport.setSchema(ContextUtil.getConfiguration(job), protoClass);
+  }
+
+  public ProtoParquetOutputFormat(Class<? extends Message> msg) {
+    super(new ProtoWriteSupport(msg));
   }
 
   public ProtoParquetOutputFormat() {
