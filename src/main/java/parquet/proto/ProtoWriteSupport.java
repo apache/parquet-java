@@ -106,33 +106,22 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     Map<Descriptors.FieldDescriptor, Object> pbFields = record.getAllFields();
 
     for (Map.Entry<Descriptors.FieldDescriptor, Object> entry : pbFields.entrySet()) {
+
       Descriptors.FieldDescriptor fieldDescriptor = entry.getKey();
       int protoIndex = fieldDescriptor.getIndex();
-      //TODO tohle je preci blbost, tady musi byt mapovani
-      // UPDATE: blbost to neni ale mel bych si to pojistit proti zmenam
-      Object value = entry.getValue();
-
       Type fieldType = fields.get(protoIndex);
 
-      String parName = fieldType.getName();//TODO remove me
-      String proName = fieldDescriptor.getName();
-      if (!parName.equals(proName )) throw new RuntimeException("Field mismatch");
-
+      Object value = entry.getValue();
 
       if (value != null) {
 
+        int parquetIndex = parquetSchema.getFieldIndex(fieldDescriptor.getName());
+
         if (fieldDescriptor.isRepeated()) {
-          int parquetIndex = parquetSchema.getFieldIndex(fieldDescriptor.getName());
           recordConsumer.startField(fieldType.getName(), parquetIndex);
-          Type subType = parquetSchema.asGroupType().getType(0);
           writeArray(fieldType.asGroupType(), fieldDescriptor, (List<?>) value);
           recordConsumer.endField(fieldType.getName(), parquetIndex);
-        } else {
-          int parquetIndex = parquetSchema.getFieldIndex(fieldDescriptor.getName());
           recordConsumer.startField(fieldType.getName(), parquetIndex);
-          String parquetName = fieldType.getName(); // TODO remove
-          String protoName = fieldDescriptor.getName();
-          if (parquetName != protoName) throw new RuntimeException("Name mismatch " + parquetName + " != " + protoName);
           writeScalarValue(fieldType, fieldDescriptor, value);
           recordConsumer.endField(fieldType.getName(), parquetIndex);
         }
