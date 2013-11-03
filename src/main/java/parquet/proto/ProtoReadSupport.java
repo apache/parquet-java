@@ -42,14 +42,9 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
   @Override
   public ReadContext init(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
     String requestedProjectionString = configuration.get(PB_REQUESTED_PROJECTION);
-    if (requestedProjectionString != null) {
-      // TODO
-//      Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);
-//      MessageType requestedProjection = new ProtoSchemaConverter().convert(avroRequestedProjection);
-//      fileSchema.checkContains(requestedProjection);
-//      return new ReadContext(requestedProjection);
-
-      throw new RuntimeException("Not implemented yet");
+    if (requestedProjectionString != null && !requestedProjectionString.trim().isEmpty()) {
+      MessageType requestedProjection = getSchemaForRead(fileSchema, requestedProjectionString);
+      return new ReadContext(requestedProjection);
     } else {
       return new ReadContext(fileSchema);
     }
@@ -60,7 +55,7 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
     String strProtoClass = keyValueMetaData.get(PB_CLASS);
 
     if (strProtoClass == null) {
-      throw new RuntimeException("Needs parameter " + PB_CLASS + " with protobufer class");
+      throw new RuntimeException("I Need parameter " + PB_CLASS + " with protobufer class");
     }
 
     return new ProtoRecordMaterializer(readContext.getRequestedSchema(), Protobufs.getProtobufClass(strProtoClass));
