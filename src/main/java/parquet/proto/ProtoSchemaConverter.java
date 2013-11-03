@@ -29,7 +29,7 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 
 /**
  * <p/>
- * Converts an Protobuffer Descriptor into a Parquet schema.
+ * Converts a Protobuffer Descriptor into a Parquet schema.
  *
  * @author Lukas Nalezenec
  */
@@ -37,7 +37,7 @@ public class ProtoSchemaConverter {
 
   public MessageType convert(Class<? extends Message> protobufClass) {
     Descriptors.Descriptor descriptor = Protobufs.getMessageDescriptor(protobufClass);
-    //TODO co vlastne dela vraci metoda getFullName ?
+
     MessageType messageType = new MessageType(descriptor.getFullName(), convertFields(descriptor.getFields()));
 
     System.out.println("Convertor info:\n " + descriptor.toProto() +  " was converted to \n" + messageType);
@@ -48,9 +48,6 @@ public class ProtoSchemaConverter {
   private List<Type> convertFields(List<Descriptors.FieldDescriptor> fieldDescriptors) {
     List<Type> types = new ArrayList<Type>();
 
-    // todo tahle metoda je dulezita protoze urcuje poradi fieldu ve schematu.
-    // (ale na poradi by nemelo zalezet protoze parujese podle jmen
-
     for (Descriptors.FieldDescriptor fieldDescriptor : fieldDescriptors) {
 
       String fieldName = fieldDescriptor.getName();
@@ -58,15 +55,8 @@ public class ProtoSchemaConverter {
 
       Type type;
       if (fieldDescriptor.isRepeated()) {
-        //TODO proc jsou tady dve repetice, proc dole neni konstanta ?
-        //Tohle je zajimave mist, tady muzou byt chyby ze spatneho prevodu
-
-
-        //tady by mohl byt spatne ten descriptor
-
         Type nestedType = convertScalarField(fieldName + "_tuple", fieldDescriptor, Type.Repetition.REPEATED);
         type = ConversionPatterns.listType(Type.Repetition.OPTIONAL, fieldName, nestedType);
-        //throw new RuntimeException("Tady je chyba, v promenne repetition musi byt neco jineho - asi repetition nadrazeneho fieldu");
       } else {
         type = convertScalarField(fieldName, fieldDescriptor, repetition);
       }
