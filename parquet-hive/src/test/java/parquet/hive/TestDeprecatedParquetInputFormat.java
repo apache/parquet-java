@@ -1,13 +1,14 @@
 /**
  * Copyright 2013 Criteo.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License
- * at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
- * OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package parquet.hive;
 
@@ -19,15 +20,18 @@ import java.util.List;
 import java.util.Map;
 
 import junit.framework.TestCase;
+import org.apache.commons.lang.StringUtils;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.FileInputFormat;
+import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
@@ -45,6 +49,7 @@ import parquet.io.MessageColumnIO;
 import parquet.io.api.RecordConsumer;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -126,6 +131,86 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
             + "  optional int32 unknown;\n"
             + "}";
     readParquetHiveInputFormat(schemaRequested, new Integer[] {0, Integer.MIN_VALUE});
+  }
+
+  public void testGetSplit() throws Exception {
+    final ParquetMetadata readFooter = ParquetFileReader.readFooter(conf, new Path(testFile.getAbsolutePath()));
+
+    final MessageType fileSchema = readFooter.getFileMetaData().getSchema();
+    final MessageType requestedSchema = MessageTypeParser.parseMessageType("message customer {\n"
+            + "  optional int32 c_custkey;\n"
+            + "  optional binary c_name;\n"
+            + "  optional double c_acctbal;\n"
+            + "  optional binary c_mktsegment;\n"
+            + "  optional binary c_comment;\n"
+            + "}");
+    final MessageType hiveSchema = MessageTypeParser.parseMessageType("message customer {\n"
+            + "  optional int32 c_custkey;\n"
+            + "  optional binary c_name;\n"
+            + "  optional binary c_address;\n"
+            + "  optional int32 c_nationkey;\n"
+            + "  optional binary c_phone;\n"
+            + "  optional double c_acctbal;\n"
+            + "  optional binary c_mktsegment;\n"
+            + "  optional binary c_comment;\n"
+            + "  optional group c_map (MAP_KEY_VALUE) {\n"
+            + "    repeated group map {\n"
+            + "      required binary key;\n"
+            + "      optional binary value;\n"
+            + "    }\n"
+            + "  }\n"
+            + "  optional group c_list (LIST) {\n"
+            + "    repeated group bag {\n"
+            + "      optional int32 array_element;\n"
+            + "    }\n"
+            + "  }\n"
+            + "  optional binary unknown;\n"
+            + "}");
+
+    // Put columns and projection info in the conf
+    List<String> columns = new ArrayList<String>();
+    List<Integer> readColumns = new ArrayList<Integer>();
+    for (int i = 0; i < hiveSchema.getFieldCount(); ++i) {
+      final String name = hiveSchema.getType(i).getName();
+      columns.add(name);
+      if (requestedSchema.containsField(name)) {
+        readColumns.add(i);
+      }
+    }
+    job.set("columns", StringUtils.join(columns, ","));
+    ColumnProjectionUtils.setReadColumnIDs(job, readColumns);
+
+    long size = 0;
+    final List<BlockMetaData> blocks = readFooter.getBlocks();
+    for (final BlockMetaData block : blocks) {
+      size += block.getTotalByteSize();
+    }
+
+    final FileInputFormat<Void, ArrayWritable> format = new DeprecatedParquetInputFormat();
+    final String[] locations = new String[] {"localhost"};
+
+    final Map<String, String> readSupportMetaData = new HashMap<String, String>();
+    readSupportMetaData.put(DataWritableReadSupport.HIVE_SCHEMA_KEY, hiveSchema.toString());
+    final ParquetInputSplit realSplit = new ParquetInputSplit(new Path(testFile.getAbsolutePath()), 0, size, locations, blocks,
+            fileSchema.toString(), requestedSchema.toString(), readFooter.getFileMetaData().getKeyValueMetaData(), readSupportMetaData);
+
+    final DeprecatedParquetInputFormat.InputSplitWrapper splitWrapper = new InputSplitWrapper(realSplit);
+
+    // construct the record reader
+    final RecordReader<Void, ArrayWritable> reader = format.getRecordReader(splitWrapper, job, reporter);
+
+    assertEquals("Wrong real split inside wrapper", realSplit,
+            ((DeprecatedParquetInputFormat.RecordReaderWrapper) reader).getSplit(splitWrapper, job));
+
+    // Recreate the split using getSplit, as Hive would
+    final FileSplit fileSplit = new FileSplit(splitWrapper.getPath(), splitWrapper.getStart(), splitWrapper.getLength(), splitWrapper.getLocations());
+    final ParquetInputSplit recreatedSplit = ((DeprecatedParquetInputFormat.RecordReaderWrapper) reader).getSplit(fileSplit, job);
+    assertTrue("Wrong file schema", UtilitiesTestMethods.smartCheckSchema(fileSchema,
+            MessageTypeParser.parseMessageType(recreatedSplit.getFileSchema())));
+    assertTrue("Wrong requested schema", UtilitiesTestMethods.smartCheckSchema(requestedSchema,
+            MessageTypeParser.parseMessageType(recreatedSplit.getRequestedSchema())));
+    assertTrue("Wrong hive schema", UtilitiesTestMethods.smartCheckSchema(hiveSchema,
+            MessageTypeParser.parseMessageType(recreatedSplit.getReadSupportMetadata().get(DataWritableReadSupport.HIVE_SCHEMA_KEY))));
   }
 
   @Override

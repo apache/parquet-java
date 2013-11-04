@@ -1,13 +1,14 @@
 /**
  * Copyright 2013 Criteo.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License
- * at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
- * OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package parquet.hive;
 
@@ -17,8 +18,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.hadoop.fs.BlockLocation;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.ArrayWritable;
@@ -51,8 +50,7 @@ import parquet.schema.MessageTypeParser;
  *
  * A Parquet InputFormat for Hive (with the deprecated package mapred)
  *
- * TODO : Refactor all of the wrappers here
- * Talk about it on : https://github.com/Parquet/parquet-mr/pull/28s
+ * TODO : Refactor all of the wrappers here Talk about it on : https://github.com/Parquet/parquet-mr/pull/28s
  *
  * @author Mickaël Lacour <m.lacour@criteo.com>
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
@@ -185,7 +183,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
     }
   }
 
-  private static class RecordReaderWrapper implements RecordReader<Void, ArrayWritable> {
+  protected static class RecordReaderWrapper implements RecordReader<Void, ArrayWritable> {
 
     private org.apache.hadoop.mapreduce.RecordReader<Void, ArrayWritable> realReader;
     private final long splitLen; // for getPos()
@@ -311,11 +309,11 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
      * gets a ParquetInputSplit corresponding to a split given by Hive
      *
      * @param oldSplit The split given by Hive
-     * @param conf     The JobConf of the Hive job
+     * @param conf The JobConf of the Hive job
      * @return a ParquetInputSplit corresponding to the oldSplit
      * @throws IOException if the config cannot be enhanced or if the footer cannot be read from the file
      */
-    private ParquetInputSplit getSplit(final InputSplit oldSplit, final JobConf conf) throws IOException {
+    protected ParquetInputSplit getSplit(final InputSplit oldSplit, final JobConf conf) throws IOException {
       ParquetInputSplit split;
 
       if (oldSplit instanceof InputSplitWrapper) {
