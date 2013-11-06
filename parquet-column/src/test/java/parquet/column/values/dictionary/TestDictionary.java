@@ -41,6 +41,7 @@ import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDiction
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
 import parquet.column.values.plain.BinaryPlainValuesReader;
+import parquet.column.values.plain.PlainValuesReader;
 import parquet.io.api.Binary;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -63,6 +64,33 @@ public class TestDictionary {
     checkRepeated(COUNT, bytes2, cr, "b");
     BinaryPlainValuesReader cr2 = new BinaryPlainValuesReader();
     checkDistinct(COUNT, bytes3, cr2, "c");
+  }
+
+  @Test
+  public void testBinaryDictionaryFallBack() throws IOException {
+    int slabSize = 100;
+    int maxDictionaryByteSize = 50;
+    final DictionaryValuesWriter cw = new PlainBinaryDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    int fallBackThreshold = maxDictionaryByteSize;
+    int dataSize=0;
+    for (long i = 0; i < 100; i++) {
+      Binary binary = Binary.fromString("str" + i);
+      cw.writeBytes(binary);
+      dataSize+=(binary.length()+4);
+      if (dataSize < fallBackThreshold) {
+        assertEquals( PLAIN_DICTIONARY,cw.getEncoding());
+      } else {
+        assertEquals(PLAIN,cw.getEncoding());
+      }
+    }
+
+    //Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
+    ValuesReader reader = new BinaryPlainValuesReader();
+    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+
+    for (long i = 0; i < 100; i++) {
+      assertEquals(Binary.fromString("str" + i), reader.readBytes());
+    }
   }
 
   @Test
@@ -138,6 +166,31 @@ public class TestDictionary {
   }
 
   @Test
+  public void testLongDictionaryFallBack() throws IOException {
+    int slabSize = 100;
+    int maxDictionaryByteSize = 50;
+    final DictionaryValuesWriter cw = new PlainLongDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    int fallBackThreshold = maxDictionaryByteSize / 8;
+
+    for (long i = 0; i < 100; i++) {
+      cw.writeLong(i);
+      if (i < fallBackThreshold) {
+        assertEquals(cw.getEncoding(), PLAIN_DICTIONARY);
+      } else {
+        assertEquals(cw.getEncoding(), PLAIN);
+      }
+    }
+
+    //Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
+    ValuesReader reader = new PlainValuesReader.LongPlainValuesReader();
+    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+
+    for (long i = 0; i < 100; i++) {
+      assertEquals(i, reader.readLong());
+    }
+  }
+
+  @Test
   public void testDoubleDictionary() throws IOException {
 
     int COUNT = 1000;
@@ -171,6 +224,31 @@ public class TestDictionary {
       assertEquals(i % 50, back, 0.0);
     }
 
+  }
+
+  @Test
+  public void testDoubleDictionaryFallBack() throws IOException {
+    int slabSize = 100;
+    int maxDictionaryByteSize = 50;
+    final DictionaryValuesWriter cw = new PlainDoubleDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    int fallBackThreshold = maxDictionaryByteSize / 8;
+
+    for (double i = 0; i < 100; i++) {
+      cw.writeDouble(i);
+      if (i < fallBackThreshold) {
+        assertEquals(cw.getEncoding(), PLAIN_DICTIONARY);
+      } else {
+        assertEquals(cw.getEncoding(), PLAIN);
+      }
+    }
+
+    //Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
+    ValuesReader reader = new PlainValuesReader.DoublePlainValuesReader();
+    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+
+    for (float i = 0; i < 100; i++) {
+      assertEquals(i, reader.readDouble(), 0.00001);
+    }
   }
 
   @Test
@@ -208,6 +286,36 @@ public class TestDictionary {
 
   }
 
+  /**
+   * Fallback strategy is to decode the dictionary and write
+   * the result to PlainWriter
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testIntDictionaryFallBack() throws IOException {
+    int slabSize = 100;
+    int maxDictionaryByteSize = 50;
+    final DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    int fallBackThreshold = maxDictionaryByteSize/4;
+
+    for (int i = 0; i < 100; i++) {
+      cw.writeInteger(i);
+      if (i < fallBackThreshold) {
+        assertEquals(cw.getEncoding(), PLAIN_DICTIONARY);
+      } else {
+        assertEquals(cw.getEncoding(), PLAIN);
+      }
+    }
+
+    //Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
+    ValuesReader reader = new PlainValuesReader.IntegerPlainValuesReader();
+    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+
+    for (int i = 0; i < 100; i++) {
+      assertEquals(i, reader.readInteger());
+    }
+  }
 
   @Test
   public void testFloatDictionary() throws IOException {
@@ -242,6 +350,31 @@ public class TestDictionary {
       assertEquals(i % 50, back, 0.0f);
     }
 
+  }
+
+  @Test
+  public void testFloatDictionaryFallBack() throws IOException {
+    int slabSize = 100;
+    int maxDictionaryByteSize = 50;
+    final DictionaryValuesWriter cw = new PlainFloatDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    int fallBackThreshold = maxDictionaryByteSize/4;
+
+    for (float i = 0; i < 100; i++) {
+      cw.writeFloat(i);
+      if (i < fallBackThreshold) {
+        assertEquals(cw.getEncoding(), PLAIN_DICTIONARY);
+      } else {
+        assertEquals(cw.getEncoding(), PLAIN);
+      }
+    }
+
+    //Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
+    ValuesReader reader = new PlainValuesReader.FloatPlainValuesReader();
+    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+
+    for (float i = 0; i < 100; i++) {
+      assertEquals(i, reader.readFloat(), 0.00001);
+    }
   }
 
   private DictionaryValuesReader initDicReader(ValuesWriter cw, PrimitiveTypeName type)
