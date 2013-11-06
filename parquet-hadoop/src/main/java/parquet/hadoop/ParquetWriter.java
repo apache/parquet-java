@@ -71,7 +71,7 @@ public class ParquetWriter<T> implements Closeable {
       int pageSize,
       boolean enableDictionary,
       boolean validating) throws IOException {
-    this(file, writeSupport, compressionCodecName, blockSize, pageSize, pageSize, true, false);
+    this(file, writeSupport, compressionCodecName, blockSize, pageSize, pageSize, enableDictionary, validating);
   }
 
   /**
