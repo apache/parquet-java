@@ -25,13 +25,14 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   private int valueToFlush = 0;
   private int[] deltaBlockBuffer;
   private int firstValue = 0;
-  private int previousValue=0;
-  private int minDeltaInCurrentBlock=Integer.MAX_VALUE;
+  private int previousValue = 0;
+  private int minDeltaInCurrentBlock = Integer.MAX_VALUE;
+
   public DeltaBinaryPackingValuesWriter(int blockSizeInValues, int miniBlockNum, int slabSize) {
     this.blockSizeInValues = blockSizeInValues;
     this.miniBlockNum = miniBlockNum;
     this.miniBlockSizeInValues = blockSizeInValues / miniBlockNum;
-    assert(miniBlockSizeInValues%8==0) : "miniBlockSize must be multiple of 8";
+    assert (miniBlockSizeInValues % 8 == 0) : "miniBlockSize must be multiple of 8";
     deltaBlockBuffer = new int[blockSizeInValues];
     baos = new CapacityByteArrayOutputStream(slabSize);
   }
@@ -44,22 +45,22 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   @Override
   public void writeInteger(int v) {
     valueToFlush++;
-    if(totalValueCount==0){
-      firstValue=v;
-      previousValue=firstValue;
+    if (totalValueCount == 0) {
+      firstValue = v;
+      previousValue = firstValue;
     }
 
 
-    int delta = v-previousValue;//calculate delta
-    previousValue=v;
+    int delta = v - previousValue;//calculate delta
+    previousValue = v;
 
     deltaBlockBuffer[(totalValueCount++) % blockSizeInValues] = delta;
 
 
-     if (delta<minDeltaInCurrentBlock)
-          minDeltaInCurrentBlock=delta;
+    if (delta < minDeltaInCurrentBlock)
+      minDeltaInCurrentBlock = delta;
 
-    if ( blockSizeInValues == valueToFlush)
+    if (blockSizeInValues == valueToFlush)
       flushWholeBlockBuffer();
   }
 
@@ -68,17 +69,17 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     int[] bitWiths = new int[miniBlockNum];
 
     int countToFlush = getCountToFlush();
-    int miniBlocksToFlush=getMiniBlockToFlush(countToFlush);
+    int miniBlocksToFlush = getMiniBlockToFlush(countToFlush);
 
     //since we store the min delta, the deltas will be converted to be delta of deltas and will always be positive or 0
-    for(int i=0;i<countToFlush;i++){
-      deltaBlockBuffer[i]=deltaBlockBuffer[i]-minDeltaInCurrentBlock;
+    for (int i = 0; i < countToFlush; i++) {
+      deltaBlockBuffer[i] = deltaBlockBuffer[i] - minDeltaInCurrentBlock;
     }
 
     try {
-      BytesUtils.writeIntLittleEndian(baos,minDeltaInCurrentBlock);
+      BytesUtils.writeIntLittleEndian(baos, minDeltaInCurrentBlock);
     } catch (IOException e) {
-      throw new ParquetEncodingException("can not write min delta for block",e);
+      throw new ParquetEncodingException("can not write min delta for block", e);
     }
 
     calculateBitWithsForBlockBuffer(bitWiths);
@@ -111,8 +112,8 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
       }
     }
 
-    minDeltaInCurrentBlock=Integer.MAX_VALUE;
-    valueToFlush=0;
+    minDeltaInCurrentBlock = Integer.MAX_VALUE;
+    valueToFlush = 0;
   }
 
   private void calculateBitWithsForBlockBuffer(int[] bitWiths) {
@@ -146,7 +147,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   @Override
   public BytesInput getBytes() {
     //The Page Header should include: blockSizeInValues, numberOfMiniBlocks, totalValueCount
-    if(valueToFlush!=0)
+    if (valueToFlush != 0)
       flushWholeBlockBuffer();//TODO: bug, when getBytes is called multiple times
     return BytesInput.concat(
             BytesInput.fromInt(blockSizeInValues),
@@ -161,11 +162,13 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   public Encoding getEncoding() {
     return null;
   }
+
   //TODO
   @Override
   public void reset() {
 
   }
+
   //TODO
   @Override
   public long getAllocatedSize() {
