@@ -30,6 +30,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     this.blockSizeInValues = blockSizeInValues;
     this.miniBlockNum = miniBlockNum;
     this.miniBlockSizeInValues = blockSizeInValues / miniBlockNum;
+    assert(miniBlockSizeInValues%8==0) : "miniBlockSize must be multiple of 8";
     deltaBlockBuffer = new int[blockSizeInValues];
     baos = new CapacityByteArrayOutputStream(slabSize);
   }

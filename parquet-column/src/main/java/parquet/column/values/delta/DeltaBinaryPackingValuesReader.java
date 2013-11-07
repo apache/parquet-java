@@ -32,6 +32,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     this.firstValue = BytesUtils.readIntLittleEndian(in);
     this.previousValue = firstValue;
     this.miniBlockSizeInValues = blockSizeInValues / miniBlockNum;
+    assert(miniBlockSizeInValues%8 == 0) : "miniBlockSize must be multiple of 8";
     currentBlockBuffer = new int[blockSizeInValues];
     return 0;//TODO: return offset
   }

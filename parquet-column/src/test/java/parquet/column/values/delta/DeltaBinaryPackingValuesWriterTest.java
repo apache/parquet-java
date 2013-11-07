@@ -21,6 +21,11 @@ public class DeltaBinaryPackingValuesWriterTest {
     miniBlockNum = 4;
   }
 
+  @Test(expected = AssertionError.class)
+  public void miniBlockSizeShouldBeMultipleOf8() {
+    new DeltaBinaryPackingValuesWriter(128,3,100);
+  }
+
   @Test
   public void shouldWriteWhenDataIsAlignedWithBlock() throws IOException {
     int[] data = new int[5 * blockSize];
