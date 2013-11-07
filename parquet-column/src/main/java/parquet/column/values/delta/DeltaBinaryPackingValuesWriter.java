@@ -166,7 +166,10 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   //TODO
   @Override
   public void reset() {
-
+    this.totalValueCount = 0;
+    this.baos.reset();
+    this.valueToFlush = 0;
+    this.minDeltaInCurrentBlock = Integer.MAX_VALUE;
   }
 
   //TODO

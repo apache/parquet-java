@@ -19,6 +19,7 @@ public class DeltaBinaryPackingValuesWriterTest {
   public void setUp() {
     blockSize = 128;
     miniBlockNum = 4;
+    writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100);
   }
 
   @Test(expected = AssertionError.class)
@@ -32,6 +33,17 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < blockSize * 5; i++) {
       data[i] = i * 32;
     }
+    shouldReadAndWrite(data);
+  }
+
+  @Test
+  public void shouldReset() throws IOException {
+    shouldReadWriteWhenDataIsNotAlignedWithBlock();
+    int[] data = new int[5 * blockSize];
+    for (int i = 0; i < blockSize * 5; i++) {
+      data[i] = i * 2;
+    }
+    writer.reset();
     shouldReadAndWrite(data);
   }
 
@@ -103,20 +115,23 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   @Test
   public void perfTest() throws IOException {
-    long startTime = System.nanoTime();
-    int[] data = new int[100 * blockSize];
+    int[] data = new int[100000 * blockSize];
     for (int i = 0; i < data.length; i++) {
       data[i] = i * 3;
     }
 
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 10; i++) {
+      long startTime = System.nanoTime();
+
       shouldReadAndWrite(data);
+
+      long endTime = System.nanoTime();
+      System.out.println("time consumed " + (endTime - startTime));
     }
-    System.out.println("time consumed " + (System.nanoTime() - startTime));
   }
 
   private void shouldReadAndWrite(int[] data) throws IOException {
-    writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100);
+
     for (int i : data) {
       writer.writeInteger(i);
     }
