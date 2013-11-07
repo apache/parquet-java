@@ -14,6 +14,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   private int blockSizeInValues;
   private int miniBlockNum;
   private int totalValueCount;
+  private int valuesRead;
   private int miniBlockSizeInValues;
   private int[] currentBlockBuffer;
   private int numberBuffered = 0;
@@ -36,8 +37,11 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
 
   @Override
   public int readInteger() {
+    if(totalValueCount==valuesRead)
+      throw new ParquetDecodingException("no more value to read, total value count is "+totalValueCount);
     if (numberBuffered == 0)
       loadNewBlock();
+    valuesRead++;
     return currentBlockBuffer[blockSizeInValues-(numberBuffered--)];
   }
 
