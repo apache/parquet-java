@@ -157,13 +157,11 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
             BytesInput.from(baos));
   }
 
-  //TODO
   @Override
   public Encoding getEncoding() {
     return Encoding.DELTA_BINARY_PACKING_INT;
   }
 
-  //TODO
   @Override
   public void reset() {
     this.totalValueCount = 0;
@@ -179,6 +177,6 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
   @Override
   public String memUsageString(String prefix) {
-    return null;
+    return String.format("%s DeltaBinaryPacking %d bytes", prefix, getAllocatedSize());
   }
 }
