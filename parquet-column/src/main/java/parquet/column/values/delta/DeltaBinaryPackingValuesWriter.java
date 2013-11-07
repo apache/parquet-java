@@ -39,13 +39,14 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
   @Override
   public void writeInteger(int v) {
-    blockBuffer[(totalValueCount++)%blockSizeInValues] = v;
+    blockBuffer[(totalValueCount++) % blockSizeInValues] = v;
 
     if (totalValueCount % blockSizeInValues == 0)
       flushWholeBlockBuffer();
   }
 
   private void flushWholeBlockBuffer() {
+    //this method may flush the whole buffer or only part of the buffer
     System.out.println("flushing block");
     int[] bitWiths = new int[miniBlockNum];
     calculateBitWithsForBlockBuffer(bitWiths);
@@ -57,18 +58,22 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
       }
     }//first m bytes are for bitwiths...header of miniblock
     //TODO: number of values in each mini block must be multiple of 8, otherwise there is a bug
-    for (int i = 0; i < miniBlockNum; i++) {
+
+    int countToFlush = getCountToFlush();
+    int miniBlocksToFlush=getMiniBlockToFlush(countToFlush);
+    for (int i = 0; i < miniBlocksToFlush; i++) {
       //writing i th miniblock
       int currentBitWidth = bitWiths[i];
       System.out.println("bitWith is " + currentBitWidth);
       BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(currentBitWidth);
       //allocate output bytes TODO, this can be reused...
-      byte[] output = new byte[currentBitWidth * miniBlockSizeInValues/8];
+      byte[] output = new byte[currentBitWidth * miniBlockSizeInValues / 8];
       int miniBlockStart = i * miniBlockSizeInValues;
       for (int j = miniBlockStart; j < (i + 1) * miniBlockSizeInValues; j += 8) {//8 values per pack
+        //This might write more values, since it's not aligend to miniblock, but doesnt matter. The reader uses total count to see if reached the end. And mini block is atomic in terms of flushing
         int outputOffset = j - miniBlockStart;
 //        System.out.println(i+" "+j+" "+localOffset);
-        packer.pack8Values(blockBuffer, j, output, outputOffset*currentBitWidth/8);
+        packer.pack8Values(blockBuffer, j, output, outputOffset * currentBitWidth / 8);
       }
 
       try {
@@ -80,19 +85,39 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   }
 
   private void calculateBitWithsForBlockBuffer(int[] bitWiths) {
-    for (int miniBlockIndex = 0; miniBlockIndex < miniBlockNum; miniBlockIndex++) {
+    int numberCount = getCountToFlush();
+
+    int miniBlocksToFlush = getMiniBlockToFlush(numberCount);
+
+    for (int miniBlockIndex = 0; miniBlockIndex < miniBlocksToFlush; miniBlockIndex++) {
       //iterate through values in each mini block
       int mask = 0;
-      for (int valueIndex = miniBlockIndex * miniBlockSizeInValues; valueIndex < (miniBlockIndex + 1) * miniBlockSizeInValues; valueIndex++) {
+      int miniStart = miniBlockIndex * miniBlockSizeInValues;
+      int miniEnd = Math.min((miniBlockIndex + 1) * miniBlockSizeInValues, numberCount);
+      for (int valueIndex = miniStart; valueIndex < miniEnd; valueIndex++) {
         mask |= blockBuffer[valueIndex];
       }
+      System.out.println(miniBlocksToFlush);
       bitWiths[miniBlockIndex] = 32 - Integer.numberOfLeadingZeros(mask);
     }
+  }
+
+  private int getMiniBlockToFlush(double numberCount) {
+    return (int) Math.ceil(numberCount / miniBlockSizeInValues);
+  }
+
+  private int getCountToFlush() {
+    int numberCount = totalValueCount % blockSizeInValues;
+    if (numberCount == 0)
+      numberCount = blockSizeInValues;
+    return numberCount;
   }
 
   @Override
   public BytesInput getBytes() {
     //The Page Header should include: blockSizeInValues, numberOfMiniBlocks, totalValueCount
+    if(totalValueCount%blockSizeInValues!=0)
+      flushWholeBlockBuffer();//TODO: bug, when getBytes is called multiple times
     return BytesInput.concat(
             BytesInput.fromInt(blockSizeInValues),
             BytesInput.fromInt(miniBlockNum),
