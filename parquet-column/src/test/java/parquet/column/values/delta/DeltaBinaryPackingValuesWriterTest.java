@@ -101,6 +101,17 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   }
 
+  @Test
+  public void perfTest() throws IOException {
+    long startTime=System.nanoTime();
+    int[] data = new int[100 * blockSize];
+    for (int i = 0; i < data.length; i++) {
+      data[i] = i * 3;
+    }
+    shouldReadAndWrite(data);
+    System.out.println("time consumed "+(System.nanoTime()-startTime));
+  }
+
   private void shouldReadAndWrite(int[] data) throws IOException {
     writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100);
     for (int i : data) {
