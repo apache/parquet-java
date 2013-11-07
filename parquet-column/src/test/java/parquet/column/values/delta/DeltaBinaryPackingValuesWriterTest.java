@@ -31,6 +31,25 @@ public class DeltaBinaryPackingValuesWriterTest {
   }
 
   @Test
+  public void shoulReadWriteDataSmallerThanABlock() throws IOException {
+    int[] data = new int[blockSize-3];
+    for (int i = 0; i < data.length; i++) {
+      data[i] = i * 32;
+    }
+    shouldReadAndWrite(data);
+  }
+
+  @Test
+  public void shouldReadDataSmallerThanAMiniBlock() throws IOException {
+    int miniBlockSize = blockSize / miniBlockNum;
+    int[] data = new int[miniBlockSize-3];
+    for (int i = 0; i < data.length; i++) {
+      data[i] = i * 32;
+    }
+    shouldReadAndWrite(data);
+  }
+
+  @Test
   public void shouldWriteWhenDataIs0() throws IOException {
     int[] data = new int[6 * blockSize];
     for (int i = 0; i < blockSize * 5; i++) {
