@@ -6,7 +6,6 @@ import parquet.io.ParquetDecodingException;
 import java.io.IOException;
 import java.util.Random;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 public class DeltaBinaryPackingValuesWriterTest {
