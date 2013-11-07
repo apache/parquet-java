@@ -172,10 +172,9 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     this.minDeltaInCurrentBlock = Integer.MAX_VALUE;
   }
 
-  //TODO
   @Override
   public long getAllocatedSize() {
-    return 0;
+    return baos.getCapacity();
   }
 
   @Override
