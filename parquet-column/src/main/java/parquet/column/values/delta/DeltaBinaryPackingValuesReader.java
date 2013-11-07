@@ -1,0 +1,75 @@
+package parquet.column.values.delta;
+
+
+import parquet.bytes.BytesUtils;
+import parquet.column.values.ValuesReader;
+import parquet.column.values.bitpacking.BytePacker;
+import parquet.column.values.bitpacking.Packer;
+import parquet.io.ParquetDecodingException;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+
+public class DeltaBinaryPackingValuesReader extends ValuesReader {
+  private int blockSizeInValues;
+  private int miniBlockNum;
+  private int totalValueCount;
+  private int miniBlockSizeInValues;
+  private int[] currentBlockBuffer;
+  private int numberBuffered = 0;
+  private ByteArrayInputStream in;
+
+  @Override
+  public int initFromPage(long valueCount, byte[] page, int offset) throws IOException {
+    in = new ByteArrayInputStream(page, offset, page.length - offset);
+    this.blockSizeInValues = BytesUtils.readIntLittleEndian(in);
+    this.miniBlockNum = BytesUtils.readIntLittleEndian(in);
+    this.totalValueCount = BytesUtils.readIntLittleEndian(in);
+    this.miniBlockSizeInValues = blockSizeInValues / miniBlockNum;
+    currentBlockBuffer = new int[blockSizeInValues];
+    return 0;//TODO: return offset
+  }
+
+  @Override
+  public void skip() {
+  }
+
+  @Override
+  public int readInteger() {
+    if (numberBuffered == 0)
+      loadNewBlock();
+    return currentBlockBuffer[blockSizeInValues-(numberBuffered--)];
+  }
+
+  private void loadNewBlock() {
+    int[] bitWiths = new int[miniBlockNum];
+    readBitWidthsForMiniBlocks(bitWiths);
+    for (int i = 0; i < miniBlockNum; i++) {
+      int currentBitWidth = bitWiths[i];
+      BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(currentBitWidth);
+
+      byte[] bytes = new byte[currentBitWidth];
+      int[] valuesInMiniBlock = new int[miniBlockSizeInValues];
+      for (int j = 0; j < miniBlockSizeInValues; j += 8) {
+        try {
+          in.read(bytes);
+        } catch (IOException e) {
+          throw new ParquetDecodingException("can not read mini block", e);
+        }
+        int offset = i * miniBlockSizeInValues + j;
+        packer.unpack8Values(bytes, 0, currentBlockBuffer, offset);
+      }
+    }
+    numberBuffered = blockSizeInValues;
+  }
+
+  private void readBitWidthsForMiniBlocks(int[] bitWiths) {
+    for (int i = 0; i < miniBlockNum; i++) {
+      try {
+        bitWiths[i] = BytesUtils.readIntLittleEndianOnOneByte(in);
+      } catch (IOException e) {
+        throw new ParquetDecodingException("Can not decode bitwith in block header", e);
+      }
+    }
+  }
+}
