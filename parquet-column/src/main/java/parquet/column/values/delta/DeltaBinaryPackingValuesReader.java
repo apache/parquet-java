@@ -17,6 +17,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   private int valuesRead;
   private int firstValue;
   private int previousValue;
+  private int minDeltaInCurrentBlock;
   private int miniBlockSizeInValues;
   private int[] currentBlockBuffer;
   private int numberBuffered = 0;
@@ -52,6 +53,12 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   }
 
   private void loadNewBlock() {
+    try {
+      minDeltaInCurrentBlock = BytesUtils.readIntLittleEndian(in);
+    } catch (IOException e) {
+      throw new ParquetDecodingException("can not read min delta in current block");
+    }
+
     int[] bitWiths = new int[miniBlockNum];
     readBitWidthsForMiniBlocks(bitWiths);
     for (int i = 0; i < miniBlockNum; i++) {
@@ -59,7 +66,6 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
       BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(currentBitWidth);
 
       byte[] bytes = new byte[currentBitWidth];
-      int[] valuesInMiniBlock = new int[miniBlockSizeInValues];
       for (int j = 0; j < miniBlockSizeInValues; j += 8) {
         try {
           in.read(bytes);
@@ -76,10 +82,14 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   private void unpack8Values(BytePacker packer, byte[] bytes, int offset) {
     if (packer.getBitWidth() == 0) {
       for (int i = 0; i < 8; i++) {
-        currentBlockBuffer[offset + i] = 0;
+        currentBlockBuffer[offset + i] = 0 + minDeltaInCurrentBlock;
       }
     } else {
       packer.unpack8Values(bytes, 0, currentBlockBuffer, offset);
+      for (int i = 0; i < 8; i++) {
+        currentBlockBuffer[offset + i] += minDeltaInCurrentBlock;
+      }
+
     }
   }
 
