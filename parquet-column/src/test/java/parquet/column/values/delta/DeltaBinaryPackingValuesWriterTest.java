@@ -21,7 +21,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     reader.initFromPage(100,writer.getBytes().toByteArray(),0);
 
     for(int i=0;i<blockSize*5;i++){
-      assertEquals(reader.readInteger(),i*32);
+      assertEquals(i*32,reader.readInteger());
 //      System.out.println(reader.readInteger());
     }
   }

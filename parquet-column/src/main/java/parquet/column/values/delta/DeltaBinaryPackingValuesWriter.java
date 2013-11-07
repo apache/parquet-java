@@ -24,7 +24,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   private int totalValueCount = 0;
   private int[] blockBuffer;
   private int firstValue = 0;
-
+  private int previousValue=0;
   public DeltaBinaryPackingValuesWriter(int blockSizeInValues, int miniBlockNum, int slabSize) {
     this.blockSizeInValues = blockSizeInValues;
     this.miniBlockNum = miniBlockNum;
@@ -43,9 +43,14 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     if(totalValueCount==0){
       System.out.println("setting first value to " + v);//TODO delete
       firstValue=v;
+      previousValue=firstValue;
     }
 
-    blockBuffer[(totalValueCount++) % blockSizeInValues] = v;
+
+    int delta = v-previousValue;//calculate delta
+    previousValue=v;
+
+    blockBuffer[(totalValueCount++) % blockSizeInValues] = delta;
 
     if (totalValueCount % blockSizeInValues == 0)
       flushWholeBlockBuffer();

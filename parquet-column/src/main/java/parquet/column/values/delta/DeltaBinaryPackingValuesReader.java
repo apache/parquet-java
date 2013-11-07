@@ -16,6 +16,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   private int totalValueCount;
   private int valuesRead;
   private int firstValue;
+  private int previousValue;
   private int miniBlockSizeInValues;
   private int[] currentBlockBuffer;
   private int numberBuffered = 0;
@@ -28,6 +29,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     this.miniBlockNum = BytesUtils.readIntLittleEndian(in);
     this.totalValueCount = BytesUtils.readIntLittleEndian(in);
     this.firstValue = BytesUtils.readIntLittleEndian(in);
+    this.previousValue = firstValue;
     this.miniBlockSizeInValues = blockSizeInValues / miniBlockNum;
     currentBlockBuffer = new int[blockSizeInValues];
     return 0;//TODO: return offset
@@ -44,7 +46,9 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     if (numberBuffered == 0)
       loadNewBlock();
     valuesRead++;
-    return currentBlockBuffer[blockSizeInValues - (numberBuffered--)];
+    int currentValue = previousValue + currentBlockBuffer[blockSizeInValues - (numberBuffered--)];
+    previousValue = currentValue;
+    return currentValue;
   }
 
   private void loadNewBlock() {
