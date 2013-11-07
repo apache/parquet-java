@@ -24,6 +24,7 @@ import parquet.column.page.DictionaryPage;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 import parquet.column.values.boundedint.ZeroIntegerValuesReader;
+import parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import parquet.column.values.dictionary.DictionaryValuesReader;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainBinaryDictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainDoubleDictionary;
@@ -103,6 +104,13 @@ public enum Encoding {
     @Override // TODO: GROUP VAR INT encoding
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       throw new UnsupportedOperationException("NYI");
+    }
+  },
+
+  DELTA_BINARY_PACKING_INT {
+    @Override
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+      return new DeltaBinaryPackingValuesReader();
     }
   },
 
