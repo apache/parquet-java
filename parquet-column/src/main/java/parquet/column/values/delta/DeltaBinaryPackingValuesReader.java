@@ -37,12 +37,12 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
 
   @Override
   public int readInteger() {
-    if(totalValueCount==valuesRead)
-      throw new ParquetDecodingException("no more value to read, total value count is "+totalValueCount);
+    if (totalValueCount == valuesRead)
+      throw new ParquetDecodingException("no more value to read, total value count is " + totalValueCount);
     if (numberBuffered == 0)
       loadNewBlock();
     valuesRead++;
-    return currentBlockBuffer[blockSizeInValues-(numberBuffered--)];
+    return currentBlockBuffer[blockSizeInValues - (numberBuffered--)];
   }
 
   private void loadNewBlock() {
@@ -61,10 +61,20 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
           throw new ParquetDecodingException("can not read mini block", e);
         }
         int offset = i * miniBlockSizeInValues + j;
-        packer.unpack8Values(bytes, 0, currentBlockBuffer, offset);
+        unpack8Values(packer, bytes, offset);
       }
     }
     numberBuffered = blockSizeInValues;
+  }
+
+  private void unpack8Values(BytePacker packer, byte[] bytes, int offset) {
+    if (packer.getBitWidth() == 0) {
+      for (int i = 0; i < 8; i++) {
+        currentBlockBuffer[offset + i] = 0;
+      }
+    } else {
+      packer.unpack8Values(bytes, 0, currentBlockBuffer, offset);
+    }
   }
 
   private void readBitWidthsForMiniBlocks(int[] bitWiths) {

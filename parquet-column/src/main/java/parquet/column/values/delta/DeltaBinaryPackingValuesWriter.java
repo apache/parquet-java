@@ -47,10 +47,8 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
   private void flushWholeBlockBuffer() {
     System.out.println("flushing block");
-    //TODO: caculate maxBits for each minigroup
     int[] bitWiths = new int[miniBlockNum];
     calculateBitWithsForBlockBuffer(bitWiths);
-    //TODO write bitWithsintoHeader,
     for (int i = 0; i < miniBlockNum; i++) {
       try {
         BytesUtils.writeIntLittleEndianOnOneByte(baos, bitWiths[i]);
@@ -58,7 +56,6 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
         throw new ParquetEncodingException("can not write bitwith for miniblock");
       }
     }//first m bytes are for bitwiths...header of miniblock
-    //TODO: write eachMiniGroupWithBitPacking
     //TODO: number of values in each mini block must be multiple of 8, otherwise there is a bug
     for (int i = 0; i < miniBlockNum; i++) {
       //writing i th miniblock
