@@ -23,7 +23,7 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   @Test(expected = AssertionError.class)
   public void miniBlockSizeShouldBeMultipleOf8() {
-    new DeltaBinaryPackingValuesWriter(128,3,100);
+    new DeltaBinaryPackingValuesWriter(128, 3, 100);
   }
 
   @Test
@@ -37,7 +37,7 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   @Test
   public void shoulReadWriteDataSmallerThanABlock() throws IOException {
-    int[] data = new int[blockSize-3];
+    int[] data = new int[blockSize - 3];
     for (int i = 0; i < data.length; i++) {
       data[i] = i * 32;
     }
@@ -47,7 +47,7 @@ public class DeltaBinaryPackingValuesWriterTest {
   @Test
   public void shouldReadDataSmallerThanAMiniBlock() throws IOException {
     int miniBlockSize = blockSize / miniBlockNum;
-    int[] data = new int[miniBlockSize-3];
+    int[] data = new int[miniBlockSize - 3];
     for (int i = 0; i < data.length; i++) {
       data[i] = i * 32;
     }
@@ -103,13 +103,16 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   @Test
   public void perfTest() throws IOException {
-    long startTime=System.nanoTime();
+    long startTime = System.nanoTime();
     int[] data = new int[100 * blockSize];
     for (int i = 0; i < data.length; i++) {
       data[i] = i * 3;
     }
-    shouldReadAndWrite(data);
-    System.out.println("time consumed "+(System.nanoTime()-startTime));
+
+    for (int i = 0; i < 1000; i++) {
+      shouldReadAndWrite(data);
+    }
+    System.out.println("time consumed " + (System.nanoTime() - startTime));
   }
 
   private void shouldReadAndWrite(int[] data) throws IOException {
@@ -117,7 +120,6 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i : data) {
       writer.writeInteger(i);
     }
-    System.out.println(writer.getBytes());
 
     reader = new DeltaBinaryPackingValuesReader();
     reader.initFromPage(100, writer.getBytes().toByteArray(), 0);
