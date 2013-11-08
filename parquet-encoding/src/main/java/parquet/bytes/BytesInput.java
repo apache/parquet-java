@@ -93,6 +93,14 @@ abstract public class BytesInput {
   }
 
   /**
+   * @param intValue the int to write
+   * @return a BytesInput that will write var int
+   */
+  public static BytesInput fromUnsignedVarInt(int intValue) {
+    return new VarIntBytesInput(intValue);
+  }
+
+  /**
    * @param arrayOut
    * @return a BytesInput that will write the content of the buffer
    */
@@ -243,6 +251,25 @@ abstract public class BytesInput {
       return 4;
     }
 
+  }
+
+  private static class VarIntBytesInput extends BytesInput {
+
+    private final int intValue;
+
+    public VarIntBytesInput(int intValue) {
+      this.intValue = intValue;
+    }
+
+    @Override
+    public void writeAllTo(OutputStream out) throws IOException {
+      BytesUtils.writeUnsignedVarInt(intValue, out);
+    }
+
+    @Override
+    public long size() {
+      return 4-(Integer.numberOfLeadingZeros(intValue)/7);
+    }
   }
 
   private static class EmptyBytesInput extends BytesInput {

@@ -22,7 +22,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   private byte[] page;
   private int[] totalValueBuffer;
   private int valuesBuffered;
-  private ByteArrayInputStream in; //TODO should access it in subClass
+  private ByteArrayInputStream in;
 
   /**
    * eagerly load all the data into memory
@@ -37,10 +37,10 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   public int initFromPage(long valueCount, byte[] page, int offset) throws IOException {
     in = new ByteArrayInputStream(page, offset, page.length - offset); //TODO use var int
     this.page=page;
-    this.blockSizeInValues = BytesUtils.readIntLittleEndian(in);
-    this.miniBlockNum = BytesUtils.readIntLittleEndian(in);
-    this.totalValueCount = BytesUtils.readIntLittleEndian(in);
-    this.previousValue = BytesUtils.readIntLittleEndian(in);
+    this.blockSizeInValues = BytesUtils.readUnsignedVarInt(in);
+    this.miniBlockNum = BytesUtils.readUnsignedVarInt(in);
+    this.totalValueCount = BytesUtils.readUnsignedVarInt(in);
+    this.previousValue = BytesUtils.readUnsignedVarInt(in);
     this.miniBlockSizeInValues = blockSizeInValues / miniBlockNum;
     assert(miniBlockSizeInValues%8 == 0) : "miniBlockSize must be multiple of 8";
 
@@ -69,7 +69,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
 
   private void loadNewBlock() {
     try {
-      minDeltaInCurrentBlock = BytesUtils.readIntLittleEndian(in); //TODO var int
+      minDeltaInCurrentBlock = BytesUtils.readUnsignedVarInt(in); //TODO var int
     } catch (IOException e) {
       throw new ParquetDecodingException("can not read min delta in current block");
     }

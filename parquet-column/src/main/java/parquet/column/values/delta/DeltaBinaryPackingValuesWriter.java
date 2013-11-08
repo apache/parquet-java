@@ -77,7 +77,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     }
 
     try {
-      BytesUtils.writeIntLittleEndian(baos, minDeltaInCurrentBlock);
+      BytesUtils.writeUnsignedVarInt(minDeltaInCurrentBlock,baos);
     } catch (IOException e) {
       throw new ParquetEncodingException("can not write min delta for block", e);
     }
@@ -150,10 +150,10 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     if (valueToFlush != 0)
       flushWholeBlockBuffer();//TODO: bug, when getBytes is called multiple times
     return BytesInput.concat(
-            BytesInput.fromInt(blockSizeInValues),
-            BytesInput.fromInt(miniBlockNum),
-            BytesInput.fromInt(totalValueCount),
-            BytesInput.fromInt(firstValue),
+            BytesInput.fromUnsignedVarInt(blockSizeInValues),
+            BytesInput.fromUnsignedVarInt(miniBlockNum),
+            BytesInput.fromUnsignedVarInt(totalValueCount),
+            BytesInput.fromUnsignedVarInt(firstValue),
             BytesInput.from(baos));
   }
 
