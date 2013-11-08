@@ -2,6 +2,7 @@ package parquet.column.values.delta;
 
 import org.junit.Before;
 import org.junit.Test;
+import parquet.bytes.BytesInput;
 import parquet.io.ParquetDecodingException;
 
 import java.io.IOException;
@@ -99,6 +100,28 @@ public class DeltaBinaryPackingValuesWriterTest {
   }
 
   @Test
+  public void shouldReturnCorrectOffsetAfterInitialization() throws IOException {
+    int[] data = new int[2 * blockSize + 1];
+
+    for (int i = 0; i < blockSize * 2 + 1; i++) {
+      data[i] = i * 32;
+    }
+    writeData(data);
+
+    reader = new DeltaBinaryPackingValuesReader();
+    BytesInput bytes = writer.getBytes();
+    byte[] valueContent = bytes.toByteArray();
+    byte[] pageContent = new byte[valueContent.length*2];
+    System.arraycopy(valueContent,0,pageContent,33,valueContent.length);
+    int offset=reader.initFromPage(100, pageContent, 33);
+    assertEquals(valueContent.length,offset);
+
+    for (int i : data) {
+      assertEquals(i, reader.readInteger());
+    }
+  }
+
+  @Test
   public void shouldThrowExceptionWhenReadMoreThanWritten() throws IOException {
     int[] data = new int[5 * blockSize];
     for (int i = 0; i < blockSize * 5; i++) {
@@ -133,15 +156,19 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   private void shouldReadAndWrite(int[] data) throws IOException {
 
-    for (int i : data) {
-      writer.writeInteger(i);
-    }
+    writeData(data);
 
     reader = new DeltaBinaryPackingValuesReader();
     reader.initFromPage(100, writer.getBytes().toByteArray(), 0);
 
     for (int i : data) {
       assertEquals(i, reader.readInteger());
+    }
+  }
+
+  private void writeData(int[] data) {
+    for (int i : data) {
+      writer.writeInteger(i);
     }
   }
 

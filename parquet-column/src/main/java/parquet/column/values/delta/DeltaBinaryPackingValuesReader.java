@@ -51,7 +51,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
       loadNewBlock();
 //      System.out.println("load new block");
     }
-    return 0;//TODO: return offset
+    return page.length-in.available()-offset;
   }
 
   @Override

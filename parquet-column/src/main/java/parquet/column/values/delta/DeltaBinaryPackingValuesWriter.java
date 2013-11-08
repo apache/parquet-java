@@ -17,6 +17,7 @@ import java.io.IOException;
  */
 public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
+  public static final int MAX_BITWIDTH = 32;
   private final int miniBlockSizeInValues;
   private final int blockSizeInValues;
   private final int miniBlockNum;
@@ -24,6 +25,8 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   private int totalValueCount = 0;
   private int valueToFlush = 0;
   private int[] deltaBlockBuffer;
+  /*bytes buffer for a mini block, it is reused for each mini block. therefore the size of biggest miniblock with bitwith of 32 is allocated*/
+  private byte[] miniBlockByteBuffer;
   private int firstValue = 0;
   private int previousValue = 0;
   private int minDeltaInCurrentBlock = Integer.MAX_VALUE;
@@ -34,6 +37,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     this.miniBlockSizeInValues = blockSizeInValues / miniBlockNum;
     assert (miniBlockSizeInValues % 8 == 0) : "miniBlockSize must be multiple of 8";
     deltaBlockBuffer = new int[blockSizeInValues];
+    miniBlockByteBuffer = new byte[miniBlockSizeInValues * MAX_BITWIDTH];
     baos = new CapacityByteArrayOutputStream(slabSize);
   }
 
@@ -77,7 +81,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     }
 
     try {
-      BytesUtils.writeUnsignedVarInt(minDeltaInCurrentBlock,baos);
+      BytesUtils.writeUnsignedVarInt(minDeltaInCurrentBlock, baos);
     } catch (IOException e) {
       throw new ParquetEncodingException("can not write min delta for block", e);
     }
@@ -97,19 +101,13 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
       int currentBitWidth = bitWiths[i];
       BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(currentBitWidth);
       //allocate output bytes TODO, this can be reused...
-      byte[] output = new byte[currentBitWidth * miniBlockSizeInValues / 8];
       int miniBlockStart = i * miniBlockSizeInValues;
       for (int j = miniBlockStart; j < (i + 1) * miniBlockSizeInValues; j += 8) {//8 values per pack
         //This might write more values, since it's not aligend to miniblock, but doesnt matter. The reader uses total count to see if reached the end. And mini block is atomic in terms of flushing
-        int outputOffset = j - miniBlockStart;
-        packer.pack8Values(deltaBlockBuffer, j, output, outputOffset * currentBitWidth / 8);
+        packer.pack8Values(deltaBlockBuffer, j, miniBlockByteBuffer, 0); //TODO: bug!! flush should be on mini block basis,
+        baos.write(miniBlockByteBuffer, 0, currentBitWidth);
       }
 
-      try {
-        baos.write(output);
-      } catch (IOException e) {
-        throw new ParquetEncodingException("can not write miniblock", e);
-      }
     }
 
     minDeltaInCurrentBlock = Integer.MAX_VALUE;
