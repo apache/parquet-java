@@ -159,7 +159,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
   @Override
   public Encoding getEncoding() {
-    return Encoding.DELTA_BINARY_PACKING_INT;
+    return Encoding.DELTA_BINARY_PACKED;
   }
 
   @Override

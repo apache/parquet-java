@@ -107,7 +107,7 @@ public enum Encoding {
     }
   },
 
-  DELTA_BINARY_PACKING_INT {
+  DELTA_BINARY_PACKED {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       return new DeltaBinaryPackingValuesReader();
