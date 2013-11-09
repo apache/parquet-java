@@ -121,6 +121,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
           recordConsumer.startField(fieldType.getName(), parquetIndex);
           writeArray(fieldType.asGroupType(), fieldDescriptor, (List<?>) value);
           recordConsumer.endField(fieldType.getName(), parquetIndex);
+        } else {
           recordConsumer.startField(fieldType.getName(), parquetIndex);
           writeScalarValue(fieldType, fieldDescriptor, value);
           recordConsumer.endField(fieldType.getName(), parquetIndex);
