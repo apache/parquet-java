@@ -63,9 +63,18 @@ public class DeltaBinaryPackingValuesWriterTest {
   }
 
   @Test
+  public void shouldWriteNegativeDeltas() throws IOException {
+    int[] data = new int[blockSize];
+    for (int i = 0; i < data.length; i++) {
+      data[i] = 10-i * 32;
+    }
+    shouldReadAndWrite(data);
+  }
+
+  @Test
   public void shouldWriteAndReadWhenDeltaIs0() throws IOException {
-    int[] data = new int[6 * blockSize];
-    for (int i = 0; i < blockSize * 5; i++) {
+    int[] data = new int[2 * blockSize];
+    for (int i = 0; i < blockSize * 1; i++) {
       data[i] = i * 32;
     }
     shouldReadAndWrite(data);
@@ -101,7 +110,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     reader = new DeltaBinaryPackingValuesReader();
     BytesInput bytes = writer.getBytes();
     byte[] valueContent = bytes.toByteArray();
-    byte[] pageContent = new byte[valueContent.length*2];
+    byte[] pageContent = new byte[valueContent.length*10];
     int contentOffsetInPage = 33;
     System.arraycopy(valueContent,0,pageContent, contentOffsetInPage,valueContent.length);
 

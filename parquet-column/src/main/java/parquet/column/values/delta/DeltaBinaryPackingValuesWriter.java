@@ -48,17 +48,18 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
   @Override
   public void writeInteger(int v) {
-    valueToFlush++;
-    if (totalValueCount == 0) {
+    totalValueCount++;
+
+    if (totalValueCount == 1) {
       firstValue = v;
       previousValue = firstValue;
+      return;
     }
-
 
     int delta = v - previousValue;//calculate delta
     previousValue = v;
 
-    deltaBlockBuffer[(totalValueCount++) % blockSizeInValues] = delta;
+    deltaBlockBuffer[valueToFlush++] = delta;
 
 
     if (delta < minDeltaInCurrentBlock)
@@ -72,7 +73,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     //this method may flush the whole buffer or only part of the buffer
     int[] bitWiths = new int[miniBlockNum];
 
-    int countToFlush = getCountToFlush();
+    int countToFlush = valueToFlush;//TODO: unnecessary variable
     int miniBlocksToFlush = getMiniBlockToFlush(countToFlush);
 
     //since we store the min delta, the deltas will be converted to be delta of deltas and will always be positive or 0
@@ -115,7 +116,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   }
 
   private void calculateBitWithsForBlockBuffer(int[] bitWiths) {
-    int numberCount = getCountToFlush();
+    int numberCount = valueToFlush;//TODO: unecessary variable
 
     int miniBlocksToFlush = getMiniBlockToFlush(numberCount);
 
@@ -135,12 +136,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     return (int) Math.ceil(numberCount / miniBlockSizeInValues);
   }
 
-  private int getCountToFlush() {
-    int numberCount = totalValueCount % blockSizeInValues;
-    if (numberCount == 0)
-      numberCount = blockSizeInValues;
-    return numberCount;
-  }
+
 
   @Override
   public BytesInput getBytes() {

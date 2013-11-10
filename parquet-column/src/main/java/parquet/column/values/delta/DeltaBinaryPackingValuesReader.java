@@ -16,7 +16,6 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   private int miniBlockNum;
   private int totalValueCount;
   private int valuesRead;
-  private int previousValue;
   private int minDeltaInCurrentBlock;
   private int miniBlockSizeInValues;
   private byte[] page;
@@ -40,12 +39,13 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     this.blockSizeInValues = BytesUtils.readUnsignedVarInt(in);
     this.miniBlockNum = BytesUtils.readUnsignedVarInt(in);
     this.totalValueCount = BytesUtils.readUnsignedVarInt(in);
-    this.previousValue = BytesUtils.readUnsignedVarInt(in);
     this.miniBlockSizeInValues = blockSizeInValues / miniBlockNum;
     assert (miniBlockSizeInValues % 8 == 0) : "miniBlockSize must be multiple of 8"; //TODO use Precondition
 
     int totalMiniBlockCount = (int) Math.ceil((double) totalValueCount / miniBlockSizeInValues);
-    totalValueBuffer = new int[totalMiniBlockCount * miniBlockSizeInValues];//TODO: this buffer should be of size which is multiple of size of miniBuffer
+    totalValueBuffer = new int[totalMiniBlockCount * miniBlockSizeInValues+1];//TODO: this buffer should be of size which is multiple of size of miniBuffer
+
+    totalValueBuffer[valuesBuffered++]=BytesUtils.readUnsignedVarInt(in);
 
     while (valuesBuffered < totalValueCount) { //values Buffered could be more than totalValueCount, since we flush on a mini block basis
       loadNewBlock();
@@ -68,7 +68,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
 
   private void loadNewBlock() {
     try {
-      minDeltaInCurrentBlock = BytesUtils.readUnsignedVarInt(in); //TODO var int
+      minDeltaInCurrentBlock = BytesUtils.readUnsignedVarInt(in); //TODO var int!!! It should be signed  Suprise! this works with negativeNumber, but should still switch to zigZag encoding
     } catch (IOException e) {
       throw new ParquetDecodingException("can not read min delta in current block");
     }
@@ -93,15 +93,15 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     valuesBuffered += 8;
     if (packer.getBitWidth() == 0) {
       for (int i = 0; i < 8; i++) {
-        totalValueBuffer[offset + i] = 0 + minDeltaInCurrentBlock + previousValue;
-        previousValue = totalValueBuffer[offset + i];
+        int index = offset + i;
+        totalValueBuffer[index] = 0 + minDeltaInCurrentBlock + totalValueBuffer[index-1];
       }
     } else {
       int pos = page.length - in.available();
       packer.unpack8Values(page, pos, totalValueBuffer, offset);
       for (int i = 0; i < 8; i++) {
-        totalValueBuffer[offset + i] += minDeltaInCurrentBlock + previousValue;
-        previousValue = totalValueBuffer[offset + i];
+        int index = offset + i;
+        totalValueBuffer[index] += minDeltaInCurrentBlock + totalValueBuffer[index-1];
       }
 
     }
