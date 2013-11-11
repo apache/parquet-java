@@ -69,19 +69,25 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    */
   private void allocateValuesBuffer() {
     int totalMiniBlockCount = (int) Math.ceil((double) totalValueCount / config.miniBlockSizeInValues);
+    //+ 1 because first value written to header is also stored in values buffer
     valuesBuffer = new int[totalMiniBlockCount * config.miniBlockSizeInValues + 1];
   }
 
   @Override
   public void skip() {
+    checkRead();
     valuesRead++;
   }
 
   @Override
   public int readInteger() {
-    if (totalValueCount == valuesRead)
-      throw new ParquetDecodingException("no more value to read, total value count is " + totalValueCount);
+    checkRead();
     return valuesBuffer[valuesRead++];
+  }
+
+  private void checkRead() {
+    if (valuesRead >= totalValueCount)
+      throw new ParquetDecodingException("no more value to read, total value count is " + totalValueCount);
   }
 
   private void loadNewBlock() {
