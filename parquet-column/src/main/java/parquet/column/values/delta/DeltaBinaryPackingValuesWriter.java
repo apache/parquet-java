@@ -87,7 +87,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
       try {
         BytesUtils.writeIntLittleEndianOnOneByte(baos, bitWiths[i]);
       } catch (IOException e) {
-        throw new ParquetEncodingException("can not write bitwith for miniblock");
+        throw new ParquetEncodingException("can not write bitwith for miniblock", e);
       }
     }//first m bytes are for bitwiths...header of miniblock
 
