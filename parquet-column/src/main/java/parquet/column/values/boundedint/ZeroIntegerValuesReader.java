@@ -26,15 +26,22 @@ import parquet.column.values.ValuesReader;
  */
 public class ZeroIntegerValuesReader extends ValuesReader {
 
+  private int nextOffset;
+  
   public int readInteger() {
     return 0;
   }
 
   @Override
-  public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
-    return offset;
+  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
+    this.nextOffset = offset;
   }
 
+  @Override
+  public int getNextOffset() {
+    return this.nextOffset;
+  }
+  
   @Override
   public void skip() {
   }

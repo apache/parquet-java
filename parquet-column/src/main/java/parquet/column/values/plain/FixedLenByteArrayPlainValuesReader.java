@@ -57,11 +57,10 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
   }
 
   @Override
-  public int initFromPage(long valueCount, byte[] in, int offset)
+  public void initFromPage(int valueCount, byte[] in, int offset)
       throws IOException {
     if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));
     this.in = in;
     this.offset = offset;
-    return in.length;
   }
 }

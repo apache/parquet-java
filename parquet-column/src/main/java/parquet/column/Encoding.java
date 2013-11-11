@@ -25,6 +25,8 @@ import parquet.column.values.ValuesReader;
 import parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 import parquet.column.values.boundedint.ZeroIntegerValuesReader;
 import parquet.column.values.delta.DeltaBinaryPackingValuesReader;
+import parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesReader;
+import parquet.column.values.deltastrings.DeltaStringValuesReader;
 import parquet.column.values.dictionary.DictionaryValuesReader;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainBinaryDictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainDoubleDictionary;
@@ -113,7 +115,21 @@ public enum Encoding {
       return new DeltaBinaryPackingValuesReader();
     }
   },
-
+  
+  DELTA_LENGTH_BYTE_ARRAY {
+    @Override
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+      return new DeltaLengthByteArrayValuesReader();
+    }
+  },
+  
+  DELTA_STRINGS {
+    @Override
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+      return new DeltaStringValuesReader();
+    }
+  },
+  
   PLAIN_DICTIONARY {
     @Override
     public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {

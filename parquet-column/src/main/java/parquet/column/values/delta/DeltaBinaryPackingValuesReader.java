@@ -23,6 +23,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   private int[] totalValueBuffer;
   private int valuesBuffered;
   private ByteArrayInputStream in;
+  private int nextOffset;
 
   /**
    * eagerly load all the data into memory
@@ -34,7 +35,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    * @throws IOException
    */
   @Override
-  public int initFromPage(long valueCount, byte[] page, int offset) throws IOException {
+  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException {
     in = new ByteArrayInputStream(page, offset, page.length - offset); //TODO use var int
     this.page=page;
     this.blockSizeInValues = BytesUtils.readUnsignedVarInt(in);
@@ -51,7 +52,12 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
       loadNewBlock();
 //      System.out.println("load new block");
     }
-    return page.length-in.available()-offset;
+    this.nextOffset = page.length-in.available()-offset;
+  }
+  
+  @Override
+  public int getNextOffset() {
+    return this.nextOffset;
   }
 
   @Override

@@ -17,6 +17,7 @@ package parquet.column.values;
 
 import java.io.IOException;
 
+import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
 
 /**
@@ -54,7 +55,11 @@ public abstract class ValuesReader {
    * @return the offset of the end of the data for this section of the page
    * @throws IOException
    */
-  public abstract int initFromPage(long valueCount, byte[] page, int offset) throws IOException;
+  public abstract void initFromPage(int valueCount, byte[] page, int offset) throws IOException;
+  
+  public int getNextOffset() {
+    throw new ParquetDecodingException("Unsupported: cannot get offset of the next section.");
+  }
 
   /**
    * usable when the encoding is dictionary based

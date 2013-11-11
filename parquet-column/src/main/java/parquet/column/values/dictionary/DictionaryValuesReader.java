@@ -49,14 +49,13 @@ public class DictionaryValuesReader extends ValuesReader {
   }
 
   @Override
-  public int initFromPage(long valueCount, byte[] page, int offset)
+  public void initFromPage(int valueCount, byte[] page, int offset)
       throws IOException {
     if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (page.length - offset));
     this.in = new ByteArrayInputStream(page, offset, page.length - offset);
     int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
     if (DEBUG) LOG.debug("bit width " + bitWidth);
     decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
-    return page.length;
   }
 
   @Override

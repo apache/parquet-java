@@ -1,14 +1,14 @@
 package parquet.column.values.delta;
 
-import org.junit.Before;
-import org.junit.Test;
-import parquet.bytes.BytesInput;
-import parquet.io.ParquetDecodingException;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
-import java.util.Random;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Before;
+import org.junit.Test;
+
+import parquet.bytes.BytesInput;
+import parquet.io.ParquetDecodingException;
 
 public class DeltaBinaryPackingValuesWriterTest {
   DeltaBinaryPackingValuesReader reader;
@@ -113,7 +113,8 @@ public class DeltaBinaryPackingValuesWriterTest {
     System.arraycopy(valueContent,0,pageContent, contentOffsetInPage,valueContent.length);
 
     //offset should be correct
-    int offset=reader.initFromPage(100, pageContent, contentOffsetInPage);
+    reader.initFromPage(100, pageContent, contentOffsetInPage);
+    int offset= reader.getNextOffset();
     assertEquals(valueContent.length,offset);
     //should be able to read data correclty
     for (int i : data) {

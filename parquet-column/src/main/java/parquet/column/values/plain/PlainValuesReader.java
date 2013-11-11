@@ -41,10 +41,9 @@ abstract public class PlainValuesReader extends ValuesReader {
    * @see parquet.column.values.ValuesReader#initFromPage(byte[], int)
    */
   @Override
-  public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
+  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
     if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));
     this.in = new LittleEndianDataInputStream(new ByteArrayInputStream(in, offset, in.length - offset));
-    return in.length;
   }
 
   public static class DoublePlainValuesReader extends PlainValuesReader {
@@ -90,9 +89,7 @@ abstract public class PlainValuesReader extends ValuesReader {
   }
 
   public static class IntegerPlainValuesReader extends PlainValuesReader {
-
-
-
+    
     @Override
     public void skip() {
       try {
