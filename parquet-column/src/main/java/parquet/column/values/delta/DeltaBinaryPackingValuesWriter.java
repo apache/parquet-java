@@ -18,12 +18,10 @@ import java.io.IOException;
 public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
   public static final int MAX_BITWIDTH = 32;
-  private final int miniBlockSizeInValues;
-  private final int blockSizeInValues;
-  private final int miniBlockNum;
   private final CapacityByteArrayOutputStream baos;
+  private final DeltaBinaryPackingConfig config;
   private int totalValueCount = 0;
-  private int valueToFlush = 0;
+  private int deltaValuesToFlush = 0;
   private int[] deltaBlockBuffer;
   /*bytes buffer for a mini block, it is reused for each mini block. therefore the size of biggest miniblock with bitwith of 32 is allocated*/
   private byte[] miniBlockByteBuffer;
@@ -32,12 +30,9 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   private int minDeltaInCurrentBlock = Integer.MAX_VALUE;
 
   public DeltaBinaryPackingValuesWriter(int blockSizeInValues, int miniBlockNum, int slabSize) {
-    this.blockSizeInValues = blockSizeInValues;
-    this.miniBlockNum = miniBlockNum;
-    this.miniBlockSizeInValues = blockSizeInValues / miniBlockNum;
-    assert (miniBlockSizeInValues % 8 == 0) : "miniBlockSize must be multiple of 8";
+    this.config=new DeltaBinaryPackingConfig(blockSizeInValues,miniBlockNum);
     deltaBlockBuffer = new int[blockSizeInValues];
-    miniBlockByteBuffer = new byte[miniBlockSizeInValues * MAX_BITWIDTH];
+    miniBlockByteBuffer = new byte[config.miniBlockSizeInValues * MAX_BITWIDTH];
     baos = new CapacityByteArrayOutputStream(slabSize);
   }
 
@@ -59,21 +54,21 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     int delta = v - previousValue;//calculate delta
     previousValue = v;
 
-    deltaBlockBuffer[valueToFlush++] = delta;
+    deltaBlockBuffer[deltaValuesToFlush++] = delta;
 
 
     if (delta < minDeltaInCurrentBlock)
       minDeltaInCurrentBlock = delta;
 
-    if (blockSizeInValues == valueToFlush)
+    if (config.blockSizeInValues == deltaValuesToFlush)
       flushWholeBlockBuffer();
   }
 
   private void flushWholeBlockBuffer() {
     //this method may flush the whole buffer or only part of the buffer
-    int[] bitWiths = new int[miniBlockNum];
+    int[] bitWiths = new int[config.miniBlockNum];
 
-    int countToFlush = valueToFlush;//TODO: unnecessary variable
+    int countToFlush = deltaValuesToFlush;//TODO: unnecessary variable
     int miniBlocksToFlush = getMiniBlockToFlush(countToFlush);
 
     //since we store the min delta, the deltas will be converted to be delta of deltas and will always be positive or 0
@@ -88,7 +83,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     }
 
     calculateBitWithsForBlockBuffer(bitWiths);
-    for (int i = 0; i < miniBlockNum; i++) {
+    for (int i = 0; i < config.miniBlockNum; i++) {
       try {
         BytesUtils.writeIntLittleEndianOnOneByte(baos, bitWiths[i]);
       } catch (IOException e) {
@@ -102,8 +97,8 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
       int currentBitWidth = bitWiths[i];
       BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(currentBitWidth);
       //allocate output bytes TODO, this can be reused...
-      int miniBlockStart = i * miniBlockSizeInValues;
-      for (int j = miniBlockStart; j < (i + 1) * miniBlockSizeInValues; j += 8) {//8 values per pack
+      int miniBlockStart = i * config.miniBlockSizeInValues;
+      for (int j = miniBlockStart; j < (i + 1) * config.miniBlockSizeInValues; j += 8) {//8 values per pack
         //This might write more values, since it's not aligend to miniblock, but doesnt matter. The reader uses total count to see if reached the end. And mini block is atomic in terms of flushing
         packer.pack8Values(deltaBlockBuffer, j, miniBlockByteBuffer, 0); //TODO: bug!! flush should be on mini block basis,
         baos.write(miniBlockByteBuffer, 0, currentBitWidth);
@@ -112,19 +107,19 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     }
 
     minDeltaInCurrentBlock = Integer.MAX_VALUE;
-    valueToFlush = 0;
+    deltaValuesToFlush = 0;
   }
 
   private void calculateBitWithsForBlockBuffer(int[] bitWiths) {
-    int numberCount = valueToFlush;//TODO: unecessary variable
+    int numberCount = deltaValuesToFlush;//TODO: unecessary variable
 
     int miniBlocksToFlush = getMiniBlockToFlush(numberCount);
 
     for (int miniBlockIndex = 0; miniBlockIndex < miniBlocksToFlush; miniBlockIndex++) {
       //iterate through values in each mini block
       int mask = 0;
-      int miniStart = miniBlockIndex * miniBlockSizeInValues;
-      int miniEnd = Math.min((miniBlockIndex + 1) * miniBlockSizeInValues, numberCount);
+      int miniStart = miniBlockIndex * config.miniBlockSizeInValues;
+      int miniEnd = Math.min((miniBlockIndex + 1) * config.miniBlockSizeInValues, numberCount);
       for (int valueIndex = miniStart; valueIndex < miniEnd; valueIndex++) {
         mask |= deltaBlockBuffer[valueIndex];
       }
@@ -133,7 +128,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   }
 
   private int getMiniBlockToFlush(double numberCount) {
-    return (int) Math.ceil(numberCount / miniBlockSizeInValues);
+    return (int) Math.ceil(numberCount / config.miniBlockSizeInValues);
   }
 
 
@@ -141,11 +136,10 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   @Override
   public BytesInput getBytes() {
     //The Page Header should include: blockSizeInValues, numberOfMiniBlocks, totalValueCount
-    if (valueToFlush != 0)
+    if (deltaValuesToFlush != 0)
       flushWholeBlockBuffer();//TODO: bug, when getBytes is called multiple times
     return BytesInput.concat(
-            BytesInput.fromUnsignedVarInt(blockSizeInValues),
-            BytesInput.fromUnsignedVarInt(miniBlockNum),
+            config.toBytesInput(),
             BytesInput.fromUnsignedVarInt(totalValueCount),
             BytesInput.fromUnsignedVarInt(firstValue),
             BytesInput.from(baos));
@@ -160,7 +154,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   public void reset() {
     this.totalValueCount = 0;
     this.baos.reset();
-    this.valueToFlush = 0;
+    this.deltaValuesToFlush = 0;
     this.minDeltaInCurrentBlock = Integer.MAX_VALUE;
   }
 
