@@ -189,7 +189,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   }
 
   /**
-   * getBytes will trigger flushing block buffer, do not write after getBytes() is called without calling reset()
+   * getBytes will trigger flushing block buffer, DO NOT write after getBytes() is called without calling reset()
    *
    * @return
    */
