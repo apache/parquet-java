@@ -13,6 +13,7 @@ class DeltaBinaryPackingConfig {
     this.miniBlockNum=miniBlockNum;
     this.miniBlockSizeInValues = blockSizeInValues / miniBlockNum;
     assert (miniBlockSizeInValues % 8 == 0) : "miniBlockSize must be multiple of 8";
+    //TODO: change to use Precondition
   }
 
   public BytesInput toBytesInput(){

@@ -14,7 +14,7 @@ import java.io.IOException;
 /**
  * Write integers with delta encoding and binary packing
  * The format is as follows:
- *
+ * <p/>
  * <pre>
  *   {@code
  *     delta-binary-packing: <page-header> <block>*
@@ -26,8 +26,8 @@ import java.io.IOException;
  *     blockSizeInValues,blockSizeInValues,totalValueCount,firstValue : unsigned varint
  *   }
  * </pre>
- * @author Tianshuo Deng
  *
+ * @author Tianshuo Deng
  */
 public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   /**
@@ -36,19 +36,21 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
    */
   public static final int MAX_BITWIDTH = 32;
   private final CapacityByteArrayOutputStream baos;
-
   /**
    * stores blockSizeInValues, miniBlockNum and miniBlockSizeInValues
    */
   private final DeltaBinaryPackingConfig config;
-
-  private int totalValueCount = 0;
-
   /**
+   * bit width for each mini block, reused between flushes
+   */
+  private final int[] bitWidths;
+  private int totalValueCount = 0;
+  /**
+   * a pointer to deltaBlockBuffer indicating the end of deltaBlockBuffer
    * the number of values in the deltaBlockBuffer that haven't flushed to baos
+   * it will be reset after each flush
    */
   private int deltaValuesToFlush = 0;
-
   /**
    * stores delta values starting from the 2nd value written(1st value is stored in header).
    * It's reused between flushes
@@ -59,26 +61,25 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
    * Therefore the size of biggest miniblock with bitwith of MAX_BITWITH is allocated
    */
   private byte[] miniBlockByteBuffer;
-
   /**
    * firstValue is written to the header of the page
    */
   private int firstValue = 0;
-
   /**
    * cache previous written value for calculating delta
    */
   private int previousValue = 0;
-
   /**
    * min delta is written to the beginning of each block.
    * it's zig-zag encoded. The deltas stored in each block is actually the difference to min delta,
    * therefore are all positive
+   * it will be reset after each flush
    */
   private int minDeltaInCurrentBlock = Integer.MAX_VALUE;
 
   public DeltaBinaryPackingValuesWriter(int blockSizeInValues, int miniBlockNum, int slabSize) {
-    this.config=new DeltaBinaryPackingConfig(blockSizeInValues,miniBlockNum);
+    this.config = new DeltaBinaryPackingConfig(blockSizeInValues, miniBlockNum);
+    bitWidths = new int[config.miniBlockNum];
     deltaBlockBuffer = new int[blockSizeInValues];
     miniBlockByteBuffer = new byte[config.miniBlockSizeInValues * MAX_BITWIDTH];
     baos = new CapacityByteArrayOutputStream(slabSize);
@@ -104,88 +105,100 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
     deltaBlockBuffer[deltaValuesToFlush++] = delta;
 
-
     if (delta < minDeltaInCurrentBlock)
       minDeltaInCurrentBlock = delta;
 
     if (config.blockSizeInValues == deltaValuesToFlush)
-      flushWholeBlockBuffer();
+      flushBlockBuffer();
   }
 
-  private void flushWholeBlockBuffer() {
-    //this method may flush the whole buffer or only part of the buffer
-    int[] bitWiths = new int[config.miniBlockNum];
+  private void flushBlockBuffer() {
 
-    int countToFlush = deltaValuesToFlush;//TODO: unnecessary variable
-    int miniBlocksToFlush = getMiniBlockToFlush(countToFlush);
-
-    //since we store the min delta, the deltas will be converted to be delta of deltas and will always be positive or 0
-    for (int i = 0; i < countToFlush; i++) {
+    //since we store the min delta, the deltas will be converted to be the difference to min delta
+    for (int i = 0; i < deltaValuesToFlush; i++) {
       deltaBlockBuffer[i] = deltaBlockBuffer[i] - minDeltaInCurrentBlock;
     }
 
-    try {
-      BytesUtils.writeUnsignedVarInt(minDeltaInCurrentBlock, baos);
-    } catch (IOException e) {
-      throw new ParquetEncodingException("can not write min delta for block", e);
-    }
+    writeMinDelta();
+    int miniBlocksToFlush = getMiniBlockCountToFlush(deltaValuesToFlush);
 
-    calculateBitWithsForBlockBuffer(bitWiths);
+    calculateBitWidthsForDeltaBlockBuffer(miniBlocksToFlush);
     for (int i = 0; i < config.miniBlockNum; i++) {
-      try {
-        BytesUtils.writeIntLittleEndianOnOneByte(baos, bitWiths[i]);
-      } catch (IOException e) {
-        throw new ParquetEncodingException("can not write bitwith for miniblock", e);
-      }
-    }//first m bytes are for bitwiths...header of miniblock
-
+      writeBitWidthForMiniBlock(i);
+    }
 
     for (int i = 0; i < miniBlocksToFlush; i++) {
       //writing i th miniblock
-      int currentBitWidth = bitWiths[i];
+      int currentBitWidth = bitWidths[i];
       BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(currentBitWidth);
-      //allocate output bytes TODO, this can be reused...
       int miniBlockStart = i * config.miniBlockSizeInValues;
       for (int j = miniBlockStart; j < (i + 1) * config.miniBlockSizeInValues; j += 8) {//8 values per pack
-        //This might write more values, since it's not aligend to miniblock, but doesnt matter. The reader uses total count to see if reached the end. And mini block is atomic in terms of flushing
-        packer.pack8Values(deltaBlockBuffer, j, miniBlockByteBuffer, 0); //TODO: bug!! flush should be on mini block basis,
+        // mini block is atomic in terms of flushing
+        // This may write more values when reach to the end of data writing to last mini block,
+        // since it may not be aligend to miniblock,
+        // but doesnt matter. The reader uses total count to see if reached the end.
+        packer.pack8Values(deltaBlockBuffer, j, miniBlockByteBuffer, 0);
         baos.write(miniBlockByteBuffer, 0, currentBitWidth);
       }
-
     }
 
     minDeltaInCurrentBlock = Integer.MAX_VALUE;
     deltaValuesToFlush = 0;
   }
 
-  private void calculateBitWithsForBlockBuffer(int[] bitWiths) {
-    int numberCount = deltaValuesToFlush;//TODO: unecessary variable
-
-    int miniBlocksToFlush = getMiniBlockToFlush(numberCount);
-
-    for (int miniBlockIndex = 0; miniBlockIndex < miniBlocksToFlush; miniBlockIndex++) {
-      //iterate through values in each mini block
-      int mask = 0;
-      int miniStart = miniBlockIndex * config.miniBlockSizeInValues;
-      int miniEnd = Math.min((miniBlockIndex + 1) * config.miniBlockSizeInValues, numberCount);
-      for (int valueIndex = miniStart; valueIndex < miniEnd; valueIndex++) {
-        mask |= deltaBlockBuffer[valueIndex];
-      }
-      bitWiths[miniBlockIndex] = 32 - Integer.numberOfLeadingZeros(mask);
+  private void writeBitWidthForMiniBlock(int i) {
+    try {
+      BytesUtils.writeIntLittleEndianOnOneByte(baos, bitWidths[i]);
+    } catch (IOException e) {
+      throw new ParquetEncodingException("can not write bitwith for miniblock", e);
     }
   }
 
-  private int getMiniBlockToFlush(double numberCount) {
+  private void writeMinDelta() {
+    //TODO: change to zigZag
+    try {
+      BytesUtils.writeUnsignedVarInt(minDeltaInCurrentBlock, baos);
+    } catch (IOException e) {
+      throw new ParquetEncodingException("can not write min delta for block", e);
+    }
+  }
+
+  /**
+   * iterate through values in each mini block and calculate the bitWidths of max values.
+   *
+   * @param miniBlocksToFlush
+   */
+  private void calculateBitWidthsForDeltaBlockBuffer(int miniBlocksToFlush) {
+    for (int miniBlockIndex = 0; miniBlockIndex < miniBlocksToFlush; miniBlockIndex++) {
+
+      int mask = 0;
+      int miniStart = miniBlockIndex * config.miniBlockSizeInValues;
+
+      //The end of current mini block could be the end of current block(deltaValuesToFlush) buffer when data is not aligned to mini block
+      int miniEnd = Math.min((miniBlockIndex + 1) * config.miniBlockSizeInValues, deltaValuesToFlush);
+
+      for (int i = miniStart; i < miniEnd; i++) {
+        mask |= deltaBlockBuffer[i];
+      }
+      bitWidths[miniBlockIndex] = 32 - Integer.numberOfLeadingZeros(mask);
+    }
+  }
+
+  private int getMiniBlockCountToFlush(double numberCount) {
     return (int) Math.ceil(numberCount / config.miniBlockSizeInValues);
   }
 
-
-
+  /**
+   * getBytes will trigger flushing block buffer, do not write after getBytes() is called without calling reset()
+   *
+   * @return
+   */
   @Override
   public BytesInput getBytes() {
     //The Page Header should include: blockSizeInValues, numberOfMiniBlocks, totalValueCount
-    if (deltaValuesToFlush != 0)
-      flushWholeBlockBuffer();//TODO: bug, when getBytes is called multiple times
+    if (deltaValuesToFlush != 0) {
+      flushBlockBuffer();
+    }
     return BytesInput.concat(
             config.toBytesInput(),
             BytesInput.fromUnsignedVarInt(totalValueCount),
