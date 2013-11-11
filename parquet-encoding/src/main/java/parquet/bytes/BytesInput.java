@@ -268,7 +268,8 @@ abstract public class BytesInput {
 
     @Override
     public long size() {
-      return 5-(Integer.numberOfLeadingZeros(intValue)/7);
+      int s = 5 - ((Integer.numberOfLeadingZeros(intValue) + 3) / 7);
+      return s == 0 ? 1 : s;
     }
   }
 
