@@ -199,6 +199,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     if (deltaValuesToFlush != 0) {
       flushBlockBuffer();
     }
+//    System.out.println("baos size is"+baos.size());
     return BytesInput.concat(
             config.toBytesInput(),
             BytesInput.fromUnsignedVarInt(totalValueCount),

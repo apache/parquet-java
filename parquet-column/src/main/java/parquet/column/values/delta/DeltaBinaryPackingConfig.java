@@ -11,8 +11,9 @@ class DeltaBinaryPackingConfig {
   public DeltaBinaryPackingConfig(int blockSizeInValues, int miniBlockNum) {
     this.blockSizeInValues=blockSizeInValues;
     this.miniBlockNum=miniBlockNum;
-    this.miniBlockSizeInValues = blockSizeInValues / miniBlockNum;
-    assert (miniBlockSizeInValues % 8 == 0) : "miniBlockSize must be multiple of 8";
+    double miniSize = (double) blockSizeInValues / miniBlockNum;
+    assert (miniSize % 8 == 0) : "miniBlockSize must be multiple of 8";
+    this.miniBlockSizeInValues = (int) miniSize;
     //TODO: change to use Precondition
   }
 

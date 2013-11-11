@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class DeltaBinaryPackingValuesWriterTest {
   DeltaBinaryPackingValuesReader reader;
@@ -28,8 +29,10 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   @Test(expected = AssertionError.class)
   public void miniBlockSizeShouldBeMultipleOf8() {
+    new DeltaBinaryPackingValuesWriter(1281, 4, 100);
     new DeltaBinaryPackingValuesWriter(128, 3, 100);
   }
+
 
   /* When data size is multiple of Block*/
   @Test
@@ -215,20 +218,53 @@ public class DeltaBinaryPackingValuesWriterTest {
     shouldReadAndWrite(data);
   }
 
+  @Test
+  public void randomDataTest() throws IOException{
+    int maxSize = 10000;
+    int[] data = new int[maxSize];
+
+    Random sizeRandom = new Random();
+//    int size= sizeRandom.nextInt(maxSize);
+    int size= blockSize*10;
+    Random numberRandom=new Random();
+    for(int i=0;i<size;i++) {
+      data[i]=numberRandom.nextInt();
+    }
+    shouldReadAndWrite(data,size);
+  }
+
   private void shouldReadAndWrite(int[] data) throws IOException {
+    shouldReadAndWrite(data,data.length);
+  }
+    private void shouldReadAndWrite(int[] data, int length) throws IOException {
 
-    writeData(data);
+    writeData(data,length);
     reader = new DeltaBinaryPackingValuesReader();
-    reader.initFromPage(100, writer.getBytes().toByteArray(), 0);
+      byte[] page = writer.getBytes().toByteArray();
+      int miniBlockSize=blockSize/miniBlockNum;
+      //storage overhead is
+//      System.out.println("estimate overhead is " +(1.0/miniBlockSize + (4.0/blockSize)+ ((4.0*miniBlockSize)/length)));
+      double estimatedSize = 4 * 4 //blockHeader
+              + 4*length //data
+              + ((double)length/miniBlockSize) //bitWidth of mini blocks
+              + ((4.0*length)/blockSize)//min delta for each block
+              +4 *miniBlockSize;
+      System.out.println("estimate size is "+estimatedSize);
+      System.out.println("page size is " + page.length);
+      System.out.printf("avg length of value is %f, data size is %d\n",(double) page.length / length,length);
+      reader.initFromPage(100, page, 0);
 
-    for (int i : data) {
-      assertEquals(i, reader.readInteger());
+    for (int i =0 ; i<length;i++) {
+      assertEquals(data[i], reader.readInteger());
     }
   }
 
-  private void writeData(int[] data) {
-    for (int i : data) {
-      writer.writeInteger(i);
+  private void writeData(int[] data){
+    writeData(data,data.length);
+  }
+  private void writeData(int[] data,int length) {
+    for (int i=0;i<length;i++) {
+      writer.writeInteger(data[i]);
     }
   }
 
