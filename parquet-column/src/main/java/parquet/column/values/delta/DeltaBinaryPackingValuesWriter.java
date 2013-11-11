@@ -203,7 +203,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     return BytesInput.concat(
             config.toBytesInput(),
             BytesInput.fromUnsignedVarInt(totalValueCount),
-            BytesInput.fromUnsignedVarInt(firstValue),
+            BytesInput.fromUnsignedVarInt(firstValue), //TODO: use zigZag
             BytesInput.from(baos));
   }
 
