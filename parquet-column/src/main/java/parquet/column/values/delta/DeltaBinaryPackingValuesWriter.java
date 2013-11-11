@@ -30,17 +30,51 @@ import java.io.IOException;
  *
  */
 public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
-
+  /**
+   * max bitwidth for a mini block, it is used to allocate miniBlockByteBuffer which is
+   * reused between flushes.
+   */
   public static final int MAX_BITWIDTH = 32;
   private final CapacityByteArrayOutputStream baos;
+
+  /**
+   * stores blockSizeInValues, miniBlockNum and miniBlockSizeInValues
+   */
   private final DeltaBinaryPackingConfig config;
+
   private int totalValueCount = 0;
+
+  /**
+   * the number of values in the deltaBlockBuffer that haven't flushed to baos
+   */
   private int deltaValuesToFlush = 0;
+
+  /**
+   * stores delta values starting from the 2nd value written(1st value is stored in header).
+   * It's reused between flushes
+   */
   private int[] deltaBlockBuffer;
-  /*bytes buffer for a mini block, it is reused for each mini block. therefore the size of biggest miniblock with bitwith of 32 is allocated*/
+  /**
+   * bytes buffer for a mini block, it is reused for each mini block.
+   * Therefore the size of biggest miniblock with bitwith of MAX_BITWITH is allocated
+   */
   private byte[] miniBlockByteBuffer;
+
+  /**
+   * firstValue is written to the header of the page
+   */
   private int firstValue = 0;
+
+  /**
+   * cache previous written value for calculating delta
+   */
   private int previousValue = 0;
+
+  /**
+   * min delta is written to the beginning of each block.
+   * it's zig-zag encoded. The deltas stored in each block is actually the difference to min delta,
+   * therefore are all positive
+   */
   private int minDeltaInCurrentBlock = Integer.MAX_VALUE;
 
   public DeltaBinaryPackingValuesWriter(int blockSizeInValues, int miniBlockNum, int slabSize) {
@@ -52,7 +86,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
   @Override
   public long getBufferedSize() {
-    return 0;
+    return baos.size();
   }
 
   @Override
