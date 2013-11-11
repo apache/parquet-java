@@ -13,7 +13,21 @@ import java.io.IOException;
 
 /**
  * Write integers with delta encoding and binary packing
- * This Writer will write the value when a group is finished(o)
+ * The format is as follows:
+ *
+ * <pre>
+ *   {@code
+ *     delta-binary-packing: <page-header> <block>*
+ *     page-header := <block size in values> <number of miniblocks in a block> <total value count> <first value>
+ *     block := <min delta> <list of bitwidths of miniblocks> <miniblocks>
+ *
+ *     min delta : zig-zag var int encoded
+ *     bitWidthsOfMiniBlock : 1 byte little endian
+ *     blockSizeInValues,blockSizeInValues,totalValueCount,firstValue : unsigned varint
+ *   }
+ * </pre>
+ * @author Tianshuo Deng
+ *
  */
 public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
