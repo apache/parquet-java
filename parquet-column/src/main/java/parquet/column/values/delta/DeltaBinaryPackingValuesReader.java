@@ -42,7 +42,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    * @param valueCount count of values in this page
    * @param page       the array to read from containing the page data (repetition levels, definition levels, data)
    * @param offset     where to start reading from in the page
-   * @return
+   * @return  the length read
    * @throws IOException
    */
   @Override
@@ -51,14 +51,14 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     this.config = DeltaBinaryPackingConfig.readConfig(in);
     this.page = page;
     this.totalValueCount = BytesUtils.readUnsignedVarInt(in);
-
     allocateValuesBuffer();
     bitWidths = new int[config.miniBlockNum];
+
     //read first value from header
     valuesBuffer[valuesBuffered++] = BytesUtils.readZigZagVarInt(in);
 
     while (valuesBuffered < totalValueCount) { //values Buffered could be more than totalValueCount, since we flush on a mini block basis
-      loadNewBlock();
+      loadNewBlockToBuffer();
     }
     return page.length - in.available() - offset;
   }
@@ -90,7 +90,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
       throw new ParquetDecodingException("no more value to read, total value count is " + totalValueCount);
   }
 
-  private void loadNewBlock() {
+  private void loadNewBlockToBuffer() {
     try {
       minDeltaInCurrentBlock = BytesUtils.readZigZagVarInt(in);
     } catch (IOException e) {
@@ -101,8 +101,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
 
     // mini block is atomic for reading, we read a mini block when there are more values left
     for (int i = 0; i < config.miniBlockNum && valuesBuffered < totalValueCount; i++) {
-      int currentBitWidth = bitWidths[i];
-      BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(currentBitWidth);
+      BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidths[i]);
       unpackMiniBlock(packer);
     }
   }
@@ -110,7 +109,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   /**
    * mini block has a size of 8*n, unpack 8 value each time
    *
-   * @param packer
+   * @param packer the packer created from bitwidth of current mini block
    */
   private void unpackMiniBlock(BytePacker packer) {
     for (int j = 0; j < config.miniBlockSizeInValues; j += 8) {
@@ -138,7 +137,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
       try {
         bitWidths[i] = BytesUtils.readIntLittleEndianOnOneByte(in);
       } catch (IOException e) {
-        throw new ParquetDecodingException("Can not decode bitwith in block header", e);
+        throw new ParquetDecodingException("Can not decode bitwidth in block header", e);
       }
     }
   }
