@@ -30,9 +30,8 @@ import parquet.Log;
  *
  */
 public class BytesUtils {
-  private static final Log LOG = Log.getLog(BytesUtils.class);
-
   public static final Charset UTF8 = Charset.forName("UTF-8");
+  private static final Log LOG = Log.getLog(BytesUtils.class);
 
   /**
    * give the number of bits needed to encode an int given the max value
@@ -182,12 +181,25 @@ public class BytesUtils {
     return value | (b << i);
   }
 
+  public static int readZigZagVarInt(InputStream in) throws IOException {
+    int raw = readUnsignedVarInt(in);
+    int temp = (((raw << 31) >> 31) ^ raw) >> 1;
+    // This extra step lets us deal with the largest signed values by treating
+    // negative results from read unsigned methods as like unsigned values.
+    // Must re-flip the top bit if the original read value had it set.
+    return temp ^ (raw & (1 << 31));
+  }
+
   public static void writeUnsignedVarInt(int value, OutputStream out) throws IOException {
     while ((value & 0xFFFFFF80) != 0L) {
       out.write((value & 0x7F) | 0x80);
       value >>>= 7;
     }
     out.write(value & 0x7F);
+  }
+
+  public static void writeZigZagVarInt(int intValue, OutputStream out) throws IOException{
+    writeUnsignedVarInt((intValue << 1) ^ (intValue >> 31), out);
   }
 
   /**

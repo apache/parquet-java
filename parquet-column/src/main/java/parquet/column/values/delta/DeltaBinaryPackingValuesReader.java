@@ -12,16 +12,14 @@ import java.io.IOException;
 
 
 public class DeltaBinaryPackingValuesReader extends ValuesReader {
-  private int blockSizeInValues;
-  private int miniBlockNum;
   private int totalValueCount;
   private int valuesRead;
   private int minDeltaInCurrentBlock;
-  private int miniBlockSizeInValues;
   private byte[] page;
   private int[] totalValueBuffer;
   private int valuesBuffered;
   private ByteArrayInputStream in;
+  private DeltaBinaryPackingConfig config;
 
   /**
    * eagerly load all the data into memory
@@ -34,18 +32,16 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    */
   @Override
   public int initFromPage(long valueCount, byte[] page, int offset) throws IOException {
-    in = new ByteArrayInputStream(page, offset, page.length - offset); //TODO use var int
+    in = new ByteArrayInputStream(page, offset, page.length - offset);
+    this.config = DeltaBinaryPackingConfig.readConfig(in);
     this.page = page;
-    this.blockSizeInValues = BytesUtils.readUnsignedVarInt(in);
-    this.miniBlockNum = BytesUtils.readUnsignedVarInt(in);
     this.totalValueCount = BytesUtils.readUnsignedVarInt(in);
-    this.miniBlockSizeInValues = blockSizeInValues / miniBlockNum;
-    assert (miniBlockSizeInValues % 8 == 0) : "miniBlockSize must be multiple of 8"; //TODO use Precondition
 
-    int totalMiniBlockCount = (int) Math.ceil((double) totalValueCount / miniBlockSizeInValues);
-    totalValueBuffer = new int[totalMiniBlockCount * miniBlockSizeInValues+1];//TODO: this buffer should be of size which is multiple of size of miniBuffer
+    int totalMiniBlockCount = (int) Math.ceil((double) totalValueCount / config.miniBlockSizeInValues);
+    totalValueBuffer = new int[totalMiniBlockCount * config.miniBlockSizeInValues + 1];
 
-    totalValueBuffer[valuesBuffered++]=BytesUtils.readUnsignedVarInt(in);
+    //read first value from header
+    totalValueBuffer[valuesBuffered++] = BytesUtils.readZigZagVarInt(in);
 
     while (valuesBuffered < totalValueCount) { //values Buffered could be more than totalValueCount, since we flush on a mini block basis
       loadNewBlock();
@@ -68,21 +64,21 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
 
   private void loadNewBlock() {
     try {
-      minDeltaInCurrentBlock = BytesUtils.readUnsignedVarInt(in); //TODO var int!!! It should be signed  Suprise! this works with negativeNumber, but should still switch to zigZag encoding
+      minDeltaInCurrentBlock = BytesUtils.readZigZagVarInt(in);
     } catch (IOException e) {
       throw new ParquetDecodingException("can not read min delta in current block");
     }
 
-    int[] bitWiths = new int[miniBlockNum];
+    int[] bitWiths = new int[config.miniBlockNum];
     readBitWidthsForMiniBlocks(bitWiths);//this is ok
 
 
-    for (int i = 0; i < miniBlockNum; i++) {
+    for (int i = 0; i < config.miniBlockNum; i++) {
       int currentBitWidth = bitWiths[i];
       BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(currentBitWidth);
 
       byte[] bytes = new byte[currentBitWidth];
-      for (int j = 0; j < miniBlockSizeInValues && valuesBuffered < totalValueCount; j += 8) { // mini block is atomic for reading, we read a mini block when there are more values left
+      for (int j = 0; j < config.miniBlockSizeInValues && valuesBuffered < totalValueCount; j += 8) { // mini block is atomic for reading, we read a mini block when there are more values left
         unpack8Values(packer, bytes, valuesBuffered);
       }
 
@@ -94,14 +90,14 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     if (packer.getBitWidth() == 0) {
       for (int i = 0; i < 8; i++) {
         int index = offset + i;
-        totalValueBuffer[index] = 0 + minDeltaInCurrentBlock + totalValueBuffer[index-1];
+        totalValueBuffer[index] = 0 + minDeltaInCurrentBlock + totalValueBuffer[index - 1];
       }
     } else {
       int pos = page.length - in.available();
       packer.unpack8Values(page, pos, totalValueBuffer, offset);
       for (int i = 0; i < 8; i++) {
         int index = offset + i;
-        totalValueBuffer[index] += minDeltaInCurrentBlock + totalValueBuffer[index-1];
+        totalValueBuffer[index] += minDeltaInCurrentBlock + totalValueBuffer[index - 1];
       }
 
     }
@@ -109,7 +105,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   }
 
   private void readBitWidthsForMiniBlocks(int[] bitWiths) {
-    for (int i = 0; i < miniBlockNum; i++) {
+    for (int i = 0; i < config.miniBlockNum; i++) {
       try {
         bitWiths[i] = BytesUtils.readIntLittleEndianOnOneByte(in);
       } catch (IOException e) {

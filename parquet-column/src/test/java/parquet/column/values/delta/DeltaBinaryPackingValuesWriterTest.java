@@ -24,10 +24,9 @@ public class DeltaBinaryPackingValuesWriterTest {
     writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100);
   }
 
-  @Test(expected = AssertionError.class)
+  @Test(expected = IllegalArgumentException.class)
   public void miniBlockSizeShouldBeMultipleOf8() {
     new DeltaBinaryPackingValuesWriter(1281, 4, 100);
-    new DeltaBinaryPackingValuesWriter(128, 3, 100);
   }
 
   /* When data size is multiple of Block*/
@@ -137,15 +136,17 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   @Test
   public void readingPerfTest() throws IOException {
+    int round = 100;
     int[] data = new int[1000 * blockSize];
     for (int i = 0; i < data.length; i++) {
       data[i] = i * 3;
     }
 
     writeData(data);
+    double avg = 0.0;
 
-    for (int i = 0; i < 1000; i++) {
-      System.out.print("<");
+    for (int i = 0; i < round; i++) {
+//      System.out.print("<");
       long startTime = System.nanoTime();
 
       reader = new DeltaBinaryPackingValuesReader();
@@ -154,12 +155,16 @@ public class DeltaBinaryPackingValuesWriterTest {
         reader.readInteger();
 
       long endTime = System.nanoTime();
-      System.out.println(">time consumed " + (endTime - startTime));
+      long duration = endTime - startTime;
+      avg += (double) duration / round;
     }
+    System.out.println("average time is " + avg);
+
   }
 
   @Test
   public void writingPerfTest() throws IOException {
+    int round = 1000;
     int[] data = new int[1000 * blockSize];
     for (int i = 0; i < data.length; i++) {
       data[i] = i * 3;
@@ -167,19 +172,19 @@ public class DeltaBinaryPackingValuesWriterTest {
 
 //    ValuesWriter writer=new RunLengthBitPackingHybridValuesWriter(32,100);
     double avg = 0.0;
-    for (int i = 0; i < 1000; i++) {
-      System.out.print("<");
+    for (int i = 0; i < round; i++) {
+//      System.out.print("<");
       writer.reset();
       long startTime = System.nanoTime();
       writeData(data);
       long endTime = System.nanoTime();
       long duration = endTime - startTime;
-      avg += (double) duration / 1000;
+      avg += (double) duration / round;
 
-      System.out.println(">time consumed " + duration);
+//      System.out.println(">time consumed " + duration);
     }
 
-    System.out.println("average value is " + avg);
+    System.out.println("average time is " + avg);
 
   }
 
@@ -244,11 +249,11 @@ public class DeltaBinaryPackingValuesWriterTest {
     //storage overhead is
 //      System.out.println("estimate overhead is " +(1.0/miniBlockSize + (4.0/blockSize)+ ((4.0*miniBlockSize)/length)));
 
-    double miniBlockFlushed= Math.ceil(((double) length - 1) / miniBlockSize);
-    double blockFlushed = Math.ceil(((double)length - 1) / blockSize);
+    double miniBlockFlushed = Math.ceil(((double) length - 1) / miniBlockSize);
+    double blockFlushed = Math.ceil(((double) length - 1) / blockSize);
     double estimatedSize = 4 * 5 //blockHeader
-            + 4 * miniBlockFlushed*miniBlockSize //data(aligned to miniBlock)
-            + blockFlushed*miniBlockNum //bitWidth of mini blocks
+            + 4 * miniBlockFlushed * miniBlockSize //data(aligned to miniBlock)
+            + blockFlushed * miniBlockNum //bitWidth of mini blocks
             + (5.0 * blockFlushed);//min delta for each block
 //    System.out.println("estimate size is " + estimatedSize);
 //    System.out.println("page size is " + page.length);

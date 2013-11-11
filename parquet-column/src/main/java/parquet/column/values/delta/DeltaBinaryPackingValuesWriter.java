@@ -155,9 +155,8 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   }
 
   private void writeMinDelta() {
-    //TODO: change to zigZag
     try {
-      BytesUtils.writeUnsignedVarInt(minDeltaInCurrentBlock, baos);
+      BytesUtils.writeZigZagVarInt(minDeltaInCurrentBlock, baos);
     } catch (IOException e) {
       throw new ParquetEncodingException("can not write min delta for block", e);
     }
@@ -203,7 +202,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     return BytesInput.concat(
             config.toBytesInput(),
             BytesInput.fromUnsignedVarInt(totalValueCount),
-            BytesInput.fromUnsignedVarInt(firstValue), //TODO: use zigZag
+            BytesInput.fromZigZagVarInt(firstValue),
             BytesInput.from(baos));
   }
 
