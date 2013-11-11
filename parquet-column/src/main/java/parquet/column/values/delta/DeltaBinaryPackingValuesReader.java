@@ -52,7 +52,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     this.page = page;
     this.totalValueCount = BytesUtils.readUnsignedVarInt(in);
     allocateValuesBuffer();
-    bitWidths = new int[config.miniBlockNum];
+    bitWidths = new int[config.miniBlockNumInABlock];
 
     //read first value from header
     valuesBuffer[valuesBuffered++] = BytesUtils.readZigZagVarInt(in);
@@ -100,7 +100,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     readBitWidthsForMiniBlocks();
 
     // mini block is atomic for reading, we read a mini block when there are more values left
-    for (int i = 0; i < config.miniBlockNum && valuesBuffered < totalValueCount; i++) {
+    for (int i = 0; i < config.miniBlockNumInABlock && valuesBuffered < totalValueCount; i++) {
       BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidths[i]);
       unpackMiniBlock(packer);
     }
@@ -133,7 +133,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   }
 
   private void readBitWidthsForMiniBlocks() {
-    for (int i = 0; i < config.miniBlockNum; i++) {
+    for (int i = 0; i < config.miniBlockNumInABlock; i++) {
       try {
         bitWidths[i] = BytesUtils.readIntLittleEndianOnOneByte(in);
       } catch (IOException e) {

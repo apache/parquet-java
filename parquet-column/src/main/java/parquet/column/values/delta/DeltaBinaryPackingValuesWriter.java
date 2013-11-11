@@ -37,7 +37,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   public static final int MAX_BITWIDTH = 32;
   private final CapacityByteArrayOutputStream baos;
   /**
-   * stores blockSizeInValues, miniBlockNum and miniBlockSizeInValues
+   * stores blockSizeInValues, miniBlockNumInABlock and miniBlockSizeInValues
    */
   private final DeltaBinaryPackingConfig config;
   /**
@@ -79,7 +79,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
   public DeltaBinaryPackingValuesWriter(int blockSizeInValues, int miniBlockNum, int slabSize) {
     this.config = new DeltaBinaryPackingConfig(blockSizeInValues, miniBlockNum);
-    bitWidths = new int[config.miniBlockNum];
+    bitWidths = new int[config.miniBlockNumInABlock];
     deltaBlockBuffer = new int[blockSizeInValues];
     miniBlockByteBuffer = new byte[config.miniBlockSizeInValues * MAX_BITWIDTH];
     baos = new CapacityByteArrayOutputStream(slabSize);
@@ -114,7 +114,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
   private void flushBlockBuffer() {
 
-    //since we store the min delta, the deltas will be converted to be the difference to min delta
+    //since we store the min delta, the deltas will be converted to be the difference to min delta and all pos
     for (int i = 0; i < deltaValuesToFlush; i++) {
       deltaBlockBuffer[i] = deltaBlockBuffer[i] - minDeltaInCurrentBlock;
     }
@@ -123,7 +123,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     int miniBlocksToFlush = getMiniBlockCountToFlush(deltaValuesToFlush);
 
     calculateBitWidthsForDeltaBlockBuffer(miniBlocksToFlush);
-    for (int i = 0; i < config.miniBlockNum; i++) {
+    for (int i = 0; i < config.miniBlockNumInABlock; i++) {
       writeBitWidthForMiniBlock(i);
     }
 
@@ -198,7 +198,6 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     if (deltaValuesToFlush != 0) {
       flushBlockBuffer();
     }
-//    System.out.println("baos size is"+baos.size());
     return BytesInput.concat(
             config.toBytesInput(),
             BytesInput.fromUnsignedVarInt(totalValueCount),

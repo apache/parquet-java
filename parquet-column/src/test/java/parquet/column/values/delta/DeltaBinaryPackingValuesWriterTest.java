@@ -16,12 +16,14 @@ public class DeltaBinaryPackingValuesWriterTest {
   private int blockSize;
   private int miniBlockNum;
   private DeltaBinaryPackingValuesWriter writer;
+  private Random random;
 
   @Before
   public void setUp() {
     blockSize = 1280;
     miniBlockNum = 40;
     writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100);
+    random = new Random();
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -34,7 +36,7 @@ public class DeltaBinaryPackingValuesWriterTest {
   public void shouldWriteWhenDataIsAlignedWithBlock() throws IOException {
     int[] data = new int[5 * blockSize];
     for (int i = 0; i < blockSize * 5; i++) {
-      data[i] = i * 32;
+      data[i] = random.nextInt();
     }
     shouldReadAndWrite(data);
   }
@@ -43,7 +45,7 @@ public class DeltaBinaryPackingValuesWriterTest {
   public void shouldWriteAndReadWhenBlockIsNotFullyWritten() throws IOException {
     int[] data = new int[blockSize - 3];
     for (int i = 0; i < data.length; i++) {
-      data[i] = i * 32;
+      data[i] = random.nextInt();
     }
     shouldReadAndWrite(data);
   }
@@ -53,7 +55,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     int miniBlockSize = blockSize / miniBlockNum;
     int[] data = new int[miniBlockSize - 3];
     for (int i = 0; i < data.length; i++) {
-      data[i] = i * 32;
+      data[i] = random.nextInt();
     }
     shouldReadAndWrite(data);
   }
@@ -62,42 +64,50 @@ public class DeltaBinaryPackingValuesWriterTest {
   public void shouldWriteNegativeDeltas() throws IOException {
     int[] data = new int[blockSize];
     for (int i = 0; i < data.length; i++) {
-      data[i] = 10 - i * 32;
+      data[i] = 10 - (i * 32-random.nextInt(6));
     }
     shouldReadAndWrite(data);
   }
 
   @Test
-  public void shouldWriteAndReadWhenDeltaIs0() throws IOException {
+  public void shouldWriteAndReadWhenDeltasAreSame() throws IOException {
     int[] data = new int[2 * blockSize];
-    for (int i = 0; i < blockSize * 1; i++) {
+    for (int i = 0; i < blockSize; i++) {
       data[i] = i * 32;
+    }
+    shouldReadAndWrite(data);
+  }
+
+  @Test
+  public void shouldWriteAndReadWhenValuesAreSame() throws IOException {
+    int[] data = new int[2 * blockSize];
+    for (int i = 0; i < blockSize; i++) {
+      data[i] = 3;
     }
     shouldReadAndWrite(data);
   }
 
   @Test
   public void shouldWriteWhenDeltaIs0ForEachBlock() throws IOException {
-    int blockSize = 128;
-    int[] data = new int[5 * blockSize];
-    for (int i = 0; i < blockSize * 5; i++) {
-      data[i] = i / blockSize;
+    int[] data = new int[5 * blockSize+1];
+    for (int i = 0; i < data.length; i++) {
+      data[i] = (i-1) / blockSize;
     }
     shouldReadAndWrite(data);
   }
 
   @Test
   public void shouldReadWriteWhenDataIsNotAlignedWithBlock() throws IOException {
-    int[] data = new int[5 * blockSize + 1];
+    int[] data = new int[5 * blockSize + 3];
     for (int i = 0; i < data.length; i++) {
-      data[i] = i * 32;
+      data[i] = random.nextInt(20)-10;
     }
     shouldReadAndWrite(data);
   }
 
   @Test
   public void shouldReturnCorrectOffsetAfterInitialization() throws IOException {
-    int[] data = new int[2 * blockSize + 2];
+    int[] data = new int[2 * blockSize + 3];
     for (int i = 0; i < data.length; i++) {
       data[i] = i * 32;
     }
@@ -113,7 +123,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     //offset should be correct
     int offset = reader.initFromPage(100, pageContent, contentOffsetInPage);
     assertEquals(valueContent.length, offset);
-    //should be able to read data correclty
+    //should be able to read data correctly
     for (int i : data) {
       assertEquals(i, reader.readInteger());
     }
@@ -134,7 +144,7 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   }
 
-  @Test
+
   public void readingPerfTest() throws IOException {
     int round = 100;
     int[] data = new int[1000 * blockSize];
@@ -151,8 +161,10 @@ public class DeltaBinaryPackingValuesWriterTest {
 
       reader = new DeltaBinaryPackingValuesReader();
       reader.initFromPage(100, writer.getBytes().toByteArray(), 0);
-      for (int j = 0; j < data.length; j++)
+
+      for (int j = 0; j < data.length; j++) {
         reader.readInteger();
+      }
 
       long endTime = System.nanoTime();
       long duration = endTime - startTime;
@@ -162,7 +174,7 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   }
 
-  @Test
+
   public void writingPerfTest() throws IOException {
     int round = 1000;
     int[] data = new int[1000 * blockSize];
@@ -221,15 +233,14 @@ public class DeltaBinaryPackingValuesWriterTest {
   public void randomDataTest() throws IOException {
     int maxSize = 1000;
     int[] data = new int[maxSize];
-    Random sizeRandom = new Random();
-    Random numberRandom = new Random();
+
     for (int round = 0; round < 100000; round++) {
 
 
-      int size = sizeRandom.nextInt(maxSize);
+      int size = random.nextInt(maxSize);
 
       for (int i = 0; i < size; i++) {
-        data[i] = numberRandom.nextInt();
+        data[i] = random.nextInt();
       }
       shouldReadAndWrite(data, size);
       writer.reset();
@@ -246,8 +257,6 @@ public class DeltaBinaryPackingValuesWriterTest {
     reader = new DeltaBinaryPackingValuesReader();
     byte[] page = writer.getBytes().toByteArray();
     int miniBlockSize = blockSize / miniBlockNum;
-    //storage overhead is
-//      System.out.println("estimate overhead is " +(1.0/miniBlockSize + (4.0/blockSize)+ ((4.0*miniBlockSize)/length)));
 
     double miniBlockFlushed = Math.ceil(((double) length - 1) / miniBlockSize);
     double blockFlushed = Math.ceil(((double) length - 1) / blockSize);
@@ -255,10 +264,9 @@ public class DeltaBinaryPackingValuesWriterTest {
             + 4 * miniBlockFlushed * miniBlockSize //data(aligned to miniBlock)
             + blockFlushed * miniBlockNum //bitWidth of mini blocks
             + (5.0 * blockFlushed);//min delta for each block
-//    System.out.println("estimate size is " + estimatedSize);
-//    System.out.println("page size is " + page.length);
     assertTrue(estimatedSize >= page.length);
-//    System.out.printf("avg length of value is %f, data size is %d\n", (double) page.length / length, length);
+    double avg = (double) page.length / length;
+//    System.out.println("avg length for integer is "+ avg);
     reader.initFromPage(100, page, 0);
 
     for (int i = 0; i < length; i++) {

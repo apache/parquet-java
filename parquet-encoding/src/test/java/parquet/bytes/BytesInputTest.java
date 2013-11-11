@@ -11,16 +11,16 @@ import static org.junit.Assert.assertEquals;
 
 public class BytesInputTest {
   @Test
-  public void shouldWriteZigZagEncodeData() throws IOException {
-    for (int value : randomIntegers(10000)) {
-      shouldWriteValue(value);
+  public void shouldWriteZigZagEncodedData() throws IOException {
+    for (int value : randomIntegers(1000)) {
+      shouldWriteZigZagValue(value);
     }
-    shouldWriteValue(Integer.MAX_VALUE);
-    shouldWriteValue(Integer.MIN_VALUE);
-    shouldWriteValue(0);
+    shouldWriteZigZagValue(Integer.MAX_VALUE);
+    shouldWriteZigZagValue(Integer.MIN_VALUE);
+    shouldWriteZigZagValue(0);
   }
 
-  private void shouldWriteValue(int value) throws IOException {
+  private void shouldWriteZigZagValue(int value) throws IOException {
     BytesInput b = BytesInput.fromZigZagVarInt(value);
     byte[] bytes = b.toByteArray();
     ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
