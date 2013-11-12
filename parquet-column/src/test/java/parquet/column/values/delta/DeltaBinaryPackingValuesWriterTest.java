@@ -3,6 +3,10 @@ package parquet.column.values.delta;
 import org.junit.Before;
 import org.junit.Test;
 import parquet.bytes.BytesInput;
+import parquet.column.values.ValuesReader;
+import parquet.column.values.ValuesWriter;
+import parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
+import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import parquet.io.ParquetDecodingException;
 
 import java.io.IOException;
@@ -15,7 +19,7 @@ public class DeltaBinaryPackingValuesWriterTest {
   DeltaBinaryPackingValuesReader reader;
   private int blockSize;
   private int miniBlockNum;
-  private DeltaBinaryPackingValuesWriter writer;
+  private ValuesWriter writer;
   private Random random;
 
   @Before
@@ -149,18 +153,24 @@ public class DeltaBinaryPackingValuesWriterTest {
     int round = 100;
     int[] data = new int[1000 * blockSize];
     for (int i = 0; i < data.length; i++) {
-      data[i] = i * 3;
+      data[i] = random.nextInt();
     }
+//    writer=new RunLengthBitPackingHybridValuesWriter(32,100);
+    for (int i = 0; i < data.length; i++) {
+      writer.writeInteger(data[i]);
+    }
+    byte[] page = writer.getBytes().toByteArray();
 
-    writeData(data);
     double avg = 0.0;
-
+    ValuesReader reader;
     for (int i = 0; i < round; i++) {
 //      System.out.print("<");
       long startTime = System.nanoTime();
 
+//      reader = new RunLengthBitPackingHybridValuesReader(32);
       reader = new DeltaBinaryPackingValuesReader();
-      reader.initFromPage(100, writer.getBytes().toByteArray(), 0);
+
+      reader.initFromPage(100, page, 0);
 
       for (int j = 0; j < data.length; j++) {
         reader.readInteger();
