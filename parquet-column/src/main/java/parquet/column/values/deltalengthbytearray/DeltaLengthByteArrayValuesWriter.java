@@ -1,3 +1,18 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package parquet.column.values.deltalengthbytearray;
 
 import java.io.IOException;
@@ -8,10 +23,20 @@ import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.bytes.LittleEndianDataOutputStream;
 import parquet.column.Encoding;
 import parquet.column.values.ValuesWriter;
-import parquet.column.values.plain.PlainValuesWriter;
+import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
 
+/**
+ * Write lengths of byte-arrays using delta encoding, followed by concatenated byte-arrays
+ * <pre>
+ *   {@code
+ *   delta-length-byte-array : length* byte-array*
+ *   } 
+ * </pre>
+ * @author amokashi
+ *
+ */
 public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
 
   private static final Log LOG = Log.getLog(DeltaLengthByteArrayValuesWriter.class);
@@ -23,7 +48,10 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
   public DeltaLengthByteArrayValuesWriter(int initialSize) {
     arrayOut = new CapacityByteArrayOutputStream(initialSize);
     out = new LittleEndianDataOutputStream(arrayOut);
-    lengthWriter = new PlainValuesWriter(initialSize);
+    lengthWriter = new DeltaBinaryPackingValuesWriter(
+        DeltaBinaryPackingValuesWriter.DEFAULT_NUM_BLOCK_VALUES,
+        DeltaBinaryPackingValuesWriter.DEFAULT_NUM_MINIBLOCKS,
+        initialSize);
   }
 
   @Override
@@ -72,5 +100,4 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
   public String memUsageString(String prefix) {
     return arrayOut.memUsageString(lengthWriter.memUsageString(prefix) + " DELTA_LENGTH_BYTE_ARRAY"); 
   }
-
 }

@@ -1,25 +1,47 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package parquet.column.values.deltastrings;
 
 import java.util.Arrays;
 
-import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.Encoding;
 import parquet.column.values.ValuesWriter;
+import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesWriter;
-import parquet.column.values.plain.PlainValuesWriter;
 import parquet.io.api.Binary;
 
+/**
+ * Write prefix lengths using delta encoding, followed by suffixes with Delta length byte arrays
+ * <pre>
+ *   {@code
+ *   delta-length-byte-array : prefix-length* suffixes*
+ *   } 
+ * </pre>
+ * @author amokashi
+ *
+ */
 public class DeltaStringValuesWriter extends ValuesWriter{
-	
-	private static final Log LOG = Log.getLog(DeltaStringValuesWriter.class);
 	
 	private ValuesWriter prefixLengthWriter;
 	private ValuesWriter suffixWriter;
 	private byte[] previous;
 	
 	public DeltaStringValuesWriter(int initialCapacity) {
-		this.prefixLengthWriter = new PlainValuesWriter(initialCapacity);
+		this.prefixLengthWriter = new DeltaBinaryPackingValuesWriter(128, 4, initialCapacity);
 		this.suffixWriter = new DeltaLengthByteArrayValuesWriter(initialCapacity);
 		this.previous = null;
 	}
@@ -65,7 +87,6 @@ public class DeltaStringValuesWriter extends ValuesWriter{
 		  for(i = 0; (i < length) && (previous[i] == vb[i]); i++);
 		}
 		prefixLengthWriter.writeInteger(i);
-		// TODO figure this out
 		suffixWriter.writeBytes(Binary.fromByteArray(Arrays.copyOfRange(vb, i, vb.length)));
 		previous = vb;
 	}

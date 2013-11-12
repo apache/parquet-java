@@ -50,6 +50,10 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
    * reused between flushes.
    */
   public static final int MAX_BITWIDTH = 32;
+  
+  public static final int DEFAULT_NUM_BLOCK_VALUES = 128;
+  
+  public static final int DEFAULT_NUM_MINIBLOCKS = 4;
 
   private final CapacityByteArrayOutputStream baos;
 
