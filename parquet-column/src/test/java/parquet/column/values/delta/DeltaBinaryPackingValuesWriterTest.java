@@ -27,6 +27,7 @@ import org.junit.Test;
 import parquet.bytes.BytesInput;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.ValuesWriter;
+import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import parquet.io.ParquetDecodingException;
 
 public class DeltaBinaryPackingValuesWriterTest {
@@ -38,8 +39,8 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   @Before
   public void setUp() {
-    blockSize = 1280;
-    miniBlockNum = 40;
+    blockSize = 128;
+    miniBlockNum = 4;
     writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100);
     random = new Random();
   }
@@ -56,7 +57,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < blockSize * 5; i++) {
       data[i] = random.nextInt();
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
@@ -65,7 +66,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < data.length; i++) {
       data[i] = random.nextInt();
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
@@ -75,16 +76,16 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < data.length; i++) {
       data[i] = random.nextInt();
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
   public void shouldWriteNegativeDeltas() throws IOException {
     int[] data = new int[blockSize];
     for (int i = 0; i < data.length; i++) {
-      data[i] = 10 - (i * 32-random.nextInt(6));
+      data[i] = 10 - (i * 32 - random.nextInt(6));
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
@@ -93,7 +94,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < blockSize; i++) {
       data[i] = i * 32;
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
@@ -102,25 +103,38 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < blockSize; i++) {
       data[i] = 3;
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
   public void shouldWriteWhenDeltaIs0ForEachBlock() throws IOException {
-    int[] data = new int[5 * blockSize+1];
+    int[] data = new int[5 * blockSize + 1];
     for (int i = 0; i < data.length; i++) {
-      data[i] = (i-1) / blockSize;
+      data[i] = (i - 1) / blockSize;
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
   public void shouldReadWriteWhenDataIsNotAlignedWithBlock() throws IOException {
     int[] data = new int[5 * blockSize + 3];
     for (int i = 0; i < data.length; i++) {
-      data[i] = random.nextInt(20)-10;
+      data[i] = random.nextInt(20) - 10;
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
+  }
+
+  @Test
+  public void shouldReadMaxMinValue() throws IOException {
+    int[] data = new int[10];
+    for (int i = 0; i < data.length; i++) {
+      if(i%2==0) {
+        data[i]=Integer.MIN_VALUE;
+      }else {
+        data[i]=Integer.MAX_VALUE;
+      }
+    }
+    shouldWriteAndRead(data);
   }
 
   @Test
@@ -141,7 +155,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     //offset should be correct
     reader.initFromPage(100, pageContent, contentOffsetInPage);
     int offset= reader.getNextOffset();
-    assertEquals(valueContent.length,offset);
+    assertEquals(valueContent.length + contentOffsetInPage, offset);
 
     //should be able to read data correclty
     for (int i : data) {
@@ -155,7 +169,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < data.length; i++) {
       data[i] = i * 32;
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
     try {
       reader.readInteger();
     } catch (ParquetDecodingException e) {
@@ -164,6 +178,10 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   }
 
+  private void withRLE() {
+    writer = new RunLengthBitPackingHybridValuesWriter(32, 100);
+//    reader = new RunLengthBitPackingHybridValuesReader(32);
+  }
 
   public void readingPerfTest() throws IOException {
     int round = 100;
@@ -200,24 +218,30 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   }
 
-
+  @Test
   public void writingPerfTest() throws IOException {
+//    withRLE();
     int round = 1000;
+    int warmup = 10000;
     int[] data = new int[1000 * blockSize];
     for (int i = 0; i < data.length; i++) {
-      data[i] = i * 3;
+      data[i] = random.nextInt(100) - 200;
     }
+
 
 //    ValuesWriter writer=new RunLengthBitPackingHybridValuesWriter(32,100);
     double avg = 0.0;
-    for (int i = 0; i < round; i++) {
+    for (int i = 0; i < round + warmup; i++) {
 //      System.out.print("<");
       writer.reset();
       long startTime = System.nanoTime();
       writeData(data);
       long endTime = System.nanoTime();
       long duration = endTime - startTime;
-      avg += (double) duration / round;
+
+      if (i > warmup) {
+        avg += (double) duration / round;
+      }
 
 //      System.out.println(">time consumed " + duration);
     }
@@ -252,7 +276,7 @@ public class DeltaBinaryPackingValuesWriterTest {
       data[i] = i * 2;
     }
     writer.reset();
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
@@ -273,7 +297,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     }
   }
 
-  private void shouldReadAndWrite(int[] data) throws IOException {
+  private void shouldWriteAndRead(int[] data) throws IOException {
     shouldReadAndWrite(data, data.length);
   }
 
