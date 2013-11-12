@@ -20,8 +20,6 @@ import org.junit.Test;
 import parquet.bytes.BytesInput;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.ValuesWriter;
-import parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
-import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import parquet.io.ParquetDecodingException;
 
 import java.io.IOException;
@@ -83,7 +81,7 @@ public class DeltaBinaryPackingValuesWriterTest {
   public void shouldWriteNegativeDeltas() throws IOException {
     int[] data = new int[blockSize];
     for (int i = 0; i < data.length; i++) {
-      data[i] = 10 - (i * 32-random.nextInt(6));
+      data[i] = 10 - (i * 32 - random.nextInt(6));
     }
     shouldReadAndWrite(data);
   }
@@ -108,9 +106,9 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   @Test
   public void shouldWriteWhenDeltaIs0ForEachBlock() throws IOException {
-    int[] data = new int[5 * blockSize+1];
+    int[] data = new int[5 * blockSize + 1];
     for (int i = 0; i < data.length; i++) {
-      data[i] = (i-1) / blockSize;
+      data[i] = (i - 1) / blockSize;
     }
     shouldReadAndWrite(data);
   }
@@ -119,7 +117,7 @@ public class DeltaBinaryPackingValuesWriterTest {
   public void shouldReadWriteWhenDataIsNotAlignedWithBlock() throws IOException {
     int[] data = new int[5 * blockSize + 3];
     for (int i = 0; i < data.length; i++) {
-      data[i] = random.nextInt(20)-10;
+      data[i] = random.nextInt(20) - 10;
     }
     shouldReadAndWrite(data);
   }
@@ -141,7 +139,7 @@ public class DeltaBinaryPackingValuesWriterTest {
 
     //offset should be correct
     int offset = reader.initFromPage(100, pageContent, contentOffsetInPage);
-    assertEquals(valueContent.length, offset);
+    assertEquals(valueContent.length + contentOffsetInPage, offset);
     //should be able to read data correctly
     for (int i : data) {
       assertEquals(i, reader.readInteger());
@@ -162,7 +160,6 @@ public class DeltaBinaryPackingValuesWriterTest {
     }
 
   }
-
 
   public void readingPerfTest() throws IOException {
     int round = 100;
@@ -198,7 +195,6 @@ public class DeltaBinaryPackingValuesWriterTest {
     System.out.println("average time is " + avg);
 
   }
-
 
   public void writingPerfTest() throws IOException {
     int round = 1000;

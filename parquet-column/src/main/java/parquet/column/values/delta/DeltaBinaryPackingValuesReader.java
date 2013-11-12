@@ -75,7 +75,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     while (valuesBuffered < totalValueCount) { //values Buffered could be more than totalValueCount, since we flush on a mini block basis
       loadNewBlockToBuffer();
     }
-    return page.length - in.available() - offset;
+    return page.length - in.available();
   }
 
   /**
