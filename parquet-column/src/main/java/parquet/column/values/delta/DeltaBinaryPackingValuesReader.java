@@ -42,7 +42,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    * @param valueCount count of values in this page
    * @param page       the array to read from containing the page data (repetition levels, definition levels, data)
    * @param offset     where to start reading from in the page
-   * @return  the length read
+   * @return the length read
    * @throws IOException
    */
   @Override
@@ -64,8 +64,8 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   }
 
   /**
-   * the value buffer is allocated that the size of it is multiple of mini block
-   * because when writing data is flushed on a mini block basis
+   * the value buffer is allocated so that the size of it is multiple of mini block
+   * because when writing, data is flushed on a mini block basis
    */
   private void allocateValuesBuffer() {
     int totalMiniBlockCount = (int) Math.ceil((double) totalValueCount / config.miniBlockSizeInValues);
@@ -86,8 +86,9 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   }
 
   private void checkRead() {
-    if (valuesRead >= totalValueCount)
+    if (valuesRead >= totalValueCount) {
       throw new ParquetDecodingException("no more value to read, total value count is " + totalValueCount);
+    }
   }
 
   private void loadNewBlockToBuffer() {

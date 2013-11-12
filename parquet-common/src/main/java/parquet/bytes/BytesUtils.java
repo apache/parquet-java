@@ -30,8 +30,9 @@ import parquet.Log;
  *
  */
 public class BytesUtils {
-  public static final Charset UTF8 = Charset.forName("UTF-8");
   private static final Log LOG = Log.getLog(BytesUtils.class);
+
+  public static final Charset UTF8 = Charset.forName("UTF-8");
 
   /**
    * give the number of bits needed to encode an int given the max value

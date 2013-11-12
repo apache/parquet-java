@@ -105,11 +105,13 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
     deltaBlockBuffer[deltaValuesToFlush++] = delta;
 
-    if (delta < minDeltaInCurrentBlock)
+    if (delta < minDeltaInCurrentBlock) {
       minDeltaInCurrentBlock = delta;
+    }
 
-    if (config.blockSizeInValues == deltaValuesToFlush)
+    if (config.blockSizeInValues == deltaValuesToFlush) {
       flushBlockBuffer();
+    }
   }
 
   private void flushBlockBuffer() {
