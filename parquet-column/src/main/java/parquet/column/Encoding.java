@@ -114,6 +114,14 @@ public enum Encoding {
     }
   },
 
+  DELTA_LENGTH_BYTE_ARRAY {
+
+  },
+
+  DELTA_STRINGS {
+
+  },
+
   PLAIN_DICTIONARY {
     @Override
     public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
