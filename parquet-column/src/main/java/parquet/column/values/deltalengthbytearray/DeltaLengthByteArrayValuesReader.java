@@ -6,7 +6,7 @@ import java.io.IOException;
 
 import parquet.Log;
 import parquet.column.values.ValuesReader;
-import parquet.column.values.plain.PlainValuesReader;
+import parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import parquet.io.api.Binary;
 
 public class DeltaLengthByteArrayValuesReader extends ValuesReader {
@@ -17,7 +17,7 @@ public class DeltaLengthByteArrayValuesReader extends ValuesReader {
   private int offset;
 
   public DeltaLengthByteArrayValuesReader() {
-    this.lengthReader = new PlainValuesReader.IntegerPlainValuesReader();
+    this.lengthReader = new DeltaBinaryPackingValuesReader();
   }
 
   @Override
