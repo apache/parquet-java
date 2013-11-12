@@ -97,7 +97,16 @@ abstract public class BytesInput {
    * @return a BytesInput that will write var int
    */
   public static BytesInput fromUnsignedVarInt(int intValue) {
-    return new VarIntBytesInput(intValue);
+    return new UnsignedVarIntBytesInput(intValue);
+  }
+
+  /**
+   *
+   * @param intValue the int to write
+   */
+  public static BytesInput fromZigZagVarInt(int intValue) {
+    int zigZag = (intValue << 1) ^ (intValue >> 31);
+    return new UnsignedVarIntBytesInput(zigZag);
   }
 
   /**
@@ -253,11 +262,11 @@ abstract public class BytesInput {
 
   }
 
-  private static class VarIntBytesInput extends BytesInput {
+  private static class UnsignedVarIntBytesInput extends BytesInput {
 
     private final int intValue;
 
-    public VarIntBytesInput(int intValue) {
+    public UnsignedVarIntBytesInput(int intValue) {
       this.intValue = intValue;
     }
 
