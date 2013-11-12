@@ -50,40 +50,50 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
    * reused between flushes.
    */
   public static final int MAX_BITWIDTH = 32;
+
   private final CapacityByteArrayOutputStream baos;
+
   /**
    * stores blockSizeInValues, miniBlockNumInABlock and miniBlockSizeInValues
    */
   private final DeltaBinaryPackingConfig config;
+
   /**
    * bit width for each mini block, reused between flushes
    */
   private final int[] bitWidths;
+
   private int totalValueCount = 0;
+
   /**
    * a pointer to deltaBlockBuffer indicating the end of deltaBlockBuffer
    * the number of values in the deltaBlockBuffer that haven't flushed to baos
    * it will be reset after each flush
    */
   private int deltaValuesToFlush = 0;
+
   /**
    * stores delta values starting from the 2nd value written(1st value is stored in header).
    * It's reused between flushes
    */
   private int[] deltaBlockBuffer;
+
   /**
    * bytes buffer for a mini block, it is reused for each mini block.
    * Therefore the size of biggest miniblock with bitwith of MAX_BITWITH is allocated
    */
   private byte[] miniBlockByteBuffer;
+
   /**
    * firstValue is written to the header of the page
    */
   private int firstValue = 0;
+
   /**
    * cache previous written value for calculating delta
    */
   private int previousValue = 0;
+
   /**
    * min delta is written to the beginning of each block.
    * it's zig-zag encoded. The deltas stored in each block is actually the difference to min delta,
@@ -131,7 +141,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
   private void flushBlockBuffer() {
 
-    //since we store the min delta, the deltas will be converted to be the difference to min delta and all pos
+    //since we store the min delta, the deltas will be converted to be the difference to min delta and all positive
     for (int i = 0; i < deltaValuesToFlush; i++) {
       deltaBlockBuffer[i] = deltaBlockBuffer[i] - minDeltaInCurrentBlock;
     }
