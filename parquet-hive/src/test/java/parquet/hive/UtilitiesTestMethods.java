@@ -22,7 +22,9 @@ import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hive.writable.BinaryWritable;
 import parquet.io.api.Binary;
 import parquet.io.api.RecordConsumer;
+import parquet.schema.GroupType;
 import parquet.schema.MessageType;
+import parquet.schema.Type;
 
 public class UtilitiesTestMethods {
 
@@ -35,6 +37,36 @@ public class UtilitiesTestMethods {
 
   public static void endFile(final ParquetFileWriter w) throws IOException {
     w.end(new HashMap<String, String>());
+  }
+
+  public static boolean smartCheckSchema(final GroupType expectedSchema, final GroupType actualSchema) {
+    if (expectedSchema.getFieldCount() != actualSchema.getFieldCount()) {
+      return false;
+    }
+
+    for (int i = 0; i < expectedSchema.getFieldCount(); ++i) {
+      Type expectedType = expectedSchema.getType(i);
+      Type actualType = actualSchema.getType(i);
+
+      if (!expectedType.getName().equals(actualType.getName())
+              || expectedType.getRepetition() != actualType.getRepetition()
+              || expectedType.isPrimitive() != actualType.isPrimitive()) {
+        return false;
+      }
+
+      if (expectedType.isPrimitive()) {
+        if (expectedType.asPrimitiveType().getPrimitiveTypeName() != actualType.asPrimitiveType().getPrimitiveTypeName()
+                || expectedType.asPrimitiveType().getTypeLength() != actualType.asPrimitiveType().getTypeLength()) {
+          return false;
+        }
+      } else {
+        if (!smartCheckSchema(expectedType.asGroupType(), actualType.asGroupType())) {
+          return false;
+        }
+      }
+    }
+
+    return true;
   }
 
   public static boolean smartCheckArray(final Writable[] arrValue, final Writable[] arrExpected, final Integer[] arrCheckIndexValues) {
@@ -185,7 +217,7 @@ public class UtilitiesTestMethods {
       } else if (value instanceof Map) {
         recordWriter.startGroup();
         recordWriter.startField("map", 0);
-        for (Map.Entry<?,?> entry : ((Map<?,?>) value).entrySet()) {
+        for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
           recordWriter.startGroup();
           writeField(recordWriter, 0, "key", entry.getKey());
           writeField(recordWriter, 1, "value", entry.getValue());
