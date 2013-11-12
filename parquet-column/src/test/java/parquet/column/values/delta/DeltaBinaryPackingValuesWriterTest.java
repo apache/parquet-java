@@ -56,7 +56,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < blockSize * 5; i++) {
       data[i] = random.nextInt();
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
@@ -65,7 +65,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < data.length; i++) {
       data[i] = random.nextInt();
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
@@ -75,7 +75,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < data.length; i++) {
       data[i] = random.nextInt();
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
@@ -84,7 +84,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < data.length; i++) {
       data[i] = 10 - (i * 32 - random.nextInt(6));
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
@@ -93,7 +93,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < blockSize; i++) {
       data[i] = i * 32;
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
@@ -102,7 +102,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < blockSize; i++) {
       data[i] = 3;
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
@@ -111,7 +111,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < data.length; i++) {
       data[i] = (i - 1) / blockSize;
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
@@ -120,7 +120,20 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < data.length; i++) {
       data[i] = random.nextInt(20) - 10;
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
+  }
+
+  @Test
+  public void shouldReadMaxMinValue() throws IOException {
+    int[] data = new int[10];
+    for (int i = 0; i < data.length; i++) {
+      if(i%2==0) {
+        data[i]=Integer.MIN_VALUE;
+      }else {
+        data[i]=Integer.MAX_VALUE;
+      }
+    }
+    shouldWriteAndRead(data);
   }
 
   @Test
@@ -153,7 +166,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     for (int i = 0; i < data.length; i++) {
       data[i] = i * 32;
     }
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
     try {
       reader.readInteger();
     } catch (ParquetDecodingException e) {
@@ -260,7 +273,7 @@ public class DeltaBinaryPackingValuesWriterTest {
       data[i] = i * 2;
     }
     writer.reset();
-    shouldReadAndWrite(data);
+    shouldWriteAndRead(data);
   }
 
   @Test
@@ -281,7 +294,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     }
   }
 
-  private void shouldReadAndWrite(int[] data) throws IOException {
+  private void shouldWriteAndRead(int[] data) throws IOException {
     shouldReadAndWrite(data, data.length);
   }
 
