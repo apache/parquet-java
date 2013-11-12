@@ -20,6 +20,7 @@ import org.junit.Test;
 import parquet.bytes.BytesInput;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.ValuesWriter;
+import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import parquet.io.ParquetDecodingException;
 
 import java.io.IOException;
@@ -37,8 +38,8 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   @Before
   public void setUp() {
-    blockSize = 1280;
-    miniBlockNum = 40;
+    blockSize = 128;
+    miniBlockNum = 4;
     writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100);
     random = new Random();
   }
@@ -161,6 +162,11 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   }
 
+  private void withRLE() {
+    writer = new RunLengthBitPackingHybridValuesWriter(32, 100);
+//    reader = new RunLengthBitPackingHybridValuesReader(32);
+  }
+
   public void readingPerfTest() throws IOException {
     int round = 100;
     int[] data = new int[1000 * blockSize];
@@ -196,23 +202,30 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   }
 
+  @Test
   public void writingPerfTest() throws IOException {
+//    withRLE();
     int round = 1000;
+    int warmup = 10000;
     int[] data = new int[1000 * blockSize];
     for (int i = 0; i < data.length; i++) {
-      data[i] = i * 3;
+      data[i] = random.nextInt(100) - 200;
     }
+
 
 //    ValuesWriter writer=new RunLengthBitPackingHybridValuesWriter(32,100);
     double avg = 0.0;
-    for (int i = 0; i < round; i++) {
+    for (int i = 0; i < round + warmup; i++) {
 //      System.out.print("<");
       writer.reset();
       long startTime = System.nanoTime();
       writeData(data);
       long endTime = System.nanoTime();
       long duration = endTime - startTime;
-      avg += (double) duration / round;
+
+      if (i > warmup) {
+        avg += (double) duration / round;
+      }
 
 //      System.out.println(">time consumed " + duration);
     }
