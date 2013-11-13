@@ -49,7 +49,6 @@ final class ColumnWriterImpl implements ColumnWriter {
   private static final Log LOG = Log.getLog(ColumnWriterImpl.class);
   private static final boolean DEBUG = Log.DEBUG;
   private static final int INITIAL_COUNT_FOR_SIZE_CHECK = 100;
-
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
   private final long pageSizeThreshold;
@@ -58,6 +57,7 @@ final class ColumnWriterImpl implements ColumnWriter {
   private ValuesWriter dataColumn;
   private int valueCount;
   private int valueCountForNextSizeCheck;
+  private int rawDataSize;
 
   public ColumnWriterImpl(
       ColumnDescriptor path,
@@ -145,7 +145,8 @@ final class ColumnWriterImpl implements ColumnWriter {
       // not checking the memory used for every value
       long memSize = repetitionLevelColumn.getBufferedSize()
           + definitionLevelColumn.getBufferedSize()
-          + dataColumn.getBufferedSize();
+          + rawDataSize; //use raw data size to decide if flushing is needed
+
       if (memSize > pageSizeThreshold) {
         // we will write the current page and check again the size at the predicted middle of next page
         valueCountForNextSizeCheck = valueCount / 2;
@@ -189,6 +190,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeDouble(value);
+    rawDataSize += 8;
     accountForValueWritten();
   }
 
@@ -198,6 +200,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeFloat(value);
+    rawDataSize += 4;
     accountForValueWritten();
   }
 
@@ -207,6 +210,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeBytes(value);
+    rawDataSize += value.length();
     accountForValueWritten();
   }
 
@@ -216,6 +220,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeBoolean(value);
+    rawDataSize += 4;
     accountForValueWritten();
   }
 
@@ -225,6 +230,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeInteger(value);
+    rawDataSize += 4;
     accountForValueWritten();
   }
 
@@ -234,6 +240,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeLong(value);
+    rawDataSize += 8;
     accountForValueWritten();
   }
 
