@@ -122,9 +122,17 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     readBitWidthsForMiniBlocks();
 
     // mini block is atomic for reading, we read a mini block when there are more values left
-    for (int i = 0; i < config.miniBlockNumInABlock && valuesBuffered < totalValueCount; i++) {
+    int i;
+    for (i = 0; i < config.miniBlockNumInABlock && valuesBuffered < totalValueCount; i++) {
       BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidths[i]);
       unpackMiniBlock(packer);
+    }
+
+    //calculate values from deltas unpacked for current block
+    int valueUnpacked=i*config.miniBlockSizeInValues;
+    for (int j = valuesBuffered-valueUnpacked; j < valuesBuffered; j++) {
+      int index = j;
+      valuesBuffer[index] += minDeltaInCurrentBlock + valuesBuffer[index - 1];
     }
   }
 
@@ -144,10 +152,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     //calculate the pos because the packer api uses array not stream
     int pos = page.length - in.available();
     packer.unpack8Values(page, pos, valuesBuffer, valuesBuffered);
-    for (int i = 0; i < 8; i++) {
-      int index = valuesBuffered + i;
-      valuesBuffer[index] += minDeltaInCurrentBlock + valuesBuffer[index - 1];
-    }
+
 
     this.valuesBuffered += 8;
     //sync the pos in stream
