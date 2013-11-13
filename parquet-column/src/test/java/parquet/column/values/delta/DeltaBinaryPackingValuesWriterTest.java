@@ -183,9 +183,10 @@ public class DeltaBinaryPackingValuesWriterTest {
 //    reader = new RunLengthBitPackingHybridValuesReader(32);
   }
 
+  @Test
   public void readingPerfTest() throws IOException {
-    int round = 100;
-    int[] data = new int[1000 * blockSize];
+    int round = 1000;
+    int[] data = new int[10000 * blockSize];
     for (int i = 0; i < data.length; i++) {
       data[i] = random.nextInt();
     }
