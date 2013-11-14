@@ -123,7 +123,6 @@ final class ColumnWriterImpl implements ColumnWriter {
     if (maxLevel == 0) {
       return new DevNullValuesWriter();
     } else {
-      // TODO: what is a good initialCapacity?
       return new RunLengthBitPackingHybridValuesWriter(
           BytesUtils.getWidthFromMaxInt(maxLevel), initialSizePerCol);
     }
