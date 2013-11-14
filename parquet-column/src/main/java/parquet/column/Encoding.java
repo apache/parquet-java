@@ -40,7 +40,6 @@ import parquet.column.values.plain.PlainValuesReader.IntegerPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.LongPlainValuesReader;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
 import parquet.io.ParquetDecodingException;
-import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * encoding of the data
@@ -81,7 +80,7 @@ public enum Encoding {
   RLE {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      int bitWidth = BytesUtils.getWidthFromMaxInt(getMaxLevel(descriptor, valuesType));
+      int bitWidth = BytesUtils.getWidthFromMaxInt(getMaxInt(descriptor, valuesType));
       if(bitWidth == 0) {
         return new ZeroIntegerValuesReader();
       }
@@ -97,7 +96,7 @@ public enum Encoding {
   BIT_PACKED {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      return new ByteBitPackingValuesReader(getMaxLevel(descriptor, valuesType), BIG_ENDIAN);
+      return new ByteBitPackingValuesReader(getMaxInt(descriptor, valuesType), BIG_ENDIAN);
     }
   },
 
@@ -149,24 +148,24 @@ public enum Encoding {
 
   };
 
-  int getMaxLevel(ColumnDescriptor descriptor, ValuesType valuesType) {
-    int maxLevel;
+  int getMaxInt(ColumnDescriptor descriptor, ValuesType valuesType) {
+    int maxInt;
     switch (valuesType) {
     case REPETITION_LEVEL:
-      maxLevel = descriptor.getMaxRepetitionLevel();
+      maxInt = descriptor.getMaxRepetitionLevel();
       break;
     case DEFINITION_LEVEL:
-      maxLevel = descriptor.getMaxDefinitionLevel();
+      maxInt = descriptor.getMaxDefinitionLevel();
       break;
     case VALUES:
       if (descriptor.getType() == BOOLEAN) {
-        maxLevel = 1;
+        maxInt = 1;
         break;
       }
     default:
       throw new ParquetDecodingException("Unsupported encoding for values: " + this);
     }
-    return maxLevel;
+    return maxInt;
   }
 
   /**
