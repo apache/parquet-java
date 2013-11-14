@@ -16,6 +16,7 @@
 package parquet.column;
 
 import static parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 
 import java.io.IOException;
 
@@ -39,6 +40,7 @@ import parquet.column.values.plain.PlainValuesReader.IntegerPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.LongPlainValuesReader;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
 import parquet.io.ParquetDecodingException;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * encoding of the data
@@ -137,7 +139,7 @@ public enum Encoding {
       default:
         throw new ParquetDecodingException("Dictionary encoding not supported for type: " + descriptor.getType());
       }
-      
+
     }
 
     @Override
@@ -156,6 +158,11 @@ public enum Encoding {
     case DEFINITION_LEVEL:
       maxLevel = descriptor.getMaxDefinitionLevel();
       break;
+    case VALUES:
+      if (descriptor.getType() == BOOLEAN) {
+        maxLevel = 1;
+        break;
+      }
     default:
       throw new ParquetDecodingException("Unsupported encoding for values: " + this);
     }

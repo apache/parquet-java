@@ -47,6 +47,11 @@ public class RunLengthBitPackingHybridValuesWriter extends ValuesWriter {
   }
 
   @Override
+  public void writeBoolean(boolean v) {
+    writeInteger(v ? 1 : 0);
+  }
+
+  @Override
   public long getBufferedSize() {
     return encoder.getBufferedSize();
   }
