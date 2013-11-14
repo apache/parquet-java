@@ -21,25 +21,39 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import parquet.column.values.Utils;
 import parquet.column.values.ValuesReader;
-import parquet.column.values.ValuesWriter;
 import parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import parquet.io.api.Binary;
 
 public class TestDeltaStrings {
   
-  String[] values = {"parquet-mr", "parquet", "parquet-format"};
+  static String[] values = {"parquet-mr", "parquet", "parquet-format"};
+  static String[] randvalues = Utils.getRandomStringSamples(10000, 32);
 
   @Test
   public void testSerialization () throws IOException {
     DeltaStringValuesWriter writer = new DeltaStringValuesWriter(64*1024);
     DeltaStringValuesReader reader = new DeltaStringValuesReader();
 
-    writeData(writer, values);
-    Binary[] bin = readData(reader, writer.getBytes().toByteArray(), values.length);
+    Utils.writeData(writer, values);
+    Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
       Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
+    }
+  }
+  
+  @Test
+  public void testRandomStrings() throws IOException {
+    DeltaStringValuesWriter writer = new DeltaStringValuesWriter(64*1024);
+    DeltaStringValuesReader reader = new DeltaStringValuesReader();
+
+    Utils.writeData(writer, randvalues);
+    Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), randvalues.length);
+
+    for(int i =0; i< bin.length ; i++) {
+      Assert.assertEquals(Binary.fromString(randvalues[i]), bin[i]);
     }
   }
 
@@ -48,9 +62,9 @@ public class TestDeltaStrings {
     DeltaStringValuesWriter writer = new DeltaStringValuesWriter(64*1024);
     ValuesReader reader = new DeltaBinaryPackingValuesReader();
 
-    writeData(writer, values);
+    Utils.writeData(writer, values);
     byte[] data = writer.getBytes().toByteArray();
-    int[] bin = readInts(reader, data, 0, values.length);
+    int[] bin = Utils.readInts(reader, data, values.length);
 
     // test prefix lengths
     Assert.assertEquals(0, bin[0]);
@@ -59,37 +73,10 @@ public class TestDeltaStrings {
     
     int offset = reader.getNextOffset();
     reader = new DeltaBinaryPackingValuesReader();
-    bin = readInts(reader, writer.getBytes().toByteArray(), offset, values.length);
+    bin = Utils.readInts(reader, writer.getBytes().toByteArray(), offset, values.length);
     // test suffix lengths
     Assert.assertEquals(10, bin[0]);
     Assert.assertEquals(0, bin[1]);
     Assert.assertEquals(7, bin[2]);
-  }
-
-  private void writeData(ValuesWriter writer, String[] strings)
-      throws IOException {
-    for(int i=0; i < strings.length; i++) {
-      writer.writeBytes(Binary.fromString(strings[i]));
-    }
-  }
-
-  private static Binary[] readData(ValuesReader reader, byte[] data, int length)
-      throws IOException {
-    Binary[] bins = new Binary[length];
-    reader.initFromPage(length, data, 0);
-    for(int i=0; i < length; i++) {
-      bins[i] = reader.readBytes();
-    }
-    return bins;
-  }
-  
-  private static int[] readInts(ValuesReader reader, byte[] data, int offset, int length)
-      throws IOException {
-    int[] ints = new int[length];
-    reader.initFromPage(length, data, offset);
-    for(int i=0; i < length; i++) {
-      ints[i] = reader.readInteger();
-    }
-    return ints;
   }
 }

@@ -21,8 +21,8 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import parquet.column.values.Utils;
 import parquet.column.values.ValuesReader;
-import parquet.column.values.ValuesWriter;
 import parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import parquet.io.api.Binary;
 
@@ -35,8 +35,22 @@ public class TestDeltaLengthByteArray {
     DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64*1024);
     DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
 
-    writeData(writer, values);
-    Binary[] bin = readData(reader, writer.getBytes().toByteArray(), values.length);
+    Utils.writeData(writer, values);
+    Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
+
+    for(int i =0; i< bin.length ; i++) {
+      Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
+    }
+  }
+  
+  @Test
+  public void testRandomStrings() throws IOException {
+    DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64*1024);
+    DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
+
+    String[] values = Utils.getRandomStringSamples(1000, 32);
+    Utils.writeData(writer, values);
+    Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
       Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
@@ -48,38 +62,11 @@ public class TestDeltaLengthByteArray {
     DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64*1024);
     ValuesReader reader = new DeltaBinaryPackingValuesReader();
 
-    writeData(writer, values);
-    int[] bin = readInts(reader, writer.getBytes().toByteArray(), values.length);
+    Utils.writeData(writer, values);
+    int[] bin = Utils.readInts(reader, writer.getBytes().toByteArray(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
       Assert.assertEquals(values[i].length(), bin[i]);
     }
-  }
-
-  private void writeData(ValuesWriter writer, String[] strings)
-      throws IOException {
-    for(int i=0; i < strings.length; i++) {
-      writer.writeBytes(Binary.fromString(strings[i]));
-    }
-  }
-
-  private static Binary[] readData(ValuesReader reader, byte[] data, int length)
-      throws IOException {
-    Binary[] bins = new Binary[length];
-    reader.initFromPage(length, data, 0);
-    for(int i=0; i < length; i++) {
-      bins[i] = reader.readBytes();
-    }
-    return bins;
-  }
-  
-  private static int[] readInts(ValuesReader reader, byte[] data, int length)
-      throws IOException {
-    int[] ints = new int[length];
-    reader.initFromPage(length, data, 0);
-    for(int i=0; i < length; i++) {
-      ints[i] = reader.readInteger();
-    }
-    return ints;
   }
 }

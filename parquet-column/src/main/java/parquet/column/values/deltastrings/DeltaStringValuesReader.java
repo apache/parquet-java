@@ -31,12 +31,12 @@ public class DeltaStringValuesReader extends ValuesReader {
   private ValuesReader prefixLengthReader;
   private ValuesReader suffixReader;
 
-  private byte[] previous = new byte[0];
+  private Binary previous;
 
   public DeltaStringValuesReader() {
     this.prefixLengthReader = new DeltaBinaryPackingValuesReader();
     this.suffixReader = new DeltaLengthByteArrayValuesReader();
-    this.previous = new byte[0];
+    this.previous = Binary.fromByteArray(new byte[0]);
   }
 
   @Override
@@ -61,11 +61,14 @@ public class DeltaStringValuesReader extends ValuesReader {
     int length = prefixLength + suffix.length();
     
     // We have to do this to materialize the output
-    byte[] out = new byte[length];
-    System.arraycopy(previous, 0, out, 0, prefixLength);
-    System.arraycopy(suffix.getBytes(), 0, out, prefixLength, suffix.length());
-    
-    previous = out;
-    return Binary.fromByteArray(out);
+    if(prefixLength != 0) {
+      byte[] out = new byte[length];
+      System.arraycopy(previous.getBytes(), 0, out, 0, prefixLength);
+      System.arraycopy(suffix.getBytes(), 0, out, prefixLength, suffix.length());
+      previous =  Binary.fromByteArray(out);
+    } else {
+      previous = suffix;
+    }
+    return previous;
   }
 }

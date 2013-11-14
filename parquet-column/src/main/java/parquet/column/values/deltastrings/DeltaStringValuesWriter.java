@@ -43,7 +43,7 @@ public class DeltaStringValuesWriter extends ValuesWriter{
 	public DeltaStringValuesWriter(int initialCapacity) {
 		this.prefixLengthWriter = new DeltaBinaryPackingValuesWriter(128, 4, initialCapacity);
 		this.suffixWriter = new DeltaLengthByteArrayValuesWriter(initialCapacity);
-		this.previous = null;
+		this.previous = new byte[0];
 	}
 
 	@Override
@@ -82,12 +82,10 @@ public class DeltaStringValuesWriter extends ValuesWriter{
 	public void writeBytes(Binary v) {
 		int i = 0;
 		byte[] vb = v.getBytes();
-		if (previous != null) {
-		  int length = previous.length < vb.length ? previous.length : vb.length;
-		  for(i = 0; (i < length) && (previous[i] == vb[i]); i++);
-		}
+		int length = previous.length < vb.length ? previous.length : vb.length;
+		for(i = 0; (i < length) && (previous[i] == vb[i]); i++);
 		prefixLengthWriter.writeInteger(i);
-		suffixWriter.writeBytes(Binary.fromByteArray(Arrays.copyOfRange(vb, i, vb.length)));
+		suffixWriter.writeBytes(Binary.fromByteArray(vb, i, vb.length - i));
 		previous = vb;
 	}
 }
