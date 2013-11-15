@@ -241,9 +241,10 @@ abstract public class Binary {
    * @return
    */
   private static final boolean equals(byte[] array1, int offset1, int length1, byte[] array2, int offset2, int length2) {
-    if (array1 == array2) return true;
+    if (array1 == null && array2 == null) return true;
     if (array1 == null || array2 == null) return false;
     if (length1 != length2) return false;
+    if (array1 == array2 && offset1 == offset2) return true;
     for (int i = 0; i < length1; i++) {
       if (array1[i + offset1] != array2[i + offset2]) {
         return false;
