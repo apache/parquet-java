@@ -42,6 +42,8 @@ import java.io.IOException;
  *   }
  * </pre>
  *
+ * The algorithm and format is inspired by D. Lemire's paper: http://lemire.me/blog/archives/2012/09/12/fast-integer-compression-decoding-billions-of-integers-per-second/
+ *
  * @author Tianshuo Deng
  */
 public class DeltaBinaryPackingValuesWriter extends ValuesWriter {

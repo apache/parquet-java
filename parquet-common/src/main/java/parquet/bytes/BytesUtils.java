@@ -182,12 +182,15 @@ public class BytesUtils {
     return value | (b << i);
   }
 
+  /**
+   * uses a trick mentioned in https://developers.google.com/protocol-buffers/docs/encoding to read zigZag encoded data
+   * @param in
+   * @return
+   * @throws IOException
+   */
   public static int readZigZagVarInt(InputStream in) throws IOException {
     int raw = readUnsignedVarInt(in);
     int temp = (((raw << 31) >> 31) ^ raw) >> 1;
-    // This extra step lets us deal with the largest signed values by treating
-    // negative results from read unsigned methods as like unsigned values.
-    // Must re-flip the top bit if the original read value had it set.
     return temp ^ (raw & (1 << 31));
   }
 
