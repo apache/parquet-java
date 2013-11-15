@@ -64,6 +64,11 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
   }
 
   @Override
+  public boolean readBoolean() {
+    return readInteger() == 0 ? false : true;
+  }
+
+  @Override
   public void skip() {
     readInteger();
   }

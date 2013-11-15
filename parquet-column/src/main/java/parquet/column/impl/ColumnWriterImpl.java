@@ -72,13 +72,13 @@ final class ColumnWriterImpl implements ColumnWriter {
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
 
-    repetitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel());
-    definitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel());
+    repetitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), initialSizePerCol);
+    definitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), initialSizePerCol);
 
     if (enableDictionary) {
       switch (path.getType()) {
       case BOOLEAN:
-        this.dataColumn = new BooleanPlainValuesWriter();
+        this.dataColumn = newBooleanValuesWriter(initialSizePerCol);
         break;
       case BINARY:
         this.dataColumn = new PlainBinaryDictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol);
@@ -104,7 +104,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     } else {
       switch (path.getType()) {
       case BOOLEAN:
-        this.dataColumn = new BooleanPlainValuesWriter();
+        this.dataColumn = newBooleanValuesWriter(initialSizePerCol);
         break;
       case FIXED_LEN_BYTE_ARRAY:
         this.dataColumn = new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol);
@@ -115,14 +115,16 @@ final class ColumnWriterImpl implements ColumnWriter {
     }
   }
 
-  private ValuesWriter getColumnDescriptorValuesWriter(int maxLevel) {
+  private RunLengthBitPackingHybridValuesWriter newBooleanValuesWriter(int initialSizePerCol) {
+    return new RunLengthBitPackingHybridValuesWriter(1, initialSizePerCol);
+  }
+
+  private ValuesWriter getColumnDescriptorValuesWriter(int maxLevel, int initialSizePerCol) {
     if (maxLevel == 0) {
       return new DevNullValuesWriter();
     } else {
-      // TODO: what is a good initialCapacity?
       return new RunLengthBitPackingHybridValuesWriter(
-          BytesUtils.getWidthFromMaxInt(maxLevel),
-          64 * 1024);
+          BytesUtils.getWidthFromMaxInt(maxLevel), initialSizePerCol);
     }
   }
 
