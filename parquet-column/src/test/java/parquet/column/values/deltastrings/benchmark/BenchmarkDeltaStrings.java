@@ -13,14 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.values.deltalengthbytearray;
+package parquet.column.values.deltastrings.benchmark;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import org.junit.Rule;
 import org.junit.Test;
 
 import parquet.column.values.Utils;
+import parquet.column.values.deltastrings.DeltaStringValuesReader;
+import parquet.column.values.deltastrings.DeltaStringValuesWriter;
 import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.PlainValuesWriter;
 import parquet.io.api.Binary;
@@ -32,12 +35,18 @@ import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 
 @AxisRange(min = 0, max = 1)
 @BenchmarkMethodChart(filePrefix = "benchmark-encoding-writing-random")
-public class BenchmarkDeltaLengthByteArray {
+public class BenchmarkDeltaStrings {
   
   @Rule
   public org.junit.rules.TestRule benchmarkRun = new BenchmarkRule();
   
-  String[] values = Utils.getRandomStringSamples(1000000, 32);
+  static String[] values = Utils.getRandomStringSamples(1000000, 32);
+  static String[] sortedVals;
+  static
+  {
+   sortedVals = Arrays.copyOf(values, values.length);
+   Arrays.sort(sortedVals);
+  }
   
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
@@ -54,13 +63,36 @@ public class BenchmarkDeltaLengthByteArray {
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void benchmarkRandomStringsWithDeltaLengthByteArrayValuesWriter() throws IOException {
-    DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64*1024);
-    DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
+    DeltaStringValuesWriter writer = new DeltaStringValuesWriter(64*1024);
+    DeltaStringValuesReader reader = new DeltaStringValuesReader();
     
     Utils.writeData(writer, values);
     byte [] data = writer.getBytes().toByteArray();
     Binary[] bin = Utils.readData(reader, data, values.length);
     System.out.println("size " + data.length);
   }
-
+  
+  @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
+  @Test
+  public void benchmarkSortedStringsWithPlainValuesWriter() throws IOException {
+    PlainValuesWriter writer = new PlainValuesWriter(64*1024);
+    BinaryPlainValuesReader reader = new BinaryPlainValuesReader();
+    
+    Utils.writeData(writer, sortedVals);
+    byte [] data = writer.getBytes().toByteArray();
+    Binary[] bin = Utils.readData(reader, data, values.length);
+    System.out.println("size " + data.length);
+  }
+  
+  @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
+  @Test
+  public void benchmarkSortedStringsWithDeltaLengthByteArrayValuesWriter() throws IOException {
+    DeltaStringValuesWriter writer = new DeltaStringValuesWriter(64*1024);
+    DeltaStringValuesReader reader = new DeltaStringValuesReader();
+    
+    Utils.writeData(writer, sortedVals);
+    byte [] data = writer.getBytes().toByteArray();
+    Binary[] bin = Utils.readData(reader, data, values.length);
+    System.out.println("size " + data.length);
+  }
 }

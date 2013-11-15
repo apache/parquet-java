@@ -183,7 +183,7 @@ public class DeltaBinaryPackingValuesWriterTest {
 //    reader = new RunLengthBitPackingHybridValuesReader(32);
   }
 
-  @Test
+//  @Test
   public void readingPerfTest() throws IOException {
     int round = 1000;
     int[] data = new int[10000 * blockSize];
@@ -219,7 +219,7 @@ public class DeltaBinaryPackingValuesWriterTest {
 
   }
 
-  @Test
+//  @Test
   public void writingPerfTest() throws IOException {
 //    withRLE();
     int round = 1000;
