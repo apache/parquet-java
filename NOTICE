@@ -13,5 +13,7 @@ http://hadoop.apache.org
 
 This project includes code from https://github.com/lemire/JavaFastPFOR
 parquet-column/src/main/java/parquet/column/values/bitpacking/LemireBitPacking.java
+parquet-column/src/main/java/parquet/column/values/delta/DeltaBinaryPackingValuesWriter.java
+parquet-column/src/main/java/parquet/column/values/delta/DeltaBinaryPackingValuesReader.java
 Apache License Version 2.0 http://www.apache.org/licenses/.
 (c) Daniel Lemire, http://lemire.me/en/
