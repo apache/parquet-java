@@ -105,13 +105,6 @@ public enum Encoding {
     }
   },
 
-  GROUP_VAR_INT {
-    @Override // TODO: GROUP VAR INT encoding
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      throw new UnsupportedOperationException("NYI");
-    }
-  },
-
   DELTA_BINARY_PACKED {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
@@ -140,6 +133,10 @@ public enum Encoding {
       }
       return new DeltaByteArrayReader();
     }
+  },
+  
+  RLE_DICTIONARY {
+    
   },
   
   PLAIN_DICTIONARY {

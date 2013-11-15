@@ -22,8 +22,8 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import parquet.column.values.Utils;
-import parquet.column.values.deltastrings.DeltaStringValuesReader;
-import parquet.column.values.deltastrings.DeltaStringValuesWriter;
+import parquet.column.values.deltastrings.DeltaByteArrayReader;
+import parquet.column.values.deltastrings.DeltaByteArrayWriter;
 import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.PlainValuesWriter;
 import parquet.io.api.Binary;
@@ -35,7 +35,7 @@ import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 
 @AxisRange(min = 0, max = 1)
 @BenchmarkMethodChart(filePrefix = "benchmark-encoding-writing-random")
-public class BenchmarkDeltaStrings {
+public class BenchmarkDeltaByteArray {
   
   @Rule
   public org.junit.rules.TestRule benchmarkRun = new BenchmarkRule();
