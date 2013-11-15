@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.values.delta;
+package parquet.column.values.delta.benchmark;
 
 import org.junit.Test;
+import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 
 import java.util.Random;

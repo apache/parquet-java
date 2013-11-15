@@ -1,4 +1,4 @@
-package parquet.column.values.delta;
+package parquet.column.values.delta.benchmark;
 
 
 import com.carrotsearch.junitbenchmarks.BenchmarkOptions;
@@ -9,6 +9,7 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import parquet.column.values.ValuesWriter;
+import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 
 import java.util.Random;

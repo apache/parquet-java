@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column.values.deltastrings;
+package parquet.column.values.deltastrings.benchmark;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -22,6 +22,8 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import parquet.column.values.Utils;
+import parquet.column.values.deltastrings.DeltaStringValuesReader;
+import parquet.column.values.deltastrings.DeltaStringValuesWriter;
 import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.PlainValuesWriter;
 import parquet.io.api.Binary;
