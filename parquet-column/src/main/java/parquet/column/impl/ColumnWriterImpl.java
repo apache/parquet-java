@@ -49,6 +49,7 @@ final class ColumnWriterImpl implements ColumnWriter {
   private static final Log LOG = Log.getLog(ColumnWriterImpl.class);
   private static final boolean DEBUG = Log.DEBUG;
   private static final int INITIAL_COUNT_FOR_SIZE_CHECK = 100;
+
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
   private final long pageSizeThreshold;
