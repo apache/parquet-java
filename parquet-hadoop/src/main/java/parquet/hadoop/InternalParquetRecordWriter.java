@@ -55,6 +55,20 @@ class InternalParquetRecordWriter<T> {
 
   private ColumnWriteStoreImpl store;
   private ColumnChunkPageWriteStore pageStore;
+  
+  public InternalParquetRecordWriter(
+      ParquetFileWriter w,
+      WriteSupport<T> writeSupport,
+      MessageType schema,
+      Map<String, String> extraMetaData,
+      int blockSize,
+      int pageSize,
+      BytesCompressor compressor,
+      int dictionaryPageSize,
+      boolean enableDictionary,
+      boolean validating) {
+    this(w, writeSupport, schema, extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, 1, enableDictionary, validating);
+  }
 
   /**
    * @param w the file to write to
@@ -73,6 +87,7 @@ class InternalParquetRecordWriter<T> {
       int pageSize,
       BytesCompressor compressor,
       int dictionaryPageSize,
+      int writerVersion,
       boolean enableDictionary,
       boolean validating) {
     this.w = w;

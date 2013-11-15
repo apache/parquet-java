@@ -105,6 +105,10 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
    * it will be reset after each flush
    */
   private int minDeltaInCurrentBlock = Integer.MAX_VALUE;
+  
+  public DeltaBinaryPackingValuesWriter(int slabSize) {
+    this(DEFAULT_NUM_BLOCK_VALUES, DEFAULT_NUM_MINIBLOCKS, slabSize);
+  }
 
   public DeltaBinaryPackingValuesWriter(int blockSizeInValues, int miniBlockNum, int slabSize) {
     this.config = new DeltaBinaryPackingConfig(blockSizeInValues, miniBlockNum);

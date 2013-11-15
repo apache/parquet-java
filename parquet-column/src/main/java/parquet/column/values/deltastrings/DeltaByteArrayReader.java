@@ -27,13 +27,13 @@ import parquet.io.api.Binary;
  * @author amokashi
  *
  */
-public class DeltaStringValuesReader extends ValuesReader {
+public class DeltaByteArrayReader extends ValuesReader {
   private ValuesReader prefixLengthReader;
   private ValuesReader suffixReader;
 
   private Binary previous;
 
-  public DeltaStringValuesReader() {
+  public DeltaByteArrayReader() {
     this.prefixLengthReader = new DeltaBinaryPackingValuesReader();
     this.suffixReader = new DeltaLengthByteArrayValuesReader();
     this.previous = Binary.fromByteArray(new byte[0]);

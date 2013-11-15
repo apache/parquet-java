@@ -36,14 +36,31 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
   private final int dictionaryPageSizeThreshold;
   private final boolean enableDictionary;
   private final int initialSizePerCol;
-
-  public ColumnWriteStoreImpl(PageWriteStore pageWriteStore, int pageSizeThreshold, int initialSizePerCol, int dictionaryPageSizeThreshold, boolean enableDictionary) {
+  private final int writerVersion;
+  
+  public ColumnWriteStoreImpl(
+      PageWriteStore pageWriteStore, 
+      int pageSizeThreshold, 
+      int initialSizePerCol, 
+      int dictionaryPageSizeThreshold, 
+      boolean enableDictionary) {
+    this(pageWriteStore, pageSizeThreshold, initialSizePerCol, dictionaryPageSizeThreshold, 1, enableDictionary);
+  }
+  
+  public ColumnWriteStoreImpl(
+      PageWriteStore pageWriteStore, 
+      int pageSizeThreshold, 
+      int initialSizePerCol, 
+      int dictionaryPageSizeThreshold, 
+      int writerVersion,
+      boolean enableDictionary) {
     super();
     this.pageWriteStore = pageWriteStore;
     this.pageSizeThreshold = pageSizeThreshold;
     this.initialSizePerCol = initialSizePerCol;
     this.dictionaryPageSizeThreshold = dictionaryPageSizeThreshold;
     this.enableDictionary = enableDictionary;
+    this.writerVersion = writerVersion;
   }
 
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
@@ -57,7 +74,7 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
 
   private ColumnWriterImpl newMemColumn(ColumnDescriptor path) {
     PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-    return new ColumnWriterImpl(path, pageWriter, pageSizeThreshold, initialSizePerCol, dictionaryPageSizeThreshold, enableDictionary);
+    return new ColumnWriterImpl(path, pageWriter, pageSizeThreshold, initialSizePerCol, dictionaryPageSizeThreshold, writerVersion, enableDictionary);
   }
 
   @Override

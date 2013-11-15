@@ -34,13 +34,13 @@ import parquet.io.api.Binary;
  * @author amokashi
  *
  */
-public class DeltaStringValuesWriter extends ValuesWriter{
+public class DeltaByteArrayWriter extends ValuesWriter{
 	
 	private ValuesWriter prefixLengthWriter;
 	private ValuesWriter suffixWriter;
 	private byte[] previous;
 	
-	public DeltaStringValuesWriter(int initialCapacity) {
+	public DeltaByteArrayWriter(int initialCapacity) {
 		this.prefixLengthWriter = new DeltaBinaryPackingValuesWriter(128, 4, initialCapacity);
 		this.suffixWriter = new DeltaLengthByteArrayValuesWriter(initialCapacity);
 		this.previous = new byte[0];
@@ -58,7 +58,7 @@ public class DeltaStringValuesWriter extends ValuesWriter{
 
 	@Override
 	public Encoding getEncoding() {
-		return Encoding.DELTA_STRINGS;
+		return Encoding.DELTA_BYTE_ARRAY;
 	}
 
 	@Override

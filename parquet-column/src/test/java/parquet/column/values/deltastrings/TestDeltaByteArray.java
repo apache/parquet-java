@@ -26,15 +26,15 @@ import parquet.column.values.ValuesReader;
 import parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import parquet.io.api.Binary;
 
-public class TestDeltaStrings {
+public class TestDeltaByteArray {
   
   static String[] values = {"parquet-mr", "parquet", "parquet-format"};
   static String[] randvalues = Utils.getRandomStringSamples(10000, 32);
 
   @Test
   public void testSerialization () throws IOException {
-    DeltaStringValuesWriter writer = new DeltaStringValuesWriter(64*1024);
-    DeltaStringValuesReader reader = new DeltaStringValuesReader();
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024);
+    DeltaByteArrayReader reader = new DeltaByteArrayReader();
 
     Utils.writeData(writer, values);
     Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
@@ -46,8 +46,8 @@ public class TestDeltaStrings {
   
   @Test
   public void testRandomStrings() throws IOException {
-    DeltaStringValuesWriter writer = new DeltaStringValuesWriter(64*1024);
-    DeltaStringValuesReader reader = new DeltaStringValuesReader();
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024);
+    DeltaByteArrayReader reader = new DeltaByteArrayReader();
 
     Utils.writeData(writer, randvalues);
     Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), randvalues.length);
@@ -59,7 +59,7 @@ public class TestDeltaStrings {
 
   @Test
   public void testLengths() throws IOException {
-    DeltaStringValuesWriter writer = new DeltaStringValuesWriter(64*1024);
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024);
     ValuesReader reader = new DeltaBinaryPackingValuesReader();
 
     Utils.writeData(writer, values);

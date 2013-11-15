@@ -27,6 +27,8 @@ import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.boundedint.DevNullValuesWriter;
+import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
+import parquet.column.values.deltastrings.DeltaByteArrayWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDictionaryValuesWriter;
@@ -58,6 +60,16 @@ final class ColumnWriterImpl implements ColumnWriter {
   private ValuesWriter dataColumn;
   private int valueCount;
   private int valueCountForNextSizeCheck;
+  
+  public ColumnWriterImpl(
+      ColumnDescriptor path,
+      PageWriter pageWriter,
+      int pageSizeThreshold,
+      int initialSizePerCol,
+      int dictionaryPageSizeThreshold,
+      boolean enableDictionary) {
+    this(path, pageWriter, pageSizeThreshold, initialSizePerCol, dictionaryPageSizeThreshold, 1, enableDictionary);
+  }
 
   public ColumnWriterImpl(
       ColumnDescriptor path,
@@ -65,6 +77,7 @@ final class ColumnWriterImpl implements ColumnWriter {
       int pageSizeThreshold,
       int initialSizePerCol,
       int dictionaryPageSizeThreshold,
+      int writerVersion,
       boolean enableDictionary) {
     this.path = path;
     this.pageWriter = pageWriter;
@@ -75,6 +88,18 @@ final class ColumnWriterImpl implements ColumnWriter {
     repetitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), initialSizePerCol);
     definitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), initialSizePerCol);
 
+    setColumnWriter(enableDictionary, dictionaryPageSizeThreshold, initialSizePerCol, writerVersion);
+  }
+  
+  private void setColumnWriter(boolean enableDictionary, int dictionaryPageSizeThreshold, int initialSizePerCol, int writerVersion) {
+    if(writerVersion == 2) {
+      setColumnWriter2(enableDictionary, dictionaryPageSizeThreshold, initialSizePerCol);
+    } else {
+      setColumnWriter1(enableDictionary, dictionaryPageSizeThreshold, initialSizePerCol);
+    }
+  }
+  
+  private void setColumnWriter2(boolean enableDictionary, int dictionaryPageSizeThreshold, int initialSizePerCol) {
     if (enableDictionary) {
       switch (path.getType()) {
       case BOOLEAN:
@@ -105,6 +130,55 @@ final class ColumnWriterImpl implements ColumnWriter {
       switch (path.getType()) {
       case BOOLEAN:
         this.dataColumn = newBooleanValuesWriter(initialSizePerCol);
+        break;
+      case FIXED_LEN_BYTE_ARRAY:
+        this.dataColumn = new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol);
+        break;
+      case INT32:
+        this.dataColumn = new DeltaBinaryPackingValuesWriter(initialSizePerCol);
+        break;
+      case BINARY:
+        this.dataColumn = new DeltaByteArrayWriter(initialSizePerCol);
+        break;
+      default:
+        this.dataColumn = new PlainValuesWriter(initialSizePerCol);
+      }
+    }
+  }
+  
+  private void setColumnWriter1(boolean enableDictionary, int dictionaryPageSizeThreshold, int initialSizePerCol) {
+    if (enableDictionary) {
+      switch (path.getType()) {
+      case BOOLEAN:
+        this.dataColumn = new BooleanPlainValuesWriter();
+        // this.dataColumn = newBooleanValuesWriter(initialSizePerCol);
+        break;
+      case BINARY:
+        this.dataColumn = new PlainBinaryDictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol);
+        break;
+      case INT64:
+        this.dataColumn = new PlainLongDictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol);
+        break;
+      case DOUBLE:
+        this.dataColumn = new PlainDoubleDictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol);
+        break;
+      case INT32:
+        this.dataColumn = new PlainIntegerDictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol);
+        break;
+      case FLOAT:
+        this.dataColumn = new PlainFloatDictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol);
+        break;
+      case FIXED_LEN_BYTE_ARRAY:
+        this.dataColumn = new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol);
+        break;
+      default:
+        this.dataColumn = new PlainValuesWriter(initialSizePerCol);
+      }
+    } else {
+      switch (path.getType()) {
+      case BOOLEAN:
+        this.dataColumn = new BooleanPlainValuesWriter();
+        // this.dataColumn = newBooleanValuesWriter(initialSizePerCol);
         break;
       case FIXED_LEN_BYTE_ARRAY:
         this.dataColumn = new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol);

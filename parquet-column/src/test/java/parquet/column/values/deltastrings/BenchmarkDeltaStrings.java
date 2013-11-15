@@ -61,8 +61,8 @@ public class BenchmarkDeltaStrings {
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void benchmarkRandomStringsWithDeltaLengthByteArrayValuesWriter() throws IOException {
-    DeltaStringValuesWriter writer = new DeltaStringValuesWriter(64*1024);
-    DeltaStringValuesReader reader = new DeltaStringValuesReader();
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024);
+    DeltaByteArrayReader reader = new DeltaByteArrayReader();
     
     Utils.writeData(writer, values);
     byte [] data = writer.getBytes().toByteArray();
@@ -85,8 +85,8 @@ public class BenchmarkDeltaStrings {
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void benchmarkSortedStringsWithDeltaLengthByteArrayValuesWriter() throws IOException {
-    DeltaStringValuesWriter writer = new DeltaStringValuesWriter(64*1024);
-    DeltaStringValuesReader reader = new DeltaStringValuesReader();
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024);
+    DeltaByteArrayReader reader = new DeltaByteArrayReader();
     
     Utils.writeData(writer, sortedVals);
     byte [] data = writer.getBytes().toByteArray();

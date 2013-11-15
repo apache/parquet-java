@@ -81,7 +81,7 @@
     <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
     <jackson.version>1.9.11</jackson.version>
     <hadoop.version>1.1.0</hadoop.version>
-    <parquet.format.version>1.0.0</parquet.format.version>
+    <parquet.format.version>1.0.1-SNAPSHOT</parquet.format.version>
   </properties>
 
   <modules>

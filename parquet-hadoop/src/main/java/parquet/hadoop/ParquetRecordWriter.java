@@ -35,6 +35,19 @@ import parquet.schema.MessageType;
 public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
 
   private InternalParquetRecordWriter<T> internalWriter;
+  
+  public ParquetRecordWriter(
+      ParquetFileWriter w,
+      WriteSupport<T> writeSupport,
+      MessageType schema,
+      Map<String, String> extraMetaData,
+      int blockSize, int pageSize,
+      BytesCompressor compressor,
+      int dictionaryPageSize,
+      boolean enableDictionary,
+      boolean validating) {
+    this(w, writeSupport, schema, extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, 1, enableDictionary, validating);
+  }
 
   /**
    *
@@ -56,10 +69,11 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       int blockSize, int pageSize,
       BytesCompressor compressor,
       int dictionaryPageSize,
+      int writerVersion,
       boolean enableDictionary,
       boolean validating) {
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
-        extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary, validating);
+        extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, writerVersion, enableDictionary, validating);
   }
 
   /**

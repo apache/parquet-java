@@ -94,6 +94,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String COMPRESSION          = "parquet.compression";
   public static final String WRITE_SUPPORT_CLASS  = "parquet.write.support.class";
   public static final String DICTIONARY_PAGE_SIZE = "parquet.dictionary.page.size";
+  public static final String WRITER_VERSION       = "parquet.writer.version";
   public static final String ENABLE_DICTIONARY    = "parquet.enable.dictionary";
   public static final String VALIDATION           = "parquet.validation";
 
@@ -172,7 +173,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static boolean getEnableDictionary(Configuration configuration) {
     return configuration.getBoolean(ENABLE_DICTIONARY, true);
   }
-
+  
+  public static int getWriterVersion(Configuration configuration) {
+    return configuration.getInt(WRITER_VERSION, 1);
+  }
+  
   public static int getBlockSize(Configuration configuration) {
     return configuration.getInt(BLOCK_SIZE, DEFAULT_BLOCK_SIZE);
   }
@@ -275,6 +280,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (INFO) LOG.info("Parquet dictionary page size to " + pageSize);
 
     boolean enableDictionary = getEnableDictionary(conf);
+    int writerVersion = getWriterVersion(conf);
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(conf, init.getSchema(), file);
     w.start();
@@ -289,6 +295,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         blockSize, pageSize,
         codecFactory.getCompressor(codec, pageSize),
         dictionaryPageSize,
+        writerVersion,
         enableDictionary,
         validating);
   }
