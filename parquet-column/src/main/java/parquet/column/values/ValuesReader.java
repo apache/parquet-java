@@ -52,11 +52,15 @@ public abstract class ValuesReader {
    * @param valueCount count of values in this page
    * @param page the array to read from containing the page data (repetition levels, definition levels, data)
    * @param offset where to start reading from in the page
-   * @return the offset of the end of the data for this section of the page
+   *
    * @throws IOException
    */
   public abstract void initFromPage(int valueCount, byte[] page, int offset) throws IOException;
   
+  /**
+   * Called to return next offset of the 
+   * @return
+   */
   public int getNextOffset() {
     throw new ParquetDecodingException("Unsupported: cannot get offset of the next section.");
   }

@@ -16,6 +16,8 @@
 package parquet.column;
 
 import static parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 
 import java.io.IOException;
 
@@ -112,6 +114,9 @@ public enum Encoding {
   DELTA_BINARY_PACKED {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+      if(descriptor.getType() != INT32) {
+        throw new ParquetDecodingException("Encoding DELTA_BINARY_PACKED is only supported for type INT32");
+      }
       return new DeltaBinaryPackingValuesReader();
     }
   },
@@ -119,13 +124,19 @@ public enum Encoding {
   DELTA_LENGTH_BYTE_ARRAY {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+      if(descriptor.getType() != BINARY) {
+        throw new ParquetDecodingException("Encoding DELTA_LENGTH_BYTE_ARRAY is only supported for type BINARY");
+      }
       return new DeltaLengthByteArrayValuesReader();
     }
   },
   
-  DELTA_STRINGS {
+  DELTA_BYTE_ARRAY {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+      if(descriptor.getType() != BINARY) {
+        throw new ParquetDecodingException("Encoding DELTA_BYTE_ARRAY is only supported for type BINARY");
+      }
       return new DeltaStringValuesReader();
     }
   },
