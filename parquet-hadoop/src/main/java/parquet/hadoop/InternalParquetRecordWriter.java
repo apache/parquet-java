@@ -49,6 +49,7 @@ class InternalParquetRecordWriter<T> {
   private final int dictionaryPageSize;
   private final boolean enableDictionary;
   private final boolean validating;
+  private final int writerVersion;
 
   private long recordCount = 0;
   private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
@@ -100,6 +101,7 @@ class InternalParquetRecordWriter<T> {
     this.dictionaryPageSize = dictionaryPageSize;
     this.enableDictionary = enableDictionary;
     this.validating = validating;
+    this.writerVersion=writerVersion;
     initStore();
   }
 
@@ -112,7 +114,7 @@ class InternalParquetRecordWriter<T> {
     // we don't want this number to be too small either
     // ideally, slightly bigger than the page size, but not bigger than the block buffer
     int initialPageBufferSize = max(MINIMUM_BUFFER_SIZE, min(pageSize + pageSize / 10, initialBlockBufferSize));
-    store = new ColumnWriteStoreImpl(pageStore, pageSize, initialPageBufferSize, dictionaryPageSize, enableDictionary);
+    store = new ColumnWriteStoreImpl(pageStore, pageSize, initialPageBufferSize, dictionaryPageSize, writerVersion, enableDictionary);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
     writeSupport.prepareForWrite(columnIO.getRecordWriter(store));
   }
