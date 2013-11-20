@@ -91,6 +91,10 @@ public class TestDictionary {
     for (long i = 0; i < 100; i++) {
       assertEquals(Binary.fromString("str" + i), reader.readBytes());
     }
+
+    //simulate cutting the page
+    cw.reset();
+    assertEquals(0,cw.getBufferedSize());
   }
 
   @Test
@@ -188,6 +192,10 @@ public class TestDictionary {
     for (long i = 0; i < 100; i++) {
       assertEquals(i, reader.readLong());
     }
+
+    //simulate cutting the page
+    cw.reset();
+    assertEquals(0,cw.getBufferedSize());
   }
 
   @Test
@@ -249,6 +257,12 @@ public class TestDictionary {
     for (float i = 0; i < 100; i++) {
       assertEquals(i, reader.readDouble(), 0.00001);
     }
+
+    System.out.println(cw.getBufferedSize());
+
+    //simulate cutting the page
+    cw.reset();
+    assertEquals(0,cw.getBufferedSize());
   }
 
   @Test
@@ -315,6 +329,10 @@ public class TestDictionary {
     for (int i = 0; i < 100; i++) {
       assertEquals(i, reader.readInteger());
     }
+
+    //simulate cutting the page
+    cw.reset();
+    assertEquals(0,cw.getBufferedSize());
   }
 
   @Test
@@ -375,6 +393,10 @@ public class TestDictionary {
     for (float i = 0; i < 100; i++) {
       assertEquals(i, reader.readFloat(), 0.00001);
     }
+
+    //simulate cutting the page
+    cw.reset();
+    assertEquals(0,cw.getBufferedSize());
   }
 
   private DictionaryValuesReader initDicReader(ValuesWriter cw, PrimitiveTypeName type)
