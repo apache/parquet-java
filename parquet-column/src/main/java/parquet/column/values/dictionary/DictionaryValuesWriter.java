@@ -189,6 +189,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       encodedValues = new IntList();
     }
     plainValuesWriter.reset();
+    rawDataByteSize = 0;
   }
 
   @Override
