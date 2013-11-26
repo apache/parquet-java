@@ -93,7 +93,11 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
       else
         hfs = (Hfs) tap;
 
-      List<Footer> footers = ParquetFileReader.readFooters(flowProcess.getConfigCopy(), hfs.getPath());
+      JobConf jobConf = flowProcess.getConfigCopy();
+      DeprecatedParquetInputFormat format = new DeprecatedParquetInputFormat();
+      format.addInputPath(jobConf, hfs.getPath());
+      List<Footer> footers = format.getFooters(jobConf);
+
       if(footers.isEmpty()) {
         throw new TapException("Could not read Parquet metadata at " + hfs.getPath());
       } else {
