@@ -1,26 +1,11 @@
-/**
- * Copyright 2013 Criteo.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-package parquet.hive;
+package parquet.hive.internal;
+
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -30,58 +15,28 @@ import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.exec.TableScanOperator;
 import org.apache.hadoop.hive.ql.exec.Utilities;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
-import org.apache.hadoop.hive.ql.plan.MapredWork;
+import org.apache.hadoop.hive.ql.plan.MapWork;
 import org.apache.hadoop.hive.ql.plan.PartitionDesc;
 import org.apache.hadoop.hive.ql.plan.TableScanDesc;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.util.StringUtils;
 
-/**
- *
- * ManageJobConfig quick workaround to initialize the job with column needed
- *
- * We are going to get the Table from a partition in order to get all the aliases from it.
- * Once we have them, we take a look at the different columns needed for each of them, and we update the job
- * by appending these columns.
- *
- * At the end, the new JobConf will contain all the wanted columns.
- *
- * @author Mickaël Lacour <m.lacour@criteo.com>
- *
- */
-public class ManageJobConfig {
+public class Hive012Binding extends AbstractHiveBinding {
 
-  MapredWork mrwork;
+  private MapWork mapWork;
   private Map<String, PartitionDesc> pathToPartitionInfo;
 
   /**
-   * From a string which columns names (including hive column), return a list of string columns
-   *
-   * @param columns
-   * @return
-   */
-  public static List<String> getColumns(final String columns) {
-    final List<String> listColumns = (List<String>) StringUtils.getStringCollection(columns);
-    // Remove virtual Hive columns, hardcoded for compatibility
-    listColumns.remove("INPUT__FILE__NAME");
-    listColumns.remove("BLOCK__OFFSET__INSIDE__FILE");
-    listColumns.remove("ROW__OFFSET__INSIDE__BLOCK");
-    listColumns.remove("RAW__DATA__SIZE");
-    return listColumns;
-  }
-
-  /**
-   * Initialize the mrwork variable in order to get all the partition and start to update the jobconf
+   * Initialize the mapWork variable in order to get all the partition and start to update the jobconf
    *
    * @param job
    */
   private void init(final JobConf job) {
     final String plan = HiveConf.getVar(job, HiveConf.ConfVars.PLAN);
-    if (mrwork == null && plan != null && plan.length() > 0) {
-      mrwork = Utilities.getMapRedWork(job);
+    if (mapWork == null && plan != null && plan.length() > 0) {
+      mapWork = Utilities.getMapWork(job);
       pathToPartitionInfo = new LinkedHashMap<String, PartitionDesc>();
-      for (final Map.Entry<String, PartitionDesc> entry : mrwork.getPathToPartitionInfo().entrySet()) {
+      for (final Map.Entry<String, PartitionDesc> entry : mapWork.getPathToPartitionInfo().entrySet()) {
         pathToPartitionInfo.put(new Path(entry.getKey()).toUri().getPath().toString(), entry.getValue());
       }
     }
@@ -94,14 +49,15 @@ public class ManageJobConfig {
     return pathToPartitionInfo.get(path);
   }
 
-  private void pushProjectionsAndFilters(final JobConf jobConf, final String splitPath, final String splitPathWithNoSchema) {
+  private void pushProjectionsAndFilters(final JobConf jobConf,
+      final String splitPath, final String splitPathWithNoSchema) {
 
-    if (mrwork == null || mrwork.getPathToAliases() == null) {
+    if (mapWork == null || mapWork.getPathToAliases() == null) {
       return;
     }
 
     final ArrayList<String> aliases = new ArrayList<String>();
-    final Iterator<Entry<String, ArrayList<String>>> iterator = this.mrwork.getPathToAliases().entrySet().iterator();
+    final Iterator<Entry<String, ArrayList<String>>> iterator = mapWork.getPathToAliases().entrySet().iterator();
 
     while (iterator.hasNext()) {
       final Entry<String, ArrayList<String>> entry = iterator.next();
@@ -116,7 +72,7 @@ public class ManageJobConfig {
     }
 
     for (final String alias : aliases) {
-      final Operator<? extends Serializable> op = this.mrwork.getAliasToWork().get(
+      final Operator<? extends Serializable> op = mapWork.getAliasToWork().get(
               alias);
       if (op != null && op instanceof TableScanOperator) {
         final TableScanOperator tableScan = (TableScanOperator) op;
@@ -161,16 +117,10 @@ public class ManageJobConfig {
             filterExprSerialized);
   }
 
-  /**
-   *
-   * Clone the job and try to update the new one with the requested columns
-   *
-   * @param jobConf
-   * @param path    : needed to be able to
-   * @return the
-   * @throws IOException
-   */
-  public JobConf cloneJobAndInit(final JobConf jobConf, final Path path) throws IOException {
+  
+  @Override
+  public JobConf pushProjectionsAndFilters(JobConf jobConf, Path path)
+      throws IOException {
     init(jobConf);
     final JobConf cloneJobConf = new JobConf(jobConf);
     final PartitionDesc part = getPartition(path.toString());

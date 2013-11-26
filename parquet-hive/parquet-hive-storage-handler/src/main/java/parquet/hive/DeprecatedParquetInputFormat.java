@@ -59,16 +59,24 @@ import parquet.schema.MessageTypeParser;
 public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWritable> {
 
   private static final Log LOG = Log.getLog(DeprecatedParquetInputFormat.class);
-  protected ParquetInputFormat<ArrayWritable> realInput;
+  private final ParquetInputFormat<ArrayWritable> realInput;
+  private final HiveBinding hiveBinding;
 
   public DeprecatedParquetInputFormat() {
-    this.realInput = new ParquetInputFormat<ArrayWritable>(DataWritableReadSupport.class);
+    this(new ParquetInputFormat<ArrayWritable>(DataWritableReadSupport.class),
+        new HiveBindingFactory().create());
   }
 
   public DeprecatedParquetInputFormat(final InputFormat<Void, ArrayWritable> realInputFormat) {
-    this.realInput = (ParquetInputFormat<ArrayWritable>) realInputFormat;
+    this((ParquetInputFormat<ArrayWritable>) realInputFormat, new HiveBindingFactory().create());
   }
-  private final ManageJobConfig manageJob = new ManageJobConfig();
+
+  public DeprecatedParquetInputFormat(final ParquetInputFormat<ArrayWritable> inputFormat,
+      final HiveBinding hiveBinding) {
+    this.realInput = inputFormat;
+    this.hiveBinding = hiveBinding;
+  }
+
 
   @Override
   public org.apache.hadoop.mapred.InputSplit[] getSplits(final org.apache.hadoop.mapred.JobConf job, final int numSplits) throws IOException {
@@ -78,7 +86,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
     }
 
     final Path tmpPath = new Path((dirs[dirs.length - 1]).makeQualified(FileSystem.get(job)).toUri().getPath());
-    final JobConf cloneJobConf = manageJob.cloneJobAndInit(job, tmpPath);
+    final JobConf cloneJobConf = hiveBinding.pushProjectionsAndFilters(job, tmpPath);
     final List<org.apache.hadoop.mapreduce.InputSplit> splits = realInput.getSplits(ContextUtil.newJobContext(cloneJobConf, null));
 
     if (splits == null) {
@@ -105,7 +113,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
     try {
       return (RecordReader<Void, ArrayWritable>) new RecordReaderWrapper(realInput, split, job, reporter);
     } catch (final InterruptedException e) {
-      throw new RuntimeException("Cannot create a ReacordReaderWrapper", e);
+      throw new RuntimeException("Cannot create a RecordReaderWrapper", e);
     }
   }
 
@@ -135,9 +143,9 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
         try {
           return realSplit.getLength();
         } catch (IOException ex) {
-          throw new RuntimeException("Cannot get the length of the ParquetInputSlipt", ex);
+          throw new RuntimeException("Cannot get the length of the ParquetInputSplit", ex);
         } catch (InterruptedException ex) {
-          throw new RuntimeException("Cannot get the length of the ParquetInputSlipt", ex);
+          throw new RuntimeException("Cannot get the length of the ParquetInputSplit", ex);
         }
       }
     }
@@ -185,19 +193,20 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
 
   protected static class RecordReaderWrapper implements RecordReader<Void, ArrayWritable> {
 
-    private org.apache.hadoop.mapreduce.RecordReader<Void, ArrayWritable> realReader;
+    private final HiveBinding hiveBinding;
     private final long splitLen; // for getPos()
+
+    private org.apache.hadoop.mapreduce.RecordReader<Void, ArrayWritable> realReader;
     // expect readReader return same Key & Value objects (common case)
     // this avoids extra serialization & deserialization of these objects
     private ArrayWritable valueObj = null;
-    private final ManageJobConfig manageJob = new ManageJobConfig();
     private boolean firstRecord = false;
     private boolean eof = false;
     private int schemaSize;
 
     public RecordReaderWrapper(final ParquetInputFormat<ArrayWritable> newInputFormat, final InputSplit oldSplit, final JobConf oldJobConf, final Reporter reporter)
             throws IOException, InterruptedException {
-
+      hiveBinding = new HiveBindingFactory().create();
       splitLen = oldSplit.getLength();
       final ParquetInputSplit split = getSplit(oldSplit, oldJobConf);
 
@@ -320,7 +329,7 @@ public class DeprecatedParquetInputFormat extends FileInputFormat<Void, ArrayWri
         split = ((InputSplitWrapper) oldSplit).getRealSplit();
       } else if (oldSplit instanceof FileSplit) {
         final Path finalPath = ((FileSplit) oldSplit).getPath();
-        final JobConf cloneJob = manageJob.cloneJobAndInit(conf, finalPath.getParent());
+        final JobConf cloneJob = hiveBinding.pushProjectionsAndFilters(conf, finalPath.getParent());
 
         final ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(cloneJob, finalPath);
         final List<BlockMetaData> blocks = parquetMetadata.getBlocks();

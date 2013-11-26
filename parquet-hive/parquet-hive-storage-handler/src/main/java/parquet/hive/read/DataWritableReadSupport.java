@@ -20,10 +20,9 @@ import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.io.ArrayWritable;
-import parquet.Log;
 
 import parquet.hadoop.api.ReadSupport;
-import parquet.hive.ManageJobConfig;
+import parquet.hive.HiveBindingFactory;
 import parquet.hive.convert.DataWritableRecordConverter;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
@@ -60,7 +59,7 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
     final String columns = configuration.get("columns");
     final Map<String, String> contextMetadata = new HashMap<String, String>();
     if (columns != null) {
-      final List<String> listColumns = ManageJobConfig.getColumns(columns);
+      final List<String> listColumns = (new HiveBindingFactory()).create().removeVirtualColumns(columns);
 
       final List<Type> typeListTable = new ArrayList<Type>();
       for (final String col : listColumns) {
