@@ -1,15 +1,21 @@
 /**
  * Copyright 2013 Criteo.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License
- * at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
- * OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package parquet.hive;
+
+import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,11 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import junit.framework.TestCase;
-
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.io.HiveOutputFormat;
 import org.apache.hadoop.io.ArrayWritable;
@@ -36,6 +38,8 @@ import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.Counter;
 import org.apache.hadoop.util.Progressable;
+import org.junit.Before;
+import org.junit.Test;
 
 import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.ParquetInputSplit;
@@ -52,22 +56,19 @@ import parquet.schema.MessageType;
  * @author Mickaël Lacour <m.lacour@criteo.com>
  *
  */
-public class TestDeprecatedParquetOuputFormat extends TestCase {
+public class TestMapredParquetOuputFormat {
 
-  Map<Integer, ArrayWritable> mapData;
-  Configuration conf;
-  JobConf job;
-  FileSystem fs;
-  Path dir;
-  File testFile;
-  Reporter reporter;
-  FSDataOutputStream ds;
+  private Map<Integer, ArrayWritable> mapData;
+  private Configuration conf;
+  private JobConf job;
+  private Path dir;
+  private File testFile;
+  private Reporter reporter;
 
-  @Override
-  protected void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     conf = new Configuration();
     job = new JobConf(conf);
-    fs = FileSystem.getLocal(conf);
     dir = new Path("target/tests/from_java/deprecatedoutputformat/");
     testFile = new File(dir.toString(), "customer");
     if (testFile.exists()) {
@@ -95,8 +96,9 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
     }
   }
 
+  @Test
   public void testParquetHiveOutputFormat() throws Exception {
-    final HiveOutputFormat<Void, ArrayWritable> format = new DeprecatedParquetOutputFormat();
+    final HiveOutputFormat<Void, ArrayWritable> format = new MapredParquetOutputFormat();
     final Properties tableProperties = new Properties();
 
     // Set the configuration parameters
@@ -109,7 +111,7 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
     System.out.println("First part, write the data");
 
     job.set("mapred.task.id", "attempt_201304241759_32973_m_000002_0"); // FAKE ID
-    final fakeStatus reporter = new fakeStatus();
+    final FakeStatus reporter = new FakeStatus();
     final org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter recordWriter = format.getHiveRecordWriter(
             job,
             new Path(testFile.getAbsolutePath()),
@@ -140,7 +142,7 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
     }
 
 
-    final FileInputFormat<Void, ArrayWritable> format = new DeprecatedParquetInputFormat();
+    final FileInputFormat<Void, ArrayWritable> format = new MapredParquetInputFormat();
     final String[] locations = new String[] {"localhost"};
     final String schemaToString = schema.toString();
     final String columnsStr = "message customer {\n"
@@ -171,7 +173,7 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
     final ParquetInputSplit realSplit = new ParquetInputSplit(new Path(testFile.getAbsolutePath()), 0, size, locations, blocks,
             schemaToString, schemaToString, readFooter.getFileMetaData().getKeyValueMetaData(), readSupportMetaData);
 
-    final DeprecatedParquetInputFormat.InputSplitWrapper splitWrapper = new DeprecatedParquetInputFormat.InputSplitWrapper(realSplit);
+    final MapredParquetInputFormat.InputSplitWrapper splitWrapper = new MapredParquetInputFormat.InputSplitWrapper(realSplit);
 
     // construct the record reader
     final RecordReader<Void, ArrayWritable> reader = format.getRecordReader(splitWrapper, job, reporter);
@@ -203,7 +205,7 @@ public class TestDeprecatedParquetOuputFormat extends TestCase {
   }
 
   // FAKE Class in order to compile
-  private class fakeStatus extends org.apache.hadoop.mapreduce.StatusReporter implements Progressable {
+  private class FakeStatus extends org.apache.hadoop.mapreduce.StatusReporter implements Progressable {
 
     @Override
     public Counter getCounter(final Enum<?> e) {

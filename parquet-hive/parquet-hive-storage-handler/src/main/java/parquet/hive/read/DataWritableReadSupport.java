@@ -59,7 +59,7 @@ public class DataWritableReadSupport extends ReadSupport<ArrayWritable> {
     final String columns = configuration.get("columns");
     final Map<String, String> contextMetadata = new HashMap<String, String>();
     if (columns != null) {
-      final List<String> listColumns = (new HiveBindingFactory()).create().removeVirtualColumns(columns);
+      final List<String> listColumns = (new HiveBindingFactory()).create().getColumns(columns);
 
       final List<Type> typeListTable = new ArrayList<Type>();
       for (final String col : listColumns) {

@@ -28,20 +28,24 @@ public interface HiveBinding {
    * @param comma separated list of columns
    * @return list with virtual columns removed
    */
-  public List<String> removeVirtualColumns(final String columns);
+  public List<String> getColumns(final String columns);
   
   /**
    * Processes the JobConf object pushing down projections and filters.
+   *
    * We are going to get the Table from a partition in order to get all the
    * aliases from it. Once we have them, we take a look at the different
    * columns needed for each of them, and we update the job by appending
    * these columns.
    *
-   * At the end, the new JobConf will contain all the wanted columns.
+   * The JobConf is modified and therefore is cloned first to ensure
+   * other owners are not impacted by the changes here. This is a standard
+   * practice when modifying JobConf objects in InputFormats, for example
+   * HCatalog does this.
    *
-   * @param jobConf
+   * @param jobConf 
    * @param path
-   * @return jobConf which to be used for reading Parquet files
+   * @return cloned jobConf which can be used to read Parquet files
    * @throws IOException
    */
   public JobConf pushProjectionsAndFilters(final JobConf jobConf, final Path path) throws IOException;

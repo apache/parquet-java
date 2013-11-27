@@ -15,10 +15,17 @@ package parquet.hive;
 
 import java.lang.reflect.Method;
 
+import parquet.Log;
 import parquet.hive.internal.Hive010Binding;
 import parquet.hive.internal.Hive012Binding;
 
+/**
+ * Factory for creating HiveBinding objects based on the version of Hive
+ * available in the classpath. This class does not provide static methods
+ * to enable mocking.
+ */
 public class HiveBindingFactory {
+  private static final Log LOG = Log.getLog(HiveBindingFactory.class);
   private static final String HIVE_VERSION_CLASS_NAME = "org.apache.hive.common.util.HiveVersionInfo";
   private static final String HIVE_VERSION_METHOD_NAME = "getVersion";
   private static final String HIVE_VERSION_NULL = "<null>";
@@ -27,6 +34,9 @@ public class HiveBindingFactory {
   static final String HIVE_VERSION_012 = "0.12";
   static final String HIVE_VERSION_013 = "0.13";
 
+  /**
+   * @return HiveBinding based on the Hive version in the classpath
+   */
   public HiveBinding create() {
     Class<? extends HiveBinding> bindingClazz = create(HiveBindingFactory.class
         .getClassLoader());
@@ -38,6 +48,9 @@ public class HiveBindingFactory {
     }
   }
 
+  /**
+   * Internal method visible for testing purposes
+   */
   @SuppressWarnings("rawtypes")
   Class<? extends HiveBinding> create(ClassLoader classLoader) {
     // HiveVersionInfo was added in 0.11, if the class does
@@ -46,35 +59,44 @@ public class HiveBindingFactory {
     try {
       hiveVersionInfo = Class.forName(HIVE_VERSION_CLASS_NAME, true, classLoader);
     } catch (ClassNotFoundException e) {
+      LOG.debug("Class " + HIVE_VERSION_CLASS_NAME + ", not found, returning " + 
+          Hive010Binding.class.getSimpleName());
       return Hive010Binding.class;
     }
     return createInternal(hiveVersionInfo);
   }
 
+  /**
+   * Internal method visible for testing purposes
+   */
   @SuppressWarnings({"unchecked", "rawtypes"})
   Class<? extends HiveBinding> createInternal(Class hiveVersionInfo) {
     String hiveVersion;
     try {
       Method getVersionMethod = hiveVersionInfo.
           getMethod(HIVE_VERSION_METHOD_NAME, (Class[])null);
-      hiveVersion = trimVersion((String)getVersionMethod.
-          invoke(null, (Object[])null));
+      String rawVersion = (String)getVersionMethod.invoke(null, (Object[])null);
+      LOG.debug("Raw Version from " + hiveVersionInfo.getSimpleName() + " is '" +
+          rawVersion + "'");
+      hiveVersion = trimVersion(rawVersion);
     } catch (Exception e) {
       throw new UnexpectedHiveVersionProviderError("Unexpected error whilst " +
           "determining Hive version", e);
     }
     if(hiveVersion.startsWith(HIVE_VERSION_010)) {
+      LOG.debug("Hive version " + hiveVersion + ", returning " +
+          Hive010Binding.class.getSimpleName());
       return Hive010Binding.class;
     } else if(hiveVersion.startsWith(HIVE_VERSION_011)) {
-      // 0.10 binding should work with 0.11
+      LOG.debug("Hive version " + hiveVersion + ", returning " +
+          Hive010Binding.class.getSimpleName() + " as it's expected the 0.10 " +
+          "binding will work with 0.11");
       return Hive010Binding.class;
-    } else if(hiveVersion.startsWith(HIVE_VERSION_012)) {
-      return Hive012Binding.class;
-    } else if(hiveVersion.startsWith(HIVE_VERSION_013)) {
-      // 11/26/2013: it looks like the 0.12 binding will work for 0.13
-      return Hive012Binding.class;
     }
-    throw new UnknownHiveVersionError("Unknown Hive version '" + hiveVersion + "'");    
+    LOG.debug("Hive version " + hiveVersion + ", returning " +
+        Hive012Binding.class.getSimpleName());
+    // as of 11/26/2013 it looks like the 0.12 binding will work for 0.13
+    return Hive012Binding.class;
   }
   
   private static String trimVersion(String s) {
@@ -84,7 +106,7 @@ public class HiveBindingFactory {
     return s.trim();
   }
   static class HiveBindingInstantiationError extends Error {
-    private static final long serialVersionUID = -7344858060142118L;
+    private static final long serialVersionUID = -9348060142128L;
     public HiveBindingInstantiationError(String msg, Exception e) {
       super(msg, e);
     }
@@ -93,12 +115,6 @@ public class HiveBindingFactory {
     private static final long serialVersionUID = -7344858060142118L;
     public UnexpectedHiveVersionProviderError(String msg, Exception e) {
       super(msg, e);
-    }
-  }
-  static class UnknownHiveVersionError extends Error {
-    private static final long serialVersionUID = -6736485780607642118L;
-    public UnknownHiveVersionError(String msg) {
-      super(msg);
     }
   }
 }

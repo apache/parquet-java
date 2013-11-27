@@ -1,13 +1,12 @@
 package parquet.hive;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import org.junit.Before;
 import org.junit.Test;
 
 import parquet.hive.internal.Hive010Binding;
 import parquet.hive.internal.Hive012Binding;
-import parquet.hive.HiveBindingFactory.UnknownHiveVersionError;
 import parquet.hive.HiveBindingFactory.UnexpectedHiveVersionProviderError;
 
 public class TestHiveBindingFactory {
@@ -26,13 +25,17 @@ public class TestHiveBindingFactory {
   public void testNoHiveVersion() {
     hiveBindingFactory.createInternal(NoHiveVersion.class);
   }
-  @Test(expected=UnknownHiveVersionError.class)
+  @Test
   public void testUnknownHiveVersion() {
     hiveBindingFactory.createInternal(UnknownHiveVersion.class);
+    Assert.assertEquals(Hive012Binding.class, hiveBindingFactory.
+        createInternal(UnknownHiveVersion.class));
   }
-  @Test(expected=UnknownHiveVersionError.class)
+  @Test
   public void testNullHiveVersion() {
     hiveBindingFactory.createInternal(NullHiveVersion.class);
+    Assert.assertEquals(Hive012Binding.class, hiveBindingFactory.
+        createInternal(NullHiveVersion.class));
   }
   @Test
   public void testHive010() {

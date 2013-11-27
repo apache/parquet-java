@@ -20,10 +20,22 @@ import org.apache.hadoop.hive.ql.plan.TableScanDesc;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.mapred.JobConf;
 
-public class Hive010Binding extends AbstractHiveBinding {
+import parquet.Log;
 
+/**
+ * Hive 0.10 implementation of {@link parquet.hive.HiveBinding HiveBinding}.
+ * This class is a renamed version of
+ * <a href="http://bit.ly/1a4tcrb">ManageJobConfig</a> class.
+ */
+public class Hive010Binding extends AbstractHiveBinding {
+  private static final Log LOG = Log.getLog(Hive010Binding.class);
+  private final Map<String, PartitionDesc> pathToPartitionInfo = 
+      new LinkedHashMap<String, PartitionDesc>();
+  /**
+   * MapredWork is the Hive object which describes input files,
+   * columns projections, and filters.
+   */
   private MapredWork mrwork;
-  private Map<String, PartitionDesc> pathToPartitionInfo;
 
   /**
    * Initialize the mrwork variable in order to get all the partition and start to update the jobconf
@@ -34,24 +46,21 @@ public class Hive010Binding extends AbstractHiveBinding {
     final String plan = HiveConf.getVar(job, HiveConf.ConfVars.PLAN);
     if (mrwork == null && plan != null && plan.length() > 0) {
       mrwork = Utilities.getMapRedWork(job);
-      pathToPartitionInfo = new LinkedHashMap<String, PartitionDesc>();
+      pathToPartitionInfo.clear();
       for (final Map.Entry<String, PartitionDesc> entry : mrwork.getPathToPartitionInfo().entrySet()) {
         pathToPartitionInfo.put(new Path(entry.getKey()).toUri().getPath().toString(), entry.getValue());
       }
     }
   }
 
-  private PartitionDesc getPartition(final String path) {
-    if (pathToPartitionInfo == null) {
-      return null;
-    }
-    return pathToPartitionInfo.get(path);
-  }
-
   private void pushProjectionsAndFilters(final JobConf jobConf,
       final String splitPath, final String splitPathWithNoSchema) {
 
-    if (mrwork == null || mrwork.getPathToAliases() == null) {
+    if (mrwork == null) {
+      LOG.debug("Not pushing projections and filters because MapredWork is null");
+      return;
+    } else if (mrwork.getPathToAliases() == null) {
+      LOG.debug("Not pushing projections and filters because pathToAliases is null");
       return;
     }
 
@@ -94,6 +103,7 @@ public class Hive010Binding extends AbstractHiveBinding {
 
     final TableScanDesc scanDesc = tableScan.getConf();
     if (scanDesc == null) {
+      LOG.debug("Not pushing filters because TableScanDesc is null");
       return;
     }
 
@@ -103,6 +113,7 @@ public class Hive010Binding extends AbstractHiveBinding {
     // push down filters
     final ExprNodeDesc filterExpr = scanDesc.getFilterExpr();
     if (filterExpr == null) {
+      LOG.debug("Not pushing filters because FilterExpr is null");
       return;
     }
 
@@ -116,13 +127,15 @@ public class Hive010Binding extends AbstractHiveBinding {
             filterExprSerialized);
   }
 
-  
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public JobConf pushProjectionsAndFilters(JobConf jobConf, Path path)
       throws IOException {
     init(jobConf);
     final JobConf cloneJobConf = new JobConf(jobConf);
-    final PartitionDesc part = getPartition(path.toString());
+    final PartitionDesc part = pathToPartitionInfo.get(path.toString());
 
     if ((part != null) && (part.getTableDesc() != null)) {
       Utilities.copyTableJobPropertiesToConf(part.getTableDesc(), cloneJobConf);

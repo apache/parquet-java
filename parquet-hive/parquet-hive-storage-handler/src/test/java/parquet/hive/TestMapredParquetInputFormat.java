@@ -1,16 +1,21 @@
 /**
  * Copyright 2013 Criteo.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package parquet.hive;
+
+import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,11 +24,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import junit.framework.TestCase;
 import org.apache.commons.lang.StringUtils;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
@@ -35,6 +38,8 @@ import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
+import org.junit.Before;
+import org.junit.Test;
 
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.mem.MemPageStore;
@@ -42,7 +47,7 @@ import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.ParquetInputSplit;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
-import parquet.hive.DeprecatedParquetInputFormat.InputSplitWrapper;
+import parquet.hive.MapredParquetInputFormat.InputSplitWrapper;
 import parquet.hive.read.DataWritableReadSupport;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
@@ -63,17 +68,17 @@ import parquet.schema.Type.Repetition;
  * @author Mickaël Lacour <m.lacour@criteo.com>
  *
  */
-public class TestDeprecatedParquetInputFormat extends TestCase {
+public class TestMapredParquetInputFormat {
 
-  Configuration conf;
-  JobConf job;
-  FileSystem fs;
-  Path dir;
-  File testFile;
-  Reporter reporter;
-  FSDataOutputStream ds;
-  Map<Integer, ArrayWritable> mapData;
+  private Configuration conf;
+  private JobConf job;
+  private FileSystem fs;
+  private Path dir;
+  private File testFile;
+  private Reporter reporter;
+  private Map<Integer, ArrayWritable> mapData;
 
+  @Test
   public void testParquetHiveInputFormatWithoutSpecificSchema() throws Exception {
     final String schemaRequested = "message customer {\n"
             + "  optional int32 c_custkey;\n"
@@ -99,6 +104,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
     readParquetHiveInputFormat(schemaRequested, new Integer[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
   }
 
+  @Test
   public void testParquetHiveInputFormatWithSpecificSchema() throws Exception {
     final String schemaRequested = "message customer {\n"
             + "  optional int32 c_custkey;\n"
@@ -110,6 +116,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
     readParquetHiveInputFormat(schemaRequested, new Integer[] {0, 1, 5, 6, 7});
   }
 
+  @Test
   public void testParquetHiveInputFormatWithSpecificSchemaRandomColumn() throws Exception {
     final String schemaRequested = "message customer {\n"
             + "  optional int32 c_custkey;\n"
@@ -118,6 +125,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
     readParquetHiveInputFormat(schemaRequested, new Integer[] {0, 6});
   }
 
+  @Test
   public void testParquetHiveInputFormatWithSpecificSchemaFirstColumn() throws Exception {
     final String schemaRequested = "message customer {\n"
             + "  optional int32 c_custkey;\n"
@@ -125,6 +133,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
     readParquetHiveInputFormat(schemaRequested, new Integer[] {0});
   }
 
+  @Test
   public void testParquetHiveInputFormatWithSpecificSchemaUnknownColumn() throws Exception {
     final String schemaRequested = "message customer {\n"
             + "  optional int32 c_custkey;\n"
@@ -133,6 +142,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
     readParquetHiveInputFormat(schemaRequested, new Integer[] {0, Integer.MIN_VALUE});
   }
 
+  @Test
   public void testGetSplit() throws Exception {
     final ParquetMetadata readFooter = ParquetFileReader.readFooter(conf, new Path(testFile.getAbsolutePath()));
 
@@ -186,7 +196,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
       size += block.getTotalByteSize();
     }
 
-    final FileInputFormat<Void, ArrayWritable> format = new DeprecatedParquetInputFormat();
+    final FileInputFormat<Void, ArrayWritable> format = new MapredParquetInputFormat();
     final String[] locations = new String[] {"localhost"};
 
     final Map<String, String> readSupportMetaData = new HashMap<String, String>();
@@ -194,17 +204,17 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
     final ParquetInputSplit realSplit = new ParquetInputSplit(new Path(testFile.getAbsolutePath()), 0, size, locations, blocks,
             fileSchema.toString(), requestedSchema.toString(), readFooter.getFileMetaData().getKeyValueMetaData(), readSupportMetaData);
 
-    final DeprecatedParquetInputFormat.InputSplitWrapper splitWrapper = new InputSplitWrapper(realSplit);
+    final MapredParquetInputFormat.InputSplitWrapper splitWrapper = new InputSplitWrapper(realSplit);
 
     // construct the record reader
     final RecordReader<Void, ArrayWritable> reader = format.getRecordReader(splitWrapper, job, reporter);
 
     assertEquals("Wrong real split inside wrapper", realSplit,
-            ((DeprecatedParquetInputFormat.RecordReaderWrapper) reader).getSplit(splitWrapper, job));
+            ((MapredParquetInputFormat.RecordReaderWrapper) reader).getSplit(splitWrapper, job));
 
     // Recreate the split using getSplit, as Hive would
     final FileSplit fileSplit = new FileSplit(splitWrapper.getPath(), splitWrapper.getStart(), splitWrapper.getLength(), splitWrapper.getLocations());
-    final ParquetInputSplit recreatedSplit = ((DeprecatedParquetInputFormat.RecordReaderWrapper) reader).getSplit(fileSplit, job);
+    final ParquetInputSplit recreatedSplit = ((MapredParquetInputFormat.RecordReaderWrapper) reader).getSplit(fileSplit, job);
     assertTrue("Wrong file schema", UtilitiesTestMethods.smartCheckSchema(fileSchema,
             MessageTypeParser.parseMessageType(recreatedSplit.getFileSchema())));
     assertTrue("Wrong requested schema", UtilitiesTestMethods.smartCheckSchema(requestedSchema,
@@ -213,8 +223,8 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
             MessageTypeParser.parseMessageType(recreatedSplit.getReadSupportMetadata().get(DataWritableReadSupport.HIVE_SCHEMA_KEY))));
   }
 
-  @Override
-  protected void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     //
     // create job and filesystem and reporter and such.
     //
@@ -308,7 +318,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
       size += block.getTotalByteSize();
     }
 
-    final FileInputFormat<Void, ArrayWritable> format = new DeprecatedParquetInputFormat();
+    final FileInputFormat<Void, ArrayWritable> format = new MapredParquetInputFormat();
     final String[] locations = new String[] {"localhost"};
     final String schemaToString = schema.toString();
     System.out.println(schemaToString);
@@ -345,7 +355,7 @@ public class TestDeprecatedParquetInputFormat extends TestCase {
     final ParquetInputSplit realSplit = new ParquetInputSplit(new Path(testFile.getAbsolutePath()), 0, size, locations, blocks,
             schemaToString, specificSchema, readFooter.getFileMetaData().getKeyValueMetaData(), readSupportMetaData);
 
-    final DeprecatedParquetInputFormat.InputSplitWrapper splitWrapper = new InputSplitWrapper(realSplit);
+    final MapredParquetInputFormat.InputSplitWrapper splitWrapper = new InputSplitWrapper(realSplit);
 
     // construct the record reader
     final RecordReader<Void, ArrayWritable> reader = format.getRecordReader(splitWrapper, job, reporter);

@@ -15,6 +15,11 @@
   <dependencies>
     <dependency>
       <groupId>com.twitter</groupId>
+      <artifactId>parquet-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
       <artifactId>parquet-hive-0.10-binding</artifactId>
       <version>${project.version}</version>
     </dependency>
