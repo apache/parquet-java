@@ -17,7 +17,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.SettableStructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
@@ -93,7 +92,7 @@ public class ArrayWritableObjectInspector extends SettableStructObjectInspector 
         return new StandardParquetHiveMapInspector(getObjectInspector(keyTypeInfo), getObjectInspector(valueTypeInfo));
       }
     } else if (typeInfo.equals(TypeInfoFactory.timestampTypeInfo)) {
-      throw new NotImplementedException("timestamp not implemented yet");
+      throw new UnsupportedOperationException("timestamp not implemented yet");
     } else if (typeInfo.equals(TypeInfoFactory.byteTypeInfo)) {
       return ParquetPrimitiveInspectorFactory.parquetByteInspector;
     } else if (typeInfo.equals(TypeInfoFactory.shortTypeInfo)) {

@@ -30,6 +30,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.InputSplit;
 
@@ -186,8 +187,8 @@ public class ParquetInputSplit extends InputSplit implements Writable {
     for (int i = 0; i < blocksSize; i++) {
       blocks.add(readBlock(in));
     }
-    this.requestedSchema = in.readUTF().intern();
-    this.fileSchema = in.readUTF().intern();
+    this.requestedSchema = Text.readString(in);
+    this.fileSchema = Text.readString(in);
     this.extraMetadata = readKeyValues(in);
     this.readSupportMetadata = readKeyValues(in);
   }
@@ -208,8 +209,8 @@ public class ParquetInputSplit extends InputSplit implements Writable {
     for (BlockMetaData block : blocks) {
       writeBlock(out, block);
     }
-    out.writeUTF(requestedSchema);
-    out.writeUTF(fileSchema);
+    Text.writeString(out, requestedSchema);
+    Text.writeString(out, fileSchema);
     writeKeyValues(out, extraMetadata);
     writeKeyValues(out, readSupportMetadata);
   }

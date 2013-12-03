@@ -1,5 +1,28 @@
 # Parquet #
 
+### Version 1.2.6 ###
+* ISSUE 221: make pig, hadoop and log4j jars provided
+* ISSUE 220: parquet-hive should ship and uber jar
+* ISSUE 213: group parquet-format version in one property
+* ISSUE 215: Fix Binary.equals().
+* ISSUE 210: ParquetWriter ignores enable dictionary and validating flags.
+* ISSUE 202: Fix requested schema when recreating splits in hive
+* ISSUE 208: Improve dic fall back
+* ISSUE 207: Fix offset
+* ISSUE 206: Create a "Powered by" page
+
+### Version 1.2.5 ###
+* ISSUE 204: ParquetLoader.inputFormatCache as WeakHashMap
+* ISSUE 203: add null check for EnumWriteProtocol
+* ISSUE 205: use cascading 2.2.0
+* ISSUE 199: simplify TupleWriteSupport constructor
+* ISSUE 164: Dictionary changes
+* ISSUE 196: Fixes to the Hive SerDe
+* ISSUE 197: RLE decoder reading past the end of the stream
+* ISSUE 188: Added ability to define arbitrary predicate functions
+* ISSUE 194: refactor serde to remove some unecessary boxing and include dictionary awareness
+* ISSUE 190: NPE in DictionaryValuesWriter.
+
 ### Version 1.2.4 ###
 * ISSUE 191: Add compatibility checker for ThriftStruct to check for backward compatibility of two thrift structs
 

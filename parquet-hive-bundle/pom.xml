@@ -8,10 +8,10 @@
 
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>parquet-test-hadoop2</artifactId>
+  <artifactId>parquet-hive-bundle</artifactId>
   <packaging>jar</packaging>
 
-  <name>Parquet Hadoop 2 tests</name>
+  <name>Parquet Hive bundle</name>
   <url>https://github.com/Parquet/parquet-mr</url>
 
   <properties>
@@ -20,28 +20,8 @@
   <dependencies>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>parquet-column</artifactId>
+      <artifactId>parquet-hive</artifactId>
       <version>${project.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.twitter</groupId>
-      <artifactId>parquet-hadoop</artifactId>
-      <version>${project.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.twitter</groupId>
-      <artifactId>parquet-hadoop</artifactId>
-      <version>${project.version}</version>
-      <type>test-jar</type>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-client</artifactId>
-      <version>2.0.3-alpha</version>
-      <scope>test</scope>
     </dependency>
   </dependencies>
 
@@ -49,10 +29,25 @@
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <minimizeJar>false</minimizeJar>
+              <artifactSet>
+                <includes>
+                  <include>com.twitter:parquet-*</include>
+                </includes>
+              </artifactSet>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
-
 
 </project>

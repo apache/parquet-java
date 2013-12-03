@@ -17,7 +17,6 @@ package parquet.hive.convert;
 
 import java.util.List;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
 import org.apache.hadoop.hive.serde2.typeinfo.ListTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.MapTypeInfo;
@@ -87,13 +86,13 @@ public class HiveSchemaConverter {
         return new PrimitiveType(repetition, PrimitiveTypeName.BOOLEAN, name);
       } else if (typeInfo.equals(TypeInfoFactory.binaryTypeInfo)) {
         // TODO : binaryTypeInfo is a byte array. Need to map it
-        throw new NotImplementedException("Binary type not implemented");
+        throw new UnsupportedOperationException("Binary type not implemented");
       } else if (typeInfo.equals(TypeInfoFactory.timestampTypeInfo)) {
-        throw new NotImplementedException("Timestamp type not implemented");
+        throw new UnsupportedOperationException("Timestamp type not implemented");
       } else if (typeInfo.equals(TypeInfoFactory.voidTypeInfo)) {
-        throw new NotImplementedException("Void type not implemented");
+        throw new UnsupportedOperationException("Void type not implemented");
       } else if (typeInfo.equals(TypeInfoFactory.unknownTypeInfo)) {
-        throw new NotImplementedException("Unknown type not implemented");
+        throw new UnsupportedOperationException("Unknown type not implemented");
       } else {
         throw new RuntimeException("Unknown type: " + typeInfo);
       }
@@ -104,7 +103,7 @@ public class HiveSchemaConverter {
     } else if (typeInfo.getCategory().equals(Category.MAP)) {
       return convertMapType(name, (MapTypeInfo) typeInfo);
     } else if (typeInfo.getCategory().equals(Category.UNION)) {
-      throw new NotImplementedException("Union type not implemented");
+      throw new UnsupportedOperationException("Union type not implemented");
     } else {
       throw new RuntimeException("Unknown type: " + typeInfo);
     }

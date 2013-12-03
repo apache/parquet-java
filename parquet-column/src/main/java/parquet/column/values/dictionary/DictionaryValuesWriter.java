@@ -120,7 +120,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       // we free dictionary encoded data
       clearDictionaryContent();
       dictionaryByteSize = 0;
-      encodedValues = null;
+      encodedValues = new IntList();
     }
   }
 
@@ -137,7 +137,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
   @Override
   public long getAllocatedSize() {
     // size used in memory
-    return (encodedValues == null ? 0 : encodedValues.size() * 4) + dictionaryByteSize + plainValuesWriter.getAllocatedSize();
+    return encodedValues.size() * 4 + dictionaryByteSize + plainValuesWriter.getAllocatedSize();
   }
 
   @Override
@@ -185,10 +185,9 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
   @Override
   public void reset() {
-    if (encodedValues != null) {
-      encodedValues = new IntList();
-    }
+    encodedValues = new IntList();
     plainValuesWriter.reset();
+    rawDataByteSize = 0;
   }
 
   @Override
@@ -217,7 +216,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         plainValuesWriter.
         memUsageString(prefix + " plain:"),
         prefix + " dict:" + dictionaryByteSize,
-        prefix + " values:" + (encodedValues == null ? "null" : String.valueOf(encodedValues.size() * 4)),
+        prefix + " values:" + String.valueOf(encodedValues.size() * 4),
         prefix
         );
   }
