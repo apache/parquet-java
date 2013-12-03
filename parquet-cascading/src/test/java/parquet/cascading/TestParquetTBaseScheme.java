@@ -36,6 +36,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
+import org.apache.hadoop.mapred.FileInputFormat;
+import org.apache.hadoop.mapred.FileOutputFormat;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -50,9 +53,11 @@ import parquet.thrift.test.Name;
 
 import java.io.File;
 import java.io.ByteArrayOutputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 public class TestParquetTBaseScheme {
-  final String txtInputPath = "src/test/resources/names.txt";
+  final String txtInputPath = "parquet-cascading/src/test/resources/names.txt";
   final String parquetInputPath = "target/test/ParquetTBaseScheme/names-parquet-in";
   final String parquetOutputPath = "target/test/ParquetTBaseScheme/names-parquet-out";
   final String txtOutputPath = "target/test/ParquetTBaseScheme/names-txt-out";
@@ -71,8 +76,14 @@ public class TestParquetTBaseScheme {
 
     Pipe assembly = new Pipe( "namecp" );
     assembly = new Each(assembly, new PackThriftFunction());
-    Flow flow  = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
+    Map<Object, Object> props=new HashMap<Object, Object>();
+//    props.put("mapred.output.compression.codec","org.apache.hadoop.io.compress.DefaultCodec");
+    props.put("mapred.output.compress", true);
+    HadoopFlowConnector hadoopFlowConnector = new HadoopFlowConnector(props);
+    Flow flow  = hadoopFlowConnector.connect("namecp", source, sink, assembly);
+    JobConf config = (JobConf) flow.getConfig();
 
+//    FileOutputFormat.setCompressOutput(config,true);
     flow.complete();
   }
 

@@ -63,7 +63,7 @@ public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.F
       codec = ParquetOutputFormat.getCompression(conf);
     } else if (getCompressOutput(conf)) { // from hadoop config
       // find the right codec
-      Class<?> codecClass = getOutputCompressorClass(conf, DefaultCodec.class);
+      Class<?> codecClass = getOutputCompressorClass(conf, org.apache.hadoop.io.compress.GzipCodec.class);
       if (INFO) LOG.info("Compression set through hadoop codec: " + codecClass.getName());
       codec = CompressionCodecName.fromCompressionCodec(codecClass);
     } else {
