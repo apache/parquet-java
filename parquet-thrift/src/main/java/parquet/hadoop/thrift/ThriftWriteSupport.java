@@ -23,6 +23,7 @@ import org.apache.thrift.TException;
 
 import com.twitter.elephantbird.pig.util.ThriftToPig;
 
+import parquet.Log;
 import parquet.hadoop.BadConfigurationException;
 import parquet.hadoop.api.WriteSupport;
 import parquet.io.ColumnIOFactory;
@@ -39,6 +40,7 @@ import parquet.thrift.struct.ThriftType.StructType;
 
 public class ThriftWriteSupport<T extends TBase<?,?>> extends WriteSupport<T> {
   public static final String PARQUET_THRIFT_CLASS = "parquet.thrift.class";
+  private static final Log LOG = Log.getLog(ThriftWriteSupport.class);
 
   public static <U extends TBase<?,?>> void setThriftClass(Configuration configuration, Class<U> thriftClass) {
     configuration.set(PARQUET_THRIFT_CLASS, thriftClass.getName());
@@ -84,8 +86,20 @@ public class ThriftWriteSupport<T extends TBase<?,?>> extends WriteSupport<T> {
     this.schema = thriftSchemaConverter.convert(thriftClass);
     final Map<String, String> extraMetaData = new ThriftMetaData(thriftClass.getName(), thriftStruct).toExtraMetaData();
     // adding the Pig schema as it would have been mapped from thrift
-    new PigMetaData(new ThriftToPig<S>(thriftClass).toSchema()).addToMetaData(extraMetaData);
+    if (isPigLoaded()){
+      new PigMetaData(new ThriftToPig<S>(thriftClass).toSchema()).addToMetaData(extraMetaData);
+    }
     writeContext = new WriteContext(schema, extraMetaData);
+  }
+
+  private boolean isPigLoaded() {
+    try {
+      Class.forName("org.apache.pig.impl.logicalLayer.schema.Schema");
+      return true;
+    } catch (ClassNotFoundException e) {
+      LOG.info("Pig is not loaded, pig metadata will not be written");
+      return false;
+    }
   }
 
   @Override
@@ -110,5 +124,6 @@ public class ThriftWriteSupport<T extends TBase<?,?>> extends WriteSupport<T> {
       throw new ParquetEncodingException(e);
     }
   }
+
 
 }
