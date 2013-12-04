@@ -65,7 +65,8 @@
     <dependency>
        <groupId>cascading</groupId>
        <artifactId>cascading-hadoop</artifactId>
-       <version>2.2.0</version>
+       <version>${cascading.version}</version>
+       <scope>provided</scope>
     </dependency>
   </dependencies>
 
