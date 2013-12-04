@@ -15,10 +15,10 @@
  */
 package parquet.hadoop.mapred;
 
-import static parquet.Log.INFO;
 import parquet.Log;
 import parquet.hadoop.ParquetOutputFormat;
 import parquet.hadoop.ParquetRecordWriter;
+import parquet.hadoop.codec.MapredCodecConfig;
 import parquet.hadoop.metadata.CompressionCodecName;
 
 import java.io.IOException;
@@ -26,7 +26,6 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.compress.DefaultCodec;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordWriter;
 import org.apache.hadoop.mapred.Reporter;
@@ -34,7 +33,7 @@ import org.apache.hadoop.util.Progressable;
 
 @SuppressWarnings("deprecation")
 public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.FileOutputFormat<Void, V> {
-  private static final Log LOG = Log.getLog(ParquetOutputFormat.class);
+  private static final Log LOG = Log.getLog(DeprecatedParquetOutputFormat.class);
 
   public static void setWriteSupportClass(Configuration configuration,  Class<?> writeSupportClass) {
     configuration.set(ParquetOutputFormat.WRITE_SUPPORT_CLASS, writeSupportClass.getName());
@@ -54,29 +53,6 @@ public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.F
 
   public static void setEnableDictionary(Configuration configuration, boolean enableDictionary) {
     configuration.setBoolean(ParquetOutputFormat.ENABLE_DICTIONARY, enableDictionary);
-  }
-
-  private static class MapredCodecConfig extends ParquetOutputFormat.HadoopCodecConfig {
-    private final JobConf conf;
-
-    private MapredCodecConfig(JobConf conf) {
-      this.conf = conf;
-    }
-
-    @Override
-    public boolean isHadoopCompressed() {
-      return getCompressOutput(conf);
-    }
-
-    @Override
-    public Class getHadoopOutputCompressorClass(Class defaultCodec) {
-      return getOutputCompressorClass(conf, defaultCodec);
-    }
-
-    @Override
-    public Configuration getConfiguration() {
-     return conf;
-    }
   }
 
   private CompressionCodecName getCodec(final JobConf conf) {

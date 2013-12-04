@@ -18,14 +18,12 @@ package parquet.hadoop;
 import static parquet.Log.INFO;
 import static parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
-import static parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 import static parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.compress.DefaultCodec;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.OutputCommitter;
@@ -36,8 +34,8 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import parquet.Log;
 import parquet.hadoop.api.WriteSupport;
 import parquet.hadoop.api.WriteSupport.WriteContext;
+import parquet.hadoop.codec.MapReduceCodecConfig;
 import parquet.hadoop.metadata.CompressionCodecName;
-import parquet.hadoop.util.ContextUtil;
 
 /**
  * OutputFormat to write to a Parquet file
@@ -177,72 +175,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return configuration.getInt(DICTIONARY_PAGE_SIZE, DEFAULT_PAGE_SIZE);
   }
 
-
-
-
-
   public static void setValidation(Configuration configuration, boolean validating) {
     configuration.setBoolean(VALIDATION, validating);
   }
 
   public static boolean getValidation(Configuration configuration) {
     return configuration.getBoolean(VALIDATION, false);
-  }
-
-  public static abstract class HadoopCodecConfig {
-    public abstract boolean isHadoopCompressed();
-    public abstract Class getHadoopOutputCompressorClass(Class defaultCodec);
-    public abstract Configuration getConfiguration();
-
-    public boolean isParquetCompressionSet(Configuration configuration) {
-      return getConfiguration().get(COMPRESSION) != null;
-    }
-
-    public static CompressionCodecName getParquetCompressionCodec(Configuration configuration) {
-      return CompressionCodecName.fromConf(configuration.get(COMPRESSION, UNCOMPRESSED.name()));
-    }
-    public CompressionCodecName getCodec(){
-      CompressionCodecName codec;
-
-      if (isParquetCompressionSet(getConfiguration())) { // explicit parquet config
-        codec = getParquetCompressionCodec(getConfiguration());
-      } else if (isHadoopCompressed()) { // from hadoop config
-        // find the right codec
-        Class<?> codecClass = getHadoopOutputCompressorClass(DefaultCodec.class);
-        if (INFO) LOG.info("Compression set through hadoop codec: " + codecClass.getName());
-        codec = CompressionCodecName.fromCompressionCodec(codecClass);
-      } else {
-        if (INFO) LOG.info("Compression set to false");
-        codec = CompressionCodecName.UNCOMPRESSED;
-      }
-
-      if (INFO) LOG.info("Compression: " + codec.name());
-      return codec;
-    }
-  }
-
-  private static class MapReduceCodecConfig extends HadoopCodecConfig {
-    private final TaskAttemptContext context;
-
-    public MapReduceCodecConfig(TaskAttemptContext context) {
-      this.context = context;
-    }
-
-    @Override
-    public boolean isHadoopCompressed() {
-      return getCompressOutput(context);
-    }
-
-    @Override
-    public Class getHadoopOutputCompressorClass(Class defaultCodec) {
-      return getOutputCompressorClass(context, defaultCodec);
-    }
-
-    @Override
-    public Configuration getConfiguration() {
-      Configuration configuration = ContextUtil.getConfiguration(context);
-      return configuration;
-    }
   }
 
   private CompressionCodecName getCodec(TaskAttemptContext taskAttemptContext) {

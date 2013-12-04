@@ -57,6 +57,12 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>com.hadoop.gplcompression</groupId>
+      <artifactId>hadoop-lzo</artifactId>
+      <version>0.4.16</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.xerial.snappy</groupId>
       <artifactId>snappy-java</artifactId>
       <version>1.0.5</version>
