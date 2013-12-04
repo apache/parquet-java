@@ -56,23 +56,31 @@ public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.F
     configuration.setBoolean(ParquetOutputFormat.ENABLE_DICTIONARY, enableDictionary);
   }
 
-  private static CompressionCodecName getCodec(JobConf conf) {
-    CompressionCodecName codec;
+  private static class MapredCodecConfig extends ParquetOutputFormat.HadoopCodecConfig {
+    private final JobConf conf;
 
-    if (ParquetOutputFormat.isCompressionSet(conf)) { // explicit parquet config
-      codec = ParquetOutputFormat.getCompression(conf);
-    } else if (getCompressOutput(conf)) { // from hadoop config
-      // find the right codec
-      Class<?> codecClass = getOutputCompressorClass(conf, DefaultCodec.class);
-      if (INFO) LOG.info("Compression set through hadoop codec: " + codecClass.getName());
-      codec = CompressionCodecName.fromCompressionCodec(codecClass);
-    } else {
-      if (INFO) LOG.info("Compression set to false");
-      codec = CompressionCodecName.UNCOMPRESSED;
+    private MapredCodecConfig(JobConf conf) {
+      this.conf = conf;
     }
 
-    if (INFO) LOG.info("Compression: " + codec.name());
-    return codec;
+    @Override
+    public boolean isHadoopCompressed() {
+      return getCompressOutput(conf);
+    }
+
+    @Override
+    public Class getHadoopOutputCompressorClass(Class defaultCodec) {
+      return getOutputCompressorClass(conf, defaultCodec);
+    }
+
+    @Override
+    public Configuration getConfiguration() {
+     return conf;
+    }
+  }
+
+  private CompressionCodecName getCodec(final JobConf conf) {
+    return new MapredCodecConfig(conf).getCodec();
   }
 
   private static Path getDefaultWorkFile(JobConf conf, String name, String extension) {
@@ -88,7 +96,7 @@ public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.F
     return new RecordWriterWrapper<V>(realOutputFormat, fs, conf, name, progress);
   }
 
-  private static class RecordWriterWrapper<V> implements RecordWriter<Void, V> {
+  private class RecordWriterWrapper<V> implements RecordWriter<Void, V> {
 
     private ParquetRecordWriter<V> realWriter;
 
