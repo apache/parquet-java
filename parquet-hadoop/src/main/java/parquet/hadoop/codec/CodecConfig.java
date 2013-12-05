@@ -134,8 +134,7 @@ public abstract class CodecConfig {
 
     @Override
     public Configuration getConfiguration() {
-      Configuration configuration = ContextUtil.getConfiguration(context);
-      return configuration;
+      return ContextUtil.getConfiguration(context);
     }
   }
 

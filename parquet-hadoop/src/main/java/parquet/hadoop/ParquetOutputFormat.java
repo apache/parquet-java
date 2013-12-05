@@ -151,6 +151,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return getDictionaryPageSize(getConfiguration(jobContext));
   }
 
+  public static CompressionCodecName getCompression(JobContext jobContext) {
+    return getCompression(getConfiguration(jobContext));
+  }
+
+  public static boolean isCompressionSet(JobContext jobContext) {
+    return isCompressionSet(getConfiguration(jobContext));
+  }
+
   public static void setValidation(JobContext jobContext, boolean validating) {
     setValidation(getConfiguration(jobContext), validating);
   }
