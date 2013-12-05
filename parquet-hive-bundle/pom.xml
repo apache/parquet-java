@@ -11,7 +11,7 @@
   <artifactId>parquet-hive-bundle</artifactId>
   <packaging>jar</packaging>
 
-  <name>Parquet Hive bundle</name>
+  <name>Parquet Hive Bundle</name>
   <url>https://github.com/Parquet/parquet-mr</url>
 
   <properties>
@@ -20,7 +20,12 @@
   <dependencies>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>parquet-hive</artifactId>
+      <artifactId>parquet-hive-binding-bundle</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-hive-storage-handler</artifactId>
       <version>${project.version}</version>
     </dependency>
   </dependencies>
