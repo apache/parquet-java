@@ -26,7 +26,7 @@ import parquet.hadoop.metadata.CompressionCodecName;
 
 import java.io.IOException;
 
-public class HadoopCodecConfigTest {
+public class CodecConfigTest {
   @Test
   public void testReadingCodecs() throws IOException {
     shouldUseParquetFlagToSetCodec("gzip", CompressionCodecName.GZIP);
@@ -46,12 +46,12 @@ public class HadoopCodecConfigTest {
     Configuration conf = job.getConfiguration();
     conf.set(ParquetOutputFormat.COMPRESSION, codecNameStr);
     TaskAttemptContext task = new TaskAttemptContext(conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
-    Assert.assertEquals(new MapReduceCodecConfig(task).getCodec(), expectedCodec);
+    Assert.assertEquals(CodecConfig.from(task).getCodec(), expectedCodec);
 
     //Test mapred API
     JobConf jobConf = new JobConf();
     jobConf.set(ParquetOutputFormat.COMPRESSION, codecNameStr);
-    Assert.assertEquals(new MapredCodecConfig(jobConf).getCodec(), expectedCodec);
+    Assert.assertEquals(CodecConfig.from(jobConf).getCodec(), expectedCodec);
   }
 
   public void shouldUseHadoopFlagToSetCodec(String codecClassStr, CompressionCodecName expectedCodec) throws IOException {
@@ -61,13 +61,13 @@ public class HadoopCodecConfigTest {
     conf.setBoolean("mapred.output.compress", true);
     conf.set("mapred.output.compression.codec", codecClassStr);
     TaskAttemptContext task = new TaskAttemptContext(conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
-    Assert.assertEquals(expectedCodec, new MapReduceCodecConfig(task).getCodec());
+    Assert.assertEquals(expectedCodec, CodecConfig.from(task).getCodec());
 
     //Test mapred API
     JobConf jobConf = new JobConf();
     jobConf.setBoolean("mapred.output.compress", true);
     jobConf.set("mapred.output.compression.codec", codecClassStr);
-    Assert.assertEquals(new MapredCodecConfig(jobConf).getCodec(), expectedCodec);
+    Assert.assertEquals(CodecConfig.from(jobConf).getCodec(), expectedCodec);
   }
 
 

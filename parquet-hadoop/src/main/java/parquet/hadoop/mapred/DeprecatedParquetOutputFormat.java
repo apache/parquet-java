@@ -18,7 +18,7 @@ package parquet.hadoop.mapred;
 import parquet.Log;
 import parquet.hadoop.ParquetOutputFormat;
 import parquet.hadoop.ParquetRecordWriter;
-import parquet.hadoop.codec.MapredCodecConfig;
+import parquet.hadoop.codec.CodecConfig;
 import parquet.hadoop.metadata.CompressionCodecName;
 
 import java.io.IOException;
@@ -56,7 +56,7 @@ public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.F
   }
 
   private CompressionCodecName getCodec(final JobConf conf) {
-    return new MapredCodecConfig(conf).getCodec();
+    return CodecConfig.from(conf).getCodec();
   }
 
   private static Path getDefaultWorkFile(JobConf conf, String name, String extension) {

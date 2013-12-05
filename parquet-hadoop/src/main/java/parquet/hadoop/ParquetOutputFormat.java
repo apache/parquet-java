@@ -34,7 +34,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import parquet.Log;
 import parquet.hadoop.api.WriteSupport;
 import parquet.hadoop.api.WriteSupport.WriteContext;
-import parquet.hadoop.codec.MapReduceCodecConfig;
+import parquet.hadoop.codec.CodecConfig;
 import parquet.hadoop.metadata.CompressionCodecName;
 
 /**
@@ -175,6 +175,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return configuration.getInt(DICTIONARY_PAGE_SIZE, DEFAULT_PAGE_SIZE);
   }
 
+  public static CompressionCodecName getCompression(Configuration configuration) {
+    return CodecConfig.getParquetCompressionCodec(configuration);
+  }
+
+  public static boolean isCompressionSet(Configuration configuration) {
+    return CodecConfig.isParquetCompressionSet(configuration);
+  }
+
   public static void setValidation(Configuration configuration, boolean validating) {
     configuration.setBoolean(VALIDATION, validating);
   }
@@ -184,7 +192,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   private CompressionCodecName getCodec(TaskAttemptContext taskAttemptContext) {
-    return new MapReduceCodecConfig(taskAttemptContext).getCodec();
+    return CodecConfig.from(taskAttemptContext).getCodec();
   }
 
 

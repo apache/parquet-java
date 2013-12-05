@@ -15,6 +15,10 @@
  */
 package parquet.hadoop.codec;
 
+/**
+ * This exception will be thrown when the codec is not supported by parquet, meaning there is no
+ * matching codec defined in {@link parquet.hadoop.metadata.CompressionCodecName}
+ */
 public class CompressionCodecNotSupportedException extends RuntimeException {
   private final Class codecClass;
 
