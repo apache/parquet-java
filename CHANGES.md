@@ -1,5 +1,13 @@
 # Parquet #
 
+### Version 1.2.8 ###
+* ISSUE 228: enable globing files for parquetTupleScheme, refactor unit tests and rem...
+* ISSUE 224: Changing read and write methods in ParquetInputSplit so that they can de...
+
+### Version 1.2.7 ###
+* ISSUE 223: refactor encoded values changes and test that resetDictionary works
+* ISSUE 222: fix bug: set raw data size to 0 after reset
+
 ### Version 1.2.6 ###
 * ISSUE 221: make pig, hadoop and log4j jars provided
 * ISSUE 220: parquet-hive should ship and uber jar
