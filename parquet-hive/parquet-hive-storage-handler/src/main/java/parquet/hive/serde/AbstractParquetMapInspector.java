@@ -61,6 +61,11 @@ public abstract class AbstractParquetMapInspector implements SettableMapObjectIn
 
     if (data instanceof ArrayWritable) {
       final Writable[] mapContainer = ((ArrayWritable) data).get();
+
+      if (mapContainer == null || mapContainer.length == 0) {
+        return null;
+      }
+
       final Writable[] mapArray = ((ArrayWritable) mapContainer[0]).get();
       final Map<Writable, Writable> map = new HashMap<Writable, Writable>();
 
@@ -88,7 +93,12 @@ public abstract class AbstractParquetMapInspector implements SettableMapObjectIn
 
     if (data instanceof ArrayWritable) {
       final Writable[] mapContainer = ((ArrayWritable) data).get();
-      return ((ArrayWritable) mapContainer[0]).get().length;
+
+      if (mapContainer == null || mapContainer.length == 0) {
+        return -1;
+      } else {
+        return ((ArrayWritable) mapContainer[0]).get().length;
+      }
     }
 
     if (data instanceof Map) {

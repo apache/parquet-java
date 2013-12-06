@@ -56,7 +56,13 @@ public class ParquetHiveArrayInspector implements SettableListObjectInspector {
     }
 
     if (data instanceof ArrayWritable) {
-      final Writable subObj = ((ArrayWritable) data).get()[0];
+      final Writable[] listContainer = ((ArrayWritable) data).get();
+
+      if (listContainer == null || listContainer.length == 0) {
+        return null;
+      }
+
+      final Writable subObj = listContainer[0];
 
       if (subObj == null) {
         return null;
@@ -79,7 +85,13 @@ public class ParquetHiveArrayInspector implements SettableListObjectInspector {
     }
 
     if (data instanceof ArrayWritable) {
-      final Writable subObj = ((ArrayWritable) data).get()[0];
+      final Writable[] listContainer = ((ArrayWritable) data).get();
+
+      if (listContainer == null || listContainer.length == 0) {
+        return -1;
+      }
+
+      final Writable subObj = listContainer[0];
 
       if (subObj == null) {
         return 0;
@@ -98,7 +110,13 @@ public class ParquetHiveArrayInspector implements SettableListObjectInspector {
     }
 
     if (data instanceof ArrayWritable) {
-      final Writable subObj = ((ArrayWritable) data).get()[0];
+      final Writable[] listContainer = ((ArrayWritable) data).get();
+
+      if (listContainer == null || listContainer.length == 0) {
+        return null;
+      }
+
+      final Writable subObj = listContainer[0];
 
       if (subObj == null) {
         return null;
