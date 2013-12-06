@@ -140,7 +140,7 @@ class CodecFactory {
    * @return the corresponding hadoop codec. null if UNCOMPRESSED
    */
   private CompressionCodec getCodec(CompressionCodecName codecName) {
-    String codecClassName = codecName.getHadoopCompressionCodecClass();
+    String codecClassName = codecName.getHadoopCompressionCodecClassName();
     if (codecClassName == null) {
       return null;
     }

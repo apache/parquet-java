@@ -15,10 +15,10 @@
  */
 package parquet.hadoop.mapred;
 
-import static parquet.Log.INFO;
 import parquet.Log;
 import parquet.hadoop.ParquetOutputFormat;
 import parquet.hadoop.ParquetRecordWriter;
+import parquet.hadoop.codec.CodecConfig;
 import parquet.hadoop.metadata.CompressionCodecName;
 
 import java.io.IOException;
@@ -26,7 +26,6 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.compress.DefaultCodec;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordWriter;
 import org.apache.hadoop.mapred.Reporter;
@@ -34,7 +33,7 @@ import org.apache.hadoop.util.Progressable;
 
 @SuppressWarnings("deprecation")
 public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.FileOutputFormat<Void, V> {
-  private static final Log LOG = Log.getLog(ParquetOutputFormat.class);
+  private static final Log LOG = Log.getLog(DeprecatedParquetOutputFormat.class);
 
   public static void setWriteSupportClass(Configuration configuration,  Class<?> writeSupportClass) {
     configuration.set(ParquetOutputFormat.WRITE_SUPPORT_CLASS, writeSupportClass.getName());
@@ -56,23 +55,8 @@ public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.F
     configuration.setBoolean(ParquetOutputFormat.ENABLE_DICTIONARY, enableDictionary);
   }
 
-  private static CompressionCodecName getCodec(JobConf conf) {
-    CompressionCodecName codec;
-
-    if (ParquetOutputFormat.isCompressionSet(conf)) { // explicit parquet config
-      codec = ParquetOutputFormat.getCompression(conf);
-    } else if (getCompressOutput(conf)) { // from hadoop config
-      // find the right codec
-      Class<?> codecClass = getOutputCompressorClass(conf, DefaultCodec.class);
-      if (INFO) LOG.info("Compression set through hadoop codec: " + codecClass.getName());
-      codec = CompressionCodecName.fromCompressionCodec(codecClass);
-    } else {
-      if (INFO) LOG.info("Compression set to false");
-      codec = CompressionCodecName.UNCOMPRESSED;
-    }
-
-    if (INFO) LOG.info("Compression: " + codec.name());
-    return codec;
+  private CompressionCodecName getCodec(final JobConf conf) {
+    return CodecConfig.from(conf).getCodec();
   }
 
   private static Path getDefaultWorkFile(JobConf conf, String name, String extension) {
@@ -88,7 +72,7 @@ public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.F
     return new RecordWriterWrapper<V>(realOutputFormat, fs, conf, name, progress);
   }
 
-  private static class RecordWriterWrapper<V> implements RecordWriter<Void, V> {
+  private class RecordWriterWrapper<V> implements RecordWriter<Void, V> {
 
     private ParquetRecordWriter<V> realWriter;
 
