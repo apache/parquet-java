@@ -78,11 +78,17 @@
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
-     <dependency>
+    <dependency>
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
       <version>2.9.2</version>
-      </dependency>
+    </dependency>
+    <dependency>
+      <groupId>cascading</groupId>
+      <artifactId>cascading-hadoop</artifactId>
+      <version>${cascading.version}</version>
+      <scope>provided</scope>
+    </dependency>
   </dependencies>
 
   <build>
