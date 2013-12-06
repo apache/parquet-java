@@ -25,6 +25,8 @@ import static parquet.pig.TupleReadSupport.PARQUET_PIG_SCHEMA;
 import static parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
 
 import java.io.IOException;
+import java.lang.ref.Reference;
+import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Map;
@@ -67,7 +69,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   private static final Log LOG = Log.getLog(ParquetLoader.class);
 
   // Using a weak hash map will ensure that the cache will be gc'ed when there is memory pressure
-  static final Map<String, WeakReference<ParquetInputFormat<Tuple>>> inputFormatCache = new WeakHashMap<String, WeakReference<ParquetInputFormat<Tuple>>>();
+  static final Map<String, Reference<ParquetInputFormat<Tuple>>> inputFormatCache = new WeakHashMap<String, Reference<ParquetInputFormat<Tuple>>>();
 
   private Schema requestedSchema;
 
@@ -142,11 +144,11 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     checkSetLocationHasBeenCalled();
     if (parquetInputFormat == null) {
       // unfortunately Pig will create many Loaders, so we cache the inputformat to avoid reading the metadata more than once
-      WeakReference<ParquetInputFormat<Tuple>> ref = inputFormatCache.get(location);
+      Reference<ParquetInputFormat<Tuple>> ref = inputFormatCache.get(location);
       parquetInputFormat = ref == null ? null : ref.get();
       if (parquetInputFormat == null) {
         parquetInputFormat = new UnregisteringParquetInputFormat(location);
-        inputFormatCache.put(location, new WeakReference<ParquetInputFormat<Tuple>>(parquetInputFormat));
+        inputFormatCache.put(location, new SoftReference<ParquetInputFormat<Tuple>>(parquetInputFormat));
       }
     }
     return parquetInputFormat;
