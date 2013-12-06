@@ -41,6 +41,11 @@ public class DeepParquetHiveMapInspector extends AbstractParquetMapInspector {
 
     if (data instanceof ArrayWritable) {
       final Writable[] mapContainer = ((ArrayWritable) data).get();
+
+      if (mapContainer == null || mapContainer.length == 0) {
+        return null;
+      }
+
       final Writable[] mapArray = ((ArrayWritable) mapContainer[0]).get();
 
       for (final Writable obj : mapArray) {
