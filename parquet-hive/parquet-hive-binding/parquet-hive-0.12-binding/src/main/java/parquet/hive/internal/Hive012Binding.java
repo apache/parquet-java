@@ -24,13 +24,13 @@ import org.apache.hadoop.mapred.JobConf;
 import parquet.Log;
 
 /**
- * Hive 0.10 implementation of {@link parquet.hive.HiveBinding HiveBinding}.
+ * Hive 0.12 implementation of {@link parquet.hive.HiveBinding HiveBinding}.
  * This class is a copied and slightly modified version of
  * <a href="http://bit.ly/1a4tcrb">ManageJobConfig</a> class.
  */
 public class Hive012Binding extends AbstractHiveBinding {
   private static final Log LOG = Log.getLog(Hive012Binding.class);
-  private final Map<String, PartitionDesc> pathToPartitionInfo = 
+  private final Map<String, PartitionDesc> pathToPartitionInfo =
       new LinkedHashMap<String, PartitionDesc>();
   /**
    * MapWork is the Hive object which describes input files,
@@ -131,7 +131,7 @@ public class Hive012Binding extends AbstractHiveBinding {
 
   /**
    * {@inheritDoc}
-   */  
+   */
   @Override
   public JobConf pushProjectionsAndFilters(JobConf jobConf, Path path)
       throws IOException {
