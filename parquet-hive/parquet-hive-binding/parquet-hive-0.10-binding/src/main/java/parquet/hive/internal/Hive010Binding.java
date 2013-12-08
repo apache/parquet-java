@@ -29,7 +29,7 @@ import parquet.Log;
  */
 public class Hive010Binding extends AbstractHiveBinding {
   private static final Log LOG = Log.getLog(Hive010Binding.class);
-  private final Map<String, PartitionDesc> pathToPartitionInfo = 
+  private final Map<String, PartitionDesc> pathToPartitionInfo =
       new LinkedHashMap<String, PartitionDesc>();
   /**
    * MapredWork is the Hive object which describes input files,
