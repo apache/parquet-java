@@ -15,7 +15,7 @@
   <url>https://github.com/Parquet/parquet-mr</url>
 
   <properties>
-    <elephant-bird.version>3.0.8</elephant-bird.version>
+    <elephant-bird.version>4.3</elephant-bird.version>
   </properties>
 
   <dependencies>
@@ -72,6 +72,18 @@
       <groupId>com.twitter</groupId>
       <artifactId>parquet-pig</artifactId>
       <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.pig</groupId>
+      <artifactId>pig</artifactId>
+      <version>0.11.1</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>joda-time</groupId>
+      <artifactId>joda-time</artifactId>
+      <version>1.6</version>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 
