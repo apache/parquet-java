@@ -47,7 +47,7 @@ Tap sink = new Hfs(sinkScheme, parquetOutputPath);
 1.3 Tuples
 ----------
 ### Read Cascading Tuples from Parquet
-Currently, the support for reading tuples is mainly(but not limited) for data written from pig scripts as pig tuples. More comprehensive support will be added, but at mean time, there are some limitations to notice: Nested structures is not supported. If the data is written as thrift objects which have nested structure, it can not be read at current time. *Data to read must be in flat structure*. To read data as tuples, simply use [ParquetTupleScheme](https://github.com/Parquet/parquet-mr/blob/master/parquet-cascading/src/main/java/parquet/cascading/ParquetTupleScheme.java):
+Currently, the support for reading tuples is mainly(but not limited) for data written from pig scripts as pig tuples. More comprehensive support will be added, but in the mean time, there are some limitations to notice: Nested structures are not supported. If the data is written as thrift objects which have nested structure, it can not be read at current time. *Data to read must be in flat structure*. To read data as tuples, simply use [ParquetTupleScheme](https://github.com/Parquet/parquet-mr/blob/master/parquet-cascading/src/main/java/parquet/cascading/ParquetTupleScheme.java):
 
 `
 Scheme sourceScheme = new ParquetTupleScheme(new Fields("last_name"));
