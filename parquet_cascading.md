@@ -10,7 +10,7 @@ In [parquet-cascading](http://https://github.com/Parquet/parquet-mr/tree/master/
 
 1.1 Thrift/TBase
 ------------
-### Read Thrift Records from Parqiet
+### Read Thrift Records from Parquet
 [ParquetTbaseScheme](https://github.com/Parquet/parquet-mr/blob/master/parquet-cascading/src/main/java/parquet/cascading/ParquetTBaseScheme.java) is the interface for reading thrift records in Parquet format. Providing a ParquetTbaseScheme as a parameter to the constructor of a source enables the program to read Thrift object(TBase), eg.
 
 `
@@ -20,10 +20,10 @@ Tap source = new Hfs(sourceScheme, parquetInputPath);
 
 In the above example Name is a thrift class that extends TBase. Under the hood parquet will generate a schema from the thrift class to decode the data. 
 
-The thrift class is actually *optional* to inititilize a ParquetTBaseScheme when the data is written as Thrift records in Parquet. When writing thrift records to pareuet format, the Thrift class of the records is stored as metadata in the footer of the parquet file. Therefore when reading the file, if a thrift class is not explicitly provided, Parquet will use the class name stored in the footer as the thrift class. 
+The thrift class is actually *optional* to initialize a ParquetTBaseScheme when the data is written as Thrift records in Parquet. When writing thrift records to parquet format, the Thrift class of the records is stored as meta-data in the footer of the parquet file. Therefore when reading the file, if a thrift class is not explicitly provided, Parquet will use the class name stored in the footer as the thrift class. 
 
 ### Write Thrift Records to Parquet
-[ParquetTbaseScheme](https://github.com/Parquet/parquet-mr/blob/master/parquet-cascading/src/main/java/parquet/cascading/ParquetTBaseScheme.java) can also be used by a sink. When used as a sink, the Thrift class of the the records being written must be *expliclitly* provided.
+[ParquetTbaseScheme](https://github.com/Parquet/parquet-mr/blob/master/parquet-cascading/src/main/java/parquet/cascading/ParquetTBaseScheme.java) can also be used by a sink. When used as a sink, the Thrift class of the records being written must be *explicitly* provided.
 
 `
 Scheme sinkScheme = new ParquetTBaseScheme(Name.class);
@@ -42,7 +42,7 @@ Scheme sinkScheme = new ParquetScroogeScheme(Name.class);
 Tap sink = new Hfs(sinkScheme, parquetOutputPath);
 `
 
-### Write Scrooge Recor to Parquet(Not supported yet)
+### Write Scrooge Record to Parquet(Not supported yet)
 
 1.3 Tuples
 ----------
