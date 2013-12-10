@@ -1,5 +1,17 @@
 # Parquet #
 
+### Version 1.2.9 ###
+* ISSUE 238: fix pom version caused by bad merge
+* ISSUE 235: Not write pig meta data only when pig is not avaliable
+* ISSUE 227: Breaks parquet-hive up into several submodules, creating infrastructure ...
+* ISSUE 229: add changelog tool
+* ISSUE 236: Make cascading a provided dependency
+
+
+### Version 1.2.8 ###
+* ISSUE 228: enable globing files for parquetTupleScheme, refactor unit tests and rem...
+* ISSUE 224: Changing read and write methods in ParquetInputSplit so that they can de...
+
 ### Version 1.2.8 ###
 * ISSUE 228: enable globing files for parquetTupleScheme, refactor unit tests and rem...
 * ISSUE 224: Changing read and write methods in ParquetInputSplit so that they can de...
