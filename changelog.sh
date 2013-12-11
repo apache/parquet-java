@@ -3,6 +3,16 @@ read username >&2
 echo "github password:" >&2 
 read -s password >&2
 
+curl -f -u $username:$password -s "https://api.github.com" > /dev/null
+if [ $? == 0 ]
+then
+  echo "login successful" >&2
+else
+  echo "login failed" >&2
+  curl -u $username:$password -s "https://api.github.com"
+  exit 1
+fi
+
 echo "# Parquet #"
 
 git log | grep -E "Merge pull request|prepare release" | while read l

@@ -1,12 +1,18 @@
 # Parquet #
 
 ### Version 1.2.9 ###
+* ISSUE 242: upgrade elephant-bird version to 4.3
+* ISSUE 240: fix loader cache
+* ISSUE 233: use latest stable release of cascading: 2.5.1
+* ISSUE 241: Update reference to 0.10 in Hive012Binding javadoc
+* ISSUE 239: Fix hive map and array inspectors with null containers
+* ISSUE 234: optimize chunk scan; fix compressed size
+* ISSUE 237: Handle codec not found
 * ISSUE 238: fix pom version caused by bad merge
 * ISSUE 235: Not write pig meta data only when pig is not avaliable
 * ISSUE 227: Breaks parquet-hive up into several submodules, creating infrastructure ...
 * ISSUE 229: add changelog tool
 * ISSUE 236: Make cascading a provided dependency
-
 
 ### Version 1.2.8 ###
 * ISSUE 228: enable globing files for parquetTupleScheme, refactor unit tests and rem...
