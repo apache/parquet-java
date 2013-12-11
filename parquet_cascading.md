@@ -34,7 +34,7 @@ For more concrete examples please refer to [TestParquetTBaseScheme](https://gith
 
 1.2 Scrooge
 -----------
-### Read Scrooge record from Parquet
+### Read Scrooge records from Parquet
 Scrooge support is defined in a separate module called [parquet-scrooge](https://github.com/Parquet/parquet-mr/tree/master/parquet-scrooge). With [ParquetScroogeScheme](https://github.com/Parquet/parquet-mr/blob/master/parquet-scrooge/src/main/java/parquet/scrooge/ParquetScroogeScheme.java), data can be read in the form of Scrooge objects which are more scala friendly.
 
 `
@@ -42,7 +42,7 @@ Scheme sinkScheme = new ParquetScroogeScheme(Name.class);
 Tap sink = new Hfs(sinkScheme, parquetOutputPath);
 `
 
-### Write Scrooge Record to Parquet(Not supported yet)
+### Write Scrooge Records to Parquet(Not supported yet)
 
 1.3 Tuples
 ----------
