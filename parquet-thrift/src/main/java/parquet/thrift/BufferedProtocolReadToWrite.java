@@ -107,10 +107,25 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
   };
 
   private final StructType thriftType;
+  boolean hasFieldIgnored=false;
+  //error handlers are global
+  private static List<ReadWriteErrorHandler> errorHandlers = new LinkedList<ReadWriteErrorHandler>();
 
   public BufferedProtocolReadToWrite(StructType thriftType) {
     super();
     this.thriftType = thriftType;
+  }
+
+  /**
+   * method chaining style
+   * @param errorHandler
+   */
+  public static void registerErrorHandler(ReadWriteErrorHandler errorHandler){
+   errorHandlers.add(errorHandler);
+  }
+
+  public static void unregisterAllHandlers(){
+   errorHandlers = new LinkedList<ReadWriteErrorHandler>();
   }
 
   /**
@@ -124,10 +139,15 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
   @Override
   public void readOne(TProtocol in, TProtocol out) throws TException {
     List<Action> buffer = new LinkedList<Action>();
+    hasFieldIgnored=false;
     try {
       readOneStruct(in, buffer, thriftType);
+      if (hasFieldIgnored){
+        notifyRecordHasFieldIgnored();
+      }
     } catch (Exception e) {
-      throw new SkippableException(error("Error while reading", buffer), e);
+      notifySkippedCorruptedRecord(new SkippableException(error("Error while reading", buffer), e));  //TODO notify handler about corrupted record
+      return;
     }
     try {
       for (Action a : buffer) {
@@ -135,6 +155,24 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       }
     } catch (Exception e) {
       throw new TException(error("Can not write record", buffer),e);
+    }
+  }
+
+  private void notifyRecordHasFieldIgnored() {
+    for (ReadWriteErrorHandler errorHandler : errorHandlers) {
+      errorHandler.handleRecordHasFieldIgnored();
+    }
+  }
+
+  private void notifySkippedCorruptedRecord(RuntimeException e) {
+    for (ReadWriteErrorHandler errorHandler : errorHandlers) {
+      errorHandler.handleSkippedCorruptedRecords(e);
+    }
+  }
+
+  private void notifyIgnoredFieldsOfRecord(TField field) {
+    for (ReadWriteErrorHandler errorHandler : errorHandlers) {
+      errorHandler.handleFieldIgnored(field);
     }
   }
 
@@ -148,7 +186,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
 
   private void readOneValue(TProtocol in, byte type, List<Action> buffer, ThriftType expectedType)
       throws TException {
-    if (expectedType.getType().getSerializedThriftType() != type) {
+    if (expectedType != null && expectedType.getType().getSerializedThriftType() != type) {
       throw new TException("the data type does not match the expected thrift structure: expected " + expectedType + " got " + typeName(type));
     }
     switch (type) {
@@ -280,14 +318,23 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       public void write(TProtocol out) throws TException {
         out.writeStructBegin(struct);
       }
+
       @Override
       public String toDebugString() {
         return "(";
       }
     });
     TField field;
+
     while ((field = in.readFieldBegin()).type != TType.STOP) {
       final TField currentField = field;
+      if(field.id > type.getChildren().size()) {
+        notifyIgnoredFieldsOfRecord(field);
+        // just consume the field and ignore it
+        readOneValue(in, field.type, new LinkedList<Action>(), null);
+        hasFieldIgnored=true;
+        continue;
+      }
       buffer.add(new Action() {
         @Override
         public void write(TProtocol out) throws TException {
@@ -318,6 +365,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       public void write(TProtocol out) throws TException {
         out.writeMapBegin(map);
       }
+
       @Override
       public String toDebugString() {
         return "<k=" + map.keyType + ", v=" + map.valueType + ", s=" + map.size + ">[";
@@ -372,4 +420,23 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     }
   }
 
+  public static interface ReadWriteErrorHandler {
+    /**
+     * handle when a record can not be read due to an exception
+     * @param e
+     */
+    void handleSkippedCorruptedRecords(RuntimeException e);
+
+    /**
+     * handle when a record that contains fields that are ignored, meaning that the schema provided does not cover all the columns in data
+     */
+    void handleRecordHasFieldIgnored();
+
+    /**
+     * handle when a field gets ignored
+     * @param field
+     */
+    void handleFieldIgnored(TField field);
+    // corrupted record: throw new SkippableException(error("Error while reading", buffer), e);
+  }
 }
