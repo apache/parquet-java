@@ -21,6 +21,7 @@ import static parquet.format.Util.readPageHeader;
 import static parquet.hadoop.ParquetFileWriter.MAGIC;
 import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
+import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -335,6 +336,37 @@ public class ParquetFileReader implements Closeable {
     return columnChunkPageReadStore;
   }
 
+  private static class Chunk extends ByteArrayInputStream{
+
+    private final FSDataInputStream f;
+
+    private Chunk(FSDataInputStream f, int size) throws IOException {
+      super(new byte[size]);
+      this.f = f;
+      f.readFully(this.buf);
+    }
+
+    public int pos() {
+      return this.pos;
+    }
+
+    public BytesInput readAsBytesInput(int size) throws IOException {
+      if (pos + size > count) {
+        // this is to workaround a bug where the compressedLength
+        // of the chunk is missing the size of the header of the dictionary
+        // to allow reading older files (using dictionary) we need this.
+        // usually 13 to 19 bytes are missing
+        int l1 = count - pos;
+        int l2 = size - l1;
+        LOG.info("completed the column chunk with " + l2 + " bytes");
+        return BytesInput.concat(this.readAsBytesInput(l1), BytesInput.copy(BytesInput.from(f, l2)));
+      }
+      final BytesInput r = BytesInput.from(this.buf, this.pos, size);
+      this.pos += size;
+      return r;
+    }
+
+  }
   /**
    * Read all of the pages in a given column chunk.
    * @return the list of pages
@@ -351,14 +383,15 @@ public class ParquetFileReader implements Closeable {
       LOG.debug(f.getPos() + ": start column chunk " + metadata.getPath() +
         " " + metadata.getType() + " count=" + metadata.getValueCount());
     }
+    Chunk chunk = new Chunk(f, (int)metadata.getTotalSize());
     long valuesCountReadSoFar = 0;
     while (valuesCountReadSoFar < metadata.getValueCount()) {
-      PageHeader pageHeader = readPageHeader(f);
+      PageHeader pageHeader = readPageHeader(chunk);
       switch (pageHeader.type) {
         case DICTIONARY_PAGE:
           dictionaryPagesInChunk.add(
               new DictionaryPage(
-                  BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)),
+                  chunk.readAsBytesInput(pageHeader.compressed_page_size),
                   pageHeader.uncompressed_page_size,
                   pageHeader.dictionary_page_header.num_values,
                   parquetMetadataConverter.getEncoding(pageHeader.dictionary_page_header.encoding)
@@ -367,7 +400,7 @@ public class ParquetFileReader implements Closeable {
         case DATA_PAGE:
           pagesInChunk.add(
               new Page(
-                  BytesInput.copy(BytesInput.from(f, pageHeader.compressed_page_size)),
+                  chunk.readAsBytesInput(pageHeader.compressed_page_size),
                   pageHeader.data_page_header.num_values,
                   pageHeader.uncompressed_page_size,
                   parquetMetadataConverter.getEncoding(pageHeader.data_page_header.repetition_level_encoding),
@@ -378,7 +411,7 @@ public class ParquetFileReader implements Closeable {
           break;
         default:
           if (DEBUG) LOG.debug("skipping page of type " + pageHeader.type + " of size " + pageHeader.compressed_page_size);
-          f.skip(pageHeader.compressed_page_size);
+          chunk.skip(pageHeader.compressed_page_size);
           break;
       }
     }
@@ -388,7 +421,7 @@ public class ParquetFileReader implements Closeable {
           "Expected " + metadata.getValueCount() + " values in column chunk at " +
           filePath + " offset " + metadata.getFirstDataPageOffset() +
           " but got " + valuesCountReadSoFar + " values instead over " + pagesInChunk.size()
-          + " pages ending at file offset " + f.getPos());
+          + " pages ending at file offset " + (startingPos + chunk.pos()));
     }
   }
 

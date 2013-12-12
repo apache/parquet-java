@@ -1,5 +1,31 @@
 # Parquet #
 
+### Version 1.2.9 ###
+* ISSUE [242](https://github.com/Parquet/parquet-mr/pull/242): upgrade elephant-bird version to 4.3
+* ISSUE [240](https://github.com/Parquet/parquet-mr/pull/240): fix loader cache
+* ISSUE [233](https://github.com/Parquet/parquet-mr/pull/233): use latest stable release of cascading: 2.5.1
+* ISSUE [241](https://github.com/Parquet/parquet-mr/pull/241): Update reference to 0.10 in Hive012Binding javadoc
+* ISSUE [239](https://github.com/Parquet/parquet-mr/pull/239): Fix hive map and array inspectors with null containers
+* ISSUE [234](https://github.com/Parquet/parquet-mr/pull/234): optimize chunk scan; fix compressed size
+* ISSUE [237](https://github.com/Parquet/parquet-mr/pull/237): Handle codec not found
+* ISSUE [238](https://github.com/Parquet/parquet-mr/pull/238): fix pom version caused by bad merge
+* ISSUE [235](https://github.com/Parquet/parquet-mr/pull/235): Not write pig meta data only when pig is not avaliable
+* ISSUE [227](https://github.com/Parquet/parquet-mr/pull/227): Breaks parquet-hive up into several submodules, creating infrastructure ...
+* ISSUE [229](https://github.com/Parquet/parquet-mr/pull/229): add changelog tool
+* ISSUE [236](https://github.com/Parquet/parquet-mr/pull/236): Make cascading a provided dependency
+
+### Version 1.2.8 ###
+* ISSUE 228: enable globing files for parquetTupleScheme, refactor unit tests and rem...
+* ISSUE 224: Changing read and write methods in ParquetInputSplit so that they can de...
+
+### Version 1.2.8 ###
+* ISSUE 228: enable globing files for parquetTupleScheme, refactor unit tests and rem...
+* ISSUE 224: Changing read and write methods in ParquetInputSplit so that they can de...
+
+### Version 1.2.7 ###
+* ISSUE 223: refactor encoded values changes and test that resetDictionary works
+* ISSUE 222: fix bug: set raw data size to 0 after reset
+
 ### Version 1.2.6 ###
 * ISSUE 221: make pig, hadoop and log4j jars provided
 * ISSUE 220: parquet-hive should ship and uber jar
