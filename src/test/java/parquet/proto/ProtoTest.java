@@ -19,7 +19,7 @@ public class ProtoTest {
   public void testModificationAfterWrite() throws Exception {
     IntMessage.Builder record = IntMessage.newBuilder().setInt(776);
 
-    Path file = tempDirectory();
+    Path file = someTemporaryFilePath();
 
     ProtoParquetWriter<MessageOrBuilder> writer =
             new ProtoParquetWriter<MessageOrBuilder>(file, IntMessage.class);

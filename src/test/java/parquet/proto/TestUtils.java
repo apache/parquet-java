@@ -15,7 +15,7 @@ import static org.junit.Assert.fail;
 
 public class TestUtils {
 
-  public static Path tempDirectory() throws IOException {
+  public static Path someTemporaryFilePath() throws IOException {
     File tmp = File.createTempFile("ParquetProtobuf_unitTest", ".tmp");
     tmp.deleteOnExit();
     tmp.delete();
@@ -34,10 +34,10 @@ public class TestUtils {
     return readMessages(file);
   }
 
-  private static <T extends MessageOrBuilder> Class<? extends Message> inferRecordsClass(T[] records) {
+  private static Class<? extends Message> inferRecordsClass(MessageOrBuilder[] records) {
     Class<? extends Message> cls = null;
 
-    for (T record : records) {
+    for (MessageOrBuilder record : records) {
       Class<? extends Message> recordClass;
       if (record instanceof Message.Builder) {
         recordClass = ((Message.Builder) record).build().getClass();
@@ -56,6 +56,9 @@ public class TestUtils {
     return cls;
   }
 
+  /**
+   * Writes messages to file, reads messages from file and checks if everything is OK.
+   * */
   public static void testData(MessageOrBuilder... messages) throws IOException {
 
     checkSameBuilderInstance(messages);
@@ -137,12 +140,15 @@ public class TestUtils {
     return result;
   }
 
+  /**
+   * Writes messages to temporary file and returns its path.
+   * */
   public static Path writeMessages(MessageOrBuilder... records) throws IOException {
     return writeMessages(inferRecordsClass(records), records);
   }
 
   public static Path writeMessages(Class<? extends Message> cls, MessageOrBuilder... records) throws IOException {
-    Path file = tempDirectory();
+    Path file = someTemporaryFilePath();
 
     ProtoParquetWriter<MessageOrBuilder> writer =
             new ProtoParquetWriter<MessageOrBuilder>(file, cls);
