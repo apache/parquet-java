@@ -18,6 +18,7 @@ package parquet.proto;
 import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
+import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
@@ -40,13 +41,13 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
   }
 
   @Override
-  public ReadContext init(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
-    String requestedProjectionString = configuration.get(PB_REQUESTED_PROJECTION);
+  public ReadContext init(InitContext context) {
+    String requestedProjectionString = context.getConfiguration().get(PB_REQUESTED_PROJECTION);
     if (requestedProjectionString != null && !requestedProjectionString.trim().isEmpty()) {
-      MessageType requestedProjection = getSchemaForRead(fileSchema, requestedProjectionString);
+      MessageType requestedProjection = getSchemaForRead(context.getFileSchema(), requestedProjectionString);
       return new ReadContext(requestedProjection);
     } else {
-      return new ReadContext(fileSchema);
+      return new ReadContext(context.getFileSchema());
     }
   }
 
