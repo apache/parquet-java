@@ -3,7 +3,7 @@
     <groupId>com.twitter</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.2.5-SNAPSHOT</version>
+    <version>1.2.10-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -35,6 +35,13 @@
       <artifactId>elephant-bird-core</artifactId>
       <version>${elephant-bird.version}</version>
     </dependency>
+
+      <dependency>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-client</artifactId>
+          <version>${hadoop.version}</version>
+      </dependency>
+
   </dependencies>
 
   <developers>
