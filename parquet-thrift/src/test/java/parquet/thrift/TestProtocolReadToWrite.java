@@ -30,10 +30,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.thrift.protocol.TField;
-import parquet.thrift.test.compat.StructV2;
 import parquet.thrift.test.compat.StructV3;
+import parquet.thrift.test.compat.StructV4WithExtracStructField;
 import thrift.test.OneOfEach;
 
 import org.apache.thrift.TBase;
@@ -117,11 +116,11 @@ public class TestProtocolReadToWrite {
   @Test
   public void testIncompatibleRecord() throws Exception {
     BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(AddressBook.class));
-    p.unregisterAllHandlers();
+    p.unregisterAllErrorHandlers();
     //handler will rethrow the exception for verifying purpose
     p.registerErrorHandler(new BufferedProtocolReadToWrite.ReadWriteErrorHandler() {
       @Override
-      public void handleSkippedCorruptedRecords(RuntimeException e) {
+      public void handleSkippedCorruptedRecord(SkippableException e) {
        throw e;
       }
       @Override
@@ -146,12 +145,41 @@ public class TestProtocolReadToWrite {
     }
   }
 
+  @Test
+  public void testMissingFieldHandling() throws Exception {
+    //write using StructV3
+    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructV3.class));
+    //handler will rethrow the exception for verifying purpose
+
+    CountingErrorHandler countingHandler= new CountingErrorHandler();
+    p.unregisterAllErrorHandlers();
+    p.registerErrorHandler(countingHandler);
+
+    final ByteArrayOutputStream in = new ByteArrayOutputStream();
+    StructV4WithExtracStructField dataWithNewSchema= new StructV4WithExtracStructField("name");
+    dataWithNewSchema.setAge("10");
+    dataWithNewSchema.setGender("male");
+
+    StructV3 structV3=new StructV3("name");
+    structV3.setAge("10");
+
+    dataWithNewSchema.setAddedStruct(structV3);
+    dataWithNewSchema.write(protocol(in));
+    //read using StructV2
+    final ByteArrayOutputStream out = new ByteArrayOutputStream();
+    p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
+    assertEquals(0,countingHandler.corruptedCount);
+    assertEquals(1,countingHandler.recordCountOfMissingFields);
+    assertEquals(1,countingHandler.fieldIgnoredCount);
+  }
+
+
   class CountingErrorHandler implements BufferedProtocolReadToWrite.ReadWriteErrorHandler{
      int corruptedCount=0;
      int fieldIgnoredCount=0;
      int recordCountOfMissingFields=0;
     @Override
-    public void handleSkippedCorruptedRecords(RuntimeException e) {
+    public void handleSkippedCorruptedRecord(SkippableException e) {
       corruptedCount++;
     }
 
@@ -164,30 +192,6 @@ public class TestProtocolReadToWrite {
     public void handleFieldIgnored(TField field) {
       fieldIgnoredCount++;
     }
-  }
-
-  //TODO clear handler
-  @Test
-  public void testMissingField() throws Exception {
-    //write using StructV3
-    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructV2.class));
-    //handler will rethrow the exception for verifying purpose
-
-    CountingErrorHandler countingHandler= new CountingErrorHandler();
-    p.unregisterAllHandlers();
-    p.registerErrorHandler(countingHandler);
-
-    final ByteArrayOutputStream in = new ByteArrayOutputStream();
-    StructV3 dataWithNewSchema= new StructV3("name");
-    dataWithNewSchema.setAge("10");
-    dataWithNewSchema.setGender("male");
-    dataWithNewSchema.write(protocol(in));
-    //read using StructV2
-    final ByteArrayOutputStream out = new ByteArrayOutputStream();
-    p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
-    assertEquals(0,countingHandler.corruptedCount);
-    assertEquals(1,countingHandler.recordCountOfMissingFields);
-    assertEquals(1,countingHandler.fieldIgnoredCount);
   }
 
   private TCompactProtocol protocol(OutputStream to) {

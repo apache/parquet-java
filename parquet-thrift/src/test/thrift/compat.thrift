@@ -12,6 +12,13 @@ struct StructV3 {
   3: optional string gender
 }
 
+struct StructV4WithExtracStructField {
+  1: required string name,
+  2: optional string age,
+  3: optional string gender,
+  4: optional StructV3 addedStruct
+}
+
 struct RenameStructV1 {
   1: required string nameChanged
 }
