@@ -99,13 +99,6 @@ public enum Encoding {
     }
   },
 
-  GROUP_VAR_INT {
-    @Override // TODO: GROUP VAR INT encoding
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      throw new UnsupportedOperationException("NYI");
-    }
-  },
-
   PLAIN_DICTIONARY {
     @Override
     public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
@@ -137,7 +130,7 @@ public enum Encoding {
       default:
         throw new ParquetDecodingException("Dictionary encoding not supported for type: " + descriptor.getType());
       }
-      
+
     }
 
     @Override
@@ -145,7 +138,30 @@ public enum Encoding {
       return true;
     }
 
-  };
+  },
+
+  /**
+   * Delta encoding for integers. This can be used for int columns and works best
+   * on sorted data
+   */
+  DELTA_BINARY_PACKED,
+
+  /**
+   * Encoding for byte arrays to separate the length values and the data. The lengths
+   * are encoded using DELTA_BINARY_PACKED
+   */
+  DELTA_LENGTH_BYTE_ARRAY,
+
+  /**
+   * Incremental-encoded byte array. Prefix lengths are encoded using DELTA_BINARY_PACKED.
+   * Suffixes are stored as delta length byte arrays.
+   */
+  DELTA_BYTE_ARRAY,
+
+  /**
+   * Dictionary encoding: the ids are encoded using the RLE encoding
+   */
+  RLE_DICTIONARY;
 
   int getMaxLevel(ColumnDescriptor descriptor, ValuesType valuesType) {
     int maxLevel;
