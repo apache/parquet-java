@@ -214,103 +214,33 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       break;
     case TType.BOOL:
       final boolean bool = in.readBool();
-      buffer.add(new Action() {
-        @Override
-        public void write(TProtocol out) throws TException {
-          out.writeBool(bool);
-        }
-
-        @Override
-        public String toDebugString() {
-          return String.valueOf(bool);
-        }
-      });
+      writeBoolAction(buffer, bool);
       break;
     case TType.BYTE:
       final byte b = in.readByte();
-      buffer.add(new Action() {
-        @Override
-        public void write(TProtocol out) throws TException {
-          out.writeByte(b);
-        }
-
-        @Override
-        public String toDebugString() {
-          return String.valueOf(b);
-        }
-      });
+      writeByteAction(buffer, b);
       break;
     case TType.DOUBLE:
       final double d = in.readDouble();
-      buffer.add(new Action() {
-        @Override
-        public void write(TProtocol out) throws TException {
-          out.writeDouble(d);
-        }
-
-        @Override
-        public String toDebugString() {
-          return String.valueOf(d);
-        }
-      });
+      writeDoubleAction(buffer, d);
       break;
     case TType.I16:
       final short s = in.readI16();
-      buffer.add(new Action() {
-        @Override
-        public void write(TProtocol out) throws TException {
-          out.writeI16(s);
-        }
-
-        @Override
-        public String toDebugString() {
-          return String.valueOf(s);
-        }
-      });
+      writeShortAction(buffer, s);
       break;
     case TType.ENUM: // same as i32 => actually never seen in the protocol layer as enums are written as a i32 field
     case TType.I32:
       final int i = in.readI32();
       checkEnum(expectedType,i);
-      buffer.add(new Action() {
-        @Override
-        public void write(TProtocol out) throws TException {
-          out.writeI32(i);
-        }
-
-        @Override
-        public String toDebugString() {
-          return String.valueOf(i);
-        }
-      });
+      writeIntAction(buffer, i);
       break;
     case TType.I64:
       final long l = in.readI64();
-      buffer.add(new Action() {
-        @Override
-        public void write(TProtocol out) throws TException {
-          out.writeI64(l);
-        }
-
-        @Override
-        public String toDebugString() {
-          return String.valueOf(l);
-        }
-      });
+      writeLongAction(buffer, l);
       break;
     case TType.STRING:
       final ByteBuffer bin = in.readBinary();
-      buffer.add(new Action() {
-        @Override
-        public void write(TProtocol out) throws TException {
-          out.writeBinary(bin);
-        }
-
-        @Override
-        public String toDebugString() {
-          return String.valueOf(bin);
-        }
-      });
+      writeStringAction(buffer, bin);
       break;
     case TType.VOID:
       break;
@@ -318,6 +248,104 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       throw new TException("Unknown type: " + type);
     }
     return hasFieldsIgnored;
+  }
+
+  private void writeStringAction(List<Action> buffer, final ByteBuffer bin) {
+    buffer.add(new Action() {
+      @Override
+      public void write(TProtocol out) throws TException {
+        out.writeBinary(bin);
+      }
+
+      @Override
+      public String toDebugString() {
+        return String.valueOf(bin);
+      }
+    });
+  }
+
+  private void writeLongAction(List<Action> buffer, final long l) {
+    buffer.add(new Action() {
+      @Override
+      public void write(TProtocol out) throws TException {
+        out.writeI64(l);
+      }
+
+      @Override
+      public String toDebugString() {
+        return String.valueOf(l);
+      }
+    });
+  }
+
+  private void writeIntAction(List<Action> buffer, final int i) {
+    buffer.add(new Action() {
+      @Override
+      public void write(TProtocol out) throws TException {
+        out.writeI32(i);
+      }
+
+      @Override
+      public String toDebugString() {
+        return String.valueOf(i);
+      }
+    });
+  }
+
+  private void writeShortAction(List<Action> buffer, final short s) {
+    buffer.add(new Action() {
+      @Override
+      public void write(TProtocol out) throws TException {
+        out.writeI16(s);
+      }
+
+      @Override
+      public String toDebugString() {
+        return String.valueOf(s);
+      }
+    });
+  }
+
+  private void writeDoubleAction(List<Action> buffer, final double d) {
+    buffer.add(new Action() {
+      @Override
+      public void write(TProtocol out) throws TException {
+        out.writeDouble(d);
+      }
+
+      @Override
+      public String toDebugString() {
+        return String.valueOf(d);
+      }
+    });
+  }
+
+  private void writeByteAction(List<Action> buffer, final byte b) {
+    buffer.add(new Action() {
+      @Override
+      public void write(TProtocol out) throws TException {
+        out.writeByte(b);
+      }
+
+      @Override
+      public String toDebugString() {
+        return String.valueOf(b);
+      }
+    });
+  }
+
+  private void writeBoolAction(List<Action> buffer, final boolean bool) {
+    buffer.add(new Action() {
+      @Override
+      public void write(TProtocol out) throws TException {
+        out.writeBool(bool);
+      }
+
+      @Override
+      public String toDebugString() {
+        return String.valueOf(bool);
+      }
+    });
   }
 
   private String typeName(byte type) {
