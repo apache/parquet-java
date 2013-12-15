@@ -364,11 +364,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         }
       });
       ThriftField expectedField = type.getChildById(field.id);
-      try {
-        hasFieldsIgnored |= readOneValue(in, field.type, buffer, expectedField.getType());
-      } catch (Exception e) {
-        throw new TException("Error while reading field " + field + " expected " + expectedField, e);
-      }
+      hasFieldsIgnored |= readOneValue(in, field.type, buffer, expectedField.getType());
       in.readFieldEnd();
       buffer.add(FIELD_END);
     }
@@ -681,4 +677,5 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       return null;
     }
   }
+
 }
