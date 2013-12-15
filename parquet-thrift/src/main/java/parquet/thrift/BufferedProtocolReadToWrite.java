@@ -39,8 +39,14 @@ import java.util.List;
  * and {@link parquet.thrift.BufferedProtocolReadToWrite.ReadWriteErrorHandler#handleRecordHasFieldIgnored()}
  *
  * @author Julien Le Dem
+ *
  */
 public class BufferedProtocolReadToWrite implements ProtocolPipe {
+
+  private interface Action {
+    void write(TProtocol out) throws TException;
+    String toDebugString();
+  }
 
   private static final Action STRUCT_END = new Action() {
     @Override
@@ -54,51 +60,51 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       return ")";
     }
   };
+
   private static final Action FIELD_END = new Action() {
     @Override
     public void write(TProtocol out) throws TException {
       out.writeFieldEnd();
     }
-
     @Override
     public String toDebugString() {
       return ";";
     }
   };
+
   private static final Action MAP_END = new Action() {
     @Override
     public void write(TProtocol out) throws TException {
       out.writeMapEnd();
     }
-
     @Override
     public String toDebugString() {
       return "]";
     }
   };
+
   private static final Action LIST_END = new Action() {
     @Override
     public void write(TProtocol out) throws TException {
       out.writeListEnd();
     }
-
     @Override
     public String toDebugString() {
       return "}";
     }
   };
+
   private static final Action SET_END = new Action() {
     @Override
     public void write(TProtocol out) throws TException {
       out.writeSetEnd();
     }
-
     @Override
     public String toDebugString() {
       return "*}";
     }
   };
-  //error handlers are global
+  //error handler is global
   private static ReadWriteErrorHandler errorHandler;
   private final StructType thriftType;
 
@@ -116,14 +122,13 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
   }
 
   /**
-   * reads one record from in and writes it to out
-   * An Exception can be used to skip a bad record
+   * Reads one record from in and writes it to out.
+   * Exceptions encountered during reading are treated as skippable exceptions,
+   * {@link ReadWriteErrorHandler} will be notified when registered.
    *
    * @param in  input protocol
    * @param out output protocol
-   * @throws TException         when an error happened while writing. Those are usually not recoverable
-   * @throws SkippableException when an error happened while reading. Ignoring those will skip the bad records.
-   *                            reference {@link ReadWriteErrorHandler} to implement error handling procedure when SkippableException is thrown
+   * @throws org.apache.thrift.TException         when an error happened while writing. Those are usually not recoverable
    */
   @Override
   public void readOne(TProtocol in, TProtocol out) throws TException {
@@ -133,16 +138,27 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       if (hasFieldsIgnored) {
         notifyRecordHasFieldIgnored();
       }
+    } catch (DecodingSchemaMismatchException e) {
+      notifySkippedSchemaMismatchedRecordWhenReading(e);
+      notifySkippedCorruptedRecord(new SkippableException(error("Error while reading", buffer), e));
+      return;
     } catch (Exception e) {
       notifySkippedCorruptedRecord(new SkippableException(error("Error while reading", buffer), e));
       return;
     }
+
     try {
       for (Action a : buffer) {
         a.write(out);
       }
     } catch (Exception e) {
       throw new TException(error("Can not write record", buffer), e);
+    }
+  }
+
+  private void notifySkippedSchemaMismatchedRecordWhenReading(DecodingSchemaMismatchException e) {
+    if (errorHandler != null) {
+    errorHandler.handleSkipRecordDueToSchemaMismatch(e);
     }
   }
 
@@ -176,10 +192,9 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
    * @return true when all value is consumed, false when some values is ignored due to the field is not defined in expectedType
    * @throws TException
    */
-  private boolean readOneValue(TProtocol in, byte type, List<Action> buffer, ThriftType expectedType)
-          throws TException {
+  private boolean readOneValue(TProtocol in, byte type, List<Action> buffer, ThriftType expectedType) throws TException {
     if (expectedType != null && expectedType.getType().getSerializedThriftType() != type) {
-      throw new TException("the data type does not match the expected thrift structure: expected " + expectedType + " got " + typeName(type));
+      throw new DecodingSchemaMismatchException("the data type does not match the expected thrift structure: expected " + expectedType + " got " + typeName(type));
     }
     boolean hasFieldsIgnored = false;
     switch (type) {
@@ -256,6 +271,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     case TType.ENUM: // same as i32 => actually never seen in the protocol layer as enums are written as a i32 field
     case TType.I32:
       final int i = in.readI32();
+      checkEnum(expectedType,i);
       buffer.add(new Action() {
         @Override
         public void write(TProtocol out) throws TException {
@@ -432,10 +448,18 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     return hasFieldIgnored;
   }
 
-  private interface Action {
-    void write(TProtocol out) throws TException;
-
-    String toDebugString();
+  /**
+   * In thrift enum values are written as ints, this method checks if the enum index is defined.
+   *
+   * @param expectedType
+   * @param i
+   */
+  private void checkEnum(ThriftType expectedType, int i) {
+    if (expectedType.getType() == ThriftTypeID.ENUM) {
+      List<ThriftType.EnumValue> enumValues = ((ThriftType.EnumType)expectedType).getValues();
+      if (i >= enumValues.size() || enumValues.get(i) == null)
+        throw new DecodingSchemaMismatchException("can not find index " + i + " in enum " + expectedType);
+    }
   }
 
   /**
@@ -466,6 +490,8 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
      * @param field
      */
     void handleFieldIgnored(TField field);
+
+    void handleSkipRecordDueToSchemaMismatch(DecodingSchemaMismatchException e);
   }
 
   /**

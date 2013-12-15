@@ -129,6 +129,11 @@ public class TestProtocolReadToWrite {
       @Override
       public void handleFieldIgnored(TField field) {
       }
+
+      @Override
+      public void handleSkipRecordDueToSchemaMismatch(DecodingSchemaMismatchException e) {
+
+      }
     });
 
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
@@ -191,6 +196,10 @@ public class TestProtocolReadToWrite {
     @Override
     public void handleFieldIgnored(TField field) {
       fieldIgnoredCount++;
+    }
+
+    @Override
+    public void handleSkipRecordDueToSchemaMismatch(DecodingSchemaMismatchException e) {
     }
   }
 
