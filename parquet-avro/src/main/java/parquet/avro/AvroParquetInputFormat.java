@@ -33,4 +33,8 @@ public class AvroParquetInputFormat extends ParquetInputFormat<IndexedRecord> {
     AvroReadSupport.setRequestedProjection(ContextUtil.getConfiguration(job), requestedProjection);
   }
 
+  public static void setRequestedSchema(Job job, Schema requestedProjection) {
+    AvroReadSupport.setRequestedSchema(ContextUtil.getConfiguration(job), requestedProjection);
+  }
+
 }

@@ -38,4 +38,12 @@ protocol Cars {
         union { null, Stereo, LeatherTrim } optionalExtra = null;
         union { null, array<Service> } serviceHistory = null;
     }
+    
+    record ShortCar {
+        union { null, string } make = null;
+        Engine engine;
+        long year;
+        Vin vin;
+    }
+        
 }

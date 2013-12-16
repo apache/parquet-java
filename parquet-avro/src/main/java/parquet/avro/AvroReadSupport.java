@@ -15,10 +15,13 @@
  */
 package parquet.avro;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
+
 import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.conf.Configuration;
+
 import parquet.hadoop.api.ReadSupport;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
@@ -31,9 +34,15 @@ import parquet.schema.MessageType;
 public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
 
   public static String AVRO_REQUESTED_PROJECTION = "parquet.avro.projection";
+  public static String AVRO_REQUESTED_SCHEMA = "avro.schema";
 
   public static void setRequestedProjection(Configuration configuration, Schema requestedProjection) {
     configuration.set(AVRO_REQUESTED_PROJECTION, requestedProjection.toString());
+  }
+
+  public static void setRequestedSchema(Configuration configuration,
+      Schema requestedProjection) {
+    configuration.set(AVRO_REQUESTED_SCHEMA, requestedProjection.toString());
   }
 
   @Override
@@ -43,7 +52,15 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
       Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);
       MessageType requestedProjection = new AvroSchemaConverter().convert(avroRequestedProjection);
       fileSchema.checkContains(requestedProjection);
-      return new ReadContext(requestedProjection);
+      ReadContext retValue = new ReadContext(requestedProjection);
+      String specAvroSchema = configuration.get(AVRO_REQUESTED_SCHEMA);
+      if (specAvroSchema == null) {
+        return new ReadContext(fileSchema);
+      } else {
+        Map<String, String> metadata = new LinkedHashMap<String, String>();
+        metadata.put("req.avro.schema", specAvroSchema);
+        return new ReadContext(requestedProjection, metadata);
+      }
     } else {
       return new ReadContext(fileSchema);
     }
@@ -51,7 +68,8 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
 
   @Override
   public RecordMaterializer<T> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema, ReadContext readContext) {
-    Schema avroSchema = new Schema.Parser().parse(keyValueMetaData.get("avro.schema"));
+    String specAvroSchema = (readContext != null && readContext.getReadSupportMetadata() != null) ? readContext.getReadSupportMetadata().get("req.avro.schema") : null;
+    Schema avroSchema = new Schema.Parser().parse(specAvroSchema == null ? keyValueMetaData.get("avro.schema") : specAvroSchema);
     return new AvroRecordMaterializer<T>(readContext.getRequestedSchema(), avroSchema);
   }
 }
