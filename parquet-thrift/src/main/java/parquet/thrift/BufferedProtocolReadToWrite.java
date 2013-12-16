@@ -373,7 +373,8 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     boolean hasFieldsIgnored = false;
     while ((field = in.readFieldBegin()).type != TType.STOP) {
       final TField currentField = field;
-      if (field.id > type.getChildren().size()) {
+      ThriftField expectedField;
+      if ((expectedField = type.getChildById(field.id)) == null) {
         notifyIgnoredFieldsOfRecord(field);
         hasFieldsIgnored |= true;
         //read the value and ignore it, NullProtocol will do nothing
@@ -391,7 +392,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
           return "f=" + currentField.id + "<t=" + typeName(currentField.type) + ">: ";
         }
       });
-      ThriftField expectedField = type.getChildById(field.id);
+
       hasFieldsIgnored |= readOneValue(in, field.type, buffer, expectedField.getType());
       in.readFieldEnd();
       buffer.add(FIELD_END);

@@ -144,10 +144,8 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor {
       if (fieldId > oldMaxId) {
         oldMaxId = fieldId;
       }
-      ThriftField newField = null;
-      try {
-        newField = newStruct.getChildById(fieldId);
-      } catch (ArrayIndexOutOfBoundsException e) {
+      ThriftField newField = newStruct.getChildById(fieldId);
+      if (newField == null) {
         fail("can not find index in new Struct: " + fieldId +" in " + newStruct);
         return;
       }
