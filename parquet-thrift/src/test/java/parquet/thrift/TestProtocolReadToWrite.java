@@ -32,6 +32,9 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.thrift.protocol.TField;
+import parquet.thrift.test.Phone;
+import parquet.thrift.test.StructWithExtraField;
+import parquet.thrift.test.StructWithIndexStartsFrom4;
 import parquet.thrift.test.compat.*;
 import thrift.test.OneOfEach;
 
@@ -218,6 +221,35 @@ public class TestProtocolReadToWrite {
     assertEquals(dataWithNewSchema.getAge(), b.getAge());
     assertEquals(dataWithNewSchema.getGender(), b.getGender());
     assertEquals(null, b.getAddedStruct());
+  }
+
+  @Test
+  public void TestExtraFieldWhenFieldIndexIsNotStartFromZero() throws Exception {
+    BufferedProtocolReadToWrite structForRead = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructWithIndexStartsFrom4.class));
+
+    CountingErrorHandler countingHandler = new CountingErrorHandler() {
+      @Override
+      public void handleFieldIgnored(TField field) {
+        assertEquals(3,field.id);
+        fieldIgnoredCount++;
+      }
+    };
+    structForRead.unregisterAllErrorHandlers();
+    structForRead.registerErrorHandler(countingHandler);
+
+    //Data has an extra field of type struct
+    final ByteArrayOutputStream in = new ByteArrayOutputStream();
+    StructWithExtraField dataWithNewExtraField = new StructWithExtraField(new Phone("111","222"),new Phone("333","444"));
+    dataWithNewExtraField.write(protocol(in));
+
+    //read using the schema that doesn't have the extra field
+    final ByteArrayOutputStream out = new ByteArrayOutputStream();
+    structForRead.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
+
+    assertEquals(0, countingHandler.corruptedCount);
+    assertEquals(1, countingHandler.recordCountOfMissingFields);
+    assertEquals(1, countingHandler.fieldIgnoredCount);
+    assertEquals(0, countingHandler.schemaMismatchCount);
   }
 
   private TCompactProtocol protocol(OutputStream to) {

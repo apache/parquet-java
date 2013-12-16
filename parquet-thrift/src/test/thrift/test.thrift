@@ -63,3 +63,11 @@ struct TestPersonWithRequiredPhone {
   5: required Phone phone
 }
 
+struct StructWithIndexStartsFrom4 {
+  6: required Phone phone
+}
+
+struct StructWithExtraField {
+  3: required Phone extraPhone,
+  6: required Phone phone
+}
