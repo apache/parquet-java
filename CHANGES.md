@@ -1,5 +1,11 @@
 # Parquet #
 
+### Version 1.2.10 ###
+* ISSUE [247](https://github.com/Parquet/parquet-mr/pull/247): fix bug: when field index is greater than zero
+* ISSUE [244](https://github.com/Parquet/parquet-mr/pull/244): Feature/error handler
+* ISSUE [187](https://github.com/Parquet/parquet-mr/pull/187): Plumb OriginalType
+* ISSUE [245](https://github.com/Parquet/parquet-mr/pull/245): integrate parquet format 2.0
+
 ### Version 1.2.9 ###
 * ISSUE [242](https://github.com/Parquet/parquet-mr/pull/242): upgrade elephant-bird version to 4.3
 * ISSUE [240](https://github.com/Parquet/parquet-mr/pull/240): fix loader cache
