@@ -392,7 +392,6 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
           return "f=" + currentField.id + "<t=" + typeName(currentField.type) + ">: ";
         }
       });
-
       hasFieldsIgnored |= readOneValue(in, field.type, buffer, expectedField.getType());
       in.readFieldEnd();
       buffer.add(FIELD_END);
