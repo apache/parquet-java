@@ -44,7 +44,7 @@ public class ProtocolReadToWrite implements ProtocolPipe {
     readOneStruct(in, out);
   }
 
-  private void readOneValue(TProtocol in, TProtocol out, byte type)
+  void readOneValue(TProtocol in, TProtocol out, byte type)
       throws TException {
     switch (type) {
     case TType.LIST:

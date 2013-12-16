@@ -12,8 +12,36 @@ struct StructV3 {
   3: optional string gender
 }
 
+struct StructV4WithExtracStructField {
+  1: required string name,
+  2: optional string age,
+  3: optional string gender,
+  4: optional StructV3 addedStruct
+}
+
 struct RenameStructV1 {
   1: required string nameChanged
+}
+
+enum NumberEnum {
+  ONE = 1,
+  TWO = 2,
+  THREE = 3
+}
+
+enum NumberEnumWithMoreValue {
+  ONE = 1,
+  TWO = 2,
+  THREE = 3,
+  FOUR = 4
+}
+
+struct StructWithEnum {
+ 1: required NumberEnum num
+}
+
+struct StructWithMoreEnum {
+ 1: required NumberEnumWithMoreValue num
 }
 
 struct TypeChangeStructV1{
