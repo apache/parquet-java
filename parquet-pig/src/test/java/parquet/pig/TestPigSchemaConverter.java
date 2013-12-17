@@ -55,7 +55,7 @@ public class TestPigSchemaConverter {
 
   @Test
   public void testMultiBag() throws Exception {
-    testPigConversion("x:int, b:{t:(a:int,b:chararray)}}");
+    testPigConversion("x:int, b:{t:(a:int,b:chararray)}");
   }
 
   @Test
