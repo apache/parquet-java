@@ -25,6 +25,7 @@ import parquet.hadoop.ParquetOutputFormat;
 import parquet.hadoop.metadata.CompressionCodecName;
 
 import java.io.IOException;
+import parquet.hadoop.util.ContextUtil;
 
 public class CodecConfigTest {
   @Test
@@ -45,7 +46,7 @@ public class CodecConfigTest {
     Job job = new Job();
     Configuration conf = job.getConfiguration();
     conf.set(ParquetOutputFormat.COMPRESSION, codecNameStr);
-    TaskAttemptContext task = new TaskAttemptContext(conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
+    TaskAttemptContext task = ContextUtil.newTaskAttemptContext(conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
     Assert.assertEquals(CodecConfig.from(task).getCodec(), expectedCodec);
 
     //Test mapred API
@@ -60,7 +61,7 @@ public class CodecConfigTest {
     Configuration conf = job.getConfiguration();
     conf.setBoolean("mapred.output.compress", true);
     conf.set("mapred.output.compression.codec", codecClassStr);
-    TaskAttemptContext task = new TaskAttemptContext(conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
+    TaskAttemptContext task = ContextUtil.newTaskAttemptContext(conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
     Assert.assertEquals(expectedCodec, CodecConfig.from(task).getCodec());
 
     //Test mapred API
