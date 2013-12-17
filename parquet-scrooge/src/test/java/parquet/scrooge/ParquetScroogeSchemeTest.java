@@ -65,7 +65,7 @@ public class ParquetScroogeSchemeTest {
     final TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
     final TaskAttemptID taskId = new TaskAttemptID("local", 0, true, 0, 0);
     Class writeClass = recordToWrite.getClass();
-    final ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(parquetFile, new TaskAttemptContext(conf, taskId), protocolFactory, writeClass);
+    final ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(parquetFile, ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory, writeClass);
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));
 
@@ -78,10 +78,10 @@ public class ParquetScroogeSchemeTest {
     job.setInputFormatClass(ParquetThriftInputFormat.class);
     ParquetThriftInputFormat.setInputPaths(job, parquetFile);
     final JobID jobID = new JobID("local", 1);
-    List<InputSplit> splits = parquetThriftInputFormat.getSplits(new JobContext(ContextUtil.getConfiguration(job), jobID));
+    List<InputSplit> splits = parquetThriftInputFormat.getSplits(ContextUtil.newJobContext(ContextUtil.getConfiguration(job), jobID));
     T readValue = null;
     for (InputSplit split : splits) {
-      TaskAttemptContext taskAttemptContext = new TaskAttemptContext(ContextUtil.getConfiguration(job), new TaskAttemptID(new TaskID(jobID, true, 1), 0));
+      TaskAttemptContext taskAttemptContext = ContextUtil.newTaskAttemptContext(ContextUtil.getConfiguration(job), new TaskAttemptID(new TaskID(jobID, true, 1), 0));
       final RecordReader<Void, T> reader = parquetThriftInputFormat.createRecordReader(split, taskAttemptContext);
       reader.initialize(split, taskAttemptContext);
       if (reader.nextKeyValue()) {
