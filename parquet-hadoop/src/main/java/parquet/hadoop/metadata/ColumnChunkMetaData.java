@@ -33,11 +33,11 @@ abstract public class ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize) {
-    if (firstDataPage < Integer.MAX_VALUE
-        && dictionaryPageOffset < Integer.MAX_VALUE
-        && valueCount < Integer.MAX_VALUE
-        && totalSize < Integer.MAX_VALUE
-        && totalUncompressedSize < Integer.MAX_VALUE) {
+    if (firstDataPage + Integer.MIN_VALUE < Integer.MAX_VALUE
+        && dictionaryPageOffset + Integer.MIN_VALUE < Integer.MAX_VALUE
+        && valueCount + Integer.MIN_VALUE < Integer.MAX_VALUE
+        && totalSize + Integer.MIN_VALUE < Integer.MAX_VALUE
+        && totalUncompressedSize + Integer.MIN_VALUE < Integer.MAX_VALUE) {
       return new IntColumnChunkMetaData(
           path, type, codec, encodings,
           firstDataPage,
@@ -147,46 +147,46 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
       long totalSize,
       long totalUncompressedSize) {
     super(ColumnChunkProperties.get(path, type, codec, encodings));
-    this.firstDataPage = (int)firstDataPage;
-    this.dictionaryPageOffset = (int)dictionaryPageOffset;
-    this.valueCount = (int)valueCount;
-    this.totalSize = (int)totalSize;
-    this.totalUncompressedSize = (int)totalUncompressedSize;
+    this.firstDataPage = (int)(firstDataPage + Integer.MIN_VALUE);
+    this.dictionaryPageOffset = (int)(dictionaryPageOffset + Integer.MIN_VALUE);
+    this.valueCount = (int)(valueCount + Integer.MIN_VALUE);
+    this.totalSize = (int)(totalSize + Integer.MIN_VALUE);
+    this.totalUncompressedSize = (int)(totalUncompressedSize + Integer.MIN_VALUE);
   }
 
   /**
    * @return start of the column data offset
    */
   public long getFirstDataPageOffset() {
-    return firstDataPage;
+    return (long)firstDataPage - Integer.MIN_VALUE;
   }
 
   /**
    * @return the location of the dictionary page if any
    */
   public long getDictionaryPageOffset() {
-    return dictionaryPageOffset;
+    return (long)dictionaryPageOffset - Integer.MIN_VALUE;
   }
 
   /**
    * @return count of values in this block of the column
    */
   public long getValueCount() {
-    return valueCount;
+    return (long)valueCount - Integer.MIN_VALUE;
   }
 
   /**
    * @return the totalUncompressedSize
    */
   public long getTotalUncompressedSize() {
-    return totalUncompressedSize;
+    return (long)totalUncompressedSize - Integer.MIN_VALUE;
   }
 
   /**
    * @return the totalSize
    */
   public long getTotalSize() {
-    return totalSize;
+    return (long)totalSize - Integer.MIN_VALUE;
   }
 
 }
