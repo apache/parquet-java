@@ -22,21 +22,18 @@ import static parquet.filter.ColumnRecordFilter.column;
 import static parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
 
+import com.google.common.collect.ImmutableList;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
-
 import parquet.hadoop.ParquetReader;
 import parquet.hadoop.ParquetWriter;
 import parquet.hadoop.metadata.CompressionCodecName;
-
-import com.google.common.collect.ImmutableList;
 
 /**
  * Other tests exercise the use of Avro Generic, a dynamic data representation. This class focuses
@@ -130,7 +127,6 @@ public class TestSpecificReadWrite {
     Schema projectedSchema = Schema.createRecord(schema.getName(), schema.getDoc(), schema.getNamespace(), schema.isError());
     projectedSchema.setFields(projectedFields);
     AvroReadSupport.setRequestedProjection(conf, projectedSchema);
-    AvroReadSupport.setRequestedSchema(conf, Car.SCHEMA$);
 
     ParquetReader<Car> reader = new AvroParquetReader<Car>(conf, path);
     for (Car car = reader.read(); car != null; car = reader.read()) {
@@ -142,6 +138,22 @@ public class TestSpecificReadWrite {
       assertEquals(car.getVin() != null, true);
       assertNull(car.getOptionalExtra());
       assertNull(car.getServiceHistory());
+    }
+  }
+
+  @Test
+  public void testAvroReadSchema() throws IOException {
+    Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
+    Configuration conf = new Configuration();
+    AvroReadSupport.setAvroReadSchema(conf, NewCar.SCHEMA$);
+
+    ParquetReader<NewCar> reader = new AvroParquetReader<NewCar>(conf, path);
+    for (NewCar car = reader.read(); car != null; car = reader.read()) {
+      assertEquals(car.getEngine() != null, true);
+      assertEquals(car.getMake() != null, true);
+      assertEquals(car.getYear() != null, true);
+      assertEquals(car.getVin() != null, true);
+      assertEquals(car.getDescription() == null, true);
     }
   }
 

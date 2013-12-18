@@ -19,13 +19,11 @@ import java.lang.reflect.Constructor;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.specific.SpecificData;
-
 import parquet.Preconditions;
 import parquet.io.InvalidRecordException;
 import parquet.io.api.Binary;

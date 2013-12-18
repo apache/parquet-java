@@ -45,5 +45,18 @@ protocol Cars {
         long year;
         Vin vin;
     }
+
+    record NewCar {
+        long year;
+        string registration;
+        string make;
+        string model;
+        Vin vin;
+        int doors;
+        Engine engine;
+        union { null, Stereo, LeatherTrim } optionalExtra = null;
+        union { null, array<Service> } serviceHistory = null;
+        union { null, string } description = null;
+    }
         
 }

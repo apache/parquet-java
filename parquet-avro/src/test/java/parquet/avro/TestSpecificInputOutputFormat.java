@@ -20,9 +20,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
+import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.util.List;
-
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -35,15 +35,12 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
 import parquet.Log;
 import parquet.column.ColumnReader;
 import parquet.filter.ColumnPredicates;
 import parquet.filter.ColumnRecordFilter;
 import parquet.filter.RecordFilter;
 import parquet.filter.UnboundRecordFilter;
-
-import com.google.common.collect.Lists;
 
 public class TestSpecificInputOutputFormat {
   private static final Log LOG = Log.getLog(TestSpecificInputOutputFormat.class);
@@ -175,7 +172,6 @@ public class TestSpecificInputOutputFormat {
     }
     projection.setFields(fields);
     AvroParquetInputFormat.setRequestedProjection(job, projection);
-    AvroParquetInputFormat.setRequestedSchema(job, Car.SCHEMA$);
 
     job.setMapperClass(TestSpecificInputOutputFormat.MyMapper2.class);
     job.setNumReduceTasks(0);
@@ -216,7 +212,8 @@ public class TestSpecificInputOutputFormat {
     // Test push-down predicates by using an electric car filter
     AvroParquetInputFormat.setUnboundRecordFilter(job, ElectricCarFilter.class);
 
-    // Test schema projection by dropping the optional extras
+    // Test schema projection by dropping the engine, year, and vin (like ShortCar),
+    // but making make optional (unlike ShortCar)
     Schema projection = Schema.createRecord(Car.SCHEMA$.getName(),
         Car.SCHEMA$.getDoc(), Car.SCHEMA$.getNamespace(), false);
     List<Schema.Field> fields = Lists.newArrayList();
@@ -229,7 +226,7 @@ public class TestSpecificInputOutputFormat {
     }
     projection.setFields(fields);
     AvroParquetInputFormat.setRequestedProjection(job, projection);
-    AvroParquetInputFormat.setRequestedSchema(job, ShortCar.SCHEMA$);
+    AvroParquetInputFormat.setAvroReadSchema(job, ShortCar.SCHEMA$);
 
     job.setMapperClass(TestSpecificInputOutputFormat.MyMapperShort.class);
     job.setNumReduceTasks(0);
