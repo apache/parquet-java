@@ -33,11 +33,12 @@ abstract public class ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize) {
-    if (firstDataPage + Integer.MIN_VALUE < Integer.MAX_VALUE
-        && dictionaryPageOffset + Integer.MIN_VALUE < Integer.MAX_VALUE
-        && valueCount + Integer.MIN_VALUE < Integer.MAX_VALUE
-        && totalSize + Integer.MIN_VALUE < Integer.MAX_VALUE
-        && totalUncompressedSize + Integer.MIN_VALUE < Integer.MAX_VALUE) {
+    // to save space we store those always positive longs in ints when they fit.
+    if (positiveLongFitsInAnInt(firstDataPage)
+        && positiveLongFitsInAnInt(dictionaryPageOffset)
+        && positiveLongFitsInAnInt(valueCount)
+        && positiveLongFitsInAnInt(totalSize)
+        && positiveLongFitsInAnInt(totalUncompressedSize)) {
       return new IntColumnChunkMetaData(
           path, type, codec, encodings,
           firstDataPage,
@@ -54,6 +55,16 @@ abstract public class ColumnChunkMetaData {
           totalSize,
           totalUncompressedSize);
     }
+  }
+
+  /**
+   * checks that a positive long value fits in an int.
+   * (reindexed on Integer.MIN_VALUE)
+   * @param value
+   * @return whether it fits
+   */
+  protected static boolean positiveLongFitsInAnInt(long value) {
+    return (value >= 0) && (value + Integer.MIN_VALUE <= Integer.MAX_VALUE);
   }
 
   // we save 3 references by storing together the column properties that have few distinct values
@@ -147,46 +158,67 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
       long totalSize,
       long totalUncompressedSize) {
     super(ColumnChunkProperties.get(path, type, codec, encodings));
-    this.firstDataPage = (int)(firstDataPage + Integer.MIN_VALUE);
-    this.dictionaryPageOffset = (int)(dictionaryPageOffset + Integer.MIN_VALUE);
-    this.valueCount = (int)(valueCount + Integer.MIN_VALUE);
-    this.totalSize = (int)(totalSize + Integer.MIN_VALUE);
-    this.totalUncompressedSize = (int)(totalUncompressedSize + Integer.MIN_VALUE);
+    this.firstDataPage = positiveLongToInt(firstDataPage);
+    this.dictionaryPageOffset = positiveLongToInt(dictionaryPageOffset);
+    this.valueCount = positiveLongToInt(valueCount);
+    this.totalSize = positiveLongToInt(totalSize);
+    this.totalUncompressedSize = positiveLongToInt(totalUncompressedSize);
+  }
+
+  /**
+   * stores a positive long into an int (assuming it fits)
+   * @param value
+   * @return
+   */
+  private int positiveLongToInt(long value) {
+    if (!ColumnChunkMetaData.positiveLongFitsInAnInt(value)) {
+      throw new IllegalArgumentException("value should be positive and fit in an int: " + value);
+    }
+    return (int)(value + Integer.MIN_VALUE);
+  }
+
+  /**
+   * turns the int back into a positive long
+   * @param value
+   * @return
+   */
+  private long intToPositiveLong(int value) {
+    return (long)value - Integer.MIN_VALUE;
   }
 
   /**
    * @return start of the column data offset
    */
   public long getFirstDataPageOffset() {
-    return (long)firstDataPage - Integer.MIN_VALUE;
+    return intToPositiveLong(firstDataPage);
   }
 
   /**
    * @return the location of the dictionary page if any
    */
   public long getDictionaryPageOffset() {
-    return (long)dictionaryPageOffset - Integer.MIN_VALUE;
+    return intToPositiveLong(dictionaryPageOffset);
   }
 
   /**
    * @return count of values in this block of the column
    */
   public long getValueCount() {
-    return (long)valueCount - Integer.MIN_VALUE;
+    return intToPositiveLong(valueCount);
   }
 
   /**
    * @return the totalUncompressedSize
    */
   public long getTotalUncompressedSize() {
-    return (long)totalUncompressedSize - Integer.MIN_VALUE;
+    return intToPositiveLong(totalUncompressedSize);
   }
 
   /**
    * @return the totalSize
    */
   public long getTotalSize() {
-    return (long)totalSize - Integer.MIN_VALUE;
+    return intToPositiveLong(totalSize);
   }
 
 }

@@ -97,6 +97,7 @@ public class ParquetFileReader implements Closeable {
       summaries.add(new Callable<Map<Path, Footer>>() {
         @Override
         public Map<Path, Footer> call() throws Exception {
+          // fileSystem is thread-safe
           FileSystem fileSystem = path.getFileSystem(configuration);
           Path summaryFile = new Path(path, PARQUET_METADATA_FILE);
           if (fileSystem.exists(summaryFile)) {
