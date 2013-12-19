@@ -25,7 +25,6 @@ import org.junit.Test;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
-
 import java.util.Random;
 
 @AxisRange(min = 0, max = 1)

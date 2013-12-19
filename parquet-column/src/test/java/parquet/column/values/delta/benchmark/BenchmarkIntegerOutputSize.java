@@ -18,7 +18,6 @@ package parquet.column.values.delta.benchmark;
 import org.junit.Test;
 import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
-
 import java.util.Random;
 
 public class BenchmarkIntegerOutputSize {
