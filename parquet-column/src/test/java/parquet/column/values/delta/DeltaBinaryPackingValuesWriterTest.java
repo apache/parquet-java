@@ -154,6 +154,7 @@ public class DeltaBinaryPackingValuesWriterTest {
 
     //offset should be correct
     reader.initFromPage(100, pageContent, contentOffsetInPage);
+    //TODO: uncomment following test for testing returning correct offset
 //    int offset= reader.getNextOffset();
 //    assertEquals(valueContent.length + contentOffsetInPage, offset);
 
@@ -175,79 +176,6 @@ public class DeltaBinaryPackingValuesWriterTest {
     } catch (ParquetDecodingException e) {
       assertEquals("no more value to read, total value count is " + data.length, e.getMessage());
     }
-
-  }
-
-  private void withRLE() {
-    writer = new RunLengthBitPackingHybridValuesWriter(32, 100);
-//    reader = new RunLengthBitPackingHybridValuesReader(32);
-  }
-
-//  @Test
-  public void readingPerfTest() throws IOException {
-    int round = 1000;
-    int[] data = new int[10000 * blockSize];
-    for (int i = 0; i < data.length; i++) {
-      data[i] = random.nextInt();
-    }
-//    writer=new RunLengthBitPackingHybridValuesWriter(32,100);
-    for (int i = 0; i < data.length; i++) {
-      writer.writeInteger(data[i]);
-    }
-    byte[] page = writer.getBytes().toByteArray();
-
-    double avg = 0.0;
-    ValuesReader reader;
-    for (int i = 0; i < round; i++) {
-//      System.out.print("<");
-      long startTime = System.nanoTime();
-
-//      reader = new RunLengthBitPackingHybridValuesReader(32);
-      reader = new DeltaBinaryPackingValuesReader();
-
-      reader.initFromPage(100, page, 0);
-
-      for (int j = 0; j < data.length; j++) {
-        reader.readInteger();
-      }
-
-      long endTime = System.nanoTime();
-      long duration = endTime - startTime;
-      avg += (double) duration / round;
-    }
-    System.out.println("average time is " + avg);
-
-  }
-
-//  @Test
-  public void writingPerfTest() throws IOException {
-//    withRLE();
-    int round = 1000;
-    int warmup = 10000;
-    int[] data = new int[1000 * blockSize];
-    for (int i = 0; i < data.length; i++) {
-      data[i] = random.nextInt(100) - 200;
-    }
-
-
-//    ValuesWriter writer=new RunLengthBitPackingHybridValuesWriter(32,100);
-    double avg = 0.0;
-    for (int i = 0; i < round + warmup; i++) {
-//      System.out.print("<");
-      writer.reset();
-      long startTime = System.nanoTime();
-      writeData(data);
-      long endTime = System.nanoTime();
-      long duration = endTime - startTime;
-
-      if (i > warmup) {
-        avg += (double) duration / round;
-      }
-
-//      System.out.println(">time consumed " + duration);
-    }
-
-    System.out.println("average time is " + avg);
 
   }
 
@@ -303,7 +231,6 @@ public class DeltaBinaryPackingValuesWriterTest {
   }
 
   private void shouldReadAndWrite(int[] data, int length) throws IOException {
-
     writeData(data, length);
     reader = new DeltaBinaryPackingValuesReader();
     byte[] page = writer.getBytes().toByteArray();
@@ -316,8 +243,6 @@ public class DeltaBinaryPackingValuesWriterTest {
             + blockFlushed * miniBlockNum //bitWidth of mini blocks
             + (5.0 * blockFlushed);//min delta for each block
     assertTrue(estimatedSize >= page.length);
-    double avg = (double) page.length / length;
-//    System.out.println("avg length for integer is "+ avg);
     reader.initFromPage(100, page, 0);
 
     for (int i = 0; i < length; i++) {
@@ -334,5 +259,4 @@ public class DeltaBinaryPackingValuesWriterTest {
       writer.writeInteger(data[i]);
     }
   }
-
 }

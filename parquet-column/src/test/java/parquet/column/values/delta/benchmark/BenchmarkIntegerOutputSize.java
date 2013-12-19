@@ -22,7 +22,6 @@ import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import java.util.Random;
 
 public class BenchmarkIntegerOutputSize {
-
   public static int blockSize=128;
   public static int miniBlockNum=4;
   public static int dataSize=10000 * blockSize;
@@ -30,7 +29,6 @@ public class BenchmarkIntegerOutputSize {
   private interface IntFunc {
     public int getIntValue();
   }
-
 
   @Test
   public void testBigNumbers() {
@@ -76,7 +74,6 @@ public class BenchmarkIntegerOutputSize {
       },4);
   }
 
-
   public void testRandomIntegers(IntFunc func,int bitWidth) {
     DeltaBinaryPackingValuesWriter delta=new DeltaBinaryPackingValuesWriter(blockSize,miniBlockNum,100);
     RunLengthBitPackingHybridValuesWriter rle= new RunLengthBitPackingHybridValuesWriter(bitWidth,100);
@@ -85,8 +82,6 @@ public class BenchmarkIntegerOutputSize {
       delta.writeInteger(v);
       rle.writeInteger(v);
     }
-
-
     System.out.println("delta size: "+delta.getBytes().size());
     System.out.println("estimated size"+estimatedSize());
     System.out.println("rle size: "+rle.getBytes().size());

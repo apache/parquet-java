@@ -150,7 +150,6 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   }
 
   private void flushBlockBuffer() {
-
     //since we store the min delta, the deltas will be converted to be the difference to min delta and all positive
     for (int i = 0; i < deltaValuesToFlush; i++) {
       deltaBlockBuffer[i] = deltaBlockBuffer[i] - minDeltaInCurrentBlock;

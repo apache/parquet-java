@@ -15,7 +15,6 @@
  */
 package parquet.column.values.delta.benchmark;
 
-
 import com.carrotsearch.junitbenchmarks.BenchmarkOptions;
 import com.carrotsearch.junitbenchmarks.BenchmarkRule;
 import com.carrotsearch.junitbenchmarks.annotation.AxisRange;

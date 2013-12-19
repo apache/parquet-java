@@ -144,12 +144,9 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
   }
 
   private void unpack8Values(BytePacker packer) {
-
     //calculate the pos because the packer api uses array not stream
     int pos = page.length - in.available();
     packer.unpack8Values(page, pos, valuesBuffer, valuesBuffered);
-
-
     this.valuesBuffered += 8;
     //sync the pos in stream
     in.skip(packer.getBitWidth());
