@@ -32,6 +32,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import parquet.Log;
+import parquet.column.ParquetProperties.WriterVersion;
 import parquet.hadoop.api.WriteSupport;
 import parquet.hadoop.api.WriteSupport.WriteContext;
 import parquet.hadoop.codec.CodecConfig;
@@ -94,6 +95,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String DICTIONARY_PAGE_SIZE = "parquet.dictionary.page.size";
   public static final String ENABLE_DICTIONARY    = "parquet.enable.dictionary";
   public static final String VALIDATION           = "parquet.validation";
+  public static final String WRITER_VERSION       = "parquet.writer.version";
 
   public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
     getConfiguration(job).set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
@@ -182,6 +184,13 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static int getDictionaryPageSize(Configuration configuration) {
     return configuration.getInt(DICTIONARY_PAGE_SIZE, DEFAULT_PAGE_SIZE);
   }
+  
+  public static String getWriterVersion(Configuration configuration) {
+    String writerVersion = configuration.get(WRITER_VERSION, WriterVersion.PARQUET_1_0.toString());
+    // This is just to sanitize writer version, following will throw IllegalArgumentException
+    WriterVersion.valueOf(writerVersion);
+    return writerVersion;
+  }
 
   public static CompressionCodecName getCompression(Configuration configuration) {
     return CodecConfig.getParquetCompressionCodec(configuration);
@@ -255,15 +264,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     int pageSize = getPageSize(conf);
     if (INFO) LOG.info("Parquet page size to " + pageSize);
     int dictionaryPageSize = getDictionaryPageSize(conf);
-    if (INFO) LOG.info("Parquet dictionary page size to " + pageSize);
-
+    if (INFO) LOG.info("Parquet dictionary page size to " + dictionaryPageSize);
     boolean enableDictionary = getEnableDictionary(conf);
+    if (INFO) LOG.info("Dictionary is " + (enableDictionary ? "on" : "off"));
+    boolean validating = getValidation(conf);
+    if (INFO) LOG.info("Validation is " + (validating ? "on" : "off"));
+    String writerVersion = getWriterVersion(conf);
+    if (INFO) LOG.info("Writer version is: " + writerVersion);
+
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(conf, init.getSchema(), file);
     w.start();
-    boolean validating = getValidation(conf);
-    if (INFO) LOG.info("Validation is " + (validating ? "on" : "off"));
-
+    
     return new ParquetRecordWriter<T>(
         w,
         writeSupport,
@@ -273,7 +285,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         codecFactory.getCompressor(codec, pageSize),
         dictionaryPageSize,
         enableDictionary,
-        validating);
+        validating,
+        writerVersion);
   }
 
   /**

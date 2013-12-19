@@ -23,6 +23,7 @@ import parquet.Log;
 import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
+import parquet.column.ParquetProperties;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
 import parquet.column.values.ValuesWriter;
@@ -65,65 +66,19 @@ final class ColumnWriterImpl implements ColumnWriter {
       int pageSizeThreshold,
       int initialSizePerCol,
       int dictionaryPageSizeThreshold,
-      boolean enableDictionary) {
+      boolean enableDictionary,
+      String writerVersion) {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
 
-    repetitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel());
-    definitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel());
-
-    if (enableDictionary) {
-      switch (path.getType()) {
-      case BOOLEAN:
-        this.dataColumn = new BooleanPlainValuesWriter();
-        break;
-      case BINARY:
-        this.dataColumn = new PlainBinaryDictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol);
-        break;
-      case INT64:
-        this.dataColumn = new PlainLongDictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol);
-        break;
-      case DOUBLE:
-        this.dataColumn = new PlainDoubleDictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol);
-        break;
-      case INT32:
-        this.dataColumn = new PlainIntegerDictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol);
-        break;
-      case FLOAT:
-        this.dataColumn = new PlainFloatDictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol);
-        break;
-      case FIXED_LEN_BYTE_ARRAY:
-        this.dataColumn = new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol);
-        break;
-      default:
-        this.dataColumn = new PlainValuesWriter(initialSizePerCol);
-      }
-    } else {
-      switch (path.getType()) {
-      case BOOLEAN:
-        this.dataColumn = new BooleanPlainValuesWriter();
-        break;
-      case FIXED_LEN_BYTE_ARRAY:
-        this.dataColumn = new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol);
-        break;
-      default:
-        this.dataColumn = new PlainValuesWriter(initialSizePerCol);
-      }
-    }
-  }
-
-  private ValuesWriter getColumnDescriptorValuesWriter(int maxLevel) {
-    if (maxLevel == 0) {
-      return new DevNullValuesWriter();
-    } else {
-      // TODO: what is a good initialCapacity?
-      return new RunLengthBitPackingHybridValuesWriter(
-          BytesUtils.getWidthFromMaxInt(maxLevel),
-          64 * 1024);
-    }
+    ParquetProperties parquetProps = new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary);
+    
+    this.repetitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), initialSizePerCol);
+    this.definitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), initialSizePerCol);
+    this.dataColumn = parquetProps.getValuesWriter(path, initialSizePerCol);
   }
 
   private void log(Object value, int r, int d) {
