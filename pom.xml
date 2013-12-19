@@ -266,6 +266,9 @@
         <version>2.10</version>
         <configuration>
           <argLine>-Xmx512m</argLine>
+          <excludes>
+            <exclude>**/benchmark/*.java</exclude>
+          </excludes>
         </configuration>
       </plugin>
       <plugin>

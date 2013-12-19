@@ -182,12 +182,28 @@ public class BytesUtils {
     return value | (b << i);
   }
 
+  /**
+   * uses a trick mentioned in https://developers.google.com/protocol-buffers/docs/encoding to read zigZag encoded data
+   * @param in
+   * @return
+   * @throws IOException
+   */
+  public static int readZigZagVarInt(InputStream in) throws IOException {
+    int raw = readUnsignedVarInt(in);
+    int temp = (((raw << 31) >> 31) ^ raw) >> 1;
+    return temp ^ (raw & (1 << 31));
+  }
+
   public static void writeUnsignedVarInt(int value, OutputStream out) throws IOException {
     while ((value & 0xFFFFFF80) != 0L) {
       out.write((value & 0x7F) | 0x80);
       value >>>= 7;
     }
     out.write(value & 0x7F);
+  }
+
+  public static void writeZigZagVarInt(int intValue, OutputStream out) throws IOException{
+    writeUnsignedVarInt((intValue << 1) ^ (intValue >> 31), out);
   }
 
   /**
