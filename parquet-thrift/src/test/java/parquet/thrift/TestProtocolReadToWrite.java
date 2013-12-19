@@ -15,41 +15,29 @@
  */
 package parquet.thrift;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-
+import com.twitter.data.proto.tutorial.thrift.*;
+import com.twitter.elephantbird.thrift.test.TestMapInSet;
+import org.apache.thrift.TBase;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TField;
+import org.apache.thrift.transport.TIOStreamTransport;
+import org.junit.Test;
 import parquet.thrift.test.Phone;
 import parquet.thrift.test.StructWithExtraField;
 import parquet.thrift.test.StructWithIndexStartsFrom4;
 import parquet.thrift.test.compat.*;
 import thrift.test.OneOfEach;
 
-import org.apache.thrift.TBase;
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.transport.TIOStreamTransport;
-import org.junit.Test;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.*;
 
-import com.twitter.data.proto.tutorial.thrift.AddressBook;
-import com.twitter.data.proto.tutorial.thrift.Name;
-import com.twitter.data.proto.tutorial.thrift.Person;
-import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
-import com.twitter.data.proto.tutorial.thrift.PhoneType;
-import com.twitter.elephantbird.thrift.test.TestMapInSet;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class TestProtocolReadToWrite {
 
@@ -90,7 +78,7 @@ public class TestProtocolReadToWrite {
 
   @Test
   public void testMapSet() throws Exception {
-    final Set<Map<String, String>> set = new HashSet<Map<String,String>>();
+    final Set<Map<String, String>> set = new HashSet<Map<String, String>>();
     final Map<String, String> map = new HashMap<String, String>();
     map.put("foo", "bar");
     set.add(map);
@@ -115,10 +103,8 @@ public class TestProtocolReadToWrite {
 
   @Test
   public void testIncompatibleSchemaRecord() throws Exception {
-    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(AddressBook.class));
-    p.unregisterAllErrorHandlers();
     //handler will rethrow the exception for verifying purpose
-    CountingErrorHandler countingHandler = new CountingErrorHandler(){
+    CountingErrorHandler countingHandler = new CountingErrorHandler() {
       @Override
       public void handleSkipRecordDueToSchemaMismatch(DecodingSchemaMismatchException e) {
         super.handleSkipRecordDueToSchemaMismatch(e);
@@ -126,16 +112,17 @@ public class TestProtocolReadToWrite {
         assertTrue(e.getMessage().contains("got BOOL"));
       }
     };
-    p.registerErrorHandler(countingHandler);
+
+    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(AddressBook.class), countingHandler);
 
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     OneOfEach a = new OneOfEach(
-        true, false, (byte)8, (short)16, (int)32, (long)64, (double)1234, "string", "å", false,
-        ByteBuffer.wrap("a".getBytes()), new ArrayList<Byte>(), new ArrayList<Short>(), new ArrayList<Long>());
+            true, false, (byte)8, (short)16, (int)32, (long)64, (double)1234, "string", "å", false,
+            ByteBuffer.wrap("a".getBytes()), new ArrayList<Byte>(), new ArrayList<Short>(), new ArrayList<Long>());
     a.write(protocol(in));
 
-      p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
+    p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
     assertEquals(1, countingHandler.corruptedCount);
     assertEquals(1, countingHandler.schemaMismatchCount);
     assertEquals(0, countingHandler.recordCountOfMissingFields);
@@ -145,12 +132,11 @@ public class TestProtocolReadToWrite {
   /**
    * When enum value in data has an undefined index, it's considered as corrupted record and will be skipped.
    * Handler will be notified
+   *
    * @throws Exception
    */
   @Test
   public void testEnumMissingSchema() throws Exception {
-    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructWithEnum.class));
-    p.unregisterAllErrorHandlers();
     CountingErrorHandler countingHandler = new CountingErrorHandler() {
       @Override
       public void handleSkippedCorruptedRecord(SkippableException e) {
@@ -163,8 +149,7 @@ public class TestProtocolReadToWrite {
         assertTrue(e.getMessage().contains("can not find index 4 in enum"));
       }
     };
-    p.registerErrorHandler(countingHandler);
-
+    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructWithEnum.class), countingHandler);
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     StructWithMoreEnum moreEnum = new StructWithMoreEnum(NumberEnumWithMoreValue.FOUR);
@@ -183,7 +168,6 @@ public class TestProtocolReadToWrite {
    */
   @Test
   public void testMissingFieldHandling() throws Exception {
-    BufferedProtocolReadToWrite structForRead = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructV3.class));
 
     CountingErrorHandler countingHandler = new CountingErrorHandler() {
       @Override
@@ -192,8 +176,7 @@ public class TestProtocolReadToWrite {
         fieldIgnoredCount++;
       }
     };
-    structForRead.unregisterAllErrorHandlers();
-    structForRead.registerErrorHandler(countingHandler);
+    BufferedProtocolReadToWrite structForRead = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructV3.class), countingHandler);
 
     //Data has an extra field of type struct
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
@@ -225,21 +208,19 @@ public class TestProtocolReadToWrite {
 
   @Test
   public void TestExtraFieldWhenFieldIndexIsNotStartFromZero() throws Exception {
-    BufferedProtocolReadToWrite structForRead = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructWithIndexStartsFrom4.class));
-
     CountingErrorHandler countingHandler = new CountingErrorHandler() {
       @Override
       public void handleFieldIgnored(TField field) {
-        assertEquals(3,field.id);
+        assertEquals(3, field.id);
         fieldIgnoredCount++;
       }
     };
-    structForRead.unregisterAllErrorHandlers();
-    structForRead.registerErrorHandler(countingHandler);
+
+    BufferedProtocolReadToWrite structForRead = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructWithIndexStartsFrom4.class), countingHandler);
 
     //Data has an extra field of type struct
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
-    StructWithExtraField dataWithNewExtraField = new StructWithExtraField(new Phone("111","222"),new Phone("333","444"));
+    StructWithExtraField dataWithNewExtraField = new StructWithExtraField(new Phone("111", "222"), new Phone("333", "444"));
     dataWithNewExtraField.write(protocol(in));
 
     //read using the schema that doesn't have the extra field
@@ -260,11 +241,11 @@ public class TestProtocolReadToWrite {
     return new TCompactProtocol(new TIOStreamTransport(from));
   }
 
-  class CountingErrorHandler implements BufferedProtocolReadToWrite.ReadWriteErrorHandler{
-     int corruptedCount=0;
-     int fieldIgnoredCount=0;
-     int recordCountOfMissingFields=0;
-     int schemaMismatchCount=0;
+  class CountingErrorHandler implements ReadWriteErrorHandler {
+    int corruptedCount = 0;
+    int fieldIgnoredCount = 0;
+    int recordCountOfMissingFields = 0;
+    int schemaMismatchCount = 0;
 
     @Override
     public void handleSkippedCorruptedRecord(SkippableException e) {
