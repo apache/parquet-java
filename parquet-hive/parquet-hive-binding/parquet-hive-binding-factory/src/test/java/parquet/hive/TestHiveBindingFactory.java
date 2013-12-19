@@ -26,10 +26,17 @@ public class TestHiveBindingFactory {
     hiveBindingFactory.createInternal(NoHiveVersion.class);
   }
   @Test
-  public void testUnknownHiveVersion() {
-    hiveBindingFactory.createInternal(UnknownHiveVersion.class);
+  public void testBlankHiveVersion() {
+    hiveBindingFactory.createInternal(BlankHiveVersion.class);
     Assert.assertEquals(Hive012Binding.class, hiveBindingFactory.
-        createInternal(UnknownHiveVersion.class));
+        createInternal(BlankHiveVersion.class));
+  }
+  @Test
+  public void testUnknownHiveVersion() {
+    hiveBindingFactory.createInternal(BlankHiveVersion.class);
+    // returns 0.12 because we don't have hive in classpath
+    Assert.assertEquals(Hive012Binding.class, hiveBindingFactory.
+        createInternal(BlankHiveVersion.class));
   }
   @Test
   public void testNullHiveVersion() {
@@ -71,9 +78,14 @@ public class TestHiveBindingFactory {
   static class NoHiveVersion {
     
   }
-  static class UnknownHiveVersion {
+  static class BlankHiveVersion {
     public static String getVersion() {
       return "";
+    } 
+  }
+  static class UnknownHiveVersion {
+    public static String getVersion() {
+      return HiveBindingFactory.HIVE_VERSION_UNKNOWN;
     } 
   }
   static class NullHiveVersion {
