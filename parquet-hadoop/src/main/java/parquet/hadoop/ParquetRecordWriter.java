@@ -19,6 +19,8 @@ import java.io.IOException;
 import java.util.Map;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
+
+import parquet.column.ParquetProperties.WriterVersion;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.hadoop.api.WriteSupport;
 import parquet.schema.MessageType;
@@ -57,9 +59,10 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       BytesCompressor compressor,
       int dictionaryPageSize,
       boolean enableDictionary,
-      boolean validating) {
+      boolean validating,
+      WriterVersion writerVersion) {
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
-        extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary, validating);
+        extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary, validating, writerVersion);
   }
 
   /**
