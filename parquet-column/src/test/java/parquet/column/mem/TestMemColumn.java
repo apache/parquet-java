@@ -157,6 +157,6 @@ public class TestMemColumn {
   }
 
   private ColumnWriteStoreImpl newColumnWriteStoreImpl(MemPageStore memPageStore) {
-    return new ColumnWriteStoreImpl(memPageStore, 2048, 2048, 2048, false, WriterVersion.PARQUET_1_0.toString());
+    return new ColumnWriteStoreImpl(memPageStore, 2048, 2048, 2048, false, WriterVersion.PARQUET_1_0);
   }
 }

@@ -263,7 +263,7 @@ public class TestMapredParquetInputFormat {
             new GroupType(Repetition.OPTIONAL, "c_list", OriginalType.LIST, new GroupType(Repetition.REPEATED, "bag", new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.INT32, "array_element"))));
 
     final MemPageStore pageStore = new MemPageStore(1000);
-    final ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 8 * 1024, 8 * 1024, 8 * 1024, false, WriterVersion.PARQUET_1_0.toString());
+    final ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 8 * 1024, 8 * 1024, 8 * 1024, false, WriterVersion.PARQUET_1_0);
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
 
     final RecordConsumer recordWriter = columnIO.getRecordWriter(store);

@@ -14,7 +14,7 @@ import parquet.column.values.plain.PlainValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 
 /**
- * This class represents all the configurable parquet properties.
+ * This class represents all the configurable Parquet properties.
  * 
  * @author amokashi
  *
@@ -22,16 +22,32 @@ import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 public class ParquetProperties {
   
   public enum WriterVersion {
-    PARQUET_1_0,
-    PARQUET_2_0;
+    PARQUET_1_0 ("v1"),
+    PARQUET_2_0 ("v2");
+    
+    private final String shortName;
+    
+    WriterVersion(String shortname) {
+      this.shortName = shortname;
+    }
+    
+    public static WriterVersion fromString(String name) {
+      for(WriterVersion v : WriterVersion.values()) {
+        if (v.shortName.equals(name)) {
+          return v;
+        }
+      }
+      // Throws IllegalArgumentException if name does not exact match with enum name
+      return WriterVersion.valueOf(name);
+    }
   }
-  private int dictionaryPageSizeThreshold;
-  private WriterVersion writerVersion;
-  private boolean enableDictionary;
-  
-  public ParquetProperties(int dictPageSize, String writerVersion, boolean enableDict) {
+  private final int dictionaryPageSizeThreshold;
+  private final WriterVersion writerVersion;
+  private final boolean enableDictionary;
+
+  public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict) {
     this.dictionaryPageSizeThreshold = dictPageSize;
-    this.writerVersion = WriterVersion.valueOf(writerVersion);
+    this.writerVersion = writerVersion;
     this.enableDictionary = enableDict;
   }
   

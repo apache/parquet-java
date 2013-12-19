@@ -491,7 +491,7 @@ public class TestColumnIO {
   }
 
   private ColumnWriteStoreImpl newColumnWriteStore(MemPageStore memPageStore) {
-    return new ColumnWriteStoreImpl(memPageStore, 800, 800, 800, false, WriterVersion.PARQUET_1_0.toString());
+    return new ColumnWriteStoreImpl(memPageStore, 800, 800, 800, false, WriterVersion.PARQUET_1_0);
   }
 
   @Test

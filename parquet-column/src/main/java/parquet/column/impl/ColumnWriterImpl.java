@@ -24,6 +24,7 @@ import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
 import parquet.column.ParquetProperties;
+import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
 import parquet.column.values.ValuesWriter;
@@ -67,7 +68,7 @@ final class ColumnWriterImpl implements ColumnWriter {
       int initialSizePerCol,
       int dictionaryPageSizeThreshold,
       boolean enableDictionary,
-      String writerVersion) {
+      WriterVersion writerVersion) {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;

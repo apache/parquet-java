@@ -98,7 +98,7 @@ public class ParquetWriter<T> implements Closeable {
       int dictionaryPageSize,
       boolean enableDictionary,
       boolean validating) throws IOException {
-    this(file, writeSupport, compressionCodecName, blockSize, pageSize, dictionaryPageSize, enableDictionary, validating, WriterVersion.PARQUET_1_0.toString());
+    this(file, writeSupport, compressionCodecName, blockSize, pageSize, dictionaryPageSize, enableDictionary, validating, WriterVersion.PARQUET_1_0);
   }
   
   /**
@@ -124,7 +124,7 @@ public class ParquetWriter<T> implements Closeable {
       int dictionaryPageSize,
       boolean enableDictionary,
       boolean validating,
-      String writerVersion) throws IOException {
+      WriterVersion writerVersion) throws IOException {
     Configuration conf = new Configuration();
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);

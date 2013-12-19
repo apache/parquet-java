@@ -185,11 +185,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return configuration.getInt(DICTIONARY_PAGE_SIZE, DEFAULT_PAGE_SIZE);
   }
   
-  public static String getWriterVersion(Configuration configuration) {
+  public static WriterVersion getWriterVersion(Configuration configuration) {
     String writerVersion = configuration.get(WRITER_VERSION, WriterVersion.PARQUET_1_0.toString());
-    // This is just to sanitize writer version, following will throw IllegalArgumentException
-    WriterVersion.valueOf(writerVersion);
-    return writerVersion;
+    return WriterVersion.fromString(writerVersion);
   }
 
   public static CompressionCodecName getCompression(Configuration configuration) {
@@ -269,7 +267,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (INFO) LOG.info("Dictionary is " + (enableDictionary ? "on" : "off"));
     boolean validating = getValidation(conf);
     if (INFO) LOG.info("Validation is " + (validating ? "on" : "off"));
-    String writerVersion = getWriterVersion(conf);
+    WriterVersion writerVersion = getWriterVersion(conf);
     if (INFO) LOG.info("Writer version is: " + writerVersion);
 
     WriteContext init = writeSupport.init(conf);

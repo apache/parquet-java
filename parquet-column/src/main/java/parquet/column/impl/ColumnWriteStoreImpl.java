@@ -24,6 +24,7 @@ import java.util.TreeMap;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
+import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.page.PageWriteStore;
 import parquet.column.page.PageWriter;
 
@@ -36,9 +37,9 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
   private final int dictionaryPageSizeThreshold;
   private final boolean enableDictionary;
   private final int initialSizePerCol;
-  private final String writerVersion;
+  private final WriterVersion writerVersion;
 
-  public ColumnWriteStoreImpl(PageWriteStore pageWriteStore, int pageSizeThreshold, int initialSizePerCol, int dictionaryPageSizeThreshold, boolean enableDictionary, String writerVersion) {
+  public ColumnWriteStoreImpl(PageWriteStore pageWriteStore, int pageSizeThreshold, int initialSizePerCol, int dictionaryPageSizeThreshold, boolean enableDictionary, WriterVersion writerVersion) {
     super();
     this.pageWriteStore = pageWriteStore;
     this.pageSizeThreshold = pageSizeThreshold;

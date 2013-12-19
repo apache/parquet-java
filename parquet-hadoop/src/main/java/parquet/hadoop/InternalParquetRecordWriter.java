@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import parquet.Log;
+import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.hadoop.api.WriteSupport;
@@ -49,7 +50,7 @@ class InternalParquetRecordWriter<T> {
   private final int dictionaryPageSize;
   private final boolean enableDictionary;
   private final boolean validating;
-  private final String writerVersion;
+  private final WriterVersion writerVersion;
 
   private long recordCount = 0;
   private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
@@ -76,7 +77,7 @@ class InternalParquetRecordWriter<T> {
       int dictionaryPageSize,
       boolean enableDictionary,
       boolean validating,
-      String writerVersion) {
+      WriterVersion writerVersion) {
     this.w = w;
     this.writeSupport = checkNotNull(writeSupport, "writeSupport");
     this.schema = schema;
