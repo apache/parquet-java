@@ -138,7 +138,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   private <T> void writeArray(GroupType schema, Descriptors.FieldDescriptor fieldDescriptor,
                               List<T> array) {
-    if (!schema.getName().equals(fieldDescriptor.getName())) throw  new RuntimeException("Mismatch");//TODO remove me
+    if (!schema.getName().equals(fieldDescriptor.getName())) throw new RuntimeException("Mismatch");//TODO remove me
 
     recordConsumer.startGroup();
     if (array.iterator().hasNext()) {
@@ -172,7 +172,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.STRING)) {
       recordConsumer.addBinary(stringToBinary(value));
     } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.MESSAGE)) {
-      writeMessage(type.asGroupType(), (T) value);// patched
+      writeMessage(type.asGroupType(), (T) value);
     } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.ENUM)) {
       Descriptors.EnumValueDescriptor enumDescriptor = (Descriptors.EnumValueDescriptor) value;
       recordConsumer.addBinary(Binary.fromString(enumDescriptor.getName()));

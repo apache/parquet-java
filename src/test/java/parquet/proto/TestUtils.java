@@ -58,7 +58,7 @@ public class TestUtils {
 
   /**
    * Writes messages to file, reads messages from file and checks if everything is OK.
-   * */
+   */
   public static void testData(MessageOrBuilder... messages) throws IOException {
 
     checkSameBuilderInstance(messages);
@@ -71,9 +71,9 @@ public class TestUtils {
   }
 
   private static List<MessageOrBuilder> cloneList(MessageOrBuilder[] messages) {
-    List <MessageOrBuilder> result =  new ArrayList<MessageOrBuilder>();
+    List<MessageOrBuilder> result = new ArrayList<MessageOrBuilder>();
 
-    for (MessageOrBuilder mob: messages) {
+    for (MessageOrBuilder mob : messages) {
       result.add(asMessage(mob));
     }
 
@@ -88,10 +88,13 @@ public class TestUtils {
 
     return result;
   }
-  /** Given message or builder returns same data as messagee*/
+
+  /**
+   * Given message or builder returns same data as message
+   */
   public static Message asMessage(MessageOrBuilder mob) {
     Message message;
-    if (mob instanceof  Message.Builder) {
+    if (mob instanceof Message.Builder) {
       message = ((Message.Builder) mob).build();
     } else {
       message = (Message) mob;
@@ -99,7 +102,9 @@ public class TestUtils {
     return message;
   }
 
-  /** Fails if some instance of builder is two times in list.*/
+  /**
+   * Fails if some instance of builder is two times in list.
+   */
   private static void checkSameBuilderInstance(MessageOrBuilder[] messages) {
     for (int i = 0; i < messages.length; i++) {
       MessageOrBuilder firstMessage = messages[i];
@@ -120,7 +125,9 @@ public class TestUtils {
     }
   }
 
-  /** Reads messages from given file. The file could/should be created by method writeMessages */
+  /**
+   * Reads messages from given file. The file could/should be created by method writeMessages
+   */
   public static <T extends MessageOrBuilder> List<T> readMessages(Path file) throws IOException {
     ProtoParquetReader<T> reader = new ProtoParquetReader<T>(file);
 
@@ -142,7 +149,7 @@ public class TestUtils {
 
   /**
    * Writes messages to temporary file and returns its path.
-   * */
+   */
   public static Path writeMessages(MessageOrBuilder... records) throws IOException {
     return writeMessages(inferRecordsClass(records), records);
   }

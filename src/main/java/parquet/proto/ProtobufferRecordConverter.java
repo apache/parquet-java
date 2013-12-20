@@ -35,7 +35,7 @@ class ProtobufferRecordConverter<T extends MessageOrBuilder> extends parquet.pro
 
   /**
    * We dont need to write message value at top level.
-   * */
+   */
   private static class SkipParentValueContainer extends ParentValueContainer {
     @Override
     public void add(Object a) {

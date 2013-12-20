@@ -51,18 +51,18 @@ public class ProtoInputOutputFormatTest {
   /**
    * Writes protobuffer using first MR job, reads written file using
    * second job and compares input and output.
-   * */
+   */
   @Test
   public void testInputOutput() throws Exception {
     TestProtobuf.IOFormatMessage input;
-      {
-        TestProtobuf.IOFormatMessage.Builder msg = TestProtobuf.IOFormatMessage.newBuilder();
-        msg.setOptionalDouble(666);
-        msg.addRepeatedString("Msg1");
-        msg.addRepeatedString("Msg2");
-        msg.getMsgBuilder().setSomeId(323);
-        input = msg.build();
-      }
+    {
+      TestProtobuf.IOFormatMessage.Builder msg = TestProtobuf.IOFormatMessage.newBuilder();
+      msg.setOptionalDouble(666);
+      msg.addRepeatedString("Msg1");
+      msg.addRepeatedString("Msg2");
+      msg.getMsgBuilder().setSomeId(323);
+      input = msg.build();
+    }
 
     List<Message> result = runMRJobs(TestProtobuf.IOFormatMessage.class, input);
 
@@ -80,7 +80,7 @@ public class ProtoInputOutputFormatTest {
 
   public static class WritingMapper extends Mapper<LongWritable, Text, Void, Message> {
 
-    public void run(Context context) throws IOException,InterruptedException {
+    public void run(Context context) throws IOException, InterruptedException {
       if (inputMessages == null || inputMessages.size() == 0) {
         throw new RuntimeException("No mock data given");
       } else {
@@ -93,7 +93,7 @@ public class ProtoInputOutputFormatTest {
   }
 
   public static class ReadingMapper extends Mapper<Void, MessageOrBuilder, LongWritable, Message> {
-    protected void map(Void key, MessageOrBuilder value, Context context) throws IOException ,InterruptedException {
+    protected void map(Void key, MessageOrBuilder value, Context context) throws IOException, InterruptedException {
       Message clone = ((Message.Builder) value).build();
       outputMessages.add(clone);
     }
@@ -101,7 +101,7 @@ public class ProtoInputOutputFormatTest {
 
   /**
    * Runs job that writes input to file and then job reading data back.
-   * */
+   */
   public static synchronized List<Message> runMRJobs(Class<? extends Message> pbClass, Message... messages) throws Exception {
     final Configuration conf = new Configuration();
     final Path inputPath = new Path("src/test/java/parquet/proto/ProtoInputOutputFormatTest.java");
@@ -109,7 +109,7 @@ public class ProtoInputOutputFormatTest {
 
     inputMessages = new ArrayList<Message>();
 
-    for (Message m: messages) {
+    for (Message m : messages) {
       inputMessages.add(m);
     }
 

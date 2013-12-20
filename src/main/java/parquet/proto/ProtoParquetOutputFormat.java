@@ -23,9 +23,9 @@ import parquet.hadoop.util.ContextUtil;
 
 /**
  * A Hadoop {@link org.apache.hadoop.mapreduce.OutputFormat} for Protobuffer Parquet files.
- *
+ * <p/>
  * Usage:
- *
+ * <p/>
  * <pre>
  * {@code
  * final Job job = new Job(conf, "Parquet writing job");
