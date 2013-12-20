@@ -51,6 +51,11 @@ message Links {
      optional group PbGroup  = 17 {
        optional int32 groupInt = 2;
      }
+    enum TestEnum {
+        FIRST = 0;
+        SECOND = 1;
+    }
+    optional TestEnum optionalEnum = 18;
  }
 
  message SchemaConverterRepetition {

@@ -23,6 +23,7 @@ import parquet.io.api.PrimitiveConverter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class ProtoEnumConverter extends PrimitiveConverter {
 
@@ -55,7 +56,11 @@ public final class ProtoEnumConverter extends PrimitiveConverter {
     Descriptors.EnumValueDescriptor protoValue = enumLookup.get(value);
 
     if (protoValue == null) {
-      throw new RuntimeException("Illegal enum value " + value + " in protoBuffer " + fieldType.getFullName());
+      Set<Binary> knownValues = enumLookup.keySet();
+      String msg = "Illegal enum value \"" + value + "\""
+         + " in protoBuffer \"" + fieldType.getFullName() + "\""
+         + " legal values are: \"" + knownValues + "\"";
+      throw new RuntimeException(msg);
     }
 
     parent.add(protoValue);

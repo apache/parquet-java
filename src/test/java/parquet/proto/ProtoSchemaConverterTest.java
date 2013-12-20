@@ -63,9 +63,10 @@ public class ProtoSchemaConverterTest {
       "  optional group optionalGroup {\n" +
       "    optional int32 someId;\n" +
       "  }\n" +
-      "  optional group group {\n" +
+      "  optional group pbgroup {\n" +
       "    optional int32 groupInt;\n" +
       "  }\n" +
+      " optional binary optionalEnum (ENUM);" +
       "}";
 
     testConversion(TestProtobuf.SchemaConverterAllDatatypes.class, expectedSchema);
