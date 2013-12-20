@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Twitter, Inc.
+ * Copyright 2013 Lukas Nalezenec
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,17 +27,15 @@ import static org.junit.Assert.assertEquals;
 
 public class ProtoSchemaConverterTest {
 
+  /**
+   * Converts given pbClass to parquet schema and compares it with expected parquet schema.
+   * */
   private void testConversion(Class<? extends Message> pbClass, String parquetSchemaString) throws
           Exception {
     ProtoSchemaConverter protoSchemaConverter = new ProtoSchemaConverter();
     MessageType schema = protoSchemaConverter.convert(pbClass);
     MessageType expectedMT = MessageTypeParser.parseMessageType(parquetSchemaString);
     assertEquals(expectedMT.toString(), schema.toString());
-  }
-
-  @Before
-  public void setUp() throws Exception {
-
   }
 
 
@@ -47,29 +45,29 @@ public class ProtoSchemaConverterTest {
   @Test
   public void testConvertAllDatatypes() throws Exception {
     String expectedSchema =
-        "message TestProtobuf.SchemaConverterAllDatatypes {\n" +
-        "  optional double optionalDouble;\n" +
-        "  optional float optionalFloat;\n" +
-        "  optional int32 optionalInt32;\n" +
-        "  optional int64 optionalInt64;\n" +
-        "  optional int32 optionalUInt32;\n" +
-        "  optional int64 optionalUInt64;\n" +
-        "  optional int32 optionalSInt32;\n" +
-        "  optional int64 optionalSInt64;\n" +
-        "  optional int32 optionalFixed32;\n" +
-        "  optional int64 optionalFixed64;\n" +
-        "  optional int32 optionalSFixed32;\n" +
-        "  optional int64 optionalSFixed64;\n" +
-        "  optional boolean optionalBool;\n" +
-        "  optional binary optionalString (UTF8);\n" +
-        "  optional binary optionalBytes;\n" +
-        "  optional group optionalGroup {\n" +
-        "    optional int32 someId;\n" +
-        "  }\n" +
-        "  optional group group {\n" +
-        "    optional int32 groupInt;\n" +
-        "  }\n" +
-        "}";
+    "message TestProtobuf.SchemaConverterAllDatatypes {\n" +
+    "  optional double optionalDouble;\n" +
+    "  optional float optionalFloat;\n" +
+    "  optional int32 optionalInt32;\n" +
+    "  optional int64 optionalInt64;\n" +
+    "  optional int32 optionalUInt32;\n" +
+    "  optional int64 optionalUInt64;\n" +
+    "  optional int32 optionalSInt32;\n" +
+    "  optional int64 optionalSInt64;\n" +
+    "  optional int32 optionalFixed32;\n" +
+    "  optional int64 optionalFixed64;\n" +
+    "  optional int32 optionalSFixed32;\n" +
+    "  optional int64 optionalSFixed64;\n" +
+    "  optional boolean optionalBool;\n" +
+    "  optional binary optionalString (UTF8);\n" +
+    "  optional binary optionalBytes;\n" +
+    "  optional group optionalGroup {\n" +
+    "    optional int32 someId;\n" +
+    "  }\n" +
+    "  optional group group {\n" +
+    "    optional int32 groupInt;\n" +
+    "  }\n" +
+    "}";
 
     testConversion(TestProtobuf.SchemaConverterAllDatatypes.class, expectedSchema);
   }
@@ -77,24 +75,24 @@ public class ProtoSchemaConverterTest {
   @Test
   public void testConvertRepetition() throws Exception {
     String expectedSchema =
-            "message TestProtobuf.SchemaConverterRepetition {\n" +
-                    "  optional int32 optionalPrimitive;\n" +
-                    "  required int32 requiredPrimitive;\n" +
-                    "  optional group repeatedPrimitive (LIST) {\n" +
-                    "    repeated int32 repeatedPrimitive_tuple;\n" +
-                    "  }\n" +
-                    "  optional group optionalMessage {\n" +
-                    "    optional int32 someId;\n" +
-                    "  }\n" +
-                    "  required group requiredMessage {" +
-                    "    optional int32 someId;\n" +
-                    "  }\n" +
-                    "  optional group repeatedMessage (LIST) {" +
-                    "    repeated group repeatedMessage_tuple {\n" +
-                    "      optional int32 someId;\n" +
-                    "    }\n" +
-                    "  }\n" +
-                    "}";
+    "message TestProtobuf.SchemaConverterRepetition {\n" +
+      "  optional int32 optionalPrimitive;\n" +
+      "  required int32 requiredPrimitive;\n" +
+      "  optional group repeatedPrimitive (LIST) {\n" +
+      "    repeated int32 repeatedPrimitive_tuple;\n" +
+      "  }\n" +
+      "  optional group optionalMessage {\n" +
+      "    optional int32 someId;\n" +
+      "  }\n" +
+      "  required group requiredMessage {" +
+      "    optional int32 someId;\n" +
+      "  }\n" +
+      "  optional group repeatedMessage (LIST) {" +
+      "    repeated group repeatedMessage_tuple {\n" +
+      "      optional int32 someId;\n" +
+      "    }\n" +
+      "  }\n" +
+      "}";
 
     testConversion(TestProtobuf.SchemaConverterRepetition.class, expectedSchema);
   }
