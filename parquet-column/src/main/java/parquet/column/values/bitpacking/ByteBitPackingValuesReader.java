@@ -33,6 +33,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
   private int decodedPosition = VALUES_AT_A_TIME - 1;
   private byte[] encoded;
   private int encodedPos;
+  private int nextOffset;
 
   public ByteBitPackingValuesReader(int bound, Packer packer) {
     this.bitWidth = BytesUtils.getWidthFromMaxInt(bound);
@@ -55,16 +56,20 @@ public class ByteBitPackingValuesReader extends ValuesReader {
   }
 
   @Override
-  public int initFromPage(long valueCount, byte[] page, int offset)
+  public void initFromPage(int valueCount, byte[] page, int offset)
       throws IOException {
-    // TODO: int vs long
-    int effectiveBitLength = (int)valueCount * bitWidth;
+    int effectiveBitLength = valueCount * bitWidth;
     int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength); // ceil
     if (Log.DEBUG) LOG.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitWidth + " bits." );
     this.encoded = page;
     this.encodedPos = offset;
     this.decodedPosition = VALUES_AT_A_TIME - 1;
-    return offset + length;
+    this.nextOffset = offset + length;
+  }
+  
+  @Override
+  public int getNextOffset() {
+    return nextOffset;
   }
 
   @Override

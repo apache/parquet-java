@@ -45,6 +45,11 @@ public class RunLengthBitPackingHybridValuesWriter extends ValuesWriter {
       throw new ParquetEncodingException(e);
     }
   }
+  
+  @Override
+  public void writeBoolean(boolean v) {
+    writeInteger(v ? 1 : 0);
+  }
 
   @Override
   public long getBufferedSize() {
