@@ -1,0 +1,84 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <groupId>com.twitter</groupId>
+    <artifactId>parquet</artifactId>
+    <relativePath>../pom.xml</relativePath>
+    <version>1.2.11-SNAPSHOT</version>
+  </parent>
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>parquet-jackson</artifactId>
+  <packaging>jar</packaging>
+
+  <name>Parquet Jackson</name>
+  <url>https://github.com/Parquet/parquet-mr</url>
+
+  <properties>
+    <jackson.version>1.9.11</jackson.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-mapper-asl</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-core-asl</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <configuration>
+          <minimizeJar>false</minimizeJar>
+          <artifactSet>
+            <includes>
+              <include>org.codehaus.jackson:*</include>
+            </includes>
+          </artifactSet>
+          <filters>
+            <filter>
+              <artifact>org.codehaus.jackson:*</artifact>
+              <includes>
+              <include>org/codehaus/jackson/**</include>
+              </includes>
+            </filter>
+          </filters>
+          <relocations>
+            <relocation>
+              <pattern>org.codehaus.jackson</pattern>
+              <shadedPattern>parquet.org.codehaus.jackson</shadedPattern>
+            </relocation>
+          </relocations>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build> 
+  <profiles>
+    <profile>
+      <id>sonatype-oss-release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <configuration>
+              <createSourcesJar>true</createSourcesJar> 
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>
