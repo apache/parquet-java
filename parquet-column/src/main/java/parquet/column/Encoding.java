@@ -29,6 +29,7 @@ import parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 import parquet.column.values.boundedint.ZeroIntegerValuesReader;
 import parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesReader;
+import parquet.column.values.deltastrings.DeltaByteArrayReader;
 import parquet.column.values.dictionary.DictionaryValuesReader;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainBinaryDictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainDoubleDictionary;
@@ -185,7 +186,7 @@ public enum Encoding {
       if (descriptor.getType() != BINARY) {
         throw new ParquetDecodingException("Encoding DELTA_BYTE_ARRAY is only supported for type BINARY");
       }
-      return new DeltaLengthByteArrayValuesReader();
+      return new DeltaByteArrayReader();
     }
   },
 
