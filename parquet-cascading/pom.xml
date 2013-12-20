@@ -3,7 +3,7 @@
     <groupId>com.twitter</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.2.4-SNAPSHOT</version>
+    <version>1.2.11-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -41,11 +41,13 @@
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>
       <version>${hadoop.version}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
-      <version>1.2.17</version>
+      <version>${log4j.version}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
@@ -63,7 +65,8 @@
     <dependency>
        <groupId>cascading</groupId>
        <artifactId>cascading-hadoop</artifactId>
-       <version>2.1.5</version>
+       <version>${cascading.version}</version>
+       <scope>provided</scope>
     </dependency>
   </dependencies>
 

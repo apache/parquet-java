@@ -25,9 +25,12 @@ import static parquet.pig.TupleReadSupport.PARQUET_PIG_SCHEMA;
 import static parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.lang.ref.Reference;
+import java.lang.ref.SoftReference;
+import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.InputSplit;
@@ -65,7 +68,8 @@ import parquet.io.ParquetDecodingException;
 public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDown {
   private static final Log LOG = Log.getLog(ParquetLoader.class);
 
-  private static final Map<String, ParquetInputFormat<Tuple>> inputFormatCache = new HashMap<String, ParquetInputFormat<Tuple>>();
+  // Using a weak hash map will ensure that the cache will be gc'ed when there is memory pressure
+  static final Map<String, Reference<ParquetInputFormat<Tuple>>> inputFormatCache = new WeakHashMap<String, Reference<ParquetInputFormat<Tuple>>>();
 
   private Schema requestedSchema;
 
@@ -121,9 +125,9 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
     private final String location;
 
-    public UnregisteringParquetInputFormat(String loction) {
+    public UnregisteringParquetInputFormat(String location) {
       super(TupleReadSupport.class);
-      this.location = loction;
+      this.location = location;
     }
 
     @Override
@@ -140,11 +144,11 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     checkSetLocationHasBeenCalled();
     if (parquetInputFormat == null) {
       // unfortunately Pig will create many Loaders, so we cache the inputformat to avoid reading the metadata more than once
-      // TODO: check cases where the same location is reused
-      parquetInputFormat = inputFormatCache.get(location);
+      Reference<ParquetInputFormat<Tuple>> ref = inputFormatCache.get(location);
+      parquetInputFormat = ref == null ? null : ref.get();
       if (parquetInputFormat == null) {
         parquetInputFormat = new UnregisteringParquetInputFormat(location);
-        inputFormatCache.put(location, parquetInputFormat);
+        inputFormatCache.put(location, new SoftReference<ParquetInputFormat<Tuple>>(parquetInputFormat));
       }
     }
     return parquetInputFormat;
@@ -252,12 +256,12 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   public List<OperatorSet> getFeatures() {
     return asList(LoadPushDown.OperatorSet.PROJECTION);
   }
-  
+
   protected String getPropertyFromUDFContext(String key) {
     UDFContext udfContext = UDFContext.getUDFContext();
     return udfContext.getUDFProperties(this.getClass(), new String[]{signature}).getProperty(key);
   }
-  
+
   protected Object getFromUDFContext(String key) {
     UDFContext udfContext = UDFContext.getUDFContext();
     return udfContext.getUDFProperties(this.getClass(), new String[]{signature}).get(key);
@@ -279,7 +283,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     storeInUDFContext(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
     return new RequiredFieldResponse(true);
   }
-  
+
   @Override
   public void setUDFContextSignature(String signature) {
       this.signature = signature;

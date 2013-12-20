@@ -1,5 +1,63 @@
 # Parquet #
 
+### Version 1.2.10 ###
+* ISSUE [247](https://github.com/Parquet/parquet-mr/pull/247): fix bug: when field index is greater than zero
+* ISSUE [244](https://github.com/Parquet/parquet-mr/pull/244): Feature/error handler
+* ISSUE [187](https://github.com/Parquet/parquet-mr/pull/187): Plumb OriginalType
+* ISSUE [245](https://github.com/Parquet/parquet-mr/pull/245): integrate parquet format 2.0
+
+### Version 1.2.9 ###
+* ISSUE [242](https://github.com/Parquet/parquet-mr/pull/242): upgrade elephant-bird version to 4.3
+* ISSUE [240](https://github.com/Parquet/parquet-mr/pull/240): fix loader cache
+* ISSUE [233](https://github.com/Parquet/parquet-mr/pull/233): use latest stable release of cascading: 2.5.1
+* ISSUE [241](https://github.com/Parquet/parquet-mr/pull/241): Update reference to 0.10 in Hive012Binding javadoc
+* ISSUE [239](https://github.com/Parquet/parquet-mr/pull/239): Fix hive map and array inspectors with null containers
+* ISSUE [234](https://github.com/Parquet/parquet-mr/pull/234): optimize chunk scan; fix compressed size
+* ISSUE [237](https://github.com/Parquet/parquet-mr/pull/237): Handle codec not found
+* ISSUE [238](https://github.com/Parquet/parquet-mr/pull/238): fix pom version caused by bad merge
+* ISSUE [235](https://github.com/Parquet/parquet-mr/pull/235): Not write pig meta data only when pig is not avaliable
+* ISSUE [227](https://github.com/Parquet/parquet-mr/pull/227): Breaks parquet-hive up into several submodules, creating infrastructure ...
+* ISSUE [229](https://github.com/Parquet/parquet-mr/pull/229): add changelog tool
+* ISSUE [236](https://github.com/Parquet/parquet-mr/pull/236): Make cascading a provided dependency
+
+### Version 1.2.8 ###
+* ISSUE 228: enable globing files for parquetTupleScheme, refactor unit tests and rem...
+* ISSUE 224: Changing read and write methods in ParquetInputSplit so that they can de...
+
+### Version 1.2.8 ###
+* ISSUE 228: enable globing files for parquetTupleScheme, refactor unit tests and rem...
+* ISSUE 224: Changing read and write methods in ParquetInputSplit so that they can de...
+
+### Version 1.2.7 ###
+* ISSUE 223: refactor encoded values changes and test that resetDictionary works
+* ISSUE 222: fix bug: set raw data size to 0 after reset
+
+### Version 1.2.6 ###
+* ISSUE 221: make pig, hadoop and log4j jars provided
+* ISSUE 220: parquet-hive should ship and uber jar
+* ISSUE 213: group parquet-format version in one property
+* ISSUE 215: Fix Binary.equals().
+* ISSUE 210: ParquetWriter ignores enable dictionary and validating flags.
+* ISSUE 202: Fix requested schema when recreating splits in hive
+* ISSUE 208: Improve dic fall back
+* ISSUE 207: Fix offset
+* ISSUE 206: Create a "Powered by" page
+
+### Version 1.2.5 ###
+* ISSUE 204: ParquetLoader.inputFormatCache as WeakHashMap
+* ISSUE 203: add null check for EnumWriteProtocol
+* ISSUE 205: use cascading 2.2.0
+* ISSUE 199: simplify TupleWriteSupport constructor
+* ISSUE 164: Dictionary changes
+* ISSUE 196: Fixes to the Hive SerDe
+* ISSUE 197: RLE decoder reading past the end of the stream
+* ISSUE 188: Added ability to define arbitrary predicate functions
+* ISSUE 194: refactor serde to remove some unecessary boxing and include dictionary awareness
+* ISSUE 190: NPE in DictionaryValuesWriter.
+
+### Version 1.2.4 ###
+* ISSUE 191: Add compatibility checker for ThriftStruct to check for backward compatibility of two thrift structs
+
 ### Version 1.2.3 ###
 * ISSUE 186: add parquet-pig-bundle
 * ISSUE 184: Update ParquetReader to take Configuration as a constructor argument.

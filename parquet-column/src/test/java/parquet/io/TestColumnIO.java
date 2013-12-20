@@ -40,6 +40,8 @@ import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
+import parquet.column.ParquetProperties;
+import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.mem.MemPageStore;
@@ -260,7 +262,7 @@ public class TestColumnIO {
 
   private void writeGroups(MessageType writtenSchema, MemPageStore memPageStore, Group... groups) {
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
+    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
     MessageColumnIO columnIO = columnIOFactory.getColumnIO(writtenSchema);
     GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), writtenSchema);
     for (Group group : groups) {
@@ -278,7 +280,7 @@ public class TestColumnIO {
     log(r2);
 
     MemPageStore memPageStore = new MemPageStore(2);
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
+    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     {
@@ -426,15 +428,14 @@ public class TestColumnIO {
 
   private void testSchema(MessageType messageSchema, List<Group> groups) {
     MemPageStore memPageStore = new MemPageStore(groups.size());
-    ColumnWriteStoreImpl columns = 
-        new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
+    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     MessageColumnIO columnIO = columnIOFactory.getColumnIO(messageSchema);
     log(columnIO);
-   
+
     // Write groups.
-    GroupWriter groupWriter = 
+    GroupWriter groupWriter =
         new GroupWriter(columnIO.getRecordWriter(columns), messageSchema);
     for (Group group : groups) {
       groupWriter.write(group);
@@ -442,11 +443,11 @@ public class TestColumnIO {
     columns.flush();
 
     // Read groups and verify.
-    RecordReaderImplementation<Group> recordReader = 
+    RecordReaderImplementation<Group> recordReader =
         getRecordReader(columnIO, messageSchema, memPageStore);
     for (Group group : groups) {
       final Group got = recordReader.read();
-      assertEquals("deserialization does not display the same result", 
+      assertEquals("deserialization does not display the same result",
                    group.toString(), got.toString());
     }
   }
@@ -479,7 +480,7 @@ public class TestColumnIO {
   @Test
   public void testPushParser() {
     MemPageStore memPageStore = new MemPageStore(1);
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
+    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
     columns.flush();
@@ -489,10 +490,14 @@ public class TestColumnIO {
 
   }
 
+  private ColumnWriteStoreImpl newColumnWriteStore(MemPageStore memPageStore) {
+    return new ColumnWriteStoreImpl(memPageStore, 800, 800, 800, false, WriterVersion.PARQUET_1_0);
+  }
+
   @Test
   public void testEmptyField() {
     MemPageStore memPageStore = new MemPageStore(1);
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, false);
+    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
     MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     final RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
     recordWriter.startMessage();
@@ -573,7 +578,7 @@ public class TestColumnIO {
           public void write(Binary value, int repetitionLevel, int definitionLevel) {
             validate(value.toStringUsingUTF8(), repetitionLevel, definitionLevel);
           }
-          
+
           @Override
           public void write(boolean value, int repetitionLevel, int definitionLevel) {
             validate(value, repetitionLevel, definitionLevel);

@@ -16,6 +16,7 @@
 package parquet.hadoop.metadata;
 
 import parquet.format.CompressionCodec;
+import parquet.hadoop.codec.CompressionCodecNotSupportedException;
 
 public enum CompressionCodecName {
   UNCOMPRESSED(null, CompressionCodec.UNCOMPRESSED, ""),
@@ -36,11 +37,11 @@ public enum CompressionCodecName {
     }
     String name = clazz.getName();
     for (CompressionCodecName codec : CompressionCodecName.values()) {
-      if (name.equals(codec.getHadoopCompressionCodecClass())) {
+      if (name.equals(codec.getHadoopCompressionCodecClassName())) {
         return codec;
       }
     }
-    throw new IllegalArgumentException("Unknown compression codec " + clazz);
+    throw new CompressionCodecNotSupportedException(clazz);
   }
 
   public static CompressionCodecName fromParquet(CompressionCodec codec) {
@@ -62,8 +63,20 @@ public enum CompressionCodecName {
     this.extension = extension;
   }
 
-  public String getHadoopCompressionCodecClass() {
+  public String getHadoopCompressionCodecClassName() {
     return hadoopCompressionCodecClass;
+  }
+
+  public Class getHadoopCompressionCodecClass() {
+    String codecClassName = getHadoopCompressionCodecClassName();
+    if (codecClassName==null) {
+      return null;
+    }
+    try {
+      return Class.forName(codecClassName);
+    } catch (ClassNotFoundException e) {
+      return null;
+    }
   }
 
   public CompressionCodec getParquetCompressionCodec() {

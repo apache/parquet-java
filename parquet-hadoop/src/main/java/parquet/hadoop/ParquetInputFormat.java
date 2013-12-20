@@ -301,7 +301,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       if (file.isDir()) {
         Path p = file.getPath();
         FileSystem fs = p.getFileSystem(conf);
-        addInputPathRecursively(result, fs, p, hiddenFileFilter);
+        staticAddInputPathRecursively(result, fs, p, hiddenFileFilter);
       } else {
         result.add(file);
       }
@@ -310,12 +310,12 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     return result;
   }
 
-  private static void addInputPathRecursively(List<FileStatus> result,
+  private static void staticAddInputPathRecursively(List<FileStatus> result,
       FileSystem fs, Path path, PathFilter inputFilter)
           throws IOException {
     for (FileStatus stat: fs.listStatus(path, inputFilter)) {
       if (stat.isDir()) {
-        addInputPathRecursively(result, fs, stat.getPath(), inputFilter);
+        staticAddInputPathRecursively(result, fs, stat.getPath(), inputFilter);
       } else {
         result.add(stat);
       }

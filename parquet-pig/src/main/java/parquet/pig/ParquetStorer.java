@@ -35,7 +35,6 @@ import org.apache.pig.parser.ParserException;
 
 import parquet.hadoop.ParquetOutputFormat;
 import parquet.io.ParquetEncodingException;
-import parquet.schema.MessageType;
 
 /**
  * A pig storer implementation for the Parquet file format.
@@ -101,8 +100,7 @@ public class ParquetStorer extends StoreFunc implements StoreMetadata {
   @Override
   public OutputFormat<Void, Tuple> getOutputFormat() throws IOException {
     Schema pigSchema = getSchema();
-    MessageType schema = new PigSchemaConverter().convert(pigSchema);
-    return new ParquetOutputFormat<Tuple>(new TupleWriteSupport(schema, pigSchema));
+    return new ParquetOutputFormat<Tuple>(new TupleWriteSupport(pigSchema));
   }
 
   /**

@@ -205,8 +205,9 @@ public class ParquetFileWriter {
         dictionaryPage.getDictionarySize(),
         dictionaryPage.getEncoding(),
         out);
-    this.uncompressedLength += uncompressedSize;
-    this.compressedLength += compressedPageSize;
+    long headerSize = out.getPos() - currentChunkDictionaryPageOffset;
+    this.uncompressedLength += uncompressedSize + headerSize;
+    this.compressedLength += compressedPageSize + headerSize;
     if (DEBUG) LOG.debug(out.getPos() + ": write dictionary page content " + compressedPageSize);
     dictionaryPage.getBytes().writeAllTo(out);
     currentEncodings.add(dictionaryPage.getEncoding());

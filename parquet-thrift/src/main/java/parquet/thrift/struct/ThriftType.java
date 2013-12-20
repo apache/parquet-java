@@ -176,7 +176,11 @@ public abstract class ThriftType {
 
     @JsonIgnore
     public ThriftField getChildById(short id) {
-      return childById[id];
+      if (id >= childById.length) {
+        return null;
+      } else {
+        return childById[id];
+      }
     }
 
     @Override

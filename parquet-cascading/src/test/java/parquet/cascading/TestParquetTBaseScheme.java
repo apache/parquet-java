@@ -46,6 +46,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 import parquet.hadoop.thrift.ThriftToParquetFileWriter;
+import parquet.hadoop.util.ContextUtil;
 import parquet.thrift.test.Name;
 
 import java.io.File;
@@ -117,7 +118,7 @@ public class TestParquetTBaseScheme {
 
     TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
     TaskAttemptID taskId = new TaskAttemptID("local", 0, true, 0, 0);
-    ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(fileToCreate, new TaskAttemptContext(conf, taskId), protocolFactory, Name.class);
+    ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(fileToCreate, ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory, Name.class);
 
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));

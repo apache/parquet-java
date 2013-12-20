@@ -29,11 +29,12 @@ import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
 import it.unimi.dsi.fastutil.longs.LongIterator;
+import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
@@ -56,19 +57,19 @@ import parquet.io.api.Binary;
  */
 public abstract class DictionaryValuesWriter extends ValuesWriter {
   private static final Log LOG = Log.getLog(DictionaryValuesWriter.class);
-  
+
   /* max entries allowed for the dictionary will fail over to plain encoding if reached */
-  private static final int MAX_DICTIONARY_ENTRIES = 65535 /* 2^16 - 1 */;
-  
+  private static final int MAX_DICTIONARY_ENTRIES = Integer.MAX_VALUE - 1;
+
   /* maximum size in bytes allowed for the dictionary will fail over to plain encoding if reached */
   protected final int maxDictionaryByteSize;
-  
+
   /* contains the values encoded in plain if the dictionary grows too big */
   protected final PlainValuesWriter plainValuesWriter;
-  
+
   /* will become true if the dictionary becomes too big */
   protected boolean dictionaryTooBig;
-  
+
   /* current size in bytes the dictionary will take once serialized */
   protected int dictionaryByteSize;
 
@@ -81,7 +82,16 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
   /* dictionary encoded values */
   protected IntList encodedValues = new IntList();
 
-  /*
+  /* size of raw data, even if dictionary is used, it will not have effect on raw data size, it is used to decide
+   * if fall back to plain encoding is better by comparing rawDataByteSize with Encoded data size
+   * It's also used in getBufferedSize, so the page will be written based on raw data size
+   */
+  protected long rawDataByteSize = 0;
+
+  /** indicates if this is the first page being processed */
+  protected boolean firstPage = true;
+
+  /**
    * @param maxDictionaryByteSize
    * @param initialSize
    */
@@ -90,52 +100,55 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
     this.plainValuesWriter = new PlainValuesWriter(initialSize);
   }
 
-  /*
+  /**
    * check the size constraints of the dictionary and fail over to plain values encoding if threshold reached
    */
   protected void checkAndFallbackIfNeeded() {
     if (dictionaryByteSize > maxDictionaryByteSize || getDictionarySize() > MAX_DICTIONARY_ENTRIES) {
-      // if the dictionary reaches the max byte size or the values can not be encoded on two bytes anymore.
-      if (DEBUG)
-        LOG.debug("dictionary is now too big, falling back to plain: " + dictionaryByteSize + "B and " + getDictionarySize() + " entries");
-      dictionaryTooBig = true;
-      if (lastUsedDictionarySize == 0) {
-        // if we never used the dictionary
-        // we free dictionary encoded data
-        clearDictionaryContent();
-        dictionaryByteSize = 0;
-        encodedValues = null;
-      }
+      // if the dictionary reaches the max byte size or the values can not be encoded on 4 bytes anymore.
+      fallBackToPlainEncoding();
     }
   }
 
+  private void fallBackToPlainEncoding() {
+    if (DEBUG)
+      LOG.debug("dictionary is now too big, falling back to plain: " + dictionaryByteSize + "B and " + getDictionarySize() + " entries");
+    dictionaryTooBig = true;
+    fallBackDictionaryEncodedData();
+    if (lastUsedDictionarySize == 0) {
+      // if we never used the dictionary
+      // we free dictionary encoded data
+      clearDictionaryContent();
+      dictionaryByteSize = 0;
+      encodedValues = new IntList();
+    }
+  }
+
+  protected abstract void fallBackDictionaryEncodedData();
+
   @Override
   public long getBufferedSize() {
-    // size that will be written to a page
-    // not including the dictionary size
-    return dictionaryTooBig ? plainValuesWriter.getBufferedSize() : encodedValues.size() * 4;
+    // use raw data size to decide if we want to flush the page
+    // so the acutual size of the page written could be much more smaller
+    // due to dictionary encoding. This prevents page being to big when fallback happens.
+    return rawDataByteSize;
   }
 
   @Override
   public long getAllocatedSize() {
     // size used in memory
-    return (encodedValues == null ? 0 : encodedValues.size() * 4) + dictionaryByteSize + plainValuesWriter.getAllocatedSize();
+    return encodedValues.size() * 4 + dictionaryByteSize + plainValuesWriter.getAllocatedSize();
   }
 
   @Override
   public BytesInput getBytes() {
     if (!dictionaryTooBig && getDictionarySize() > 0) {
-      // remember size of dictionary when we last wrote a page
-      lastUsedDictionarySize = getDictionarySize();
-      lastUsedDictionaryByteSize = dictionaryByteSize;
       int maxDicId = getDictionarySize() - 1;
-      if (DEBUG)
-        LOG.debug("max dic id " + maxDicId);
+      if (DEBUG) LOG.debug("max dic id " + maxDicId);
       int bitWidth = BytesUtils.getWidthFromMaxInt(maxDicId);
 
       // TODO: what is a good initialCapacity?
-      final RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(bitWidth,
-          64 * 1024);
+      RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(bitWidth, 64 * 1024);
       IntIterator iterator = encodedValues.iterator();
       try {
         while (iterator.hasNext()) {
@@ -144,9 +157,16 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         // encodes the bit width
         byte[] bytesHeader = new byte[] { (byte) bitWidth };
         BytesInput rleEncodedBytes = encoder.toBytes();
-        if (DEBUG)
-          LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
-        return concat(BytesInput.from(bytesHeader), rleEncodedBytes);
+        if (DEBUG) LOG.debug("rle encoded bytes " + rleEncodedBytes.size());
+        BytesInput bytes = concat(BytesInput.from(bytesHeader), rleEncodedBytes);
+        if (firstPage && ((bytes.size() + dictionaryByteSize) > rawDataByteSize)) {
+          fallBackToPlainEncoding();
+        } else {
+          // remember size of dictionary when we last wrote a page
+          lastUsedDictionarySize = getDictionarySize();
+          lastUsedDictionaryByteSize = dictionaryByteSize;
+          return bytes;
+        }
       } catch (IOException e) {
         throw new ParquetEncodingException("could not encode the values", e);
       }
@@ -156,6 +176,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
   @Override
   public Encoding getEncoding() {
+    firstPage = false;
     if (!dictionaryTooBig && getDictionarySize() > 0) {
       return PLAIN_DICTIONARY;
     }
@@ -164,10 +185,9 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
   @Override
   public void reset() {
-    if (encodedValues != null) {
-      encodedValues = new IntList();
-    }
+    encodedValues = new IntList();
     plainValuesWriter.reset();
+    rawDataByteSize = 0;
   }
 
   @Override
@@ -182,7 +202,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
    * clear/free the underlying dictionary content
    */
   protected abstract void clearDictionaryContent();
-  
+
   /**
    * @return size in items
    */
@@ -190,23 +210,24 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
   @Override
   public String memUsageString(String prefix) {
-    return String.format("%s DictionaryValuesWriter{\n%s\n%s\n%s\n%s}\n", 
-        prefix, 
+    return String.format(
+        "%s DictionaryValuesWriter{\n%s\n%s\n%s\n%s}\n",
+        prefix,
         plainValuesWriter.
         memUsageString(prefix + " plain:"),
-        prefix + " dict:" + dictionaryByteSize, 
-        prefix + " values:" + (encodedValues.size() * 4), 
+        prefix + " dict:" + dictionaryByteSize,
+        prefix + " values:" + String.valueOf(encodedValues.size() * 4),
         prefix
         );
   }
-  
+
   /**
    *
    */
   public static class PlainBinaryDictionaryValuesWriter extends DictionaryValuesWriter {
 
     /* type specific dictionary content */
-    private Map<Binary, Integer> binaryDictionaryContent = new LinkedHashMap<Binary, Integer>();
+    private Object2IntMap<Binary> binaryDictionaryContent = new Object2IntLinkedOpenHashMap<Binary>();
 
     /**
      * @param maxDictionaryByteSize
@@ -214,23 +235,26 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
      */
     public PlainBinaryDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
       super(maxDictionaryByteSize, initialSize);
+      binaryDictionaryContent.defaultReturnValue(-1);
     }
 
     @Override
     public void writeBytes(Binary v) {
       if (!dictionaryTooBig) {
-        Integer id = binaryDictionaryContent.get(v);
-        if (id == null) {
+        int id = binaryDictionaryContent.getInt(v);
+        if (id == -1) {
           id = binaryDictionaryContent.size();
           binaryDictionaryContent.put(v, id);
-          // length as int (2 bytes) + actual bytes
-          dictionaryByteSize += 2 + v.length();
+          // length as int (4 bytes) + actual bytes
+          dictionaryByteSize += 4 + v.length();
         }
         encodedValues.add(id);
         checkAndFallbackIfNeeded();
+      } else {
+        plainValuesWriter.writeBytes(v);
       }
-      // write also to plain encoding if we need to fall back
-      plainValuesWriter.writeBytes(v);
+      //for rawdata, length(4 bytes int) is stored, followed by the binary content itself
+      rawDataByteSize += v.length() + 4;
     }
 
     @Override
@@ -259,6 +283,23 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       binaryDictionaryContent.clear();
     }
 
+    @Override
+    protected void fallBackDictionaryEncodedData() {
+      //build reverse dictionary
+      Binary[] reverseDictionary = new Binary[getDictionarySize()];
+      ObjectIterator<Object2IntMap.Entry<Binary>> entryIterator = binaryDictionaryContent.object2IntEntrySet().iterator();
+      while (entryIterator.hasNext()) {
+        Object2IntMap.Entry<Binary> entry = entryIterator.next();
+        reverseDictionary[entry.getIntValue()] = entry.getKey();
+      }
+
+      //fall back to plain encoding
+      IntIterator iterator = encodedValues.iterator();
+      while (iterator.hasNext()) {
+        int id = iterator.next();
+        plainValuesWriter.writeBytes(reverseDictionary[id]);
+      }
+    }
   }
 
   /**
@@ -289,9 +330,10 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         }
         encodedValues.add(id);
         checkAndFallbackIfNeeded();
+      } else {
+        plainValuesWriter.writeLong(v);
       }
-      // write also to plain encoding if we need to fall back
-      plainValuesWriter.writeLong(v);
+      rawDataByteSize += 8;
     }
 
     @Override
@@ -319,6 +361,23 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       longDictionaryContent.clear();
     }
 
+    @Override
+    protected void fallBackDictionaryEncodedData() {
+      //build reverse dictionary
+      long[] reverseDictionary = new long[getDictionarySize()];
+      ObjectIterator<Long2IntMap.Entry> entryIterator = longDictionaryContent.long2IntEntrySet().iterator();
+      while (entryIterator.hasNext()) {
+        Long2IntMap.Entry entry = entryIterator.next();
+        reverseDictionary[entry.getIntValue()] = entry.getLongKey();
+      }
+
+      //fall back to plain encoding
+      IntIterator iterator = encodedValues.iterator();
+      while (iterator.hasNext()) {
+        int id = iterator.next();
+        plainValuesWriter.writeLong(reverseDictionary[id]);
+      }
+    }
   }
 
   /**
@@ -349,9 +408,10 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         }
         encodedValues.add(id);
         checkAndFallbackIfNeeded();
+      } else {
+        plainValuesWriter.writeDouble(v);
       }
-      // write also to plain encoding if we need to fall back
-      plainValuesWriter.writeDouble(v);
+      rawDataByteSize += 8;
     }
 
     @Override
@@ -379,6 +439,23 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       doubleDictionaryContent.clear();
     }
 
+    @Override
+    protected void fallBackDictionaryEncodedData() {
+      //build reverse dictionary
+      double[] reverseDictionary = new double[getDictionarySize()];
+      ObjectIterator<Double2IntMap.Entry> entryIterator = doubleDictionaryContent.double2IntEntrySet().iterator();
+      while (entryIterator.hasNext()) {
+        Double2IntMap.Entry entry = entryIterator.next();
+        reverseDictionary[entry.getIntValue()] = entry.getDoubleKey();
+      }
+
+      //fall back to plain encoding
+      IntIterator iterator = encodedValues.iterator();
+      while (iterator.hasNext()) {
+        int id = iterator.next();
+        plainValuesWriter.writeDouble(reverseDictionary[id]);
+      }
+    }
   }
 
   /**
@@ -409,9 +486,12 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         }
         encodedValues.add(id);
         checkAndFallbackIfNeeded();
+      } else {
+        plainValuesWriter.writeInteger(v);
       }
-      // write also to plain encoding if we need to fall back
-      plainValuesWriter.writeInteger(v);
+
+      //Each integer takes 4 bytes as raw data(plain encoding)
+      rawDataByteSize += 4;
     }
 
     @Override
@@ -439,6 +519,23 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       intDictionaryContent.clear();
     }
 
+    @Override
+    protected void fallBackDictionaryEncodedData() {
+      //build reverse dictionary
+      int[] reverseDictionary = new int[getDictionarySize()];
+      ObjectIterator<Int2IntMap.Entry> entryIterator = intDictionaryContent.int2IntEntrySet().iterator();
+      while (entryIterator.hasNext()) {
+        Int2IntMap.Entry entry = entryIterator.next();
+        reverseDictionary[entry.getIntValue()] = entry.getIntKey();
+      }
+
+      //fall back to plain encoding
+      IntIterator iterator = encodedValues.iterator();
+      while (iterator.hasNext()) {
+        int id = iterator.next();
+        plainValuesWriter.writeInteger(reverseDictionary[id]);
+      }
+    }
   }
 
   /**
@@ -469,9 +566,10 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         }
         encodedValues.add(id);
         checkAndFallbackIfNeeded();
+      } else {
+        plainValuesWriter.writeFloat(v);
       }
-      // write also to plain encoding if we need to fall back
-      plainValuesWriter.writeFloat(v);
+      rawDataByteSize += 4;
     }
 
     @Override
@@ -499,6 +597,23 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       floatDictionaryContent.clear();
     }
 
+    @Override
+    protected void fallBackDictionaryEncodedData() {
+      //build reverse dictionary
+      float[] reverseDictionary = new float[getDictionarySize()];
+      ObjectIterator<Float2IntMap.Entry> entryIterator = floatDictionaryContent.float2IntEntrySet().iterator();
+      while (entryIterator.hasNext()) {
+        Float2IntMap.Entry entry = entryIterator.next();
+        reverseDictionary[entry.getIntValue()] = entry.getFloatKey();
+      }
+
+      //fall back to plain encoding
+      IntIterator iterator = encodedValues.iterator();
+      while (iterator.hasNext()) {
+        int id = iterator.next();
+        plainValuesWriter.writeFloat(reverseDictionary[id]);
+      }
+    }
   }
 
 }
