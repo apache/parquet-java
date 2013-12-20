@@ -65,5 +65,20 @@ message Links {
 // end - protobuffers for ProtoSchemaConverterTest
 
 
+//begin protobuffers for ProtoInputOutputFormatTest
+
+message InputOutputMsgFormat {
+    optional int32 someId = 3;
+}
+
+message IOFormatMessage {
+    optional double optionalDouble = 1;
+    repeated string repeatedString = 2;
+    optional InputOutputMsgFormat msg = 3;
+ }
+
+//end protobuffers for ProtoInputOutputFormatTest
+
+
 //please place your unit test protobuffer definitions here.
 

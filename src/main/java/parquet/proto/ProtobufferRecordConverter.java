@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Twitter, Inc.
+ * Copyright 2013 Lukas Nalezenec
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,9 @@ import parquet.proto.converters.ParentValueContainer;
 import parquet.schema.MessageType;
 
 /**
- * Converts root protobuffer message.
+ * Converts data content of root message from protobuffer message to parquet message.
+ * It delegates conversion of inner fields to ProtoMessageConverter class using inheritance.
+ * Schema is converted in ProtoSchemaConverter class.
  *
  * @author Lukas Nalezenec
  */
@@ -31,7 +33,9 @@ class ProtobufferRecordConverter<T extends MessageOrBuilder> extends parquet.pro
   final Message.Builder reusedBuilder;
   boolean buildBefore;
 
-  /** We dont need to write message value at top level. */
+  /**
+   * We dont need to write message value at top level.
+   * */
   private static class SkipParentValueContainer extends ParentValueContainer {
     @Override
     public void add(Object a) {
@@ -54,7 +58,7 @@ class ProtobufferRecordConverter<T extends MessageOrBuilder> extends parquet.pro
 
   @Override
   public void end() {
-    // do nothing, dont call ParentValueContainer.
+    // do nothing, dont call ParentValueContainer at top level.
   }
 
   T getCurrentRecord() {
