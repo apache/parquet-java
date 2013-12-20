@@ -18,14 +18,25 @@ package parquet.proto;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
-import parquet.schema.*;
+import parquet.Log;
+import parquet.schema.ConversionPatterns;
+import parquet.schema.GroupType;
+import parquet.schema.MessageType;
+import parquet.schema.OriginalType;
+import parquet.schema.PrimitiveType;
+import parquet.schema.Type;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static parquet.schema.OriginalType.ENUM;
 import static parquet.schema.OriginalType.UTF8;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
 /**
  * <p/>
@@ -35,12 +46,15 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
  */
 public class ProtoSchemaConverter {
 
+  private static final Log LOG = Log.getLog(ProtoSchemaConverter.class);
+
   public MessageType convert(Class<? extends Message> protobufClass) {
+    LOG.debug("Converting protobuffer class \"" + protobufClass + "\" to parquet schema.");
     Descriptors.Descriptor descriptor = Protobufs.getMessageDescriptor(protobufClass);
 
     MessageType messageType = new MessageType(descriptor.getFullName(), convertFields(descriptor.getFields()));
 
-    System.out.println("Convertor info:\n " + descriptor.toProto() +  " was converted to \n" + messageType);
+    LOG.debug("Convertor info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
     return messageType;
   }
 
@@ -103,7 +117,7 @@ public class ProtoSchemaConverter {
       return primitive(fieldName, BINARY, repetition, ENUM);
     }
 
-    throw new UnsupportedOperationException("Cannot convert Protobuffer: type " + javaType + " fieldName " + fieldName);
+    throw new UnsupportedOperationException("Cannot convert Protobuffer: unknown type " + javaType + " fieldName " + fieldName);
   }
 
   /**
