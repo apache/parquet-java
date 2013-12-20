@@ -58,8 +58,8 @@ public abstract class ValuesReader {
   public abstract void initFromPage(int valueCount, byte[] page, int offset) throws IOException;
   
   /**
-   * Called to return next offset of the 
-   * @return
+   * Called to return offset of the next section
+   * @return offset of the next section
    */
   public int getNextOffset() {
     throw new ParquetDecodingException("Unsupported: cannot get offset of the next section.");
