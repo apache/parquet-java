@@ -146,11 +146,10 @@ public class ProtoMessageConverter extends GroupConverter {
         throw new RuntimeException(fieldDescriptor.getFullName() + " is not inside " + parentBuilder.getDescriptorForType().getFullName());
       }
 
-      GroupType parquetSubType = parquetType.asGroupType();//.getType(fieldDescriptor.getName()).asGroupType();
+      GroupType parquetSubType = parquetType.asGroupType();
       Message.Builder subBuilder;
       if (fieldDescriptor.isRepeated()) {
         subBuilder = parentBuilder.newBuilderForField(fieldDescriptor);
-        //subBuilder = parentBuilder. getFieldBuilder(fieldDescriptor);
       } else {
         subBuilder = parentBuilder.newBuilderForField(fieldDescriptor);
       }
