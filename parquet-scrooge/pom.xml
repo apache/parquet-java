@@ -39,6 +39,11 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-jackson</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.codehaus.jackson</groupId>
       <artifactId>jackson-mapper-asl</artifactId>
       <version>${jackson.version}</version>

@@ -79,7 +79,10 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <github.global.server>github</github.global.server>
     <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
+    <jackson.groupId>org.codehaus.jackson</jackson.groupId>
     <jackson.version>1.9.11</jackson.version>
+    <jackson.package>org.codehaus.jackson</jackson.package>
+    <jackson.shade.prefix>parquet</jackson.shade.prefix>
     <hadoop.version>1.1.0</hadoop.version>
     <cascading.version>2.5.1</cascading.version>
     <parquet.format.version>2.0.0</parquet.format.version>
@@ -193,15 +196,22 @@
                 <minimizeJar>true</minimizeJar>
                 <artifactSet>
                   <includes>
-                    <include>org.codehaus.jackson:jackson-mapper-asl</include>
-                    <include>org.codehaus.jackson:jackson-core-asl</include>
+                    <include>${jackson.groupId}:*</include>
                     <include>it.unimi.dsi:fastutil</include>
                   </includes>
                 </artifactSet>
+                <filters>
+                  <filter>
+                    <artifact>${jackson.groupId}:*</artifact>
+                    <excludes>
+                      <exclude>**</exclude>
+                    </excludes>
+                  </filter>
+                </filters>
                 <relocations>
                   <relocation>
-                    <pattern>org.codehaus.jackson</pattern>
-                    <shadedPattern>parquet.org.codehaus.jackson</shadedPattern>
+                    <pattern>${jackson.package}</pattern>
+                    <shadedPattern>${jackson.shade.prefix}.${jackson.package}</shadedPattern>
                   </relocation>
                   <relocation>
                     <pattern>it.unimi.dsi</pattern>

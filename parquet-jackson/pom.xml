@@ -14,10 +14,6 @@
   <name>Parquet Jackson</name>
   <url>https://github.com/Parquet/parquet-mr</url>
 
-  <properties>
-    <jackson.version>1.9.11</jackson.version>
-  </properties>
-
   <dependencies>
     <dependency>
       <groupId>org.codehaus.jackson</groupId>
@@ -31,6 +27,10 @@
     </dependency>
   </dependencies>
 
+  <properties>
+    <shade.createSourcesJar>false</shade.createSourcesJar>
+  </properties>
+
   <build>
     <plugins>
       <plugin>
@@ -40,45 +40,46 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
-        <configuration>
-          <minimizeJar>false</minimizeJar>
-          <artifactSet>
-            <includes>
-              <include>org.codehaus.jackson:*</include>
-            </includes>
-          </artifactSet>
-          <filters>
-            <filter>
-              <artifact>org.codehaus.jackson:*</artifact>
-              <includes>
-              <include>org/codehaus/jackson/**</include>
-              </includes>
-            </filter>
-          </filters>
-          <relocations>
-            <relocation>
-              <pattern>org.codehaus.jackson</pattern>
-              <shadedPattern>parquet.org.codehaus.jackson</shadedPattern>
-            </relocation>
-          </relocations>
-        </configuration>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration combine.self="override">
+              <minimizeJar>false</minimizeJar>
+              <createSourcesJar>${shade.createSourcesJar}</createSourcesJar> 
+              <artifactSet>
+                <includes>
+                  <include>${jackson.groupId}:*</include>
+                </includes>
+              </artifactSet>
+              <filters>
+                <filter>
+                  <artifact>${jackson.groupId}:*</artifact>
+                  <includes>
+                    <include>**</include>
+                  </includes>
+                </filter>
+              </filters>
+              <relocations>
+                <relocation>
+                  <pattern>${jackson.package}</pattern>
+                  <shadedPattern>${jackson.shade.prefix}.${jackson.package}</shadedPattern>
+                </relocation>
+              </relocations>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build> 
   <profiles>
     <profile>
       <id>sonatype-oss-release</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-shade-plugin</artifactId>
-            <configuration>
-              <createSourcesJar>true</createSourcesJar> 
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
+      <properties>
+        <shade.createSourcesJar>true</shade.createSourcesJar>
+      </properties>
     </profile>
   </profiles>
 </project>
