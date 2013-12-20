@@ -34,6 +34,12 @@
       <groupId>com.twitter.elephantbird</groupId>
       <artifactId>elephant-bird-core</artifactId>
       <version>${elephant-bird.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-core</artifactId>
+            </exclusion>
+        </exclusions>
     </dependency>
 
       <dependency>
