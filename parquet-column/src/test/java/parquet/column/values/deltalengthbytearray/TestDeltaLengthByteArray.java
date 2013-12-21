@@ -17,9 +17,8 @@ package parquet.column.values.deltalengthbytearray;
 
 import java.io.IOException;
 
-import junit.framework.Assert;
-
 import org.junit.Test;
+import org.junit.Assert;
 
 import parquet.column.values.Utils;
 import parquet.column.values.ValuesReader;

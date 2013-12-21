@@ -15,8 +15,8 @@
  */
 package parquet.column.values.delta;
 
-import static junit.framework.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.Random;
@@ -25,9 +25,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import parquet.bytes.BytesInput;
-import parquet.column.values.ValuesReader;
 import parquet.column.values.ValuesWriter;
-import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import parquet.io.ParquetDecodingException;
 
 public class DeltaBinaryPackingValuesWriterTest {
