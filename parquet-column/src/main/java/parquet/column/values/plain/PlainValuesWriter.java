@@ -27,7 +27,6 @@ import parquet.column.values.ValuesWriter;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
 
-
 /**
  * Plain encoding except for booleans
  *

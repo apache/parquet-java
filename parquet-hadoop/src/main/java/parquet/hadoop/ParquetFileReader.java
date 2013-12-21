@@ -26,6 +26,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -91,19 +92,39 @@ public class ParquetFileReader implements Closeable {
     }
 
     // read corresponding summary files if they exist
-    Map<Path, Footer> cache = new HashMap<Path, Footer>();
-    for (Path path : parents) {
-      FileSystem fileSystem = path.getFileSystem(configuration);
-      Path summaryFile = new Path(path, PARQUET_METADATA_FILE);
-      if (fileSystem.exists(summaryFile)) {
-        if (Log.INFO) LOG.info("reading summary file: " + summaryFile);
-        List<Footer> footers = readSummaryFile(configuration, fileSystem.getFileStatus(summaryFile));
-        for (Footer footer : footers) {
-          // the folder may have been moved
-          footer = new Footer(new Path(path, footer.getFile().getName()), footer.getParquetMetadata());
-          cache.put(footer.getFile(), footer);
+    List<Callable<Map<Path, Footer>>> summaries = new ArrayList<Callable<Map<Path, Footer>>>();
+    for (final Path path : parents) {
+      summaries.add(new Callable<Map<Path, Footer>>() {
+        @Override
+        public Map<Path, Footer> call() throws Exception {
+          // fileSystem is thread-safe
+          FileSystem fileSystem = path.getFileSystem(configuration);
+          Path summaryFile = new Path(path, PARQUET_METADATA_FILE);
+          if (fileSystem.exists(summaryFile)) {
+            if (Log.INFO) LOG.info("reading summary file: " + summaryFile);
+            final List<Footer> footers = readSummaryFile(configuration, fileSystem.getFileStatus(summaryFile));
+            Map<Path, Footer> map = new HashMap<Path, Footer>();
+            for (Footer footer : footers) {
+              // the folder may have been moved
+              footer = new Footer(new Path(path, footer.getFile().getName()), footer.getParquetMetadata());
+              map.put(footer.getFile(), footer);
+            }
+            return map;
+          } else {
+            return Collections.emptyMap();
+          }
         }
+      });
+    }
+
+    Map<Path, Footer> cache = new HashMap<Path, Footer>();
+    try {
+      List<Map<Path, Footer>> footersFromSummaries = runAllInParallel(5, summaries);
+      for (Map<Path, Footer> footers : footersFromSummaries) {
+        cache.putAll(footers);
       }
+    } catch (ExecutionException e) {
+      throw new IOException("Error reading summaries", e);
     }
 
     // keep only footers for files actually requested and read file footer if not found in summaries
@@ -127,43 +148,45 @@ public class ParquetFileReader implements Closeable {
     return result;
   }
 
-  public static List<Footer> readAllFootersInParallel(final Configuration configuration, List<FileStatus> partFiles) throws IOException {
-    ExecutorService threadPool = Executors.newFixedThreadPool(5);
+  private static <T> List<T> runAllInParallel(int parallelism, List<Callable<T>> toRun) throws ExecutionException {
+    ExecutorService threadPool = Executors.newFixedThreadPool(parallelism);
     try {
-      List<Future<Footer>> footers = new ArrayList<Future<Footer>>();
-      for (final FileStatus currentFile : partFiles) {
-        footers.add(threadPool.submit(new Callable<Footer>() {
-          @Override
-          public Footer call() throws Exception {
-            try {
-              FileSystem fs = currentFile.getPath().getFileSystem(configuration);
-              return readFooter(fs, currentFile);
-            } catch (IOException e) {
-              throw new IOException("Could not read footer for file " + currentFile, e);
-            }
-          }
-
-          private Footer readFooter(final FileSystem fs,
-              final FileStatus currentFile) throws IOException {
-            ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(configuration, currentFile);
-            return new Footer(currentFile.getPath(), parquetMetadata);
-          }
-        }));
+      List<Future<T>> futures = new ArrayList<Future<T>>();
+      for (Callable<T> callable : toRun) {
+        futures.add(threadPool.submit(callable));
       }
-      List<Footer> result = new ArrayList<Footer>(footers.size());
-      for (Future<Footer> futureFooter : footers) {
+      List<T> result = new ArrayList<T>(toRun.size());
+      for (Future<T> future : futures) {
         try {
-          result.add(futureFooter.get());
+          result.add(future.get());
         } catch (InterruptedException e) {
-          Thread.interrupted();
           throw new RuntimeException("The thread was interrupted", e);
-        } catch (ExecutionException e) {
-          throw new IOException("Could not read footer: " + e.getMessage(), e.getCause());
         }
       }
       return result;
     } finally {
       threadPool.shutdownNow();
+    }
+  }
+
+  public static List<Footer> readAllFootersInParallel(final Configuration configuration, List<FileStatus> partFiles) throws IOException {
+    List<Callable<Footer>> footers = new ArrayList<Callable<Footer>>();
+    for (final FileStatus currentFile : partFiles) {
+      footers.add(new Callable<Footer>() {
+        @Override
+        public Footer call() throws Exception {
+          try {
+            return new Footer(currentFile.getPath(), ParquetFileReader.readFooter(configuration, currentFile));
+          } catch (IOException e) {
+            throw new IOException("Could not read footer for file " + currentFile, e);
+          }
+        }
+      });
+    }
+    try {
+      return runAllInParallel(5, footers);
+    } catch (ExecutionException e) {
+      throw new IOException("Could not read footer: " + e.getMessage(), e.getCause());
     }
   }
 
@@ -378,7 +401,9 @@ public class ParquetFileReader implements Closeable {
       // if there's a dictionary and it's before the first data page, start from there
       startingPos = metadata.getDictionaryPageOffset();
     }
-    f.seek(startingPos);
+    if (f.getPos() != startingPos) {
+      f.seek(startingPos);
+    }
     if (DEBUG) {
       LOG.debug(f.getPos() + ": start column chunk " + metadata.getPath() +
         " " + metadata.getType() + " count=" + metadata.getValueCount());

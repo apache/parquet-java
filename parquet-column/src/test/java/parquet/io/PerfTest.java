@@ -24,6 +24,7 @@ import static parquet.example.Paper.schema3;
 import java.util.logging.Level;
 
 import parquet.Log;
+import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.mem.MemPageStore;
 import parquet.example.DummyRecordConverter;
@@ -73,7 +74,7 @@ public class PerfTest {
 
 
   private static void write(MemPageStore memPageStore) {
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 50*1024*1024, 50*1024*1024, 50*1024*1024, false);
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 50*1024*1024, 50*1024*1024, 50*1024*1024, false, WriterVersion.PARQUET_1_0);
     MessageColumnIO columnIO = newColumnFactory(schema);
 
     GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);

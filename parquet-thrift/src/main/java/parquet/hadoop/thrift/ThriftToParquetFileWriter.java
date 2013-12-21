@@ -25,6 +25,8 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.thrift.TBase;
 import org.apache.thrift.protocol.TProtocolFactory;
 
+import parquet.thrift.ReadWriteErrorHandler;
+
 /**
  * To create a Parquet file from the Thrift binary of records
  *
@@ -51,7 +53,26 @@ public class ThriftToParquetFileWriter implements Closeable {
       TProtocolFactory protocolFactory,
       Class<? extends TBase<?,?>> thriftClass)
           throws IOException, InterruptedException {
-    this(fileToCreate, taskAttemptContext, protocolFactory, thriftClass, true);
+    this(fileToCreate, taskAttemptContext, protocolFactory, thriftClass, true, null);
+  }
+
+  /**
+   * defaults to buffered = true
+   * @param fileToCreate the file to create. If null will create the default file name from the taskAttemptContext
+   * @param taskAttemptContext The current taskAttemptContext
+   * @param protocolFactory to create protocols to read the incoming bytes
+   * @param thriftClass to produce the schema
+   * @param errorHandler to define what to do when failing to read a record
+   * @throws IOException if there was a problem writing
+   * @throws InterruptedException from the underlying Hadoop API
+   */
+  public ThriftToParquetFileWriter(
+      Path fileToCreate,
+      TaskAttemptContext taskAttemptContext,
+      TProtocolFactory protocolFactory,
+      Class<? extends TBase<?,?>> thriftClass,
+      ReadWriteErrorHandler errorHandler) throws IOException, InterruptedException {
+    this(fileToCreate, taskAttemptContext, protocolFactory, thriftClass, true, errorHandler);
   }
 
   /**
@@ -68,9 +89,10 @@ public class ThriftToParquetFileWriter implements Closeable {
       TaskAttemptContext taskAttemptContext,
       TProtocolFactory protocolFactory,
       Class<? extends TBase<?,?>> thriftClass,
-          boolean buffered) throws IOException, InterruptedException {
+      boolean buffered,
+      ReadWriteErrorHandler errorHandler) throws IOException, InterruptedException {
     this.taskAttemptContext = taskAttemptContext;
-    this.recordWriter = new ParquetThriftBytesOutputFormat(protocolFactory, thriftClass, buffered).getRecordWriter(taskAttemptContext, fileToCreate);
+    this.recordWriter = new ParquetThriftBytesOutputFormat(protocolFactory, thriftClass, buffered, errorHandler).getRecordWriter(taskAttemptContext, fileToCreate);
   }
 
   /**

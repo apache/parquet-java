@@ -23,6 +23,7 @@ import org.apache.thrift.protocol.TProtocolFactory;
 
 import parquet.hadoop.ParquetOutputFormat;
 import parquet.hadoop.util.ContextUtil;
+import parquet.thrift.ReadWriteErrorHandler;
 
 /**
  * Output format that turns Thrift bytes into Parquet format using the thrift TProtocol layer
@@ -60,9 +61,10 @@ public class ParquetThriftBytesOutputFormat extends ParquetOutputFormat<BytesWri
    * @param protocolFactory the protocol factory to use to read the bytes
    * @param thriftClass thriftClass the class to exctract the schema from
    * @param buffered whether we should buffer each record
+   * @param errorHandler handle record corruption and schema incompatible exception
    */
-  public ParquetThriftBytesOutputFormat(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass, boolean buffered) {
-    super(new ThriftBytesWriteSupport(protocolFactory, thriftClass, buffered));
+  public ParquetThriftBytesOutputFormat(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass, boolean buffered, ReadWriteErrorHandler errorHandler) {
+    super(new ThriftBytesWriteSupport(protocolFactory, thriftClass, buffered, errorHandler));
   }
 
 }

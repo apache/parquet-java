@@ -43,6 +43,7 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.junit.Test;
 import parquet.hadoop.thrift.ThriftToParquetFileWriter;
+import parquet.hadoop.util.ContextUtil;
 import parquet.thrift.test.Name;
 
 import java.io.ByteArrayOutputStream;
@@ -120,7 +121,7 @@ public class TestParquetTupleScheme {
 
     TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
     TaskAttemptID taskId = new TaskAttemptID("local", 0, true, 0, 0);
-    ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(fileToCreate, new TaskAttemptContext(conf, taskId), protocolFactory, Name.class);
+    ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(fileToCreate, ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory, Name.class);
 
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));

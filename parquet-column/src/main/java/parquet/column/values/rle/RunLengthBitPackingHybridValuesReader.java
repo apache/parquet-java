@@ -18,7 +18,6 @@ package parquet.column.values.rle;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
-import parquet.Ints;
 import parquet.bytes.BytesUtils;
 import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;
@@ -32,30 +31,26 @@ import parquet.io.ParquetDecodingException;
 public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
   private final int bitWidth;
   private RunLengthBitPackingHybridDecoder decoder;
+  private int nextOffset;
 
   public RunLengthBitPackingHybridValuesReader(int bitWidth) {
     this.bitWidth = bitWidth;
   }
 
   @Override
-  public int initFromPage(long valueCountL, byte[] page, int offset) throws IOException {
-    // TODO: we are assuming valueCount < Integer.MAX_VALUE
-    //       we should address this here and elsewhere
-    int valueCount = Ints.checkedCast(valueCountL);
-
-    if (valueCount <= 0) {
-      // readInteger() will never be called,
-      // there is no data to read
-      return offset;
-    }
-
+  public void initFromPage(int valueCountL, byte[] page, int offset) throws IOException {
     ByteArrayInputStream in = new ByteArrayInputStream(page, offset, page.length - offset);
     int length = BytesUtils.readIntLittleEndian(in);
 
     decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
 
     // 4 is for the length which is stored as 4 bytes little endian
-    return offset + length + 4;
+    this.nextOffset = offset + length + 4;
+  }
+  
+  @Override
+  public int getNextOffset() {
+    return this.nextOffset;
   }
 
   @Override
@@ -65,6 +60,11 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
     } catch (IOException e) {
       throw new ParquetDecodingException(e);
     }
+  }
+  
+  @Override
+  public boolean readBoolean() {
+    return readInteger() == 0 ? false : true;
   }
 
   @Override

@@ -24,6 +24,7 @@ import java.util.TreeMap;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
+import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.page.PageWriteStore;
 import parquet.column.page.PageWriter;
 
@@ -36,14 +37,16 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
   private final int dictionaryPageSizeThreshold;
   private final boolean enableDictionary;
   private final int initialSizePerCol;
+  private final WriterVersion writerVersion;
 
-  public ColumnWriteStoreImpl(PageWriteStore pageWriteStore, int pageSizeThreshold, int initialSizePerCol, int dictionaryPageSizeThreshold, boolean enableDictionary) {
+  public ColumnWriteStoreImpl(PageWriteStore pageWriteStore, int pageSizeThreshold, int initialSizePerCol, int dictionaryPageSizeThreshold, boolean enableDictionary, WriterVersion writerVersion) {
     super();
     this.pageWriteStore = pageWriteStore;
     this.pageSizeThreshold = pageSizeThreshold;
     this.initialSizePerCol = initialSizePerCol;
     this.dictionaryPageSizeThreshold = dictionaryPageSizeThreshold;
     this.enableDictionary = enableDictionary;
+    this.writerVersion = writerVersion;
   }
 
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
@@ -57,7 +60,7 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
 
   private ColumnWriterImpl newMemColumn(ColumnDescriptor path) {
     PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-    return new ColumnWriterImpl(path, pageWriter, pageSizeThreshold, initialSizePerCol, dictionaryPageSizeThreshold, enableDictionary);
+    return new ColumnWriterImpl(path, pageWriter, pageSizeThreshold, initialSizePerCol, dictionaryPageSizeThreshold, enableDictionary, writerVersion);
   }
 
   @Override
