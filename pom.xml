@@ -200,6 +200,7 @@
                     <include>it.unimi.dsi:fastutil</include>
                   </includes>
                 </artifactSet>
+                <!-- Shade jackson but do not include any class. Let parquet-jackson handle this -->
                 <filters>
                   <filter>
                     <artifact>${jackson.groupId}:*</artifact>
