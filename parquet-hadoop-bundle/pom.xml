@@ -8,10 +8,10 @@
 
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>parquet-column</artifactId>
+  <artifactId>parquet-hadoop-bundle</artifactId>
   <packaging>jar</packaging>
 
-  <name>Parquet Column</name>
+  <name>Parquet Hadoop Bundle</name>
   <url>https://github.com/Parquet/parquet-mr</url>
 
   <properties>
@@ -25,52 +25,18 @@
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>parquet-encoding</artifactId>
+      <artifactId>parquet-column</artifactId>
       <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>commons-codec</groupId>
-      <artifactId>commons-codec</artifactId>
-      <version>1.7</version>
-      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>parquet-encoding</artifactId>
+      <artifactId>parquet-hadoop</artifactId>
       <version>${project.version}</version>
-      <type>test-jar</type>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>it.unimi.dsi</groupId>
-      <artifactId>fastutil</artifactId>
-      <version>6.5.7</version>
-    </dependency>
-
-    <dependency>
-      <groupId>com.carrotsearch</groupId>
-      <artifactId>junit-benchmarks</artifactId>
-      <version>0.7.0</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.h2database</groupId>
-      <artifactId>h2</artifactId>
-      <version>1.3.149</version>
-      <scope>test</scope>
     </dependency>
   </dependencies>
 
   <build>
     <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
@@ -81,22 +47,17 @@
               <goal>shade</goal>
             </goals>
             <configuration>
-              <minimizeJar>true</minimizeJar>
+              <minimizeJar>false</minimizeJar>
               <artifactSet>
                 <includes>
-                  <include>it.unimi.dsi:fastutil</include>
+                  <include>com.twitter:parquet-*</include>
                 </includes>
               </artifactSet>
-              <relocations>
-                <relocation>
-                  <pattern>it.unimi.dsi</pattern>
-                  <shadedPattern>parquet.it.unimi.dsi</shadedPattern>
-                </relocation>
-              </relocations>
             </configuration>
           </execution>
         </executions>
       </plugin>
     </plugins>
   </build>
+
 </project>

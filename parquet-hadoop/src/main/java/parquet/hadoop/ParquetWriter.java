@@ -21,6 +21,8 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
+import parquet.column.ParquetProperties;
+import parquet.column.ParquetProperties.WriterVersion;
 import parquet.hadoop.api.WriteSupport;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.schema.MessageType;
@@ -96,6 +98,33 @@ public class ParquetWriter<T> implements Closeable {
       int dictionaryPageSize,
       boolean enableDictionary,
       boolean validating) throws IOException {
+    this(file, writeSupport, compressionCodecName, blockSize, pageSize, dictionaryPageSize, enableDictionary, validating, WriterVersion.PARQUET_1_0);
+  }
+  
+  /**
+   * Create a new ParquetWriter.
+   *
+   * @param file the file to create
+   * @param writeSupport the implementation to write a record to a RecordConsumer
+   * @param compressionCodecName the compression codec to use
+   * @param blockSize the block size threshold
+   * @param pageSize the page size threshold
+   * @param dictionaryPageSize the page size threshold for the dictionary pages
+   * @param enableDictionary to turn dictionary encoding on
+   * @param validating to turn on validation using the schema
+   * @poram writerVersion version of parquetWriter from {@link ParquetProperties.WriterVersion}
+   * @throws IOException
+   */
+  public ParquetWriter(
+      Path file,
+      WriteSupport<T> writeSupport,
+      CompressionCodecName compressionCodecName,
+      int blockSize,
+      int pageSize,
+      int dictionaryPageSize,
+      boolean enableDictionary,
+      boolean validating,
+      WriterVersion writerVersion) throws IOException {
     Configuration conf = new Configuration();
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
@@ -116,8 +145,8 @@ public class ParquetWriter<T> implements Closeable {
         compressor,
         dictionaryPageSize,
         enableDictionary,
-        validating);
-
+        validating,
+        writerVersion);
   }
 
   /**

@@ -28,7 +28,11 @@ public class HiveBindingFactory {
   private static final Log LOG = Log.getLog(HiveBindingFactory.class);
   private static final String HIVE_VERSION_CLASS_NAME = "org.apache.hive.common.util.HiveVersionInfo";
   private static final String HIVE_VERSION_METHOD_NAME = "getVersion";
+  private static final String HIVE_UTILITIES_CLASS_NAME = "org.apache.hadoop.hive.ql.exec.Utilities";
+  private static final String HIVE_012_INDICATOR_UTILITIES_GETMAPWORK = "getMapWork";
   private static final String HIVE_VERSION_NULL = "<null>";
+  private static final Class<? extends HiveBinding> LATEST_BINDING = Hive012Binding.class;
+  static final String HIVE_VERSION_UNKNOWN = "Unknown";
   static final String HIVE_VERSION_010 = "0.10";
   static final String HIVE_VERSION_011 = "0.11";
   static final String HIVE_VERSION_012 = "0.12";
@@ -83,6 +87,10 @@ public class HiveBindingFactory {
       throw new UnexpectedHiveVersionProviderError("Unexpected error whilst " +
           "determining Hive version", e);
     }
+    if(hiveVersion.equalsIgnoreCase(HIVE_VERSION_UNKNOWN)) {
+      LOG.debug("Unknown hive version, attempting to guess");
+      return createBindingForUnknownVersion();
+    }
     if(hiveVersion.startsWith(HIVE_VERSION_010)) {
       LOG.debug("Hive version " + hiveVersion + ", returning " +
           Hive010Binding.class.getSimpleName());
@@ -97,6 +105,25 @@ public class HiveBindingFactory {
         Hive012Binding.class.getSimpleName());
     // as of 11/26/2013 it looks like the 0.12 binding will work for 0.13
     return Hive012Binding.class;
+  }
+
+  private Class<? extends HiveBinding> createBindingForUnknownVersion() {
+    try {
+      Class<?> utilitiesClass = Class.forName(HIVE_UTILITIES_CLASS_NAME);
+      for(Method method : utilitiesClass.getDeclaredMethods()) {
+        if(HIVE_012_INDICATOR_UTILITIES_GETMAPWORK.equals(method.getName())) {
+          LOG.debug("Found " + HIVE_UTILITIES_CLASS_NAME + "." +
+              HIVE_012_INDICATOR_UTILITIES_GETMAPWORK + " returning 0.12 binding");
+          return Hive012Binding.class;
+        }
+      }
+      // if the getMapWork method does not exist then it must be 0.10 or 0.11
+      return Hive010Binding.class;
+    } catch (ClassNotFoundException e) {
+      LOG.debug("Could not find " + HIVE_UTILITIES_CLASS_NAME + ", returning" +
+          " the latest binding since this class existed in 0.10, 0.11, and 0.12");
+      return LATEST_BINDING;
+    }
   }
   
   private static String trimVersion(String s) {

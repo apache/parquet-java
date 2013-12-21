@@ -36,7 +36,7 @@ import java.util.List;
  * <p/>
  * When there are fields in the data that are not defined in the schema, the fields will be ignored and the handler will
  * be notified through {@link ReadWriteErrorHandler#handleFieldIgnored(org.apache.thrift.protocol.TField)}
- * and {@link parquet.thrift.BufferedProtocolReadToWrite.ReadWriteErrorHandler#handleRecordHasFieldIgnored()}
+ * and {@link parquet.thrift.ReadWriteErrorHandler#handleRecordHasFieldIgnored()}
  *
  * @author Julien Le Dem
  *
@@ -105,20 +105,17 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     }
   };
   //error handler is global
-  private static ReadWriteErrorHandler errorHandler;
+  private final ReadWriteErrorHandler errorHandler;
   private final StructType thriftType;
 
   public BufferedProtocolReadToWrite(StructType thriftType) {
+    this(thriftType, null);
+  }
+
+  public BufferedProtocolReadToWrite(StructType thriftType, ReadWriteErrorHandler errorHandler) {
     super();
     this.thriftType = thriftType;
-  }
-
-  public static void registerErrorHandler(ReadWriteErrorHandler handler) {
-    errorHandler = handler;
-  }
-
-  public static void unregisterAllErrorHandlers() {
-    errorHandler = null;
+    this.errorHandler = errorHandler;
   }
 
   /**
@@ -484,38 +481,6 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       if (i >= enumValues.size() || enumValues.get(i) == null)
         throw new DecodingSchemaMismatchException("can not find index " + i + " in enum " + expectedType);
     }
-  }
-
-  /**
-   * implements this class to handle errors encountered during reading and writing
-   * use {@link #registerErrorHandler(parquet.thrift.BufferedProtocolReadToWrite.ReadWriteErrorHandler)} to register a handler
-   */
-  public static interface ReadWriteErrorHandler {
-    /**
-     * handle when a record can not be read due to an exception,
-     * in this case the record will be skipped and this method will be called with the exception that caused reading failure
-     *
-     * @param e
-     */
-    void handleSkippedCorruptedRecord(SkippableException e);
-
-    /**
-     * handle when a record that contains fields that are ignored, meaning that the schema provided does not cover all the columns in data,
-     * the record will still be written but with fields that are not defined in the schema ignored.
-     * For each record, this method will be called at most once.
-     */
-    void handleRecordHasFieldIgnored();
-
-    /**
-     * handle when a field gets ignored,
-     * notice the difference between this method and {@link #handleRecordHasFieldIgnored()} is that:
-     * for one record, this method maybe called many times when there are multiple fields not defined in the schema.
-     *
-     * @param field
-     */
-    void handleFieldIgnored(TField field);
-
-    void handleSkipRecordDueToSchemaMismatch(DecodingSchemaMismatchException e);
   }
 
   /**
