@@ -152,9 +152,8 @@ public class DeltaBinaryPackingValuesWriterTest {
 
     //offset should be correct
     reader.initFromPage(100, pageContent, contentOffsetInPage);
-    //TODO: uncomment following test for testing returning correct offset
-//    int offset= reader.getNextOffset();
-//    assertEquals(valueContent.length + contentOffsetInPage, offset);
+    int offset= reader.getNextOffset();
+    assertEquals(valueContent.length + contentOffsetInPage, offset);
 
     //should be able to read data correclty
     for (int i : data) {
@@ -237,9 +236,9 @@ public class DeltaBinaryPackingValuesWriterTest {
     double miniBlockFlushed = Math.ceil(((double) length - 1) / miniBlockSize);
     double blockFlushed = Math.ceil(((double) length - 1) / blockSize);
     double estimatedSize = 4 * 5 //blockHeader
-            + 4 * miniBlockFlushed * miniBlockSize //data(aligned to miniBlock)
-            + blockFlushed * miniBlockNum //bitWidth of mini blocks
-            + (5.0 * blockFlushed);//min delta for each block
+        + 4 * miniBlockFlushed * miniBlockSize //data(aligned to miniBlock)
+        + blockFlushed * miniBlockNum //bitWidth of mini blocks
+        + (5.0 * blockFlushed);//min delta for each block
     assertTrue(estimatedSize >= page.length);
     reader.initFromPage(100, page, 0);
 

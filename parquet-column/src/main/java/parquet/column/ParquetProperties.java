@@ -3,6 +3,8 @@ package parquet.column;
 import parquet.bytes.BytesUtils;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.boundedint.DevNullValuesWriter;
+import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
+import parquet.column.values.deltastrings.DeltaByteArrayWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDictionaryValuesWriter;
@@ -76,9 +78,7 @@ public class ParquetProperties {
         if (writerVersion == WriterVersion.PARQUET_1_0) {
           return new PlainValuesWriter(initialSizePerCol);
         } else if (writerVersion == WriterVersion.PARQUET_2_0) {
-          // TODO enable 2.0 encodings in another commit
-          // return new DeltaByteArrayWriter(initialSizePerCol);
-          return new PlainValuesWriter(initialSizePerCol);
+          return new DeltaByteArrayWriter(initialSizePerCol);
         } 
       }
       break;
@@ -89,9 +89,7 @@ public class ParquetProperties {
         if(writerVersion == WriterVersion.PARQUET_1_0) {
           return new PlainValuesWriter(initialSizePerCol);
         } else if(writerVersion == WriterVersion.PARQUET_2_0) {
-          // TODO enable 2.0 encodings in another commit
-          // return new DeltaBinaryPackingValuesWriter(initialSizePerCol);
-          return new PlainValuesWriter(initialSizePerCol);
+          return new DeltaBinaryPackingValuesWriter(initialSizePerCol);
         }
       }
       break;
