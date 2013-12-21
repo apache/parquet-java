@@ -59,9 +59,14 @@ public class BooleanPlainValuesReader extends ValuesReader {
    * @see parquet.column.values.ValuesReader#initFromPage(byte[], int)
    */
   @Override
-  public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
+  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
     if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));
-    return this.in.initFromPage(valueCount, in, offset);
+    this.in.initFromPage(valueCount, in, offset);
+  }
+  
+  @Override
+  public int getNextOffset() {
+    return this.in.getNextOffset();
   }
 
 }
