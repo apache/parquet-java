@@ -65,7 +65,7 @@
               <relocations>
                 <relocation>
                   <pattern>${jackson.package}</pattern>
-                  <shadedPattern>${jackson.shade.prefix}.${jackson.package}</shadedPattern>
+                  <shadedPattern>${shade.prefix}.${jackson.package}</shadedPattern>
                 </relocation>
               </relocations>
             </configuration>

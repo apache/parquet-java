@@ -213,11 +213,11 @@
                 <relocations>
                   <relocation>
                     <pattern>${jackson.package}</pattern>
-                    <shadedPattern>${jackson.shade.prefix}.${jackson.package}</shadedPattern>
+                    <shadedPattern>${shade.prefix}.${jackson.package}</shadedPattern>
                   </relocation>
                   <relocation>
                     <pattern>it.unimi.dsi</pattern>
-                    <shadedPattern>parquet.it.unimi.dsi</shadedPattern>
+                    <shadedPattern>${shade.prefix}.it.unimi.dsi</shadedPattern>
                   </relocation>
                 </relocations>
               </configuration>
