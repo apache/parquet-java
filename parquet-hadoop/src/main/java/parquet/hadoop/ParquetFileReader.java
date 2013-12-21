@@ -412,19 +412,23 @@ public class ParquetFileReader implements Closeable {
      */
     public ColumnChunkPageReader readAllPages() throws IOException {
       List<Page> pagesInChunk = new ArrayList<Page>();
-      List<DictionaryPage> dictionaryPagesInChunk = new ArrayList<DictionaryPage>();
+      DictionaryPage dictionaryPage = null;
       long valuesCountReadSoFar = 0;
       while (valuesCountReadSoFar < descriptor.metadata.getValueCount()) {
         PageHeader pageHeader = readPageHeader(this);
         switch (pageHeader.type) {
           case DICTIONARY_PAGE:
-            dictionaryPagesInChunk.add(
+            // there is only one dictionary page per column chunk
+            if (dictionaryPage != null) {
+              throw new ParquetDecodingException("more than one dictionary page in column " + descriptor.col);
+            }
+            dictionaryPage =
                 new DictionaryPage(
                     this.readAsBytesInput(pageHeader.compressed_page_size),
                     pageHeader.uncompressed_page_size,
                     pageHeader.dictionary_page_header.num_values,
                     parquetMetadataConverter.getEncoding(pageHeader.dictionary_page_header.encoding)
-                    ));
+                    );
             break;
           case DATA_PAGE:
             pagesInChunk.add(
@@ -452,11 +456,7 @@ public class ParquetFileReader implements Closeable {
             " but got " + valuesCountReadSoFar + " values instead over " + pagesInChunk.size()
             + " pages ending at file offset " + (descriptor.fileOffset + pos()));
       }
-      if (dictionaryPagesInChunk.size() > 1) {
-        throw new ParquetDecodingException("more than one dictionary page: " + dictionaryPagesInChunk);
-      }
       BytesDecompressor decompressor = codecFactory.getDecompressor(descriptor.metadata.getCodec());
-      DictionaryPage dictionaryPage = dictionaryPagesInChunk.size() == 0 ? null : dictionaryPagesInChunk.get(0);
       return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage);
     }
 
