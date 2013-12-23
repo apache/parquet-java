@@ -82,7 +82,7 @@
     <jackson.groupId>org.codehaus.jackson</jackson.groupId>
     <jackson.version>1.9.11</jackson.version>
     <jackson.package>org.codehaus.jackson</jackson.package>
-    <jackson.shade.prefix>parquet</jackson.shade.prefix>
+    <shade.prefix>parquet</shade.prefix>
     <hadoop.version>1.1.0</hadoop.version>
     <cascading.version>2.5.1</cascading.version>
     <parquet.format.version>2.0.0</parquet.format.version>
