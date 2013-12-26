@@ -1,4 +1,4 @@
 parquet-protobuf
 ================
 
-protobuffer support for Parquet columnar format
+Protocol Buffer support for Parquet columnar format

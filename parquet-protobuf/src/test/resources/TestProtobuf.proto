@@ -1,6 +1,6 @@
 package TestProtobuf;
 
-option java_package = "parquet.protobuf.test";
+option java_package = "parquet.proto.test";
 
 // original dremel paper structures: Original paper used groups, not internal
 // messages but groups were depricated.
@@ -25,7 +25,7 @@ message Links {
 }
 
 
-// begin - protobuffers for ProtoSchemaConverterTest
+// begin - protocol buffers for ProtoSchemaConverterTest
 
  message SchemaConverterSimpleMessage {
      optional int32 someId = 3;
@@ -72,10 +72,10 @@ message RequiredWithDefaultMessage{
      repeated SchemaConverterSimpleMessage repeatedMessage = 9;
  }
 
-// end - protobuffers for ProtoSchemaConverterTest
+// end - protocol buffers for ProtoSchemaConverterTest
 
 
-//begin protobuffers for ProtoInputOutputFormatTest
+//begin protocol buffers for ProtoInputOutputFormatTest
 
 message InputOutputMsgFormat {
     optional int32 someId = 3;
@@ -87,8 +87,8 @@ message IOFormatMessage {
     optional InputOutputMsgFormat msg = 3;
  }
 
-//end protobuffers for ProtoInputOutputFormatTest
+//end protocol buffers for ProtoInputOutputFormatTest
 
 
-//please place your unit test protobuffer definitions here.
+//please place your unit test Protocol Buffer definitions here.
 

@@ -50,7 +50,7 @@ public class TestUtils {
       if (cls == null) {
         cls = recordClass;
       } else if (!cls.equals(recordClass)) {
-        throw new RuntimeException("Wrong class " + cls + ", expected protobuffer.");
+        throw new RuntimeException("Wrong class " + cls + ", expected protocol buffer.");
       }
     }
     return cls;
@@ -68,7 +68,7 @@ public class TestUtils {
     List<MessageOrBuilder> output = (List<MessageOrBuilder>) writeAndRead(messages);
 
     List<Message> outputAsMessages = asMessages(output);
-    assertEquals("The protobuffers are not same:\n", asMessages(input), outputAsMessages);
+    assertEquals("The protocol buffers are not same:\n", asMessages(input), outputAsMessages);
     return (List<T>) outputAsMessages;
   }
 

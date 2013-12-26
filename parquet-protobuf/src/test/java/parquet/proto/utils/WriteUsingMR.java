@@ -29,6 +29,7 @@ import parquet.proto.TestUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -70,14 +71,7 @@ public class WriteUsingMR {
       if (conf == null) conf = new Configuration();
       final Path inputPath = new Path("src/test/java/parquet/proto/ProtoInputOutputFormatTest.java");
 
-      inputMessages = new ArrayList<Message>();
-
-      for (Message m : messages) {
-        inputMessages.add(m);
-      }
-
-      inputMessages = Collections.unmodifiableList(inputMessages);
-
+      inputMessages = Collections.unmodifiableList(Arrays.asList(messages));
 
       final Job job = new Job(conf, "write");
 
@@ -90,7 +84,7 @@ public class WriteUsingMR {
 
       job.setOutputFormatClass(ProtoParquetOutputFormat.class);
       ProtoParquetOutputFormat.setOutputPath(job, outputPath);
-      ProtoParquetOutputFormat.setProtobufferClass(job, pbClass);
+      ProtoParquetOutputFormat.setProtobufClass(job, pbClass);
 
       waitForJob(job);
 
@@ -105,7 +99,7 @@ public class WriteUsingMR {
       LOG.debug("waiting for job " + job.getJobName());
       sleep(50);
     }
-    LOG.info("status for job " + job.getJobName() + ": " + (job.isSuccessful() ? "SUCCESS" : "FAILURE"));
+    LOG.debug("status for job " + job.getJobName() + ": " + (job.isSuccessful() ? "SUCCESS" : "FAILURE"));
     if (!job.isSuccessful()) {
       throw new RuntimeException("job failed " + job.getJobName());
     }

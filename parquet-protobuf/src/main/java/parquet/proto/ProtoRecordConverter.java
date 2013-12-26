@@ -22,13 +22,13 @@ import parquet.proto.converters.ParentValueContainer;
 import parquet.schema.MessageType;
 
 /**
- * Converts data content of root message from protobuffer message to parquet message.
+ * Converts data content of root message from Protocol Buffer message to parquet message.
  * It delegates conversion of inner fields to ProtoMessageConverter class using inheritance.
  * Schema is converted in ProtoSchemaConverter class.
  *
  * @author Lukas Nalezenec
  */
-class ProtobufferRecordConverter<T extends MessageOrBuilder> extends parquet.proto.converters.ProtoMessageConverter {
+class ProtoRecordConverter<T extends MessageOrBuilder> extends parquet.proto.converters.ProtoMessageConverter {
 
   final Message.Builder reusedBuilder;
   boolean buildBefore;
@@ -44,7 +44,7 @@ class ProtobufferRecordConverter<T extends MessageOrBuilder> extends parquet.pro
   }
 
 
-  public ProtobufferRecordConverter(Class<? extends Message> protoclass, MessageType parquetSchema) {
+  public ProtoRecordConverter(Class<? extends Message> protoclass, MessageType parquetSchema) {
     super(new SkipParentValueContainer(), protoclass, parquetSchema);
     reusedBuilder = getBuilder();
   }

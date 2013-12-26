@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Twitter, Inc.
+ * Copyright 2013 Lukas Nalezenec
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,10 +23,10 @@ import parquet.schema.MessageType;
 
 class ProtoRecordMaterializer<T extends MessageOrBuilder> extends RecordMaterializer<T> {
 
-  private final ProtobufferRecordConverter<T> root;
+  private final ProtoRecordConverter<T> root;
 
   public ProtoRecordMaterializer(MessageType requestedSchema, Class<? extends Message> protobufClass) {
-    this.root = new ProtobufferRecordConverter<T>(protobufClass, requestedSchema);
+    this.root = new ProtoRecordConverter<T>(protobufClass, requestedSchema);
   }
 
   @Override

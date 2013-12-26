@@ -18,16 +18,15 @@ package parquet.proto;
 
 import com.google.protobuf.ByteString;
 import org.junit.Test;
-import parquet.protobuf.test.TestProtobuf;
+import parquet.proto.test.TestProtobuf;
 
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 import static parquet.proto.TestUtils.testData;
-import static parquet.protobuf.test.TestProtobuf.SchemaConverterAllDatatypes;
+import static parquet.proto.test.TestProtobuf.SchemaConverterAllDatatypes;
 
-public class ProtobufferRecordConverterTest {
+public class ProtoRecordConverterTest {
 
   @Test
   public void testAllTypes() throws Exception {

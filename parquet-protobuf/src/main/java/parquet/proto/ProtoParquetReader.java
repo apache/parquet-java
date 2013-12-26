@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Twitter, Inc.
+ * Copyright 2013 Lukas Nalezenec
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import parquet.hadoop.api.ReadSupport;
 import java.io.IOException;
 
 /**
- * Read Avro records from a Parquet file.
+ * Read Protobuf records from a Parquet file.
  */
 public class ProtoParquetReader<T extends MessageOrBuilder> extends ParquetReader<T> {
 

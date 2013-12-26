@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Twitter, Inc.
+ * Copyright 2013 Lukas Nalezenec
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import parquet.hadoop.metadata.CompressionCodecName;
 import java.io.IOException;
 
 /**
- * Write Protobuffer records to a Parquet file.
+ * Write Protobuf records to a Parquet file.
  */
 public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWriter<T> {
 

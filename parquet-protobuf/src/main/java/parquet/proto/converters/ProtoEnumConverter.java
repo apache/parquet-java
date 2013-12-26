@@ -58,7 +58,7 @@ public final class ProtoEnumConverter extends PrimitiveConverter {
     if (protoValue == null) {
       Set<Binary> knownValues = enumLookup.keySet();
       String msg = "Illegal enum value \"" + binaryValue + "\""
-         + " in protoBuffer \"" + fieldType.getFullName() + "\""
+         + " in protocol buffer \"" + fieldType.getFullName() + "\""
          + " legal values are: \"" + knownValues + "\"";
       throw new RuntimeException(msg);
     }

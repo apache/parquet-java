@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Twitter, Inc.
+ * Copyright 2013 Lukas Nalezenec
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
 /**
  * <p/>
- * Converts a Protobuffer Descriptor into a Parquet schema.
+ * Converts a Protocol Buffer Descriptor into a Parquet schema.
  *
  * @author Lukas Nalezenec
  */
@@ -49,7 +49,7 @@ public class ProtoSchemaConverter {
   private static final Log LOG = Log.getLog(ProtoSchemaConverter.class);
 
   public MessageType convert(Class<? extends Message> protobufClass) {
-    LOG.debug("Converting protobuffer class \"" + protobufClass + "\" to parquet schema.");
+    LOG.debug("Converting protocol buffer class \"" + protobufClass + "\" to parquet schema.");
     Descriptors.Descriptor descriptor = Protobufs.getMessageDescriptor(protobufClass);
 
     MessageType messageType = new MessageType(descriptor.getFullName(), convertFields(descriptor.getFields()));
@@ -117,7 +117,7 @@ public class ProtoSchemaConverter {
       return primitive(fieldName, BINARY, repetition, ENUM);
     }
 
-    throw new UnsupportedOperationException("Cannot convert Protobuffer: unknown type " + javaType + " fieldName " + fieldName);
+    throw new UnsupportedOperationException("Cannot convert Protobuf: unknown type " + javaType + " fieldName " + fieldName);
   }
 
   /**

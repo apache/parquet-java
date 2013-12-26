@@ -22,7 +22,7 @@ import org.junit.Test;
 import parquet.Log;
 import parquet.proto.utils.ReadUsingMR;
 import parquet.proto.utils.WriteUsingMR;
-import parquet.protobuf.test.TestProtobuf;
+import parquet.proto.test.TestProtobuf;
 
 import java.util.List;
 
@@ -35,7 +35,7 @@ public class ProtoInputOutputFormatTest {
   private static final Log LOG = Log.getLog(ProtoInputOutputFormatTest.class);
 
   /**
-   * Writes protobuffer using first MR job, reads written file using
+   * Writes Protocol Buffer using first MR job, reads written file using
    * second job and compares input and output.
    */
   @Test

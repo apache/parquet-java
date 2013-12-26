@@ -52,15 +52,15 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   @Override
   public WriteContext init(Configuration configuration) {
 
-    // if no protobuffer descriptor was given in constructor, load descriptor from configuration (set with setProtobufferClass)
+    // if no protobuf descriptor was given in constructor, load descriptor from configuration (set with setProtobufClass)
     if (protoMessage == null) {
       Class<? extends Message> pbClass = configuration.getClass(PB_CLASS_WRITE, null, Message.class);
       if (pbClass != null) {
         protoMessage = pbClass;
         rootSchema = new ProtoSchemaConverter().convert(pbClass);
       } else {
-        String msg = "Protobuffer class not specified.";
-        String hint = " Please use method ProtoParquetOutputFormat.setProtobufferClass(...) or other similar method.";
+        String msg = "Protocol buffer class not specified.";
+        String hint = " Please use method ProtoParquetOutputFormat.setProtobufClass(...) or other similar method.";
         throw new RuntimeException(msg + hint);
       }
     }

@@ -18,7 +18,7 @@ package parquet.proto;
 
 import com.google.protobuf.Message;
 import org.junit.Test;
-import parquet.protobuf.test.TestProtobuf;
+import parquet.proto.test.TestProtobuf;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 
@@ -39,7 +39,7 @@ public class ProtoSchemaConverterTest {
 
 
   /**
-   * Tests that all protobuffer datatypes are converted to correct parquet datatypes.
+   * Tests that all protocol buffer datatypes are converted to correct parquet datatypes.
    */
   @Test
   public void testConvertAllDatatypes() throws Exception {
