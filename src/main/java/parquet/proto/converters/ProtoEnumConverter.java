@@ -52,12 +52,12 @@ public final class ProtoEnumConverter extends PrimitiveConverter {
   }
 
   @Override
-  final public void addBinary(Binary value) {
-    Descriptors.EnumValueDescriptor protoValue = enumLookup.get(value);
+  final public void addBinary(Binary binaryValue) {
+    Descriptors.EnumValueDescriptor protoValue = enumLookup.get(binaryValue);
 
     if (protoValue == null) {
       Set<Binary> knownValues = enumLookup.keySet();
-      String msg = "Illegal enum value \"" + value + "\""
+      String msg = "Illegal enum value \"" + binaryValue + "\""
          + " in protoBuffer \"" + fieldType.getFullName() + "\""
          + " legal values are: \"" + knownValues + "\"";
       throw new RuntimeException(msg);

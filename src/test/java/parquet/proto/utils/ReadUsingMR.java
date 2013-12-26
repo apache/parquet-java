@@ -53,11 +53,10 @@ public class ReadUsingMR {
 
   public List<Message> read(Path parquetPath) throws Exception {
 
-    synchronized (WriteUsingMR.class) {
+    synchronized (ReadUsingMR.class) {
       outputMessages = new ArrayList<Message>();
 
       if (conf == null) conf = new Configuration();
-
 
       final Job job = new Job(conf, "read");
       job.setInputFormatClass(ProtoParquetInputFormat.class);

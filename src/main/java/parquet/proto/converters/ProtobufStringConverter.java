@@ -29,8 +29,9 @@ public final class ProtobufStringConverter extends PrimitiveConverter {
 
 
   @Override
-  public void addBinary(Binary value) {
-    parent.add(value.toStringUsingUTF8());
+  public void addBinary(Binary binary) {
+    String str = binary.toStringUsingUTF8();
+    parent.add(str);
   }
 
 }

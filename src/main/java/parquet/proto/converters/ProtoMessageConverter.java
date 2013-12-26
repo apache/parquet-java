@@ -38,10 +38,8 @@ public class ProtoMessageConverter extends GroupConverter {
     this(pvc, Protobufs.getMessageBuilder(protoClass), parquetSchema);
   }
 
-  /**
-   * For usage in MSG arrays
-   * buidler je tam protoze predtim tam byl descriptor ale nejde jednoduse vytvorit builder z descriptoru
-   */
+
+  // For usage in message arrays
   public ProtoMessageConverter(ParentValueContainer pvc, Message.Builder builder, GroupType parquetSchema) {
 
     int schemaSize = parquetSchema.getFieldCount();
@@ -58,7 +56,7 @@ public class ProtoMessageConverter extends GroupConverter {
 
     Descriptors.Descriptor protoDescriptor = builder.getDescriptorForType();
 
-    for (Type parquetField : parquetSchema.getFields()) { // ziskavat jeden field bych IMHO mel o uroven vis
+    for (Type parquetField : parquetSchema.getFields()) {
       Descriptors.FieldDescriptor protoField = protoDescriptor.findFieldByName(parquetField.getName());
 
       if (parquetField.isRepetition(Type.Repetition.REPEATED)) {
@@ -134,7 +132,7 @@ public class ProtoMessageConverter extends GroupConverter {
   }
 
 
-  private static Converter newScalarConverter(ParentValueContainer pvc, Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
+  private Converter newScalarConverter(ParentValueContainer pvc, Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
 
     Descriptors.FieldDescriptor.JavaType javaType = fieldDescriptor.getJavaType();
 
