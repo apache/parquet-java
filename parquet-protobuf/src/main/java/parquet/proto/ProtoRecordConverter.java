@@ -30,8 +30,8 @@ import parquet.schema.MessageType;
  */
 class ProtoRecordConverter<T extends MessageOrBuilder> extends parquet.proto.converters.ProtoMessageConverter {
 
-  final Message.Builder reusedBuilder;
-  boolean buildBefore;
+  private final Message.Builder reusedBuilder;
+  private boolean buildBefore;
 
   /**
    * We dont need to write message value at top level.
@@ -69,4 +69,10 @@ class ProtoRecordConverter<T extends MessageOrBuilder> extends parquet.proto.con
     }
   }
 
+  /***
+   * if buildBefore is true, Protocol Buffer builder is build to message before returning record.
+   */
+  public void setBuildBefore(boolean buildBefore) {
+    this.buildBefore = buildBefore;
+  }
 }

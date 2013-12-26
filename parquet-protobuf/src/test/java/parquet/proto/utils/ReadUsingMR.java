@@ -38,10 +38,15 @@ public class ReadUsingMR {
 
   private static List<Message> outputMessages;
 
-  Configuration conf;
+  Configuration conf = new Configuration();
+  private String projection;
 
-  public void setConfiguration(Configuration conf) {
-    this.conf = conf;
+  public void setRequestedProjection(String projection) {
+    this.projection = projection;
+  }
+
+  public Configuration getConfiguration() {
+    return conf;
   }
 
   public static class ReadingMapper extends Mapper<Void, MessageOrBuilder, LongWritable, Message> {
@@ -56,11 +61,12 @@ public class ReadUsingMR {
     synchronized (ReadUsingMR.class) {
       outputMessages = new ArrayList<Message>();
 
-      if (conf == null) conf = new Configuration();
-
       final Job job = new Job(conf, "read");
       job.setInputFormatClass(ProtoParquetInputFormat.class);
       ProtoParquetInputFormat.setInputPaths(job, parquetPath);
+      if (projection != null) {
+        ProtoParquetInputFormat.setRequestedProjection(job, projection);
+      }
 
       job.setMapperClass(ReadingMapper.class);
       job.setNumReduceTasks(0);

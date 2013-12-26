@@ -41,12 +41,12 @@ import static java.lang.Thread.sleep;
 public class WriteUsingMR {
 
   private static final Log LOG = Log.getLog(WriteUsingMR.class);
-  Configuration conf;
+  Configuration conf = new Configuration();
   private static List<Message> inputMessages;
   Path outputPath;
 
-  public void setConfiguration(Configuration conf) {
-    this.conf = conf;
+  public Configuration getConfiguration() {
+    return conf;
   }
 
   public static class WritingMapper extends Mapper<LongWritable, Text, Void, Message> {
@@ -68,7 +68,7 @@ public class WriteUsingMR {
     synchronized (WriteUsingMR.class) {
 
       outputPath = TestUtils.someTemporaryFilePath();
-      if (conf == null) conf = new Configuration();
+
       final Path inputPath = new Path("src/test/java/parquet/proto/ProtoInputOutputFormatTest.java");
 
       inputMessages = Collections.unmodifiableList(Arrays.asList(messages));

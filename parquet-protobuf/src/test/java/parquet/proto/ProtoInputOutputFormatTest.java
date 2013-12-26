@@ -81,11 +81,8 @@ public class ProtoInputOutputFormatTest {
     //lets prepare reading with schema
     ReadUsingMR reader = new ReadUsingMR();
 
-    Configuration conf = new Configuration();
-    reader.setConfiguration(conf);
     String projection = "message Document {required int64 DocId; }";
-    ProtoParquetInputFormat.setRequestedProjection(conf, projection);
-
+    reader.setRequestedProjection(projection);
     List<Message> output = reader.read(outputPath);
     TestProtobuf.Document readDocument = (TestProtobuf.Document) output.get(0);
 

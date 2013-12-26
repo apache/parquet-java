@@ -16,8 +16,9 @@
 package parquet.proto;
 
 import com.google.protobuf.MessageOrBuilder;
-import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.mapreduce.Job;
 import parquet.hadoop.ParquetInputFormat;
+import parquet.hadoop.util.ContextUtil;
 
 /**
  * A Hadoop {@link org.apache.hadoop.mapreduce.InputFormat} for Parquet files.
@@ -27,8 +28,8 @@ public class ProtoParquetInputFormat<T extends MessageOrBuilder> extends Parquet
     super(ProtoReadSupport.class);
   }
 
-  public static void setRequestedProjection(Configuration configuration, String requestedProjection) {
-    ProtoReadSupport.setRequestedProjection(configuration, requestedProjection);
+  public static void setRequestedProjection(Job job, String requestedProjection) {
+    ProtoReadSupport.setRequestedProjection(ContextUtil.getConfiguration(job), requestedProjection);
   }
 
 }
