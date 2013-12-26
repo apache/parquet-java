@@ -15,6 +15,7 @@
  */
 package parquet.proto;
 
+import com.google.protobuf.ByteString;
 import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
@@ -28,7 +29,6 @@ import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
 
-import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -97,13 +97,13 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     recordConsumer.endMessage();
   }
 
-  private void writeMessage(GroupType schema, T message) {
+  private void writeMessage(GroupType schema, MessageOrBuilder message) {
     recordConsumer.startGroup();
     writeRecordFields(schema, message);
     recordConsumer.endGroup();
   }
 
-  private void writeRecordFields(GroupType parquetSchema, T record) {
+  private void writeRecordFields(GroupType parquetSchema, MessageOrBuilder record) {
     List<Type> fields = parquetSchema.getFields();
 
     Map<Descriptors.FieldDescriptor, Object> pbFields = record.getAllFields();
@@ -168,11 +168,15 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.DOUBLE)) {
       recordConsumer.addDouble(((Number) value).doubleValue());
     } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.BYTE_STRING)) {
-      recordConsumer.addBinary(Binary.fromByteBuffer((ByteBuffer) value));
+      ByteString byteString = (ByteString) value;
+      Binary binary = Binary.fromByteArray(byteString.toByteArray());
+      recordConsumer.addBinary(binary);
     } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.STRING)) {
-      recordConsumer.addBinary(stringToBinary(value));
+      Binary binary = stringToBinary(value);
+      recordConsumer.addBinary(binary);
     } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.MESSAGE)) {
-      writeMessage(type.asGroupType(), (T) value);
+      MessageOrBuilder msg = (MessageOrBuilder) value;
+      writeMessage(type.asGroupType(), msg);
     } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.ENUM)) {
       Descriptors.EnumValueDescriptor enumDescriptor = (Descriptors.EnumValueDescriptor) value;
       recordConsumer.addBinary(Binary.fromString(enumDescriptor.getName()));

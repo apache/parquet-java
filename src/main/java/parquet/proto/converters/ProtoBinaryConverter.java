@@ -16,6 +16,7 @@
 
 package parquet.proto.converters;
 
+import com.google.protobuf.ByteString;
 import parquet.io.api.Binary;
 import parquet.io.api.PrimitiveConverter;
 
@@ -28,7 +29,8 @@ public final class ProtoBinaryConverter extends PrimitiveConverter {
   }
 
   @Override
-  public void addBinary(Binary value) {
-    parent.add(value);
+  public void addBinary(Binary binary) {
+    ByteString byteString = ByteString.copyFrom(binary.toByteBuffer());
+    parent.add(byteString);
   }
 }
