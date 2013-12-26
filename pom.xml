@@ -96,6 +96,7 @@
     <module>parquet-hadoop</module>
     <module>parquet-pig</module>
     <module>parquet-pig-bundle</module>
+    <module>parquet-protobuf</module>
     <module>parquet-scrooge</module>
     <module>parquet-thrift</module>
     <module>parquet-test-hadoop2</module>
