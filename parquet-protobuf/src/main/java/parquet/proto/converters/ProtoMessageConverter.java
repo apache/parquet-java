@@ -93,8 +93,7 @@ public class ProtoMessageConverter extends GroupConverter {
   @Override
   public void end() {
       parent.add(myBuilder.build());
-      //todo myBuilder.clear();
-      // TODO should be overriden in MessageRecordConverter
+      myBuilder.clear();
   }
 
   private Converter newMessageConverter(final Message.Builder parentBuilder, final Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {

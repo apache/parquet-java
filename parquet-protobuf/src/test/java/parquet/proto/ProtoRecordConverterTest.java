@@ -23,6 +23,7 @@ import parquet.proto.test.TestProtobuf;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static parquet.proto.TestUtils.testData;
 import static parquet.proto.test.TestProtobuf.SchemaConverterAllDatatypes;
 
@@ -129,5 +130,31 @@ public class ProtoRecordConverterTest {
     assertEquals("", message.getOptionalString());
     assertEquals(false, message.getOptionalBool());
     assertEquals(0, message.getOptionalFixed32());
+  }
+
+  @Test
+  public void testRepeatedMessages() throws Exception {
+    TestProtobuf.TopMessage.Builder top = TestProtobuf.TopMessage.newBuilder();
+    top.addInnerBuilder().setOne("First inner");
+    top.addInnerBuilder().setTwo("Second inner");
+    top.addInnerBuilder().setThree("Third inner");
+
+    TestProtobuf.TopMessage result = testData(top.build()).get(0);
+
+    TestProtobuf.InnerMessage first = result.getInner(0);
+    TestProtobuf.InnerMessage second = result.getInner(1);
+    TestProtobuf.InnerMessage third = result.getInner(2);
+
+    assertEquals("First inner", first.getOne());
+    assertFalse(first.hasTwo());
+    assertFalse(first.hasThree());
+
+    assertEquals("Second inner", second.getTwo());
+    assertFalse(second.hasOne());
+    assertFalse(second.hasThree());
+
+    assertEquals("Third inner", third.getThree());
+    assertFalse(third.hasOne());
+    assertFalse(third.hasTwo());
   }
 }

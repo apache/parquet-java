@@ -2,7 +2,7 @@ package TestProtobuf;
 
 option java_package = "parquet.proto.test";
 
-// original dremel paper structures: Original paper used groups, not internal
+// original Dremel paper structures: Original paper used groups, not internal
 // messages but groups were depricated.
 
 message Document {
@@ -58,11 +58,6 @@ message Links {
     optional TestEnum optionalEnum = 18;
  }
 
-message RequiredWithDefaultMessage{
-    // tohe je asi spatne, required nemuzou mit defaulty
-    required int32 optionalWD = 18 [default = 10];
-    }
-
  message SchemaConverterRepetition {
      optional int32 optionalPrimitive = 1;
      required int32 requiredPrimitive = 2;
@@ -89,6 +84,16 @@ message IOFormatMessage {
 
 //end protocol buffers for ProtoInputOutputFormatTest
 
+
+message InnerMessage {
+    optional string one = 1;
+    optional string two = 2;
+    optional string three = 3;
+}
+
+message TopMessage {
+    repeated InnerMessage inner = 1;
+}
 
 //please place your unit test Protocol Buffer definitions here.
 
