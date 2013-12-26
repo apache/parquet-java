@@ -47,7 +47,7 @@ message Links {
      optional bool optionalBool = 13;
      optional string optionalString = 14;
      optional bytes optionalBytes = 15;
-     optional SchemaConverterSimpleMessage optionalGroup = 16;
+     optional SchemaConverterSimpleMessage optionalMessage = 16;
      optional group PbGroup  = 17 {
        optional int32 groupInt = 2;
      }
@@ -57,6 +57,11 @@ message Links {
     }
     optional TestEnum optionalEnum = 18;
  }
+
+message RequiredWithDefaultMessage{
+    // tohe je asi spatne, required nemuzou mit defaulty
+    required int32 optionalWD = 18 [default = 10];
+    }
 
  message SchemaConverterRepetition {
      optional int32 optionalPrimitive = 1;

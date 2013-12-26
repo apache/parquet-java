@@ -60,7 +60,7 @@ public class ProtoSchemaConverterTest {
       "  optional boolean optionalBool;\n" +
       "  optional binary optionalString (UTF8);\n" +
       "  optional binary optionalBytes;\n" +
-      "  optional group optionalGroup {\n" +
+      "  optional group optionalMessage {\n" +
       "    optional int32 someId;\n" +
       "  }\n" +
       "  optional group pbgroup {\n" +

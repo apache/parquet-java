@@ -59,15 +59,17 @@ public class TestUtils {
   /**
    * Writes messages to file, reads messages from file and checks if everything is OK.
    */
-  public static void testData(MessageOrBuilder... messages) throws IOException {
+  public static <T extends  MessageOrBuilder> List<T> testData(T... messages) throws IOException {
 
     checkSameBuilderInstance(messages);
 
     List<MessageOrBuilder> input = cloneList(messages);
 
-    List<MessageOrBuilder> output = writeAndRead(messages);
+    List<MessageOrBuilder> output = (List<MessageOrBuilder>) writeAndRead(messages);
 
-    assertEquals("The protobuffers are not same:\n", asMessages(input), asMessages(output));
+    List<Message> outputAsMessages = asMessages(output);
+    assertEquals("The protobuffers are not same:\n", asMessages(input), outputAsMessages);
+    return (List<T>) outputAsMessages;
   }
 
   private static List<MessageOrBuilder> cloneList(MessageOrBuilder[] messages) {
