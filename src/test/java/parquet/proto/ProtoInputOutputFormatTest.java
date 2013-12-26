@@ -16,37 +16,23 @@
 package parquet.proto;
 
 import com.google.protobuf.Message;
-import com.google.protobuf.MessageOrBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
-import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
-import org.junit.After;
 import org.junit.Test;
 import parquet.Log;
+import parquet.proto.utils.ReadUsingMR;
+import parquet.proto.utils.WriteUsingMR;
 import parquet.protobuf.test.TestProtobuf;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 
 public class ProtoInputOutputFormatTest {
 
-
   private static final Log LOG = Log.getLog(ProtoInputOutputFormatTest.class);
-
-  private static List<Message> inputMessages;
-  private static List<Message> outputMessages;
-
 
   /**
    * Writes protobuffer using first MR job, reads written file using
@@ -78,96 +64,39 @@ public class ProtoInputOutputFormatTest {
 
   }
 
-  public static class WritingMapper extends Mapper<LongWritable, Text, Void, Message> {
 
-    public void run(Context context) throws IOException, InterruptedException {
-      if (inputMessages == null || inputMessages.size() == 0) {
-        throw new RuntimeException("No mock data given");
-      } else {
-        for (Message msg : inputMessages) {
-          context.write(null, msg);
-          LOG.debug("Reading msg from mock writing mapper" + msg);
-        }
-      }
-    }
-  }
+  @Test
+  public void testProjection() throws Exception {
 
-  public static class ReadingMapper extends Mapper<Void, MessageOrBuilder, LongWritable, Message> {
-    protected void map(Void key, MessageOrBuilder value, Context context) throws IOException, InterruptedException {
-      Message clone = ((Message.Builder) value).build();
-      outputMessages.add(clone);
-    }
+    TestProtobuf.Document.Builder writtenDocument = TestProtobuf.Document.newBuilder();
+    writtenDocument.setDocId(12345);
+    writtenDocument.addNameBuilder().setUrl("http://goout.cz/");
+
+    Path outputPath = new WriteUsingMR().write(TestProtobuf.Document.class, writtenDocument.build());
+
+    //lets prepare reading with schema
+    ReadUsingMR reader = new ReadUsingMR();
+
+    Configuration conf = new Configuration();
+    reader.setConfiguration(conf);
+    String projection = "message Document {required int64 DocId; }";
+    ProtoParquetInputFormat.setRequestedProjection(conf, projection);
+
+    List<Message> output = reader.read(outputPath);
+    TestProtobuf.Document readDocument = (TestProtobuf.Document) output.get(0);
+
+
+    //test that only requested fields were deserialized
+    assertTrue(readDocument.hasDocId());
+    assertTrue("Found data outside projection.", readDocument.getNameCount() == 0);
   }
 
   /**
    * Runs job that writes input to file and then job reading data back.
    */
-  public static synchronized List<Message> runMRJobs(Class<? extends Message> pbClass, Message... messages) throws Exception {
-    final Configuration conf = new Configuration();
-    final Path inputPath = new Path("src/test/java/parquet/proto/ProtoInputOutputFormatTest.java");
-    final Path parquetPath = TestUtils.someTemporaryFilePath();
-
-    inputMessages = new ArrayList<Message>();
-
-    for (Message m : messages) {
-      inputMessages.add(m);
-    }
-
-    inputMessages = Collections.unmodifiableList(inputMessages);
-
-    {
-      final Job job = new Job(conf, "write");
-
-      // input not really used
-      TextInputFormat.addInputPath(job, inputPath);
-      job.setInputFormatClass(TextInputFormat.class);
-
-      job.setMapperClass(WritingMapper.class);
-      job.setNumReduceTasks(0);
-
-      job.setOutputFormatClass(ProtoParquetOutputFormat.class);
-      ProtoParquetOutputFormat.setOutputPath(job, parquetPath);
-      ProtoParquetOutputFormat.setProtobufferClass(job, pbClass);
-
-      waitForJob(job);
-    }
-    inputMessages = null;
-    outputMessages = new ArrayList<Message>();
-    {
-      final Job job = new Job(conf, "read");
-      job.setInputFormatClass(ProtoParquetInputFormat.class);
-      ProtoParquetInputFormat.setInputPaths(job, parquetPath);
-
-      job.setMapperClass(ReadingMapper.class);
-      job.setNumReduceTasks(0);
-
-      job.setOutputFormatClass(NullOutputFormat.class);
-
-      waitForJob(job);
-    }
-
-    List<Message> result = Collections.unmodifiableList(outputMessages);
-    outputMessages = null;
+  public static List<Message> runMRJobs(Class<? extends Message> pbClass, Message... messages) throws Exception {
+    Path outputPath = new WriteUsingMR().write(pbClass, messages);
+    List<Message> result = new ReadUsingMR().read(outputPath);
     return result;
-  }
-
-
-  @After
-  public void tearDown() throws Exception {
-    inputMessages = null;
-    outputMessages = null;
-  }
-
-
-  private static void waitForJob(Job job) throws Exception {
-    job.submit();
-    while (!job.isComplete()) {
-      LOG.debug("waiting for job " + job.getJobName());
-      sleep(100);
-    }
-    LOG.info("status for job " + job.getJobName() + ": " + (job.isSuccessful() ? "SUCCESS" : "FAILURE"));
-    if (!job.isSuccessful()) {
-      throw new RuntimeException("job failed " + job.getJobName());
-    }
   }
 }
