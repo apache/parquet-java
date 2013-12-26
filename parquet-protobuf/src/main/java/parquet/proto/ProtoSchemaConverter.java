@@ -54,7 +54,7 @@ public class ProtoSchemaConverter {
 
     MessageType messageType = new MessageType(descriptor.getFullName(), convertFields(descriptor.getFields()));
 
-    LOG.debug("Convertor info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
+    LOG.debug("Converter info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
     return messageType;
   }
 
@@ -117,7 +117,7 @@ public class ProtoSchemaConverter {
       return primitive(fieldName, BINARY, repetition, ENUM);
     }
 
-    throw new UnsupportedOperationException("Cannot convert Protobuf: unknown type " + javaType + " fieldName " + fieldName);
+    throw new UnsupportedOperationException("Cannot convert Protocol Buffer: unknown type " + javaType + " fieldName " + fieldName);
   }
 
   /**

@@ -19,11 +19,11 @@ package parquet.proto.converters;
 import parquet.io.api.Binary;
 import parquet.io.api.PrimitiveConverter;
 
-public final class ProtobufStringConverter extends PrimitiveConverter {
+public final class ProtoStringConverter extends PrimitiveConverter {
 
   final ParentValueContainer parent;
 
-  public ProtobufStringConverter(ParentValueContainer parent) {
+  public ProtoStringConverter(ParentValueContainer parent) {
     this.parent = parent;
   }
 

@@ -18,6 +18,7 @@ package parquet.proto;
 import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
+import parquet.Log;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.io.api.RecordMaterializer;
@@ -31,6 +32,8 @@ import java.util.Map;
  */
 public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
+  private static final Log LOG = Log.getLog(ProtoReadSupport.class);
+
   public static final String PB_REQUESTED_PROJECTION = "parquet.proto.projection";
 
   public static final String PB_CLASS = "parquet.proto.class";
@@ -43,11 +46,15 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
   @Override
   public ReadContext init(InitContext context) {
     String requestedProjectionString = context.getConfiguration().get(PB_REQUESTED_PROJECTION);
+
     if (requestedProjectionString != null && !requestedProjectionString.trim().isEmpty()) {
       MessageType requestedProjection = getSchemaForRead(context.getFileSchema(), requestedProjectionString);
+      LOG.debug("Reading data with projection " + requestedProjection);
       return new ReadContext(requestedProjection);
     } else {
-      return new ReadContext(context.getFileSchema());
+      MessageType fileSchema = context.getFileSchema();
+      LOG.debug("Reading data with schema " + fileSchema);
+      return new ReadContext(fileSchema);
     }
   }
 
@@ -56,10 +63,14 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
     String strProtoClass = keyValueMetaData.get(PB_CLASS);
 
     if (strProtoClass == null) {
-      throw new RuntimeException("I Need parameter " + PB_CLASS + " with protobufer class");
+      throw new RuntimeException("I Need parameter " + PB_CLASS + " with Protocol Buffer class");
     }
 
-    return new ProtoRecordMaterializer(readContext.getRequestedSchema(), Protobufs.getProtobufClass(strProtoClass));
+    LOG.debug("Reading data with Protocol Buffer class" + strProtoClass);
+
+    MessageType requestedSchema = readContext.getRequestedSchema();
+    Class<? extends Message> protobufClass = Protobufs.getProtobufClass(strProtoClass);
+    return new ProtoRecordMaterializer(requestedSchema, protobufClass);
   }
 
 

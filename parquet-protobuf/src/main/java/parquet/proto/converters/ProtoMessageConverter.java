@@ -61,9 +61,10 @@ public class ProtoMessageConverter extends GroupConverter {
 
       if (parquetField.isRepetition(Type.Repetition.REPEATED)) {
         GroupType groupType = parquetField.asGroupType();
-        if (groupType.getFieldCount() != 1) throw new RuntimeException("One field expected but found " + groupType);
+        if (groupType.getFieldCount() != 1) {
+          throw new RuntimeException("One field expected but found " + groupType);
+        }
 
-        // TODO find this hack in avro and Thrift
         parquetField = groupType.getType(0);
         protoField = protoDescriptor.findFieldByName(parquetField.getName());
       }
@@ -155,7 +156,7 @@ public class ProtoMessageConverter extends GroupConverter {
       return new ProtoMessageConverter(pvc, subBuilder, parquetSubType);
     } else {
       if (javaType.equals(Descriptors.FieldDescriptor.JavaType.STRING)) {
-        return new ProtobufStringConverter(pvc);
+        return new ProtoStringConverter(pvc);
       } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.FLOAT)) {
         return new ProtoFloatConverter(pvc);
       } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.DOUBLE)) {

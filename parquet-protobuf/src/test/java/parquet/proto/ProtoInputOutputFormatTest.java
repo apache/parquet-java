@@ -65,6 +65,10 @@ public class ProtoInputOutputFormatTest {
   }
 
 
+  /**
+   * Writes data to file then reads them again with projection.
+   * Only requested data should be read.
+   * */
   @Test
   public void testProjection() throws Exception {
 
