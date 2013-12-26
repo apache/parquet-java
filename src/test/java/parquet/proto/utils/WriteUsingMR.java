@@ -29,6 +29,7 @@ import parquet.proto.TestUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static java.lang.Thread.sleep;
@@ -40,54 +41,62 @@ public class WriteUsingMR {
 
   private static final Log LOG = Log.getLog(WriteUsingMR.class);
   Configuration conf;
-
+  private static List<Message> inputMessages;
   Path outputPath;
 
   public void setConfiguration(Configuration conf) {
     this.conf = conf;
   }
 
-  public Path write(Class<? extends Message> pbClass, Message... messages) throws Exception {
-    outputPath = TestUtils.someTemporaryFilePath();
-    if (conf == null) conf = new Configuration();
-    final Path inputPath = new Path("src/test/java/parquet/proto/ProtoInputOutputFormatTest.java");
+  public static class WritingMapper extends Mapper<LongWritable, Text, Void, Message> {
 
-    final List<Message> inputMessages = new ArrayList<Message>();
-
-    for (Message m : messages) {
-      inputMessages.add(m);
-    }
-
-    class WritingMapper extends Mapper<LongWritable, Text, Void, Message> {
-      public void run(Context context) throws IOException, InterruptedException {
-        if (inputMessages == null || inputMessages.size() == 0) {
-          throw new RuntimeException("No mock data given");
-        } else {
-          for (Message msg : inputMessages) {
-            context.write(null, msg);
-            LOG.debug("Reading msg from mock writing mapper" + msg);
-          }
+    public void run(Context context) throws IOException, InterruptedException {
+      if (inputMessages == null || inputMessages.size() == 0) {
+        throw new RuntimeException("No mock data given");
+      } else {
+        for (Message msg : inputMessages) {
+          context.write(null, msg);
+          LOG.debug("Reading msg from mock writing mapper" + msg);
         }
       }
     }
+  }
 
-    final Job job = new Job(conf, "write");
+  public Path write(Class<? extends Message> pbClass, Message... messages) throws Exception {
 
-    // input not really used
-    TextInputFormat.addInputPath(job, inputPath);
-    job.setInputFormatClass(TextInputFormat.class);
+    synchronized (WriteUsingMR.class) {
 
-    job.setMapperClass(WritingMapper.class);
-    job.setNumReduceTasks(0);
+      outputPath = TestUtils.someTemporaryFilePath();
+      if (conf == null) conf = new Configuration();
+      final Path inputPath = new Path("src/test/java/parquet/proto/ProtoInputOutputFormatTest.java");
 
-    job.setOutputFormatClass(ProtoParquetOutputFormat.class);
-    ProtoParquetOutputFormat.setOutputPath(job, outputPath);
-    ProtoParquetOutputFormat.setProtobufferClass(job, pbClass);
+      inputMessages = new ArrayList<Message>();
 
-    waitForJob(job);
+      for (Message m : messages) {
+        inputMessages.add(m);
+      }
 
-    return outputPath;
+      inputMessages = Collections.unmodifiableList(inputMessages);
 
+
+      final Job job = new Job(conf, "write");
+
+      // input not really used
+      TextInputFormat.addInputPath(job, inputPath);
+      job.setInputFormatClass(TextInputFormat.class);
+
+      job.setMapperClass(WritingMapper.class);
+      job.setNumReduceTasks(0);
+
+      job.setOutputFormatClass(ProtoParquetOutputFormat.class);
+      ProtoParquetOutputFormat.setOutputPath(job, outputPath);
+      ProtoParquetOutputFormat.setProtobufferClass(job, pbClass);
+
+      waitForJob(job);
+
+      inputMessages = null;
+      return outputPath;
+    }
   }
 
   static void waitForJob(Job job) throws Exception {

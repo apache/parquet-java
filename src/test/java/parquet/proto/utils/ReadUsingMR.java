@@ -36,39 +36,44 @@ import java.util.List;
  */
 public class ReadUsingMR {
 
+  private static List<Message> outputMessages;
+
   Configuration conf;
 
   public void setConfiguration(Configuration conf) {
     this.conf = conf;
   }
 
-  public List<Message> read(Path parquetPath) throws Exception {
-
-    final List<Message> outputMessages = new ArrayList<Message>();
-
-    if (conf == null) conf = new Configuration();
-
-    final Job job = new Job(conf, "read");
-    job.setInputFormatClass(ProtoParquetInputFormat.class);
-    ProtoParquetInputFormat.setInputPaths(job, parquetPath);
-
-    class ReadingMapper extends Mapper<Void, MessageOrBuilder, LongWritable, Message> {
-      protected void map(Void key, MessageOrBuilder value, Context context) throws IOException, InterruptedException {
-        Message clone = ((Message.Builder) value).build();
-        outputMessages.add(clone);
-      }
+  public static class ReadingMapper extends Mapper<Void, MessageOrBuilder, LongWritable, Message> {
+    protected void map(Void key, MessageOrBuilder value, Context context) throws IOException, InterruptedException {
+      Message clone = ((Message.Builder) value).build();
+      outputMessages.add(clone);
     }
-
-    job.setMapperClass(ReadingMapper.class);
-    job.setNumReduceTasks(0);
-
-    job.setOutputFormatClass(NullOutputFormat.class);
-
-    WriteUsingMR.waitForJob(job);
-
-    List<Message> result = Collections.unmodifiableList(outputMessages);
-    return result;
   }
 
+  public List<Message> read(Path parquetPath) throws Exception {
+
+    synchronized (WriteUsingMR.class) {
+      outputMessages = new ArrayList<Message>();
+
+      if (conf == null) conf = new Configuration();
+
+
+      final Job job = new Job(conf, "read");
+      job.setInputFormatClass(ProtoParquetInputFormat.class);
+      ProtoParquetInputFormat.setInputPaths(job, parquetPath);
+
+      job.setMapperClass(ReadingMapper.class);
+      job.setNumReduceTasks(0);
+
+      job.setOutputFormatClass(NullOutputFormat.class);
+
+      WriteUsingMR.waitForJob(job);
+
+      List<Message> result = Collections.unmodifiableList(outputMessages);
+      outputMessages = null;
+      return result;
+    }
+  }
 
 }
