@@ -34,7 +34,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Class to convert a scrooge generated class to {@link ThriftType.StructType}. {@link parquet.hadoop.thrift.ThriftReadSupport } uses this
+ * Class to convert a scrooge generated class to {@link ThriftType.StructType}. {@link ScroogeReadSupport } uses this
  * class to get the requested schema
  *
  * @author Tianshuo Deng
@@ -194,7 +194,7 @@ public class ScroogeStructConverter {
   }
 
   /**
-   * generate artificial field, this kind of fields do not have a field ID.
+   * Generate artificial field, this kind of fields do not have a field ID.
    * To be consistent with the behavior in ElephantBird, here uses 1 as the field ID
    *
    * @param fieldName

@@ -114,6 +114,5 @@ public class ParquetScroogeSchemeTest {
     public ParquetScroogeInputFormat() {
       super(ScroogeReadSupport.class);
     }
-
   }
 }
