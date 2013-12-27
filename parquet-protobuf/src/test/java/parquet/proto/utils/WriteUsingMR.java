@@ -17,6 +17,7 @@ package parquet.proto.utils;
 
 import com.google.protobuf.Message;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
@@ -63,13 +64,15 @@ public class WriteUsingMR {
     }
   }
 
-  public Path write(Class<? extends Message> pbClass, Message... messages) throws Exception {
+  public Path write(Message... messages) throws Exception {
 
     synchronized (WriteUsingMR.class) {
 
       outputPath = TestUtils.someTemporaryFilePath();
 
-      final Path inputPath = new Path("src/test/java/parquet/proto/ProtoInputOutputFormatTest.java");
+      Path inputPath = TestUtils.someTemporaryFilePath();
+      FileSystem fileSystem = inputPath.getFileSystem(conf);
+      fileSystem.create(inputPath);
 
       inputMessages = Collections.unmodifiableList(Arrays.asList(messages));
 
@@ -84,7 +87,7 @@ public class WriteUsingMR {
 
       job.setOutputFormatClass(ProtoParquetOutputFormat.class);
       ProtoParquetOutputFormat.setOutputPath(job, outputPath);
-      ProtoParquetOutputFormat.setProtobufClass(job, pbClass);
+      ProtoParquetOutputFormat.setProtobufClass(job, TestUtils.inferRecordsClass(messages));
 
       waitForJob(job);
 

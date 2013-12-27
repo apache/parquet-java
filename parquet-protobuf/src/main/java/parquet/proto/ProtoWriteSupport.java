@@ -136,16 +136,13 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
   }
 
-  private <T> void writeArray(GroupType schema, Descriptors.FieldDescriptor fieldDescriptor,
-                              List<T> array) {
-    if (!schema.getName().equals(fieldDescriptor.getName())) throw new RuntimeException("Mismatch");//TODO remove me
-
+  private <T> void writeArray(GroupType schema, Descriptors.FieldDescriptor fieldDescriptor, List<T> array) {
     recordConsumer.startGroup();
     if (array.iterator().hasNext()) {
       String arrayType = schema.getName();
       recordConsumer.startField(arrayType, 0);
       for (T elt : array) {
-        writeScalarValue((schema.getType(0)), fieldDescriptor, elt); // patch
+        writeScalarValue((schema.getType(0)), fieldDescriptor, elt);
       }
       recordConsumer.endField(arrayType, 0);
     }
@@ -172,7 +169,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       Binary binary = Binary.fromByteArray(byteString.toByteArray());
       recordConsumer.addBinary(binary);
     } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.STRING)) {
-      Binary binary = stringToBinary(value);
+      Binary binary = Binary.fromString((String) value);
       recordConsumer.addBinary(binary);
     } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.MESSAGE)) {
       MessageOrBuilder msg = (MessageOrBuilder) value;
@@ -184,10 +181,6 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       String msg = "Cannot write " + value + " with descriptor " + fieldDescriptor + " and type " + javaType;
       throw new RuntimeException(msg);
     }
-  }
-
-  private Binary stringToBinary(Object value) {
-    return Binary.fromString(value.toString());
   }
 
 }

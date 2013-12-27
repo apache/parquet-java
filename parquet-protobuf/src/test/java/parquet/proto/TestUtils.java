@@ -34,7 +34,7 @@ public class TestUtils {
     return readMessages(file);
   }
 
-  private static Class<? extends Message> inferRecordsClass(MessageOrBuilder[] records) {
+  public static Class<? extends Message> inferRecordsClass(MessageOrBuilder[] records) {
     Class<? extends Message> cls = null;
 
     for (MessageOrBuilder record : records) {

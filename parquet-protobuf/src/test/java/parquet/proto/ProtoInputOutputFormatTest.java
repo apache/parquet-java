@@ -50,7 +50,7 @@ public class ProtoInputOutputFormatTest {
       input = msg.build();
     }
 
-    List<Message> result = runMRJobs(TestProtobuf.IOFormatMessage.class, input);
+    List<Message> result = runMRJobs(input);
 
     assertEquals(1, result.size());
     TestProtobuf.IOFormatMessage output = (TestProtobuf.IOFormatMessage) result.get(0);
@@ -76,7 +76,7 @@ public class ProtoInputOutputFormatTest {
     writtenDocument.setDocId(12345);
     writtenDocument.addNameBuilder().setUrl("http://goout.cz/");
 
-    Path outputPath = new WriteUsingMR().write(TestProtobuf.Document.class, writtenDocument.build());
+    Path outputPath = new WriteUsingMR().write(writtenDocument.build());
 
     //lets prepare reading with schema
     ReadUsingMR reader = new ReadUsingMR();
@@ -95,8 +95,8 @@ public class ProtoInputOutputFormatTest {
   /**
    * Runs job that writes input to file and then job reading data back.
    */
-  public static List<Message> runMRJobs(Class<? extends Message> pbClass, Message... messages) throws Exception {
-    Path outputPath = new WriteUsingMR().write(pbClass, messages);
+  public static List<Message> runMRJobs(Message... messages) throws Exception {
+    Path outputPath = new WriteUsingMR().write(messages);
     List<Message> result = new ReadUsingMR().read(outputPath);
     return result;
   }
