@@ -53,8 +53,7 @@ public class TestThriftSchemaConverter {
                     "  }\n" +
                     "}";
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
-    StructType messageStruct=schemaConverter.toStructType(AddressBook.class);
-    final MessageType converted = schemaConverter.convert(messageStruct);
+    final MessageType converted = schemaConverter.convert(AddressBook.class);
     assertEquals(MessageTypeParser.parseMessageType(expected), converted);
   }
 
@@ -215,7 +214,7 @@ public class TestThriftSchemaConverter {
 
 
   @Test
-  public void testToThriftTypeWithoutManualProjection() throws Exception {
+  public void testToThriftType() throws Exception {
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final StructType converted = schemaConverter.toStructType(AddressBook.class);
     final String json = converted.toJSON();
@@ -223,5 +222,4 @@ public class TestThriftSchemaConverter {
     final ThriftType fromJSON = StructType.fromJSON(json);
     assertEquals(json, fromJSON.toJSON());
   }
-
 }

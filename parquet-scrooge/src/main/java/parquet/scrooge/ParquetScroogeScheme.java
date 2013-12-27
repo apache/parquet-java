@@ -61,7 +61,7 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
   public void sourceConfInit(FlowProcess<JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
     jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
-    ParquetInputFormat.setReadSupportClass(jobConf, ThriftReadSupport.class);
+    ParquetInputFormat.setReadSupportClass(jobConf, ScroogeReadSupport.class);
     ThriftReadSupport.setRecordConverterClass(jobConf, ScroogeRecordConverter.class);
     ParquetThriftInputFormat.<T>setThriftClass(jobConf, klass);
   }

@@ -1,3 +1,18 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package parquet.scrooge;
 
 import com.twitter.scrooge.ThriftStructCodec;
@@ -19,32 +34,42 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Class to convert a scrooge generated class to MessageType. {@link parquet.hadoop.thrift.ThriftReadSupport } uses this
+ * Class to convert a scrooge generated class to {@link ThriftType.StructType}. {@link parquet.hadoop.thrift.ThriftReadSupport } uses this
  * class to get the requested schema
  *
  * @author Tianshuo Deng
  */
-public class ScroogeSchemaConverter {
+public class ScroogeStructConverter {
 
   /**
-   * convert a given scrooge generated class to {@link parquet.schema.MessageType}
+   * convert a given scrooge generated class to {@link ThriftType.StructType}
    *
    * @param scroogeClass
    * @return
    * @throws Exception
    */
-  public ThriftType.StructType convert(Class scroogeClass) throws Exception {
+  public ThriftType.StructType convert(Class scroogeClass)  {
     return convertStructFromClassName(scroogeClass.getName());
   }
 
-  private ThriftType.StructType convertStructFromClassName(String className) throws Exception {
+  private ThriftType.StructType convertStructFromClassName(String className) {
     //Struct metadata is stored in the companion class
-    Class<?> companionClass = Class.forName(className + "$");
+    Class<?> companionClass = null;
+    try {
+      companionClass = Class.forName(className + "$");
+    } catch (ClassNotFoundException e) {
+     throw new IllegalArgumentException("Can not find scrooge class", e);
+    }
     return convertCompanionClassToStruct(companionClass);
   }
 
-  private ThriftType.StructType convertCompanionClassToStruct(Class<?> companionClass) throws Exception {
-    ThriftStructCodec companionObject = (ThriftStructCodec<?>)companionClass.getField("MODULE$").get(null);
+  private ThriftType.StructType convertCompanionClassToStruct(Class<?> companionClass) {
+    ThriftStructCodec companionObject = null;
+    try {
+      companionObject = (ThriftStructCodec<?>)companionClass.getField("MODULE$").get(null);
+    } catch (Exception e) {
+      throw new RuntimeException("Can not load companion class from scrooge", e);
+    }
 
     List<ThriftField> children = new LinkedList<ThriftField>();//{@link ThriftType.StructType} uses foreach loop to iterate the children, yields O(n) time for linked list
     Iterable<ThriftStructField> scroogeFields = JavaConversions.asIterable(companionObject.metaData().fields());
@@ -68,7 +93,7 @@ public class ScroogeSchemaConverter {
    * @return
    * @throws Exception
    */
-  public ThriftField toThriftField(ThriftStructField scroogeField) throws Exception {
+  public ThriftField toThriftField(ThriftStructField scroogeField) {
     ThriftField.Requirement requirement = ThriftField.Requirement.REQUIRED;
     if (isOptional(scroogeField)) {
       requirement = ThriftField.Requirement.OPTIONAL;
@@ -140,7 +165,7 @@ public class ScroogeSchemaConverter {
     return types;
   }
 
-  private ThriftType convertSetTypeField(ThriftStructField f, ThriftField.Requirement requirement) throws Exception {
+  private ThriftType convertSetTypeField(ThriftStructField f, ThriftField.Requirement requirement) {
     List<Class> typeArguments = getTypeArguments(f);
     ThriftType elementType = convertClassToThriftType(typeArguments.get(0));
     //Set only has one sub-field as element field, therefore using hard-coded 1 as fieldId,
@@ -149,14 +174,14 @@ public class ScroogeSchemaConverter {
     return new ThriftType.SetType(elementField);
   }
 
-  private ThriftType convertListTypeField(ThriftStructField f, ThriftField.Requirement requirement) throws Exception {
+  private ThriftType convertListTypeField(ThriftStructField f, ThriftField.Requirement requirement) {
     List<Class> typeArguments = getTypeArguments(f);
     ThriftType elementType = convertClassToThriftType(typeArguments.get(0));
     ThriftField elementField = generateFieldWithoutId(f.name(), requirement, elementType);
     return new ThriftType.ListType(elementField);
   }
 
-  private ThriftType convertMapTypeField(ThriftStructField f, ThriftField.Requirement requirement) throws Exception {
+  private ThriftType convertMapTypeField(ThriftStructField f, ThriftField.Requirement requirement) {
     List<Class> typeArguments = getTypeArguments(f);
     Class keyClass = typeArguments.get(0);
     ThriftType keyType = convertClassToThriftType(keyClass);
@@ -189,7 +214,7 @@ public class ScroogeSchemaConverter {
    * @return
    * @throws Exception
    */
-  private ThriftType convertClassToThriftType(Class typeClass) throws Exception {
+  private ThriftType convertClassToThriftType(Class typeClass) {
     if (typeClass == boolean.class) {
       return new ThriftType.BoolType();
     } else if (typeClass == byte.class) {
@@ -209,7 +234,7 @@ public class ScroogeSchemaConverter {
     }
   }
 
-  private ThriftType convertStructTypeField(ThriftStructField f) throws Exception {
+  private ThriftType convertStructTypeField(ThriftStructField f) {
     Type structClassType = f.method().getReturnType();
     if (isOptional(f)) {
       structClassType = extractClassFromOption(f.method().getGenericReturnType());

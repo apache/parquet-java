@@ -1,0 +1,42 @@
+/**
+ * Copyright 2012 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package parquet.scrooge;
+
+import parquet.hadoop.thrift.ThriftReadSupport;
+import parquet.schema.MessageType;
+import parquet.thrift.ThriftSchemaConverter;
+import parquet.thrift.projection.FieldProjectionFilter;
+import parquet.thrift.struct.ThriftType;
+
+/**
+ * Read support for Scrooge
+ * @author Tianshuo Deng
+ */
+public class ScroogeReadSupport extends ThriftReadSupport{
+
+  /**
+   * used from hadoop
+   * the configuration must contain a "parquet.thrift.read.class" setting
+   */
+  public ScroogeReadSupport() {
+  }
+
+  @Override
+  protected MessageType getProjectedSchema(FieldProjectionFilter fieldProjectionFilter) {
+    ThriftType.StructType thriftStruct = new ScroogeStructConverter().convert(thriftClass);
+    return new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftStruct);
+  }
+}
