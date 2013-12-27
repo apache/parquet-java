@@ -17,6 +17,7 @@ package parquet.io.api;
 
 import static parquet.bytes.BytesUtils.UTF8;
 
+import java.io.DataOutput;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -78,6 +79,11 @@ abstract public class Binary {
         return ByteBuffer.wrap(value, offset, length);
       }
 
+      @Override
+      public void writeTo(DataOutput out) throws IOException {
+        out.write(value, offset, length);
+      }
+
     };
   }
 
@@ -122,6 +128,11 @@ abstract public class Binary {
       public ByteBuffer toByteBuffer() {
         return ByteBuffer.wrap(value);
       }
+
+      @Override
+      public void writeTo(DataOutput out) throws IOException {
+        out.write(value);
+      }
     };
   }
 
@@ -139,6 +150,7 @@ abstract public class Binary {
 
       @Override
       public void writeTo(OutputStream out) throws IOException {
+        // TODO: should not have to materialize those bytes
         out.write(getBytes());
       }
 
@@ -185,6 +197,12 @@ abstract public class Binary {
       public ByteBuffer toByteBuffer() {
         return value;
       }
+
+      @Override
+      public void writeTo(DataOutput out) throws IOException {
+        // TODO: should not have to materialize those bytes
+        out.write(getBytes());
+      }
     };
   }
 
@@ -223,9 +241,10 @@ abstract public class Binary {
    * @return
    */
   private static final boolean equals(byte[] array1, int offset1, int length1, byte[] array2, int offset2, int length2) {
-    if (array1 == array2) return true;
+    if (array1 == null && array2 == null) return true;
     if (array1 == null || array2 == null) return false;
     if (length1 != length2) return false;
+    if (array1 == array2 && offset1 == offset2) return true;
     for (int i = 0; i < length1; i++) {
       if (array1[i + offset1] != array2[i + offset2]) {
         return false;
@@ -239,6 +258,8 @@ abstract public class Binary {
   abstract public int length();
 
   abstract public void writeTo(OutputStream out) throws IOException;
+
+  abstract public void writeTo(DataOutput out) throws IOException;
 
   abstract public byte[] getBytes();
 

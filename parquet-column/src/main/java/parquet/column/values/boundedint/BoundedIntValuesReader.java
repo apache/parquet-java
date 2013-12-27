@@ -34,6 +34,7 @@ class BoundedIntValuesReader extends ValuesReader {
   private int currentValue = 0;
   private final int bitsPerValue;
   private BitReader bitReader = new BitReader();
+  private int nextOffset;
 
   public BoundedIntValuesReader(int bound) {
     if (bound == 0) {
@@ -66,7 +67,7 @@ class BoundedIntValuesReader extends ValuesReader {
   // bytes would have to be serialized). This is the flip-side
   // to BoundedIntColumnWriter.writeData(BytesOutput)
   @Override
-  public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
+  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
     if (DEBUG) LOG.debug("reading size at "+ offset + ": " + in[offset] + " " + in[offset + 1] + " " + in[offset + 2] + " " + in[offset + 3] + " ");
     int totalBytes = BytesUtils.readIntLittleEndian(in, offset);
     if (DEBUG) LOG.debug("will read "+ totalBytes + " bytes");
@@ -74,7 +75,12 @@ class BoundedIntValuesReader extends ValuesReader {
     currentValue = 0;
     bitReader.prepare(in, offset + 4, totalBytes);
     if (DEBUG) LOG.debug("will read next from " + (offset + totalBytes + 4));
-    return offset + totalBytes + 4;
+    this.nextOffset = offset + totalBytes + 4;
+  }
+  
+  @Override
+  public int getNextOffset() {
+    return this.nextOffset;
   }
 
   @Override

@@ -100,8 +100,25 @@ public class MessageTypeParser {
 
   private static Type readType(String t, Tokenizer st) {
     Repetition r = asRepetition(t, st);
+
+    // Read type.
     String type = st.nextToken();
+
+    // Read type length if the type is fixed_len_byte_array.
+    int typeLength = 0;
+    if (type.equalsIgnoreCase("fixed_len_byte_array")) {
+      t = st.nextToken();
+      if (!t.equalsIgnoreCase("(")) {
+        throw new IllegalArgumentException("expecting (length) for field of type fixed_len_byte_array");
+      }
+      typeLength = Integer.parseInt(st.nextToken());
+      check(st.nextToken(), ")", "type length ended by )", st);
+    }
+
+    // Read name.
     String name = st.nextToken();
+
+    // Read annotation, if any.
     t = st.nextToken();
     OriginalType originalType = null;
     if (t.equalsIgnoreCase("(")) {
@@ -116,7 +133,7 @@ public class MessageTypeParser {
       } else {
         PrimitiveTypeName p = asPrimitive(type, st);
         check(t, ";", "field ended by ';'", st);
-        return new PrimitiveType(r, p, name, originalType);
+        return new PrimitiveType(r, p, typeLength, name, originalType);
       }
     } catch (IllegalArgumentException e) {
      throw new IllegalArgumentException("problem reading type: type = " + type + ", name = " + name + ", original type = " + originalType, e);

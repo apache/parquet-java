@@ -16,6 +16,7 @@
 package parquet.hadoop.metadata;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -91,7 +92,7 @@ public class BlockMetaData {
    * @return the metadata for columns
    */
   public List<ColumnChunkMetaData> getColumns() {
-    return columns;
+    return Collections.unmodifiableList(columns);
   }
 
   @Override

@@ -18,15 +18,12 @@ package parquet.hadoop;
 import static parquet.Log.INFO;
 import static parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
-import static parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
-import static parquet.hadoop.metadata.CompressionCodecName.fromConf;
 import static parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.compress.DefaultCodec;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.OutputCommitter;
@@ -35,8 +32,10 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import parquet.Log;
+import parquet.column.ParquetProperties.WriterVersion;
 import parquet.hadoop.api.WriteSupport;
 import parquet.hadoop.api.WriteSupport.WriteContext;
+import parquet.hadoop.codec.CodecConfig;
 import parquet.hadoop.metadata.CompressionCodecName;
 
 /**
@@ -58,6 +57,10 @@ import parquet.hadoop.metadata.CompressionCodecName;
  * # If this value is too small, the compression will deteriorate
  * parquet.page.size=1048576 # in bytes, default = 1 * 1024 * 1024
  *
+ * # There is one dictionary page per column per row group when dictionary encoding is used.
+ * # The dictionary page size works like the page size but for dictionary
+ * parquet.dictionary.page.size=1048576 # in bytes, default = 1 * 1024 * 1024
+ *
  * # The compression algorithm used to compress pages
  * parquet.compression=UNCOMPRESSED # one of: UNCOMPRESSED, SNAPPY, GZIP, LZO. Default: UNCOMPRESSED. Supersedes mapred.output.compress*
  *
@@ -65,8 +68,8 @@ import parquet.hadoop.metadata.CompressionCodecName;
  * # Usually provided by a specific ParquetOutputFormat subclass
  * parquet.write.support.class= # fully qualified name
  *
- * # To enable dictionary encoding
- * parquet.enable.dictionary=false # true to enable dictionary encoding
+ * # To enable/disable dictionary encoding
+ * parquet.enable.dictionary=true # false to disable dictionary encoding
  * </pre>
  *
  * If parquet.compression is not set, the following properties are checked (FileOutputFormat behavior).
@@ -85,19 +88,21 @@ import parquet.hadoop.metadata.CompressionCodecName;
 public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   private static final Log LOG = Log.getLog(ParquetOutputFormat.class);
 
-  public static final String BLOCK_SIZE          = "parquet.block.size";
-  public static final String PAGE_SIZE           = "parquet.page.size";
-  public static final String COMPRESSION         = "parquet.compression";
-  public static final String WRITE_SUPPORT_CLASS = "parquet.write.support.class";
-  public static final String ENABLE_DICTIONARY   = "parquet.enable.dictionary";
-  public static final String VALIDATION          = "parquet.validation";
+  public static final String BLOCK_SIZE           = "parquet.block.size";
+  public static final String PAGE_SIZE            = "parquet.page.size";
+  public static final String COMPRESSION          = "parquet.compression";
+  public static final String WRITE_SUPPORT_CLASS  = "parquet.write.support.class";
+  public static final String DICTIONARY_PAGE_SIZE = "parquet.dictionary.page.size";
+  public static final String ENABLE_DICTIONARY    = "parquet.enable.dictionary";
+  public static final String VALIDATION           = "parquet.validation";
+  public static final String WRITER_VERSION       = "parquet.writer.version";
 
   public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
     getConfiguration(job).set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
   }
 
-  public static Class<?> getWriteSupportClass(JobContext jobContext) {
-    final String className = getConfiguration(jobContext).get(WRITE_SUPPORT_CLASS);
+  public static Class<?> getWriteSupportClass(Configuration configuration) {
+    final String className = configuration.get(WRITE_SUPPORT_CLASS);
     if (className == null) {
       return null;
     }
@@ -120,6 +125,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     getConfiguration(job).setInt(PAGE_SIZE, pageSize);
   }
 
+  public static void setDictionaryPageSize(Job job, int pageSize) {
+    getConfiguration(job).setInt(DICTIONARY_PAGE_SIZE, pageSize);
+  }
+
   public static void setCompression(Job job, CompressionCodecName compression) {
     getConfiguration(job).set(COMPRESSION, compression.name());
   }
@@ -129,32 +138,79 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public static boolean getEnableDictionary(JobContext jobContext) {
-    return getConfiguration(jobContext).getBoolean(ENABLE_DICTIONARY, false);
+    return getEnableDictionary(getConfiguration(jobContext));
   }
 
   public static int getBlockSize(JobContext jobContext) {
-    return getConfiguration(jobContext).getInt(BLOCK_SIZE, DEFAULT_BLOCK_SIZE);
+    return getBlockSize(getConfiguration(jobContext));
   }
 
   public static int getPageSize(JobContext jobContext) {
-    return getConfiguration(jobContext).getInt(PAGE_SIZE, DEFAULT_PAGE_SIZE);
+    return getPageSize(getConfiguration(jobContext));
+  }
+
+  public static int getDictionaryPageSize(JobContext jobContext) {
+    return getDictionaryPageSize(getConfiguration(jobContext));
   }
 
   public static CompressionCodecName getCompression(JobContext jobContext) {
-    return fromConf(getConfiguration(jobContext).get(COMPRESSION, UNCOMPRESSED.name()));
+    return getCompression(getConfiguration(jobContext));
   }
 
   public static boolean isCompressionSet(JobContext jobContext) {
-    return getConfiguration(jobContext).get(COMPRESSION) != null;
+    return isCompressionSet(getConfiguration(jobContext));
   }
 
   public static void setValidation(JobContext jobContext, boolean validating) {
-    getConfiguration(jobContext).setBoolean(VALIDATION, validating);
+    setValidation(getConfiguration(jobContext), validating);
   }
 
   public static boolean getValidation(JobContext jobContext) {
-    return getConfiguration(jobContext).getBoolean(VALIDATION, false);
+    return getValidation(getConfiguration(jobContext));
   }
+
+  public static boolean getEnableDictionary(Configuration configuration) {
+    return configuration.getBoolean(ENABLE_DICTIONARY, true);
+  }
+
+  public static int getBlockSize(Configuration configuration) {
+    return configuration.getInt(BLOCK_SIZE, DEFAULT_BLOCK_SIZE);
+  }
+
+  public static int getPageSize(Configuration configuration) {
+    return configuration.getInt(PAGE_SIZE, DEFAULT_PAGE_SIZE);
+  }
+
+  public static int getDictionaryPageSize(Configuration configuration) {
+    return configuration.getInt(DICTIONARY_PAGE_SIZE, DEFAULT_PAGE_SIZE);
+  }
+  
+  public static WriterVersion getWriterVersion(Configuration configuration) {
+    String writerVersion = configuration.get(WRITER_VERSION, WriterVersion.PARQUET_1_0.toString());
+    return WriterVersion.fromString(writerVersion);
+  }
+
+  public static CompressionCodecName getCompression(Configuration configuration) {
+    return CodecConfig.getParquetCompressionCodec(configuration);
+  }
+
+  public static boolean isCompressionSet(Configuration configuration) {
+    return CodecConfig.isParquetCompressionSet(configuration);
+  }
+
+  public static void setValidation(Configuration configuration, boolean validating) {
+    configuration.setBoolean(VALIDATION, validating);
+  }
+
+  public static boolean getValidation(Configuration configuration) {
+    return configuration.getBoolean(VALIDATION, false);
+  }
+
+  private CompressionCodecName getCodec(TaskAttemptContext taskAttemptContext) {
+    return CodecConfig.from(taskAttemptContext).getCodec();
+  }
+
+
 
   private WriteSupport<T> writeSupport;
   private ParquetOutputCommitter committer;
@@ -182,54 +238,42 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   @Override
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
-    return getRecordWriter(taskAttemptContext, null);
+
+    final Configuration conf = getConfiguration(taskAttemptContext);
+
+    CompressionCodecName codec = getCodec(taskAttemptContext);
+    String extension = codec.getExtension() + ".parquet";
+    Path file = getDefaultWorkFile(taskAttemptContext, extension);
+    return getRecordWriter(conf, file, codec);
   }
 
-  @SuppressWarnings("unchecked") // writeSupport instantiation
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Path file)
+      throws IOException, InterruptedException {
+    return getRecordWriter(getConfiguration(taskAttemptContext), file, getCodec(taskAttemptContext));
+  }
+
+  public RecordWriter<Void, T> getRecordWriter(Configuration conf, Path file, CompressionCodecName codec)
         throws IOException, InterruptedException {
-    final Configuration conf = getConfiguration(taskAttemptContext);
+    final WriteSupport<T> writeSupport = getWriteSupport(conf);
+
     CodecFactory codecFactory = new CodecFactory(conf);
-    int blockSize = getBlockSize(taskAttemptContext);
+    int blockSize = getBlockSize(conf);
     if (INFO) LOG.info("Parquet block size to " + blockSize);
-    int pageSize = getPageSize(taskAttemptContext);
+    int pageSize = getPageSize(conf);
     if (INFO) LOG.info("Parquet page size to " + pageSize);
+    int dictionaryPageSize = getDictionaryPageSize(conf);
+    if (INFO) LOG.info("Parquet dictionary page size to " + dictionaryPageSize);
+    boolean enableDictionary = getEnableDictionary(conf);
+    if (INFO) LOG.info("Dictionary is " + (enableDictionary ? "on" : "off"));
+    boolean validating = getValidation(conf);
+    if (INFO) LOG.info("Validation is " + (validating ? "on" : "off"));
+    WriterVersion writerVersion = getWriterVersion(conf);
+    if (INFO) LOG.info("Writer version is: " + writerVersion);
 
-    if (writeSupport == null) {
-      Class<?> writeSupportClass = getWriteSupportClass(taskAttemptContext);
-      try {
-        writeSupport = (WriteSupport<T>) writeSupportClass.newInstance();
-      } catch (InstantiationException e) {
-        throw new BadConfigurationException("could not instantiate " + writeSupportClass.getName(), e);
-      } catch (IllegalAccessException e) {
-        throw new BadConfigurationException("Illegal access to class " + writeSupportClass.getName(), e);
-      }
-    }
-
-    String extension = ".parquet";
-    CompressionCodecName codec;
-    if (isCompressionSet(taskAttemptContext)) { // explicit parquet config
-      codec = getCompression(taskAttemptContext);
-    } else if (getCompressOutput(taskAttemptContext)) { // from hadoop config
-      // find the right codec
-      Class<?> codecClass = getOutputCompressorClass(taskAttemptContext, DefaultCodec.class);
-      if (INFO) LOG.info("Compression set through hadoop codec: " + codecClass.getName());
-      codec = CompressionCodecName.fromCompressionCodec(codecClass);
-    } else {
-      if (INFO) LOG.info("Compression set to false");
-      codec = CompressionCodecName.UNCOMPRESSED;
-    }
-    if (INFO) LOG.info("Compression: " + codec.name());
-    extension = codec.getExtension() + extension;
-    if (file == null) {
-      file = getDefaultWorkFile(taskAttemptContext, extension);
-    }
-    boolean enableDictionary = getEnableDictionary(taskAttemptContext);
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(conf, init.getSchema(), file);
     w.start();
-    boolean validating = getValidation(taskAttemptContext);
-    if (INFO) LOG.info("Validation is " + (validating ? "on" : "off"));
+    
     return new ParquetRecordWriter<T>(
         w,
         writeSupport,
@@ -237,8 +281,28 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         init.getExtraMetaData(),
         blockSize, pageSize,
         codecFactory.getCompressor(codec, pageSize),
+        dictionaryPageSize,
         enableDictionary,
-        validating);
+        validating,
+        writerVersion);
+  }
+
+  /**
+   * @param configuration to find the configuration for the write support class
+   * @return the configured write support
+   */
+  @SuppressWarnings("unchecked")
+  public WriteSupport<T> getWriteSupport(Configuration configuration){
+    if (writeSupport != null) return writeSupport;
+    Class<?> writeSupportClass = getWriteSupportClass(configuration);
+
+    try {
+      return (WriteSupport<T>)writeSupportClass.newInstance();
+    } catch (InstantiationException e) {
+      throw new BadConfigurationException("could not instantiate write support class: " + writeSupportClass, e);
+    } catch (IllegalAccessException e) {
+      throw new BadConfigurationException("could not instantiate write support class: " + writeSupportClass, e);
+    }
   }
 
   @Override

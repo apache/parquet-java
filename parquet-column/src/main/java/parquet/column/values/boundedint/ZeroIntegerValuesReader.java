@@ -25,14 +25,21 @@ import parquet.column.values.ValuesReader;
  * Mainly used to read definition levels when the only possible value is 0
  */
 public class ZeroIntegerValuesReader extends ValuesReader {
+  
+  private int nextOffset;
 
   public int readInteger() {
     return 0;
   }
 
   @Override
-  public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
-    return offset;
+  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
+    this.nextOffset = offset;
+  }
+  
+  @Override
+  public int getNextOffset() {
+    return nextOffset;
   }
 
   @Override

@@ -95,7 +95,7 @@ class ColumnReaderImpl implements ColumnReader {
     public long getLong() {
       throw new UnsupportedOperationException();
     }
-
+    
     /**
      * @return current value
      */
@@ -133,7 +133,7 @@ class ColumnReaderImpl implements ColumnReader {
 
   private long endOfPageValueCount;
   private int readValues;
-  private long pageValueCount;
+  private int pageValueCount;
 
   private final PrimitiveConverter converter;
   private Binding binding;
@@ -265,7 +265,23 @@ class ColumnReaderImpl implements ColumnReader {
       @Override
       public Binding convertFIXED_LEN_BYTE_ARRAY(
           PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-        throw new UnsupportedOperationException("FIXED_LEN_BYTE_ARRAY NYI");
+        return new Binding() {
+          Binary current;
+          void read() {
+            current = dataColumn.readBytes();
+          }
+          public void skip() {
+            current = null;
+            dataColumn.skip();
+          }
+          @Override
+          public Binary getBinary() {
+            return current;
+          }
+          void writeValue() {
+            converter.addBinary(current);
+          }
+        };
       }
       @Override
       public Binding convertBOOLEAN(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
@@ -398,7 +414,7 @@ class ColumnReaderImpl implements ColumnReader {
     readValue();
     return this.binding.getBinary();
   }
-
+  
   /**
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#getFloat()
@@ -521,9 +537,11 @@ class ColumnReaderImpl implements ColumnReader {
       byte[] bytes = page.getBytes().toByteArray();
       if (DEBUG) LOG.debug("page size " + bytes.length + " bytes and " + pageValueCount + " records");
       if (DEBUG) LOG.debug("reading repetition levels at 0");
-      int next = repetitionLevelColumn.initFromPage(pageValueCount, bytes, 0);
+      repetitionLevelColumn.initFromPage(pageValueCount, bytes, 0);
+      int next = repetitionLevelColumn.getNextOffset();
       if (DEBUG) LOG.debug("reading definition levels at " + next);
-      next = definitionLevelColumn.initFromPage(pageValueCount, bytes, next);
+      definitionLevelColumn.initFromPage(pageValueCount, bytes, next);
+      next = definitionLevelColumn.getNextOffset();
       if (DEBUG) LOG.debug("reading data at " + next);
       dataColumn.initFromPage(pageValueCount, bytes, next);
     } catch (IOException e) {

@@ -67,9 +67,10 @@ public class RunLengthBitPackingHybridIntegrationTest {
     }
     numValues += 1000;
 
-    InputStream in = new ByteArrayInputStream(encoder.toBytes().toByteArray());
+    byte[] encodedBytes = encoder.toBytes().toByteArray();
+    ByteArrayInputStream in = new ByteArrayInputStream(encodedBytes);
 
-    RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(numValues, bitWidth, in);
+    RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
 
     for (int i = 0; i < 100; i++) {
       assertEquals(i % modValue, decoder.readInt());

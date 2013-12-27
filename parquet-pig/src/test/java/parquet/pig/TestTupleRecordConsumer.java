@@ -18,7 +18,6 @@ package parquet.pig;
 import static org.apache.pig.builtin.mock.Storage.bag;
 import static org.apache.pig.builtin.mock.Storage.tuple;
 import static org.junit.Assert.assertEquals;
-import static parquet.pig.PigSchemaConverter.pigSchemaToString;
 import static parquet.pig.TupleReadSupport.PARQUET_PIG_SCHEMA;
 
 import java.util.ArrayList;
@@ -45,7 +44,6 @@ import parquet.example.data.simple.SimpleGroup;
 import parquet.example.data.simple.convert.GroupRecordConverter;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport.ReadContext;
-import parquet.hadoop.util.ContextUtil;
 import parquet.io.ConverterConsumer;
 import parquet.io.RecordConsumerLoggingWrapper;
 import parquet.io.api.RecordMaterializer;
@@ -123,9 +121,8 @@ public class TestTupleRecordConsumer {
 
   private void testFromTuple(String pigSchemaString, List<Tuple> input) throws Exception {
     List<Tuple> tuples = new ArrayList<Tuple>();
-    MessageType parquetSchema = getMessageType(pigSchemaString);
-    RecordMaterializer<Tuple> recordConsumer = newPigRecordConsumer(parquetSchema, pigSchemaString);
-    TupleWriteSupport tupleWriter = newTupleWriter(parquetSchema, pigSchemaString, recordConsumer);
+    RecordMaterializer<Tuple> recordConsumer = newPigRecordConsumer(pigSchemaString);
+    TupleWriteSupport tupleWriter = newTupleWriter(pigSchemaString, recordConsumer);
     for (Tuple tuple : input) {
       logger.debug(tuple);
       tupleWriter.write(tuple);
@@ -144,7 +141,7 @@ public class TestTupleRecordConsumer {
   private void testFromGroups(String pigSchemaString, List<Group> input) throws ParserException {
     List<Tuple> tuples = new ArrayList<Tuple>();
     MessageType schema = getMessageType(pigSchemaString);
-    RecordMaterializer<Tuple> pigRecordConsumer = newPigRecordConsumer(schema, pigSchemaString);
+    RecordMaterializer<Tuple> pigRecordConsumer = newPigRecordConsumer(pigSchemaString);
     GroupWriter groupWriter = new GroupWriter(new RecordConsumerLoggingWrapper(new ConverterConsumer(pigRecordConsumer.getRootConverter(), schema)), schema);
 
     for (Group group : input) {
@@ -156,7 +153,7 @@ public class TestTupleRecordConsumer {
 
     List<Group> groups = new ArrayList<Group>();
     GroupRecordConverter recordConsumer = new GroupRecordConverter(schema);
-    TupleWriteSupport tupleWriter = newTupleWriter(schema, pigSchemaString, recordConsumer);
+    TupleWriteSupport tupleWriter = newTupleWriter(pigSchemaString, recordConsumer);
     for (Tuple t : tuples) {
       logger.debug(t);
       tupleWriter.write(t);
@@ -172,11 +169,11 @@ public class TestTupleRecordConsumer {
     }
   }
 
-  private <T> TupleWriteSupport newTupleWriter(MessageType parquetSchema, String pigSchemaString, RecordMaterializer<T> recordConsumer) throws ParserException {
-    TupleWriteSupport tupleWriter = new TupleWriteSupport(parquetSchema, Utils.getSchemaFromString(pigSchemaString));
+  private <T> TupleWriteSupport newTupleWriter(String pigSchemaString, RecordMaterializer<T> recordConsumer) throws ParserException {
+    TupleWriteSupport tupleWriter = TupleWriteSupport.fromPigSchema(pigSchemaString);
     tupleWriter.init(null);
     tupleWriter.prepareForWrite(
-        new ConverterConsumer(recordConsumer.getRootConverter(), parquetSchema)
+        new ConverterConsumer(recordConsumer.getRootConverter(), tupleWriter.getParquetSchema())
         );
     return tupleWriter;
   }
@@ -187,9 +184,10 @@ public class TestTupleRecordConsumer {
     return map;
   }
 
-  private RecordMaterializer<Tuple> newPigRecordConsumer(MessageType parquetSchema, String pigSchemaString) throws ParserException {
+  private RecordMaterializer<Tuple> newPigRecordConsumer(String pigSchemaString) throws ParserException {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
     final Configuration configuration = new Configuration(false);
+    MessageType parquetSchema = getMessageType(pigSchemaString);
     final Map<String, String> pigMetaData = pigMetaData(pigSchemaString);
     Map<String, Set<String>> globalMetaData = new HashMap<String, Set<String>>();
     for (Entry<String, String> entry : pigMetaData.entrySet()) {

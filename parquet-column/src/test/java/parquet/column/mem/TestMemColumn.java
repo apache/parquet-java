@@ -23,6 +23,8 @@ import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnReader;
 import parquet.column.ColumnWriter;
+import parquet.column.ParquetProperties;
+import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.mem.MemPageStore;
@@ -54,7 +56,7 @@ public class TestMemColumn {
   }
 
   private ColumnWriter getColumnWriter(ColumnDescriptor path, MemPageStore memPageStore) {
-    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048, 2048, false);
+    ColumnWriteStoreImpl memColumnsStore = newColumnWriteStoreImpl(memPageStore);
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
     return columnWriter;
   }
@@ -73,7 +75,7 @@ public class TestMemColumn {
     String[] col = new String[]{"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore(10);
 
-    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048, 2048, false);
+    ColumnWriteStoreImpl memColumnsStore = newColumnWriteStoreImpl(memPageStore);
     ColumnDescriptor path1 = mt.getColumnDescription(col);
     ColumnDescriptor path = path1;
 
@@ -95,7 +97,7 @@ public class TestMemColumn {
     MessageType mt = MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
     String[] col = new String[]{"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore(10);
-    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048, 2048, false);
+    ColumnWriteStoreImpl memColumnsStore = newColumnWriteStoreImpl(memPageStore);
     ColumnDescriptor path1 = mt.getColumnDescription(col);
     ColumnDescriptor path = path1;
 
@@ -119,7 +121,7 @@ public class TestMemColumn {
     MessageType mt = MessageTypeParser.parseMessageType("message msg { repeated group foo { repeated int64 bar; } }");
     String[] col = new String[]{"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore(10);
-    ColumnWriteStoreImpl memColumnsStore = new ColumnWriteStoreImpl(memPageStore, 2048, 2048, false);
+    ColumnWriteStoreImpl memColumnsStore = newColumnWriteStoreImpl(memPageStore);
     ColumnDescriptor path1 = mt.getColumnDescription(col);
     ColumnDescriptor path = path1;
 
@@ -152,5 +154,9 @@ public class TestMemColumn {
       columnReader.consume();
       ++ i;
     }
+  }
+
+  private ColumnWriteStoreImpl newColumnWriteStoreImpl(MemPageStore memPageStore) {
+    return new ColumnWriteStoreImpl(memPageStore, 2048, 2048, 2048, false, WriterVersion.PARQUET_1_0);
   }
 }

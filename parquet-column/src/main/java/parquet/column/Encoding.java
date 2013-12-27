@@ -16,6 +16,9 @@
 package parquet.column;
 
 import static parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 
 import java.io.IOException;
 
@@ -24,6 +27,9 @@ import parquet.column.page.DictionaryPage;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 import parquet.column.values.boundedint.ZeroIntegerValuesReader;
+import parquet.column.values.delta.DeltaBinaryPackingValuesReader;
+import parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesReader;
+import parquet.column.values.deltastrings.DeltaByteArrayReader;
 import parquet.column.values.dictionary.DictionaryValuesReader;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainBinaryDictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainDoubleDictionary;
@@ -31,6 +37,7 @@ import parquet.column.values.dictionary.PlainValuesDictionary.PlainFloatDictiona
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainIntegerDictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainLongDictionary;
 import parquet.column.values.plain.BinaryPlainValuesReader;
+import parquet.column.values.plain.FixedLenByteArrayPlainValuesReader;
 import parquet.column.values.plain.BooleanPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.DoublePlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.FloatPlainValuesReader;
@@ -63,6 +70,8 @@ public enum Encoding {
         return new IntegerPlainValuesReader();
       case INT64:
         return new LongPlainValuesReader();
+      case FIXED_LEN_BYTE_ARRAY:
+        return new FixedLenByteArrayPlainValuesReader(descriptor.getTypeLength());
       default:
         throw new ParquetDecodingException("no plain reader for type " + descriptor.getType());
       }
@@ -93,13 +102,6 @@ public enum Encoding {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       return new ByteBitPackingValuesReader(getMaxLevel(descriptor, valuesType), BIG_ENDIAN);
-    }
-  },
-
-  GROUP_VAR_INT {
-    @Override // TODO: GROUP VAR INT encoding
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      throw new UnsupportedOperationException("NYI");
     }
   },
 
@@ -134,7 +136,7 @@ public enum Encoding {
       default:
         throw new ParquetDecodingException("Dictionary encoding not supported for type: " + descriptor.getType());
       }
-      
+
     }
 
     @Override
@@ -142,7 +144,56 @@ public enum Encoding {
       return true;
     }
 
-  };
+  },
+
+  /**
+   * Delta encoding for integers. This can be used for int columns and works best
+   * on sorted data
+   */
+  DELTA_BINARY_PACKED {
+    @Override
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+      if(descriptor.getType() != INT32) {
+        throw new ParquetDecodingException("Encoding DELTA_BINARY_PACKED is only supported for type INT32");
+      }
+      return new DeltaBinaryPackingValuesReader();
+    }
+  },
+
+  /**
+   * Encoding for byte arrays to separate the length values and the data. The lengths
+   * are encoded using DELTA_BINARY_PACKED
+   */
+  DELTA_LENGTH_BYTE_ARRAY {
+    @Override
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor,
+        ValuesType valuesType) {
+      if (descriptor.getType() != BINARY) {
+        throw new ParquetDecodingException("Encoding DELTA_LENGTH_BYTE_ARRAY is only supported for type BINARY");
+      }
+      return new DeltaLengthByteArrayValuesReader();
+    }
+  },
+
+  /**
+   * Incremental-encoded byte array. Prefix lengths are encoded using DELTA_BINARY_PACKED.
+   * Suffixes are stored as delta length byte arrays.
+   */
+  DELTA_BYTE_ARRAY {
+    @Override
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor,
+        ValuesType valuesType) {
+      if (descriptor.getType() != BINARY) {
+        throw new ParquetDecodingException("Encoding DELTA_BYTE_ARRAY is only supported for type BINARY");
+      }
+      return new DeltaByteArrayReader();
+    }
+  },
+
+  /**
+   * Dictionary encoding: the ids are encoded using the RLE encoding
+   */
+  RLE_DICTIONARY;
 
   int getMaxLevel(ColumnDescriptor descriptor, ValuesType valuesType) {
     int maxLevel;
@@ -153,6 +204,11 @@ public enum Encoding {
     case DEFINITION_LEVEL:
       maxLevel = descriptor.getMaxDefinitionLevel();
       break;
+    case VALUES:
+      if(descriptor.getType() == BOOLEAN) {
+        maxLevel = 1;
+        break;
+      }
     default:
       throw new ParquetDecodingException("Unsupported encoding for values: " + this);
     }

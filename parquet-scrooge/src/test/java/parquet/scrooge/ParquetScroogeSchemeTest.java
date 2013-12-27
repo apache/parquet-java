@@ -72,7 +72,6 @@ public class ParquetScroogeSchemeTest {
     Configuration conf = new Configuration();
     conf.set("parquet.thrift.converter.class", ScroogeRecordConverter.class.getName());
     conf.set(ThriftReadSupport.THRIFT_READ_CLASS_KEY, readClass.getName());
-    conf.set(ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY, projectionFilter);
 
     final Path parquetFile = new Path("target/test/TestParquetToThriftReadProjection/file.parquet");
     final FileSystem fs = parquetFile.getFileSystem(conf);
@@ -84,7 +83,7 @@ public class ParquetScroogeSchemeTest {
     final TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
     final TaskAttemptID taskId = new TaskAttemptID("local", 0, true, 0, 0);
     Class writeClass = recordToWrite.getClass();
-    final ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(parquetFile, new TaskAttemptContext(conf, taskId), protocolFactory, writeClass);
+    final ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(parquetFile, ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory, writeClass);
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));
 

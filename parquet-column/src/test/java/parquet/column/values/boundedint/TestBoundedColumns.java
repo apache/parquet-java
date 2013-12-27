@@ -155,7 +155,8 @@ public class TestBoundedColumns {
       idx = 0;
       int offset = 0;
       for (int stripeNum = 0; stripeNum < valuesPerStripe.length; stripeNum++) {
-        offset = bicr.initFromPage(1, input, offset);
+        bicr.initFromPage(1, input, offset);
+        offset = bicr.getNextOffset();
         for (int i = 0; i < valuesPerStripe[stripeNum]; i++) {
           int number = stream[idx++];
           int ct = stream[idx++];

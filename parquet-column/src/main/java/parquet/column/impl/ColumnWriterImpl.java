@@ -23,6 +23,8 @@ import parquet.Log;
 import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
+import parquet.column.ParquetProperties;
+import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
 import parquet.column.values.ValuesWriter;
@@ -33,6 +35,7 @@ import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDiction
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
+import parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import parquet.io.ParquetEncodingException;
@@ -46,9 +49,8 @@ import parquet.io.api.Binary;
  */
 final class ColumnWriterImpl implements ColumnWriter {
   private static final Log LOG = Log.getLog(ColumnWriterImpl.class);
-  private static final boolean DEBUG = false; //Log.DEBUG;
+  private static final boolean DEBUG = Log.DEBUG;
   private static final int INITIAL_COUNT_FOR_SIZE_CHECK = 100;
-  private static final int DICTIONARY_PAGE_MAX_SIZE_PERCENT = 20;
 
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
@@ -59,74 +61,29 @@ final class ColumnWriterImpl implements ColumnWriter {
   private int valueCount;
   private int valueCountForNextSizeCheck;
 
-  public ColumnWriterImpl(ColumnDescriptor path, PageWriter pageWriter, int pageSizeThreshold, int initialSizePerCol, boolean enableDictionary) {
+  public ColumnWriterImpl(
+      ColumnDescriptor path,
+      PageWriter pageWriter,
+      int pageSizeThreshold,
+      int initialSizePerCol,
+      int dictionaryPageSizeThreshold,
+      boolean enableDictionary,
+      WriterVersion writerVersion) {
     this.path = path;
     this.pageWriter = pageWriter;
     this.pageSizeThreshold = pageSizeThreshold;
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
 
-    repetitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel());
-
-    definitionLevelColumn = getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel());
-
-    if(enableDictionary) {
-      int maxDictByteSize = applyRatioInPercent(pageSizeThreshold, DICTIONARY_PAGE_MAX_SIZE_PERCENT);
-      switch (path.getType()) {
-      case BOOLEAN:
-        this.dataColumn = new BooleanPlainValuesWriter();
-        break;
-      case BINARY:
-        this.dataColumn = new PlainBinaryDictionaryValuesWriter(maxDictByteSize, initialSizePerCol);
-        break;
-      case INT64:
-        this.dataColumn = new PlainLongDictionaryValuesWriter(maxDictByteSize, initialSizePerCol);
-        break;
-      case DOUBLE:
-        this.dataColumn = new PlainDoubleDictionaryValuesWriter(maxDictByteSize, initialSizePerCol);
-        break;
-      case INT32:
-        this.dataColumn = new PlainIntegerDictionaryValuesWriter(maxDictByteSize, initialSizePerCol);
-        break;
-      case FLOAT:
-        this.dataColumn = new PlainFloatDictionaryValuesWriter(maxDictByteSize, initialSizePerCol);
-        break;
-      default:
-        this.dataColumn = new PlainValuesWriter(initialSizePerCol);
-      }     
-    } else {
-      switch (path.getType()) {
-      case BOOLEAN:
-        this.dataColumn = new BooleanPlainValuesWriter();
-        break;
-      default:
-        this.dataColumn = new PlainValuesWriter(initialSizePerCol);
-      }     
-    }
+    ParquetProperties parquetProps = new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary);
     
-  }
-
-  private ValuesWriter getColumnDescriptorValuesWriter(int maxLevel) {
-    if(maxLevel == 0) {
-      return new DevNullValuesWriter();
-    }
-    else {
-      // TODO: what is a good initialCapacity?
-      return new RunLengthBitPackingHybridValuesWriter(
-        BytesUtils.getWidthFromMaxInt(maxLevel),
-        64 * 1024);
-    }
-  }
-
-  private int applyRatioInPercent(int value, int ratio) {
-    if (100 % ratio != 0) {
-      throw new IllegalArgumentException("ratio should be a diviser of 100: not " + ratio);
-    }
-    return value / (100 / ratio);
+    this.repetitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), initialSizePerCol);
+    this.definitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), initialSizePerCol);
+    this.dataColumn = parquetProps.getValuesWriter(path, initialSizePerCol);
   }
 
   private void log(Object value, int r, int d) {
-    LOG.debug(path+" "+value+" r:"+r+" d:"+d);
+    LOG.debug(path + " " + value + " r:" + r + " d:" + d);
   }
 
   /**

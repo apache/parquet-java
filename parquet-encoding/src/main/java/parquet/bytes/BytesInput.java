@@ -93,6 +93,23 @@ abstract public class BytesInput {
   }
 
   /**
+   * @param intValue the int to write
+   * @return a BytesInput that will write var int
+   */
+  public static BytesInput fromUnsignedVarInt(int intValue) {
+    return new UnsignedVarIntBytesInput(intValue);
+  }
+
+  /**
+   *
+   * @param intValue the int to write
+   */
+  public static BytesInput fromZigZagVarInt(int intValue) {
+    int zigZag = (intValue << 1) ^ (intValue >> 31);
+    return new UnsignedVarIntBytesInput(zigZag);
+  }
+
+  /**
    * @param arrayOut
    * @return a BytesInput that will write the content of the buffer
    */
@@ -243,6 +260,26 @@ abstract public class BytesInput {
       return 4;
     }
 
+  }
+
+  private static class UnsignedVarIntBytesInput extends BytesInput {
+
+    private final int intValue;
+
+    public UnsignedVarIntBytesInput(int intValue) {
+      this.intValue = intValue;
+    }
+
+    @Override
+    public void writeAllTo(OutputStream out) throws IOException {
+      BytesUtils.writeUnsignedVarInt(intValue, out);
+    }
+
+    @Override
+    public long size() {
+      int s = 5 - ((Integer.numberOfLeadingZeros(intValue) + 3) / 7);
+      return s == 0 ? 1 : s;
+    }
   }
 
   private static class EmptyBytesInput extends BytesInput {

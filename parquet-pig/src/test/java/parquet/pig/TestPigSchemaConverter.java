@@ -16,7 +16,6 @@
 package parquet.pig;
 
 import static org.junit.Assert.assertEquals;
-import static parquet.pig.PigSchemaConverter.parsePigSchema;
 import static parquet.pig.PigSchemaConverter.pigSchemaToString;
 import static parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
 
@@ -26,13 +25,10 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import junit.framework.Assert;
-
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
 import org.junit.Test;
 
-import parquet.pig.PigSchemaConverter;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 
@@ -55,7 +51,7 @@ public class TestPigSchemaConverter {
 
   @Test
   public void testMultiBag() throws Exception {
-    testPigConversion("x:int, b:{t:(a:int,b:chararray)}}");
+    testPigConversion("x:int, b:{t:(a:int,b:chararray)}");
   }
 
   @Test
@@ -177,6 +173,33 @@ public class TestPigSchemaConverter {
         "    }\n" +
         "  }\n" +
         "}\n");
+  }
+  
+  private void testFixedConversion(String schemaString, String pigSchemaString)
+      throws Exception {
+    Schema expectedPigSchema = Utils.getSchemaFromString(pigSchemaString);
+    MessageType parquetSchema = MessageTypeParser.parseMessageType(schemaString);
+    Schema pigSchema = pigSchemaConverter.convert(parquetSchema);
+    assertEquals("converting " + schemaString + " to " + pigSchemaString,
+                 expectedPigSchema, pigSchema);
+  }
+  
+  @Test
+  public void testMapWithFixed() throws Exception {
+    testFixedConversion(
+        "message pig_schema {\n" +
+        "  optional binary a;\n" +
+        "  optional group b (MAP) {\n" +
+        "    repeated group map (MAP_KEY_VALUE) {\n" +
+        "      required binary key;\n" +
+        "      optional group value {\n" +
+        "        optional fixed_len_byte_array(5) c;\n" +
+        "        optional fixed_len_byte_array(7) d;\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}\n",
+        "a:bytearray, b:[(c:bytearray, d:bytearray)]");
   }
 
   @Test
