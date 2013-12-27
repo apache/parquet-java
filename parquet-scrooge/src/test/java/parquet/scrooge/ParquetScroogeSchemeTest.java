@@ -72,6 +72,7 @@ public class ParquetScroogeSchemeTest {
     Configuration conf = new Configuration();
     conf.set("parquet.thrift.converter.class", ScroogeRecordConverter.class.getName());
     conf.set(ThriftReadSupport.THRIFT_READ_CLASS_KEY, readClass.getName());
+    conf.set(ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY, projectionFilter);
 
     final Path parquetFile = new Path("target/test/TestParquetToThriftReadProjection/file.parquet");
     final FileSystem fs = parquetFile.getFileSystem(conf);
