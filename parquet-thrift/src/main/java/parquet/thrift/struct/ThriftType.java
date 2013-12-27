@@ -69,7 +69,6 @@ public abstract class ThriftType {
     if (!(o instanceof ThriftType)) return false;
 
     ThriftType that = (ThriftType) o;
-
     if (type != that.type) return false;
 
     return true;
@@ -219,7 +218,6 @@ public abstract class ThriftType {
 
     @Override
     public int hashCode() {
-
       int result = childById != null ? Arrays.hashCode(childById) : 0;
       return result;
     }

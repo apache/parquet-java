@@ -128,15 +128,6 @@ public class ThriftMetaData {
     return fileMetadata.get(THRIFT_CLASS);
   }
 
-  public static List<StructType> getDescriptor(Map<String, Set<String>> fileMetadata) {
-    Set<String> jsons = fileMetadata.get(THRIFT_DESCRIPTOR);
-    List<StructType> result = new ArrayList<StructType>(jsons.size());
-    for (String json : jsons) {
-      result.add(parseDescriptor(json));
-    }
-    return result;
-  }
-
   @Override
   public String toString() {
     return "ThriftMetaData" + toExtraMetaData();

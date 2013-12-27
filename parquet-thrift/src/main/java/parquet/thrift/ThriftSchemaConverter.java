@@ -32,7 +32,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Given a thrift class, this class convert it to parquet schema,
+ * Given a thrift class, this class converts it to parquet schema,
  * a {@link FieldProjectionFilter} can be specified for projection pushdown.
  */
 public class ThriftSchemaConverter {
