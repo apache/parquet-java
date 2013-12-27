@@ -38,8 +38,9 @@ public class ParquetScroogeSchemeTest {
   public void testNestedReadingInScrooge() throws Exception {
     Map<String, parquet.thrift.test.Phone> phoneMap = new HashMap<String, Phone>();
     phoneMap.put("key1", new parquet.thrift.test.Phone("111", "222"));
-    parquet.thrift.test.TestPersonWithAllInformation toWrite = new parquet.thrift.test.TestPersonWithAllInformation(new parquet.thrift.test.Name("first"), new Address("my_street", "my_zip"), "my_info", phoneMap);
-    String expected = "TestPersonWithAllInformation(Name(first,None),None,Address(my_street,my_zip),None,my_info,Map(key1 -> Phone(111,222)),None,None)";
+    parquet.thrift.test.TestPersonWithAllInformation toWrite = new parquet.thrift.test.TestPersonWithAllInformation(new parquet.thrift.test.Name("first"), new Address("my_street", "my_zip"), phoneMap);
+    toWrite.setInfo("my_info");
+    String expected = "TestPersonWithAllInformation(Name(first,None),None,Address(my_street,my_zip),None,Some(my_info),Map(key1 -> Phone(111,222)),None,None)";
     verifyScroogeRead(toWrite, TestPersonWithAllInformation.class, expected);
   }
 

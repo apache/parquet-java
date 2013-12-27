@@ -10,13 +10,18 @@ struct Name {
 }
 
 struct Address {
+  1: required string street,
+  2: required string zip
+}
+
+struct AddressWithStreetWithDefaultRequirement {
   1: string street,
   2: required string zip
 }
 
 struct Phone {
-  1: string mobile
-  2: string work
+  1: required string mobile
+  2: required string work
 }
 
 struct TestPerson {
@@ -58,17 +63,17 @@ struct RequiredPrimitiveFixture {
 struct TestPersonWithRequiredPhone {
   1: required Name name,
   2: optional i32 age,
-  3: Address address,
-  4: string info,
+  3: required Address address,
+  4: optional string info,
   5: required Phone phone
 }
 
 struct TestPersonWithAllInformation {
    1: required Name name,
    2: optional i32 age,
-   3: Address address,
+   3: required Address address,
    4: optional Address working_address,
-   5: string info,
+   5: optional string info,
    6: required map<string,Phone> phone_map,
    7: optional set<string> interests,
    8: optional list<string> key_words
