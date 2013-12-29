@@ -29,14 +29,8 @@ import parquet.schema.Type;
 import java.util.ArrayList;
 import java.util.List;
 
-import static parquet.schema.OriginalType.ENUM;
-import static parquet.schema.OriginalType.UTF8;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * <p/>
@@ -93,28 +87,28 @@ public class ProtoSchemaConverter {
   }
 
   private Type convertScalarField(String fieldName, Descriptors.FieldDescriptor descriptor, Type.Repetition repetition) {
-    Descriptors.FieldDescriptor.JavaType javaType = descriptor.getJavaType();
+    JavaType javaType = descriptor.getJavaType();
 
-    if (javaType.equals(Descriptors.FieldDescriptor.JavaType.BOOLEAN)) {
-      return primitive(fieldName, BOOLEAN, repetition);
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.INT)) {
-      return primitive(fieldName, INT32, repetition);
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.LONG)) {
-      return primitive(fieldName, INT64, repetition);
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.FLOAT)) {
-      return primitive(fieldName, FLOAT, repetition);
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.DOUBLE)) {
-      return primitive(fieldName, DOUBLE, repetition);
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.BYTE_STRING)) {
-      return primitive(fieldName, BINARY, repetition);
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.STRING)) {
-      return primitive(fieldName, BINARY, repetition, UTF8);
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.MESSAGE)) {
+    if (javaType == JavaType.BOOLEAN) {
+      return primitive(fieldName, PrimitiveTypeName.BOOLEAN, repetition);
+    } else if (javaType == JavaType.INT) {
+      return primitive(fieldName, PrimitiveTypeName.INT32, repetition);
+    } else if (javaType == JavaType.LONG) {
+      return primitive(fieldName, PrimitiveTypeName.INT64, repetition);
+    } else if (javaType == JavaType.FLOAT) {
+      return primitive(fieldName, PrimitiveTypeName.FLOAT, repetition);
+    } else if (javaType == JavaType.DOUBLE) {
+      return primitive(fieldName, PrimitiveTypeName.DOUBLE, repetition);
+    } else if (javaType == JavaType.BYTE_STRING) {
+      return primitive(fieldName, PrimitiveTypeName.BINARY, repetition);
+    } else if (javaType == JavaType.STRING) {
+      return primitive(fieldName, PrimitiveTypeName.BINARY, repetition, OriginalType.UTF8);
+    } else if (javaType == JavaType.MESSAGE) {
       Descriptors.Descriptor messageDescriptor = descriptor.getMessageType();
       List<Type> fields = convertFields(messageDescriptor.getFields());
       return new GroupType(repetition, fieldName, fields);
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.ENUM)) {
-      return primitive(fieldName, BINARY, repetition, ENUM);
+    } else if (javaType == JavaType.ENUM) {
+      return primitive(fieldName, PrimitiveTypeName.BINARY, repetition, OriginalType.ENUM);
     }
 
     throw new UnsupportedOperationException("Cannot convert Protocol Buffer: unknown type " + javaType + " fieldName " + fieldName);
@@ -123,12 +117,12 @@ public class ProtoSchemaConverter {
   /**
    * Makes primitive type with additional information. Used for String and Binary types
    */
-  private Type primitive(String name, PrimitiveType.PrimitiveTypeName primitive,
+  private Type primitive(String name, PrimitiveTypeName primitive,
                          Type.Repetition repetition, OriginalType originalType) {
     return new PrimitiveType(repetition, primitive, name, originalType);
   }
 
-  private PrimitiveType primitive(String name, PrimitiveType.PrimitiveTypeName
+  private PrimitiveType primitive(String name, PrimitiveTypeName
           primitive, Type.Repetition repetition) {
     return new PrimitiveType(repetition, primitive, name, null);
   }

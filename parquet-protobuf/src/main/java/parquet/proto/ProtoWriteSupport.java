@@ -33,6 +33,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
+
 
 public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<T> {
 
@@ -152,31 +154,31 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   private void writeScalarValue(Type type, Descriptors.FieldDescriptor fieldDescriptor, Object value) {
 
-    Descriptors.FieldDescriptor.JavaType javaType = fieldDescriptor.getJavaType();
+    JavaType javaType = fieldDescriptor.getJavaType();
 
-    if (javaType.equals(Descriptors.FieldDescriptor.JavaType.BOOLEAN)) {
+    if (javaType == JavaType.STRING) {
+      Binary binary = Binary.fromString((String) value);
+      recordConsumer.addBinary(binary);
+    } else if (javaType == JavaType.MESSAGE) {
+      MessageOrBuilder msg = (MessageOrBuilder) value;
+      writeMessage(type.asGroupType(), msg);
+    } else if (javaType == JavaType.INT) {
+      recordConsumer.addInteger(((Integer) value).intValue());
+    } else if (javaType == JavaType.LONG) {
+      recordConsumer.addLong(((Long) value).longValue());
+    } else if (javaType == JavaType.FLOAT) {
+      recordConsumer.addFloat(((Float) value).floatValue());
+    } else if (javaType == JavaType.DOUBLE) {
+      recordConsumer.addDouble(((Double) value).doubleValue());
+    } else if (javaType == JavaType.ENUM) {
+      Descriptors.EnumValueDescriptor enumDescriptor = (Descriptors.EnumValueDescriptor) value;
+      recordConsumer.addBinary(Binary.fromString(enumDescriptor.getName()));
+    } else if (javaType == JavaType.BOOLEAN) {
       recordConsumer.addBoolean((Boolean) value);
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.INT)) {
-      recordConsumer.addInteger(((Number) value).intValue());
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.LONG)) {
-      recordConsumer.addLong(((Number) value).longValue());
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.FLOAT)) {
-      recordConsumer.addFloat(((Number) value).floatValue());
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.DOUBLE)) {
-      recordConsumer.addDouble(((Number) value).doubleValue());
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.BYTE_STRING)) {
+    } else if (javaType == JavaType.BYTE_STRING) {
       ByteString byteString = (ByteString) value;
       Binary binary = Binary.fromByteArray(byteString.toByteArray());
       recordConsumer.addBinary(binary);
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.STRING)) {
-      Binary binary = Binary.fromString((String) value);
-      recordConsumer.addBinary(binary);
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.MESSAGE)) {
-      MessageOrBuilder msg = (MessageOrBuilder) value;
-      writeMessage(type.asGroupType(), msg);
-    } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.ENUM)) {
-      Descriptors.EnumValueDescriptor enumDescriptor = (Descriptors.EnumValueDescriptor) value;
-      recordConsumer.addBinary(Binary.fromString(enumDescriptor.getName()));
     } else {
       String msg = "Cannot write " + value + " with descriptor " + fieldDescriptor + " and type " + javaType;
       throw new RuntimeException(msg);

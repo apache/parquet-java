@@ -24,6 +24,8 @@ import parquet.io.api.GroupConverter;
 import parquet.schema.GroupType;
 import parquet.schema.Type;
 
+import static com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
+
 /**
  * @author Lukas Nalezenec
  */
@@ -134,9 +136,9 @@ public class ProtoMessageConverter extends GroupConverter {
 
   private Converter newScalarConverter(ParentValueContainer pvc, Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
 
-    Descriptors.FieldDescriptor.JavaType javaType = fieldDescriptor.getJavaType();
+    JavaType javaType = fieldDescriptor.getJavaType();
 
-    boolean isMessage = javaType.equals(Descriptors.FieldDescriptor.JavaType.MESSAGE);
+    boolean isMessage = (javaType == JavaType.MESSAGE);
 
     if (isMessage) {
 
@@ -154,21 +156,21 @@ public class ProtoMessageConverter extends GroupConverter {
 
       return new ProtoMessageConverter(pvc, subBuilder, parquetSubType);
     } else {
-      if (javaType.equals(Descriptors.FieldDescriptor.JavaType.STRING)) {
+      if (javaType == JavaType.STRING) {
         return new ProtoStringConverter(pvc);
-      } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.FLOAT)) {
+      } else if (javaType == JavaType.FLOAT) {
         return new ProtoFloatConverter(pvc);
-      } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.DOUBLE)) {
+      } else if (javaType == JavaType.DOUBLE) {
         return new ProtoDoubleConverter(pvc);
-      } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.BOOLEAN)) {
+      } else if (javaType == JavaType.BOOLEAN) {
         return new ProtoBooleanConverter(pvc);
-      } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.BYTE_STRING)) {
+      } else if (javaType == JavaType.BYTE_STRING) {
         return new ProtoBinaryConverter(pvc);
-      } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.ENUM)) {
+      } else if (javaType == JavaType.ENUM) {
         return new ProtoEnumConverter(pvc, fieldDescriptor);
-      } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.INT)) {
+      } else if (javaType == JavaType.INT) {
         return new ProtoIntConverter(pvc);
-      } else if (javaType.equals(Descriptors.FieldDescriptor.JavaType.LONG)) {
+      } else if (javaType == JavaType.LONG) {
         return new ProtoLongConverter(pvc);
       }
     }
