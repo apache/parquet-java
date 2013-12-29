@@ -163,13 +163,13 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       MessageOrBuilder msg = (MessageOrBuilder) value;
       writeMessage(type.asGroupType(), msg);
     } else if (javaType == JavaType.INT) {
-      recordConsumer.addInteger(((Integer) value).intValue());
+      recordConsumer.addInteger((Integer) value);
     } else if (javaType == JavaType.LONG) {
-      recordConsumer.addLong(((Long) value).longValue());
+      recordConsumer.addLong((Long) value);
     } else if (javaType == JavaType.FLOAT) {
-      recordConsumer.addFloat(((Float) value).floatValue());
+      recordConsumer.addFloat((Float) value);
     } else if (javaType == JavaType.DOUBLE) {
-      recordConsumer.addDouble(((Double) value).doubleValue());
+      recordConsumer.addDouble((Double) value);
     } else if (javaType == JavaType.ENUM) {
       Descriptors.EnumValueDescriptor enumDescriptor = (Descriptors.EnumValueDescriptor) value;
       recordConsumer.addBinary(Binary.fromString(enumDescriptor.getName()));
