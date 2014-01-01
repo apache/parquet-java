@@ -17,7 +17,7 @@
 
 
   <name>Parquet Protobuf</name>
-  <url>https://github.com/lukasnalezenec/parquet-protobuf.git</url>
+  <url>https://github.com/Parquet/parquet-mr</url>
 
   <dependencies>
     <dependency>
