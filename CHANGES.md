@@ -1,5 +1,20 @@
 # Parquet #
 
+### Version 1.3.0 ###
+* ISSUE [258](https://github.com/Parquet/parquet-mr/pull/258): Optimize scan
+* ISSUE [259](https://github.com/Parquet/parquet-mr/pull/259): add delta length byte arrays and delta byte arrays encodings
+* ISSUE [249](https://github.com/Parquet/parquet-mr/pull/249): make summary files read in parallel; improve memory footprint of metadata; avoid unnecessary seek
+* ISSUE [257](https://github.com/Parquet/parquet-mr/pull/257): Create parquet-hadoop-bundle which will eventually replace parquet-hive-bundle
+* ISSUE [253](https://github.com/Parquet/parquet-mr/pull/253): Delta Binary Packing for Int
+* ISSUE [254](https://github.com/Parquet/parquet-mr/pull/254): Add writer version flag to parquet and make initial changes for supported parquet 2.0 encodings
+* ISSUE [256](https://github.com/Parquet/parquet-mr/pull/256): Resolves issue #251 by doing additional checks if Hive returns "Unknown" as a version
+* ISSUE [252](https://github.com/Parquet/parquet-mr/pull/252): refactor error handler for BufferedProtocolReadToWrite to be non-static
+
+### Version 1.2.11 ###
+* ISSUE [250](https://github.com/Parquet/parquet-mr/pull/250): pretty_print_json_for_compatibility_checker
+* ISSUE [243](https://github.com/Parquet/parquet-mr/pull/243): add parquet cascading integration documentation
+* ISSUE [248](https://github.com/Parquet/parquet-mr/pull/248): More Hadoop 2 compatibility fixes
+
 ### Version 1.2.10 ###
 * ISSUE [247](https://github.com/Parquet/parquet-mr/pull/247): fix bug: when field index is greater than zero
 * ISSUE [244](https://github.com/Parquet/parquet-mr/pull/244): Feature/error handler
