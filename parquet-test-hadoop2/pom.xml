@@ -49,7 +49,7 @@
     <plugins>
       <plugin>
         <artifactId>maven-enforcer-plugin</artifactId>
-        <version>1.0.1</version>
+        <version>1.3.1</version>
         <dependencies>
           <dependency>
             <groupId>org.semver</groupId>
