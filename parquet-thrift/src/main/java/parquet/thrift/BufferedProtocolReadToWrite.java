@@ -32,11 +32,11 @@ import java.util.List;
 /**
  * Class to read from one protocol in a buffer and then write to another one
  * When there is an exception during reading, it's a skippable exception.
- * When schema is not compatible, the {@link SkippableException} will be passed to {@link ReadWriteErrorHandler#handleSkippedCorruptedRecord(SkippableException)}.
+ * When schema is not compatible, the {@link SkippableException} will be thrown.
  * <p/>
  * When there are fields in the data that are not defined in the schema, the fields will be ignored and the handler will
- * be notified through {@link ReadWriteErrorHandler#handleFieldIgnored(org.apache.thrift.protocol.TField)}
- * and {@link parquet.thrift.ReadWriteErrorHandler#handleRecordHasFieldIgnored()}
+ * be notified through {@link FieldIgnoredHandler#handleFieldIgnored(org.apache.thrift.protocol.TField)}
+ * and {@link FieldIgnoredHandler#handleRecordHasFieldIgnored()}
  *
  * @author Julien Le Dem
  *
@@ -105,14 +105,14 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     }
   };
   //error handler is global
-  private final ReadWriteErrorHandler errorHandler;
+  private final FieldIgnoredHandler errorHandler;
   private final StructType thriftType;
 
   public BufferedProtocolReadToWrite(StructType thriftType) {
     this(thriftType, null);
   }
 
-  public BufferedProtocolReadToWrite(StructType thriftType, ReadWriteErrorHandler errorHandler) {
+  public BufferedProtocolReadToWrite(StructType thriftType, FieldIgnoredHandler errorHandler) {
     super();
     this.thriftType = thriftType;
     this.errorHandler = errorHandler;
@@ -121,7 +121,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
   /**
    * Reads one record from in and writes it to out.
    * Exceptions encountered during reading are treated as skippable exceptions,
-   * {@link ReadWriteErrorHandler} will be notified when registered.
+   * {@link FieldIgnoredHandler} will be notified when registered.
    *
    * @param in  input protocol
    * @param out output protocol
@@ -130,18 +130,13 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
   @Override
   public void readOne(TProtocol in, TProtocol out) throws TException {
     List<Action> buffer = new LinkedList<Action>();
-    try {
-      boolean hasFieldsIgnored = readOneStruct(in, buffer, thriftType);
-      if (hasFieldsIgnored) {
-        notifyRecordHasFieldIgnored();
-      }
-    } catch (DecodingSchemaMismatchException e) {
-      notifySkippedSchemaMismatchedRecordWhenReading(e);
-      notifySkippedCorruptedRecord(new SkippableException(error("Error while reading", buffer), e));
-      return;
+    try{
+        boolean hasFieldsIgnored = readOneStruct(in, buffer, thriftType);
+        if (hasFieldsIgnored) {
+          notifyRecordHasFieldIgnored();
+        }
     } catch (Exception e) {
-      notifySkippedCorruptedRecord(new SkippableException(error("Error while reading", buffer), e));
-      return;
+      throw new SkippableException(error("Error while reading", buffer), e);
     }
 
     try {
@@ -153,21 +148,9 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     }
   }
 
-  private void notifySkippedSchemaMismatchedRecordWhenReading(DecodingSchemaMismatchException e) {
-    if (errorHandler != null) {
-    errorHandler.handleSkipRecordDueToSchemaMismatch(e);
-    }
-  }
-
   private void notifyRecordHasFieldIgnored() {
     if (errorHandler != null) {
       errorHandler.handleRecordHasFieldIgnored();
-    }
-  }
-
-  private void notifySkippedCorruptedRecord(SkippableException e) {
-    if (errorHandler != null) {
-      errorHandler.handleSkippedCorruptedRecord(e);
     }
   }
 
