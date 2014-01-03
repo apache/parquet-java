@@ -46,12 +46,17 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.codehaus.jackson</groupId>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-jackson</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${jackson.groupId}</groupId>
       <artifactId>jackson-mapper-asl</artifactId>
       <version>${jackson.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.codehaus.jackson</groupId>
+      <groupId>${jackson.groupId}</groupId>
       <artifactId>jackson-core-asl</artifactId>
       <version>${jackson.version}</version>
     </dependency>
