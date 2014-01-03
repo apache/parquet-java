@@ -3,24 +3,18 @@ package parquet.thrift;
 import org.apache.thrift.protocol.TField;
 
 /**
- * Implements this class to handle errors encountered during reading and writing
+ * Implements this class to handle when fields get ignored in {@link BufferedProtocolReadToWrite}
  * @author Tianshuo Deng
  */
-public interface ReadWriteErrorHandler {
-  /**
-   * handle when a record can not be read due to an exception,
-   * in this case the record will be skipped and this method will be called with the exception that caused reading failure
-   *
-   * @param e
-   */
-  void handleSkippedCorruptedRecord(SkippableException e);
+public abstract class FieldIgnoredHandler {
 
   /**
    * handle when a record that contains fields that are ignored, meaning that the schema provided does not cover all the columns in data,
    * the record will still be written but with fields that are not defined in the schema ignored.
    * For each record, this method will be called at most once.
    */
-  void handleRecordHasFieldIgnored();
+  public void handleRecordHasFieldIgnored() {
+  }
 
   /**
    * handle when a field gets ignored,
@@ -29,11 +23,6 @@ public interface ReadWriteErrorHandler {
    *
    * @param field
    */
-  void handleFieldIgnored(TField field);
-
-  /**
-   * handle when there is a record that has incompatible schema
-   * @param e
-   */
-  void handleSkipRecordDueToSchemaMismatch(DecodingSchemaMismatchException e);
+  public void handleFieldIgnored(TField field) {
+  }
 }

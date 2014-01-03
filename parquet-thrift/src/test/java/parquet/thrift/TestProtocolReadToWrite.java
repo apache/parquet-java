@@ -86,15 +86,15 @@ public class TestProtocolReadToWrite {
     writeReadCompare(a);
   }
 
-  private void writeReadCompare(TBase<?,?> a)
-      throws TException, InstantiationException, IllegalAccessException {
-    ProtocolPipe[] pipes = {new ProtocolReadToWrite(), new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType((Class<TBase<?,?>>)a.getClass()))};
+  private void writeReadCompare(TBase<?, ?> a)
+          throws TException, InstantiationException, IllegalAccessException {
+    ProtocolPipe[] pipes = {new ProtocolReadToWrite(), new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType((Class<TBase<?, ?>>)a.getClass()))};
     for (ProtocolPipe p : pipes) {
       final ByteArrayOutputStream in = new ByteArrayOutputStream();
       final ByteArrayOutputStream out = new ByteArrayOutputStream();
       a.write(protocol(in));
       p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
-      TBase<?,?> b = a.getClass().newInstance();
+      TBase<?, ?> b = a.getClass().newInstance();
       b.read(protocol(new ByteArrayInputStream(out.toByteArray())));
 
       assertEquals(p.getClass().getSimpleName(), a, b);
@@ -104,14 +104,7 @@ public class TestProtocolReadToWrite {
   @Test
   public void testIncompatibleSchemaRecord() throws Exception {
     //handler will rethrow the exception for verifying purpose
-    CountingErrorHandler countingHandler = new CountingErrorHandler() {
-      @Override
-      public void handleSkipRecordDueToSchemaMismatch(DecodingSchemaMismatchException e) {
-        super.handleSkipRecordDueToSchemaMismatch(e);
-        assertTrue(e.getMessage().contains("the data type does not match the expected thrift structure"));
-        assertTrue(e.getMessage().contains("got BOOL"));
-      }
-    };
+    CountingErrorHandler countingHandler = new CountingErrorHandler();
 
     BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(AddressBook.class), countingHandler);
 
@@ -121,43 +114,38 @@ public class TestProtocolReadToWrite {
             true, false, (byte)8, (short)16, (int)32, (long)64, (double)1234, "string", "å", false,
             ByteBuffer.wrap("a".getBytes()), new ArrayList<Byte>(), new ArrayList<Short>(), new ArrayList<Long>());
     a.write(protocol(in));
-
+    try {
     p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
-    assertEquals(1, countingHandler.corruptedCount);
-    assertEquals(1, countingHandler.schemaMismatchCount);
+    } catch (SkippableException e) {
+      Throwable cause = e.getCause();
+      assertTrue(cause instanceof DecodingSchemaMismatchException);
+      assertTrue(cause.getMessage().contains("the data type does not match the expected thrift structure"));
+      assertTrue(cause.getMessage().contains("got BOOL"));
+    }
     assertEquals(0, countingHandler.recordCountOfMissingFields);
     assertEquals(0, countingHandler.fieldIgnoredCount);
   }
 
   /**
    * When enum value in data has an undefined index, it's considered as corrupted record and will be skipped.
-   * Handler will be notified
    *
    * @throws Exception
    */
   @Test
   public void testEnumMissingSchema() throws Exception {
-    CountingErrorHandler countingHandler = new CountingErrorHandler() {
-      @Override
-      public void handleSkippedCorruptedRecord(SkippableException e) {
-        super.handleSkippedCorruptedRecord(e);
-      }
-
-      @Override
-      public void handleSkipRecordDueToSchemaMismatch(DecodingSchemaMismatchException e) {
-        super.handleSkipRecordDueToSchemaMismatch(e);    //To change body of overridden methods use File | Settings | File Templates.
-        assertTrue(e.getMessage().contains("can not find index 4 in enum"));
-      }
-    };
+    CountingErrorHandler countingHandler = new CountingErrorHandler();
     BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructWithEnum.class), countingHandler);
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     StructWithMoreEnum moreEnum = new StructWithMoreEnum(NumberEnumWithMoreValue.FOUR);
     moreEnum.write(protocol(in));
-
-    p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
-    assertEquals(1, countingHandler.corruptedCount);
-    assertEquals(1, countingHandler.schemaMismatchCount);
+    try {
+      p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
+    } catch (SkippableException e) {
+      Throwable cause = e.getCause();
+      assertTrue(cause instanceof DecodingSchemaMismatchException);
+      assertTrue(cause.getMessage().contains("can not find index 4 in enum"));
+    }
     assertEquals(0, countingHandler.recordCountOfMissingFields);
     assertEquals(0, countingHandler.fieldIgnoredCount);
   }
@@ -193,10 +181,8 @@ public class TestProtocolReadToWrite {
     structForRead.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
 
     //record will be read without extra field
-    assertEquals(0, countingHandler.corruptedCount);
     assertEquals(1, countingHandler.recordCountOfMissingFields);
     assertEquals(1, countingHandler.fieldIgnoredCount);
-    assertEquals(0, countingHandler.schemaMismatchCount);
 
     StructV4WithExtracStructField b = StructV4WithExtracStructField.class.newInstance();
     b.read(protocol(new ByteArrayInputStream(out.toByteArray())));
@@ -227,10 +213,8 @@ public class TestProtocolReadToWrite {
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     structForRead.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
 
-    assertEquals(0, countingHandler.corruptedCount);
     assertEquals(1, countingHandler.recordCountOfMissingFields);
     assertEquals(1, countingHandler.fieldIgnoredCount);
-    assertEquals(0, countingHandler.schemaMismatchCount);
   }
 
   private TCompactProtocol protocol(OutputStream to) {
@@ -241,16 +225,9 @@ public class TestProtocolReadToWrite {
     return new TCompactProtocol(new TIOStreamTransport(from));
   }
 
-  class CountingErrorHandler implements ReadWriteErrorHandler {
-    int corruptedCount = 0;
+  class CountingErrorHandler extends FieldIgnoredHandler {
     int fieldIgnoredCount = 0;
     int recordCountOfMissingFields = 0;
-    int schemaMismatchCount = 0;
-
-    @Override
-    public void handleSkippedCorruptedRecord(SkippableException e) {
-      corruptedCount++;
-    }
 
     @Override
     public void handleRecordHasFieldIgnored() {
@@ -260,11 +237,6 @@ public class TestProtocolReadToWrite {
     @Override
     public void handleFieldIgnored(TField field) {
       fieldIgnoredCount++;
-    }
-
-    @Override
-    public void handleSkipRecordDueToSchemaMismatch(DecodingSchemaMismatchException e) {
-      schemaMismatchCount++;
     }
   }
 }
