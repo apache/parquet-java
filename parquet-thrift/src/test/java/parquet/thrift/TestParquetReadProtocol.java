@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -131,7 +132,8 @@ public class TestParquetReadProtocol {
   public void testStructInMap() throws Exception {
     final Map<String, TestPerson> map = new HashMap<String, TestPerson>();
     map.put("foo", new TestPerson(new TestName("john", "johnson"), new HashMap<TestPhoneType, String>()));
-    TestStructInMap testMap = new TestStructInMap("map_name", map);
+    final Map<String, Integer> stringToIntMap = Collections.singletonMap("bar", 10);
+    TestStructInMap testMap = new TestStructInMap("map_name", map, stringToIntMap);
     validate(testMap);
   }
 
