@@ -3,7 +3,7 @@
     <groupId>com.twitter</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.3.1-SNAPSHOT</version>
+    <version>1.3.2-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -46,12 +46,17 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.codehaus.jackson</groupId>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-jackson</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${jackson.groupId}</groupId>
       <artifactId>jackson-mapper-asl</artifactId>
       <version>${jackson.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.codehaus.jackson</groupId>
+      <groupId>${jackson.groupId}</groupId>
       <artifactId>jackson-core-asl</artifactId>
       <version>${jackson.version}</version>
     </dependency>
