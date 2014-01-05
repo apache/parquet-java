@@ -62,6 +62,15 @@
         <enabled>true</enabled>
       </snapshots>
      </repository>
+    <repository>
+      <id>central</id>
+      <name>Maven Repository Switchboard</name>
+      <layout>default</layout>
+      <url>http://repo1.maven.org/maven2</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
   </repositories>
 
   <!-- this is needed for maven-thrift-plugin, would like to remove this.
