@@ -141,6 +141,8 @@ public class ProtoRecordConverterTest {
 
     TestProtobuf.TopMessage result = testData(top.build()).get(0);
 
+    assertEquals(3, result.getInnerCount());
+
     TestProtobuf.InnerMessage first = result.getInner(0);
     TestProtobuf.InnerMessage second = result.getInner(1);
     TestProtobuf.InnerMessage third = result.getInner(2);

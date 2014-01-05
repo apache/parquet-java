@@ -22,10 +22,6 @@ public class TestUtils {
     return new Path(tmp.getPath());
   }
 
-  public static <T extends MessageOrBuilder> T writeAndReadSingle(T records) throws IOException {
-    return writeAndRead(records).get(0);
-  }
-
   public static <T extends MessageOrBuilder> List<T> writeAndRead(T... records) throws IOException {
     Class<? extends Message> cls = inferRecordsClass(records);
 
@@ -50,7 +46,7 @@ public class TestUtils {
       if (cls == null) {
         cls = recordClass;
       } else if (!cls.equals(recordClass)) {
-        throw new RuntimeException("Wrong class " + cls + ", expected protocol buffer.");
+        throw new RuntimeException("Class mismatch :" + cls + " and " + recordClass);
       }
     }
     return cls;
