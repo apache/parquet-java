@@ -116,6 +116,10 @@
                 <requireBackwardCompatibility implementation="org.semver.enforcer.RequireBackwardCompatibility">
                   <compatibilityType>BACKWARD_COMPATIBLE_USER</compatibilityType>
                   <dumpDetails>true</dumpDetails>
+                  <includes>
+                    <include>parquet.trift</include>
+                    <include>parquet.hadoop</include>
+                  </includes>
                 </requireBackwardCompatibility>
               </rules>
             </configuration>
