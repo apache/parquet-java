@@ -154,34 +154,43 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   private void writeScalarValue(Type type, Descriptors.FieldDescriptor fieldDescriptor, Object value) {
 
-    JavaType javaType = fieldDescriptor.getJavaType();
-
-    if (javaType == JavaType.STRING) {
-      Binary binary = Binary.fromString((String) value);
-      recordConsumer.addBinary(binary);
-    } else if (javaType == JavaType.MESSAGE) {
-      MessageOrBuilder msg = (MessageOrBuilder) value;
-      writeMessage(type.asGroupType(), msg);
-    } else if (javaType == JavaType.INT) {
-      recordConsumer.addInteger((Integer) value);
-    } else if (javaType == JavaType.LONG) {
-      recordConsumer.addLong((Long) value);
-    } else if (javaType == JavaType.FLOAT) {
-      recordConsumer.addFloat((Float) value);
-    } else if (javaType == JavaType.DOUBLE) {
-      recordConsumer.addDouble((Double) value);
-    } else if (javaType == JavaType.ENUM) {
-      Descriptors.EnumValueDescriptor enumDescriptor = (Descriptors.EnumValueDescriptor) value;
-      recordConsumer.addBinary(Binary.fromString(enumDescriptor.getName()));
-    } else if (javaType == JavaType.BOOLEAN) {
-      recordConsumer.addBoolean((Boolean) value);
-    } else if (javaType == JavaType.BYTE_STRING) {
-      ByteString byteString = (ByteString) value;
-      Binary binary = Binary.fromByteArray(byteString.toByteArray());
-      recordConsumer.addBinary(binary);
-    } else {
-      String msg = "Cannot write " + value + " with descriptor " + fieldDescriptor + " and type " + javaType;
-      throw new RuntimeException(msg);
+   switch (fieldDescriptor.getJavaType()) {
+      case STRING:
+        Binary binaryString = Binary.fromString((String) value);
+        recordConsumer.addBinary(binaryString);
+      break;
+      case MESSAGE:
+        MessageOrBuilder msg = (MessageOrBuilder) value;
+        writeMessage(type.asGroupType(), msg);
+        break;
+      case INT:
+        recordConsumer.addInteger((Integer) value);
+        break;
+      case LONG:
+        recordConsumer.addLong((Long) value);
+        break;
+      case FLOAT:
+        recordConsumer.addFloat((Float) value);
+        break;
+      case DOUBLE:
+        recordConsumer.addDouble((Double) value);
+        break;
+      case ENUM:
+        Descriptors.EnumValueDescriptor enumDescriptor = (Descriptors.EnumValueDescriptor) value;
+        recordConsumer.addBinary(Binary.fromString(enumDescriptor.getName()));
+        break;
+      case BOOLEAN:
+        recordConsumer.addBoolean((Boolean) value);
+        break;
+      case BYTE_STRING:
+        ByteString byteString = (ByteString) value;
+        Binary binary = Binary.fromByteArray(byteString.toByteArray());
+        recordConsumer.addBinary(binary);
+        break;
+      default:
+        String exceptionMsg = "Cannot write \"" + value + "\" with descriptor \"" + fieldDescriptor
+                + "\" and type \"" + fieldDescriptor.getJavaType() + "\".";
+        throw new RuntimeException(exceptionMsg);
     }
   }
 

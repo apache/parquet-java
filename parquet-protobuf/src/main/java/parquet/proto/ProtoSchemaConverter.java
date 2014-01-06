@@ -87,28 +87,23 @@ public class ProtoSchemaConverter {
   }
 
   private Type convertScalarField(String fieldName, Descriptors.FieldDescriptor descriptor, Type.Repetition repetition) {
+
     JavaType javaType = descriptor.getJavaType();
 
-    if (javaType == JavaType.BOOLEAN) {
-      return primitive(fieldName, PrimitiveTypeName.BOOLEAN, repetition);
-    } else if (javaType == JavaType.INT) {
-      return primitive(fieldName, PrimitiveTypeName.INT32, repetition);
-    } else if (javaType == JavaType.LONG) {
-      return primitive(fieldName, PrimitiveTypeName.INT64, repetition);
-    } else if (javaType == JavaType.FLOAT) {
-      return primitive(fieldName, PrimitiveTypeName.FLOAT, repetition);
-    } else if (javaType == JavaType.DOUBLE) {
-      return primitive(fieldName, PrimitiveTypeName.DOUBLE, repetition);
-    } else if (javaType == JavaType.BYTE_STRING) {
-      return primitive(fieldName, PrimitiveTypeName.BINARY, repetition);
-    } else if (javaType == JavaType.STRING) {
-      return primitive(fieldName, PrimitiveTypeName.BINARY, repetition, OriginalType.UTF8);
-    } else if (javaType == JavaType.MESSAGE) {
-      Descriptors.Descriptor messageDescriptor = descriptor.getMessageType();
-      List<Type> fields = convertFields(messageDescriptor.getFields());
-      return new GroupType(repetition, fieldName, fields);
-    } else if (javaType == JavaType.ENUM) {
-      return primitive(fieldName, PrimitiveTypeName.BINARY, repetition, OriginalType.ENUM);
+    switch (javaType) {
+      case BOOLEAN : return primitive(fieldName, PrimitiveTypeName.BOOLEAN, repetition);
+      case INT : return primitive(fieldName, PrimitiveTypeName.INT32, repetition);
+      case LONG : return primitive(fieldName, PrimitiveTypeName.INT64, repetition);
+      case FLOAT : return primitive(fieldName, PrimitiveTypeName.FLOAT, repetition);
+      case DOUBLE: return primitive(fieldName, PrimitiveTypeName.DOUBLE, repetition);
+      case BYTE_STRING: return primitive(fieldName, PrimitiveTypeName.BINARY, repetition);
+      case STRING: return primitive(fieldName, PrimitiveTypeName.BINARY, repetition, OriginalType.UTF8);
+      case MESSAGE: {
+        Descriptors.Descriptor messageDescriptor = descriptor.getMessageType();
+        List<Type> fields = convertFields(messageDescriptor.getFields());
+        return new GroupType(repetition, fieldName, fields);
+      }
+      case ENUM: return primitive(fieldName, PrimitiveTypeName.BINARY, repetition, OriginalType.ENUM);
     }
 
     throw new UnsupportedOperationException("Cannot convert Protocol Buffer: unknown type " + javaType + " fieldName " + fieldName);
