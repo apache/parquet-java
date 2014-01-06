@@ -29,7 +29,7 @@ import static com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 /**
  * @author Lukas Nalezenec
  */
-public class ProtoMessageConverter extends GroupConverter {
+class ProtoMessageConverter extends GroupConverter {
 
   private final Converter[] converters;
   private final ParentValueContainer parent;

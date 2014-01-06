@@ -18,7 +18,7 @@ package parquet.proto.converters;
 
 import parquet.io.api.PrimitiveConverter;
 
-public final class ProtoIntConverter extends PrimitiveConverter {
+final class ProtoIntConverter extends PrimitiveConverter {
 
   final ParentValueContainer parent;
 

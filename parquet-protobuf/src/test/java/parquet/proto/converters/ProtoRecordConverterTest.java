@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package parquet.proto;
+package parquet.proto.converters;
 
 import com.google.protobuf.ByteString;
 import org.junit.Test;

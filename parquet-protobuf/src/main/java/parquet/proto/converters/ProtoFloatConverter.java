@@ -18,7 +18,7 @@ package parquet.proto.converters;
 
 import parquet.io.api.PrimitiveConverter;
 
-public final class ProtoFloatConverter extends PrimitiveConverter {
+final class ProtoFloatConverter extends PrimitiveConverter {
 
   final ParentValueContainer parent;
 

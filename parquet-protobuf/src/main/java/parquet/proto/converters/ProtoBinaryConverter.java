@@ -20,7 +20,7 @@ import com.google.protobuf.ByteString;
 import parquet.io.api.Binary;
 import parquet.io.api.PrimitiveConverter;
 
-public final class ProtoBinaryConverter extends PrimitiveConverter {
+final class ProtoBinaryConverter extends PrimitiveConverter {
 
   final ParentValueContainer parent;
 

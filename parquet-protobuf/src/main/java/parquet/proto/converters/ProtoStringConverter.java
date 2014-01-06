@@ -19,7 +19,7 @@ package parquet.proto.converters;
 import parquet.io.api.Binary;
 import parquet.io.api.PrimitiveConverter;
 
-public final class ProtoStringConverter extends PrimitiveConverter {
+final class ProtoStringConverter extends PrimitiveConverter {
 
   final ParentValueContainer parent;
 

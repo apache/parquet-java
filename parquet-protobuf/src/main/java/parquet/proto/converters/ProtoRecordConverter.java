@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.proto;
+package parquet.proto.converters;
 
 
 import com.google.protobuf.Message;
@@ -28,7 +28,7 @@ import parquet.schema.MessageType;
  *
  * @author Lukas Nalezenec
  */
-class ProtoRecordConverter<T extends MessageOrBuilder> extends parquet.proto.converters.ProtoMessageConverter {
+public class ProtoRecordConverter<T extends MessageOrBuilder> extends parquet.proto.converters.ProtoMessageConverter {
 
   private final Message.Builder reusedBuilder;
   private boolean buildBefore;
@@ -61,7 +61,7 @@ class ProtoRecordConverter<T extends MessageOrBuilder> extends parquet.proto.con
     // do nothing, dont call ParentValueContainer at top level.
   }
 
-  T getCurrentRecord() {
+  public T getCurrentRecord() {
     if (buildBefore) {
       return (T) this.reusedBuilder.build();
     } else {

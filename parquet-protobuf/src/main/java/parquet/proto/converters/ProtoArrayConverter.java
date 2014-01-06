@@ -19,7 +19,7 @@ package parquet.proto.converters;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
 
-public class ProtoArrayConverter extends GroupConverter {
+final class ProtoArrayConverter extends GroupConverter {
 
   private final Converter converter;
 

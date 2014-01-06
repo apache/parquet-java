@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public final class ProtoEnumConverter extends PrimitiveConverter {
+final class ProtoEnumConverter extends PrimitiveConverter {
 
   private final Descriptors.FieldDescriptor fieldType;
   private final Map<Binary, Descriptors.EnumValueDescriptor> enumLookup;

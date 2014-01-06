@@ -19,6 +19,7 @@ import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import parquet.io.api.GroupConverter;
 import parquet.io.api.RecordMaterializer;
+import parquet.proto.converters.ProtoRecordConverter;
 import parquet.schema.MessageType;
 
 class ProtoRecordMaterializer<T extends MessageOrBuilder> extends RecordMaterializer<T> {

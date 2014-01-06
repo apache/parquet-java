@@ -16,7 +16,7 @@
 
 package parquet.proto.converters;
 
-public abstract class ParentValueContainer {
+abstract class ParentValueContainer {
 
   /**
    * Adds the value to the parent.
