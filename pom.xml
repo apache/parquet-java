@@ -100,8 +100,10 @@
     <module>parquet-thrift</module>
     <module>parquet-test-hadoop2</module>
     <module>parquet-hadoop-bundle</module>
+<!--
     <module>parquet-hive</module>
     <module>parquet-hive-bundle</module>
+--> 
   </modules>
 
   <dependencies>
