@@ -41,7 +41,7 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
   public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage,
                             CompressionCodecName compressionCodecName, int blockSize,
                             int pageSize) throws IOException {
-    super(file, (WriteSupport<T>) new ProtoWriteSupport(protoMessage),
+    super(file, new ProtoWriteSupport(protoMessage),
             compressionCodecName, blockSize, pageSize);
   }
 
@@ -53,14 +53,14 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
    * @param blockSize            HDFS block size
    * @param pageSize             See parquet write up. Blocks are subdivided into pages for alignment and other purposes.
    * @param enableDictionary     Whether to use a dictionary to compress columns.
+   * @param validating           to turn on validation using the schema
    * @throws IOException
    */
   public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage,
                             CompressionCodecName compressionCodecName, int blockSize,
-                            int pageSize, boolean enableDictionary) throws IOException {
-    super(file, (WriteSupport<T>)
-            new ProtoWriteSupport(protoMessage),
-            compressionCodecName, blockSize, pageSize, enableDictionary, false);
+                            int pageSize, boolean enableDictionary, boolean validating) throws IOException {
+    super(file, new ProtoWriteSupport(protoMessage),
+            compressionCodecName, blockSize, pageSize, enableDictionary, validating);
   }
 
   /**

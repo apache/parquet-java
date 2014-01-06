@@ -29,12 +29,11 @@ import java.io.IOException;
 public class ProtoParquetReader<T extends MessageOrBuilder> extends ParquetReader<T> {
 
   public ProtoParquetReader(Path file) throws IOException {
-    super(file, (ReadSupport<T>) new ProtoReadSupport());
+    super(file, new ProtoReadSupport());
   }
 
   public ProtoParquetReader(Path file, UnboundRecordFilter recordFilter) throws IOException {
-    super(file, (ReadSupport<T>) new ProtoReadSupport(), recordFilter);
+    super(file, new ProtoReadSupport(), recordFilter);
   }
 
-  //TODO here should be option to override pb from file
 }

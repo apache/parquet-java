@@ -28,7 +28,7 @@ final class ProtoBooleanConverter extends PrimitiveConverter {
 
   @Override
   final public void addBoolean(boolean value) {
-    parent.add(value ? Boolean.TRUE : Boolean.FALSE);
+    parent.add(value);
   }
 
 }
