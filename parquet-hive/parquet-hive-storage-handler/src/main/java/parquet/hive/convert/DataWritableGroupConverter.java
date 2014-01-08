@@ -11,6 +11,8 @@
  */
 package parquet.hive.convert;
 
+import java.io.DataOutput;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,7 +35,7 @@ public class DataWritableGroupConverter extends HiveGroupConverter {
   private final Converter[] converters;
   private final HiveGroupConverter parent;
   private final int index;
-  private final Object[] currentArr;
+  private final Writable[] currentArr;
   private Writable[] rootMap;
 
   public DataWritableGroupConverter(final GroupType requestedSchema, final GroupType tableSchema) {
@@ -52,7 +54,7 @@ public class DataWritableGroupConverter extends HiveGroupConverter {
     final int totalFieldCount = containingGroupType.getFieldCount();
     final int selectedFieldCount = selectedGroupType.getFieldCount();
 
-    currentArr = new Object[totalFieldCount];
+    currentArr = new Writable[totalFieldCount];
     converters = new Converter[selectedFieldCount];
 
     int i = 0;
@@ -67,24 +69,7 @@ public class DataWritableGroupConverter extends HiveGroupConverter {
   }
 
   final public ArrayWritable getCurrentArray() {
-    final Writable[] writableArr;
-    if (this.rootMap != null) { // We're at the root : we can safely re-use the same map to save perf
-      writableArr = this.rootMap;
-    } else {
-      writableArr = new Writable[currentArr.length];
-    }
-
-    for (int i = 0; i < currentArr.length; i++) {
-      final Object obj = currentArr[i];
-      if (obj instanceof List) {
-        final List<?> objList = (List<?>)obj;
-        final ArrayWritable arr = new ArrayWritable(Writable.class, objList.toArray(new Writable[objList.size()]));
-        writableArr[i] = arr;
-      } else {
-        writableArr[i] = (Writable) obj;
-      }
-    }
-    return new ArrayWritable(Writable.class, writableArr);
+    return new ArrayWritable(Writable.class, currentArr);
   }
 
   @Override
@@ -115,24 +100,42 @@ public class DataWritableGroupConverter extends HiveGroupConverter {
   protected void add(final int index, final Writable value) {
 
     if (currentArr[index] != null) {
-
-      final Object obj = currentArr[index];
-      if (obj instanceof List) {
-        final List<Writable> list = (List<Writable>) obj;
-        list.add(value);
-      } else {
-        throw new RuntimeException("This should be a List: " + obj);
-      }
-
+      ((ListWritable) currentArr[index]).add(value);
     } else {
-      // create a list here because we don't know the final length of the object
-      // and it is more flexible than ArrayWritable.
-      //
-      // converted to ArrayWritable by getCurrentArray().
-      final List<Writable> buffer = new ArrayList<Writable>();
+      ListWritable buffer = new ListWritable();
       buffer.add(value);
-      currentArr[index] = (Object) buffer;
+      currentArr[index] = buffer;
     }
 
   }
+
+  private static class ListWritable extends ArrayWritable {
+
+    private List<Writable> buffer = new ArrayList<Writable>();
+
+    public ListWritable() {
+      super(Writable.class);
+    }
+
+    public void add(Writable value) {
+      buffer.add(value);
+    }
+
+    @Override
+    public Writable[] get() {
+      Writable[] array = super.get();
+      if (array == null) {
+        array = buffer.toArray(new Writable[buffer.size()]);
+        super.set(array);
+      }
+      return array;
+    }
+
+    @Override
+    public void write(DataOutput out) throws IOException {
+      get();
+      super.write(out);
+    }
+  }
+
 }
