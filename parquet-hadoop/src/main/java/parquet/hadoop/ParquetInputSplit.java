@@ -256,7 +256,9 @@ public class ParquetInputSplit extends FileSplit implements Writable {
   @Override
   public String toString() {
     String hosts[] = {};
-    try{hosts = getLocations();}catch(Exception ignore){}
+    try{
+       hosts = getLocations();
+    }catch(Exception ignore){} // IOException/InterruptedException could be thrown
 
     return this.getClass().getSimpleName() + "{" + 
            "part: " + getPath()
