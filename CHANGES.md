@@ -3,7 +3,7 @@
 ### Version 1.3.1 ###
 * ISSUE [267](https://github.com/Parquet/parquet-mr/pull/267): handler only handle ignored field, exception during will be thrown as Sk...
 * ISSUE [266](https://github.com/Parquet/parquet-mr/pull/266): upgrade parquet-mr to elephant-bird 4.4
-* 
+
 ### Version 1.3.0 ###
 * ISSUE [258](https://github.com/Parquet/parquet-mr/pull/258): Optimize scan
 * ISSUE [259](https://github.com/Parquet/parquet-mr/pull/259): add delta length byte arrays and delta byte arrays encodings
