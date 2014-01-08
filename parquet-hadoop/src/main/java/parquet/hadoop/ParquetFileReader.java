@@ -23,10 +23,13 @@ import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
+import java.io.EOFException;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -44,6 +47,9 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.ReadOption;
+import org.apache.hadoop.io.ByteBufferPool;
+import org.apache.hadoop.io.ElasticByteBufferPool;
 import org.apache.hadoop.mapred.Utils;
 
 import parquet.Log;
@@ -72,6 +78,7 @@ import parquet.io.ParquetDecodingException;
 public class ParquetFileReader implements Closeable {
 
   private static final Log LOG = Log.getLog(ParquetFileReader.class);
+  private static final ByteBufferPool bufferPool = new ElasticByteBufferPool();
 
   private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
@@ -281,10 +288,25 @@ public class ParquetFileReader implements Closeable {
 
       f.seek(footerLengthIndex);
       int footerLength = readIntLittleEndian(f);
-      byte[] magic = new byte[MAGIC.length];
-      f.readFully(magic);
-      if (!Arrays.equals(MAGIC, magic)) {
-        throw new RuntimeException(file.getPath() + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
+      final ByteBuffer refMagicBuf = ByteBuffer.wrap(MAGIC);
+      for (int magicRemaining = MAGIC.length; magicRemaining > 0;) {
+        final ByteBuffer magicBuf = f.read(bufferPool, magicRemaining,
+            EnumSet.of(ReadOption.SKIP_CHECKSUMS));
+        if (magicBuf == null) {
+          throw new EOFException();
+        }
+        refMagicBuf.clear();
+        refMagicBuf.position(MAGIC.length - magicRemaining);
+        refMagicBuf.limit(refMagicBuf.position() + magicBuf.remaining());
+        if (!magicBuf.equals(refMagicBuf)) {
+          final String expMagicStr = refMagicBuf.asCharBuffer().toString();
+          final String actMagicStr = magicBuf.asCharBuffer().toString();
+          throw new RuntimeException(file.getPath() + " is not a Parquet file. "
+              + "Expected magic number at tail " + expMagicStr + " but found "
+              + actMagicStr);
+        }
+        magicRemaining -= magicBuf.remaining();
+        f.releaseBuffer(magicBuf);
       }
       long footerIndex = footerLengthIndex - footerLength;
       if (Log.DEBUG) LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
