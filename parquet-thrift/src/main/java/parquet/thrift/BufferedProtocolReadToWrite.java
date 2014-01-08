@@ -460,9 +460,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
    */
   private void checkEnum(ThriftType expectedType, int i) {
     if (expectedType.getType() == ThriftTypeID.ENUM) {
-      List<ThriftType.EnumValue> enumValues = ((ThriftType.EnumType)expectedType).getValues();
-      if (i >= enumValues.size() || enumValues.get(i) == null)
+      ThriftType.EnumType expectedEnumType = (ThriftType.EnumType)expectedType;
+      if (expectedEnumType.getEnumValueById(i) == null) {
         throw new DecodingSchemaMismatchException("can not find index " + i + " in enum " + expectedType);
+      }
     }
   }
 

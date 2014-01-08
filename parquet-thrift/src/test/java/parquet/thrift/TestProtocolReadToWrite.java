@@ -137,8 +137,10 @@ public class TestProtocolReadToWrite {
     BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructWithEnum.class), countingHandler);
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
-    StructWithMoreEnum moreEnum = new StructWithMoreEnum(NumberEnumWithMoreValue.FOUR);
-    moreEnum.write(protocol(in));
+    StructWithMoreEnum enumDefinedInOldDefinition = new StructWithMoreEnum(NumberEnumWithMoreValue.THREE);
+    StructWithMoreEnum extraEnumDefinedInNewDefinition = new StructWithMoreEnum(NumberEnumWithMoreValue.FOUR);
+    enumDefinedInOldDefinition.write(protocol(in));
+    extraEnumDefinedInNewDefinition.write(protocol(in));
     try {
       p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
     } catch (SkippableException e) {
