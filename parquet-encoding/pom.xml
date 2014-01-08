@@ -60,6 +60,7 @@
                 <requireBackwardCompatibility implementation="org.semver.enforcer.RequireBackwardCompatibility">
                   <compatibilityType>BACKWARD_COMPATIBLE_USER</compatibilityType>
                   <dumpDetails>true</dumpDetails>
+                  <previousVersion>${previous.version}</previousVersion>
                 </requireBackwardCompatibility>
               </rules>
             </configuration>

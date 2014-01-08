@@ -84,6 +84,7 @@
                 <requireBackwardCompatibility implementation="org.semver.enforcer.RequireBackwardCompatibility">
                   <compatibilityType>BACKWARD_COMPATIBLE_USER</compatibilityType>
                   <dumpDetails>true</dumpDetails>
+                  <previousVersion>${previous.version}</previousVersion>
                   <includes>
                     <include>parquet.avro</include>
                   </includes>
