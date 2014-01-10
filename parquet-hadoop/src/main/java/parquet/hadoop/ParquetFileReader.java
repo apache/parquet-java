@@ -23,13 +23,13 @@ import static parquet.bytes.BytesUtils.readIntLittleEndian;
 import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
 import static parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics;
+import static parquet.format.Util.readPageHeader;
 import static parquet.hadoop.ParquetFileWriter.MAGIC;
 import static parquet.hadoop.ParquetFileWriter.PARQUET_COMMON_METADATA_FILE;
 import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
-import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.io.SequenceInputStream;
@@ -37,7 +37,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -56,9 +55,6 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
-import org.apache.hadoop.fs.ReadOption;
-import org.apache.hadoop.io.ByteBufferPool;
-import org.apache.hadoop.io.ElasticByteBufferPool;
 import org.apache.hadoop.mapred.Utils;
 
 import parquet.Log;
@@ -94,7 +90,6 @@ import parquet.io.ParquetDecodingException;
 public class ParquetFileReader implements Closeable {
 
   private static final Log LOG = Log.getLog(ParquetFileReader.class);
-  private static final ByteBufferPool bufferPool = new ElasticByteBufferPool();
 
   public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
 
@@ -428,14 +423,10 @@ public class ParquetFileReader implements Closeable {
       if (Log.DEBUG) LOG.debug("reading footer index at " + footerLengthIndex);
 
       f.seek(footerLengthIndex);
-      int footerLength = readIntLittleEndian(f);
+      final int footerLength = Zcopy.getInt(f);
       final ByteBuffer refMagicBuf = ByteBuffer.wrap(MAGIC);
       for (int magicRemaining = MAGIC.length; magicRemaining > 0;) {
-        final ByteBuffer magicBuf = f.read(bufferPool, magicRemaining,
-            EnumSet.of(ReadOption.SKIP_CHECKSUMS));
-        if (magicBuf == null) {
-          throw new EOFException();
-        }
+        final ByteBuffer magicBuf = Zcopy.getBuf(f, magicRemaining);
         refMagicBuf.clear();
         refMagicBuf.position(MAGIC.length - magicRemaining);
         refMagicBuf.limit(refMagicBuf.position() + magicBuf.remaining());
