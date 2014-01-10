@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.apache.hadoop.fs.FSDataInputStream;
 import parquet.Log;
 import parquet.format.ConvertedType;
 import parquet.format.ColumnChunk;
@@ -46,6 +47,7 @@ import parquet.format.PageType;
 import parquet.format.RowGroup;
 import parquet.format.SchemaElement;
 import parquet.format.Type;
+import parquet.hadoop.Zcopy;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ColumnPath;
@@ -308,6 +310,15 @@ public class ParquetMetadataConverter {
 
   public ParquetMetadata readParquetMetadata(InputStream from) throws IOException {
     FileMetaData fileMetaData = readFileMetaData(from);
+    if (Log.DEBUG) LOG.debug(fileMetaData);
+    ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData);
+    if (Log.DEBUG) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
+    return parquetMetadata;
+  }
+
+  public ParquetMetadata readParquetMetadata(FSDataInputStream from)
+      throws IOException {
+    FileMetaData fileMetaData = Zcopy.readFileMetaData(from);
     if (Log.DEBUG) LOG.debug(fileMetaData);
     ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData);
     if (Log.DEBUG) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
