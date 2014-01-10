@@ -46,6 +46,16 @@
       <artifactId>fastutil</artifactId>
       <version>6.5.7</version>
     </dependency>
+    <dependency>
+      <groupId>net.ledem</groupId>
+      <artifactId>brennus-asm</artifactId>
+      <version>0.3.0</version>
+    </dependency>
+    <dependency>
+      <groupId>net.ledem</groupId>
+      <artifactId>brennus-builder</artifactId>
+      <version>0.3.0</version>
+    </dependency>
 
     <dependency>
       <groupId>com.carrotsearch</groupId>
