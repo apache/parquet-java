@@ -145,23 +145,13 @@ public class MapredParquetInputFormat extends FileInputFormat<Void, ArrayWritabl
       if (realSplit == null) {
         return 0;
       } else {
-        try {
           return realSplit.getLength();
-        } catch (IOException ex) {
-          throw new RuntimeException("Cannot get the length of the ParquetInputSplit: " + realSplit, ex);
-        } catch (InterruptedException ex) {
-          throw new RuntimeException("Cannot get the length of the ParquetInputSplit: " + realSplit, ex);
-        }
       }
     }
 
     @Override
     public String[] getLocations() throws IOException {
-      try {
         return realSplit.getLocations();
-      } catch (final InterruptedException e) {
-        throw new IOException(e);
-      }
     }
 
     @Override
