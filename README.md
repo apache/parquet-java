@@ -30,7 +30,7 @@ Parquet is a very active project, and new features are being added quickly; belo
   <tr><td>Adaptive dictionary encoding</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Predicate pushdown</td><td>YES (<a href ="https://github.com/Parquet/parquet-mr/pull/68">68</a>)</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Column stats</td><td></td><td></td></td><td>YES</td><td>2.0</td></tr>  <tr><td>Delta encoding</td><td></td><td></td></td><td>YES</td><td>2.0</td></tr>
-  <tr><td>Native Protocol Buffers support</td><td></td><td></td></td><td>YES</td><td>2.0</td></tr>
+  <tr><td>Native Protocol Buffers support</td><td></td><td>YES</td><td></td><td>2.0</td></tr>
   <tr><td>Index pages</td><td></td><td></td></td><td>YES</td><td>2.0</td></tr>
 </table>
 
