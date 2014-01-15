@@ -154,6 +154,7 @@ public class TestSpecificReadWrite {
       assertEquals(car.getYear() != null, true);
       assertEquals(car.getVin() != null, true);
       assertEquals(car.getDescription() == null, true);
+      assertEquals(car.getOpt() == 5, true);
     }
   }
 
