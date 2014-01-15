@@ -52,7 +52,7 @@ protocol Cars {
         string make;
         string model;
         Vin vin;
-        int doors;
+        long doors; // test promotion of int to long
         Engine engine;
         union { null, Stereo, LeatherTrim } optionalExtra = null;
         union { null, array<Service> } serviceHistory = null;

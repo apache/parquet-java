@@ -187,6 +187,11 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     }
 
     @Override
+    final public void addInt(int value) {
+      parent.add(Long.valueOf(value));
+    }
+
+    @Override
     final public void addLong(long value) {
       parent.add(value);
     }
@@ -202,6 +207,16 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     }
 
     @Override
+    final public void addInt(int value) {
+      parent.add(Float.valueOf(value));
+    }
+
+    @Override
+    final public void addLong(long value) {
+      parent.add(Float.valueOf(value));
+    }
+
+    @Override
     final public void addFloat(float value) {
       parent.add(value);
     }
@@ -214,6 +229,21 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
 
     public FieldDoubleConverter(ParentValueContainer parent) {
       this.parent = parent;
+    }
+
+    @Override
+    final public void addInt(int value) {
+      parent.add(Double.valueOf(value));
+    }
+
+    @Override
+    final public void addLong(long value) {
+      parent.add(Double.valueOf(value));
+    }
+
+    @Override
+    final public void addFloat(float value) {
+      parent.add(Double.valueOf(value));
     }
 
     @Override
