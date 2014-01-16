@@ -95,5 +95,8 @@ message TopMessage {
     repeated InnerMessage inner = 1;
 }
 
-//please place your unit test Protocol Buffer definitions here.
+message RepeatedIntMessage {
+    repeated int32 repeatedInt = 1;
+}
 
+//please place your unit test Protocol Buffer definitions here.
