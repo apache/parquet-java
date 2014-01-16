@@ -159,4 +159,23 @@ public class ProtoRecordConverterTest {
     assertFalse(third.hasOne());
     assertFalse(third.hasTwo());
   }
+
+
+  @Test
+  public void testRepeatedInt() throws Exception {
+    TestProtobuf.RepeatedIntMessage.Builder top = TestProtobuf.RepeatedIntMessage.newBuilder();
+
+    top.addRepeatedInt(1);
+    top.addRepeatedInt(2);
+    top.addRepeatedInt(3);
+
+    TestProtobuf.RepeatedIntMessage result = testData(top.build()).get(0);
+
+    assertEquals(3, result.getRepeatedIntCount());
+
+    assertEquals(1, result.getRepeatedInt(0));
+    assertEquals(2, result.getRepeatedInt(1));
+    assertEquals(3, result.getRepeatedInt(2));
+  }
+
 }

@@ -20,9 +20,12 @@ import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
+import com.google.protobuf.TextFormat;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
+import parquet.hadoop.BadConfigurationException;
 import parquet.hadoop.api.WriteSupport;
+import parquet.io.InvalidRecordException;
 import parquet.io.api.Binary;
 import parquet.io.api.RecordConsumer;
 import parquet.schema.GroupType;
@@ -63,23 +66,20 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       } else {
         String msg = "Protocol buffer class not specified.";
         String hint = " Please use method ProtoParquetOutputFormat.setProtobufClass(...) or other similar method.";
-        throw new RuntimeException(msg + hint);
+        throw new BadConfigurationException(msg + hint);
       }
     }
 
     Map<String, String> extraMetaData = new HashMap<String, String>();
     extraMetaData.put(ProtoReadSupport.PB_CLASS, protoMessage.getName());
     extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(protoMessage));
-
-    // TODO add also pig descriptor
-    // see Thrift code  ThriftWriteSupport
     return new WriteContext(rootSchema, extraMetaData);
   }
 
   private String serializeDescriptor(Class<? extends Message> protoClass) {
     Descriptors.Descriptor descriptor = Protobufs.getMessageDescriptor(protoClass);
     DescriptorProtos.DescriptorProto asProto = descriptor.toProto();
-    return asProto.toString();
+    return TextFormat.printToString(asProto);
   }
 
 
@@ -122,33 +122,78 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
         int parquetIndex = parquetSchema.getFieldIndex(fieldDescriptor.getName());
 
+        recordConsumer.startField(fieldType.getName(), parquetIndex);
+
         if (fieldDescriptor.isRepeated()) {
-          recordConsumer.startField(fieldType.getName(), parquetIndex);
-          writeArray(fieldType.asGroupType(), fieldDescriptor, (List<?>) value);
-          recordConsumer.endField(fieldType.getName(), parquetIndex);
+            List<?> list = (List<?>) value;
+            if (!list.isEmpty()) {
+              writeArray(fieldType, fieldDescriptor, list);
+            }
         } else {
-          recordConsumer.startField(fieldType.getName(), parquetIndex);
           writeScalarValue(fieldType, fieldDescriptor, value);
-          recordConsumer.endField(fieldType.getName(), parquetIndex);
         }
+        recordConsumer.endField(fieldType.getName(), parquetIndex);
 
       } else if (fieldType.isRepetition(Type.Repetition.REQUIRED)) {
-        throw new RuntimeException("Null-value for required field: " + fieldDescriptor.getName());
+        // TODO unit test this.
+        throw new InvalidRecordException("Null-value for required field: " + fieldDescriptor.getName());
       }
     }
   }
 
-  private <T> void writeArray(GroupType schema, Descriptors.FieldDescriptor fieldDescriptor, List<T> array) {
-    recordConsumer.startGroup();
-    if (array.iterator().hasNext()) {
-      String arrayType = schema.getName();
-      recordConsumer.startField(arrayType, 0);
-      for (T elt : array) {
-        writeScalarValue((schema.getType(0)), fieldDescriptor, elt);
-      }
-      recordConsumer.endField(arrayType, 0);
+
+  private void writeArray(Type type, Descriptors.FieldDescriptor fieldDescriptor, List<?> array) {
+
+    switch (fieldDescriptor.getJavaType()) {
+      case STRING:
+        for (Object value : array) {
+          Binary binaryString = Binary.fromString((String) value);
+          recordConsumer.addBinary(binaryString);
+        }
+        return;
+      case MESSAGE:
+        for (Object value : array) {
+          writeMessage(type.asGroupType(), (MessageOrBuilder) value);
+        }
+        return;
+      case INT:
+        for (Object value : array) {
+          recordConsumer.addInteger((Integer) value);
+        }
+        return;
+      case LONG:
+        for (Object value : array) {
+          recordConsumer.addLong((Long) value);
+        }
+        return;
+      case FLOAT:
+        for (Object value : array) {
+          recordConsumer.addFloat((Float) value);
+        }
+        return;
+      case DOUBLE:
+        for (Object value : array) {
+          recordConsumer.addDouble((Double) value);
+        }
+        return;
+      case ENUM:
+        for (Object value : array) {
+          writeEnum((Descriptors.EnumValueDescriptor) value);
+        }
+        return;
+      case BOOLEAN:
+        for (Object value : array) {
+          recordConsumer.addBoolean((Boolean) value);
+        }
+        return;
+      case BYTE_STRING:
+        for (Object value : array) {
+          writeString((ByteString) value);
+        }
+        return;
     }
-    recordConsumer.endGroup();
+
+    unknownType(fieldDescriptor, array);
   }
 
 
@@ -158,40 +203,50 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       case STRING:
         Binary binaryString = Binary.fromString((String) value);
         recordConsumer.addBinary(binaryString);
-      break;
+        return;
       case MESSAGE:
-        MessageOrBuilder msg = (MessageOrBuilder) value;
-        writeMessage(type.asGroupType(), msg);
-        break;
+        writeMessage(type.asGroupType(), (MessageOrBuilder) value);
+        return;
       case INT:
         recordConsumer.addInteger((Integer) value);
-        break;
+        return;
       case LONG:
         recordConsumer.addLong((Long) value);
-        break;
+        return;
       case FLOAT:
         recordConsumer.addFloat((Float) value);
-        break;
+        return;
       case DOUBLE:
         recordConsumer.addDouble((Double) value);
-        break;
+        return;
       case ENUM:
-        Descriptors.EnumValueDescriptor enumDescriptor = (Descriptors.EnumValueDescriptor) value;
-        recordConsumer.addBinary(Binary.fromString(enumDescriptor.getName()));
-        break;
+        writeEnum((Descriptors.EnumValueDescriptor) value);
+        return;
       case BOOLEAN:
         recordConsumer.addBoolean((Boolean) value);
-        break;
+        return;
       case BYTE_STRING:
-        ByteString byteString = (ByteString) value;
-        Binary binary = Binary.fromByteArray(byteString.toByteArray());
-        recordConsumer.addBinary(binary);
-        break;
-      default:
-        String exceptionMsg = "Cannot write \"" + value + "\" with descriptor \"" + fieldDescriptor
-                + "\" and type \"" + fieldDescriptor.getJavaType() + "\".";
-        throw new RuntimeException(exceptionMsg);
+        writeString((ByteString) value);
+        return;
     }
+
+    unknownType(fieldDescriptor, value);
+  }
+
+  private void writeEnum(Descriptors.EnumValueDescriptor enumDescriptor) {
+    Binary binary = Binary.fromString(enumDescriptor.getName());
+    recordConsumer.addBinary(binary);
+  }
+
+  private void writeString(ByteString byteString) {
+    Binary binary = Binary.fromByteArray(byteString.toByteArray());
+    recordConsumer.addBinary(binary);
+  }
+
+  private void unknownType(Descriptors.FieldDescriptor fieldDescriptor, Object value) {
+    String exceptionMsg = "Cannot write \"" + value + "\" with descriptor \"" + fieldDescriptor
+            + "\" and type \"" + fieldDescriptor.getJavaType() + "\".";
+    throw new InvalidRecordException(exceptionMsg);
   }
 
 }

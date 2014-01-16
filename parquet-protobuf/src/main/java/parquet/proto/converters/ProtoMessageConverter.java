@@ -22,6 +22,7 @@ import com.twitter.elephantbird.util.Protobufs;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
 import parquet.schema.GroupType;
+import parquet.schema.IncompatibleSchemaModificationException;
 import parquet.schema.Type;
 
 import static com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
@@ -61,18 +62,10 @@ class ProtoMessageConverter extends GroupConverter {
     for (Type parquetField : parquetSchema.getFields()) {
       Descriptors.FieldDescriptor protoField = protoDescriptor.findFieldByName(parquetField.getName());
 
-      if (parquetField.isRepetition(Type.Repetition.REPEATED)) {
-        GroupType groupType = parquetField.asGroupType();
-        if (groupType.getFieldCount() != 1) {
-          throw new RuntimeException("One field expected but found " + groupType);
-        }
-
-        parquetField = groupType.getType(0);
-        protoField = protoDescriptor.findFieldByName(parquetField.getName());
-      }
-
       if (protoField == null) {
-        throw new RuntimeException("Cant find " + parquetField.getName() + " Scheme mismatch \n\"" + parquetField + "\"\n proto descriptor:\n" + protoDescriptor.toProto());
+        String description = "Scheme mismatch \n\"" + parquetField + "\"" +
+                "\n proto descriptor:\n" + protoDescriptor.toProto();
+        throw new IncompatibleSchemaModificationException("Cant find \"" + parquetField.getName() + "\" " + description);
       }
 
       converters[parquetFieldIndex - 1] = newMessageConverter(myBuilder, protoField, parquetField);
@@ -120,17 +113,7 @@ class ProtoMessageConverter extends GroupConverter {
       };
     }
 
-    if (isRepeated) {
-      parquetType = parquetType.asGroupType().getType(0);
-    }
-
-    Converter innerConverter = newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType);
-
-    if (isRepeated) {
-      return new ProtoArrayConverter(innerConverter);
-    } else {
-      return innerConverter;
-    }
+    return newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType);
   }
 
 
@@ -147,12 +130,7 @@ class ProtoMessageConverter extends GroupConverter {
       }
 
       GroupType parquetSubType = parquetType.asGroupType();
-      Message.Builder subBuilder;
-      if (fieldDescriptor.isRepeated()) {
-        subBuilder = parentBuilder.newBuilderForField(fieldDescriptor);
-      } else {
-        subBuilder = parentBuilder.newBuilderForField(fieldDescriptor);
-      }
+      Message.Builder subBuilder = parentBuilder.newBuilderForField(fieldDescriptor);
 
       return new ProtoMessageConverter(pvc, subBuilder, parquetSubType);
     } else {

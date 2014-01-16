@@ -78,19 +78,15 @@ public class ProtoSchemaConverterTest {
       "message TestProtobuf.SchemaConverterRepetition {\n" +
         "  optional int32 optionalPrimitive;\n" +
         "  required int32 requiredPrimitive;\n" +
-        "  optional group repeatedPrimitive (LIST) {\n" +
-        "    repeated int32 repeatedPrimitive_tuple;\n" +
-        "  }\n" +
+        "  repeated int32 repeatedPrimitive;\n" +
         "  optional group optionalMessage {\n" +
         "    optional int32 someId;\n" +
         "  }\n" +
         "  required group requiredMessage {" +
         "    optional int32 someId;\n" +
         "  }\n" +
-        "  optional group repeatedMessage (LIST) {" +
-        "    repeated group repeatedMessage_tuple {\n" +
-        "      optional int32 someId;\n" +
-        "    }\n" +
+        "  repeated group repeatedMessage {" +
+        "    optional int32 someId;\n" +
         "  }\n" +
         "}";
 

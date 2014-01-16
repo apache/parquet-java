@@ -57,18 +57,9 @@ public class ProtoSchemaConverter {
     List<Type> types = new ArrayList<Type>();
 
     for (Descriptors.FieldDescriptor fieldDescriptor : fieldDescriptors) {
-
       String fieldName = fieldDescriptor.getName();
       Type.Repetition repetition = getRepetition(fieldDescriptor);
-
-      Type type;
-      if (fieldDescriptor.isRepeated()) {
-        Type nestedType = convertScalarField(fieldName + "_tuple", fieldDescriptor, Type.Repetition.REPEATED);
-        type = ConversionPatterns.listType(Type.Repetition.OPTIONAL, fieldName, nestedType);
-      } else {
-        type = convertScalarField(fieldName, fieldDescriptor, repetition);
-      }
-
+      Type type = convertScalarField(fieldName, fieldDescriptor, repetition);
       types.add(type);
     }
     return types;
