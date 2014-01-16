@@ -85,5 +85,84 @@
  *     <td>an optional type, in the case of a null union, otherwise not supported</td>
  *   </tr>
  * </table>
+ *
+ * <p>
+ * For Parquet files that were not written with classes from this package there is no
+ * Avro write schema stored in the Parquet file metadata. To read such files using
+ * classes from this package you must either provide an Avro read schema,
+ * or a default Avro schema will be derived using the following mapping.
+ * </p>
+ *
+ *   <tr>
+ *     <th>Parquet type</th>
+ *     <th>Avro type</th>
+ *   </tr>
+ *   <tr>
+ *     <td>boolean</td>
+ *     <td>boolean</td>
+ *   </tr>
+ *   <tr>
+ *     <td>int32</td>
+ *     <td>int</td>
+ *   </tr>
+ *   <tr>
+ *     <td>int64</td>
+ *     <td>long</td>
+ *   </tr>
+ *   <tr>
+ *     <td>int96</td>
+ *     <td>not supported</td>
+ *   </tr>
+ *   <tr>
+ *     <td>float</td>
+ *     <td>float</td>
+ *   </tr>
+ *   <tr>
+ *     <td>double</td>
+ *     <td>double</td>
+ *   </tr>
+ *   <tr>
+ *     <td>fixed_len_byte_array</td>
+ *     <td>fixed</td>
+ *   </tr>
+ *   <tr>
+ *     <td>binary (with no original type)</td>
+ *     <td>bytes</td>
+ *   </tr>
+ *   <tr>
+ *     <td>binary (with original type UTF8)</td>
+ *     <td>string</td>
+ *   </tr>
+ *   <tr>
+ *     <td>binary (with original type ENUM)</td>
+ *     <td>string</td>
+ *   </tr>
+ *   <tr>
+ *     <td>group (with original type LIST) containing one repeated group field</td>
+ *     <td>array</td>
+ *   </tr>
+ *   <tr>
+ *     <td>group (with original type MAP) containing one repeated group
+ *     field (with original type MAP_KEY_VALUE) of (key, value)</td>
+ *     <td>map</td>
+ *   </tr>
+ * </table>
+ *
+ * <p>
+ * Parquet fields that are optional are mapped to an Avro null union.
+ * </p>
+ *
+ * <p>
+ * Some conversions are lossy. Avro nulls are not represented in Parquet,
+ * so they are lost when converted back to Avro. Similarly, a Parquet enum does not
+ * store its values, so it cannot be converted back to an Avro enum,
+ * which is why an Avro string had to suffice. Type names for nested records, enums,
+ * and fixed types are lost in the conversion to Parquet.
+ * Avro aliases, default values, field ordering, and documentation strings are all
+ * dropped in the conversion to Parquet.
+ *
+ * Parquet maps can have any type for keys, but this is not true in Avro where map keys
+ * are assumed to be strings.
+ * </p>
  */
 package parquet.avro;
