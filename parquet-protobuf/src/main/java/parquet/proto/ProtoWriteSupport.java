@@ -29,15 +29,13 @@ import parquet.io.InvalidRecordException;
 import parquet.io.api.Binary;
 import parquet.io.api.RecordConsumer;
 import parquet.schema.GroupType;
+import parquet.schema.IncompatibleSchemaModificationException;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
-
 
 public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<T> {
 
@@ -70,6 +68,8 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       }
     }
 
+    validatedMapping(Protobufs.getMessageDescriptor(protoMessage), rootSchema);
+
     Map<String, String> extraMetaData = new HashMap<String, String>();
     extraMetaData.put(ProtoReadSupport.PB_CLASS, protoMessage.getName());
     extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(protoMessage));
@@ -81,7 +81,6 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     DescriptorProtos.DescriptorProto asProto = descriptor.toProto();
     return TextFormat.printToString(asProto);
   }
-
 
   public static void setSchema(Configuration configuration, Class<? extends Message> protoClass) {
     configuration.setClass(PB_CLASS_WRITE, protoClass, Message.class);
@@ -105,38 +104,50 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     recordConsumer.endGroup();
   }
 
+  /** validates mapping between protobuffer fields and parquet fields.*/
+  private void validatedMapping(Descriptors.Descriptor descriptor, GroupType parquetSchema) {
+    List<Descriptors.FieldDescriptor> allFields = descriptor.getFields();
+
+    for (Descriptors.FieldDescriptor fieldDescriptor: allFields) {
+      String fieldName = fieldDescriptor.getName();
+      int fieldIndex = fieldDescriptor.getIndex();
+      int parquetIndex = parquetSchema.getFieldIndex(fieldName);
+      if (fieldIndex != parquetIndex) {
+        String message = "FieldIndex mismatch name=" + fieldName + ": " + fieldIndex + " != " + parquetIndex;
+        throw new IncompatibleSchemaModificationException(message);
+      }
+    }
+  }
+
   private void writeRecordFields(GroupType parquetSchema, MessageOrBuilder record) {
-    List<Type> fields = parquetSchema.getFields();
+    List<Type> parquetFields = parquetSchema.getFields();
 
-    Map<Descriptors.FieldDescriptor, Object> pbFields = record.getAllFields();
+    //returns changed fields with values. Map is ordered by id.
+    Map<Descriptors.FieldDescriptor, Object> changedPbFields = record.getAllFields();
 
-    for (Map.Entry<Descriptors.FieldDescriptor, Object> entry : pbFields.entrySet()) {
-
-      Descriptors.FieldDescriptor fieldDescriptor = entry.getKey();
-      int protoIndex = fieldDescriptor.getIndex();
-      Type fieldType = fields.get(protoIndex);
-
+    for (Map.Entry<Descriptors.FieldDescriptor, Object> entry : changedPbFields.entrySet()) {
       Object value = entry.getValue();
 
       if (value != null) {
+        Descriptors.FieldDescriptor fieldDescriptor = entry.getKey();
+        final int protoIndex = fieldDescriptor.getIndex();
+        Type fieldType = parquetFields.get(protoIndex);
 
-        int parquetIndex = parquetSchema.getFieldIndex(fieldDescriptor.getName());
-
-        recordConsumer.startField(fieldType.getName(), parquetIndex);
+        final int parquetIndex = protoIndex; // is same since parquet schema is build from Descriptor.
+        String fieldName = fieldType.getName();
 
         if (fieldDescriptor.isRepeated()) {
-            List<?> list = (List<?>) value;
-            if (!list.isEmpty()) {
-              writeArray(fieldType, fieldDescriptor, list);
-            }
+          List<?> list = (List<?>) value;
+          if (!list.isEmpty()) {
+            recordConsumer.startField(fieldName, parquetIndex);
+            writeArray(fieldType, fieldDescriptor, list);
+            recordConsumer.endField(fieldName, parquetIndex);
+          }
         } else {
+          recordConsumer.startField(fieldName, parquetIndex);
           writeScalarValue(fieldType, fieldDescriptor, value);
+          recordConsumer.endField(fieldName, parquetIndex);
         }
-        recordConsumer.endField(fieldType.getName(), parquetIndex);
-
-      } else if (fieldType.isRepetition(Type.Repetition.REQUIRED)) {
-        // TODO unit test this.
-        throw new InvalidRecordException("Null-value for required field: " + fieldDescriptor.getName());
       }
     }
   }
