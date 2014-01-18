@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+
 public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<T> {
 
   private RecordConsumer recordConsumer;
@@ -136,18 +137,13 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
         final int parquetIndex = protoIndex; // is same since parquet schema is build from Descriptor.
         String fieldName = fieldType.getName();
 
+        recordConsumer.startField(fieldName, parquetIndex);
         if (fieldDescriptor.isRepeated()) {
-          List<?> list = (List<?>) value;
-          if (!list.isEmpty()) {
-            recordConsumer.startField(fieldName, parquetIndex);
-            writeArray(fieldType, fieldDescriptor, list);
-            recordConsumer.endField(fieldName, parquetIndex);
-          }
+          writeArray(fieldType, fieldDescriptor, (List<?>) value);
         } else {
-          recordConsumer.startField(fieldName, parquetIndex);
           writeScalarValue(fieldType, fieldDescriptor, value);
-          recordConsumer.endField(fieldName, parquetIndex);
         }
+        recordConsumer.endField(fieldName, parquetIndex);
       }
     }
   }
