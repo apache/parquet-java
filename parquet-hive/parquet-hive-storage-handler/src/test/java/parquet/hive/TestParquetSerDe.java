@@ -13,7 +13,7 @@ package parquet.hive;
 
 import java.util.Properties;
 
-import junit.framework.TestCase;
+import org.junit.TestCase;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.serde2.SerDeException;

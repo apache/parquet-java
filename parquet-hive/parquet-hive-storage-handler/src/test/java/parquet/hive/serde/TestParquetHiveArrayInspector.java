@@ -17,7 +17,7 @@ package parquet.hive.serde;
 
 import java.util.ArrayList;
 import java.util.List;
-import junit.framework.TestCase;
+import org.junit.TestCase;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
