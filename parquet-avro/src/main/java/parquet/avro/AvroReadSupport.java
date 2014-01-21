@@ -72,8 +72,16 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
 
   @Override
   public RecordMaterializer<T> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema, ReadContext readContext) {
-    String avroReadSchema = (readContext != null && readContext.getReadSupportMetadata() != null) ? readContext.getReadSupportMetadata().get(AVRO_READ_SCHEMA_METADATA_KEY) : null;
-    Schema avroSchema = new Schema.Parser().parse(avroReadSchema == null ? keyValueMetaData.get(AVRO_SCHEMA_METADATA_KEY) : avroReadSchema);
-    return new AvroRecordMaterializer<T>(readContext.getRequestedSchema(), avroSchema);
+    MessageType parquetSchema = readContext.getRequestedSchema();
+    Schema avroSchema;
+    if (readContext.getReadSupportMetadata() != null &&
+        readContext.getReadSupportMetadata().get(AVRO_READ_SCHEMA_METADATA_KEY) != null) {
+      avroSchema = new Schema.Parser().parse(readContext.getReadSupportMetadata().get(AVRO_READ_SCHEMA_METADATA_KEY));
+    } else if (keyValueMetaData.get(AVRO_SCHEMA_METADATA_KEY) != null) {
+      avroSchema = new Schema.Parser().parse(keyValueMetaData.get(AVRO_SCHEMA_METADATA_KEY));
+    } else {
+      avroSchema = new AvroSchemaConverter().convert(parquetSchema);
+    }
+    return new AvroRecordMaterializer<T>(parquetSchema, avroSchema);
   }
 }

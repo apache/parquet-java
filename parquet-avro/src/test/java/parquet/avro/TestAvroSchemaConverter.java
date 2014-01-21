@@ -27,6 +27,40 @@ import static org.junit.Assert.assertEquals;
 
 public class TestAvroSchemaConverter {
 
+    public static final String ALL_PARQUET_SCHEMA =
+      "message parquet.avro.myrecord {\n" +
+      "  required boolean myboolean;\n" +
+      "  required int32 myint;\n" +
+      "  required int64 mylong;\n" +
+      "  required float myfloat;\n" +
+      "  required double mydouble;\n" +
+      "  required binary mybytes;\n" +
+      "  required binary mystring (UTF8);\n" +
+      "  required group mynestedrecord {\n" +
+      "    required int32 mynestedint;\n" +
+      "  }\n" +
+      "  required binary myenum (ENUM);\n" +
+      "  required group myarray (LIST) {\n" +
+      "    repeated int32 array;\n" +
+      "  }\n" +
+      "  optional group myoptionalarray (LIST) {\n" +
+      "    repeated int32 array;\n" +
+      "  }\n" +
+      "  required group myrecordarray (LIST) {\n" +
+      "    repeated group array {\n" +
+      "      required int32 a;\n" +
+      "      required int32 b;\n" +
+      "    }\n" +
+      "  }\n" +
+      "  required group mymap (MAP) {\n" +
+      "    repeated group map (MAP_KEY_VALUE) {\n" +
+      "      required binary key (UTF8);\n" +
+      "      required int32 value;\n" +
+      "    }\n" +
+      "  }\n" +
+      "  required fixed_len_byte_array(1) myfixed;\n" +
+      "}\n";
+
   private void testAvroToParquetConversion(Schema avroSchema, String schemaString) throws
       Exception {
     AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter();
@@ -110,35 +144,7 @@ public class TestAvroSchemaConverter {
   public void testAllTypesParquetToAvro() throws Exception {
     Schema schema = new Schema.Parser().parse(
         Resources.getResource("allFromParquet.avsc").openStream());
-    testParquetToAvroConversion(
-        schema,
-        "message parquet.avro.myrecord {\n" +
-            "  required boolean myboolean;\n" +
-            "  required int32 myint;\n" +
-            "  required int64 mylong;\n" +
-            "  required float myfloat;\n" +
-            "  required double mydouble;\n" +
-            "  required binary mybytes;\n" +
-            "  required binary mystring (UTF8);\n" +
-            "  required group mynestedrecord {\n" +
-            "    required int32 mynestedint;\n" +
-            "  }\n" +
-            "  required binary myenum (ENUM);\n" +
-            "  required group myarray (LIST) {\n" +
-            "    repeated int32 array;\n" +
-            "  }\n" +
-            "  optional group myoptionalarray (LIST) {\n" +
-            "    repeated int32 array;\n" +
-            "  }\n" +
-            "  repeated int32 myrepeatedfield;\n" +
-            "  required group mymap (MAP) {\n" +
-            "    repeated group map (MAP_KEY_VALUE) {\n" +
-            "      required binary key (UTF8);\n" +
-            "      required int32 value;\n" +
-            "    }\n" +
-            "  }\n" +
-            "  required fixed_len_byte_array(1) myfixed;\n" +
-            "}\n");
+    testParquetToAvroConversion(schema, ALL_PARQUET_SCHEMA);
   }
 
   @Test(expected = IllegalArgumentException.class)

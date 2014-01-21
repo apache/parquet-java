@@ -50,10 +50,20 @@
     }],
     "default" : null
   }, {
-    "name" : "myrepeatedfield",
+    "name" : "myrecordarray",
     "type" : {
       "type" : "array",
-      "items" : "int"
+      "items" : {
+        "type" : "record",
+        "name" : "array",
+        "fields" : [ {
+           "name" : "a",
+           "type" : "int"
+        }, {
+           "name" : "b",
+           "type" : "int"
+        } ]
+      }
     }
   }, {
     "name" : "mymap",
