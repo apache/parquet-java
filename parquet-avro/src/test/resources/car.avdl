@@ -49,7 +49,7 @@ protocol Cars {
     record NewCar {
         long year;
         string registration;
-        string make;
+        string @aliases(["make"]) brand; // test field rename
         string model;
         Vin vin;
         long doors; // test promotion of int to long
