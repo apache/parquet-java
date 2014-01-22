@@ -15,7 +15,7 @@
   <url>https://github.com/Parquet/parquet-mr</url>
 
   <properties>
-    <avro.version>1.7.4</avro.version>
+    <avro.version>1.7.6</avro.version>
   </properties>
 
   <dependencies>
