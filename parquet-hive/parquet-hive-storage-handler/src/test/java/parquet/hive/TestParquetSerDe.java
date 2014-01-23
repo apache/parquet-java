@@ -13,7 +13,10 @@ package parquet.hive;
 
 import java.util.Properties;
 
-import org.junit.TestCase;
+import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.serde2.SerDeException;
@@ -38,8 +41,9 @@ import parquet.io.api.Binary;
  * @author Mickaël Lacour <m.lacour@criteo.com>
  *
  */
-public class TestParquetSerDe extends TestCase {
+public class TestParquetSerDe {
 
+  @Test
   public void testParquetHiveSerDe() throws Throwable {
     try {
       // Create the SerDe

@@ -17,19 +17,20 @@ package parquet.hive.serde;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.junit.TestCase;
+import org.junit.Test;
+import org.junit.BeforeClass;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Writable;
-import org.junit.Test;
-
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertEquals;
 /**
  *
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  */
-public class TestAbstractParquetMapInspector extends TestCase {
+public class TestAbstractParquetMapInspector {
 
   class TestableAbstractParquetMapInspector extends AbstractParquetMapInspector {
 
@@ -44,7 +45,7 @@ public class TestAbstractParquetMapInspector extends TestCase {
   }
   private TestableAbstractParquetMapInspector inspector;
 
-  @Override
+  @BeforeClass
   public void setUp() {
     inspector = new TestableAbstractParquetMapInspector(PrimitiveObjectInspectorFactory.javaIntObjectInspector,
             PrimitiveObjectInspectorFactory.javaIntObjectInspector);

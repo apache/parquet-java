@@ -17,24 +17,26 @@ package parquet.hive.serde;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.junit.TestCase;
 import org.apache.hadoop.hive.serde2.io.ShortWritable;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Writable;
 import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import org.junit.BeforeClass;
 import parquet.hive.serde.primitive.ParquetPrimitiveInspectorFactory;
 
 /**
  *
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  */
-public class TestDeepParquetHiveMapInspector extends TestCase {
+public class TestDeepParquetHiveMapInspector {
 
   private DeepParquetHiveMapInspector inspector;
 
-  @Override
+  @BeforeClass
   public void setUp() {
     inspector = new DeepParquetHiveMapInspector(ParquetPrimitiveInspectorFactory.parquetShortInspector,
             PrimitiveObjectInspectorFactory.javaIntObjectInspector);
