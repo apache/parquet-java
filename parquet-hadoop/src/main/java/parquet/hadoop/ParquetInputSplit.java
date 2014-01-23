@@ -32,7 +32,7 @@ import java.util.Set;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
-import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 
 import parquet.column.Encoding;
 import parquet.hadoop.metadata.BlockMetaData;
@@ -47,12 +47,8 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
  *
  * @author Julien Le Dem
  */
-public class ParquetInputSplit extends InputSplit implements Writable {
+public class ParquetInputSplit extends FileSplit implements Writable {
 
-  private String path;
-  private long start;
-  private long length;
-  private String[] hosts;
   private List<BlockMetaData> blocks;
   private String requestedSchema;
   private String fileSchema;
@@ -64,6 +60,7 @@ public class ParquetInputSplit extends InputSplit implements Writable {
    * Writables must have a parameterless constructor
    */
   public ParquetInputSplit() {
+        super(null, 0, 0, new String[0]);
   }
 
   /**
@@ -90,10 +87,7 @@ public class ParquetInputSplit extends InputSplit implements Writable {
       String fileSchema,
       Map<String, String> extraMetadata,
       Map<String, String> readSupportMetadata) {
-    this.path = path.toUri().toString().intern();
-    this.start = start;
-    this.length = length;
-    this.hosts = hosts;
+    super(path, start, length, hosts);
     this.blocks = blocks;
     this.requestedSchema = requestedSchema;
     this.fileSchema = fileSchema;
@@ -106,40 +100,6 @@ public class ParquetInputSplit extends InputSplit implements Writable {
    */
   public List<BlockMetaData> getBlocks() {
     return blocks;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public long getLength() throws IOException, InterruptedException {
-    return length;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public String[] getLocations() throws IOException, InterruptedException {
-    return hosts;
-  }
-
-  /**
-   * @return the offset of the block in the file
-   */
-  public long getStart() {
-    return start;
-  }
-
-  /**
-   * @return the path of the file containing the block
-   */
-  public Path getPath() {
-    try {
-      return new Path(new URI(path));
-    } catch (URISyntaxException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   /**
@@ -175,13 +135,7 @@ public class ParquetInputSplit extends InputSplit implements Writable {
    */
   @Override
   public void readFields(DataInput in) throws IOException {
-    this.path = in.readUTF().intern();
-    this.start = in.readLong();
-    this.length = in.readLong();
-    this.hosts = new String[in.readInt()];
-    for (int i = 0; i < hosts.length; i++) {
-      hosts[i] = in.readUTF().intern();
-    }
+    super.readFields(in);
     int blocksSize = in.readInt();
     this.blocks = new ArrayList<BlockMetaData>(blocksSize);
     for (int i = 0; i < blocksSize; i++) {
@@ -198,13 +152,7 @@ public class ParquetInputSplit extends InputSplit implements Writable {
    */
   @Override
   public void write(DataOutput out) throws IOException {
-    out.writeUTF(path);
-    out.writeLong(start);
-    out.writeLong(length);
-    out.writeInt(hosts.length);
-    for (String host : hosts) {
-      out.writeUTF(host);
-    }
+    super.write(out);
     out.writeInt(blocks.size());
     for (BlockMetaData block : blocks) {
       writeBlock(out, block);
@@ -303,13 +251,19 @@ public class ParquetInputSplit extends InputSplit implements Writable {
       }
     }
   }
+  
 
   @Override
   public String toString() {
-    return this.getClass().getSimpleName() + "{" +
-           "part: " + path
-        + " start: " + start
-        + " length: " + length
+    String hosts[] = {};
+    try{
+       hosts = getLocations();
+    }catch(Exception ignore){} // IOException/InterruptedException could be thrown
+
+    return this.getClass().getSimpleName() + "{" + 
+           "part: " + getPath()
+        + " start: " + getStart()
+        + " length: " + getLength()
         + " hosts: " + Arrays.toString(hosts)
         + " blocks: " + blocks.size()
         + " requestedSchema: " + (fileSchema.equals(requestedSchema) ? "same as file" : requestedSchema)

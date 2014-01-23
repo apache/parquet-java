@@ -95,6 +95,9 @@
                   <compatibilityType>BACKWARD_COMPATIBLE_USER</compatibilityType>
                   <dumpDetails>true</dumpDetails>
                   <previousVersion>${previous.version}</previousVersion>
+                  <excludes>
+                    <exclude>parquet.hadoop.ParquetInputSplit</exclude>
+                  </excludes>
                   <includes>
                     <include>parquet.format</include>
                     <include>parquet.hadoop</include>

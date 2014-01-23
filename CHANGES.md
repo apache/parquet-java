@@ -1,5 +1,11 @@
 # Parquet #
 
+### Version 1.3.2 ###
+* ISSUE [271](https://github.com/Parquet/parquet-mr/pull/271): fix bug: last enum index throws DecodingSchemaMismatchException
+* ISSUE [268](https://github.com/Parquet/parquet-mr/pull/268): fixes #265: add semver validation checks to non-bundle builds
+* ISSUE [269](https://github.com/Parquet/parquet-mr/pull/269): Bumps parquet-jackson parent version
+* ISSUE [260](https://github.com/Parquet/parquet-mr/pull/260): Shade jackson only once for all parquet modules
+
 ### Version 1.3.1 ###
 * ISSUE [267](https://github.com/Parquet/parquet-mr/pull/267): handler only handle ignored field, exception during will be thrown as Sk...
 * ISSUE [266](https://github.com/Parquet/parquet-mr/pull/266): upgrade parquet-mr to elephant-bird 4.4
