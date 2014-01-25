@@ -19,6 +19,7 @@ package parquet.proto.converters;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
+import parquet.Preconditions;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
 import parquet.schema.GroupType;
@@ -51,10 +52,7 @@ class ProtoMessageConverter extends GroupConverter {
     this.parent = pvc;
     int parquetFieldIndex = 1;
 
-    if (pvc == null) {
-      throw new IllegalStateException("Missing parent value container");
-    }
-
+    Preconditions.checkNotNull(pvc,"Missing parent value container");
     myBuilder = builder;
 
     Descriptors.Descriptor protoDescriptor = builder.getDescriptorForType();
