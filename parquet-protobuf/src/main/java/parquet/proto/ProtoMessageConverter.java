@@ -135,35 +135,18 @@ class ProtoMessageConverter extends GroupConverter {
 
     JavaType javaType = fieldDescriptor.getJavaType();
 
-    boolean isMessage = (javaType == JavaType.MESSAGE);
-
-    if (isMessage) {
-
-      if (!fieldDescriptor.getContainingType().equals(parentBuilder.getDescriptorForType())) {
-        throw new RuntimeException(fieldDescriptor.getFullName() + " is not inside " + parentBuilder.getDescriptorForType().getFullName());
-      }
-
-      GroupType parquetSubType = parquetType.asGroupType();
-      Message.Builder subBuilder = parentBuilder.newBuilderForField(fieldDescriptor);
-
-      return new ProtoMessageConverter(pvc, subBuilder, parquetSubType);
-    } else {
-      if (javaType == JavaType.STRING) {
-        return new ProtoStringConverter(pvc);
-      } else if (javaType == JavaType.FLOAT) {
-        return new ProtoFloatConverter(pvc);
-      } else if (javaType == JavaType.DOUBLE) {
-        return new ProtoDoubleConverter(pvc);
-      } else if (javaType == JavaType.BOOLEAN) {
-        return new ProtoBooleanConverter(pvc);
-      } else if (javaType == JavaType.BYTE_STRING) {
-        return new ProtoBinaryConverter(pvc);
-      } else if (javaType == JavaType.ENUM) {
-        return new ProtoEnumConverter(pvc, fieldDescriptor);
-      } else if (javaType == JavaType.INT) {
-        return new ProtoIntConverter(pvc);
-      } else if (javaType == JavaType.LONG) {
-        return new ProtoLongConverter(pvc);
+    switch (javaType) {
+      case STRING: return new ProtoStringConverter(pvc);
+      case FLOAT: return new ProtoFloatConverter(pvc);
+      case DOUBLE: return new ProtoDoubleConverter(pvc);
+      case BOOLEAN: return new ProtoBooleanConverter(pvc);
+      case BYTE_STRING: return new ProtoBinaryConverter(pvc);
+      case ENUM: return new ProtoEnumConverter(pvc, fieldDescriptor);
+      case INT: return new ProtoIntConverter(pvc);
+      case LONG: return new ProtoLongConverter(pvc);
+      case MESSAGE: {
+        Message.Builder subBuilder = parentBuilder.newBuilderForField(fieldDescriptor);
+        return new ProtoMessageConverter(pvc, subBuilder, parquetType.asGroupType());
       }
     }
 
