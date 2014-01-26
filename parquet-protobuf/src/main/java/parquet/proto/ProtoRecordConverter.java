@@ -22,8 +22,8 @@ import parquet.schema.MessageType;
 
 /**
  * Converts data content of root message from Protocol Buffer message to parquet message.
- * It delegates conversion of inner fields to ProtoMessageConverter class using inheritance.
- * Schema is converted in ProtoSchemaConverter class.
+ * It delegates conversion of inner fields to {@link ProtoMessageConverter} class using inheritance.
+ * Schema is converted in {@link ProtoSchemaConverter} class.
  *
  * @author Lukas Nalezenec
  */

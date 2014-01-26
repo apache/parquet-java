@@ -40,6 +40,8 @@ import static com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 /**
  * Converts Protocol Buffer message (both top level and inner) to parquet.
  * This is internal class, use {@link ProtoRecordConverter}.
+ *
+ * @see {@link ProtoWriteSupport}
  * @author Lukas Nalezenec
  */
 class ProtoMessageConverter extends GroupConverter {
