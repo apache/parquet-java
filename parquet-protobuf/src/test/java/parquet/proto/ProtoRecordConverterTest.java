@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package parquet.proto.converters;
+package parquet.proto;
 
 import com.google.protobuf.ByteString;
 import org.junit.Test;
@@ -28,6 +28,39 @@ import static parquet.proto.TestUtils.testData;
 import static parquet.proto.test.TestProtobuf.SchemaConverterAllDatatypes;
 
 public class ProtoRecordConverterTest {
+
+
+  @Test
+  public void testSimple() throws Exception {
+    SchemaConverterAllDatatypes.Builder data;
+    data = SchemaConverterAllDatatypes.newBuilder();
+
+    data.setOptionalBool(true);
+    data.setOptionalBytes(ByteString.copyFrom("someText", "UTF-8"));
+    data.setOptionalDouble(0.577);
+    data.setOptionalFloat(3.1415f);
+    data.setOptionalEnum(SchemaConverterAllDatatypes.TestEnum.FIRST);
+    data.setOptionalFixed32(1000 * 1000 * 1);
+    data.setOptionalFixed64(1000 * 1000 * 1000 * 2);
+    data.setOptionalInt32(1000 * 1000 * 3);
+    data.setOptionalInt64(1000L * 1000 * 1000 * 4);
+    data.setOptionalSFixed32(1000 * 1000 * 5);
+    data.setOptionalSFixed64(1000L * 1000 * 1000 * 6);
+    data.setOptionalSInt32(1000 * 1000 * 56);
+    data.setOptionalSInt64(1000L * 1000 * 1000 * 7);
+    data.setOptionalString("Good Will Hunting");
+    data.setOptionalUInt32(1000 * 1000 * 8);
+    data.setOptionalUInt64(1000L * 1000 * 1000 * 9);
+//    data.getOptionalMessageBuilder().setSomeId(1984);
+//    data.getPbGroupBuilder().setGroupInt(1492);
+
+    SchemaConverterAllDatatypes dataBuilt = data.build();
+    data.clear();
+
+    List<TestProtobuf.SchemaConverterAllDatatypes> result;
+    result = testData(dataBuilt);
+  }
+
 
   @Test
   public void testAllTypes() throws Exception {
@@ -178,4 +211,12 @@ public class ProtoRecordConverterTest {
     assertEquals(3, result.getRepeatedInt(2));
   }
 
+  @Test
+  public void testLargeProtobufferFieldId() throws Exception {
+    TestProtobuf.HighIndexMessage.Builder builder = TestProtobuf.HighIndexMessage.newBuilder();
+    builder.addRepeatedInt(1);
+    builder.addRepeatedInt(2);
+
+    testData(builder.build());
+  }
 }

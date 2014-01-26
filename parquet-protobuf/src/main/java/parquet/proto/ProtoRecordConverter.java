@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.proto.converters;
+package parquet.proto;
 
 
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
-import parquet.proto.converters.ParentValueContainer;
 import parquet.schema.MessageType;
 
 /**
@@ -28,7 +27,7 @@ import parquet.schema.MessageType;
  *
  * @author Lukas Nalezenec
  */
-public class ProtoRecordConverter<T extends MessageOrBuilder> extends parquet.proto.converters.ProtoMessageConverter {
+public class ProtoRecordConverter<T extends MessageOrBuilder> extends ProtoMessageConverter {
 
   private final Message.Builder reusedBuilder;
   private boolean buildBefore;
@@ -49,6 +48,10 @@ public class ProtoRecordConverter<T extends MessageOrBuilder> extends parquet.pr
     reusedBuilder = getBuilder();
   }
 
+  public ProtoRecordConverter(Message.Builder builder, MessageType parquetSchema) {
+    super(new SkipParentValueContainer(), builder, parquetSchema);
+    reusedBuilder = getBuilder();
+  }
 
   @Override
   public void start() {
