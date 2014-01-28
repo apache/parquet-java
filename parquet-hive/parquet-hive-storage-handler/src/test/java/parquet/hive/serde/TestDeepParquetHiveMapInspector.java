@@ -34,10 +34,10 @@ import parquet.hive.serde.primitive.ParquetPrimitiveInspectorFactory;
  */
 public class TestDeepParquetHiveMapInspector {
 
-  private DeepParquetHiveMapInspector inspector;
+  private static DeepParquetHiveMapInspector inspector;
 
   @BeforeClass
-  public void setUp() {
+  public static void setUp() {
     inspector = new DeepParquetHiveMapInspector(ParquetPrimitiveInspectorFactory.parquetShortInspector,
             PrimitiveObjectInspectorFactory.javaIntObjectInspector);
   }

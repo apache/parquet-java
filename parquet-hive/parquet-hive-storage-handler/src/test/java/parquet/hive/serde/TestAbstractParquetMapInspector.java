@@ -32,7 +32,7 @@ import static org.junit.Assert.assertEquals;
  */
 public class TestAbstractParquetMapInspector {
 
-  class TestableAbstractParquetMapInspector extends AbstractParquetMapInspector {
+  static class TestableAbstractParquetMapInspector extends AbstractParquetMapInspector {
 
     public TestableAbstractParquetMapInspector(ObjectInspector keyInspector, ObjectInspector valueInspector) {
       super(keyInspector, valueInspector);
@@ -43,10 +43,10 @@ public class TestAbstractParquetMapInspector {
       throw new UnsupportedOperationException("Should not be called");
     }
   }
-  private TestableAbstractParquetMapInspector inspector;
+  private static TestableAbstractParquetMapInspector inspector;
 
   @BeforeClass
-  public void setUp() {
+  public static void setUp() {
     inspector = new TestableAbstractParquetMapInspector(PrimitiveObjectInspectorFactory.javaIntObjectInspector,
             PrimitiveObjectInspectorFactory.javaIntObjectInspector);
   }

@@ -33,10 +33,10 @@ import static org.junit.Assert.assertEquals;
  */
 public class TestStandardParquetHiveMapInspector {
 
-  private StandardParquetHiveMapInspector inspector;
+  private static StandardParquetHiveMapInspector inspector;
 
   @BeforeClass
-  public void setUp() {
+  public static void setUp() {
     inspector = new StandardParquetHiveMapInspector(PrimitiveObjectInspectorFactory.javaIntObjectInspector,
             PrimitiveObjectInspectorFactory.javaIntObjectInspector);
   }

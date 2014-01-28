@@ -31,10 +31,10 @@ import static org.junit.Assert.assertNull;
  */
 public class TestParquetHiveArrayInspector {
 
-  private ParquetHiveArrayInspector inspector;
+  private static ParquetHiveArrayInspector inspector;
 
   @BeforeClass
-  public void setUp() {
+  public static void setUp() {
     inspector = new ParquetHiveArrayInspector(PrimitiveObjectInspectorFactory.javaIntObjectInspector);
   }
 
