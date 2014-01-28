@@ -17,23 +17,24 @@ package parquet.hive.serde;
 
 import java.util.ArrayList;
 import java.util.List;
-import junit.framework.TestCase;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Writable;
 import org.junit.Test;
-
+import org.junit.BeforeClass;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 /**
  *
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  */
-public class TestParquetHiveArrayInspector extends TestCase {
+public class TestParquetHiveArrayInspector {
 
-  private ParquetHiveArrayInspector inspector;
+  private static ParquetHiveArrayInspector inspector;
 
-  @Override
-  public void setUp() {
+  @BeforeClass
+  public static void setUp() {
     inspector = new ParquetHiveArrayInspector(PrimitiveObjectInspectorFactory.javaIntObjectInspector);
   }
 

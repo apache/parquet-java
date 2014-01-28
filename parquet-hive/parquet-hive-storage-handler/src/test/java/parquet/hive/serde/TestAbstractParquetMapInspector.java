@@ -17,21 +17,22 @@ package parquet.hive.serde;
 
 import java.util.HashMap;
 import java.util.Map;
-import junit.framework.TestCase;
+import org.junit.Test;
+import org.junit.BeforeClass;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Writable;
-import org.junit.Test;
-
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertEquals;
 /**
  *
  * @author Rémy Pecqueur <r.pecqueur@criteo.com>
  */
-public class TestAbstractParquetMapInspector extends TestCase {
+public class TestAbstractParquetMapInspector {
 
-  class TestableAbstractParquetMapInspector extends AbstractParquetMapInspector {
+  static class TestableAbstractParquetMapInspector extends AbstractParquetMapInspector {
 
     public TestableAbstractParquetMapInspector(ObjectInspector keyInspector, ObjectInspector valueInspector) {
       super(keyInspector, valueInspector);
@@ -42,10 +43,10 @@ public class TestAbstractParquetMapInspector extends TestCase {
       throw new UnsupportedOperationException("Should not be called");
     }
   }
-  private TestableAbstractParquetMapInspector inspector;
+  private static TestableAbstractParquetMapInspector inspector;
 
-  @Override
-  public void setUp() {
+  @BeforeClass
+  public static void setUp() {
     inspector = new TestableAbstractParquetMapInspector(PrimitiveObjectInspectorFactory.javaIntObjectInspector,
             PrimitiveObjectInspectorFactory.javaIntObjectInspector);
   }
