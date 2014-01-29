@@ -3,7 +3,7 @@
     <groupId>com.twitter</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.3.2-SNAPSHOT</version>
+    <version>1.2.11-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -84,32 +84,6 @@
             <goals>
               <goal>test-jar</goal>
             </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-            <configuration>
-              <artifactSet>
-                <includes>
-                  <include>org.codehaus.jackson:jackson-mapper-asl</include>
-                  <include>org.codehaus.jackson:jackson-core-asl</include>
-                </includes>
-              </artifactSet>
-              <relocations>
-                <relocation>
-                  <pattern>org.codehaus.jackson</pattern>
-                  <shadedPattern>parquet.org.codehaus.jackson</shadedPattern>
-                </relocation>
-              </relocations>
-            </configuration>
           </execution>
         </executions>
       </plugin>
