@@ -25,7 +25,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.thrift.TBase;
 import org.apache.thrift.protocol.TProtocolFactory;
 
-import parquet.thrift.ReadWriteErrorHandler;
+import parquet.thrift.FieldIgnoredHandler;
 
 /**
  * To create a Parquet file from the Thrift binary of records
@@ -71,7 +71,7 @@ public class ThriftToParquetFileWriter implements Closeable {
       TaskAttemptContext taskAttemptContext,
       TProtocolFactory protocolFactory,
       Class<? extends TBase<?,?>> thriftClass,
-      ReadWriteErrorHandler errorHandler) throws IOException, InterruptedException {
+      FieldIgnoredHandler errorHandler) throws IOException, InterruptedException {
     this(fileToCreate, taskAttemptContext, protocolFactory, thriftClass, true, errorHandler);
   }
 
@@ -90,7 +90,7 @@ public class ThriftToParquetFileWriter implements Closeable {
       TProtocolFactory protocolFactory,
       Class<? extends TBase<?,?>> thriftClass,
       boolean buffered,
-      ReadWriteErrorHandler errorHandler) throws IOException, InterruptedException {
+      FieldIgnoredHandler errorHandler) throws IOException, InterruptedException {
     this.taskAttemptContext = taskAttemptContext;
     this.recordWriter = new ParquetThriftBytesOutputFormat(protocolFactory, thriftClass, buffered, errorHandler).getRecordWriter(taskAttemptContext, fileToCreate);
   }

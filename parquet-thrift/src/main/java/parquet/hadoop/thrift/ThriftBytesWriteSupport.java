@@ -36,7 +36,7 @@ import parquet.thrift.BufferedProtocolReadToWrite;
 import parquet.thrift.ParquetWriteProtocol;
 import parquet.thrift.ProtocolPipe;
 import parquet.thrift.ProtocolReadToWrite;
-import parquet.thrift.ReadWriteErrorHandler;
+import parquet.thrift.FieldIgnoredHandler;
 import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType.StructType;
 
@@ -70,14 +70,14 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
   private MessageType schema;
   private StructType thriftStruct;
   private ParquetWriteProtocol parquetWriteProtocol;
-  private final ReadWriteErrorHandler errorHandler;
+  private final FieldIgnoredHandler errorHandler;
 
   public ThriftBytesWriteSupport() {
     this.buffered = true;
     this.errorHandler = null;
   }
 
-  public ThriftBytesWriteSupport(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass, boolean buffered, ReadWriteErrorHandler errorHandler) {
+  public ThriftBytesWriteSupport(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass, boolean buffered, FieldIgnoredHandler errorHandler) {
     super();
     this.protocolFactory = protocolFactory;
     this.thriftClass = thriftClass;

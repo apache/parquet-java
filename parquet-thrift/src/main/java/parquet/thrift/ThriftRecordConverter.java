@@ -435,7 +435,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
     public FieldEnumConverter(List<TProtocol> events, ThriftField field) {
       this.events = events;
-      final List<EnumValue> values = ((EnumType)field.getType()).getValues();
+      final Iterable<EnumValue> values = ((EnumType)field.getType()).getValues();
       for (EnumValue enumValue : values) {
         enumLookup.put(Binary.fromString(enumValue.getName()), enumValue.getId());
       }

@@ -17,7 +17,6 @@ package parquet.pig;
 
 import static parquet.pig.PigSchemaConverter.parsePigSchema;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -28,9 +27,6 @@ import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
-import org.apache.pig.impl.util.ObjectSerializer;
-import org.apache.pig.impl.util.Utils;
-import org.apache.pig.parser.ParserException;
 
 import parquet.Log;
 import parquet.hadoop.api.InitContext;

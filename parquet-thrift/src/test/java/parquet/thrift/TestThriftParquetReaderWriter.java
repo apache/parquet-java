@@ -18,7 +18,7 @@ package parquet.thrift;
 import java.io.IOException;
 import java.util.Arrays;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;

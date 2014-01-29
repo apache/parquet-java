@@ -39,6 +39,7 @@ public class BitPackingValuesReader extends ValuesReader {
   private ByteArrayInputStream in;
   private BitPackingReader bitPackingReader;
   private final int bitsPerValue;
+  private int nextOffset;
 
   /**
    * @param bound the maximum value stored by this column
@@ -65,14 +66,18 @@ public class BitPackingValuesReader extends ValuesReader {
    * @see parquet.column.values.ValuesReader#initFromPage(long, byte[], int)
    */
   @Override
-  public int initFromPage(long valueCount, byte[] in, int offset) throws IOException {
-    // TODO: int vs long
-    int effectiveBitLength = (int)valueCount * bitsPerValue;
+  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
+    int effectiveBitLength = valueCount * bitsPerValue;
     int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength);
     if (Log.DEBUG) LOG.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitsPerValue + " bits." );
     this.in = new ByteArrayInputStream(in, offset, length);
     this.bitPackingReader = createBitPackingReader(bitsPerValue, this.in, valueCount);
-    return offset + length;
+    this.nextOffset = offset + length;
+  }
+  
+  @Override
+  public int getNextOffset() {
+    return nextOffset;
   }
 
   @Override

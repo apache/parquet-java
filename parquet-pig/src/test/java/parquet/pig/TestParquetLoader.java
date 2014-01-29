@@ -113,5 +113,9 @@ public class TestParquetLoader {
     actualList = data.get("out");
     Assert.assertEquals(expectedList, actualList);
   }
-
+  
+  @Test
+  public void testRead() {
+    
+  }
 }

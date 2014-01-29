@@ -20,7 +20,6 @@ import static parquet.Log.DEBUG;
 import java.io.IOException;
 
 import parquet.Log;
-import parquet.bytes.BytesUtils;
 import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
@@ -57,11 +56,10 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
   }
 
   @Override
-  public int initFromPage(long valueCount, byte[] in, int offset)
+  public void initFromPage(int valueCount, byte[] in, int offset)
       throws IOException {
     if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));
     this.in = in;
     this.offset = offset;
-    return in.length;
   }
 }

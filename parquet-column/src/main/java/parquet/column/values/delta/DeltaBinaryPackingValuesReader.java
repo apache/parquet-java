@@ -58,11 +58,10 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    * @param valueCount count of values in this page
    * @param page       the array to read from containing the page data (repetition levels, definition levels, data)
    * @param offset     where to start reading from in the page
-   * @return the length read
    * @throws IOException
    */
   @Override
-  public int initFromPage(long valueCount, byte[] page, int offset) throws IOException {
+  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException {
     in = new ByteArrayInputStream(page, offset, page.length - offset);
     this.config = DeltaBinaryPackingConfig.readConfig(in);
     this.page = page;
@@ -77,6 +76,10 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
       loadNewBlockToBuffer();
     }
     this.nextOffset = page.length - in.available();
+  }
+  
+  @Override
+  public int getNextOffset() {
     return nextOffset;
   }
   

@@ -16,7 +16,6 @@
 package parquet.pig;
 
 import static org.junit.Assert.assertEquals;
-import static parquet.pig.PigSchemaConverter.parsePigSchema;
 import static parquet.pig.PigSchemaConverter.pigSchemaToString;
 import static parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
 
@@ -26,13 +25,10 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import junit.framework.Assert;
-
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
 import org.junit.Test;
 
-import parquet.pig.PigSchemaConverter;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 

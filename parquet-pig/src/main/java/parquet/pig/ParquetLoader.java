@@ -27,7 +27,6 @@ import static parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
 import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
-import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
