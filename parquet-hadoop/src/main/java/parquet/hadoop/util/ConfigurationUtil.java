@@ -26,7 +26,11 @@ public class ConfigurationUtil {
       return null;
     }
     try {
-      final Class<?> foundClass = Class.forName(className);
+      ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+      if(classLoader == null){
+    	  classLoader = ConfigurationUtil.class.getClassLoader();
+      }
+      final Class<?> foundClass = Class.forName(className, true, classLoader);
       if (!assignableFrom.isAssignableFrom(foundClass)) {
         throw new BadConfigurationException("class " + className + " set in job conf at "
                 + configName + " is not a subclass of " + assignableFrom.getCanonicalName());
