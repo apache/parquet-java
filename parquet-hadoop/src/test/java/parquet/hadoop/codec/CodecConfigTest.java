@@ -15,15 +15,20 @@
  */
 package parquet.hadoop.codec;
 
-import org.junit.Assert;
+import java.io.IOException;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.JobID;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.TaskAttemptID;
+import org.apache.hadoop.mapreduce.TaskID;
+import org.junit.Assert;
 import org.junit.Test;
-import parquet.hadoop.ParquetOutputFormat;
-import parquet.hadoop.metadata.CompressionCodecName;
 
-import java.io.IOException;
+import parquet.column.ParquetProperties;
+import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.util.ContextUtil;
 
 public class CodecConfigTest {
@@ -44,13 +49,13 @@ public class CodecConfigTest {
     //Test mapreduce API
     Job job = new Job();
     Configuration conf = job.getConfiguration();
-    conf.set(ParquetOutputFormat.COMPRESSION, codecNameStr);
+    conf.set(ParquetProperties.COMPRESSION, codecNameStr);
     TaskAttemptContext task = ContextUtil.newTaskAttemptContext(conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
     Assert.assertEquals(CodecConfig.from(task).getCodec(), expectedCodec);
 
     //Test mapred API
     JobConf jobConf = new JobConf();
-    jobConf.set(ParquetOutputFormat.COMPRESSION, codecNameStr);
+    jobConf.set(ParquetProperties.COMPRESSION, codecNameStr);
     Assert.assertEquals(CodecConfig.from(jobConf).getCodec(), expectedCodec);
   }
 

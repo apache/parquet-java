@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import parquet.Log;
-import parquet.column.ParquetProperties.WriterVersion;
+import parquet.column.ParquetProperties;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.hadoop.api.WriteSupport;
@@ -44,16 +44,13 @@ class InternalParquetRecordWriter<T> {
   private final WriteSupport<T> writeSupport;
   private final MessageType schema;
   private final Map<String, String> extraMetaData;
-  private final int blockSize;
-  private final int pageSize;
   private final BytesCompressor compressor;
-  private final int dictionaryPageSize;
-  private final boolean enableDictionary;
-  private final boolean validating;
-  private final WriterVersion writerVersion;
-
+  private final ParquetProperties parquetProperties;
   private long recordCount = 0;
   private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
+  
+  private final int blockSize;
+  private final int pageSize;
 
   private ColumnWriteStoreImpl store;
   private ColumnChunkPageWriteStore pageStore;
@@ -71,24 +68,16 @@ class InternalParquetRecordWriter<T> {
       WriteSupport<T> writeSupport,
       MessageType schema,
       Map<String, String> extraMetaData,
-      int blockSize,
-      int pageSize,
       BytesCompressor compressor,
-      int dictionaryPageSize,
-      boolean enableDictionary,
-      boolean validating,
-      WriterVersion writerVersion) {
+      ParquetProperties parquetProperties) {
     this.w = w;
     this.writeSupport = checkNotNull(writeSupport, "writeSupport");
     this.schema = schema;
     this.extraMetaData = extraMetaData;
-    this.blockSize = blockSize;
-    this.pageSize = pageSize;
     this.compressor = compressor;
-    this.dictionaryPageSize = dictionaryPageSize;
-    this.enableDictionary = enableDictionary;
-    this.validating = validating;
-    this.writerVersion = writerVersion;
+    this.parquetProperties = parquetProperties;
+    this.blockSize = parquetProperties.getBlockSize();
+    this.pageSize = parquetProperties.getPageSize();
     initStore();
   }
 
@@ -98,11 +87,13 @@ class InternalParquetRecordWriter<T> {
     // it is unlikely all columns are going to be the same size.
     int initialBlockBufferSize = max(MINIMUM_BUFFER_SIZE, blockSize / schema.getColumns().size() / 5);
     pageStore = new ColumnChunkPageWriteStore(compressor, schema, initialBlockBufferSize);
+    
     // we don't want this number to be too small either
     // ideally, slightly bigger than the page size, but not bigger than the block buffer
     int initialPageBufferSize = max(MINIMUM_BUFFER_SIZE, min(pageSize + pageSize / 10, initialBlockBufferSize));
-    store = new ColumnWriteStoreImpl(pageStore, pageSize, initialPageBufferSize, dictionaryPageSize, enableDictionary, writerVersion);
-    MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
+    store = new ColumnWriteStoreImpl(pageStore, initialPageBufferSize, parquetProperties);
+    
+    MessageColumnIO columnIO = new ColumnIOFactory(parquetProperties.isValidating()).getColumnIO(schema);
     writeSupport.prepareForWrite(columnIO.getRecordWriter(store));
   }
 

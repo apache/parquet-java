@@ -21,7 +21,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.Page;
@@ -36,8 +35,6 @@ import parquet.hadoop.CodecFactory.BytesDecompressor;
  *
  */
 class ColumnChunkPageReadStore implements PageReadStore {
-  private static final Log LOG = Log.getLog(ColumnChunkPageReadStore.class);
-
   /**
    * PageReader for a single column chunk. A column chunk contains
    * several pages, which are yielded one by one in order.

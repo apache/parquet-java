@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.hadoop.fs.Path;
 import org.apache.thrift.TBase;
 
+import parquet.column.ParquetProperties;
 import parquet.hadoop.ParquetWriter;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.thrift.ThriftWriteSupport;
@@ -34,7 +35,7 @@ import parquet.hadoop.thrift.ThriftWriteSupport;
 public class ThriftParquetWriter<T extends TBase<?,?>> extends ParquetWriter<T> {
 
   public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName) throws IOException {
-    super(file, new ThriftWriteSupport<T>(thriftClass), compressionCodecName, ParquetWriter.DEFAULT_BLOCK_SIZE, ParquetWriter.DEFAULT_PAGE_SIZE);
+    super(file, new ThriftWriteSupport<T>(thriftClass), compressionCodecName, ParquetProperties.DEFAULT_BLOCK_SIZE, ParquetProperties.DEFAULT_PAGE_SIZE);
   }
 
   public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName, int blockSize, int pageSize, boolean enableDictionary, boolean validating) throws IOException {

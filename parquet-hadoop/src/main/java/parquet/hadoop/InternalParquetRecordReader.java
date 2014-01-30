@@ -15,11 +15,16 @@
  */
 package parquet.hadoop;
 
+import static java.lang.String.format;
+import static parquet.Log.DEBUG;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.PageReadStore;
@@ -31,12 +36,7 @@ import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.RecordMaterializer;
-import parquet.schema.GroupType;
 import parquet.schema.MessageType;
-import parquet.schema.Type;
-
-import static java.lang.String.format;
-import static parquet.Log.DEBUG;
 
 class InternalParquetRecordReader<T> {
   private static final Log LOG = Log.getLog(InternalParquetRecordReader.class);
@@ -149,21 +149,6 @@ class InternalParquetRecordReader<T> {
       total += block.getRowCount();
     }
     LOG.info("RecordReader initialized will read a total of " + total + " records.");
-  }
-
-  private boolean contains(GroupType group, String[] path, int index) {
-    if (index == path.length) {
-      return false;
-    }
-    if (group.containsField(path[index])) {
-      Type type = group.getType(path[index]);
-      if (type.isPrimitive()) {
-        return index + 1 == path.length;
-      } else {
-        return contains(type.asGroupType(), path, index + 1);
-      }
-    }
-    return false;
   }
 
   public boolean nextKeyValue() throws IOException, InterruptedException {

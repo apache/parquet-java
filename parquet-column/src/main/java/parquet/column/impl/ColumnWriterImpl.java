@@ -18,6 +18,7 @@ package parquet.column.impl;
 import static parquet.bytes.BytesInput.concat;
 
 import java.io.IOException;
+import java.util.Properties;
 
 import parquet.Log;
 import parquet.bytes.BytesUtils;
@@ -54,13 +55,30 @@ final class ColumnWriterImpl implements ColumnWriter {
 
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
-  private final long pageSizeThreshold;
+  private final int pageSizeThreshold;
+  
   private ValuesWriter repetitionLevelColumn;
   private ValuesWriter definitionLevelColumn;
   private ValuesWriter dataColumn;
+  
   private int valueCount;
   private int valueCountForNextSizeCheck;
-
+  
+  private static ParquetProperties prepareParquetProperties(
+      int pageSizeThreshold,
+      int dictionaryPageSizeThreshold,
+      boolean enableDictionary,
+      WriterVersion writerVersion) {
+    Properties props = new Properties();
+    props.put(ParquetProperties.PAGE_SIZE, String.valueOf(pageSizeThreshold));
+    props.put(ParquetProperties.DICTIONARY_PAGE_SIZE, String.valueOf(dictionaryPageSizeThreshold));
+    props.put(ParquetProperties.ENABLE_DICTIONARY, String.valueOf(enableDictionary));
+    props.put(ParquetProperties.WRITER_VERSION, writerVersion.toString());
+    
+    return new ParquetProperties(props);
+  }
+  
+  @Deprecated
   public ColumnWriterImpl(
       ColumnDescriptor path,
       PageWriter pageWriter,
@@ -69,17 +87,25 @@ final class ColumnWriterImpl implements ColumnWriter {
       int dictionaryPageSizeThreshold,
       boolean enableDictionary,
       WriterVersion writerVersion) {
+    this(path, pageWriter, initialSizePerCol, 
+        prepareParquetProperties(pageSizeThreshold, dictionaryPageSizeThreshold, enableDictionary, writerVersion));
+  }
+
+  public ColumnWriterImpl(
+      ColumnDescriptor path,
+      PageWriter pageWriter,
+      int initialSizePerCol,
+      ParquetProperties parquetProperties
+      ) {
     this.path = path;
     this.pageWriter = pageWriter;
-    this.pageSizeThreshold = pageSizeThreshold;
+    this.pageSizeThreshold = parquetProperties.getPageSize();
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
 
-    ParquetProperties parquetProps = new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary);
-    
     this.repetitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), initialSizePerCol);
     this.definitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), initialSizePerCol);
-    this.dataColumn = parquetProps.getValuesWriter(path, initialSizePerCol);
+    this.dataColumn = parquetProperties.getValuesWriter(path, initialSizePerCol);
   }
 
   private void log(Object value, int r, int d) {

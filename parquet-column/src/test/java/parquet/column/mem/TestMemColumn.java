@@ -17,6 +17,8 @@ package parquet.column.mem;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.Properties;
+
 import org.junit.Test;
 
 import parquet.Log;
@@ -157,6 +159,6 @@ public class TestMemColumn {
   }
 
   private ColumnWriteStoreImpl newColumnWriteStoreImpl(MemPageStore memPageStore) {
-    return new ColumnWriteStoreImpl(memPageStore, 2048, 2048, 2048, false, WriterVersion.PARQUET_1_0);
+    return new ColumnWriteStoreImpl(memPageStore, 2048, new ParquetProperties(new Properties()));
   }
 }

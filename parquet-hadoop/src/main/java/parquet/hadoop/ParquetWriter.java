@@ -17,6 +17,7 @@ package parquet.hadoop;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Properties;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -32,10 +33,12 @@ import parquet.schema.MessageType;
  */
 public class ParquetWriter<T> implements Closeable {
 
-  public static final int DEFAULT_BLOCK_SIZE = 128 * 1024 * 1024;
-  public static final int DEFAULT_PAGE_SIZE = 1 * 1024 * 1024;
-
   private final InternalParquetRecordWriter<T> writer;
+  
+  @Deprecated
+  public static final int DEFAULT_BLOCK_SIZE = ParquetProperties.DEFAULT_BLOCK_SIZE;
+  @Deprecated
+  public static final int DEFAULT_PAGE_SIZE = ParquetProperties.DEFAULT_PAGE_SIZE;
 
   /**
    * Create a new ParquetWriter.
@@ -49,6 +52,7 @@ public class ParquetWriter<T> implements Closeable {
    * @param pageSize the page size threshold
    * @throws IOException
    */
+  @Deprecated
   public ParquetWriter(Path file, WriteSupport<T> writeSupport, CompressionCodecName compressionCodecName, int blockSize, int pageSize) throws IOException {
     this(file, writeSupport, compressionCodecName, blockSize, pageSize, true, false);
   }
@@ -65,6 +69,7 @@ public class ParquetWriter<T> implements Closeable {
    * @param validating to turn on validation using the schema
    * @throws IOException
    */
+  @Deprecated
   public ParquetWriter(
       Path file,
       WriteSupport<T> writeSupport,
@@ -89,6 +94,7 @@ public class ParquetWriter<T> implements Closeable {
    * @param validating to turn on validation using the schema
    * @throws IOException
    */
+  @Deprecated
   public ParquetWriter(
       Path file,
       WriteSupport<T> writeSupport,
@@ -115,6 +121,7 @@ public class ParquetWriter<T> implements Closeable {
    * @poram writerVersion version of parquetWriter from {@link ParquetProperties.WriterVersion}
    * @throws IOException
    */
+  @Deprecated
   public ParquetWriter(
       Path file,
       WriteSupport<T> writeSupport,
@@ -125,6 +132,33 @@ public class ParquetWriter<T> implements Closeable {
       boolean enableDictionary,
       boolean validating,
       WriterVersion writerVersion) throws IOException {
+    this(file, writeSupport, compressionCodecName, 
+        prepareParquetProperties(blockSize, pageSize, dictionaryPageSize, enableDictionary, validating, writerVersion));
+  }
+  
+  private static ParquetProperties prepareParquetProperties(
+      int blockSize,
+      int pageSize,
+      int dictionaryPageSize,
+      boolean enableDictionary,
+      boolean validating,
+      WriterVersion writerVersion) {
+    Properties props = new Properties();
+    props.put(ParquetProperties.BLOCK_SIZE, String.valueOf(blockSize));
+    props.put(ParquetProperties.PAGE_SIZE, String.valueOf(pageSize));
+    props.put(ParquetProperties.DICTIONARY_PAGE_SIZE, String.valueOf(dictionaryPageSize));
+    props.put(ParquetProperties.ENABLE_DICTIONARY, String.valueOf(enableDictionary));
+    props.put(ParquetProperties.ENABLE_DICTIONARY, String.valueOf(validating));
+    props.put(ParquetProperties.WRITER_VERSION, writerVersion.toString());
+    
+    return new ParquetProperties(props);
+  }
+
+  public ParquetWriter(Path file,
+      WriteSupport<T> writeSupport,
+      CompressionCodecName compressionCodecName,
+      ParquetProperties parquetProperties) throws IOException {
+      
     Configuration conf = new Configuration();
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
@@ -140,13 +174,8 @@ public class ParquetWriter<T> implements Closeable {
         writeSupport,
         schema,
         writeContext.getExtraMetaData(),
-        blockSize,
-        pageSize,
         compressor,
-        dictionaryPageSize,
-        enableDictionary,
-        validating,
-        writerVersion);
+        parquetProperties);
   }
 
   /**
@@ -158,7 +187,7 @@ public class ParquetWriter<T> implements Closeable {
    * @throws IOException
    */
   public ParquetWriter(Path file, WriteSupport<T> writeSupport) throws IOException {
-    this(file, writeSupport, CompressionCodecName.UNCOMPRESSED, DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
+    this(file, writeSupport, CompressionCodecName.UNCOMPRESSED, ParquetProperties.DEFAULT_BLOCK_SIZE, ParquetProperties.DEFAULT_PAGE_SIZE);
   }
 
   public void write(T object) throws IOException {

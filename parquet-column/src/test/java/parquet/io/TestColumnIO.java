@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Properties;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -491,7 +492,7 @@ public class TestColumnIO {
   }
 
   private ColumnWriteStoreImpl newColumnWriteStore(MemPageStore memPageStore) {
-    return new ColumnWriteStoreImpl(memPageStore, 800, 800, 800, false, WriterVersion.PARQUET_1_0);
+    return new ColumnWriteStoreImpl(memPageStore, 800, new ParquetProperties(new Properties()));
   }
 
   @Test

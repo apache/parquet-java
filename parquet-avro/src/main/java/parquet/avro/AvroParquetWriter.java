@@ -19,6 +19,8 @@ import java.io.IOException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.fs.Path;
+
+import parquet.column.ParquetProperties;
 import parquet.hadoop.ParquetWriter;
 import parquet.hadoop.api.WriteSupport;
 import parquet.hadoop.metadata.CompressionCodecName;
@@ -71,7 +73,7 @@ public class AvroParquetWriter<T extends IndexedRecord> extends ParquetWriter<T>
    */
   public AvroParquetWriter(Path file, Schema avroSchema) throws IOException {
     this(file, avroSchema, CompressionCodecName.UNCOMPRESSED,
-	  DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
+	  ParquetProperties.DEFAULT_BLOCK_SIZE, ParquetProperties.DEFAULT_PAGE_SIZE);
   }
 
 }

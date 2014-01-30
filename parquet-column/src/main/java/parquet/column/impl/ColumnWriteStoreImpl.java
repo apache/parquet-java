@@ -18,12 +18,14 @@ package parquet.column.impl;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
+import parquet.column.ParquetProperties;
 import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.page.PageWriteStore;
 import parquet.column.page.PageWriter;
@@ -33,20 +35,33 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
 
   private final Map<ColumnDescriptor, ColumnWriterImpl> columns = new TreeMap<ColumnDescriptor, ColumnWriterImpl>();
   private final PageWriteStore pageWriteStore;
-  private final int pageSizeThreshold;
-  private final int dictionaryPageSizeThreshold;
-  private final boolean enableDictionary;
+  private final ParquetProperties parquetProperties;
   private final int initialSizePerCol;
-  private final WriterVersion writerVersion;
-
+  
+  private static ParquetProperties prepareParquetProperties(
+      int pageSizeThreshold,
+      int dictionaryPageSizeThreshold,
+      boolean enableDictionary,
+      WriterVersion writerVersion) {
+    Properties props = new Properties();
+    props.put(ParquetProperties.PAGE_SIZE, String.valueOf(pageSizeThreshold));
+    props.put(ParquetProperties.DICTIONARY_PAGE_SIZE, String.valueOf(dictionaryPageSizeThreshold));
+    props.put(ParquetProperties.ENABLE_DICTIONARY, String.valueOf(enableDictionary));
+    props.put(ParquetProperties.WRITER_VERSION, writerVersion.toString());
+    
+    return new ParquetProperties(props);
+  }
+  
+  @Deprecated
   public ColumnWriteStoreImpl(PageWriteStore pageWriteStore, int pageSizeThreshold, int initialSizePerCol, int dictionaryPageSizeThreshold, boolean enableDictionary, WriterVersion writerVersion) {
+    this(pageWriteStore, initialSizePerCol, prepareParquetProperties(pageSizeThreshold, dictionaryPageSizeThreshold, enableDictionary, writerVersion));
+  }
+  
+  public ColumnWriteStoreImpl(PageWriteStore pageWriteStore, int initialSizePerCol, ParquetProperties parquetProperties) {
     super();
     this.pageWriteStore = pageWriteStore;
-    this.pageSizeThreshold = pageSizeThreshold;
+    this.parquetProperties = parquetProperties;
     this.initialSizePerCol = initialSizePerCol;
-    this.dictionaryPageSizeThreshold = dictionaryPageSizeThreshold;
-    this.enableDictionary = enableDictionary;
-    this.writerVersion = writerVersion;
   }
 
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
@@ -60,7 +75,7 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
 
   private ColumnWriterImpl newMemColumn(ColumnDescriptor path) {
     PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-    return new ColumnWriterImpl(path, pageWriter, pageSizeThreshold, initialSizePerCol, dictionaryPageSizeThreshold, enableDictionary, writerVersion);
+    return new ColumnWriterImpl(path, pageWriter, initialSizePerCol, parquetProperties);
   }
 
   @Override
