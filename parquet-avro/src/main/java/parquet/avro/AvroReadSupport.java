@@ -31,7 +31,7 @@ import parquet.schema.MessageType;
  */
 public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
 
-  public static final String AVRO_REQUESTED_PROJECTION = "parquet.avro.projection";
+  public static String AVRO_REQUESTED_PROJECTION = "parquet.avro.projection";
   private static final String AVRO_READ_SCHEMA = "parquet.avro.read.schema";
 
   static final String AVRO_SCHEMA_METADATA_KEY = "avro.schema";
