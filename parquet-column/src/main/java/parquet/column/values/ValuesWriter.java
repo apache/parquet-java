@@ -19,6 +19,7 @@ import parquet.bytes.BytesInput;
 import parquet.column.Encoding;
 import parquet.column.page.DictionaryPage;
 import parquet.io.api.Binary;
+import parquet.io.api.Int96;
 
 /**
  * base class to implement an encoding for a given column
@@ -90,6 +91,13 @@ public abstract class ValuesWriter {
    * @param value the value to encode
    */
   public void writeBytes(Binary v) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /**
+   * @param value the value to encode
+   */
+  public void writeInt96(Int96 value) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 

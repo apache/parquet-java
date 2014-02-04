@@ -32,6 +32,7 @@ import parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesRead
 import parquet.column.values.deltastrings.DeltaByteArrayReader;
 import parquet.column.values.dictionary.DictionaryValuesReader;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainBinaryDictionary;
+import parquet.column.values.dictionary.PlainValuesDictionary.PlainInt96Dictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainDoubleDictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainFloatDictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainIntegerDictionary;
@@ -39,6 +40,7 @@ import parquet.column.values.dictionary.PlainValuesDictionary.PlainLongDictionar
 import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.FixedLenByteArrayPlainValuesReader;
 import parquet.column.values.plain.BooleanPlainValuesReader;
+import parquet.column.values.plain.Int96PlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.DoublePlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.FloatPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.IntegerPlainValuesReader;
@@ -70,6 +72,8 @@ public enum Encoding {
         return new IntegerPlainValuesReader();
       case INT64:
         return new LongPlainValuesReader();
+      case INT96:
+        return new Int96PlainValuesReader();
       case FIXED_LEN_BYTE_ARRAY:
         return new FixedLenByteArrayPlainValuesReader(descriptor.getTypeLength());
       default:
@@ -110,6 +114,7 @@ public enum Encoding {
     public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
       switch (descriptor.getType()) {
       case BINARY:
+      case INT96:
       case INT64:
       case DOUBLE:
       case INT32:
@@ -125,6 +130,8 @@ public enum Encoding {
       switch (descriptor.getType()) {
       case BINARY:
         return new PlainBinaryDictionary(dictionaryPage);
+      case INT96:
+        return new PlainInt96Dictionary(dictionaryPage);
       case INT64:
         return new PlainLongDictionary(dictionaryPage);
       case DOUBLE:

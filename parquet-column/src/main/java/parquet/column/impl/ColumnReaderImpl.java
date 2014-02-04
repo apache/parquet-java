@@ -32,6 +32,7 @@ import parquet.column.page.PageReader;
 import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
+import parquet.io.api.Int96;
 import parquet.io.api.PrimitiveConverter;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.PrimitiveType.PrimitiveTypeNameConverter;
@@ -106,6 +107,13 @@ class ColumnReaderImpl implements ColumnReader {
     /**
      * @return current value
      */
+    public Int96 getInt96() {
+      throw new UnsupportedOperationException();
+    }
+
+    /**
+     * @return current value
+     */
     public float getFloat() {
       throw new UnsupportedOperationException();
     }
@@ -168,6 +176,9 @@ class ColumnReaderImpl implements ColumnReader {
           }
           public Binary getBinary() {
             return dictionary.decodeToBinary(dictionaryId);
+          }
+          public Int96 getInt96() {
+            return dictionary.decodeToInt96(dictionaryId);
           }
           public float getFloat() {
             return dictionary.decodeToFloat(dictionaryId);
@@ -260,7 +271,23 @@ class ColumnReaderImpl implements ColumnReader {
       }
       @Override
       public Binding convertINT96(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-        throw new UnsupportedOperationException("INT96 NYI");
+        return new Binding() {
+          Int96 current;
+          void read() {
+            current = dataColumn.readInt96();
+          }
+          public void skip() {
+            current = null;
+            dataColumn.skip();
+          }
+          @Override
+          public Int96 getInt96() {
+            return current;
+          }
+          void writeValue() {
+            converter.addInt96(current);
+          }
+        };
       }
       @Override
       public Binding convertFIXED_LEN_BYTE_ARRAY(
@@ -414,7 +441,17 @@ class ColumnReaderImpl implements ColumnReader {
     readValue();
     return this.binding.getBinary();
   }
-  
+
+  /**
+   * {@inheritDoc}
+   * @see parquet.column.ColumnReader#getInt96()
+   */
+  @Override
+  public Int96 getInt96() {
+    readValue();
+    return this.binding.getInt96();
+  }
+
   /**
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#getFloat()

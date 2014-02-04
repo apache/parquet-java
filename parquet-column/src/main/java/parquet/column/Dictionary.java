@@ -16,6 +16,7 @@
 package parquet.column;
 
 import parquet.io.api.Binary;
+import parquet.io.api.Int96;
 
 /**
  * a dictionary to decode dictionary based encodings
@@ -38,6 +39,10 @@ public abstract class Dictionary {
   public abstract int getMaxId();
 
   public Binary decodeToBinary(int id) {
+    throw new UnsupportedOperationException(this.getClass().getName());
+  }
+
+  public Int96 decodeToInt96(int id) {
     throw new UnsupportedOperationException(this.getClass().getName());
   }
 

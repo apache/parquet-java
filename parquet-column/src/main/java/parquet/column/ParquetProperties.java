@@ -6,6 +6,7 @@ import parquet.column.values.boundedint.DevNullValuesWriter;
 import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import parquet.column.values.deltastrings.DeltaByteArrayWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter.PlainInt96DictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
@@ -96,6 +97,12 @@ public class ParquetProperties {
     case INT64:
       if(enableDictionary) {
         return new PlainLongDictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol);
+      } else {
+        return new PlainValuesWriter(initialSizePerCol);
+      }
+    case INT96:
+      if (enableDictionary) {
+        return new PlainInt96DictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol);
       } else {
         return new PlainValuesWriter(initialSizePerCol);
       }

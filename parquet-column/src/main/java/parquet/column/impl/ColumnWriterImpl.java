@@ -40,6 +40,7 @@ import parquet.column.values.plain.PlainValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
+import parquet.io.api.Int96;
 
 /**
  * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
@@ -163,6 +164,15 @@ final class ColumnWriterImpl implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeBytes(value);
+    accountForValueWritten();
+  }
+
+  @Override
+  public void write(Int96 value, int repetitionLevel, int definitionLevel) {
+    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+    repetitionLevelColumn.writeInteger(repetitionLevel);
+    definitionLevelColumn.writeInteger(definitionLevel);
+    dataColumn.writeInt96(value);
     accountForValueWritten();
   }
 

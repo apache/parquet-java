@@ -26,6 +26,7 @@ import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.column.page.PageReadStore;
 import parquet.filter.UnboundRecordFilter;
 import parquet.io.api.Binary;
+import parquet.io.api.Int96;
 import parquet.io.api.RecordConsumer;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
@@ -282,6 +283,16 @@ public class MessageColumnIO extends GroupColumnIO {
     @Override
     public void addBinary(Binary value) {
       if (DEBUG) log("addBinary(" + value.length() + " bytes)");
+      emptyField = false;
+      getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
+
+      setRepetitionLevel();
+      if (DEBUG) printState();
+    }
+
+    @Override
+    public void addInt96(Int96 value) {
+      if (DEBUG) log("addInt96(" + value + ")");
       emptyField = false;
       getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
 

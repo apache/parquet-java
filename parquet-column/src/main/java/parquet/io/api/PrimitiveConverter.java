@@ -73,6 +73,13 @@ abstract public class PrimitiveConverter extends Converter {
   /**
    * @param value value to set
    */
+  public void addInt96(Int96 value) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /**
+   * @param value value to set
+   */
   public void addBoolean(boolean value) {
     throw new UnsupportedOperationException(getClass().getName());
   }

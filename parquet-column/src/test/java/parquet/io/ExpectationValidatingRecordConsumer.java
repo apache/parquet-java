@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import java.util.Deque;
 
 import parquet.io.api.Binary;
+import parquet.io.api.Int96;
 import parquet.io.api.RecordConsumer;
 
 final public class ExpectationValidatingRecordConsumer extends
@@ -85,6 +86,11 @@ final public class ExpectationValidatingRecordConsumer extends
   @Override
   public void addBinary(Binary value) {
     validate("addBinary("+value.toStringUsingUTF8()+")");
+  }
+
+  @Override
+  public void addInt96(Int96 value) {
+    validate("addInt96(" + String.valueOf(value) + ")");
   }
 
   @Override

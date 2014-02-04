@@ -21,6 +21,7 @@ import java.util.List;
 import parquet.column.ColumnReader;
 import parquet.io.InvalidRecordException;
 import parquet.io.api.Binary;
+import parquet.io.api.Int96;
 import parquet.io.api.PrimitiveConverter;
 import parquet.io.api.RecordConsumer;
 
@@ -198,20 +199,20 @@ public final class PrimitiveType extends Type {
         return converter.convertDOUBLE(this);
       }
     },
-    INT96(null, null) { // TODO: support for INT96
+    INT96("getInt96", Int96.class) {
       @Override
       public String toString(ColumnReader columnReader) {
-        throw new UnsupportedOperationException("NYI");
+        return String.valueOf(columnReader.getInt96());
       }
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
-        throw new UnsupportedOperationException("NYI");
+        recordConsumer.addInt96(columnReader.getInt96());
       }
       @Override
       public void addValueToPrimitiveConverter(
           PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
-        throw new UnsupportedOperationException("NYI");
+        primitiveConverter.addInt96(columnReader.getInt96());
       }
 
       @Override

@@ -51,6 +51,7 @@ import parquet.example.data.GroupWriter;
 import parquet.example.data.simple.SimpleGroupFactory;
 import parquet.example.data.simple.convert.GroupRecordConverter;
 import parquet.io.api.Binary;
+import parquet.io.api.Int96;
 import parquet.io.api.RecordConsumer;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.GroupType;
@@ -578,6 +579,11 @@ public class TestColumnIO {
           @Override
           public void write(Binary value, int repetitionLevel, int definitionLevel) {
             validate(value.toStringUsingUTF8(), repetitionLevel, definitionLevel);
+          }
+
+          @Override
+          public void write(Int96 value, int repetitionLevel, int definitionLevel) {
+            validate(value, repetitionLevel, definitionLevel);
           }
 
           @Override

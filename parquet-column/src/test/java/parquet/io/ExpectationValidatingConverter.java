@@ -25,6 +25,7 @@ import java.util.List;
 import parquet.io.api.Binary;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
+import parquet.io.api.Int96;
 import parquet.io.api.PrimitiveConverter;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.GroupType;
@@ -64,6 +65,11 @@ public class ExpectationValidatingConverter extends RecordMaterializer<Void> {
           @Override
           public void addBinary(Binary value) {
             validate("addBinary("+value.toStringUsingUTF8()+")");
+          }
+
+          @Override
+          public void addInt96(Int96 value) {
+            validate("addInt96(" + String.valueOf(value) + ")");
           }
 
           @Override

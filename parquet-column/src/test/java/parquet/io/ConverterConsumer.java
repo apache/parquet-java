@@ -20,6 +20,7 @@ import java.util.Deque;
 
 import parquet.io.api.Binary;
 import parquet.io.api.GroupConverter;
+import parquet.io.api.Int96;
 import parquet.io.api.PrimitiveConverter;
 import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
@@ -99,6 +100,11 @@ public class ConverterConsumer extends RecordConsumer {
   @Override
   public void addBinary(Binary value) {
     currentPrimitive.addBinary(value);
+  }
+
+  @Override
+  public void addInt96(Int96 value) {
+    currentPrimitive.addInt96(value);
   }
 
   @Override

@@ -20,6 +20,7 @@ import static parquet.column.Encoding.PLAIN_DICTIONARY;
 
 import java.io.IOException;
 
+import java.nio.ByteBuffer;
 import parquet.column.Dictionary;
 import parquet.column.page.DictionaryPage;
 import parquet.column.values.plain.PlainValuesReader.DoublePlainValuesReader;
@@ -28,6 +29,7 @@ import parquet.column.values.plain.PlainValuesReader.IntegerPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.LongPlainValuesReader;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
+import parquet.io.api.Int96;
 
 /**
  * a simple implementation of dictionary for plain encoded values
@@ -91,6 +93,52 @@ public abstract class PlainValuesDictionary extends Dictionary {
     @Override
     public int getMaxId() {
       return binaryDictionaryContent.length - 1;
+    }
+
+  }
+
+  /**
+   * a simple implementation of dictionary for plain encoded int96
+   */
+  public static class PlainInt96Dictionary extends PlainValuesDictionary {
+
+    private Int96[] int96DictionaryContent = null;
+
+    /**
+     * @param dictionaryPage
+     * @throws IOException
+     */
+    public PlainInt96Dictionary(DictionaryPage dictionaryPage) throws IOException {
+      super(dictionaryPage);
+      final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
+      int96DictionaryContent = new Int96[dictionaryPage.getDictionarySize()];
+      int offset = 0;
+      for (int i = 0; i < int96DictionaryContent.length; i++) {
+        // wrap the content in an Int96
+        int96DictionaryContent[i] = Int96.fromByteBuffer(
+            ByteBuffer.wrap(dictionaryBytes, offset, 12));
+        // increment to the next value
+        offset += 12;
+      }
+    }
+
+    @Override
+    public Int96 decodeToInt96(int id) {
+      return int96DictionaryContent[id];
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder sb = new StringBuilder("PlainInt96Dictionary {\n");
+      for (int i = 0; i < int96DictionaryContent.length; i++) {
+        sb.append(i).append(" => ").append(int96DictionaryContent[i]).append("\n");
+      }
+      return sb.append("}").toString();
+    }
+
+    @Override
+    public int getMaxId() {
+      return int96DictionaryContent.length - 1;
     }
 
   }

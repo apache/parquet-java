@@ -47,6 +47,7 @@ import parquet.column.values.plain.PlainValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
+import parquet.io.api.Int96;
 
 /**
  * Will attempt to encode values using a dictionary and fall back to plain encoding
@@ -298,6 +299,84 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       while (iterator.hasNext()) {
         int id = iterator.next();
         plainValuesWriter.writeBytes(reverseDictionary[id]);
+      }
+    }
+  }
+
+  /**
+   *
+   */
+  public static class PlainInt96DictionaryValuesWriter extends DictionaryValuesWriter {
+
+    /* type specific dictionary content */
+    private Object2IntMap<Int96> int96DictionaryContent = new Object2IntLinkedOpenHashMap<Int96>();
+
+    /**
+     * @param maxDictionaryByteSize
+     * @param initialSize
+     */
+    public PlainInt96DictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
+      super(maxDictionaryByteSize, initialSize);
+      int96DictionaryContent.defaultReturnValue(-1);
+    }
+
+    @Override
+    public void writeInt96(Int96 value) {
+      if (!dictionaryTooBig) {
+        int id = int96DictionaryContent.getInt(value);
+        if (id == -1) {
+          id = int96DictionaryContent.size();
+          int96DictionaryContent.put(value, id);
+          // length of int96 is 12 bytes
+          dictionaryByteSize += 12;
+        }
+        encodedValues.add(id);
+        checkAndFallbackIfNeeded();
+      } else {
+        plainValuesWriter.writeInt96(value);
+      }
+      rawDataByteSize += 12;
+    }
+
+    @Override
+    public DictionaryPage createDictionaryPage() {
+      if (lastUsedDictionarySize > 0) {
+        // return a dictionary only if we actually used it
+        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize);
+        Iterator<Int96> binaryIterator = int96DictionaryContent.keySet().iterator();
+        // write only the part of the dict that we used
+        for (int i = 0; i < lastUsedDictionarySize; i++) {
+          Int96 entry = binaryIterator.next();
+          dictionaryEncoder.writeInt96(entry);
+        }
+        return new DictionaryPage(dictionaryEncoder.getBytes(), lastUsedDictionarySize, PLAIN_DICTIONARY);
+      }
+      return plainValuesWriter.createDictionaryPage();
+    }
+
+    @Override
+    public int getDictionarySize() {
+      return int96DictionaryContent.size();
+    }
+
+    @Override
+    protected void clearDictionaryContent() {
+      int96DictionaryContent.clear();
+    }
+
+    @Override
+    protected void fallBackDictionaryEncodedData() {
+      //build reverse dictionary
+      Int96[] reverseDictionary = new Int96[getDictionarySize()];
+      for (Object2IntMap.Entry<Int96> entry : int96DictionaryContent.object2IntEntrySet()) {
+        reverseDictionary[entry.getIntValue()] = entry.getKey();
+      }
+
+      //fall back to plain encoding
+      IntIterator iterator = encodedValues.iterator();
+      while (iterator.hasNext()) {
+        int id = iterator.next();
+        plainValuesWriter.writeInt96(reverseDictionary[id]);
       }
     }
   }
