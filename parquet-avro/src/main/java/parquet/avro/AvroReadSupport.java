@@ -60,7 +60,6 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
     if (requestedProjectionString != null) {
       Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);
       schema = new AvroSchemaConverter().convert(avroRequestedProjection);
-      fileSchema.checkContains(schema);
     }
     String avroReadSchema = configuration.get(AVRO_READ_SCHEMA);
     if (avroReadSchema != null) {
@@ -76,10 +75,13 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
     Schema avroSchema;
     if (readContext.getReadSupportMetadata() != null &&
         readContext.getReadSupportMetadata().get(AVRO_READ_SCHEMA_METADATA_KEY) != null) {
+      // use the Avro read schema provided by the user
       avroSchema = new Schema.Parser().parse(readContext.getReadSupportMetadata().get(AVRO_READ_SCHEMA_METADATA_KEY));
     } else if (keyValueMetaData.get(AVRO_SCHEMA_METADATA_KEY) != null) {
+      // use the Avro schema from the file metadata if present
       avroSchema = new Schema.Parser().parse(keyValueMetaData.get(AVRO_SCHEMA_METADATA_KEY));
     } else {
+      // default to converting the Parquet schema into an Avro schema
       avroSchema = new AvroSchemaConverter().convert(parquetSchema);
     }
     return new AvroRecordMaterializer<T>(parquetSchema, avroSchema);
