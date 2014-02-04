@@ -28,6 +28,7 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static parquet.schema.Type.Repetition.OPTIONAL;
 import static parquet.schema.Type.Repetition.REQUIRED;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -73,6 +74,7 @@ public class TestColumnIO {
   + "  required double d;\n"
   + "  required boolean e;\n"
   + "  required binary f;\n"
+  + "  required int96 g;\n"
   + "}\n";
 
   private static final String schemaString =
@@ -341,7 +343,9 @@ public class TestColumnIO {
         .append("c", 3.0f)
         .append("d", 4.0d)
         .append("e", true)
-        .append("f", Binary.fromString("6"));
+        .append("f", Binary.fromString("6"))
+        .append("g", Int96.fromByteBuffer(
+            ByteBuffer.wrap(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12})));
 
     testSchema(oneOfEachSchema, Arrays.asList(g1));
   }

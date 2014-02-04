@@ -1,6 +1,7 @@
 package parquet.io.api;
 
 import java.nio.ByteBuffer;
+import parquet.Preconditions;
 
 public class Int96 {
   private final ByteBuffer bytes;
@@ -10,6 +11,7 @@ public class Int96 {
   }
 
   public Int96(ByteBuffer bytes) {
+    Preconditions.checkArgument(bytes.remaining() == 12, "Must be 12 bytes");
     this.bytes = bytes;
   }
 

@@ -16,6 +16,7 @@
 package parquet.example.data;
 
 import parquet.io.api.Binary;
+import parquet.io.api.Int96;
 import parquet.schema.GroupType;
 
 abstract public class GroupValueSource {
@@ -55,6 +56,8 @@ abstract public class GroupValueSource {
   abstract public boolean getBoolean(int fieldIndex, int index);
 
   abstract public Binary getBinary(int fieldIndex, int index);
+
+  abstract public Int96 getInt96(int fieldIndex, int index);
 
   abstract public String getValueToString(int fieldIndex, int index);
 

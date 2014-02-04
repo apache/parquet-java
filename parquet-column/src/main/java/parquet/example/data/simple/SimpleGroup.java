@@ -19,7 +19,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import parquet.example.data.Group;
+import parquet.example.data.simple.convert.Int96Value;
 import parquet.io.api.Binary;
+import parquet.io.api.Int96;
 import parquet.io.api.RecordConsumer;
 import parquet.schema.GroupType;
 import parquet.schema.Type;
@@ -137,6 +139,11 @@ public class SimpleGroup extends Group {
   }
 
   @Override
+  public Int96 getInt96(int fieldIndex, int index) {
+    return ((Int96Value)getValue(fieldIndex, index)).getInt96();
+  }
+
+  @Override
   public void add(int fieldIndex, int value) {
     add(fieldIndex, new IntegerValue(value));
   }
@@ -159,6 +166,11 @@ public class SimpleGroup extends Group {
   @Override
   public void add(int fieldIndex, Binary value) {
     add(fieldIndex, new BinaryValue(value));
+  }
+
+  @Override
+  public void add(int fieldIndex, Int96 value) {
+    add(fieldIndex, new Int96Value(value));
   }
 
   @Override

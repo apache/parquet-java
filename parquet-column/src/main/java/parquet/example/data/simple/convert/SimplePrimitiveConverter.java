@@ -16,6 +16,7 @@
 package parquet.example.data.simple.convert;
 
 import parquet.io.api.Binary;
+import parquet.io.api.Int96;
 import parquet.io.api.PrimitiveConverter;
 
 class SimplePrimitiveConverter extends PrimitiveConverter {
@@ -36,7 +37,16 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
   public void addBinary(Binary value) {
     parent.getCurrentRecord().add(index, value);
   }
-  
+
+  /**
+   * {@inheritDoc}
+   * @see parquet.io.api.PrimitiveConverter#addInt96(parquet.io.api.Int96)
+   */
+  @Override
+  public void addInt96(Int96 value) {
+    parent.getCurrentRecord().add(index, value);
+  }
+
   /**
    * {@inheritDoc}
    * @see parquet.io.api.PrimitiveConverter#addBoolean(boolean)

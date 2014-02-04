@@ -16,6 +16,7 @@
 package parquet.example.data.simple;
 
 import parquet.io.api.Binary;
+import parquet.io.api.Int96;
 import parquet.io.api.RecordConsumer;
 
 public abstract class Primitive {
@@ -37,6 +38,10 @@ public abstract class Primitive {
   }
 
   public Binary getBinary() {
+    throw new UnsupportedOperationException();
+  }
+
+  public Int96 getInt96() {
     throw new UnsupportedOperationException();
   }
 
