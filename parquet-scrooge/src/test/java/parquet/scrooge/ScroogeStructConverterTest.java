@@ -28,7 +28,7 @@ import parquet.scrooge.test.TestSetPrimitive;
 import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType;
 
-import static junit.framework.Assert.assertEquals;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test convert scrooge schema to Parquet Schema

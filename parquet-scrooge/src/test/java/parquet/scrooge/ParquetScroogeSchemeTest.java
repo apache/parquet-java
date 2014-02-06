@@ -110,9 +110,4 @@ public class ParquetScroogeSchemeTest {
     assertEquals(expectedStr, readValue.toString());
   }
 
-  private static class ParquetScroogeInputFormat<T> extends ParquetInputFormat<T> {
-    public ParquetScroogeInputFormat() {
-      super(ScroogeReadSupport.class);
-    }
-  }
 }

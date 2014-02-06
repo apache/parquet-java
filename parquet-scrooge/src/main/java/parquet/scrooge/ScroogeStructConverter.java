@@ -20,6 +20,9 @@ import com.twitter.scrooge.ThriftStructField;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftTypeID;
+import static parquet.thrift.struct.ThriftField.Requirement;
+import static parquet.thrift.struct.ThriftField.Requirement.*;
+
 import scala.collection.Iterator;
 import scala.collection.JavaConversions;
 import scala.collection.Seq;
@@ -58,7 +61,7 @@ public class ScroogeStructConverter {
     try {
       companionClass = Class.forName(className + "$");
     } catch (ClassNotFoundException e) {
-     throw new IllegalArgumentException("Can not find scrooge class", e);
+     throw new IllegalArgumentException("Can not find companion object for scrooge class " + className, e);
     }
     return convertCompanionClassToStruct(companionClass);
   }
@@ -68,7 +71,7 @@ public class ScroogeStructConverter {
     try {
       companionObject = (ThriftStructCodec<?>)companionClass.getField("MODULE$").get(null);
     } catch (Exception e) {
-      throw new RuntimeException("Can not load companion class from scrooge", e);
+      throw new RuntimeException("Can not get ThriftStructCodec from companion object of " + companionClass.getName(), e);
     }
 
     List<ThriftField> children = new LinkedList<ThriftField>();//{@link ThriftType.StructType} uses foreach loop to iterate the children, yields O(n) time for linked list
@@ -84,7 +87,7 @@ public class ScroogeStructConverter {
    * Use reflection to detect if a field is optional or required since scrooge does not provide requirement information
    * in generated classes.
    * This will not correctly recognize fields that are not specified with a requirement type eg.
-   * struct Phone {
+   * struct Address {
    * 1: string street
    * }
    * street will be identified as "REQUIRED"
@@ -94,16 +97,12 @@ public class ScroogeStructConverter {
    * @throws Exception
    */
   public ThriftField toThriftField(ThriftStructField scroogeField) {
-    ThriftField.Requirement requirement = ThriftField.Requirement.REQUIRED;
-    if (isOptional(scroogeField)) {
-      requirement = ThriftField.Requirement.OPTIONAL;
-    }
+    Requirement requirement = isOptional(scroogeField)? OPTIONAL : REQUIRED;
 
     String fieldName = scroogeField.tfield().name;
     short fieldId = scroogeField.tfield().id;
     byte thriftTypeByte = scroogeField.tfield().type;
     ThriftTypeID typeId = ThriftTypeID.fromByte(thriftTypeByte);
-
     ThriftType thriftType;
     switch (typeId) {
     case BOOL:
@@ -165,7 +164,7 @@ public class ScroogeStructConverter {
     return types;
   }
 
-  private ThriftType convertSetTypeField(ThriftStructField f, ThriftField.Requirement requirement) {
+  private ThriftType convertSetTypeField(ThriftStructField f, Requirement requirement) {
     List<Class> typeArguments = getTypeArguments(f);
     ThriftType elementType = convertClassToThriftType(typeArguments.get(0));
     //Set only has one sub-field as element field, therefore using hard-coded 1 as fieldId,
@@ -174,14 +173,14 @@ public class ScroogeStructConverter {
     return new ThriftType.SetType(elementField);
   }
 
-  private ThriftType convertListTypeField(ThriftStructField f, ThriftField.Requirement requirement) {
+  private ThriftType convertListTypeField(ThriftStructField f, Requirement requirement) {
     List<Class> typeArguments = getTypeArguments(f);
     ThriftType elementType = convertClassToThriftType(typeArguments.get(0));
     ThriftField elementField = generateFieldWithoutId(f.name(), requirement, elementType);
     return new ThriftType.ListType(elementField);
   }
 
-  private ThriftType convertMapTypeField(ThriftStructField f, ThriftField.Requirement requirement) {
+  private ThriftType convertMapTypeField(ThriftStructField f, Requirement requirement) {
     List<Class> typeArguments = getTypeArguments(f);
     Class keyClass = typeArguments.get(0);
     ThriftType keyType = convertClassToThriftType(keyClass);
@@ -202,7 +201,7 @@ public class ScroogeStructConverter {
    * @param thriftType
    * @return
    */
-  private ThriftField generateFieldWithoutId(String fieldName, ThriftField.Requirement requirement, ThriftType thriftType) {
+  private ThriftField generateFieldWithoutId(String fieldName, Requirement requirement, ThriftType thriftType) {
     return new ThriftField(fieldName, (short)1, requirement, thriftType);
   }
 
