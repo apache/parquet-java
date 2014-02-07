@@ -42,6 +42,8 @@ import parquet.schema.Type;
  */
 public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
 
+  private static final String AVRO_SCHEMA = "parquet.avro.schema";
+
   private RecordConsumer recordConsumer;
   private MessageType rootSchema;
   private Schema rootAvroSchema;
@@ -54,18 +56,21 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
     this.rootAvroSchema = avroSchema;
   }
 
+  /**
+   * @see parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
+   */
   public static void setSchema(Configuration configuration, Schema schema) {
-    configuration.set("parquet.avro.schema", schema.toString());
+    configuration.set(AVRO_SCHEMA, schema.toString());
   }
 
   @Override
   public WriteContext init(Configuration configuration) {
     if (rootAvroSchema == null) {
-      rootAvroSchema = new Schema.Parser().parse(configuration.get("parquet.avro.schema"));
+      rootAvroSchema = new Schema.Parser().parse(configuration.get(AVRO_SCHEMA));
       rootSchema = new AvroSchemaConverter().convert(rootAvroSchema);
     }
     Map<String, String> extraMetaData = new HashMap<String, String>();
-    extraMetaData.put("avro.schema", rootAvroSchema.toString());
+    extraMetaData.put(AvroReadSupport.AVRO_SCHEMA_METADATA_KEY, rootAvroSchema.toString());
     return new WriteContext(rootSchema, extraMetaData);
   }
 

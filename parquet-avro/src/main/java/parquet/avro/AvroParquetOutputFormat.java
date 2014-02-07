@@ -27,6 +27,15 @@ import parquet.hadoop.util.ContextUtil;
  */
 public class AvroParquetOutputFormat extends ParquetOutputFormat<IndexedRecord> {
 
+  /**
+   * Set the Avro schema to use for writing. The schema is translated into a Parquet
+   * schema so that the records can be written in Parquet format. It is also
+   * stored in the Parquet metadata so that records can be reconstructed as Avro
+   * objects at read time without specifying a read schema.
+   * @param job
+   * @param schema
+   * @see parquet.avro.AvroParquetInputFormat#setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
+   */
   public static void setSchema(Job job, Schema schema) {
     AvroWriteSupport.setSchema(ContextUtil.getConfiguration(job), schema);
   }

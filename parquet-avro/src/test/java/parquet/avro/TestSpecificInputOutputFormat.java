@@ -15,7 +15,14 @@
  */
 package parquet.avro;
 
+import static java.lang.Thread.sleep;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
+
 import com.google.common.collect.Lists;
+import java.io.IOException;
+import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -25,6 +32,8 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import parquet.Log;
 import parquet.column.ColumnReader;
@@ -32,13 +41,6 @@ import parquet.filter.ColumnPredicates;
 import parquet.filter.ColumnRecordFilter;
 import parquet.filter.RecordFilter;
 import parquet.filter.UnboundRecordFilter;
-
-import java.io.IOException;
-import java.util.List;
-
-import static java.lang.Thread.sleep;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 public class TestSpecificInputOutputFormat {
   private static final Log LOG = Log.getLog(TestSpecificInputOutputFormat.class);
@@ -50,7 +52,7 @@ public class TestSpecificInputOutputFormat {
         .setMake("Tesla")
         .setModel("Model X")
         .setVin(new Vin(vin.getBytes()))
-        .setYear(2014)
+        .setYear(2014 + i)
         .setOptionalExtra(LeatherTrim.newBuilder().setColour("black").build())
         .setRegistration("Calfornia");
     Engine.Builder engineBuilder = Engine.newBuilder()
@@ -74,6 +76,7 @@ public class TestSpecificInputOutputFormat {
 
   public static class MyMapper extends Mapper<LongWritable, Text, Void, Car> {
 
+    @Override
     public void run(Context context) throws IOException ,InterruptedException {
       for (int i = 0; i < 10; i++) {
         context.write(null, nextRecord(i));
@@ -92,9 +95,23 @@ public class TestSpecificInputOutputFormat {
 
   }
 
+  public static class MyMapperShort extends
+      Mapper<Void, ShortCar, Void, ShortCar> {
+    @Override
+    protected void map(Void key, ShortCar car, Context context)
+        throws IOException, InterruptedException {
+      // Note: Car can be null because of predicate pushdown defined by an
+      // UnboundedRecordFilter (see below)
+      if (car != null) {
+        context.write(null, car);
+      }
+    }
+
+  }
+
   public static class ElectricCarFilter implements UnboundRecordFilter {
 
-    private UnboundRecordFilter filter;
+    private final UnboundRecordFilter filter;
 
     public ElectricCarFilter() {
       filter = ColumnRecordFilter.column("engine.type", ColumnPredicates.equalTo(EngineType.ELECTRIC));
@@ -106,13 +123,13 @@ public class TestSpecificInputOutputFormat {
     }
   }
 
-  @Test
-  public void testReadWrite() throws Exception {
+  final Configuration conf = new Configuration();
+  final Path inputPath = new Path("src/test/java/parquet/avro/TestSpecificInputOutputFormat.java");
+  final Path parquetPath = new Path("target/test/hadoop/TestSpecificInputOutputFormat/parquet");
+  final Path outputPath = new Path("target/test/hadoop/TestSpecificInputOutputFormat/out");
 
-    final Configuration conf = new Configuration();
-    final Path inputPath = new Path("src/test/java/parquet/avro/TestSpecificInputOutputFormat.java");
-    final Path parquetPath = new Path("target/test/hadoop/TestSpecificInputOutputFormat/parquet");
-    final Path outputPath = new Path("target/test/hadoop/TestSpecificInputOutputFormat/out");
+  @Before
+  public void createParquetFile() throws Exception {
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);
     fileSystem.delete(outputPath, true);
@@ -132,35 +149,41 @@ public class TestSpecificInputOutputFormat {
 
       waitForJob(job);
     }
-    {
-      final Job job = new Job(conf, "read");
-      job.setInputFormatClass(AvroParquetInputFormat.class);
-      AvroParquetInputFormat.setInputPaths(job, parquetPath);
-      // Test push-down predicates by using an electric car filter
-      AvroParquetInputFormat.setUnboundRecordFilter(job, ElectricCarFilter.class);
+  }
+  
+  @Test
+  public void testReadWrite() throws Exception {
 
-      // Test schema projection by dropping the optional extras
-      Schema projection = Schema.createRecord(Car.SCHEMA$.getName(), Car.SCHEMA$.getDoc(), Car.SCHEMA$.getNamespace(), false);
-      List<Schema.Field> fields = Lists.newArrayList();
-      for (Schema.Field field: Car.SCHEMA$.getFields()) {
-        if (!"optionalExtra".equals(field.name())) {
-          fields.add(new Schema.Field(field.name(), field.schema(), field.doc(), field.defaultValue(), field.order()));
-        }
+    final Job job = new Job(conf, "read");
+    job.setInputFormatClass(AvroParquetInputFormat.class);
+    AvroParquetInputFormat.setInputPaths(job, parquetPath);
+    // Test push-down predicates by using an electric car filter
+    AvroParquetInputFormat.setUnboundRecordFilter(job, ElectricCarFilter.class);
+
+    // Test schema projection by dropping the optional extras
+    Schema projection = Schema.createRecord(Car.SCHEMA$.getName(),
+        Car.SCHEMA$.getDoc(), Car.SCHEMA$.getNamespace(), false);
+    List<Schema.Field> fields = Lists.newArrayList();
+    for (Schema.Field field : Car.SCHEMA$.getFields()) {
+      if (!"optionalExtra".equals(field.name())) {
+        fields.add(new Schema.Field(field.name(), field.schema(), field.doc(),
+            field.defaultValue(), field.order()));
       }
-      projection.setFields(fields);
-      AvroParquetInputFormat.setRequestedProjection(job, projection);
-
-      job.setMapperClass(TestSpecificInputOutputFormat.MyMapper2.class);
-      job.setNumReduceTasks(0);
-
-      job.setOutputFormatClass(AvroParquetOutputFormat.class);
-      AvroParquetOutputFormat.setOutputPath(job, outputPath);
-      AvroParquetOutputFormat.setSchema(job, Car.SCHEMA$);
-
-      waitForJob(job);
     }
+    projection.setFields(fields);
+    AvroParquetInputFormat.setRequestedProjection(job, projection);
 
-    final Path mapperOutput = new Path(outputPath.toString(), "part-m-00000.parquet");
+    job.setMapperClass(TestSpecificInputOutputFormat.MyMapper2.class);
+    job.setNumReduceTasks(0);
+
+    job.setOutputFormatClass(AvroParquetOutputFormat.class);
+    AvroParquetOutputFormat.setOutputPath(job, outputPath);
+    AvroParquetOutputFormat.setSchema(job, Car.SCHEMA$);
+
+    waitForJob(job);
+
+    final Path mapperOutput = new Path(outputPath.toString(),
+        "part-m-00000.parquet");
     final AvroParquetReader<Car> out = new AvroParquetReader<Car>(mapperOutput);
     Car car;
     int lineNumber = 0;
@@ -171,9 +194,62 @@ public class TestSpecificInputOutputFormat {
       }
       // Note we use lineNumber * 2 because of predicate push down
       Car expectedCar = nextRecord(lineNumber * 2);
-      // We removed the optional extra field using projection so we shouldn't see it here...
+      // We removed the optional extra field using projection so we shouldn't
+      // see it here...
       expectedCar.setOptionalExtra(null);
       assertEquals("line " + lineNumber, expectedCar, car);
+      ++lineNumber;
+    }
+    out.close();
+  }
+
+  @Test
+  public void testReadWriteChangedCar() throws Exception {
+
+    final Job job = new Job(conf, "read changed/short");
+    job.setInputFormatClass(AvroParquetInputFormat.class);
+    AvroParquetInputFormat.setInputPaths(job, parquetPath);
+    // Test push-down predicates by using an electric car filter
+    AvroParquetInputFormat.setUnboundRecordFilter(job, ElectricCarFilter.class);
+
+    // Test schema projection by dropping the engine, year, and vin (like ShortCar),
+    // but making make optional (unlike ShortCar)
+    Schema projection = Schema.createRecord(Car.SCHEMA$.getName(),
+        Car.SCHEMA$.getDoc(), Car.SCHEMA$.getNamespace(), false);
+    List<Schema.Field> fields = Lists.newArrayList();
+    for (Schema.Field field : Car.SCHEMA$.getFields()) {
+      // No make!
+      if ("engine".equals(field.name()) || "year".equals(field.name()) || "vin".equals(field.name())) {
+        fields.add(new Schema.Field(field.name(), field.schema(), field.doc(),
+            field.defaultValue(), field.order()));
+      }
+    }
+    projection.setFields(fields);
+    AvroParquetInputFormat.setRequestedProjection(job, projection);
+    AvroParquetInputFormat.setAvroReadSchema(job, ShortCar.SCHEMA$);
+
+    job.setMapperClass(TestSpecificInputOutputFormat.MyMapperShort.class);
+    job.setNumReduceTasks(0);
+
+    job.setOutputFormatClass(AvroParquetOutputFormat.class);
+    AvroParquetOutputFormat.setOutputPath(job, outputPath);
+    AvroParquetOutputFormat.setSchema(job, ShortCar.SCHEMA$);
+
+    waitForJob(job);
+
+    final Path mapperOutput = new Path(outputPath.toString(), "part-m-00000.parquet");
+    final AvroParquetReader<ShortCar> out = new AvroParquetReader<ShortCar>(mapperOutput);
+    ShortCar car;
+    int lineNumber = 0;
+    while ((car = out.read()) != null) {
+      // Make sure that predicate push down worked as expected
+      // Note we use lineNumber * 2 because of predicate push down
+      Car expectedCar = nextRecord(lineNumber * 2);
+      // We removed the optional extra field using projection so we shouldn't see it here...
+      assertNull(car.getMake());
+      assertEquals(car.getEngine(), expectedCar.getEngine());
+      assertEquals(car.getYear(), expectedCar.getYear());
+      assertEquals(car.getVin(), expectedCar.getVin());
       ++lineNumber;
     }
     out.close();
@@ -191,4 +267,10 @@ public class TestSpecificInputOutputFormat {
     }
   }
 
+  @After
+  public void deleteOutputFile() throws IOException {
+    final FileSystem fileSystem = parquetPath.getFileSystem(conf);
+    fileSystem.delete(parquetPath, true);
+    fileSystem.delete(outputPath, true);
+  }
 }

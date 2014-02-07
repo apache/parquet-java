@@ -19,6 +19,7 @@ import java.util.*;
 
 import org.apache.avro.Schema;
 
+import org.codehaus.jackson.node.NullNode;
 import parquet.schema.ConversionPatterns;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
@@ -26,7 +27,6 @@ import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType;
 import parquet.schema.Type;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
-import parquet.schema.Type.Repetition;
 
 import static parquet.schema.OriginalType.*;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
@@ -173,4 +173,123 @@ public class AvroSchemaConverter {
     return new PrimitiveType(repetition, primitive, name, null);
   }
 
+  public Schema convert(MessageType parquetSchema) {
+    return convertFields(parquetSchema.getName(), parquetSchema.getFields());
+  }
+
+  private Schema convertFields(String name, List<Type> parquetFields) {
+    List<Schema.Field> fields = new ArrayList<Schema.Field>();
+    for (Type parquetType : parquetFields) {
+      Schema fieldSchema = convertField(parquetType);
+      if (parquetType.isRepetition(Type.Repetition.REPEATED)) {
+        throw new UnsupportedOperationException("REPEATED not supported outside LIST or MAP. Type: " + parquetType);
+      } else if (parquetType.isRepetition(Type.Repetition.OPTIONAL)) {
+        List<Schema> types = new ArrayList<Schema>();
+        types.add(Schema.create(Schema.Type.NULL));
+        types.add(fieldSchema);
+        Schema optionalFieldSchema = Schema.createUnion(types);
+        fields.add(new Schema.Field(parquetType.getName(), optionalFieldSchema, null,
+            NullNode.getInstance()));
+      } else { // REQUIRED
+        fields.add(new Schema.Field(parquetType.getName(), fieldSchema, null, null));
+      }
+    }
+    Schema schema = Schema.createRecord(name, null, null, false);
+    schema.setFields(fields);
+    return schema;
+  }
+
+  private Schema convertField(final Type parquetType) {
+    if (parquetType.isPrimitive()) {
+      final PrimitiveTypeName parquetPrimitiveTypeName =
+          parquetType.asPrimitiveType().getPrimitiveTypeName();
+      final OriginalType originalType = parquetType.getOriginalType();
+      return parquetPrimitiveTypeName.convert(
+          new PrimitiveType.PrimitiveTypeNameConverter<Schema, RuntimeException>() {
+            @Override
+            public Schema convertBOOLEAN(PrimitiveTypeName primitiveTypeName) {
+              return Schema.create(Schema.Type.BOOLEAN);
+            }
+            @Override
+            public Schema convertINT32(PrimitiveTypeName primitiveTypeName) {
+              return Schema.create(Schema.Type.INT);
+            }
+            @Override
+            public Schema convertINT64(PrimitiveTypeName primitiveTypeName) {
+              return Schema.create(Schema.Type.LONG);
+            }
+            @Override
+            public Schema convertINT96(PrimitiveTypeName primitiveTypeName) {
+              throw new IllegalArgumentException("INT64 not yet implemented.");
+            }
+            @Override
+            public Schema convertFLOAT(PrimitiveTypeName primitiveTypeName) {
+              return Schema.create(Schema.Type.FLOAT);
+            }
+            @Override
+            public Schema convertDOUBLE(PrimitiveTypeName primitiveTypeName) {
+              return Schema.create(Schema.Type.DOUBLE);
+            }
+            @Override
+            public Schema convertFIXED_LEN_BYTE_ARRAY(PrimitiveTypeName primitiveTypeName) {
+              int size = parquetType.asPrimitiveType().getTypeLength();
+              return Schema.createFixed(parquetType.getName(), null, null, size);
+            }
+            @Override
+            public Schema convertBINARY(PrimitiveTypeName primitiveTypeName) {
+              if (originalType == OriginalType.UTF8 || originalType == OriginalType.ENUM) {
+                return Schema.create(Schema.Type.STRING);
+              } else {
+                return Schema.create(Schema.Type.BYTES);
+              }
+            }
+          });
+    } else {
+      GroupType parquetGroupType = parquetType.asGroupType();
+      OriginalType originalType = parquetGroupType.getOriginalType();
+      if (originalType != null) {
+        switch(originalType) {
+          case LIST:
+            if (parquetGroupType.getFieldCount()!= 1) {
+              throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
+            }
+            Type elementType = parquetGroupType.getType(0);
+            if (!elementType.isRepetition(Type.Repetition.REPEATED)) {
+              throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
+            }
+            return Schema.createArray(convertField(elementType));
+          case MAP:
+            if (parquetGroupType.getFieldCount() != 1 || parquetGroupType.getType(0).isPrimitive()) {
+              throw new UnsupportedOperationException("Invalid map type " + parquetGroupType);
+            }
+            GroupType mapKeyValType = parquetGroupType.getType(0).asGroupType();
+            if (!mapKeyValType.isRepetition(Type.Repetition.REPEATED) ||
+                !mapKeyValType.getOriginalType().equals(OriginalType.MAP_KEY_VALUE) ||
+                mapKeyValType.getFieldCount()!=2) {
+              throw new UnsupportedOperationException("Invalid map type " + parquetGroupType);
+            }
+            Type keyType = mapKeyValType.getType(0);
+            if (!keyType.isPrimitive() ||
+                !keyType.asPrimitiveType().getPrimitiveTypeName().equals(PrimitiveTypeName.BINARY) ||
+                !keyType.getOriginalType().equals(OriginalType.UTF8)) {
+              throw new IllegalArgumentException("Map key type must be binary (UTF8): "
+                  + keyType);
+            }
+            Type valueType = mapKeyValType.getType(1);
+            return Schema.createMap(convertField(valueType));
+          case ENUM:
+            return Schema.create(Schema.Type.STRING);
+          case MAP_KEY_VALUE:
+          case UTF8:
+          default:
+            throw new UnsupportedOperationException("Cannot convert Parquet type " +
+                parquetType);
+
+        }
+      } else {
+        // if no original type then it's a record
+        return convertFields(parquetGroupType.getName(), parquetGroupType.getFields());
+      }
+    }
+  }
 }

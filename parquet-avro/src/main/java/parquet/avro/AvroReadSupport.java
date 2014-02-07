@@ -15,6 +15,7 @@
  */
 package parquet.avro;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
@@ -31,27 +32,58 @@ import parquet.schema.MessageType;
 public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
 
   public static String AVRO_REQUESTED_PROJECTION = "parquet.avro.projection";
+  private static final String AVRO_READ_SCHEMA = "parquet.avro.read.schema";
 
+  static final String AVRO_SCHEMA_METADATA_KEY = "avro.schema";
+  private static final String AVRO_READ_SCHEMA_METADATA_KEY = "avro.read.schema";
+
+  /**
+   * @see parquet.avro.AvroParquetInputFormat#setRequestedProjection(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
+   */
   public static void setRequestedProjection(Configuration configuration, Schema requestedProjection) {
     configuration.set(AVRO_REQUESTED_PROJECTION, requestedProjection.toString());
   }
 
+  /**
+   * @see parquet.avro.AvroParquetInputFormat#setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
+   */
+  public static void setAvroReadSchema(Configuration configuration, Schema avroReadSchema) {
+    configuration.set(AVRO_READ_SCHEMA, avroReadSchema.toString());
+  }
+
   @Override
   public ReadContext init(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
+    MessageType schema = fileSchema;
+    Map<String, String> metadata = null;
+
     String requestedProjectionString = configuration.get(AVRO_REQUESTED_PROJECTION);
     if (requestedProjectionString != null) {
       Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);
-      MessageType requestedProjection = new AvroSchemaConverter().convert(avroRequestedProjection);
-      fileSchema.checkContains(requestedProjection);
-      return new ReadContext(requestedProjection);
-    } else {
-      return new ReadContext(fileSchema);
+      schema = new AvroSchemaConverter().convert(avroRequestedProjection);
     }
+    String avroReadSchema = configuration.get(AVRO_READ_SCHEMA);
+    if (avroReadSchema != null) {
+      metadata = new LinkedHashMap<String, String>();
+      metadata.put(AVRO_READ_SCHEMA_METADATA_KEY, avroReadSchema);
+    }
+    return new ReadContext(schema, metadata);
   }
 
   @Override
   public RecordMaterializer<T> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema, ReadContext readContext) {
-    Schema avroSchema = new Schema.Parser().parse(keyValueMetaData.get("avro.schema"));
-    return new AvroRecordMaterializer<T>(readContext.getRequestedSchema(), avroSchema);
+    MessageType parquetSchema = readContext.getRequestedSchema();
+    Schema avroSchema;
+    if (readContext.getReadSupportMetadata() != null &&
+        readContext.getReadSupportMetadata().get(AVRO_READ_SCHEMA_METADATA_KEY) != null) {
+      // use the Avro read schema provided by the user
+      avroSchema = new Schema.Parser().parse(readContext.getReadSupportMetadata().get(AVRO_READ_SCHEMA_METADATA_KEY));
+    } else if (keyValueMetaData.get(AVRO_SCHEMA_METADATA_KEY) != null) {
+      // use the Avro schema from the file metadata if present
+      avroSchema = new Schema.Parser().parse(keyValueMetaData.get(AVRO_SCHEMA_METADATA_KEY));
+    } else {
+      // default to converting the Parquet schema into an Avro schema
+      avroSchema = new AvroSchemaConverter().convert(parquetSchema);
+    }
+    return new AvroRecordMaterializer<T>(parquetSchema, avroSchema);
   }
 }

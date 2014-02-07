@@ -24,7 +24,6 @@ import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.specific.SpecificData;
-import org.apache.avro.specific.SpecificFixed;
 import parquet.Preconditions;
 import parquet.io.InvalidRecordException;
 import parquet.io.api.Binary;
@@ -188,6 +187,11 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     }
 
     @Override
+    final public void addInt(int value) {
+      parent.add(Long.valueOf(value));
+    }
+
+    @Override
     final public void addLong(long value) {
       parent.add(value);
     }
@@ -203,6 +207,16 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     }
 
     @Override
+    final public void addInt(int value) {
+      parent.add(Float.valueOf(value));
+    }
+
+    @Override
+    final public void addLong(long value) {
+      parent.add(Float.valueOf(value));
+    }
+
+    @Override
     final public void addFloat(float value) {
       parent.add(value);
     }
@@ -215,6 +229,21 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
 
     public FieldDoubleConverter(ParentValueContainer parent) {
       this.parent = parent;
+    }
+
+    @Override
+    final public void addInt(int value) {
+      parent.add(Double.valueOf(value));
+    }
+
+    @Override
+    final public void addLong(long value) {
+      parent.add(Double.valueOf(value));
+    }
+
+    @Override
+    final public void addFloat(float value) {
+      parent.add(Double.valueOf(value));
     }
 
     @Override
@@ -430,8 +459,8 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
 
       private String key;
       private V value;
-      private Converter keyConverter;
-      private Converter valueConverter;
+      private final Converter keyConverter;
+      private final Converter valueConverter;
 
       public MapKeyValueConverter(Type parquetSchema, Schema avroSchema) {
         keyConverter = new PrimitiveConverter() {
