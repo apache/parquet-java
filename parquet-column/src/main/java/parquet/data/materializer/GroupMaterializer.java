@@ -8,7 +8,6 @@ import static brennus.model.ExistingType.existing;
 import static brennus.model.Protection.PRIVATE;
 import static brennus.model.Protection.PROTECTED;
 import static brennus.model.Protection.PUBLIC;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static parquet.schema.Type.Repetition.REPEATED;
 
 import java.lang.reflect.Array;
@@ -78,25 +77,19 @@ public class GroupMaterializer extends RecordMaterializer<Group> {
     ClassBuilder cb = new Builder().startClass(getClass().getName() + "$CompiledGroup" + (id++), existing(CompiledGroup.class));
     for (int i = 0; i < schema.getFieldCount(); i++) {
       Type t = schema.getType(i);
-      String fieldName = fieldName(i);
-      String setterName = "setField_" + i;
       Class<?> fieldType = getFieldType(t);
       cb = cb
-          .field(PROTECTED, existing(fieldType), fieldName)
-          .startMethod(PROTECTED, VOID, setterName).param(existing(fieldType), "value")
-            .set(fieldName).get("value").endSet()
+          .field(PROTECTED, existing(fieldType), fieldName(i))
+          .startMethod(PROTECTED, VOID, setterName(i)).param(existing(fieldType), "value")
+            .exec().get("isSet").call("set").literal(i).endCall().endExec()
+            .set(fieldName(i)).get("value").endSet()
+          .endMethod();
+
+      cb = cb
+          .startMethod(PROTECTED, VOID, setDefined(i))
+            .exec().get("isSet").call("set").literal(i).endCall().endExec()
           .endMethod();
     }
-//    ConstructorBuilder constructor = cb.startConstructor(PROTECTED).callSuperConstructorNoParam();
-//    for (int i = 0; i < schema.getFieldCount(); i++) {
-//      Type t = schema.getType(i);
-//      if (t.isRepetition(REPEATED)) {
-//        Class<?> fieldType = getFieldType(t);
-//        String fieldName = "field_" + i;
-//        constructor = constructor.set(fieldName).newInstanceNoParam(existing(fieldType)).endSet();
-//      }
-//    }
-//    cb = constructor.endConstructor();
 
     Set<Class<?>> javaTypes = new HashSet<Class<?>>();
     for (PrimitiveTypeName ptm : PrimitiveTypeName.values()) {
@@ -166,24 +159,20 @@ public class GroupMaterializer extends RecordMaterializer<Group> {
     }
     cb = endSwitchAndMethod(switchBlock);
 
-//    cb = cb
-//    .startMethod(PUBLIC, BOOLEAN, "isDefined").param(INT, "fieldIndex")
-//      .returnExp().literal(true).endReturn()
-//    .endMethod();
     switchBlock = cb.startMethod(PUBLIC, BOOLEAN, "isDefined").param(INT, "fieldIndex")
         .switchOn().get("fieldIndex").switchBlock();
     for (int i = 0; i < schema.getFieldCount(); i++) {
       Type t = schema.getType(i);
       if (!t.isRepetition(REPEATED)) {
-        if (t.isPrimitive() && t.asPrimitiveType().getPrimitiveTypeName() != BINARY) {
+//        if (t.isPrimitive() && t.asPrimitiveType().getPrimitiveTypeName() != BINARY) {
+//          switchBlock = switchBlock.caseBlock(i)
+//              .returnExp().literal(true).endReturn()
+//              .endCase();
+//        } else {
           switchBlock = switchBlock.caseBlock(i)
-              .returnExp().literal(true).endReturn()
+              .returnExp().get("isSet").call("get").literal(i).endCall().endReturn()
               .endCase();
-        } else {
-          switchBlock = switchBlock.caseBlock(i)
-              .returnExp().get(fieldName(i)).isNotNull().endReturn()
-              .endCase();
-        }
+//        }
       }
     }
     cb = endSwitchAndMethod(switchBlock);
@@ -198,6 +187,14 @@ public class GroupMaterializer extends RecordMaterializer<Group> {
     result.getDeclaredField("schema").set(null, schema);
     groupTypes.put(schema, result);
     return result;
+  }
+
+  private String setterName(int i) {
+    return "setField_" + i;
+  }
+
+  private String setDefined(int i) {
+    return "setFieldDefined_" + i;
   }
 
   private String fieldName(int field) {
@@ -252,6 +249,7 @@ public class GroupMaterializer extends RecordMaterializer<Group> {
       cb = cb
           .field(PRIVATE, existing(GroupConverterField.getGroupConverterField(t)), fieldName)
           .startMethod(PUBLIC, VOID, "addToField_" + i).param(existing(getParamType(t)), "value")
+            .exec().get("isSet").call("set").literal(i).endCall().endExec()
             .exec().get(fieldName).call("add").get("value").endCall().endExec()
           .endMethod();
     }
@@ -269,7 +267,7 @@ public class GroupMaterializer extends RecordMaterializer<Group> {
           .set("currentRecord").newInstanceNoParam(existing(groupClass)).endSet();
     for (int i = 0; i < schema.getFieldCount(); i++) {
       Type t = schema.getType(i);
-      String setterName = "setField_" + i;
+      String setterName = setterName(i);
       String fieldName = fieldName(i);
       if (t.isRepetition(REPEATED)) {
         m = m
@@ -284,14 +282,16 @@ public class GroupMaterializer extends RecordMaterializer<Group> {
               .endCall()
             .endExec();
       } else {
-        m = m
-            .exec().get("currentRecord")
-              .call(setterName)
-                .get(fieldName).callNoParam("get")
-              .endCall()
-            .endExec();
+        m = m.ifExp().get("isSet").call("get").literal(i).endCall().thenBlock()
+              .exec().get("currentRecord")
+                .call(setterName)
+                  .get(fieldName).callNoParam("get")
+                .endCall()
+              .endExec()
+            .endIf();
       }
     }
+    m = m.exec().get("isSet").callNoParam("clear").endExec();
     if (parent != null) {
       m = m.exec().get("parent").call("addToField_" + index).get("currentRecord").endCall().endExec();
     }

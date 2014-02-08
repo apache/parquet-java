@@ -49,12 +49,12 @@
     <dependency>
       <groupId>net.ledem</groupId>
       <artifactId>brennus-asm</artifactId>
-      <version>0.3.0</version>
+      <version>0.3.1-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>net.ledem</groupId>
       <artifactId>brennus-builder</artifactId>
-      <version>0.3.0</version>
+      <version>0.3.1-SNAPSHOT</version>
     </dependency>
 
     <dependency>

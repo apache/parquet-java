@@ -3,6 +3,7 @@ package parquet.data.materializer;
 import static parquet.schema.Type.Repetition.REPEATED;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 
 import parquet.data.Group;
@@ -10,6 +11,9 @@ import parquet.io.api.Binary;
 import parquet.schema.Type;
 
 public abstract class CompiledGroup extends Group {
+
+  // TODO: move down to enable not having this
+  protected BitSet isSet = new BitSet();
 
   public CompiledGroup() {
   }
