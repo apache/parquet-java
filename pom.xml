@@ -112,7 +112,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>2.1</version>
+        <version>2.2</version>
         <executions>
           <execution>
             <phase>package</phase>
@@ -126,6 +126,15 @@
                   <include>org.slf4j:slf4j-api</include>
                 </includes>
               </artifactSet>
+              <filters>
+                <filter>
+                  <!-- Sigh. The Thrift jar contains its source -->
+                  <artifact>org.apache.thrift:libthrift</artifact>
+                  <excludes>
+                    <exclude>**/*.java</exclude>
+                  </excludes>
+                </filter>
+              </filters>
               <relocations>
                 <relocation>
                   <pattern>org.apache.thrift</pattern>
