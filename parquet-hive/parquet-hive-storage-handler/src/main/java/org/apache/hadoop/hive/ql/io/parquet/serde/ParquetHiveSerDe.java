@@ -23,7 +23,7 @@ import java.util.Properties;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.ql.io.IOConstants;
 import org.apache.hadoop.hive.ql.io.parquet.writable.BinaryWritable;
-import org.apache.hadoop.hive.serde2.AbstractSerDe;
+import org.apache.hadoop.hive.serde2.SerDe;
 import org.apache.hadoop.hive.serde2.SerDeException;
 import org.apache.hadoop.hive.serde2.SerDeStats;
 import org.apache.hadoop.hive.serde2.io.ByteWritable;
@@ -63,7 +63,7 @@ import parquet.io.api.Binary;
  * A ParquetHiveSerDe for Hive (with the deprecated package mapred)
  *
  */
-public class ParquetHiveSerDe extends AbstractSerDe {
+public class ParquetHiveSerDe implements SerDe {
 
   public static final Text MAP_KEY = new Text("key");
   public static final Text MAP_VALUE = new Text("value");
