@@ -88,28 +88,21 @@ public class MessageColumnIO extends GroupColumnIO {
     private int currentLevel = 0;
 
     private class FieldsMarker {
-      private int totalFieldsCount;
       private BitSet vistedIndexes = new BitSet();
 
       @Override
       public String toString() {
         return "VistedIndex{" +
-                "totalFieldsCount=" + totalFieldsCount +
-                ", vistedIndexes=" + vistedIndexes +
+                "vistedIndexes=" + vistedIndexes +
                 '}';
       }
 
       public void reset(int fieldsCount) {
-        this.totalFieldsCount = fieldsCount;
         this.vistedIndexes.clear(0, fieldsCount);
       }
 
       public void markWritten(int i) {
         vistedIndexes.set(i);
-      }
-
-      public int getFieldCount() {
-        return totalFieldsCount;
       }
 
       public boolean isWritten(int i) {
@@ -196,7 +189,8 @@ public class MessageColumnIO extends GroupColumnIO {
     }
 
     private void writeNullForMissingFieldsAtCurrentLevel() {
-      for (int i = 0; i < fieldsWritten[currentLevel].getFieldCount(); i++) {
+      int currentFieldsCount = ((GroupColumnIO)currentColumnIO).getChildrenCount();
+      for (int i = 0; i < currentFieldsCount; i++) {
         if (!fieldsWritten[currentLevel].isWritten(i)) {
           try {
             ColumnIO undefinedField = ((GroupColumnIO)currentColumnIO).getChild(i);
