@@ -1,19 +1,18 @@
-package parquet.example.data.simple.convert;
+package parquet.example.data.simple;
 
-import parquet.example.data.simple.Primitive;
-import parquet.io.api.Int96;
+import parquet.io.api.Binary;
 import parquet.io.api.RecordConsumer;
 
 public class Int96Value extends Primitive {
 
-  private final Int96 value;
+  private final Binary value;
 
-  public Int96Value(Int96 value) {
+  public Int96Value(Binary value) {
     this.value = value;
   }
 
   @Override
-  public Int96 getInt96() {
+  public Binary getInt96() {
     return value;
   }
 

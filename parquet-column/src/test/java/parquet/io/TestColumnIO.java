@@ -28,7 +28,6 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static parquet.schema.Type.Repetition.OPTIONAL;
 import static parquet.schema.Type.Repetition.REQUIRED;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -41,7 +40,6 @@ import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
-import parquet.column.ParquetProperties;
 import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.PageReadStore;
@@ -52,7 +50,6 @@ import parquet.example.data.GroupWriter;
 import parquet.example.data.simple.SimpleGroupFactory;
 import parquet.example.data.simple.convert.GroupRecordConverter;
 import parquet.io.api.Binary;
-import parquet.io.api.Int96;
 import parquet.io.api.RecordConsumer;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.GroupType;
@@ -344,8 +341,8 @@ public class TestColumnIO {
         .append("d", 4.0d)
         .append("e", true)
         .append("f", Binary.fromString("6"))
-        .append("g", Int96.fromByteBuffer(
-            ByteBuffer.wrap(new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12})));
+        .append("g", Binary.fromByteArray(
+            new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}));
 
     testSchema(oneOfEachSchema, Arrays.asList(g1));
   }
@@ -583,11 +580,6 @@ public class TestColumnIO {
           @Override
           public void write(Binary value, int repetitionLevel, int definitionLevel) {
             validate(value.toStringUsingUTF8(), repetitionLevel, definitionLevel);
-          }
-
-          @Override
-          public void write(Int96 value, int repetitionLevel, int definitionLevel) {
-            validate(value, repetitionLevel, definitionLevel);
           }
 
           @Override

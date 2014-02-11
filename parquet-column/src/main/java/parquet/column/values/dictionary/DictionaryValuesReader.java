@@ -28,7 +28,6 @@ import parquet.column.values.ValuesReader;
 import parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
-import parquet.io.api.Int96;
 
 /**
  * Reads values that have been dictionary encoded
@@ -72,15 +71,6 @@ public class DictionaryValuesReader extends ValuesReader {
   public Binary readBytes() {
     try {
       return dictionary.decodeToBinary(decoder.readInt());
-    } catch (IOException e) {
-      throw new ParquetDecodingException(e);
-    }
-  }
-
-  @Override
-  public Int96 readInt96() {
-    try {
-      return dictionary.decodeToInt96(decoder.readInt());
     } catch (IOException e) {
       throw new ParquetDecodingException(e);
     }

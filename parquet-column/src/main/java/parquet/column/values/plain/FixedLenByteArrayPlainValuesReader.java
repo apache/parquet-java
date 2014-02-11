@@ -15,15 +15,13 @@
  */
 package parquet.column.values.plain;
 
-import static parquet.Log.DEBUG;
-
 import java.io.IOException;
-
-import java.nio.ByteBuffer;
 import parquet.Log;
 import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
+
+import static parquet.Log.DEBUG;
 
 /**
  * ValuesReader for FIXED_LEN_BYTE_ARRAY.
@@ -46,16 +44,6 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
       int start = offset;
       offset = start + length;
       return Binary.fromByteArray(in, start, length);
-    } catch (RuntimeException e) {
-      throw new ParquetDecodingException("could not read bytes at offset " + offset, e);
-    }
-  }
-
-  protected ByteBuffer readByteBuffer() {
-    try {
-      int start = offset;
-      offset = start + length;
-      return ByteBuffer.wrap(in, start, length);
     } catch (RuntimeException e) {
       throw new ParquetDecodingException("could not read bytes at offset " + offset, e);
     }

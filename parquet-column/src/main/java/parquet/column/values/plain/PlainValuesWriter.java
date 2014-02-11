@@ -16,7 +16,6 @@
 package parquet.column.values.plain;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
 import parquet.Log;
@@ -27,7 +26,6 @@ import parquet.column.Encoding;
 import parquet.column.values.ValuesWriter;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
-import parquet.io.api.Int96;
 
 /**
  * Plain encoding except for booleans
@@ -55,18 +53,6 @@ public class PlainValuesWriter extends ValuesWriter {
       v.writeTo(out);
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write bytes", e);
-    }
-  }
-
-  @Override
-  public void writeInt96(Int96 value) {
-    try {
-      ByteBuffer bytes = value.toByteBuffer();
-      out.write(bytes.array(),
-          bytes.arrayOffset() + bytes.position(),
-          bytes.remaining());
-    } catch (IOException e) {
-      throw new ParquetEncodingException("could not write int96", e);
     }
   }
 

@@ -6,11 +6,11 @@ import parquet.column.values.boundedint.DevNullValuesWriter;
 import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import parquet.column.values.deltastrings.DeltaByteArrayWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter;
-import parquet.column.values.dictionary.DictionaryValuesWriter.PlainInt96DictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
 import parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
@@ -102,9 +102,9 @@ public class ParquetProperties {
       }
     case INT96:
       if (enableDictionary) {
-        return new PlainInt96DictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol);
+        return new PlainFixedLenArrayDictionaryValuesWriter(12, dictionaryPageSizeThreshold, initialSizePerCol);
       } else {
-        return new PlainValuesWriter(initialSizePerCol);
+        return new FixedLenByteArrayPlainValuesWriter(12, initialSizePerCol);
       }
     case DOUBLE:
       if(enableDictionary) {

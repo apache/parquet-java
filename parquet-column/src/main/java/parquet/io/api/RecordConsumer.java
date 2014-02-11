@@ -113,7 +113,7 @@ abstract public class RecordConsumer {
   /**
    * add an int96 value in the current field
    */
-  abstract public void addInt96(Int96 value);
+  abstract public void addInt96(Binary value);
 
   /**
    * add a float value in the current field

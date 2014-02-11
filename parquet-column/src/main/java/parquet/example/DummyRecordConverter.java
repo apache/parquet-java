@@ -20,7 +20,6 @@ import java.util.List;
 import parquet.io.api.Binary;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
-import parquet.io.api.Int96;
 import parquet.io.api.PrimitiveConverter;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.GroupType;
@@ -48,10 +47,6 @@ public final class DummyRecordConverter extends RecordMaterializer<Object> {
 
           @Override
           public void addBinary(Binary value) {
-            a = value;
-          }
-          @Override
-          public void addInt96(Int96 value) {
             a = value;
           }
           @Override

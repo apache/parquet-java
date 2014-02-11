@@ -47,7 +47,6 @@ import parquet.column.values.plain.PlainValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
-import parquet.io.api.Int96;
 
 /**
  * Will attempt to encode values using a dictionary and fall back to plain encoding
@@ -306,36 +305,37 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
   /**
    *
    */
-  public static class PlainInt96DictionaryValuesWriter extends DictionaryValuesWriter {
+  public static class PlainFixedLenArrayDictionaryValuesWriter extends DictionaryValuesWriter {
 
     /* type specific dictionary content */
-    private Object2IntMap<Int96> int96DictionaryContent = new Object2IntLinkedOpenHashMap<Int96>();
+    private Object2IntMap<Binary> fixedDictionaryContent = new Object2IntLinkedOpenHashMap<Binary>();
+    private final int length;
 
     /**
      * @param maxDictionaryByteSize
      * @param initialSize
      */
-    public PlainInt96DictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
+    public PlainFixedLenArrayDictionaryValuesWriter(int length, int maxDictionaryByteSize, int initialSize) {
       super(maxDictionaryByteSize, initialSize);
-      int96DictionaryContent.defaultReturnValue(-1);
+      this.length = length;
+      fixedDictionaryContent.defaultReturnValue(-1);
     }
 
     @Override
-    public void writeInt96(Int96 value) {
+    public void writeBytes(Binary value) {
       if (!dictionaryTooBig) {
-        int id = int96DictionaryContent.getInt(value);
+        int id = fixedDictionaryContent.getInt(value);
         if (id == -1) {
-          id = int96DictionaryContent.size();
-          int96DictionaryContent.put(value, id);
-          // length of int96 is 12 bytes
-          dictionaryByteSize += 12;
+          id = fixedDictionaryContent.size();
+          fixedDictionaryContent.put(value, id);
+          dictionaryByteSize += length;
         }
         encodedValues.add(id);
         checkAndFallbackIfNeeded();
       } else {
-        plainValuesWriter.writeInt96(value);
+        plainValuesWriter.writeBytes(value);
       }
-      rawDataByteSize += 12;
+      rawDataByteSize += length;
     }
 
     @Override
@@ -343,11 +343,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
         PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize);
-        Iterator<Int96> binaryIterator = int96DictionaryContent.keySet().iterator();
+        Iterator<Binary> binaryIterator = fixedDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
-          Int96 entry = binaryIterator.next();
-          dictionaryEncoder.writeInt96(entry);
+          Binary entry = binaryIterator.next();
+          dictionaryEncoder.writeBytes(entry);
         }
         return new DictionaryPage(dictionaryEncoder.getBytes(), lastUsedDictionarySize, PLAIN_DICTIONARY);
       }
@@ -356,19 +356,19 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
 
     @Override
     public int getDictionarySize() {
-      return int96DictionaryContent.size();
+      return fixedDictionaryContent.size();
     }
 
     @Override
     protected void clearDictionaryContent() {
-      int96DictionaryContent.clear();
+      fixedDictionaryContent.clear();
     }
 
     @Override
     protected void fallBackDictionaryEncodedData() {
       //build reverse dictionary
-      Int96[] reverseDictionary = new Int96[getDictionarySize()];
-      for (Object2IntMap.Entry<Int96> entry : int96DictionaryContent.object2IntEntrySet()) {
+      Binary[] reverseDictionary = new Binary[getDictionarySize()];
+      for (Object2IntMap.Entry<Binary> entry : fixedDictionaryContent.object2IntEntrySet()) {
         reverseDictionary[entry.getIntValue()] = entry.getKey();
       }
 
@@ -376,7 +376,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();
-        plainValuesWriter.writeInt96(reverseDictionary[id]);
+        plainValuesWriter.writeBytes(reverseDictionary[id]);
       }
     }
   }

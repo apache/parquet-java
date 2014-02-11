@@ -15,9 +15,9 @@
  */
 package parquet.io;
 
+import java.util.Arrays;
 import parquet.Log;
 import parquet.io.api.Binary;
-import parquet.io.api.Int96;
 import parquet.io.api.RecordConsumer;
 
 /**
@@ -117,8 +117,8 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      * {@inheritDoc}
      */
     @Override
-    public void addInt96(Int96 value) {
-      if (DEBUG) log(String.valueOf(value));
+    public void addInt96(Binary value) {
+      if (DEBUG) log(Arrays.toString(value.getBytes()));
       delegate.addInt96(value);
     }
 

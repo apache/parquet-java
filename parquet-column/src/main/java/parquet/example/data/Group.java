@@ -17,7 +17,6 @@ package parquet.example.data;
 
 import parquet.Log;
 import parquet.io.api.Binary;
-import parquet.io.api.Int96;
 import parquet.io.api.RecordConsumer;
 
 abstract public class Group extends GroupValueSource {
@@ -52,10 +51,6 @@ abstract public class Group extends GroupValueSource {
     add(getType().getFieldIndex(field), value);
   }
 
-  public void add(String field, Int96 value) {
-    add(getType().getFieldIndex(field), value);
-  }
-
   public Group addGroup(String field) {
     if (DEBUG) logger.debug("add group "+field+" to "+getType().getName());
     return addGroup(getType().getFieldIndex(field));
@@ -74,8 +69,6 @@ abstract public class Group extends GroupValueSource {
   abstract public void add(int fieldIndex, boolean value);
 
   abstract public void add(int fieldIndex, Binary value);
-
-  abstract public void add(int fieldIndex, Int96 value);
 
   abstract public void add(int fieldIndex, float value);
 
@@ -120,11 +113,6 @@ abstract public class Group extends GroupValueSource {
   }
 
   public Group append(String fieldName, Binary value) {
-    add(fieldName, value);
-    return this;
-  }
-
-  public Group append(String fieldName, Int96 value) {
     add(fieldName, value);
     return this;
   }

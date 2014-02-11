@@ -29,7 +29,6 @@ import parquet.column.values.plain.PlainValuesReader.IntegerPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.LongPlainValuesReader;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
-import parquet.io.api.Int96;
 
 /**
  * a simple implementation of dictionary for plain encoded values
@@ -98,47 +97,49 @@ public abstract class PlainValuesDictionary extends Dictionary {
   }
 
   /**
-   * a simple implementation of dictionary for plain encoded int96
+   * a simple implementation of dictionary for plain encoded fixed length arrays
    */
-  public static class PlainInt96Dictionary extends PlainValuesDictionary {
+  public static class PlainFixedLenByteArrayValuesDictionary extends PlainValuesDictionary {
 
-    private Int96[] int96DictionaryContent = null;
+    private Binary[] fixedDictionaryContent = null;
+    private final int length;
 
     /**
      * @param dictionaryPage
      * @throws IOException
      */
-    public PlainInt96Dictionary(DictionaryPage dictionaryPage) throws IOException {
+    public PlainFixedLenByteArrayValuesDictionary(DictionaryPage dictionaryPage, int length) throws IOException {
       super(dictionaryPage);
+      this.length = length;
       final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
-      int96DictionaryContent = new Int96[dictionaryPage.getDictionarySize()];
+      fixedDictionaryContent = new Binary[dictionaryPage.getDictionarySize()];
       int offset = 0;
-      for (int i = 0; i < int96DictionaryContent.length; i++) {
-        // wrap the content in an Int96
-        int96DictionaryContent[i] = Int96.fromByteBuffer(
-            ByteBuffer.wrap(dictionaryBytes, offset, 12));
+      for (int i = 0; i < fixedDictionaryContent.length; i++) {
+        // wrap the content in a Binary
+        fixedDictionaryContent[i] = Binary.fromByteArray(
+            dictionaryBytes, offset, length);
         // increment to the next value
-        offset += 12;
+        offset += length;
       }
     }
 
     @Override
-    public Int96 decodeToInt96(int id) {
-      return int96DictionaryContent[id];
+    public Binary decodeToBinary(int id) {
+      return fixedDictionaryContent[id];
     }
 
     @Override
     public String toString() {
-      StringBuilder sb = new StringBuilder("PlainInt96Dictionary {\n");
-      for (int i = 0; i < int96DictionaryContent.length; i++) {
-        sb.append(i).append(" => ").append(int96DictionaryContent[i]).append("\n");
+      StringBuilder sb = new StringBuilder("PlainFixedLenByteArrayValuesDictionary {\n");
+      for (int i = 0; i < fixedDictionaryContent.length; i++) {
+        sb.append(i).append(" => ").append(fixedDictionaryContent[i]).append("\n");
       }
       return sb.append("}").toString();
     }
 
     @Override
     public int getMaxId() {
-      return int96DictionaryContent.length - 1;
+      return fixedDictionaryContent.length - 1;
     }
 
   }

@@ -16,7 +16,6 @@
 package parquet.column;
 
 import parquet.io.api.Binary;
-import parquet.io.api.Int96;
 
 /**
  * Reader for (repetition level, definition level, values) triplets.
@@ -94,11 +93,6 @@ public interface ColumnReader {
    * @return the current value
    */
   Binary getBinary();
-
-  /**
-   * @return the current value
-   */
-  Int96 getInt96();
 
   /**
    * @return the current value
