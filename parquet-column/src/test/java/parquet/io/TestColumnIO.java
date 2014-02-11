@@ -532,7 +532,6 @@ public class TestColumnIO {
 
     final String[] expected = {
         "[DocId]: 10, r:0, d:0",
-
         "[Links, Forward]: 20, r:0, d:2",
         "[Links, Forward]: 40, r:1, d:2",
         "[Links, Forward]: 60, r:1, d:2",
@@ -545,7 +544,6 @@ public class TestColumnIO {
         "[Name, Url]: http://B, r:1, d:2",
         "[Name, Language, Code]: null, r:1, d:1",
         "[Name, Language, Country]: null, r:1, d:1",
-
         "[Name, Language, Code]: en-gb, r:1, d:2",
         "[Name, Language, Country]: gb, r:1, d:3",
         "[Name, Url]: null, r:1, d:1",

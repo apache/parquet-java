@@ -115,7 +115,6 @@ public class TestParquetToThriftReadWriteAndProjection {
     toWrite.setFieldTwo(2);
     toWrite.setFieldThree(3);
     shouldDoProjectionWithThriftColumnFilter(projectionFilter,toWrite,toWrite,StructWithReorderedOptionalFields.class);
-
   }
 
   @Test
