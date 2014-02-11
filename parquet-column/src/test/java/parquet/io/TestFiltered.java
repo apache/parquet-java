@@ -30,12 +30,10 @@ import static parquet.filter.PagedRecordFilter.page;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 import org.junit.Test;
 
 import parquet.column.ParquetProperties;
-import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.mem.MemPageStore;
 import parquet.example.data.Group;
@@ -256,7 +254,7 @@ public class TestFiltered {
 
   private MemPageStore writeTestRecords(MessageColumnIO columnIO, int number) {
     MemPageStore memPageStore = new MemPageStore(number * 2);
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, new ParquetProperties(new Properties()));
+    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, new ParquetProperties());
 
     GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
     for ( int i = 0; i < number; i++ ) {

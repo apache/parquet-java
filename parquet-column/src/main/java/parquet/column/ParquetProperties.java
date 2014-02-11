@@ -62,13 +62,24 @@ public class ParquetProperties {
     }
   }
 
-  private int blockSize;
-  private int pageSize;
-  private int dictionaryPageSize;
-  private WriterVersion writerVersion;
-  private boolean enableDictionary;
-  private boolean isValidating;
+  private final int blockSize;
+  private final int pageSize;
+  private final int dictionaryPageSize;
+  private final WriterVersion writerVersion;
+  private final boolean enableDictionary;
+  private final boolean isValidating;
   
+  /**
+   * To use all default properties
+   */
+  public ParquetProperties() {
+    this(new Properties());
+  }
+  
+  /**
+   * To configure parquet properties based on configuration in props
+   * @param props
+   */
   public ParquetProperties(Properties props) {
     this(Integer.parseInt(props.getProperty(BLOCK_SIZE, String.valueOf(DEFAULT_BLOCK_SIZE))),
         Integer.parseInt(props.getProperty(PAGE_SIZE, String.valueOf(DEFAULT_PAGE_SIZE))), 

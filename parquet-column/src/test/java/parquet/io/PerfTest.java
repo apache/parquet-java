@@ -76,7 +76,6 @@ public class PerfTest {
 
 
   private static void write(MemPageStore memPageStore) {
-    //, , 50*1024*1024, false, WriterVersion.PARQUET_1_0
     Properties prop = new Properties();
     prop.setProperty(ParquetProperties.BLOCK_SIZE, String.valueOf(50*1024*1024));
     prop.setProperty(ParquetProperties.PAGE_SIZE, String.valueOf(50*1024*1024));

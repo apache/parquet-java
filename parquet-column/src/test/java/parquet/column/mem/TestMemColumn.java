@@ -159,6 +159,6 @@ public class TestMemColumn {
   }
 
   private ColumnWriteStoreImpl newColumnWriteStoreImpl(MemPageStore memPageStore) {
-    return new ColumnWriteStoreImpl(memPageStore, 2048, new ParquetProperties(new Properties()));
+    return new ColumnWriteStoreImpl(memPageStore, 2048, new ParquetProperties());
   }
 }

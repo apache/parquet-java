@@ -492,7 +492,7 @@ public class TestColumnIO {
   }
 
   private ColumnWriteStoreImpl newColumnWriteStore(MemPageStore memPageStore) {
-    return new ColumnWriteStoreImpl(memPageStore, 800, new ParquetProperties(new Properties()));
+    return new ColumnWriteStoreImpl(memPageStore, 800, new ParquetProperties());
   }
 
   @Test
