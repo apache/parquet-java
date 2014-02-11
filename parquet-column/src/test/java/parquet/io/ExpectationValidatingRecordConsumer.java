@@ -85,12 +85,7 @@ final public class ExpectationValidatingRecordConsumer extends
 
   @Override
   public void addBinary(Binary value) {
-    validate("addBinary("+value.toStringUsingUTF8()+")");
-  }
-
-  @Override
-  public void addInt96(Binary value) {
-    validate("addInt96("+Arrays.toString(value.getBytes())+")");
+    validate("addBinary("+Arrays.toString(value.getBytes())+")");
   }
 
   @Override

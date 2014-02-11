@@ -18,7 +18,7 @@ public class Int96Value extends Primitive {
 
   @Override
   public void writeValue(RecordConsumer recordConsumer) {
-    recordConsumer.addInt96(value);
+    recordConsumer.addBinary(value);
   }
 
   @Override

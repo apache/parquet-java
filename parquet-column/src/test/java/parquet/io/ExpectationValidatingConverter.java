@@ -67,11 +67,6 @@ public class ExpectationValidatingConverter extends RecordMaterializer<Void> {
           }
 
           @Override
-          public void addInt96(Binary value) {
-            validate("addInt96("+Arrays.toString(value.getBytes())+")");
-          }
-
-          @Override
           public void addBoolean(boolean value) {
             validate("addBoolean("+value+")");
           }

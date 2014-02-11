@@ -16,6 +16,7 @@
 package parquet.io;
 
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Deque;
 
 import parquet.Log;
@@ -144,6 +145,31 @@ public class ValidatingRecordConsumer extends RecordConsumer {
     }
   }
 
+  private void validate(PrimitiveTypeName p1, PrimitiveTypeName p2) {
+    Type currentType = types.peek().asGroupType().getType(fields.peek());
+    int c = fieldValueCount.pop() + 1;
+    fieldValueCount.push(c);
+    if (DEBUG) LOG.debug("validate " + p1 + ", " + p2 + " for " + currentType.getName());
+    switch (currentType.getRepetition()) {
+      case OPTIONAL:
+      case REQUIRED:
+        if (c > 1) {
+          throw new InvalidRecordException("repeated value when the type is not repeated in " + currentType);
+        }
+        break;
+      case REPEATED:
+        break;
+      default:
+        throw new InvalidRecordException("unknown repetition " + currentType.getRepetition() + " in " + currentType);
+    }
+    if (!currentType.isPrimitive() ||
+        (currentType.asPrimitiveType().getPrimitiveTypeName() != p1 &&
+         currentType.asPrimitiveType().getPrimitiveTypeName() != p2)) {
+      throw new InvalidRecordException(
+          "expected type " + currentType + " but got " + p1 + " or " + p2);
+    }
+  }
+
   /**
    * {@inheritDoc}
    */
@@ -172,17 +198,9 @@ public class ValidatingRecordConsumer extends RecordConsumer {
    * {@inheritDoc}
    */
   public void addBinary(Binary value) {
-    validate(PrimitiveTypeName.BINARY);
+    // TODO: this is used for FIXED also
+    validate(PrimitiveTypeName.BINARY, PrimitiveTypeName.INT96);
     delegate.addBinary(value);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public void addInt96(Binary value) {
-    validate(PrimitiveTypeName.INT96);
-    delegate.addInt96(value);
   }
 
   /**

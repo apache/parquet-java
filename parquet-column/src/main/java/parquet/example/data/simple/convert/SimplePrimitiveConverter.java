@@ -39,15 +39,6 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
 
   /**
    * {@inheritDoc}
-   * @see parquet.io.api.PrimitiveConverter#addInt96(Binary)
-   */
-  @Override
-  public void addInt96(Binary value) {
-    parent.getCurrentRecord().add(index, value);
-  }
-
-  /**
-   * {@inheritDoc}
    * @see parquet.io.api.PrimitiveConverter#addBoolean(boolean)
    */
   @Override

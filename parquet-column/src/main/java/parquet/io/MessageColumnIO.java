@@ -290,16 +290,6 @@ public class MessageColumnIO extends GroupColumnIO {
     }
 
     @Override
-    public void addInt96(Binary value) {
-      if (DEBUG) log("addInt96(" + value.length() + " bytes)");
-      emptyField = false;
-      getColumnWriter().write(value, r[currentLevel], currentColumnIO.getDefinitionLevel());
-
-      setRepetitionLevel();
-      if (DEBUG) printState();
-    }
-
-    @Override
     public void addFloat(float value) {
       if (DEBUG) log("addFloat(" + value + ")");
       emptyField = false;

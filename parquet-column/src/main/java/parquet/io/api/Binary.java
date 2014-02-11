@@ -283,6 +283,6 @@ abstract public class Binary {
   abstract public ByteBuffer toByteBuffer();
 
   public String toString() {
-    return "Binary{" + length() + " bytes, " + toStringUsingUTF8() + "}";
+    return "Binary{" + length() + " bytes, " + Arrays.toString(getBytes()) + "}";
   };
 }

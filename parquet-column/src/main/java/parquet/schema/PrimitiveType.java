@@ -206,12 +206,12 @@ public final class PrimitiveType extends Type {
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
-        recordConsumer.addInt96(columnReader.getBinary());
+        recordConsumer.addBinary(columnReader.getBinary());
       }
       @Override
       public void addValueToPrimitiveConverter(
           PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
-        primitiveConverter.addInt96(columnReader.getBinary());
+        primitiveConverter.addBinary(columnReader.getBinary());
       }
 
       @Override

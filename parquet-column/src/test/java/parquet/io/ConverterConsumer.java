@@ -102,11 +102,6 @@ public class ConverterConsumer extends RecordConsumer {
   }
 
   @Override
-  public void addInt96(Binary value) {
-    currentPrimitive.addInt96(value);
-  }
-
-  @Override
   public void addFloat(float value) {
     currentPrimitive.addFloat(value);
   }
