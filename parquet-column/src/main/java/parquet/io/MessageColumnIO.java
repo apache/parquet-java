@@ -99,9 +99,9 @@ public class MessageColumnIO extends GroupColumnIO {
                 '}';
       }
 
-      public void reset(int lastIndex) {
-        this.totalFieldsCount = lastIndex;
-        this.vistedIndexes.clear(0, lastIndex);
+      public void reset(int fieldsCount) {
+        this.totalFieldsCount = fieldsCount;
+        this.vistedIndexes.clear(0, fieldsCount);
       }
 
       public void markWritten(int i) {
