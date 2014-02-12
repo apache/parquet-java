@@ -28,6 +28,7 @@
     "type" : {
       "type" : "record",
       "name" : "mynestedrecord",
+      "namespace" : "",
       "fields" : [ {
         "name" : "mynestedint",
         "type" : "int"
@@ -56,6 +57,7 @@
       "items" : {
         "type" : "record",
         "name" : "array",
+        "namespace" : "",
         "fields" : [ {
            "name" : "a",
            "type" : "int"
@@ -76,6 +78,7 @@
     "type" : {
       "type" : "fixed",
       "name" : "myfixed",
+      "namespace" : "",
       "size" : 1
     }
   } ]
