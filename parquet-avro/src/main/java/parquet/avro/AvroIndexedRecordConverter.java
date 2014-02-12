@@ -152,8 +152,22 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
   private void fillInDefaults() {
     for (Map.Entry<Schema.Field, Object> entry : recordDefaults.entrySet()) {
       Schema.Field f = entry.getKey();
-      Object defaultValue = model.deepCopy(f.schema(), recordDefaults.get(f));
+      // replace following with model.deepCopy once AVRO-1455 is being used
+      Object defaultValue = deepCopy(f.schema(), entry.getValue());
       this.currentRecord.put(f.pos(), defaultValue);
+    }
+  }
+
+  private Object deepCopy(Schema schema, Object value) {
+    switch (schema.getType()) {
+      case BOOLEAN:
+      case INT:
+      case LONG:
+      case FLOAT:
+      case DOUBLE:
+        return value;
+      default:
+        return model.deepCopy(schema, value);
     }
   }
 
