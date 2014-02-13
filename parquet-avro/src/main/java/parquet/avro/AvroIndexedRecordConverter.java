@@ -43,6 +43,9 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
   private final Schema avroSchema;
   private final Class<? extends IndexedRecord> specificClass;
 
+  private final GenericData model;
+  private final Map<Schema.Field, Object> recordDefaults = new HashMap<Schema.Field, Object>();
+
   public AvroIndexedRecordConverter(MessageType parquetSchema, Schema avroSchema) {
     this(null, parquetSchema, avroSchema);
   }
@@ -54,6 +57,8 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     int schemaSize = parquetSchema.getFieldCount();
     this.converters = new Converter[schemaSize];
     this.specificClass = SpecificData.get().getClass(avroSchema);
+
+    model = this.specificClass == null ? GenericData.get() : SpecificData.get();
 
     Map<String, Integer> avroFieldIndexes = new HashMap<String, Integer>();
     int avroFieldIndex = 0;
@@ -68,13 +73,21 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
                 parquetField.getName()));
       }
       Schema nonNullSchema = AvroSchemaConverter.getNonNull(avroField.schema());
-      final int finalAvroIndex = avroFieldIndexes.get(avroField.name());
+      final int finalAvroIndex = avroFieldIndexes.remove(avroField.name());
       converters[parquetFieldIndex++] = newConverter(nonNullSchema, parquetField, new ParentValueContainer() {
         @Override
         void add(Object value) {
           AvroIndexedRecordConverter.this.set(finalAvroIndex, value);
         }
       });
+    }
+    // store defaults for any new Avro fields from avroSchema that are not in the writer schema (parquetSchema)
+    for (String fieldName : avroFieldIndexes.keySet()) {
+      Schema.Field field = avroSchema.getField(fieldName);
+      if (field.schema().getType() == Schema.Type.NULL) {
+        continue; // skip null since Parquet does not write nulls
+      }
+      recordDefaults.put(field, model.getDefaultValue(field));
     }
   }
 
@@ -130,8 +143,31 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
 
   @Override
   public void end() {
+    fillInDefaults();
     if (parent != null) {
       parent.add(currentRecord);
+    }
+  }
+
+  private void fillInDefaults() {
+    for (Map.Entry<Schema.Field, Object> entry : recordDefaults.entrySet()) {
+      Schema.Field f = entry.getKey();
+      // replace following with model.deepCopy once AVRO-1455 is being used
+      Object defaultValue = deepCopy(f.schema(), entry.getValue());
+      this.currentRecord.put(f.pos(), defaultValue);
+    }
+  }
+
+  private Object deepCopy(Schema schema, Object value) {
+    switch (schema.getType()) {
+      case BOOLEAN:
+      case INT:
+      case LONG:
+      case FLOAT:
+      case DOUBLE:
+        return value;
+      default:
+        return model.deepCopy(schema, value);
     }
   }
 
