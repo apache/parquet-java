@@ -32,7 +32,6 @@ import parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesRead
 import parquet.column.values.deltastrings.DeltaByteArrayReader;
 import parquet.column.values.dictionary.DictionaryValuesReader;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainBinaryDictionary;
-import parquet.column.values.dictionary.PlainValuesDictionary.PlainFixedLenByteArrayValuesDictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainDoubleDictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainFloatDictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainIntegerDictionary;
@@ -130,7 +129,7 @@ public enum Encoding {
       case BINARY:
         return new PlainBinaryDictionary(dictionaryPage);
       case INT96:
-        return new PlainFixedLenByteArrayValuesDictionary(dictionaryPage, 12);
+        return new PlainBinaryDictionary(dictionaryPage, 12);
       case INT64:
         return new PlainLongDictionary(dictionaryPage);
       case DOUBLE:

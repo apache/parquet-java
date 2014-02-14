@@ -20,7 +20,7 @@ import static parquet.column.Encoding.PLAIN_DICTIONARY;
 
 import java.io.IOException;
 
-import java.nio.ByteBuffer;
+import parquet.Preconditions;
 import parquet.column.Dictionary;
 import parquet.column.page.DictionaryPage;
 import parquet.column.values.plain.PlainValuesReader.DoublePlainValuesReader;
@@ -55,23 +55,57 @@ public abstract class PlainValuesDictionary extends Dictionary {
     private Binary[] binaryDictionaryContent = null;
 
     /**
-     * @param dictionaryPage
+     * Decodes {@link Binary} values from a {@link DictionaryPage}.
+     *
+     * Values are read as length-prefixed values with a 4-byte little-endian
+     * length.
+     *
+     * @param dictionaryPage a {@code DictionaryPage} of encoded binary values
      * @throws IOException
      */
     public PlainBinaryDictionary(DictionaryPage dictionaryPage) throws IOException {
+      this(dictionaryPage, null);
+    }
+
+    /**
+     * Decodes {@link Binary} values from a {@link DictionaryPage}.
+     *
+     * If the given {@code length} is null, the values will be read as length-
+     * prefixed values with a 4-byte little-endian length. If length is not
+     * null, it will be used as the length for all fixed-length {@code Binary}
+     * values read from the page.
+     *
+     * @param dictionaryPage a {@code DictionaryPage} of encoded binary values
+     * @param length a fixed length of binary arrays, or null if not fixed
+     * @throws IOException
+     */
+    public PlainBinaryDictionary(DictionaryPage dictionaryPage, Integer length) throws IOException {
       super(dictionaryPage);
       final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
       binaryDictionaryContent = new Binary[dictionaryPage.getDictionarySize()];
-      // dictionary values are stored in order: size (4 bytes LE) followed by {size} bytes
       int offset = 0;
-      for (int i = 0; i < binaryDictionaryContent.length; i++) {
-        int length = readIntLittleEndian(dictionaryBytes, offset);
-        // read the length
-        offset += 4;
-        // wrap the content in a binary
-        binaryDictionaryContent[i] = Binary.fromByteArray(dictionaryBytes, offset, length);
-        // increment to the next value
-        offset += length;
+      if (length == null) {
+        // dictionary values are stored in order: size (4 bytes LE) followed by {size} bytes
+        for (int i = 0; i < binaryDictionaryContent.length; i++) {
+          int len = readIntLittleEndian(dictionaryBytes, offset);
+          // read the length
+          offset += 4;
+          // wrap the content in a binary
+          binaryDictionaryContent[i] = Binary.fromByteArray(dictionaryBytes, offset, len);
+          // increment to the next value
+          offset += len;
+        }
+      } else {
+        // dictionary values are stored as fixed-length arrays
+        Preconditions.checkArgument(length > 0,
+            "Invalid byte array length: " + length);
+        for (int i = 0; i < binaryDictionaryContent.length; i++) {
+          // wrap the content in a Binary
+          binaryDictionaryContent[i] = Binary.fromByteArray(
+              dictionaryBytes, offset, length);
+          // increment to the next value
+          offset += length;
+        }
       }
     }
 
@@ -92,54 +126,6 @@ public abstract class PlainValuesDictionary extends Dictionary {
     @Override
     public int getMaxId() {
       return binaryDictionaryContent.length - 1;
-    }
-
-  }
-
-  /**
-   * a simple implementation of dictionary for plain encoded fixed length arrays
-   */
-  public static class PlainFixedLenByteArrayValuesDictionary extends PlainValuesDictionary {
-
-    private Binary[] fixedDictionaryContent = null;
-    private final int length;
-
-    /**
-     * @param dictionaryPage
-     * @throws IOException
-     */
-    public PlainFixedLenByteArrayValuesDictionary(DictionaryPage dictionaryPage, int length) throws IOException {
-      super(dictionaryPage);
-      this.length = length;
-      final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
-      fixedDictionaryContent = new Binary[dictionaryPage.getDictionarySize()];
-      int offset = 0;
-      for (int i = 0; i < fixedDictionaryContent.length; i++) {
-        // wrap the content in a Binary
-        fixedDictionaryContent[i] = Binary.fromByteArray(
-            dictionaryBytes, offset, length);
-        // increment to the next value
-        offset += length;
-      }
-    }
-
-    @Override
-    public Binary decodeToBinary(int id) {
-      return fixedDictionaryContent[id];
-    }
-
-    @Override
-    public String toString() {
-      StringBuilder sb = new StringBuilder("PlainFixedLenByteArrayValuesDictionary {\n");
-      for (int i = 0; i < fixedDictionaryContent.length; i++) {
-        sb.append(i).append(" => ").append(fixedDictionaryContent[i]).append("\n");
-      }
-      return sb.append("}").toString();
-    }
-
-    @Override
-    public int getMaxId() {
-      return fixedDictionaryContent.length - 1;
     }
 
   }
