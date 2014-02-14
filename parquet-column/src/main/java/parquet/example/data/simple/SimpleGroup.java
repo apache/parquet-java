@@ -136,6 +136,10 @@ public class SimpleGroup extends Group {
     return ((BinaryValue)getValue(fieldIndex, index)).getBinary();
   }
 
+  public NanoTime getTimeNanos(int fieldIndex, int index) {
+    return NanoTime.fromInt96((Int96Value)getValue(fieldIndex, index));
+  }
+
   @Override
   public Binary getInt96(int fieldIndex, int index) {
     return ((Int96Value)getValue(fieldIndex, index)).getInt96();
@@ -154,6 +158,11 @@ public class SimpleGroup extends Group {
   @Override
   public void add(int fieldIndex, String value) {
     add(fieldIndex, new BinaryValue(Binary.fromString(value)));
+  }
+
+  @Override
+  public void add(int fieldIndex, NanoTime value) {
+    add(fieldIndex, value.toInt96());
   }
 
   @Override

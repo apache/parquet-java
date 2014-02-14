@@ -47,6 +47,7 @@ import parquet.column.page.mem.MemPageStore;
 import parquet.example.data.Group;
 import parquet.example.data.GroupFactory;
 import parquet.example.data.GroupWriter;
+import parquet.example.data.simple.NanoTime;
 import parquet.example.data.simple.SimpleGroupFactory;
 import parquet.example.data.simple.convert.GroupRecordConverter;
 import parquet.io.api.Binary;
@@ -341,8 +342,7 @@ public class TestColumnIO {
         .append("d", 4.0d)
         .append("e", true)
         .append("f", Binary.fromString("6"))
-        .append("g", Binary.fromByteArray(
-            new byte[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}));
+        .append("g", new NanoTime(1234, System.currentTimeMillis() * 1000));
 
     testSchema(oneOfEachSchema, Arrays.asList(g1));
   }
