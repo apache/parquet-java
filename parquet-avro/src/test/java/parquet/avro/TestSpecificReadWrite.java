@@ -150,7 +150,7 @@ public class TestSpecificReadWrite {
     ParquetReader<NewCar> reader = new AvroParquetReader<NewCar>(conf, path);
     for (NewCar car = reader.read(); car != null; car = reader.read()) {
       assertEquals(car.getEngine() != null, true);
-      assertEquals(car.getMake() != null, true);
+      assertEquals(car.getBrand() != null, true);
       assertEquals(car.getYear() != null, true);
       assertEquals(car.getVin() != null, true);
       assertEquals(car.getDescription() == null, true);
