@@ -182,7 +182,13 @@ We tend to do fairly close readings of pull requests, and you may get a lot of c
 * Avi Bryant <https://github.com/avibryant>
 * Dmitriy Ryaboy [@squarecog](https://twitter.com/squarecog) <https://github.com/dvryaboy>
 * Jonathan Coveney <http://twitter.com/jco>
+* Brock Noland <https://github.com/brockn>
+* Tianshuo Deng <https://github.com/tsdeng>
 * and many others -- see the [Contributor report]( https://github.com/Parquet/parquet-mr/contributors)
+
+## Code of Conduct
+
+We hold ourselves and the Parquet developer community to a code of conduct as described by [Twitter OSS](https://engineering.twitter.com/opensource): <https://github.com/twitter/code-of-conduct/blob/master/code-of-conduct.md>. 
 
 ## Discussions
 * google group https://groups.google.com/d/forum/parquet-dev

@@ -26,7 +26,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.JobID;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
@@ -47,14 +46,11 @@ import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
-import parquet.thrift.test.RequiredListFixture;
-import parquet.thrift.test.RequiredMapFixture;
-import parquet.thrift.test.RequiredPrimitiveFixture;
-import parquet.thrift.test.RequiredSetFixture;
+import parquet.thrift.test.*;
 
-public class TestParquetToThriftReadProjection {
+public class TestParquetToThriftReadWriteAndProjection {
 
-  private static final Log LOG = Log.getLog(TestParquetToThriftReadProjection.class);
+  private static final Log LOG = Log.getLog(TestParquetToThriftReadWriteAndProjection.class);
 
   @Test
   public void testThriftOptionalFieldsWithReadProjectionUsingParquetSchema() throws Exception {
@@ -109,6 +105,16 @@ public class TestParquetToThriftReadProjection {
                             "bob.roberts@example.com",
                             null)));
     shouldDoProjectionWithThriftColumnFilter(projectionFilterDesc,toWrite,toRead,AddressBook.class);
+  }
+
+  @Test
+  public void testReorderdOptionalFields() throws Exception {
+    final String projectionFilter = "**";
+    StructWithReorderedOptionalFields toWrite =  new StructWithReorderedOptionalFields();
+    toWrite.setFieldOne(1);
+    toWrite.setFieldTwo(2);
+    toWrite.setFieldThree(3);
+    shouldDoProjectionWithThriftColumnFilter(projectionFilter,toWrite,toWrite,StructWithReorderedOptionalFields.class);
   }
 
   @Test
@@ -189,7 +195,7 @@ public class TestParquetToThriftReadProjection {
 
 
   private <T extends TBase<?,?>> void shouldDoProjection(Configuration conf,T recordToWrite,T exptectedReadResult, Class<? extends TBase<?,?>> thriftClass) throws Exception {
-    final Path parquetFile = new Path("target/test/TestParquetToThriftReadProjection/file.parquet");
+    final Path parquetFile = new Path("target/test/TestParquetToThriftReadWriteAndProjection/file.parquet");
     final FileSystem fs = parquetFile.getFileSystem(conf);
     if (fs.exists(parquetFile)) {
       fs.delete(parquetFile, true);
