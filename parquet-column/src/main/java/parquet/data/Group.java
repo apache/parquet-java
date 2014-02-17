@@ -11,6 +11,11 @@ import parquet.schema.GroupType;
  */
 abstract public class Group {
 
+  /**
+   * @return type of the group
+   */
+  abstract public GroupType getType();
+
   // === name based field access ===
 
   // for repeated fields
@@ -22,8 +27,8 @@ abstract public class Group {
     return getRepeatedGroupAt(getType().getFieldIndex(field), index);
   }
 
-  public int getRepeatedIntegerAt(String field, int index) {
-    return getRepeatedIntegerAt(getType().getFieldIndex(field), index);
+  public int getRepeatedIntAt(String field, int index) {
+    return getRepeatedIntAt(getType().getFieldIndex(field), index);
   }
 
   public long getRepeatedLongAt(String field, int index) {
@@ -60,8 +65,8 @@ abstract public class Group {
     return getGroup(getType().getFieldIndex(field));
   }
 
-  public int getInteger(String field) {
-    return getInteger(getType().getFieldIndex(field));
+  public int getInt(String field) {
+    return getInt(getType().getFieldIndex(field));
   }
 
   public long getLong(String field) {
@@ -95,7 +100,7 @@ abstract public class Group {
 
   abstract public Group getRepeatedGroupAt(int fieldIndex, int index);
 
-  abstract public int getRepeatedIntegerAt(int fieldIndex, int index);
+  abstract public int getRepeatedIntAt(int fieldIndex, int index);
 
   abstract public long getRepeatedLongAt(int fieldIndex, int index);
 
@@ -115,7 +120,7 @@ abstract public class Group {
 
   abstract public Group getGroup(int fieldIndex);
 
-  abstract public int getInteger(int fieldIndex);
+  abstract public int getInt(int fieldIndex);
 
   abstract public long getLong(int fieldIndex);
 
@@ -129,7 +134,4 @@ abstract public class Group {
 
   abstract public Object getValue(int fieldIndex);
 
-  // type of the group
-
-  abstract public GroupType getType();
 }

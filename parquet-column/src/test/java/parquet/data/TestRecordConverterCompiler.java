@@ -19,6 +19,7 @@ import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.mem.MemPageStore;
 import parquet.data.materializer.GroupMaterializer;
+import parquet.data.materializer.GroupWriterImpl;
 import parquet.example.data.GroupWriter;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
@@ -33,34 +34,21 @@ public class TestRecordConverterCompiler {
   }
   @Test
   public void testColumnIO() {
-    Logger.getLogger("brennus").setLevel(Level.FINE);
-    Logger.getLogger("brennus").addHandler(new Handler() {
-      {
-        setLevel(Level.FINE);
-      }
-      public void publish(LogRecord record) {
-        System.out.println(record.getMessage());
-      }
-      public void flush() {
-        System.out.flush();
-      }
-      public void close() throws SecurityException {
-        System.out.flush();
-      }
-    });
-
     log(schema);
     log("r1");
     log(r1);
     log("r2");
     log(r2);
 
-    MemPageStore memPageStore = new MemPageStore(2);
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, 800, false, WriterVersion.PARQUET_1_0);
-
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
+    List<Group> records = new ArrayList<Group>();
+    MessageColumnIO columnIO = columnIOFactory.getColumnIO(schema);
+    // generate compiled recordConverter
+    RecordMaterializer<Group> recordConverter = new GroupMaterializer(schema);
     {
-      MessageColumnIO columnIO = columnIOFactory.getColumnIO(schema);
+      // write example records
+      MemPageStore memPageStore = new MemPageStore(2);
+      ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, 800, false, WriterVersion.PARQUET_1_0);
       log(columnIO);
       GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
       groupWriter.write(r1);
@@ -69,11 +57,10 @@ public class TestRecordConverterCompiler {
       log(columns);
       log("=========");
 
-      RecordMaterializer<Group> recordConverter = new GroupMaterializer(schema);
 
       RecordReader<Group> recordReader = columnIO.getRecordReader(memPageStore, recordConverter);
 
-      List<Group> records = new ArrayList<Group>();
+      // read records with compiled groups
       records.add(recordReader.read());
       records.add(recordReader.read());
 
@@ -84,6 +71,25 @@ public class TestRecordConverterCompiler {
       }
       assertEquals("deserialization does not display the same result", r1.toString(), records.get(0).toString());
       assertEquals("deserialization does not display the same result", r2.toString(), records.get(1).toString());
+    }
+
+    {
+      // write the compiled groups
+      MemPageStore memPageStore = new MemPageStore(records.size());
+      ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, 800, false, WriterVersion.PARQUET_1_0);
+      parquet.data.GroupWriter groupWriter = GroupWriterImpl.newGroupWriter(columnIO.getRecordWriter(columns), schema);
+      for (Group group : records) {
+        groupWriter.write(group);
+      }
+      columns.flush();
+      RecordReader<Group> recordReader2 = columnIO.getRecordReader(memPageStore, recordConverter);
+      // read compiled groups back and check for correctness.
+      List<Group> records2 = new ArrayList<Group>();
+      records2.add(recordReader2.read());
+      records2.add(recordReader2.read());
+      assertEquals("deserialization does not display the same result", r1.toString(), records2.get(0).toString());
+      assertEquals("deserialization does not display the same result", r2.toString(), records2.get(1).toString());
+
     }
   }
 }

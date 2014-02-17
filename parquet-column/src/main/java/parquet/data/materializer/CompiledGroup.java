@@ -18,8 +18,8 @@ public abstract class CompiledGroup extends Group {
   public CompiledGroup() {
   }
 
-  protected Exception error(int fieldIndex) {
-    return new RuntimeException("Error, field index not found for this type: " + fieldIndex);
+  protected RuntimeException error(int fieldIndex) {
+    return new RuntimeException(getClass().getName() + " Error, field index " + fieldIndex + " not found for this type: " + getType());
   }
 
   @Override
@@ -60,6 +60,99 @@ public abstract class CompiledGroup extends Group {
       }
     }
     return result;
+  }
+
+  // for repeated fields
+  @Override
+  public int getRepetitionCount(int fieldIndex) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public Group getRepeatedGroupAt(int fieldIndex, int index) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public int getRepeatedIntAt(int fieldIndex, int index) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public long getRepeatedLongAt(int fieldIndex, int index) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public float getRepeatedFloatAt(int fieldIndex, int index) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public double getRepeatedDoubleAt(int fieldIndex, int index) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public boolean getRepeatedBooleanAt(int fieldIndex, int index) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public Binary getRepeatedBinaryAt(int fieldIndex, int index) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public Object getRepeatedValueAt(int fieldIndex, int index) {
+    throw error(fieldIndex);
+  }
+
+  // for non-repeated fields
+
+  @Override
+  public boolean isDefined(int fieldIndex) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public Group getGroup(int fieldIndex) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public int getInt(int fieldIndex) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public long getLong(int fieldIndex) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public float getFloat(int fieldIndex) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public double getDouble(int fieldIndex) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public boolean getBoolean(int fieldIndex) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public Binary getBinary(int fieldIndex) {
+    throw error(fieldIndex);
+  }
+
+  @Override
+  public Object getValue(int fieldIndex) {
+    throw error(fieldIndex);
   }
 
 }

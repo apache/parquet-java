@@ -26,6 +26,7 @@ import brennus.SwitchBuilder;
 import brennus.asm.DynamicClassLoader;
 import brennus.model.ExistingType;
 import brennus.model.FutureType;
+import brennus.printer.TypePrinter;
 import parquet.data.Group;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
@@ -228,6 +229,7 @@ public class GroupMaterializer extends RecordMaterializer<Group> {
 
   @SuppressWarnings("unchecked")
   private <T> Class<T> load(FutureType futureType) throws ClassNotFoundException {
+//    new TypePrinter().print(futureType);
     return (Class<T>)cl.define(futureType);
   }
 
@@ -321,17 +323,23 @@ public class GroupMaterializer extends RecordMaterializer<Group> {
   }
 
   private Converter compilePrimitiveConverter(int index, PrimitiveType type, Class<CompiledGroup> parent, CompiledGroupConverter inst) throws ReflectiveOperationException {
-    return generatePrimitiveConverter(index, type, inst.getClass(), parent).newInstance();
+    CompiledPrimitiveConverter i = generatePrimitiveConverter(index, type, inst.getClass(), parent).newInstance();
+    i.getClass().getField("type").set(i, type);
+    return i;
   }
 
   private Class<? extends CompiledPrimitiveConverter> generatePrimitiveConverter(int index, PrimitiveType type, Class<? extends CompiledGroupConverter> parentConverter, Class<? extends CompiledGroup> parent) throws ClassNotFoundException {
-    String addMethod = "add" + type.getPrimitiveTypeName().getMethod.substring(3);
+    String addMethod = "add" + setCase(type.getPrimitiveTypeName().javaType.getSimpleName());
     ExistingType paramType = existing(type.getPrimitiveTypeName().javaType);
     ClassBuilder cb = new Builder()
       .startClass(getClass().getName() + "$CompiledPrimitiveConverter" + (id++), existing(CompiledPrimitiveConverter.class))
+        .staticField(PUBLIC, existing(PrimitiveType.class), "type")
         .field(PUBLIC, existing(parentConverter), "parent")
         .startMethod(PUBLIC, VOID, addMethod).param(paramType, "value")
           .exec().get("parent").call("addToField_" + index).get("value").endCall().endExec()
+        .endMethod()
+        .startMethod(PUBLIC, existing(PrimitiveType.class), "getType")
+          .returnExp().get("type").endReturn()
         .endMethod();
     return load(cb.endClass());
   }

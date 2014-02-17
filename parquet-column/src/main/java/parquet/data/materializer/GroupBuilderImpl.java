@@ -1,12 +1,13 @@
-package parquet.data;
+package parquet.data.materializer;
 
-import parquet.data.materializer.GroupMaterializer;
+import parquet.data.Group;
+import parquet.data.GroupBuilder;
 import parquet.io.api.Binary;
 import parquet.io.api.GroupConverter;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 
-class GroupBuilderImpl extends GroupBuilder {
+public class GroupBuilderImpl extends GroupBuilder {
 
   protected final GroupConverter converter;
   protected final GroupType type;
@@ -19,14 +20,20 @@ class GroupBuilderImpl extends GroupBuilder {
       @Override
       public GroupBuilder startMessage() {
         converter.start();
-        return new GroupBuilderImpl(converter, type, this);
+        return new GroupBuilderImpl(converter, type, this) {
+          @Override
+          public Group endMessage() {
+            converter.end();
+            return materializer.getCurrentRecord();
+          }
+        };
       }
 
       @Override
       public Group endMessage() {
-        converter.end();
-        return materializer.getCurrentRecord();
+        throw new UnsupportedOperationException("not the root");
       }
+
     };
   }
 
