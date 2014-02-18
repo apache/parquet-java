@@ -29,7 +29,10 @@ import parquet.hive.HiveBindingFactory;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
+import parquet.schema.PrimitiveType;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type;
+import parquet.schema.Type.Repetition;
 
 /**
  *
