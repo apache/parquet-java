@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# The name of the top-level script
+TOPSCRIPT="parquet-tools"
+
+# Determine the path to the script's directory
+APPPATH=$( cd "$(dirname "$0")" ; pwd -P )
+
+# Run the application
+exec "${APPPATH}/${TOPSCRIPT}" cat "$@"

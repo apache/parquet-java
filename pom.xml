@@ -107,6 +107,7 @@
     <module>parquet-hadoop-bundle</module>
     <module>parquet-hive</module>
     <module>parquet-hive-bundle</module>
+    <module>parquet-tools</module>
   </modules>
 
   <dependencies>
