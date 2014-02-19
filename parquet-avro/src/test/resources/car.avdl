@@ -57,7 +57,7 @@ protocol Cars {
         union { null, Stereo, LeatherTrim } optionalExtra = null;
         union { null, array<Service> } serviceHistory = null;
         int opt = 5;
-        union { null, string } description = null;
+        union { null, string } description;
     }
         
 }
