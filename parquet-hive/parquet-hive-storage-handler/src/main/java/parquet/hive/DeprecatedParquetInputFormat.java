@@ -13,14 +13,16 @@
  */
 package parquet.hive;
 
+import org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat;
 import org.apache.hadoop.io.ArrayWritable;
-import org.apache.hadoop.mapreduce.InputFormat;
+
+import parquet.hadoop.ParquetInputFormat;
 
 /**
  * Deprecated name of the parquet-hive input format. This class exists
  * simply to provide backwards compatibility with users who specified
  * this name in the Hive metastore. All users should now use
- * {@link MapredParquetInputFormat MapredParquetInputFormat}
+ * STORED AS PARQUET
  */
 @Deprecated
 public class DeprecatedParquetInputFormat extends MapredParquetInputFormat {
@@ -29,7 +31,7 @@ public class DeprecatedParquetInputFormat extends MapredParquetInputFormat {
     super();
   }
 
-  public DeprecatedParquetInputFormat(final InputFormat<Void, ArrayWritable> realInputFormat) {
+  public DeprecatedParquetInputFormat(final ParquetInputFormat<ArrayWritable> realInputFormat) {
     super(realInputFormat);
   }
 }
