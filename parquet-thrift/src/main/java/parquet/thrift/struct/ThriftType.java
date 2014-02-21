@@ -29,7 +29,10 @@ import static parquet.thrift.struct.ThriftTypeID.STRING;
 import static parquet.thrift.struct.ThriftTypeID.STRUCT;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonIgnore;
@@ -389,15 +392,34 @@ public abstract class ThriftType {
 
   public static class EnumType extends ThriftType {
     private final List<EnumValue> values;
-
+    private Map<Integer,EnumValue> idEnumLookup;
     @JsonCreator
     public EnumType(@JsonProperty("values") List<EnumValue> values) {
       super(ENUM);
       this.values = values;
     }
 
-    public List<EnumValue> getValues() {
-      return values;
+    public Iterable<EnumValue> getValues() {
+      return new Iterable<EnumValue>() {
+        @Override
+        public Iterator<EnumValue> iterator() {
+          return values.iterator();
+        }
+      };
+    }
+
+    public EnumValue getEnumValueById(int id) {
+      prepareEnumLookUp();
+      return idEnumLookup.get(id);
+    }
+
+    private void prepareEnumLookUp() {
+      if (idEnumLookup == null) {
+        idEnumLookup=new HashMap<Integer, EnumValue>();
+        for (EnumValue value : values) {
+          idEnumLookup.put(value.getId(),value);
+        }
+      }
     }
 
     @Override

@@ -16,6 +16,7 @@
 package parquet.io;
 
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.List;
 
 import parquet.Log;
@@ -85,7 +86,32 @@ public class MessageColumnIO extends GroupColumnIO {
   private class MessageColumnIORecordConsumer extends RecordConsumer {
     private ColumnIO currentColumnIO;
     private int currentLevel = 0;
-    private final int[] currentIndex;
+
+    private class FieldsMarker {
+      private BitSet vistedIndexes = new BitSet();
+
+      @Override
+      public String toString() {
+        return "VistedIndex{" +
+                "vistedIndexes=" + vistedIndexes +
+                '}';
+      }
+
+      public void reset(int fieldsCount) {
+        this.vistedIndexes.clear(0, fieldsCount);
+      }
+
+      public void markWritten(int i) {
+        vistedIndexes.set(i);
+      }
+
+      public boolean isWritten(int i) {
+        return vistedIndexes.get(i);
+      }
+    }
+
+    //track at each level of depth, which fields are written, so nulls can be inserted for the unwritten fields
+    private final FieldsMarker[] fieldsWritten;
     private final int[] r;
     private final ColumnWriter[] columnWriter;
     private boolean emptyField = true;
@@ -97,12 +123,16 @@ public class MessageColumnIO extends GroupColumnIO {
         maxDepth = Math.max(maxDepth, primitiveColumnIO.getFieldPath().length);
         columnWriter[primitiveColumnIO.getId()] = columns.getColumnWriter(primitiveColumnIO.getColumnDescriptor());
       }
-      currentIndex = new int[maxDepth];
+
+      fieldsWritten = new FieldsMarker[maxDepth];
+      for (int i = 0; i < maxDepth; i++) {
+        fieldsWritten[i] = new FieldsMarker();
+      }
       r = new int[maxDepth];
     }
 
     public void printState() {
-      log(currentLevel + ", " + currentIndex[currentLevel] + ": " + Arrays.toString(currentColumnIO.getFieldPath()) + " r:" + r[currentLevel]);
+      log(currentLevel + ", " + fieldsWritten[currentLevel] + ": " + Arrays.toString(currentColumnIO.getFieldPath()) + " r:" + r[currentLevel]);
       if (r[currentLevel] > currentColumnIO.getRepetitionLevel()) {
         // sanity check
         throw new InvalidRecordException(r[currentLevel] + "(r) > " + currentColumnIO.getRepetitionLevel() + " ( schema r)");
@@ -122,13 +152,14 @@ public class MessageColumnIO extends GroupColumnIO {
       if (DEBUG) log("< MESSAGE START >");
       currentColumnIO = MessageColumnIO.this;
       r[0] = 0;
-      currentIndex[0] = 0;
+      int numberOfFieldsToVisit = ((GroupColumnIO)currentColumnIO).getChildrenCount();
+      fieldsWritten[0].reset(numberOfFieldsToVisit);
       if (DEBUG) printState();
     }
 
     @Override
     public void endMessage() {
-      writeNullForMissingFields(((GroupColumnIO)currentColumnIO).getChildrenCount() - 1);
+      writeNullForMissingFieldsAtCurrentLevel();
       if (DEBUG) log("< MESSAGE END >");
       if (DEBUG) printState();
     }
@@ -137,9 +168,7 @@ public class MessageColumnIO extends GroupColumnIO {
     public void startField(String field, int index) {
       try {
         if (DEBUG) log("startField(" + field + ", " + index + ")");
-        writeNullForMissingFields(index - 1);
         currentColumnIO = ((GroupColumnIO)currentColumnIO).getChild(index);
-        currentIndex[currentLevel] = index;
         emptyField = true;
         if (DEBUG) printState();
       } catch (RuntimeException e) {
@@ -154,21 +183,24 @@ public class MessageColumnIO extends GroupColumnIO {
       if (emptyField) {
         throw new ParquetEncodingException("empty fields are illegal, the field should be ommited completely instead");
       }
-      currentIndex[currentLevel] = index + 1;
+      fieldsWritten[currentLevel].markWritten(index);
       r[currentLevel] = currentLevel == 0 ? 0 : r[currentLevel - 1];
       if (DEBUG) printState();
     }
 
-    private void writeNullForMissingFields(final int to) {
-      final int from = currentIndex[currentLevel];
-      for (;currentIndex[currentLevel]<=to; ++currentIndex[currentLevel]) {
-        try {
-          ColumnIO undefinedField = ((GroupColumnIO)currentColumnIO).getChild(currentIndex[currentLevel]);
-          int d = currentColumnIO.getDefinitionLevel();
-          if (DEBUG) log(Arrays.toString(undefinedField.getFieldPath()) + ".writeNull(" + r[currentLevel] + "," + d + ")");
-          writeNull(undefinedField, r[currentLevel], d);
-        } catch (RuntimeException e) {
-          throw new ParquetEncodingException("error while writing nulls from " + from + " to " + to + ". current index: " + currentIndex[currentLevel], e);
+    private void writeNullForMissingFieldsAtCurrentLevel() {
+      int currentFieldsCount = ((GroupColumnIO)currentColumnIO).getChildrenCount();
+      for (int i = 0; i < currentFieldsCount; i++) {
+        if (!fieldsWritten[currentLevel].isWritten(i)) {
+          try {
+            ColumnIO undefinedField = ((GroupColumnIO)currentColumnIO).getChild(i);
+            int d = currentColumnIO.getDefinitionLevel();
+            if (DEBUG)
+              log(Arrays.toString(undefinedField.getFieldPath()) + ".writeNull(" + r[currentLevel] + "," + d + ")");
+            writeNull(undefinedField, r[currentLevel], d);
+          } catch (RuntimeException e) {
+            throw new ParquetEncodingException("error while writing nulls for fields of indexes " + i + " . current index: " + fieldsWritten[currentLevel], e);
+          }
         }
       }
     }
@@ -197,7 +229,8 @@ public class MessageColumnIO extends GroupColumnIO {
       ++ currentLevel;
       r[currentLevel] = r[currentLevel - 1];
 
-      currentIndex[currentLevel] = 0;
+      int fieldsCount = ((GroupColumnIO)currentColumnIO).getChildrenCount();
+      fieldsWritten[currentLevel].reset(fieldsCount);
       if (DEBUG) printState();
     }
 
@@ -205,8 +238,7 @@ public class MessageColumnIO extends GroupColumnIO {
     public void endGroup() {
       if (DEBUG) log("endGroup()");
       emptyField = false;
-      int lastIndex = ((GroupColumnIO)currentColumnIO).getChildrenCount() - 1;
-      writeNullForMissingFields(lastIndex);
+      writeNullForMissingFieldsAtCurrentLevel();
       -- currentLevel;
 
       setRepetitionLevel();

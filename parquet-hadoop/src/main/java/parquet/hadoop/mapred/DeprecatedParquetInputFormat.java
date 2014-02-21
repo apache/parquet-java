@@ -176,22 +176,12 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
 
     @Override
     public long getLength() throws IOException {
-      try {
         return realSplit.getLength();
-      } catch (InterruptedException e) {
-        Thread.interrupted();
-        throw new IOException(e);
-      }
     }
 
     @Override
     public String[] getLocations() throws IOException {
-      try {
         return realSplit.getLocations();
-      } catch (InterruptedException e) {
-        Thread.interrupted();
-        throw new IOException(e);
-      }
     }
 
     @Override

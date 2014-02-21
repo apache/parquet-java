@@ -40,7 +40,6 @@ public class ParquetWriter<T> implements Closeable {
   /**
    * Create a new ParquetWriter.
    * (with dictionary encoding enabled and validation off)
-   * @see ParquetWriter#ParquetWriter(Path, WriteSupport, CompressionCodecName, int, int, boolean)
    *
    * @param file the file to create
    * @param writeSupport the implementation to write a record to a RecordConsumer
@@ -48,6 +47,7 @@ public class ParquetWriter<T> implements Closeable {
    * @param blockSize the block size threshold
    * @param pageSize the page size threshold
    * @throws IOException
+   * @see #ParquetWriter(Path, WriteSupport, CompressionCodecName, int, int, boolean, boolean)
    */
   public ParquetWriter(Path file, WriteSupport<T> writeSupport, CompressionCodecName compressionCodecName, int blockSize, int pageSize) throws IOException {
     this(file, writeSupport, compressionCodecName, blockSize, pageSize, true, false);
@@ -64,6 +64,7 @@ public class ParquetWriter<T> implements Closeable {
    * @param enableDictionary to turn dictionary encoding on
    * @param validating to turn on validation using the schema
    * @throws IOException
+   * @see #ParquetWriter(Path, WriteSupport, CompressionCodecName, int, int, int, boolean, boolean)
    */
   public ParquetWriter(
       Path file,
@@ -88,6 +89,7 @@ public class ParquetWriter<T> implements Closeable {
    * @param enableDictionary to turn dictionary encoding on
    * @param validating to turn on validation using the schema
    * @throws IOException
+   * @see #ParquetWriter(Path, WriteSupport, CompressionCodecName, int, int, int, boolean, boolean, WriterVersion)
    */
   public ParquetWriter(
       Path file,
@@ -100,9 +102,12 @@ public class ParquetWriter<T> implements Closeable {
       boolean validating) throws IOException {
     this(file, writeSupport, compressionCodecName, blockSize, pageSize, dictionaryPageSize, enableDictionary, validating, WriterVersion.PARQUET_1_0);
   }
-  
+
   /**
    * Create a new ParquetWriter.
+   *
+   * Directly instantiates a Hadoop {@link org.apache.hadoop.conf.Configuration} which reads
+   * configuration from the classpath.
    *
    * @param file the file to create
    * @param writeSupport the implementation to write a record to a RecordConsumer
@@ -112,8 +117,9 @@ public class ParquetWriter<T> implements Closeable {
    * @param dictionaryPageSize the page size threshold for the dictionary pages
    * @param enableDictionary to turn dictionary encoding on
    * @param validating to turn on validation using the schema
-   * @poram writerVersion version of parquetWriter from {@link ParquetProperties.WriterVersion}
+   * @param writerVersion version of parquetWriter from {@link ParquetProperties.WriterVersion}
    * @throws IOException
+   * @see #ParquetWriter(Path, WriteSupport, CompressionCodecName, int, int, int, boolean, boolean, WriterVersion, Configuration)
    */
   public ParquetWriter(
       Path file,
@@ -125,7 +131,35 @@ public class ParquetWriter<T> implements Closeable {
       boolean enableDictionary,
       boolean validating,
       WriterVersion writerVersion) throws IOException {
-    Configuration conf = new Configuration();
+    this(file, writeSupport, compressionCodecName, blockSize, pageSize, dictionaryPageSize, enableDictionary, validating, writerVersion, new Configuration());
+  }
+
+  /**
+   * Create a new ParquetWriter.
+   *
+   * @param file the file to create
+   * @param writeSupport the implementation to write a record to a RecordConsumer
+   * @param compressionCodecName the compression codec to use
+   * @param blockSize the block size threshold
+   * @param pageSize the page size threshold
+   * @param dictionaryPageSize the page size threshold for the dictionary pages
+   * @param enableDictionary to turn dictionary encoding on
+   * @param validating to turn on validation using the schema
+   * @param writerVersion version of parquetWriter from {@link ParquetProperties.WriterVersion}
+   * @param conf Hadoop configuration to use while accessing the filesystem
+   * @throws IOException
+   */
+  public ParquetWriter(
+      Path file,
+      WriteSupport<T> writeSupport,
+      CompressionCodecName compressionCodecName,
+      int blockSize,
+      int pageSize,
+      int dictionaryPageSize,
+      boolean enableDictionary,
+      boolean validating,
+      WriterVersion writerVersion,
+      Configuration conf) throws IOException {
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
     MessageType schema = writeContext.getSchema();

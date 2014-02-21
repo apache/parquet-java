@@ -38,4 +38,26 @@ protocol Cars {
         union { null, Stereo, LeatherTrim } optionalExtra = null;
         union { null, array<Service> } serviceHistory = null;
     }
+    
+    record ShortCar {
+        union { null, string } make = null;
+        Engine engine;
+        long year;
+        Vin vin;
+    }
+
+    record NewCar {
+        long year;
+        string registration;
+        string @aliases(["make"]) brand; // test field rename
+        string model;
+        Vin vin;
+        long doors; // test promotion of int to long
+        Engine engine;
+        union { null, Stereo, LeatherTrim } optionalExtra = null;
+        union { null, array<Service> } serviceHistory = null;
+        int opt = 5;
+        union { null, string } description = null;
+    }
+        
 }

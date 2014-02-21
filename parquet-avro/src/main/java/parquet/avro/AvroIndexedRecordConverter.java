@@ -24,7 +24,6 @@ import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.specific.SpecificData;
-import org.apache.avro.specific.SpecificFixed;
 import parquet.Preconditions;
 import parquet.io.InvalidRecordException;
 import parquet.io.api.Binary;
@@ -44,6 +43,9 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
   private final Schema avroSchema;
   private final Class<? extends IndexedRecord> specificClass;
 
+  private final GenericData model;
+  private final Map<Schema.Field, Object> recordDefaults = new HashMap<Schema.Field, Object>();
+
   public AvroIndexedRecordConverter(MessageType parquetSchema, Schema avroSchema) {
     this(null, parquetSchema, avroSchema);
   }
@@ -56,6 +58,8 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     this.converters = new Converter[schemaSize];
     this.specificClass = SpecificData.get().getClass(avroSchema);
 
+    model = this.specificClass == null ? GenericData.get() : SpecificData.get();
+
     Map<String, Integer> avroFieldIndexes = new HashMap<String, Integer>();
     int avroFieldIndex = 0;
     for (Schema.Field field: avroSchema.getFields()) {
@@ -63,13 +67,9 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     }
     int parquetFieldIndex = 0;
     for (Type parquetField: parquetSchema.getFields()) {
-      Schema.Field avroField = avroSchema.getField(parquetField.getName());
-      if (avroField == null) {
-        throw new InvalidRecordException(String.format("Parquet/Avro schema mismatch. Avro field '%s' not found.",
-                parquetField.getName()));
-      }
+      Schema.Field avroField = getAvroField(parquetField.getName());
       Schema nonNullSchema = AvroSchemaConverter.getNonNull(avroField.schema());
-      final int finalAvroIndex = avroFieldIndexes.get(avroField.name());
+      final int finalAvroIndex = avroFieldIndexes.remove(avroField.name());
       converters[parquetFieldIndex++] = newConverter(nonNullSchema, parquetField, new ParentValueContainer() {
         @Override
         void add(Object value) {
@@ -77,6 +77,28 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
         }
       });
     }
+    // store defaults for any new Avro fields from avroSchema that are not in the writer schema (parquetSchema)
+    for (String fieldName : avroFieldIndexes.keySet()) {
+      Schema.Field field = avroSchema.getField(fieldName);
+      if (field.schema().getType() == Schema.Type.NULL) {
+        continue; // skip null since Parquet does not write nulls
+      }
+      recordDefaults.put(field, model.getDefaultValue(field));
+    }
+  }
+
+  private Schema.Field getAvroField(String parquetFieldName) {
+    Schema.Field avroField = avroSchema.getField(parquetFieldName);
+    for (Schema.Field f : avroSchema.getFields()) {
+      if (f.aliases().contains(parquetFieldName)) {
+        return f;
+      }
+    }
+    if (avroField == null) {
+      throw new InvalidRecordException(String.format("Parquet/Avro schema mismatch. Avro field '%s' not found.",
+          parquetFieldName));
+    }
+    return avroField;
   }
 
   private static Converter newConverter(Schema schema, Type type,
@@ -131,8 +153,31 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
 
   @Override
   public void end() {
+    fillInDefaults();
     if (parent != null) {
       parent.add(currentRecord);
+    }
+  }
+
+  private void fillInDefaults() {
+    for (Map.Entry<Schema.Field, Object> entry : recordDefaults.entrySet()) {
+      Schema.Field f = entry.getKey();
+      // replace following with model.deepCopy once AVRO-1455 is being used
+      Object defaultValue = deepCopy(f.schema(), entry.getValue());
+      this.currentRecord.put(f.pos(), defaultValue);
+    }
+  }
+
+  private Object deepCopy(Schema schema, Object value) {
+    switch (schema.getType()) {
+      case BOOLEAN:
+      case INT:
+      case LONG:
+      case FLOAT:
+      case DOUBLE:
+        return value;
+      default:
+        return model.deepCopy(schema, value);
     }
   }
 
@@ -188,6 +233,11 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     }
 
     @Override
+    final public void addInt(int value) {
+      parent.add(Long.valueOf(value));
+    }
+
+    @Override
     final public void addLong(long value) {
       parent.add(value);
     }
@@ -203,6 +253,16 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     }
 
     @Override
+    final public void addInt(int value) {
+      parent.add(Float.valueOf(value));
+    }
+
+    @Override
+    final public void addLong(long value) {
+      parent.add(Float.valueOf(value));
+    }
+
+    @Override
     final public void addFloat(float value) {
       parent.add(value);
     }
@@ -215,6 +275,21 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
 
     public FieldDoubleConverter(ParentValueContainer parent) {
       this.parent = parent;
+    }
+
+    @Override
+    final public void addInt(int value) {
+      parent.add(Double.valueOf(value));
+    }
+
+    @Override
+    final public void addLong(long value) {
+      parent.add(Double.valueOf(value));
+    }
+
+    @Override
+    final public void addFloat(float value) {
+      parent.add(Double.valueOf(value));
     }
 
     @Override
@@ -430,8 +505,8 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
 
       private String key;
       private V value;
-      private Converter keyConverter;
-      private Converter valueConverter;
+      private final Converter keyConverter;
+      private final Converter valueConverter;
 
       public MapKeyValueConverter(Type parquetSchema, Schema avroSchema) {
         keyConverter = new PrimitiveConverter() {

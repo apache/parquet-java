@@ -19,6 +19,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -231,44 +232,59 @@ public class TestParquetWriteProtocol {
   public void testStructInMap() throws Exception {
     String[] expectations = {
         "startMessage()",
-        "startField(name, 0)",
-        "addBinary(map_name)",
-        "endField(name, 0)",
-        "startField(names, 1)",
-        "startGroup()",
-        "startField(map, 0)",
-        "startGroup()",
-        "startField(key, 0)",
-        "addBinary(foo)",
-        "endField(key, 0)",
-        "startField(value, 1)",
-        "startGroup()",
-        "startField(name, 0)",
-        "startGroup()",
-        "startField(first_name, 0)",
-        "addBinary(john)",
-        "endField(first_name, 0)",
-        "startField(last_name, 1)",
-        "addBinary(johnson)",
-        "endField(last_name, 1)",
-        "endGroup()",
-        "endField(name, 0)",
-        "startField(phones, 1)",
-        "startGroup()",
-        "endGroup()",
-        "endField(phones, 1)",
-        "endGroup()",
-        "endField(value, 1)",
-        "endGroup()",
-        "endField(map, 0)",
-        "endGroup()",
-        "endField(names, 1)",
+          "startField(name, 0)",
+            "addBinary(map_name)",
+          "endField(name, 0)",
+          "startField(names, 1)",
+            "startGroup()",
+              "startField(map, 0)",
+                "startGroup()",
+                  "startField(key, 0)",
+                    "addBinary(foo)",
+                  "endField(key, 0)",
+                  "startField(value, 1)",
+                    "startGroup()",
+                      "startField(name, 0)",
+                        "startGroup()",
+                          "startField(first_name, 0)",
+                            "addBinary(john)",
+                          "endField(first_name, 0)",
+                          "startField(last_name, 1)",
+                            "addBinary(johnson)",
+                          "endField(last_name, 1)",
+                        "endGroup()",
+                      "endField(name, 0)",
+                      "startField(phones, 1)",
+                        "startGroup()",
+                        "endGroup()",
+                      "endField(phones, 1)",
+                    "endGroup()",
+                  "endField(value, 1)",
+                "endGroup()",
+              "endField(map, 0)",
+            "endGroup()",
+          "endField(names, 1)",
+          "startField(name_to_id, 2)",
+            "startGroup()",
+              "startField(map, 0)",
+                "startGroup()",
+                  "startField(key, 0)",
+                    "addBinary(bar)",
+                  "endField(key, 0)",
+                  "startField(value, 1)",
+                    "addInt(10)",
+                  "endField(value, 1)",
+                "endGroup()",
+              "endField(map, 0)",
+            "endGroup()",
+          "endField(name_to_id, 2)",
         "endMessage()"
     };
 
     final Map<String, TestPerson> map = new HashMap<String, TestPerson>();
     map.put("foo", new TestPerson(new TestName("john", "johnson"), new HashMap<TestPhoneType, String>()));
-    TestStructInMap testMap = new TestStructInMap("map_name", map);
+    final Map<String, Integer> stringToIntMap = Collections.singletonMap("bar", 10);
+    TestStructInMap testMap = new TestStructInMap("map_name", map, stringToIntMap);
     validatePig(expectations, testMap);
     validateThrift(expectations, testMap);
   }

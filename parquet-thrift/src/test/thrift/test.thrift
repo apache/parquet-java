@@ -54,6 +54,11 @@ struct RequiredPrimitiveFixture {
 }
 
 
+struct StructWithReorderedOptionalFields {
+  3: optional i32 fieldThree,
+  2: optional i32 fieldTwo,
+  1: optional i32 fieldOne,
+}
 
 struct TestPersonWithRequiredPhone {
   1: required Name name,
