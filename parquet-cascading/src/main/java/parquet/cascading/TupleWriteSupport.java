@@ -56,6 +56,10 @@ public class TupleWriteSupport extends WriteSupport<TupleEntry> {
     final List<Type> fields = rootSchema.getFields();
     int i = 0;
     for (Type field : fields) {
+      if (record.getObject(field.getName())==null) {
+        i++;
+        continue;
+      }
       recordConsumer.startField(field.getName(), i);
       if (field.isPrimitive()) {
         writePrimitive(record, field.asPrimitiveType());
