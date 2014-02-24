@@ -54,10 +54,11 @@ public class TupleWriteSupport extends WriteSupport<TupleEntry> {
   public void write(TupleEntry record) {
     recordConsumer.startMessage();
     final List<Type> fields = rootSchema.getFields();
-    int i = 0;
-    for (Type field : fields) {
-      if (record.getObject(field.getName())==null) {
-        i++;
+
+    for (int i = 0; i < fields.size(); i++) {
+      Type field = fields.get(i);
+
+      if (record == null || record.getObject(field.getName()) == null) {
         continue;
       }
       recordConsumer.startField(field.getName(), i);
@@ -67,16 +68,11 @@ public class TupleWriteSupport extends WriteSupport<TupleEntry> {
         throw new UnsupportedOperationException("Complex type not implemented");
       }
       recordConsumer.endField(field.getName(), i);
-      ++i;
     }
     recordConsumer.endMessage();
   }
 
   private void writePrimitive(TupleEntry record, PrimitiveType field) {
-    if (record == null) {
-      return;
-    }
-
     switch (field.getPrimitiveTypeName()) {
       case BINARY:
         recordConsumer.addBinary(Binary.fromString(record.getString(field.getName())));
