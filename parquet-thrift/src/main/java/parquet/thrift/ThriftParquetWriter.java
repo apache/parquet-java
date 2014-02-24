@@ -17,6 +17,7 @@ package parquet.thrift;
 
 import java.io.IOException;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.thrift.TBase;
 
@@ -39,6 +40,12 @@ public class ThriftParquetWriter<T extends TBase<?,?>> extends ParquetWriter<T> 
 
   public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName, int blockSize, int pageSize, boolean enableDictionary, boolean validating) throws IOException {
     super(file, new ThriftWriteSupport<T>(thriftClass), compressionCodecName, blockSize, pageSize, enableDictionary, validating);
+  }
+
+  public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName, int blockSize, int pageSize, boolean enableDictionary, boolean validating, Configuration conf) throws IOException {
+    super(file, new ThriftWriteSupport<T>(thriftClass), compressionCodecName,
+        blockSize, pageSize, pageSize, enableDictionary, validating,
+        DEFAULT_WRITER_VERSION, conf);
   }
 
 }
