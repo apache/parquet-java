@@ -260,28 +260,12 @@ class ColumnReaderImpl implements ColumnReader {
       }
       @Override
       public Binding convertINT96(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-        throw new UnsupportedOperationException("INT96 NYI");
+        return this.convertBINARY(primitiveTypeName);
       }
       @Override
       public Binding convertFIXED_LEN_BYTE_ARRAY(
           PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-        return new Binding() {
-          Binary current;
-          void read() {
-            current = dataColumn.readBytes();
-          }
-          public void skip() {
-            current = null;
-            dataColumn.skip();
-          }
-          @Override
-          public Binary getBinary() {
-            return current;
-          }
-          void writeValue() {
-            converter.addBinary(current);
-          }
-        };
+        return this.convertBINARY(primitiveTypeName);
       }
       @Override
       public Binding convertBOOLEAN(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
@@ -414,7 +398,7 @@ class ColumnReaderImpl implements ColumnReader {
     readValue();
     return this.binding.getBinary();
   }
-  
+
   /**
    * {@inheritDoc}
    * @see parquet.column.ColumnReader#getFloat()

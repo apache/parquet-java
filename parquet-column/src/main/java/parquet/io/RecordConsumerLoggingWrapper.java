@@ -15,6 +15,7 @@
  */
 package parquet.io;
 
+import java.util.Arrays;
 import parquet.Log;
 import parquet.io.api.Binary;
 import parquet.io.api.RecordConsumer;
@@ -108,7 +109,7 @@ public class RecordConsumerLoggingWrapper extends RecordConsumer {
      */
     @Override
     public void addBinary(Binary value) {
-      if (DEBUG) log(value.toStringUsingUTF8());
+      if (DEBUG) log(Arrays.toString(value.getBytes()));
       delegate.addBinary(value);
     }
 

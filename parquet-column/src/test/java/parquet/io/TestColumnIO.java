@@ -40,7 +40,6 @@ import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
-import parquet.column.ParquetProperties;
 import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.PageReadStore;
@@ -48,6 +47,7 @@ import parquet.column.page.mem.MemPageStore;
 import parquet.example.data.Group;
 import parquet.example.data.GroupFactory;
 import parquet.example.data.GroupWriter;
+import parquet.example.data.simple.NanoTime;
 import parquet.example.data.simple.SimpleGroupFactory;
 import parquet.example.data.simple.convert.GroupRecordConverter;
 import parquet.io.api.Binary;
@@ -72,6 +72,7 @@ public class TestColumnIO {
   + "  required double d;\n"
   + "  required boolean e;\n"
   + "  required binary f;\n"
+  + "  required int96 g;\n"
   + "}\n";
 
   private static final String schemaString =
@@ -340,7 +341,8 @@ public class TestColumnIO {
         .append("c", 3.0f)
         .append("d", 4.0d)
         .append("e", true)
-        .append("f", Binary.fromString("6"));
+        .append("f", Binary.fromString("6"))
+        .append("g", new NanoTime(1234, System.currentTimeMillis() * 1000));
 
     testSchema(oneOfEachSchema, Arrays.asList(g1));
   }

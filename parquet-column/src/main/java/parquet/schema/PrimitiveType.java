@@ -198,20 +198,20 @@ public final class PrimitiveType extends Type {
         return converter.convertDOUBLE(this);
       }
     },
-    INT96(null, null) { // TODO: support for INT96
+    INT96("getBinary", Binary.class) {
       @Override
       public String toString(ColumnReader columnReader) {
-        throw new UnsupportedOperationException("NYI");
+        return Arrays.toString(columnReader.getBinary().getBytes());
       }
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
-        throw new UnsupportedOperationException("NYI");
+        recordConsumer.addBinary(columnReader.getBinary());
       }
       @Override
       public void addValueToPrimitiveConverter(
           PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
-        throw new UnsupportedOperationException("NYI");
+        primitiveConverter.addBinary(columnReader.getBinary());
       }
 
       @Override
