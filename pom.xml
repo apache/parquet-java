@@ -101,6 +101,7 @@
     <module>parquet-jackson</module>
     <module>parquet-pig</module>
     <module>parquet-pig-bundle</module>
+    <module>parquet-protobuf</module>
     <module>parquet-scrooge</module>
     <module>parquet-thrift</module>
     <module>parquet-test-hadoop2</module>
