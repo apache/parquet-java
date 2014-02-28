@@ -127,7 +127,9 @@ public class AvroSchemaConverter {
     List<Schema> nonNullSchemas = new ArrayList(schema.getTypes().size());
     for (Schema childSchema : schema.getTypes()) {
       if (childSchema.getType().equals(Schema.Type.NULL)) {
-        repetition = Type.Repetition.OPTIONAL;
+        if (Type.Repetition.REQUIRED == repetition) {
+          repetition = Type.Repetition.OPTIONAL;
+        }
       } else {
         nonNullSchemas.add(childSchema);
       }
@@ -139,7 +141,7 @@ public class AvroSchemaConverter {
         throw new UnsupportedOperationException("Cannot convert Avro union of only nulls");
 
       case 1:
-        return convertField(fieldName, nonNullSchemas.get(0), Type.Repetition.OPTIONAL); // Simple optional field
+        return convertField(fieldName, nonNullSchemas.get(0), repetition);
 
       default: // complex union type
         List<Type> unionTypes = new ArrayList(nonNullSchemas.size());

@@ -15,6 +15,7 @@
  */
 package parquet.avro;
 
+import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import java.util.Arrays;
 import org.apache.avro.Schema;
@@ -165,9 +166,7 @@ public class TestAvroSchemaConverter {
   @Test
   public void testOptionalFields() throws Exception {
     Schema schema = Schema.createRecord("record1", null, null, false);
-    Schema optionalInt = Schema.createUnion(Arrays.asList(Schema.create(Schema.Type
-        .NULL),
-        Schema.create(Schema.Type.INT)));
+    Schema optionalInt = optional(Schema.create(Schema.Type.INT));
     schema.setFields(Arrays.asList(
         new Schema.Field("myint", optionalInt, null, NullNode.getInstance())
     ));
@@ -197,5 +196,35 @@ public class TestAvroSchemaConverter {
             "    optional float member1;\n" +
             "  }\n" +
             "}\n");
+  }
+
+  @Test
+  public void testArrayOfOptionalRecords() throws Exception {
+    Schema innerRecord = Schema.createRecord("InnerRecord", null, null, false);
+    Schema optionalString = optional(Schema.create(Schema.Type.STRING));
+    innerRecord.setFields(Lists.newArrayList(
+        new Schema.Field("s1", optionalString, null, NullNode.getInstance()),
+        new Schema.Field("s2", optionalString, null, NullNode.getInstance())
+    ));
+    Schema schema = Schema.createRecord("HasArray", null, null, false);
+    schema.setFields(Lists.newArrayList(
+        new Schema.Field("myarray", Schema.createArray(optional(innerRecord)),
+            null, NullNode.getInstance())
+    ));
+    System.err.println("Avro schema: " + schema.toString(true));
+
+    testAvroToParquetConversion(schema, "message HasArray {\n" +
+        "  required group myarray (LIST) {\n" +
+        "    repeated group array {\n" +
+        "      optional binary s1 (UTF8);\n" +
+        "      optional binary s2 (UTF8);\n" +
+        "    }\n" +
+        "  }\n" +
+        "}\n");
+  }
+
+  public static Schema optional(Schema original) {
+    return Schema.createUnion(Lists.newArrayList(original,
+        Schema.create(Schema.Type.NULL)));
   }
 }
