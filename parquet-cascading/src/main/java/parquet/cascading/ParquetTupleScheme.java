@@ -20,12 +20,9 @@
  import org.apache.hadoop.mapred.JobConf;
  import org.apache.hadoop.mapred.OutputCollector;
  import org.apache.hadoop.mapred.RecordReader;
- import org.apache.hadoop.fs.Path;
 
  import parquet.hadoop.ParquetInputFormat;
- import parquet.hadoop.ParquetFileReader;
  import parquet.hadoop.Footer;
- import parquet.hadoop.metadata.ParquetMetadata;
  import parquet.hadoop.mapred.Container;
  import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
  import parquet.schema.MessageType;
@@ -40,6 +37,9 @@
  import cascading.tap.hadoop.Hfs;
  import cascading.tuple.Tuple;
  import cascading.tuple.Fields;
+ import cascading.tuple.TupleEntry;
+ import parquet.hadoop.ParquetOutputFormat;
+ import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
 
  /**
   * A Cascading Scheme that converts Parquet groups into Cascading tuples.
@@ -56,6 +56,7 @@
 public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputCollector, Object[], Object[]>{
 
   private static final long serialVersionUID = 0L;
+  private String parquetSchema;
 
   public ParquetTupleScheme() {
     super();
@@ -63,6 +64,20 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
 
   public ParquetTupleScheme(Fields sourceFields) {
     super(sourceFields);
+  }
+
+  /**
+   * ParquetTupleScheme constructor used a sink need to be implemented
+   *
+   * @param sourceFields used for the reading step
+   * @param sinkFields used for the writing step
+   * @param schema is mandatory if you add sinkFields and needs to be the
+   * toString() from a MessageType. This value is going to be parsed when the
+   * parquet file will be created.
+   */
+  public ParquetTupleScheme(Fields sourceFields, Fields sinkFields, final String schema) {
+    super(sourceFields, sinkFields);
+    parquetSchema = schema;
   }
 
   @SuppressWarnings("rawtypes")
@@ -130,19 +145,23 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
 
   @SuppressWarnings("rawtypes")
   @Override
-  public void sinkConfInit(FlowProcess<JobConf> arg0,
-      Tap<JobConf, RecordReader, OutputCollector> arg1, JobConf arg2) {
-    throw new UnsupportedOperationException("ParquetTupleScheme does not support Sinks");
-
+  public void sinkConfInit(FlowProcess<JobConf> fp,
+          Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
+    jobConf.setOutputFormat(DeprecatedParquetOutputFormat.class);
+    jobConf.set(TupleWriteSupport.PARQUET_CASCADING_SCHEMA, parquetSchema);
+    ParquetOutputFormat.setWriteSupportClass(jobConf, TupleWriteSupport.class);
   }
 
   @Override
-  public boolean isSink() { return false; }
-
+  public boolean isSink() {
+    return parquetSchema != null;
+  }
 
   @Override
-  public void sink(FlowProcess<JobConf> arg0, SinkCall<Object[], OutputCollector> arg1)
-      throws IOException {
-    throw new UnsupportedOperationException("ParquetTupleScheme does not support Sinks");
+  public void sink(FlowProcess<JobConf> fp, SinkCall<Object[], OutputCollector> sink)
+          throws IOException {
+    TupleEntry tuple = sink.getOutgoingEntry();
+    OutputCollector outputCollector = sink.getOutput();
+    outputCollector.collect(null, tuple);
   }
 }
