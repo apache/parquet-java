@@ -75,6 +75,45 @@ public class ParquetProperties {
   public ParquetProperties() {
     this(new Properties());
   }
+
+  public static class ParquetPropertiesBuilder {
+    
+    Properties parquetProperties = new Properties();
+    
+    public ParquetProperties build() {
+      return new ParquetProperties(parquetProperties);
+    }
+    
+    public ParquetPropertiesBuilder setBlockSize(int blockSize) {
+      parquetProperties.put(BLOCK_SIZE, blockSize);
+      return this;
+    }
+    
+    public ParquetPropertiesBuilder setPageSize(int pageSize) {
+      parquetProperties.put(PAGE_SIZE, pageSize);
+      return this;
+    }
+    
+    public ParquetPropertiesBuilder setDictionaryPageSize(int dictionaryPageSize) {
+      parquetProperties.put(DICTIONARY_PAGE_SIZE, dictionaryPageSize);
+      return this;
+    }
+    
+    public ParquetPropertiesBuilder setWriterVersion(WriterVersion writerVersion) {
+      parquetProperties.put(WRITER_VERSION, writerVersion);
+      return this;
+    }
+    
+    public ParquetPropertiesBuilder setEnableDictionary(boolean enableDictionary) {
+      parquetProperties.put(ENABLE_DICTIONARY, String.valueOf(enableDictionary));
+      return this;
+    }
+    
+    public ParquetPropertiesBuilder setValidating(boolean validating) {
+      parquetProperties.put(VALIDATION, String.valueOf(validating));
+      return this;
+    }
+  }
   
   /**
    * To configure parquet properties based on configuration in props
@@ -85,8 +124,8 @@ public class ParquetProperties {
         Integer.parseInt(props.getProperty(PAGE_SIZE, String.valueOf(DEFAULT_PAGE_SIZE))), 
         Integer.parseInt(props.getProperty(DICTIONARY_PAGE_SIZE, String.valueOf(DEFAULT_PAGE_SIZE))), 
         WriterVersion.fromString(props.getProperty(WRITER_VERSION, WriterVersion.PARQUET_1_0.toString())), 
-        Boolean.parseBoolean(props.getProperty(ENABLE_DICTIONARY, "true")), 
-        Boolean.parseBoolean(props.getProperty(VALIDATION, "false")));
+        Boolean.parseBoolean(props.getProperty(ENABLE_DICTIONARY, String.valueOf(true))), 
+        Boolean.parseBoolean(props.getProperty(VALIDATION, String.valueOf(false))));
   }
 
   private ParquetProperties(int blockSize, int pageSize, int dictPageSize, WriterVersion writerVersion, boolean enableDict, boolean validating) {

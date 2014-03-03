@@ -132,26 +132,17 @@ public class ParquetWriter<T> implements Closeable {
       boolean enableDictionary,
       boolean validating,
       WriterVersion writerVersion) throws IOException {
-    this(file, writeSupport, compressionCodecName, 
-        prepareParquetProperties(blockSize, pageSize, dictionaryPageSize, enableDictionary, validating, writerVersion));
-  }
-  
-  private static ParquetProperties prepareParquetProperties(
-      int blockSize,
-      int pageSize,
-      int dictionaryPageSize,
-      boolean enableDictionary,
-      boolean validating,
-      WriterVersion writerVersion) {
-    Properties props = new Properties();
-    props.put(ParquetProperties.BLOCK_SIZE, String.valueOf(blockSize));
-    props.put(ParquetProperties.PAGE_SIZE, String.valueOf(pageSize));
-    props.put(ParquetProperties.DICTIONARY_PAGE_SIZE, String.valueOf(dictionaryPageSize));
-    props.put(ParquetProperties.ENABLE_DICTIONARY, String.valueOf(enableDictionary));
-    props.put(ParquetProperties.ENABLE_DICTIONARY, String.valueOf(validating));
-    props.put(ParquetProperties.WRITER_VERSION, writerVersion.toString());
-    
-    return new ParquetProperties(props);
+    this(file, 
+        writeSupport, 
+        compressionCodecName, 
+        new ParquetProperties.ParquetPropertiesBuilder()
+        .setBlockSize(blockSize)
+        .setPageSize(pageSize)
+        .setDictionaryPageSize(dictionaryPageSize)
+        .setEnableDictionary(enableDictionary)
+        .setValidating(validating)
+        .setWriterVersion(writerVersion)
+        .build());
   }
 
   public ParquetWriter(Path file,
@@ -187,7 +178,7 @@ public class ParquetWriter<T> implements Closeable {
    * @throws IOException
    */
   public ParquetWriter(Path file, WriteSupport<T> writeSupport) throws IOException {
-    this(file, writeSupport, CompressionCodecName.UNCOMPRESSED, ParquetProperties.DEFAULT_BLOCK_SIZE, ParquetProperties.DEFAULT_PAGE_SIZE);
+    this(file, writeSupport, CompressionCodecName.UNCOMPRESSED, new ParquetProperties());
   }
 
   public void write(T object) throws IOException {

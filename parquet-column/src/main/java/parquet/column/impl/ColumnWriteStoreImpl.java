@@ -30,33 +30,25 @@ import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.page.PageWriteStore;
 import parquet.column.page.PageWriter;
 
-
 public class ColumnWriteStoreImpl implements ColumnWriteStore {
 
   private final Map<ColumnDescriptor, ColumnWriterImpl> columns = new TreeMap<ColumnDescriptor, ColumnWriterImpl>();
   private final PageWriteStore pageWriteStore;
   private final ParquetProperties parquetProperties;
   private final int initialSizePerCol;
-  
-  private static ParquetProperties prepareParquetProperties(
-      int pageSizeThreshold,
-      int dictionaryPageSizeThreshold,
-      boolean enableDictionary,
-      WriterVersion writerVersion) {
-    Properties props = new Properties();
-    props.put(ParquetProperties.PAGE_SIZE, String.valueOf(pageSizeThreshold));
-    props.put(ParquetProperties.DICTIONARY_PAGE_SIZE, String.valueOf(dictionaryPageSizeThreshold));
-    props.put(ParquetProperties.ENABLE_DICTIONARY, String.valueOf(enableDictionary));
-    props.put(ParquetProperties.WRITER_VERSION, writerVersion.toString());
-    
-    return new ParquetProperties(props);
-  }
-  
+
   @Deprecated
   public ColumnWriteStoreImpl(PageWriteStore pageWriteStore, int pageSizeThreshold, int initialSizePerCol, int dictionaryPageSizeThreshold, boolean enableDictionary, WriterVersion writerVersion) {
-    this(pageWriteStore, initialSizePerCol, prepareParquetProperties(pageSizeThreshold, dictionaryPageSizeThreshold, enableDictionary, writerVersion));
+    this(pageWriteStore, 
+        initialSizePerCol, 
+        new ParquetProperties.ParquetPropertiesBuilder()
+          .setPageSize(pageSizeThreshold)
+          .setDictionaryPageSize(dictionaryPageSizeThreshold)
+          .setEnableDictionary(enableDictionary)
+          .setWriterVersion(writerVersion)
+          .build());
   }
-  
+
   public ColumnWriteStoreImpl(PageWriteStore pageWriteStore, int initialSizePerCol, ParquetProperties parquetProperties) {
     super();
     this.pageWriteStore = pageWriteStore;
@@ -80,13 +72,13 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
 
   @Override
   public String toString() {
-      StringBuilder sb = new StringBuilder();
-      for (Entry<ColumnDescriptor, ColumnWriterImpl> entry : columns.entrySet()) {
-        sb.append(Arrays.toString(entry.getKey().getPath())).append(": ");
-        sb.append(entry.getValue().getBufferedSizeInMemory()).append(" bytes");
-        sb.append("\n");
-      }
-      return sb.toString();
+    StringBuilder sb = new StringBuilder();
+    for (Entry<ColumnDescriptor, ColumnWriterImpl> entry : columns.entrySet()) {
+      sb.append(Arrays.toString(entry.getKey().getPath())).append(": ");
+      sb.append(entry.getValue().getBufferedSizeInMemory()).append(" bytes");
+      sb.append("\n");
+    }
+    return sb.toString();
   }
 
   public long allocatedSize() {
