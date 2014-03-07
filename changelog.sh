@@ -1,15 +1,24 @@
-echo "github username:" >&2 
-read username >&2
-echo "github password:" >&2 
-read -s password >&2
+OAUTH_FILE=~/.github_oauth_for_changelog
+if [ -f $OAUTH_FILE ]
+then
+  token=`cat $OAUTH_FILE`
+else
+  echo "Please create an oauth token here: https://github.com/settings/tokens/new"
+  echo "Then paste it bellow (it will be saved in $OAUTH_FILE):" >&2
+  read token >&2
+  echo $token > $OAUTH_FILE
+  chmod og-rwx $OAUTH_FILE
+fi
+TOKEN_HEADER="Authorization: token $token"
 
-curl -f -u $username:$password -s "https://api.github.com" > /dev/null
+curl -f -H "$TOKEN_HEADER" -s "https://api.github.com" > /dev/null
 if [ $? == 0 ]
 then
   echo "login successful" >&2
 else
   echo "login failed" >&2
-  curl -u $username:$password -s "https://api.github.com"
+  curl -H "$TOKEN_HEADER" -s "https://api.github.com"
+  echo "if your OAUTH token needs to be replaced you can delete file $OAUTH_FILE"
   exit 1
 fi
 
@@ -27,8 +36,8 @@ do
   fi
   if [ -n "$PR" ]
   then
-    JSON=`curl -u $username:$password -s https://api.github.com/repos/Parquet/parquet-mr/pulls/$PR | tr "\n" " "`
-    DESC_RAW=$(echo $JSON |  grep -Po '"title":.*?[^\\]",' | cut -d "\"" -f 4- | head -n 1 | sed -e "s/\\\\//g")
+    JSON=`curl -H "$TOKEN_HEADER" -s https://api.github.com/repos/Parquet/parquet-mr/pulls/$PR | tr "\n" " "`
+    DESC_RAW=$(echo $JSON |  grep -Eo '"title":.*?[^\\]",' | cut -d "\"" -f 4- | head -n 1 | sed -e "s/\\\\//g")
     DESC=$(echo ${DESC_RAW%\",})
     echo "* ISSUE [$PR](https://github.com/Parquet/parquet-mr/pull/$PR): ${DESC}"
   fi
