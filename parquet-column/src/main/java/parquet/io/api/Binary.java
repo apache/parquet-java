@@ -41,6 +41,8 @@ abstract public class Binary {
       public String toStringUsingUTF8() {
         return UTF8.decode(ByteBuffer.wrap(value, offset, length)).toString();
         // TODO: figure out why the following line was much slower
+        // rdb: new String(...) is slower because it instantiates a new Decoder,
+        //      while Charset#decode uses a thread-local decoder cache
         // return new String(value, offset, length, BytesUtils.UTF8);
       }
 
@@ -281,6 +283,6 @@ abstract public class Binary {
   abstract public ByteBuffer toByteBuffer();
 
   public String toString() {
-    return "Binary{" + length() + " bytes, " + toStringUsingUTF8() + "}";
+    return "Binary{" + length() + " bytes, " + Arrays.toString(getBytes()) + "}";
   };
 }

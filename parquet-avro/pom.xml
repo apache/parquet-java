@@ -15,7 +15,7 @@
   <url>https://github.com/Parquet/parquet-mr</url>
 
   <properties>
-    <avro.version>1.7.4</avro.version>
+    <avro.version>1.7.6</avro.version>
   </properties>
 
   <dependencies>
@@ -97,10 +97,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
       </plugin>
       <plugin>
         <groupId>org.apache.avro</groupId>

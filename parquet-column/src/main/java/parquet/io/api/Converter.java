@@ -27,11 +27,11 @@ public abstract class Converter {
   abstract public boolean isPrimitive();
 
   public PrimitiveConverter asPrimitiveConverter() {
-    throw new ClassCastException(getClass().getName());
+    throw new ClassCastException("Expected instance of primitive converter but got \"" + getClass().getName() + "\"");
   }
 
   public GroupConverter asGroupConverter() {
-    throw new ClassCastException(getClass().getName());
+    throw new ClassCastException("Expected instance of group converter but got \"" + getClass().getName() + "\"");
   }
 
 }

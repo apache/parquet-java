@@ -28,6 +28,7 @@ import static parquet.thrift.struct.ThriftTypeID.SET;
 import static parquet.thrift.struct.ThriftTypeID.STRING;
 import static parquet.thrift.struct.ThriftTypeID.STRUCT;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -64,6 +65,22 @@ import org.codehaus.jackson.annotate.JsonTypeInfo.Id;
     @JsonSubTypes.Type(value=ThriftType.StructType.class, name="STRUCT")
 })
 public abstract class ThriftType {
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (!(o instanceof ThriftType)) return false;
+
+    ThriftType that = (ThriftType) o;
+    if (type != that.type) return false;
+
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    return type != null ? type.hashCode() : 0;
+  }
 
   public static ThriftType fromJSON(String json) {
     return JSON.fromJSON(json, ThriftType.class);
@@ -190,6 +207,24 @@ public abstract class ThriftType {
     public void accept(TypeVisitor visitor) {
       visitor.visit(this);
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      StructType that = (StructType) o;
+
+      if (!Arrays.equals(childById, that.childById)) return false;
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = childById != null ? Arrays.hashCode(childById) : 0;
+      return result;
+    }
+
   }
 
   public static class MapType extends ThriftType {
@@ -216,6 +251,27 @@ public abstract class ThriftType {
       visitor.visit(this);
     }
 
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (!(o instanceof MapType)) return false;
+      if (!super.equals(o)) return false;
+
+      MapType mapType = (MapType) o;
+
+      if (!key.equals(mapType.key)) return false;
+      if (!value.equals(mapType.value)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = super.hashCode();
+      result = 31 * result + key.hashCode();
+      result = 31 * result + value.hashCode();
+      return result;
+    }
   }
 
   public static class SetType extends ThriftType {
@@ -236,6 +292,25 @@ public abstract class ThriftType {
       visitor.visit(this);
     }
 
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (!(o instanceof SetType)) return false;
+      if (!super.equals(o)) return false;
+
+      SetType setType = (SetType) o;
+
+      if (!values.equals(setType.values)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = super.hashCode();
+      result = 31 * result + values.hashCode();
+      return result;
+    }
   }
 
   public static class ListType extends ThriftType {
@@ -256,6 +331,25 @@ public abstract class ThriftType {
       visitor.visit(this);
     }
 
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (!(o instanceof ListType)) return false;
+      if (!super.equals(o)) return false;
+
+      ListType listType = (ListType) o;
+
+      if (!values.equals(listType.values)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = super.hashCode();
+      result = 31 * result + values.hashCode();
+      return result;
+    }
   }
 
   public static class EnumValue {
@@ -273,6 +367,26 @@ public abstract class ThriftType {
     }
     public String getName() {
       return name;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (!(o instanceof EnumValue)) return false;
+
+      EnumValue enumValue = (EnumValue) o;
+
+      if (id != enumValue.id) return false;
+      if (name != null ? !name.equals(enumValue.name) : enumValue.name != null) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = id;
+      result = 31 * result + (name != null ? name.hashCode() : 0);
+      return result;
     }
   }
 
@@ -311,6 +425,26 @@ public abstract class ThriftType {
     @Override
     public void accept(TypeVisitor visitor) {
       visitor.visit(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (!(o instanceof EnumType)) return false;
+      if (!super.equals(o)) return false;
+
+      EnumType enumType = (EnumType) o;
+
+      if (!values.equals(enumType.values)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = super.hashCode();
+      result = 31 * result + values.hashCode();
+      return result;
     }
   }
 

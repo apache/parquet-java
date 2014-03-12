@@ -40,6 +40,10 @@ public abstract class Primitive {
     throw new UnsupportedOperationException();
   }
 
+  public Binary getInt96() {
+    throw new UnsupportedOperationException();
+  }
+
   public float getFloat() {
     throw new UnsupportedOperationException();
   }

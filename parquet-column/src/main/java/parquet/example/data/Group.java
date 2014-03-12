@@ -16,6 +16,7 @@
 package parquet.example.data;
 
 import parquet.Log;
+import parquet.example.data.simple.NanoTime;
 import parquet.io.api.Binary;
 import parquet.io.api.RecordConsumer;
 
@@ -43,6 +44,10 @@ abstract public class Group extends GroupValueSource {
     add(getType().getFieldIndex(field), value);
   }
 
+  public void add(String field, NanoTime value) {
+    add(getType().getFieldIndex(field), value);
+  }
+
   public void add(String field, boolean value) {
     add(getType().getFieldIndex(field), value);
   }
@@ -67,6 +72,8 @@ abstract public class Group extends GroupValueSource {
   abstract public void add(int fieldIndex, String value);
 
   abstract public void add(int fieldIndex, boolean value);
+
+  abstract public void add(int fieldIndex, NanoTime value);
 
   abstract public void add(int fieldIndex, Binary value);
 
@@ -98,6 +105,11 @@ abstract public class Group extends GroupValueSource {
   }
 
   public Group append(String fieldName, long value) {
+    add(fieldName, value);
+    return this;
+  }
+
+  public Group append(String fieldName, NanoTime value) {
     add(fieldName, value);
     return this;
   }

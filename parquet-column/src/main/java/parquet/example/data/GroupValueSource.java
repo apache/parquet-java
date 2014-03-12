@@ -44,6 +44,10 @@ abstract public class GroupValueSource {
     return getBinary(getType().getFieldIndex(field), index);
   }
 
+  public Binary getInt96(String field, int index) {
+    return getInt96(getType().getFieldIndex(field), index);
+  }
+
   abstract public int getFieldRepetitionCount(int fieldIndex);
 
   abstract public GroupValueSource getGroup(int fieldIndex, int index);
@@ -55,6 +59,8 @@ abstract public class GroupValueSource {
   abstract public boolean getBoolean(int fieldIndex, int index);
 
   abstract public Binary getBinary(int fieldIndex, int index);
+
+  abstract public Binary getInt96(int fieldIndex, int index);
 
   abstract public String getValueToString(int fieldIndex, int index);
 

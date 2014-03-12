@@ -13,6 +13,7 @@
  */
 package parquet.hive;
 
+import org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.mapreduce.OutputFormat;
 
@@ -20,7 +21,7 @@ import org.apache.hadoop.mapreduce.OutputFormat;
  * Deprecated name of the parquet-hive output format. This class exists
  * simply to provide backwards compatibility with users who specified
  * this name in the Hive metastore. All users should now use
- * {@link MapredParquetOutputFormat MapredParquetOutputFormat}
+ * STORED AS PARQUET
  */
 @Deprecated
 public class DeprecatedParquetOutputFormat extends MapredParquetOutputFormat {

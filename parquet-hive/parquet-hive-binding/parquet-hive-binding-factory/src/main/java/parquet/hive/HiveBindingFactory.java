@@ -100,6 +100,10 @@ public class HiveBindingFactory {
           Hive010Binding.class.getSimpleName() + " as it's expected the 0.10 " +
           "binding will work with 0.11");
       return Hive010Binding.class;
+    } else if(hiveVersion.startsWith(HIVE_VERSION_013)) {
+      throw new HiveBindingInstantiationError("Hive 0.13 contains native Parquet support " + 
+          "and the parquet-hive jars from the parquet project should not be included " +
+          "in Hive's classpath.");
     }
     LOG.debug("Hive version " + hiveVersion + ", returning " +
         Hive012Binding.class.getSimpleName());
@@ -134,6 +138,9 @@ public class HiveBindingFactory {
   }
   static class HiveBindingInstantiationError extends Error {
     private static final long serialVersionUID = -9348060142128L;
+    public HiveBindingInstantiationError(String msg) {
+      super(msg);
+    }
     public HiveBindingInstantiationError(String msg, Exception e) {
       super(msg, e);
     }

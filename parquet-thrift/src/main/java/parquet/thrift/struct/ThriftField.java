@@ -92,4 +92,27 @@ public class ThriftField {
     return JSON.toJSON(this);
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (!(o instanceof ThriftField)) return false;
+
+    ThriftField that = (ThriftField) o;
+
+    if (fieldId != that.fieldId) return false;
+    if (!name.equals(that.name)) return false;
+    if (requirement != that.requirement) return false;
+    if (!type.equals(that.type)) return false;
+
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    int result = name.hashCode();
+    result = 31 * result + (int) fieldId;
+    result = 31 * result + requirement.hashCode();
+    result = 31 * result + type.hashCode();
+    return result;
+  }
 }

@@ -15,6 +15,7 @@ import parquet.column.values.dictionary.DictionaryValuesWriter.PlainDoubleDictio
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
 import parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
@@ -190,6 +191,12 @@ public class ParquetProperties {
         return new PlainLongDictionaryValuesWriter(dictionaryPageSize, initialSizePerCol);
       } else {
         return new PlainValuesWriter(initialSizePerCol);
+      }
+    case INT96:
+      if (enableDictionary) {
+        return new PlainFixedLenArrayDictionaryValuesWriter(12, dictionaryPageSize, initialSizePerCol);
+      } else {
+        return new FixedLenByteArrayPlainValuesWriter(12, initialSizePerCol);
       }
     case DOUBLE:
       if(enableDictionary) {

@@ -30,13 +30,13 @@ class SimplePrimitiveConverter extends PrimitiveConverter {
 
   /**
    * {@inheritDoc}
-   * @see parquet.io.api.PrimitiveConverter#addBinary(byte[])
+   * @see parquet.io.api.PrimitiveConverter#addBinary(Binary)
    */
   @Override
   public void addBinary(Binary value) {
     parent.getCurrentRecord().add(index, value);
   }
-  
+
   /**
    * {@inheritDoc}
    * @see parquet.io.api.PrimitiveConverter#addBoolean(boolean)
