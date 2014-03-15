@@ -204,6 +204,20 @@ abstract public class Type {
   protected abstract Type union(Type toMerge, boolean strict);
 
   /**
+   * Renames this type to a new name
+   * @param newName The name to change this type to
+   * @return A copy of this type with a new name
+   */
+  public abstract Type rename(String newName) ;
+
+  /**
+   * Changes this type to a new repetition level
+   * @param repetition The desired repetition level
+   * @return A copy of this type with a new repetition level
+   */
+  public abstract Type changeRepetition(Repetition repetition);
+
+  /**
    * {@inheritDoc}
    */
   @Override

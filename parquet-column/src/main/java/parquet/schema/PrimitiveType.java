@@ -405,6 +405,22 @@ public final class PrimitiveType extends Type {
    * {@inheritDoc}
    */
   @Override
+  public Type rename(String newName) {
+    return new PrimitiveType(getRepetition(), getPrimitiveTypeName(), getTypeLength(), newName, getOriginalType());
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public Type changeRepetition(Repetition repetition) {
+    return new PrimitiveType(repetition, getPrimitiveTypeName(), getTypeLength(), getName(), getOriginalType());
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   protected boolean typeEquals(Type other) {
     if (other.isPrimitive()) {
       PrimitiveType primitiveType = other.asPrimitiveType();
