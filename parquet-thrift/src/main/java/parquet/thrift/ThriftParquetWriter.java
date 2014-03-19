@@ -35,18 +35,29 @@ import parquet.hadoop.thrift.ThriftWriteSupport;
  */
 public class ThriftParquetWriter<T extends TBase<?,?>> extends ParquetWriter<T> {
 
+  @Deprecated
   public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName) throws IOException {
     super(file, new ThriftWriteSupport<T>(thriftClass), compressionCodecName, ParquetProperties.DEFAULT_BLOCK_SIZE, ParquetProperties.DEFAULT_PAGE_SIZE);
   }
 
+  @Deprecated
   public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName, int blockSize, int pageSize, boolean enableDictionary, boolean validating) throws IOException {
     super(file, new ThriftWriteSupport<T>(thriftClass), compressionCodecName, blockSize, pageSize, enableDictionary, validating);
   }
 
+  @Deprecated
   public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName, int blockSize, int pageSize, boolean enableDictionary, boolean validating, Configuration conf) throws IOException {
     super(file, new ThriftWriteSupport<T>(thriftClass), compressionCodecName,
-        blockSize, pageSize, pageSize, enableDictionary, validating,
-        DEFAULT_WRITER_VERSION, conf);
+        conf,
+        new ParquetProperties.ParquetPropertiesBuilder()
+          .setBlockSize(blockSize)
+          .setPageSize(pageSize)
+          .setEnableDictionary(enableDictionary)
+          .setValidating(validating)
+          .build());
   }
-
+  
+  public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName, Configuration conf, ParquetProperties parquetProperties) throws IOException {
+    super(file, new ThriftWriteSupport<T>(thriftClass), compressionCodecName, conf, parquetProperties);
+  }
 }

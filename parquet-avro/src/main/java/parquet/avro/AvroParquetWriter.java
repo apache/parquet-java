@@ -40,6 +40,7 @@ public class AvroParquetWriter<T extends IndexedRecord> extends ParquetWriter<T>
    * @param pageSize
    * @throws IOException
    */
+  @Deprecated
   public AvroParquetWriter(Path file, Schema avroSchema,
       CompressionCodecName compressionCodecName, int blockSize,
       int pageSize) throws IOException {
@@ -57,12 +58,18 @@ public class AvroParquetWriter<T extends IndexedRecord> extends ParquetWriter<T>
    * @param enableDictionary Whether to use a dictionary to compress columns.
    * @throws IOException
    */
+  @Deprecated
   public AvroParquetWriter(Path file, Schema avroSchema,
                            CompressionCodecName compressionCodecName, int blockSize,
                            int pageSize, boolean enableDictionary) throws IOException {
     super(file, AvroParquetWriter.<T>writeSupport(avroSchema),
-        compressionCodecName, blockSize, pageSize, enableDictionary,
-        DEFAULT_IS_VALIDATING_ENABLED);
+        compressionCodecName,
+        new Configuration(),
+        new ParquetProperties.ParquetPropertiesBuilder()
+        .setBlockSize(blockSize)
+        .setPageSize(pageSize)
+        .setEnableDictionary(enableDictionary)
+        .build());
   }
 
   /** Create a new {@link AvroParquetWriter}. The default block size is 50 MB.The default
@@ -72,6 +79,7 @@ public class AvroParquetWriter<T extends IndexedRecord> extends ParquetWriter<T>
    * @param avroSchema The schema to write with.
    * @throws IOException
    */
+  @Deprecated
   public AvroParquetWriter(Path file, Schema avroSchema) throws IOException {
     this(file, avroSchema, CompressionCodecName.UNCOMPRESSED,
 	  ParquetProperties.DEFAULT_BLOCK_SIZE, ParquetProperties.DEFAULT_PAGE_SIZE);
@@ -88,13 +96,40 @@ public class AvroParquetWriter<T extends IndexedRecord> extends ParquetWriter<T>
    * @param conf The Configuration to use.
    * @throws IOException
    */
+  @Deprecated
   public AvroParquetWriter(Path file, Schema avroSchema,
                            CompressionCodecName compressionCodecName,
                            int blockSize, int pageSize, boolean enableDictionary,
                            Configuration conf) throws IOException {
     super(file, AvroParquetWriter.<T>writeSupport(avroSchema),
-        compressionCodecName, blockSize, pageSize, pageSize, enableDictionary,
-        DEFAULT_IS_VALIDATING_ENABLED, DEFAULT_WRITER_VERSION, conf);
+        compressionCodecName,
+        conf,
+        new ParquetProperties.ParquetPropertiesBuilder()
+        .setBlockSize(blockSize)
+        .setPageSize(pageSize)
+        .setEnableDictionary(enableDictionary)
+        .build());
+  }
+  
+  /**
+   * Create a new {@link AvroParquetWriter}.
+   * 
+   * @param file The file name to write to.
+   * @param avroSchema The schema to write with.
+   * @param compressionCodecName Compression code to use
+   * @param conf The Configuration to use.
+   * @param parquetProperties configured parquet properties
+   * @throws IOException
+   */
+  public AvroParquetWriter(Path file, Schema avroSchema,
+      CompressionCodecName compressionCodecName,
+      Configuration conf,
+      ParquetProperties parquetProperties) throws IOException {
+    super(file,
+        AvroParquetWriter.<T>writeSupport(avroSchema),
+        compressionCodecName,
+        conf,
+        parquetProperties);
   }
 
   @SuppressWarnings("unchecked")
