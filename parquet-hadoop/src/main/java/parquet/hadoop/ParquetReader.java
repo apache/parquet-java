@@ -91,7 +91,7 @@ public class ParquetReader<T> implements Closeable {
     this.filter = filter;
     this.conf = conf;
 
-    FileSystem fs = FileSystem.get(conf);
+    FileSystem fs = file.getFileSystem(conf);
     List<FileStatus> statuses = Arrays.asList(fs.listStatus(file));
     List<Footer> footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(conf, statuses);
     this.footersIterator = footers.iterator();
