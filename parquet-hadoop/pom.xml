@@ -146,6 +146,10 @@
                   <includes>
                     <include>**</include>
                   </includes>
+                  <excludes>
+                    <exclude>org/apache/commons/codec/language/*</exclude>
+                    <exclude>org/apache/commons/codec/net/*</exclude>
+                  </excludes>
                 </filter>
               </filters>
               <relocations>
