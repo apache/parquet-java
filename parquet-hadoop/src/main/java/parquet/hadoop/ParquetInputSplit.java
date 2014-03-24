@@ -190,7 +190,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
   String decompressString(String str) {
     byte[] decoded  = Base64.decodeBase64(str);
     ByteArrayInputStream obj = new ByteArrayInputStream(decoded);
-    GZIPInputStream gzip;
+    GZIPInputStream gzip = null;
     String outStr = "";
     try {
       gzip = new GZIPInputStream(obj);
@@ -202,12 +202,19 @@ public class ParquetInputSplit extends FileSplit implements Writable {
         sb.append(buffer, 0, n);
       }
       outStr = sb.toString();
-      gzip.close();
-
     } catch (IOException e) {
       // Not really sure how we can get here. I guess the best thing to do is to croak.
-      LOG.error("Unable to uncompress InputSplit string" + str, e);
+      LOG.error("Unable to uncompress InputSplit string " + str, e);
       throw new RuntimeException("Unable to uncompress InputSplit String", e);
+    } finally {
+      if (null != gzip) {
+        try {
+          gzip.close();
+        } catch (IOException e) {
+          LOG.error("Unable to uncompress InputSplit string " + str, e);
+          throw new RuntimeException("Unable to uncompress InputSplit String", e);
+        }
+      }
     }
     return outStr;
   }
