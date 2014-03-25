@@ -207,7 +207,6 @@ public class GroupType extends Type {
       GroupType groupType = otherType.asGroupType();
       return getRepetition() == groupType.getRepetition() &&
           getName().equals(groupType.getName()) &&
-          getOriginalType()==groupType.getOriginalType() &&
           getFields().equals(groupType.getFields());
     }
   }
