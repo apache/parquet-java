@@ -118,8 +118,8 @@ public class HiveSchemaConverter {
         typeInfo.getMapKeyTypeInfo(), Repetition.REQUIRED);
     final Type valueType = convertType(ParquetHiveSerDe.MAP_VALUE.toString(),
         typeInfo.getMapValueTypeInfo());
-    return listWrapper(name, OriginalType.MAP_KEY_VALUE,
-        new GroupType(Repetition.REPEATED, ParquetHiveSerDe.MAP.toString(), keyType, valueType));
+    return listWrapper(name, OriginalType.MAP,
+        new GroupType(Repetition.REPEATED, ParquetHiveSerDe.MAP.toString(), OriginalType.MAP_KEY_VALUE, keyType, valueType));
   }
 
   private static GroupType listWrapper(final String name, final OriginalType originalType,
