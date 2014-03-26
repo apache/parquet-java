@@ -11,10 +11,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hive.ql.io.parquet.serde.primitive;
-
+//package org.apache.hadoop.hive.ql.io.parquet.serde.primitive;
+package org.apache.hadoop.hive.serde2.objectinspector.primitive;
 import org.apache.hadoop.hive.ql.io.parquet.writable.BinaryWritable;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.AbstractPrimitiveJavaObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.JavaStringObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.SettableStringObjectInspector;
 import org.apache.hadoop.io.Text;
@@ -25,10 +26,10 @@ import parquet.io.api.Binary;
  * The ParquetStringInspector inspects a BinaryWritable to give a Text or String.
  *
  */
-public class ParquetStringInspector extends AbstractPrimitiveJavaObjectInspector implements SettableStringObjectInspector {
+public class ParquetStringInspector extends JavaStringObjectInspector implements SettableStringObjectInspector {
 
-  ParquetStringInspector() {
-    super(PrimitiveObjectInspectorUtils.stringTypeEntry);
+  public ParquetStringInspector() {
+	  super();
   }
 
   @Override
