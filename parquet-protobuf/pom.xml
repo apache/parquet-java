@@ -136,11 +136,6 @@
                   <arg value="src/test/resources/TestProtobuf.proto"/>
                   <arg value="-I."/>
                 </exec>
-                <exec failonerror="true" executable="protoc">
-                  <arg value="--java_out=${project.build.directory}/generated-test-sources/java"/>
-                  <arg value="src/test/resources/TestProtobuf2.proto"/>
-                  <arg value="-I."/>
-                </exec>
               </tasks>
               <sourceRoot>src/main/java</sourceRoot>
               <sourceRoot>target/generated-sources/java</sourceRoot>
