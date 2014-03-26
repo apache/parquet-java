@@ -13,6 +13,7 @@
 
   <properties>
     <elephant-bird.version>4.4</elephant-bird.version>
+    <protobuf.version>2.5.0</protobuf.version>
   </properties>
 
 
@@ -29,7 +30,7 @@
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
-      <version>2.4.1</version>
+      <version>${protobuf.version}</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
@@ -133,6 +134,11 @@
                 <exec failonerror="true" executable="protoc">
                   <arg value="--java_out=${project.build.directory}/generated-test-sources/java"/>
                   <arg value="src/test/resources/TestProtobuf.proto"/>
+                  <arg value="-I."/>
+                </exec>
+                <exec failonerror="true" executable="protoc">
+                  <arg value="--java_out=${project.build.directory}/generated-test-sources/java"/>
+                  <arg value="src/test/resources/TestProtobuf2.proto"/>
                   <arg value="-I."/>
                 </exec>
               </tasks>
