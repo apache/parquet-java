@@ -20,24 +20,14 @@ import static parquet.bytes.BytesInput.concat;
 import java.io.IOException;
 
 import parquet.Log;
-import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
 import parquet.column.ParquetProperties;
 import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
+import parquet.column.statistics.*;
 import parquet.column.values.ValuesWriter;
-import parquet.column.values.boundedint.DevNullValuesWriter;
-import parquet.column.values.dictionary.DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter;
-import parquet.column.values.dictionary.DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter;
-import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDictionaryValuesWriter;
-import parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
-import parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
-import parquet.column.values.plain.BooleanPlainValuesWriter;
-import parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
-import parquet.column.values.plain.PlainValuesWriter;
-import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
 
@@ -61,6 +51,8 @@ final class ColumnWriterImpl implements ColumnWriter {
   private int valueCount;
   private int valueCountForNextSizeCheck;
 
+  private Statistics statistics;
+
   public ColumnWriterImpl(
       ColumnDescriptor path,
       PageWriter pageWriter,
@@ -74,9 +66,9 @@ final class ColumnWriterImpl implements ColumnWriter {
     this.pageSizeThreshold = pageSizeThreshold;
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
+    this.statistics = StatsHelper.getStatsBasedOnType(this.path.getType());
 
     ParquetProperties parquetProps = new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary);
-    
     this.repetitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), initialSizePerCol);
     this.definitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), initialSizePerCol);
     this.dataColumn = parquetProps.getValuesWriter(path, initialSizePerCol);
@@ -85,6 +77,7 @@ final class ColumnWriterImpl implements ColumnWriter {
   private void log(Object value, int r, int d) {
     LOG.debug(path + " " + value + " r:" + r + " d:" + d);
   }
+
 
   /**
    * Counts how many values have been written and checks the memory usage to flush the page when we reach the page threshold.
@@ -113,12 +106,41 @@ final class ColumnWriterImpl implements ColumnWriter {
     }
   }
 
+  private void updateStatisticsNumNulls() {
+    statistics.incrementNumNulls();
+  }
+
+  private void updateStatistics(int value) {
+    statistics.updateStats(value);
+  }
+
+  private void updateStatistics(long value) {
+    statistics.updateStats(value);
+  }
+
+  private void updateStatistics(float value) {
+    statistics.updateStats(value);
+  }
+
+  private void updateStatistics(double value) {
+   statistics.updateStats(value);
+  }
+
+  private void updateStatistics(Binary value) {
+   statistics.updateStats(value);
+  }
+
+  private void updateStatistics(boolean value) {
+   statistics.updateStats(value);
+  }
+
   private void writePage() {
     if (DEBUG) LOG.debug("write page");
     try {
       pageWriter.writePage(
           concat(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()),
           valueCount,
+          statistics,
           repetitionLevelColumn.getEncoding(),
           definitionLevelColumn.getEncoding(),
           dataColumn.getEncoding());
@@ -132,10 +154,16 @@ final class ColumnWriterImpl implements ColumnWriter {
   }
 
   @Override
+  public Statistics getColumnStatistics() {
+    return statistics;
+  }
+
+  @Override
   public void writeNull(int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(null, repetitionLevel, definitionLevel);
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
+    updateStatisticsNumNulls();
     accountForValueWritten();
   }
 
@@ -145,6 +173,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeDouble(value);
+    updateStatistics(value);
     accountForValueWritten();
   }
 
@@ -154,6 +183,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeFloat(value);
+    updateStatistics(value);
     accountForValueWritten();
   }
 
@@ -163,6 +193,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeBytes(value);
+    updateStatistics(value);
     accountForValueWritten();
   }
 
@@ -172,6 +203,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeBoolean(value);
+    updateStatistics(value);
     accountForValueWritten();
   }
 
@@ -181,6 +213,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeInteger(value);
+    updateStatistics(value);
     accountForValueWritten();
   }
 
@@ -190,6 +223,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     repetitionLevelColumn.writeInteger(repetitionLevel);
     definitionLevelColumn.writeInteger(definitionLevel);
     dataColumn.writeLong(value);
+    updateStatistics(value);
     accountForValueWritten();
   }
 

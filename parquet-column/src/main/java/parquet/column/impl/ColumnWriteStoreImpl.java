@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TreeMap;
 
 import parquet.column.ColumnDescriptor;
@@ -56,6 +57,10 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
       columns.put(path, column);
     }
     return column;
+  }
+
+  public Set<ColumnDescriptor> getColumnDescriptors() {
+    return columns.keySet();
   }
 
   private ColumnWriterImpl newMemColumn(ColumnDescriptor path) {

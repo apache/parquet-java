@@ -27,6 +27,7 @@ import parquet.column.page.Page;
 import parquet.column.page.PageReader;
 import parquet.column.page.PageWriter;
 import parquet.column.page.mem.MemPageStore;
+import parquet.column.statistics.LongStatistics;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 public class TestMemPageStore {
@@ -37,11 +38,12 @@ public class TestMemPageStore {
   public void test() throws IOException {
     MemPageStore memPageStore = new MemPageStore(10);
     ColumnDescriptor col = new ColumnDescriptor(path , PrimitiveTypeName.INT64, 2, 2);
+    LongStatistics stats = new LongStatistics();
     PageWriter pageWriter = memPageStore.getPageWriter(col);
-    pageWriter.writePage(BytesInput.from(new byte[735]), 209, BIT_PACKED, BIT_PACKED, PLAIN);
-    pageWriter.writePage(BytesInput.from(new byte[743]), 209, BIT_PACKED, BIT_PACKED, PLAIN);
-    pageWriter.writePage(BytesInput.from(new byte[743]), 209, BIT_PACKED, BIT_PACKED, PLAIN);
-    pageWriter.writePage(BytesInput.from(new byte[735]), 209, BIT_PACKED, BIT_PACKED, PLAIN);
+    pageWriter.writePage(BytesInput.from(new byte[735]), 209, stats, BIT_PACKED, BIT_PACKED, PLAIN);
+    pageWriter.writePage(BytesInput.from(new byte[743]), 209, stats, BIT_PACKED, BIT_PACKED, PLAIN);
+    pageWriter.writePage(BytesInput.from(new byte[743]), 209, stats, BIT_PACKED, BIT_PACKED, PLAIN);
+    pageWriter.writePage(BytesInput.from(new byte[735]), 209, stats, BIT_PACKED, BIT_PACKED, PLAIN);
     PageReader pageReader = memPageStore.getPageReader(col);
     long totalValueCount = pageReader.getTotalValueCount();
     System.out.println(totalValueCount);

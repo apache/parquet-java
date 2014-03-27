@@ -30,6 +30,7 @@ import org.apache.hadoop.fs.Path;
 import org.junit.Test;
 
 import parquet.column.Encoding;
+import parquet.column.statistics.BinaryStatistics;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -71,9 +72,12 @@ public class TestInputFormat {
 
   private BlockMetaData newBlock(long start) {
     BlockMetaData blockMetaData = new BlockMetaData();
-    ColumnChunkMetaData column = ColumnChunkMetaData.get(
-        ColumnPath.get("foo"), PrimitiveTypeName.BINARY, CompressionCodecName.GZIP, new HashSet<Encoding>(Arrays.asList(Encoding.PLAIN)),
-        start, 0l, 0l, 2l, 0l);
+    ColumnChunkMetaData column = ColumnChunkMetaData.get(ColumnPath.get("foo"),
+                                                         PrimitiveTypeName.BINARY,
+                                                         CompressionCodecName.GZIP,
+                                                         new HashSet<Encoding>(Arrays.asList(Encoding.PLAIN)),
+                                                         new BinaryStatistics(),
+                                                         start, 0l, 0l, 2l, 0l);
     blockMetaData.addColumn(column);
     return blockMetaData;
   }

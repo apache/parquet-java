@@ -27,7 +27,10 @@ public class ColumnChunkProperties {
 
   private static Map<ColumnChunkProperties, ColumnChunkProperties> cache = new HashMap<ColumnChunkProperties, ColumnChunkProperties>();
 
-  public static ColumnChunkProperties get(ColumnPath path, PrimitiveTypeName type, CompressionCodecName codec, Set<Encoding> encodings) {
+  public static ColumnChunkProperties get(ColumnPath path,
+                                          PrimitiveTypeName type,
+                                          CompressionCodecName codec,
+                                          Set<Encoding> encodings) {
     ColumnChunkProperties key = new ColumnChunkProperties(codec, path, type, encodings);
     ColumnChunkProperties cached = cache.get(key);
     if (cached == null) {
@@ -42,8 +45,10 @@ public class ColumnChunkProperties {
   private final PrimitiveTypeName type;
   private final Set<Encoding> encodings;
 
-  private ColumnChunkProperties(CompressionCodecName codec, ColumnPath path,
-      PrimitiveTypeName type, Set<Encoding> encodings) {
+  private ColumnChunkProperties(CompressionCodecName codec,
+                                ColumnPath path,
+                                PrimitiveTypeName type,
+                                Set<Encoding> encodings) {
     super();
     this.codec = codec;
     this.path = path;
@@ -75,7 +80,6 @@ public class ColumnChunkProperties {
     }
     return false;
   }
-
 
   private boolean equals(Set<Encoding> a, Set<Encoding> b) {
     return a.size() == b.size() && a.containsAll(b);

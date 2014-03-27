@@ -19,6 +19,7 @@ import java.io.IOException;
 
 import parquet.bytes.BytesInput;
 import parquet.column.Encoding;
+import parquet.column.statistics.Statistics;
 
 /**
  * a writer for all the pages of a given column chunk
@@ -32,12 +33,13 @@ public interface PageWriter {
    * writes a single page
    * @param bytesInput the bytes for the page
    * @param valueCount the number of values in that page
+   * @param statistics the statistics for that page
    * @param rlEncoding repetition level encoding
    * @param dlEncoding definition level encoding
    * @param valuesEncoding values encoding
    * @throws IOException
    */
-  void writePage(BytesInput bytesInput, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
+  void writePage(BytesInput bytesInput, int valueCount, Statistics statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
 
   /**
    * @return the current size used in the memory buffer for that column chunk

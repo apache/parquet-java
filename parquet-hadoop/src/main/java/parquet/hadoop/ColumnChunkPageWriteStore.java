@@ -33,6 +33,8 @@ import parquet.column.Encoding;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriteStore;
 import parquet.column.page.PageWriter;
+import parquet.column.statistics.Statistics;
+import parquet.column.statistics.StatsHelper;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.io.ParquetEncodingException;
@@ -58,14 +60,22 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
     private Set<Encoding> encodings = new HashSet<Encoding>();
 
+    private Statistics totalStatistics;
+
     private ColumnChunkPageWriter(ColumnDescriptor path, BytesCompressor compressor, int initialSize) {
       this.path = path;
       this.compressor = compressor;
       this.buf = new CapacityByteArrayOutputStream(initialSize);
+      this.totalStatistics = StatsHelper.getStatsBasedOnType(this.path.getType());
     }
 
     @Override
-    public void writePage(BytesInput bytes, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException {
+    public void writePage(BytesInput bytes,
+                          int valueCount,
+                          Statistics statistics,
+                          Encoding rlEncoding,
+                          Encoding dlEncoding,
+                          Encoding valuesEncoding) throws IOException {
       long uncompressedSize = bytes.size();
       BytesInput compressedBytes = compressor.compress(bytes);
       long compressedSize = compressedBytes.size();
@@ -73,6 +83,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
           (int)uncompressedSize,
           (int)compressedSize,
           valueCount,
+          statistics,
           rlEncoding,
           dlEncoding,
           valuesEncoding,
@@ -81,6 +92,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
       this.pageCount += 1;
+      this.totalStatistics.mergeStatistics(statistics);
       compressedBytes.writeAllTo(buf);
       encodings.add(rlEncoding);
       encodings.add(dlEncoding);
@@ -98,7 +110,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
         writer.writeDictionaryPage(dictionaryPage);
         encodings.add(dictionaryPage.getEncoding());
       }
-      writer.writeDataPages(BytesInput.from(buf), uncompressedLength, compressedLength, new ArrayList<Encoding>(encodings));
+      writer.writeDataPages(BytesInput.from(buf), uncompressedLength, compressedLength, totalStatistics, new ArrayList<Encoding>(encodings));
       writer.endColumn();
       if (INFO) {
         LOG.info(
