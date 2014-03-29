@@ -127,7 +127,7 @@ public class TestHiveSchemaConverter {
     assertEquals("mapCol",topLevel.getName());
     assertEquals(OriginalType.MAP, topLevel.getOriginalType());
     assertEquals(Repetition.OPTIONAL, topLevel.getRepetition());
-  
+
     assertEquals(1, topLevel.asGroupType().getFieldCount());
     parquet.schema.Type secondLevel = topLevel.asGroupType().getFields().get(0);
     //there is one repeated field for mapCol, the field name is "map" and its original Type is MAP_KEY_VALUE;
