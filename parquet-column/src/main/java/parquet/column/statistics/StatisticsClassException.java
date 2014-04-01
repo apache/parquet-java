@@ -18,7 +18,7 @@ package parquet.column.statistics;
 import parquet.ParquetRuntimeException;
 
 /**
- * Thrown if the specified column type is unknown in the underlying storage
+ * Thrown if the two Statistics objects have mismatching types
  *
  * @author  Katya Gonina
  */
