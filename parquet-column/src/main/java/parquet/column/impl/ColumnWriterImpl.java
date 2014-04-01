@@ -26,7 +26,7 @@ import parquet.column.ParquetProperties;
 import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
-import parquet.column.statistics.*;
+import parquet.column.statistics.Statistics;
 import parquet.column.values.ValuesWriter;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
@@ -66,7 +66,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     this.pageSizeThreshold = pageSizeThreshold;
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
-    this.statistics = StatsHelper.getStatsBasedOnType(this.path.getType());
+    this.statistics = Statistics.getStatsBasedOnType(this.path.getType());
 
     ParquetProperties parquetProps = new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary);
     this.repetitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), initialSizePerCol);

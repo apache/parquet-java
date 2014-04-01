@@ -40,7 +40,6 @@ import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.DictionaryPage;
 import parquet.column.statistics.Statistics;
-import parquet.column.statistics.StatsHelper;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -196,7 +195,7 @@ public class ParquetFileWriter {
     uncompressedLength = 0;
     // need to know what type of stats to initialize to
     // better way to do this?
-    currentStatistics = StatsHelper.getStatsBasedOnType(currentChunkType);
+    currentStatistics = Statistics.getStatsBasedOnType(currentChunkType);
   }
 
   /**

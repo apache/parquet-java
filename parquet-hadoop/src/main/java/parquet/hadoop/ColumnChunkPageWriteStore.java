@@ -34,7 +34,6 @@ import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriteStore;
 import parquet.column.page.PageWriter;
 import parquet.column.statistics.Statistics;
-import parquet.column.statistics.StatsHelper;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.io.ParquetEncodingException;
@@ -66,7 +65,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       this.path = path;
       this.compressor = compressor;
       this.buf = new CapacityByteArrayOutputStream(initialSize);
-      this.totalStatistics = StatsHelper.getStatsBasedOnType(this.path.getType());
+      this.totalStatistics = Statistics.getStatsBasedOnType(this.path.getType());
     }
 
     @Override

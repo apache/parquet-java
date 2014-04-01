@@ -33,7 +33,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import parquet.Log;
-import parquet.column.statistics.StatsHelper;
 import parquet.format.ConvertedType;
 import parquet.format.ColumnChunk;
 import parquet.format.DataPageHeader;
@@ -237,7 +236,7 @@ public class ParquetMetadataConverter {
 
   public parquet.column.statistics.Statistics fromParquetStatistics(Statistics statistics, PrimitiveTypeName type) {
     // create stats object based on the column type
-    parquet.column.statistics.Statistics stats = StatsHelper.getStatsBasedOnType(type);
+    parquet.column.statistics.Statistics stats = parquet.column.statistics.Statistics.getStatsBasedOnType(type);
     // If there was no statistics written to the footer, create an empty Statistics object and return
     if (statistics != null) {
       stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
