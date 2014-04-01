@@ -13,7 +13,6 @@
 * ISSUE [264](https://github.com/Parquet/parquet-mr/pull/264): Native Protocol Buffer support
 * ISSUE [293](https://github.com/Parquet/parquet-mr/pull/293): Int96 support
 * ISSUE [313](https://github.com/Parquet/parquet-mr/pull/313): Add hadoop Configuration to Avro and Thrift writers (#295).
-* ISSUE [1](https://github.com/Parquet/parquet-mr/pull/1): Parquet thrift support and some related refactoring
 * ISSUE [262](https://github.com/Parquet/parquet-mr/pull/262): Scrooge schema converter and projection pushdown in Scrooge
 * ISSUE [297](https://github.com/Parquet/parquet-mr/pull/297): Ports HIVE-5783 to the parquet-hive module
 * ISSUE [303](https://github.com/Parquet/parquet-mr/pull/303): Avro read schema aliases
