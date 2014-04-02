@@ -25,45 +25,19 @@ public class BooleanStatistics extends Statistics{
   @Override
   public void updateStats(boolean value) {
     if (this.isEmpty()) {
-      max = value;
-      min = value;
-      this.markAsNotEmpty();
+      initializeStats(value, value);
     } else {
-      updateMax(value);
-      updateMin(value);
+      updateStats(value, value);
     }
   }
 
   @Override
-  public boolean equals(Statistics stats) {
-    if (this.getClass() == stats.getClass()) {
-      BooleanStatistics booleanStats = (BooleanStatistics)stats;
-      return (max == booleanStats.getMax()) &&
-             (min == booleanStats.getMin()) &&
-             (this.getNumNulls() == stats.getNumNulls());
+  public void mergeStatisticsMinMax(Statistics stats) {
+    BooleanStatistics boolStats = (BooleanStatistics)stats;
+    if (this.isEmpty()) {
+      initializeStats(boolStats.getMin(), boolStats.getMax());
     } else {
-      throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
-    }
-  }
-
-  @Override
-  public void mergeStatistics(Statistics stats) {
-    if (stats.isEmpty()) return;
-
-    if (this.getClass() == stats.getClass()) {
-      BooleanStatistics boolStats = (BooleanStatistics)stats;
-      if (this.isEmpty()) {
-        this.setNumNulls(stats.getNumNulls());
-        max = boolStats.getMax();
-        min = boolStats.getMin();
-        this.markAsNotEmpty();
-      } else {
-        incrementNumNulls(stats.getNumNulls());
-        updateMax(boolStats.getMax());
-        updateMin(boolStats.getMin());
-      }
-    } else {
-      throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
+      updateStats(boolStats.getMin(), boolStats.getMax());
     }
   }
 
@@ -84,12 +58,15 @@ public class BooleanStatistics extends Statistics{
     return BytesUtils.booleanToBytes(min);
   }
 
-  public void updateMax(boolean value){
-    if (!max && value) { max = value; }
+  public void updateStats(boolean min_value, boolean max_value) {
+    if (min && !min_value) { min = min_value; }
+    if (!max && max_value) { max = max_value; }
   }
 
-  public void updateMin(boolean value) {
-    if (min && !value) { min = value; }
+  public void initializeStats(boolean min_value, boolean max_value) {
+      min = min_value;
+      max = max_value;
+      this.markAsNotEmpty();
   }
 
   public boolean getMax() {

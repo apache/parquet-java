@@ -18,6 +18,7 @@ package parquet.column.statistics;
 import parquet.column.UnknownColumnTypeException;
 import parquet.io.api.Binary;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import java.util.Arrays;
 
 
 /**
@@ -112,19 +113,39 @@ public abstract class Statistics {
   }
 
   /**
-   * Abstract equals method to compare two statistics objects. Used in tests.
+   * Equality comparison method to compare two statistics objects.
    * @param stats Statistics object to compare against
    * @return true if objects are equal, false otherwise
    */
-  abstract public boolean equals(Statistics stats);
+  public boolean equals(Statistics stats) {
+    return Arrays.equals(stats.getMaxBytes(), this.getMaxBytes()) &&
+           Arrays.equals(stats.getMinBytes(), this.getMinBytes()) &&
+           stats.getNumNulls() == this.getNumNulls();
+  }
 
   /**
-   * Abstract method to merge this statistics object with the object passed
+   * Method to merge this statistics object with the object passed
    * as parameter. Merging keeps the smallest of min values, largest of max
    * values and combines the number of null counts.
    * @param stats Statistics object to merge with
    */
-  abstract public void mergeStatistics(Statistics stats);
+  public void mergeStatistics(Statistics stats) {
+    if (stats.isEmpty()) return;
+
+    if (this.getClass() == stats.getClass()) {
+      incrementNumNulls(stats.getNumNulls());
+      mergeStatisticsMinMax(stats);
+    } else {
+      throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
+    }
+  }
+
+  /**
+   * Abstract method to merge this statistics min and max with the values
+   * of the parameter object. Does not do any checks, only called internally.
+   * @param stats Statistics object to merge with
+   */
+  abstract protected void mergeStatisticsMinMax(Statistics stats);
 
   /**
    * Abstract method to set min and max values from byte arrays.

@@ -25,45 +25,19 @@ public class BinaryStatistics extends Statistics{
   @Override
   public void updateStats(Binary value) {
     if (this.isEmpty()) {
-      max = value;
-      min = value;
-      this.markAsNotEmpty();
+      initializeStats(value, value);
     } else {
-      updateMax(value);
-      updateMin(value);
+      updateStats(value, value);
     }
   }
 
   @Override
-  public boolean equals(Statistics stats) {
-    if (this.getClass() == stats.getClass()) {
-      BinaryStatistics binaryStats = (BinaryStatistics)stats;
-      return (max.equals(binaryStats.getMax())) &&
-             (min.equals(binaryStats.getMin())) &&
-             (this.getNumNulls() == binaryStats.getNumNulls());
+  public void mergeStatisticsMinMax(Statistics stats) {
+    BinaryStatistics binaryStats = (BinaryStatistics)stats;
+    if (this.isEmpty()) {
+      initializeStats(binaryStats.getMin(), binaryStats.getMax());
     } else {
-      throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
-    }
-  }
-
-  @Override
-  public void mergeStatistics(Statistics stats) {
-    if (stats.isEmpty()) return;
-
-    if (this.getClass() == stats.getClass()) {
-      BinaryStatistics binaryStats = (BinaryStatistics)stats;
-      if (this.isEmpty()) {
-        this.setNumNulls(stats.getNumNulls());
-        max = binaryStats.getMax();
-        min = binaryStats.getMin();
-        this.markAsNotEmpty();
-      } else {
-        incrementNumNulls(stats.getNumNulls());
-        updateMax(binaryStats.getMax());
-        updateMin(binaryStats.getMin());
-      }
-    } else {
-      throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
+      updateStats(binaryStats.getMin(), binaryStats.getMax());
     }
   }
 
@@ -84,14 +58,15 @@ public class BinaryStatistics extends Statistics{
     return min.getBytes();
   }
 
-  public void updateMax(Binary value){
-    //TODO: what's a better comparison without converting to string?
-    if (max.toStringUsingUTF8().compareTo(value.toStringUsingUTF8()) < 0) { max = value; }
+  public void updateStats(Binary min_value, Binary max_value) {
+    if (min.compareTo(min_value) > 0) { min = min_value; }
+    if (max.compareTo(max_value) < 0) { max = max_value; }
   }
 
-  public void updateMin(Binary value) {
-    //TODO: what's a better comparison without converting to string?
-    if (min.toStringUsingUTF8().compareTo(value.toStringUsingUTF8()) > 0) { min = value; }
+  public void initializeStats(Binary min_value, Binary max_value) {
+      min = min_value;
+      max = max_value;
+      this.markAsNotEmpty();
   }
 
   public Binary getMax() {

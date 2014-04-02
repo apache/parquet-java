@@ -25,45 +25,19 @@ public class IntStatistics extends Statistics{
   @Override
   public void updateStats(int value) {
     if (this.isEmpty()) {
-      max = value;
-      min = value;
-      this.markAsNotEmpty();
+      initializeStats(value, value);
     } else {
-      updateMax(value);
-      updateMin(value);
+      updateStats(value, value);
     }
   }
 
   @Override
-  public boolean equals(Statistics stats) {
-    if (this.getClass() == stats.getClass()) {
-      IntStatistics intStats = (IntStatistics)stats;
-      return (max == intStats.getMax()) &&
-             (min == intStats.getMin()) &&
-             (this.getNumNulls() == intStats.getNumNulls());
+  public void mergeStatisticsMinMax(Statistics stats) {
+    IntStatistics intStats = (IntStatistics)stats;
+    if (this.isEmpty()) {
+      initializeStats(intStats.getMin(), intStats.getMax());
     } else {
-      throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
-    }
-  }
-
-  @Override
-  public void mergeStatistics(Statistics stats) {
-    if (stats.isEmpty()) return;
-
-    if (this.getClass() == stats.getClass()) {
-      IntStatistics intStats = (IntStatistics)stats;
-      if (this.isEmpty()) {
-        this.setNumNulls(stats.getNumNulls());
-        max = intStats.getMax();
-        min = intStats.getMin();
-        this.markAsNotEmpty();
-      } else {
-        incrementNumNulls(stats.getNumNulls());
-        updateMax(intStats.getMax());
-        updateMin(intStats.getMin());
-      }
-    } else {
-      throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
+      updateStats(intStats.getMin(), intStats.getMax());
     }
   }
 
@@ -84,12 +58,15 @@ public class IntStatistics extends Statistics{
     return BytesUtils.intToBytes(min);
   }
 
-  public void updateMax(int value){
-    if (value > max) { max = value; }
+  public void updateStats(int min_value, int max_value) {
+    if (min_value < min) { min = min_value; }
+    if (max_value > max) { max = max_value; }
   }
 
-  public void updateMin(int value) {
-    if (value < min) { min = value; }
+  public void initializeStats(int min_value, int max_value) {
+      min = min_value;
+      max = max_value;
+      this.markAsNotEmpty();
   }
 
   public int getMax() {

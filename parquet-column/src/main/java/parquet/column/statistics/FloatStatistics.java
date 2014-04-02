@@ -25,45 +25,19 @@ public class FloatStatistics extends Statistics{
   @Override
   public void updateStats(float value) {
     if (this.isEmpty()) {
-      max = value;
-      min = value;
-      this.markAsNotEmpty();
+      initializeStats(value, value);
     } else {
-      updateMax(value);
-      updateMin(value);
+      updateStats(value, value);
     }
   }
 
   @Override
-  public boolean equals(Statistics stats) {
-    if (this.getClass() == stats.getClass()) {
-      FloatStatistics floatStats = (FloatStatistics)stats;
-      return (max == floatStats.getMax()) &&
-             (min == floatStats.getMin()) &&
-             (this.getNumNulls() == floatStats.getNumNulls());
+  public void mergeStatisticsMinMax(Statistics stats) {
+    FloatStatistics floatStats = (FloatStatistics)stats;
+    if (this.isEmpty()) {
+      initializeStats(floatStats.getMin(), floatStats.getMax());
     } else {
-      throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
-    }
-  }
-
-  @Override
-  public void mergeStatistics(Statistics stats) {
-    if (stats.isEmpty()) return;
-
-    if (this.getClass() == stats.getClass()) {
-      FloatStatistics floatStats = (FloatStatistics)stats;
-      if (this.isEmpty()) {
-        this.setNumNulls(stats.getNumNulls());
-        max = floatStats.getMax();
-        min = floatStats.getMin();
-        this.markAsNotEmpty();
-      } else {
-        incrementNumNulls(stats.getNumNulls());
-        updateMax(floatStats.getMax());
-        updateMin(floatStats.getMin());
-      }
-    } else {
-      throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
+      updateStats(floatStats.getMin(), floatStats.getMax());
     }
   }
 
@@ -84,12 +58,15 @@ public class FloatStatistics extends Statistics{
     return BytesUtils.intToBytes(Float.floatToIntBits(min));
   }
 
-  public void updateMax(float value){
-    if (value > max) { max = value; }
+  public void updateStats(float min_value, float max_value) {
+    if (min_value < min) { min = min_value; }
+    if (max_value > max) { max = max_value; }
   }
 
-  public void updateMin(float value) {
-    if (value < min) { min = value; }
+  public void initializeStats(float min_value, float max_value) {
+      min = min_value;
+      max = max_value;
+      this.markAsNotEmpty();
   }
 
   public float getMax() {
@@ -105,5 +82,4 @@ public class FloatStatistics extends Statistics{
     this.min = min;
     this.markAsNotEmpty();
   }
-
 }

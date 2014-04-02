@@ -25,45 +25,19 @@ public class DoubleStatistics extends Statistics{
   @Override
   public void updateStats(double value) {
     if (this.isEmpty()) {
-      max = value;
-      min = value;
-      this.markAsNotEmpty();
+      initializeStats(value, value);
     } else {
-      updateMax(value);
-      updateMin(value);
+      updateStats(value, value);
     }
   }
 
   @Override
-  public boolean equals(Statistics stats) {
-    if (this.getClass() == stats.getClass()) {
-      DoubleStatistics doubleStats = (DoubleStatistics)stats;
-      return (max == doubleStats.getMax()) &&
-             (min == doubleStats.getMin()) &&
-             (this.getNumNulls() == doubleStats.getNumNulls());
+  public void mergeStatisticsMinMax(Statistics stats) {
+    DoubleStatistics doubleStats = (DoubleStatistics)stats;
+    if (this.isEmpty()) {
+      initializeStats(doubleStats.getMin(), doubleStats.getMax());
     } else {
-      throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
-    }
-  }
-
-  @Override
-  public void mergeStatistics(Statistics stats) {
-    if (stats.isEmpty()) return;
-
-    if (this.getClass() == stats.getClass()) {
-      DoubleStatistics doubleStats = (DoubleStatistics)stats;
-      if (this.isEmpty()) {
-        this.setNumNulls(stats.getNumNulls());
-        max = doubleStats.getMax();
-        min = doubleStats.getMin();
-        this.markAsNotEmpty();
-      } else {
-        incrementNumNulls(stats.getNumNulls());
-        updateMax(doubleStats.getMax());
-        updateMin(doubleStats.getMin());
-      }
-    } else {
-      throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
+      updateStats(doubleStats.getMin(), doubleStats.getMax());
     }
   }
 
@@ -84,12 +58,15 @@ public class DoubleStatistics extends Statistics{
     return BytesUtils.longToBytes(Double.doubleToLongBits(min));
   }
 
-  public void updateMax(double value){
-    if (value > max) { max = value; }
+  public void updateStats(double min_value, double max_value) {
+    if (min_value < min) { min = min_value; }
+    if (max_value > max) { max = max_value; }
   }
 
-  public void updateMin(double value) {
-    if (value < min) { min = value; }
+  public void initializeStats(double min_value, double max_value) {
+      min = min_value;
+      max = max_value;
+      this.markAsNotEmpty();
   }
 
   public double getMax() {
