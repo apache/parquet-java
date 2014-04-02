@@ -126,6 +126,13 @@ public class ArrayWritableObjectInspector extends SettableStructObjectInspector 
       final ArrayWritable arr = (ArrayWritable) data;
       return arr.get()[((StructFieldImpl) fieldRef).getIndex()];
     }
+    
+    //since setStructFieldData and create return a list, getStructFieldData should be able to 
+    //handle list data. This is required when table serde is ParquetHiveSerDe and partition serde
+    //is something else.
+    if (data instanceof List) {
+    	return ((List) data).get(((StructFieldImpl) fieldRef).getIndex());
+    }
 
     //since setStructFieldData and create return a list, getStructFieldData should be able to 
     //handle list data. This is required when table serde is ParquetHiveSerDe and partition serde
@@ -168,7 +175,7 @@ public class ArrayWritableObjectInspector extends SettableStructObjectInspector 
 
   @Override
   public Object setStructFieldData(Object struct, StructField field, Object fieldValue) {
-    final ArrayList<Object> list = (ArrayList<Object>) struct;
+	final ArrayList<Object> list = (ArrayList<Object>) struct;
     list.set(((StructFieldImpl) field).getIndex(), fieldValue);
     return list;
   }
