@@ -175,7 +175,7 @@ public class ArrayWritableObjectInspector extends SettableStructObjectInspector 
 
   @Override
   public Object setStructFieldData(Object struct, StructField field, Object fieldValue) {
-	final ArrayList<Object> list = (ArrayList<Object>) struct;
+    final ArrayList<Object> list = (ArrayList<Object>) struct;
     list.set(((StructFieldImpl) field).getIndex(), fieldValue);
     return list;
   }
