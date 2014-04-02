@@ -3,7 +3,7 @@
     <groupId>com.twitter</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.3.3-SNAPSHOT</version>
+    <version>1.4.1-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -128,12 +128,12 @@
             <phase>generate-test-sources</phase>
             <configuration>
               <tasks>
-                <mkdir dir="${project.build.directory}/generated-test-sources"/>
-                <mkdir dir="${project.build.directory}/generated-test-sources/java"/>
+                <mkdir dir="${project.build.directory}/generated-test-sources" />
+                <mkdir dir="${project.build.directory}/generated-test-sources/java" />
                 <exec failonerror="true" executable="protoc">
-                  <arg value="--java_out=${project.build.directory}/generated-test-sources/java"/>
-                  <arg value="src/test/resources/TestProtobuf.proto"/>
-                  <arg value="-I."/>
+                  <arg value="--java_out=${project.build.directory}/generated-test-sources/java" />
+                  <arg value="src/test/resources/TestProtobuf.proto" />
+                  <arg value="-I." />
                 </exec>
               </tasks>
               <sourceRoot>src/main/java</sourceRoot>
