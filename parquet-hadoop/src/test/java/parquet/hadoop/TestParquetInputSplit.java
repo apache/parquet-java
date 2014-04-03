@@ -37,8 +37,8 @@ public class TestParquetInputSplit {
          };
       ParquetInputSplit split = new ParquetInputSplit();
       for (String s : strings) {
-        String cs = split.compressString(s);
-        String uncs = split.decompressString(cs);
+        byte[] bytes = split.compressString(s);
+        String uncs = split.decompressString(bytes);
         assertEquals("strings should be same after decompressing", s, uncs);
       }
     }
