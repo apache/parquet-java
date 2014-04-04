@@ -124,6 +124,14 @@ public abstract class Statistics {
   }
 
   /**
+   * Hash code for the statistics object
+   * @return hash code int
+   */
+  public int hashCode() {
+    return 31 * Arrays.hashCode(getMaxBytes()) + 17 * Arrays.hashCode(getMinBytes()) + Long.valueOf(this.getNumNulls()).hashCode();
+  }
+
+  /**
    * Method to merge this statistics object with the object passed
    * as parameter. Merging keeps the smallest of min values, largest of max
    * values and combines the number of null counts.
