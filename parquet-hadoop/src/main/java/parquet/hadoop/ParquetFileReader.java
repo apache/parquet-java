@@ -17,13 +17,13 @@ package parquet.hadoop;
 
 import static parquet.Log.DEBUG;
 import static parquet.bytes.BytesUtils.readIntLittleEndian;
-import static parquet.format.Util.readPageHeader;
 import static parquet.hadoop.ParquetFileWriter.MAGIC;
 import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.SequenceInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -53,6 +53,7 @@ import parquet.column.page.DictionaryPage;
 import parquet.column.page.Page;
 import parquet.column.page.PageReadStore;
 import parquet.format.PageHeader;
+import parquet.format.Util;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.CodecFactory.BytesDecompressor;
 import parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
@@ -406,6 +407,10 @@ public class ParquetFileReader implements Closeable {
       this.pos = offset;
     }
 
+    protected PageHeader readPageHeader() throws IOException {
+      return Util.readPageHeader(this);
+    }
+
     /**
      * Read all of the pages in a given column chunk.
      * @return the list of pages
@@ -415,7 +420,7 @@ public class ParquetFileReader implements Closeable {
       DictionaryPage dictionaryPage = null;
       long valuesCountReadSoFar = 0;
       while (valuesCountReadSoFar < descriptor.metadata.getValueCount()) {
-        PageHeader pageHeader = readPageHeader(this);
+        PageHeader pageHeader = readPageHeader();
         switch (pageHeader.type) {
           case DICTIONARY_PAGE:
             // there is only one dictionary page per column chunk
@@ -499,6 +504,18 @@ public class ParquetFileReader implements Closeable {
     private WorkaroundChunk(ChunkDescriptor descriptor, byte[] data, int offset, FSDataInputStream f) {
       super(descriptor, data, offset);
       this.f = f;
+    }
+
+    protected PageHeader readPageHeader() throws IOException {
+      PageHeader pageHeader;
+      int initialPos = this.pos;
+      try {
+        pageHeader = Util.readPageHeader(this);
+      } catch (IOException e) {
+        this.pos = initialPos;
+        pageHeader = Util.readPageHeader(new SequenceInputStream(this, f));
+      }
+      return pageHeader;
     }
 
     public BytesInput readAsBytesInput(int size) throws IOException {
