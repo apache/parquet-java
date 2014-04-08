@@ -298,7 +298,7 @@ abstract public class Binary {
   private static final int compareTwoByteArrays(byte[] array1, int offset1, int length1,
                                                 byte[] array2, int offset2, int length2) {
     if (array1 == null && array2 == null) return 0;
-    if (array1 == array2 && offset1 == offset2) return 0;
+    if (array1 == array2 && offset1 == offset2 && length1 == length2) return 0;
     int min_length = (length1 < length2) ? length1 : length2;
     for (int i = 0; i < min_length; i++) {
       if (array1[i + offset1] < array2[i + offset2]) {
