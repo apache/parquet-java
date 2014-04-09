@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Twitter, Inc.
+ * Copyright 2014 Twitter, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,6 @@
  */
 package parquet.thrift.pig;
 
-import java.util.List;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.pig.data.Tuple;
 import org.apache.thrift.TBase;
@@ -27,9 +25,13 @@ import parquet.hadoop.thrift.ThriftWriteSupport;
 import parquet.io.api.RecordConsumer;
 
 import com.twitter.elephantbird.pig.util.PigToThrift;
-import com.twitter.elephantbird.thrift.TStructDescriptor;
-import com.twitter.elephantbird.thrift.TStructDescriptor.Field;
 
+/**
+ * Stores Pig tuples as Thrift objects
+ *
+ * @author Julien Le Dem
+ *
+ */
 public class TupleToThriftWriteSupport extends WriteSupport<Tuple> {
 
   private final String className;
@@ -51,10 +53,6 @@ public class TupleToThriftWriteSupport extends WriteSupport<Tuple> {
       Class<?> clazz = configuration.getClassByName(className).asSubclass(TBase.class);
       thriftWriteSupport = new ThriftWriteSupport(clazz);
       pigToThrift = new PigToThrift(clazz);
-      List<Field> fields = TStructDescriptor.getInstance((Class<TBase<?,?>>)clazz).getFields();
-      for (Field field : fields) {
-        System.out.println(field.getName());
-      }
       return thriftWriteSupport.init(configuration);
     } catch (ClassNotFoundException e) {
       throw new BadConfigurationException("The thrift class name was not found: " + className, e);
@@ -68,6 +66,7 @@ public class TupleToThriftWriteSupport extends WriteSupport<Tuple> {
     thriftWriteSupport.prepareForWrite(recordConsumer);
   }
 
+  @Override
   public void write(Tuple t) {
     thriftWriteSupport.write(pigToThrift.getThriftObject(t));
   }

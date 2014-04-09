@@ -15,7 +15,6 @@ import parquet.hadoop.ParquetOutputFormat;
 import parquet.io.ParquetEncodingException;
 
 /**
- *
  * To store in Pig using a thrift class
  * usage:
  * STORE 'foo' USING parquet.thrift.pig.ParquetThriftStorer('my.thrift.Class');
@@ -61,7 +60,6 @@ public class ParquetThriftStorer extends StoreFunc {
     try {
       this.recordWriter.write(null, tuple);
     } catch (InterruptedException e) {
-      Thread.interrupted();
       throw new ParquetEncodingException("Interrupted while writing", e);
     }
   }
