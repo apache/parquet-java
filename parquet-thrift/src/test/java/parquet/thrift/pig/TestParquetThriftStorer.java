@@ -34,8 +34,7 @@ import org.apache.pig.data.Tuple;
 import org.junit.Test;
 
 import parquet.pig.ParquetLoader;
-
-import com.twitter.data.proto.tutorial.thrift.Person;
+import parquet.thrift.test.Name;
 
 public class TestParquetThriftStorer {
   @Test
@@ -49,13 +48,13 @@ public class TestParquetThriftStorer {
     Data data = Storage.resetData(pigServer);
     Collection<Tuple> list = new ArrayList<Tuple>();
     for (int i = 0; i < rows; i++) {
-      list.add(tuple(tuple("bob", "roberts"), i, "bob@roberts.com"));
+      list.add(tuple("bob", "roberts" + i));
     }
-    data.set("in", "name:(fn:chararray, ln:chararray), id:int, email:chararray", list );
+    data.set("in", "fn:chararray, ln:chararray", list );
     pigServer.deleteFile(out);
     pigServer.setBatchOn();
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
-    pigServer.registerQuery("Store A into '"+out+"' using "+ParquetThriftStorer.class.getName()+"('" + Person.class.getName() + "');");
+    pigServer.registerQuery("Store A into '"+out+"' using "+ParquetThriftStorer.class.getName()+"('" + Name.class.getName() + "');");
     execBatch(pigServer);
 
     pigServer.registerQuery("B = LOAD '"+out+"' USING "+ParquetLoader.class.getName()+"();");
@@ -67,7 +66,7 @@ public class TestParquetThriftStorer {
     assertEquals(rows, result.size());
     int i = 0;
     for (Tuple tuple : result) {
-      assertEquals(tuple(tuple("bob", "roberts"), i, "bob@roberts.com", null), tuple);
+      assertEquals(tuple("bob", "roberts" + i), tuple);
       ++i;
     }
   }
