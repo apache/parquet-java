@@ -52,6 +52,7 @@ import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.ParquetDecodingException;
+import parquet.schema.Types;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
@@ -102,6 +103,10 @@ public class ParquetMetadataConverter {
         if (primitiveType.getOriginalType() != null) {
           element.setConverted_type(getConvertedType(primitiveType.getOriginalType()));
         }
+        if (primitiveType.getOriginalTypeMeta() != null) {
+          element.setPrecision(primitiveType.getOriginalTypeMeta().getPrecision());
+          element.setScale(primitiveType.getOriginalTypeMeta().getScale());
+        }
         if (primitiveType.getTypeLength() > 0) {
           element.setType_length(primitiveType.getTypeLength());
         }
@@ -120,6 +125,10 @@ public class ParquetMetadataConverter {
         element.setRepetition_type(toParquetRepetition(groupType.getRepetition()));
         if (groupType.getOriginalType() != null) {
           element.setConverted_type(getConvertedType(groupType.getOriginalType()));
+        }
+        if (groupType.getOriginalTypeMeta() != null) {
+          element.setPrecision(groupType.getOriginalTypeMeta().getPrecision());
+          element.setScale(groupType.getOriginalTypeMeta().getScale());
         }
         visitChildren(result, groupType, element);
       }
@@ -278,6 +287,8 @@ public class ParquetMetadataConverter {
         return OriginalType.LIST;
       case ENUM:
         return OriginalType.ENUM;
+      case DECIMAL:
+        return OriginalType.DECIMAL;
       default:
         throw new RuntimeException("Unknown converted type " + type);
     }
@@ -295,6 +306,8 @@ public class ParquetMetadataConverter {
         return ConvertedType.LIST;
       case ENUM:
         return ConvertedType.ENUM;
+      case DECIMAL:
+        return ConvertedType.DECIMAL;
       default:
         throw new RuntimeException("Unknown original type " + type);
      }
@@ -369,49 +382,43 @@ public class ParquetMetadataConverter {
   MessageType fromParquetSchema(List<SchemaElement> schema) {
     Iterator<SchemaElement> iterator = schema.iterator();
     SchemaElement root = iterator.next();
-    return new MessageType(root.getName(), convertChildren(iterator, root.getNum_children()));
+    Types.MessageTypeBuilder builder = Types.buildMessage();
+    buildChildren(builder, iterator, root.getNum_children());
+    return builder.named(root.name);
   }
 
-  private parquet.schema.Type[] convertChildren(Iterator<SchemaElement> schema, int childrenCount) {
-    parquet.schema.Type[] result = new parquet.schema.Type[childrenCount];
-    for (int i = 0; i < result.length; i++) {
+  private void buildChildren(Types.GroupBuilder builder,
+                             Iterator<SchemaElement> schema,
+                             int childrenCount) {
+    for (int i = 0; i < childrenCount; i++) {
       SchemaElement schemaElement = schema.next();
-      if ((!schemaElement.isSetType() && !schemaElement.isSetNum_children())
-          || (schemaElement.isSetType() && schemaElement.isSetNum_children())) {
-        throw new RuntimeException("bad element " + schemaElement);
-      }
-      Repetition repetition = fromParquetRepetition(schemaElement.getRepetition_type());
-      String name = schemaElement.getName();
-      OriginalType originalType = null;
-      if (schemaElement.isSetConverted_type()) {
-        originalType = getOriginalType(schemaElement.converted_type);
-      }
 
       // Create Parquet Type.
+      Types.Builder childBuilder;
       if (schemaElement.type != null) {
+        childBuilder = builder.primitive(getPrimitive(schemaElement.type));
         if (schemaElement.isSetType_length()) {
-          result[i] = new PrimitiveType(
-              repetition,
-              getPrimitive(schemaElement.getType()),
-              schemaElement.type_length,
-              name,
-              originalType);
-        } else {
-          result[i] = new PrimitiveType(
-              repetition,
-              getPrimitive(schemaElement.getType()),
-              name,
-              originalType);
+          ((Types.PrimitiveBuilder) childBuilder).length(schemaElement.type_length);
         }
       } else {
-        result[i] = new GroupType(
-            repetition,
-            name,
-            originalType,
-            convertChildren(schema, schemaElement.getNum_children()));
+        childBuilder = builder.group();
+        buildChildren((Types.GroupBuilder) childBuilder, schema, schemaElement.num_children);
       }
+
+      childBuilder.repetition(fromParquetRepetition(schemaElement.repetition_type));
+
+      if (schemaElement.isSetConverted_type()) {
+        childBuilder.as(getOriginalType(schemaElement.converted_type));
+      }
+      if (schemaElement.isSetPrecision()) {
+        childBuilder.precision(schemaElement.precision);
+      }
+      if (schemaElement.isSetScale()) {
+        childBuilder.scale(schemaElement.scale);
+      }
+
+      childBuilder.named(schemaElement.name);
     }
-    return result;
   }
 
   FieldRepetitionType toParquetRepetition(Repetition repetition) {

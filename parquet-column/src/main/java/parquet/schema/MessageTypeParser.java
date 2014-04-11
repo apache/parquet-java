@@ -15,9 +15,7 @@
  */
 package parquet.schema;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.StringTokenizer;
 
 import parquet.Log;
@@ -40,7 +38,7 @@ public class MessageTypeParser {
     private StringBuffer currentLine = new StringBuffer();
 
     public Tokenizer(String schemaString, String string) {
-      st = new StringTokenizer(schemaString, " ;{}()\n\t", true);
+      st = new StringTokenizer(schemaString, " ,;{}()\n\t", true);
     }
 
     public String nextToken() {
@@ -81,39 +79,46 @@ public class MessageTypeParser {
 
   private static MessageType parse(String schemaString) {
     Tokenizer st = new Tokenizer(schemaString, " ;{}()\n\t");
+    Types.MessageTypeBuilder builder = Types.buildMessage();
 
     String t = st.nextToken();
     check(t, "message", "start with 'message'", st);
     String name = st.nextToken();
-    Type[] fields = readGroupTypeFields(st.nextToken(), st);
-    return new MessageType(name, fields);
+    addGroupTypeFields(st.nextToken(), st, builder);
+    return builder.named(name);
   }
 
-  private static Type[] readGroupTypeFields(String t, Tokenizer st) {
-    List<Type> types = new ArrayList<Type>();
+  private static void addGroupTypeFields(String t, Tokenizer st, Types.GroupBuilder builder) {
     check(t, "{", "start of message", st);
     while (!(t = st.nextToken()).equals("}")) {
-      types.add(readType(t, st));
+      addType(t, st, builder);
     }
-    return types.toArray(new Type[types.size()]);
   }
 
-  private static Type readType(String t, Tokenizer st) {
-    Repetition r = asRepetition(t, st);
+  private static void addType(String t, Tokenizer st, Types.GroupBuilder builder) {
+    Repetition repetition = asRepetition(t, st);
 
     // Read type.
     String type = st.nextToken();
-
-    // Read type length if the type is fixed_len_byte_array.
-    int typeLength = 0;
-    if (type.equalsIgnoreCase("fixed_len_byte_array")) {
-      t = st.nextToken();
-      if (!t.equalsIgnoreCase("(")) {
-        throw new IllegalArgumentException("expecting (length) for field of type fixed_len_byte_array");
+    Types.Builder childBuilder;
+    if ("group".equalsIgnoreCase(type)) {
+      childBuilder = builder.group();
+    } else {
+      PrimitiveTypeName typeName = asPrimitive(type, st);
+      childBuilder = builder.primitive(typeName);
+      if (typeName == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
+        t = st.nextToken();
+        // Read type length if the type is fixed_len_byte_array.
+        if (!t.equalsIgnoreCase("(")) {
+          throw new IllegalArgumentException("expecting (length) for field of type fixed_len_byte_array");
+        }
+        ((Types.PrimitiveBuilder) childBuilder).length(Integer.parseInt(st.nextToken()));
+        check(st.nextToken(), ")", "type length ended by )", st);
       }
-      typeLength = Integer.parseInt(st.nextToken());
-      check(st.nextToken(), ")", "type length ended by )", st);
     }
+
+    // Set the repetition for the child type
+    childBuilder.repetition(repetition);
 
     // Read name.
     String name = st.nextToken();
@@ -123,18 +128,34 @@ public class MessageTypeParser {
     OriginalType originalType = null;
     if (t.equalsIgnoreCase("(")) {
       originalType = OriginalType.valueOf(st.nextToken());
-      check(st.nextToken(), ")", "original type ended by )", st);
+      childBuilder.as(originalType);
+      if (OriginalType.DECIMAL == originalType) {
+        t = st.nextToken();
+        // parse precision and scale
+        if (t.equalsIgnoreCase("(")) {
+          childBuilder.precision(Integer.parseInt(st.nextToken()));
+          t = st.nextToken();
+          if (t.equalsIgnoreCase(",")) {
+            childBuilder.scale(Integer.parseInt(st.nextToken()));
+            t = st.nextToken();
+          }
+          check(t, ")", "decimal type ended by )", st);
+          t = st.nextToken();
+        }
+      } else {
+        t = st.nextToken();
+      }
+      check(t, ")", "original type ended by )", st);
       t = st.nextToken();
     }
+
     try {
-      if (type.equalsIgnoreCase("group")) {
-        Type[] fields = readGroupTypeFields(t, st);
-        return new GroupType(r, name, originalType, fields);
+      if (childBuilder instanceof Types.GroupBuilder) {
+        addGroupTypeFields(t, st, (Types.GroupBuilder) childBuilder);
       } else {
-        PrimitiveTypeName p = asPrimitive(type, st);
         check(t, ";", "field ended by ';'", st);
-        return new PrimitiveType(r, p, typeLength, name, originalType);
       }
+      childBuilder.named(name);
     } catch (IllegalArgumentException e) {
      throw new IllegalArgumentException("problem reading type: type = " + type + ", name = " + name + ", original type = " + originalType, e);
     }

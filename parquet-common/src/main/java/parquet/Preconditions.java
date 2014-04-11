@@ -47,4 +47,10 @@ public final class Preconditions {
       throw new IllegalArgumentException(message);
     }
   }
+
+  public static void checkState(boolean valid, String message) throws IllegalStateException {
+    if (!valid) {
+      throw new IllegalStateException(message);
+    }
+  }
 }

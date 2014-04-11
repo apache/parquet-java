@@ -283,17 +283,11 @@ public final class PrimitiveType extends Type {
    */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, 
                        String name) {
-    this(repetition, primitive, name, null);
+    this(repetition, primitive, 0, name, null, null);
   }
 
-  /**
-   * @param repetition OPTIONAL, REPEATED, REQUIRED
-   * @param primitive STRING, INT64, ...
-   * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise (XXX)
-   * @param name the name of the type
-   */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, int length, String name) {
-    this(repetition, primitive, length, name, null);
+    this(repetition, primitive, length, name, null, null);
   }
 
   /**
@@ -304,11 +298,11 @@ public final class PrimitiveType extends Type {
    */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, 
                        String name, OriginalType originalType) {
-    this(repetition, primitive, 0, name, originalType);
+    this(repetition, primitive, 0, name, originalType, null);
   }
 
   /**
-   * @param repetition OPTIONAL, REPEATED, REQUIRD
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param primitive STRING, INT64, ...
    * @param name the name of the type
    * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise (XXX)
@@ -316,7 +310,21 @@ public final class PrimitiveType extends Type {
    */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
                        int length, String name, OriginalType originalType) {
-    super(name, repetition, originalType);
+    this(repetition, primitive, length, name, originalType, null);
+  }
+
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param primitive STRING, INT64, ...
+   * @param name the name of the type
+   * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise
+   * @param originalType (optional) the original type (MAP, DECIMAL, UTF8, ...)
+   * @param meta (optional) metadata about the original type
+   */
+  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
+                       int length, String name, OriginalType originalType,
+                       OriginalTypeMeta meta) {
+    super(name, repetition, originalType, meta);
     this.primitive = primitive;
     this.length = length;
   }
@@ -365,7 +373,16 @@ public final class PrimitiveType extends Type {
     }
     sb.append(" ").append(getName());
     if (getOriginalType() != null) {
-      sb.append(" (").append(getOriginalType()).append(")");
+      sb.append(" (").append(getOriginalType());
+      OriginalTypeMeta meta = getOriginalTypeMeta();
+      if (meta != null) {
+        sb.append("(")
+            .append(meta.getPrecision())
+            .append(",")
+            .append(meta.getScale())
+            .append(")");
+      }
+      sb.append(")");
     }
   }
 
@@ -453,6 +470,11 @@ public final class PrimitiveType extends Type {
     if (!toMerge.isPrimitive() || !primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName())) {
       throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " into " + this);
     }
-    return new PrimitiveType(toMerge.getRepetition(), primitive, getName());
+    Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(primitive)
+        .repetition(toMerge.getRepetition());
+    if (PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY == primitive) {
+      builder.length(length);
+    }
+    return builder.named(getName());
   }
 }
