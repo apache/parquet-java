@@ -263,13 +263,19 @@ public class ScroogeStructConverter {
 
   public ThriftType convertEnumTypeField(ThriftStructField f) {
     List<ThriftType.EnumValue> enumValues = new ArrayList<ThriftType.EnumValue>();
-    String enumName = f.method().getReturnType().getName();
+
+    String enumName;
+    if (isOptional(f)) {
+      enumName = ((Class)extractClassFromOption(f.method().getGenericReturnType())).getName();
+    } else {
+      enumName = f.method().getReturnType().getName();
+    }
     try {
       List enumCollection = getEnumList(enumName);
       for (Object enumObj : enumCollection) {
         ScroogeEnumDesc enumDesc = ScroogeEnumDesc.getEnumDesc(enumObj);
         //be compatible with thrift generated enum which have capitalized name
-        enumValues.add(new ThriftType.EnumValue(enumDesc.id, enumDesc.name.toUpperCase()));
+        enumValues.add(new ThriftType.EnumValue(enumDesc.id, enumDesc.name.replaceAll("([a-z])([A-Z])","$1_$2")));
       }
       return new ThriftType.EnumType(enumValues);
     } catch (Exception e) {

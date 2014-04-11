@@ -142,5 +142,6 @@ enum Operation {
 
 struct TestFieldOfEnum{
  1: required Operation op
+ 2: optional Operation op2
 }
 
