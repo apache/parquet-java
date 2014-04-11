@@ -315,6 +315,24 @@ public class TestTypeBuilders {
   }
 
   @Test
+  public void testDECIMALAnnotationRejectsNonByteArrays() {
+    PrimitiveTypeName[] nonByteTypes = new PrimitiveTypeName[]{
+        BOOLEAN, INT32, INT64, INT96, DOUBLE, FLOAT
+    };
+    for (final PrimitiveTypeName type : nonByteTypes) {
+      assertThrows("Should reject non-binary type: " + type,
+          IllegalStateException.class, new Callable<Type>() {
+            @Override
+            public Type call() throws Exception {
+              return Types.required(type)
+                  .as(OriginalType.DECIMAL).precision(9).scale(2)
+                  .named("d");
+            }
+          });
+    }
+  }
+
+  @Test
   public void testUTF8AnnotationRejectsNonBinary() {
     PrimitiveTypeName[] nonBinary = new PrimitiveTypeName[]{
       BOOLEAN, INT32, INT64, INT96, DOUBLE, FLOAT
