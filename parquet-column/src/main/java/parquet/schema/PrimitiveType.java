@@ -393,6 +393,10 @@ public final class PrimitiveType extends Type {
   protected boolean typeEquals(Type other) {
     if (other.isPrimitive()) {
       PrimitiveType primitiveType = other.asPrimitiveType();
+      if ((getPrimitiveTypeName() == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) &&
+          (getTypeLength() != primitiveType.getTypeLength())) {
+        return false;
+      }
       return getRepetition() == primitiveType.getRepetition() &&
           getPrimitiveTypeName().equals(primitiveType.getPrimitiveTypeName()) &&
           getName().equals(primitiveType.getName());

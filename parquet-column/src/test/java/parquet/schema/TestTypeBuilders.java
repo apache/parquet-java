@@ -40,6 +40,14 @@ public class TestTypeBuilders {
   }
 
   @Test
+  public void testFixedLengthEquals() {
+    Type f4 = Types.required(FIXED_LEN_BYTE_ARRAY).length(4).named("f4");
+    Type f8 = Types.required(FIXED_LEN_BYTE_ARRAY).length(8).named("f8");
+    Assert.assertFalse("Types with different lengths should not be equal",
+        f4.equals(f8));
+  }
+
+  @Test
   public void testDecimalAnnotationBinary() {
     MessageType expected = new MessageType("DecimalMessage",
         new PrimitiveType(REQUIRED, BINARY, 0, "aDecimal",
