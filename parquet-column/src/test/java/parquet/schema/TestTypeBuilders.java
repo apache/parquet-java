@@ -2,6 +2,7 @@ package parquet.schema;
 
 import java.util.concurrent.Callable;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -40,6 +41,157 @@ public class TestTypeBuilders {
   }
 
   @Test
+  public void testGroupTypeConstruction() {
+    PrimitiveType f1 = Types.required(BINARY).as(OriginalType.UTF8).named("f1");
+    PrimitiveType f2 = Types.required(INT32).named("f2");
+    PrimitiveType f3 = Types.optional(INT32).named("f3");
+    String name = "group";
+    for (Type.Repetition repetition : Type.Repetition.values()) {
+      GroupType expected = new GroupType(repetition, name,
+          f1,
+          new GroupType(repetition, "g1", f2, f3));
+      GroupType built = Types.buildGroup()
+          .repetition(repetition)
+          .addField(f1)
+          .group().repetition(repetition).addFields(f2, f3).named("g1")
+          .named(name);
+      Assert.assertEquals(expected, built);
+
+      switch (repetition) {
+        case REQUIRED:
+          built = Types.requiredGroup()
+              .addField(f1)
+              .requiredGroup().addFields(f2, f3).named("g1")
+              .named(name);
+          break;
+        case OPTIONAL:
+          built = Types.optionalGroup()
+              .addField(f1)
+              .optionalGroup().addFields(f2, f3).named("g1")
+              .named(name);
+          break;
+        case REPEATED:
+          built = Types.repeatedGroup()
+              .addField(f1)
+              .repeatedGroup().addFields(f2, f3).named("g1")
+              .named(name);
+          break;
+      }
+      Assert.assertEquals(expected, built);
+    }
+  }
+
+  @Test
+  public void testPrimitiveTypeConstruction() {
+    PrimitiveTypeName[] types = new PrimitiveTypeName[] {
+        BOOLEAN, INT32, INT64, INT96, FLOAT, DOUBLE, BINARY
+    };
+    for (PrimitiveTypeName type : types) {
+      String name = type.toString() + "_";
+      for (Type.Repetition repetition : Type.Repetition.values()) {
+        PrimitiveType expected = new PrimitiveType(repetition, type, name);
+        PrimitiveType built = Types.primitive(type)
+            .repetition(repetition).named(name);
+        Assert.assertEquals(expected, built);
+        switch (repetition) {
+          case REQUIRED:
+            built = Types.required(type).named(name);
+            break;
+          case OPTIONAL:
+            built = Types.optional(type).named(name);
+            break;
+          case REPEATED:
+            built = Types.repeated(type).named(name);
+            break;
+        }
+        Assert.assertEquals(expected, built);
+      }
+    }
+  }
+
+  @Test
+  public void testFixedTypeConstruction() {
+    String name = "fixed_";
+    int len = 5;
+    for (Type.Repetition repetition : Type.Repetition.values()) {
+      PrimitiveType expected = new PrimitiveType(
+          repetition, FIXED_LEN_BYTE_ARRAY, len, name);
+      PrimitiveType built = Types.primitive(FIXED_LEN_BYTE_ARRAY)
+          .repetition(repetition).length(len).named(name);
+      Assert.assertEquals(expected, built);
+      switch (repetition) {
+        case REQUIRED:
+          built = Types.required(FIXED_LEN_BYTE_ARRAY).length(len).named(name);
+          break;
+        case OPTIONAL:
+          built = Types.optional(FIXED_LEN_BYTE_ARRAY).length(len).named(name);
+          break;
+        case REPEATED:
+          built = Types.repeated(FIXED_LEN_BYTE_ARRAY).length(len).named(name);
+          break;
+      }
+      Assert.assertEquals(expected, built);
+    }
+  }
+
+  @Test
+  public void testEmptyGroup() {
+    assertThrows("Should complain that required group is empty",
+        IllegalStateException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.requiredGroup().named("g");
+          }
+        });
+    assertThrows("Should complain that optional group is empty",
+        IllegalStateException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.optionalGroup().named("g");
+          }
+        });
+    assertThrows("Should complain that repeated group is empty",
+        IllegalStateException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.repeatedGroup().named("g");
+          }
+        });
+  }
+
+  @Test
+  @Ignore(value="Enforcing this breaks tests in parquet-thrift")
+  public void testEmptyMessage() {
+    assertThrows("Should complain that message is empty",
+        IllegalStateException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.buildMessage().named("m");
+          }
+        });
+  }
+
+  @Test
+  public void testMissingRepetition() {
+    assertThrows("Should complain that repetition is missing",
+        NullPointerException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.primitive(INT32).named("num");
+          }
+        });
+    assertThrows("Should complain that group repetition is missing",
+        NullPointerException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.buildGroup()
+                .optional(INT32).named("num")
+                .named("num");
+          }
+        });
+  }
+
+  @Test
   public void testFixedLengthEquals() {
     Type f4 = Types.required(FIXED_LEN_BYTE_ARRAY).length(4).named("f4");
     Type f8 = Types.required(FIXED_LEN_BYTE_ARRAY).length(8).named("f8");
@@ -57,6 +209,53 @@ public class TestTypeBuilders {
             .named("aDecimal")
         .named("DecimalMessage");
     Assert.assertEquals(expected, builderType);
+  }
+
+  @Test
+  public void testDecimalAnnotationMissingScale() {
+    MessageType expected = new MessageType("DecimalMessage",
+        new PrimitiveType(REQUIRED, BINARY, 0, "aDecimal",
+            OriginalType.DECIMAL, new OriginalTypeMeta(9, 0)));
+    MessageType builderType = Types.buildMessage()
+        .required(BINARY).as(OriginalType.DECIMAL).precision(9)
+            .named("aDecimal")
+        .named("DecimalMessage");
+    Assert.assertEquals(expected, builderType);
+
+    expected = new MessageType("DecimalMessage",
+        new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 7, "aDecimal",
+            OriginalType.DECIMAL, new OriginalTypeMeta(9, 0)));
+    builderType = Types.buildMessage()
+        .required(FIXED_LEN_BYTE_ARRAY).length(7)
+            .as(OriginalType.DECIMAL).precision(9)
+            .named("aDecimal")
+        .named("DecimalMessage");
+    Assert.assertEquals(expected, builderType);
+  }
+
+  @Test
+  public void testDecimalAnnotationMissingPrecision() {
+    assertThrows("Should reject decimal annotation without precision",
+        IllegalArgumentException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.buildMessage()
+                .required(BINARY).as(OriginalType.DECIMAL).scale(2)
+                    .named("aDecimal")
+                .named("DecimalMessage");
+          }
+        });
+    assertThrows("Should reject decimal annotation without precision",
+        IllegalArgumentException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.buildMessage()
+                .required(FIXED_LEN_BYTE_ARRAY).length(7)
+                    .as(OriginalType.DECIMAL).scale(2)
+                    .named("aDecimal")
+                .named("DecimalMessage");
+          }
+        });
   }
 
   @Test
