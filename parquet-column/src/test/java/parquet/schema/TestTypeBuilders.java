@@ -259,6 +259,31 @@ public class TestTypeBuilders {
   }
 
   @Test
+  public void testDecimalAnnotationPrecisionScaleBound() {
+    assertThrows("Should reject scale greater than precision",
+        IllegalArgumentException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.buildMessage()
+                .required(BINARY).as(OriginalType.DECIMAL).precision(3).scale(4)
+                .named("aDecimal")
+                .named("DecimalMessage");
+          }
+        });
+    assertThrows("Should reject scale greater than precision",
+        IllegalArgumentException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.buildMessage()
+                .required(FIXED_LEN_BYTE_ARRAY).length(7)
+                .as(OriginalType.DECIMAL).precision(3).scale(4)
+                .named("aDecimal")
+                .named("DecimalMessage");
+          }
+        });
+  }
+
+  @Test
   public void testDecimalAnnotationFixed() {
     MessageType expected = new MessageType("DecimalMessage",
         new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 4, "aDecimal",
