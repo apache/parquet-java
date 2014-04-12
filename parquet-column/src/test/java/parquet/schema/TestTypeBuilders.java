@@ -50,10 +50,9 @@ public class TestTypeBuilders {
       GroupType expected = new GroupType(repetition, name,
           f1,
           new GroupType(repetition, "g1", f2, f3));
-      GroupType built = Types.buildGroup()
-          .repetition(repetition)
+      GroupType built = Types.buildGroup(repetition)
           .addField(f1)
-          .group().repetition(repetition).addFields(f2, f3).named("g1")
+          .group(repetition).addFields(f2, f3).named("g1")
           .named(name);
       Assert.assertEquals(expected, built);
 
@@ -90,8 +89,7 @@ public class TestTypeBuilders {
       String name = type.toString() + "_";
       for (Type.Repetition repetition : Type.Repetition.values()) {
         PrimitiveType expected = new PrimitiveType(repetition, type, name);
-        PrimitiveType built = Types.primitive(type)
-            .repetition(repetition).named(name);
+        PrimitiveType built = Types.primitive(type, repetition).named(name);
         Assert.assertEquals(expected, built);
         switch (repetition) {
           case REQUIRED:
@@ -116,8 +114,8 @@ public class TestTypeBuilders {
     for (Type.Repetition repetition : Type.Repetition.values()) {
       PrimitiveType expected = new PrimitiveType(
           repetition, FIXED_LEN_BYTE_ARRAY, len, name);
-      PrimitiveType built = Types.primitive(FIXED_LEN_BYTE_ARRAY)
-          .repetition(repetition).length(len).named(name);
+      PrimitiveType built = Types.primitive(FIXED_LEN_BYTE_ARRAY, repetition)
+          .length(len).named(name);
       Assert.assertEquals(expected, built);
       switch (repetition) {
         case REQUIRED:
@@ -167,26 +165,6 @@ public class TestTypeBuilders {
           @Override
           public Type call() throws Exception {
             return Types.buildMessage().named("m");
-          }
-        });
-  }
-
-  @Test
-  public void testMissingRepetition() {
-    assertThrows("Should complain that repetition is missing",
-        NullPointerException.class, new Callable<Type>() {
-          @Override
-          public Type call() throws Exception {
-            return Types.primitive(INT32).named("num");
-          }
-        });
-    assertThrows("Should complain that group repetition is missing",
-        NullPointerException.class, new Callable<Type>() {
-          @Override
-          public Type call() throws Exception {
-            return Types.buildGroup()
-                .optional(INT32).named("num")
-                .named("num");
           }
         });
   }

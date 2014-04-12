@@ -474,8 +474,8 @@ public final class PrimitiveType extends Type {
     if (!toMerge.isPrimitive() || !primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName())) {
       throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " into " + this);
     }
-    Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(primitive)
-        .repetition(toMerge.getRepetition());
+    Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(
+        primitive, toMerge.getRepetition());
     if (PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY == primitive) {
       builder.length(length);
     }

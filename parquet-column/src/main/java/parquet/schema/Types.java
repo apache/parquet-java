@@ -129,7 +129,7 @@ public class Types {
       this.asCorrectType = (T) this;
     }
 
-    public final T repetition(Type.Repetition repetition) {
+    protected final T repetition(Type.Repetition repetition) {
       Preconditions.checkArgument(!repetitionAlreadySet,
           "Repetition has already been set");
       Preconditions.checkNotNull(repetition, "Repetition cannot be null");
@@ -315,8 +315,9 @@ public class Types {
     }
 
     public PrimitiveBuilder<GroupBuilder<P>> primitive(
-        PrimitiveTypeName type) {
-      return new PrimitiveBuilder<GroupBuilder<P>>(this, type);
+        PrimitiveTypeName type, Type.Repetition repetition) {
+      return new PrimitiveBuilder<GroupBuilder<P>>(this, type)
+          .repetition(repetition);
     }
 
     /**
@@ -361,8 +362,9 @@ public class Types {
           .repetition(Type.Repetition.REPEATED);
     }
 
-    public GroupBuilder<GroupBuilder<P>> group() {
-      return new GroupBuilder<GroupBuilder<P>>(this);
+    public GroupBuilder<GroupBuilder<P>> group(Type.Repetition repetition) {
+      return new GroupBuilder<GroupBuilder<P>>(this)
+          .repetition(repetition);
     }
 
     /**
@@ -460,8 +462,9 @@ public class Types {
     return new MessageTypeBuilder();
   }
 
-  public static GroupBuilder<GroupType> buildGroup() {
-    return new GroupBuilder<GroupType>(null);
+  public static GroupBuilder<GroupType> buildGroup(
+      Type.Repetition repetition) {
+    return new GroupBuilder<GroupType>(null).repetition(repetition);
   }
 
   /**
@@ -495,8 +498,9 @@ public class Types {
   }
 
   public static PrimitiveBuilder<PrimitiveType> primitive(
-      PrimitiveTypeName type) {
-    return new PrimitiveBuilder<PrimitiveType>(null, type);
+      PrimitiveTypeName type, Type.Repetition repetition) {
+    return new PrimitiveBuilder<PrimitiveType>(null, type)
+        .repetition(repetition);
   }
 
   /**

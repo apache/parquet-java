@@ -102,10 +102,10 @@ public class MessageTypeParser {
     String type = st.nextToken();
     Types.Builder childBuilder;
     if ("group".equalsIgnoreCase(type)) {
-      childBuilder = builder.group();
+      childBuilder = builder.group(repetition);
     } else {
       PrimitiveTypeName typeName = asPrimitive(type, st);
-      childBuilder = builder.primitive(typeName);
+      childBuilder = builder.primitive(typeName, repetition);
       if (typeName == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
         t = st.nextToken();
         // Read type length if the type is fixed_len_byte_array.
@@ -116,9 +116,6 @@ public class MessageTypeParser {
         check(st.nextToken(), ")", "type length ended by )", st);
       }
     }
-
-    // Set the repetition for the child type
-    childBuilder.repetition(repetition);
 
     // Read name.
     String name = st.nextToken();

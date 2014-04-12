@@ -396,16 +396,16 @@ public class ParquetMetadataConverter {
       // Create Parquet Type.
       Types.Builder childBuilder;
       if (schemaElement.type != null) {
-        childBuilder = builder.primitive(getPrimitive(schemaElement.type));
+        childBuilder = builder.primitive(
+            getPrimitive(schemaElement.type),
+            fromParquetRepetition(schemaElement.repetition_type));
         if (schemaElement.isSetType_length()) {
           ((Types.PrimitiveBuilder) childBuilder).length(schemaElement.type_length);
         }
       } else {
-        childBuilder = builder.group();
+        childBuilder = builder.group(fromParquetRepetition(schemaElement.repetition_type));
         buildChildren((Types.GroupBuilder) childBuilder, schema, schemaElement.num_children);
       }
-
-      childBuilder.repetition(fromParquetRepetition(schemaElement.repetition_type));
 
       if (schemaElement.isSetConverted_type()) {
         childBuilder.as(getOriginalType(schemaElement.converted_type));
