@@ -7,13 +7,13 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * This class provides fluent builders that produce Parquet schema Types.
- *
+ * <p>
  * The most basic use is to build primitive types:
  * <pre>
  *   Types.required(INT64).named("id");
  *   Types.optional(INT32).named("number");
  * </pre>
- *
+ * <p>
  * The {@link #required(PrimitiveTypeName)} factory method produces a primitive
  * type builder, and the {@link PrimitiveBuilder#named(String)} builds the
  * {@link PrimitiveType}. Between {@code required} and {@code named}, other
@@ -22,10 +22,10 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
  *   Types.required(BINARY).as(UTF8).named("username");
  *   Types.optional(FIXED_LEN_BYTE_ARRAY).length(20).named("sha1");
  * </pre>
- *
+ * <p>
  * Optional types are built using {@link #optional(PrimitiveTypeName)} to get
  * the builder.
- *
+ * <p>
  * Groups are built similarly, using {@code requiredGroup()} (or the optional
  * version) to return a group builder. Group builders provide {@code required}
  * and {@code optional} to add primitive types, which return primitive builders
@@ -41,12 +41,12 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
  *            .required(BINARY).as(UTF8).named("email")
  *        .named("User")
  * </pre>
- *
+ * <p>
  * When {@code required} is called on a group builder, the builder it returns
  * will add the type to the parent group when it is built and {@code named} will
  * return its parent group builder (instead of the type) so more fields can be
  * added.
- *
+ * <p>
  * Sub-groups can be created using {@code requiredGroup()} to get a group
  * builder that will create the group type, add it to the parent builder, and
  * return the parent builder for more fields.
@@ -68,18 +68,16 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
  *            .named("address")
  *        .named("User")
  * </pre>
- *
+ * <p>
  * Message types are built using {@link #buildMessage()} and function just like
  * group builders.
  * <pre>
  *   // message User {
- *   //   required group user {
- *   //     required int64 id;
- *   //     optional binary email (UTF8);
- *   //     optional group address {
- *   //       required binary street (UTF8);
- *   //       required int32 zipcode;
- *   //     }
+ *   //   required int64 id;
+ *   //   optional binary email (UTF8);
+ *   //   optional group address {
+ *   //     required binary street (UTF8);
+ *   //     required int32 zipcode;
  *   //   }
  *   // }
  *   Types.buildMessage()
@@ -91,7 +89,7 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
  *            .named("address")
  *        .named("User")
  * </pre>
- *
+ * <p>
  * These builders enforce consistency checks based on the specifications in
  * the parquet-format documentation. For example, if DECIMAL is used to annotate
  * a FIXED_LEN_BYTE_ARRAY that is not long enough for its maximum precision,
@@ -140,7 +138,7 @@ public class Types {
 
     /**
      * Adds a type annotation ({@link OriginalType}) to the type being built.
-     *
+     * <p>
      * Type annotations are used to extend the types that parquet can store, by
      * specifying how the primitive types should be interpreted. This keeps the
      * set of primitive types to a minimum and reuses parquet's efficient
@@ -157,7 +155,7 @@ public class Types {
 
     /**
      * Adds the precision for a DECIMAL.
-     *
+     * <p>
      * This value is required for decimals and must be less than or equal to
      * the maximum number of base-10 digits in the underlying type. A 4-byte
      * fixed, for example, can store up to 9 base-10 digits.
@@ -172,10 +170,10 @@ public class Types {
 
     /**
      * Adds the scale for a DECIMAL.
-     *
+     * <p>
      * This value must be less than the maximum precision of the type and must
      * be a positive number. If not set, the default scale is 0.
-     *
+     * <p>
      * The scale specifies the number of digits of the underlying unscaled
      * that are to the right of the decimal point. The decimal interpretation
      * of values in this column is: {@code value*10^(-scale)}.
@@ -194,6 +192,9 @@ public class Types {
      * Builds a {@link Type} and returns the parent {@link GroupBuilder} so
      * more types can be added to it. If there is no parent builder, then the
      * constructed {@code Type} is returned.
+     * <p>
+     * <em>Note:</em> Any configuration for this type builder should be done
+     * before calling this method.
      *
      * @param name a name for the constructed type
      * @return the parent {@code GroupBuilder} or the constructed {@code Type}
@@ -439,6 +440,9 @@ public class Types {
 
     /**
      * Builds and returns the {@link MessageType} configured by this builder.
+     * <p>
+     * <em>Note:</em> All primitive types and sub-groups should be added before
+     * calling this method.
      *
      * @param name a name for the constructed type
      * @return the final {@code MessageType} configured by this builder.
