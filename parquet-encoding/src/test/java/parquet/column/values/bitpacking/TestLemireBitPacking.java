@@ -69,16 +69,16 @@ public class TestLemireBitPacking {
     for (int j = 0; j < values.length; j++) {
       values[j] = (int)(Math.random() * 100000) % (int)Math.pow(2, bitWidth);
     }
-    System.out.println("Input:  " + TestBitPacking.toString(values));
+    LOG.debug("Input:  " + TestBitPacking.toString(values));
     return values;
   }
 
   @Test
   public void testPackUnPackAgainstHandWritten() throws IOException {
-    System.out.println();
-    System.out.println("testPackUnPackAgainstHandWritten");
+    LOG.debug("");
+    LOG.debug("testPackUnPackAgainstHandWritten");
     for (int i = 1; i < 8; i++) {
-      System.out.println("Width: " + i);
+      LOG.debug("Width: " + i);
       int[] packed = new int[i];
       int[] unpacked = new int[32];
       int[] values = generateValues(i);
@@ -95,7 +95,7 @@ public class TestLemireBitPacking {
         lemireOut.write((v >>>  0) & 0xFF);
       }
       final byte[] packedByLemireAsBytes = lemireOut.toByteArray();
-      System.out.println("Lemire: " + TestBitPacking.toString(packedByLemireAsBytes));
+      LOG.debug("Lemire: " + TestBitPacking.toString(packedByLemireAsBytes));
 
       // pack manual
       final ByteArrayOutputStream manualOut = new ByteArrayOutputStream();
@@ -104,7 +104,7 @@ public class TestLemireBitPacking {
         writer.write(values[j]);
       }
       final byte[] packedManualAsBytes = manualOut.toByteArray();
-      System.out.println("Manual: " + TestBitPacking.toString(packedManualAsBytes));
+      LOG.debug("Manual: " + TestBitPacking.toString(packedManualAsBytes));
 
       // unpack manual
       final BitPackingReader reader = BitPacking.createBitPackingReader(i, new ByteArrayInputStream(packedByLemireAsBytes), 32);
@@ -112,7 +112,7 @@ public class TestLemireBitPacking {
         unpacked[j] = reader.read();
       }
 
-      System.out.println("Output: " + TestBitPacking.toString(unpacked));
+      LOG.debug("Output: " + TestBitPacking.toString(unpacked));
       Assert.assertArrayEquals("width " + i, values, unpacked);
     }
   }
