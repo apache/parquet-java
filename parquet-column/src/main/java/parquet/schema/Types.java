@@ -294,9 +294,9 @@ public class Types {
     }
 
     private static long maxPrecision(int numBytes) {
-      return Math.round(                  // convert double to long
-          Math.floor(Math.log10(          // number of base-10 digits
-          Math.pow(2, 8 * numBytes) - 1)  // maximum value stored in numBytes
+      return Math.round(                      // convert double to long
+          Math.floor(Math.log10(              // number of base-10 digits
+          Math.pow(2, 8 * numBytes - 1) - 1)  // max value stored in numBytes
           ));
     }
   }

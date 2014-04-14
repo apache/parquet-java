@@ -287,12 +287,12 @@ public class TestTypeBuilders {
           }
         });
     // maximum precision for 8 bytes is 19
-    assertThrows("should reject precision 20 with length 8",
+    assertThrows("should reject precision 19 with length 8",
         IllegalStateException.class, new Callable<Type>() {
           @Override
           public Type call() throws Exception {
             return Types.required(FIXED_LEN_BYTE_ARRAY).length(8)
-                .as(OriginalType.DECIMAL).precision(20).scale(4)
+                .as(OriginalType.DECIMAL).precision(19).scale(4)
                 .named("aDecimal");
           }
         });
