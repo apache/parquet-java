@@ -22,28 +22,30 @@ import java.io.IOException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import parquet.Log;
 import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
 public class TestLemireBitPacking {
+  private static final Log LOG = Log.getLog(TestLemireBitPacking.class);
 
   @Test
   public void testPackUnPack() {
     for (Packer packer : Packer.values()) {
-      System.out.println();
-      System.out.println("testPackUnPack");
+      LOG.debug("");
+      LOG.debug("testPackUnPack");
       for (int i = 1; i < 32; i++) {
-        System.out.println("Width: " + i);
+        LOG.debug("Width: " + i);
         int[] values = generateValues(i);
         int[] unpacked = new int[32];
         {
           packUnpack(packer.newIntPacker(i), values, unpacked);
-          System.out.println("int based Output " + packer.name() + ": " + TestBitPacking.toString(unpacked));
+          LOG.debug("int based Output " + packer.name() + ": " + TestBitPacking.toString(unpacked));
           Assert.assertArrayEquals(packer.name() + " width "+i, values, unpacked);
         }
         {
           packUnpack(packer.newBytePacker(i), values, unpacked);
-          System.out.println("byte based Output " + packer.name() + ": " + TestBitPacking.toString(unpacked));
+          LOG.debug("byte based Output " + packer.name() + ": " + TestBitPacking.toString(unpacked));
           Assert.assertArrayEquals(packer.name() + " width "+i, values, unpacked);
         }
       }
