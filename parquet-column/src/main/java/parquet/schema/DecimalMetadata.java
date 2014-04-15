@@ -1,10 +1,10 @@
 package parquet.schema;
 
-public class OriginalTypeMeta {
+public class DecimalMetadata {
   private final int precision;
   private final int scale;
 
-  public OriginalTypeMeta(int precision, int scale) {
+  public DecimalMetadata(int precision, int scale) {
     this.precision = precision;
     this.scale = scale;
   }
@@ -22,7 +22,7 @@ public class OriginalTypeMeta {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
 
-    OriginalTypeMeta that = (OriginalTypeMeta) o;
+    DecimalMetadata that = (DecimalMetadata) o;
 
     if (precision != that.precision) return false;
     if (scale != that.scale) return false;

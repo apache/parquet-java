@@ -194,7 +194,7 @@ public class TestTypeBuilders {
     // int32 primitive type
     MessageType expected = new MessageType("DecimalMessage",
         new PrimitiveType(REQUIRED, INT32, 0, "aDecimal",
-            OriginalType.DECIMAL, new OriginalTypeMeta(9, 2)));
+            OriginalType.DECIMAL, new DecimalMetadata(9, 2)));
     MessageType builderType = Types.buildMessage()
         .required(INT32)
             .as(OriginalType.DECIMAL).precision(9).scale(2)
@@ -204,7 +204,7 @@ public class TestTypeBuilders {
     // int64 primitive type
     expected = new MessageType("DecimalMessage",
         new PrimitiveType(REQUIRED, INT64, 0, "aDecimal",
-            OriginalType.DECIMAL, new OriginalTypeMeta(18, 2)));
+            OriginalType.DECIMAL, new DecimalMetadata(18, 2)));
     builderType = Types.buildMessage()
         .required(INT64)
             .as(OriginalType.DECIMAL).precision(18).scale(2)
@@ -214,7 +214,7 @@ public class TestTypeBuilders {
     // binary primitive type
     expected = new MessageType("DecimalMessage",
         new PrimitiveType(REQUIRED, BINARY, 0, "aDecimal",
-            OriginalType.DECIMAL, new OriginalTypeMeta(9, 2)));
+            OriginalType.DECIMAL, new DecimalMetadata(9, 2)));
     builderType = Types.buildMessage()
         .required(BINARY).as(OriginalType.DECIMAL).precision(9).scale(2)
             .named("aDecimal")
@@ -223,7 +223,7 @@ public class TestTypeBuilders {
     // fixed primitive type
     expected = new MessageType("DecimalMessage",
         new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 4, "aDecimal",
-            OriginalType.DECIMAL, new OriginalTypeMeta(9, 2)));
+            OriginalType.DECIMAL, new DecimalMetadata(9, 2)));
     builderType = Types.buildMessage()
         .required(FIXED_LEN_BYTE_ARRAY).length(4)
             .as(OriginalType.DECIMAL).precision(9).scale(2)
@@ -236,7 +236,7 @@ public class TestTypeBuilders {
   public void testDecimalAnnotationMissingScale() {
     MessageType expected = new MessageType("DecimalMessage",
         new PrimitiveType(REQUIRED, INT32, 0, "aDecimal",
-            OriginalType.DECIMAL, new OriginalTypeMeta(9, 0)));
+            OriginalType.DECIMAL, new DecimalMetadata(9, 0)));
     MessageType builderType = Types.buildMessage()
         .required(INT32)
             .as(OriginalType.DECIMAL).precision(9)
@@ -246,7 +246,7 @@ public class TestTypeBuilders {
 
     expected = new MessageType("DecimalMessage",
         new PrimitiveType(REQUIRED, INT64, 0, "aDecimal",
-            OriginalType.DECIMAL, new OriginalTypeMeta(9, 0)));
+            OriginalType.DECIMAL, new DecimalMetadata(9, 0)));
     builderType = Types.buildMessage()
         .required(INT64)
             .as(OriginalType.DECIMAL).precision(9)
@@ -256,7 +256,7 @@ public class TestTypeBuilders {
 
     expected = new MessageType("DecimalMessage",
         new PrimitiveType(REQUIRED, BINARY, 0, "aDecimal",
-            OriginalType.DECIMAL, new OriginalTypeMeta(9, 0)));
+            OriginalType.DECIMAL, new DecimalMetadata(9, 0)));
     builderType = Types.buildMessage()
         .required(BINARY).as(OriginalType.DECIMAL).precision(9)
             .named("aDecimal")
@@ -265,7 +265,7 @@ public class TestTypeBuilders {
 
     expected = new MessageType("DecimalMessage",
         new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 7, "aDecimal",
-            OriginalType.DECIMAL, new OriginalTypeMeta(9, 0)));
+            OriginalType.DECIMAL, new DecimalMetadata(9, 0)));
     builderType = Types.buildMessage()
         .required(FIXED_LEN_BYTE_ARRAY).length(7)
             .as(OriginalType.DECIMAL).precision(9)
@@ -312,11 +312,12 @@ public class TestTypeBuilders {
           public Type call() throws Exception {
             return Types.buildMessage()
                 .required(FIXED_LEN_BYTE_ARRAY).length(7)
-                    .as(OriginalType.DECIMAL).scale(2)
-                    .named("aDecimal")
+                .as(OriginalType.DECIMAL).scale(2)
+                .named("aDecimal")
                 .named("DecimalMessage");
           }
-        });
+        }
+    );
   }
 
   @Test
@@ -357,11 +358,12 @@ public class TestTypeBuilders {
           public Type call() throws Exception {
             return Types.buildMessage()
                 .required(FIXED_LEN_BYTE_ARRAY).length(7)
-                    .as(OriginalType.DECIMAL).precision(3).scale(4)
-                    .named("aDecimal")
+                .as(OriginalType.DECIMAL).precision(3).scale(4)
+                .named("aDecimal")
                 .named("DecimalMessage");
           }
-        });
+        }
+    );
   }
 
   @Test
@@ -403,7 +405,8 @@ public class TestTypeBuilders {
                 .as(OriginalType.DECIMAL).precision(19).scale(4)
                 .named("aDecimal");
           }
-        });
+        }
+    );
   }
 
   @Test

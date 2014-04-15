@@ -69,11 +69,7 @@ public class GroupType extends Type {
    * @param fields the contained fields
    */
   public GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields) {
-    this(repetition, name, originalType, null, fields);
-  }
-
-  GroupType(Repetition repetition, String name, OriginalType originalType, OriginalTypeMeta meta, List<Type> fields) {
-    super(name, repetition, originalType, meta);
+    super(name, repetition, originalType);
     this.fields = fields;
     this.indexByName = new HashMap<String, Integer>();
     for (int i = 0; i < fields.size(); i++) {
@@ -171,20 +167,9 @@ public class GroupType extends Type {
     sb.append(indent)
         .append(getRepetition().name().toLowerCase())
         .append(" group ")
-        .append(getName());
-    if (getOriginalType() != null) {
-      sb.append(" (").append(getOriginalType());
-      OriginalTypeMeta meta = getOriginalTypeMeta();
-      if (meta != null) {
-        sb.append("(")
-            .append(meta.getPrecision())
-            .append(",")
-            .append(meta.getScale())
-            .append(")");
-      }
-      sb.append(")");
-    }
-    sb.append(" {\n");
+        .append(getName())
+        .append(getOriginalType() == null ? "" : " (" + getOriginalType() +")")
+        .append(" {\n");
     membersDisplayString(sb, indent + "  ");
     sb.append(indent)
         .append("}");

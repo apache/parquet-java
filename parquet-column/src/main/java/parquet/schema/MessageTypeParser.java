@@ -100,24 +100,49 @@ public class MessageTypeParser {
 
     // Read type.
     String type = st.nextToken();
-    Types.Builder childBuilder;
     if ("group".equalsIgnoreCase(type)) {
-      childBuilder = builder.group(repetition);
+      addGroupType(t, st, repetition, builder);
     } else {
-      PrimitiveTypeName typeName = asPrimitive(type, st);
-      childBuilder = builder.primitive(typeName, repetition);
-      if (typeName == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
-        t = st.nextToken();
-        // Read type length if the type is fixed_len_byte_array.
-        if (!t.equalsIgnoreCase("(")) {
-          throw new IllegalArgumentException("expecting (length) for field of type fixed_len_byte_array");
-        }
-        ((Types.PrimitiveBuilder) childBuilder).length(Integer.parseInt(st.nextToken()));
-        check(st.nextToken(), ")", "type length ended by )", st);
-      }
+      addPrimitiveType(t, st, asPrimitive(type, st), repetition, builder);
+    }
+  }
+
+  private static void addGroupType(String t, Tokenizer st, Repetition r, Types.GroupBuilder builder) {
+    Types.GroupBuilder childBuilder = builder.group(r);
+    String name = st.nextToken();
+
+    // Read annotation, if any.
+    t = st.nextToken();
+    OriginalType originalType = null;
+    if (t.equalsIgnoreCase("(")) {
+      originalType = OriginalType.valueOf(st.nextToken());
+      childBuilder.as(originalType);
+      check(st.nextToken(), ")", "original type ended by )", st);
+      t = st.nextToken();
     }
 
-    // Read name.
+    try {
+      addGroupTypeFields(t, st, childBuilder);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("problem reading type: type = group, name = " + name + ", original type = " + originalType, e);
+    }
+
+    childBuilder.named(name);
+  }
+
+  private static void addPrimitiveType(String t, Tokenizer st, PrimitiveTypeName type, Repetition r, Types.GroupBuilder builder) {
+    Types.PrimitiveBuilder childBuilder = builder.primitive(type, r);
+
+    if (type == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
+      t = st.nextToken();
+      // Read type length if the type is fixed_len_byte_array.
+      if (!t.equalsIgnoreCase("(")) {
+        throw new IllegalArgumentException("expecting (length) for field of type fixed_len_byte_array");
+      }
+      childBuilder.length(Integer.parseInt(st.nextToken()));
+      check(st.nextToken(), ")", "type length ended by )", st);
+    }
+
     String name = st.nextToken();
 
     // Read annotation, if any.
@@ -145,16 +170,12 @@ public class MessageTypeParser {
       check(t, ")", "original type ended by )", st);
       t = st.nextToken();
     }
+    check(t, ";", "field ended by ';'", st);
 
     try {
-      if (childBuilder instanceof Types.GroupBuilder) {
-        addGroupTypeFields(t, st, (Types.GroupBuilder) childBuilder);
-      } else {
-        check(t, ";", "field ended by ';'", st);
-      }
       childBuilder.named(name);
     } catch (IllegalArgumentException e) {
-     throw new IllegalArgumentException("problem reading type: type = " + type + ", name = " + name + ", original type = " + originalType, e);
+      throw new IllegalArgumentException("problem reading type: type = " + type + ", name = " + name + ", original type = " + originalType, e);
     }
   }
 

@@ -113,19 +113,17 @@ public class Types {
    */
   public abstract static class Builder<T extends Builder, P> {
     protected final P parent;
-    protected final T asCorrectType;
 
     protected Type.Repetition repetition = null;
     protected OriginalType originalType = null;
     private boolean repetitionAlreadySet = false;
-    private int precision = NOT_SET;
-    private int scale = NOT_SET;
 
     @SuppressWarnings("unchecked")
     protected Builder(P parent) {
       this.parent = parent;
-      this.asCorrectType = (T) this;
     }
+
+    protected abstract T self();
 
     protected final T repetition(Type.Repetition repetition) {
       Preconditions.checkArgument(!repetitionAlreadySet,
@@ -133,7 +131,7 @@ public class Types {
       Preconditions.checkNotNull(repetition, "Repetition cannot be null");
       this.repetition = repetition;
       this.repetitionAlreadySet = true;
-      return this.asCorrectType;
+      return self();
     }
 
     /**
@@ -150,40 +148,7 @@ public class Types {
      */
     public T as(OriginalType type) {
       this.originalType = type;
-      return this.asCorrectType;
-    }
-
-    /**
-     * Adds the precision for a DECIMAL.
-     * <p>
-     * This value is required for decimals and must be less than or equal to
-     * the maximum number of base-10 digits in the underlying type. A 4-byte
-     * fixed, for example, can store up to 9 base-10 digits.
-     *
-     * @param precision an int precision value for the DECIMAL
-     * @return this builder for method chaining
-     */
-    public T precision(int precision) {
-      this.precision = precision;
-      return this.asCorrectType;
-    }
-
-    /**
-     * Adds the scale for a DECIMAL.
-     * <p>
-     * This value must be less than the maximum precision of the type and must
-     * be a positive number. If not set, the default scale is 0.
-     * <p>
-     * The scale specifies the number of digits of the underlying unscaled
-     * that are to the right of the decimal point. The decimal interpretation
-     * of values in this column is: {@code value*10^(-scale)}.
-     *
-     * @param scale an int scale value for the DECIMAL
-     * @return this builder for method chaining
-     */
-    public T scale(int scale) {
-      this.scale = scale;
-      return this.asCorrectType;
+      return self();
     }
 
     abstract protected Type build(String name);
@@ -213,20 +178,6 @@ public class Types {
         return (P) type;
       }
     }
-
-    protected OriginalTypeMeta attachedMetadata() {
-      OriginalTypeMeta meta = null;
-      if (OriginalType.DECIMAL == originalType) {
-        Preconditions.checkArgument(precision > 0,
-            "Invalid DECIMAL precision: " + precision);
-        Preconditions.checkArgument(scale >= 0,
-            "Invalid DECIMAL scale: " + scale);
-        Preconditions.checkArgument(scale <= precision,
-            "Invalid DECIMAL scale: cannot be greater than precision");
-        meta = new OriginalTypeMeta(precision, scale);
-      }
-      return meta;
-    }
   }
 
   /**
@@ -240,10 +191,17 @@ public class Types {
     private static final long MAX_PRECISION_INT64 = maxPrecision(8);
     private final PrimitiveTypeName primitiveType;
     private int length = NOT_SET;
+    private int precision = NOT_SET;
+    private int scale = NOT_SET;
 
     private PrimitiveBuilder(P parent, PrimitiveTypeName type) {
       super(parent);
       this.primitiveType = type;
+    }
+
+    @Override
+    protected PrimitiveBuilder<P> self() {
+      return this;
     }
 
     /**
@@ -257,6 +215,39 @@ public class Types {
       return this;
     }
 
+    /**
+     * Adds the precision for a DECIMAL.
+     * <p>
+     * This value is required for decimals and must be less than or equal to
+     * the maximum number of base-10 digits in the underlying type. A 4-byte
+     * fixed, for example, can store up to 9 base-10 digits.
+     *
+     * @param precision an int precision value for the DECIMAL
+     * @return this builder for method chaining
+     */
+    public PrimitiveBuilder<P> precision(int precision) {
+      this.precision = precision;
+      return this;
+    }
+
+    /**
+     * Adds the scale for a DECIMAL.
+     * <p>
+     * This value must be less than the maximum precision of the type and must
+     * be a positive number. If not set, the default scale is 0.
+     * <p>
+     * The scale specifies the number of digits of the underlying unscaled
+     * that are to the right of the decimal point. The decimal interpretation
+     * of values in this column is: {@code value*10^(-scale)}.
+     *
+     * @param scale an int scale value for the DECIMAL
+     * @return this builder for method chaining
+     */
+    public PrimitiveBuilder<P> scale(int scale) {
+      this.scale = scale;
+      return this;
+    }
+
     @Override
     protected PrimitiveType build(String name) {
       if (PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY == primitiveType) {
@@ -264,7 +255,7 @@ public class Types {
             "Invalid FIXED_LEN_BYTE_ARRAY length: " + length);
       }
 
-      OriginalTypeMeta meta = attachedMetadata();
+      DecimalMetadata meta = decimalMetadata();
 
       // validate type annotations and required metadata
       if (originalType != null) {
@@ -309,8 +300,23 @@ public class Types {
     private static long maxPrecision(int numBytes) {
       return Math.round(                      // convert double to long
           Math.floor(Math.log10(              // number of base-10 digits
-          Math.pow(2, 8 * numBytes - 1) - 1)  // max value stored in numBytes
-          ));
+              Math.pow(2, 8 * numBytes - 1) - 1)  // max value stored in numBytes
+          )
+      );
+    }
+
+    protected DecimalMetadata decimalMetadata() {
+      DecimalMetadata meta = null;
+      if (OriginalType.DECIMAL == originalType) {
+        Preconditions.checkArgument(precision > 0,
+            "Invalid DECIMAL precision: " + precision);
+        Preconditions.checkArgument(scale >= 0,
+            "Invalid DECIMAL scale: " + scale);
+        Preconditions.checkArgument(scale <= precision,
+            "Invalid DECIMAL scale: cannot be greater than precision");
+        meta = new DecimalMetadata(precision, scale);
+      }
+      return meta;
     }
   }
 
@@ -326,6 +332,11 @@ public class Types {
     private GroupBuilder(P parent) {
       super(parent);
       this.fields = new ArrayList<Type>();
+    }
+
+    @Override
+    protected GroupBuilder<P> self() {
+      return this;
     }
 
     public PrimitiveBuilder<GroupBuilder<P>> primitive(
@@ -440,8 +451,7 @@ public class Types {
     protected GroupType build(String name) {
       Preconditions.checkState(!fields.isEmpty(),
           "Cannot build an empty group");
-      return new GroupType(
-          repetition, name, originalType, attachedMetadata(), fields);
+      return new GroupType(repetition, name, originalType, fields);
     }
   }
 

@@ -275,6 +275,7 @@ public final class PrimitiveType extends Type {
 
   private final PrimitiveTypeName primitive;
   private final int length;
+  private final DecimalMetadata decimalMeta;
 
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
@@ -286,6 +287,12 @@ public final class PrimitiveType extends Type {
     this(repetition, primitive, 0, name, null, null);
   }
 
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param primitive STRING, INT64, ...
+   * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise (XXX)
+   * @param name the name of the type
+   */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, int length, String name) {
     this(repetition, primitive, length, name, null, null);
   }
@@ -319,14 +326,15 @@ public final class PrimitiveType extends Type {
    * @param name the name of the type
    * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise
    * @param originalType (optional) the original type (MAP, DECIMAL, UTF8, ...)
-   * @param meta (optional) metadata about the original type
+   * @param decimalMeta (optional) metadata about the decimal type
    */
   PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
                        int length, String name, OriginalType originalType,
-                       OriginalTypeMeta meta) {
-    super(name, repetition, originalType, meta);
+                       DecimalMetadata decimalMeta) {
+    super(name, repetition, originalType);
     this.primitive = primitive;
     this.length = length;
+    this.decimalMeta = decimalMeta;
   }
 
   /**
@@ -343,6 +351,12 @@ public final class PrimitiveType extends Type {
     return length;
   }
 
+  /**
+   * @return the decimal type metadata
+   */
+  public DecimalMetadata getOriginalTypeMeta() {
+    return decimalMeta;
+  }
   /**
    * @return true
    */
@@ -374,7 +388,7 @@ public final class PrimitiveType extends Type {
     sb.append(" ").append(getName());
     if (getOriginalType() != null) {
       sb.append(" (").append(getOriginalType());
-      OriginalTypeMeta meta = getOriginalTypeMeta();
+      DecimalMetadata meta = getOriginalTypeMeta();
       if (meta != null) {
         sb.append("(")
             .append(meta.getPrecision())

@@ -73,14 +73,13 @@ abstract public class Type {
   private final String name;
   private final Repetition repetition;
   private final OriginalType originalType;
-  private final OriginalTypeMeta meta;
 
   /**
    * @param name the name of the type
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    */
   public Type(String name, Repetition repetition) {
-    this(name, repetition, null, null);
+    this(name, repetition, null);
   }
 
   /**
@@ -89,21 +88,10 @@ abstract public class Type {
    * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
    */
   public Type(String name, Repetition repetition, OriginalType originalType) {
-    this(name, repetition, originalType, null);
-  }
-
-  /**
-   *
-   * @param name the name of the type
-   * @param repetition OPTIONAL, REPEATED, REQUIRED
-   * @param originalType ((optional) the original type to help with cross schema convertion (LIST, MAP, ...)
-   * @param meta (optional) metadata for the original type
-   */
-  Type(String name, Repetition repetition, OriginalType originalType, OriginalTypeMeta meta) {
+    super();
     this.name = name;
     this.repetition = repetition;
     this.originalType = originalType;
-    this.meta = meta;
   }
 
   /**
@@ -133,13 +121,6 @@ abstract public class Type {
    */
   public OriginalType getOriginalType() {
     return originalType;
-  }
-
-  /**
-   * @return the original type's metadata or null
-   */
-  public OriginalTypeMeta getOriginalTypeMeta() {
-    return meta;
   }
 
   /**

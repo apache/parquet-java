@@ -126,10 +126,6 @@ public class ParquetMetadataConverter {
         if (groupType.getOriginalType() != null) {
           element.setConverted_type(getConvertedType(groupType.getOriginalType()));
         }
-        if (groupType.getOriginalTypeMeta() != null) {
-          element.setPrecision(groupType.getOriginalTypeMeta().getPrecision());
-          element.setScale(groupType.getOriginalTypeMeta().getScale());
-        }
         visitChildren(result, groupType, element);
       }
 
@@ -396,12 +392,20 @@ public class ParquetMetadataConverter {
       // Create Parquet Type.
       Types.Builder childBuilder;
       if (schemaElement.type != null) {
-        childBuilder = builder.primitive(
+        Types.PrimitiveBuilder primitiveBuilder = builder.primitive(
             getPrimitive(schemaElement.type),
             fromParquetRepetition(schemaElement.repetition_type));
         if (schemaElement.isSetType_length()) {
-          ((Types.PrimitiveBuilder) childBuilder).length(schemaElement.type_length);
+          primitiveBuilder.length(schemaElement.type_length);
         }
+        if (schemaElement.isSetPrecision()) {
+          primitiveBuilder.precision(schemaElement.precision);
+        }
+        if (schemaElement.isSetScale()) {
+          primitiveBuilder.scale(schemaElement.scale);
+        }
+        childBuilder = primitiveBuilder;
+
       } else {
         childBuilder = builder.group(fromParquetRepetition(schemaElement.repetition_type));
         buildChildren((Types.GroupBuilder) childBuilder, schema, schemaElement.num_children);
@@ -409,12 +413,6 @@ public class ParquetMetadataConverter {
 
       if (schemaElement.isSetConverted_type()) {
         childBuilder.as(getOriginalType(schemaElement.converted_type));
-      }
-      if (schemaElement.isSetPrecision()) {
-        childBuilder.precision(schemaElement.precision);
-      }
-      if (schemaElement.isSetScale()) {
-        childBuilder.scale(schemaElement.scale);
       }
 
       childBuilder.named(schemaElement.name);
