@@ -169,6 +169,18 @@ public class TestTypeBuilders {
         });
   }
 
+  @Test(expected=IllegalArgumentException.class)
+  public void testFixedWithoutLength() {
+    Types.required(FIXED_LEN_BYTE_ARRAY).named("fixed");
+  }
+
+  @Test
+  public void testFixedWithLength() {
+    PrimitiveType expected = new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 7, "fixed");
+    PrimitiveType fixed = Types.required(FIXED_LEN_BYTE_ARRAY).length(7).named("fixed");
+    Assert.assertEquals(expected, fixed);
+  }
+
   @Test
   public void testFixedLengthEquals() {
     Type f4 = Types.required(FIXED_LEN_BYTE_ARRAY).length(4).named("f4");
@@ -178,12 +190,43 @@ public class TestTypeBuilders {
   }
 
   @Test
-  public void testDecimalAnnotationBinary() {
+  public void testDecimalAnnotation() {
+    // int32 primitive type
     MessageType expected = new MessageType("DecimalMessage",
-        new PrimitiveType(REQUIRED, BINARY, 0, "aDecimal",
+        new PrimitiveType(REQUIRED, INT32, 0, "aDecimal",
             OriginalType.DECIMAL, new OriginalTypeMeta(9, 2)));
     MessageType builderType = Types.buildMessage()
+        .required(INT32)
+            .as(OriginalType.DECIMAL).precision(9).scale(2)
+            .named("aDecimal")
+        .named("DecimalMessage");
+    Assert.assertEquals(expected, builderType);
+    // int64 primitive type
+    expected = new MessageType("DecimalMessage",
+        new PrimitiveType(REQUIRED, INT64, 0, "aDecimal",
+            OriginalType.DECIMAL, new OriginalTypeMeta(18, 2)));
+    builderType = Types.buildMessage()
+        .required(INT64)
+            .as(OriginalType.DECIMAL).precision(18).scale(2)
+            .named("aDecimal")
+        .named("DecimalMessage");
+    Assert.assertEquals(expected, builderType);
+    // binary primitive type
+    expected = new MessageType("DecimalMessage",
+        new PrimitiveType(REQUIRED, BINARY, 0, "aDecimal",
+            OriginalType.DECIMAL, new OriginalTypeMeta(9, 2)));
+    builderType = Types.buildMessage()
         .required(BINARY).as(OriginalType.DECIMAL).precision(9).scale(2)
+            .named("aDecimal")
+        .named("DecimalMessage");
+    Assert.assertEquals(expected, builderType);
+    // fixed primitive type
+    expected = new MessageType("DecimalMessage",
+        new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 4, "aDecimal",
+            OriginalType.DECIMAL, new OriginalTypeMeta(9, 2)));
+    builderType = Types.buildMessage()
+        .required(FIXED_LEN_BYTE_ARRAY).length(4)
+            .as(OriginalType.DECIMAL).precision(9).scale(2)
             .named("aDecimal")
         .named("DecimalMessage");
     Assert.assertEquals(expected, builderType);
@@ -192,9 +235,29 @@ public class TestTypeBuilders {
   @Test
   public void testDecimalAnnotationMissingScale() {
     MessageType expected = new MessageType("DecimalMessage",
-        new PrimitiveType(REQUIRED, BINARY, 0, "aDecimal",
+        new PrimitiveType(REQUIRED, INT32, 0, "aDecimal",
             OriginalType.DECIMAL, new OriginalTypeMeta(9, 0)));
     MessageType builderType = Types.buildMessage()
+        .required(INT32)
+            .as(OriginalType.DECIMAL).precision(9)
+            .named("aDecimal")
+        .named("DecimalMessage");
+    Assert.assertEquals(expected, builderType);
+
+    expected = new MessageType("DecimalMessage",
+        new PrimitiveType(REQUIRED, INT64, 0, "aDecimal",
+            OriginalType.DECIMAL, new OriginalTypeMeta(9, 0)));
+    builderType = Types.buildMessage()
+        .required(INT64)
+            .as(OriginalType.DECIMAL).precision(9)
+            .named("aDecimal")
+        .named("DecimalMessage");
+    Assert.assertEquals(expected, builderType);
+
+    expected = new MessageType("DecimalMessage",
+        new PrimitiveType(REQUIRED, BINARY, 0, "aDecimal",
+            OriginalType.DECIMAL, new OriginalTypeMeta(9, 0)));
+    builderType = Types.buildMessage()
         .required(BINARY).as(OriginalType.DECIMAL).precision(9)
             .named("aDecimal")
         .named("DecimalMessage");
@@ -213,6 +276,26 @@ public class TestTypeBuilders {
 
   @Test
   public void testDecimalAnnotationMissingPrecision() {
+    assertThrows("Should reject decimal annotation without precision",
+        IllegalArgumentException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.buildMessage()
+                .required(INT32).as(OriginalType.DECIMAL).scale(2)
+                    .named("aDecimal")
+                .named("DecimalMessage");
+          }
+        });
+    assertThrows("Should reject decimal annotation without precision",
+        IllegalArgumentException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.buildMessage()
+                .required(INT64).as(OriginalType.DECIMAL).scale(2)
+                    .named("aDecimal")
+                .named("DecimalMessage");
+          }
+        });
     assertThrows("Should reject decimal annotation without precision",
         IllegalArgumentException.class, new Callable<Type>() {
           @Override
@@ -243,8 +326,28 @@ public class TestTypeBuilders {
           @Override
           public Type call() throws Exception {
             return Types.buildMessage()
+                .required(INT32).as(OriginalType.DECIMAL).precision(3).scale(4)
+                    .named("aDecimal")
+                .named("DecimalMessage");
+          }
+        });
+    assertThrows("Should reject scale greater than precision",
+        IllegalArgumentException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.buildMessage()
+                .required(INT64).as(OriginalType.DECIMAL).precision(3).scale(4)
+                    .named("aDecimal")
+                .named("DecimalMessage");
+          }
+        });
+    assertThrows("Should reject scale greater than precision",
+        IllegalArgumentException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.buildMessage()
                 .required(BINARY).as(OriginalType.DECIMAL).precision(3).scale(4)
-                .named("aDecimal")
+                    .named("aDecimal")
                 .named("DecimalMessage");
           }
         });
@@ -254,24 +357,11 @@ public class TestTypeBuilders {
           public Type call() throws Exception {
             return Types.buildMessage()
                 .required(FIXED_LEN_BYTE_ARRAY).length(7)
-                .as(OriginalType.DECIMAL).precision(3).scale(4)
-                .named("aDecimal")
+                    .as(OriginalType.DECIMAL).precision(3).scale(4)
+                    .named("aDecimal")
                 .named("DecimalMessage");
           }
         });
-  }
-
-  @Test
-  public void testDecimalAnnotationFixed() {
-    MessageType expected = new MessageType("DecimalMessage",
-        new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 4, "aDecimal",
-            OriginalType.DECIMAL, new OriginalTypeMeta(9, 2)));
-    MessageType builderType = Types.buildMessage()
-        .required(FIXED_LEN_BYTE_ARRAY).length(4)
-            .as(OriginalType.DECIMAL).precision(9).scale(2)
-            .named("aDecimal")
-        .named("DecimalMessage");
-    Assert.assertEquals(expected, builderType);
   }
 
   @Test
@@ -286,6 +376,15 @@ public class TestTypeBuilders {
                 .named("aDecimal");
           }
         });
+    assertThrows("should reject precision 10 with length 4",
+        IllegalStateException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.required(INT32)
+                .as(OriginalType.DECIMAL).precision(10).scale(2)
+                .named("aDecimal");
+          }
+        });
     // maximum precision for 8 bytes is 19
     assertThrows("should reject precision 19 with length 8",
         IllegalStateException.class, new Callable<Type>() {
@@ -296,33 +395,23 @@ public class TestTypeBuilders {
                 .named("aDecimal");
           }
         });
+    assertThrows("should reject precision 19 with length 8",
+        IllegalStateException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.required(INT64).length(8)
+                .as(OriginalType.DECIMAL).precision(19).scale(4)
+                .named("aDecimal");
+          }
+        });
   }
 
   @Test
-  public void testFixedWithLength() {
-    PrimitiveType expected = new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 7, "fixed");
-    PrimitiveType fixed = Types.required(FIXED_LEN_BYTE_ARRAY).length(7).named("fixed");
-    Assert.assertEquals(expected, fixed);
-  }
-
-  @Test(expected=IllegalArgumentException.class)
-  public void testFixedWithoutLength() {
-    Types.required(FIXED_LEN_BYTE_ARRAY).named("fixed");
-  }
-
-  @Test
-  public void testUTF8Annotation() {
-    PrimitiveType expected = new PrimitiveType(REQUIRED, BINARY, "string", OriginalType.UTF8);
-    PrimitiveType string = Types.required(BINARY).as(OriginalType.UTF8).named("string");
-    Assert.assertEquals(expected, string);
-  }
-
-  @Test
-  public void testDECIMALAnnotationRejectsNonByteArrays() {
-    PrimitiveTypeName[] nonByteTypes = new PrimitiveTypeName[]{
-        BOOLEAN, INT32, INT64, INT96, DOUBLE, FLOAT
+  public void testDECIMALAnnotationRejectsUnsupportedTypes() {
+    PrimitiveTypeName[] unsupported = new PrimitiveTypeName[]{
+        BOOLEAN, INT96, DOUBLE, FLOAT
     };
-    for (final PrimitiveTypeName type : nonByteTypes) {
+    for (final PrimitiveTypeName type : unsupported) {
       assertThrows("Should reject non-binary type: " + type,
           IllegalStateException.class, new Callable<Type>() {
             @Override
@@ -333,6 +422,13 @@ public class TestTypeBuilders {
             }
           });
     }
+  }
+
+  @Test
+  public void testUTF8Annotation() {
+    PrimitiveType expected = new PrimitiveType(REQUIRED, BINARY, "string", OriginalType.UTF8);
+    PrimitiveType string = Types.required(BINARY).as(OriginalType.UTF8).named("string");
+    Assert.assertEquals(expected, string);
   }
 
   @Test

@@ -236,6 +236,8 @@ public class Types {
    *          {@link #named(String)} when the type is built.
    */
   public static class PrimitiveBuilder<P> extends Builder<PrimitiveBuilder<P>, P> {
+    private static final long MAX_PRECISION_INT32 = maxPrecision(4);
+    private static final long MAX_PRECISION_INT64 = maxPrecision(8);
     private final PrimitiveTypeName primitiveType;
     private int length = NOT_SET;
 
@@ -275,16 +277,27 @@ public class Types {
 
           case DECIMAL:
             Preconditions.checkState(
+                (primitiveType == PrimitiveTypeName.INT32) ||
+                (primitiveType == PrimitiveTypeName.INT64) ||
                 (primitiveType == PrimitiveTypeName.BINARY) ||
                 (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY),
-                "DECIMAL can only annotate BINARY or FIXED fields"
+                "DECIMAL can only annotate INT32, INT64, BINARY, and FIXED"
             );
-            if (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
+            if (primitiveType == PrimitiveTypeName.INT32) {
+              Preconditions.checkState(
+                  meta.getPrecision() <= MAX_PRECISION_INT32,
+                  "INT32 cannot store " + meta.getPrecision() + " digits " +
+                      "(max " + MAX_PRECISION_INT32 + ")");
+            } else if (primitiveType == PrimitiveTypeName.INT64) {
+              Preconditions.checkState(
+                  meta.getPrecision() <= MAX_PRECISION_INT64,
+                  "INT64 cannot store " + meta.getPrecision() + " digits " +
+                  "(max " + MAX_PRECISION_INT64 + ")");
+            } else if (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
               Preconditions.checkState(
                   meta.getPrecision() <= maxPrecision(length),
-                  "FIXED(" + length + ") is not long enough to store " +
-                  meta.getPrecision() + " digits"
-              );
+                  "FIXED(" + length + ") cannot store " + meta.getPrecision() +
+                  " digits (max " + maxPrecision(length) + ")");
             }
         }
       }
