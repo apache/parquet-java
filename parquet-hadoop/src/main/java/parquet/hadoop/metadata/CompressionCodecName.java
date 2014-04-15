@@ -36,9 +36,6 @@ public enum CompressionCodecName {
       return UNCOMPRESSED;
     }
     String name = clazz.getName();
-    if (name.equals("org.apache.hadoop.io.compress.DefaultCodec")) {
-      return GZIP;
-    }
     for (CompressionCodecName codec : CompressionCodecName.values()) {
       if (name.equals(codec.getHadoopCompressionCodecClassName())) {
         return codec;
