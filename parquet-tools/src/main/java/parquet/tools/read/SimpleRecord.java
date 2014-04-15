@@ -33,6 +33,10 @@ public class SimpleRecord {
   public void add(String name, Object value) {
     values.add(new NameValue(name,value));
   }
+  
+  public List<NameValue> getValues() {
+    return values;
+  }
 
   public String toString() {
     return values.toString();
