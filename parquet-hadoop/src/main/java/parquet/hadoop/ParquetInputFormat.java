@@ -48,6 +48,7 @@ import parquet.hadoop.metadata.GlobalMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.ConfigurationUtil;
 import parquet.hadoop.util.ContextUtil;
+import parquet.io.ParquetDecodingException;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 
@@ -153,88 +154,161 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     }
   }
 
+  //Wrapper of hdfs blocks, keep track of which HDFS block is being used
+  private static class HDFSBlocks {
+    BlockLocation[] hdfsBlocks;
+    int currentHdfsBlockIndex = 0;
+
+    private HDFSBlocks(BlockLocation[] hdfsBlocks) {
+      this.hdfsBlocks = hdfsBlocks;
+      Comparator<BlockLocation> comparator = new Comparator<BlockLocation>() {
+        @Override
+        public int compare(BlockLocation b1, BlockLocation b2) {
+          return Long.signum(b1.getOffset() - b2.getOffset());
+        }
+      };
+      Arrays.sort(hdfsBlocks, comparator);
+    }
+
+    private long getHDFSBlockEndingPosition(int hdfsBlockIndex) {
+      return hdfsBlocks[hdfsBlockIndex].getOffset() + hdfsBlocks[hdfsBlockIndex].getLength() - 1;
+    }
+
+    /**
+     * @param rowGroupMetadata
+     * @return true if the row group is in a new hdfs block, and also move the currentHDFSBlock pointer to the correct index that contains the row group
+     * false if the rowGroup is in the same hdfs block
+     */
+    private boolean checkStartedInANewHDFSBlock(BlockMetaData rowGroupMetadata) {
+      boolean isNewHdfsBlock = false;
+      while (getRowGroupOffset(rowGroupMetadata) > getHDFSBlockEndingPosition(currentHdfsBlockIndex)) {
+        isNewHdfsBlock = true;
+        currentHdfsBlockIndex++;
+        if (currentHdfsBlockIndex >= hdfsBlocks.length)
+          throw new ParquetDecodingException("The row group does not start in this file: row group offset is " + getRowGroupOffset(rowGroupMetadata) + "but the end of hdfs blocks of file is " + getHDFSBlockEndingPosition(currentHdfsBlockIndex));
+      }
+      return isNewHdfsBlock;
+    }
+
+    private long getRowGroupOffset(BlockMetaData rowGroupMetadata) {
+      return rowGroupMetadata.getColumns().get(0).getFirstDataPageOffset();
+    }
+
+    private int getCurrentHdfsBlockIndex() {
+      return currentHdfsBlockIndex;
+    }
+
+    public BlockLocation get(int hdfsBlockIndex) {
+      return hdfsBlocks[hdfsBlockIndex];
+    }
+  }
+
+  private static class SplitInfo {
+    List<BlockMetaData> rowGroups = new ArrayList<BlockMetaData>();
+    int hdfsBlockIndex;
+    long byteSize = 0L;
+
+    private SplitInfo(int hdfsBlockIndex) {
+      this.hdfsBlockIndex = hdfsBlockIndex;
+    }
+
+    private void addRowGroup(BlockMetaData rowGroup) {
+      this.rowGroups.add(rowGroup);
+      this.byteSize += rowGroup.getTotalByteSize();
+    }
+
+    public long getByteSize() {
+      return byteSize;
+    }
+
+    public List<BlockMetaData> getRowGroups() {
+      return rowGroups;
+    }
+
+    public int getHdfsBlockIndex() {
+      return hdfsBlockIndex;
+    }
+
+    int getRowGroupCount() {
+      return rowGroups.size();
+    }
+  }
+
   /**
    * groups together all the data blocks for the same HDFS block
-   * @param blocks data blocks (row groups)
-   * @param hdfsBlocks hdfs blocks
-   * @param fileStatus the containing file
-   * @param fileMetaData file level meta data
-   * @param readSupportClass the class used to materialize records
-   * @param requestedSchema the schema requested by the user
+   *
+   * @param blocks              data blocks (row groups)
+   * @param hdfsBlocksArray     hdfs blocks
+   * @param fileStatus          the containing file
+   * @param fileMetaData        file level meta data
+   * @param readSupportClass    the class used to materialize records
+   * @param requestedSchema     the schema requested by the user
    * @param readSupportMetadata the metadata provided by the readSupport implementation in init
+   * @param minSplitSize        the mapred.min.split.size
+   * @param maxSplitSize        the mapred.max.split.size
    * @return the splits (one per HDFS block)
    * @throws IOException If hosts can't be retrieved for the HDFS block
    */
   static <T> List<ParquetInputSplit> generateSplits(
-      List<BlockMetaData> blocks,
-      BlockLocation[] hdfsBlocks,
-      FileStatus fileStatus,
-      FileMetaData fileMetaData,
-      Class<?> readSupportClass,
-      String requestedSchema,
-      Map<String, String> readSupportMetadata) throws IOException {
+          List<BlockMetaData> blocks,
+          BlockLocation[] hdfsBlocksArray,
+          FileStatus fileStatus,
+          FileMetaData fileMetaData,
+          Class<?> readSupportClass,
+          String requestedSchema,
+          Map<String, String> readSupportMetadata, long minSplitSize, long maxSplitSize) throws IOException {
     String fileSchema = fileMetaData.getSchema().toString().intern();
-    Comparator<BlockLocation> comparator = new Comparator<BlockLocation>() {
-      @Override
-      public int compare(BlockLocation b1, BlockLocation b2) {
-        return Long.signum(b1.getOffset() - b2.getOffset());
-      }
-    };
-    Arrays.sort(hdfsBlocks, comparator);
-    List<List<BlockMetaData>> splitGroups = new ArrayList<List<BlockMetaData>>(hdfsBlocks.length);
-    for (int i = 0; i < hdfsBlocks.length; i++) {
-      splitGroups.add(new ArrayList<BlockMetaData>());
+    HDFSBlocks hdfsBlocks = new HDFSBlocks(hdfsBlocksArray);
+
+    SplitInfo currentSplit = new SplitInfo(0);
+    //assert the first rowGroup starts from hdfsBlock 0
+    if (hdfsBlocks.checkStartedInANewHDFSBlock(blocks.get(0))) {
+      throw new ParquetDecodingException("the first rowGroup does not start at first hdfsBlock of the file, instead it starts at hdfsBlock " + hdfsBlocks.getCurrentHdfsBlockIndex());
     }
-    for (BlockMetaData block : blocks) {
-      final long firstDataPage = block.getColumns().get(0).getFirstDataPageOffset();
-      int index = Arrays.binarySearch(hdfsBlocks, new BlockLocation() {@Override
-        public long getOffset() {
-        return firstDataPage;
-      }}, comparator);
-      if (index >= 0) {
-        splitGroups.get(index).add(block);
-      } else {
-        int insertionPoint = - index - 1;
-        if (insertionPoint == 0) {
-          // really, there should always be a block in 0
-          LOG.warn("row group before the first HDFS block:  " + block);
-          splitGroups.get(0).add(block);
-        } else {
-          splitGroups.get(insertionPoint - 1).add(block);
-        }
+    List<SplitInfo> splitRowGroups = new ArrayList<SplitInfo>();
+
+    //assign rowGroups to splits
+    for (BlockMetaData rowGroupMetadata : blocks) {
+      if ((hdfsBlocks.checkStartedInANewHDFSBlock(rowGroupMetadata) && currentSplit.getByteSize() >= minSplitSize) || currentSplit.getByteSize() >= maxSplitSize) {
+        //create a new split
+        splitRowGroups.add(currentSplit);//finish previous split
+        currentSplit = new SplitInfo(hdfsBlocks.getCurrentHdfsBlockIndex());
       }
+      currentSplit.addRowGroup(rowGroupMetadata);
     }
-    List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
-    for (int i = 0; i < hdfsBlocks.length; i++) {
-      BlockLocation hdfsBlock = hdfsBlocks[i];
-      List<BlockMetaData> blocksForCurrentSplit = splitGroups.get(i);
-      if (blocksForCurrentSplit.size() == 0) {
-        LOG.debug("HDFS block without row group: " + hdfsBlocks[i]);
-      } else {
-        long length = 0;
-        for (BlockMetaData block : blocksForCurrentSplit) {
-          MessageType requested = MessageTypeParser.parseMessageType(requestedSchema);
-          List<ColumnChunkMetaData> columns = block.getColumns();
-          for (ColumnChunkMetaData column : columns) {
-            if (requested.containsPath(column.getPath().toArray())) {
-              length += column.getTotalSize();
-            }
+
+    if (currentSplit.getRowGroupCount() > 0) {
+      splitRowGroups.add(currentSplit);
+    }
+
+    //generate splits from rowGroups of each split
+    List<ParquetInputSplit> resultSplits = new ArrayList<ParquetInputSplit>();
+    for (SplitInfo splitInfo : splitRowGroups) {
+      BlockLocation hdfsBlock = hdfsBlocks.get(splitInfo.getHdfsBlockIndex());
+      long length = 0;
+      for (BlockMetaData block : splitInfo.getRowGroups()) {
+        MessageType requested = MessageTypeParser.parseMessageType(requestedSchema);
+        List<ColumnChunkMetaData> columns = block.getColumns();
+        for (ColumnChunkMetaData column : columns) {
+          if (requested.containsPath(column.getPath().toArray())) {
+            length += column.getTotalSize();
           }
         }
-        splits.add(new ParquetInputSplit(
-          fileStatus.getPath(),
-          hdfsBlock.getOffset(),
-          length,
-          hdfsBlock.getHosts(),
-          blocksForCurrentSplit,
-          requestedSchema,
-          fileSchema,
-          fileMetaData.getKeyValueMetaData(),
-          readSupportMetadata
-          ));
       }
+      resultSplits.add(new ParquetInputSplit(
+              fileStatus.getPath(),
+              hdfsBlock.getOffset(),
+              length,
+              hdfsBlock.getHosts(),
+              splitInfo.getRowGroups(),
+              requestedSchema,
+              fileSchema,
+              fileMetaData.getKeyValueMetaData(),
+              readSupportMetadata
+      ));
+
     }
-    return splits;
+    return resultSplits;
   }
 
   /**
@@ -254,6 +328,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @throws IOException
    */
   public List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers) throws IOException {
+    final long maxSplitSize = configuration.getLong("mapred.max.split.size", Long.MAX_VALUE);
+    final long minSplitSize = Math.max(getFormatMinSplitSize(), configuration.getLong("mapred.min.split.size", 1L));
     List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
     GlobalMetaData globalMetaData = ParquetFileWriter.getGlobalMetaData(footers);
     ReadContext readContext = getReadSupport(configuration).init(new InitContext(
@@ -276,7 +352,9 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
               parquetMetaData.getFileMetaData(),
               readSupportClass,
               readContext.getRequestedSchema().toString(),
-              readContext.getReadSupportMetadata())
+              readContext.getReadSupportMetadata(),
+              minSplitSize,
+              maxSplitSize)
           );
     }
     return splits;
