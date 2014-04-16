@@ -90,6 +90,13 @@
       <version>1.6</version>
       <scope>provided</scope>
     </dependency>
+    <dependency> <!-- for pig runtime in tests -->
+      <groupId>org.antlr</groupId>
+      <artifactId>antlr-runtime</artifactId>
+      <version>3.4</version>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
   <build>
