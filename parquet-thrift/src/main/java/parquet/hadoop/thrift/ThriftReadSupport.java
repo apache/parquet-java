@@ -92,15 +92,16 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     final MessageType fileMessageType = context.getFileSchema();
     MessageType requestedProjection = fileMessageType;
     String partialSchemaString = configuration.get(ReadSupport.PARQUET_READ_SCHEMA);
-    String projectionSchemaStr = configuration.get(THRIFT_COLUMN_FILTER_KEY);
+    String projectionFilterString = configuration.get(THRIFT_COLUMN_FILTER_KEY);
 
-    if (partialSchemaString != null && projectionSchemaStr != null)
+    if (partialSchemaString != null && projectionFilterString != null)
       throw new ThriftProjectionException("PARQUET_READ_SCHEMA and THRIFT_COLUMN_FILTER_KEY are both specified, should use only one.");
 
+    //set requestedProjections only when it's specified
     if (partialSchemaString != null) {
       requestedProjection = getSchemaForRead(fileMessageType, partialSchemaString);
-    } else {
-      FieldProjectionFilter fieldProjectionFilter = new FieldProjectionFilter(projectionSchemaStr);
+    } else if (projectionFilterString != null && !projectionFilterString.isEmpty()) {
+      FieldProjectionFilter fieldProjectionFilter = new FieldProjectionFilter(projectionFilterString);
       context.getKeyValueMetadata();
       try {
         initThriftClassFromMultipleFiles(context.getKeyValueMetadata(), configuration);
