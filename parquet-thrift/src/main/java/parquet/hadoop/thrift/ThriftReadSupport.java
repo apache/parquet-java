@@ -102,7 +102,6 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
       requestedProjection = getSchemaForRead(fileMessageType, partialSchemaString);
     } else if (projectionFilterString != null && !projectionFilterString.isEmpty()) {
       FieldProjectionFilter fieldProjectionFilter = new FieldProjectionFilter(projectionFilterString);
-      context.getKeyValueMetadata();
       try {
         initThriftClassFromMultipleFiles(context.getKeyValueMetadata(), configuration);
         requestedProjection =  getProjectedSchema(fieldProjectionFilter);
