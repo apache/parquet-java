@@ -275,7 +275,7 @@ public class ScroogeStructConverter {
       for (Object enumObj : enumCollection) {
         ScroogeEnumDesc enumDesc = ScroogeEnumDesc.getEnumDesc(enumObj);
         //be compatible with thrift generated enum which have capitalized name
-        enumValues.add(new ThriftType.EnumValue(enumDesc.id, enumDesc.name.replaceAll("([a-z])([A-Z])","$1_$2")));
+        enumValues.add(new ThriftType.EnumValue(enumDesc.id, enumDesc.name.replaceAll("([a-z])([A-Z])","$1_$2").toUpperCase()));
       }
       return new ThriftType.EnumType(enumValues);
     } catch (Exception e) {
