@@ -121,13 +121,17 @@ public class ParquetFileWriter {
     },
     ENDED;
 
-    STATE start() {throw new IllegalStateException(this.name());}
-    STATE startBlock() {throw new IllegalStateException(this.name());}
-    STATE startColumn() {throw new IllegalStateException(this.name());}
-    STATE write() {throw new IllegalStateException(this.name());}
-    STATE endColumn() {throw new IllegalStateException(this.name());}
-    STATE endBlock() {throw new IllegalStateException(this.name());}
-    STATE end() {throw new IllegalStateException(this.name());}
+    STATE start() throws IOException { return error(); }
+    STATE startBlock() throws IOException { return error(); }
+    STATE startColumn() throws IOException { return error(); }
+    STATE write() throws IOException { return error(); }
+    STATE endColumn() throws IOException { return error(); }
+    STATE endBlock() throws IOException { return error(); }
+    STATE end() throws IOException { return error(); }
+
+    private final STATE error() throws IOException {
+      throw new IOException("The file being written is in an invalid state. Probably caused by an error thrown previously. Current state: " + this.name());
+    }
   }
 
   private STATE state = STATE.NOT_STARTED;
