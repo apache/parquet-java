@@ -236,9 +236,10 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
     public ParquetInputSplit getParquetInputSplit(FileStatus fileStatus, FileMetaData fileMetaData, String requestedSchema, Map<String, String> readSupportMetadata, String fileSchema, HDFSBlocks hdfsBlocks) throws IOException {
       BlockLocation hdfsBlock = hdfsBlocks.get(this.getHdfsBlockIndex());
+      MessageType requested = MessageTypeParser.parseMessageType(requestedSchema);
       long length = 0;
+
       for (BlockMetaData block : this.getRowGroups()) {
-        MessageType requested = MessageTypeParser.parseMessageType(requestedSchema);
         List<ColumnChunkMetaData> columns = block.getColumns();
         for (ColumnChunkMetaData column : columns) {
           if (requested.containsPath(column.getPath().toArray())) {
