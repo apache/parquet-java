@@ -50,7 +50,7 @@ public class TestInputFormat {
   FileMetaData fileMetaData;
 
   /*
-    The test File contains 2 hdfs blocks: [0-49][50-99]
+    The test File contains 2-3 hdfs blocks based on the setting of each test, when hdfsBlock size is set to 50: [0-49][50-99]
     each row group is of size 10, so the rowGroups layout on hdfs is like:
     xxxxx xxxxx
     each x is a row group, each groups of x's is a hdfsBlock
