@@ -182,19 +182,14 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
      */
     private boolean checkStartedInANewHDFSBlock(BlockMetaData rowGroupMetadata) {
       boolean isNewHdfsBlock = false;
-      while (getRowGroupOffset(rowGroupMetadata) > getHDFSBlockEndingPosition(currentHdfsBlockIndex)) {
+      while (rowGroupMetadata.getStartingPos() > getHDFSBlockEndingPosition(currentHdfsBlockIndex)) {
         isNewHdfsBlock = true;
         currentHdfsBlockIndex++;
         if (currentHdfsBlockIndex >= hdfsBlocks.length)
-          throw new ParquetDecodingException("The row group does not start in this file: row group offset is " + getRowGroupOffset(rowGroupMetadata) + " but the end of hdfs blocks of file is " + getHDFSBlockEndingPosition(currentHdfsBlockIndex));
+          throw new ParquetDecodingException("The row group does not start in this file: row group offset is " + rowGroupMetadata.getStartingPos() + " but the end of hdfs blocks of file is " + getHDFSBlockEndingPosition(currentHdfsBlockIndex));
       }
       return isNewHdfsBlock;
     }
-
-    private long getRowGroupOffset(BlockMetaData rowGroupMetadata) {
-      return rowGroupMetadata.getColumns().get(0).getStartingPos();
-    }
-
 
     public BlockLocation get(int hdfsBlockIndex) {
       return hdfsBlocks[hdfsBlockIndex];
