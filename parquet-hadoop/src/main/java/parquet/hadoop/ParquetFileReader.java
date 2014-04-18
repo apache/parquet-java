@@ -346,7 +346,7 @@ public class ParquetFileReader implements Closeable {
       BenchmarkCounter.incrementTotalBytes(mc.getTotalSize());
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
       if (columnDescriptor != null) {
-        long startingPos = getStartingPos(mc);
+        long startingPos = mc.getStartingPos();
         // first chunk or not consecutive => new list
         if (currentChunks == null || currentChunks.endPos() != startingPos) {
           currentChunks = new ConsecutiveChunkList(startingPos);
@@ -366,18 +366,7 @@ public class ParquetFileReader implements Closeable {
     return columnChunkPageReadStore;
   }
 
-  /**
-   * @param mc the metadata for that chunk
-   * @return the offset of the first byte in the chunk
-   */
-  private long getStartingPos(ColumnChunkMetaData mc) {
-    long startingPos = mc.getFirstDataPageOffset();
-    if (mc.getDictionaryPageOffset() > 0 && mc.getDictionaryPageOffset() < startingPos) {
-      // if there's a dictionary and it's before the first data page, start from there
-      startingPos = mc.getDictionaryPageOffset();
-    }
-    return startingPos;
-  }
+
 
   @Override
   public void close() throws IOException {

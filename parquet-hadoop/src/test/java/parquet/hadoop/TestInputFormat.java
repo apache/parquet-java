@@ -72,7 +72,7 @@ public class TestInputFormat {
       generateSplitByMinMaxSize(50, 49);
       fail("should throw exception when max split size is smaller than the min split size");
     } catch (ParquetDecodingException e) {
-      assertEquals("maxSplitSize should be positive and greater or equal to the minSplitSize: maxSplitSize = 49; minSplitSize is 50"
+      assertEquals("maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = 49; minSplitSize is 50"
               , e.getMessage());
     }
   }
@@ -83,7 +83,7 @@ public class TestInputFormat {
       generateSplitByMinMaxSize(-100, -50);
       fail("should throw exception when max split size is negative");
     } catch (ParquetDecodingException e) {
-      assertEquals("maxSplitSize should be positive and greater or equal to the minSplitSize: maxSplitSize = -50; minSplitSize is -100"
+      assertEquals("maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = -50; minSplitSize is -100"
               , e.getMessage());
     }
   }

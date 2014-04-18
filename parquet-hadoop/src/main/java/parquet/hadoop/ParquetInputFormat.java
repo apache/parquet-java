@@ -192,12 +192,9 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     }
 
     private long getRowGroupOffset(BlockMetaData rowGroupMetadata) {
-      return rowGroupMetadata.getColumns().get(0).getFirstDataPageOffset();
+      return rowGroupMetadata.getColumns().get(0).getStartingPos();
     }
 
-    private int getCurrentHdfsBlockIndex() {
-      return currentHdfsBlockIndex;
-    }
 
     public BlockLocation get(int hdfsBlockIndex) {
       return hdfsBlocks[hdfsBlockIndex];
@@ -206,7 +203,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   private static class SplitInfo {
     List<BlockMetaData> rowGroups = new ArrayList<BlockMetaData>();
-    int hdfsBlockIndex;
+    int hdfsBlockIndex;//TODO, reference hdfsBlock directly
     long byteSize = 0L;
 
     private SplitInfo(int hdfsBlockIndex) {
@@ -291,19 +288,19 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     SplitInfo currentSplit = new SplitInfo(0);
     //assert the first rowGroup starts from hdfsBlock 0
     if (hdfsBlocks.checkStartedInANewHDFSBlock(blocks.get(0))) {
-      throw new ParquetDecodingException("the first rowGroup does not start at first hdfsBlock of the file, instead it starts at hdfsBlock " + hdfsBlocks.getCurrentHdfsBlockIndex());
+      throw new ParquetDecodingException("the first rowGroup does not start at first hdfsBlock of the file, instead it starts at hdfsBlock " + hdfsBlocks.currentHdfsBlockIndex);
     }
     List<SplitInfo> splitRowGroups = new ArrayList<SplitInfo>();
 
     //assign rowGroups to splits
-    for (BlockMetaData rowGroupMetadata : blocks) {
+    for (BlockMetaData rowGroupMetadata : blocks) {//TODO: assert row groups are sorted
       if ((hdfsBlocks.checkStartedInANewHDFSBlock(rowGroupMetadata)
              && currentSplit.getByteSize() >= minSplitSize
              && currentSplit.getByteSize() > 0)
            || currentSplit.getByteSize() >= maxSplitSize) {
         //create a new split
         splitRowGroups.add(currentSplit);//finish previous split
-        currentSplit = new SplitInfo(hdfsBlocks.getCurrentHdfsBlockIndex());
+        currentSplit = new SplitInfo(hdfsBlocks.currentHdfsBlockIndex);
       }
       currentSplit.addRowGroup(rowGroupMetadata);
     }
