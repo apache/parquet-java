@@ -288,7 +288,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
     //assign rowGroups to splits
     List<SplitInfo> splitRowGroups = new ArrayList<SplitInfo>();
-    for (BlockMetaData rowGroupMetadata : rowGroupBlocks) {//TODO: assert row groups are sorted
+    checkSorted(rowGroupBlocks);//assert row groups are sorted
+    for (BlockMetaData rowGroupMetadata : rowGroupBlocks) {
       if ((hdfsBlocks.checkStartedInANewHDFSBlock(rowGroupMetadata)
              && currentSplit.getByteSize() >= minSplitSize
              && currentSplit.getByteSize() > 0)
@@ -313,6 +314,15 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     return resultSplits;
   }
 
+  private static void checkSorted(List<BlockMetaData> rowGroupBlocks) {
+    long previousOffset = 0L;
+    for(BlockMetaData rowGroup: rowGroupBlocks) {
+      long currentOffset = rowGroup.getStartingPos();
+      if (currentOffset < previousOffset) {
+        throw new ParquetDecodingException("row groups are not sorted: previous row groups starts at " + previousOffset + ", current row group starts at " + currentOffset);
+      }
+    }
+  }
 
 
   /**
