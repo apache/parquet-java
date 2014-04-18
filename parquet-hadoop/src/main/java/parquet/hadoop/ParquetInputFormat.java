@@ -199,15 +199,19 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     public BlockLocation get(int hdfsBlockIndex) {
       return hdfsBlocks[hdfsBlockIndex];
     }
+
+    public BlockLocation getCurrentBlock() {
+      return hdfsBlocks[currentHdfsBlockIndex];
+    }
   }
 
   private static class SplitInfo {
     List<BlockMetaData> rowGroups = new ArrayList<BlockMetaData>();
-    int hdfsBlockIndex;//TODO, reference hdfsBlock directly
+    BlockLocation hdfsBlock;
     long byteSize = 0L;
 
-    private SplitInfo(int hdfsBlockIndex) {
-      this.hdfsBlockIndex = hdfsBlockIndex;
+    public SplitInfo(BlockLocation currentBlock) {
+      this.hdfsBlock = currentBlock;
     }
 
     private void addRowGroup(BlockMetaData rowGroup) {
@@ -223,16 +227,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       return rowGroups;
     }
 
-    public int getHdfsBlockIndex() {
-      return hdfsBlockIndex;
-    }
-
     int getRowGroupCount() {
       return rowGroups.size();
     }
 
-    public ParquetInputSplit getParquetInputSplit(FileStatus fileStatus, FileMetaData fileMetaData, String requestedSchema, Map<String, String> readSupportMetadata, String fileSchema, HDFSBlocks hdfsBlocks) throws IOException {
-      BlockLocation hdfsBlock = hdfsBlocks.get(this.getHdfsBlockIndex());
+    public ParquetInputSplit getParquetInputSplit(FileStatus fileStatus, FileMetaData fileMetaData, String requestedSchema, Map<String, String> readSupportMetadata, String fileSchema) throws IOException {
       MessageType requested = MessageTypeParser.parseMessageType(requestedSchema);
       long length = 0;
 
@@ -261,7 +260,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   /**
    * groups together all the data blocks for the same HDFS block
    *
-   * @param blocks              data blocks (row groups)
+   * @param rowGroupBlocks      data blocks (row groups)
    * @param hdfsBlocksArray     hdfs blocks
    * @param fileStatus          the containing file
    * @param fileMetaData        file level meta data
@@ -273,7 +272,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @throws IOException If hosts can't be retrieved for the HDFS block
    */
   static <T> List<ParquetInputSplit> generateSplits(
-          List<BlockMetaData> blocks,
+          List<BlockMetaData> rowGroupBlocks,
           BlockLocation[] hdfsBlocksArray,
           FileStatus fileStatus,
           FileMetaData fileMetaData,
@@ -284,23 +283,19 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     }
     String fileSchema = fileMetaData.getSchema().toString().intern();
     HDFSBlocks hdfsBlocks = new HDFSBlocks(hdfsBlocksArray);
-
-    SplitInfo currentSplit = new SplitInfo(0);
-    //assert the first rowGroup starts from hdfsBlock 0
-    if (hdfsBlocks.checkStartedInANewHDFSBlock(blocks.get(0))) {
-      throw new ParquetDecodingException("the first rowGroup does not start at first hdfsBlock of the file, instead it starts at hdfsBlock " + hdfsBlocks.currentHdfsBlockIndex);
-    }
-    List<SplitInfo> splitRowGroups = new ArrayList<SplitInfo>();
+    hdfsBlocks.checkStartedInANewHDFSBlock(rowGroupBlocks.get(0));
+    SplitInfo currentSplit = new SplitInfo(hdfsBlocks.getCurrentBlock());
 
     //assign rowGroups to splits
-    for (BlockMetaData rowGroupMetadata : blocks) {//TODO: assert row groups are sorted
+    List<SplitInfo> splitRowGroups = new ArrayList<SplitInfo>();
+    for (BlockMetaData rowGroupMetadata : rowGroupBlocks) {//TODO: assert row groups are sorted
       if ((hdfsBlocks.checkStartedInANewHDFSBlock(rowGroupMetadata)
              && currentSplit.getByteSize() >= minSplitSize
              && currentSplit.getByteSize() > 0)
            || currentSplit.getByteSize() >= maxSplitSize) {
         //create a new split
         splitRowGroups.add(currentSplit);//finish previous split
-        currentSplit = new SplitInfo(hdfsBlocks.currentHdfsBlockIndex);
+        currentSplit = new SplitInfo(hdfsBlocks.getCurrentBlock());
       }
       currentSplit.addRowGroup(rowGroupMetadata);
     }
@@ -312,7 +307,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     //generate splits from rowGroups of each split
     List<ParquetInputSplit> resultSplits = new ArrayList<ParquetInputSplit>();
     for (SplitInfo splitInfo : splitRowGroups) {
-      ParquetInputSplit split = splitInfo.getParquetInputSplit(fileStatus, fileMetaData, requestedSchema, readSupportMetadata, fileSchema, hdfsBlocks);
+      ParquetInputSplit split = splitInfo.getParquetInputSplit(fileStatus, fileMetaData, requestedSchema, readSupportMetadata, fileSchema);
       resultSplits.add(split);
     }
     return resultSplits;
