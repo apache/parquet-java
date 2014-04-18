@@ -113,14 +113,23 @@ public class Types {
    */
   public abstract static class Builder<T extends Builder, P> {
     protected final P parent;
+    protected final Class<? extends P> returnClass;
 
     protected Type.Repetition repetition = null;
     protected OriginalType originalType = null;
     private boolean repetitionAlreadySet = false;
 
-    @SuppressWarnings("unchecked")
     protected Builder(P parent) {
+      Preconditions.checkNotNull(parent, "Parent cannot be null");
       this.parent = parent;
+      this.returnClass = null;
+    }
+
+    protected Builder(Class<P> returnClass) {
+      Preconditions.checkArgument(Type.class.isAssignableFrom(returnClass),
+          "The requested return class must extend Type");
+      this.returnClass = returnClass;
+      this.parent = null;
     }
 
     protected abstract T self();
@@ -154,9 +163,9 @@ public class Types {
     abstract protected Type build(String name);
 
     /**
-     * Builds a {@link Type} and returns the parent {@link GroupBuilder} so
-     * more types can be added to it. If there is no parent builder, then the
-     * constructed {@code Type} is returned.
+     * Builds a {@link Type} and returns the parent builder, if given, or the
+     * {@code Type} that was built. If returning a parent object that is a
+     * GroupBuilder, the constructed type will be added to it as a field.
      * <p>
      * <em>Note:</em> Any configuration for this type builder should be done
      * before calling this method.
@@ -164,18 +173,21 @@ public class Types {
      * @param name a name for the constructed type
      * @return the parent {@code GroupBuilder} or the constructed {@code Type}
      */
-    @SuppressWarnings("unchecked")
     public P named(String name) {
       Preconditions.checkNotNull(name, "Name is required");
       Preconditions.checkNotNull(repetition, "Repetition is required");
 
       Type type = build(name);
-      if (parent != null && parent instanceof GroupBuilder) {
-        ((GroupBuilder) parent).addField(type);
+      if (parent != null) {
+        // if the parent is a GroupBuilder, add type to it
+        if (GroupBuilder.class.isAssignableFrom(parent.getClass())) {
+          GroupBuilder.class.cast(parent).addField(type);
+        }
         return parent;
       } else {
         // no parent indicates that the Type object should be returned
-        return (P) type;
+        // the constructor check guarantees that returnClass is a Type
+        return returnClass.cast(type);
       }
     }
   }
@@ -196,6 +208,11 @@ public class Types {
 
     private PrimitiveBuilder(P parent, PrimitiveTypeName type) {
       super(parent);
+      this.primitiveType = type;
+    }
+
+    private PrimitiveBuilder(Class<P> returnType, PrimitiveTypeName type) {
+      super(returnType);
       this.primitiveType = type;
     }
 
@@ -334,6 +351,11 @@ public class Types {
       this.fields = new ArrayList<Type>();
     }
 
+    private GroupBuilder(Class<P> returnType) {
+      super(returnType);
+      this.fields = new ArrayList<Type>();
+    }
+
     @Override
     protected GroupBuilder<P> self() {
       return this;
@@ -457,7 +479,7 @@ public class Types {
 
   public static class MessageTypeBuilder extends GroupBuilder<MessageType> {
     private MessageTypeBuilder() {
-      super(null);
+      super(MessageType.class);
       repetition(Type.Repetition.REQUIRED);
     }
 
@@ -473,9 +495,6 @@ public class Types {
     @Override
     public MessageType named(String name) {
       Preconditions.checkNotNull(name, "Name is required");
-      // TODO: this causes parquet-thrift testNotPullInOptionalFields to fail
-      //Preconditions.checkState(!fields.isEmpty(),
-      //    "Cannot build an empty message");
       return new MessageType(name, fields);
     }
   }
@@ -491,7 +510,7 @@ public class Types {
 
   public static GroupBuilder<GroupType> buildGroup(
       Type.Repetition repetition) {
-    return new GroupBuilder<GroupType>(null).repetition(repetition);
+    return new GroupBuilder<GroupType>(GroupType.class).repetition(repetition);
   }
 
   /**
@@ -500,7 +519,7 @@ public class Types {
    * @return a {@link GroupBuilder}
    */
   public static GroupBuilder<GroupType> requiredGroup() {
-    return new GroupBuilder<GroupType>(null)
+    return new GroupBuilder<GroupType>(GroupType.class)
         .repetition(Type.Repetition.REQUIRED);
   }
 
@@ -510,7 +529,7 @@ public class Types {
    * @return a {@link GroupBuilder}
    */
   public static GroupBuilder<GroupType> optionalGroup() {
-    return new GroupBuilder<GroupType>(null)
+    return new GroupBuilder<GroupType>(GroupType.class)
         .repetition(Type.Repetition.OPTIONAL);
   }
 
@@ -520,13 +539,13 @@ public class Types {
    * @return a {@link GroupBuilder}
    */
   public static GroupBuilder<GroupType> repeatedGroup() {
-    return new GroupBuilder<GroupType>(null)
+    return new GroupBuilder<GroupType>(GroupType.class)
         .repetition(Type.Repetition.REPEATED);
   }
 
   public static PrimitiveBuilder<PrimitiveType> primitive(
       PrimitiveTypeName type, Type.Repetition repetition) {
-    return new PrimitiveBuilder<PrimitiveType>(null, type)
+    return new PrimitiveBuilder<PrimitiveType>(PrimitiveType.class, type)
         .repetition(repetition);
   }
 
@@ -538,7 +557,7 @@ public class Types {
    */
   public static PrimitiveBuilder<PrimitiveType> required(
       PrimitiveTypeName type) {
-    return new PrimitiveBuilder<PrimitiveType>(null, type)
+    return new PrimitiveBuilder<PrimitiveType>(PrimitiveType.class, type)
         .repetition(Type.Repetition.REQUIRED);
   }
 
@@ -550,7 +569,7 @@ public class Types {
    */
   public static PrimitiveBuilder<PrimitiveType> optional(
       PrimitiveTypeName type) {
-    return new PrimitiveBuilder<PrimitiveType>(null, type)
+    return new PrimitiveBuilder<PrimitiveType>(PrimitiveType.class, type)
         .repetition(Type.Repetition.OPTIONAL);
   }
 
@@ -562,7 +581,7 @@ public class Types {
    */
   public static PrimitiveBuilder<PrimitiveType> repeated(
       PrimitiveTypeName type) {
-    return new PrimitiveBuilder<PrimitiveType>(null, type)
+    return new PrimitiveBuilder<PrimitiveType>(PrimitiveType.class, type)
         .repetition(Type.Repetition.REPEATED);
   }
 
