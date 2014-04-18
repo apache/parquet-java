@@ -22,7 +22,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import parquet.column.Encoding;
-import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ColumnPath;
@@ -34,7 +33,11 @@ import parquet.schema.MessageTypeParser;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -158,7 +161,7 @@ public class TestInputFormat {
 
   private List<ParquetInputSplit> generateSplitByMinMaxSize(long min, long max) throws IOException {
     return ParquetInputFormat.generateSplits(
-            blocks, hdfsBlocks, fileStatus, fileMetaData, ReadSupport.class, schema.toString(), new HashMap<String, String>() {{
+            blocks, hdfsBlocks, fileStatus, fileMetaData, schema.toString(), new HashMap<String, String>() {{
               put("specific", "foo");
             }}, min, max
     );

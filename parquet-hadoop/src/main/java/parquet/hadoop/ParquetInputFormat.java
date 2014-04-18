@@ -268,7 +268,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @param hdfsBlocksArray     hdfs blocks
    * @param fileStatus          the containing file
    * @param fileMetaData        file level meta data
-   * @param readSupportClass    the class used to materialize records
    * @param requestedSchema     the schema requested by the user
    * @param readSupportMetadata the metadata provided by the readSupport implementation in init
    * @param minSplitSize        the mapred.min.split.size
@@ -281,7 +280,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
           BlockLocation[] hdfsBlocksArray,
           FileStatus fileStatus,
           FileMetaData fileMetaData,
-          Class<?> readSupportClass,
           String requestedSchema,
           Map<String, String> readSupportMetadata, long minSplitSize, long maxSplitSize) throws IOException {
     if (maxSplitSize < minSplitSize || maxSplitSize < 0) {
@@ -344,6 +342,9 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers) throws IOException {
     final long maxSplitSize = configuration.getLong("mapred.max.split.size", Long.MAX_VALUE);
     final long minSplitSize = Math.max(getFormatMinSplitSize(), configuration.getLong("mapred.min.split.size", 1L));
+    if (maxSplitSize < 0 || minSplitSize < 0) {
+      throw new ParquetDecodingException("maxSplitSize or minSplitSie should not be negative: maxSplitSize = " + maxSplitSize + "; minSplitSize = " + minSplitSize);
+    }
     List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
     GlobalMetaData globalMetaData = ParquetFileWriter.getGlobalMetaData(footers);
     ReadContext readContext = getReadSupport(configuration).init(new InitContext(
@@ -364,7 +365,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
               fileBlockLocations,
               fileStatus,
               parquetMetaData.getFileMetaData(),
-              readSupportClass,
               readContext.getRequestedSchema().toString(),
               readContext.getReadSupportMetadata(),
               minSplitSize,
