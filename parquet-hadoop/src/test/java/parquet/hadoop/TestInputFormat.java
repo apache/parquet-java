@@ -20,7 +20,6 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.junit.Before;
 import org.junit.Test;
-
 import parquet.column.Encoding;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -62,11 +61,6 @@ public class TestInputFormat {
     for (int i = 0; i < 10; i++) {
       blocks.add(newBlock(i * 10, 10));
     }
-
-    hdfsBlocks = new BlockLocation[]{
-            new BlockLocation(new String[0], new String[]{"foo0.datanode", "bar0.datanode"}, 0, 50),
-            new BlockLocation(new String[0], new String[]{"foo1.datanode", "bar1.datanode"}, 50, 50)
-    };
     fileStatus = new FileStatus(100, false, 2, 50, 0, new Path("hdfs://foo.namenode:1234/bar"));
     schema = MessageTypeParser.parseMessageType("message doc { required binary foo; }");
     fileMetaData = new FileMetaData(schema, new HashMap<String, String>(), "parquet-mr");
@@ -77,9 +71,9 @@ public class TestInputFormat {
     try {
       generateSplitByMinMaxSize(50, 49);
       fail("should throw exception when max split size is smaller than the min split size");
-    }catch(ParquetDecodingException e){
+    } catch (ParquetDecodingException e) {
       assertEquals("maxSplitSize should be positive and greater or equal to the minSplitSize: maxSplitSize = 49; minSplitSize is 50"
-              ,e.getMessage());
+              , e.getMessage());
     }
   }
 
@@ -88,9 +82,9 @@ public class TestInputFormat {
     try {
       generateSplitByMinMaxSize(-100, -50);
       fail("should throw exception when max split size is negative");
-    }catch(ParquetDecodingException e){
+    } catch (ParquetDecodingException e) {
       assertEquals("maxSplitSize should be positive and greater or equal to the minSplitSize: maxSplitSize = -50; minSplitSize is -100"
-              ,e.getMessage());
+              , e.getMessage());
     }
   }
 
@@ -98,13 +92,33 @@ public class TestInputFormat {
     aaaaa bbbbb
    */
   @Test
-  public void testGenerateSplitsAlignedWithHDFSBlock() throws IOException, InterruptedException {
+  public void testGenerateSplitsAlignedWithHDFSBlock() throws IOException {
+    withHDFSBlockSize(50, 50);
     List<ParquetInputSplit> splits = generateSplitByMinMaxSize(50, 50);
     shouldSplitBlockSizeBe(splits, 5, 5);
     shouldSplitLocationBe(splits, 0, 1);
     shouldSplitLengthBe(splits, 10, 10);
 
     splits = generateSplitByMinMaxSize(0, Long.MAX_VALUE);
+    shouldSplitBlockSizeBe(splits, 5, 5);
+    shouldSplitLocationBe(splits, 0, 1);
+    shouldSplitLengthBe(splits, 10, 10);
+
+  }
+
+  @Test
+  public void testRowGroupNotAlignToHDFSBlock() throws IOException {
+
+    //Test HDFS blocks size(51) is not multiple of row group size(10)
+    withHDFSBlockSize(51, 51);
+    List<ParquetInputSplit> splits = generateSplitByMinMaxSize(50, 50);
+    shouldSplitBlockSizeBe(splits, 5, 5);
+    shouldSplitLocationBe(splits, 0, 0);//for the second split, the first byte will still be in the first hdfs block, therefore the locations are both 0
+    shouldSplitLengthBe(splits, 10, 10);
+
+    //Test a rowgroup is greater than the hdfsBlock boundary
+    withHDFSBlockSize(49, 49);
+    splits = generateSplitByMinMaxSize(50, 50);
     shouldSplitBlockSizeBe(splits, 5, 5);
     shouldSplitLocationBe(splits, 0, 1);
     shouldSplitLengthBe(splits, 10, 10);
@@ -116,10 +130,24 @@ public class TestInputFormat {
    */
   @Test
   public void testGenerateSplitsNotAlignedWithHDFSBlock() throws IOException, InterruptedException {
+    withHDFSBlockSize(50, 50);
     List<ParquetInputSplit> splits = generateSplitByMinMaxSize(55, 56);
     shouldSplitBlockSizeBe(splits, 6, 4);
     shouldSplitLocationBe(splits, 0, 1);
     shouldSplitLengthBe(splits, 12, 8);
+
+    withHDFSBlockSize(51, 51);
+    splits = generateSplitByMinMaxSize(55, 56);
+    shouldSplitBlockSizeBe(splits, 6, 4);
+    shouldSplitLocationBe(splits, 0, 1);//since a whole row group of split a is added to the second hdfs block, so the location of split b is still 1
+    shouldSplitLengthBe(splits, 12, 8);
+
+    withHDFSBlockSize(49, 49, 49);
+    splits = generateSplitByMinMaxSize(55, 56);
+    shouldSplitBlockSizeBe(splits, 6, 4);
+    shouldSplitLocationBe(splits, 0, 1);
+    shouldSplitLengthBe(splits, 12, 8);
+
   }
 
   /*
@@ -129,7 +157,29 @@ public class TestInputFormat {
    */
   @Test
   public void testGenerateSplitsSmallerThanMaxSizeAndAlignToHDFS() throws Exception {
+    withHDFSBlockSize(50, 50);
     List<ParquetInputSplit> splits = generateSplitByMinMaxSize(18, 30);
+    shouldSplitBlockSizeBe(splits, 3, 2, 3, 2);
+    shouldSplitLocationBe(splits, 0, 0, 1, 1);
+    shouldSplitLengthBe(splits, 6, 4, 6, 4);
+
+    /*
+    aaabb bcccd
+    In following configuration
+    the 3rd row group of split b is still created,
+    since at the time of its creation, it still starts at the last byte of the first HDFS block
+         */
+    withHDFSBlockSize(51, 51);
+    splits = generateSplitByMinMaxSize(18, 30);
+    shouldSplitBlockSizeBe(splits, 3, 3, 3, 1);
+    shouldSplitLocationBe(splits, 0, 0, 1, 1);
+    shouldSplitLengthBe(splits, 6, 6, 6, 2);
+
+    /*
+    aaabb cccdd
+     */
+    withHDFSBlockSize(49, 49, 49);
+    splits = generateSplitByMinMaxSize(18, 30);
     shouldSplitBlockSizeBe(splits, 3, 2, 3, 2);
     shouldSplitLocationBe(splits, 0, 0, 1, 1);
     shouldSplitLengthBe(splits, 6, 4, 6, 4);
@@ -141,6 +191,7 @@ public class TestInputFormat {
    */
   @Test
   public void testGenerateSplitsCrossHDFSBlockBoundaryToSatisfyMinSize() throws Exception {
+    withHDFSBlockSize(50, 50);
     List<ParquetInputSplit> splits = generateSplitByMinMaxSize(25, 30);
     shouldSplitBlockSizeBe(splits, 3, 3, 3, 1);
     shouldSplitLocationBe(splits, 0, 0, 1, 1);
@@ -148,12 +199,34 @@ public class TestInputFormat {
   }
 
   /*
-    when rowGroups size is 10, but min split size is 10, max split size is 18, it will split of size 20 and of size 10 and align with hdfsBlocks
+    when rowGroups size is 10, but min split size is 10, max split size is 18, it will create splits of size 20 and of size 10 and align with hdfsBlocks
     aabbc ddeef
    */
   @Test
   public void testMultipleRowGroupsInABlockToAlignHDFSBlock() throws Exception {
+    withHDFSBlockSize(50, 50);
     List<ParquetInputSplit> splits = generateSplitByMinMaxSize(10, 18);
+    shouldSplitBlockSizeBe(splits, 2, 2, 1, 2, 2, 1);
+    shouldSplitLocationBe(splits, 0, 0, 0, 1, 1, 1);
+    shouldSplitLengthBe(splits, 4, 4, 2, 4, 4, 2);
+
+    /*
+    aabbc cddee
+    notice the first byte of second row group of is c still in the first hdfs block,
+    therefore it will be created as the 2nd rowgroup of c, instead of creating a new split
+     */
+    withHDFSBlockSize(51, 51);
+    splits = generateSplitByMinMaxSize(10, 18);
+    shouldSplitBlockSizeBe(splits, 2, 2, 2, 2, 2);
+    shouldSplitLocationBe(splits, 0, 0, 0, 1, 1);
+    shouldSplitLengthBe(splits, 4, 4, 4, 4, 4);
+
+    /*
+    aabbc ddeef
+    same as the case where block sizes are 50 50
+     */
+    withHDFSBlockSize(49, 49);
+    splits = generateSplitByMinMaxSize(10, 18);
     shouldSplitBlockSizeBe(splits, 2, 2, 1, 2, 2, 1);
     shouldSplitLocationBe(splits, 0, 0, 0, 1, 1, 1);
     shouldSplitLengthBe(splits, 4, 4, 2, 4, 4, 2);
@@ -186,6 +259,16 @@ public class TestInputFormat {
     assertEquals(lengths.length, splits.size());
     for (int i = 0; i < lengths.length; i++) {
       assertEquals(lengths[i], splits.get(i).getLength());
+    }
+  }
+
+  private void withHDFSBlockSize(long... blockSizes) {
+    hdfsBlocks = new BlockLocation[blockSizes.length];
+    long offset = 0;
+    for (int i = 0; i < blockSizes.length; i++) {
+      long blockSize = blockSizes[i];
+      hdfsBlocks[i] = new BlockLocation(new String[0], new String[]{"foo" + i + ".datanode", "bar" + i + ".datanode"}, offset, blockSize);
+      offset += blockSize;
     }
   }
 
