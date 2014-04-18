@@ -258,6 +258,9 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
           Class<?> readSupportClass,
           String requestedSchema,
           Map<String, String> readSupportMetadata, long minSplitSize, long maxSplitSize) throws IOException {
+    if (maxSplitSize < minSplitSize) {
+      throw new ParquetDecodingException("maxSplitSize is not greater or equal to the minSplitSize: maxSplitSize = " + maxSplitSize + "; minSplitSize is " + minSplitSize);
+    }
     String fileSchema = fileMetaData.getSchema().toString().intern();
     HDFSBlocks hdfsBlocks = new HDFSBlocks(hdfsBlocksArray);
 
@@ -270,7 +273,10 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
     //assign rowGroups to splits
     for (BlockMetaData rowGroupMetadata : blocks) {
-      if ((hdfsBlocks.checkStartedInANewHDFSBlock(rowGroupMetadata) && currentSplit.getByteSize() >= minSplitSize) || currentSplit.getByteSize() >= maxSplitSize) {
+      if ((hdfsBlocks.checkStartedInANewHDFSBlock(rowGroupMetadata)
+             && currentSplit.getByteSize() >= minSplitSize
+             && currentSplit.getByteSize() > 0)
+           || currentSplit.getByteSize() >= maxSplitSize) {
         //create a new split
         splitRowGroups.add(currentSplit);//finish previous split
         currentSplit = new SplitInfo(hdfsBlocks.getCurrentHdfsBlockIndex());
