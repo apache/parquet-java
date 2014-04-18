@@ -186,7 +186,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         isNewHdfsBlock = true;
         currentHdfsBlockIndex++;
         if (currentHdfsBlockIndex >= hdfsBlocks.length)
-          throw new ParquetDecodingException("The row group does not start in this file: row group offset is " + getRowGroupOffset(rowGroupMetadata) + "but the end of hdfs blocks of file is " + getHDFSBlockEndingPosition(currentHdfsBlockIndex));
+          throw new ParquetDecodingException("The row group does not start in this file: row group offset is " + getRowGroupOffset(rowGroupMetadata) + " but the end of hdfs blocks of file is " + getHDFSBlockEndingPosition(currentHdfsBlockIndex));
       }
       return isNewHdfsBlock;
     }
