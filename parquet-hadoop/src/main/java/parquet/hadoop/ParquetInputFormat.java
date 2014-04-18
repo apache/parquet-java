@@ -341,7 +341,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    */
   public List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers) throws IOException {
     final long maxSplitSize = configuration.getLong("mapred.max.split.size", Long.MAX_VALUE);
-    final long minSplitSize = Math.max(getFormatMinSplitSize(), configuration.getLong("mapred.min.split.size", 1L));
+    final long minSplitSize = Math.max(getFormatMinSplitSize(), configuration.getLong("mapred.min.split.size", 0L));
     if (maxSplitSize < 0 || minSplitSize < 0) {
       throw new ParquetDecodingException("maxSplitSize or minSplitSie should not be negative: maxSplitSize = " + maxSplitSize + "; minSplitSize = " + minSplitSize);
     }
