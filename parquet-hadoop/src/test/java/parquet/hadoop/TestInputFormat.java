@@ -28,6 +28,7 @@ import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
+import parquet.io.ParquetDecodingException;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -36,6 +37,7 @@ import java.io.IOException;
 import java.util.*;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class TestInputFormat {
 
@@ -65,6 +67,28 @@ public class TestInputFormat {
     fileStatus = new FileStatus(100, false, 2, 50, 0, new Path("hdfs://foo.namenode:1234/bar"));
     schema = MessageTypeParser.parseMessageType("message doc { required binary foo; }");
     fileMetaData = new FileMetaData(schema, new HashMap<String, String>(), "parquet-mr");
+  }
+
+  @Test
+  public void testThrowExceptionWhenMaxSplitSizeIsSmallerThanMinSplitSize() throws IOException {
+    try {
+      generateSplitByMinMaxSize(50, 49);
+      fail("should throw exception when max split size is smaller than the min split size");
+    }catch(ParquetDecodingException e){
+      assertEquals("maxSplitSize should be positive and greater or equal to the minSplitSize: maxSplitSize = 49; minSplitSize is 50"
+              ,e.getMessage());
+    }
+  }
+
+  @Test
+  public void testThrowExceptionWhenMaxSplitSizeIsNegative() throws IOException {
+    try {
+      generateSplitByMinMaxSize(-100, -50);
+      fail("should throw exception when max split size is negative");
+    }catch(ParquetDecodingException e){
+      assertEquals("maxSplitSize should be positive and greater or equal to the minSplitSize: maxSplitSize = -50; minSplitSize is -100"
+              ,e.getMessage());
+    }
   }
 
   /*
