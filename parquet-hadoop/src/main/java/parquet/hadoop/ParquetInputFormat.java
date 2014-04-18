@@ -171,7 +171,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     }
 
     private long getHDFSBlockEndingPosition(int hdfsBlockIndex) {
-      return hdfsBlocks[hdfsBlockIndex].getOffset() + hdfsBlocks[hdfsBlockIndex].getLength() - 1;
+      BlockLocation hdfsBlock = hdfsBlocks[hdfsBlockIndex];
+      return hdfsBlock.getOffset() + hdfsBlock.getLength() - 1;
     }
 
     /**
