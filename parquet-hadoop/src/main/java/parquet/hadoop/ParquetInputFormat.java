@@ -233,6 +233,31 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     int getRowGroupCount() {
       return rowGroups.size();
     }
+
+    public ParquetInputSplit getParquetInputSplit(FileStatus fileStatus, FileMetaData fileMetaData, String requestedSchema, Map<String, String> readSupportMetadata, String fileSchema, HDFSBlocks hdfsBlocks) throws IOException {
+      BlockLocation hdfsBlock = hdfsBlocks.get(this.getHdfsBlockIndex());
+      long length = 0;
+      for (BlockMetaData block : this.getRowGroups()) {
+        MessageType requested = MessageTypeParser.parseMessageType(requestedSchema);
+        List<ColumnChunkMetaData> columns = block.getColumns();
+        for (ColumnChunkMetaData column : columns) {
+          if (requested.containsPath(column.getPath().toArray())) {
+            length += column.getTotalSize();
+          }
+        }
+      }
+      return new ParquetInputSplit(
+              fileStatus.getPath(),
+              hdfsBlock.getOffset(),
+              length,
+              hdfsBlock.getHosts(),
+              this.getRowGroups(),
+              requestedSchema,
+              fileSchema,
+              fileMetaData.getKeyValueMetaData(),
+              readSupportMetadata
+      );
+    }
   }
 
   /**
@@ -291,32 +316,13 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     //generate splits from rowGroups of each split
     List<ParquetInputSplit> resultSplits = new ArrayList<ParquetInputSplit>();
     for (SplitInfo splitInfo : splitRowGroups) {
-      BlockLocation hdfsBlock = hdfsBlocks.get(splitInfo.getHdfsBlockIndex());
-      long length = 0;
-      for (BlockMetaData block : splitInfo.getRowGroups()) {
-        MessageType requested = MessageTypeParser.parseMessageType(requestedSchema);
-        List<ColumnChunkMetaData> columns = block.getColumns();
-        for (ColumnChunkMetaData column : columns) {
-          if (requested.containsPath(column.getPath().toArray())) {
-            length += column.getTotalSize();
-          }
-        }
-      }
-      resultSplits.add(new ParquetInputSplit(
-              fileStatus.getPath(),
-              hdfsBlock.getOffset(),
-              length,
-              hdfsBlock.getHosts(),
-              splitInfo.getRowGroups(),
-              requestedSchema,
-              fileSchema,
-              fileMetaData.getKeyValueMetaData(),
-              readSupportMetadata
-      ));
-
+      ParquetInputSplit split = splitInfo.getParquetInputSplit(fileStatus, fileMetaData, requestedSchema, readSupportMetadata, fileSchema, hdfsBlocks);
+      resultSplits.add(split);
     }
     return resultSplits;
   }
+
+
 
   /**
    * {@inheritDoc}
