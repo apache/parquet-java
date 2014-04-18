@@ -119,12 +119,26 @@ public class Types {
     protected OriginalType originalType = null;
     private boolean repetitionAlreadySet = false;
 
+    /**
+     * Construct a type builder that returns a "parent" object when the builder
+     * is finished. The {@code parent} will be returned by
+     * {@link #named(String)} so that builders can be chained.
+     *
+     * @param parent a non-null object to return from {@link #named(String)}
+     */
     protected Builder(P parent) {
       Preconditions.checkNotNull(parent, "Parent cannot be null");
       this.parent = parent;
       this.returnClass = null;
     }
 
+    /**
+     * Construct a type builder that returns the {@link Type} that was built
+     * when the builder is finished. The {@code returnClass} must be the
+     * expected {@code Type} class.
+     *
+     * @param returnClass a {@code Type} to return from {@link #named(String)}
+     */
     protected Builder(Class<P> returnClass) {
       Preconditions.checkArgument(Type.class.isAssignableFrom(returnClass),
           "The requested return class must extend Type");

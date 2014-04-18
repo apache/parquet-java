@@ -354,9 +354,10 @@ public final class PrimitiveType extends Type {
   /**
    * @return the decimal type metadata
    */
-  public DecimalMetadata getOriginalTypeMeta() {
+  public DecimalMetadata getDecimalMetadata() {
     return decimalMeta;
   }
+
   /**
    * @return true
    */
@@ -388,7 +389,7 @@ public final class PrimitiveType extends Type {
     sb.append(" ").append(getName());
     if (getOriginalType() != null) {
       sb.append(" (").append(getOriginalType());
-      DecimalMetadata meta = getOriginalTypeMeta();
+      DecimalMetadata meta = getDecimalMetadata();
       if (meta != null) {
         sb.append("(")
             .append(meta.getPrecision())
