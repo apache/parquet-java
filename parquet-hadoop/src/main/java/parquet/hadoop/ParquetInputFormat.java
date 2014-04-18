@@ -282,8 +282,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
           FileMetaData fileMetaData,
           String requestedSchema,
           Map<String, String> readSupportMetadata, long minSplitSize, long maxSplitSize) throws IOException {
-    if (maxSplitSize < minSplitSize || maxSplitSize < 0) {
-      throw new ParquetDecodingException("maxSplitSize should be positive and greater or equal to the minSplitSize: maxSplitSize = " + maxSplitSize + "; minSplitSize is " + minSplitSize);
+    if (maxSplitSize < minSplitSize || maxSplitSize < 0 || minSplitSize < 0) {
+      throw new ParquetDecodingException("maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = " + maxSplitSize + "; minSplitSize is " + minSplitSize);
     }
     String fileSchema = fileMetaData.getSchema().toString().intern();
     HDFSBlocks hdfsBlocks = new HDFSBlocks(hdfsBlocksArray);
