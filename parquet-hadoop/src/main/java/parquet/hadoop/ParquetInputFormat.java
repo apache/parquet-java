@@ -178,10 +178,10 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
     /**
      * @param rowGroupMetadata
-     * @return true if the row group is in a new hdfs block, and also move the currentHDFSBlock pointer to the correct index that contains the row group;
-     * return false if the rowGroup is in the same hdfs block
+     * @return true if the mid point of row group is in a new hdfs block, and also move the currentHDFSBlock pointer to the correct index that contains the row group;
+     * return false if the mid point of row group is in the same hdfs block
      */
-    private boolean checkStartedInANewHDFSBlock(BlockMetaData rowGroupMetadata) {
+    private boolean checkBelongingToANewHDFSBlock(BlockMetaData rowGroupMetadata) {
       boolean isNewHdfsBlock = false;
       long rowGroupMidPoint = rowGroupMetadata.getStartingPos() + (rowGroupMetadata.getCompressedSize() / 2);
 
@@ -294,14 +294,14 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     }
     String fileSchema = fileMetaData.getSchema().toString().intern();
     HDFSBlocks hdfsBlocks = new HDFSBlocks(hdfsBlocksArray);
-    hdfsBlocks.checkStartedInANewHDFSBlock(rowGroupBlocks.get(0));
+    hdfsBlocks.checkBelongingToANewHDFSBlock(rowGroupBlocks.get(0));
     SplitInfo currentSplit = new SplitInfo(hdfsBlocks.getCurrentBlock());
 
     //assign rowGroups to splits
     List<SplitInfo> splitRowGroups = new ArrayList<SplitInfo>();
     checkSorted(rowGroupBlocks);//assert row groups are sorted
     for (BlockMetaData rowGroupMetadata : rowGroupBlocks) {
-      if ((hdfsBlocks.checkStartedInANewHDFSBlock(rowGroupMetadata)
+      if ((hdfsBlocks.checkBelongingToANewHDFSBlock(rowGroupMetadata)
              && currentSplit.getCompressedByteSize() >= minSplitSize
              && currentSplit.getCompressedByteSize() > 0)
            || currentSplit.getCompressedByteSize() >= maxSplitSize) {
