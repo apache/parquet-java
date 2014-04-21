@@ -27,7 +27,6 @@ import parquet.scrooge.test.TestPersonWithAllInformation;
 import parquet.scrooge.test.TestSetPrimitive;
 import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType;
-
 import static org.junit.Assert.assertEquals;
 
 /**
