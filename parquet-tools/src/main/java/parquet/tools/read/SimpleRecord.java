@@ -18,6 +18,7 @@ package parquet.tools.read;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import com.google.common.base.Strings;
@@ -35,7 +36,7 @@ public class SimpleRecord {
   }
   
   public List<NameValue> getValues() {
-    return values;
+    return Collections.unmodifiableList(values);
   }
 
   public String toString() {
