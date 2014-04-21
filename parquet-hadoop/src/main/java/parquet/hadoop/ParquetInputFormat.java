@@ -176,8 +176,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       return hdfsBlock.getOffset() + hdfsBlock.getLength() - 1;
     }
 
-
-
     /**
      * @param rowGroupMetadata
      * @return true if the row group is in a new hdfs block, and also move the currentHDFSBlock pointer to the correct index that contains the row group;
@@ -185,7 +183,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
      */
     private boolean checkStartedInANewHDFSBlock(BlockMetaData rowGroupMetadata) {
       boolean isNewHdfsBlock = false;
-
       long rowGroupMidPoint = rowGroupMetadata.getStartingPos() + (rowGroupMetadata.getCompressedSize() / 2);
 
       //if mid point is not in the current HDFS block any more, return true
@@ -337,7 +334,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       }
     }
   }
-
 
   /**
    * {@inheritDoc}
