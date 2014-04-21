@@ -97,31 +97,42 @@ public class TestInputFormat {
     List<ParquetInputSplit> splits = generateSplitByMinMaxSize(50, 50);
     shouldSplitBlockSizeBe(splits, 5, 5);
     shouldSplitLocationBe(splits, 0, 1);
-    shouldSplitLengthBe(splits, 10, 10);
+    shouldSplitLengthBe(splits, 50, 50);
 
     splits = generateSplitByMinMaxSize(0, Long.MAX_VALUE);
     shouldSplitBlockSizeBe(splits, 5, 5);
     shouldSplitLocationBe(splits, 0, 1);
-    shouldSplitLengthBe(splits, 10, 10);
+    shouldSplitLengthBe(splits, 50, 50);
 
   }
 
   @Test
   public void testRowGroupNotAlignToHDFSBlock() throws IOException {
-
     //Test HDFS blocks size(51) is not multiple of row group size(10)
     withHDFSBlockSize(51, 51);
     List<ParquetInputSplit> splits = generateSplitByMinMaxSize(50, 50);
     shouldSplitBlockSizeBe(splits, 5, 5);
     shouldSplitLocationBe(splits, 0, 0);//for the second split, the first byte will still be in the first hdfs block, therefore the locations are both 0
-    shouldSplitLengthBe(splits, 10, 10);
+    shouldSplitLengthBe(splits, 50, 50);
 
     //Test a rowgroup is greater than the hdfsBlock boundary
     withHDFSBlockSize(49, 49);
     splits = generateSplitByMinMaxSize(50, 50);
     shouldSplitBlockSizeBe(splits, 5, 5);
     shouldSplitLocationBe(splits, 0, 1);
-    shouldSplitLengthBe(splits, 10, 10);
+    shouldSplitLengthBe(splits, 50, 50);
+
+    /*
+    aaaa bbbbb c
+    for the 5th row group, the midpoint is 45, but the end of first hdfsBlock is 44, therefore a new split(b) will be created
+    for 9th group, the mid point is 85, the end of second block is 88, so it's considered mainly in the 2nd hdfs block, and therefore inserted as
+    a row group of split b
+     */
+    withHDFSBlockSize(44,44,44);
+    splits = generateSplitByMinMaxSize(40, 50);
+    shouldSplitBlockSizeBe(splits, 4, 5, 1);
+    shouldSplitLocationBe(splits, 0, 0, 2);
+    shouldSplitLengthBe(splits, 40, 50, 10);
   }
 
   /*
@@ -134,19 +145,19 @@ public class TestInputFormat {
     List<ParquetInputSplit> splits = generateSplitByMinMaxSize(55, 56);
     shouldSplitBlockSizeBe(splits, 6, 4);
     shouldSplitLocationBe(splits, 0, 1);
-    shouldSplitLengthBe(splits, 12, 8);
+    shouldSplitLengthBe(splits, 60, 40);
 
     withHDFSBlockSize(51, 51);
     splits = generateSplitByMinMaxSize(55, 56);
     shouldSplitBlockSizeBe(splits, 6, 4);
     shouldSplitLocationBe(splits, 0, 1);//since a whole row group of split a is added to the second hdfs block, so the location of split b is still 1
-    shouldSplitLengthBe(splits, 12, 8);
+    shouldSplitLengthBe(splits, 60, 40);
 
     withHDFSBlockSize(49, 49, 49);
     splits = generateSplitByMinMaxSize(55, 56);
     shouldSplitBlockSizeBe(splits, 6, 4);
     shouldSplitLocationBe(splits, 0, 1);
-    shouldSplitLengthBe(splits, 12, 8);
+    shouldSplitLengthBe(splits, 60, 40);
 
   }
 
@@ -161,19 +172,16 @@ public class TestInputFormat {
     List<ParquetInputSplit> splits = generateSplitByMinMaxSize(18, 30);
     shouldSplitBlockSizeBe(splits, 3, 2, 3, 2);
     shouldSplitLocationBe(splits, 0, 0, 1, 1);
-    shouldSplitLengthBe(splits, 6, 4, 6, 4);
+    shouldSplitLengthBe(splits, 30, 20, 30, 20);
 
     /*
-    aaabb bcccd
-    In following configuration
-    the 3rd row group of split b is still created,
-    since at the time of its creation, it still starts at the last byte of the first HDFS block
+    aaabb cccdd
          */
     withHDFSBlockSize(51, 51);
     splits = generateSplitByMinMaxSize(18, 30);
-    shouldSplitBlockSizeBe(splits, 3, 3, 3, 1);
-    shouldSplitLocationBe(splits, 0, 0, 1, 1);
-    shouldSplitLengthBe(splits, 6, 6, 6, 2);
+    shouldSplitBlockSizeBe(splits, 3, 2, 3, 2);
+    shouldSplitLocationBe(splits, 0, 0, 0, 1);//the first byte of split c is in the first hdfs block
+    shouldSplitLengthBe(splits, 30, 20, 30, 20);
 
     /*
     aaabb cccdd
@@ -182,7 +190,7 @@ public class TestInputFormat {
     splits = generateSplitByMinMaxSize(18, 30);
     shouldSplitBlockSizeBe(splits, 3, 2, 3, 2);
     shouldSplitLocationBe(splits, 0, 0, 1, 1);
-    shouldSplitLengthBe(splits, 6, 4, 6, 4);
+    shouldSplitLengthBe(splits, 30, 20, 30, 20);
   }
 
   /*
@@ -195,7 +203,7 @@ public class TestInputFormat {
     List<ParquetInputSplit> splits = generateSplitByMinMaxSize(25, 30);
     shouldSplitBlockSizeBe(splits, 3, 3, 3, 1);
     shouldSplitLocationBe(splits, 0, 0, 1, 1);
-    shouldSplitLengthBe(splits, 6, 6, 6, 2);
+    shouldSplitLengthBe(splits, 30, 30, 30, 10);
   }
 
   /*
@@ -208,18 +216,19 @@ public class TestInputFormat {
     List<ParquetInputSplit> splits = generateSplitByMinMaxSize(10, 18);
     shouldSplitBlockSizeBe(splits, 2, 2, 1, 2, 2, 1);
     shouldSplitLocationBe(splits, 0, 0, 0, 1, 1, 1);
-    shouldSplitLengthBe(splits, 4, 4, 2, 4, 4, 2);
+    shouldSplitLengthBe(splits, 20, 20, 10, 20, 20, 10);
 
     /*
-    aabbc cddee
-    notice the first byte of second row group of is c still in the first hdfs block,
-    therefore it will be created as the 2nd rowgroup of c, instead of creating a new split
+    aabbc ddeef
+    notice the first byte of split d is in the first hdfs block:
+    when adding the 6th row group, although the first byte of it is in the first hdfs block
+    , but the mid point of the row group is in the second hdfs block, there for a new split(d) is created including that row group
      */
     withHDFSBlockSize(51, 51);
     splits = generateSplitByMinMaxSize(10, 18);
-    shouldSplitBlockSizeBe(splits, 2, 2, 2, 2, 2);
-    shouldSplitLocationBe(splits, 0, 0, 0, 1, 1);
-    shouldSplitLengthBe(splits, 4, 4, 4, 4, 4);
+    shouldSplitBlockSizeBe(splits, 2, 2, 1, 2, 2, 1);
+    shouldSplitLocationBe(splits, 0, 0, 0, 0, 1, 1);// location of split d should be 0, since the first byte is in the first hdfs block
+    shouldSplitLengthBe(splits, 20, 20, 10, 20, 20, 10);
 
     /*
     aabbc ddeef
@@ -229,7 +238,7 @@ public class TestInputFormat {
     splits = generateSplitByMinMaxSize(10, 18);
     shouldSplitBlockSizeBe(splits, 2, 2, 1, 2, 2, 1);
     shouldSplitLocationBe(splits, 0, 0, 0, 1, 1, 1);
-    shouldSplitLengthBe(splits, 4, 4, 2, 4, 4, 2);
+    shouldSplitLengthBe(splits, 20, 20, 10, 20, 20, 10);
   }
 
   private List<ParquetInputSplit> generateSplitByMinMaxSize(long min, long max) throws IOException {
@@ -272,13 +281,14 @@ public class TestInputFormat {
     }
   }
 
-  private BlockMetaData newBlock(long start, long size) {
+  private BlockMetaData newBlock(long start, long compressedBlockSize) {
     BlockMetaData blockMetaData = new BlockMetaData();
+    long uncompressedSize = compressedBlockSize * 2;//assuming the compression ratio is 2
     ColumnChunkMetaData column = ColumnChunkMetaData.get(
             ColumnPath.get("foo"), PrimitiveTypeName.BINARY, CompressionCodecName.GZIP, new HashSet<Encoding>(Arrays.asList(Encoding.PLAIN)),
-            start, 0l, 0l, 2l, 0l);//the size of each column chunk is 2
+            start, 0l, 0l, compressedBlockSize, uncompressedSize);
     blockMetaData.addColumn(column);
-    blockMetaData.setTotalByteSize(size);
+    blockMetaData.setTotalByteSize(uncompressedSize);
     return blockMetaData;
   }
 }

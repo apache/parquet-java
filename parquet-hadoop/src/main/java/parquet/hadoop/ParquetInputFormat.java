@@ -157,7 +157,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   //Wrapper of hdfs blocks, keep track of which HDFS block is being used
   private static class HDFSBlocks {
     BlockLocation[] hdfsBlocks;
-    int currentHdfsBlockIndex = 0;
+    int currentStartHdfsBlockIndex = 0;//the hdfs block index corresponding to the start of a row group
+    int currentMidPointHDFSBlockIndex = 0;// the hdfs block index corresponding to the mid-point of a row group, a split might be created only when the midpoint of the rowgroup enters a new hdfs block
 
     private HDFSBlocks(BlockLocation[] hdfsBlocks) {
       this.hdfsBlocks = hdfsBlocks;
@@ -175,18 +176,36 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       return hdfsBlock.getOffset() + hdfsBlock.getLength() - 1;
     }
 
+
+
     /**
      * @param rowGroupMetadata
-     * @return true if the row group is in a new hdfs block, and also move the currentHDFSBlock pointer to the correct index that contains the row group
-     * false if the rowGroup is in the same hdfs block
+     * @return true if the row group is in a new hdfs block, and also move the currentHDFSBlock pointer to the correct index that contains the row group;
+     * return false if the rowGroup is in the same hdfs block
      */
     private boolean checkStartedInANewHDFSBlock(BlockMetaData rowGroupMetadata) {
       boolean isNewHdfsBlock = false;
-      while (rowGroupMetadata.getStartingPos() > getHDFSBlockEndingPosition(currentHdfsBlockIndex)) {
+
+      long rowGroupMidPoint = rowGroupMetadata.getStartingPos() + (rowGroupMetadata.getCompressedSize() / 2);
+
+      //if mid point is not in the current HDFS block any more, return true
+      while (rowGroupMidPoint > getHDFSBlockEndingPosition(currentMidPointHDFSBlockIndex)) {
         isNewHdfsBlock = true;
-        currentHdfsBlockIndex++;
-        if (currentHdfsBlockIndex >= hdfsBlocks.length)
-          throw new ParquetDecodingException("The row group does not start in this file: row group offset is " + rowGroupMetadata.getStartingPos() + " but the end of hdfs blocks of file is " + getHDFSBlockEndingPosition(currentHdfsBlockIndex));
+        currentMidPointHDFSBlockIndex++;
+        if (currentMidPointHDFSBlockIndex >= hdfsBlocks.length)
+          throw new ParquetDecodingException("the row group is not in hdfs blocks in the file: midpoint of row groups is "
+                  + rowGroupMidPoint
+                  + ", the end of the hdfs block is "
+                  + getHDFSBlockEndingPosition(currentMidPointHDFSBlockIndex - 1));
+      }
+
+      while (rowGroupMetadata.getStartingPos() > getHDFSBlockEndingPosition(currentStartHdfsBlockIndex)) {
+        currentStartHdfsBlockIndex++;
+        if (currentStartHdfsBlockIndex >= hdfsBlocks.length)
+          throw new ParquetDecodingException("The row group does not start in this file: row group offset is "
+                  + rowGroupMetadata.getStartingPos()
+                  + " but the end of hdfs blocks of file is "
+                  + getHDFSBlockEndingPosition(currentStartHdfsBlockIndex));
       }
       return isNewHdfsBlock;
     }
@@ -196,14 +215,14 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     }
 
     public BlockLocation getCurrentBlock() {
-      return hdfsBlocks[currentHdfsBlockIndex];
+      return hdfsBlocks[currentStartHdfsBlockIndex];
     }
   }
 
   private static class SplitInfo {
     List<BlockMetaData> rowGroups = new ArrayList<BlockMetaData>();
     BlockLocation hdfsBlock;
-    long byteSize = 0L;
+    long compressedByteSize = 0L;
 
     public SplitInfo(BlockLocation currentBlock) {
       this.hdfsBlock = currentBlock;
@@ -211,11 +230,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
     private void addRowGroup(BlockMetaData rowGroup) {
       this.rowGroups.add(rowGroup);
-      this.byteSize += rowGroup.getTotalByteSize();
+      this.compressedByteSize += rowGroup.getCompressedSize();
     }
 
-    public long getByteSize() {
-      return byteSize;
+    public long getCompressedByteSize() {
+      return compressedByteSize;
     }
 
     public List<BlockMetaData> getRowGroups() {
@@ -286,9 +305,9 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     checkSorted(rowGroupBlocks);//assert row groups are sorted
     for (BlockMetaData rowGroupMetadata : rowGroupBlocks) {
       if ((hdfsBlocks.checkStartedInANewHDFSBlock(rowGroupMetadata)
-             && currentSplit.getByteSize() >= minSplitSize
-             && currentSplit.getByteSize() > 0)
-           || currentSplit.getByteSize() >= maxSplitSize) {
+             && currentSplit.getCompressedByteSize() >= minSplitSize
+             && currentSplit.getCompressedByteSize() > 0)
+           || currentSplit.getCompressedByteSize() >= maxSplitSize) {
         //create a new split
         splitRowGroups.add(currentSplit);//finish previous split
         currentSplit = new SplitInfo(hdfsBlocks.getCurrentBlock());

@@ -107,4 +107,14 @@ public class BlockMetaData {
     return "BlockMetaData{" + rowCount + ", " + totalByteSize + " " + columns + "}";
   }
 
+  /**
+   * @return the compressed size of all columns
+   */
+  public long getCompressedSize() {
+    long totalSize = 0;
+    for (ColumnChunkMetaData col : getColumns()) {
+      totalSize += col.getTotalSize();
+    }
+    return totalSize;
+  }
 }
