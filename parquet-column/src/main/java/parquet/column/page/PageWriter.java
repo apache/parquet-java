@@ -29,6 +29,18 @@ import parquet.column.statistics.Statistics;
  */
 public interface PageWriter {
 
+  @Deprecated
+  /**
+   * writes a single page
+   * @param bytesInput the bytes for the page
+   * @param valueCount the number of values in that page
+   * @param rlEncoding repetition level encoding
+   * @param dlEncoding definition level encoding
+   * @param valuesEncoding values encoding
+   * @throws IOException
+   */
+  void writePage(BytesInput bytesInput, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
+
   /**
    * writes a single page
    * @param bytesInput the bytes for the page
