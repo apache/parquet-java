@@ -1,5 +1,23 @@
 # Parquet #
 
+### Version 1.4.2 ###
+* ISSUE [359](https://github.com/Parquet/parquet-mr/pull/359): Expose values in SimpleRecord
+* ISSUE [335](https://github.com/Parquet/parquet-mr/pull/335): issue #290, hive map conversion to parquet schema
+* ISSUE [365](https://github.com/Parquet/parquet-mr/pull/365): generate splits by min max size, and align to HDFS block when possible
+* ISSUE [353](https://github.com/Parquet/parquet-mr/pull/353): Fix bug: optional enum field causing ScroogeSchemaConverter to fail
+* ISSUE [362](https://github.com/Parquet/parquet-mr/pull/362): Fix output bug during parquet-dump command
+* ISSUE [366](https://github.com/Parquet/parquet-mr/pull/366): do not call schema converter to generate projected schema when projection is not set
+* ISSUE [367](https://github.com/Parquet/parquet-mr/pull/367): make ParquetFileWriter throw IOException in invalid state case
+* ISSUE [352](https://github.com/Parquet/parquet-mr/pull/352): Parquet thrift storer
+* ISSUE [349](https://github.com/Parquet/parquet-mr/pull/349): fix header bug
+
+### Version 1.4.1 ###
+* ISSUE [344](https://github.com/Parquet/parquet-mr/pull/344): select * from parquet hive table containing map columns runs into exception. Issue #341.
+* ISSUE [347](https://github.com/Parquet/parquet-mr/pull/347): set reading length in ThriftBytesWriteSupport to avoid potential OOM cau...
+* ISSUE [346](https://github.com/Parquet/parquet-mr/pull/346): stop using strings and b64 for compressed input splits
+* ISSUE [345](https://github.com/Parquet/parquet-mr/pull/345): set cascading version to 2.5.3
+* ISSUE [342](https://github.com/Parquet/parquet-mr/pull/342): compress kv pairs in ParquetInputSplits
+ 
 ### Version 1.4.0 ###
 * ISSUE [333](https://github.com/Parquet/parquet-mr/pull/333): Compress schemas in split
 * ISSUE [329](https://github.com/Parquet/parquet-mr/pull/329): fix filesystem resolution
