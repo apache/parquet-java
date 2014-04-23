@@ -23,21 +23,23 @@ import java.io.OutputStream;
 import org.junit.Assert;
 import org.junit.Test;
 
+import parquet.Log;
 import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
 public class TestByteBitPacking {
+  private static final Log LOG = Log.getLog(TestByteBitPacking.class);
 
   @Test
   public void testPackUnPack() {
-    System.out.println();
-    System.out.println("testPackUnPack");
+    LOG.debug("");
+    LOG.debug("testPackUnPack");
     for (int i = 1; i < 32; i++) {
-      System.out.println("Width: " + i);
+      LOG.debug("Width: " + i);
       int[] unpacked = new int[32];
       int[] values = generateValues(i);
       packUnpack(Packer.BIG_ENDIAN.newBytePacker(i), values, unpacked);
-      System.out.println("Output: " + TestBitPacking.toString(unpacked));
+      LOG.debug("Output: " + TestBitPacking.toString(unpacked));
       Assert.assertArrayEquals("width "+i, values, unpacked);
     }
   }
@@ -45,7 +47,7 @@ public class TestByteBitPacking {
   private void packUnpack(BytePacker packer, int[] values, int[] unpacked) {
     byte[] packed = new byte[packer.getBitWidth() * 4];
     packer.pack32Values(values, 0, packed, 0);
-    System.out.println("packed: " + TestBitPacking.toString(packed));
+    LOG.debug("packed: " + TestBitPacking.toString(packed));
     packer.unpack32Values(packed, 0, unpacked, 0);
   }
 
@@ -54,16 +56,16 @@ public class TestByteBitPacking {
     for (int j = 0; j < values.length; j++) {
       values[j] = (int)(Math.random() * 100000) % (int)Math.pow(2, bitWidth);
     }
-    System.out.println("Input:  " + TestBitPacking.toString(values));
+    LOG.debug("Input:  " + TestBitPacking.toString(values));
     return values;
   }
 
   @Test
   public void testPackUnPackAgainstHandWritten() throws IOException {
-    System.out.println();
-    System.out.println("testPackUnPackAgainstHandWritten");
+    LOG.debug("");
+    LOG.debug("testPackUnPackAgainstHandWritten");
     for (int i = 1; i < 8; i++) {
-      System.out.println("Width: " + i);
+      LOG.debug("Width: " + i);
       byte[] packed = new byte[i * 4];
       int[] unpacked = new int[32];
       int[] values = generateValues(i);
@@ -72,7 +74,7 @@ public class TestByteBitPacking {
       final BytePacker packer = Packer.BIG_ENDIAN.newBytePacker(i);
       packer.pack32Values(values, 0, packed, 0);
 
-      System.out.println("Generated: " + TestBitPacking.toString(packed));
+      LOG.debug("Generated: " + TestBitPacking.toString(packed));
 
       // pack manual
       final ByteArrayOutputStream manualOut = new ByteArrayOutputStream();
@@ -81,7 +83,7 @@ public class TestByteBitPacking {
         writer.write(values[j]);
       }
       final byte[] packedManualAsBytes = manualOut.toByteArray();
-      System.out.println("Manual: " + TestBitPacking.toString(packedManualAsBytes));
+      LOG.debug("Manual: " + TestBitPacking.toString(packedManualAsBytes));
 
       // unpack manual
       final BitPackingReader reader = BitPacking.createBitPackingReader(i, new ByteArrayInputStream(packed), 32);
@@ -89,7 +91,7 @@ public class TestByteBitPacking {
         unpacked[j] = reader.read();
       }
 
-      System.out.println("Output: " + TestBitPacking.toString(unpacked));
+      LOG.debug("Output: " + TestBitPacking.toString(unpacked));
       Assert.assertArrayEquals("width " + i, values, unpacked);
     }
   }
@@ -97,10 +99,10 @@ public class TestByteBitPacking {
   @Test
   public void testPackUnPackAgainstLemire() throws IOException {
     for (Packer pack: Packer.values()) {
-      System.out.println();
-      System.out.println("testPackUnPackAgainstLemire " + pack.name());
+      LOG.debug("");
+      LOG.debug("testPackUnPackAgainstLemire " + pack.name());
       for (int i = 1; i < 32; i++) {
-        System.out.println("Width: " + i);
+        LOG.debug("Width: " + i);
         int[] packed = new int[i];
         int[] unpacked = new int[32];
         int[] values = generateValues(i);
@@ -127,17 +129,17 @@ public class TestByteBitPacking {
           }
         }
         final byte[] packedByLemireAsBytes = lemireOut.toByteArray();
-        System.out.println("Lemire out: " + TestBitPacking.toString(packedByLemireAsBytes));
+        LOG.debug("Lemire out: " + TestBitPacking.toString(packedByLemireAsBytes));
 
         // pack manual
         final BytePacker bytePacker = pack.newBytePacker(i);
         byte[] packedGenerated = new byte[i * 4];
         bytePacker.pack32Values(values, 0, packedGenerated, 0);
-        System.out.println("Gener. out: " + TestBitPacking.toString(packedGenerated));
+        LOG.debug("Gener. out: " + TestBitPacking.toString(packedGenerated));
         Assert.assertEquals(pack.name() + " width " + i, TestBitPacking.toString(packedByLemireAsBytes), TestBitPacking.toString(packedGenerated));
 
         bytePacker.unpack32Values(packedByLemireAsBytes, 0, unpacked, 0);
-        System.out.println("Output: " + TestBitPacking.toString(unpacked));
+        LOG.debug("Output: " + TestBitPacking.toString(unpacked));
 
         Assert.assertArrayEquals("width " + i, values, unpacked);
       }

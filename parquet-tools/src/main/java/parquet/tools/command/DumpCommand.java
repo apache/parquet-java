@@ -263,7 +263,7 @@ public class DumpCommand extends ArgsOnlyCommand {
         out.format("*** row group %d of %d, values %d to %d ***%n", page, total, offset, offset + creader.getTotalValueCount() - 1);
 
         for (long i = 0, e = creader.getTotalValueCount(); i < e; ++i) {
-            int rlvl = creader.getCurrentDefinitionLevel();
+            int rlvl = creader.getCurrentRepetitionLevel();
             int dlvl = creader.getCurrentDefinitionLevel();
 
             out.format("value %d: R:%d D:%d V:", offset+i, rlvl, dlvl);

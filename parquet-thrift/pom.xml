@@ -3,7 +3,7 @@
     <groupId>com.twitter</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.4.1-SNAPSHOT</version>
+    <version>1.4.3-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -90,6 +90,13 @@
       <version>1.6</version>
       <scope>provided</scope>
     </dependency>
+    <dependency> <!-- for pig runtime in tests -->
+      <groupId>org.antlr</groupId>
+      <artifactId>antlr-runtime</artifactId>
+      <version>3.4</version>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
   <build>

@@ -24,10 +24,12 @@ import java.io.IOException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import parquet.Log;
 import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
 public class TestBitPacking {
+  private static final Log LOG = Log.getLog(TestBitPacking.class);
 
   @Test
   public void testZero() throws IOException {
@@ -164,8 +166,8 @@ public class TestBitPacking {
     }
     w.finish();
     byte[] bytes = baos.toByteArray();
-    System.out.println("vals ("+bitLength+"): " + toString(vals));
-    System.out.println("bytes: " + toString(bytes));
+    LOG.debug("vals ("+bitLength+"): " + toString(vals));
+    LOG.debug("bytes: " + toString(bytes));
     Assert.assertEquals(expected, toString(bytes));
     ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
     BitPackingReader r = BitPacking.createBitPackingReader(bitLength, bais, vals.length);
@@ -173,7 +175,7 @@ public class TestBitPacking {
     for (int i = 0; i < result.length; i++) {
       result[i] = r.read();
     }
-    System.out.println("result: " + toString(result));
+    LOG.debug("result: " + toString(result));
     assertArrayEquals(vals, result);
   }
 

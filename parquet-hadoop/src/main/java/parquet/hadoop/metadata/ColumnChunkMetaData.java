@@ -65,6 +65,19 @@ abstract public class ColumnChunkMetaData {
   }
 
   /**
+   * @return the offset of the first byte in the chunk
+   */
+  public long getStartingPos() {
+    long dictionaryPageOffset = getDictionaryPageOffset();
+    long firstDataPageOffset = getFirstDataPageOffset();
+    if (dictionaryPageOffset > 0 && dictionaryPageOffset < firstDataPageOffset) {
+      // if there's a dictionary and it's before the first data page, start from there
+      return dictionaryPageOffset;
+    }
+    return firstDataPageOffset;
+  }
+
+  /**
    * checks that a positive long value fits in an int.
    * (reindexed on Integer.MIN_VALUE)
    * @param value
@@ -250,7 +263,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
 }
 class LongColumnChunkMetaData extends ColumnChunkMetaData {
 
-  private final long firstDataPage;
+  private final long firstDataPageOffset;
   private final long dictionaryPageOffset;
   private final long valueCount;
   private final long totalSize;
@@ -263,7 +276,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
    * @param codec
    * @param encodings
    * @param statistics
-   * @param firstDataPage
+   * @param firstDataPageOffset
    * @param dictionaryPageOffset
    * @param valueCount
    * @param totalSize
@@ -275,13 +288,13 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
       CompressionCodecName codec,
       Set<Encoding> encodings,
       Statistics statistics,
-      long firstDataPage,
+      long firstDataPageOffset,
       long dictionaryPageOffset,
       long valueCount,
       long totalSize,
       long totalUncompressedSize) {
     super(ColumnChunkProperties.get(path, type, codec, encodings));
-    this.firstDataPage = firstDataPage;
+    this.firstDataPageOffset = firstDataPageOffset;
     this.dictionaryPageOffset = dictionaryPageOffset;
     this.valueCount = valueCount;
     this.totalSize = totalSize;
@@ -293,7 +306,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
    * @return start of the column data offset
    */
   public long getFirstDataPageOffset() {
-    return firstDataPage;
+    return firstDataPageOffset;
   }
 
   /**

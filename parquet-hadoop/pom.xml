@@ -3,7 +3,7 @@
     <groupId>com.twitter</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.4.1-SNAPSHOT</version>
+    <version>1.4.3-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -81,17 +81,6 @@
             <artifactId>enforcer-rule</artifactId>
             <version>0.9.17</version>
           </dependency>
-          <dependency>
-          	<groupId>commons-codec</groupId>
-          	<artifactId>commons-codec</artifactId>
-          	<!-- 1.6 is almost 4x bigger. 1.4 has different chunking behavior.
-          	  So be careful with this versioning.
-          	  Read http://commons.apache.org/proper/commons-codec/changes-report.html
-          	  Due to Hadoop et al also using god knows
-          	  what version of this lib, we mvn-shade it here.
-          	-->
-          	<version>1.5</version>
-          </dependency>
         </dependencies>
         <executions>
           <execution>
@@ -122,45 +111,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-            <configuration combine.self="override">
-              <minimizeJar>true</minimizeJar>
-              <createSourcesJar>false</createSourcesJar> 
-              <artifactSet>
-                <includes>
-                  <include>commons-codec:*</include>
-                </includes>
-              </artifactSet>
-              <filters>
-                <filter>
-                  <artifact>commons-codec:*</artifact>
-                  <includes>
-                    <include>**</include>
-                  </includes>
-                  <excludes>
-                    <exclude>org/apache/commons/codec/language/*</exclude>
-                    <exclude>org/apache/commons/codec/net/*</exclude>
-                  </excludes>
-                </filter>
-              </filters>
-              <relocations>
-                <relocation>
-                  <pattern>org.apache.commons.codec</pattern>
-                  <shadedPattern>parquet.org.apache.commons.codec</shadedPattern>
-                </relocation>
-              </relocations>
-            </configuration>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>

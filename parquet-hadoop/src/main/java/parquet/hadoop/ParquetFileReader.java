@@ -17,13 +17,13 @@ package parquet.hadoop;
 
 import static parquet.Log.DEBUG;
 import static parquet.bytes.BytesUtils.readIntLittleEndian;
-import static parquet.format.Util.readPageHeader;
 import static parquet.hadoop.ParquetFileWriter.MAGIC;
 import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.SequenceInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -53,6 +53,7 @@ import parquet.column.page.DictionaryPage;
 import parquet.column.page.Page;
 import parquet.column.page.PageReadStore;
 import parquet.format.PageHeader;
+import parquet.format.Util;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.CodecFactory.BytesDecompressor;
 import parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
@@ -345,7 +346,7 @@ public class ParquetFileReader implements Closeable {
       BenchmarkCounter.incrementTotalBytes(mc.getTotalSize());
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
       if (columnDescriptor != null) {
-        long startingPos = getStartingPos(mc);
+        long startingPos = mc.getStartingPos();
         // first chunk or not consecutive => new list
         if (currentChunks == null || currentChunks.endPos() != startingPos) {
           currentChunks = new ConsecutiveChunkList(startingPos);
@@ -365,18 +366,7 @@ public class ParquetFileReader implements Closeable {
     return columnChunkPageReadStore;
   }
 
-  /**
-   * @param mc the metadata for that chunk
-   * @return the offset of the first byte in the chunk
-   */
-  private long getStartingPos(ColumnChunkMetaData mc) {
-    long startingPos = mc.getFirstDataPageOffset();
-    if (mc.getDictionaryPageOffset() > 0 && mc.getDictionaryPageOffset() < startingPos) {
-      // if there's a dictionary and it's before the first data page, start from there
-      startingPos = mc.getDictionaryPageOffset();
-    }
-    return startingPos;
-  }
+
 
   @Override
   public void close() throws IOException {
@@ -406,6 +396,10 @@ public class ParquetFileReader implements Closeable {
       this.pos = offset;
     }
 
+    protected PageHeader readPageHeader() throws IOException {
+      return Util.readPageHeader(this);
+    }
+
     /**
      * Read all of the pages in a given column chunk.
      * @return the list of pages
@@ -415,7 +409,7 @@ public class ParquetFileReader implements Closeable {
       DictionaryPage dictionaryPage = null;
       long valuesCountReadSoFar = 0;
       while (valuesCountReadSoFar < descriptor.metadata.getValueCount()) {
-        PageHeader pageHeader = readPageHeader(this);
+        PageHeader pageHeader = readPageHeader();
         switch (pageHeader.type) {
           case DICTIONARY_PAGE:
             // there is only one dictionary page per column chunk
@@ -500,6 +494,24 @@ public class ParquetFileReader implements Closeable {
     private WorkaroundChunk(ChunkDescriptor descriptor, byte[] data, int offset, FSDataInputStream f) {
       super(descriptor, data, offset);
       this.f = f;
+    }
+
+    protected PageHeader readPageHeader() throws IOException {
+      PageHeader pageHeader;
+      int initialPos = this.pos;
+      try {
+        pageHeader = Util.readPageHeader(this);
+      } catch (IOException e) {
+        // this is to workaround a bug where the compressedLength
+        // of the chunk is missing the size of the header of the dictionary
+        // to allow reading older files (using dictionary) we need this.
+        // usually 13 to 19 bytes are missing
+        // if the last page is smaller than this, the page header itself is truncated in the buffer.
+        this.pos = initialPos; // resetting the buffer to the position before we got the error
+        LOG.info("completing the column chunk to read the page header");
+        pageHeader = Util.readPageHeader(new SequenceInputStream(this, f)); // trying again from the buffer + remainder of the stream.
+      }
+      return pageHeader;
     }
 
     public BytesInput readAsBytesInput(int size) throws IOException {
