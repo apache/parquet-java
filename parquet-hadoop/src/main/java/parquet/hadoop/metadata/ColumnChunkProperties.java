@@ -16,8 +16,6 @@
 package parquet.hadoop.metadata;
 
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 
 import parquet.column.Encoding;
@@ -25,16 +23,10 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 public class ColumnChunkProperties {
 
-  private static Map<ColumnChunkProperties, ColumnChunkProperties> cache = new HashMap<ColumnChunkProperties, ColumnChunkProperties>();
+  private static Canonicalizer<ColumnChunkProperties> properties = new Canonicalizer<ColumnChunkProperties>();
 
   public static ColumnChunkProperties get(ColumnPath path, PrimitiveTypeName type, CompressionCodecName codec, Set<Encoding> encodings) {
-    ColumnChunkProperties key = new ColumnChunkProperties(codec, path, type, encodings);
-    ColumnChunkProperties cached = cache.get(key);
-    if (cached == null) {
-      cached = key;
-      cache.put(key, cached);
-    }
-    return cached;
+    return properties.canonicalize(new ColumnChunkProperties(codec, path, type, encodings));
   }
 
   private final CompressionCodecName codec;

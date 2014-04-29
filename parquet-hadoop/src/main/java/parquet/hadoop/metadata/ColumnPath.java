@@ -16,25 +16,22 @@
 package parquet.hadoop.metadata;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 
 public final class ColumnPath implements Iterable<String> {
 
-  private static Map<ColumnPath, ColumnPath> paths = new HashMap<ColumnPath, ColumnPath>();
+  private static Canonicalizer<ColumnPath> paths = new Canonicalizer<ColumnPath>() {
+    protected ColumnPath toCanonical(ColumnPath value) {
+      String[] path = new String[value.p.length];
+      for (int i = 0; i < value.p.length; i++) {
+        path[i] = value.p[i].intern();
+      }
+      return new ColumnPath(path);
+    }
+  };
 
   public static ColumnPath get(String... path){
-    ColumnPath key = new ColumnPath(path);
-    ColumnPath cached = paths.get(key);
-    if (cached == null) {
-      for (int i = 0; i < path.length; i++) {
-        path[i] = path[i].intern();
-      }
-      cached = key;
-      paths.put(key, cached);
-    }
-    return cached;
+    return paths.canonicalize(new ColumnPath(path));
   }
 
   private final String[] p;
