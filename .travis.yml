@@ -1,11 +1,9 @@
 language: java
 before_install:
-  - pwd
-  - pushd
   - sudo apt-get update -qq
   - sudo apt-get install build-essential
   - mkdir protobuf_install
-  - cd protobuf_install
+  - pushd protobuf_install
   - wget http://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz
   - tar xzvf protobuf-2.5.0.tar.gz
   - cd  protobuf-2.5.0
