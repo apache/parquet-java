@@ -9,7 +9,6 @@ before_install:
   - cd  protobuf-2.5.0
   - ./configure
   - make
-  - make check
   - sudo make install
   - sudo ldconfig
   - protoc --version
