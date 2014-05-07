@@ -1,7 +1,19 @@
 language: java
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -qq protobuf-compiler
+  - sudo apt-get install build-essential
+  - mkdir protobuf_install
+  - pushd protobuf_install
+  - wget http://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz
+  - tar xzvf protobuf-2.5.0.tar.gz
+  - cd  protobuf-2.5.0
+  - ./configure
+  - make
+  - sudo make install
+  - sudo ldconfig
+  - protoc --version
+  - popd
+  - pwd
   - sudo apt-get install -qq libboost-dev libboost-test-dev libboost-program-options-dev libevent-dev automake libtool flex bison pkg-config g++ libssl-dev
   - wget -nv http://archive.apache.org/dist/thrift/0.7.0/thrift-0.7.0.tar.gz
   - tar zxf thrift-0.7.0.tar.gz
