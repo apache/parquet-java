@@ -16,25 +16,17 @@
 package parquet.hadoop.metadata;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 import parquet.column.Encoding;
 
 public class EncodingList implements Iterable<Encoding> {
 
-  private static Map<EncodingList, EncodingList> encodingLists = new HashMap<EncodingList, EncodingList>();
+  private static Canonicalizer<EncodingList> encodingLists = new Canonicalizer<EncodingList>();
 
   public static EncodingList getEncodingList(List<Encoding> encodings) {
-    EncodingList key = new EncodingList(encodings);
-    EncodingList cached = encodingLists.get(key);
-    if (cached == null) {
-      cached = key;
-      encodingLists.put(key, cached);
-    }
-    return cached;
+    return encodingLists.canonicalize(new EncodingList(encodings));
   }
 
   private final List<Encoding> encodings;
