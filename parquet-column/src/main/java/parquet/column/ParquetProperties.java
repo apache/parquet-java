@@ -102,7 +102,7 @@ public class ParquetProperties {
       }
     case INT96:
       if (enableDictionary) {
-        return new PlainFixedLenArrayDictionaryValuesWriter(12, dictionaryPageSizeThreshold, initialSizePerCol);
+        return new PlainFixedLenArrayDictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol, 12);
       } else {
         return new FixedLenByteArrayPlainValuesWriter(12, initialSizePerCol);
       }
