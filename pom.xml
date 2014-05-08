@@ -200,7 +200,6 @@
                    <dumpDetails>true</dumpDetails>
                    <previousVersion>${previous.version}</previousVersion>
                    <excludes>
-                     <exclude>parquet.hadoop.ParquetInputSplit</exclude>
                      <exclude>parquet/org/**</exclude>
                    </excludes>
                  </requireBackwardCompatibility>
