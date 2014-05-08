@@ -19,23 +19,28 @@ import static org.junit.Assert.assertEquals;
 import static parquet.format.Util.readPageHeader;
 import static parquet.format.Util.writePageHeader;
 
+import com.google.common.collect.Lists;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import parquet.column.Encoding;
 import parquet.example.Paper;
+import parquet.format.ConvertedType;
 import parquet.format.FieldRepetitionType;
 import parquet.format.PageHeader;
 import parquet.format.PageType;
 import parquet.format.SchemaElement;
 import parquet.format.Type;
 import parquet.schema.MessageType;
+import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type.Repetition;
+import parquet.schema.Types;
 
 public class TestParquetMetadataConverter {
 
@@ -57,6 +62,36 @@ public class TestParquetMetadataConverter {
     List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(Paper.schema);
     MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema);
     assertEquals(Paper.schema, schema);
+  }
+
+  @Test
+  public void testSchemaConverterDecimal() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    List<SchemaElement> schemaElements = converter.toParquetSchema(
+        Types.buildMessage()
+            .required(PrimitiveTypeName.BINARY)
+                .as(OriginalType.DECIMAL).precision(9).scale(2)
+                .named("aBinaryDecimal")
+            .optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY).length(4)
+                .as(OriginalType.DECIMAL).precision(9).scale(2)
+                .named("aFixedDecimal")
+            .named("Message")
+    );
+    List<SchemaElement> expected = Lists.newArrayList(
+        new SchemaElement("Message").setNum_children(2),
+        new SchemaElement("aBinaryDecimal")
+            .setRepetition_type(FieldRepetitionType.REQUIRED)
+            .setType(Type.BYTE_ARRAY)
+            .setConverted_type(ConvertedType.DECIMAL)
+            .setPrecision(9).setScale(2),
+        new SchemaElement("aFixedDecimal")
+            .setRepetition_type(FieldRepetitionType.OPTIONAL)
+            .setType(Type.FIXED_LEN_BYTE_ARRAY)
+            .setType_length(4)
+            .setConverted_type(ConvertedType.DECIMAL)
+            .setPrecision(9).setScale(2)
+    );
+    Assert.assertEquals(expected, schemaElements);
   }
 
   @Test
