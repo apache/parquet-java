@@ -87,7 +87,7 @@
     <cascading.version>2.5.3</cascading.version>
     <parquet.format.version>2.0.0</parquet.format.version>
     <log4j.version>1.2.17</log4j.version>
-    <previous.version>1.4.0</previous.version>
+    <previous.version>1.4.2</previous.version>
     <thrift.executable>thrift</thrift.executable>
   </properties>
 
