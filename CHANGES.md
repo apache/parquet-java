@@ -1,5 +1,8 @@
 # Parquet #
 
+### Version 1.4.3 ###
+* ISSUE [381](https://github.com/Parquet/parquet-mr/pull/381): fix metadata concurency problem
+
 ### Version 1.4.2 ###
 * ISSUE [359](https://github.com/Parquet/parquet-mr/pull/359): Expose values in SimpleRecord
 * ISSUE [335](https://github.com/Parquet/parquet-mr/pull/335): issue #290, hive map conversion to parquet schema

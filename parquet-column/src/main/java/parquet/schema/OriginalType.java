@@ -20,5 +20,6 @@ public enum OriginalType {
   LIST,
   UTF8,
   MAP_KEY_VALUE,
-  ENUM;
+  ENUM,
+  DECIMAL;
 }
