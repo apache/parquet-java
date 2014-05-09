@@ -226,6 +226,44 @@ public class ParquetFileWriter {
     currentEncodings.add(dictionaryPage.getEncoding());
   }
 
+
+  /**
+   * writes a single page
+   * @param valueCount count of values
+   * @param uncompressedPageSize the size of the data once uncompressed
+   * @param bytes the compressed data for the page without header
+   * @param rlEncoding encoding of the repetition level
+   * @param dlEncoding encoding of the definition level
+   * @param valuesEncoding encoding of values
+   */
+  @Deprecated
+  public void writeDataPage(
+      int valueCount, int uncompressedPageSize,
+      BytesInput bytes,
+      parquet.column.Encoding rlEncoding,
+      parquet.column.Encoding dlEncoding,
+      parquet.column.Encoding valuesEncoding) throws IOException {
+    state = state.write();
+    long beforeHeader = out.getPos();
+    if (DEBUG) LOG.debug(beforeHeader + ": write data page: " + valueCount + " values");
+    int compressedPageSize = (int)bytes.size();
+    metadataConverter.writeDataPageHeader(
+        uncompressedPageSize, compressedPageSize,
+        valueCount,
+        rlEncoding,
+        dlEncoding,
+        valuesEncoding,
+        out);
+    long headerSize = out.getPos() - beforeHeader;
+    this.uncompressedLength += uncompressedPageSize + headerSize;
+    this.compressedLength += compressedPageSize + headerSize;
+    if (DEBUG) LOG.debug(out.getPos() + ": write data page content " + compressedPageSize);
+    bytes.writeAllTo(out);
+    currentEncodings.add(rlEncoding);
+    currentEncodings.add(dlEncoding);
+    currentEncodings.add(valuesEncoding);
+  }
+
   /**
    * writes a single page
    * @param valueCount count of values

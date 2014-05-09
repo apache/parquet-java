@@ -453,6 +453,24 @@ public class ParquetMetadataConverter {
     return Repetition.valueOf(repetition.name());
   }
 
+  @Deprecated
+  public void writeDataPageHeader(
+      int uncompressedSize,
+      int compressedSize,
+      int valueCount,
+      parquet.column.Encoding rlEncoding,
+      parquet.column.Encoding dlEncoding,
+      parquet.column.Encoding valuesEncoding,
+      OutputStream to) throws IOException {
+    writePageHeader(newDataPageHeader(uncompressedSize,
+                                      compressedSize,
+                                      valueCount,
+                                      new parquet.column.statistics.BooleanStatistics(),
+                                      rlEncoding,
+                                      dlEncoding,
+                                      valuesEncoding), to);
+  }
+
   public void writeDataPageHeader(
       int uncompressedSize,
       int compressedSize,

@@ -19,6 +19,7 @@ import java.util.Set;
 
 import parquet.column.Encoding;
 import parquet.column.statistics.Statistics;
+import parquet.column.statistics.BooleanStatistics;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
@@ -26,6 +27,44 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
  * @author Julien Le Dem
  */
 abstract public class ColumnChunkMetaData {
+
+  @Deprecated
+  public static ColumnChunkMetaData get(
+      ColumnPath path,
+      PrimitiveTypeName type,
+      CompressionCodecName codec,
+      Set<Encoding> encodings,
+      long firstDataPage,
+      long dictionaryPageOffset,
+      long valueCount,
+      long totalSize,
+      long totalUncompressedSize) {
+    // to save space we store those always positive longs in ints when they fit.
+    if (positiveLongFitsInAnInt(firstDataPage)
+        && positiveLongFitsInAnInt(dictionaryPageOffset)
+        && positiveLongFitsInAnInt(valueCount)
+        && positiveLongFitsInAnInt(totalSize)
+        && positiveLongFitsInAnInt(totalUncompressedSize)) {
+      return new IntColumnChunkMetaData(
+          path, type, codec, encodings,
+          new BooleanStatistics(),
+          firstDataPage,
+          dictionaryPageOffset,
+          valueCount,
+          totalSize,
+          totalUncompressedSize);
+    } else {
+      return new LongColumnChunkMetaData(
+          path, type, codec, encodings,
+          new BooleanStatistics(),
+          firstDataPage,
+          dictionaryPageOffset,
+          valueCount,
+          totalSize,
+          totalUncompressedSize);
+    }
+  }
+
 
   public static ColumnChunkMetaData get(
       ColumnPath path,
