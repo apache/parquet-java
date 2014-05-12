@@ -77,6 +77,16 @@ abstract public class Binary {
       }
 
       @Override
+      public int compareTo(Binary other) {
+        return other.compareTo(value, offset, length);
+      }
+
+      @Override
+      int compareTo(byte[] other, int otherOffset, int otherLength) {
+        return Binary.compareTwoByteArrays(value, offset, length, other, otherOffset, otherLength);
+      }
+
+      @Override
       public ByteBuffer toByteBuffer() {
         return ByteBuffer.wrap(value, offset, length);
       }
@@ -124,6 +134,16 @@ abstract public class Binary {
       @Override
       boolean equals(byte[] other, int otherOffset, int otherLength) {
         return Binary.equals(value, 0, value.length, other, otherOffset, otherLength);
+      }
+
+      @Override
+      public int compareTo(Binary other) {
+        return other.compareTo(value, 0, value.length);
+      }
+
+      @Override
+      int compareTo(byte[] other, int otherOffset, int otherLength) {
+        return Binary.compareTwoByteArrays(value, 0, value.length, other, otherOffset, otherLength);
       }
 
       @Override
@@ -196,6 +216,26 @@ abstract public class Binary {
       }
 
       @Override
+      public int compareTo(Binary other) {
+        if (value.hasArray()) {
+          return other.compareTo(value.array(), value.arrayOffset() + value.position(),
+              value.arrayOffset() + value.remaining());
+        }
+        byte[] bytes = getBytes();
+        return other.compareTo(bytes, 0, bytes.length);
+      }
+
+      @Override
+      int compareTo(byte[] other, int otherOffset, int otherLength) {
+        if (value.hasArray()) {
+          return Binary.compareTwoByteArrays(value.array(), value.arrayOffset() + value.position(),
+              value.arrayOffset() + value.remaining(), other, otherOffset, otherLength);
+        }
+        byte[] bytes = getBytes();
+        return Binary.compareTwoByteArrays(bytes, 0, bytes.length, other, otherOffset, otherLength);
+      }
+
+      @Override
       public ByteBuffer toByteBuffer() {
         return value;
       }
@@ -255,6 +295,25 @@ abstract public class Binary {
     return true;
   }
 
+  private static final int compareTwoByteArrays(byte[] array1, int offset1, int length1,
+                                                byte[] array2, int offset2, int length2) {
+    if (array1 == null && array2 == null) return 0;
+    if (array1 == array2 && offset1 == offset2 && length1 == length2) return 0;
+    int min_length = (length1 < length2) ? length1 : length2;
+    for (int i = 0; i < min_length; i++) {
+      if (array1[i + offset1] < array2[i + offset2]) {
+        return 1;
+      }
+      if (array1[i + offset1] > array2[i + offset2]) {
+        return -1;
+      }
+    }
+    // check remainder
+    if (length1 == length2) { return 0; }
+    else if (length1 < length2) { return 1;}
+    else { return -1; }
+  }
+
   abstract public String toStringUsingUTF8();
 
   abstract public int length();
@@ -268,6 +327,10 @@ abstract public class Binary {
   abstract boolean equals(byte[] bytes, int offset, int length);
 
   abstract boolean equals(Binary other);
+
+  abstract public int compareTo(Binary other);
+
+  abstract int compareTo(byte[] bytes, int offset, int length);
 
   @Override
   public boolean equals(Object obj) {

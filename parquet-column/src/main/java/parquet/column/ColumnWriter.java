@@ -15,6 +15,7 @@
  */
 package parquet.column;
 
+import parquet.column.statistics.Statistics;
 import parquet.io.api.Binary;
 
 /**
@@ -92,5 +93,10 @@ public interface ColumnWriter {
    */
   long getBufferedSizeInMemory();
 
+  /**
+   * get current statistics for the column
+   * @return the Statistics for the column
+   */
+  Statistics getColumnStatistics();
 }
 

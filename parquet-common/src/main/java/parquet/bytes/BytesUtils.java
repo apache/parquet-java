@@ -213,4 +213,54 @@ public class BytesUtils {
   public static int paddedByteCountFromBits(int bitLength) {
     return (bitLength + 7) / 8;
   }
+
+  public static byte[] intToBytes(int value) {
+    byte[] outBuffer = new byte[4];
+    outBuffer[3] = (byte)(value >>> 24);
+    outBuffer[2] = (byte)(value >>> 16);
+    outBuffer[1] = (byte)(value >>>  8);
+    outBuffer[0] = (byte)(value >>>  0);
+    return outBuffer;
+  }
+
+  public static int bytesToInt(byte[] bytes) {
+    return ((int)(bytes[3] & 255) << 24) +
+           ((int)(bytes[2] & 255) << 16) +
+           ((int)(bytes[1] & 255) <<  8) +
+           ((int)(bytes[0] & 255) <<  0);
+  }
+
+  public static byte[] longToBytes(long value) {
+    byte[] outBuffer = new byte[8];
+    outBuffer[7] = (byte)(value >>> 56);
+    outBuffer[6] = (byte)(value >>> 48);
+    outBuffer[5] = (byte)(value >>> 40);
+    outBuffer[4] = (byte)(value >>> 32);
+    outBuffer[3] = (byte)(value >>> 24);
+    outBuffer[2] = (byte)(value >>> 16);
+    outBuffer[1] = (byte)(value >>>  8);
+    outBuffer[0] = (byte)(value >>>  0);
+    return outBuffer;
+  }
+
+  public static long bytesToLong(byte[] bytes) {
+    return (((long)bytes[7] << 56) +
+           ((long)(bytes[6] & 255) << 48) +
+           ((long)(bytes[5] & 255) << 40) +
+           ((long)(bytes[4] & 255) << 32) +
+           ((long)(bytes[3] & 255) << 24) +
+           ((long)(bytes[2] & 255) << 16) +
+           ((long)(bytes[1] & 255) <<  8) +
+           ((long)(bytes[0] & 255) <<  0));
+  }
+
+  public static byte[] booleanToBytes(boolean value) {
+    byte[] outBuffer = new byte[1];
+    outBuffer[0] = (byte)(value ? 1 : 0);
+    return outBuffer;
+  }
+
+  public static boolean bytesToBool(byte[] bytes) {
+    return ((int)(bytes[0] & 255) != 0);
+  }
 }

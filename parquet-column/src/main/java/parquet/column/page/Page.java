@@ -18,6 +18,8 @@ package parquet.column.page;
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.Encoding;
+import parquet.column.statistics.Statistics;
+import parquet.column.statistics.BooleanStatistics;
 
 /**
  * one page in a chunk
@@ -34,11 +36,13 @@ public class Page {
   private final BytesInput bytes;
   private final int valueCount;
   private final int uncompressedSize;
+  private final Statistics statistics;
   private final Encoding rlEncoding;
   private final Encoding dlEncoding;
   private final Encoding valuesEncoding;
   private final int id;
 
+  @Deprecated
   /**
    * @param bytes the bytes for this page
    * @param valueCount count of values in this page
@@ -52,13 +56,34 @@ public class Page {
     this.bytes = bytes;
     this.valueCount = valueCount;
     this.uncompressedSize = uncompressedSize;
+    this.statistics = new BooleanStatistics();
     this.rlEncoding = rlEncoding;
     this.dlEncoding = dlEncoding;
     this.valuesEncoding = valuesEncoding;
     this.id = nextId ++;
     if (DEBUG) LOG.debug("new Page #"+id+" : " + bytes.size() + " bytes and " + valueCount + " records");
   }
-
+  /**
+   * @param bytes the bytes for this page
+   * @param valueCount count of values in this page
+   * @param uncompressedSize the uncompressed size of the page
+   * @param statistics of the page's values (max, min, num_null)
+   * @param rlEncoding the repetition level encoding for this page
+   * @param dlEncoding the definition level encoding for this page
+   * @param valuesEncoding the values encoding for this page
+   * @param dlEncoding
+   */
+  public Page(BytesInput bytes, int valueCount, int uncompressedSize, Statistics stats, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
+    this.bytes = bytes;
+    this.valueCount = valueCount;
+    this.uncompressedSize = uncompressedSize;
+    this.statistics = stats;
+    this.rlEncoding = rlEncoding;
+    this.dlEncoding = dlEncoding;
+    this.valuesEncoding = valuesEncoding;
+    this.id = nextId ++;
+    if (DEBUG) LOG.debug("new Page #"+id+" : " + bytes.size() + " bytes and " + valueCount + " records");
+  }
   /**
    *
    * @return the bytes for the page
@@ -81,6 +106,14 @@ public class Page {
    */
   public int getUncompressedSize() {
     return uncompressedSize;
+  }
+
+  /**
+   *
+   * @return the statistics for this page (max, min, num_nulls)
+   */
+  public Statistics getStatistics() {
+    return statistics;
   }
 
   /**

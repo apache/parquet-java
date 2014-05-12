@@ -34,8 +34,10 @@ public class ColumnChunkProperties {
   private final PrimitiveTypeName type;
   private final Set<Encoding> encodings;
 
-  private ColumnChunkProperties(CompressionCodecName codec, ColumnPath path,
-      PrimitiveTypeName type, Set<Encoding> encodings) {
+  private ColumnChunkProperties(CompressionCodecName codec,
+                                ColumnPath path,
+                                PrimitiveTypeName type,
+                                Set<Encoding> encodings) {
     super();
     this.codec = codec;
     this.path = path;
@@ -67,7 +69,6 @@ public class ColumnChunkProperties {
     }
     return false;
   }
-
 
   private boolean equals(Set<Encoding> a, Set<Encoding> b) {
     return a.size() == b.size() && a.containsAll(b);

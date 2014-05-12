@@ -21,6 +21,8 @@ import org.apache.hadoop.fs.Path;
 import org.junit.Before;
 import org.junit.Test;
 import parquet.column.Encoding;
+import parquet.column.statistics.BinaryStatistics;
+import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ColumnPath;
@@ -284,9 +286,12 @@ public class TestInputFormat {
   private BlockMetaData newBlock(long start, long compressedBlockSize) {
     BlockMetaData blockMetaData = new BlockMetaData();
     long uncompressedSize = compressedBlockSize * 2;//assuming the compression ratio is 2
-    ColumnChunkMetaData column = ColumnChunkMetaData.get(
-            ColumnPath.get("foo"), PrimitiveTypeName.BINARY, CompressionCodecName.GZIP, new HashSet<Encoding>(Arrays.asList(Encoding.PLAIN)),
-            start, 0l, 0l, compressedBlockSize, uncompressedSize);
+    ColumnChunkMetaData column = ColumnChunkMetaData.get(ColumnPath.get("foo"),
+                                                         PrimitiveTypeName.BINARY,
+                                                         CompressionCodecName.GZIP,
+                                                         new HashSet<Encoding>(Arrays.asList(Encoding.PLAIN)),
+                                                         new BinaryStatistics(),
+                                                         start, 0l, 0l, compressedBlockSize, uncompressedSize);
     blockMetaData.addColumn(column);
     blockMetaData.setTotalByteSize(uncompressedSize);
     return blockMetaData;

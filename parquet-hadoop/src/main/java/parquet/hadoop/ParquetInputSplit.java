@@ -39,6 +39,7 @@ import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 
 import parquet.Log;
 import parquet.column.Encoding;
+import parquet.column.statistics.IntStatistics;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ColumnPath;
@@ -267,8 +268,9 @@ public class ParquetInputSplit extends FileSplit implements Writable {
     for (int i = 0; i < encodingsSize; i++) {
       encodings.add(Encoding.values()[in.readInt()]);
     }
+    IntStatistics emptyStats = new IntStatistics();
     ColumnChunkMetaData column = ColumnChunkMetaData.get(
-        ColumnPath.get(columnPath), type, codec, encodings,
+        ColumnPath.get(columnPath), type, codec, encodings, emptyStats,
         in.readLong(), in.readLong(), in.readLong(), in.readLong(), in.readLong());
     return column;
   }

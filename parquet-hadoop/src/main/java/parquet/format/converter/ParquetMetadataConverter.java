@@ -45,6 +45,7 @@ import parquet.format.PageHeader;
 import parquet.format.PageType;
 import parquet.format.RowGroup;
 import parquet.format.SchemaElement;
+import parquet.format.Statistics;
 import parquet.format.Type;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -157,6 +158,9 @@ public class ParquetMetadataConverter {
           columnMetaData.getTotalSize(),
           columnMetaData.getFirstDataPageOffset());
       columnChunk.meta_data.dictionary_page_offset = columnMetaData.getDictionaryPageOffset();
+      if (!columnMetaData.getStatistics().isEmpty()) {
+        columnChunk.meta_data.setStatistics(toParquetStatistics(columnMetaData.getStatistics()));
+      }
 //      columnChunk.meta_data.index_page_offset = ;
 //      columnChunk.meta_data.key_value_metadata = ; // nothing yet
 
@@ -225,7 +229,28 @@ public class ParquetMetadataConverter {
     return Encoding.valueOf(encoding.name());
   }
 
-  PrimitiveTypeName getPrimitive(Type type) {
+  public Statistics toParquetStatistics(parquet.column.statistics.Statistics statistics) {
+    Statistics stats = new Statistics();
+    if (!statistics.isEmpty()) {
+      stats.setMax(statistics.getMaxBytes());
+      stats.setMin(statistics.getMinBytes());
+      stats.setNull_count(statistics.getNumNulls());
+    }
+    return stats;
+  }
+
+  public parquet.column.statistics.Statistics fromParquetStatistics(Statistics statistics, PrimitiveTypeName type) {
+    // create stats object based on the column type
+    parquet.column.statistics.Statistics stats = parquet.column.statistics.Statistics.getStatsBasedOnType(type);
+    // If there was no statistics written to the footer, create an empty Statistics object and return
+    if (statistics != null) {
+      stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
+      stats.setNumNulls(statistics.null_count);
+    }
+    return stats;
+  }
+
+  public PrimitiveTypeName getPrimitive(Type type) {
     switch (type) {
       case BYTE_ARRAY: // TODO: rename BINARY and remove this switch
         return PrimitiveTypeName.BINARY;
@@ -345,6 +370,7 @@ public class ParquetMetadataConverter {
             messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName(),
             CompressionCodecName.fromParquet(metaData.codec),
             fromFormatEncodings(metaData.encodings),
+            fromParquetStatistics(metaData.statistics, messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName()),
             metaData.data_page_offset,
             metaData.dictionary_page_offset,
             metaData.num_values,
@@ -427,6 +453,7 @@ public class ParquetMetadataConverter {
     return Repetition.valueOf(repetition.name());
   }
 
+  @Deprecated
   public void writeDataPageHeader(
       int uncompressedSize,
       int compressedSize,
@@ -435,12 +462,31 @@ public class ParquetMetadataConverter {
       parquet.column.Encoding dlEncoding,
       parquet.column.Encoding valuesEncoding,
       OutputStream to) throws IOException {
-    writePageHeader(newDataPageHeader(uncompressedSize, compressedSize, valueCount, rlEncoding, dlEncoding, valuesEncoding), to);
+    writePageHeader(newDataPageHeader(uncompressedSize,
+                                      compressedSize,
+                                      valueCount,
+                                      new parquet.column.statistics.BooleanStatistics(),
+                                      rlEncoding,
+                                      dlEncoding,
+                                      valuesEncoding), to);
+  }
+
+  public void writeDataPageHeader(
+      int uncompressedSize,
+      int compressedSize,
+      int valueCount,
+      parquet.column.statistics.Statistics statistics,
+      parquet.column.Encoding rlEncoding,
+      parquet.column.Encoding dlEncoding,
+      parquet.column.Encoding valuesEncoding,
+      OutputStream to) throws IOException {
+    writePageHeader(newDataPageHeader(uncompressedSize, compressedSize, valueCount, statistics, rlEncoding, dlEncoding, valuesEncoding), to);
   }
 
   private PageHeader newDataPageHeader(
       int uncompressedSize, int compressedSize,
       int valueCount,
+      parquet.column.statistics.Statistics statistics,
       parquet.column.Encoding rlEncoding,
       parquet.column.Encoding dlEncoding,
       parquet.column.Encoding valuesEncoding) {
@@ -451,6 +497,9 @@ public class ParquetMetadataConverter {
         getEncoding(valuesEncoding),
         getEncoding(dlEncoding),
         getEncoding(rlEncoding));
+    if (!statistics.isEmpty()) {
+      pageHeader.data_page_header.setStatistics(toParquetStatistics(statistics));
+    }
     return pageHeader;
   }
 
