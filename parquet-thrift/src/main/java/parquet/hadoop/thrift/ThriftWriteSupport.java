@@ -19,7 +19,6 @@ import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.thrift.TBase;
-import org.apache.thrift.TException;
 
 import com.twitter.elephantbird.pig.util.ThriftToPig;
 
@@ -38,32 +37,34 @@ import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType.StructType;
 
 
-public class ThriftWriteSupport<T extends TBase<?,?>> extends WriteSupport<T> {
+public abstract class ThriftWriteSupport<T> extends WriteSupport<T> {
   public static final String PARQUET_THRIFT_CLASS = "parquet.thrift.class";
   private static final Log LOG = Log.getLog(ThriftWriteSupport.class);
 
-  public static <U extends TBase<?,?>> void setThriftClass(Configuration configuration, Class<U> thriftClass) {
+  public static void setThriftClass(Configuration configuration, Class<?> thriftClass) {
     configuration.set(PARQUET_THRIFT_CLASS, thriftClass.getName());
   }
 
-  public static Class<? extends TBase<?,?>> getThriftClass(Configuration configuration) {
+  public static Class getThriftClass(Configuration configuration) {
     final String thriftClassName = configuration.get(PARQUET_THRIFT_CLASS);
     if (thriftClassName == null) {
       throw new BadConfigurationException("the thrift class conf is missing in job conf at " + PARQUET_THRIFT_CLASS);
     }
+
     try {
       @SuppressWarnings("unchecked")
-      Class<? extends TBase<?,?>> thriftClass = (Class<? extends TBase<?,?>>)Class.forName(thriftClassName);
+      Class thriftClass = Class.forName(thriftClassName);
       return thriftClass;
     } catch (ClassNotFoundException e) {
       throw new BadConfigurationException("the class "+thriftClassName+" in job conf at " + PARQUET_THRIFT_CLASS + " could not be found", e);
     }
   }
 
-  private MessageType schema;
-  private StructType thriftStruct;
-  private ParquetWriteProtocol parquetWriteProtocol;
-  private WriteContext writeContext;
+  protected Class<T> thriftClass;
+  protected MessageType schema;
+  protected StructType thriftStruct;
+  protected ParquetWriteProtocol parquetWriteProtocol;
+  protected WriteContext writeContext;
 
   /**
    * used from hadoop
@@ -80,19 +81,24 @@ public class ThriftWriteSupport<T extends TBase<?,?>> extends WriteSupport<T> {
     init(thriftClass);
   }
 
-  private <S extends TBase<?, ?>> void init(Class<S> thriftClass) {
+  protected void init(Class<T> thriftClass) {
+    this.thriftClass = thriftClass;
+    this.thriftStruct = getThriftStruct();
+
     ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter();
-    this.thriftStruct = thriftSchemaConverter.toStructType(thriftClass);
-    this.schema = thriftSchemaConverter.convert(thriftClass);
+    this.schema = thriftSchemaConverter.convert(thriftStruct);
+
     final Map<String, String> extraMetaData = new ThriftMetaData(thriftClass.getName(), thriftStruct).toExtraMetaData();
     // adding the Pig schema as it would have been mapped from thrift
-    if (isPigLoaded()) {
-      new PigMetaData(new ThriftToPig<S>(thriftClass).toSchema()).addToMetaData(extraMetaData);
+    // TODO: make this work for non-tbase types
+    if (isPigLoaded() && TBase.class.isAssignableFrom(thriftClass)) {
+      new PigMetaData(new ThriftToPig((Class<? extends TBase<?,?>>)thriftClass).toSchema()).addToMetaData(extraMetaData);
     }
-    writeContext = new WriteContext(schema, extraMetaData);
+
+    this.writeContext = new WriteContext(schema, extraMetaData);
   }
 
-  private boolean isPigLoaded() {
+  protected boolean isPigLoaded() {
     try {
       Class.forName("org.apache.pig.impl.logicalLayer.schema.Schema");
       return true;
@@ -116,14 +122,5 @@ public class ThriftWriteSupport<T extends TBase<?,?>> extends WriteSupport<T> {
     this.parquetWriteProtocol = new ParquetWriteProtocol(recordConsumer, columnIO, thriftStruct);
   }
 
-  @Override
-  public void write(T record) {
-    try {
-      record.write(parquetWriteProtocol);
-    } catch (TException e) {
-      throw new ParquetEncodingException(e);
-    }
-  }
-
-
+  protected abstract StructType getThriftStruct();
 }

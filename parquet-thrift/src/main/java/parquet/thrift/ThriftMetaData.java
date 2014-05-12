@@ -68,9 +68,6 @@ public class ThriftMetaData {
   public static Class<?> getThriftClass(String thriftClassName) {
     try {
       Class<?> thriftClass = Class.forName(thriftClassName);
-      if (!TBase.class.isAssignableFrom(thriftClass)) {
-        throw new BadConfigurationException("Provided class " + thriftClassName + " does not extend TBase");
-      }
       return thriftClass;
     } catch (ClassNotFoundException e) {
       throw new BadConfigurationException("Could not instantiate thrift class " + thriftClassName, e);

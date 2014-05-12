@@ -21,7 +21,7 @@ import org.apache.thrift.TBase;
 
 import parquet.hadoop.BadConfigurationException;
 import parquet.hadoop.api.WriteSupport;
-import parquet.hadoop.thrift.ThriftWriteSupport;
+import parquet.hadoop.thrift.TBaseWriteSupport;
 import parquet.io.api.RecordConsumer;
 
 import com.twitter.elephantbird.pig.util.PigToThrift;
@@ -35,7 +35,7 @@ import com.twitter.elephantbird.pig.util.PigToThrift;
 public class TupleToThriftWriteSupport extends WriteSupport<Tuple> {
 
   private final String className;
-  private ThriftWriteSupport<TBase<?,?>> thriftWriteSupport;
+  private TBaseWriteSupport<TBase<?,?>> thriftWriteSupport;
   private PigToThrift<TBase<?,?>> pigToThrift;
 
   /**
@@ -51,7 +51,7 @@ public class TupleToThriftWriteSupport extends WriteSupport<Tuple> {
   public WriteContext init(Configuration configuration) {
     try {
       Class<?> clazz = configuration.getClassByName(className).asSubclass(TBase.class);
-      thriftWriteSupport = new ThriftWriteSupport(clazz);
+      thriftWriteSupport = new TBaseWriteSupport(clazz);
       pigToThrift = new PigToThrift(clazz);
       return thriftWriteSupport.init(configuration);
     } catch (ClassNotFoundException e) {

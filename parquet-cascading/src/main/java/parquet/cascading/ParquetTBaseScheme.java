@@ -28,7 +28,7 @@ import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
 import parquet.hadoop.thrift.ParquetThriftInputFormat;
 import parquet.hadoop.thrift.ThriftReadSupport;
-import parquet.hadoop.thrift.ThriftWriteSupport;
+import parquet.hadoop.thrift.TBaseWriteSupport;
 import parquet.thrift.TBaseRecordConverter;
 
 public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme<T> {
@@ -77,7 +77,7 @@ public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme
     }
 
     jobConf.setOutputFormat(DeprecatedParquetOutputFormat.class);
-    DeprecatedParquetOutputFormat.setWriteSupportClass(jobConf, ThriftWriteSupport.class);
-    ThriftWriteSupport.<T>setThriftClass(jobConf, thriftClass);
+    DeprecatedParquetOutputFormat.setWriteSupportClass(jobConf, TBaseWriteSupport.class);
+    TBaseWriteSupport.<T>setThriftClass(jobConf, thriftClass);
   }
 }
