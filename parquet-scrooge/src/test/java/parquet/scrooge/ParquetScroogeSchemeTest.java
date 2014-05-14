@@ -29,6 +29,7 @@ import cascading.tap.Tap;
 import cascading.tap.hadoop.Hfs;
 import cascading.tuple.Fields;
 import cascading.tuple.Tuple;
+import cascading.tuple.TupleEntry;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -48,6 +49,8 @@ import parquet.scrooge.test.TestPersonWithAllInformation;
 import parquet.thrift.test.Address;
 import parquet.thrift.test.Phone;
 import parquet.thrift.test.RequiredPrimitiveFixture;
+import parquet.scrooge.test.Name;
+import parquet.scrooge.test.Name$;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -56,6 +59,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import scala.Option;
 
 import static org.junit.Assert.assertEquals;
 
@@ -151,6 +155,80 @@ public class ParquetScroogeSchemeTest {
     final FileSystem fs = p.getFileSystem(conf);
     if (fs.exists(p)) {
       fs.delete(p, true);
+    }
+  }
+
+  final String txtInputPath = "src/test/resources/names.txt";
+  final String parquetOutputPath = "target/test/ParquetScroogeScheme/names-parquet-out";
+  final String txtOutputPath = "target/test/ParquetScroogeScheme/names-txt-out";
+
+  @Test
+  public void testWriteThenRead() throws Exception {
+    doWrite();
+    doRead();
+  }
+
+  private void doWrite() throws Exception {
+    Path path = new Path(parquetOutputPath);
+    final FileSystem fs = path.getFileSystem(new Configuration());
+    if (fs.exists(path)) fs.delete(path, true);
+
+    Scheme sourceScheme = new TextLine( new Fields( "first", "last" ) );
+    Tap source = new Hfs(sourceScheme, txtInputPath);
+
+    Scheme sinkScheme = new ParquetScroogeScheme<Name>(Name.class);
+    Tap sink = new Hfs(sinkScheme, parquetOutputPath);
+
+    Pipe assembly = new Pipe( "namecp" );
+    assembly = new Each(assembly, new PackThriftFunction());
+    Flow flow  = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
+
+    flow.complete();
+  }
+
+  private void doRead() throws Exception {
+    Path path = new Path(txtOutputPath);
+    final FileSystem fs = path.getFileSystem(new Configuration());
+    if (fs.exists(path)) fs.delete(path, true);
+
+    Scheme sourceScheme = new ParquetScroogeScheme<Name>(Name.class);
+    Tap source = new Hfs(sourceScheme, parquetOutputPath);
+
+    Scheme sinkScheme = new TextLine(new Fields("first", "last"));
+    Tap sink = new Hfs(sinkScheme, txtOutputPath);
+
+    Pipe assembly = new Pipe( "namecp" );
+    assembly = new Each(assembly, new UnpackThriftFunction());
+    Flow flow  = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
+
+    flow.complete();
+    String result = FileUtils.readFileToString(new File(txtOutputPath+"/part-00000"));
+    assertEquals("0\tAlice\tPractice\n15\tBob\tHope\n24\tCharlie\tHorse\n", result);
+  }
+
+  private static class PackThriftFunction extends BaseOperation implements Function {
+    @Override
+    public void operate(FlowProcess flowProcess, FunctionCall functionCall) {
+      TupleEntry arguments = functionCall.getArguments();
+      Tuple result = new Tuple();
+
+      Name name = Name$.MODULE$.apply(arguments.getString(0), Option.apply(arguments.getString(1)));
+
+      result.add(name);
+      functionCall.getOutputCollector().add(result);
+    }
+  }
+
+  private static class UnpackThriftFunction extends BaseOperation implements Function {
+    @Override
+    public void operate(FlowProcess flowProcess, FunctionCall functionCall) {
+      TupleEntry arguments = functionCall.getArguments();
+      Tuple result = new Tuple();
+
+      Name name = (Name) arguments.getObject(0);
+      result.add(name.firstName());
+      result.add(name.lastName().get());
+      functionCall.getOutputCollector().add(result);
     }
   }
 }
