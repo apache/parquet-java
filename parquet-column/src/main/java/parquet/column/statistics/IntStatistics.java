@@ -58,6 +58,14 @@ public class IntStatistics extends Statistics{
     return BytesUtils.intToBytes(min);
   }
 
+  @Override
+  public String toString() {
+    if(!this.isEmpty())
+      return String.format("min: %d, max: %d, num_nulls: %d", min, max, this.getNumNulls());
+    else
+      return "no stats for this column";
+  }
+
   public void updateStats(int min_value, int max_value) {
     if (min_value < min) { min = min_value; }
     if (max_value > max) { max = max_value; }

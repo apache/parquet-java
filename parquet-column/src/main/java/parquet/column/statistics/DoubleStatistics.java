@@ -58,6 +58,14 @@ public class DoubleStatistics extends Statistics{
     return BytesUtils.longToBytes(Double.doubleToLongBits(min));
   }
 
+  @Override
+  public String toString() {
+    if(!this.isEmpty())
+      return String.format("min: %.5f, max: %.5f, num_nulls: %d", min, max, this.getNumNulls());
+    else
+      return "no stats for this column";
+  }
+
   public void updateStats(double min_value, double max_value) {
     if (min_value < min) { min = min_value; }
     if (max_value > max) { max = max_value; }

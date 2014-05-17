@@ -49,8 +49,6 @@ public class TestStatistics {
     assertEquals(stats.getNumNulls(), 22);
   }
 
-  //TODO: add INT96 test
-
   @Test
   public void testIntMinMax() {
     // Test basic max/min
@@ -85,6 +83,31 @@ public class TestStatistics {
 
     assertEquals(statsFromBytes.getMax(), 54);
     assertEquals(statsFromBytes.getMin(), -66);
+
+    integerArray = new int[] {Integer.MAX_VALUE, Integer.MIN_VALUE};
+    IntStatistics minMaxValues = new IntStatistics();
+
+    for (int i: integerArray) {
+      minMaxValues.updateStats(i);
+    }
+    assertEquals(minMaxValues.getMax(), Integer.MAX_VALUE);
+    assertEquals(minMaxValues.getMin(), Integer.MIN_VALUE);
+
+    // Test converting to and from byte[] for large and small values
+    byte[] intMaxBytesMinMax = minMaxValues.getMaxBytes();
+    byte[] intMinBytesMinMax = minMaxValues.getMinBytes();
+
+    assertEquals(ByteBuffer.wrap(intMaxBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(), Integer.MAX_VALUE);
+    assertEquals(ByteBuffer.wrap(intMinBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(), Integer.MIN_VALUE);
+
+    IntStatistics statsFromBytesMinMax= new IntStatistics();
+    statsFromBytesMinMax.setMinMaxFromBytes(intMinBytesMinMax, intMaxBytesMinMax);
+
+    assertEquals(statsFromBytesMinMax.getMax(), Integer.MAX_VALUE);
+    assertEquals(statsFromBytesMinMax.getMin(), Integer.MIN_VALUE);
+
+    // Test print formatting
+    assertEquals(stats.toString(), "min: 0, max: 66, num_nulls: 0");
   }
 
   @Test
@@ -121,6 +144,31 @@ public class TestStatistics {
 
     assertEquals(statsFromBytes.getMax(), 993);
     assertEquals(statsFromBytes.getMin(), -9914);
+
+    longArray = new long[] {Long.MAX_VALUE, Long.MIN_VALUE};
+    LongStatistics minMaxValues = new LongStatistics();
+
+    for (long l: longArray) {
+      minMaxValues.updateStats(l);
+    }
+    assertEquals(minMaxValues.getMax(), Long.MAX_VALUE);
+    assertEquals(minMaxValues.getMin(), Long.MIN_VALUE);
+
+    // Test converting to and from byte[] for large and small values
+    byte[] longMaxBytesMinMax = minMaxValues.getMaxBytes();
+    byte[] longMinBytesMinMax = minMaxValues.getMinBytes();
+
+    assertEquals(ByteBuffer.wrap(longMaxBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getLong(), Long.MAX_VALUE);
+    assertEquals(ByteBuffer.wrap(longMinBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getLong(), Long.MIN_VALUE);
+
+    LongStatistics statsFromBytesMinMax= new LongStatistics();
+    statsFromBytesMinMax.setMinMaxFromBytes(longMinBytesMinMax, longMaxBytesMinMax);
+
+    assertEquals(statsFromBytesMinMax.getMax(), Long.MAX_VALUE);
+    assertEquals(statsFromBytesMinMax.getMin(), Long.MIN_VALUE);
+
+    // Test print formatting
+    assertEquals(stats.toString(), "min: 0, max: 1000, num_nulls: 0");
   }
 
   @Test
@@ -157,22 +205,47 @@ public class TestStatistics {
 
     assertEquals(statsFromBytes.getMax(), 0.65f, 1e-10);
     assertEquals(statsFromBytes.getMin(), -412.99f, 1e-10);
+
+    floatArray = new float[] {Float.MAX_VALUE, Float.MIN_VALUE};
+    FloatStatistics minMaxValues = new FloatStatistics();
+
+    for (float f: floatArray) {
+      minMaxValues.updateStats(f);
+    }
+    assertEquals(minMaxValues.getMax(), Float.MAX_VALUE, 1e-10);
+    assertEquals(minMaxValues.getMin(), Float.MIN_VALUE, 1e-10);
+
+    // Test converting to and from byte[] for large and small values
+    byte[] floatMaxBytesMinMax = minMaxValues.getMaxBytes();
+    byte[] floatMinBytesMinMax = minMaxValues.getMinBytes();
+
+    assertEquals(ByteBuffer.wrap(floatMaxBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getFloat(), Float.MAX_VALUE, 1e-10);
+    assertEquals(ByteBuffer.wrap(floatMinBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getFloat(), Float.MIN_VALUE, 1e-10);
+
+    FloatStatistics statsFromBytesMinMax= new FloatStatistics();
+    statsFromBytesMinMax.setMinMaxFromBytes(floatMinBytesMinMax, floatMaxBytesMinMax);
+
+    assertEquals(statsFromBytesMinMax.getMax(), Float.MAX_VALUE, 1e-10);
+    assertEquals(statsFromBytesMinMax.getMin(), Float.MIN_VALUE, 1e-10);
+
+    // Test print formatting
+    assertEquals(stats.toString(), "min: 0.00010, max: 553.59998, num_nulls: 0");
   }
 
   @Test
   public void testDoubleMinMax() {
     // Test basic max/min
-    doubleArray = new double[] {81.5d, 944.5f, 2.002d, 334.5d, 5.6d, 0.001d, 0.000001d, 23.0d, 553.6d};
+    doubleArray = new double[] {81.5d, 944.5f, 2.002d, 334.5d, 5.6d, 0.001d, 0.00001d, 23.0d, 553.6d};
     DoubleStatistics stats = new DoubleStatistics();
 
     for (double d: doubleArray) {
       stats.updateStats(d);
     }
     assertEquals(stats.getMax(), 944.5d, 1e-10);
-    assertEquals(stats.getMin(), 0.000001d, 1e-10);
+    assertEquals(stats.getMin(), 0.00001d, 1e-10);
 
     // Test negative values
-    doubleArray = new double[] {-81.5d, -944.5d, 2.002d, -334.5d, -5.6d, -0.001d, -0.000001d, 23.0d, -3.6d};
+    doubleArray = new double[] {-81.5d, -944.5d, 2.002d, -334.5d, -5.6d, -0.001d, -0.00001d, 23.0d, -3.6d};
     DoubleStatistics statsNeg = new DoubleStatistics();
 
     for (double d: doubleArray) {
@@ -193,6 +266,31 @@ public class TestStatistics {
 
     assertEquals(statsFromBytes.getMax(), 23.0d, 1e-10);
     assertEquals(statsFromBytes.getMin(), -944.5d, 1e-10);
+
+    doubleArray = new double[] {Double.MAX_VALUE, Double.MIN_VALUE};
+    DoubleStatistics minMaxValues = new DoubleStatistics();
+
+    for (double d: doubleArray) {
+      minMaxValues.updateStats(d);
+    }
+    assertEquals(minMaxValues.getMax(), Double.MAX_VALUE, 1e-10);
+    assertEquals(minMaxValues.getMin(), Double.MIN_VALUE, 1e-10);
+
+    // Test converting to and from byte[] for large and small values
+    byte[] doubleMaxBytesMinMax = minMaxValues.getMaxBytes();
+    byte[] doubleMinBytesMinMax = minMaxValues.getMinBytes();
+
+    assertEquals(ByteBuffer.wrap(doubleMaxBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getDouble(), Double.MAX_VALUE, 1e-10);
+    assertEquals(ByteBuffer.wrap(doubleMinBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getDouble(), Double.MIN_VALUE, 1e-10);
+
+    DoubleStatistics statsFromBytesMinMax= new DoubleStatistics();
+    statsFromBytesMinMax.setMinMaxFromBytes(doubleMinBytesMinMax, doubleMaxBytesMinMax);
+
+    assertEquals(statsFromBytesMinMax.getMax(), Double.MAX_VALUE, 1e-10);
+    assertEquals(statsFromBytesMinMax.getMin(), Double.MIN_VALUE, 1e-10);
+
+    // Test print formatting
+    assertEquals(stats.toString(), "min: 0.00001, max: 944.50000, num_nulls: 0");
   }
 
   @Test
@@ -238,6 +336,9 @@ public class TestStatistics {
 
     assertTrue(statsFromBytes.getMax());
     assertFalse(statsFromBytes.getMin());
+
+    // Test print formatting
+    assertEquals(statsBoth.toString(), "min: false, max: true, num_nulls: 0");
   }
 
   @Test
@@ -274,6 +375,9 @@ public class TestStatistics {
 
     assertEquals(statsFromBytes.getMax(), Binary.fromString("world"));
     assertEquals(statsFromBytes.getMin(), Binary.fromString("a"));
+
+    // Test print formatting
+    assertEquals(stats.toString(), "min: a, max: world, num_nulls: 0");
   }
 
   @Test

@@ -43,8 +43,8 @@ public class LongStatistics extends Statistics{
 
   @Override
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    max = BytesUtils.bytesToInt(maxBytes);
-    min = BytesUtils.bytesToInt(minBytes);
+    max = BytesUtils.bytesToLong(maxBytes);
+    min = BytesUtils.bytesToLong(minBytes);
     this.markAsNotEmpty();
   }
 
@@ -56,6 +56,14 @@ public class LongStatistics extends Statistics{
   @Override
   public byte[] getMinBytes() {
     return BytesUtils.longToBytes(min);
+  }
+
+  @Override
+  public String toString() {
+    if(!this.isEmpty())
+      return String.format("min: %d, max: %d, num_nulls: %d", min, max, this.getNumNulls());
+    else
+      return "no stats for this column";
   }
 
   public void updateStats(long min_value, long max_value) {

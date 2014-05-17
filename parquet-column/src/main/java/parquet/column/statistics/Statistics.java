@@ -175,6 +175,12 @@ public abstract class Statistics {
   abstract public byte[] getMinBytes();
 
   /**
+   * toString() to display min, max, num_nulls in a string
+   */
+  abstract public String toString();
+
+
+  /**
    * Increments the null count by one
    */
   public void incrementNumNulls() {

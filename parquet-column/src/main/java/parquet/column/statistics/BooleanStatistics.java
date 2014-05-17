@@ -58,6 +58,14 @@ public class BooleanStatistics extends Statistics{
     return BytesUtils.booleanToBytes(min);
   }
 
+  @Override
+  public String toString() {
+    if(!this.isEmpty())
+      return String.format("min: %b, max: %b, num_nulls: %d", min, max, this.getNumNulls());
+    else
+      return "no stats for this column";
+  }
+
   public void updateStats(boolean min_value, boolean max_value) {
     if (min && !min_value) { min = min_value; }
     if (!max && max_value) { max = max_value; }

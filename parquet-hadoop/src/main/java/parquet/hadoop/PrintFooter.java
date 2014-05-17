@@ -42,6 +42,7 @@ import org.apache.hadoop.fs.PathFilter;
 
 import parquet.column.ColumnDescriptor;
 import parquet.column.Encoding;
+import parquet.column.statistics.Statistics;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
@@ -172,7 +173,8 @@ public class PrintFooter {
             columnMetaData.getValueCount(),
             columnMetaData.getTotalSize(),
             columnMetaData.getTotalUncompressedSize(),
-            columnMetaData.getEncodings());
+            columnMetaData.getEncodings(),
+            columnMetaData.getStatistics());
       }
     }
   }
@@ -235,14 +237,16 @@ public class PrintFooter {
     Stats allStats = new Stats();
     Stats uncStats = new Stats();
     Set<Encoding> encodings = new TreeSet<Encoding>();
+    Statistics colValuesStats = null;
     int blocks = 0;
 
-    public void add(long valueCount, long size, long uncSize, Collection<Encoding> encodings) {
+    public void add(long valueCount, long size, long uncSize, Collection<Encoding> encodings, Statistics colValuesStats) {
       ++blocks;
       valueCountStats.add(valueCount);
       allStats.add(size);
       uncStats.add(uncSize);
       this.encodings.addAll(encodings);
+      this.colValuesStats = colValuesStats;
     }
 
     @Override
@@ -251,17 +255,18 @@ public class PrintFooter {
       long compressed = allStats.total;
       return encodings + " " + allStats.toString(blocks) + " (raw data: " + humanReadable(raw) + (raw == 0 ? "" : " saving " + (raw - compressed)*100/raw + "%") + ")\n"
       + "  values: "+valueCountStats.toString(blocks) + "\n"
-      + "  uncompressed: "+uncStats.toString(blocks);
+      + "  uncompressed: "+uncStats.toString(blocks) + "\n"
+      + "  column values statistics: " + colValuesStats.toString();
     }
 
   }
 
-  private static void add(ColumnDescriptor desc, long valueCount, long size, long uncSize, Collection<Encoding> encodings) {
+  private static void add(ColumnDescriptor desc, long valueCount, long size, long uncSize, Collection<Encoding> encodings, Statistics colValuesStats) {
     ColStats colStats = stats.get(desc);
     if (colStats == null) {
       colStats = new ColStats();
       stats.put(desc, colStats);
     }
-    colStats.add(valueCount, size, uncSize, encodings);
+    colStats.add(valueCount, size, uncSize, encodings, colValuesStats);
   }
 }
