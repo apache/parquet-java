@@ -15,6 +15,7 @@
  */
 package parquet.pig.convert;
 
+import static java.lang.Math.max;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,21 +66,23 @@ public class TupleConverter extends GroupConverter {
     this.parquetSchema = parquetSchema;
     this.elephantBirdCompatible = elephantBirdCompatible;
     try {
-      this.schemaSize = parquetSchema.getFieldCount();
-      if (schemaSize != pigSchema.size()) {
-        throw new IllegalArgumentException("schema sizes don't match:\n" + parquetSchema + "\n" + pigSchema);
-      }
+      this.schemaSize = max(parquetSchema.getFieldCount(), pigSchema.getFields().size());
       this.converters = new Converter[this.schemaSize];
-      for (int i = 0; i < schemaSize; i++) {
+      for (int i = 0, c = 0; i < schemaSize; i++) {
         FieldSchema field = pigSchema.getField(i);
-        Type type = parquetSchema.getType(i);
-        final int index = i;
-        converters[i] = newConverter(field, type, new ParentValueContainer() {
-          @Override
-          void add(Object value) {
-            TupleConverter.this.set(index, value);
-          }
-        }, elephantBirdCompatible);
+        Type type = null;
+        if(parquetSchema.containsField(field.alias)) {
+            type = parquetSchema.getType(parquetSchema.getFieldIndex(field.alias));
+            
+            final int index = i;
+            converters[c++] = newConverter(field, type, new ParentValueContainer() {
+              @Override
+              void add(Object value) {
+                TupleConverter.this.set(index, value);
+              }
+            }, elephantBirdCompatible);
+        }
+        
       }
     } catch (FrontendException e) {
       throw new ParquetDecodingException("can not initialize pig converter from:\n" + parquetSchema + "\n" + pigSchema, e);
