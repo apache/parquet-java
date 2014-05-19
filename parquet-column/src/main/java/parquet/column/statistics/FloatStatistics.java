@@ -58,6 +58,14 @@ public class FloatStatistics extends Statistics{
     return BytesUtils.intToBytes(Float.floatToIntBits(min));
   }
 
+  @Override
+  public String toString() {
+    if(!this.isEmpty())
+      return String.format("min: %.5f, max: %.5f, num_nulls: %d", min, max, this.getNumNulls());
+    else
+      return "no stats for this column";
+  }
+
   public void updateStats(float min_value, float max_value) {
     if (min_value < min) { min = min_value; }
     if (max_value > max) { max = max_value; }

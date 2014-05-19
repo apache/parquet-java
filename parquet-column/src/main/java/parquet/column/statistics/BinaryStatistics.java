@@ -58,6 +58,14 @@ public class BinaryStatistics extends Statistics{
     return min.getBytes();
   }
 
+  @Override
+  public String toString() {
+    if(!this.isEmpty())
+      return String.format("min: %s, max: %s, num_nulls: %d", min.toStringUsingUTF8(), max.toStringUsingUTF8(), this.getNumNulls());
+    else
+      return "no stats for this column";
+  }
+
   public void updateStats(Binary min_value, Binary max_value) {
     if (min.compareTo(min_value) > 0) { min = min_value; }
     if (max.compareTo(max_value) < 0) { max = max_value; }
