@@ -160,6 +160,40 @@ public class TestParquetLoader {
   }
   
   @Test
+  public void testReqestedSchemaColumnPruning() throws Exception {
+    PigServer pigServer = new PigServer(ExecType.LOCAL); 
+    pigServer.setValidateEachStatement(true);
+    String out = "target/out";
+    int rows = 10;
+    Data data = Storage.resetData(pigServer);
+    List<Tuple> list = new ArrayList<Tuple>();
+    for (int i = 0; i < rows; i++) {
+      list.add(Storage.tuple(i, "a"+i, i*2));
+    }
+    data.set("in", "i:int, a:chararray, b:int", list );
+    pigServer.setBatchOn();
+    pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
+    pigServer.deleteFile(out);
+    pigServer.registerQuery("Store A into '"+out+"' using " + ParquetStorer.class.getName()+"();");
+    pigServer.executeBatch();
+      
+    //Test Null Padding at the end 
+    pigServer.registerQuery("C = LOAD '" + out + "' using " + ParquetLoader.class.getName()+"('i:int, a:chararray, b:int, n1:int, n2:chararray');");
+    pigServer.registerQuery("G = foreach C generate n1,b,n2,i;");
+    pigServer.registerQuery("STORE G into 'out' using mock.Storage();");
+    pigServer.executeBatch();
+    
+    List<Tuple> actualList = data.get("out");
+    
+    assertEquals(rows, actualList.size());
+    for(Tuple t : actualList) {
+        assertEquals(4, t.size());
+        assertEquals(true, t.isNull(0));
+        assertEquals(true, t.isNull(2));
+    }
+  }  
+  
+  @Test
   public void testRead() {
     
   }
