@@ -16,6 +16,7 @@
 package parquet.pig;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -141,8 +142,8 @@ public class TestParquetLoader {
     
     assertEquals(rows, actualList.size());
     for(Tuple t : actualList) {
-        assertEquals(true, t.isNull(3));
-        assertEquals(true, t.isNull(4));
+        assertTrue(t.isNull(3));
+        assertTrue(t.isNull(4));
     }
     
     //Test Null padding mixed in with sub-select
@@ -154,8 +155,8 @@ public class TestParquetLoader {
     
     assertEquals(rows, actualList.size());
     for(Tuple t : actualList) {
-        assertEquals(true, t.isNull(0));
-        assertEquals(true, t.isNull(2));
+        assertTrue(t.isNull(0));
+        assertTrue(t.isNull(2));
     }
   }
   
@@ -188,8 +189,8 @@ public class TestParquetLoader {
     assertEquals(rows, actualList.size());
     for(Tuple t : actualList) {
         assertEquals(4, t.size());
-        assertEquals(true, t.isNull(0));
-        assertEquals(true, t.isNull(2));
+        assertTrue(t.isNull(0));
+        assertTrue(t.isNull(2));
     }
   }  
   

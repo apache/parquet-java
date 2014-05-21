@@ -197,7 +197,6 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     if (schema == null && requestedSchema != null) {
       // this is only true in front-end
       schema = requestedSchema;
-      return;
     }
     if (schema == null) {
       // no requested schema => use the schema from the file
