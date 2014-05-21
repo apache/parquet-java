@@ -165,18 +165,7 @@ public class TestParquetFileWriter {
       parquetMRstats.updateStats(l);
     }
     Statistics thriftStats = parquet.format.converter.ParquetMetadataConverter.toParquetStatistics(parquetMRstats);
-
     LongStatistics convertedBackStats = (LongStatistics)parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics(thriftStats, PrimitiveTypeName.INT64);
-
-    byte[] lb = parquet.bytes.BytesUtils.longToBytes(parquetMRstats.getMax());
-    thriftStats.setMax(lb);
-    long lmax = parquet.bytes.BytesUtils.bytesToLong(thriftStats.max.array());
-    long lmin = parquet.bytes.BytesUtils.bytesToLong(thriftStats.min.array());
-    assertEquals(lmax, parquetMRstats.getMax());
-    assertEquals(lmin, parquetMRstats.getMin());
-
-    assertEquals(convertedBackStats.getMax(), Long.MAX_VALUE);
-    assertEquals(convertedBackStats.getMin(), Long.MIN_VALUE);
 
     assertEquals(parquetMRstats.getMax(), convertedBackStats.getMax());
     assertEquals(parquetMRstats.getMin(), convertedBackStats.getMin());

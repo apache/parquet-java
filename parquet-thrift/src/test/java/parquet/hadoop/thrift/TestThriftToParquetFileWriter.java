@@ -20,7 +20,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.URI;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -28,8 +27,6 @@ import java.util.Map;
 
 import org.apache.hadoop.fs.FileStatus;
 import parquet.column.statistics.*;
-import parquet.example.data.simple.NanoTime;
-import parquet.hadoop.PrintFooter;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.util.ContextUtil;
@@ -97,25 +94,22 @@ public class TestThriftToParquetFileWriter {
   }
     @Test
     public void testWriteStatistics() throws Exception {
-      //create correct stats
-      long currentTime = System.currentTimeMillis() * 1000;
-      IntStatistics intStats = new IntStatistics();
-      intStats.setMinMax(2,  100);
-      LongStatistics longStats = new LongStatistics();
-      longStats.setMinMax(-1761505980l,  2533461317L);
-      FloatStatistics floatStats = new FloatStatistics();
-      floatStats.setMinMax(3.0f, 234.0f);
-      DoubleStatistics doubleStats = new DoubleStatistics();
-      doubleStats.setMinMax(-100032445.55d, 97987491879.63d);
-      BinaryStatistics binaryStats = new BinaryStatistics();
-      binaryStats.setMinMax(Binary.fromString("as"), Binary.fromString("world"));
+      //create correct stats small numbers
+      IntStatistics intStatsSmall = new IntStatistics();
+      intStatsSmall.setMinMax(2, 100);
+      LongStatistics longStatsSmall = new LongStatistics();
+      longStatsSmall.setMinMax(-17l,  287L);
+      DoubleStatistics doubleStatsSmall = new DoubleStatistics();
+      doubleStatsSmall.setMinMax(-15.55d, 9.63d);
+      BinaryStatistics binaryStatsSmall = new BinaryStatistics();
+      binaryStatsSmall.setMinMax(Binary.fromString("as"), Binary.fromString("world"));
       BooleanStatistics boolStats = new BooleanStatistics();
       boolStats.setMinMax(false, true);
 
       //write rows to a file
-      Path p = createFile(new RequiredPrimitiveFixture(false, (byte)32, (short)32, 2, 90l, -100032445.55d, "as"),
-                          new RequiredPrimitiveFixture(false, (byte)100, (short)100, 100, 2533461317l, -940.0d, "world"),
-                          new RequiredPrimitiveFixture(true, (byte)2, (short)2, 9, -1761505980l, 97987491879.63d, "hello"));
+      Path p = createFile(new RequiredPrimitiveFixture(false, (byte)32, (short)32, 2, 90l, -15.55d, "as"),
+                          new RequiredPrimitiveFixture(false, (byte)100, (short)100, 100, 287l, -9.0d, "world"),
+                          new RequiredPrimitiveFixture(true, (byte)2, (short)2, 9, -17l, 9.63d, "hello"));
       final Configuration configuration = new Configuration();
       final FileSystem fs = p.getFileSystem(configuration);
       FileStatus fileStatus = fs.getFileStatus(p);
@@ -124,13 +118,13 @@ public class TestThriftToParquetFileWriter {
         for(ColumnChunkMetaData cmd: bmd.getColumns()) {
           switch(cmd.getType()) {
             case INT32:
-              assertTrue(intStats.equals((IntStatistics)cmd.getStatistics()));
+              assertTrue(intStatsSmall.equals((IntStatistics)cmd.getStatistics()));
               break;
             case INT64:
-              assertTrue(longStats.equals((LongStatistics)cmd.getStatistics()));
+              assertTrue(longStatsSmall.equals((LongStatistics)cmd.getStatistics()));
               break;
             case DOUBLE:
-              assertTrue(doubleStats.equals((DoubleStatistics)cmd.getStatistics()));
+              assertTrue(doubleStatsSmall.equals((DoubleStatistics)cmd.getStatistics()));
               break;
             case BOOLEAN:
               assertTrue(boolStats.equals((BooleanStatistics)cmd.getStatistics()));
@@ -138,8 +132,56 @@ public class TestThriftToParquetFileWriter {
             case BINARY:
               // there is also info_string that has no statistics
               if(cmd.getPath().toString() == "[test_string]")
-                assertTrue(binaryStats.equals((BinaryStatistics)cmd.getStatistics()));
+                assertTrue(binaryStatsSmall.equals((BinaryStatistics)cmd.getStatistics()));
               break;
+           }
+        }
+      }
+      //create correct stats large numbers
+      IntStatistics intStatsLarge = new IntStatistics();
+      intStatsLarge.setMinMax(-Integer.MAX_VALUE, Integer.MAX_VALUE);
+      LongStatistics longStatsLarge = new LongStatistics();
+      longStatsLarge.setMinMax(-Long.MAX_VALUE, Long.MAX_VALUE);
+      DoubleStatistics doubleStatsLarge = new DoubleStatistics();
+      doubleStatsLarge.setMinMax(-Double.MAX_VALUE, Double.MAX_VALUE);
+      BinaryStatistics binaryStatsLarge = new BinaryStatistics();
+      binaryStatsLarge.setMinMax(Binary.fromString("some small string"),
+                                 Binary.fromString("some very large string here to test in this function"));
+      //write rows to a file
+      Path p_large = createFile(new RequiredPrimitiveFixture(false, (byte)2, (short)32, -Integer.MAX_VALUE,
+                                                            -Long.MAX_VALUE, -Double.MAX_VALUE, "some small string"),
+                                new RequiredPrimitiveFixture(false, (byte)100, (short)100, Integer.MAX_VALUE,
+                                                             Long.MAX_VALUE, Double.MAX_VALUE,
+                                                            "some very large string here to test in this function"),
+                                new RequiredPrimitiveFixture(true, (byte)2, (short)2, 9, -17l, 9.63d, "hello"));
+
+      // make new configuration and create file with new large stats
+      final Configuration configuration_large = new Configuration();
+      final FileSystem fs_large = p_large.getFileSystem(configuration_large);
+      FileStatus fileStatus_large = fs_large.getFileStatus(p_large);
+      ParquetMetadata footer_large = ParquetFileReader.readFooter(configuration_large, p_large);
+      for(BlockMetaData bmd: footer_large.getBlocks()) {
+        for(ColumnChunkMetaData cmd: bmd.getColumns()) {
+           switch(cmd.getType()) {
+             case INT32:
+               // testing the correct limits of an int32, there are also byte and short, tested earlier
+               if(cmd.getPath().toString() == "[test_i32]")
+                 assertTrue(intStatsLarge.equals((IntStatistics)cmd.getStatistics()));
+               break;
+             case INT64:
+               assertTrue(longStatsLarge.equals((LongStatistics)cmd.getStatistics()));
+               break;
+             case DOUBLE:
+               assertTrue(doubleStatsLarge.equals((DoubleStatistics)cmd.getStatistics()));
+               break;
+             case BOOLEAN:
+               assertTrue(boolStats.equals((BooleanStatistics)cmd.getStatistics()));
+               break;
+             case BINARY:
+               // there is also info_string that has no statistics
+               if(cmd.getPath().toString() == "[test_string]")
+                 assertTrue(binaryStatsLarge.equals((BinaryStatistics)cmd.getStatistics()));
+               break;
            }
         }
       }
