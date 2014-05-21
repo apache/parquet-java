@@ -92,11 +92,5 @@ public interface ColumnWriter {
    * @return the number of bytes of memory used to buffer the current data
    */
   long getBufferedSizeInMemory();
-
-  /**
-   * get current statistics for the column
-   * @return the Statistics for the column
-   */
-  Statistics getColumnStatistics();
 }
 

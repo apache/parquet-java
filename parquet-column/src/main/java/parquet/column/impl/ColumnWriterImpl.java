@@ -162,11 +162,6 @@ final class ColumnWriterImpl implements ColumnWriter {
   }
 
   @Override
-  public Statistics getColumnStatistics() {
-    return statistics;
-  }
-
-  @Override
   public void writeNull(int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(null, repetitionLevel, definitionLevel);
     repetitionLevelColumn.writeInteger(repetitionLevel);

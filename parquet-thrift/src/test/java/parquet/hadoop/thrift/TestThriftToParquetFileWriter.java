@@ -16,6 +16,7 @@
 package parquet.hadoop.thrift;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -26,8 +27,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.hadoop.fs.FileStatus;
+import parquet.column.statistics.*;
+import parquet.example.data.simple.NanoTime;
 import parquet.hadoop.PrintFooter;
+import parquet.hadoop.metadata.BlockMetaData;
+import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.util.ContextUtil;
+import parquet.io.api.Binary;
 import parquet.thrift.test.RequiredPrimitiveFixture;
 import parquet.thrift.test.TestListsInMap;
 
@@ -90,18 +96,55 @@ public class TestThriftToParquetFileWriter {
 
   }
     @Test
-    public void testWriteLong() throws Exception {
-      final RequiredPrimitiveFixture fix = new RequiredPrimitiveFixture(false, (byte)1,(short)1,1,1L,Double.MAX_VALUE, "as");
-        fix.setInfo_string("god");
-        Path p = createFile(fix,
-                new RequiredPrimitiveFixture(false, (byte)1,(short)1,1,2533461317L,Double.MAX_VALUE, "as"),
-                new RequiredPrimitiveFixture(false, (byte)1,(short)1,1,-1761505980,Double.MAX_VALUE, "as"));
-        final Configuration configuration = new Configuration();
-        final FileSystem fs = p.getFileSystem(configuration);
-        FileStatus fileStatus = fs.getFileStatus(p);
-        ParquetMetadata footer = ParquetFileReader.readFooter(configuration, p);
-         PrintFooter.main(new String[]{"file:///Users/tdeng/workspace/parquet-mr//target/test/TestThriftToParquetFileWriter/test.parquet"});
-         }
+    public void testWriteStatistics() throws Exception {
+      //create correct stats
+      long currentTime = System.currentTimeMillis() * 1000;
+      IntStatistics intStats = new IntStatistics();
+      intStats.setMinMax(2,  100);
+      LongStatistics longStats = new LongStatistics();
+      longStats.setMinMax(-1761505980l,  2533461317L);
+      FloatStatistics floatStats = new FloatStatistics();
+      floatStats.setMinMax(3.0f, 234.0f);
+      DoubleStatistics doubleStats = new DoubleStatistics();
+      doubleStats.setMinMax(-100032445.55d, 97987491879.63d);
+      BinaryStatistics binaryStats = new BinaryStatistics();
+      binaryStats.setMinMax(Binary.fromString("as"), Binary.fromString("world"));
+      BooleanStatistics boolStats = new BooleanStatistics();
+      boolStats.setMinMax(false, true);
+
+      //write rows to a file
+      Path p = createFile(new RequiredPrimitiveFixture(false, (byte)32, (short)32, 2, 90l, -100032445.55d, "as"),
+                          new RequiredPrimitiveFixture(false, (byte)100, (short)100, 100, 2533461317l, -940.0d, "world"),
+                          new RequiredPrimitiveFixture(true, (byte)2, (short)2, 9, -1761505980l, 97987491879.63d, "hello"));
+      final Configuration configuration = new Configuration();
+      final FileSystem fs = p.getFileSystem(configuration);
+      FileStatus fileStatus = fs.getFileStatus(p);
+      ParquetMetadata footer = ParquetFileReader.readFooter(configuration, p);
+      for(BlockMetaData bmd: footer.getBlocks()) {
+        for(ColumnChunkMetaData cmd: bmd.getColumns()) {
+          switch(cmd.getType()) {
+            case INT32:
+              assertTrue(intStats.equals((IntStatistics)cmd.getStatistics()));
+              break;
+            case INT64:
+              assertTrue(longStats.equals((LongStatistics)cmd.getStatistics()));
+              break;
+            case DOUBLE:
+              assertTrue(doubleStats.equals((DoubleStatistics)cmd.getStatistics()));
+              break;
+            case BOOLEAN:
+              assertTrue(boolStats.equals((BooleanStatistics)cmd.getStatistics()));
+              break;
+            case BINARY:
+              // there is also info_string that has no statistics
+              if(cmd.getPath().toString() == "[test_string]")
+                assertTrue(binaryStats.equals((BinaryStatistics)cmd.getStatistics()));
+              break;
+           }
+        }
+      }
+    }
+
   @Test
   public void testWriteFileListOfMap() throws IOException, InterruptedException, TException {
     Map<String, String> map1 = new HashMap<String,String>();
@@ -191,14 +234,14 @@ public class TestThriftToParquetFileWriter {
     TaskAttemptID taskId = new TaskAttemptID("local", 0, true, 0, 0);
     ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(fileToCreate, ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory, (Class<? extends TBase<?, ?>>) tObjs[0].getClass());
 
-      for(T tObj:tObjs) {
-          final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-          final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));
+    for(T tObj:tObjs) {
+      final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));
 
-          tObj.write(protocol);
+      tObj.write(protocol);
 
-          w.write(new BytesWritable(baos.toByteArray()));
-      }
+      w.write(new BytesWritable(baos.toByteArray()));
+    }
     w.close();
 
     return fileToCreate;
