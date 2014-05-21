@@ -193,12 +193,11 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     if (schema != null) {
       return;
     }
-    if (requestedSchema != null) {
+    schema = PigSchemaConverter.parsePigSchema(getPropertyFromUDFContext(PARQUET_PIG_SCHEMA));
+    if (schema == null && requestedSchema != null) {
       // this is only true in front-end
       schema = requestedSchema;
-      return;
     }
-    schema = PigSchemaConverter.parsePigSchema(getPropertyFromUDFContext(PARQUET_PIG_SCHEMA));
     if (schema == null) {
       // no requested schema => use the schema from the file
       final GlobalMetaData globalMetaData = getParquetInputFormat().getGlobalMetaData(job);
