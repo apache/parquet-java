@@ -19,12 +19,16 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.hadoop.fs.FileStatus;
+import parquet.hadoop.PrintFooter;
 import parquet.hadoop.util.ContextUtil;
+import parquet.thrift.test.RequiredPrimitiveFixture;
 import parquet.thrift.test.TestListsInMap;
 
 import org.apache.hadoop.conf.Configuration;
@@ -85,7 +89,19 @@ public class TestThriftToParquetFileWriter {
     assertEquals("read 1 record", 1, i);
 
   }
-
+    @Test
+    public void testWriteLong() throws Exception {
+      final RequiredPrimitiveFixture fix = new RequiredPrimitiveFixture(false, (byte)1,(short)1,1,1L,Double.MAX_VALUE, "as");
+        fix.setInfo_string("god");
+        Path p = createFile(fix,
+                new RequiredPrimitiveFixture(false, (byte)1,(short)1,1,2533461317L,Double.MAX_VALUE, "as"),
+                new RequiredPrimitiveFixture(false, (byte)1,(short)1,1,-1761505980,Double.MAX_VALUE, "as"));
+        final Configuration configuration = new Configuration();
+        final FileSystem fs = p.getFileSystem(configuration);
+        FileStatus fileStatus = fs.getFileStatus(p);
+        ParquetMetadata footer = ParquetFileReader.readFooter(configuration, p);
+         PrintFooter.main(new String[]{"file:///Users/tdeng/workspace/parquet-mr//target/test/TestThriftToParquetFileWriter/test.parquet"});
+         }
   @Test
   public void testWriteFileListOfMap() throws IOException, InterruptedException, TException {
     Map<String, String> map1 = new HashMap<String,String>();
@@ -162,8 +178,8 @@ public class TestThriftToParquetFileWriter {
     return new ParquetReader<Group>(parquetFilePath, readSupport);
   }
 
-  private <T extends TBase<?,?>> Path createFile(T tObj) throws IOException, InterruptedException, TException  {
-    final Path fileToCreate = new Path("target/test/TestThriftToParquetFileWriter/"+tObj.getClass()+".parquet");
+  private <T extends TBase<?,?>> Path createFile(T... tObjs) throws IOException, InterruptedException, TException  {
+    final Path fileToCreate = new Path("target/test/TestThriftToParquetFileWriter/"+tObjs[0].getClass()+".parquet");
     LOG.info("File created: " + fileToCreate.toString());
     Configuration conf = new Configuration();
     final FileSystem fs = fileToCreate.getFileSystem(conf);
@@ -173,15 +189,16 @@ public class TestThriftToParquetFileWriter {
     }
     TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
     TaskAttemptID taskId = new TaskAttemptID("local", 0, true, 0, 0);
-    ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(fileToCreate, ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory, (Class<? extends TBase<?, ?>>) tObj.getClass());
+    ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(fileToCreate, ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory, (Class<? extends TBase<?, ?>>) tObjs[0].getClass());
 
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));
+      for(T tObj:tObjs) {
+          final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+          final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));
 
-    tObj.write(protocol);
+          tObj.write(protocol);
 
-    w.write(new BytesWritable(baos.toByteArray()));
-
+          w.write(new BytesWritable(baos.toByteArray()));
+      }
     w.close();
 
     return fileToCreate;
