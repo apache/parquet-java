@@ -1,5 +1,17 @@
 # Parquet #
 
+### Version 1.5.0 ###
+* ISSUE [399](https://github.com/Parquet/parquet-mr/pull/399): Fixed resetting stats after writePage bug, unit testing of readFooter
+* ISSUE [397](https://github.com/Parquet/parquet-mr/pull/397): Fixed issue with column pruning when using requested schema
+* ISSUE [389](https://github.com/Parquet/parquet-mr/pull/389): Added padding for requested columns not found in file schema
+* ISSUE [392](https://github.com/Parquet/parquet-mr/pull/392): Value stats fixes
+* ISSUE [338](https://github.com/Parquet/parquet-mr/pull/338): Added statistics to Parquet pages and rowGroups
+* ISSUE [351](https://github.com/Parquet/parquet-mr/pull/351): Fix bug #350, fixed length argument out of order.
+* ISSUE [378](https://github.com/Parquet/parquet-mr/pull/378): configure semver to enforce semantic versioning
+* ISSUE [355](https://github.com/Parquet/parquet-mr/pull/355): Add support for DECIMAL type annotation.
+* ISSUE [336](https://github.com/Parquet/parquet-mr/pull/336): protobuf dependency version changed from 2.4.1 to 2.5.0
+* ISSUE [337](https://github.com/Parquet/parquet-mr/pull/337): issue #324, move ParquetStringInspector to org.apache.hadoop.hive.serde...
+
 ### Version 1.4.3 ###
 * ISSUE [381](https://github.com/Parquet/parquet-mr/pull/381): fix metadata concurency problem
 
