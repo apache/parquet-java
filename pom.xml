@@ -3,7 +3,7 @@
 
   <groupId>com.twitter</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.5.0</version>
+  <version>1.5.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Parquet MR</name>
