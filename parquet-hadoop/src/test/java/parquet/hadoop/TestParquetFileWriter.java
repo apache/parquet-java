@@ -56,6 +56,9 @@ import parquet.io.api.Binary;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 import parquet.schema.PrimitiveType;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.format.Statistics;
+import parquet.format.converter.ParquetMetadataConverter;
 
 public class TestParquetFileWriter {
   private static final Log LOG = Log.getLog(TestParquetFileWriter.class);
@@ -151,6 +154,22 @@ public class TestParquetFileWriter {
       assertNull(r.readNextRowGroup());
     }
     PrintFooter.main(new String[] {path.toString()});
+  }
+
+  @Test
+  public void testConvertToThriftStatistics() throws Exception {
+    long[] longArray = new long[] {39L, 99L, 12L, 1000L, 65L, 542L, 2533461316L, -253346131996L, Long.MAX_VALUE, Long.MIN_VALUE};
+    LongStatistics parquetMRstats = new LongStatistics();
+
+    for (long l: longArray) {
+      parquetMRstats.updateStats(l);
+    }
+    Statistics thriftStats = parquet.format.converter.ParquetMetadataConverter.toParquetStatistics(parquetMRstats);
+    LongStatistics convertedBackStats = (LongStatistics)parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics(thriftStats, PrimitiveTypeName.INT64);
+
+    assertEquals(parquetMRstats.getMax(), convertedBackStats.getMax());
+    assertEquals(parquetMRstats.getMin(), convertedBackStats.getMin());
+    assertEquals(parquetMRstats.getNumNulls(), convertedBackStats.getNumNulls());
   }
 
   @Test

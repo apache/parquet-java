@@ -16,7 +16,6 @@
 package parquet.io;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static parquet.example.Paper.pr1;
 import static parquet.example.Paper.pr2;
@@ -51,12 +50,6 @@ import parquet.column.statistics.Statistics;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.mem.MemPageStore;
-import parquet.column.statistics.BinaryStatistics;
-import parquet.column.statistics.BooleanStatistics;
-import parquet.column.statistics.DoubleStatistics;
-import parquet.column.statistics.FloatStatistics;
-import parquet.column.statistics.IntStatistics;
-import parquet.column.statistics.LongStatistics;
 import parquet.example.data.Group;
 import parquet.example.data.GroupFactory;
 import parquet.example.data.GroupWriter;
@@ -376,69 +369,6 @@ public class TestColumnIO {
   }
 
   @Test
-  public void testStatisticsWriteToColumn() {
-    MessageType oneOfEachSchema = MessageTypeParser.parseMessageType(oneOfEach);
-    GroupFactory gf = new SimpleGroupFactory(oneOfEachSchema);
-    long currentTime = System.currentTimeMillis() * 1000;
-    Group g1 = gf.newGroup()
-        .append("a", 1l)
-        .append("b", 2)
-        .append("c", 3.0f)
-        .append("d", 4.0d)
-        .append("e", true)
-        .append("f", Binary.fromString("6"))
-        .append("g", new NanoTime(12, currentTime));
-    Group g2 = gf.newGroup()
-        .append("a", 6l)
-        .append("b", 9)
-        .append("c", 10.0f)
-        .append("d", 40.0d)
-        .append("e", false)
-        .append("f", Binary.fromString("hello"))
-        .append("g", new NanoTime(123, currentTime));
-    Group g3 = gf.newGroup()
-        .append("a", -4l)
-        .append("b", 100)
-        .append("c", 23.4f)
-        .append("d", -940.0d)
-        .append("e", false)
-        .append("f", Binary.fromString("world"))
-        .append("g", new NanoTime(1234, currentTime));
-    Group g4 = gf.newGroup()
-        .append("a", 90l)
-        .append("b", 3)
-        .append("c", 234.0f)
-        .append("d", 4.0d)
-        .append("e", true)
-        .append("f", Binary.fromString(""))
-        .append("g", new NanoTime(1, currentTime));
-
-    List<Group> groupsList = new ArrayList<Group>();
-    groupsList.add(g1);
-    groupsList.add(g2);
-    groupsList.add(g3);
-    groupsList.add(g4);
-
-    IntStatistics intStats = new IntStatistics();
-    intStats.setMinMax(2,  100);
-    LongStatistics longStats = new LongStatistics();
-    longStats.setMinMax(-4l,  90l);
-    FloatStatistics floatStats = new FloatStatistics();
-    floatStats.setMinMax(3.0f, 234.0f);
-    DoubleStatistics doubleStats = new DoubleStatistics();
-    doubleStats.setMinMax(-940.0d, 40.0d);
-    BinaryStatistics binaryStats = new BinaryStatistics();
-    binaryStats.setMinMax(Binary.fromString(""), Binary.fromString("world"));
-    BooleanStatistics boolStats = new BooleanStatistics();
-    boolStats.setMinMax(false, true);
-    BinaryStatistics int96Stats = new BinaryStatistics();
-    int96Stats.setMinMax(new NanoTime(1, currentTime).toBinary(), new NanoTime(1234, currentTime).toBinary());
-
-    testStatisticsWriteToColumn(oneOfEachSchema, groupsList, intStats, longStats,
-                               floatStats, doubleStats, binaryStats, boolStats, int96Stats);
-  }
-
-  @Test
   public void testRequiredOfRequired() {
     MessageType reqreqSchema = MessageTypeParser.parseMessageType(
           "message Document {\n"
@@ -542,56 +472,6 @@ public class TestColumnIO {
       final Group got = recordReader.read();
       assertEquals("deserialization does not display the same result",
                    group.toString(), got.toString());
-    }
-  }
-
-  private void testStatisticsWriteToColumn(MessageType messageSchema, List<Group> groups,
-                                           IntStatistics intStats, LongStatistics longStats,
-                                           FloatStatistics floatStats, DoubleStatistics doubleStats,
-                                           BinaryStatistics binaryStats, BooleanStatistics boolStats,
-                                           BinaryStatistics int96Stats){
-    MemPageStore memPageStore = new MemPageStore(groups.size());
-    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
-
-    ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
-    MessageColumnIO columnIO = columnIOFactory.getColumnIO(messageSchema);
-    log(columnIO);
-
-    // Write groups.
-    GroupWriter groupWriter =
-        new GroupWriter(columnIO.getRecordWriter(columns), messageSchema);
-    for (Group group : groups) {
-      groupWriter.write(group);
-    }
-    columns.flush();
-
-    // Verify statistics for each type of colunm
-    Set<ColumnDescriptor> columnPaths = columns.getColumnDescriptors();
-    for (ColumnDescriptor c : columnPaths) {
-      ColumnWriter cw = columns.getColumnWriter(c);
-      switch(c.getType()) {
-      case INT32:
-        assertTrue(((IntStatistics)cw.getColumnStatistics()).equals(intStats));
-        break;
-      case INT64:
-        assertTrue(((LongStatistics)cw.getColumnStatistics()).equals(longStats));
-        break;
-      case FLOAT:
-        assertTrue(((FloatStatistics)cw.getColumnStatistics()).equals(floatStats));
-        break;
-      case DOUBLE:
-        assertTrue(((DoubleStatistics)cw.getColumnStatistics()).equals(doubleStats));
-        break;
-      case BINARY:
-        assertTrue(((BinaryStatistics)cw.getColumnStatistics()).equals(binaryStats));
-        break;
-      case BOOLEAN:
-        assertTrue(((BooleanStatistics)cw.getColumnStatistics()).equals(boolStats));
-        break;
-      case INT96:
-        assertTrue(((BinaryStatistics)cw.getColumnStatistics()).equals(int96Stats));
-        break;
-      }
     }
   }
 
@@ -746,11 +626,6 @@ public class TestColumnIO {
           @Override
           public void write(double value, int repetitionLevel, int definitionLevel) {
             validate(value, repetitionLevel, definitionLevel);
-          }
-
-          @Override
-          public Statistics getColumnStatistics() {
-            throw new UnsupportedOperationException();
           }
 
           @Override

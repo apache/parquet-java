@@ -66,7 +66,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     this.pageSizeThreshold = pageSizeThreshold;
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
-    this.statistics = Statistics.getStatsBasedOnType(this.path.getType());
+    resetStatistics();
 
     ParquetProperties parquetProps = new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary);
     this.repetitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), initialSizePerCol);
@@ -74,10 +74,17 @@ final class ColumnWriterImpl implements ColumnWriter {
     this.dataColumn = parquetProps.getValuesWriter(path, initialSizePerCol);
   }
 
+  private void initStatistics() {
+    this.statistics = Statistics.getStatsBasedOnType(this.path.getType());
+  }
+
   private void log(Object value, int r, int d) {
     LOG.debug(path + " " + value + " r:" + r + " d:" + d);
   }
 
+  private void resetStatistics() {
+    this.statistics = Statistics.getStatsBasedOnType(this.path.getType());
+  }
 
   /**
    * Counts how many values have been written and checks the memory usage to flush the page when we reach the page threshold.
@@ -151,11 +158,7 @@ final class ColumnWriterImpl implements ColumnWriter {
     definitionLevelColumn.reset();
     dataColumn.reset();
     valueCount = 0;
-  }
-
-  @Override
-  public Statistics getColumnStatistics() {
-    return statistics;
+    resetStatistics();
   }
 
   @Override
