@@ -16,7 +16,7 @@
 package parquet.scrooge;
 
 import com.twitter.scrooge.ThriftStructCodec;
-import com.twitter.scrooge.ThriftStructField;
+import com.twitter.scrooge.ThriftStructFieldInfo;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftTypeID;
@@ -67,16 +67,17 @@ public class ScroogeStructConverter {
   }
 
   private ThriftType.StructType convertCompanionClassToStruct(Class<?> companionClass) {
-    ThriftStructCodec companionObject = null;
+    Object companionObject;
+    Iterable<ThriftStructFieldInfo> scroogeFields;
     try {
-      companionObject = (ThriftStructCodec<?>)companionClass.getField("MODULE$").get(null);
+      companionObject = companionClass.getField("MODULE$").get(null);
+      scroogeFields = JavaConversions.asIterable((Seq<ThriftStructFieldInfo>)companionObject.getClass().getMethod("fieldInfos").invoke(companionObject));
     } catch (Exception e) {
-      throw new RuntimeException("Can not get ThriftStructCodec from companion object of " + companionClass.getName(), e);
+      throw new RuntimeException("Can not get fieldInfos from companion object of " + companionClass.getName(), e);
     }
 
     List<ThriftField> children = new LinkedList<ThriftField>();//{@link ThriftType.StructType} uses foreach loop to iterate the children, yields O(n) time for linked list
-    Iterable<ThriftStructField> scroogeFields = JavaConversions.asIterable(companionObject.metaData().fields());
-    for (ThriftStructField field : scroogeFields) {
+    for (ThriftStructFieldInfo field : scroogeFields) {
       children.add(toThriftField(field));
     }
     return new ThriftType.StructType(children);
@@ -84,8 +85,6 @@ public class ScroogeStructConverter {
 
   /**
    * Convert thrift field in scrooge to ThriftField in parquet
-   * Use reflection to detect if a field is optional or required since scrooge does not provide requirement information
-   * in generated classes.
    * This will not correctly recognize fields that are not specified with a requirement type eg.
    * struct Address {
    * 1: string street
@@ -96,13 +95,17 @@ public class ScroogeStructConverter {
    * @return
    * @throws Exception
    */
-  public ThriftField toThriftField(ThriftStructField scroogeField) {
-    Requirement requirement = isOptional(scroogeField)? OPTIONAL : REQUIRED;
-
+  public ThriftField toThriftField(ThriftStructFieldInfo scroogeField) {
     String fieldName = scroogeField.tfield().name;
     short fieldId = scroogeField.tfield().id;
+    Requirement requirement = getRequirementType(scroogeField);
+    return new ThriftField(fieldName, fieldId, requirement, toThriftType(scroogeField));
+  }
+
+  public ThriftType toThriftType(ThriftStructFieldInfo scroogeField) {
     byte thriftTypeByte = scroogeField.tfield().type;
     ThriftTypeID typeId = ThriftTypeID.fromByte(thriftTypeByte);
+
     ThriftType thriftType;
     switch (typeId) {
     case BOOL:
@@ -130,13 +133,13 @@ public class ScroogeStructConverter {
       thriftType = convertStructTypeField(scroogeField);
       break;
     case MAP:
-      thriftType = convertMapTypeField(scroogeField, requirement);
+      thriftType = convertMapTypeField(scroogeField);
       break;
     case SET:
-      thriftType = convertSetTypeField(scroogeField, requirement);
+      thriftType = convertSetTypeField(scroogeField);
       break;
     case LIST:
-      thriftType = convertListTypeField(scroogeField, requirement);
+      thriftType = convertListTypeField(scroogeField);
       break;
     case ENUM:
       thriftType = convertEnumTypeField(scroogeField);
@@ -146,50 +149,40 @@ public class ScroogeStructConverter {
     default:
       throw new IllegalArgumentException("can't convert type " + typeId);
     }
-    return new ThriftField(fieldName, fieldId, requirement, thriftType);
+
+    return thriftType;
   }
 
-  /**
-   * extract type arguments from a thrift field, such as the key and value type in a map
-   *
-   * @param field
-   * @return
-   */
-  private List<Class> getTypeArguments(ThriftStructField field) {
-    Iterator<Manifest> it = ((Manifest)field.manifest().get()).typeArguments().iterator();
-    List<Class> types = new ArrayList<Class>();
-    while (it.hasNext()) {
-      types.add(it.next().erasure());
-    }
-    return types;
-  }
-
-  private ThriftType convertSetTypeField(ThriftStructField f, Requirement requirement) {
-    List<Class> typeArguments = getTypeArguments(f);
-    ThriftType elementType = convertClassToThriftType(typeArguments.get(0));
+  private ThriftType convertSetTypeField(ThriftStructFieldInfo scroogeField) {
+    Requirement requirement = getRequirementType(scroogeField);
+    ThriftType elementType = convertClassToThriftType(scroogeField.valueManifest().get().erasure());
     //Set only has one sub-field as element field, therefore using hard-coded 1 as fieldId,
     //it's the same as the solution used in ElephantBird
-    ThriftField elementField = generateFieldWithoutId(f.name(), requirement, elementType);
+    ThriftField elementField = generateFieldWithoutId(scroogeField.tfield().name, requirement, elementType);
     return new ThriftType.SetType(elementField);
   }
 
-  private ThriftType convertListTypeField(ThriftStructField f, Requirement requirement) {
-    List<Class> typeArguments = getTypeArguments(f);
-    ThriftType elementType = convertClassToThriftType(typeArguments.get(0));
-    ThriftField elementField = generateFieldWithoutId(f.name(), requirement, elementType);
+  private ThriftType convertListTypeField(ThriftStructFieldInfo scroogeField) {
+    Requirement requirement = getRequirementType(scroogeField);
+    ThriftType elementType = convertClassToThriftType(scroogeField.valueManifest().get().erasure());
+    ThriftField elementField = generateFieldWithoutId(scroogeField.tfield().name, requirement, elementType);
     return new ThriftType.ListType(elementField);
   }
 
-  private ThriftType convertMapTypeField(ThriftStructField f, Requirement requirement) {
-    List<Class> typeArguments = getTypeArguments(f);
-    Class keyClass = typeArguments.get(0);
+  private ThriftType convertMapTypeField(ThriftStructFieldInfo scroogeField) {
+    Requirement requirement = getRequirementType(scroogeField);
+    Class keyClass = scroogeField.keyManifest().get().erasure();
     ThriftType keyType = convertClassToThriftType(keyClass);
-    Class valueClass = typeArguments.get(1);
-
-    ThriftField keyField = generateFieldWithoutId(f.name() + "_map_key", requirement, keyType);
+    Class valueClass = scroogeField.valueManifest().get().erasure();
     ThriftType valueType = convertClassToThriftType(valueClass);
-    ThriftField valueField = generateFieldWithoutId(f.name() + "_map_value", requirement, valueType);
+
+    ThriftField keyField = generateFieldWithoutId(scroogeField.tfield().name + "_map_key", requirement, keyType);
+    ThriftField valueField = generateFieldWithoutId(scroogeField.tfield().name + "_map_value", requirement, valueType);
     return new ThriftType.MapType(keyField, valueField);
+  }
+
+  private Requirement getRequirementType(ThriftStructFieldInfo scroogeField) {
+    return scroogeField.isOptional() ? OPTIONAL : REQUIRED;
   }
 
   /**
@@ -233,20 +226,8 @@ public class ScroogeStructConverter {
     }
   }
 
-  private ThriftType convertStructTypeField(ThriftStructField f) {
-    Type structClassType = f.method().getReturnType();
-    if (isOptional(f)) {
-      structClassType = extractClassFromOption(f.method().getGenericReturnType());
-    }
-    return convertStructFromClassName(((Class)structClassType).getName());
-  }
-
-  private Type extractClassFromOption(Type genericReturnType) {
-    return ((ParameterizedType)genericReturnType).getActualTypeArguments()[0];
-  }
-
-  private boolean isOptional(ThriftStructField f) {
-    return f.method().getReturnType() == scala.Option.class;
+  private ThriftType convertStructTypeField(ThriftStructFieldInfo scroogeField) {
+    return convertStructFromClassName(scroogeField.manifest().erasure().getName());
   }
 
   /**
@@ -261,15 +242,10 @@ public class ScroogeStructConverter {
     return JavaConversions.asJavaList((Seq)result);
   }
 
-  public ThriftType convertEnumTypeField(ThriftStructField f) {
+  public ThriftType convertEnumTypeField(ThriftStructFieldInfo scroogeField) {
     List<ThriftType.EnumValue> enumValues = new ArrayList<ThriftType.EnumValue>();
 
-    String enumName;
-    if (isOptional(f)) {
-      enumName = ((Class)extractClassFromOption(f.method().getGenericReturnType())).getName();
-    } else {
-      enumName = f.method().getReturnType().getName();
-    }
+    String enumName = scroogeField.manifest().erasure().getName();
     try {
       List enumCollection = getEnumList(enumName);
       for (Object enumObj : enumCollection) {
@@ -279,7 +255,7 @@ public class ScroogeStructConverter {
       }
       return new ThriftType.EnumType(enumValues);
     } catch (Exception e) {
-      throw new IllegalArgumentException("Can not convert enum field " + f, e);
+      throw new IllegalArgumentException("Can not convert enum field " + scroogeField, e);
     }
   }
 
