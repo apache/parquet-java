@@ -771,8 +771,17 @@ public class ParquetFileReader implements Closeable {
     public List<Chunk> readAll(FSDataInputStream f) throws IOException {
       List<Chunk> result = new ArrayList<Chunk>(chunks.size());
       f.seek(offset);
-      byte[] chunksBytes = new byte[length];
-      f.readFully(chunksBytes);
+      ByteBuffer chunksBytesBuffer = Zcopy.getBuf(f, length);
+      byte[] chunksBytes;
+      if (chunksBytesBuffer.hasArray()) {
+          chunksBytes = chunksBytesBuffer.array();
+      } else {
+          // backing array may not be accessible, copy is necessary
+          chunksBytes = new byte[length];
+          chunksBytesBuffer.get(chunksBytes);
+      }
+
+      
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);
       int currentChunkOffset = 0;
