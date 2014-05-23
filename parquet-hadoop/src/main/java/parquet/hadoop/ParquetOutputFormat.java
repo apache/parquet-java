@@ -38,6 +38,7 @@ import parquet.hadoop.api.WriteSupport;
 import parquet.hadoop.api.WriteSupport.WriteContext;
 import parquet.hadoop.codec.CodecConfig;
 import parquet.hadoop.metadata.CompressionCodecName;
+import parquet.hadoop.util.ConfigurationUtil;
 
 /**
  * OutputFormat to write to a Parquet file
@@ -111,15 +112,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (className == null) {
       return null;
     }
-    try {
-      final Class<?> writeSupportClass = Class.forName(className);
-      if (!WriteSupport.class.isAssignableFrom(writeSupportClass)) {
-        throw new BadConfigurationException("class " + className + " set in job conf at " + WRITE_SUPPORT_CLASS + " is not a subclass of WriteSupport");
-      }
-      return writeSupportClass;
-    } catch (ClassNotFoundException e) {
-      throw new BadConfigurationException("could not instanciate class " + className + " set in job conf at " + WRITE_SUPPORT_CLASS , e);
-    }
+    final Class<?> writeSupportClass = ConfigurationUtil.getClassFromConfig(configuration, WRITE_SUPPORT_CLASS, WriteSupport.class);
+    return writeSupportClass;
   }
 
   public static void setBlockSize(Job job, int blockSize) {
