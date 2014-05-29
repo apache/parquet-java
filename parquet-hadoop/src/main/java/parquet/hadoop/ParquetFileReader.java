@@ -61,6 +61,7 @@ import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.counters.BenchmarkCounter;
+import parquet.hadoop.util.ByteBufferInputStream;
 import parquet.io.ParquetDecodingException;
 
 /**
@@ -401,7 +402,7 @@ public class ParquetFileReader implements Closeable {
    * @author Julien Le Dem
    *
    */
-  private class Chunk extends ByteArrayInputStream {
+  private class Chunk extends ByteBufferInputStream {
 
     private final ChunkDescriptor descriptor;
 
@@ -411,10 +412,9 @@ public class ParquetFileReader implements Closeable {
      * @param data contains the chunk data at offset
      * @param offset where the chunk starts in offset
      */
-    public Chunk(ChunkDescriptor descriptor, byte[] data, int offset) {
-      super(data);
+    public Chunk(ChunkDescriptor descriptor, ByteBuffer buffer, int offset) {
+      super(buffer, offset, descriptor.size);
       this.descriptor = descriptor;
-      this.pos = offset;
     }
 
     /**
@@ -475,7 +475,7 @@ public class ParquetFileReader implements Closeable {
      * @return the current position in the chunk
      */
     public int pos() {
-      return this.pos;
+      return this.byteBuf.position();
     }
 
     /**
@@ -484,8 +484,9 @@ public class ParquetFileReader implements Closeable {
      * @throws IOException
      */
     public BytesInput readAsBytesInput(int size) throws IOException {
-      final BytesInput r = BytesInput.from(this.buf, this.pos, size);
-      this.pos += size;
+      int pos = this.byteBuf.position();
+      final BytesInput r = BytesInput.from(this.byteBuf, pos, size);
+      this.byteBuf.position(pos + size);
       return r;
     }
 
@@ -507,18 +508,18 @@ public class ParquetFileReader implements Closeable {
      * @param offset where the chunk starts in data
      * @param f the file stream positioned at the end of this chunk
      */
-    private WorkaroundChunk(ChunkDescriptor descriptor, byte[] data, int offset, FSDataInputStream f) {
-      super(descriptor, data, offset);
+    private WorkaroundChunk(ChunkDescriptor descriptor, ByteBuffer byteBuf, int offset, FSDataInputStream f) {
+      super(descriptor, byteBuf, offset);
       this.f = f;
     }
 
     public BytesInput readAsBytesInput(int size) throws IOException {
-      if (pos + size > count) {
+      if (pos() + size > initPos + count) {
         // this is to workaround a bug where the compressedLength
         // of the chunk is missing the size of the header of the dictionary
         // to allow reading older files (using dictionary) we need this.
         // usually 13 to 19 bytes are missing
-        int l1 = count - pos;
+        int l1 = initPos + count - pos();
         int l2 = size - l1;
         LOG.info("completed the column chunk with " + l2 + " bytes");
         return BytesInput.concat(super.readAsBytesInput(l1), BytesInput.copy(BytesInput.from(f, l2)));
@@ -594,27 +595,18 @@ public class ParquetFileReader implements Closeable {
     public List<Chunk> readAll(FSDataInputStream f) throws IOException {
       List<Chunk> result = new ArrayList<Chunk>(chunks.size());
       f.seek(offset);
-      ByteBuffer chunksBytesBuffer = Zcopy.getBuf(f, length);
-      byte[] chunksBytes;
-      if (chunksBytesBuffer.hasArray()) {
-          chunksBytes = chunksBytesBuffer.array();
-      } else {
-          // backing array may not be accessible, copy is necessary
-          chunksBytes = new byte[length];
-          chunksBytesBuffer.get(chunksBytes);
-      }
-
-      
+      ByteBuffer chunksByteBuffer = Zcopy.getBuf(f, length);
+     
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);
       int currentChunkOffset = 0;
       for (int i = 0; i < chunks.size(); i++) {
         ChunkDescriptor descriptor = chunks.get(i);
         if (i < chunks.size() - 1) {
-          result.add(new Chunk(descriptor, chunksBytes, currentChunkOffset));
+          result.add(new Chunk(descriptor, chunksByteBuffer, currentChunkOffset));
         } else {
           // because of a bug, the last chunk might be larger than descriptor.size
-          result.add(new WorkaroundChunk(descriptor, chunksBytes, currentChunkOffset, f));
+          result.add(new WorkaroundChunk(descriptor, chunksByteBuffer, currentChunkOffset, f));
         }
         currentChunkOffset += descriptor.size;
       }
