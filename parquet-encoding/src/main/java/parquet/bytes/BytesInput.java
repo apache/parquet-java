@@ -25,6 +25,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.List;
+import java.nio.ByteBuffer;
 
 import parquet.Log;
 
@@ -70,6 +71,15 @@ abstract public class BytesInput {
    */
   public static BytesInput from(InputStream in, int bytes) {
     return new StreamBytesInput(in, bytes);
+  }
+  
+  /**
+   * @param buffer
+   * @param length number of bytes to read
+   * @return a BytesInput that will read the given bytes from the ByteBuffer
+   */
+  public static BytesInput from(ByteBuffer buffer, int offset, int length) {
+    return new ByteBufferBytesInput(buffer, offset, length);
   }
 
   /**
@@ -361,5 +371,33 @@ abstract public class BytesInput {
     }
 
   }
+  
+  private static class ByteBufferBytesInput extends BytesInput {
+    
+    private final ByteBuffer byteBuf;
+    private final int length;
+    private final int offset;
 
+    private ByteBufferBytesInput(ByteBuffer byteBuf, int offset, int length) {
+      this.byteBuf = byteBuf;
+      this.offset = offset;
+      this.length = length;
+    }
+
+    @Override
+    public void writeAllTo(OutputStream out) throws IOException {
+      for (int i = offset; i < offset + length; i++) {
+        if (i >= byteBuf.capacity()) {
+          throw new IOException("Try to read a position " + i
+              + "Exceed byteBuf capacity " + byteBuf.capacity());
+        }
+        out.write(byteBuf.get(i));
+      }
+    }
+
+    @Override
+    public long size() {
+      return length;
+    }
+  }
 }
