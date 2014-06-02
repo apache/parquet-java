@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.junit.Test;
 
@@ -167,7 +168,7 @@ public class TestBitPackingColumn {
       System.out.println("bytes: " + TestBitPacking.toString(bytes));
       assertEquals(type.toString(), expected, TestBitPacking.toString(bytes));
       ValuesReader r = type.getReader(bound);
-      r.initFromPage(vals.length, bytes, 0);
+      r.initFromPage(vals.length, ByteBuffer.wrap(bytes), 0);
       int[] result = new int[vals.length];
       for (int i = 0; i < result.length; i++) {
         result[i] = r.readInteger();

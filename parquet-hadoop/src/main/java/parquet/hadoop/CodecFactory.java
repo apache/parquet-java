@@ -31,6 +31,7 @@ import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.util.ReflectionUtils;
 
+import parquet.bytes.ByteBufferInputStream;
 import parquet.bytes.BytesInput;
 import parquet.hadoop.metadata.CompressionCodecName;
 
@@ -54,7 +55,7 @@ class CodecFactory {
       final BytesInput decompressed;
       if (codec != null) {
         decompressor.reset();
-        InputStream is = codec.createInputStream(new ByteArrayInputStream(bytes.toByteArray()), decompressor);
+        InputStream is = codec.createInputStream(new ByteBufferInputStream(bytes.toByteBuffer()), decompressor);
         decompressed = BytesInput.from(is, uncompressedSize);
       } else {
         decompressed = bytes;

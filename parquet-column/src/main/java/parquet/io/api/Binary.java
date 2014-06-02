@@ -205,6 +205,81 @@ abstract public class Binary {
       }
     };
   }
+  
+  public static Binary fromByteBuffer(
+      final ByteBuffer value,
+      final int offset,
+      final int length) {
+    return new Binary() {
+      @Override
+      public String toStringUsingUTF8() {
+        return new String(getBytes(), BytesUtils.UTF8);
+      }
+
+      @Override
+      public int length() {
+        return length;
+      }
+
+      @Override
+      public void writeTo(OutputStream out) throws IOException {
+        for (int i = offset; i < offset + length; i++) {
+          out.write(value.get(i));
+        }
+      }
+
+      @Override
+      public byte[] getBytes() {
+        byte[] bytes = new byte[length];
+
+        value.position(offset);
+        value.get(bytes, 0, length);
+        return bytes;
+      }
+
+      @Override
+      public int hashCode() {
+        if (value.hasArray()) {
+          return Binary.hashCode(value.array(), value.arrayOffset() + value.position(),
+              value.arrayOffset() + value.remaining());
+        }
+        byte[] bytes = getBytes();
+        return Binary.hashCode(bytes, 0, bytes.length);
+      }
+
+      @Override
+      boolean equals(Binary other) {
+        if (value.hasArray()) {
+          return other.equals(value.array(), value.arrayOffset() + value.position(),
+              value.arrayOffset() + value.remaining());
+        }
+        byte[] bytes = getBytes();
+        return other.equals(bytes, 0, bytes.length);
+      }
+
+      @Override
+      boolean equals(byte[] other, int otherOffset, int otherLength) {
+        if (value.hasArray()) {
+          return Binary.equals(value.array(), value.arrayOffset() + value.position(),
+              value.arrayOffset() + value.remaining(), other, otherOffset, otherLength);
+        }
+        byte[] bytes = getBytes();
+        return Binary.equals(bytes, 0, bytes.length, other, otherOffset, otherLength);
+      }
+
+      @Override
+      public ByteBuffer toByteBuffer() {
+        return value;
+      }
+
+      @Override
+      public void writeTo(DataOutput out) throws IOException {
+        for (int i = offset; i < offset + length; i++) {
+          out.write(value.get(i));
+        }
+      }
+    };
+  }
 
   public static Binary fromString(final String value) {
     try {

@@ -171,6 +171,9 @@ abstract public class BytesInput {
     return baos.getBuf();
   }
 
+  public ByteBuffer toByteBuffer() throws IOException {
+    return ByteBuffer.wrap(toByteArray());
+  }
   /**
    *
    * @return the size in bytes that would be written
@@ -390,6 +393,14 @@ abstract public class BytesInput {
         }
         out.write(byteBuf.get(i));
       }
+    }
+    
+    @Override
+    public ByteBuffer toByteBuffer() throws IOException {
+      byteBuf.position(offset);
+      ByteBuffer buf = byteBuf.slice();
+      buf.limit(length);
+      return buf;
     }
 
     @Override

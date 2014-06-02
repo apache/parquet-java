@@ -18,11 +18,12 @@ package parquet.column.values.bitpacking;
 import static parquet.bytes.BytesUtils.getWidthFromMaxInt;
 import static parquet.column.values.bitpacking.BitPacking.createBitPackingReader;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import parquet.Log;
 import parquet.bytes.BytesUtils;
+import parquet.bytes.ByteBufferInputStream;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import parquet.io.ParquetDecodingException;
@@ -36,7 +37,7 @@ import parquet.io.ParquetDecodingException;
 public class BitPackingValuesReader extends ValuesReader {
   private static final Log LOG = Log.getLog(BitPackingValuesReader.class);
 
-  private ByteArrayInputStream in;
+  private ByteBufferInputStream in;
   private BitPackingReader bitPackingReader;
   private final int bitsPerValue;
   private int nextOffset;
@@ -66,11 +67,11 @@ public class BitPackingValuesReader extends ValuesReader {
    * @see parquet.column.values.ValuesReader#initFromPage(long, byte[], int)
    */
   @Override
-  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
+  public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
     int effectiveBitLength = valueCount * bitsPerValue;
     int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength);
     if (Log.DEBUG) LOG.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitsPerValue + " bits." );
-    this.in = new ByteArrayInputStream(in, offset, length);
+    this.in = new ByteBufferInputStream(in.duplicate(), offset, length);
     this.bitPackingReader = createBitPackingReader(bitsPerValue, this.in, valueCount);
     this.nextOffset = offset + length;
   }
