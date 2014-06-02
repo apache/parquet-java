@@ -58,6 +58,7 @@ import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.mapred.Utils;
 
 import parquet.Log;
+import parquet.bytes.ByteBufferInputStream;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.DataPage;
@@ -79,7 +80,6 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.counters.BenchmarkCounter;
-import parquet.hadoop.util.ByteBufferInputStream;
 import parquet.io.ParquetDecodingException;
 
 /**

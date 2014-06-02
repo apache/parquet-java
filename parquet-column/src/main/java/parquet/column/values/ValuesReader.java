@@ -22,11 +22,12 @@ import java.io.IOException;
 
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
+import java.nio.ByteBuffer;
 
 /**
  * Base class to implement an encoding for a given column type.
  *
- * A ValuesReader is provided with a page (byte-array) and is responsible
+ * A ValuesReader is provided with a page (byte-buffer) and is responsible
  * for deserializing the primitive values stored in that page.
  *
  * Given that pages are homogeneous (store only a single type), typical subclasses
@@ -58,7 +59,7 @@ public abstract class ValuesReader {
    *
    * @throws IOException
    */
-  public abstract void initFromPage(int valueCount, byte[] page, int offset) throws IOException;
+  public abstract void initFromPage(int valueCount, ByteBuffer page, int offset) throws IOException;
   
   /**
    * Called to return offset of the next section

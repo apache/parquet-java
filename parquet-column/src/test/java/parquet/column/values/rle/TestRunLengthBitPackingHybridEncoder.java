@@ -21,6 +21,7 @@ package parquet.column.values.rle;
 import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayInputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -28,6 +29,7 @@ import java.util.List;
 import org.junit.Test;
 
 import parquet.bytes.BytesUtils;
+import parquet.bytes.ByteBufferInputStream;
 import parquet.column.values.bitpacking.BytePacker;
 import parquet.column.values.bitpacking.Packer;
 
@@ -287,7 +289,7 @@ public class TestRunLengthBitPackingHybridEncoder {
 	// bit width 2.
 	bytes[0] = (1 << 1 )| 1; 
 	bytes[1] = (1 << 0) | (2 << 2) | (3 << 4);
-    ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
+    ByteBufferInputStream stream = new ByteBufferInputStream(ByteBuffer.wrap(bytes));
     RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(2, stream);
     assertEquals(decoder.readInt(), 1);
     assertEquals(decoder.readInt(), 2);

@@ -20,6 +20,7 @@ package parquet.column.values.bitpacking;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import parquet.column.values.ValuesReader;
 import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
@@ -87,7 +88,7 @@ public class BitPackingPerfTest {
     System.out.print(" no gc <");
     for (int k = 0; k < N; k++) {
       long t2 = System.nanoTime();
-      r.initFromPage(result.length, bytes, 0);
+      r.initFromPage(result.length, ByteBuffer.wrap(bytes), 0);
       for (int i = 0; i < result.length; i++) {
         result[i] = r.readInteger();
       }

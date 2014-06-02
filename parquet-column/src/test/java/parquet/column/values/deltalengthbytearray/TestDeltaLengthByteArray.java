@@ -19,6 +19,7 @@
 package parquet.column.values.deltalengthbytearray;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import org.junit.Test;
 import org.junit.Assert;
@@ -36,12 +37,12 @@ public class TestDeltaLengthByteArray {
   public void testSerialization () throws IOException {
     DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64*1024);
     DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
-
+    
     Utils.writeData(writer, values);
     Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
-      Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
+      Assert.assertEquals(Binary.fromString(values[i]).toStringUsingUTF8(), bin[i].toStringUsingUTF8());
     }
   }
   
@@ -55,7 +56,7 @@ public class TestDeltaLengthByteArray {
     Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
-      Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
+      Assert.assertEquals(Binary.fromString(values[i]).toStringUsingUTF8(), bin[i].toStringUsingUTF8());
     }
   }
 

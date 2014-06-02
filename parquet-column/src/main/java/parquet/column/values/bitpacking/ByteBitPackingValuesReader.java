@@ -20,6 +20,7 @@ package parquet.column.values.bitpacking;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.nio.ByteBuffer;
 
 import parquet.Log;
 import parquet.bytes.BytesUtils;
@@ -34,7 +35,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
   private final BytePacker packer;
   private final int[] decoded = new int[VALUES_AT_A_TIME];
   private int decodedPosition = VALUES_AT_A_TIME - 1;
-  private byte[] encoded;
+  private ByteBuffer encoded;
   private int encodedPos;
   private int nextOffset;
 
@@ -42,16 +43,19 @@ public class ByteBitPackingValuesReader extends ValuesReader {
     this.bitWidth = BytesUtils.getWidthFromMaxInt(bound);
     this.packer = packer.newBytePacker(bitWidth);
   }
-
+  
   @Override
   public int readInteger() {
     ++ decodedPosition;
     if (decodedPosition == decoded.length) {
-      if (encodedPos + bitWidth > encoded.length) {
-        packer.unpack8Values(Arrays.copyOfRange(encoded, encodedPos, encodedPos + bitWidth), 0, decoded, 0);
+      byte[] tempEncode = new byte[bitWidth];
+      if (encodedPos + bitWidth > encoded.limit()) {
+        Arrays.fill(tempEncode, (byte)0);
+        encoded.get(tempEncode, 0, encoded.limit() - encodedPos);
       } else {
-        packer.unpack8Values(encoded, encodedPos, decoded, 0);
-      }
+        encoded.get(tempEncode, 0, bitWidth);  
+      }      
+      packer.unpack8Values(tempEncode, 0, decoded, 0);
       encodedPos += bitWidth;
       decodedPosition = 0;
     }
@@ -59,7 +63,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, byte[] page, int offset)
+  public void initFromPage(int valueCount, ByteBuffer page, int offset)
       throws IOException {
     int effectiveBitLength = valueCount * bitWidth;
     int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength); // ceil

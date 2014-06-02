@@ -20,11 +20,12 @@ package parquet.column.values.plain;
 
 import static parquet.Log.DEBUG;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import parquet.Log;
 import parquet.bytes.LittleEndianDataInputStream;
+import parquet.bytes.ByteBufferInputStream;
 import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;
 
@@ -44,9 +45,9 @@ abstract public class PlainValuesReader extends ValuesReader {
    * @see parquet.column.values.ValuesReader#initFromPage(byte[], int)
    */
   @Override
-  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
-    if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));
-    this.in = new LittleEndianDataInputStream(new ByteArrayInputStream(in, offset, in.length - offset));
+  public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
+    if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.limit() - offset));
+    this.in = new LittleEndianDataInputStream(new ByteBufferInputStream(in.duplicate(), offset, in.limit() - offset));
   }
 
   public static class DoublePlainValuesReader extends PlainValuesReader {

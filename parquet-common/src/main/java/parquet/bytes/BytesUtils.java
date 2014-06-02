@@ -22,6 +22,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
 import parquet.Log;
@@ -53,11 +54,11 @@ public class BytesUtils {
    * @return
    * @throws IOException
    */
-  public static int readIntLittleEndian(byte[] in, int offset) throws IOException {
-    int ch4 = in[offset] & 0xff;
-    int ch3 = in[offset + 1] & 0xff;
-    int ch2 = in[offset + 2] & 0xff;
-    int ch1 = in[offset + 3] & 0xff;
+  public static int readIntLittleEndian(ByteBuffer in, int offset) throws IOException {
+    int ch4 = in.get(offset) & 0xff;
+    int ch3 = in.get(offset + 1) & 0xff;
+    int ch2 = in.get(offset + 2) & 0xff;
+    int ch1 = in.get(offset + 3) & 0xff;
     return ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
   }
 

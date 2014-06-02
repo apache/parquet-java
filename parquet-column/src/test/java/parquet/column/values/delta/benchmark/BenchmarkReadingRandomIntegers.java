@@ -33,6 +33,7 @@ import parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Random;
 
 @AxisRange(min = 0, max = 1)
@@ -86,7 +87,7 @@ public class BenchmarkReadingRandomIntegers {
   }
 
   private void readData(ValuesReader reader, byte[] deltaBytes) throws IOException {
-    reader.initFromPage(data.length, deltaBytes, 0);
+    reader.initFromPage(data.length, ByteBuffer.wrap(deltaBytes), 0);
     for (int i = 0; i < data.length; i++) {
       reader.readInteger();
     }
