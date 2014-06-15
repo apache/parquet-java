@@ -15,7 +15,6 @@
  */
 package parquet.column;
 
-import parquet.column.statistics.Statistics;
 import parquet.io.api.Binary;
 
 /**

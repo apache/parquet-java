@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Twitter, Inc.
+ * Copyright 2014 GoDaddy, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,30 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.schema;
+package parquet.io2;
 
-/**
- * Implement this interface to visit a schema
- *
- * type.accept(new TypeVisitor() { ... });
- *
- * @author Julien Le Dem
- *
- */
-public interface TypeVisitor<T> {
-
-  /**
-   * @param groupType the group type to visit
-   */
-  T visit(GroupType groupType);
-
-  /**
-   * @param messageType the message type to visit
-   */
-  T visit(MessageType messageType);
-
-  /**
-   * @param primitiveType the primitive type to visit
-   */
-  T visit(PrimitiveType primitiveType);
+public interface Function<T, R> {
+  R call(final T value);
 }

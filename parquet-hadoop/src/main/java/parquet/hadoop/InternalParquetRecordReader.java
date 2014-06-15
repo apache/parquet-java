@@ -27,10 +27,10 @@ import parquet.filter.UnboundRecordFilter;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.util.counters.BenchmarkCounter;
-import parquet.io.ColumnIOFactory;
-import parquet.io.MessageColumnIO;
+import parquet.io2.ColumnIO2Factory;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.RecordMaterializer;
+import parquet.io2.MessageColumnIO2;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
@@ -41,7 +41,7 @@ import static parquet.Log.DEBUG;
 class InternalParquetRecordReader<T> {
   private static final Log LOG = Log.getLog(InternalParquetRecordReader.class);
 
-  private final ColumnIOFactory columnIOFactory = new ColumnIOFactory();
+  private final ColumnIO2Factory columnIOFactory = new ColumnIO2Factory();
 
   private MessageType requestedSchema;
   private MessageType fileSchema;
@@ -106,7 +106,7 @@ class InternalParquetRecordReader<T> {
       BenchmarkCounter.incrementTime(timeSpentReading);
       LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
       if (Log.DEBUG) LOG.debug("initializing Record assembly with requested schema " + requestedSchema);
-      MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema);
+      MessageColumnIO2 columnIO = columnIOFactory.messageType(fileSchema, requestedSchema).get();
       recordReader = columnIO.getRecordReader(pages, recordConverter, recordFilter);
       startedAssemblingCurrentBlockAt = System.currentTimeMillis();
       totalCountLoadedSoFar += pages.getRowCount();
@@ -143,7 +143,8 @@ class InternalParquetRecordReader<T> {
         configuration, extraMetadata, fileSchema,
         new ReadSupport.ReadContext(requestedSchema, readSupportMetadata));
 
-    List<ColumnDescriptor> columns = requestedSchema.getColumns();
+    MessageColumnIO2 foo = this.columnIOFactory.messageType(fileSchema, requestedSchema).get();
+    List<ColumnDescriptor> columns = foo.getPhysicalColumnDescriptors();
     reader = new ParquetFileReader(configuration, file, blocks, columns);
     for (BlockMetaData block : blocks) {
       total += block.getRowCount();

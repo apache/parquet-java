@@ -136,10 +136,7 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
       return new ReadContext(initContext.getFileSchema());
     } else {
       // project the file schema according to the requested Pig schema
-      MessageType parquetRequestedSchema =
-          pigSchemaConverter.filter(
-          initContext.getFileSchema(),
-          requestedPigSchema);
+      MessageType parquetRequestedSchema = pigSchemaConverter.convert(requestedPigSchema);
       return new ReadContext(parquetRequestedSchema);
     }
   }

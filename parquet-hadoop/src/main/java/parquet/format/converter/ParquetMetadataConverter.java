@@ -95,9 +95,9 @@ public class ParquetMetadataConverter {
   }
 
   private void addToList(final List<SchemaElement> result, parquet.schema.Type field) {
-    field.accept(new TypeVisitor() {
+    field.accept(new TypeVisitor<Void>() {
       @Override
-      public void visit(PrimitiveType primitiveType) {
+      public Void visit(PrimitiveType primitiveType) {
         SchemaElement element = new SchemaElement(primitiveType.getName());
         element.setRepetition_type(toParquetRepetition(primitiveType.getRepetition()));
         element.setType(getType(primitiveType.getPrimitiveTypeName()));
@@ -112,22 +112,25 @@ public class ParquetMetadataConverter {
           element.setType_length(primitiveType.getTypeLength());
         }
         result.add(element);
+        return null;
       }
 
       @Override
-      public void visit(MessageType messageType) {
+      public Void visit(MessageType messageType) {
         SchemaElement element = new SchemaElement(messageType.getName());
         visitChildren(result, messageType.asGroupType(), element);
+        return null;
       }
 
       @Override
-      public void visit(GroupType groupType) {
+      public Void visit(GroupType groupType) {
         SchemaElement element = new SchemaElement(groupType.getName());
         element.setRepetition_type(toParquetRepetition(groupType.getRepetition()));
         if (groupType.getOriginalType() != null) {
           element.setConverted_type(getConvertedType(groupType.getOriginalType()));
         }
         visitChildren(result, groupType, element);
+        return null;
       }
 
       private void visitChildren(final List<SchemaElement> result,

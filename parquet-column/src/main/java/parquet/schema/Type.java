@@ -161,7 +161,7 @@ abstract public class Type {
    * Visits this type with the given visitor
    * @param visitor the visitor to visit this type
    */
-  abstract public void accept(TypeVisitor visitor);
+  abstract public <T> T accept(TypeVisitor<T> visitor);
 
   @Override
   public int hashCode() {

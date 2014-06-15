@@ -165,7 +165,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   public Tuple getNext() throws IOException {
     try {
       if (reader.nextKeyValue()) {
-        return (Tuple)reader.getCurrentValue();
+        return reader.getCurrentValue();
       } else {
         return null;
       }

@@ -23,9 +23,15 @@ package parquet.column;
 public interface ColumnReadStore {
 
   /**
-   * @param path the column to read
+   * @param physicalDescriptor the column to read
+   * @param logicalDescriptor the column to read
    * @return the column reader for that descriptor
    */
-  abstract public ColumnReader getColumnReader(ColumnDescriptor path);
+  public ColumnReader getColumnReader(ColumnDescriptor physicalDescriptor, ColumnDescriptor logicalDescriptor);
 
+  /**
+   * @param columnDescriptor the column to read
+   * @return the column reader for that descriptor
+   */
+  public ColumnReader getColumnReader(ColumnDescriptor columnDescriptor);
 }

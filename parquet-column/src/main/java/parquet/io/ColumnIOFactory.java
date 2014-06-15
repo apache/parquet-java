@@ -34,7 +34,7 @@ import parquet.schema.TypeVisitor;
  */
 public class ColumnIOFactory {
 
-  public class ColumnIOCreatorVisitor implements TypeVisitor {
+  public class ColumnIOCreatorVisitor implements TypeVisitor<Void> {
 
     private MessageColumnIO columnIO;
     private GroupColumnIO current;
@@ -50,21 +50,23 @@ public class ColumnIOFactory {
     }
 
     @Override
-    public void visit(MessageType messageType) {
+    public Void visit(MessageType messageType) {
       columnIO = new MessageColumnIO(requestedSchema, validating);
       visitChildren(columnIO, messageType, requestedSchema);
       columnIO.setLevels();
       columnIO.setLeaves(leaves);
+      return null;
     }
 
     @Override
-    public void visit(GroupType groupType) {
+    public Void visit(GroupType groupType) {
       if (currentRequestedType.isPrimitive()) {
         incompatibleSchema(groupType, currentRequestedType);
       }
       GroupColumnIO newIO = new GroupColumnIO(groupType, current, currentRequestedIndex);
       current.add(newIO);
       visitChildren(newIO, groupType, currentRequestedType.asGroupType());
+      return null;
     }
 
     private void visitChildren(GroupColumnIO newIO, GroupType groupType, GroupType requestedGroupType) {
@@ -85,13 +87,14 @@ public class ColumnIOFactory {
     }
 
     @Override
-    public void visit(PrimitiveType primitiveType) {
+    public Void visit(PrimitiveType primitiveType) {
       if (!currentRequestedType.isPrimitive() || currentRequestedType.asPrimitiveType().getPrimitiveTypeName() != primitiveType.getPrimitiveTypeName()) {
         incompatibleSchema(primitiveType, currentRequestedType);
       }
       PrimitiveColumnIO newIO = new PrimitiveColumnIO(primitiveType, current, currentRequestedIndex, leaves.size());
       current.add(newIO);
       leaves.add(newIO);
+      return null;
     }
 
     private void incompatibleSchema(Type fileType, Type requestedType) {

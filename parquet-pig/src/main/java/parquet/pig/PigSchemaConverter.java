@@ -98,8 +98,13 @@ public class PigSchemaConverter {
       try{
         FieldSchema innerfieldSchema = getFieldSchema(parquetType);
         if (parquetType.isRepetition(Repetition.REPEATED)) {
+          if (parquetType.isPrimitive()) {
+            Schema primitiveWrapper = new Schema(innerfieldSchema);
+            innerfieldSchema = new FieldSchema(parquetType.getName(), primitiveWrapper);
+          }
+
           Schema bagSchema = new Schema(Arrays.asList(innerfieldSchema));
-          fields.add(new FieldSchema(null, bagSchema, DataType.BAG));
+          fields.add(new FieldSchema(parquetType.getName(), bagSchema, DataType.BAG));
         } else {
           fields.add(innerfieldSchema);
         }
@@ -337,97 +342,5 @@ public class PigSchemaConverter {
 
   private GroupType convertTuple(String alias, FieldSchema field, Repetition repetition) {
     return new GroupType(repetition, alias, convertTypes(field.schema));
-  }
-
-  /**
-   * filters a Parquet schema based on a pig schema for projection
-   * @param schemaToFilter the schema to be filter
-   * @param requestedPigSchema the pig schema to filter it with
-   * @return the resulting filtered schema
-   */
-  public MessageType filter(MessageType schemaToFilter, Schema requestedPigSchema) {
-    try {
-      if (DEBUG) LOG.debug("filtering schema:\n" + schemaToFilter + "\nwith requested pig schema:\n " + requestedPigSchema);
-      List<Type> result = filterTupleSchema(schemaToFilter, requestedPigSchema);
-      if (DEBUG) LOG.debug("schema:\n" + schemaToFilter + "\nfiltered to:\n" + result);
-      return new MessageType(schemaToFilter.getName(), result);
-    } catch (RuntimeException e) {
-      throw new RuntimeException("can't filter " + schemaToFilter + " with " + requestedPigSchema, e);
-    }
-  }
-
-  private List<Type> filterTupleSchema(GroupType schemaToFilter, Schema requestedPigSchema) {
-    List<FieldSchema> fields = requestedPigSchema.getFields();
-    List<Type> newFields = new ArrayList<Type>();
-    for (int i = 0; i < fields.size(); i++) {
-      FieldSchema fieldSchema = fields.get(i);
-      String name = name(fieldSchema.alias, "field_"+i);
-      if (schemaToFilter.containsField(name)) {
-        Type type = schemaToFilter.getType(name);
-        newFields.add(filter(type, fieldSchema));
-      }
-    }
-    return newFields;
-  }
-
-  private Type filter(Type type, FieldSchema fieldSchema) {
-    if (DEBUG) LOG.debug("filtering type:\n" + type + "\nwith:\n " + fieldSchema);
-    try {
-      switch (fieldSchema.type) {
-      case DataType.BAG:
-        return filterBag(type.asGroupType(), fieldSchema);
-      case DataType.MAP:
-        return filterMap(type.asGroupType(), fieldSchema);
-      case DataType.TUPLE:
-        return filterTuple(type.asGroupType(), fieldSchema);
-      default:
-        return type;
-      }
-    } catch (FrontendException e) {
-      throw new SchemaConversionException("can't filter " + type + " with " + fieldSchema, e);
-    } catch (RuntimeException e) {
-      throw new RuntimeException("can't filter " + type + " with " + fieldSchema, e);
-    }
-  }
-
-  private Type filterTuple(GroupType tupleType, FieldSchema tupleFieldSchema) throws FrontendException {
-    if (DEBUG) LOG.debug("filtering TUPLE schema:\n" + tupleType + "\nwith:\n " + tupleFieldSchema);
-    return new GroupType(tupleType.getRepetition(), tupleType.getName(), tupleType.getOriginalType(), filterTupleSchema(tupleType, tupleFieldSchema.schema));
-  }
-
-  private Type filterMap(GroupType mapType, FieldSchema mapFieldSchema) throws FrontendException {
-    if (DEBUG) LOG.debug("filtering MAP schema:\n" + mapType + "\nwith:\n " + mapFieldSchema);
-    if (mapType.getFieldCount() != 1) {
-      throw new RuntimeException("not unwrapping the right type, this should be a Map: " + mapType);
-    }
-    GroupType nested = mapType.getType(0).asGroupType();
-    if (nested.getFieldCount() != 2) {
-      throw new RuntimeException("this should be a Map Key/Value: " + mapType);
-    }
-    FieldSchema innerField = mapFieldSchema.schema.getField(0);
-    return new GroupType(
-        mapType.getRepetition(), mapType.getName(), mapType.getOriginalType(),
-        new GroupType(nested.getRepetition(), nested.getName(), nested.getOriginalType(),
-            nested.getType(0),
-            filter(nested.getType(1), innerField)
-            )
-        );
-  }
-
-  private Type filterBag(GroupType bagType, FieldSchema bagFieldSchema) throws FrontendException {
-    if (DEBUG) LOG.debug("filtering BAG schema:\n" + bagType + "\nwith:\n " + bagFieldSchema);
-    if (bagType.getFieldCount() != 1) {
-      throw new RuntimeException("not unwrapping the right type, this should be a Bag: " + bagType);
-    }
-    Type nested = bagType.getType(0);
-    FieldSchema innerField = bagFieldSchema.schema.getField(0);
-    if (nested.isPrimitive() || nested.getOriginalType() == OriginalType.MAP || nested.getOriginalType() == OriginalType.LIST) {
-      // Bags always contain tuples => we skip the extra tuple that was inserted in that case.
-      innerField = innerField.schema.getField(0);
-    }
-    return new GroupType(
-        bagType.getRepetition(), bagType.getName(), bagType.getOriginalType(),
-        filter(nested, innerField)
-        );
   }
 }

@@ -54,8 +54,13 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
   }
 
   @Override
-  public ColumnReader getColumnReader(ColumnDescriptor path) {
-    return newMemColumnReader(path, pageReadStore.getPageReader(path));
+  public ColumnReader getColumnReader(ColumnDescriptor columnDescriptor) {
+    return newMemColumnReader(columnDescriptor, pageReadStore.getPageReader(columnDescriptor));
+  }
+
+  @Override
+  public ColumnReader getColumnReader(ColumnDescriptor physicalDescriptor, ColumnDescriptor logicalDescriptor) {
+    return newMemColumnReader(logicalDescriptor, pageReadStore.getPageReader(physicalDescriptor));
   }
 
   private ColumnReaderImpl newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {

@@ -370,8 +370,8 @@ public final class PrimitiveType extends Type {
    * {@inheritDoc}
    */
   @Override
-  public void accept(TypeVisitor visitor) {
-    visitor.visit(this);
+  public <T> T accept(TypeVisitor<T> visitor) {
+    return visitor.visit(this);
   }
 
   /**

@@ -17,6 +17,7 @@ package parquet.hadoop.metadata;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Locale;
 
 public final class ColumnPath implements Iterable<String> {
 
