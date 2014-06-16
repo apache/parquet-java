@@ -1,0 +1,1 @@
+case class DurpDurp(x: Int)
