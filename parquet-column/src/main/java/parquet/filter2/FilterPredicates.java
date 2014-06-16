@@ -1,5 +1,7 @@
 package parquet.filter2;
 
+import java.io.Serializable;
+
 public final class FilterPredicates {
   private FilterPredicates() { }
 
@@ -52,7 +54,7 @@ public final class FilterPredicates {
 
   // Predicate operator / node data classes
 
-  public static final class Column<T> {
+  public static final class Column<T> implements Serializable {
     private final String columnPath;
 
     private Column(String columnPath) {
@@ -65,11 +67,11 @@ public final class FilterPredicates {
 
     @Override
     public String toString() {
-      return "Column(" + columnPath + ")";
+      return "column(" + columnPath + ")";
     }
   }
 
-  // converts "parquet.filter2.FilterPredicates$And" -> "And'
+  // converts "parquet.filter2.FilterPredicates$And" -> "and'
   private static String getClassName(Class<?> c) {
     String name = c.getName();
     // chop off everything up to the first '.'
@@ -80,7 +82,7 @@ public final class FilterPredicates {
   }
 
   // base class for Eq, Lt, Gt
-  public static abstract class ColumnFilterPredicate<T> implements FilterPredicate {
+  public static abstract class ColumnFilterPredicate<T> implements FilterPredicate, Serializable  {
     private final Column<T> column;
     private final T value;
     private final String toString;
@@ -144,7 +146,7 @@ public final class FilterPredicates {
   }
 
   // base class for And, Or
-  private static abstract class BinaryLogicalFilterPredicate implements FilterPredicate {
+  private static abstract class BinaryLogicalFilterPredicate implements FilterPredicate, Serializable {
     private final FilterPredicate left;
     private final FilterPredicate right;
     private final String toString;
@@ -194,13 +196,13 @@ public final class FilterPredicates {
     }
   }
 
-  public static class Not implements FilterPredicate {
+  public static class Not implements FilterPredicate, Serializable {
     private final FilterPredicate predicate;
     private final String toString;
 
     private Not(FilterPredicate predicate) {
       this.predicate = predicate;
-      this.toString = "Not(" + predicate + ")";
+      this.toString = "not(" + predicate + ")";
     }
 
     public FilterPredicate getPredicate() {
