@@ -2,6 +2,8 @@ package parquet.filter2;
 
 import java.io.Serializable;
 
+import parquet.Preconditions;
+
 public final class FilterPredicates {
   private FilterPredicates() { }
 
@@ -58,6 +60,7 @@ public final class FilterPredicates {
     private final String columnPath;
 
     private Column(String columnPath) {
+      Preconditions.checkNotNull(columnPath, "columnPath");
       this.columnPath = columnPath;
     }
 
@@ -68,6 +71,19 @@ public final class FilterPredicates {
     @Override
     public String toString() {
       return "column(" + columnPath + ")";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      Column column = (Column) o;
+      return columnPath.equals(column.columnPath);
+    }
+
+    @Override
+    public int hashCode() {
+      return columnPath.hashCode();
     }
   }
 
@@ -88,6 +104,8 @@ public final class FilterPredicates {
     private final String toString;
 
     protected ColumnFilterPredicate(Column<T> column, T value) {
+      Preconditions.checkNotNull(column, "column");
+      Preconditions.checkNotNull(value, "value");
       this.column = column;
       this.value = value;
 
@@ -106,6 +124,27 @@ public final class FilterPredicates {
     @Override
     public String toString() {
       return toString;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      ColumnFilterPredicate that = (ColumnFilterPredicate) o;
+
+      if (!column.equals(that.column)) return false;
+      if (!value.equals(that.value)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = column.hashCode();
+      result = 31 * result + value.hashCode();
+      result = 31 * result + getClass().hashCode();
+      return result;
     }
   }
 
@@ -152,6 +191,8 @@ public final class FilterPredicates {
     private final String toString;
 
     protected BinaryLogicalFilterPredicate(FilterPredicate left, FilterPredicate right) {
+      Preconditions.checkNotNull(left, "left");
+      Preconditions.checkNotNull(right, "right");
       this.left = left;
       this.right = right;
       String name = getClassName(getClass());
@@ -169,6 +210,27 @@ public final class FilterPredicates {
     @Override
     public String toString() {
       return toString;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      BinaryLogicalFilterPredicate that = (BinaryLogicalFilterPredicate) o;
+
+      if (!left.equals(that.left)) return false;
+      if (!right.equals(that.right)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = left.hashCode();
+      result = 31 * result + right.hashCode();
+      result = 31 * result + getClass().hashCode();
+      return result;
     }
   }
 
@@ -201,6 +263,7 @@ public final class FilterPredicates {
     private final String toString;
 
     private Not(FilterPredicate predicate) {
+      Preconditions.checkNotNull(predicate, "predicate");
       this.predicate = predicate;
       this.toString = "not(" + predicate + ")";
     }
@@ -217,6 +280,19 @@ public final class FilterPredicates {
     @Override
     public boolean accept(Visitor visitor) {
       return visitor.visit(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      Not not = (Not) o;
+      return predicate.equals(not.predicate);
+    }
+
+    @Override
+    public int hashCode() {
+      return predicate.hashCode() * 31 + getClass().hashCode();
     }
   }
 }

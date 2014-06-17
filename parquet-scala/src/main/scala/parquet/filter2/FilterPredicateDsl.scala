@@ -3,7 +3,7 @@ package parquet.filter2
 object FilterPredicateDsl {
 
   case class Column[T](columnPath: String) {
-    private[this] val column = FilterPredicates.column[T](columnPath)
+    val column = FilterPredicates.column[T](columnPath)
     def === (v: T) = FilterPredicates.eq(column, v)
     def !== (v: T) = FilterPredicates.notEq(column, v)
     def >(v: T) = FilterPredicates.gt(column, v)

@@ -15,7 +15,11 @@ import static parquet.filter2.FilterPredicates.and;
 import static parquet.filter2.FilterPredicates.column;
 import static parquet.filter2.FilterPredicates.eq;
 import static parquet.filter2.FilterPredicates.gt;
+import static parquet.filter2.FilterPredicates.gtEq;
+import static parquet.filter2.FilterPredicates.lt;
+import static parquet.filter2.FilterPredicates.ltEq;
 import static parquet.filter2.FilterPredicates.not;
+import static parquet.filter2.FilterPredicates.notEq;
 import static parquet.filter2.FilterPredicates.or;
 
 public class FilterPredicatesTest {
@@ -51,6 +55,20 @@ public class FilterPredicatesTest {
     assertTrue(gt instanceof Gt);
     assertEquals(100.0, ((Gt) gt).getValue());
     assertEquals("x.y.z", ((Gt) gt).getColumn().getColumnPath());
+  }
+
+  @Test
+  public void testSugarPredicates() {
+    assertEquals(not(eq(intColumn, 10)), notEq(intColumn, 10));
+    assertEquals(or(lt(intColumn, 10), eq(intColumn, 10)), ltEq(intColumn, 10));
+    assertEquals(or(gt(intColumn, 10), eq(intColumn, 10)), gtEq(intColumn, 10));
+  }
+
+  @Test
+  public void testCollapseDoubleNegation() {
+    assertEquals(eq(intColumn, 10), not(not(eq(intColumn, 10))));
+    assertEquals(eq(intColumn, 10), not(not(not(not(eq(intColumn, 10))))));
+    assertEquals(not(eq(intColumn, 10)), not(not(not(eq(intColumn, 10)))));
   }
 
   @Test
