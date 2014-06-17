@@ -26,6 +26,8 @@ import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
 
 import parquet.Log;
 
@@ -389,13 +391,11 @@ abstract public class BytesInput {
 
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
-      for (int i = offset; i < offset + length; i++) {
-        if (i >= byteBuf.capacity()) {
-          throw new IOException("Try to read a position " + i
-              + "Exceed byteBuf capacity " + byteBuf.capacity());
-        }
-        out.write(byteBuf.get(i));
-      }
+      final WritableByteChannel outputChannel = Channels.newChannel(out);
+      byteBuf.position(offset);
+      ByteBuffer tempBuf = byteBuf.slice();
+      tempBuf.limit(length);
+      outputChannel.write(tempBuf);
     }
     
     @Override
