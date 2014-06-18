@@ -11,16 +11,16 @@ import parquet.filter2.FilterPredicates.Or;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static parquet.filter2.FilterPredicates.and;
-import static parquet.filter2.FilterPredicates.column;
-import static parquet.filter2.FilterPredicates.eq;
-import static parquet.filter2.FilterPredicates.gt;
-import static parquet.filter2.FilterPredicates.gtEq;
-import static parquet.filter2.FilterPredicates.lt;
-import static parquet.filter2.FilterPredicates.ltEq;
-import static parquet.filter2.FilterPredicates.not;
-import static parquet.filter2.FilterPredicates.notEq;
-import static parquet.filter2.FilterPredicates.or;
+import static parquet.filter2.Filter.and;
+import static parquet.filter2.Filter.column;
+import static parquet.filter2.Filter.eq;
+import static parquet.filter2.Filter.gt;
+import static parquet.filter2.Filter.gtEq;
+import static parquet.filter2.Filter.lt;
+import static parquet.filter2.Filter.ltEq;
+import static parquet.filter2.Filter.not;
+import static parquet.filter2.Filter.notEq;
+import static parquet.filter2.Filter.or;
 
 public class FilterPredicatesTest {
 

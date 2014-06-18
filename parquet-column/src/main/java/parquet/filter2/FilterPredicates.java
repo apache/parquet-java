@@ -4,62 +4,17 @@ import java.io.Serializable;
 
 import parquet.Preconditions;
 
+/**
+ * These are the nodes / tokens in a a filter predicate expression.
+ * They are constructed by using the methods in {@link Filter}
+ */
 public final class FilterPredicates {
   private FilterPredicates() { }
-
-  // The Filter Predicate API is expressed through these static methods
-
-  public static <T> Column<T> column(String columnPath) {
-    return new Column<T>(columnPath);
-  }
-
-  public static <T> Eq<T> eq(Column<T> column, T value) {
-    return new Eq<T>(column, value);
-  }
-
-  public static <T> FilterPredicate notEq(Column<T> column, T value) {
-    return not(eq(column, value));
-  }
-
-  public static <T> Lt<T> lt(Column<T> column, T value) {
-    return new Lt<T>(column, value);
-  }
-
-  public static <T> FilterPredicate ltEq(Column<T> column, T value) {
-    return or(lt(column, value), eq(column, value));
-  }
-
-  public static <T> Gt<T> gt(Column<T> column, T value) {
-    return new Gt<T>(column, value);
-  }
-
-  public static <T> FilterPredicate gtEq(Column<T> column, T value) {
-    return or(gt(column, value), eq(column, value));
-  }
-
-  public static FilterPredicate and(FilterPredicate left, FilterPredicate right) {
-    return new And(left, right);
-  }
-
-  public static FilterPredicate or(FilterPredicate left, FilterPredicate right) {
-    return new Or(left, right);
-  }
-
-  public static FilterPredicate not(FilterPredicate predicate) {
-    // TODO: is this the wrong place to do this? There's a lot more
-    // TODO: simplification that could be done, but this one is just so easy
-    if (predicate instanceof Not) {
-      return ((Not) predicate).getPredicate();
-    }
-    return new Not(predicate);
-  }
-
-  // Predicate operator / node data classes
 
   public static final class Column<T> implements Serializable {
     private final String columnPath;
 
-    private Column(String columnPath) {
+    Column(String columnPath) {
       Preconditions.checkNotNull(columnPath, "columnPath");
       this.columnPath = columnPath;
     }
@@ -98,7 +53,7 @@ public final class FilterPredicates {
   }
 
   // base class for Eq, Lt, Gt
-  public static abstract class ColumnFilterPredicate<T> implements FilterPredicate, Serializable  {
+  private static abstract class ColumnFilterPredicate<T> implements FilterPredicate, Serializable  {
     private final Column<T> column;
     private final T value;
     private final String toString;
@@ -150,7 +105,7 @@ public final class FilterPredicates {
 
   public static final class Eq<T> extends ColumnFilterPredicate<T> {
 
-    private Eq(Column<T> column, T value) {
+    Eq(Column<T> column, T value) {
       super(column, value);
     }
 
@@ -162,7 +117,7 @@ public final class FilterPredicates {
 
   public static final class Lt<T> extends ColumnFilterPredicate<T> {
 
-    private Lt(Column<T> column, T value) {
+    Lt(Column<T> column, T value) {
       super(column, value);
     }
 
@@ -174,7 +129,7 @@ public final class FilterPredicates {
 
   public static final class Gt<T> extends ColumnFilterPredicate<T> {
 
-    private Gt(Column<T> column, T value) {
+    Gt(Column<T> column, T value) {
       super(column, value);
     }
 
@@ -236,7 +191,7 @@ public final class FilterPredicates {
 
   public static final class And extends BinaryLogicalFilterPredicate {
 
-    private And(FilterPredicate left, FilterPredicate right) {
+    And(FilterPredicate left, FilterPredicate right) {
       super(left, right);
     }
 
@@ -248,7 +203,7 @@ public final class FilterPredicates {
 
   public static final class Or extends BinaryLogicalFilterPredicate {
 
-    private Or(FilterPredicate left, FilterPredicate right) {
+    Or(FilterPredicate left, FilterPredicate right) {
       super(left, right);
     }
 
@@ -262,7 +217,7 @@ public final class FilterPredicates {
     private final FilterPredicate predicate;
     private final String toString;
 
-    private Not(FilterPredicate predicate) {
+    Not(FilterPredicate predicate) {
       Preconditions.checkNotNull(predicate, "predicate");
       this.predicate = predicate;
       this.toString = "not(" + predicate + ")";
