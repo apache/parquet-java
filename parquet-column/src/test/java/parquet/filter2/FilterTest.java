@@ -22,7 +22,7 @@ import static parquet.filter2.Filter.not;
 import static parquet.filter2.Filter.notEq;
 import static parquet.filter2.Filter.or;
 
-public class FilterPredicatesTest {
+public class FilterTest {
 
   private static final Column<Integer> intColumn = column("a.b.c");
   private static final Column<Double> doubleColumn = column("x.y.z");
