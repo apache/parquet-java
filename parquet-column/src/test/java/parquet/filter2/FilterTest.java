@@ -65,13 +65,6 @@ public class FilterTest {
   }
 
   @Test
-  public void testCollapseDoubleNegation() {
-    assertEquals(eq(intColumn, 10), not(not(eq(intColumn, 10))));
-    assertEquals(eq(intColumn, 10), not(not(not(not(eq(intColumn, 10))))));
-    assertEquals(not(eq(intColumn, 10)), not(not(not(eq(intColumn, 10)))));
-  }
-
-  @Test
   public void testToString() {
     assertEquals("and(not(or(eq(a.b.c, 7), eq(a.b.c, 17))), gt(x.y.z, 100.0))",
         predicate.toString());
