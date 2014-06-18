@@ -115,6 +115,19 @@ public final class FilterPredicates {
     }
   }
 
+  public static final class NotEq<T> extends ColumnFilterPredicate<T> {
+
+    NotEq(Column<T> column, T value) {
+      super(column, value);
+    }
+
+    @Override
+    public boolean accept(Visitor visitor) {
+      return visitor.visit(this);
+    }
+  }
+
+
   public static final class Lt<T> extends ColumnFilterPredicate<T> {
 
     Lt(Column<T> column, T value) {
@@ -127,9 +140,34 @@ public final class FilterPredicates {
     }
   }
 
+  public static final class LtEq<T> extends ColumnFilterPredicate<T> {
+
+    LtEq(Column<T> column, T value) {
+      super(column, value);
+    }
+
+    @Override
+    public boolean accept(Visitor visitor) {
+      return visitor.visit(this);
+    }
+  }
+
+
   public static final class Gt<T> extends ColumnFilterPredicate<T> {
 
     Gt(Column<T> column, T value) {
+      super(column, value);
+    }
+
+    @Override
+    public boolean accept(Visitor visitor) {
+      return visitor.visit(this);
+    }
+  }
+
+  public static final class GtEq<T> extends ColumnFilterPredicate<T> {
+
+    GtEq(Column<T> column, T value) {
       super(column, value);
     }
 

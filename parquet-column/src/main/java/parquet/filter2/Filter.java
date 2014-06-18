@@ -4,10 +4,12 @@ import parquet.filter2.FilterPredicates.And;
 import parquet.filter2.FilterPredicates.Column;
 import parquet.filter2.FilterPredicates.Eq;
 import parquet.filter2.FilterPredicates.Gt;
+import parquet.filter2.FilterPredicates.GtEq;
 import parquet.filter2.FilterPredicates.Lt;
+import parquet.filter2.FilterPredicates.LtEq;
 import parquet.filter2.FilterPredicates.Not;
+import parquet.filter2.FilterPredicates.NotEq;
 import parquet.filter2.FilterPredicates.Or;
-
 /**
  * The Filter API is expressed through these static methods.
  *
@@ -33,24 +35,24 @@ public final class Filter {
     return new Eq<T>(column, value);
   }
 
-  public static <T> FilterPredicate notEq(Column<T> column, T value) {
-    return not(eq(column, value));
+  public static <T> NotEq<T> notEq(Column<T> column, T value) {
+    return new NotEq<T>(column, value);
   }
 
   public static <T> Lt<T> lt(Column<T> column, T value) {
     return new Lt<T>(column, value);
   }
 
-  public static <T> FilterPredicate ltEq(Column<T> column, T value) {
-    return or(lt(column, value), eq(column, value));
+  public static <T> LtEq<T> ltEq(Column<T> column, T value) {
+    return new LtEq<T>(column, value);
   }
 
   public static <T> Gt<T> gt(Column<T> column, T value) {
     return new Gt<T>(column, value);
   }
 
-  public static <T> FilterPredicate gtEq(Column<T> column, T value) {
-    return or(gt(column, value), eq(column, value));
+  public static <T> GtEq<T> gtEq(Column<T> column, T value) {
+    return new GtEq<T>(column, value);
   }
 
   public static FilterPredicate and(FilterPredicate left, FilterPredicate right) {
