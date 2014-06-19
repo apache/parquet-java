@@ -16,16 +16,16 @@ import parquet.filter2.FilterPredicates.UserDefined;
  */
 public interface FilterPredicate {
   public static interface Visitor {
-    boolean visit(Eq<?> eq);
-    boolean visit(NotEq<?> notEq);
-    boolean visit(Lt<?> lt);
-    boolean visit(LtEq<?> ltEq);
-    boolean visit(Gt<?> gt);
-    boolean visit(GtEq<?> gtEq);
+    <T> boolean visit(Eq<T> eq);
+    <T> boolean visit(NotEq<T> notEq);
+    <T> boolean visit(Lt<T> lt);
+    <T> boolean visit(LtEq<T> ltEq);
+    <T> boolean visit(Gt<T> gt);
+    <T> boolean visit(GtEq<T> gtEq);
     boolean visit(And and);
     boolean visit(Or or);
     boolean visit(Not not);
-    boolean visit(UserDefined<?, ?> udp);
+    <T, U> boolean visit(UserDefined<T, U> udp);
   }
 
   boolean accept(Visitor visitor);
