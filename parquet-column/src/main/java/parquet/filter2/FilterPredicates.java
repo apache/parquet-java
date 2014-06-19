@@ -3,6 +3,12 @@ package parquet.filter2;
 import java.io.Serializable;
 
 import parquet.Preconditions;
+import parquet.filter2.UserDefinedPredicates.BinaryUserDefinedPredicate;
+import parquet.filter2.UserDefinedPredicates.DoubleUserDefinedPredicate;
+import parquet.filter2.UserDefinedPredicates.FloatUserDefinedPredicate;
+import parquet.filter2.UserDefinedPredicates.IntUserDefinedPredicate;
+import parquet.filter2.UserDefinedPredicates.LongUserDefinedPredicate;
+import parquet.filter2.UserDefinedPredicates.StringUserDefinedPredicate;
 
 /**
  * These are the nodes / tokens in a a filter predicate expression.
@@ -288,4 +294,100 @@ public final class FilterPredicates {
       return predicate.hashCode() * 31 + getClass().hashCode();
     }
   }
+
+  public static abstract class UserDefined<T, U> implements FilterPredicate, Serializable {
+    private final Column<T> column;
+    private final Class<U> udpClass;
+    private final String toString;
+
+    UserDefined(Column<T> column, Class<U> udpClass) {
+      Preconditions.checkNotNull(column, "column");
+      Preconditions.checkNotNull(udpClass, "userDefinedPredicate");
+      this.column = column;
+      this.udpClass = udpClass;
+      this.toString = "userDefined(" + column.getColumnPath() + ", " + udpClass.getName() + ")";
+    }
+
+    public Class<U> getUserDefinedPredicateClass() {
+      return udpClass;
+    }
+
+    public U getUserDefinedPredicate() {
+      try {
+        return udpClass.newInstance();
+      } catch (InstantiationException e) {
+        throw new RuntimeException("Could not instantiate custom filter: " + udpClass, e);
+      } catch (IllegalAccessException e) {
+        throw new RuntimeException("Could not instantiate custom filter: " + udpClass, e);
+      }
+    }
+
+    @Override
+    public boolean accept(Visitor visitor) {
+      return visitor.visit(this);
+    }
+
+    @Override
+    public String toString() {
+      return toString;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      UserDefined that = (UserDefined) o;
+
+      if (!column.equals(that.column)) return false;
+      if (!udpClass.equals(that.udpClass)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = column.hashCode();
+      result = 31 * result + udpClass.hashCode();
+      result = result * 31 + getClass().hashCode();
+      return result;
+    }
+  }
+
+  public static class IntUserDefined<T extends IntUserDefinedPredicate> extends UserDefined<Integer, T> {
+    IntUserDefined(Column<Integer> column, Class<T> udpClass) {
+      super(column, udpClass);
+    }
+  }
+
+  public static class LongUserDefined<T extends LongUserDefinedPredicate> extends UserDefined<Long, T> {
+    LongUserDefined(Column<Long> column, Class<T> udpClass) {
+      super(column, udpClass);
+    }
+  }
+
+  public static class FloatUserDefined<T extends FloatUserDefinedPredicate> extends UserDefined<Float, T> {
+    FloatUserDefined(Column<Float> column, Class<T> udpClass) {
+      super(column, udpClass);
+    }
+  }
+
+  public static class DoubleUserDefined<T extends DoubleUserDefinedPredicate> extends UserDefined<Double, T> {
+    DoubleUserDefined(Column<Double> column, Class<T> udpClass) {
+      super(column, udpClass);
+    }
+  }
+
+  public static class BinaryUserDefined<T extends BinaryUserDefinedPredicate> extends UserDefined<byte[], T> {
+    BinaryUserDefined(Column<byte[]> column, Class<T> udpClass) {
+      super(column, udpClass);
+    }
+  }
+
+  public static class StringUserDefined<T extends StringUserDefinedPredicate> extends UserDefined<String, T> {
+    StringUserDefined(Column<String> column, Class<T> udpClass) {
+      super(column, udpClass);
+    }
+  }
+
 }

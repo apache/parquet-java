@@ -9,6 +9,7 @@ import parquet.filter2.FilterPredicates.LtEq;
 import parquet.filter2.FilterPredicates.Not;
 import parquet.filter2.FilterPredicates.NotEq;
 import parquet.filter2.FilterPredicates.Or;
+import parquet.filter2.FilterPredicates.UserDefined;
 
 /**
  * FilterPredicates are implemented in terms of the visitor pattern.
@@ -24,6 +25,7 @@ public interface FilterPredicate {
     boolean visit(And and);
     boolean visit(Or or);
     boolean visit(Not not);
+    boolean visit(UserDefined<?, ?> udp);
   }
 
   boolean accept(Visitor visitor);
