@@ -13,9 +13,10 @@ import parquet.filter2.FilterPredicates.UserDefined;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static parquet.filter2.Filter.and;
-import static parquet.filter2.Filter.column;
+import static parquet.filter2.Filter.doubleColumn;
 import static parquet.filter2.Filter.eq;
 import static parquet.filter2.Filter.gt;
+import static parquet.filter2.Filter.intColumn;
 import static parquet.filter2.Filter.intPredicate;
 import static parquet.filter2.Filter.not;
 import static parquet.filter2.Filter.notEq;
@@ -24,8 +25,8 @@ import static parquet.filter2.FilterPredicates.NotEq;
 
 public class FilterTest {
 
-  private static final Column<Integer> intColumn = column("a.b.c");
-  private static final Column<Double> doubleColumn = column("x.y.z");
+  private static final Column<Integer> intColumn = intColumn("a.b.c");
+  private static final Column<Double> doubleColumn = doubleColumn("x.y.z");
 
   private static final FilterPredicate predicate =
       and(not(or(eq(intColumn, 7), notEq(intColumn, 17))), gt(doubleColumn, 100.0));

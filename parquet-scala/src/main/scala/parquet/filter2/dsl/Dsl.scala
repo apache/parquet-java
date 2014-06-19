@@ -22,32 +22,32 @@ object Dsl {
   }
 
   case class IntColumn(columnPath: String ) extends Column[java.lang.Integer] {
-    override val column = Filter.column[java.lang.Integer](columnPath)
+    override val column = Filter.intColumn(columnPath)
     def filterBy[T <: IntUserDefinedPredicate](c: Class[T]) = Filter.intPredicate(column, c)
   }
 
   case class LongColumn(columnPath: String ) extends Column[java.lang.Long] {
-    override val column = Filter.column[java.lang.Long](columnPath)
+    override val column = Filter.longColumn(columnPath)
     def filterBy[T <: LongUserDefinedPredicate](c: Class[T]) = Filter.longPredicate(column, c)
   }
 
   case class FloatColumn(columnPath: String ) extends Column[java.lang.Float] {
-    override val column = Filter.column[java.lang.Float](columnPath)
+    override val column = Filter.floatColumn(columnPath)
     def filterBy[T <: FloatUserDefinedPredicate](c: Class[T]) = Filter.floatPredicate(column, c)
   }
 
   case class DoubleColumn(columnPath: String ) extends Column[java.lang.Double] {
-    override val column = Filter.column[java.lang.Double](columnPath)
+    override val column = Filter.doubleColumn(columnPath)
     def filterBy[T <: DoubleUserDefinedPredicate](c: Class[T]) = Filter.doublePredicate(column, c)
   }
 
   case class BinaryColumn(columnPath: String ) extends Column[Array[Byte]] {
-    override val column = Filter.column[Array[Byte]](columnPath)
+    override val column = Filter.binaryColumn(columnPath)
     def filterBy[T <: BinaryUserDefinedPredicate](c: Class[T]) = Filter.binaryPredicate(column, c)
   }
 
   case class StringColumn(columnPath: String ) extends Column[String] {
-    override val column = Filter.column[String](columnPath)
+    override val column = Filter.stringColumn(columnPath)
     def filterBy[T <: StringUserDefinedPredicate](c: Class[T]) = Filter.stringPredicate(column, c)
   }
 

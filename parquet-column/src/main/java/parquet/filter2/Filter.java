@@ -40,8 +40,28 @@ import parquet.filter2.UserDefinedPredicates.StringUserDefinedPredicate;
 public final class Filter {
   private Filter() { }
 
-  public static <T> Column<T> column(String columnPath) {
-    return new Column<T>(columnPath);
+  public static Column<Integer> intColumn(String columnPath) {
+    return new Column<Integer>(columnPath, Integer.class);
+  }
+
+  public static Column<Long> longColumn(String columnPath) {
+    return new Column<Long>(columnPath, Long.class);
+  }
+
+  public static Column<Float> floatColumn(String columnPath) {
+    return new Column<Float>(columnPath, Float.class);
+  }
+
+  public static Column<Double> doubleColumn(String columnPath) {
+    return new Column<Double>(columnPath, Double.class);
+  }
+
+  public static Column<byte[]> binaryColumn(String columnPath) {
+    return new Column<byte[]>(columnPath, byte[].class);
+  }
+
+  public static Column<String> stringColumn(String columnPath) {
+    return new Column<String>(columnPath, String.class);
   }
 
   public static <T> Eq<T> eq(Column<T> column, T value) {
