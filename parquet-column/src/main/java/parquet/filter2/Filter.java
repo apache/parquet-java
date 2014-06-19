@@ -29,8 +29,8 @@ import parquet.filter2.UserDefinedPredicates.StringUserDefinedPredicate;
  * Example usage:
  * {@code
  *
- *   Column<Integer> foo = column("foo");
- *   Column<Double> bar = column("x.y.bar");
+ *   Column<Integer> foo = intColumn("foo");
+ *   Column<Double> bar = doubleColumn("x.y.bar");
  *
  *   // foo == 10 || bar <= 17.0
  *   FilterPredicate pred = or(eq(foo, 10), ltEq(bar, 17.0));
