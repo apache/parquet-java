@@ -290,6 +290,8 @@ public final class FilterPredicates {
     private final Column<T> column;
     private final Class<U> udpClass;
     private final String toString;
+    private static final String INSTANTIATION_ERROR_MESSAGE =
+        "Could not instantiate custom filter: %s. User defined predicates must be static classes with a default constructor.";
 
     UserDefined(Column<T> column, Class<U> udpClass) {
       Preconditions.checkNotNull(column, "column");
@@ -298,6 +300,8 @@ public final class FilterPredicates {
       this.udpClass = udpClass;
       String name = getClass().getSimpleName().toLowerCase();
       this.toString = name + "(" + column.getColumnPath() + ", " + udpClass.getName() + ")";
+
+      getUserDefinedPredicate();
     }
 
     public Class<U> getUserDefinedPredicateClass() {
@@ -308,9 +312,9 @@ public final class FilterPredicates {
       try {
         return udpClass.newInstance();
       } catch (InstantiationException e) {
-        throw new RuntimeException("Could not instantiate custom filter: " + udpClass, e);
+        throw new RuntimeException(String.format(INSTANTIATION_ERROR_MESSAGE, udpClass), e);
       } catch (IllegalAccessException e) {
-        throw new RuntimeException("Could not instantiate custom filter: " + udpClass, e);
+        throw new RuntimeException(String.format(INSTANTIATION_ERROR_MESSAGE, udpClass), e);
       }
     }
 
