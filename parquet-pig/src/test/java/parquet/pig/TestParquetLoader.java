@@ -20,7 +20,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 
 import org.apache.hadoop.mapreduce.Job;
@@ -28,15 +27,15 @@ import org.apache.pig.ExecType;
 import org.apache.pig.LoadPushDown.RequiredField;
 import org.apache.pig.LoadPushDown.RequiredFieldList;
 import org.apache.pig.PigServer;
-import org.apache.pig.builtin.PigStorage;
 import org.apache.pig.builtin.mock.Storage;
 import org.apache.pig.builtin.mock.Storage.Data;
 import org.apache.pig.data.DataType;
+import static org.apache.pig.data.DataType.*;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
+import static parquet.hadoop.ParquetInputFormat.STRICT_TYPE_CHECKING;
 
 public class TestParquetLoader {
   @Test
@@ -193,6 +192,60 @@ public class TestParquetLoader {
         assertTrue(t.isNull(2));
     }
   }  
+  
+  @Test
+  public void testTypePersuasion() throws Exception {
+    PigServer pigServer = new PigServer(ExecType.LOCAL); 
+    pigServer.setValidateEachStatement(true);
+    String out = "target/out";
+    int rows = 10;
+    Data data = Storage.resetData(pigServer);
+    List<Tuple> list = new ArrayList<Tuple>();
+    for (int i = 0; i < rows; i++) {
+      list.add(Storage.tuple(i, (long)i, (float)i, (double)i, Integer.toString(i), Boolean.TRUE));
+    }
+    data.set("in", "i:int, l:long, f:float, d:double, s:chararray, b:boolean", list );
+    pigServer.setBatchOn();
+    pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
+    pigServer.deleteFile(out);
+    pigServer.registerQuery("Store A into '"+out+"' using " + ParquetStorer.class.getName()+"();");
+    pigServer.executeBatch();
+      
+    pigServer.registerQuery("SET " + STRICT_TYPE_CHECKING + " false;");
+    
+    List<Tuple> actualList = null;
+     
+    byte [] types = { INTEGER, LONG, FLOAT, DOUBLE, CHARARRAY, BOOLEAN };
+    
+    //Test extracting values using each type.
+    for(int i=0; i<types.length; i++) {
+      String query = "B = LOAD '" + out + "' using " + ParquetLoader.class.getName()+
+        "('i:" + DataType.findTypeName(types[i%types.length])+"," +
+        "  l:" + DataType.findTypeName(types[(i+1)%types.length]) +"," +
+        "  f:" + DataType.findTypeName(types[(i+2)%types.length]) +"," +
+        "  d:" + DataType.findTypeName(types[(i+3)%types.length]) +"," +
+        "  s:" + DataType.findTypeName(types[(i+4)%types.length]) +"," +
+        "  b:" + DataType.findTypeName(types[(i+5)%types.length]) +"');";
+      
+      System.out.println("Query: " + query);
+      pigServer.registerQuery(query);
+      pigServer.registerQuery("STORE B into 'out"+i+"' using mock.Storage();");
+      pigServer.executeBatch();
+
+      actualList = data.get("out" + i);
+
+      assertEquals(rows, actualList.size());
+      for(Tuple t : actualList) {
+          assertTrue(t.getType(0) == types[i%types.length]);
+          assertTrue(t.getType(1) == types[(i+1)%types.length]);
+          assertTrue(t.getType(2) == types[(i+2)%types.length]);
+          assertTrue(t.getType(3) == types[(i+3)%types.length]);
+          assertTrue(t.getType(4) == types[(i+4)%types.length]);
+          assertTrue(t.getType(5) == types[(i+5)%types.length]);
+      }
+    }
+    
+  }
   
   @Test
   public void testRead() {

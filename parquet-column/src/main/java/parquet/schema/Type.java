@@ -195,6 +195,13 @@ abstract public class Type {
    * @return the union result of merging toMerge into this
    */
   protected abstract Type union(Type toMerge);
+  
+  /**
+   * @param toMerge the type to merge into this one
+   * @param strict should schema primitive types match
+   * @return the union result of merging toMerge into this
+   */
+  protected abstract Type union(Type toMerge, boolean strict);
 
   /**
    * {@inheritDoc}
