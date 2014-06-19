@@ -88,6 +88,41 @@ public class TestSpecificReadWrite {
   }
 
   @Test
+  public void testFilterMatchesNoBlocks() throws IOException {
+    Path path = writeCarsToParquetFile(10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE/64, DEFAULT_PAGE_SIZE/64);
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Bogus")));
+    assertNull(reader.read());
+  }
+
+  @Test
+  public void testFilterMatchesFinalBlockOnly() throws IOException {
+    File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
+    tmp.deleteOnExit();
+    tmp.delete();
+    Path path = new Path(tmp.getPath());
+
+    Car vwPolo   = getVwPolo();
+    Car vwPassat = getVwPassat();
+    Car bmwMini  = getBmwMini();
+
+    ParquetWriter<Car> writer = new AvroParquetWriter<Car>(path, Car.SCHEMA$,
+        CompressionCodecName.UNCOMPRESSED, DEFAULT_BLOCK_SIZE/128, DEFAULT_PAGE_SIZE/128,
+        false);
+    for (int i = 0; i < 10000; i++) {
+      writer.write(vwPolo);
+      writer.write(vwPassat);
+      writer.write(vwPolo);
+    }
+    writer.write(bmwMini); // only write BMW in last block
+    writer.close();
+
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make",
+        equalTo("BMW")));
+    assertEquals(getBmwMini().toString(), reader.read().toString());
+    assertNull(reader.read());
+  }
+
+  @Test
   public void testFilterWithDictionary() throws IOException {
     Path path = writeCarsToParquetFile(1,CompressionCodecName.UNCOMPRESSED,true);
     ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Volkswagen")));
