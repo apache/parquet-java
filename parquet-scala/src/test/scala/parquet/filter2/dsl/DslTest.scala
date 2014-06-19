@@ -34,7 +34,7 @@ class DslTest extends FlatSpec{
     val abc = IntColumn("a.b.c")
     val pred = (abc > 10) || abc.filterBy(classOf[DummyFilter])
 
-    val expected = Filter.or(Filter.gt[java.lang.Integer](abc.column, 10), Filter.intUserDefined(abc.column, classOf[DummyFilter]))
+    val expected = Filter.or(Filter.gt[java.lang.Integer](abc.column, 10), Filter.intPredicate(abc.column, classOf[DummyFilter]))
     assert(pred === expected)
     val intUserDefined = pred.asInstanceOf[Or].getRight.asInstanceOf[IntUserDefined[DummyFilter]]
 

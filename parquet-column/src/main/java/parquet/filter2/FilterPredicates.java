@@ -296,7 +296,8 @@ public final class FilterPredicates {
       Preconditions.checkNotNull(udpClass, "userDefinedPredicate");
       this.column = column;
       this.udpClass = udpClass;
-      this.toString = "userDefined(" + column.getColumnPath() + ", " + udpClass.getName() + ")";
+      String name = getClass().getSimpleName().toLowerCase();
+      this.toString = name + "(" + column.getColumnPath() + ", " + udpClass.getName() + ")";
     }
 
     public Class<U> getUserDefinedPredicateClass() {

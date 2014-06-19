@@ -16,7 +16,7 @@ import static parquet.filter2.Filter.and;
 import static parquet.filter2.Filter.column;
 import static parquet.filter2.Filter.eq;
 import static parquet.filter2.Filter.gt;
-import static parquet.filter2.Filter.intUserDefined;
+import static parquet.filter2.Filter.intPredicate;
 import static parquet.filter2.Filter.not;
 import static parquet.filter2.Filter.notEq;
 import static parquet.filter2.Filter.or;
@@ -73,7 +73,7 @@ public class FilterTest {
 
   @Test
   public void testNamedUdp() {
-    FilterPredicate predicate = or(eq(doubleColumn, 12.0), intUserDefined(intColumn, DummyUdp.class));
+    FilterPredicate predicate = or(eq(doubleColumn, 12.0), intPredicate(intColumn, DummyUdp.class));
     assertTrue(predicate instanceof Or);
     FilterPredicate ud = ((Or) predicate).getRight();
     assertTrue(ud instanceof UserDefined);
