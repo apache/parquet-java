@@ -56,6 +56,10 @@ public final class Filter {
     return new Column<Double>(columnPath, Double.class);
   }
 
+  public static Column<Boolean> booleanColumn(String columnPath) {
+    return new Column<Boolean>(columnPath, Boolean.class);
+  }
+
   public static Column<byte[]> binaryColumn(String columnPath) {
     return new Column<byte[]>(columnPath, byte[].class);
   }

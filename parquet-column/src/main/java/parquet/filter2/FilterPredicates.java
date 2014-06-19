@@ -19,17 +19,17 @@ public final class FilterPredicates {
 
   public static final class Column<T> implements Serializable {
     private final String columnPath;
-    private final Class<T> clazz;
+    private final Class<T> columnType;
 
-    Column(String columnPath, Class<T> clazz) {
+    Column(String columnPath, Class<T> columnType) {
       Preconditions.checkNotNull(columnPath, "columnPath");
-      Preconditions.checkNotNull(clazz, "clazz");
+      Preconditions.checkNotNull(columnType, "columnType");
       this.columnPath = columnPath;
-      this.clazz = clazz;
+      this.columnType = columnType;
     }
 
-    public Class<T> getClazz() {
-      return clazz;
+    public Class<T> getColumnType() {
+      return columnType;
     }
 
     public String getColumnPath() {
@@ -48,7 +48,7 @@ public final class FilterPredicates {
 
       Column column = (Column) o;
 
-      if (!clazz.equals(column.clazz)) return false;
+      if (!columnType.equals(column.columnType)) return false;
       if (!columnPath.equals(column.columnPath)) return false;
 
       return true;
@@ -57,13 +57,13 @@ public final class FilterPredicates {
     @Override
     public int hashCode() {
       int result = columnPath.hashCode();
-      result = 31 * result + clazz.hashCode();
+      result = 31 * result + columnType.hashCode();
       return result;
     }
   }
 
   // base class for Eq, Lt, Gt
-  private static abstract class ColumnFilterPredicate<T> implements FilterPredicate, Serializable  {
+  static abstract class ColumnFilterPredicate<T> implements FilterPredicate, Serializable  {
     private final Column<T> column;
     private final T value;
     private final String toString;
@@ -315,6 +315,10 @@ public final class FilterPredicates {
       this.toString = name + "(" + column.getColumnPath() + ", " + udpClass.getName() + ")";
 
       getUserDefinedPredicate();
+    }
+
+    public Column<T> getColumn() {
+      return column;
     }
 
     public Class<U> getUserDefinedPredicateClass() {
