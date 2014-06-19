@@ -48,15 +48,6 @@ public final class FilterPredicates {
     }
   }
 
-  // converts "parquet.filter2.FilterPredicates$And" -> "and'
-  private static String getClassName(Class<?> c) {
-    String name = c.getName();
-    // chop off everything up to the first '.'
-    name = name.substring(name.lastIndexOf('.') + 1);
-    // chop off everything up to the first '$'
-    name = name.substring(name.lastIndexOf('$') + 1).toLowerCase();
-    return name;
-  }
 
   // base class for Eq, Lt, Gt
   private static abstract class ColumnFilterPredicate<T> implements FilterPredicate, Serializable  {
@@ -70,7 +61,7 @@ public final class FilterPredicates {
       this.column = column;
       this.value = value;
 
-      String name = getClassName(getClass());
+      String name = getClass().getSimpleName().toLowerCase();
       this.toString = name + "(" + column.getColumnPath() + ", " + value + ")";
     }
 
@@ -194,7 +185,7 @@ public final class FilterPredicates {
       Preconditions.checkNotNull(right, "right");
       this.left = left;
       this.right = right;
-      String name = getClassName(getClass());
+      String name = getClass().getSimpleName().toLowerCase();
       this.toString = name + "(" + left + ", " + right + ")";
     }
 
