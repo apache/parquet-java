@@ -76,19 +76,19 @@ public final class Filter {
     return new LongUserDefined<T>(column, clazz);
   }
 
-  public static <T extends FloatUserDefinedPredicate> FloatUserDefined FloatUserDefined(Column<Float> column, Class<T> clazz) {
+  public static <T extends FloatUserDefinedPredicate> FloatUserDefined floatUserDefined(Column<Float> column, Class<T> clazz) {
     return new FloatUserDefined<T>(column, clazz);
   }
 
-  public static <T extends DoubleUserDefinedPredicate> DoubleUserDefined DoubleUserDefined(Column<Double> column, Class<T> clazz) {
+  public static <T extends DoubleUserDefinedPredicate> DoubleUserDefined doubleUserDefined(Column<Double> column, Class<T> clazz) {
     return new DoubleUserDefined<T>(column, clazz);
   }
 
-  public static <T extends BinaryUserDefinedPredicate> BinaryUserDefined BinaryUserDefined(Column<byte[]> column, Class<T> clazz) {
+  public static <T extends BinaryUserDefinedPredicate> BinaryUserDefined binaryUserDefined(Column<byte[]> column, Class<T> clazz) {
     return new BinaryUserDefined<T>(column, clazz);
   }
 
-  public static <T extends StringUserDefinedPredicate> StringUserDefined StringUserDefined(Column<String> column, Class<T> clazz) {
+  public static <T extends StringUserDefinedPredicate> StringUserDefined stringUserDefined(Column<String> column, Class<T> clazz) {
     return new StringUserDefined<T>(column, clazz);
   }
 
