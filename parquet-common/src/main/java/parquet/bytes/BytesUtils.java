@@ -58,6 +58,21 @@ public class BytesUtils {
     int ch1 = in.get(offset + 3) & 0xff;
     return ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
   }
+  
+  /**
+   * reads an int in little endian at the given position
+   * @param in
+   * @param offset
+   * @return
+   * @throws IOException
+   */
+  public static int readIntLittleEndian(byte[] in, int offset) throws IOException {
+    int ch4 = in[offset] & 0xff;
+    int ch3 = in[offset + 1] & 0xff;
+    int ch2 = in[offset + 2] & 0xff;
+    int ch1 = in[offset + 3] & 0xff;
+    return ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
+  }
 
   public static int readIntLittleEndian(InputStream in) throws IOException {
     // TODO: this is duplicated code in LittleEndianDataInputStream
