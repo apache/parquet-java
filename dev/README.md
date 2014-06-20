@@ -2,7 +2,7 @@
 This directory contains scripts useful to developers when packaging,
 testing, or committing to Parquet.
 
-Many of these scripts require Apache credentials to work correctly.
+Merging a pull request requires being a comitter on the project.
 
 * How to merge a Pull request:
 have an apache and github-apache remote setup
