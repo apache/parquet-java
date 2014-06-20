@@ -76,24 +76,22 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
   class EnumWriteProtocol extends FieldBaseWriteProtocol {
 
-    private final Map<Integer, Binary> enumLookup = new HashMap<Integer, Binary>();
+    private final EnumType type;
     private PrimitiveColumnIO columnIO;
     public EnumWriteProtocol(PrimitiveColumnIO columnIO, EnumType type, Events returnClause) {
       super(returnClause);
-      for (EnumValue enumValue : type.getValues()) {
-        enumLookup.put(enumValue.getId(), Binary.fromString(enumValue.getName()));
-      }
-      this.columnIO=columnIO;
+      this.columnIO = columnIO;
+      this.type = type;
     }
 
     @Override
     public void writeI32(int i32) throws TException {
       start();
-      Binary value = enumLookup.get(i32);
+      EnumValue value = type.getEnumValueById(i32);
       if (value == null) {
         throw new ParquetEncodingException("Can not find enum value of index " + i32 + " for field:" + columnIO.toString());
       }
-      recordConsumer.addBinary(value);
+      recordConsumer.addBinary(Binary.fromString(value.getName()));
       end();
     }
 

@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+
+################################################################################
+# Parquet Tools startup script for UNIX like environments
+################################################################################
+
+# Add any default JVM options here. Default options can also be passed using
+# the JAVA_OPTS and PARQUET_TOOLS_OPTS environment variables.
+DEFAULT_JVM_OPTS=""
+
+# Determine the path to the script's directory
+APPPATH=$( cd "$(dirname "$0")" ; pwd -P )
+
+# Determine the java command to use
+if [ -n "${JAVA_HOME}" ]; then
+  if [ -x "${JAVA_HOME}/jre/sh/java" ]; then
+    JAVACMD="${JAVA_HOME}/jre/sh/java"
+  elif [ -x "${JAVA_HOME}/bin/java" ]; then
+    JAVACMD="${JAVA_HOME}/bin/java"
+  fi
+else
+  JAVACMD=$(which java)
+fi
+
+# Make sure the java command is available
+if [ ! -x "${JAVACMD}" ]; then
+  echo ""
+  echo "ERROR: Cannot find a java executable."
+  echo "Please set JAVA_HOME to the location of your java installation."
+  echo ""
+  exit 1
+fi
+
+# Determine if we are outputting to a terminal
+if [ -z "${TERMOUT}" ]; then
+    [ -t 1 ] && TERMOUT="true"
+    [ -t 1 ] || TERMOUT="false"
+fi
+
+export TERMOUT
+
+# Attempt to detect terminal information
+TPUT=$(which tput)
+
+if [ "${TERMOUT}" == "true" ]; then
+  if [ -z "${COLUMNS}" ] && [ -n "${TPUT}" ]; then
+    TPUTCOLS=$(${TPUT} cols)
+    if [ $? -eq 0 ]; then
+      COLUMNS="${TPUTCOLS}"
+    fi
+  fi
+
+  if [ -z "${LINES}" ] && [ -n "${TPUT}" ]; then
+    TPUTLINES=$(${TPUT} cols)
+    if [ $? -eq 0 ]; then
+      LINES="${TPUTLINES}"
+    fi
+  fi
+
+  if [ -z "${COLORS}" ] && [ -n "${TPUT}" ]; then
+    TPUTCOLORS=$(${TPUT} colors)
+    if [ $? -eq 0 ]; then
+      COLORS="${TPUTCOLORS}"
+    fi
+  fi
+
+  if [ -z "${COLORS}" ]; then
+    case "$TERM" in
+      *-color) COLORS=8;;
+      *-256color) COLORS=256;;
+    esac
+  fi
+
+  [ -z "${COLUMNS}" ] || export COLUMNS
+  [ -z "${LINES}" ] || export LINES
+  [ -z "${COLORS}" ] || export COLORS
+fi
+
+# Run the application
+exec ${JAVACMD} ${DEFAULT_JVM_OPTS} ${JAVA_OPTS} ${PARQUET_TOOLS_OPTS} -classpath "${APPPATH}:${APPPATH}/lib/*" parquet.tools.Main "$@"

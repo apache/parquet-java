@@ -15,6 +15,7 @@
  */
 package parquet.column;
 
+import parquet.column.statistics.Statistics;
 import parquet.io.api.Binary;
 
 /**
@@ -91,6 +92,5 @@ public interface ColumnWriter {
    * @return the number of bytes of memory used to buffer the current data
    */
   long getBufferedSizeInMemory();
-
 }
 

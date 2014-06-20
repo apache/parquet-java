@@ -19,7 +19,7 @@ import org.junit.Test;
 import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.test.compat.*;
 
-import static junit.framework.Assert.assertEquals;
+import static org.junit.Assert.assertEquals;
 
 public class CompatibilityCheckerTest {
 

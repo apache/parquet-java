@@ -198,20 +198,20 @@ public final class PrimitiveType extends Type {
         return converter.convertDOUBLE(this);
       }
     },
-    INT96(null, null) { // TODO: support for INT96
+    INT96("getBinary", Binary.class) {
       @Override
       public String toString(ColumnReader columnReader) {
-        throw new UnsupportedOperationException("NYI");
+        return Arrays.toString(columnReader.getBinary().getBytes());
       }
       @Override
       public void addValueToRecordConsumer(RecordConsumer recordConsumer,
           ColumnReader columnReader) {
-        throw new UnsupportedOperationException("NYI");
+        recordConsumer.addBinary(columnReader.getBinary());
       }
       @Override
       public void addValueToPrimitiveConverter(
           PrimitiveConverter primitiveConverter, ColumnReader columnReader) {
-        throw new UnsupportedOperationException("NYI");
+        primitiveConverter.addBinary(columnReader.getBinary());
       }
 
       @Override
@@ -275,6 +275,7 @@ public final class PrimitiveType extends Type {
 
   private final PrimitiveTypeName primitive;
   private final int length;
+  private final DecimalMetadata decimalMeta;
 
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
@@ -283,7 +284,7 @@ public final class PrimitiveType extends Type {
    */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, 
                        String name) {
-    this(repetition, primitive, name, null);
+    this(repetition, primitive, 0, name, null, null);
   }
 
   /**
@@ -293,7 +294,7 @@ public final class PrimitiveType extends Type {
    * @param name the name of the type
    */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, int length, String name) {
-    this(repetition, primitive, length, name, null);
+    this(repetition, primitive, length, name, null, null);
   }
 
   /**
@@ -304,11 +305,11 @@ public final class PrimitiveType extends Type {
    */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, 
                        String name, OriginalType originalType) {
-    this(repetition, primitive, 0, name, originalType);
+    this(repetition, primitive, 0, name, originalType, null);
   }
 
   /**
-   * @param repetition OPTIONAL, REPEATED, REQUIRD
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param primitive STRING, INT64, ...
    * @param name the name of the type
    * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise (XXX)
@@ -316,9 +317,24 @@ public final class PrimitiveType extends Type {
    */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
                        int length, String name, OriginalType originalType) {
+    this(repetition, primitive, length, name, originalType, null);
+  }
+
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param primitive STRING, INT64, ...
+   * @param name the name of the type
+   * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise
+   * @param originalType (optional) the original type (MAP, DECIMAL, UTF8, ...)
+   * @param decimalMeta (optional) metadata about the decimal type
+   */
+  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
+                       int length, String name, OriginalType originalType,
+                       DecimalMetadata decimalMeta) {
     super(name, repetition, originalType);
     this.primitive = primitive;
     this.length = length;
+    this.decimalMeta = decimalMeta;
   }
 
   /**
@@ -333,6 +349,13 @@ public final class PrimitiveType extends Type {
    */
   public int getTypeLength() {
     return length;
+  }
+
+  /**
+   * @return the decimal type metadata
+   */
+  public DecimalMetadata getDecimalMetadata() {
+    return decimalMeta;
   }
 
   /**
@@ -365,7 +388,16 @@ public final class PrimitiveType extends Type {
     }
     sb.append(" ").append(getName());
     if (getOriginalType() != null) {
-      sb.append(" (").append(getOriginalType()).append(")");
+      sb.append(" (").append(getOriginalType());
+      DecimalMetadata meta = getDecimalMetadata();
+      if (meta != null) {
+        sb.append("(")
+            .append(meta.getPrecision())
+            .append(",")
+            .append(meta.getScale())
+            .append(")");
+      }
+      sb.append(")");
     }
   }
 
@@ -376,6 +408,10 @@ public final class PrimitiveType extends Type {
   protected boolean typeEquals(Type other) {
     if (other.isPrimitive()) {
       PrimitiveType primitiveType = other.asPrimitiveType();
+      if ((getPrimitiveTypeName() == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) &&
+          (getTypeLength() != primitiveType.getTypeLength())) {
+        return false;
+      }
       return getRepetition() == primitiveType.getRepetition() &&
           getPrimitiveTypeName().equals(primitiveType.getPrimitiveTypeName()) &&
           getName().equals(primitiveType.getName());
@@ -453,6 +489,11 @@ public final class PrimitiveType extends Type {
     if (!toMerge.isPrimitive() || !primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName())) {
       throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " into " + this);
     }
-    return new PrimitiveType(toMerge.getRepetition(), primitive, getName());
+    Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(
+        primitive, toMerge.getRepetition());
+    if (PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY == primitive) {
+      builder.length(length);
+    }
+    return builder.named(getName());
   }
 }

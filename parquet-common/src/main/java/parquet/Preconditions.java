@@ -47,4 +47,15 @@ public final class Preconditions {
       throw new IllegalArgumentException(message);
     }
   }
+
+  /**
+   * @param valid whether the argument is valid
+   * @param message error message if the argument is not valid
+   * @throws IllegalStateException if !valid
+   */
+  public static void checkState(boolean valid, String message) throws IllegalStateException {
+    if (!valid) {
+      throw new IllegalStateException(message);
+    }
+  }
 }

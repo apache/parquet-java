@@ -15,15 +15,14 @@
  */
 package parquet.column.values.plain;
 
-import static parquet.Log.DEBUG;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
-
 import parquet.Log;
 import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
+
+import static parquet.Log.DEBUG;
 
 /**
  * ValuesReader for FIXED_LEN_BYTE_ARRAY.

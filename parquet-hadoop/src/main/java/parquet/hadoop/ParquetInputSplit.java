@@ -15,11 +15,13 @@
  */
 package parquet.hadoop;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -28,13 +30,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
-import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 
+import parquet.Log;
 import parquet.column.Encoding;
+import parquet.column.statistics.IntStatistics;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ColumnPath;
@@ -47,12 +52,10 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
  *
  * @author Julien Le Dem
  */
-public class ParquetInputSplit extends InputSplit implements Writable {
+public class ParquetInputSplit extends FileSplit implements Writable {
 
-  private String path;
-  private long start;
-  private long length;
-  private String[] hosts;
+  private static final Log LOG = Log.getLog(ParquetInputSplit.class);
+
   private List<BlockMetaData> blocks;
   private String requestedSchema;
   private String fileSchema;
@@ -64,6 +67,7 @@ public class ParquetInputSplit extends InputSplit implements Writable {
    * Writables must have a parameterless constructor
    */
   public ParquetInputSplit() {
+        super(null, 0, 0, new String[0]);
   }
 
   /**
@@ -90,10 +94,7 @@ public class ParquetInputSplit extends InputSplit implements Writable {
       String fileSchema,
       Map<String, String> extraMetadata,
       Map<String, String> readSupportMetadata) {
-    this.path = path.toUri().toString().intern();
-    this.start = start;
-    this.length = length;
-    this.hosts = hosts;
+    super(path, start, length, hosts);
     this.blocks = blocks;
     this.requestedSchema = requestedSchema;
     this.fileSchema = fileSchema;
@@ -106,40 +107,6 @@ public class ParquetInputSplit extends InputSplit implements Writable {
    */
   public List<BlockMetaData> getBlocks() {
     return blocks;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public long getLength() throws IOException, InterruptedException {
-    return length;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public String[] getLocations() throws IOException, InterruptedException {
-    return hosts;
-  }
-
-  /**
-   * @return the offset of the block in the file
-   */
-  public long getStart() {
-    return start;
-  }
-
-  /**
-   * @return the path of the file containing the block
-   */
-  public Path getPath() {
-    try {
-      return new Path(new URI(path));
-    } catch (URISyntaxException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   /**
@@ -175,20 +142,14 @@ public class ParquetInputSplit extends InputSplit implements Writable {
    */
   @Override
   public void readFields(DataInput in) throws IOException {
-    this.path = in.readUTF().intern();
-    this.start = in.readLong();
-    this.length = in.readLong();
-    this.hosts = new String[in.readInt()];
-    for (int i = 0; i < hosts.length; i++) {
-      hosts[i] = in.readUTF().intern();
-    }
+    super.readFields(in);
     int blocksSize = in.readInt();
     this.blocks = new ArrayList<BlockMetaData>(blocksSize);
     for (int i = 0; i < blocksSize; i++) {
       blocks.add(readBlock(in));
     }
-    this.requestedSchema = Text.readString(in);
-    this.fileSchema = Text.readString(in);
+    this.requestedSchema = decompressString(in);
+    this.fileSchema = decompressString(in);
     this.extraMetadata = readKeyValues(in);
     this.readSupportMetadata = readKeyValues(in);
   }
@@ -198,21 +159,72 @@ public class ParquetInputSplit extends InputSplit implements Writable {
    */
   @Override
   public void write(DataOutput out) throws IOException {
-    out.writeUTF(path);
-    out.writeLong(start);
-    out.writeLong(length);
-    out.writeInt(hosts.length);
-    for (String host : hosts) {
-      out.writeUTF(host);
-    }
+    super.write(out);
     out.writeInt(blocks.size());
     for (BlockMetaData block : blocks) {
       writeBlock(out, block);
     }
-    Text.writeString(out, requestedSchema);
-    Text.writeString(out, fileSchema);
+    byte[] compressedSchema = compressString(requestedSchema);
+    out.writeInt(compressedSchema.length);
+    out.write(compressedSchema);
+    compressedSchema = compressString(fileSchema);
+    out.writeInt(compressedSchema.length);
+    out.write(compressedSchema);
     writeKeyValues(out, extraMetadata);
     writeKeyValues(out, readSupportMetadata);
+  }
+
+  byte[] compressString(String str) {
+    ByteArrayOutputStream obj = new ByteArrayOutputStream();
+    GZIPOutputStream gzip;
+    try {
+      gzip = new GZIPOutputStream(obj);
+      gzip.write(str.getBytes("UTF-8"));
+      gzip.close();
+    } catch (IOException e) {
+      // Not really sure how we can get here. I guess the best thing to do is to croak.
+      LOG.error("Unable to gzip InputSplit string " + str, e);
+      throw new RuntimeException("Unable to gzip InputSplit string", e);
+    }
+    return obj.toByteArray();
+  }
+
+  String decompressString(DataInput in) throws IOException {
+    int len = in.readInt();
+    byte[] bytes = new byte[len];
+    in.readFully(bytes);
+    return decompressString(bytes);
+  }
+
+  String decompressString(byte[] bytes) {
+    ByteArrayInputStream obj = new ByteArrayInputStream(bytes);
+    GZIPInputStream gzip = null;
+    String outStr = "";
+    try {
+      gzip = new GZIPInputStream(obj);
+      BufferedReader reader = new BufferedReader(new InputStreamReader(gzip, "UTF-8"));
+      char[] buffer = new char[1024];
+      int n = 0;
+      StringBuilder sb = new StringBuilder();
+      while (-1 != (n = reader.read(buffer))) {
+        sb.append(buffer, 0, n);
+      }
+      outStr = sb.toString();
+    } catch (IOException e) {
+      // Not really sure how we can get here. I guess the best thing to do is to croak.
+      LOG.error("Unable to uncompress InputSplit string", e);
+      throw new RuntimeException("Unable to uncompress InputSplit String", e);
+    } finally {
+      if (null != gzip) {
+        try {
+          gzip.close();
+        } catch (IOException e) {
+          LOG.error("Unable to uncompress InputSplit", e);
+          throw new RuntimeException("Unable to uncompress InputSplit String", e);
+        }
+      }
+    }
+    return outStr;
   }
 
   private BlockMetaData readBlock(DataInput in) throws IOException {
@@ -256,8 +268,9 @@ public class ParquetInputSplit extends InputSplit implements Writable {
     for (int i = 0; i < encodingsSize; i++) {
       encodings.add(Encoding.values()[in.readInt()]);
     }
+    IntStatistics emptyStats = new IntStatistics();
     ColumnChunkMetaData column = ColumnChunkMetaData.get(
-        ColumnPath.get(columnPath), type, codec, encodings,
+        ColumnPath.get(columnPath), type, codec, encodings, emptyStats,
         in.readLong(), in.readLong(), in.readLong(), in.readLong(), in.readLong());
     return column;
   }
@@ -285,8 +298,8 @@ public class ParquetInputSplit extends InputSplit implements Writable {
     int size = in.readInt();
     Map<String, String> map = new HashMap<String, String>(size);
     for (int i = 0; i < size; i++) {
-      String key = in.readUTF().intern();
-      String value = in.readUTF().intern();
+      String key = decompressString(in).intern();
+      String value = decompressString(in).intern();
       map.put(key, value);
     }
     return map;
@@ -298,18 +311,28 @@ public class ParquetInputSplit extends InputSplit implements Writable {
     } else {
       out.writeInt(map.size());
       for (Entry<String, String> entry : map.entrySet()) {
-        out.writeUTF(entry.getKey());
-        out.writeUTF(entry.getValue());
+        byte[] compr = compressString(entry.getKey());
+        out.writeInt(compr.length);
+        out.write(compr);
+        compr = compressString(entry.getValue());
+        out.writeInt(compr.length);
+        out.write(compr);
       }
     }
   }
 
+
   @Override
   public String toString() {
+    String hosts[] = {};
+    try{
+       hosts = getLocations();
+    }catch(Exception ignore){} // IOException/InterruptedException could be thrown
+
     return this.getClass().getSimpleName() + "{" +
-           "part: " + path
-        + " start: " + start
-        + " length: " + length
+           "part: " + getPath()
+        + " start: " + getStart()
+        + " length: " + getLength()
         + " hosts: " + Arrays.toString(hosts)
         + " blocks: " + blocks.size()
         + " requestedSchema: " + (fileSchema.equals(requestedSchema) ? "same as file" : requestedSchema)

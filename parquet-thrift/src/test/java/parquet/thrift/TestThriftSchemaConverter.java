@@ -53,8 +53,7 @@ public class TestThriftSchemaConverter {
                     "  }\n" +
                     "}";
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
-    StructType messageStruct=schemaConverter.toStructType(AddressBook.class);
-    final MessageType converted = schemaConverter.convert(messageStruct);
+    final MessageType converted = schemaConverter.convert(AddressBook.class);
     assertEquals(MessageTypeParser.parseMessageType(expected), converted);
   }
 
@@ -185,24 +184,6 @@ public class TestThriftSchemaConverter {
             "}", TestStructInMap.class);
   }
 
-//  @Test
-//  public void testPullInRequiredFields(){
-//    shouldGetProjectedSchema("age","message TestPerson {\n" +
-//            "  required group name {\n" +
-//            "    required binary first_name (UTF8);\n" +
-//            "  }\n" +
-//            "  optional int32 age;\n" +
-//            "}",TestPerson.class);
-//
-//    shouldGetProjectedSchema("age","message TestPerson {\n" +
-//            "  required group name {\n" +
-//            "    required binary first_name (UTF8);\n" +
-//            "  }\n" +
-//            "  optional int32 age;\n" +
-//            "}",TestPerson.class);
-////    System.out.println(getFilteredSchema("**",TestPerson.class));
-//  }
-
   @Test
   public void testProjectOnlyKeyInMap() {
     shouldGetProjectedSchema("name;names/key","message ParquetSchema {\n" +
@@ -231,8 +212,9 @@ public class TestThriftSchemaConverter {
     return new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftClass);
   }
 
+
   @Test
-  public void testToThriftTypeWithoutManualProjection() throws Exception {
+  public void testToThriftType() throws Exception {
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final StructType converted = schemaConverter.toStructType(AddressBook.class);
     final String json = converted.toJSON();
@@ -240,5 +222,4 @@ public class TestThriftSchemaConverter {
     final ThriftType fromJSON = StructType.fromJSON(json);
     assertEquals(json, fromJSON.toJSON());
   }
-
 }

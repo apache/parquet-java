@@ -1,5 +1,72 @@
 # Parquet #
 
+### Version 1.5.0 ###
+* ISSUE [399](https://github.com/Parquet/parquet-mr/pull/399): Fixed resetting stats after writePage bug, unit testing of readFooter
+* ISSUE [397](https://github.com/Parquet/parquet-mr/pull/397): Fixed issue with column pruning when using requested schema
+* ISSUE [389](https://github.com/Parquet/parquet-mr/pull/389): Added padding for requested columns not found in file schema
+* ISSUE [392](https://github.com/Parquet/parquet-mr/pull/392): Value stats fixes
+* ISSUE [338](https://github.com/Parquet/parquet-mr/pull/338): Added statistics to Parquet pages and rowGroups
+* ISSUE [351](https://github.com/Parquet/parquet-mr/pull/351): Fix bug #350, fixed length argument out of order.
+* ISSUE [378](https://github.com/Parquet/parquet-mr/pull/378): configure semver to enforce semantic versioning
+* ISSUE [355](https://github.com/Parquet/parquet-mr/pull/355): Add support for DECIMAL type annotation.
+* ISSUE [336](https://github.com/Parquet/parquet-mr/pull/336): protobuf dependency version changed from 2.4.1 to 2.5.0
+* ISSUE [337](https://github.com/Parquet/parquet-mr/pull/337): issue #324, move ParquetStringInspector to org.apache.hadoop.hive.serde...
+
+### Version 1.4.3 ###
+* ISSUE [381](https://github.com/Parquet/parquet-mr/pull/381): fix metadata concurency problem
+
+### Version 1.4.2 ###
+* ISSUE [359](https://github.com/Parquet/parquet-mr/pull/359): Expose values in SimpleRecord
+* ISSUE [335](https://github.com/Parquet/parquet-mr/pull/335): issue #290, hive map conversion to parquet schema
+* ISSUE [365](https://github.com/Parquet/parquet-mr/pull/365): generate splits by min max size, and align to HDFS block when possible
+* ISSUE [353](https://github.com/Parquet/parquet-mr/pull/353): Fix bug: optional enum field causing ScroogeSchemaConverter to fail
+* ISSUE [362](https://github.com/Parquet/parquet-mr/pull/362): Fix output bug during parquet-dump command
+* ISSUE [366](https://github.com/Parquet/parquet-mr/pull/366): do not call schema converter to generate projected schema when projection is not set
+* ISSUE [367](https://github.com/Parquet/parquet-mr/pull/367): make ParquetFileWriter throw IOException in invalid state case
+* ISSUE [352](https://github.com/Parquet/parquet-mr/pull/352): Parquet thrift storer
+* ISSUE [349](https://github.com/Parquet/parquet-mr/pull/349): fix header bug
+
+### Version 1.4.1 ###
+* ISSUE [344](https://github.com/Parquet/parquet-mr/pull/344): select * from parquet hive table containing map columns runs into exception. Issue #341.
+* ISSUE [347](https://github.com/Parquet/parquet-mr/pull/347): set reading length in ThriftBytesWriteSupport to avoid potential OOM cau...
+* ISSUE [346](https://github.com/Parquet/parquet-mr/pull/346): stop using strings and b64 for compressed input splits
+* ISSUE [345](https://github.com/Parquet/parquet-mr/pull/345): set cascading version to 2.5.3
+* ISSUE [342](https://github.com/Parquet/parquet-mr/pull/342): compress kv pairs in ParquetInputSplits
+ 
+### Version 1.4.0 ###
+* ISSUE [333](https://github.com/Parquet/parquet-mr/pull/333): Compress schemas in split
+* ISSUE [329](https://github.com/Parquet/parquet-mr/pull/329): fix filesystem resolution
+* ISSUE [320](https://github.com/Parquet/parquet-mr/pull/320): Spelling fix
+* ISSUE [319](https://github.com/Parquet/parquet-mr/pull/319): oauth based authentication; fix grep change
+* ISSUE [310](https://github.com/Parquet/parquet-mr/pull/310): Merge parquet tools
+* ISSUE [314](https://github.com/Parquet/parquet-mr/pull/314): Fix avro schema conv for arrays of optional type for #312.
+* ISSUE [311](https://github.com/Parquet/parquet-mr/pull/311): Avro null default values bug
+* ISSUE [316](https://github.com/Parquet/parquet-mr/pull/316): Update poms to use thrift.exectuable property.
+* ISSUE [285](https://github.com/Parquet/parquet-mr/pull/285): [CASCADING] Provide the sink implementation for ParquetTupleScheme
+* ISSUE [264](https://github.com/Parquet/parquet-mr/pull/264): Native Protocol Buffer support
+* ISSUE [293](https://github.com/Parquet/parquet-mr/pull/293): Int96 support
+* ISSUE [313](https://github.com/Parquet/parquet-mr/pull/313): Add hadoop Configuration to Avro and Thrift writers (#295).
+* ISSUE [262](https://github.com/Parquet/parquet-mr/pull/262): Scrooge schema converter and projection pushdown in Scrooge
+* ISSUE [297](https://github.com/Parquet/parquet-mr/pull/297): Ports HIVE-5783 to the parquet-hive module
+* ISSUE [303](https://github.com/Parquet/parquet-mr/pull/303): Avro read schema aliases
+* ISSUE [299](https://github.com/Parquet/parquet-mr/pull/299): Fill in default values for new fields in the Avro read schema
+* ISSUE [298](https://github.com/Parquet/parquet-mr/pull/298): Bugfix reorder thrift fields causing writting nulls
+* ISSUE [289](https://github.com/Parquet/parquet-mr/pull/289): first use current thread's classloader to load a class, if current threa...
+* ISSUE [292](https://github.com/Parquet/parquet-mr/pull/292): Added ParquetWriter() that takes an instance of Hadoop's Configuration.
+* ISSUE [282](https://github.com/Parquet/parquet-mr/pull/282): Avro default read schema
+* ISSUE [280](https://github.com/Parquet/parquet-mr/pull/280): style: junit.framework to org.junit
+* ISSUE [270](https://github.com/Parquet/parquet-mr/pull/270): Make ParquetInputSplit extend FileSplit
+
+### Version 1.3.2 ###
+* ISSUE [271](https://github.com/Parquet/parquet-mr/pull/271): fix bug: last enum index throws DecodingSchemaMismatchException
+* ISSUE [268](https://github.com/Parquet/parquet-mr/pull/268): fixes #265: add semver validation checks to non-bundle builds
+* ISSUE [269](https://github.com/Parquet/parquet-mr/pull/269): Bumps parquet-jackson parent version
+* ISSUE [260](https://github.com/Parquet/parquet-mr/pull/260): Shade jackson only once for all parquet modules
+
+### Version 1.3.1 ###
+* ISSUE [267](https://github.com/Parquet/parquet-mr/pull/267): handler only handle ignored field, exception during will be thrown as Sk...
+* ISSUE [266](https://github.com/Parquet/parquet-mr/pull/266): upgrade parquet-mr to elephant-bird 4.4
+
 ### Version 1.3.0 ###
 * ISSUE [258](https://github.com/Parquet/parquet-mr/pull/258): Optimize scan
 * ISSUE [259](https://github.com/Parquet/parquet-mr/pull/259): add delta length byte arrays and delta byte arrays encodings

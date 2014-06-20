@@ -64,8 +64,8 @@ One of the big benefit of using columnar format is to be able to read only a sub
 
 Parquet support projection pushdown for Thrift records and tuples.
 
-### 2.1 Projection Pushdown with Thrift Records
-To read only a subset of attributes in a thrift class, the columns of interest should be specified using glob syntax. For example, for a thrift class as follows:
+### 2.1 Projection Pushdown with Thrift/Scrooge Records
+To read only a subset of attributes in a Thrift/Scrooge class, the columns of interest should be specified using glob syntax. For example, for a thrift class as follows:
 
     
     struct Address{
@@ -96,7 +96,7 @@ In the above example, when reading records of type Person, we can use following 
 - Joined match:
 Multiple glob expression can be joined together separated by ";". eg. "name;address/street" will match only name and street in Address.
 
-To specify the glob filter, simply set the conf with "parquet.thrift.column.filter" set to the glob expression string.
+To specify the glob filter for thrift/scrooge, simply set the conf with "parquet.thrift.column.filter" set to the glob expression string.
 
 
     Map<Object, Object> props=new HashMap<Object, Object>();

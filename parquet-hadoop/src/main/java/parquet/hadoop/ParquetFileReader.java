@@ -17,6 +17,7 @@ package parquet.hadoop;
 
 import static parquet.Log.DEBUG;
 import static parquet.format.Util.readPageHeader;
+import static parquet.bytes.BytesUtils.readIntLittleEndian;
 import static parquet.hadoop.ParquetFileWriter.MAGIC;
 import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
@@ -24,6 +25,7 @@ import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.io.SequenceInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -54,6 +56,7 @@ import parquet.column.page.DictionaryPage;
 import parquet.column.page.Page;
 import parquet.column.page.PageReadStore;
 import parquet.format.PageHeader;
+import parquet.format.Util;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.CodecFactory.BytesDecompressor;
 import parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
@@ -357,7 +360,7 @@ public class ParquetFileReader implements Closeable {
       BenchmarkCounter.incrementTotalBytes(mc.getTotalSize());
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
       if (columnDescriptor != null) {
-        long startingPos = getStartingPos(mc);
+        long startingPos = mc.getStartingPos();
         // first chunk or not consecutive => new list
         if (currentChunks == null || currentChunks.endPos() != startingPos) {
           currentChunks = new ConsecutiveChunkList(startingPos);
@@ -377,18 +380,7 @@ public class ParquetFileReader implements Closeable {
     return columnChunkPageReadStore;
   }
 
-  /**
-   * @param mc the metadata for that chunk
-   * @return the offset of the first byte in the chunk
-   */
-  private long getStartingPos(ColumnChunkMetaData mc) {
-    long startingPos = mc.getFirstDataPageOffset();
-    if (mc.getDictionaryPageOffset() > 0 && mc.getDictionaryPageOffset() < startingPos) {
-      // if there's a dictionary and it's before the first data page, start from there
-      startingPos = mc.getDictionaryPageOffset();
-    }
-    return startingPos;
-  }
+
 
   @Override
   public void close() throws IOException {
@@ -417,6 +409,10 @@ public class ParquetFileReader implements Closeable {
       this.descriptor = descriptor;
     }
 
+    protected PageHeader readPageHeader() throws IOException {
+      return Util.readPageHeader(this);
+    }
+
     /**
      * Read all of the pages in a given column chunk.
      * @return the list of pages
@@ -426,7 +422,7 @@ public class ParquetFileReader implements Closeable {
       DictionaryPage dictionaryPage = null;
       long valuesCountReadSoFar = 0;
       while (valuesCountReadSoFar < descriptor.metadata.getValueCount()) {
-        PageHeader pageHeader = readPageHeader(this);
+        PageHeader pageHeader = readPageHeader();
         switch (pageHeader.type) {
           case DICTIONARY_PAGE:
             // there is only one dictionary page per column chunk
@@ -447,6 +443,7 @@ public class ParquetFileReader implements Closeable {
                     this.readAsBytesInput(pageHeader.compressed_page_size),
                     pageHeader.data_page_header.num_values,
                     pageHeader.uncompressed_page_size,
+                    parquetMetadataConverter.fromParquetStatistics(pageHeader.data_page_header.statistics, descriptor.col.getType()),
                     parquetMetadataConverter.getEncoding(pageHeader.data_page_header.repetition_level_encoding),
                     parquetMetadataConverter.getEncoding(pageHeader.data_page_header.definition_level_encoding),
                     parquetMetadataConverter.getEncoding(pageHeader.data_page_header.encoding)
@@ -513,13 +510,31 @@ public class ParquetFileReader implements Closeable {
       this.f = f;
     }
 
-    public BytesInput readAsBytesInput(int size) throws IOException {
-      if (pos() + size > initPos + count) {
+    protected PageHeader readPageHeader() throws IOException {
+      PageHeader pageHeader;
+      int initialPos = pos();
+      try {
+        pageHeader = Util.readPageHeader(this);
+      } catch (IOException e) {
         // this is to workaround a bug where the compressedLength
         // of the chunk is missing the size of the header of the dictionary
         // to allow reading older files (using dictionary) we need this.
         // usually 13 to 19 bytes are missing
-        int l1 = initPos + count - pos();
+        // if the last page is smaller than this, the page header itself is truncated in the buffer.
+        this.byteBuf.rewind(); // resetting the buffer to the position before we got the error
+        LOG.info("completing the column chunk to read the page header");
+        pageHeader = Util.readPageHeader(new SequenceInputStream(this, f)); // trying again from the buffer + remainder of the stream.
+      }
+      return pageHeader;
+    }
+
+    public BytesInput readAsBytesInput(int size) throws IOException {
+      if (size > this.byteBuf.remaining()) {
+        // this is to workaround a bug where the compressedLength
+        // of the chunk is missing the size of the header of the dictionary
+        // to allow reading older files (using dictionary) we need this.
+        // usually 13 to 19 bytes are missing
+        int l1 = this.byteBuf.remaining();
         int l2 = size - l1;
         LOG.info("completed the column chunk with " + l2 + " bytes");
         return BytesInput.concat(super.readAsBytesInput(l1), BytesInput.copy(BytesInput.from(f, l2)));

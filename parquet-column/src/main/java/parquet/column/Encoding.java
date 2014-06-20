@@ -70,6 +70,8 @@ public enum Encoding {
         return new IntegerPlainValuesReader();
       case INT64:
         return new LongPlainValuesReader();
+      case INT96:
+        return new FixedLenByteArrayPlainValuesReader(12);
       case FIXED_LEN_BYTE_ARRAY:
         return new FixedLenByteArrayPlainValuesReader(descriptor.getTypeLength());
       default:
@@ -110,6 +112,7 @@ public enum Encoding {
     public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
       switch (descriptor.getType()) {
       case BINARY:
+      case INT96:
       case INT64:
       case DOUBLE:
       case INT32:
@@ -125,6 +128,8 @@ public enum Encoding {
       switch (descriptor.getType()) {
       case BINARY:
         return new PlainBinaryDictionary(dictionaryPage);
+      case INT96:
+        return new PlainBinaryDictionary(dictionaryPage, 12);
       case INT64:
         return new PlainLongDictionary(dictionaryPage);
       case DOUBLE:

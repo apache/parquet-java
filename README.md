@@ -29,8 +29,9 @@ Parquet is a very active project, and new features are being added quickly; belo
   <tr><td>Bit Packing</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Adaptive dictionary encoding</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Predicate pushdown</td><td>YES (<a href ="https://github.com/Parquet/parquet-mr/pull/68">68</a>)</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Column stats</td><td></td><td></td></td><td>YES</td><td>2.0</td></tr>  <tr><td>Delta encoding</td><td></td><td></td></td><td>YES</td><td>2.0</td></tr>
-  <tr><td>Native Protocol Buffers support</td><td></td><td></td></td><td>YES</td><td>2.0</td></tr>
+  <tr><td>Column stats</td><td>YES</td><td></td></td><td></td><td>2.0</td></tr>  
+  <tr><td>Delta encoding</td><td>YES</td><td></td></td><td></td><td>2.0</td></tr>
+  <tr><td>Native Protocol Buffers support</td><td>YES</td><td></td><td></td><td>1.0</td></tr>
   <tr><td>Index pages</td><td></td><td></td></td><td>YES</td><td>2.0</td></tr>
 </table>
 
@@ -182,7 +183,13 @@ We tend to do fairly close readings of pull requests, and you may get a lot of c
 * Avi Bryant <https://github.com/avibryant>
 * Dmitriy Ryaboy [@squarecog](https://twitter.com/squarecog) <https://github.com/dvryaboy>
 * Jonathan Coveney <http://twitter.com/jco>
+* Brock Noland <https://github.com/brockn>
+* Tianshuo Deng <https://github.com/tsdeng>
 * and many others -- see the [Contributor report]( https://github.com/Parquet/parquet-mr/contributors)
+
+## Code of Conduct
+
+We hold ourselves and the Parquet developer community to a code of conduct as described by [Twitter OSS](https://engineering.twitter.com/opensource): <https://github.com/twitter/code-of-conduct/blob/master/code-of-conduct.md>. 
 
 ## Discussions
 * google group https://groups.google.com/d/forum/parquet-dev

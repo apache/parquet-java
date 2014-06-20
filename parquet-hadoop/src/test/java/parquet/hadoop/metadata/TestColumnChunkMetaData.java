@@ -7,10 +7,10 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import parquet.column.Encoding;
+import parquet.column.statistics.BinaryStatistics;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 public class TestColumnChunkMetaData {
@@ -57,8 +57,9 @@ public class TestColumnChunkMetaData {
     PrimitiveTypeName t = BINARY;
     ColumnPath p = ColumnPath.get("foo");
     CompressionCodecName c = CompressionCodecName.GZIP;
-    ColumnChunkMetaData md = ColumnChunkMetaData.get(p, t, c, e,
-        big, 0, 0, 0, 0);
+    BinaryStatistics s = new BinaryStatistics();
+    ColumnChunkMetaData md = ColumnChunkMetaData.get(p, t, c, e, s,
+                                                     big, 0, 0, 0, 0);
     return md;
   }
 }

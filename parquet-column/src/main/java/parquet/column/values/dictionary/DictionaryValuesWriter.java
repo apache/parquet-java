@@ -43,6 +43,7 @@ import parquet.column.Encoding;
 import parquet.column.page.DictionaryPage;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.dictionary.IntList.IntIterator;
+import parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import parquet.io.ParquetEncodingException;
@@ -65,7 +66,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
   protected final int maxDictionaryByteSize;
 
   /* contains the values encoded in plain if the dictionary grows too big */
-  protected final PlainValuesWriter plainValuesWriter;
+  protected final ValuesWriter plainValuesWriter;
 
   /* will become true if the dictionary becomes too big */
   protected boolean dictionaryTooBig;
@@ -98,6 +99,18 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
   protected DictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
     this.maxDictionaryByteSize = maxDictionaryByteSize;
     this.plainValuesWriter = new PlainValuesWriter(initialSize);
+  }
+
+  /**
+   * Construct a DictionaryValuesWriter for fixed-length byte array values.
+   *
+   * @param maxDictionaryByteSize
+   * @param initialSize
+   * @param fixedLength Fixed length for byte arrays
+   */
+  protected DictionaryValuesWriter(int maxDictionaryByteSize, int initialSize, int fixedLength) {
+    this.maxDictionaryByteSize = maxDictionaryByteSize;
+    this.plainValuesWriter = new FixedLenByteArrayPlainValuesWriter(fixedLength, initialSize);
   }
 
   /**
@@ -227,7 +240,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
   public static class PlainBinaryDictionaryValuesWriter extends DictionaryValuesWriter {
 
     /* type specific dictionary content */
-    private Object2IntMap<Binary> binaryDictionaryContent = new Object2IntLinkedOpenHashMap<Binary>();
+    protected Object2IntMap<Binary> binaryDictionaryContent = new Object2IntLinkedOpenHashMap<Binary>();
 
     /**
      * @param maxDictionaryByteSize
@@ -235,6 +248,14 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
      */
     public PlainBinaryDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
       super(maxDictionaryByteSize, initialSize);
+      binaryDictionaryContent.defaultReturnValue(-1);
+    }
+
+    /**
+     * Constructor only used by subclasses for fixed-length byte arrays.
+     */
+    protected PlainBinaryDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize, int length) {
+      super(maxDictionaryByteSize, initialSize, length);
       binaryDictionaryContent.defaultReturnValue(-1);
     }
 
@@ -287,9 +308,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
     protected void fallBackDictionaryEncodedData() {
       //build reverse dictionary
       Binary[] reverseDictionary = new Binary[getDictionarySize()];
-      ObjectIterator<Object2IntMap.Entry<Binary>> entryIterator = binaryDictionaryContent.object2IntEntrySet().iterator();
-      while (entryIterator.hasNext()) {
-        Object2IntMap.Entry<Binary> entry = entryIterator.next();
+      for (Object2IntMap.Entry<Binary> entry : binaryDictionaryContent.object2IntEntrySet()) {
         reverseDictionary[entry.getIntValue()] = entry.getKey();
       }
 
@@ -299,6 +318,56 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
         int id = iterator.next();
         plainValuesWriter.writeBytes(reverseDictionary[id]);
       }
+    }
+  }
+
+  /**
+   *
+   */
+  public static class PlainFixedLenArrayDictionaryValuesWriter extends PlainBinaryDictionaryValuesWriter {
+
+    private final int length;
+
+    /**
+     * @param maxDictionaryByteSize
+     * @param initialSize
+     */
+    public PlainFixedLenArrayDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize, int length) {
+      super(maxDictionaryByteSize, initialSize, length);
+      this.length = length;
+    }
+
+    @Override
+    public void writeBytes(Binary value) {
+      if (!dictionaryTooBig) {
+        int id = binaryDictionaryContent.getInt(value);
+        if (id == -1) {
+          id = binaryDictionaryContent.size();
+          binaryDictionaryContent.put(value, id);
+          dictionaryByteSize += length;
+        }
+        encodedValues.add(id);
+        checkAndFallbackIfNeeded();
+      } else {
+        plainValuesWriter.writeBytes(value);
+      }
+      rawDataByteSize += length;
+    }
+
+    @Override
+    public DictionaryPage createDictionaryPage() {
+      if (lastUsedDictionarySize > 0) {
+        // return a dictionary only if we actually used it
+        FixedLenByteArrayPlainValuesWriter dictionaryEncoder = new FixedLenByteArrayPlainValuesWriter(12, lastUsedDictionaryByteSize);
+        Iterator<Binary> binaryIterator = binaryDictionaryContent.keySet().iterator();
+        // write only the part of the dict that we used
+        for (int i = 0; i < lastUsedDictionarySize; i++) {
+          Binary entry = binaryIterator.next();
+          dictionaryEncoder.writeBytes(entry);
+        }
+        return new DictionaryPage(dictionaryEncoder.getBytes(), lastUsedDictionarySize, PLAIN_DICTIONARY);
+      }
+      return plainValuesWriter.createDictionaryPage();
     }
   }
 

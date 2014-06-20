@@ -24,7 +24,15 @@ public class ParquetThriftInputFormat<T> extends ParquetInputFormat<T> {
 
   @SuppressWarnings("unchecked")
   public ParquetThriftInputFormat() {
-    super(ThriftReadSupport.class);
+    this(ThriftReadSupport.class);
+  }
+
+  /**
+   * ScroogeReadSupport can be used when reading scrooge records out of parquet file
+   * @param readSupportClass
+   */
+  protected ParquetThriftInputFormat(Class readSupportClass) {
+    super(readSupportClass);
   }
 
   /**

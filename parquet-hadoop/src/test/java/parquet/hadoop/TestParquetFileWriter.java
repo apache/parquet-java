@@ -44,13 +44,21 @@ import parquet.column.Encoding;
 import parquet.column.page.Page;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
+import parquet.column.statistics.BinaryStatistics;
+import parquet.column.statistics.LongStatistics;
+import parquet.hadoop.metadata.BlockMetaData;
+import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.GlobalMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.io.api.Binary;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 import parquet.schema.PrimitiveType;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.format.Statistics;
+import parquet.format.converter.ParquetMetadataConverter;
 
 public class TestParquetFileWriter {
   private static final Log LOG = Log.getLog(TestParquetFileWriter.class);
@@ -75,35 +83,39 @@ public class TestParquetFileWriter {
     byte[] bytes3 = { 2, 3, 4, 5};
     byte[] bytes4 = { 3, 4, 5, 6};
     CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
+
+    BinaryStatistics stats1 = new BinaryStatistics();
+    BinaryStatistics stats2 = new BinaryStatistics();
+
     ParquetFileWriter w = new ParquetFileWriter(configuration, schema, path);
     w.start();
     w.startBlock(3);
     w.startColumn(c1, 5, codec);
     long c1Starts = w.getPos();
-    w.writeDataPage(2, 4, BytesInput.from(bytes1), BIT_PACKED, BIT_PACKED, PLAIN);
-    w.writeDataPage(3, 4, BytesInput.from(bytes1), BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(2, 4, BytesInput.from(bytes1), stats1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(bytes1), stats1, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     long c1Ends = w.getPos();
     w.startColumn(c2, 6, codec);
     long c2Starts = w.getPos();
-    w.writeDataPage(2, 4, BytesInput.from(bytes2), BIT_PACKED, BIT_PACKED, PLAIN);
-    w.writeDataPage(3, 4, BytesInput.from(bytes2), BIT_PACKED, BIT_PACKED, PLAIN);
-    w.writeDataPage(1, 4, BytesInput.from(bytes2), BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(2, 4, BytesInput.from(bytes2), stats2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(bytes2), stats2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(1, 4, BytesInput.from(bytes2), stats2, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     long c2Ends = w.getPos();
     w.endBlock();
     w.startBlock(4);
     w.startColumn(c1, 7, codec);
-    w.writeDataPage(7, 4, BytesInput.from(bytes3), BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(7, 4, BytesInput.from(bytes3), stats1, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     w.startColumn(c2, 8, codec);
-    w.writeDataPage(8, 4, BytesInput.from(bytes4), BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(8, 4, BytesInput.from(bytes4), stats2, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     w.endBlock();
     w.end(new HashMap<String, String>());
 
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
-    assertEquals("footer: "+readFooter, 2, readFooter.getBlocks().size());
+    assertEquals("footer: "+ readFooter, 2, readFooter.getBlocks().size());
     assertEquals(c1Ends - c1Starts, readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize());
     assertEquals(c2Ends - c2Starts, readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize());
     assertEquals(c2Ends - c1Starts, readFooter.getBlocks().get(0).getTotalByteSize());
@@ -142,6 +154,110 @@ public class TestParquetFileWriter {
       assertNull(r.readNextRowGroup());
     }
     PrintFooter.main(new String[] {path.toString()});
+  }
+
+  @Test
+  public void testConvertToThriftStatistics() throws Exception {
+    long[] longArray = new long[] {39L, 99L, 12L, 1000L, 65L, 542L, 2533461316L, -253346131996L, Long.MAX_VALUE, Long.MIN_VALUE};
+    LongStatistics parquetMRstats = new LongStatistics();
+
+    for (long l: longArray) {
+      parquetMRstats.updateStats(l);
+    }
+    Statistics thriftStats = parquet.format.converter.ParquetMetadataConverter.toParquetStatistics(parquetMRstats);
+    LongStatistics convertedBackStats = (LongStatistics)parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics(thriftStats, PrimitiveTypeName.INT64);
+
+    assertEquals(parquetMRstats.getMax(), convertedBackStats.getMax());
+    assertEquals(parquetMRstats.getMin(), convertedBackStats.getMin());
+    assertEquals(parquetMRstats.getNumNulls(), convertedBackStats.getNumNulls());
+  }
+
+  @Test
+  public void testWriteReadStatistics() throws Exception {
+
+    File testFile = new File("target/test/TestParquetFileWriter/testParquetFile").getAbsoluteFile();
+    testFile.delete();
+
+    Path path = new Path(testFile.toURI());
+    Configuration configuration = new Configuration();
+
+    MessageType schema = MessageTypeParser.parseMessageType("message m { required group a {required binary b;} required group c { required int64 d; }}");
+    String[] path1 = {"a", "b"};
+    ColumnDescriptor c1 = schema.getColumnDescription(path1);
+    String[] path2 = {"c", "d"};
+    ColumnDescriptor c2 = schema.getColumnDescription(path2);
+
+    byte[] bytes1 = { 0, 1, 2, 3};
+    byte[] bytes2 = { 1, 2, 3, 4};
+    byte[] bytes3 = { 2, 3, 4, 5};
+    byte[] bytes4 = { 3, 4, 5, 6};
+    CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
+
+    BinaryStatistics statsB1C1P1 = new BinaryStatistics();
+    BinaryStatistics statsB1C1P2 = new BinaryStatistics();
+    LongStatistics statsB1C2P1 = new LongStatistics();
+    LongStatistics statsB1C2P2 = new LongStatistics();
+    BinaryStatistics statsB2C1P1 = new BinaryStatistics();
+    LongStatistics statsB2C2P1 = new LongStatistics();
+    statsB1C1P1.setMinMax(Binary.fromString("s"), Binary.fromString("z"));
+    statsB1C1P2.setMinMax(Binary.fromString("a"), Binary.fromString("b"));
+    statsB1C2P1.setMinMax(2l, 10l);
+    statsB1C2P2.setMinMax(-6l, 4l);
+    statsB2C1P1.setMinMax(Binary.fromString("d"), Binary.fromString("e"));
+    statsB2C2P1.setMinMax(11l, 122l);
+
+    ParquetFileWriter w = new ParquetFileWriter(configuration, schema, path);
+    w.start();
+    w.startBlock(3);
+    w.startColumn(c1, 5, codec);
+    w.writeDataPage(2, 4, BytesInput.from(bytes1), statsB1C1P1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(bytes1), statsB1C1P2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.startColumn(c2, 6, codec);
+    w.writeDataPage(3, 4, BytesInput.from(bytes2), statsB1C2P1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(1, 4, BytesInput.from(bytes2), statsB1C2P2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.endBlock();
+
+    w.startBlock(4);
+    w.startColumn(c1, 7, codec);
+    w.writeDataPage(7, 4, BytesInput.from(bytes3), statsB2C1P1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.startColumn(c2, 8, codec);
+    w.writeDataPage(8, 4, BytesInput.from(bytes4), statsB2C2P1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.endBlock();
+    w.end(new HashMap<String, String>());
+
+    ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
+    for (BlockMetaData block : readFooter.getBlocks()) {
+      for (ColumnChunkMetaData col : block.getColumns()) {
+        col.getPath();
+      }
+    }
+    // correct statistics
+    BinaryStatistics bs1 = new BinaryStatistics();
+    bs1.setMinMax(Binary.fromString("a"), Binary.fromString("z"));
+    LongStatistics ls1 = new LongStatistics();
+    ls1.setMinMax(-6l, 10l);
+
+    BinaryStatistics bs2 = new BinaryStatistics();
+    bs2.setMinMax(Binary.fromString("d"), Binary.fromString("e"));
+    LongStatistics ls2 = new LongStatistics();
+    ls2.setMinMax(11l, 122l);
+
+    { // assert stats are correct for the first block
+      BinaryStatistics bsout = (BinaryStatistics)readFooter.getBlocks().get(0).getColumns().get(0).getStatistics();
+      String str = new String(bsout.getMaxBytes());
+      String str2 = new String(bsout.getMinBytes());
+
+      assertTrue(((BinaryStatistics)readFooter.getBlocks().get(0).getColumns().get(0).getStatistics()).equals(bs1));
+      assertTrue(((LongStatistics)readFooter.getBlocks().get(0).getColumns().get(1).getStatistics()).equals(ls1));
+    }
+    { // assert stats are correct for the second block
+      assertTrue(((BinaryStatistics)readFooter.getBlocks().get(1).getColumns().get(0).getStatistics()).equals(bs2));
+      assertTrue(((LongStatistics)readFooter.getBlocks().get(1).getColumns().get(1).getStatistics()).equals(ls2));
+    }
   }
 
   @Test
@@ -218,25 +334,29 @@ public class TestParquetFileWriter {
     byte[] bytes3 = { 2, 3, 4, 5};
     byte[] bytes4 = { 3, 4, 5, 6};
     CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
+
+    BinaryStatistics stats1 = new BinaryStatistics();
+    BinaryStatistics stats2 = new BinaryStatistics();
+
     ParquetFileWriter w = new ParquetFileWriter(configuration, schema, path);
     w.start();
     w.startBlock(3);
     w.startColumn(c1, 5, codec);
-    w.writeDataPage(2, 4, BytesInput.from(bytes1), BIT_PACKED, BIT_PACKED, PLAIN);
-    w.writeDataPage(3, 4, BytesInput.from(bytes1), BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(2, 4, BytesInput.from(bytes1), stats1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(bytes1), stats1, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     w.startColumn(c2, 6, codec);
-    w.writeDataPage(2, 4, BytesInput.from(bytes2), BIT_PACKED, BIT_PACKED, PLAIN);
-    w.writeDataPage(3, 4, BytesInput.from(bytes2), BIT_PACKED, BIT_PACKED, PLAIN);
-    w.writeDataPage(1, 4, BytesInput.from(bytes2), BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(2, 4, BytesInput.from(bytes2), stats2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(bytes2), stats2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(1, 4, BytesInput.from(bytes2), stats2, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     w.endBlock();
     w.startBlock(4);
     w.startColumn(c1, 7, codec);
-    w.writeDataPage(7, 4, BytesInput.from(bytes3), BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(7, 4, BytesInput.from(bytes3), stats1, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     w.startColumn(c2, 8, codec);
-    w.writeDataPage(8, 4, BytesInput.from(bytes4), BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(8, 4, BytesInput.from(bytes4), stats2, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     w.endBlock();
     final HashMap<String, String> extraMetaData = new HashMap<String, String>();

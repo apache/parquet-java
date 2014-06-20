@@ -27,6 +27,7 @@ import parquet.column.Encoding;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.Page;
 import parquet.column.page.PageWriter;
+import parquet.column.statistics.Statistics;
 import parquet.io.ParquetEncodingException;
 
 
@@ -38,7 +39,7 @@ public class MemPageWriter implements PageWriter {
   private long memSize = 0;
   private long totalValueCount = 0;
 
-
+  @Deprecated
   @Override
   public void writePage(BytesInput bytesInput, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding)
       throws IOException {
@@ -47,6 +48,18 @@ public class MemPageWriter implements PageWriter {
     }
     memSize += bytesInput.size();
     pages.add(new Page(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), rlEncoding, dlEncoding, valuesEncoding));
+    totalValueCount += valueCount;
+    if (DEBUG) LOG.debug("page written for " + bytesInput.size() + " bytes and " + valueCount + " records");
+  }
+
+  @Override
+  public void writePage(BytesInput bytesInput, int valueCount, Statistics statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding)
+      throws IOException {
+    if (valueCount == 0) {
+      throw new ParquetEncodingException("illegal page of 0 values");
+    }
+    memSize += bytesInput.size();
+    pages.add(new Page(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), statistics, rlEncoding, dlEncoding, valuesEncoding));
     totalValueCount += valueCount;
     if (DEBUG) LOG.debug("page written for " + bytesInput.size() + " bytes and " + valueCount + " records");
   }

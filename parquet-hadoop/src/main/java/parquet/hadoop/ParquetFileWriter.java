@@ -39,6 +39,7 @@ import parquet.bytes.BytesInput;
 import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.DictionaryPage;
+import parquet.column.statistics.Statistics;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -84,6 +85,8 @@ public class ParquetFileWriter {
   private long currentChunkDictionaryPageOffset;
   private long currentChunkValueCount;
 
+  private Statistics currentStatistics;
+
   /**
    * Captures the order in which methods should be called
    *
@@ -122,13 +125,17 @@ public class ParquetFileWriter {
     },
     ENDED;
 
-    STATE start() {throw new IllegalStateException(this.name());}
-    STATE startBlock() {throw new IllegalStateException(this.name());}
-    STATE startColumn() {throw new IllegalStateException(this.name());}
-    STATE write() {throw new IllegalStateException(this.name());}
-    STATE endColumn() {throw new IllegalStateException(this.name());}
-    STATE endBlock() {throw new IllegalStateException(this.name());}
-    STATE end() {throw new IllegalStateException(this.name());}
+    STATE start() throws IOException { return error(); }
+    STATE startBlock() throws IOException { return error(); }
+    STATE startColumn() throws IOException { return error(); }
+    STATE write() throws IOException { return error(); }
+    STATE endColumn() throws IOException { return error(); }
+    STATE endBlock() throws IOException { return error(); }
+    STATE end() throws IOException { return error(); }
+
+    private final STATE error() throws IOException {
+      throw new IOException("The file being written is in an invalid state. Probably caused by an error thrown previously. Current state: " + this.name());
+    }
   }
 
   private STATE state = STATE.NOT_STARTED;
@@ -174,10 +181,13 @@ public class ParquetFileWriter {
    * start a column inside a block
    * @param descriptor the column descriptor
    * @param valueCount the value count in this column
+   * @param statistics the statistics in this column
    * @param compressionCodecName
    * @throws IOException
    */
-  public void startColumn(ColumnDescriptor descriptor, long valueCount, CompressionCodecName compressionCodecName) throws IOException {
+  public void startColumn(ColumnDescriptor descriptor,
+                          long valueCount,
+                          CompressionCodecName compressionCodecName) throws IOException {
     state = state.startColumn();
     if (DEBUG) LOG.debug(out.getPos() + ": start column: " + descriptor + " count=" + valueCount);
     currentEncodings = new HashSet<parquet.column.Encoding>();
@@ -188,6 +198,9 @@ public class ParquetFileWriter {
     currentChunkFirstDataPage = out.getPos();
     compressedLength = 0;
     uncompressedLength = 0;
+    // need to know what type of stats to initialize to
+    // better way to do this?
+    currentStatistics = Statistics.getStatsBasedOnType(currentChunkType);
   }
 
   /**
@@ -214,6 +227,7 @@ public class ParquetFileWriter {
     currentEncodings.add(dictionaryPage.getEncoding());
   }
 
+
   /**
    * writes a single page
    * @param valueCount count of values
@@ -223,6 +237,7 @@ public class ParquetFileWriter {
    * @param dlEncoding encoding of the definition level
    * @param valuesEncoding encoding of values
    */
+  @Deprecated
   public void writeDataPage(
       int valueCount, int uncompressedPageSize,
       BytesInput bytes,
@@ -251,13 +266,56 @@ public class ParquetFileWriter {
   }
 
   /**
+   * writes a single page
+   * @param valueCount count of values
+   * @param uncompressedPageSize the size of the data once uncompressed
+   * @param bytes the compressed data for the page without header
+   * @param rlEncoding encoding of the repetition level
+   * @param dlEncoding encoding of the definition level
+   * @param valuesEncoding encoding of values
+   */
+  public void writeDataPage(
+      int valueCount, int uncompressedPageSize,
+      BytesInput bytes,
+      Statistics statistics,
+      parquet.column.Encoding rlEncoding,
+      parquet.column.Encoding dlEncoding,
+      parquet.column.Encoding valuesEncoding) throws IOException {
+    state = state.write();
+    long beforeHeader = out.getPos();
+    if (DEBUG) LOG.debug(beforeHeader + ": write data page: " + valueCount + " values");
+    int compressedPageSize = (int)bytes.size();
+    metadataConverter.writeDataPageHeader(
+        uncompressedPageSize, compressedPageSize,
+        valueCount,
+        statistics,
+        rlEncoding,
+        dlEncoding,
+        valuesEncoding,
+        out);
+    long headerSize = out.getPos() - beforeHeader;
+    this.uncompressedLength += uncompressedPageSize + headerSize;
+    this.compressedLength += compressedPageSize + headerSize;
+    if (DEBUG) LOG.debug(out.getPos() + ": write data page content " + compressedPageSize);
+    bytes.writeAllTo(out);
+    currentStatistics.mergeStatistics(statistics);
+    currentEncodings.add(rlEncoding);
+    currentEncodings.add(dlEncoding);
+    currentEncodings.add(valuesEncoding);
+  }
+
+  /**
    * writes a number of pages at once
    * @param bytes bytes to be written including page headers
    * @param uncompressedTotalPageSize total uncompressed size (without page headers)
    * @param compressedTotalPageSize total compressed size (without page headers)
    * @throws IOException
    */
-   void writeDataPages(BytesInput bytes, long uncompressedTotalPageSize, long compressedTotalPageSize, List<parquet.column.Encoding> encodings) throws IOException {
+   void writeDataPages(BytesInput bytes,
+                       long uncompressedTotalPageSize,
+                       long compressedTotalPageSize,
+                       Statistics totalStats,
+                       List<parquet.column.Encoding> encodings) throws IOException {
     state = state.write();
     if (DEBUG) LOG.debug(out.getPos() + ": write data pages");
     long headersSize = bytes.size() - compressedTotalPageSize;
@@ -266,6 +324,7 @@ public class ParquetFileWriter {
     if (DEBUG) LOG.debug(out.getPos() + ": write data pages content");
     bytes.writeAllTo(out);
     currentEncodings.addAll(encodings);
+    currentStatistics = totalStats;
   }
 
   /**
@@ -280,6 +339,7 @@ public class ParquetFileWriter {
         currentChunkType,
         currentChunkCodec,
         currentEncodings,
+        currentStatistics,
         currentChunkFirstDataPage,
         currentChunkDictionaryPageOffset,
         currentChunkValueCount,

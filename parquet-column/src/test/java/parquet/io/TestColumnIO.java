@@ -28,26 +28,32 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static parquet.schema.Type.Repetition.OPTIONAL;
 import static parquet.schema.Type.Repetition.REQUIRED;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
-import parquet.column.ParquetProperties;
 import parquet.column.ParquetProperties.WriterVersion;
+import parquet.column.statistics.Statistics;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.mem.MemPageStore;
 import parquet.example.data.Group;
 import parquet.example.data.GroupFactory;
 import parquet.example.data.GroupWriter;
+import parquet.example.data.simple.NanoTime;
 import parquet.example.data.simple.SimpleGroupFactory;
 import parquet.example.data.simple.convert.GroupRecordConverter;
 import parquet.io.api.Binary;
@@ -61,6 +67,7 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type;
 import parquet.schema.Type.Repetition;
 
+@RunWith(Parameterized.class)
 public class TestColumnIO {
   private static final Log LOG = Log.getLog(TestColumnIO.class);
 
@@ -72,6 +79,7 @@ public class TestColumnIO {
   + "  required double d;\n"
   + "  required boolean e;\n"
   + "  required binary f;\n"
+  + "  required int96 g;\n"
   + "}\n";
 
   private static final String schemaString =
@@ -133,6 +141,20 @@ public class TestColumnIO {
     "Name.end()",
     "endMessage()"
   };
+
+  @Parameterized.Parameters
+  public static Collection<Object[]> data() throws IOException {
+    Object[][] data = {
+        { true },
+        { false } };
+    return Arrays.asList(data);
+  }
+
+  private boolean useDictionary;
+
+  public TestColumnIO(boolean useDictionary) {
+    this.useDictionary = useDictionary;
+  }
 
   @Test
   public void testSchema() {
@@ -340,7 +362,8 @@ public class TestColumnIO {
         .append("c", 3.0f)
         .append("d", 4.0d)
         .append("e", true)
-        .append("f", Binary.fromString("6"));
+        .append("f", Binary.fromString("6"))
+        .append("g", new NanoTime(1234, System.currentTimeMillis() * 1000));
 
     testSchema(oneOfEachSchema, Arrays.asList(g1));
   }
@@ -491,7 +514,7 @@ public class TestColumnIO {
   }
 
   private ColumnWriteStoreImpl newColumnWriteStore(MemPageStore memPageStore) {
-    return new ColumnWriteStoreImpl(memPageStore, 800, 800, 800, false, WriterVersion.PARQUET_1_0);
+    return new ColumnWriteStoreImpl(memPageStore, 800, 800, 800, useDictionary, WriterVersion.PARQUET_1_0);
   }
 
   @Test
@@ -532,18 +555,18 @@ public class TestColumnIO {
 
     final String[] expected = {
         "[DocId]: 10, r:0, d:0",
-        "[Links, Backward]: null, r:0, d:1",
         "[Links, Forward]: 20, r:0, d:2",
         "[Links, Forward]: 40, r:1, d:2",
         "[Links, Forward]: 60, r:1, d:2",
+        "[Links, Backward]: null, r:0, d:1",
         "[Name, Language, Code]: en-us, r:0, d:2",
         "[Name, Language, Country]: us, r:0, d:3",
         "[Name, Language, Code]: en, r:2, d:2",
         "[Name, Language, Country]: null, r:2, d:2",
         "[Name, Url]: http://A, r:0, d:2",
+        "[Name, Url]: http://B, r:1, d:2",
         "[Name, Language, Code]: null, r:1, d:1",
         "[Name, Language, Country]: null, r:1, d:1",
-        "[Name, Url]: http://B, r:1, d:2",
         "[Name, Language, Code]: en-gb, r:1, d:2",
         "[Name, Language, Country]: gb, r:1, d:3",
         "[Name, Url]: null, r:1, d:1",
@@ -551,9 +574,10 @@ public class TestColumnIO {
         "[Links, Backward]: 10, r:0, d:2",
         "[Links, Backward]: 30, r:1, d:2",
         "[Links, Forward]: 80, r:0, d:2",
+        "[Name, Url]: http://C, r:0, d:2",
         "[Name, Language, Code]: null, r:0, d:1",
-        "[Name, Language, Country]: null, r:0, d:1",
-        "[Name, Url]: http://C, r:0, d:2"
+        "[Name, Language, Country]: null, r:0, d:1"
+
     };
 
     ColumnWriteStore columns = new ColumnWriteStore() {

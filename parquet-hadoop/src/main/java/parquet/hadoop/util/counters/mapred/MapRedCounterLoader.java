@@ -16,6 +16,7 @@
 package parquet.hadoop.util.counters.mapred;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.mapred.Counters;
 import org.apache.hadoop.mapred.Reporter;
 import parquet.hadoop.util.counters.BenchmarkCounter;
 import parquet.hadoop.util.counters.CounterLoader;
@@ -38,9 +39,11 @@ public class MapRedCounterLoader implements CounterLoader {
   @Override
   public ICounter getCounterByNameAndFlag(String groupName, String counterName, String counterFlag) {
     if (conf.getBoolean(counterFlag, true)) {
-      return new MapRedCounterAdapter(reporter.getCounter(groupName, counterName));
-    } else {
-      return new BenchmarkCounter.NullCounter();
+      Counters.Counter counter = reporter.getCounter(groupName, counterName);
+      if (counter != null) {
+        return new MapRedCounterAdapter(reporter.getCounter(groupName, counterName));
+      }
     }
-  }
+    return new BenchmarkCounter.NullCounter();
+    }
 }

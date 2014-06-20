@@ -95,9 +95,26 @@ public class BlockMetaData {
     return Collections.unmodifiableList(columns);
   }
 
+  /**
+   *
+   * @return the starting pos of first column
+   */
+  public long getStartingPos() {
+    return getColumns().get(0).getStartingPos();
+  }
   @Override
   public String toString() {
     return "BlockMetaData{" + rowCount + ", " + totalByteSize + " " + columns + "}";
   }
 
+  /**
+   * @return the compressed size of all columns
+   */
+  public long getCompressedSize() {
+    long totalSize = 0;
+    for (ColumnChunkMetaData col : getColumns()) {
+      totalSize += col.getTotalSize();
+    }
+    return totalSize;
+  }
 }

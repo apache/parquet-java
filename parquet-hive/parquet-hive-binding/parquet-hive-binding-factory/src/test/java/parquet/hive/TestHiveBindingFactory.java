@@ -7,6 +7,7 @@ import org.junit.Test;
 
 import parquet.hive.internal.Hive010Binding;
 import parquet.hive.internal.Hive012Binding;
+import parquet.hive.HiveBindingFactory.HiveBindingInstantiationError;
 import parquet.hive.HiveBindingFactory.UnexpectedHiveVersionProviderError;
 
 public class TestHiveBindingFactory {
@@ -64,10 +65,9 @@ public class TestHiveBindingFactory {
     Assert.assertEquals(Hive012Binding.class, hiveBindingFactory.
         createInternal(Hive012Version.class));
   }
-  @Test
+  @Test(expected=HiveBindingInstantiationError.class)
   public void testHive013() {
-    Assert.assertEquals(Hive012Binding.class, hiveBindingFactory.
-        createInternal(Hive013Version.class));
+    hiveBindingFactory.createInternal(Hive013Version.class);
   }
 
   static class NoopClassLoader extends ClassLoader {

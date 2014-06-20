@@ -1,0 +1,110 @@
+package TestProtobuf;
+
+option java_package = "parquet.proto.test";
+
+// original Dremel paper structures: Original paper used groups, not internal
+// messages but groups were deprecated.
+
+message Document {
+    required int64 DocId = 1;
+    optional Links links = 32;
+    repeated group Name = 24 {
+        repeated Language name = 4;
+        optional string url = 5;
+    }
+}
+
+message Language {
+    required string code = 12;
+    optional string Country = 14;
+}
+
+message Links {
+    repeated int64 Backward = 1;
+    repeated int64 Forward = 2;
+}
+
+
+// begin - protocol buffers for ProtoSchemaConverterTest
+
+ message SchemaConverterSimpleMessage {
+     optional int32 someId = 3;
+ }
+
+ message SchemaConverterAllDatatypes {
+     optional double optionalDouble = 1;
+     optional float optionalFloat = 2;
+     optional int32 optionalInt32 = 3;
+     optional int64 optionalInt64 = 4;
+     optional uint32 optionalUInt32 = 5;
+     optional uint64 optionalUInt64 = 6;
+     optional sint32 optionalSInt32 = 7;
+     optional sint64 optionalSInt64 = 8;
+     optional fixed32 optionalFixed32 = 9;
+     optional fixed64 optionalFixed64 = 10;
+     optional sfixed32 optionalSFixed32 = 11;
+     optional sfixed64 optionalSFixed64 = 12;
+     optional bool optionalBool = 13;
+     optional string optionalString = 14;
+     optional bytes optionalBytes = 15;
+     optional SchemaConverterSimpleMessage optionalMessage = 16;
+     optional group PbGroup  = 17 {
+       optional int32 groupInt = 2;
+     }
+    enum TestEnum {
+        FIRST = 0;
+        SECOND = 1;
+    }
+    optional TestEnum optionalEnum = 18;
+ }
+
+ message SchemaConverterRepetition {
+     optional int32 optionalPrimitive = 1;
+     required int32 requiredPrimitive = 2;
+     repeated int32 repeatedPrimitive = 3;
+     optional SchemaConverterSimpleMessage optionalMessage = 7;
+     required SchemaConverterSimpleMessage requiredMessage = 8;
+     repeated SchemaConverterSimpleMessage repeatedMessage = 9;
+ }
+
+// end - protocol buffers for ProtoSchemaConverterTest
+
+
+//begin protocol buffers for ProtoInputOutputFormatTest
+
+message InputOutputMsgFormat {
+    optional int32 someId = 3;
+}
+
+message IOFormatMessage {
+    optional double optionalDouble = 1;
+    repeated string repeatedString = 2;
+    optional InputOutputMsgFormat msg = 3;
+ }
+
+//end protocol buffers for ProtoInputOutputFormatTest
+
+
+message InnerMessage {
+    optional string one = 1;
+    optional string two = 2;
+    optional string three = 3;
+}
+
+message TopMessage {
+    repeated InnerMessage inner = 1;
+}
+
+message MessageA {
+    optional InnerMessage inner = 123;
+}
+
+message RepeatedIntMessage {
+    repeated int32 repeatedInt = 1;
+}
+
+message HighIndexMessage {
+    repeated int32 repeatedInt = 50000;
+}
+
+//please place your unit test Protocol Buffer definitions here.
