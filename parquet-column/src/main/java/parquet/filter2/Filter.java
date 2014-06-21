@@ -22,6 +22,7 @@ import parquet.filter2.UserDefinedPredicates.FloatUserDefinedPredicate;
 import parquet.filter2.UserDefinedPredicates.IntUserDefinedPredicate;
 import parquet.filter2.UserDefinedPredicates.LongUserDefinedPredicate;
 import parquet.filter2.UserDefinedPredicates.StringUserDefinedPredicate;
+import parquet.io.api.Binary;
 
 /**
  * The Filter API is expressed through these static methods.
@@ -60,8 +61,8 @@ public final class Filter {
     return new Column<Boolean>(columnPath, Boolean.class);
   }
 
-  public static Column<byte[]> binaryColumn(String columnPath) {
-    return new Column<byte[]>(columnPath, byte[].class);
+  public static Column<Binary> binaryColumn(String columnPath) {
+    return new Column<Binary>(columnPath, Binary.class);
   }
 
   public static Column<String> stringColumn(String columnPath) {
@@ -108,7 +109,7 @@ public final class Filter {
     return new DoubleUserDefined<T>(column, clazz);
   }
 
-  public static <T extends BinaryUserDefinedPredicate> BinaryUserDefined binaryPredicate(Column<byte[]> column, Class<T> clazz) {
+  public static <T extends BinaryUserDefinedPredicate> BinaryUserDefined binaryPredicate(Column<Binary> column, Class<T> clazz) {
     return new BinaryUserDefined<T>(column, clazz);
   }
 

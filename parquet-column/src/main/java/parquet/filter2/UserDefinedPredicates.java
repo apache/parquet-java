@@ -1,5 +1,7 @@
 package parquet.filter2;
 
+import parquet.io.api.Binary;
+
 public final class UserDefinedPredicates {
   private UserDefinedPredicates() { }
 
@@ -9,47 +11,45 @@ public final class UserDefinedPredicates {
   public static abstract class UserDefinedPredicate<T> {
     // package private so that this can't be sublcassed directly outside of this package
     UserDefinedPredicate() { }
-
-    public boolean supportsFilterByMinMax() { return  false; }
   }
 
   public static abstract class IntUserDefinedPredicate extends UserDefinedPredicate<Integer> {
     public IntUserDefinedPredicate() { }
-    public abstract boolean filterByValue(int value);
-    public boolean filterByMinMax(int min, int max) { throw new UnsupportedOperationException(FILTER_MIN_MAX_NOT_IMPLEMENTED); }
+    public abstract boolean keep(int value);
+    public abstract boolean canDrop(int min, int max, boolean inverted);
   }
 
   public static abstract class LongUserDefinedPredicate extends UserDefinedPredicate<Long> {
     public LongUserDefinedPredicate() { }
-    public abstract boolean filterByValue(long value);
-    public boolean filterByMinMax(long min, long max) { throw new UnsupportedOperationException(FILTER_MIN_MAX_NOT_IMPLEMENTED); }
+    public abstract boolean keep(long value);
+    public abstract boolean canDrop(long min, long max, boolean inverted);
   }
 
   public static abstract class FloatUserDefinedPredicate extends UserDefinedPredicate<Float> {
     public FloatUserDefinedPredicate() { }
-    public abstract boolean filterByValue(float value);
-    public boolean filterByMinMax(float min, float max) { throw new UnsupportedOperationException(FILTER_MIN_MAX_NOT_IMPLEMENTED); }
+    public abstract boolean keep(float value);
+    public abstract boolean canDrop(float min, float max, boolean inverted);
   }
 
   public static abstract class DoubleUserDefinedPredicate extends UserDefinedPredicate<Double> {
     public DoubleUserDefinedPredicate() { }
-    public abstract boolean filterByValue(double value);
-    public boolean filterByMinMax(double min, double max) { throw new UnsupportedOperationException(FILTER_MIN_MAX_NOT_IMPLEMENTED); }
+    public abstract boolean keep(double value);
+    public abstract boolean canDrop(double min, double max, boolean inverted);
   }
 
   // Note: there's no BooleanUserDefinedPredicate because there's nothing you can do with a boolean
   // that you can't do with eq()
 
-  public static abstract class BinaryUserDefinedPredicate extends UserDefinedPredicate<byte[]> {
+  public static abstract class BinaryUserDefinedPredicate extends UserDefinedPredicate<Binary> {
     public BinaryUserDefinedPredicate() { }
-    public abstract boolean filterByValue(byte[] value);
-    public boolean filterByMinMax(byte[] min, byte[] max) { throw new UnsupportedOperationException(FILTER_MIN_MAX_NOT_IMPLEMENTED); }
+    public abstract boolean keep(Binary value);
+    public abstract boolean canDrop(Binary min, Binary max, boolean inverted);
   }
 
   public static abstract class StringUserDefinedPredicate extends UserDefinedPredicate<String> {
     public StringUserDefinedPredicate() { }
-    public abstract boolean filterByValue(String value);
-    public boolean filterByMinMax(String min, String max) { throw new UnsupportedOperationException(FILTER_MIN_MAX_NOT_IMPLEMENTED); }
+    public abstract boolean keep(String value);
+    public abstract boolean canDrop(String min, String max, boolean inverted);
   }
 
 }

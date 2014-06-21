@@ -9,6 +9,8 @@ import parquet.filter2.UserDefinedPredicates.FloatUserDefinedPredicate;
 import parquet.filter2.UserDefinedPredicates.IntUserDefinedPredicate;
 import parquet.filter2.UserDefinedPredicates.LongUserDefinedPredicate;
 import parquet.filter2.UserDefinedPredicates.StringUserDefinedPredicate;
+import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
+import parquet.io.api.Binary;
 
 /**
  * These are the nodes / tokens in a a filter predicate expression.
@@ -70,7 +72,6 @@ public final class FilterPredicates {
 
     protected ColumnFilterPredicate(Column<T> column, T value) {
       Preconditions.checkNotNull(column, "column");
-      Preconditions.checkNotNull(value, "value");
       this.column = column;
       this.value = value;
 
@@ -120,9 +121,10 @@ public final class FilterPredicates {
     }
 
     @Override
-    public boolean accept(Visitor visitor) {
+    public <R> R accept(Visitor<R> visitor) {
       return visitor.visit(this);
     }
+
   }
 
   public static final class NotEq<T> extends ColumnFilterPredicate<T> {
@@ -132,7 +134,7 @@ public final class FilterPredicates {
     }
 
     @Override
-    public boolean accept(Visitor visitor) {
+    public <R> R accept(Visitor<R> visitor) {
       return visitor.visit(this);
     }
   }
@@ -142,10 +144,11 @@ public final class FilterPredicates {
 
     Lt(Column<T> column, T value) {
       super(column, value);
+      Preconditions.checkNotNull(value, "value");
     }
 
     @Override
-    public boolean accept(Visitor visitor) {
+    public <R> R accept(Visitor<R> visitor) {
       return visitor.visit(this);
     }
   }
@@ -154,10 +157,11 @@ public final class FilterPredicates {
 
     LtEq(Column<T> column, T value) {
       super(column, value);
+      Preconditions.checkNotNull(value, "value");
     }
 
     @Override
-    public boolean accept(Visitor visitor) {
+    public <R> R accept(Visitor<R> visitor) {
       return visitor.visit(this);
     }
   }
@@ -167,10 +171,11 @@ public final class FilterPredicates {
 
     Gt(Column<T> column, T value) {
       super(column, value);
+      Preconditions.checkNotNull(value, "value");
     }
 
     @Override
-    public boolean accept(Visitor visitor) {
+    public <R> R accept(Visitor<R> visitor) {
       return visitor.visit(this);
     }
   }
@@ -179,10 +184,11 @@ public final class FilterPredicates {
 
     GtEq(Column<T> column, T value) {
       super(column, value);
+      Preconditions.checkNotNull(value, "value");
     }
 
     @Override
-    public boolean accept(Visitor visitor) {
+    public <R> R accept(Visitor<R> visitor) {
       return visitor.visit(this);
     }
   }
@@ -244,7 +250,7 @@ public final class FilterPredicates {
     }
 
     @Override
-    public boolean accept(Visitor visitor) {
+    public <R> R accept(Visitor<R> visitor) {
       return visitor.visit(this);
     }
   }
@@ -256,7 +262,7 @@ public final class FilterPredicates {
     }
 
     @Override
-    public boolean accept(Visitor visitor) {
+    public <R> R accept(Visitor<R> visitor) {
       return visitor.visit(this);
     }
   }
@@ -281,7 +287,7 @@ public final class FilterPredicates {
     }
 
     @Override
-    public boolean accept(Visitor visitor) {
+    public <R> R accept(Visitor<R> visitor) {
       return visitor.visit(this);
     }
 
@@ -299,7 +305,7 @@ public final class FilterPredicates {
     }
   }
 
-  public static abstract class UserDefined<T, U> implements FilterPredicate, Serializable {
+  public static abstract class UserDefined<T, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
     private final Column<T> column;
     private final Class<U> udpClass;
     private final String toString;
@@ -336,7 +342,7 @@ public final class FilterPredicates {
     }
 
     @Override
-    public boolean accept(Visitor visitor) {
+    public <R> R accept(Visitor<R> visitor) {
       return visitor.visit(this);
     }
 
@@ -367,6 +373,42 @@ public final class FilterPredicates {
     }
   }
 
+  public static class LogicalNotUserDefined <T, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
+    private final UserDefined<T, U> udp;
+
+    public LogicalNotUserDefined(UserDefined<T, U> userDefined) {
+      this.udp = Preconditions.checkNotNull(userDefined, "userDefined");
+    }
+
+    public UserDefined<T, U> getUserDefined() {
+      return udp;
+    }
+
+    @Override
+    public <R> R accept(Visitor<R> visitor) {
+      return visitor.visit(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      LogicalNotUserDefined that = (LogicalNotUserDefined) o;
+
+      if (!udp.equals(that.udp)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = udp.hashCode();
+      result = result * 31 + getClass().hashCode();
+      return result;
+    }
+  }
+
   public static class IntUserDefined<T extends IntUserDefinedPredicate> extends UserDefined<Integer, T> {
     IntUserDefined(Column<Integer> column, Class<T> udpClass) {
       super(column, udpClass);
@@ -391,8 +433,8 @@ public final class FilterPredicates {
     }
   }
 
-  public static class BinaryUserDefined<T extends BinaryUserDefinedPredicate> extends UserDefined<byte[], T> {
-    BinaryUserDefined(Column<byte[]> column, Class<T> udpClass) {
+  public static class BinaryUserDefined<T extends BinaryUserDefinedPredicate> extends UserDefined<Binary, T> {
+    BinaryUserDefined(Column<Binary> column, Class<T> udpClass) {
       super(column, udpClass);
     }
   }

@@ -38,9 +38,13 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
 import parquet.Log;
 import parquet.filter.UnboundRecordFilter;
+import parquet.filter2.CollapseLogicalNots;
+import parquet.filter2.FilterPredicate;
+import parquet.filter2.RuntimeFilterValidator;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
+import parquet.hadoop.filter2.StatisticsFilter;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.FileMetaData;
@@ -48,6 +52,7 @@ import parquet.hadoop.metadata.GlobalMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.ConfigurationUtil;
 import parquet.hadoop.util.ContextUtil;
+import parquet.hadoop.util.SerializationUtil;
 import parquet.io.ParquetDecodingException;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
@@ -78,6 +83,12 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    */
   public static final String UNBOUND_RECORD_FILTER = "parquet.read.filter";
 
+  /**
+   * key to configure the filter predicate
+   */
+  public static final String FILTER_PREDICATE = "parquet.read.filter.predicate";
+
+
   private Class<?> readSupportClass;
   private List<Footer> footers;
 
@@ -99,6 +110,14 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   public static Class<?> getReadSupportClass(Configuration configuration) {
     return ConfigurationUtil.getClassFromConfig(configuration, READ_SUPPORT_CLASS, ReadSupport.class);
+  }
+
+  public static void setFilterPredicate(Configuration configuration, FilterPredicate filterPredicate) throws IOException {
+    SerializationUtil.writeObjectToConfAsBase64(FILTER_PREDICATE, filterPredicate, configuration);
+  }
+
+  public static FilterPredicate getFilterPredicate(Configuration configuration) throws IOException {
+    return SerializationUtil.readObjectFromConfAsBase64(FILTER_PREDICATE, configuration);
   }
 
   /**
@@ -370,10 +389,21 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       FileStatus fileStatus = fs.getFileStatus(file);
       ParquetMetadata parquetMetaData = footer.getParquetMetadata();
       List<BlockMetaData> blocks = parquetMetaData.getBlocks();
+
+      List<BlockMetaData> filteredBlocks;
+
+      FilterPredicate filterPredicate = getFilterPredicate(configuration);
+
+      if (filterPredicate != null) {
+        filteredBlocks = applyRowGroupFilters(filterPredicate, parquetMetaData.getFileMetaData().getSchema(), blocks);
+      } else {
+        filteredBlocks = blocks;
+      }
+
       BlockLocation[] fileBlockLocations = fs.getFileBlockLocations(fileStatus, 0, fileStatus.getLen());
       splits.addAll(
           generateSplits(
-              blocks,
+              filteredBlocks,
               fileBlockLocations,
               fileStatus,
               parquetMetaData.getFileMetaData(),
@@ -384,6 +414,24 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
           );
     }
     return splits;
+  }
+
+  public List<BlockMetaData> applyRowGroupFilters(FilterPredicate filterPredicate, MessageType schema, List<BlockMetaData> blocks) {
+    // check that the schema of the filter matches the schema of the file
+    RuntimeFilterValidator.validate(filterPredicate, schema);
+
+    // rewrite the predicate to not include the not() operator
+    FilterPredicate collapsedPredicate = CollapseLogicalNots.collapse(filterPredicate);
+
+    List<BlockMetaData> filteredBlocks = new ArrayList<BlockMetaData>();
+
+    for (BlockMetaData block : blocks) {
+      if (!StatisticsFilter.canDrop(collapsedPredicate, block.getColumns())) {
+        filteredBlocks.add(block);
+      }
+    }
+
+    return filteredBlocks;
   }
 
   /*
