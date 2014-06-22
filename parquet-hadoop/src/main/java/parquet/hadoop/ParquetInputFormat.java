@@ -85,7 +85,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   private static final int MIN_FOOTER_CACHE_SIZE = 100;
 
-  private LruCache<Path, FootersCacheEntry> footersCache;
+  private LruCache<Path, FootersCacheValue> footersCache;
 
   private Class<?> readSupportClass;
 
@@ -456,7 +456,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
     if (footersCache != null) {
       for (FileStatus status : statuses) {
-        FootersCacheEntry cacheEntry = footersCache.getCurrentEntry(status.getPath());
+        FootersCacheValue cacheEntry = footersCache.getCurrentValue(status.getPath());
         if (Log.DEBUG) LOG.debug("Cache entry " + (cacheEntry == null ? "not " : "") + " found for '" + status.getPath() + "'");
         if (cacheEntry != null) {
           footers.add(cacheEntry.getFooter());
@@ -467,7 +467,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     } else {
       // initialize the cache to store all of the current statuses or a default minimum size. The sizing of this LRU
       // cache was chosen to mimic prior behavior (i.e. so that performance would be at least as good as it was before)
-      footersCache = new LruCache<Path, FootersCacheEntry>(Math.max(statuses.size(), MIN_FOOTER_CACHE_SIZE));
+      footersCache = new LruCache<Path, FootersCacheValue>(Math.max(statuses.size(), MIN_FOOTER_CACHE_SIZE));
       missingStatuses.addAll(statuses);
     }
     if (Log.DEBUG) LOG.debug("found " + footers.size() + " footers in cache and adding up to " +
@@ -487,7 +487,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       // Use the original file status objects to make sure we store a conservative (older) modification time (i.e. in
       // case the files and footers were modified and it's not clear which version of the footers we have)
       FileStatus fileStatus = missingStatusesMap.get(newFooter.getFile());
-      footersCache.put(fileStatus.getPath(), new FootersCacheEntry(fileStatus, newFooter));
+      footersCache.put(fileStatus.getPath(), new FootersCacheValue(fileStatus, newFooter));
     }
 
     footers.addAll(newFooters);
@@ -515,11 +515,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     return ParquetFileWriter.getGlobalMetaData(getFooters(jobContext));
   }
 
-  static final class FootersCacheEntry implements LruCache.Entry<FootersCacheEntry> {
+  static final class FootersCacheValue implements LruCache.Value<FootersCacheValue> {
     private final long modificationTime;
     private final Footer footer;
 
-    public FootersCacheEntry(FileStatus status, Footer footer) {
+    public FootersCacheValue(FileStatus status, Footer footer) {
       this.modificationTime = status.getModificationTime();
       this.footer = new Footer(footer.getFile(), footer.getParquetMetadata());
     }
@@ -539,7 +539,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       }
       long currentModTime = currentFile.getModificationTime();
       boolean isCurrent = modificationTime >= currentModTime;
-      if (Log.DEBUG && !isCurrent) LOG.debug("The cache entry for '" + currentFile.getPath() + "' is not current: " +
+      if (Log.DEBUG && !isCurrent) LOG.debug("The cache value for '" + currentFile.getPath() + "' is not current: " +
               "cached modification time=" + modificationTime + ", current modification time: " + currentModTime);
       return isCurrent;
     }
@@ -548,8 +548,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       return footer;
     }
 
-    public boolean isNewerThan(FootersCacheEntry entry) {
-      return entry == null || modificationTime > entry.modificationTime;
+    public boolean isNewerThan(FootersCacheValue otherValue) {
+      return otherValue == null || modificationTime > otherValue.modificationTime;
     }
 
     public Path getPath() {

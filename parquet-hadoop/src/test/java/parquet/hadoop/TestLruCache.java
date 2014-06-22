@@ -7,11 +7,11 @@ import static org.junit.Assert.*;
 public class TestLruCache {
   private static final String DEFAULT_KEY = "test";
 
-  private static final class SimpleEntry implements LruCache.Entry<SimpleEntry> {
+  private static final class SimpleValue implements LruCache.Value<SimpleValue> {
     private boolean current;
     private boolean newerThan;
 
-    public SimpleEntry(boolean current, boolean newerThan) {
+    public SimpleValue(boolean current, boolean newerThan) {
       this.current = current;
       this.newerThan = newerThan;
     }
@@ -26,7 +26,7 @@ public class TestLruCache {
     }
 
     @Override
-    public boolean isNewerThan(SimpleEntry otherEntry) {
+    public boolean isNewerThan(SimpleValue otherValue) {
       return newerThan;
     }
 
@@ -34,110 +34,110 @@ public class TestLruCache {
 
   @Test
   public void testMaxSize() {
-    LruCache<String, SimpleEntry> cache = new LruCache<String, SimpleEntry>(1);
+    LruCache<String, SimpleValue> cache = new LruCache<String, SimpleValue>(1);
 
     String oldKey = DEFAULT_KEY;
     String newKey = oldKey + "_new";
 
-    SimpleEntry oldEntry = new SimpleEntry(true, true);
-    cache.put(oldKey, oldEntry);
-    assertEquals(oldEntry, cache.getCurrentEntry(oldKey));
+    SimpleValue oldValue = new SimpleValue(true, true);
+    cache.put(oldKey, oldValue);
+    assertEquals(oldValue, cache.getCurrentValue(oldKey));
     assertEquals(1, cache.size());
 
-    SimpleEntry newEntry = new SimpleEntry(true, true);
-    cache.put(newKey, newEntry);
-    assertNull(cache.getCurrentEntry(oldKey));
-    assertEquals(newEntry, cache.getCurrentEntry(newKey));
+    SimpleValue newValue = new SimpleValue(true, true);
+    cache.put(newKey, newValue);
+    assertNull(cache.getCurrentValue(oldKey));
+    assertEquals(newValue, cache.getCurrentValue(newKey));
     assertEquals(1, cache.size());
   }
 
   @Test
-  public void testOlderEntryIsIgnored() {
-    LruCache<String, SimpleEntry> cache = new LruCache<String, SimpleEntry>(1);
+  public void testOlderValueIsIgnored() {
+    LruCache<String, SimpleValue> cache = new LruCache<String, SimpleValue>(1);
 
-    SimpleEntry currentEntry = new SimpleEntry(true, true);
-    SimpleEntry notAsCurrentEntry = new SimpleEntry(true, false);
-    cache.put(DEFAULT_KEY, currentEntry);
-    cache.put(DEFAULT_KEY, notAsCurrentEntry);
+    SimpleValue currentValue = new SimpleValue(true, true);
+    SimpleValue notAsCurrentValue = new SimpleValue(true, false);
+    cache.put(DEFAULT_KEY, currentValue);
+    cache.put(DEFAULT_KEY, notAsCurrentValue);
     assertEquals(
-            "The existing entry in the cache was overwritten",
-            currentEntry,
-            cache.getCurrentEntry(DEFAULT_KEY)
+            "The existing value in the cache was overwritten",
+            currentValue,
+            cache.getCurrentValue(DEFAULT_KEY)
     );
   }
 
   @Test
-  public void testOutdatedEntryIsIgnored() {
-    LruCache<String, SimpleEntry> cache = new LruCache<String, SimpleEntry>(1);
+  public void testOutdatedValueIsIgnored() {
+    LruCache<String, SimpleValue> cache = new LruCache<String, SimpleValue>(1);
 
-    SimpleEntry outdatedEntry = new SimpleEntry(false, true);
-    cache.put(DEFAULT_KEY, outdatedEntry);
+    SimpleValue outdatedValue = new SimpleValue(false, true);
+    cache.put(DEFAULT_KEY, outdatedValue);
     assertEquals(0, cache.size());
-    assertNull(cache.getCurrentEntry(DEFAULT_KEY));
+    assertNull(cache.getCurrentValue(DEFAULT_KEY));
   }
 
   @Test
-  public void testCurrentEntryOverwritesExisting() {
-    LruCache<String, SimpleEntry> cache = new LruCache<String, SimpleEntry>(1);
+  public void testCurrentValueOverwritesExisting() {
+    LruCache<String, SimpleValue> cache = new LruCache<String, SimpleValue>(1);
 
-    SimpleEntry currentEntry = new SimpleEntry(true, true);
-    SimpleEntry notAsCurrentEntry = new SimpleEntry(true, false);
-    cache.put(DEFAULT_KEY, notAsCurrentEntry);
+    SimpleValue currentValue = new SimpleValue(true, true);
+    SimpleValue notAsCurrentValue = new SimpleValue(true, false);
+    cache.put(DEFAULT_KEY, notAsCurrentValue);
     assertEquals(1, cache.size());
-    cache.put(DEFAULT_KEY, currentEntry);
+    cache.put(DEFAULT_KEY, currentValue);
     assertEquals(1, cache.size());
     assertEquals(
-            "The existing entry in the cache was NOT overwritten",
-            currentEntry,
-            cache.getCurrentEntry(DEFAULT_KEY)
+            "The existing value in the cache was NOT overwritten",
+            currentValue,
+            cache.getCurrentValue(DEFAULT_KEY)
     );
   }
 
   @Test
-  public void testGetOutdatedEntryReturnsNull() {
-    LruCache<String, SimpleEntry> cache = new LruCache<String, SimpleEntry>(1);
+  public void testGetOutdatedValueReturnsNull() {
+    LruCache<String, SimpleValue> cache = new LruCache<String, SimpleValue>(1);
 
-    SimpleEntry entry = new SimpleEntry(true, true);
-    cache.put(DEFAULT_KEY, entry);
+    SimpleValue value = new SimpleValue(true, true);
+    cache.put(DEFAULT_KEY, value);
     assertEquals(1, cache.size());
-    assertEquals(entry, cache.getCurrentEntry(DEFAULT_KEY));
+    assertEquals(value, cache.getCurrentValue(DEFAULT_KEY));
 
-    entry.setCurrent(false);
-    assertNull("The entry should not be current anymore", cache.getCurrentEntry(DEFAULT_KEY));
+    value.setCurrent(false);
+    assertNull("The value should not be current anymore", cache.getCurrentValue(DEFAULT_KEY));
     assertEquals(0, cache.size());
   }
 
   @Test
   public void testRemove() {
-    LruCache<String, SimpleEntry> cache = new LruCache<String, SimpleEntry>(1);
+    LruCache<String, SimpleValue> cache = new LruCache<String, SimpleValue>(1);
 
-    SimpleEntry entry = new SimpleEntry(true, true);
-    cache.put(DEFAULT_KEY, entry);
+    SimpleValue value = new SimpleValue(true, true);
+    cache.put(DEFAULT_KEY, value);
     assertEquals(1, cache.size());
-    assertEquals(entry, cache.getCurrentEntry(DEFAULT_KEY));
+    assertEquals(value, cache.getCurrentValue(DEFAULT_KEY));
 
-    // remove the only entry
-    assertEquals(entry, cache.remove(DEFAULT_KEY));
-    assertNull(cache.getCurrentEntry(DEFAULT_KEY));
+    // remove the only value
+    assertEquals(value, cache.remove(DEFAULT_KEY));
+    assertNull(cache.getCurrentValue(DEFAULT_KEY));
     assertEquals(0, cache.size());
   }
 
   @Test
   public void testClear() {
-    LruCache<String, SimpleEntry> cache = new LruCache<String, SimpleEntry>(2);
+    LruCache<String, SimpleValue> cache = new LruCache<String, SimpleValue>(2);
 
     String key1 = DEFAULT_KEY + 1;
     String key2 = DEFAULT_KEY + 2;
-    SimpleEntry entry = new SimpleEntry(true, true);
-    cache.put(key1, entry);
-    cache.put(key2, entry);
-    assertEquals(entry, cache.getCurrentEntry(key1));
-    assertEquals(entry, cache.getCurrentEntry(key2));
+    SimpleValue value = new SimpleValue(true, true);
+    cache.put(key1, value);
+    cache.put(key2, value);
+    assertEquals(value, cache.getCurrentValue(key1));
+    assertEquals(value, cache.getCurrentValue(key2));
     assertEquals(2, cache.size());
 
     cache.clear();
-    assertNull(cache.getCurrentEntry(key1));
-    assertNull(cache.getCurrentEntry(key2));
+    assertNull(cache.getCurrentValue(key1));
+    assertNull(cache.getCurrentValue(key2));
     assertEquals(0, cache.size());
   }
 

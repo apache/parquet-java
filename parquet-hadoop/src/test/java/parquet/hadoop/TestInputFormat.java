@@ -247,39 +247,39 @@ public class TestInputFormat {
   }
 
   @Test
-  public void testFooterCacheEntryIsCurrent() throws IOException, InterruptedException {
+  public void testFooterCacheValueIsCurrent() throws IOException, InterruptedException {
     File tempFile = getTempFile();
     FileSystem fs = FileSystem.getLocal(new Configuration());
-    ParquetInputFormat.FootersCacheEntry cacheEntry = getDummyCacheEntry(tempFile, fs);
+    ParquetInputFormat.FootersCacheValue cacheValue = getDummyCacheValue(tempFile, fs);
 
     assertTrue(tempFile.setLastModified(tempFile.lastModified() + 5000));
-    assertFalse(cacheEntry.isCurrent());
+    assertFalse(cacheValue.isCurrent());
   }
 
   @Test
-  public void testFooterCacheEntryDeleted() throws IOException {
+  public void testFooterCacheValueDeleted() throws IOException {
     File tempFile = getTempFile();
     FileSystem fs = FileSystem.getLocal(new Configuration());
-    ParquetInputFormat.FootersCacheEntry cacheEntry = getDummyCacheEntry(tempFile, fs);
+    ParquetInputFormat.FootersCacheValue cacheValue = getDummyCacheValue(tempFile, fs);
 
     assertTrue(tempFile.delete());
-    assertFalse(cacheEntry.isCurrent());
+    assertFalse(cacheValue.isCurrent());
   }
 
   @Test
-  public void testFooterCacheEntryIsNewer() throws IOException {
+  public void testFooterCacheValueIsNewer() throws IOException {
     File tempFile = getTempFile();
     FileSystem fs = FileSystem.getLocal(new Configuration());
-    ParquetInputFormat.FootersCacheEntry cacheEntry = getDummyCacheEntry(tempFile, fs);
+    ParquetInputFormat.FootersCacheValue cacheValue = getDummyCacheValue(tempFile, fs);
 
-    assertTrue(cacheEntry.isNewerThan(null));
-    assertFalse(cacheEntry.isNewerThan(cacheEntry));
+    assertTrue(cacheValue.isNewerThan(null));
+    assertFalse(cacheValue.isNewerThan(cacheValue));
 
     assertTrue(tempFile.setLastModified(tempFile.lastModified() + 5000));
-    ParquetInputFormat.FootersCacheEntry newerCacheEntry = getDummyCacheEntry(tempFile, fs);
+    ParquetInputFormat.FootersCacheValue newerCacheValue = getDummyCacheValue(tempFile, fs);
 
-    assertTrue(newerCacheEntry.isNewerThan(cacheEntry));
-    assertFalse(cacheEntry.isNewerThan(newerCacheEntry));
+    assertTrue(newerCacheValue.isNewerThan(cacheValue));
+    assertFalse(cacheValue.isNewerThan(newerCacheValue));
   }
 
   private File getTempFile() throws IOException {
@@ -288,13 +288,13 @@ public class TestInputFormat {
     return tempFile;
   }
 
-  private ParquetInputFormat.FootersCacheEntry getDummyCacheEntry(File file, FileSystem fs) throws IOException {
+  private ParquetInputFormat.FootersCacheValue getDummyCacheValue(File file, FileSystem fs) throws IOException {
     Path path = new Path(file.getPath());
     FileStatus status = fs.getFileStatus(path);
     ParquetMetadata mockMetadata = mock(ParquetMetadata.class);
-    ParquetInputFormat.FootersCacheEntry cacheEntry = new ParquetInputFormat.FootersCacheEntry(status, new Footer(path, mockMetadata));
-    assertTrue(cacheEntry.isCurrent());
-    return cacheEntry;
+    ParquetInputFormat.FootersCacheValue cacheValue = new ParquetInputFormat.FootersCacheValue(status, new Footer(path, mockMetadata));
+    assertTrue(cacheValue.isCurrent());
+    return cacheValue;
   }
 
   private List<ParquetInputSplit> generateSplitByMinMaxSize(long min, long max) throws IOException {
