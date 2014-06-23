@@ -1,5 +1,10 @@
 package parquet.filter2;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+
 import org.junit.Test;
 
 import parquet.filter2.FilterPredicates.And;
@@ -78,12 +83,25 @@ public class FilterTest {
   }
 
   @Test
-  public void testNamedUdp() {
+  public void testUdp() {
     FilterPredicate predicate = or(eq(doubleColumn, 12.0), intPredicate(intColumn, DummyUdp.class));
     assertTrue(predicate instanceof Or);
     FilterPredicate ud = ((Or) predicate).getRight();
     assertTrue(ud instanceof UserDefined);
     assertEquals(DummyUdp.class, ((UserDefined) ud).getUserDefinedPredicateClass());
     assertTrue(((UserDefined) ud).getUserDefinedPredicate() instanceof DummyUdp);
+  }
+
+  @Test
+  public void testSerializable() throws Exception {
+    FilterPredicate p = and(intPredicate(intColumn, DummyUdp.class), predicate);
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    ObjectOutputStream oos = new ObjectOutputStream(baos);
+    oos.writeObject(p);
+    oos.close();
+
+    ObjectInputStream is = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()));
+    FilterPredicate read = (FilterPredicate) is.readObject();
+    assertEquals(p, read);
   }
 }

@@ -9,7 +9,9 @@ import parquet.filter2.UserDefinedPredicates.IntUserDefinedPredicate
 import parquet.filter2.FilterPredicates.{IntUserDefined, Or}
 
 class DummyFilter extends IntUserDefinedPredicate {
-  override def filterByValue(value: Int): Boolean = false
+  override def keep(value: Int): Boolean = false
+
+  override def canDrop(min: Int, max: Int, inverted: Boolean): Boolean = false
 }
 
 @RunWith(classOf[JUnitRunner])

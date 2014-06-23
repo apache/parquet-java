@@ -1,7 +1,8 @@
 package parquet.filter2.dsl
 
-import parquet.filter2.{Filter, FilterPredicate}
 import parquet.filter2.UserDefinedPredicates._
+import parquet.filter2.{Filter, FilterPredicate}
+import parquet.io.api.Binary
 
 object Dsl {
 
@@ -41,7 +42,7 @@ object Dsl {
     def filterBy[T <: DoubleUserDefinedPredicate](c: Class[T]) = Filter.doublePredicate(column, c)
   }
 
-  case class BinaryColumn(columnPath: String ) extends Column[Array[Byte]] {
+  case class BinaryColumn(columnPath: String ) extends Column[Binary] {
     override val column = Filter.binaryColumn(columnPath)
     def filterBy[T <: BinaryUserDefinedPredicate](c: Class[T]) = Filter.binaryPredicate(column, c)
   }
