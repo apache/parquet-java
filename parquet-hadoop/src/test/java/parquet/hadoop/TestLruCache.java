@@ -7,7 +7,7 @@ import static org.junit.Assert.*;
 public class TestLruCache {
   private static final String DEFAULT_KEY = "test";
 
-  private static final class SimpleValue implements LruCache.Value<SimpleValue> {
+  private static final class SimpleValue implements LruCache.Value<String, SimpleValue> {
     private boolean current;
     private boolean newerThan;
 
@@ -17,7 +17,7 @@ public class TestLruCache {
     }
 
     @Override
-    public boolean isCurrent() {
+    public boolean isCurrent(String key) {
       return current;
     }
 

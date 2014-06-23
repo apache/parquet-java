@@ -14,7 +14,7 @@ import java.util.Map;
  * @param <V> The value type.  Must extend {@link parquet.hadoop.LruCache.Value} so that the "staleness" of the value
  *           can be easily determined.
  */
-final class LruCache<K, V extends LruCache.Value<V>> {
+final class LruCache<K, V extends LruCache.Value<K, V>> {
   private static final Log LOG = Log.getLog(LruCache.class);
 
   private static final float DEFAULT_LOAD_FACTOR = 0.75f;
@@ -71,7 +71,7 @@ final class LruCache<K, V extends LruCache.Value<V>> {
    * @param newValue value to be associated with the specified key
    */
   public void put(K key, V newValue) {
-    if (newValue == null || !newValue.isCurrent()) {
+    if (newValue == null || !newValue.isCurrent(key)) {
       if (Log.WARN) LOG.warn("Ignoring new cache entry for '" + key + "' because it is " +
               (newValue == null ? "null" : "not current"));
       return;
@@ -111,7 +111,7 @@ final class LruCache<K, V extends LruCache.Value<V>> {
   public V getCurrentValue(K key) {
     V value = cacheMap.get(key);
     if (Log.DEBUG) LOG.debug("Value for '" + key + "' " + (value == null ? "not " : "") + "in cache");
-    if (value != null && !value.isCurrent()) {
+    if (value != null && !value.isCurrent(key)) {
       // value is not current; remove it and return null
       remove(key);
       return null;
@@ -135,13 +135,13 @@ final class LruCache<K, V extends LruCache.Value<V>> {
    *
    * @param <V>
    */
-  interface Value<V> {
+  interface Value<K, V> {
     /**
      * Is the value still current (e.g. has the referenced data been modified/updated in such a way that the value
      * is no longer useful)
      * @return {@code true} the value is still current, {@code false} the value is no longer useful
      */
-    public boolean isCurrent();
+    public boolean isCurrent(K key);
 
     /**
      * Compares this value with the specified value to check for relative age.
