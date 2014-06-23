@@ -12,6 +12,7 @@ import parquet.filter2.FilterPredicates.Not;
 import parquet.filter2.FilterPredicates.NotEq;
 import parquet.filter2.FilterPredicates.Or;
 import parquet.filter2.FilterPredicates.UserDefined;
+import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
 
 /**
  * Converts a FilterPredicate to its logical inverse.
@@ -70,12 +71,12 @@ public class FilterPredicateInverter implements Visitor<FilterPredicate> {
   }
 
   @Override
-  public <T, U> FilterPredicate visit(UserDefined<T, U> udp) {
+  public <T,  U extends UserDefinedPredicate<T>> FilterPredicate visit(UserDefined<T, U> udp) {
     return new LogicalNotUserDefined<T, U>(udp);
   }
 
   @Override
-  public <T, U> FilterPredicate visit(LogicalNotUserDefined<T, U> udp) {
+  public <T,  U extends UserDefinedPredicate<T>> FilterPredicate visit(LogicalNotUserDefined<T, U> udp) {
     return udp.getUserDefined();
   }
 }
