@@ -375,9 +375,11 @@ public final class FilterPredicates {
 
   public static class LogicalNotUserDefined <T, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
     private final UserDefined<T, U> udp;
+    private final String toString;
 
-    public LogicalNotUserDefined(UserDefined<T, U> userDefined) {
+    LogicalNotUserDefined(UserDefined<T, U> userDefined) {
       this.udp = Preconditions.checkNotNull(userDefined, "userDefined");
+      this.toString = "inverted(" + udp + ")";
     }
 
     public UserDefined<T, U> getUserDefined() {
@@ -387,6 +389,11 @@ public final class FilterPredicates {
     @Override
     public <R> R accept(Visitor<R> visitor) {
       return visitor.visit(this);
+    }
+
+    @Override
+    public String toString() {
+      return toString;
     }
 
     @Override

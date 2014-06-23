@@ -28,7 +28,7 @@ import static parquet.filter2.Filter.notEq;
 import static parquet.filter2.Filter.or;
 import static parquet.filter2.FilterPredicates.NotEq;
 
-public class FilterTest {
+public class TestFilterConstructionMethods {
 
   private static final Column<Integer> intColumn = intColumn("a.b.c");
   private static final Column<Double> doubleColumn = doubleColumn("x.y.z");
@@ -68,18 +68,6 @@ public class FilterTest {
   public void testToString() {
     assertEquals("and(not(or(eq(a.b.c, 7), noteq(a.b.c, 17))), gt(x.y.z, 100.0))",
         predicate.toString());
-  }
-
-  public static class DummyUdp extends UserDefinedPredicates.IntUserDefinedPredicate {
-    @Override
-    public boolean keep(int value) {
-      return true;
-    }
-
-    @Override
-    public boolean canDrop(int min, int max, boolean inverted) {
-      return false;
-    }
   }
 
   @Test

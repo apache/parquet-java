@@ -93,27 +93,27 @@ public final class Filter {
     return new GtEq<T>(column, value);
   }
 
-  public static <T extends IntUserDefinedPredicate> IntUserDefined intPredicate(Column<Integer> column, Class<T> clazz) {
+  public static <T extends IntUserDefinedPredicate> IntUserDefined<T> intPredicate(Column<Integer> column, Class<T> clazz) {
     return new IntUserDefined<T>(column, clazz);
   }
 
-  public static <T extends LongUserDefinedPredicate> LongUserDefined longPredicate(Column<Long> column, Class<T> clazz) {
+  public static <T extends LongUserDefinedPredicate> LongUserDefined<T> longPredicate(Column<Long> column, Class<T> clazz) {
     return new LongUserDefined<T>(column, clazz);
   }
 
-  public static <T extends FloatUserDefinedPredicate> FloatUserDefined floatPredicate(Column<Float> column, Class<T> clazz) {
+  public static <T extends FloatUserDefinedPredicate> FloatUserDefined<T> floatPredicate(Column<Float> column, Class<T> clazz) {
     return new FloatUserDefined<T>(column, clazz);
   }
 
-  public static <T extends DoubleUserDefinedPredicate> DoubleUserDefined doublePredicate(Column<Double> column, Class<T> clazz) {
+  public static <T extends DoubleUserDefinedPredicate> DoubleUserDefined<T> doublePredicate(Column<Double> column, Class<T> clazz) {
     return new DoubleUserDefined<T>(column, clazz);
   }
 
-  public static <T extends BinaryUserDefinedPredicate> BinaryUserDefined binaryPredicate(Column<Binary> column, Class<T> clazz) {
+  public static <T extends BinaryUserDefinedPredicate> BinaryUserDefined<T> binaryPredicate(Column<Binary> column, Class<T> clazz) {
     return new BinaryUserDefined<T>(column, clazz);
   }
 
-  public static <T extends StringUserDefinedPredicate> StringUserDefined stringPredicate(Column<String> column, Class<T> clazz) {
+  public static <T extends StringUserDefinedPredicate> StringUserDefined<T> stringPredicate(Column<String> column, Class<T> clazz) {
     return new StringUserDefined<T>(column, clazz);
   }
 
