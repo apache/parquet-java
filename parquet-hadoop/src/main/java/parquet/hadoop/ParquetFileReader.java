@@ -424,10 +424,10 @@ public class ParquetFileReader implements Closeable {
       if (Log.DEBUG) LOG.debug("reading footer index at " + footerLengthIndex);
 
       f.seek(footerLengthIndex);
-      final int footerLength = Zcopy.getInt(f);
+      final int footerLength = CompatibilityUtil.getInt(f);
       final ByteBuffer refMagicBuf = ByteBuffer.wrap(MAGIC);
       for (int magicRemaining = MAGIC.length; magicRemaining > 0;) {
-        final ByteBuffer magicBuf = Zcopy.getBuf(f, magicRemaining);
+        final ByteBuffer magicBuf = CompatibilityUtil.getBuf(f, magicRemaining);
         refMagicBuf.clear();
         refMagicBuf.position(MAGIC.length - magicRemaining);
         refMagicBuf.limit(refMagicBuf.position() + magicBuf.remaining());
@@ -772,7 +772,7 @@ public class ParquetFileReader implements Closeable {
     public List<Chunk> readAll(FSDataInputStream f) throws IOException {
       List<Chunk> result = new ArrayList<Chunk>(chunks.size());
       f.seek(offset);
-      ByteBuffer chunksByteBuffer = Zcopy.getBuf(f, length);
+      ByteBuffer chunksByteBuffer = CompatibilityUtil.getBuf(f, length);
      
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);

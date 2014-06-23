@@ -54,7 +54,6 @@ import parquet.format.RowGroup;
 import parquet.format.SchemaElement;
 import parquet.format.Statistics;
 import parquet.format.Type;
-import parquet.hadoop.Zcopy;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
@@ -530,16 +529,7 @@ public class ParquetMetadataConverter {
     if (Log.DEBUG) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
     return parquetMetadata;
   }
-
-  public ParquetMetadata readParquetMetadata(FSDataInputStream from)
-      throws IOException {
-    FileMetaData fileMetaData = Zcopy.readFileMetaData(from);
-    if (Log.DEBUG) LOG.debug(fileMetaData);
-    ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData);
-    if (Log.DEBUG) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
-    return parquetMetadata;
-  }
-
+  
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema());
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
