@@ -46,7 +46,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
    * pred should first be run through {@link parquet.filter2.CollapseLogicalNots} to rewrite it
    * in a form that doesn't make use of the not() operator.
    *
-   * pred should also have already been run through {@link parquet.filter2.RuntimeFilterValidator} to make sure
+   * pred should also have already been run through {@link parquet.filter2.FilterValidator} to make sure
    * it is compatible with the schema of this file.
    *
    * TODO: we could just remove the not operator. see comments in CollapseLogicalNots

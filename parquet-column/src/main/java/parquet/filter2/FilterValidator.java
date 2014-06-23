@@ -23,63 +23,72 @@ import parquet.schema.ColumnPathUtil;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
 
-public class RuntimeFilterValidator implements FilterPredicate.Visitor<Void> {
+public class FilterValidator implements FilterPredicate.Visitor<Void> {
 
   public static void validate(FilterPredicate predicate, MessageType schema) {
-    FilterPredicate.Visitor validator = new RuntimeFilterValidator(schema);
-    predicate.accept(validator);
+    predicate.accept(new FilterValidator(schema));
   }
 
-  private final Map<String, ColumnDescriptor> columns = new HashMap<String, ColumnDescriptor>();
+  // map of column name to the type the user supplied for this column
+  // used to validate that the user did not provide different types for the same
+  // column
+  private final Map<String, Class<?>> columnTypesEncountered = new HashMap<String, Class<?>>();
+
+  // the columns (keyed by path) according to the file's schema. This is the source of truth, and
+  // we are validating that what the user provided agrees with these.
+  private final Map<String, ColumnDescriptor> columnsAccordingToSchema = new HashMap<String, ColumnDescriptor>();
+
+  // the original type of a column, keyed by path
   private final Map<String, OriginalType> originalTypes = new HashMap<String, OriginalType>();
 
-  public RuntimeFilterValidator(MessageType schema) {
+  public FilterValidator(MessageType schema) {
 
     for (ColumnDescriptor cd : schema.getColumns()) {
       String columnPath = ColumnPathUtil.toDotSeparatedString(cd.getPath());
 
-      columns.put(columnPath, cd);
+      columnsAccordingToSchema.put(columnPath, cd);
 
       OriginalType ot = schema.getType(cd.getPath()).getOriginalType();
       if (ot != null) {
         originalTypes.put(columnPath, ot);
       }
     }
+
   }
 
   @Override
   public <T> Void visit(Eq<T> pred) {
-    assertTypeValid(pred);
+    validateColumnFilterPredicate(pred);
     return null;
   }
 
   @Override
   public <T> Void visit(NotEq<T> pred) {
-    assertTypeValid(pred);
+    validateColumnFilterPredicate(pred);
     return null;
   }
 
   @Override
   public <T> Void visit(Lt<T> pred) {
-    assertTypeValid(pred);
+    validateColumnFilterPredicate(pred);
     return null;
   }
 
   @Override
   public <T> Void visit(LtEq<T> pred) {
-    assertTypeValid(pred);
+    validateColumnFilterPredicate(pred);
     return null;
   }
 
   @Override
   public <T> Void visit(Gt<T> pred) {
-    assertTypeValid(pred);
+    validateColumnFilterPredicate(pred);
     return null;
   }
 
   @Override
   public <T> Void visit(GtEq<T> pred) {
-    assertTypeValid(pred);
+    validateColumnFilterPredicate(pred);
     return null;
   }
 
@@ -105,7 +114,7 @@ public class RuntimeFilterValidator implements FilterPredicate.Visitor<Void> {
 
   @Override
   public <T, U extends UserDefinedPredicate<T>> Void visit(UserDefined<T, U> udp) {
-    assertTypeValid(udp.getColumn());
+    validateColumn(udp.getColumn());
     return null;
   }
 
@@ -114,12 +123,21 @@ public class RuntimeFilterValidator implements FilterPredicate.Visitor<Void> {
     return udp.getUserDefined().accept(this);
   }
 
-  private <T> void assertTypeValid(ColumnFilterPredicate<T> pred) {
-    assertTypeValid(pred.getColumn());
+  private <T> void validateColumnFilterPredicate(ColumnFilterPredicate<T> pred) {
+    validateColumn(pred.getColumn());
   }
 
-  private <T> void assertTypeValid(Column<T> column) {
+  private <T> void validateColumn(Column<T> column) {
     String path = column.getColumnPath();
+
+    Class<?> alreadySeen = columnTypesEncountered.get(path);
+    if (alreadySeen != null && !alreadySeen.equals(column.getColumnType())) {
+      throw new IllegalArgumentException("Column: "
+          + path
+          + " was provided with different types in the same predicate."
+          + " Found both: (" + alreadySeen + ", " + column.getColumnType() + ")");
+    }
+
     ValidTypeMap.assertTypeValid(
         path,
         column.getColumnType(),
@@ -128,7 +146,7 @@ public class RuntimeFilterValidator implements FilterPredicate.Visitor<Void> {
   }
 
   private ColumnDescriptor getColumnDescriptor(String columnPath) {
-    ColumnDescriptor cd = columns.get(columnPath);
+    ColumnDescriptor cd = columnsAccordingToSchema.get(columnPath);
     Preconditions.checkArgument(cd != null, "Column " + columnPath + " was not found in schema!");
     return cd;
   }

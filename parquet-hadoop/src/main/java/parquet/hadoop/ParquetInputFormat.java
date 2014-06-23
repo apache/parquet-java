@@ -40,7 +40,7 @@ import parquet.Log;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.CollapseLogicalNots;
 import parquet.filter2.FilterPredicate;
-import parquet.filter2.RuntimeFilterValidator;
+import parquet.filter2.FilterValidator;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
@@ -418,7 +418,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   public List<BlockMetaData> applyRowGroupFilters(FilterPredicate filterPredicate, MessageType schema, List<BlockMetaData> blocks) {
     // check that the schema of the filter matches the schema of the file
-    RuntimeFilterValidator.validate(filterPredicate, schema);
+    FilterValidator.validate(filterPredicate, schema);
 
     // rewrite the predicate to not include the not() operator
     FilterPredicate collapsedPredicate = CollapseLogicalNots.collapse(filterPredicate);
