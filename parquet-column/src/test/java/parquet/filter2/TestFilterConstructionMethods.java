@@ -61,7 +61,6 @@ public class TestFilterConstructionMethods {
     assertTrue(gt instanceof Gt);
     assertEquals(100.0, ((Gt) gt).getValue());
     assertEquals("x.y.z", ((Gt) gt).getColumn().getColumnPath());
-
   }
 
   @Test
