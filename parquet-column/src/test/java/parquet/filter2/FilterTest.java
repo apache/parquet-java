@@ -67,7 +67,12 @@ public class FilterTest {
 
   public static class DummyUdp extends UserDefinedPredicates.IntUserDefinedPredicate {
     @Override
-    public boolean filterByValue(int value) {
+    public boolean keep(int value) {
+      return true;
+    }
+
+    @Override
+    public boolean canDrop(int min, int max, boolean inverted) {
       return false;
     }
   }

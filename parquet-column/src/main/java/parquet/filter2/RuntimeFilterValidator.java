@@ -18,6 +18,7 @@ import parquet.filter2.FilterPredicates.Not;
 import parquet.filter2.FilterPredicates.NotEq;
 import parquet.filter2.FilterPredicates.Or;
 import parquet.filter2.FilterPredicates.UserDefined;
+import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
 import parquet.schema.ColumnPathUtil;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
@@ -103,13 +104,13 @@ public class RuntimeFilterValidator implements FilterPredicate.Visitor<Void> {
   }
 
   @Override
-  public <T, U> Void visit(UserDefined<T, U> udp) {
+  public <T, U extends UserDefinedPredicate<T>> Void visit(UserDefined<T, U> udp) {
     assertTypeValid(udp.getColumn());
     return null;
   }
 
   @Override
-  public <T, U> Void visit(LogicalNotUserDefined<T, U> udp) {
+  public <T, U extends UserDefinedPredicate<T>> Void visit(LogicalNotUserDefined<T, U> udp) {
     return udp.getUserDefined().accept(this);
   }
 
