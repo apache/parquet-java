@@ -18,9 +18,9 @@ package parquet.thrift;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
 import org.apache.thrift.protocol.TList;
@@ -778,7 +778,12 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   private final ParquetReadProtocol protocol;
   private final GroupConverter structConverter;
   private List<TProtocol> rootEvents = new ArrayList<TProtocol>();
+  boolean hasRequiredFields = false;
 
+  //TODO(dmitriy): make this expire things
+  // we probably want to cache this since we might have to keep re-examining the same struct in different
+  // instances of the same converter
+  private static Map<ThriftType.StructType, Boolean> hasRequiredFieldCache = new HashMap<ThriftType.StructType, Boolean>();
   /**
    *
    * @param thriftReader the class responsible for instantiating the final object and read from the protocol
@@ -791,7 +796,52 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     this.thriftReader = thriftReader;
     this.protocol = new ParquetReadProtocol();
     this.thriftType = thriftType;
+    if (!hasRequiredFieldCache.containsKey(thriftType)) {
+      hasRequiredFieldCache.put(thriftType, somethingIsRequiredInStruct(thriftType));
+    }
+    this.hasRequiredFields = hasRequiredFieldCache.get(thriftType);
     this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
+  }
+
+  private boolean fieldIsRequired(ThriftField thriftField) {
+    boolean isRequired = (thriftField.getRequirement() == ThriftField.Requirement.REQUIRED);
+    if (isRequired) return true;
+
+    ThriftType elementType = thriftField.getType();
+    ThriftTypeID elementFieldTypeID = elementType.getType();
+    switch (elementFieldTypeID) {
+      case STRUCT:
+        return somethingIsRequiredInStruct((ThriftType.StructType) elementType);
+      case LIST:
+        return somethingIsRequiredInList((ThriftType.ListType) elementType);
+      case MAP:
+        return somethingIsRequiredInMap((ThriftType.MapType) elementType);
+      case SET:
+        return somethingIsRequiredInSet((ThriftType.SetType) elementType);
+      default:
+        return false;
+    }
+  }
+
+  private boolean somethingIsRequiredInList(ThriftType.ListType thriftType) {
+    return fieldIsRequired(thriftType.getValues());
+  }
+  private boolean somethingIsRequiredInSet(ThriftType.SetType thriftType) {
+    return fieldIsRequired(thriftType.getValues());
+  }
+
+  private boolean somethingIsRequiredInMap(ThriftType.MapType thriftType) {
+    return fieldIsRequired(thriftType.getKey()) || fieldIsRequired(thriftType.getValue());
+  }
+
+  private boolean somethingIsRequiredInStruct(ThriftType.StructType thriftType) {
+    boolean isRequired = false;
+    Iterator<ThriftField> childrenIter = thriftType.getChildren().iterator();
+    while (!isRequired && childrenIter.hasNext()) {
+      ThriftField field = childrenIter.next();
+      isRequired = fieldIsRequired(field);
+    }
+    return isRequired;
   }
 
   /**
@@ -802,10 +852,16 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   @Override
   public T getCurrentRecord() {
     try {
-      List<TProtocol> fixedEvents = new ProtocolEventsAmender(rootEvents).amendMissingRequiredFields(thriftType);
-      protocol.addAll(fixedEvents);
-      rootEvents.clear();
-      return thriftReader.readOneRecord(protocol);
+      if (hasRequiredFields) {
+        List<TProtocol> fixedEvents = new ProtocolEventsAmender(rootEvents).amendMissingRequiredFields(thriftType);
+        protocol.addAll(fixedEvents);
+        rootEvents.clear();
+        return thriftReader.readOneRecord(protocol);
+     } else {
+       protocol.addAll(rootEvents);
+       rootEvents.clear();
+       return thriftReader.readOneRecord(protocol);
+     }
     } catch (TException e) {
       throw new ParquetDecodingException("Could not read thrift object from protocol", e);
     }
