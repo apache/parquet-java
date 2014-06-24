@@ -43,10 +43,16 @@ public class ColumnIOFactory {
     private final MessageType requestedSchema;
     private int currentRequestedIndex;
     private Type currentRequestedType;
+    private boolean strictTypeChecking;
 
     public ColumnIOCreatorVisitor(boolean validating, MessageType requestedSchema) {
+      this(validating, requestedSchema, true);
+    }
+    
+    public ColumnIOCreatorVisitor(boolean validating, MessageType requestedSchema, boolean strictTypeChecking) {
       this.validating = validating;
       this.requestedSchema = requestedSchema;
+      this.strictTypeChecking = strictTypeChecking;
     }
 
     @Override
@@ -86,7 +92,8 @@ public class ColumnIOFactory {
 
     @Override
     public void visit(PrimitiveType primitiveType) {
-      if (!currentRequestedType.isPrimitive() || currentRequestedType.asPrimitiveType().getPrimitiveTypeName() != primitiveType.getPrimitiveTypeName()) {
+      if (!currentRequestedType.isPrimitive() || 
+              (this.strictTypeChecking && currentRequestedType.asPrimitiveType().getPrimitiveTypeName() != primitiveType.getPrimitiveTypeName())) {
         incompatibleSchema(primitiveType, currentRequestedType);
       }
       PrimitiveColumnIO newIO = new PrimitiveColumnIO(primitiveType, current, currentRequestedIndex, leaves.size());
@@ -127,7 +134,17 @@ public class ColumnIOFactory {
    * @return the corresponding serializing/deserializing structure
    */
   public MessageColumnIO getColumnIO(MessageType requestedSchema, MessageType fileSchema) {
-    ColumnIOCreatorVisitor visitor = new ColumnIOCreatorVisitor(validating, requestedSchema);
+    return getColumnIO(requestedSchema, fileSchema, true);
+  }
+  
+  /**
+   * @param schema the requestedSchema we want to read/write
+   * @param fileSchema the file schema (when reading it can be different from the requested schema)
+   * @param strict should file type and requested primitive types match
+   * @return the corresponding serializing/deserializing structure
+   */
+  public MessageColumnIO getColumnIO(MessageType requestedSchema, MessageType fileSchema, boolean strict) {
+    ColumnIOCreatorVisitor visitor = new ColumnIOCreatorVisitor(validating, requestedSchema, strict);
     fileSchema.accept(visitor);
     return visitor.getColumnIO();
   }

@@ -77,6 +77,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * key to configure the filter
    */
   public static final String UNBOUND_RECORD_FILTER = "parquet.read.filter";
+  
+  /**
+   * key to configure type checking for conflicting schemas (default: true)
+   */
+  public static final String STRICT_TYPE_CHECKING = "parquet.strict.typing";
 
   private Class<?> readSupportClass;
   private List<Footer> footers;
@@ -358,7 +363,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       throw new ParquetDecodingException("maxSplitSize or minSplitSie should not be negative: maxSplitSize = " + maxSplitSize + "; minSplitSize = " + minSplitSize);
     }
     List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
-    GlobalMetaData globalMetaData = ParquetFileWriter.getGlobalMetaData(footers);
+    GlobalMetaData globalMetaData = ParquetFileWriter.getGlobalMetaData(footers, configuration.getBoolean(STRICT_TYPE_CHECKING, true));
     ReadContext readContext = getReadSupport(configuration).init(new InitContext(
         configuration,
         globalMetaData.getKeyValueMetaData(),

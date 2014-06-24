@@ -37,6 +37,7 @@ import parquet.schema.Type;
 
 import static java.lang.String.format;
 import static parquet.Log.DEBUG;
+import static parquet.hadoop.ParquetInputFormat.STRICT_TYPE_CHECKING;
 
 class InternalParquetRecordReader<T> {
   private static final Log LOG = Log.getLog(InternalParquetRecordReader.class);
@@ -57,6 +58,7 @@ class InternalParquetRecordReader<T> {
   private ParquetFileReader reader;
   private parquet.io.RecordReader<T> recordReader;
   private UnboundRecordFilter recordFilter;
+  private boolean strictTypeChecking;
 
   private long totalTimeSpentReadingBytes;
   private long totalTimeSpentProcessingRecords;
@@ -106,7 +108,7 @@ class InternalParquetRecordReader<T> {
       BenchmarkCounter.incrementTime(timeSpentReading);
       LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
       if (Log.DEBUG) LOG.debug("initializing Record assembly with requested schema " + requestedSchema);
-      MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema);
+      MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema, strictTypeChecking);
       recordReader = columnIO.getRecordReader(pages, recordConverter, recordFilter);
       startedAssemblingCurrentBlockAt = System.currentTimeMillis();
       totalCountLoadedSoFar += pages.getRowCount();
@@ -142,7 +144,7 @@ class InternalParquetRecordReader<T> {
     this.recordConverter = readSupport.prepareForRead(
         configuration, extraMetadata, fileSchema,
         new ReadSupport.ReadContext(requestedSchema, readSupportMetadata));
-
+    this.strictTypeChecking = configuration.getBoolean(STRICT_TYPE_CHECKING, true);
     List<ColumnDescriptor> columns = requestedSchema.getColumns();
     reader = new ParquetFileReader(configuration, file, blocks, columns);
     for (BlockMetaData block : blocks) {
