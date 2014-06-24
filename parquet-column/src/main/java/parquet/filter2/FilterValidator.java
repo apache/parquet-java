@@ -137,12 +137,9 @@ public class FilterValidator implements FilterPredicate.Visitor<Void> {
           + " was provided with different types in the same predicate."
           + " Found both: (" + alreadySeen + ", " + column.getColumnType() + ")");
     }
+    columnTypesEncountered.put(path, column.getColumnType());
 
-    ValidTypeMap.assertTypeValid(
-        path,
-        column.getColumnType(),
-        getColumnDescriptor(path).getType(),
-        originalTypes.get(path));
+    ValidTypeMap.assertTypeValid(column, getColumnDescriptor(path).getType(), originalTypes.get(path));
   }
 
   private ColumnDescriptor getColumnDescriptor(String columnPath) {

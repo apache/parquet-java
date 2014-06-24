@@ -5,6 +5,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import parquet.filter2.FilterPredicates.Column;
+import parquet.io.api.Binary;
 import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -18,20 +20,21 @@ public final class ValidTypeMap {
   private static final Map<Class<?>, Set<FullTypeDescriptor>> classToParquetType = new HashMap<Class<?>, Set<FullTypeDescriptor>>();
   private static final Map<FullTypeDescriptor, Set<Class<?>>> parquetTypeToClass = new HashMap<FullTypeDescriptor, Set<Class<?>>>();
 
+  // classToParquetType and parquetTypeToClass are used as a bi-directional map
   private static void add(Class<?> c, FullTypeDescriptor f) {
-    Set<FullTypeDescriptor> s = classToParquetType.get(c);
-    if (s == null) {
-      s = new HashSet<FullTypeDescriptor>();
-      classToParquetType.put(c, s);
+    Set<FullTypeDescriptor> descriptors = classToParquetType.get(c);
+    if (descriptors == null) {
+      descriptors = new HashSet<FullTypeDescriptor>();
+      classToParquetType.put(c, descriptors);
     }
-    s.add(f);
+    descriptors.add(f);
 
-    Set<Class<?>> i = parquetTypeToClass.get(f);
-    if (i == null) {
-      i = new HashSet<Class<?>>();
-      parquetTypeToClass.put(f, i);
+    Set<Class<?>> classes = parquetTypeToClass.get(f);
+    if (classes == null) {
+      classes = new HashSet<Class<?>>();
+      parquetTypeToClass.put(f, classes);
     }
-    i.add(c);
+    classes.add(c);
   }
 
   static {
@@ -40,22 +43,31 @@ public final class ValidTypeMap {
     add(Float.class, new FullTypeDescriptor(PrimitiveTypeName.FLOAT, null));
     add(Double.class, new FullTypeDescriptor(PrimitiveTypeName.DOUBLE, null));
     add(String.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, OriginalType.UTF8));
+    add(Boolean.class, new FullTypeDescriptor(PrimitiveTypeName.BOOLEAN, null));
 
-    // these are both valid mappings
-    add(byte[].class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, null));
-    add(byte[].class, new FullTypeDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, null));
+    // these are all valid mappings
+    add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, null));
+    add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, null));
+
+    // TODO: Do we want to allow binary predicates on String columns?
+    // TODO: I am supporting this now, but should we?
+    add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, OriginalType.UTF8));
+    add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, OriginalType.UTF8));
   }
 
-  public static void assertTypeValid(String columnPath, Class<?> foundColumnType, PrimitiveTypeName primitiveType, OriginalType originalType) {
-    Set<FullTypeDescriptor> s = classToParquetType.get(foundColumnType);
+  public static <T> void assertTypeValid(Column<T> foundColumn, PrimitiveTypeName primitiveType, OriginalType originalType) {
+    Class<T> foundColumnType = foundColumn.getColumnType();
+    String columnPath = foundColumn.getColumnPath();
+
+    Set<FullTypeDescriptor> validTypeDescriptors = classToParquetType.get(foundColumnType);
     FullTypeDescriptor typeInFileMetaData = new FullTypeDescriptor(primitiveType, originalType);
 
-    if (s == null) {
+    if (validTypeDescriptors == null) {
       StringBuilder message = new StringBuilder();
       message
           .append("Column ")
           .append(columnPath)
-          .append(" is of type: ")
+          .append(" was declared as type: ")
           .append(foundColumnType.getName())
           .append(" which is not supported in FilterPredicates.");
 
@@ -64,22 +76,24 @@ public final class ValidTypeMap {
         message
           .append(" Supported types for this column are: ")
           .append(supportedTypes);
+      } else {
+        message.append(" There are no supported types for columns of " + typeInFileMetaData);
       }
       throw new IllegalArgumentException(message.toString());
     }
 
-    if (!s.contains(typeInFileMetaData)) {
+    if (!validTypeDescriptors.contains(typeInFileMetaData)) {
       StringBuilder message = new StringBuilder();
       message
           .append("FilterPredicate column: ")
           .append(columnPath)
-          .append("'s type (")
+          .append("'s declared type (")
           .append(foundColumnType.getName())
-          .append(") does not match file metadata. Column ")
+          .append(") does not match the schema found in file metadata. Column ")
           .append(columnPath)
           .append(" is of type: ")
           .append(typeInFileMetaData)
-          .append("\n Valid types for this column are: ")
+          .append("\nValid types for this column are: ")
           .append(parquetTypeToClass.get(typeInFileMetaData));
       throw new IllegalArgumentException(message.toString());
     }
