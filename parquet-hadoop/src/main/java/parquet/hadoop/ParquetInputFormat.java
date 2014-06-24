@@ -15,7 +15,6 @@
  */
 package parquet.hadoop;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -85,7 +84,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   private static final int MIN_FOOTER_CACHE_SIZE = 100;
 
-  private LruCache<FileStatus, FootersCacheValue> footersCache;
+  private LruCache<FileStatusWrapper, FootersCacheValue> footersCache;
 
   private Class<?> readSupportClass;
 
@@ -453,40 +452,46 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     Configuration config = ContextUtil.getConfiguration(jobContext);
     List<Footer> footers = new ArrayList<Footer>(statuses.size());
     Set<FileStatus> missingStatuses = new HashSet<FileStatus>();
+    Map<Path, FileStatusWrapper> missingStatusesMap =
+            new HashMap<Path, FileStatusWrapper>(missingStatuses.size());
 
-    if (footersCache != null) {
-      for (FileStatus status : statuses) {
-        FootersCacheValue cacheEntry = footersCache.getCurrentValue(status);
-        if (Log.DEBUG) LOG.debug("Cache entry " + (cacheEntry == null ? "not " : "") + " found for '" + status.getPath() + "'");
-        if (cacheEntry != null) {
-          footers.add(cacheEntry.getFooter());
-        } else {
-          missingStatuses.add(status);
-        }
-      }
-    } else {
-      // initialize the cache to store all of the current statuses or a default minimum size. The sizing of this LRU
-      // cache was chosen to mimic prior behavior (i.e. so that performance would be at least as good as it was before)
-      footersCache = new LruCache<FileStatus, FootersCacheValue>(Math.max(statuses.size(), MIN_FOOTER_CACHE_SIZE));
-      missingStatuses.addAll(statuses);
+    if (footersCache == null) {
+      footersCache =
+              new LruCache<FileStatusWrapper, FootersCacheValue>(Math.max(statuses.size(), MIN_FOOTER_CACHE_SIZE));
     }
-    if (Log.DEBUG) LOG.debug("found " + footers.size() + " footers in cache and adding up to " +
-            missingStatuses.size() + " missing footers to the cache");
+    for (FileStatus status : statuses) {
+      FileStatusWrapper statusWrapper = new FileStatusWrapper(status);
+      FootersCacheValue cacheEntry =
+              footersCache.getCurrentValue(statusWrapper);
+      if (Log.DEBUG) {
+        LOG.debug("Cache entry " + (cacheEntry == null ? "not " : "")
+                + " found for '" + status.getPath() + "'");
+      }
+      if (cacheEntry != null) {
+        footers.add(cacheEntry.getFooter());
+      } else {
+        missingStatuses.add(status);
+        missingStatusesMap.put(status.getPath(), statusWrapper);
+      }
+    }
+    if (Log.DEBUG) {
+      LOG.debug("found " + footers.size() + " footers in cache and adding up "
+              + "to " + missingStatuses.size() + " missing footers to the cache");
+    }
 
 
     if (missingStatuses.isEmpty()) {
       return footers;
     }
 
-    List<Footer> newFooters = getFooters(config, new ArrayList<FileStatus>(missingStatuses));
-    Map<Path, FileStatus> missingStatusesMap = new HashMap<Path, FileStatus>(missingStatuses.size());
-    for (FileStatus missingStatus : missingStatuses) {
-      missingStatusesMap.put(missingStatus.getPath(), missingStatus);
-    }
+    List<Footer> newFooters =
+            getFooters(config, new ArrayList<FileStatus>(missingStatuses));
     for (Footer newFooter : newFooters) {
-      // Use the original file status objects to make sure we store a conservative (older) modification time (i.e. in
-      // case the files and footers were modified and it's not clear which version of the footers we have)
-      FileStatus fileStatus = missingStatusesMap.get(newFooter.getFile());
+      // Use the original file status objects to make sure we store a
+      // conservative (older) modification time (i.e. in case the files and
+      // footers were modified and it's not clear which version of the footers
+      // we have)
+      FileStatusWrapper fileStatus = missingStatusesMap.get(newFooter.getFile());
       footersCache.put(fileStatus, new FootersCacheValue(fileStatus, newFooter));
     }
 
@@ -515,20 +520,30 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     return ParquetFileWriter.getGlobalMetaData(getFooters(jobContext));
   }
 
-  static final class FootersCacheValue implements LruCache.Value<FileStatus, FootersCacheValue> {
+  /**
+   * A simple wrapper around {@link parquet.hadoop.Footer} that also includes a
+   * modification time associated with that footer.  The modification time is
+   * used to determine whether the footer is still current.
+   */
+  static final class FootersCacheValue
+          implements LruCache.Value<FileStatusWrapper, FootersCacheValue> {
     private final long modificationTime;
     private final Footer footer;
 
-    public FootersCacheValue(FileStatus status, Footer footer) {
+    public FootersCacheValue(FileStatusWrapper status, Footer footer) {
       this.modificationTime = status.getModificationTime();
       this.footer = new Footer(footer.getFile(), footer.getParquetMetadata());
     }
 
-    public boolean isCurrent(FileStatus key) {
+    @Override
+    public boolean isCurrent(FileStatusWrapper key) {
       long currentModTime = key.getModificationTime();
       boolean isCurrent = modificationTime >= currentModTime;
-      if (Log.DEBUG && !isCurrent) LOG.debug("The cache value for '" + key.getPath() + "' is not current: " +
-              "cached modification time=" + modificationTime + ", current modification time: " + currentModTime);
+      if (Log.DEBUG && !isCurrent) {
+        LOG.debug("The cache value for '" + key + "' is not current: "
+                + "cached modification time=" + modificationTime + ", "
+                + "current modification time: " + currentModTime);
+      }
       return isCurrent;
     }
 
@@ -536,12 +551,48 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       return footer;
     }
 
+    @Override
     public boolean isNewerThan(FootersCacheValue otherValue) {
-      return otherValue == null || modificationTime > otherValue.modificationTime;
+      return otherValue == null ||
+              modificationTime > otherValue.modificationTime;
     }
 
     public Path getPath() {
       return footer.getFile();
+    }
+  }
+
+  /**
+   * A simple wrapper around {@link org.apache.hadoop.fs.FileStatus} with a
+   * meaningful "toString()" method
+   */
+  static final class FileStatusWrapper {
+    private final FileStatus status;
+    public FileStatusWrapper(FileStatus fileStatus) {
+      if (fileStatus == null) {
+        throw new IllegalArgumentException("FileStatus object cannot be null");
+      }
+      status = fileStatus;
+    }
+
+    public long getModificationTime() {
+      return status.getModificationTime();
+    }
+
+    @Override
+    public int hashCode() {
+      return status.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      return other instanceof FileStatusWrapper &&
+              status.equals(((FileStatusWrapper) other).status);
+    }
+
+    @Override
+    public String toString() {
+      return status.getPath().toString();
     }
   }
 

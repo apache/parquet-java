@@ -253,7 +253,7 @@ public class TestInputFormat {
     ParquetInputFormat.FootersCacheValue cacheValue = getDummyCacheValue(tempFile, fs);
 
     assertTrue(tempFile.setLastModified(tempFile.lastModified() + 5000));
-    assertFalse(cacheValue.isCurrent(fs.getFileStatus(new Path(tempFile.getAbsolutePath()))));
+    assertFalse(cacheValue.isCurrent(new ParquetInputFormat.FileStatusWrapper(fs.getFileStatus(new Path(tempFile.getAbsolutePath())))));
   }
 
   @Test
@@ -281,9 +281,11 @@ public class TestInputFormat {
   private ParquetInputFormat.FootersCacheValue getDummyCacheValue(File file, FileSystem fs) throws IOException {
     Path path = new Path(file.getPath());
     FileStatus status = fs.getFileStatus(path);
+    ParquetInputFormat.FileStatusWrapper statusWrapper = new ParquetInputFormat.FileStatusWrapper(status);
     ParquetMetadata mockMetadata = mock(ParquetMetadata.class);
-    ParquetInputFormat.FootersCacheValue cacheValue = new ParquetInputFormat.FootersCacheValue(status, new Footer(path, mockMetadata));
-    assertTrue(cacheValue.isCurrent(status));
+    ParquetInputFormat.FootersCacheValue cacheValue =
+            new ParquetInputFormat.FootersCacheValue(statusWrapper, new Footer(path, mockMetadata));
+    assertTrue(cacheValue.isCurrent(statusWrapper));
     return cacheValue;
   }
 
