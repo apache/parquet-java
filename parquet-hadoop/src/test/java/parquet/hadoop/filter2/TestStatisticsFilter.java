@@ -11,7 +11,6 @@ import parquet.column.statistics.DoubleStatistics;
 import parquet.column.statistics.IntStatistics;
 import parquet.filter2.CollapseLogicalNots;
 import parquet.filter2.FilterPredicate;
-import parquet.filter2.FilterPredicateInverter;
 import parquet.filter2.FilterPredicates.Column;
 import parquet.filter2.UserDefinedPredicates.IntUserDefinedPredicate;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -19,9 +18,6 @@ import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
-import static org.easymock.EasyMock.createStrictMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -29,10 +25,15 @@ import static org.junit.Assert.fail;
 import static parquet.filter2.Filter.and;
 import static parquet.filter2.Filter.doubleColumn;
 import static parquet.filter2.Filter.eq;
+import static parquet.filter2.Filter.gt;
+import static parquet.filter2.Filter.gtEq;
 import static parquet.filter2.Filter.intColumn;
-import static parquet.filter2.Filter.*;
+import static parquet.filter2.Filter.intPredicate;
+import static parquet.filter2.Filter.lt;
+import static parquet.filter2.Filter.ltEq;
 import static parquet.filter2.Filter.not;
 import static parquet.filter2.Filter.notEq;
+import static parquet.filter2.Filter.or;
 import static parquet.hadoop.filter2.StatisticsFilter.canDrop;
 
 public class TestStatisticsFilter {
