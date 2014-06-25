@@ -57,7 +57,12 @@ public class TestFilterValidator {
     }
 
     @Override
-    public boolean canDrop(long min, long max, boolean inverted) {
+    public boolean canDrop(long min, long max) {
+      return false;
+    }
+
+    @Override
+    public boolean inverseCanDrop(long min, long max) {
       return false;
     }
   }

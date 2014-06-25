@@ -28,6 +28,7 @@ public class TestValidTypeMap {
   public static Column<Binary> binaryColumn = binaryColumn("binary.column");
 
   private static class InvalidColumnType { }
+
   public static Column<InvalidColumnType> invalidColumn =
       new Column<InvalidColumnType>("invalid.column", InvalidColumnType.class);
 

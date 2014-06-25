@@ -8,7 +8,12 @@ public class DummyUdp extends UserDefinedPredicates.IntUserDefinedPredicate {
   }
 
   @Override
-  public boolean canDrop(int min, int max, boolean inverted) {
+  public boolean canDrop(int min, int max) {
+    return false;
+  }
+
+  @Override
+  public boolean inverseCanDrop(int min, int max) {
     return false;
   }
 }
