@@ -15,14 +15,24 @@
  */
 package parquet.hadoop;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.junit.Before;
 import org.junit.Test;
+
 import parquet.column.Encoding;
 import parquet.column.statistics.BinaryStatistics;
-import parquet.hadoop.api.ReadSupport;
+import parquet.filter2.FilterPredicate;
+import parquet.filter2.FilterPredicates.Column;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ColumnPath;
@@ -33,15 +43,11 @@ import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Arrays;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import static parquet.filter2.Filter.eq;
+import static parquet.filter2.Filter.intColumn;
+import static parquet.filter2.Filter.or;
 
 public class TestInputFormat {
 
@@ -88,6 +94,16 @@ public class TestInputFormat {
       assertEquals("maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = -50; minSplitSize is -100"
               , e.getMessage());
     }
+  }
+
+  @Test
+  public void testFilterPredicateConfiguration() throws IOException {
+    Column<Integer> intColumn = intColumn("foo");
+    FilterPredicate p = or(eq(intColumn, 7), eq(intColumn, 12));
+    Configuration conf = new Configuration();
+    ParquetInputFormat.setFilterPredicate(conf, p);
+    FilterPredicate read = ParquetInputFormat.getFilterPredicate(conf);
+    assertEquals(p, read);
   }
 
   /*

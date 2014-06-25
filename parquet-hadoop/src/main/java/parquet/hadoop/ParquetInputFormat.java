@@ -382,6 +382,24 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         configuration,
         globalMetaData.getKeyValueMetaData(),
         globalMetaData.getSchema()));
+
+    FilterPredicate filterPredicate = getFilterPredicate(configuration);
+
+    if (filterPredicate != null) {
+      LOG.info("Filtering row groups using predicate: " + filterPredicate);
+      // rewrite the predicate to not include the not() operator
+      FilterPredicate collapsedPredicate = CollapseLogicalNots.collapse(filterPredicate);
+
+      if (!filterPredicate.equals(collapsedPredicate)) {
+        LOG.info("Predicate has been collapsed to: " + collapsedPredicate);
+      }
+
+      filterPredicate = collapsedPredicate;
+    }
+
+    long rowGroupsDropped = 0;
+    long totalRowGroups = 0;
+
     for (Footer footer : footers) {
       final Path file = footer.getFile();
       LOG.debug(file);
@@ -392,10 +410,10 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
       List<BlockMetaData> filteredBlocks;
 
-      FilterPredicate filterPredicate = getFilterPredicate(configuration);
-
       if (filterPredicate != null) {
         filteredBlocks = applyRowGroupFilters(filterPredicate, parquetMetaData.getFileMetaData().getSchema(), blocks);
+        totalRowGroups += blocks.size();
+        rowGroupsDropped += blocks.size() - filteredBlocks.size();
       } else {
         filteredBlocks = blocks;
       }
@@ -413,20 +431,28 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
               maxSplitSize)
           );
     }
+
+    if (filterPredicate != null) {
+      if (rowGroupsDropped > 0 && totalRowGroups > 0) {
+        int percentDropped = (int) ((((double) rowGroupsDropped) / totalRowGroups) * 100);
+        LOG.info("Dropping " + rowGroupsDropped + " row groups that do not pass predicate! (" + percentDropped + "%)");
+      } else {
+        LOG.info("There were no row groups that could be dropped.");
+      }
+    }
+
     return splits;
   }
 
   public List<BlockMetaData> applyRowGroupFilters(FilterPredicate filterPredicate, MessageType schema, List<BlockMetaData> blocks) {
     // check that the schema of the filter matches the schema of the file
+    // TODO: can we do this just once, on the global (merged) schema?
     FilterValidator.validate(filterPredicate, schema);
-
-    // rewrite the predicate to not include the not() operator
-    FilterPredicate collapsedPredicate = CollapseLogicalNots.collapse(filterPredicate);
 
     List<BlockMetaData> filteredBlocks = new ArrayList<BlockMetaData>();
 
     for (BlockMetaData block : blocks) {
-      if (!StatisticsFilter.canDrop(collapsedPredicate, block.getColumns())) {
+      if (!StatisticsFilter.canDrop(filterPredicate, block.getColumns())) {
         filteredBlocks.add(block);
       }
     }
