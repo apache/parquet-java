@@ -64,6 +64,7 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.hadoop.util.CompatibilityUtil;
 import parquet.hadoop.util.counters.BenchmarkCounter;
 import parquet.io.ParquetDecodingException;
 
@@ -299,7 +300,7 @@ public class ParquetFileReader implements Closeable {
               + actMagicStr);
         }
         magicRemaining -= magicBuf.remaining();
-        f.releaseBuffer(magicBuf);
+        CompatibilityUtil.releaseBuffer(f, magicBuf);
       }
       long footerIndex = footerLengthIndex - footerLength;
       if (Log.DEBUG) LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
