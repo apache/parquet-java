@@ -37,6 +37,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
 import parquet.Log;
+import parquet.Preconditions;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.CollapseLogicalNots;
 import parquet.filter2.FilterPredicate;
@@ -97,7 +98,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   public static void setUnboundRecordFilter(Job job, Class<? extends UnboundRecordFilter> filterClass) {
-    ContextUtil.getConfiguration(job).set(UNBOUND_RECORD_FILTER, filterClass.getName());
+    Configuration conf = ContextUtil.getConfiguration(job);
+    Preconditions.checkArgument(getFilterPredicate(conf) == null,
+        "You cannot provide an UnboundRecordFilter after providing a FilterPredicate");
+
+    conf.set(UNBOUND_RECORD_FILTER, filterClass.getName());
   }
 
   public static Class<?> getUnboundRecordFilter(Configuration configuration) {
@@ -112,12 +117,23 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     return ConfigurationUtil.getClassFromConfig(configuration, READ_SUPPORT_CLASS, ReadSupport.class);
   }
 
-  public static void setFilterPredicate(Configuration configuration, FilterPredicate filterPredicate) throws IOException {
-    SerializationUtil.writeObjectToConfAsBase64(FILTER_PREDICATE, filterPredicate, configuration);
+  public static void setFilterPredicate(Configuration configuration, FilterPredicate filterPredicate) {
+    Preconditions.checkArgument(getUnboundRecordFilter(configuration) == null,
+        "You cannot provide a FilterPredicate after providing an UnboundRecordFilter");
+
+    try {
+      SerializationUtil.writeObjectToConfAsBase64(FILTER_PREDICATE, filterPredicate, configuration);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
-  public static FilterPredicate getFilterPredicate(Configuration configuration) throws IOException {
-    return SerializationUtil.readObjectFromConfAsBase64(FILTER_PREDICATE, configuration);
+  public static FilterPredicate getFilterPredicate(Configuration configuration) {
+    try {
+      return SerializationUtil.readObjectFromConfAsBase64(FILTER_PREDICATE, configuration);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**
