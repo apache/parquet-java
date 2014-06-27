@@ -16,17 +16,20 @@
 package parquet.hadoop;
 
 import java.io.IOException;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
+
 import parquet.Log;
 import parquet.filter.UnboundRecordFilter;
+import parquet.filter2.FilterPredicate;
 import parquet.hadoop.api.ReadSupport;
-import parquet.hadoop.util.counters.BenchmarkCounter;
 import parquet.hadoop.util.ContextUtil;
+import parquet.hadoop.util.counters.BenchmarkCounter;
 import parquet.schema.MessageTypeParser;
 
 /**
@@ -47,15 +50,23 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
    */
   public ParquetRecordReader(ReadSupport<T> readSupport) {
-    this(readSupport, null);
+    internalReader = new InternalParquetRecordReader<T>(readSupport, null, null);
   }
 
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
-   * @param filter Optional filter for only returning matching records.
+   * @param filter filter for only returning matching records.
    */
   public ParquetRecordReader(ReadSupport<T> readSupport, UnboundRecordFilter filter) {
-    internalReader = new InternalParquetRecordReader<T>(readSupport, filter);
+    internalReader = new InternalParquetRecordReader<T>(readSupport, filter, null);
+  }
+
+  /**
+   * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
+   * @param filterPredicate filter for only returning matching records.
+   */
+  public ParquetRecordReader(ReadSupport<T> readSupport, FilterPredicate filterPredicate) {
+    internalReader = new InternalParquetRecordReader<T>(readSupport, null, filterPredicate);
   }
 
   /**

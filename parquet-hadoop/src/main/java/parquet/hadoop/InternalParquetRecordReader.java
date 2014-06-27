@@ -24,6 +24,7 @@ import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.PageReadStore;
 import parquet.filter.UnboundRecordFilter;
+import parquet.filter2.FilterPredicate;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.util.counters.BenchmarkCounter;
@@ -56,7 +57,8 @@ class InternalParquetRecordReader<T> {
   private int currentBlock = -1;
   private ParquetFileReader reader;
   private parquet.io.RecordReader<T> recordReader;
-  private UnboundRecordFilter recordFilter;
+  private UnboundRecordFilter unboundRecordFilter;
+  private FilterPredicate filterPredicate;
 
   private long totalTimeSpentReadingBytes;
   private long totalTimeSpentProcessingRecords;
@@ -70,17 +72,18 @@ class InternalParquetRecordReader<T> {
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
    */
   public InternalParquetRecordReader(ReadSupport<T> readSupport) {
-    this(readSupport, null);
+    this(readSupport, null, null);
   }
 
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
-   * @param filter Optional filter for only returning matching records.
    */
-  public InternalParquetRecordReader(ReadSupport<T> readSupport, UnboundRecordFilter
-      filter) {
+  public InternalParquetRecordReader(ReadSupport<T> readSupport,
+                                     UnboundRecordFilter unboundRecordFilter,
+                                     FilterPredicate filterPredicate) {
     this.readSupport = readSupport;
-    this.recordFilter = filter;
+    this.unboundRecordFilter = unboundRecordFilter;
+    this.filterPredicate = filterPredicate;
   }
 
   private void checkRead() throws IOException {
@@ -107,7 +110,7 @@ class InternalParquetRecordReader<T> {
       LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
       if (Log.DEBUG) LOG.debug("initializing Record assembly with requested schema " + requestedSchema);
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema);
-      recordReader = columnIO.getRecordReader(pages, recordConverter, recordFilter);
+      recordReader = columnIO.getRecordReader(pages, recordConverter, unboundRecordFilter, filterPredicate);
       startedAssemblingCurrentBlockAt = System.currentTimeMillis();
       totalCountLoadedSoFar += pages.getRowCount();
       ++ currentBlock;

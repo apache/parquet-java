@@ -85,14 +85,14 @@ public class TestFiltered {
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
     RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
-            column("DocId", equalTo(10l)));
+            column("DocId", equalTo(10l)), null);
 
     readOne(recordReader, "r2 filtered out", r1);
 
     // Get second record
     recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
-            column("DocId", equalTo(20l)));
+            column("DocId", equalTo(20l)), null);
 
     readOne(recordReader, "r1 filtered out", r2);
 
@@ -107,14 +107,14 @@ public class TestFiltered {
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
     RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
-            column("DocId", equalTo(10l)));
+            column("DocId", equalTo(10l)), null);
 
     readOne(recordReader, "r2 filtered out", r1);
 
     // Get second record
     recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
-            column("DocId", applyFunctionToLong (new LongGreaterThan15Predicate())));
+            column("DocId", applyFunctionToLong (new LongGreaterThan15Predicate())), null);
 
     readOne(recordReader, "r1 filtered out", r2);
   }
@@ -128,7 +128,7 @@ public class TestFiltered {
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
     RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
-            column("Name.Url", equalTo("http://A")));
+            column("Name.Url", equalTo("http://A")), null);
 
     readOne(recordReader, "r2 filtered out", r1);
 
@@ -136,7 +136,7 @@ public class TestFiltered {
     // against the first instance of a
     recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
-            column("Name.Url", equalTo("http://B")));
+            column("Name.Url", equalTo("http://B")), null);
 
     List<Group> all = readAll(recordReader);
     assertEquals("There should be no matching records: " + all , 0, all.size());
@@ -144,7 +144,7 @@ public class TestFiltered {
     // Finally try matching against the C url in record 2
     recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
-            column("Name.Url", equalTo("http://C")));
+            column("Name.Url", equalTo("http://C")), null);
 
     readOne(recordReader, "r1 filtered out", r2);
 
@@ -159,7 +159,7 @@ public class TestFiltered {
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
     RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
-            column("Name.Url", applyFunctionToString (new StringEndsWithAPredicate ())));
+            column("Name.Url", applyFunctionToString (new StringEndsWithAPredicate ())), null);
 
     readOne(recordReader, "r2 filtered out", r1);
 
@@ -167,7 +167,7 @@ public class TestFiltered {
     // against the first instance of a
     recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
-            column("Name.Url", equalTo("http://B")));
+            column("Name.Url", equalTo("http://B")), null);
 
     List<Group> all = readAll(recordReader);
     assertEquals("There should be no matching records: " + all , 0, all.size());
@@ -175,7 +175,7 @@ public class TestFiltered {
     // Finally try matching against the C url in record 2
     recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
-            column("Name.Url", equalTo("http://C")));
+            column("Name.Url", equalTo("http://C")), null);
 
     readOne(recordReader, "r1 filtered out", r2);
 
@@ -189,7 +189,7 @@ public class TestFiltered {
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
     RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
-                                 page(4, 4));
+                                 page(4, 4), null);
 
     List<Group> all = readAll(recordReader);
     assertEquals("expecting records " + all, 4, all.size());
@@ -206,7 +206,7 @@ public class TestFiltered {
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
     RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
-            and(column("DocId", equalTo(10l)), page(2, 4)));
+            and(column("DocId", equalTo(10l)), page(2, 4)), null);
 
     List<Group> all = readAll(recordReader);
     assertEquals("expecting 4 records " + all, 4, all.size());
@@ -225,7 +225,7 @@ public class TestFiltered {
     RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
             or(column("DocId", equalTo(10l)),
-                column("DocId", equalTo(20l))));
+                column("DocId", equalTo(20l))), null);
 
     List<Group> all = readAll(recordReader);
     assertEquals("expecting 8 records " + all, 16, all.size());
@@ -243,7 +243,7 @@ public class TestFiltered {
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
     RecordReaderImplementation<Group> recordReader = (RecordReaderImplementation<Group>)
         columnIO.getRecordReader(memPageStore, recordConverter,
-            not(column("DocId", equalTo(10l))));
+            not(column("DocId", equalTo(10l))), null);
 
     List<Group> all = readAll(recordReader);
     assertEquals("expecting 8 records " + all, 8, all.size());

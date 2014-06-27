@@ -15,10 +15,14 @@
  */
 package parquet.io;
 
+import parquet.Preconditions;
 import parquet.column.ColumnReader;
 import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.filter.RecordFilter;
 import parquet.filter.UnboundRecordFilter;
+import parquet.filter2.FilterPredicate;
+import parquet.filter2.RecordFilterBuilder;
+import parquet.filter2.RecordPredicate;
 import parquet.io.api.RecordMaterializer;
 
 /**
@@ -28,7 +32,9 @@ import parquet.io.api.RecordMaterializer;
  */
 class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
 
-  private final RecordFilter recordFilter;
+  private final RecordFilter boundRecordFilter;
+  private final RecordPredicate recordPredicate;
+
   private final long recordCount;
   private long recordsRead = 0;
 
@@ -38,15 +44,32 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
    * @param columnStore
    * @param unboundFilter Filter records, pass in NULL_FILTER to leave unfiltered.
    */
-  public FilteredRecordReader(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating,
-                              ColumnReadStoreImpl columnStore, UnboundRecordFilter unboundFilter, long recordCount) {
+  public FilteredRecordReader(MessageColumnIO root,
+                              RecordMaterializer<T> recordMaterializer,
+                              boolean validating,
+                              ColumnReadStoreImpl columnStore,
+                              UnboundRecordFilter unboundFilter,
+                              FilterPredicate filterPredicate,
+                              long recordCount) {
     super(root, recordMaterializer, validating, columnStore);
+
     this.recordCount = recordCount;
-    if ( unboundFilter != null ) {
-      recordFilter = unboundFilter.bind(getColumnReaders());
+
+    Preconditions.checkArgument(!(unboundFilter != null && filterPredicate != null),
+        "Found both an UnboundRecordFilter and a FilterPredicate. Only one can be provided");
+
+    if (unboundFilter != null) {
+      boundRecordFilter = unboundFilter.bind(getColumnReaders());
     } else {
-      recordFilter = null;
+      boundRecordFilter = null;
     }
+
+    if (filterPredicate != null) {
+      this.recordPredicate = RecordFilterBuilder.build(filterPredicate, getColumnReaders());
+    } else {
+      this.recordPredicate = null;
+    }
+
   }
 
   /**
@@ -62,13 +85,24 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
     return super.read();
   }
 
+  private boolean isMatch() {
+    if (boundRecordFilter != null) {
+      return boundRecordFilter.isMatch();
+    }
+
+    if (recordPredicate != null) {
+      return recordPredicate.isMatch();
+    }
+
+    return true;
+  }
 
   /**
    * Skips forwards until the filter finds the first match. Returns false
    * if none found.
    */
   private void skipToMatch() {
-    while (recordsRead < recordCount && !recordFilter.isMatch()) {
+    while (recordsRead < recordCount && !isMatch()) {
       State currentState = getState(0);
       do {
         ColumnReader columnReader = currentState.column;

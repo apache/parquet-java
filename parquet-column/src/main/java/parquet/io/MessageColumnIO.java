@@ -20,11 +20,13 @@ import java.util.BitSet;
 import java.util.List;
 
 import parquet.Log;
+import parquet.Preconditions;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
 import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.column.page.PageReadStore;
 import parquet.filter.UnboundRecordFilter;
+import parquet.filter2.FilterPredicate;
 import parquet.io.api.Binary;
 import parquet.io.api.RecordConsumer;
 import parquet.io.api.RecordMaterializer;
@@ -68,19 +70,25 @@ public class MessageColumnIO extends GroupColumnIO {
     }
   }
 
-  public <T> RecordReader<T> getRecordReader(PageReadStore columns, RecordMaterializer<T> recordMaterializer,
-                                             UnboundRecordFilter unboundFilter) {
+  public <T> RecordReader<T> getRecordReader(PageReadStore columns,
+                                             RecordMaterializer<T> recordMaterializer,
+                                             UnboundRecordFilter unboundFilter,
+                                             FilterPredicate filterPredicate) {
 
-    return (unboundFilter == null)
-      ? getRecordReader(columns, recordMaterializer)
-      : new FilteredRecordReader<T>(
+    if (unboundFilter == null && filterPredicate == null) {
+      return getRecordReader(columns, recordMaterializer);
+    }
+
+    return new FilteredRecordReader<T>(
         this,
         recordMaterializer,
         validating,
         new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType()),
         unboundFilter,
+        filterPredicate,
         columns.getRowCount()
     );
+
   }
 
   private class MessageColumnIORecordConsumer extends RecordConsumer {

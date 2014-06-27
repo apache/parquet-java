@@ -158,10 +158,15 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       InputSplit inputSplit,
       TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
     ReadSupport<T> readSupport = getReadSupport(ContextUtil.getConfiguration(taskAttemptContext));
-    Class<?> unboundRecordFilterClass = getUnboundRecordFilter(ContextUtil.getConfiguration(taskAttemptContext));
-    if (unboundRecordFilterClass == null) {
-      return new ParquetRecordReader<T>(readSupport);
-    } else {
+
+    Configuration conf = ContextUtil.getConfiguration(taskAttemptContext);
+    Class<?> unboundRecordFilterClass = getUnboundRecordFilter(conf);
+    FilterPredicate filterPredicate = loadFilterPredicate(conf, "records");
+
+    Preconditions.checkArgument(!(unboundRecordFilterClass != null && filterPredicate != null),
+        "Found both an UnboundRecordFilter and a FilterPredicate. Only one can be provided");
+
+    if (unboundRecordFilterClass != null) {
       try {
         return new ParquetRecordReader<T>(readSupport, (UnboundRecordFilter)unboundRecordFilterClass.newInstance());
       } catch (InstantiationException e) {
@@ -170,6 +175,12 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         throw new BadConfigurationException("could not instantiate unbound record filter class", e);
       }
     }
+
+    if (filterPredicate != null) {
+      return new ParquetRecordReader<T>(readSupport, filterPredicate);
+    }
+
+    return new ParquetRecordReader<T>(readSupport);
   }
 
   /**
@@ -399,7 +410,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         globalMetaData.getKeyValueMetaData(),
         globalMetaData.getSchema()));
 
-    FilterPredicate filterPredicate = loadFilterPredicate(configuration);
+    FilterPredicate filterPredicate = loadFilterPredicate(configuration, "row groups");
 
     long rowGroupsDropped = 0;
     long totalRowGroups = 0;
@@ -446,14 +457,14 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     return splits;
   }
 
-  static FilterPredicate loadFilterPredicate(Configuration conf) {
+  static FilterPredicate loadFilterPredicate(Configuration conf, String filterAppliedTo) {
     FilterPredicate filterPredicate = getFilterPredicate(conf);
 
     if (filterPredicate == null) {
       return null;
     }
 
-    LOG.info("Filtering row groups using predicate: " + filterPredicate);
+    LOG.info("Filtering " + filterAppliedTo + " using predicate: " + filterPredicate);
 
     // rewrite the predicate to not include the not() operator
     FilterPredicate collapsedPredicate = CollapseLogicalNots.collapse(filterPredicate);
