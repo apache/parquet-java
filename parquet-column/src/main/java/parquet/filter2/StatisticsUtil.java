@@ -42,66 +42,66 @@ public final class StatisticsUtil {
 
     if (clazz.equals(Integer.class)) {
       IntStatistics stats = (IntStatistics) rawStats;
-      int value = (Integer) rawValue;
+      Integer value = (Integer) rawValue;
       return new MinMaxComparison(
-          Integer.compare(value, stats.getMin()),
-          Integer.compare(value, stats.getMax())
+          value.compareTo(stats.getMin()),
+          value.compareTo(stats.getMax())
       );
     }
 
     if (clazz.equals(Long.class)) {
       LongStatistics stats = (LongStatistics) rawStats;
-      long value = (Long) rawValue;
+      Long value = (Long) rawValue;
       return new MinMaxComparison(
-          Long.compare(value, stats.getMin()),
-          Long.compare(value, stats.getMax())
+          value.compareTo(stats.getMin()),
+          value.compareTo(stats.getMax())
       );
     }
 
     if (clazz.equals(Float.class)) {
       FloatStatistics stats = (FloatStatistics) rawStats;
-      float value = (Float) rawValue;
+      Float value = (Float) rawValue;
       return new MinMaxComparison(
-          Float.compare(value, stats.getMin()),
-          Float.compare(value, stats.getMax())
+          value.compareTo(stats.getMin()),
+          value.compareTo(stats.getMax())
       );
     }
 
     if (clazz.equals(Double.class)) {
       DoubleStatistics stats = (DoubleStatistics) rawStats;
-      double value = (Double) rawValue;
+      Double value = (Double) rawValue;
       return new MinMaxComparison(
-          Double.compare(value, stats.getMin()),
-          Double.compare(value, stats.getMax())
+          value.compareTo(stats.getMin()),
+          value.compareTo(stats.getMax())
       );
     }
 
     if (clazz.equals(Boolean.class)) {
       BooleanStatistics stats = (BooleanStatistics) rawStats;
-      boolean value = (Boolean) rawValue;
+      Boolean value = (Boolean) rawValue;
       return new MinMaxComparison(
-          Boolean.compare(value, stats.getMin()),
-          Boolean.compare(value, stats.getMax())
+          value.compareTo(stats.getMin()),
+          value.compareTo(stats.getMax())
       );
     }
 
     if (clazz.equals(Binary.class)) {
       BinaryStatistics stats = (BinaryStatistics) rawStats;
       Binary value = (Binary) rawValue;
-
-      int minCmp = value.compareTo(stats.getMin());
-      int maxCmp = value.compareTo(stats.getMax());
-      return new MinMaxComparison(minCmp, maxCmp);
+      return new MinMaxComparison(
+          value.compareTo(stats.getMin()),
+          value.compareTo(stats.getMax())
+      );
     }
 
     if (clazz.equals(String.class)) {
       BinaryStatistics stats = (BinaryStatistics) rawStats;
       String strValue = (String) rawValue;
       Binary value = Binary.fromByteBuffer(BytesUtils.UTF8.encode(strValue));
-
-      int minCmp = value.compareTo(stats.getMin());
-      int maxCmp = value.compareTo(stats.getMax());
-      return new MinMaxComparison(minCmp, maxCmp);
+      return new MinMaxComparison(
+          value.compareTo(stats.getMin()),
+          value.compareTo(stats.getMax())
+      );
     }
 
     throw new IllegalArgumentException("Encountered unknown filter column type: " + clazz.getName());

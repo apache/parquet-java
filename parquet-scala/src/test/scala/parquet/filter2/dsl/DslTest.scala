@@ -10,8 +10,8 @@ import parquet.filter2.FilterPredicates.{IntUserDefined, Or}
 
 class DummyFilter extends IntUserDefinedPredicate {
   override def keep(value: Int): Boolean = false
-
-  override def canDrop(min: Int, max: Int, inverted: Boolean): Boolean = false
+  override def canDrop(min: Int, max: Int): Boolean = false
+  override def inverseCanDrop(min: Int, max: Int): Boolean = false
 }
 
 @RunWith(classOf[JUnitRunner])
