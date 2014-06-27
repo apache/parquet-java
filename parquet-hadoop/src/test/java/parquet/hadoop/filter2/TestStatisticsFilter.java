@@ -60,16 +60,25 @@ public class TestStatisticsFilter {
   private static final Column<Double> doubleColumn = doubleColumn("double.column");
 
   private static final IntStatistics intStats = new IntStatistics();
+  private static final IntStatistics nullIntStats = new IntStatistics();
   private static final DoubleStatistics doubleStats = new DoubleStatistics();
 
   static {
     intStats.setMinMax(10, 100);
     doubleStats.setMinMax(10, 100);
+
+    nullIntStats.setMinMax(0, 0);
+    nullIntStats.setNumNulls(177);
   }
 
   private static final List<ColumnChunkMetaData> columnMetas = Arrays.asList(
       getIntColumnMeta(intStats, 177L),
       getDoubleColumnMeta(doubleStats, 177L));
+
+  private static final List<ColumnChunkMetaData> nullColumnMetas = Arrays.asList(
+      getIntColumnMeta(nullIntStats, 177L), // column of all nulls
+      getDoubleColumnMeta(doubleStats, 177L));
+
 
   @Test
   public void testEqNonNull() {
@@ -77,6 +86,9 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(eq(intColumn, 10), columnMetas));
     assertFalse(canDrop(eq(intColumn, 100), columnMetas));
     assertTrue(canDrop(eq(intColumn, 101), columnMetas));
+
+    // drop columns of all nulls when looking for non-null value
+    assertTrue(canDrop(eq(intColumn, 0), nullColumnMetas));
   }
 
   @Test
@@ -96,6 +108,7 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(eq(intColumn, null), Arrays.asList(
         getIntColumnMeta(statsSomeNulls, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
+
   }
 
   @Test
@@ -110,6 +123,7 @@ public class TestStatisticsFilter {
     assertTrue(canDrop(notEq(intColumn, 7), Arrays.asList(
         getIntColumnMeta(allSevens, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
+
   }
 
   @Test
@@ -123,7 +137,7 @@ public class TestStatisticsFilter {
     statsSomeNulls.setNumNulls(3);
 
     IntStatistics statsAllNulls = new IntStatistics();
-    statsAllNulls.setMinMax(10, 100);
+    statsAllNulls.setMinMax(0, 0);
     statsAllNulls.setNumNulls(177);
 
     assertFalse(canDrop(notEq(intColumn, null), Arrays.asList(
@@ -134,8 +148,8 @@ public class TestStatisticsFilter {
         getIntColumnMeta(statsSomeNulls, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
 
-    assertFalse(canDrop(notEq(intColumn, null), Arrays.asList(
-        getIntColumnMeta(statsSomeNulls, 177L),
+    assertTrue(canDrop(notEq(intColumn, null), Arrays.asList(
+        getIntColumnMeta(statsAllNulls, 177L),
         getDoubleColumnMeta(doubleStats, 177L))));
   }
 
@@ -145,6 +159,9 @@ public class TestStatisticsFilter {
     assertTrue(canDrop(lt(intColumn, 10), columnMetas));
     assertFalse(canDrop(lt(intColumn, 100), columnMetas));
     assertFalse(canDrop(lt(intColumn, 101), columnMetas));
+
+    assertTrue(canDrop(lt(intColumn, 0), nullColumnMetas));
+    assertTrue(canDrop(lt(intColumn, 7), nullColumnMetas));
   }
 
   @Test
@@ -153,6 +170,9 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(ltEq(intColumn, 10), columnMetas));
     assertFalse(canDrop(ltEq(intColumn, 100), columnMetas));
     assertFalse(canDrop(ltEq(intColumn, 101), columnMetas));
+
+    assertTrue(canDrop(ltEq(intColumn, 0), nullColumnMetas));
+    assertTrue(canDrop(ltEq(intColumn, 7), nullColumnMetas));
   }
 
   @Test
@@ -161,6 +181,9 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(gt(intColumn, 10), columnMetas));
     assertTrue(canDrop(gt(intColumn, 100), columnMetas));
     assertTrue(canDrop(gt(intColumn, 101), columnMetas));
+
+    assertTrue(canDrop(gt(intColumn, 0), nullColumnMetas));
+    assertTrue(canDrop(gt(intColumn, 7), nullColumnMetas));
   }
 
   @Test
@@ -169,6 +192,9 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(gtEq(intColumn, 10), columnMetas));
     assertFalse(canDrop(gtEq(intColumn, 100), columnMetas));
     assertTrue(canDrop(gtEq(intColumn, 101), columnMetas));
+
+    assertTrue(canDrop(gtEq(intColumn, 0), nullColumnMetas));
+    assertTrue(canDrop(gtEq(intColumn, 7), nullColumnMetas));
   }
 
   @Test

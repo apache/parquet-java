@@ -399,19 +399,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         globalMetaData.getKeyValueMetaData(),
         globalMetaData.getSchema()));
 
-    FilterPredicate filterPredicate = getFilterPredicate(configuration);
-
-    if (filterPredicate != null) {
-      LOG.info("Filtering row groups using predicate: " + filterPredicate);
-      // rewrite the predicate to not include the not() operator
-      FilterPredicate collapsedPredicate = CollapseLogicalNots.collapse(filterPredicate);
-
-      if (!filterPredicate.equals(collapsedPredicate)) {
-        LOG.info("Predicate has been collapsed to: " + collapsedPredicate);
-      }
-
-      filterPredicate = collapsedPredicate;
-    }
+    FilterPredicate filterPredicate = loadFilterPredicate(configuration);
 
     long rowGroupsDropped = 0;
     long totalRowGroups = 0;
@@ -424,14 +412,12 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       ParquetMetadata parquetMetaData = footer.getParquetMetadata();
       List<BlockMetaData> blocks = parquetMetaData.getBlocks();
 
-      List<BlockMetaData> filteredBlocks;
+      List<BlockMetaData> filteredBlocks = blocks;
 
       if (filterPredicate != null) {
         filteredBlocks = applyRowGroupFilters(filterPredicate, parquetMetaData.getFileMetaData().getSchema(), blocks);
         totalRowGroups += blocks.size();
         rowGroupsDropped += blocks.size() - filteredBlocks.size();
-      } else {
-        filteredBlocks = blocks;
       }
 
       BlockLocation[] fileBlockLocations = fs.getFileBlockLocations(fileStatus, 0, fileStatus.getLen());
@@ -460,7 +446,26 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     return splits;
   }
 
-  public List<BlockMetaData> applyRowGroupFilters(FilterPredicate filterPredicate, MessageType schema, List<BlockMetaData> blocks) {
+  static FilterPredicate loadFilterPredicate(Configuration conf) {
+    FilterPredicate filterPredicate = getFilterPredicate(conf);
+
+    if (filterPredicate == null) {
+      return null;
+    }
+
+    LOG.info("Filtering row groups using predicate: " + filterPredicate);
+
+    // rewrite the predicate to not include the not() operator
+    FilterPredicate collapsedPredicate = CollapseLogicalNots.collapse(filterPredicate);
+
+    if (!filterPredicate.equals(collapsedPredicate)) {
+      LOG.info("Predicate has been collapsed to: " + collapsedPredicate);
+    }
+
+    return collapsedPredicate;
+  }
+
+  static List<BlockMetaData> applyRowGroupFilters(FilterPredicate filterPredicate, MessageType schema, List<BlockMetaData> blocks) {
     // check that the schema of the filter matches the schema of the file
     // TODO: can we do this just once, on the global (merged) schema?
     FilterValidator.validate(filterPredicate, schema);

@@ -23,6 +23,9 @@ import parquet.schema.ColumnPathUtil;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
 
+// TODO: detect if a column is optional or required and validate that eq(null)
+// is not called on optional fields
+// TODO: does parquet count a null value the same as an optional-not-present?
 public class FilterValidator implements FilterPredicate.Visitor<Void> {
 
   public static void validate(FilterPredicate predicate, MessageType schema) {
@@ -44,6 +47,7 @@ public class FilterValidator implements FilterPredicate.Visitor<Void> {
   public FilterValidator(MessageType schema) {
 
     for (ColumnDescriptor cd : schema.getColumns()) {
+
       String columnPath = ColumnPathUtil.toDotSeparatedString(cd.getPath());
 
       columnsAccordingToSchema.put(columnPath, cd);

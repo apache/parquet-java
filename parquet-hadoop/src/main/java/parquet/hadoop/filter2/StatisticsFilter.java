@@ -60,17 +60,33 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     return c;
   }
 
+  private boolean isAllNulls(ColumnChunkMetaData column) {
+    return column.getStatistics().getNumNulls() == column.getValueCount();
+  }
+
+  private boolean hasNulls(ColumnChunkMetaData column) {
+    return column.getStatistics().getNumNulls() > 0;
+  }
+
   @Override
   public <T> Boolean visit(Eq<T> eq) {
     Column<T> filterColumn = eq.getColumn();
     T value = eq.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
-    Statistics rawStats = columnChunk.getStatistics();
 
     if (value == null) {
-      // drop if there are no nulls
-      return rawStats.getNumNulls() == 0;
+      // we are looking for records where v eq(null)
+      // so drop if there are no nulls in this chunk
+      return !hasNulls(columnChunk);
     }
+
+    if (isAllNulls(columnChunk)) {
+      // we are looking for records where v eq(someNonNull)
+      // and this is a column of all nulls, so drop it
+      return true;
+    }
+
+    Statistics rawStats = columnChunk.getStatistics();
 
     MinMaxComparison cmp = compareMinMax(filterColumn.getColumnType(), value, rawStats);
 
@@ -83,12 +99,20 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Column<T> filterColumn = notEq.getColumn();
     T value = notEq.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
-    Statistics rawStats = columnChunk.getStatistics();
 
     if (value == null) {
-      // drop if this is a column of all nulls
-      return rawStats.getNumNulls() == columnChunk.getValueCount();
+      // we are looking for records where v notEq(null)
+      // so, if this is a column of all nulls, we can drop it
+      return isAllNulls(columnChunk);
     }
+
+    if (hasNulls(columnChunk)) {
+      // we are looking for records where v notEq(someNonNull)
+      // but this chunk contains nulls, we cannot drop it
+      return false;
+    }
+
+    Statistics rawStats = columnChunk.getStatistics();
 
     MinMaxComparison cmp = compareMinMax(filterColumn.getColumnType(), value, rawStats);
 
@@ -101,6 +125,13 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Column<T> filterColumn = lt.getColumn();
     T value = lt.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
+
+    if (isAllNulls(columnChunk)) {
+      // we are looking for records where v < someValue
+      // this chunk is all nulls, so we can drop it
+      return true;
+    }
+
     Statistics rawStats = columnChunk.getStatistics();
 
     MinMaxComparison cmp = compareMinMax(filterColumn.getColumnType(), value, rawStats);
@@ -114,6 +145,13 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Column<T> filterColumn = ltEq.getColumn();
     T value = ltEq.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
+
+    if (isAllNulls(columnChunk)) {
+      // we are looking for records where v <= someValue
+      // this chunk is all nulls, so we can drop it
+      return true;
+    }
+
     Statistics rawStats = columnChunk.getStatistics();
 
     MinMaxComparison cmp = compareMinMax(filterColumn.getColumnType(), value, rawStats);
@@ -127,6 +165,13 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Column<T> filterColumn = gt.getColumn();
     T value = gt.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
+
+    if (isAllNulls(columnChunk)) {
+      // we are looking for records where v > someValue
+      // this chunk is all nulls, so we can drop it
+      return true;
+    }
+
     Statistics rawStats = columnChunk.getStatistics();
 
     MinMaxComparison cmp = compareMinMax(filterColumn.getColumnType(), value, rawStats);
@@ -140,6 +185,13 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Column<T> filterColumn = gtEq.getColumn();
     T value = gtEq.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
+
+    if (isAllNulls(columnChunk)) {
+      // we are looking for records where v >= someValue
+      // this chunk is all nulls, so we can drop it
+      return true;
+    }
+
     Statistics rawStats = columnChunk.getStatistics();
 
     MinMaxComparison cmp = compareMinMax(filterColumn.getColumnType(), value, rawStats);
