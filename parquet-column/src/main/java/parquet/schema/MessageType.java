@@ -137,7 +137,11 @@ public final class MessageType extends GroupType {
   }
 
   public MessageType union(MessageType toMerge) {
-    return new MessageType(this.getName(), mergeFields(toMerge));
+    return union(toMerge, true);
+  }
+  
+  public MessageType union(MessageType toMerge, boolean strict) {
+    return new MessageType(this.getName(), mergeFields(toMerge, strict));
   }
 
 }

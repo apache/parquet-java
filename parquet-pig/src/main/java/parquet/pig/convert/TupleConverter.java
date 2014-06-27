@@ -105,7 +105,9 @@ public class TupleConverter extends GroupConverter {
           }
         };
       case DataType.CHARARRAY:
-        return new FieldStringConverter(parent);
+          //If the orignal type isn't a string, we don't want to use the dictionary because
+          //a custom implementation will be needed for each type.  Just default to no dictionary.
+        return new FieldStringConverter(parent, type.getOriginalType() == OriginalType.UTF8);
       case DataType.BYTEARRAY:
         return new FieldByteArrayConverter(parent);
       case DataType.INTEGER:
@@ -205,10 +207,12 @@ public class TupleConverter extends GroupConverter {
 
     private final ParentValueContainer parent;
 
+    private boolean dictionarySupport;
     private String[] dict;
 
-    public FieldStringConverter(ParentValueContainer parent) {
+    public FieldStringConverter(ParentValueContainer parent, boolean dictionarySupport) {
       this.parent = parent;
+      this.dictionarySupport = dictionarySupport;
     }
 
     @Override
@@ -218,7 +222,7 @@ public class TupleConverter extends GroupConverter {
 
     @Override
     public boolean hasDictionarySupport() {
-      return true;
+      return dictionarySupport;
     }
 
     @Override
@@ -233,6 +237,33 @@ public class TupleConverter extends GroupConverter {
     public void addValueFromDictionary(int dictionaryId) {
       parent.add(dict[dictionaryId]);
     }
+
+    @Override
+    public void addLong(long value) {
+      parent.add(Long.toString(value));
+    }
+
+    @Override
+    public void addInt(int value) {
+      parent.add(Integer.toString(value));
+    }
+
+    @Override
+    public void addFloat(float value) {
+      parent.add(Float.toString(value));
+    }
+
+    @Override
+    public void addDouble(double value) {
+      parent.add(Double.toString(value));
+    }
+
+    @Override
+    public void addBoolean(boolean value) {
+      parent.add(Boolean.toString(value));
+    }
+    
+    
   }
 
   /**
@@ -273,6 +304,31 @@ public class TupleConverter extends GroupConverter {
       parent.add(value);
     }
 
+    @Override
+    public void addLong(long value) {
+      parent.add((double)value);
+    }
+
+    @Override
+    public void addInt(int value) {
+      parent.add((double)value);
+    }
+
+    @Override
+    public void addFloat(float value) {
+      parent.add((double)value);
+    }
+
+    @Override
+    public void addBoolean(boolean value) {
+      parent.add(value ? 1.0d : 0.0d);
+    }
+
+    @Override
+    public void addBinary(Binary value) {
+      parent.add(Double.parseDouble(value.toStringUsingUTF8()));
+    }
+
   }
 
   /**
@@ -291,6 +347,31 @@ public class TupleConverter extends GroupConverter {
     @Override
     final public void addFloat(float value) {
       parent.add(value);
+    }
+
+    @Override
+    public void addLong(long value) {
+      parent.add((float)value);
+    }
+
+    @Override
+    public void addInt(int value) {
+      parent.add((float)value);
+    }
+
+    @Override
+    public void addDouble(double value) {
+      parent.add((float)value);
+    }
+
+    @Override
+    public void addBoolean(boolean value) {
+      parent.add(value ? 1.0f : 0.0f);
+    }
+
+    @Override
+    public void addBinary(Binary value) {
+      parent.add(Float.parseFloat(value.toStringUsingUTF8()));
     }
 
   }
@@ -314,6 +395,31 @@ public class TupleConverter extends GroupConverter {
       parent.add(value);
     }
 
+    @Override
+    public void addInt(int value) {
+      parent.add((long)value); 
+    }
+
+    @Override
+    public void addFloat(float value) {
+      parent.add((long)value);
+    }
+
+    @Override
+    public void addDouble(double value) {
+      parent.add((long)value);
+    }
+
+    @Override
+    public void addBoolean(boolean value) {
+      parent.add(value ? 1L : 0L);
+    }
+
+    @Override
+    public void addBinary(Binary value) {
+      parent.add(Long.parseLong(value.toStringUsingUTF8()));
+    }
+    
   }
 
   /**
@@ -337,6 +443,26 @@ public class TupleConverter extends GroupConverter {
     @Override
     final public void addInt(int value) {
       parent.add(value);
+    }
+
+    @Override
+    public void addLong(long value) {
+      parent.add((int)value);
+    }
+
+    @Override
+    public void addFloat(float value) {
+      parent.add((int)value);
+    }
+
+    @Override
+    public void addDouble(double value) {
+      parent.add((int)value);
+    }
+
+    @Override
+    public void addBinary(Binary value) {
+      parent.add(Integer.parseInt(value.toStringUsingUTF8()));
     }
 
   }
@@ -364,6 +490,27 @@ public class TupleConverter extends GroupConverter {
       parent.add(value != 0);
     }
 
+    @Override
+    public void addLong(long value) {
+      parent.add(value!=0);
+    }
+
+    @Override
+    public void addFloat(float value) {
+      parent.add(value!=0);
+    }
+
+    @Override
+    public void addDouble(double value) {
+      parent.add(value!=0);
+    }
+
+    @Override
+    public void addBinary(Binary value) {
+      parent.add(Boolean.parseBoolean(value.toStringUsingUTF8()));
+    }
+
+    
   }
 
   /**
