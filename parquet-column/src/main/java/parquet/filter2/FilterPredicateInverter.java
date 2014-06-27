@@ -1,23 +1,28 @@
 package parquet.filter2;
 
 import parquet.filter2.FilterPredicate.Visitor;
-import parquet.filter2.FilterPredicates.And;
-import parquet.filter2.FilterPredicates.Eq;
-import parquet.filter2.FilterPredicates.Gt;
-import parquet.filter2.FilterPredicates.GtEq;
-import parquet.filter2.FilterPredicates.LogicalNotUserDefined;
-import parquet.filter2.FilterPredicates.Lt;
-import parquet.filter2.FilterPredicates.LtEq;
-import parquet.filter2.FilterPredicates.Not;
-import parquet.filter2.FilterPredicates.NotEq;
-import parquet.filter2.FilterPredicates.Or;
-import parquet.filter2.FilterPredicates.UserDefined;
+import parquet.filter2.FilterPredicateOperators.And;
+import parquet.filter2.FilterPredicateOperators.Eq;
+import parquet.filter2.FilterPredicateOperators.Gt;
+import parquet.filter2.FilterPredicateOperators.GtEq;
+import parquet.filter2.FilterPredicateOperators.LogicalNotUserDefined;
+import parquet.filter2.FilterPredicateOperators.Lt;
+import parquet.filter2.FilterPredicateOperators.LtEq;
+import parquet.filter2.FilterPredicateOperators.Not;
+import parquet.filter2.FilterPredicateOperators.NotEq;
+import parquet.filter2.FilterPredicateOperators.Or;
+import parquet.filter2.FilterPredicateOperators.UserDefined;
 import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
 
 /**
  * Converts a FilterPredicate to its logical inverse.
  * The returned predicate should be equivalent to not(p), but without
  * the use of a not() operator.
+ *
+ * See also {@link parquet.filter2.CollapseLogicalNots}, which can remove the use
+ * of all not() operators without inverting the overall predicate.
+ *
+ * This class can be reused, it is stateless and thread safe.
  */
 public class FilterPredicateInverter implements Visitor<FilterPredicate> {
 

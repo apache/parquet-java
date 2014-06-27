@@ -37,7 +37,7 @@ import parquet.column.statistics.IntStatistics;
 import parquet.filter.RecordFilter;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.FilterPredicate;
-import parquet.filter2.FilterPredicates.Column;
+import parquet.filter2.FilterPredicateOperators.Column;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ColumnPath;

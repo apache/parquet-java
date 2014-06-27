@@ -2,7 +2,7 @@ package parquet.filter2;
 
 import org.junit.Test;
 
-import parquet.filter2.FilterPredicates.Column;
+import parquet.filter2.FilterPredicateOperators.Column;
 import parquet.filter2.UserDefinedPredicates.LongUserDefinedPredicate;
 import parquet.io.api.Binary;
 import parquet.schema.MessageType;
@@ -23,7 +23,7 @@ import static parquet.filter2.Filter.not;
 import static parquet.filter2.Filter.notEq;
 import static parquet.filter2.Filter.or;
 import static parquet.filter2.Filter.stringColumn;
-import static parquet.filter2.FilterValidator.validate;
+import static parquet.filter2.FilterPredicateTypeValidator.validate;
 
 public class TestFilterValidator {
   private static final Column<String> stringC = stringColumn("c");

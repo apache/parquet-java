@@ -11,7 +11,7 @@ import parquet.column.statistics.DoubleStatistics;
 import parquet.column.statistics.IntStatistics;
 import parquet.filter2.CollapseLogicalNots;
 import parquet.filter2.FilterPredicate;
-import parquet.filter2.FilterPredicates.Column;
+import parquet.filter2.FilterPredicateOperators.Column;
 import parquet.filter2.UserDefinedPredicates.IntUserDefinedPredicate;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ColumnPath;

@@ -13,11 +13,11 @@ import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
 import parquet.io.api.Binary;
 
 /**
- * These are the nodes / tokens in a a filter predicate expression.
+ * These are the nodes / tokens / operators in a a filter predicate expression.
  * They are constructed by using the methods in {@link Filter}
  */
-public final class FilterPredicates {
-  private FilterPredicates() { }
+public final class FilterPredicateOperators {
+  private FilterPredicateOperators() { }
 
   public static final class Column<T> implements Serializable {
     private final String columnPath;
@@ -100,7 +100,7 @@ public final class FilterPredicates {
       ColumnFilterPredicate that = (ColumnFilterPredicate) o;
 
       if (!column.equals(that.column)) return false;
-      if (!value.equals(that.value)) return false;
+      if (value != null ? !value.equals(that.value) : that.value != null) return false;
 
       return true;
     }
@@ -108,7 +108,7 @@ public final class FilterPredicates {
     @Override
     public int hashCode() {
       int result = column.hashCode();
-      result = 31 * result + value.hashCode();
+      result = 31 * result + (value != null ? value.hashCode() : 0);
       result = 31 * result + getClass().hashCode();
       return result;
     }
@@ -116,6 +116,7 @@ public final class FilterPredicates {
 
   public static final class Eq<T> extends ColumnFilterPredicate<T> {
 
+    // value can be null
     Eq(Column<T> column, T value) {
       super(column, value);
     }
@@ -129,6 +130,7 @@ public final class FilterPredicates {
 
   public static final class NotEq<T> extends ColumnFilterPredicate<T> {
 
+    // value can be null
     NotEq(Column<T> column, T value) {
       super(column, value);
     }
@@ -142,6 +144,7 @@ public final class FilterPredicates {
 
   public static final class Lt<T> extends ColumnFilterPredicate<T> {
 
+    // value cannot be null
     Lt(Column<T> column, T value) {
       super(column, value);
       Preconditions.checkNotNull(value, "value");
@@ -155,6 +158,7 @@ public final class FilterPredicates {
 
   public static final class LtEq<T> extends ColumnFilterPredicate<T> {
 
+    // value cannot be null
     LtEq(Column<T> column, T value) {
       super(column, value);
       Preconditions.checkNotNull(value, "value");
@@ -169,6 +173,7 @@ public final class FilterPredicates {
 
   public static final class Gt<T> extends ColumnFilterPredicate<T> {
 
+    // value cannot be null
     Gt(Column<T> column, T value) {
       super(column, value);
       Preconditions.checkNotNull(value, "value");
@@ -182,6 +187,7 @@ public final class FilterPredicates {
 
   public static final class GtEq<T> extends ColumnFilterPredicate<T> {
 
+    // value cannot be null
     GtEq(Column<T> column, T value) {
       super(column, value);
       Preconditions.checkNotNull(value, "value");
@@ -320,6 +326,7 @@ public final class FilterPredicates {
       String name = getClass().getSimpleName().toLowerCase();
       this.toString = name + "(" + column.getColumnPath() + ", " + udpClass.getName() + ")";
 
+      // defensively try to instantiate the class early to make sure that it's possible
       getUserDefinedPredicate();
     }
 
@@ -373,6 +380,8 @@ public final class FilterPredicates {
     }
   }
 
+  // Represents the inverse of a UserDefined. It is equivalent to not(userDefined), without the use
+  // of the not() operator
   public static class LogicalNotUserDefined <T, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
     private final UserDefined<T, U> udp;
     private final String toString;

@@ -5,7 +5,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import parquet.filter2.FilterPredicates.Column;
+import parquet.filter2.FilterPredicateOperators.Column;
 import parquet.io.api.Binary;
 import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;

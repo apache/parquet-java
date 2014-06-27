@@ -6,7 +6,7 @@ import org.scalatest.junit.JUnitRunner
 
 import parquet.filter2.Filter
 import parquet.filter2.UserDefinedPredicates.IntUserDefinedPredicate
-import parquet.filter2.FilterPredicates.{IntUserDefined, Or}
+import parquet.filter2.FilterPredicateOperators.{IntUserDefined, Or}
 
 class DummyFilter extends IntUserDefinedPredicate {
   override def keep(value: Int): Boolean = false

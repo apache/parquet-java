@@ -1,17 +1,17 @@
 package parquet.filter2;
 
 import parquet.filter2.FilterPredicate.Visitor;
-import parquet.filter2.FilterPredicates.And;
-import parquet.filter2.FilterPredicates.Eq;
-import parquet.filter2.FilterPredicates.Gt;
-import parquet.filter2.FilterPredicates.GtEq;
-import parquet.filter2.FilterPredicates.LogicalNotUserDefined;
-import parquet.filter2.FilterPredicates.Lt;
-import parquet.filter2.FilterPredicates.LtEq;
-import parquet.filter2.FilterPredicates.Not;
-import parquet.filter2.FilterPredicates.NotEq;
-import parquet.filter2.FilterPredicates.Or;
-import parquet.filter2.FilterPredicates.UserDefined;
+import parquet.filter2.FilterPredicateOperators.And;
+import parquet.filter2.FilterPredicateOperators.Eq;
+import parquet.filter2.FilterPredicateOperators.Gt;
+import parquet.filter2.FilterPredicateOperators.GtEq;
+import parquet.filter2.FilterPredicateOperators.LogicalNotUserDefined;
+import parquet.filter2.FilterPredicateOperators.Lt;
+import parquet.filter2.FilterPredicateOperators.LtEq;
+import parquet.filter2.FilterPredicateOperators.Not;
+import parquet.filter2.FilterPredicateOperators.NotEq;
+import parquet.filter2.FilterPredicateOperators.Or;
+import parquet.filter2.FilterPredicateOperators.UserDefined;
 import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
 
 /**
@@ -21,11 +21,12 @@ import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
  *
  * The returned predicate should have the same meaning as the original, but
  * without the use of the not() operator.
+ *
+ * See also {@link parquet.filter2.FilterPredicateInverter}, which is used
+ * to do the inversion.
+ *
+ * This class can be reused, it is stateless and thread safe.
  */
-// TODO: we could actually just remove the not operator entirely instead
-//       we could instead apply the logic in FilterPredicateInverter when the not() method is called
-//       the only downside is that that would make the toString of a predicate sort of surprising,
-//       eg not(or(eq(foo, 10), eq(foo, 11))).toString() would be: "and(notEq(foo, 10), notEq(foo, 11))"
 public class CollapseLogicalNots implements Visitor<FilterPredicate> {
 
   public static FilterPredicate collapse(FilterPredicate pred) {

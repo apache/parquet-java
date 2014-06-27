@@ -7,18 +7,18 @@ import java.util.Map;
 import parquet.Preconditions;
 import parquet.column.statistics.Statistics;
 import parquet.filter2.FilterPredicate;
-import parquet.filter2.FilterPredicates.And;
-import parquet.filter2.FilterPredicates.Column;
-import parquet.filter2.FilterPredicates.Eq;
-import parquet.filter2.FilterPredicates.Gt;
-import parquet.filter2.FilterPredicates.GtEq;
-import parquet.filter2.FilterPredicates.LogicalNotUserDefined;
-import parquet.filter2.FilterPredicates.Lt;
-import parquet.filter2.FilterPredicates.LtEq;
-import parquet.filter2.FilterPredicates.Not;
-import parquet.filter2.FilterPredicates.NotEq;
-import parquet.filter2.FilterPredicates.Or;
-import parquet.filter2.FilterPredicates.UserDefined;
+import parquet.filter2.FilterPredicateOperators.And;
+import parquet.filter2.FilterPredicateOperators.Column;
+import parquet.filter2.FilterPredicateOperators.Eq;
+import parquet.filter2.FilterPredicateOperators.Gt;
+import parquet.filter2.FilterPredicateOperators.GtEq;
+import parquet.filter2.FilterPredicateOperators.LogicalNotUserDefined;
+import parquet.filter2.FilterPredicateOperators.Lt;
+import parquet.filter2.FilterPredicateOperators.LtEq;
+import parquet.filter2.FilterPredicateOperators.Not;
+import parquet.filter2.FilterPredicateOperators.NotEq;
+import parquet.filter2.FilterPredicateOperators.Or;
+import parquet.filter2.FilterPredicateOperators.UserDefined;
 import parquet.filter2.StatisticsUtil.MinMaxComparison;
 import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -36,7 +36,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
    * pred should first be run through {@link parquet.filter2.CollapseLogicalNots} to rewrite it
    * in a form that doesn't make use of the not() operator.
    *
-   * pred should also have already been run through {@link parquet.filter2.FilterValidator} to make sure
+   * pred should also have already been run through {@link parquet.filter2.FilterPredicateTypeValidator} to make sure
    * it is compatible with the schema of this file.
    *
    * TODO: we could just remove the not operator. see comments in CollapseLogicalNots

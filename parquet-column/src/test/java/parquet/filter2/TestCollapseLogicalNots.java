@@ -2,9 +2,9 @@ package parquet.filter2;
 
 import org.junit.Test;
 
-import parquet.filter2.FilterPredicates.Column;
-import parquet.filter2.FilterPredicates.IntUserDefined;
-import parquet.filter2.FilterPredicates.LogicalNotUserDefined;
+import parquet.filter2.FilterPredicateOperators.Column;
+import parquet.filter2.FilterPredicateOperators.IntUserDefined;
+import parquet.filter2.FilterPredicateOperators.LogicalNotUserDefined;
 
 import static org.junit.Assert.assertEquals;
 import static parquet.filter2.CollapseLogicalNots.collapse;

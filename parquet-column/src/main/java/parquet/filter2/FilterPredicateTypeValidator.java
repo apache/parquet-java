@@ -5,36 +5,44 @@ import java.util.Map;
 
 import parquet.Preconditions;
 import parquet.column.ColumnDescriptor;
-import parquet.filter2.FilterPredicates.And;
-import parquet.filter2.FilterPredicates.Column;
-import parquet.filter2.FilterPredicates.ColumnFilterPredicate;
-import parquet.filter2.FilterPredicates.Eq;
-import parquet.filter2.FilterPredicates.Gt;
-import parquet.filter2.FilterPredicates.GtEq;
-import parquet.filter2.FilterPredicates.LogicalNotUserDefined;
-import parquet.filter2.FilterPredicates.Lt;
-import parquet.filter2.FilterPredicates.LtEq;
-import parquet.filter2.FilterPredicates.Not;
-import parquet.filter2.FilterPredicates.NotEq;
-import parquet.filter2.FilterPredicates.Or;
-import parquet.filter2.FilterPredicates.UserDefined;
+import parquet.filter2.FilterPredicateOperators.And;
+import parquet.filter2.FilterPredicateOperators.Column;
+import parquet.filter2.FilterPredicateOperators.ColumnFilterPredicate;
+import parquet.filter2.FilterPredicateOperators.Eq;
+import parquet.filter2.FilterPredicateOperators.Gt;
+import parquet.filter2.FilterPredicateOperators.GtEq;
+import parquet.filter2.FilterPredicateOperators.LogicalNotUserDefined;
+import parquet.filter2.FilterPredicateOperators.Lt;
+import parquet.filter2.FilterPredicateOperators.LtEq;
+import parquet.filter2.FilterPredicateOperators.Not;
+import parquet.filter2.FilterPredicateOperators.NotEq;
+import parquet.filter2.FilterPredicateOperators.Or;
+import parquet.filter2.FilterPredicateOperators.UserDefined;
 import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
 import parquet.schema.ColumnPathUtil;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
 
-// TODO: detect if a column is optional or required and validate that eq(null)
-// is not called on optional fields
-// TODO: does parquet count a null value the same as an optional-not-present?
-public class FilterValidator implements FilterPredicate.Visitor<Void> {
+/**
+ * Inspects the column types found in the provided FilterPredicate and compares them
+ * to the actual schema found in the parquet file. If the provided predicate's types are
+ * not consistent with the file schema, and IllegalArgumentException is thrown.
+ *
+ * Ideally, all this would be checked at compile time, and this class wouldn't be needed.
+ * If we can come up with a way to do that, we should.
+ *
+ * TODO: detect if a column is optional or required and validate that eq(null)
+ * TODO: is not called on optional fields
+ */
+public class FilterPredicateTypeValidator implements FilterPredicate.Visitor<Void> {
 
   public static void validate(FilterPredicate predicate, MessageType schema) {
-    predicate.accept(new FilterValidator(schema));
+    predicate.accept(new FilterPredicateTypeValidator(schema));
   }
 
-  // map of column name to the type the user supplied for this column
-  // used to validate that the user did not provide different types for the same
-  // column
+  // A map of column name to the type the user supplied for this column.
+  // Used to validate that the user did not provide different types for the same
+  // column.
   private final Map<String, Class<?>> columnTypesEncountered = new HashMap<String, Class<?>>();
 
   // the columns (keyed by path) according to the file's schema. This is the source of truth, and
@@ -44,12 +52,10 @@ public class FilterValidator implements FilterPredicate.Visitor<Void> {
   // the original type of a column, keyed by path
   private final Map<String, OriginalType> originalTypes = new HashMap<String, OriginalType>();
 
-  public FilterValidator(MessageType schema) {
+  public FilterPredicateTypeValidator(MessageType schema) {
 
     for (ColumnDescriptor cd : schema.getColumns()) {
-
       String columnPath = ColumnPathUtil.toDotSeparatedString(cd.getPath());
-
       columnsAccordingToSchema.put(columnPath, cd);
 
       OriginalType ot = schema.getType(cd.getPath()).getOriginalType();
@@ -57,7 +63,6 @@ public class FilterValidator implements FilterPredicate.Visitor<Void> {
         originalTypes.put(columnPath, ot);
       }
     }
-
   }
 
   @Override

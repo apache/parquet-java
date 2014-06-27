@@ -1,21 +1,21 @@
 package parquet.filter2;
 
-import parquet.filter2.FilterPredicates.And;
-import parquet.filter2.FilterPredicates.BinaryUserDefined;
-import parquet.filter2.FilterPredicates.Column;
-import parquet.filter2.FilterPredicates.DoubleUserDefined;
-import parquet.filter2.FilterPredicates.Eq;
-import parquet.filter2.FilterPredicates.FloatUserDefined;
-import parquet.filter2.FilterPredicates.Gt;
-import parquet.filter2.FilterPredicates.GtEq;
-import parquet.filter2.FilterPredicates.IntUserDefined;
-import parquet.filter2.FilterPredicates.LongUserDefined;
-import parquet.filter2.FilterPredicates.Lt;
-import parquet.filter2.FilterPredicates.LtEq;
-import parquet.filter2.FilterPredicates.Not;
-import parquet.filter2.FilterPredicates.NotEq;
-import parquet.filter2.FilterPredicates.Or;
-import parquet.filter2.FilterPredicates.StringUserDefined;
+import parquet.filter2.FilterPredicateOperators.And;
+import parquet.filter2.FilterPredicateOperators.BinaryUserDefined;
+import parquet.filter2.FilterPredicateOperators.Column;
+import parquet.filter2.FilterPredicateOperators.DoubleUserDefined;
+import parquet.filter2.FilterPredicateOperators.Eq;
+import parquet.filter2.FilterPredicateOperators.FloatUserDefined;
+import parquet.filter2.FilterPredicateOperators.Gt;
+import parquet.filter2.FilterPredicateOperators.GtEq;
+import parquet.filter2.FilterPredicateOperators.IntUserDefined;
+import parquet.filter2.FilterPredicateOperators.LongUserDefined;
+import parquet.filter2.FilterPredicateOperators.Lt;
+import parquet.filter2.FilterPredicateOperators.LtEq;
+import parquet.filter2.FilterPredicateOperators.Not;
+import parquet.filter2.FilterPredicateOperators.NotEq;
+import parquet.filter2.FilterPredicateOperators.Or;
+import parquet.filter2.FilterPredicateOperators.StringUserDefined;
 import parquet.filter2.UserDefinedPredicates.BinaryUserDefinedPredicate;
 import parquet.filter2.UserDefinedPredicates.DoubleUserDefinedPredicate;
 import parquet.filter2.UserDefinedPredicates.FloatUserDefinedPredicate;
@@ -38,6 +38,7 @@ import parquet.io.api.Binary;
  *
  * }
  */
+// TODO: Support repeated columns
 public final class Filter {
   private Filter() { }
 

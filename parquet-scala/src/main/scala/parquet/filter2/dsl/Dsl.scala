@@ -7,7 +7,7 @@ import parquet.io.api.Binary
 object Dsl {
 
   private[Dsl] trait Column[T] {
-    val column: parquet.filter2.FilterPredicates.Column[T]
+    val column: parquet.filter2.FilterPredicateOperators.Column[T]
 
     def ===(v: T) = Filter.eq(column, v)
     def !== (v: T) = Filter.notEq(column, v)

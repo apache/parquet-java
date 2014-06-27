@@ -41,7 +41,7 @@ import parquet.Preconditions;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.CollapseLogicalNots;
 import parquet.filter2.FilterPredicate;
-import parquet.filter2.FilterValidator;
+import parquet.filter2.FilterPredicateTypeValidator;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
@@ -484,7 +484,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   static List<BlockMetaData> applyRowGroupFilters(FilterPredicate filterPredicate, MessageType schema, List<BlockMetaData> blocks) {
     // check that the schema of the filter matches the schema of the file
     // TODO: can we do this just once, on the global (merged) schema?
-    FilterValidator.validate(filterPredicate, schema);
+    FilterPredicateTypeValidator.validate(filterPredicate, schema);
 
     List<BlockMetaData> filteredBlocks = new ArrayList<BlockMetaData>();
 

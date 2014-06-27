@@ -7,13 +7,13 @@ import java.io.ObjectOutputStream;
 
 import org.junit.Test;
 
-import parquet.filter2.FilterPredicates.And;
-import parquet.filter2.FilterPredicates.Column;
-import parquet.filter2.FilterPredicates.Eq;
-import parquet.filter2.FilterPredicates.Gt;
-import parquet.filter2.FilterPredicates.Not;
-import parquet.filter2.FilterPredicates.Or;
-import parquet.filter2.FilterPredicates.UserDefined;
+import parquet.filter2.FilterPredicateOperators.And;
+import parquet.filter2.FilterPredicateOperators.Column;
+import parquet.filter2.FilterPredicateOperators.Eq;
+import parquet.filter2.FilterPredicateOperators.Gt;
+import parquet.filter2.FilterPredicateOperators.Not;
+import parquet.filter2.FilterPredicateOperators.Or;
+import parquet.filter2.FilterPredicateOperators.UserDefined;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -26,7 +26,7 @@ import static parquet.filter2.Filter.intPredicate;
 import static parquet.filter2.Filter.not;
 import static parquet.filter2.Filter.notEq;
 import static parquet.filter2.Filter.or;
-import static parquet.filter2.FilterPredicates.NotEq;
+import static parquet.filter2.FilterPredicateOperators.NotEq;
 
 public class TestFilterConstructionMethods {
 

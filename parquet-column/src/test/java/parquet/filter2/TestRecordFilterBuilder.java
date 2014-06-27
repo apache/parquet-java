@@ -6,7 +6,7 @@ import org.junit.Test;
 
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnReader;
-import parquet.filter2.FilterPredicates.Column;
+import parquet.filter2.FilterPredicateOperators.Column;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 import static org.easymock.EasyMock.createStrictMock;
