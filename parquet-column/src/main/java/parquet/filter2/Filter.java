@@ -38,7 +38,9 @@ import parquet.io.api.Binary;
  *
  * }
  */
-// TODO: Support repeated columns
+// TODO(alexlevenson): Support repeated columns
+// TODO(alexlevenson): some operators don't apply to some columns
+// TODO(alexlevenson): eg, < on a boolean column. Should encode this in the type system somehow.
 public final class Filter {
   private Filter() { }
 

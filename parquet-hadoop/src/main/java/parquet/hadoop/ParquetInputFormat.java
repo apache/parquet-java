@@ -483,7 +483,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   static List<BlockMetaData> applyRowGroupFilters(FilterPredicate filterPredicate, MessageType schema, List<BlockMetaData> blocks) {
     // check that the schema of the filter matches the schema of the file
-    // TODO: can we do this just once, on the global (merged) schema?
     FilterPredicateTypeValidator.validate(filterPredicate, schema);
 
     List<BlockMetaData> filteredBlocks = new ArrayList<BlockMetaData>();

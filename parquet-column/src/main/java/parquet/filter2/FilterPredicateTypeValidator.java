@@ -31,8 +31,8 @@ import parquet.schema.OriginalType;
  * Ideally, all this would be checked at compile time, and this class wouldn't be needed.
  * If we can come up with a way to do that, we should.
  *
- * TODO: detect if a column is optional or required and validate that eq(null)
- * TODO: is not called on optional fields
+ * TODO(alexlevenson): detect if a column is optional or required and validate that eq(null)
+ * TODO(alexlevenson): is not called on optional fields
  */
 public class FilterPredicateTypeValidator implements FilterPredicate.Visitor<Void> {
 
@@ -148,7 +148,9 @@ public class FilterPredicateTypeValidator implements FilterPredicate.Visitor<Voi
     }
     columnTypesEncountered.put(path, column.getColumnType());
 
-    ValidTypeMap.assertTypeValid(column, getColumnDescriptor(path).getType(), originalTypes.get(path));
+    ColumnDescriptor descriptor = getColumnDescriptor(path);
+
+    ValidTypeMap.assertTypeValid(column, descriptor.getType(), originalTypes.get(path));
   }
 
   private ColumnDescriptor getColumnDescriptor(String columnPath) {

@@ -40,7 +40,7 @@ public class TestRecordFilterBuilder {
 
     replay(column);
 
-    RecordPredicate rf = RecordFilterBuilder.build(p, Arrays.asList(column));
+    RecordPredicate rf = RecordPredicateBuilder.build(p, Arrays.asList(column));
 
     assertFalse(rf.isMatch());
     assertTrue(rf.isMatch());

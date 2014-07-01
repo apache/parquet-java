@@ -15,7 +15,7 @@ import parquet.Log;
  * Serialization utils copied from:
  * https://github.com/kevinweil/elephant-bird/blob/master/core/src/main/java/com/twitter/elephantbird/util/HadoopUtils.java
  *
- * TODO: Should we depend on elephant-bird or just copy here?
+ * TODO(alexlevenson): Should we depend on elephant-bird or just copy here?
  */
 public final class SerializationUtil {
   private static final Log LOG = Log.getLog(SerializationUtil.class);

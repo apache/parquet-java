@@ -21,7 +21,7 @@ import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.filter.RecordFilter;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.FilterPredicate;
-import parquet.filter2.RecordFilterBuilder;
+import parquet.filter2.RecordPredicateBuilder;
 import parquet.filter2.RecordPredicate;
 import parquet.io.api.RecordMaterializer;
 
@@ -65,7 +65,7 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
     }
 
     if (filterPredicate != null) {
-      this.recordPredicate = RecordFilterBuilder.build(filterPredicate, getColumnReaders());
+      this.recordPredicate = RecordPredicateBuilder.build(filterPredicate, getColumnReaders());
     } else {
       this.recordPredicate = null;
     }

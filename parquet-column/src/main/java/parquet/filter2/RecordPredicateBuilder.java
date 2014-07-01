@@ -27,19 +27,24 @@ import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
 import parquet.io.api.Binary;
 import parquet.schema.ColumnPathUtil;
 
-// TODO: replace with byte code generated version
-// TODO: this might be really slow?
-// TODO: where do nulls come into play?
-// TODO: this is super ugly
-public class RecordFilterBuilder implements Visitor<RecordPredicate> {
+/**
+ * Builds a {@link RecordPredicate} bound to the given {@link ColumnReader}s, based on the provided
+ * {@link FilterPredicate}
+ *
+ * TODO(alexlevenson): This is currently done by combining a series of anonymous classes, but is a good candidate
+ * TODO(alexlevenson): for runtime bytecode generation.
+ *
+ * TODO(alexlevenson): Need to take nulls into account by inspecting the definition levels
+ */
+public class RecordPredicateBuilder implements Visitor<RecordPredicate> {
 
   public static RecordPredicate build(FilterPredicate filterPredicate, Iterable<ColumnReader> columns) {
-    return filterPredicate.accept(new RecordFilterBuilder(columns));
+    return filterPredicate.accept(new RecordPredicateBuilder(columns));
   }
 
   private final Map<String, ColumnReader> columns;
 
-  private RecordFilterBuilder(Iterable<ColumnReader> columnReaders) {
+  private RecordPredicateBuilder(Iterable<ColumnReader> columnReaders) {
     columns = new HashMap<String, ColumnReader>();
     for (ColumnReader reader : columnReaders) {
       String path = ColumnPathUtil.toDotSeparatedString(reader.getDescriptor().getPath());
@@ -255,7 +260,7 @@ public class RecordFilterBuilder implements Visitor<RecordPredicate> {
       };
     }
 
-    // TODO: < on boolean is nonsense
+    // TODO(alexlevenson): < on boolean is nonsense
     if (clazz.equals(Boolean.class)) {
       final Boolean value = (Boolean) lt.getValue();
       return new RecordPredicate() {
@@ -336,7 +341,7 @@ public class RecordFilterBuilder implements Visitor<RecordPredicate> {
       };
     }
 
-    // TODO: <= on boolean is nonsense
+    // TODO(alexlevenson): <= on boolean is nonsense
     if (clazz.equals(Boolean.class)) {
       final Boolean value = (Boolean) ltEq.getValue();
       return new RecordPredicate() {
@@ -417,7 +422,7 @@ public class RecordFilterBuilder implements Visitor<RecordPredicate> {
       };
     }
 
-    // TODO: > on boolean is nonsense
+    // TODO(alexlevenson): > on boolean is nonsense
     if (clazz.equals(Boolean.class)) {
       final Boolean value = (Boolean) gt.getValue();
       return new RecordPredicate() {
@@ -498,7 +503,7 @@ public class RecordFilterBuilder implements Visitor<RecordPredicate> {
       };
     }
 
-    // TODO: >= on boolean is nonsense
+    // TODO(alexlevenson): >= on boolean is nonsense
     if (clazz.equals(Boolean.class)) {
       final Boolean value = (Boolean) gtEq.getValue();
       return new RecordPredicate() {
@@ -557,7 +562,7 @@ public class RecordFilterBuilder implements Visitor<RecordPredicate> {
     };
   }
 
-  // TODO: this never gets called because all nots have been collapsed...
+  // TODO(alexlevenson): this never gets called because all nots have been collapsed...
   @Override
   public RecordPredicate visit(Not not) {
     final RecordPredicate pred = not.getPredicate().accept(this);

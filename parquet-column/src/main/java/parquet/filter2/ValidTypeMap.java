@@ -49,8 +49,8 @@ public final class ValidTypeMap {
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, null));
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, null));
 
-    // TODO: Do we want to allow binary predicates on String columns?
-    // TODO: I am supporting this now, but should we?
+    // TODO(alexlevenson): Do we want to allow binary predicates on String columns?
+    // TODO(alexlevenson): I am supporting this now, but should we?
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, OriginalType.UTF8));
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, OriginalType.UTF8));
   }

@@ -39,7 +39,6 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
    * pred should also have already been run through {@link parquet.filter2.FilterPredicateTypeValidator} to make sure
    * it is compatible with the schema of this file.
    *
-   * TODO: we could just remove the not operator. see comments in CollapseLogicalNots
    */
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns) {
     return pred.accept(new StatisticsFilter(columns));
