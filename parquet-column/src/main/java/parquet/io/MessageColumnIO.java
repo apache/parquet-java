@@ -20,7 +20,6 @@ import java.util.BitSet;
 import java.util.List;
 
 import parquet.Log;
-import parquet.Preconditions;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
 import parquet.column.impl.ColumnReadStoreImpl;
@@ -68,6 +67,16 @@ public class MessageColumnIO extends GroupColumnIO {
     } else {
       return new EmptyRecordReader<T>(recordMaterializer);
     }
+  }
+
+  // TODO(alexlevenson): This is for semver backwards compatibility. We should remove this.
+  // TODO(alexlevenson): This probably didn't need to be public in the first place, if we're going to use semver
+  // TODO(alexlevenson): we should probably be more aggressive about making things private / package private
+  @Deprecated
+  public <T> RecordReader<T> getRecordReader(PageReadStore columns,
+                                             RecordMaterializer<T> recordMaterializer,
+                                             UnboundRecordFilter unboundFilter) {
+    return getRecordReader(columns, recordMaterializer, unboundFilter, null);
   }
 
   public <T> RecordReader<T> getRecordReader(PageReadStore columns,
