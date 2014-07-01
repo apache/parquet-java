@@ -28,17 +28,22 @@ import static parquet.filter2.StatisticsUtil.applyUdpMinMax;
 import static parquet.filter2.StatisticsUtil.compareMinMax;
 
 public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
-
   /**
-   * Note: pred must not contain any instances of the not() operator as this is not
+   * Applies a {@link parquet.filter2.FilterPredicate} to statistics about a group of
+   * records.
+   *
+   * Note: the supplied predicate must not contain any instances of the not() operator as this is not
    * supported by this filter.
    *
-   * pred should first be run through {@link parquet.filter2.CollapseLogicalNots} to rewrite it
+   * the supplied predicate should first be run through {@link parquet.filter2.CollapseLogicalNots} to rewrite it
    * in a form that doesn't make use of the not() operator.
    *
-   * pred should also have already been run through {@link parquet.filter2.FilterPredicateTypeValidator} to make sure
-   * it is compatible with the schema of this file.
+   * the supplied predicate should also have already been run through
+   * {@link parquet.filter2.FilterPredicateTypeValidator}
+   * to make sure it is compatible with the schema of this file.
    *
+   * @return true if all the records represented by the statistics in the provided column metadata can be dropped.
+   *         false otherwise (including when it is not known, which is often).
    */
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns) {
     return pred.accept(new StatisticsFilter(columns));
@@ -46,7 +51,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
   private final Map<String, ColumnChunkMetaData> columns = new HashMap<String, ColumnChunkMetaData>();
 
-  public StatisticsFilter(List<ColumnChunkMetaData> columnsList) {
+  private StatisticsFilter(List<ColumnChunkMetaData> columnsList) {
     for (ColumnChunkMetaData chunk : columnsList) {
       String columnPath = ColumnPathUtil.toDotSeparatedString(chunk.getPath().toArray());
       columns.put(columnPath, chunk);
@@ -59,10 +64,12 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     return c;
   }
 
+  // is this column chunk composed entirely of nulls?
   private boolean isAllNulls(ColumnChunkMetaData column) {
     return column.getStatistics().getNumNulls() == column.getValueCount();
   }
 
+  // are there any nulls in this column chunk?
   private boolean hasNulls(ColumnChunkMetaData column) {
     return column.getStatistics().getNumNulls() > 0;
   }

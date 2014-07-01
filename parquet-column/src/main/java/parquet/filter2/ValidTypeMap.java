@@ -11,16 +11,23 @@ import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
+ * Contains all valid mappings from class -> parquet type (and vice versa) for use in
+ * {@link parquet.filter2.FilterPredicate}s
+ *
  * This is a bit ugly, but it allows us to provide good error messages at runtime
  * when there are type mismatches.
+ *
+ * TODO(alexlevenson): FilterPredicates don't currently support repeated columns,
+ * TODO(alexlevenson): so neither does this mapping
  */
 public final class ValidTypeMap {
   private ValidTypeMap() { }
 
+  // classToParquetType and parquetTypeToClass are used as a bi-directional map
   private static final Map<Class<?>, Set<FullTypeDescriptor>> classToParquetType = new HashMap<Class<?>, Set<FullTypeDescriptor>>();
   private static final Map<FullTypeDescriptor, Set<Class<?>>> parquetTypeToClass = new HashMap<FullTypeDescriptor, Set<Class<?>>>();
 
-  // classToParquetType and parquetTypeToClass are used as a bi-directional map
+  // set up the mapping in both directions
   private static void add(Class<?> c, FullTypeDescriptor f) {
     Set<FullTypeDescriptor> descriptors = classToParquetType.get(c);
     if (descriptors == null) {
@@ -38,6 +45,7 @@ public final class ValidTypeMap {
   }
 
   static {
+    // basic primitive columns
     add(Integer.class, new FullTypeDescriptor(PrimitiveTypeName.INT32, null));
     add(Long.class, new FullTypeDescriptor(PrimitiveTypeName.INT64, null));
     add(Float.class, new FullTypeDescriptor(PrimitiveTypeName.FLOAT, null));
@@ -45,7 +53,7 @@ public final class ValidTypeMap {
     add(String.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, OriginalType.UTF8));
     add(Boolean.class, new FullTypeDescriptor(PrimitiveTypeName.BOOLEAN, null));
 
-    // these are all valid mappings
+    // Both of these binary types are valid
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, null));
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, null));
 
@@ -55,6 +63,16 @@ public final class ValidTypeMap {
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, OriginalType.UTF8));
   }
 
+  /**
+   * Asserts that foundColumn was declared as a type that is compatible with the type for this column found
+   * in the schema of the parquet file.
+   *
+   * @throws java.lang.IllegalArgumentException if the types do not align
+   *
+   * @param foundColumn the column as declared by the user
+   * @param primitiveType the primitive type according to the schema
+   * @param originalType the original type according to the schema
+   */
   public static <T> void assertTypeValid(Column<T> foundColumn, PrimitiveTypeName primitiveType, OriginalType originalType) {
     Class<T> foundColumnType = foundColumn.getColumnType();
     String columnPath = foundColumn.getColumnPath();

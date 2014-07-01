@@ -17,9 +17,21 @@ import parquet.filter2.UserDefinedPredicates.StringUserDefinedPredicate;
 import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
 import parquet.io.api.Binary;
 
+/**
+ * {@link parquet.column.statistics.Statistics} is not a generic class, which makes working with
+ * it and its subclasses difficult and tedious.
+ *
+ * This class has some helpers for getting around that.
+ *
+ * TODO(alexlevenson): make Statistics generic (or conform to a generic view of some kind?)
+ */
 public final class StatisticsUtil {
   private StatisticsUtil() { }
 
+  /**
+   * A struct representing the comparison between some value v,
+   * and the min / max of a statistics object.
+   */
   public static final class MinMaxComparison {
     private final int minCmp;
     private final int maxCmp;
@@ -29,15 +41,31 @@ public final class StatisticsUtil {
       this.maxCmp = maxCmp;
     }
 
+    /**
+     * represents value.compareTo(min)
+     */
     public int getMinCmp() {
       return minCmp;
     }
 
+    /**
+     * represents value.compareTo(max)
+     */
     public int getMaxCmp() {
       return maxCmp;
     }
   }
 
+  /**
+   * Returns the result of comparing rawValue to the min and max in rawStats
+   *
+   * @param clazz The class representing the type of statistics object rawStats is.
+   *              eg: Integer.class, Long.class, Binary.class etc
+   *
+   * @param rawValue the value to compare to
+   * @param rawStats a Statistics object that must be of matching type to clazz
+   *                 eg: IntStatistics for Integer.class
+   */
   public static <T> MinMaxComparison compareMinMax(Class<T> clazz, T rawValue, Statistics rawStats) {
 
     if (clazz.equals(Integer.class)) {
@@ -107,6 +135,25 @@ public final class StatisticsUtil {
     throw new IllegalArgumentException("Encountered unknown filter column type: " + clazz.getName());
   }
 
+  /**
+   * Applies a {@link parquet.filter2.UserDefinedPredicates.UserDefinedPredicate}
+   * to a statistics object, paying attention to whether the predicate is supposed to
+   * be logically inverted.
+   *
+   * @param clazz The class representing the type of statistics object rawStats is.
+   *              eg: Integer.class, Long.class, Binary.class etc
+   *
+   * @param rawUdp the UserDefinedPredicate to apply, must be of matching type to clazz
+   *               eg: IntUserDefinedPredicate for Integer.class
+   *
+   * @param rawStats a Statistics object that must be of matching type to clazz
+   *                 eg: IntStatistics for Integer.class
+   *
+   * @param inverted if true, the predicate has been logically inverted by the not operator, and
+   *                 the inverseCanDrop method will be called instead of the canDrop method.
+   *
+   * @return whether the records represented by rawStats can be dropped according to the provided predicate
+   */
   public static <T> boolean applyUdpMinMax(Class<T> clazz, UserDefinedPredicate<T> rawUdp, Statistics rawStats, boolean inverted) {
 
     if (clazz.equals(Integer.class)) {

@@ -4,6 +4,25 @@ import parquet.filter2.UserDefinedPredicates._
 import parquet.filter2.{Filter, FilterPredicate}
 import parquet.io.api.Binary
 
+/**
+ * Instead of using the methods in [[Filter]] directly in scala code,
+ * use this Dsl instead. Example usage:
+ *
+ * {{{
+ * import parquet.filter2.dsl.Dsl._
+ *
+ * val abc = IntColumn("a.b.c")
+ * val xyz = DoubleColumn("x.y.z")
+ *
+ * val myPredicate = !(abc > 10 && (xyz === 17 || ((xyz !== 13) && (xyz <= 20))))
+ *
+ * }}}
+ *
+ * Note that while the operators >, >=, <, <= all work, the == and != operators do not.
+ * Using == or != will result in a runtime exception. Instead use === and !==
+ *
+ * This is due to a limitation in overriding the the equals method.
+ */
 object Dsl {
 
   private[Dsl] trait Column[T] {
@@ -16,6 +35,9 @@ object Dsl {
     def <(v: T) = Filter.lt(column, v)
     def <=(v: T) = Filter.ltEq(column, v)
 
+    // this is not supported because it allows for easy mistakes. For example:
+    // val pred = IntColumn("foo") == "hello"
+    // will compile, but pred will be of type boolean instead of FilterPredicate
     override def equals(x: Any) =
       throw new UnsupportedOperationException("You probably meant to use === or !==")
 
