@@ -208,21 +208,16 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
   @Override
   public Boolean visit(And and) {
-    Boolean canDropLeft = and.getLeft().accept(this);
-    Boolean canDropRight = and.getRight().accept(this);
-    return canDropLeft && canDropRight;
+    return and.getLeft().accept(this) && and.getRight().accept(this);
   }
 
   @Override
   public Boolean visit(Or or) {
-    Boolean canDropLeft = or.getLeft().accept(this);
-    Boolean canDropRight = or.getRight().accept(this);
-
     // seems unintuitive to put an && not an || here
     // but we can only drop a chunk of records if we know that
     // both the left and right predicates agree that no matter what
     // we don't need this chunk.
-    return canDropLeft && canDropRight;
+    return or.getLeft().accept(this) && or.getRight().accept(this);
   }
 
   @Override
