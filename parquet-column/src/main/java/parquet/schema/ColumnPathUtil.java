@@ -14,7 +14,7 @@ public final class ColumnPathUtil {
 
   /**
    * "joins" an array of string with the '.' character, eg:
-   * ["a","b",c"] -> "a.b.c"
+   * ["a", "b", "c"] -> "a.b.c"
    */
   public static String toDotSeparatedString(String[] path) {
     StringBuilder sb = new StringBuilder();

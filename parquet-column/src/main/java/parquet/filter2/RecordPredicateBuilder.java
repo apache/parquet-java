@@ -31,6 +31,16 @@ import parquet.schema.ColumnPathUtil;
  * Builds a {@link RecordPredicate} bound to the given {@link ColumnReader}s, based on the provided
  * {@link FilterPredicate}
  *
+ * Note: the supplied predicate must not contain any instances of the not() operator as this is not
+ * supported by this filter.
+ *
+ * the supplied predicate should first be run through {@link parquet.filter2.CollapseLogicalNots} to rewrite it
+ * in a form that doesn't make use of the not() operator.
+ *
+ * the supplied predicate should also have already been run through
+ * {@link parquet.filter2.FilterPredicateTypeValidator}
+ * to make sure it is compatible with the schema of this file.
+ *
  * TODO(alexlevenson): This is currently done by combining a series of anonymous classes, but is a good candidate
  * TODO(alexlevenson): for runtime bytecode generation.
  *
@@ -562,16 +572,10 @@ public class RecordPredicateBuilder implements Visitor<RecordPredicate> {
     };
   }
 
-  // TODO(alexlevenson): this never gets called because all nots have been collapsed...
   @Override
   public RecordPredicate visit(Not not) {
-    final RecordPredicate pred = not.getPredicate().accept(this);
-    return new RecordPredicate() {
-      @Override
-      public boolean isMatch() {
-        return !pred.isMatch();
-      }
-    };
+    throw new IllegalArgumentException(
+        "This predicate contains a not! Did you forget to run this predicate through CollapseLogicalNots? " + not);
   }
 
   @Override

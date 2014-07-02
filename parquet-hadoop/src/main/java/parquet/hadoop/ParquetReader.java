@@ -30,6 +30,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import parquet.filter.UnboundRecordFilter;
+import parquet.filter2.FilterPredicate;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
@@ -43,7 +44,8 @@ import parquet.schema.MessageType;
 public class ParquetReader<T> implements Closeable {
 
   private ReadSupport<T> readSupport;
-  private UnboundRecordFilter filter;
+  private UnboundRecordFilter unboundRecordFilter;
+  private FilterPredicate filterPredicate;
   private Configuration conf;
   private ReadContext readContext;
   private Iterator<Footer> footersIterator;
@@ -72,23 +74,43 @@ public class ParquetReader<T> implements Closeable {
   /**
    * @param file the file to read
    * @param readSupport to materialize records
-   * @param filter the filter to use to filter records
+   * @param unboundRecordFilter the unboundRecordFilter to use to filter records
    * @throws IOException
    */
-  public ParquetReader(Path file, ReadSupport<T> readSupport, UnboundRecordFilter filter) throws IOException {
-    this(new Configuration(), file, readSupport, filter);
+  public ParquetReader(Path file, ReadSupport<T> readSupport, UnboundRecordFilter unboundRecordFilter) throws IOException {
+    this(new Configuration(), file, readSupport, unboundRecordFilter);
   }
 
   /**
    * @param conf the configuration
    * @param file the file to read
    * @param readSupport to materialize records
-   * @param filter the filter to use to filter records
+   * @param unboundRecordFilter the unboundRecordFilter to use to filter records
    * @throws IOException
    */
-  public ParquetReader(Configuration conf, Path file, ReadSupport<T> readSupport, UnboundRecordFilter filter) throws IOException {
+  public ParquetReader(Configuration conf,
+                       Path file,
+                       ReadSupport<T> readSupport,
+                       UnboundRecordFilter unboundRecordFilter) throws IOException {
+    this(conf, file, readSupport, unboundRecordFilter, null);
+  }
+
+    /**
+     * @param conf the configuration
+     * @param file the file to read
+     * @param readSupport to materialize records
+     * @param unboundRecordFilter the unboundRecordFilter to use to filter records
+     * @param filterPredicate the FilterPredicate to use to filter records
+     * @throws IOException
+     */
+  public ParquetReader(Configuration conf,
+                       Path file,
+                       ReadSupport<T> readSupport,
+                       UnboundRecordFilter unboundRecordFilter,
+                       FilterPredicate filterPredicate) throws IOException {
     this.readSupport = readSupport;
-    this.filter = filter;
+    this.unboundRecordFilter = unboundRecordFilter;
+    this.filterPredicate = filterPredicate;
     this.conf = conf;
 
     FileSystem fs = file.getFileSystem(conf);
@@ -131,7 +153,7 @@ public class ParquetReader<T> implements Closeable {
     }
     if (footersIterator.hasNext()) {
       Footer footer = footersIterator.next();
-      reader = new InternalParquetRecordReader<T>(readSupport, filter);
+      reader = new InternalParquetRecordReader<T>(readSupport, unboundRecordFilter, filterPredicate);
       reader.initialize(
           readContext.getRequestedSchema(), globalMetaData.getSchema(), footer.getParquetMetadata().getFileMetaData().getKeyValueMetaData(),
           readContext.getReadSupportMetadata(), footer.getFile(), footer.getParquetMetadata().getBlocks(), conf);

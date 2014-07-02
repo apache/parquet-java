@@ -21,8 +21,8 @@ import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.filter.RecordFilter;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.FilterPredicate;
-import parquet.filter2.RecordPredicateBuilder;
 import parquet.filter2.RecordPredicate;
+import parquet.filter2.RecordPredicateBuilder;
 import parquet.io.api.RecordMaterializer;
 
 /**
@@ -55,8 +55,11 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
 
     this.recordCount = recordCount;
 
-    Preconditions.checkArgument(!(unboundFilter != null && filterPredicate != null),
-        "Found both an UnboundRecordFilter and a FilterPredicate. Only one can be provided");
+    Preconditions.checkArgument(unboundFilter != null || filterPredicate !=null,
+        "FilteredRecordReader requires either an unboundFilter or a filterPredicate, they cannot both be null");
+
+    Preconditions.checkArgument(unboundFilter == null || filterPredicate == null,
+        "FilteredRecordReader requires either an unboundFilter or a filterPredicate, you cannot provide both.");
 
     if (unboundFilter != null) {
       boundRecordFilter = unboundFilter.bind(getColumnReaders());
