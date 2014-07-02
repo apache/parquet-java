@@ -222,7 +222,7 @@
          <executions>
            <execution>
              <id>check</id>
-             <phase>verify</phase>
+             <phase>none</phase>
              <goals>
                <goal>enforce</goal>
              </goals>
