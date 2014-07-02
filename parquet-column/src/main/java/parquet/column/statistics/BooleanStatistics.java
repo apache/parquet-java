@@ -17,7 +17,7 @@ package parquet.column.statistics;
 
 import parquet.bytes.BytesUtils;
 
-public class BooleanStatistics extends Statistics{
+public class BooleanStatistics extends Statistics<Boolean> {
 
   private boolean max;
   private boolean min;
@@ -75,6 +75,16 @@ public class BooleanStatistics extends Statistics{
       min = min_value;
       max = max_value;
       this.markAsNotEmpty();
+  }
+
+  @Override
+  public Boolean genericGetMin() {
+    return min;
+  }
+
+  @Override
+  public Boolean genericGetMax() {
+    return max;
   }
 
   public boolean getMax() {

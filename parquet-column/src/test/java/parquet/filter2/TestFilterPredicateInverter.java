@@ -3,8 +3,8 @@ package parquet.filter2;
 import org.junit.Test;
 
 import parquet.filter2.FilterPredicateOperators.Column;
-import parquet.filter2.FilterPredicateOperators.IntUserDefined;
 import parquet.filter2.FilterPredicateOperators.LogicalNotUserDefined;
+import parquet.filter2.FilterPredicateOperators.UserDefined;
 
 import static org.junit.Assert.assertEquals;
 import static parquet.filter2.Filter.and;
@@ -13,26 +13,26 @@ import static parquet.filter2.Filter.eq;
 import static parquet.filter2.Filter.gt;
 import static parquet.filter2.Filter.gtEq;
 import static parquet.filter2.Filter.intColumn;
-import static parquet.filter2.Filter.intPredicate;
 import static parquet.filter2.Filter.lt;
 import static parquet.filter2.Filter.ltEq;
 import static parquet.filter2.Filter.not;
 import static parquet.filter2.Filter.notEq;
 import static parquet.filter2.Filter.or;
+import static parquet.filter2.Filter.userDefined;
 import static parquet.filter2.FilterPredicateInverter.invert;
 
 public class TestFilterPredicateInverter {
   private static final Column<Integer> intColumn = intColumn("a.b.c");
   private static final Column<Double> doubleColumn = doubleColumn("a.b.c");
 
-  private  static  final IntUserDefined<DummyUdp> ud = intPredicate(intColumn, DummyUdp.class);
+  private  static  final UserDefined<Integer, DummyUdp> ud = userDefined(intColumn, DummyUdp.class);
 
   private static final FilterPredicate complex =
       and(
           or(ltEq(doubleColumn, 12.0),
               and(
                   not(or(eq(intColumn, 7), notEq(intColumn, 17))),
-                  intPredicate(intColumn, DummyUdp.class))),
+                  userDefined(intColumn, DummyUdp.class))),
           or(gt(doubleColumn, 100.0), notEq(intColumn, 77)));
 
   private static final FilterPredicate complexInverse =
@@ -40,7 +40,7 @@ public class TestFilterPredicateInverter {
           and(gt(doubleColumn, 12.0),
               or(
                   or(eq(intColumn, 7), notEq(intColumn, 17)),
-                  new LogicalNotUserDefined<Integer, DummyUdp>(intPredicate(intColumn, DummyUdp.class)))),
+                  new LogicalNotUserDefined<Integer, DummyUdp>(userDefined(intColumn, DummyUdp.class)))),
           and(ltEq(doubleColumn, 100.0), eq(intColumn, 77)));
 
   @Test
@@ -62,8 +62,7 @@ public class TestFilterPredicateInverter {
 
     assertEquals(eq(intColumn, 17), invert(not(eq(intColumn, 17))));
 
-
-    IntUserDefined<DummyUdp> ud = intPredicate(intColumn, DummyUdp.class);
+    UserDefined<Integer, DummyUdp> ud = userDefined(intColumn, DummyUdp.class);
     assertEquals(new LogicalNotUserDefined<Integer, DummyUdp>(ud), invert(ud));
     assertEquals(ud, invert(not(ud)));
     assertEquals(ud, invert(new LogicalNotUserDefined<Integer, DummyUdp>(ud)));

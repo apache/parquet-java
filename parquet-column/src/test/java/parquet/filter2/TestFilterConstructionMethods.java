@@ -22,10 +22,10 @@ import static parquet.filter2.Filter.doubleColumn;
 import static parquet.filter2.Filter.eq;
 import static parquet.filter2.Filter.gt;
 import static parquet.filter2.Filter.intColumn;
-import static parquet.filter2.Filter.intPredicate;
 import static parquet.filter2.Filter.not;
 import static parquet.filter2.Filter.notEq;
 import static parquet.filter2.Filter.or;
+import static parquet.filter2.Filter.userDefined;
 import static parquet.filter2.FilterPredicateOperators.NotEq;
 
 public class TestFilterConstructionMethods {
@@ -71,7 +71,7 @@ public class TestFilterConstructionMethods {
 
   @Test
   public void testUdp() {
-    FilterPredicate predicate = or(eq(doubleColumn, 12.0), intPredicate(intColumn, DummyUdp.class));
+    FilterPredicate predicate = or(eq(doubleColumn, 12.0), userDefined(intColumn, DummyUdp.class));
     assertTrue(predicate instanceof Or);
     FilterPredicate ud = ((Or) predicate).getRight();
     assertTrue(ud instanceof UserDefined);
@@ -81,7 +81,7 @@ public class TestFilterConstructionMethods {
 
   @Test
   public void testSerializable() throws Exception {
-    FilterPredicate p = and(intPredicate(intColumn, DummyUdp.class), predicate);
+    FilterPredicate p = and(userDefined(intColumn, DummyUdp.class), predicate);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(baos);
     oos.writeObject(p);

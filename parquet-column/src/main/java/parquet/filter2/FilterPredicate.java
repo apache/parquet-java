@@ -11,7 +11,6 @@ import parquet.filter2.FilterPredicateOperators.Not;
 import parquet.filter2.FilterPredicateOperators.NotEq;
 import parquet.filter2.FilterPredicateOperators.Or;
 import parquet.filter2.FilterPredicateOperators.UserDefined;
-import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
 
 /**
  * A FilterPredicate is an expression tree describing the criteria for which records to keep when loading data from
@@ -39,17 +38,17 @@ public interface FilterPredicate {
    * and must handle recursion itself, per the visitor pattern.
    */
   public static interface Visitor<R> {
-    <T> R visit(Eq<T> eq);
-    <T> R visit(NotEq<T> notEq);
-    <T> R visit(Lt<T> lt);
-    <T> R visit(LtEq<T> ltEq);
-    <T> R visit(Gt<T> gt);
-    <T> R visit(GtEq<T> gtEq);
+    <T extends Comparable<T>> R visit(Eq<T> eq);
+    <T extends Comparable<T>> R visit(NotEq<T> notEq);
+    <T extends Comparable<T>> R visit(Lt<T> lt);
+    <T extends Comparable<T>> R visit(LtEq<T> ltEq);
+    <T extends Comparable<T>> R visit(Gt<T> gt);
+    <T extends Comparable<T>> R visit(GtEq<T> gtEq);
     R visit(And and);
     R visit(Or or);
     R visit(Not not);
-    <T, U extends UserDefinedPredicate<T>> R visit(UserDefined<T, U> udp);
-    <T, U extends UserDefinedPredicate<T>> R visit(LogicalNotUserDefined<T, U> udp);
+    <T extends Comparable<T>, U extends UserDefinedPredicate<T>> R visit(UserDefined<T, U> udp);
+    <T extends Comparable<T>, U extends UserDefinedPredicate<T>> R visit(LogicalNotUserDefined<T, U> udp);
   }
 
 }

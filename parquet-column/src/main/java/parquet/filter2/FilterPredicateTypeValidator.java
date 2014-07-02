@@ -18,7 +18,6 @@ import parquet.filter2.FilterPredicateOperators.Not;
 import parquet.filter2.FilterPredicateOperators.NotEq;
 import parquet.filter2.FilterPredicateOperators.Or;
 import parquet.filter2.FilterPredicateOperators.UserDefined;
-import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
 import parquet.schema.ColumnPathUtil;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
@@ -66,37 +65,37 @@ public class FilterPredicateTypeValidator implements FilterPredicate.Visitor<Voi
   }
 
   @Override
-  public <T> Void visit(Eq<T> pred) {
+  public <T extends Comparable<T>> Void visit(Eq<T> pred) {
     validateColumnFilterPredicate(pred);
     return null;
   }
 
   @Override
-  public <T> Void visit(NotEq<T> pred) {
+  public <T extends Comparable<T>> Void visit(NotEq<T> pred) {
     validateColumnFilterPredicate(pred);
     return null;
   }
 
   @Override
-  public <T> Void visit(Lt<T> pred) {
+  public <T extends Comparable<T>> Void visit(Lt<T> pred) {
     validateColumnFilterPredicate(pred);
     return null;
   }
 
   @Override
-  public <T> Void visit(LtEq<T> pred) {
+  public <T extends Comparable<T>> Void visit(LtEq<T> pred) {
     validateColumnFilterPredicate(pred);
     return null;
   }
 
   @Override
-  public <T> Void visit(Gt<T> pred) {
+  public <T extends Comparable<T>> Void visit(Gt<T> pred) {
     validateColumnFilterPredicate(pred);
     return null;
   }
 
   @Override
-  public <T> Void visit(GtEq<T> pred) {
+  public <T extends Comparable<T>> Void visit(GtEq<T> pred) {
     validateColumnFilterPredicate(pred);
     return null;
   }
@@ -122,21 +121,21 @@ public class FilterPredicateTypeValidator implements FilterPredicate.Visitor<Voi
   }
 
   @Override
-  public <T, U extends UserDefinedPredicate<T>> Void visit(UserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Void visit(UserDefined<T, U> udp) {
     validateColumn(udp.getColumn());
     return null;
   }
 
   @Override
-  public <T, U extends UserDefinedPredicate<T>> Void visit(LogicalNotUserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Void visit(LogicalNotUserDefined<T, U> udp) {
     return udp.getUserDefined().accept(this);
   }
 
-  private <T> void validateColumnFilterPredicate(ColumnFilterPredicate<T> pred) {
+  private <T extends Comparable<T>> void validateColumnFilterPredicate(ColumnFilterPredicate<T> pred) {
     validateColumn(pred.getColumn());
   }
 
-  private <T> void validateColumn(Column<T> column) {
+  private <T extends Comparable<T>> void validateColumn(Column<T> column) {
     String path = column.getColumnPath();
 
     Class<?> alreadySeen = columnTypesEncountered.get(path);

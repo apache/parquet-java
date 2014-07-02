@@ -3,14 +3,6 @@ package parquet.filter2;
 import java.io.Serializable;
 
 import parquet.Preconditions;
-import parquet.filter2.UserDefinedPredicates.BinaryUserDefinedPredicate;
-import parquet.filter2.UserDefinedPredicates.DoubleUserDefinedPredicate;
-import parquet.filter2.UserDefinedPredicates.FloatUserDefinedPredicate;
-import parquet.filter2.UserDefinedPredicates.IntUserDefinedPredicate;
-import parquet.filter2.UserDefinedPredicates.LongUserDefinedPredicate;
-import parquet.filter2.UserDefinedPredicates.StringUserDefinedPredicate;
-import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
-import parquet.io.api.Binary;
 
 /**
  * These are the nodes / tokens / operators in a a filter predicate expression.
@@ -19,7 +11,7 @@ import parquet.io.api.Binary;
 public final class FilterPredicateOperators {
   private FilterPredicateOperators() { }
 
-  public static final class Column<T> implements Serializable {
+  public static final class Column<T extends Comparable<T>> implements Serializable {
     private final String columnPath;
     private final Class<T> columnType;
 
@@ -65,7 +57,7 @@ public final class FilterPredicateOperators {
   }
 
   // base class for Eq, Lt, Gt
-  static abstract class ColumnFilterPredicate<T> implements FilterPredicate, Serializable  {
+  static abstract class ColumnFilterPredicate<T extends Comparable<T>> implements FilterPredicate, Serializable  {
     private final Column<T> column;
     private final T value;
     private final String toString;
@@ -114,7 +106,7 @@ public final class FilterPredicateOperators {
     }
   }
 
-  public static final class Eq<T> extends ColumnFilterPredicate<T> {
+  public static final class Eq<T extends Comparable<T>> extends ColumnFilterPredicate<T> {
 
     // value can be null
     Eq(Column<T> column, T value) {
@@ -128,7 +120,7 @@ public final class FilterPredicateOperators {
 
   }
 
-  public static final class NotEq<T> extends ColumnFilterPredicate<T> {
+  public static final class NotEq<T extends Comparable<T>> extends ColumnFilterPredicate<T> {
 
     // value can be null
     NotEq(Column<T> column, T value) {
@@ -142,7 +134,7 @@ public final class FilterPredicateOperators {
   }
 
 
-  public static final class Lt<T> extends ColumnFilterPredicate<T> {
+  public static final class Lt<T extends Comparable<T>> extends ColumnFilterPredicate<T> {
 
     // value cannot be null
     Lt(Column<T> column, T value) {
@@ -156,7 +148,7 @@ public final class FilterPredicateOperators {
     }
   }
 
-  public static final class LtEq<T> extends ColumnFilterPredicate<T> {
+  public static final class LtEq<T extends Comparable<T>> extends ColumnFilterPredicate<T> {
 
     // value cannot be null
     LtEq(Column<T> column, T value) {
@@ -171,7 +163,7 @@ public final class FilterPredicateOperators {
   }
 
 
-  public static final class Gt<T> extends ColumnFilterPredicate<T> {
+  public static final class Gt<T extends Comparable<T>> extends ColumnFilterPredicate<T> {
 
     // value cannot be null
     Gt(Column<T> column, T value) {
@@ -185,7 +177,7 @@ public final class FilterPredicateOperators {
     }
   }
 
-  public static final class GtEq<T> extends ColumnFilterPredicate<T> {
+  public static final class GtEq<T extends Comparable<T>> extends ColumnFilterPredicate<T> {
 
     // value cannot be null
     GtEq(Column<T> column, T value) {
@@ -311,7 +303,7 @@ public final class FilterPredicateOperators {
     }
   }
 
-  public static abstract class UserDefined<T, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
+  public static class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
     private final Column<T> column;
     private final Class<U> udpClass;
     private final String toString;
@@ -382,7 +374,7 @@ public final class FilterPredicateOperators {
 
   // Represents the inverse of a UserDefined. It is equivalent to not(userDefined), without the use
   // of the not() operator
-  public static class LogicalNotUserDefined <T, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
+  public static class LogicalNotUserDefined <T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
     private final UserDefined<T, U> udp;
     private final String toString;
 
@@ -422,42 +414,6 @@ public final class FilterPredicateOperators {
       int result = udp.hashCode();
       result = result * 31 + getClass().hashCode();
       return result;
-    }
-  }
-
-  public static class IntUserDefined<T extends IntUserDefinedPredicate> extends UserDefined<Integer, T> {
-    IntUserDefined(Column<Integer> column, Class<T> udpClass) {
-      super(column, udpClass);
-    }
-  }
-
-  public static class LongUserDefined<T extends LongUserDefinedPredicate> extends UserDefined<Long, T> {
-    LongUserDefined(Column<Long> column, Class<T> udpClass) {
-      super(column, udpClass);
-    }
-  }
-
-  public static class FloatUserDefined<T extends FloatUserDefinedPredicate> extends UserDefined<Float, T> {
-    FloatUserDefined(Column<Float> column, Class<T> udpClass) {
-      super(column, udpClass);
-    }
-  }
-
-  public static class DoubleUserDefined<T extends DoubleUserDefinedPredicate> extends UserDefined<Double, T> {
-    DoubleUserDefined(Column<Double> column, Class<T> udpClass) {
-      super(column, udpClass);
-    }
-  }
-
-  public static class BinaryUserDefined<T extends BinaryUserDefinedPredicate> extends UserDefined<Binary, T> {
-    BinaryUserDefined(Column<Binary> column, Class<T> udpClass) {
-      super(column, udpClass);
-    }
-  }
-
-  public static class StringUserDefined<T extends StringUserDefinedPredicate> extends UserDefined<String, T> {
-    StringUserDefined(Column<String> column, Class<T> udpClass) {
-      super(column, udpClass);
     }
   }
 

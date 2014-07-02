@@ -3,7 +3,6 @@ package parquet.filter2;
 import org.junit.Test;
 
 import parquet.filter2.FilterPredicateOperators.Column;
-import parquet.filter2.UserDefinedPredicates.LongUserDefinedPredicate;
 import parquet.io.api.Binary;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
@@ -15,19 +14,16 @@ import static parquet.filter2.Filter.binaryColumn;
 import static parquet.filter2.Filter.eq;
 import static parquet.filter2.Filter.gt;
 import static parquet.filter2.Filter.intColumn;
-import static parquet.filter2.Filter.intPredicate;
 import static parquet.filter2.Filter.longColumn;
-import static parquet.filter2.Filter.longPredicate;
 import static parquet.filter2.Filter.ltEq;
 import static parquet.filter2.Filter.not;
 import static parquet.filter2.Filter.notEq;
 import static parquet.filter2.Filter.or;
-import static parquet.filter2.Filter.stringColumn;
+import static parquet.filter2.Filter.userDefined;
 import static parquet.filter2.FilterPredicateTypeValidator.validate;
 
 public class TestFilterValidator {
-  private static final Column<String> stringC = stringColumn("c");
-  private static final Column<Binary> binaryC = binaryColumn("c");
+  private static final Column<Binary> stringC = binaryColumn("c");
   private static final Column<Long> longBar = longColumn("x.bar");
   private static final Column<Integer> intBar = intColumn("x.bar");
 
@@ -43,45 +39,44 @@ public class TestFilterValidator {
 
   private static final FilterPredicate complexValid =
       and(
-          or(ltEq(stringC, "foo"),
+          or(ltEq(stringC, Binary.fromString("foo")),
               and(
                   not(or(eq(intBar, 17), notEq(intBar, 17))),
-                  intPredicate(intBar, DummyUdp.class))),
-          or(gt(stringC, "bar"), notEq(stringC, "baz")));
+                  userDefined(intBar, DummyUdp.class))),
+          or(gt(stringC, Binary.fromString("bar")), notEq(stringC, Binary.fromString("baz"))));
 
-  static class LongDummyUdp extends LongUserDefinedPredicate {
-
+  static class LongDummyUdp extends UserDefinedPredicate<Long> {
     @Override
-    public boolean keep(long value) {
+    public boolean keep(Long value) {
       return false;
     }
 
     @Override
-    public boolean canDrop(long min, long max) {
+    public boolean canDrop(Long min, Long max) {
       return false;
     }
 
     @Override
-    public boolean inverseCanDrop(long min, long max) {
+    public boolean inverseCanDrop(Long min, Long max) {
       return false;
     }
   }
 
   private static final FilterPredicate complexWrongType =
       and(
-          or(ltEq(stringC, "foo"),
+          or(ltEq(stringC, Binary.fromString("foo")),
               and(
                   not(or(eq(longBar, 17L), notEq(longBar, 17L))),
-                  longPredicate(longBar, LongDummyUdp.class))),
-          or(gt(stringC, "bar"), notEq(stringC, "baz")));
+                  userDefined(longBar, LongDummyUdp.class))),
+          or(gt(stringC, Binary.fromString("bar")), notEq(stringC, Binary.fromString("baz"))));
 
   private static final FilterPredicate complexMixedType =
       and(
-          or(ltEq(stringC, "foo"),
+          or(ltEq(stringC, Binary.fromString("foo")),
               and(
                   not(or(eq(intBar, 17), notEq(longBar, 17L))),
-                  longPredicate(longBar, LongDummyUdp.class))),
-          or(gt(stringC, "bar"), notEq(stringC, "baz")));
+                  userDefined(longBar, LongDummyUdp.class))),
+          or(gt(stringC, Binary.fromString("bar")), notEq(stringC, Binary.fromString("baz"))));
 
   @Test
   public void testValidType() {
@@ -102,16 +97,7 @@ public class TestFilterValidator {
 
   @Test
   public void testTwiceDeclaredColumn() {
-    validate(eq(stringC, "larry"), schema);
-    validate(eq(binaryC, Binary.fromByteArray("larry".getBytes())), schema);
-
-    FilterPredicate p = or(eq(stringC, "larry"), eq(binaryC, Binary.fromByteArray("larry".getBytes())));
-    try {
-      validate(p, schema);
-      fail("this should throw");
-    } catch (IllegalArgumentException e) {
-      assertEquals("Column: c was provided with different types in the same predicate. Found both: (class java.lang.String, class parquet.io.api.Binary)", e.getMessage());
-    }
+    validate(eq(stringC, Binary.fromString("larry")), schema);
 
     try {
       validate(complexMixedType, schema);

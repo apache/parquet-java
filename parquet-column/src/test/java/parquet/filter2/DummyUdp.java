@@ -1,19 +1,19 @@
 package parquet.filter2;
 
-
-public class DummyUdp extends UserDefinedPredicates.IntUserDefinedPredicate {
-  @Override
-  public boolean keep(int value) {
-    return true;
-  }
+public class DummyUdp extends UserDefinedPredicate<Integer> {
 
   @Override
-  public boolean canDrop(int min, int max) {
+  public boolean keep(Integer value) {
     return false;
   }
 
   @Override
-  public boolean inverseCanDrop(int min, int max) {
+  public boolean canDrop(Integer min, Integer max) {
+    return false;
+  }
+
+  @Override
+  public boolean inverseCanDrop(Integer min, Integer max) {
     return false;
   }
 }

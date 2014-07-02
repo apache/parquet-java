@@ -12,7 +12,6 @@ import parquet.filter2.FilterPredicateOperators.Not;
 import parquet.filter2.FilterPredicateOperators.NotEq;
 import parquet.filter2.FilterPredicateOperators.Or;
 import parquet.filter2.FilterPredicateOperators.UserDefined;
-import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
 
 /**
  * Recursively removes all use of the not() operator in a predicate
@@ -34,32 +33,32 @@ public class CollapseLogicalNots implements Visitor<FilterPredicate> {
   }
 
   @Override
-  public <T> FilterPredicate visit(Eq<T> eq) {
+  public <T extends Comparable<T>> FilterPredicate visit(Eq<T> eq) {
     return eq;
   }
 
   @Override
-  public <T> FilterPredicate visit(NotEq<T> notEq) {
+  public <T extends Comparable<T>> FilterPredicate visit(NotEq<T> notEq) {
     return notEq;
   }
 
   @Override
-  public <T> FilterPredicate visit(Lt<T> lt) {
+  public <T extends Comparable<T>> FilterPredicate visit(Lt<T> lt) {
     return lt;
   }
 
   @Override
-  public <T> FilterPredicate visit(LtEq<T> ltEq) {
+  public <T extends Comparable<T>> FilterPredicate visit(LtEq<T> ltEq) {
     return ltEq;
   }
 
   @Override
-  public <T> FilterPredicate visit(Gt<T> gt) {
+  public <T extends Comparable<T>> FilterPredicate visit(Gt<T> gt) {
     return gt;
   }
 
   @Override
-  public <T> FilterPredicate visit(GtEq<T> gtEq) {
+  public <T extends Comparable<T>> FilterPredicate visit(GtEq<T> gtEq) {
     return gtEq;
   }
 
@@ -79,12 +78,12 @@ public class CollapseLogicalNots implements Visitor<FilterPredicate> {
   }
 
   @Override
-  public <T, U extends UserDefinedPredicate<T>> FilterPredicate visit(UserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(UserDefined<T, U> udp) {
     return udp;
   }
 
   @Override
-  public <T, U extends UserDefinedPredicate<T>> FilterPredicate visit(LogicalNotUserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(LogicalNotUserDefined<T, U> udp) {
     return udp;
   }
 }

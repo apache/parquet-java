@@ -3,8 +3,8 @@ package parquet.filter2;
 import org.junit.Test;
 
 import parquet.filter2.FilterPredicateOperators.Column;
-import parquet.filter2.FilterPredicateOperators.IntUserDefined;
 import parquet.filter2.FilterPredicateOperators.LogicalNotUserDefined;
+import parquet.filter2.FilterPredicateOperators.UserDefined;
 
 import static org.junit.Assert.assertEquals;
 import static parquet.filter2.CollapseLogicalNots.collapse;
@@ -14,12 +14,12 @@ import static parquet.filter2.Filter.eq;
 import static parquet.filter2.Filter.gt;
 import static parquet.filter2.Filter.gtEq;
 import static parquet.filter2.Filter.intColumn;
-import static parquet.filter2.Filter.intPredicate;
 import static parquet.filter2.Filter.lt;
 import static parquet.filter2.Filter.ltEq;
 import static parquet.filter2.Filter.not;
 import static parquet.filter2.Filter.notEq;
 import static parquet.filter2.Filter.or;
+import static parquet.filter2.Filter.userDefined;
 
 public class TestCollapseLogicalNots {
   private static final Column<Integer> intColumn = intColumn("a.b.c");
@@ -31,7 +31,7 @@ public class TestCollapseLogicalNots {
               or(ltEq(doubleColumn, 12.0),
                   and(
                       not(or(eq(intColumn, 7), notEq(intColumn, 17))),
-                      intPredicate(intColumn, DummyUdp.class)))),
+                      userDefined(intColumn, DummyUdp.class)))),
           or(gt(doubleColumn, 100.0), not(gtEq(intColumn, 77))));
 
   private static final FilterPredicate complexCollapsed =
@@ -39,7 +39,7 @@ public class TestCollapseLogicalNots {
           and(gt(doubleColumn, 12.0),
               or(
                   or(eq(intColumn, 7), notEq(intColumn, 17)),
-                  new LogicalNotUserDefined<Integer, DummyUdp>(intPredicate(intColumn, DummyUdp.class)))),
+                  new LogicalNotUserDefined<Integer, DummyUdp>(userDefined(intColumn, DummyUdp.class)))),
           or(gt(doubleColumn, 100.0), lt(intColumn, 77)));
 
   private static void assertNoOp(FilterPredicate p) {
@@ -48,7 +48,7 @@ public class TestCollapseLogicalNots {
 
   @Test
   public void testBaseCases() {
-    IntUserDefined<DummyUdp> ud = intPredicate(intColumn, DummyUdp.class);
+    UserDefined<Integer, DummyUdp> ud = userDefined(intColumn, DummyUdp.class);
 
     assertNoOp(eq(intColumn, 17));
     assertNoOp(notEq(intColumn, 17));

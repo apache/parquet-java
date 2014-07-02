@@ -19,13 +19,9 @@ import parquet.filter2.FilterPredicateOperators.Not;
 import parquet.filter2.FilterPredicateOperators.NotEq;
 import parquet.filter2.FilterPredicateOperators.Or;
 import parquet.filter2.FilterPredicateOperators.UserDefined;
-import parquet.filter2.StatisticsUtil.MinMaxComparison;
-import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
+import parquet.filter2.UserDefinedPredicate;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.schema.ColumnPathUtil;
-
-import static parquet.filter2.StatisticsUtil.applyUdpMinMax;
-import static parquet.filter2.StatisticsUtil.compareMinMax;
 
 public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   /**
@@ -75,7 +71,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
-  public <T> Boolean visit(Eq<T> eq) {
+  public <T extends Comparable<T>> Boolean visit(Eq<T> eq) {
     Column<T> filterColumn = eq.getColumn();
     T value = eq.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
@@ -92,16 +88,14 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return true;
     }
 
-    Statistics rawStats = columnChunk.getStatistics();
-
-    MinMaxComparison cmp = compareMinMax(filterColumn.getColumnType(), value, rawStats);
+    Statistics<T> stats = columnChunk.getStatistics();
 
     // drop if value < min || value > max
-    return cmp.getMinCmp() < 0 || cmp.getMaxCmp() > 0;
+    return value.compareTo(stats.genericGetMin()) < 0 || value.compareTo(stats.genericGetMax()) > 0;
   }
 
   @Override
-  public <T> Boolean visit(NotEq<T> notEq) {
+  public <T extends Comparable<T>> Boolean visit(NotEq<T> notEq) {
     Column<T> filterColumn = notEq.getColumn();
     T value = notEq.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
@@ -118,16 +112,14 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return false;
     }
 
-    Statistics rawStats = columnChunk.getStatistics();
-
-    MinMaxComparison cmp = compareMinMax(filterColumn.getColumnType(), value, rawStats);
+    Statistics<T> stats = columnChunk.getStatistics();
 
     // drop if this is a column where min = max = value
-    return cmp.getMinCmp() == 0 && cmp.getMaxCmp() == 0;
+    return value.compareTo(stats.genericGetMin()) == 0 && value.compareTo(stats.genericGetMax()) == 0;
   }
 
   @Override
-  public <T> Boolean visit(Lt<T> lt) {
+  public <T extends Comparable<T>> Boolean visit(Lt<T> lt) {
     Column<T> filterColumn = lt.getColumn();
     T value = lt.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
@@ -138,16 +130,14 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return true;
     }
 
-    Statistics rawStats = columnChunk.getStatistics();
-
-    MinMaxComparison cmp = compareMinMax(filterColumn.getColumnType(), value, rawStats);
+    Statistics<T> stats = columnChunk.getStatistics();
 
     // drop if value <= min
-    return cmp.getMinCmp() <= 0;
+    return  value.compareTo(stats.genericGetMin()) <= 0;
   }
 
   @Override
-  public <T> Boolean visit(LtEq<T> ltEq) {
+  public <T extends Comparable<T>> Boolean visit(LtEq<T> ltEq) {
     Column<T> filterColumn = ltEq.getColumn();
     T value = ltEq.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
@@ -158,16 +148,14 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return true;
     }
 
-    Statistics rawStats = columnChunk.getStatistics();
-
-    MinMaxComparison cmp = compareMinMax(filterColumn.getColumnType(), value, rawStats);
+    Statistics<T> stats = columnChunk.getStatistics();
 
     // drop if value < min
-    return cmp.getMinCmp() < 0;
+    return value.compareTo(stats.genericGetMin()) < 0;
   }
 
   @Override
-  public <T> Boolean visit(Gt<T> gt) {
+  public <T extends Comparable<T>> Boolean visit(Gt<T> gt) {
     Column<T> filterColumn = gt.getColumn();
     T value = gt.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
@@ -178,16 +166,14 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return true;
     }
 
-    Statistics rawStats = columnChunk.getStatistics();
-
-    MinMaxComparison cmp = compareMinMax(filterColumn.getColumnType(), value, rawStats);
+    Statistics<T> stats = columnChunk.getStatistics();
 
     // drop if value >= max
-    return cmp.getMaxCmp() >= 0;
+    return value.compareTo(stats.genericGetMax()) >= 0;
   }
 
   @Override
-  public <T> Boolean visit(GtEq<T> gtEq) {
+  public <T extends Comparable<T>> Boolean visit(GtEq<T> gtEq) {
     Column<T> filterColumn = gtEq.getColumn();
     T value = gtEq.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
@@ -198,12 +184,10 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return true;
     }
 
-    Statistics rawStats = columnChunk.getStatistics();
-
-    MinMaxComparison cmp = compareMinMax(filterColumn.getColumnType(), value, rawStats);
+    Statistics<T> stats = columnChunk.getStatistics();
 
     // drop if value >= max
-    return cmp.getMaxCmp() > 0;
+    return value.compareTo(stats.genericGetMax()) > 0;
   }
 
   @Override
@@ -226,21 +210,25 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
         "This predicate contains a not! Did you forget to run this predicate through CollapseLogicalNots? " + not);
   }
 
-  private <T, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud, boolean inverted) {
+  private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud, boolean inverted) {
     Column<T> filterColumn = ud.getColumn();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
     U udp = ud.getUserDefinedPredicate();
-    Statistics rawStats = columnChunk.getStatistics();
-    return applyUdpMinMax(filterColumn.getColumnType(), udp, rawStats, inverted);
+    Statistics<T> stats = columnChunk.getStatistics();
+    if (inverted) {
+      return udp.inverseCanDrop(stats.genericGetMin(), stats.genericGetMax());
+    } else {
+      return udp.canDrop(stats.genericGetMin(), stats.genericGetMax());
+    }
   }
 
   @Override
-  public <T, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud) {
     return visit(ud, false);
   }
 
   @Override
-  public <T, U extends UserDefinedPredicate<T>> Boolean visit(LogicalNotUserDefined<T, U> lnud) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(LogicalNotUserDefined<T, U> lnud) {
     return visit(lnud.getUserDefined(), true);
   }
 

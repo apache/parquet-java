@@ -15,7 +15,6 @@ import static parquet.filter2.Filter.doubleColumn;
 import static parquet.filter2.Filter.floatColumn;
 import static parquet.filter2.Filter.intColumn;
 import static parquet.filter2.Filter.longColumn;
-import static parquet.filter2.Filter.stringColumn;
 import static parquet.filter2.ValidTypeMap.assertTypeValid;
 
 public class TestValidTypeMap {
@@ -23,11 +22,15 @@ public class TestValidTypeMap {
   public static Column<Long> longColumn = longColumn("long.column");
   public static Column<Float> floatColumn = floatColumn("float.column");
   public static Column<Double> doubleColumn = doubleColumn("double.column");
-  public static Column<String> stringColumn = stringColumn("string.column");
   public static Column<Boolean> booleanColumn = booleanColumn("boolean.column");
   public static Column<Binary> binaryColumn = binaryColumn("binary.column");
 
-  private static class InvalidColumnType { }
+  private static class InvalidColumnType implements Comparable<InvalidColumnType> {
+    @Override
+    public int compareTo(InvalidColumnType o) {
+      return 0;
+    }
+  }
 
   public static Column<InvalidColumnType> invalidColumn =
       new Column<InvalidColumnType>("invalid.column", InvalidColumnType.class);
@@ -38,7 +41,6 @@ public class TestValidTypeMap {
     assertTypeValid(longColumn, PrimitiveTypeName.INT64, null);
     assertTypeValid(floatColumn, PrimitiveTypeName.FLOAT, null);
     assertTypeValid(doubleColumn, PrimitiveTypeName.DOUBLE, null);
-    assertTypeValid(stringColumn, PrimitiveTypeName.BINARY, OriginalType.UTF8);
     assertTypeValid(booleanColumn, PrimitiveTypeName.BOOLEAN, null);
     assertTypeValid(binaryColumn, PrimitiveTypeName.BINARY, null);
     assertTypeValid(binaryColumn, PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, null);

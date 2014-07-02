@@ -50,15 +50,12 @@ public final class ValidTypeMap {
     add(Long.class, new FullTypeDescriptor(PrimitiveTypeName.INT64, null));
     add(Float.class, new FullTypeDescriptor(PrimitiveTypeName.FLOAT, null));
     add(Double.class, new FullTypeDescriptor(PrimitiveTypeName.DOUBLE, null));
-    add(String.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, OriginalType.UTF8));
     add(Boolean.class, new FullTypeDescriptor(PrimitiveTypeName.BOOLEAN, null));
 
     // Both of these binary types are valid
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, null));
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, null));
 
-    // TODO(alexlevenson): Do we want to allow binary predicates on String columns?
-    // TODO(alexlevenson): I am supporting this now, but should we?
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, OriginalType.UTF8));
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, OriginalType.UTF8));
   }
@@ -73,7 +70,7 @@ public final class ValidTypeMap {
    * @param primitiveType the primitive type according to the schema
    * @param originalType the original type according to the schema
    */
-  public static <T> void assertTypeValid(Column<T> foundColumn, PrimitiveTypeName primitiveType, OriginalType originalType) {
+  public static <T extends Comparable<T>> void assertTypeValid(Column<T> foundColumn, PrimitiveTypeName primitiveType, OriginalType originalType) {
     Class<T> foundColumnType = foundColumn.getColumnType();
     String columnPath = foundColumn.getColumnPath();
 

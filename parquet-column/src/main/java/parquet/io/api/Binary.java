@@ -27,7 +27,7 @@ import java.util.Arrays;
 import parquet.bytes.BytesUtils;
 import parquet.io.ParquetEncodingException;
 
-abstract public class Binary {
+abstract public class Binary implements Comparable<Binary> {
 
   public static final Binary EMPTY = fromByteArray(new byte[0]);
 

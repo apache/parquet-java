@@ -3,10 +3,11 @@ package parquet.filter2;
 import java.util.HashMap;
 import java.util.Map;
 
-import parquet.bytes.BytesUtils;
+import parquet.Preconditions;
 import parquet.column.ColumnReader;
 import parquet.filter2.FilterPredicate.Visitor;
 import parquet.filter2.FilterPredicateOperators.And;
+import parquet.filter2.FilterPredicateOperators.Column;
 import parquet.filter2.FilterPredicateOperators.Eq;
 import parquet.filter2.FilterPredicateOperators.Gt;
 import parquet.filter2.FilterPredicateOperators.GtEq;
@@ -17,13 +18,12 @@ import parquet.filter2.FilterPredicateOperators.Not;
 import parquet.filter2.FilterPredicateOperators.NotEq;
 import parquet.filter2.FilterPredicateOperators.Or;
 import parquet.filter2.FilterPredicateOperators.UserDefined;
-import parquet.filter2.UserDefinedPredicates.BinaryUserDefinedPredicate;
-import parquet.filter2.UserDefinedPredicates.DoubleUserDefinedPredicate;
-import parquet.filter2.UserDefinedPredicates.FloatUserDefinedPredicate;
-import parquet.filter2.UserDefinedPredicates.IntUserDefinedPredicate;
-import parquet.filter2.UserDefinedPredicates.LongUserDefinedPredicate;
-import parquet.filter2.UserDefinedPredicates.StringUserDefinedPredicate;
-import parquet.filter2.UserDefinedPredicates.UserDefinedPredicate;
+import parquet.filter2.GenericColumnReader.BinaryColumnReader;
+import parquet.filter2.GenericColumnReader.BooleanColumnReader;
+import parquet.filter2.GenericColumnReader.DoubleColumnReader;
+import parquet.filter2.GenericColumnReader.FloatColumnReader;
+import parquet.filter2.GenericColumnReader.IntColumnReader;
+import parquet.filter2.GenericColumnReader.LongColumnReader;
 import parquet.io.api.Binary;
 import parquet.schema.ColumnPathUtil;
 
@@ -62,490 +62,115 @@ public class RecordPredicateBuilder implements Visitor<RecordPredicate> {
     }
   }
 
-  @Override
-  public <T> RecordPredicate visit(Eq<T> eq) {
-
-    Class<T> clazz = eq.getColumn().getColumnType();
-
-    final ColumnReader reader = columns.get(eq.getColumn().getColumnPath());
+  @SuppressWarnings("unchecked")
+  private <T extends Comparable<T>> GenericColumnReader<T> getColumnReader(Column<T> column) {
+    ColumnReader rawReader = columns.get(column.getColumnPath());
+    Preconditions.checkNotNull(rawReader, "Encountered unknown column " + column.getColumnPath());
+    Class<T> clazz = column.getColumnType();
 
     if (clazz.equals(Integer.class)) {
-      final Integer value = (Integer) eq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getInteger() == value;
-        }
-      };
+      return (GenericColumnReader) new IntColumnReader(rawReader);
     }
 
     if (clazz.equals(Long.class)) {
-      final Long value = (Long) eq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getLong() == value;
-        }
-      };
+      return (GenericColumnReader) new LongColumnReader(rawReader);
     }
 
     if (clazz.equals(Float.class)) {
-      final Float value = (Float) eq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getFloat() == value;
-        }
-      };
+      return (GenericColumnReader) new FloatColumnReader(rawReader);
     }
 
     if (clazz.equals(Double.class)) {
-      final Double value = (Double) eq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getDouble() == value;
-        }
-      };
+      return (GenericColumnReader) new DoubleColumnReader(rawReader);
     }
 
     if (clazz.equals(Boolean.class)) {
-      final Boolean value = (Boolean) eq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getBoolean() == value;
-        }
-      };
+      return (GenericColumnReader) new BooleanColumnReader(rawReader);
     }
 
     if (clazz.equals(Binary.class)) {
-      final Binary value = (Binary) eq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return value.equals(reader.getBinary());
-        }
-      };
-    }
-
-    if (clazz.equals(String.class)) {
-      String strValue = (String) eq.getValue();
-      final Binary value = Binary.fromByteBuffer(BytesUtils.UTF8.encode(strValue));
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return value.equals(reader.getBinary());
-        }
-      };
+      return (GenericColumnReader) new BinaryColumnReader(rawReader);
     }
 
     throw new IllegalArgumentException("Encountered unknown filter column type: " + clazz.getName());
   }
 
   @Override
-  public <T> RecordPredicate visit(NotEq<T> notEq) {
-    Class<T> clazz = notEq.getColumn().getColumnType();
+  public <T extends Comparable<T>> RecordPredicate visit(Eq<T> eq) {
+    final GenericColumnReader<T> reader = getColumnReader(eq.getColumn());
+    final T value = eq.getValue();
 
-    final ColumnReader reader = columns.get(notEq.getColumn().getColumnPath());
-
-    if (clazz.equals(Integer.class)) {
-      final Integer value = (Integer) notEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getInteger() != value;
-        }
-      };
-    }
-
-    if (clazz.equals(Long.class)) {
-      final Long value = (Long) notEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getLong() != value;
-        }
-      };
-    }
-
-    if (clazz.equals(Float.class)) {
-      final Float value = (Float) notEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getFloat() != value;
-        }
-      };
-    }
-
-    if (clazz.equals(Double.class)) {
-      final Double value = (Double) notEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getDouble() != value;
-        }
-      };
-    }
-
-    if (clazz.equals(Boolean.class)) {
-      final Boolean value = (Boolean) notEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getBoolean() != value;
-        }
-      };
-    }
-
-    if (clazz.equals(Binary.class)) {
-      final Binary value = (Binary) notEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return !value.equals(reader.getBinary());
-        }
-      };
-    }
-
-    if (clazz.equals(String.class)) {
-      String strValue = (String) notEq.getValue();
-      final Binary value = Binary.fromByteBuffer(BytesUtils.UTF8.encode(strValue));
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return !value.equals(reader.getBinary());
-        }
-      };
-    }
-
-    throw new IllegalArgumentException("Encountered unknown filter column type: " + clazz.getName());
-
+    return new RecordPredicate() {
+      @Override
+      public boolean isMatch() {
+        return reader.getCurrentValue().compareTo(value) == 0;
+      }
+    };
   }
 
   @Override
-  public <T> RecordPredicate visit(Lt<T> lt) {
-    Class<T> clazz = lt.getColumn().getColumnType();
+  public <T extends Comparable<T>> RecordPredicate visit(NotEq<T> notEq) {
+    final GenericColumnReader<T> reader = getColumnReader(notEq.getColumn());
+    final T value = notEq.getValue();
 
-    final ColumnReader reader = columns.get(lt.getColumn().getColumnPath());
-
-    if (clazz.equals(Integer.class)) {
-      final Integer value = (Integer) lt.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getInteger() < value;
-        }
-      };
-    }
-
-    if (clazz.equals(Long.class)) {
-      final Long value = (Long) lt.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getLong() < value;
-        }
-      };
-    }
-
-    if (clazz.equals(Float.class)) {
-      final Float value = (Float) lt.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getFloat() < value;
-        }
-      };
-    }
-
-    if (clazz.equals(Double.class)) {
-      final Double value = (Double) lt.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getDouble() < value;
-        }
-      };
-    }
-
-    // TODO(alexlevenson): < on boolean is nonsense
-    if (clazz.equals(Boolean.class)) {
-      final Boolean value = (Boolean) lt.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return value.compareTo(reader.getBoolean()) < 0;
-        }
-      };
-    }
-
-    if (clazz.equals(Binary.class)) {
-      final Binary value = (Binary) lt.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return value.compareTo(reader.getBinary()) < 0;
-        }
-      };
-    }
-
-    if (clazz.equals(String.class)) {
-      String strValue = (String) lt.getValue();
-      final Binary value = Binary.fromByteBuffer(BytesUtils.UTF8.encode(strValue));
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return value.compareTo(reader.getBinary()) < 0;
-        }
-      };
-    }
-
-    throw new IllegalArgumentException("Encountered unknown filter column type: " + clazz.getName());
+    return new RecordPredicate() {
+      @Override
+      public boolean isMatch() {
+        return reader.getCurrentValue().compareTo(value) != 0;
+      }
+    };
   }
 
   @Override
-  public <T> RecordPredicate visit(LtEq<T> ltEq) {
-    Class<T> clazz = ltEq.getColumn().getColumnType();
+  public <T extends Comparable<T>> RecordPredicate visit(Lt<T> lt) {
+    final GenericColumnReader<T> reader = getColumnReader(lt.getColumn());
+    final T value = lt.getValue();
 
-    final ColumnReader reader = columns.get(ltEq.getColumn().getColumnPath());
-
-    if (clazz.equals(Integer.class)) {
-      final Integer value = (Integer) ltEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getInteger() <= value;
-        }
-      };
-    }
-
-    if (clazz.equals(Long.class)) {
-      final Long value = (Long) ltEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getLong() <= value;
-        }
-      };
-    }
-
-    if (clazz.equals(Float.class)) {
-      final Float value = (Float) ltEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getFloat() <= value;
-        }
-      };
-    }
-
-    if (clazz.equals(Double.class)) {
-      final Double value = (Double) ltEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getDouble() <= value;
-        }
-      };
-    }
-
-    // TODO(alexlevenson): <= on boolean is nonsense
-    if (clazz.equals(Boolean.class)) {
-      final Boolean value = (Boolean) ltEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return value.compareTo(reader.getBoolean()) <= 0;
-        }
-      };
-    }
-
-    if (clazz.equals(Binary.class)) {
-      final Binary value = (Binary) ltEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return value.compareTo(reader.getBinary()) <= 0;
-        }
-      };
-    }
-
-    if (clazz.equals(String.class)) {
-      String strValue = (String) ltEq.getValue();
-      final Binary value = Binary.fromByteBuffer(BytesUtils.UTF8.encode(strValue));
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return value.compareTo(reader.getBinary()) <= 0;
-        }
-      };
-    }
-
-    throw new IllegalArgumentException("Encountered unknown filter column type: " + clazz.getName());
+    return new RecordPredicate() {
+      @Override
+      public boolean isMatch() {
+        return reader.getCurrentValue().compareTo(value) < 0;
+      }
+    };
   }
 
   @Override
-  public <T> RecordPredicate visit(Gt<T> gt) {
-    Class<T> clazz = gt.getColumn().getColumnType();
+  public <T extends Comparable<T>> RecordPredicate visit(LtEq<T> ltEq) {
+    final GenericColumnReader<T> reader = getColumnReader(ltEq.getColumn());
+    final T value = ltEq.getValue();
 
-    final ColumnReader reader = columns.get(gt.getColumn().getColumnPath());
-
-    if (clazz.equals(Integer.class)) {
-      final Integer value = (Integer) gt.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getInteger() > value;
-        }
-      };
-    }
-
-    if (clazz.equals(Long.class)) {
-      final Long value = (Long) gt.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getLong() > value;
-        }
-      };
-    }
-
-    if (clazz.equals(Float.class)) {
-      final Float value = (Float) gt.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getFloat() > value;
-        }
-      };
-    }
-
-    if (clazz.equals(Double.class)) {
-      final Double value = (Double) gt.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getDouble() > value;
-        }
-      };
-    }
-
-    // TODO(alexlevenson): > on boolean is nonsense
-    if (clazz.equals(Boolean.class)) {
-      final Boolean value = (Boolean) gt.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return value.compareTo(reader.getBoolean()) > 0;
-        }
-      };
-    }
-
-    if (clazz.equals(Binary.class)) {
-      final Binary value = (Binary) gt.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return value.compareTo(reader.getBinary()) > 0;
-        }
-      };
-    }
-
-    if (clazz.equals(String.class)) {
-      String strValue = (String) gt.getValue();
-      final Binary value = Binary.fromByteBuffer(BytesUtils.UTF8.encode(strValue));
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return value.compareTo(reader.getBinary()) > 0;
-        }
-      };
-    }
-
-    throw new IllegalArgumentException("Encountered unknown filter column type: " + clazz.getName());
+    return new RecordPredicate() {
+      @Override
+      public boolean isMatch() {
+        return reader.getCurrentValue().compareTo(value) <= 0;
+      }
+    };
   }
 
   @Override
-  public <T> RecordPredicate visit(GtEq<T> gtEq) {
-    Class<T> clazz = gtEq.getColumn().getColumnType();
+  public <T extends Comparable<T>> RecordPredicate visit(Gt<T> gt) {
+    final GenericColumnReader<T> reader = getColumnReader(gt.getColumn());
+    final T value = gt.getValue();
 
-    final ColumnReader reader = columns.get(gtEq.getColumn().getColumnPath());
+    return new RecordPredicate() {
+      @Override
+      public boolean isMatch() {
+        return reader.getCurrentValue().compareTo(value) > 0;
+      }
+    };
+  }
 
-    if (clazz.equals(Integer.class)) {
-      final Integer value = (Integer) gtEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getInteger() >= value;
-        }
-      };
-    }
+  @Override
+  public <T extends Comparable<T>> RecordPredicate visit(GtEq<T> gtEq) {
+    final GenericColumnReader<T> reader = getColumnReader(gtEq.getColumn());
+    final T value = gtEq.getValue();
 
-    if (clazz.equals(Long.class)) {
-      final Long value = (Long) gtEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getLong() >= value;
-        }
-      };
-    }
-
-    if (clazz.equals(Float.class)) {
-      final Float value = (Float) gtEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getFloat() >= value;
-        }
-      };
-    }
-
-    if (clazz.equals(Double.class)) {
-      final Double value = (Double) gtEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return reader.getDouble() >= value;
-        }
-      };
-    }
-
-    // TODO(alexlevenson): >= on boolean is nonsense
-    if (clazz.equals(Boolean.class)) {
-      final Boolean value = (Boolean) gtEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return value.compareTo(reader.getBoolean()) >= 0;
-        }
-      };
-    }
-
-    if (clazz.equals(Binary.class)) {
-      final Binary value = (Binary) gtEq.getValue();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return value.compareTo(reader.getBinary()) >= 0;
-        }
-      };
-    }
-
-    if (clazz.equals(String.class)) {
-      String strValue = (String) gtEq.getValue();
-      final Binary value = Binary.fromByteBuffer(BytesUtils.UTF8.encode(strValue));
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return value.compareTo(reader.getBinary()) >= 0;
-        }
-      };
-    }
-
-    throw new IllegalArgumentException("Encountered unknown filter column type: " + clazz.getName());
+    return new RecordPredicate() {
+      @Override
+      public boolean isMatch() {
+        return reader.getCurrentValue().compareTo(value) >= 0;
+      }
+    };
   }
 
   @Override
@@ -579,78 +204,21 @@ public class RecordPredicateBuilder implements Visitor<RecordPredicate> {
   }
 
   @Override
-  public <T, U extends UserDefinedPredicate<T>> RecordPredicate visit(UserDefined<T, U> udp) {
-    Class<T> clazz = udp.getColumn().getColumnType();
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> RecordPredicate visit(UserDefined<T, U> udp) {
+    final GenericColumnReader<T> reader = getColumnReader(udp.getColumn());
+    final U predicate = udp.getUserDefinedPredicate();
 
-    final ColumnReader reader = columns.get(udp.getColumn().getColumnPath());
-
-    if (clazz.equals(Integer.class)) {
-      final IntUserDefinedPredicate f = (IntUserDefinedPredicate) udp.getUserDefinedPredicate();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return f.keep(reader.getInteger());
-        }
-      };
-    }
-
-    if (clazz.equals(Long.class)) {
-      final LongUserDefinedPredicate f = (LongUserDefinedPredicate) udp.getUserDefinedPredicate();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return f.keep(reader.getLong());
-        }
-      };
-    }
-
-    if (clazz.equals(Float.class)) {
-      final FloatUserDefinedPredicate f = (FloatUserDefinedPredicate) udp.getUserDefinedPredicate();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return f.keep(reader.getFloat());
-        }
-      };
-    }
-
-    if (clazz.equals(Double.class)) {
-      final DoubleUserDefinedPredicate f = (DoubleUserDefinedPredicate) udp.getUserDefinedPredicate();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return f.keep(reader.getDouble());
-        }
-      };
-    }
-
-    if (clazz.equals(Binary.class)) {
-      final BinaryUserDefinedPredicate f = (BinaryUserDefinedPredicate) udp.getUserDefinedPredicate();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return f.keep(reader.getBinary());
-        }
-      };
-    }
-
-    if (clazz.equals(String.class)) {
-      final StringUserDefinedPredicate f = (StringUserDefinedPredicate) udp.getUserDefinedPredicate();
-      return new RecordPredicate() {
-        @Override
-        public boolean isMatch() {
-          return f.keep(reader.getBinary().toStringUsingUTF8());
-        }
-      };
-    }
-
-    throw new IllegalArgumentException("Encountered unknown filter column type: " + clazz.getName());
+    return new RecordPredicate() {
+      @Override
+      public boolean isMatch() {
+        return predicate.keep(reader.getCurrentValue());
+      }
+    };
   }
 
   @Override
-  public <T, U extends UserDefinedPredicate<T>> RecordPredicate visit(final LogicalNotUserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> RecordPredicate visit(final LogicalNotUserDefined<T, U> udp) {
     final RecordPredicate pred = udp.getUserDefined().accept(this);
-
     return new RecordPredicate() {
       @Override
       public boolean isMatch() {
@@ -658,4 +226,5 @@ public class RecordPredicateBuilder implements Visitor<RecordPredicate> {
       }
     };
   }
+
 }
