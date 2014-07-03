@@ -3,20 +3,20 @@ package parquet.filter2.dsl
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
+import parquet.filter2.{UserDefinedPredicate, Filter}
+import parquet.filter2.FilterPredicateOperators.{UserDefined, Or}
 
-import parquet.filter2.Filter
-import parquet.filter2.UserDefinedPredicates.IntUserDefinedPredicate
-import parquet.filter2.FilterPredicateOperators.{IntUserDefined, Or}
+class DummyFilter extends UserDefinedPredicate[java.lang.Integer] {
+  override def keep(value: java.lang.Integer): Boolean = false
 
-class DummyFilter extends IntUserDefinedPredicate {
-  override def keep(value: Int): Boolean = false
-  override def canDrop(min: Int, max: Int): Boolean = false
-  override def inverseCanDrop(min: Int, max: Int): Boolean = false
+  override def canDrop(min: java.lang.Integer, max: java.lang.Integer): Boolean = false
+
+  override def inverseCanDrop(min: java.lang.Integer, max: java.lang.Integer): Boolean = false
 }
 
 @RunWith(classOf[JUnitRunner])
 class DslTest extends FlatSpec{
-  import Dsl._
+  import parquet.filter2.dsl.Dsl._
 
   "predicates" should "be correctly constructed using the dsl" in {
     val abc = IntColumn("a.b.c")
@@ -36,9 +36,9 @@ class DslTest extends FlatSpec{
     val abc = IntColumn("a.b.c")
     val pred = (abc > 10) || abc.filterBy(classOf[DummyFilter])
 
-    val expected = Filter.or(Filter.gt[java.lang.Integer](abc.column, 10), Filter.intPredicate(abc.column, classOf[DummyFilter]))
+    val expected = Filter.or(Filter.gt[java.lang.Integer](abc.column, 10), Filter.userDefined(abc.column, classOf[DummyFilter]))
     assert(pred === expected)
-    val intUserDefined = pred.asInstanceOf[Or].getRight.asInstanceOf[IntUserDefined[DummyFilter]]
+    val intUserDefined = pred.asInstanceOf[Or].getRight.asInstanceOf[UserDefined[java.lang.Integer, DummyFilter]]
 
     assert(intUserDefined.getUserDefinedPredicateClass === classOf[DummyFilter])
     assert(intUserDefined.getUserDefinedPredicate.isInstanceOf[DummyFilter])

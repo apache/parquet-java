@@ -3,6 +3,10 @@ package parquet.filter2;
 import parquet.column.ColumnReader;
 import parquet.io.api.Binary;
 
+/**
+ * Provides a generic "view" to a ColumnReader
+ * TODO(alexlevenson): make ColumnReader generic in the first place
+ */
 public abstract class GenericColumnReader<T extends Comparable<T>> {
   protected final ColumnReader reader;
 

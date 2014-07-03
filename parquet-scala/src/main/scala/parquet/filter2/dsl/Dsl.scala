@@ -67,10 +67,6 @@ object Dsl {
     override val column = Filter.binaryColumn(columnPath)
   }
 
-  case class StringColumn(columnPath: String) extends Column[String] {
-    override val column = Filter.stringColumn(columnPath)
-  }
-
   implicit def enrich(pred: FilterPredicate): RichPredicate = new RichPredicate(pred)
 
   class RichPredicate(val pred: FilterPredicate) {
