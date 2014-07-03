@@ -282,8 +282,8 @@ abstract public class Binary {
       @Override
       public int hashCode() {
         if (value.hasArray()) {
-          return Binary.hashCode(value.array(), value.arrayOffset() + value.position(),
-              value.arrayOffset() + value.remaining());
+          return Binary.hashCode(value.array(), value.arrayOffset() + offset,
+              value.arrayOffset() + length);
         }
         byte[] bytes = getBytes();
         return Binary.hashCode(bytes, 0, bytes.length);
@@ -292,8 +292,8 @@ abstract public class Binary {
       @Override
       boolean equals(Binary other) {
         if (value.hasArray()) {
-          return other.equals(value.array(), value.arrayOffset() + value.position(),
-              value.arrayOffset() + value.remaining());
+          return other.equals(value.array(), value.arrayOffset() + offset,
+              value.arrayOffset() + length);
         }
         byte[] bytes = getBytes();
         return other.equals(bytes, 0, bytes.length);
@@ -302,8 +302,8 @@ abstract public class Binary {
       @Override
       boolean equals(byte[] other, int otherOffset, int otherLength) {
         if (value.hasArray()) {
-          return Binary.equals(value.array(), value.arrayOffset() + value.position(),
-              value.arrayOffset() + value.remaining(), other, otherOffset, otherLength);
+          return Binary.equals(value.array(), value.arrayOffset() + offset,
+              value.arrayOffset() + length, other, otherOffset, otherLength);
         }
         byte[] bytes = getBytes();
         return Binary.equals(bytes, 0, bytes.length, other, otherOffset, otherLength);
@@ -313,8 +313,8 @@ abstract public class Binary {
       @Override
       public int compareTo(Binary other) {
         if (value.hasArray()) {
-          return other.compareTo(value.array(), value.arrayOffset() + value.position(),
-              value.arrayOffset() + value.remaining());
+          return other.compareTo(value.array(), value.arrayOffset() + offset,
+              value.arrayOffset() + length);
         }
         byte[] bytes = getBytes();
         return other.compareTo(bytes, 0, bytes.length);
@@ -323,8 +323,8 @@ abstract public class Binary {
       @Override
       int compareTo(byte[] other, int otherOffset, int otherLength) {
         if (value.hasArray()) {
-          return Binary.compareTwoByteArrays(value.array(), value.arrayOffset() + value.position(),
-              value.arrayOffset() + value.remaining(), other, otherOffset, otherLength);
+          return Binary.compareTwoByteArrays(value.array(), value.arrayOffset() + offset,
+              value.arrayOffset() + length, other, otherOffset, otherLength);
         }
         byte[] bytes = getBytes();
         return Binary.compareTwoByteArrays(bytes, 0, bytes.length, other, otherOffset, otherLength);
@@ -332,7 +332,12 @@ abstract public class Binary {
 
       @Override
       public ByteBuffer toByteBuffer() {
-        return value;
+        ByteBuffer buf;
+        int pos = value.position();
+        value.position(offset);
+        buf = value.slice();
+        value.position(pos);
+        return buf;
       }
 
       @Override

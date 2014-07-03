@@ -46,6 +46,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
     ++ decodedPosition;
     if (decodedPosition == decoded.length) {
       byte[] tempEncode = new byte[bitWidth];
+      encoded.position(encodedPos);
       if (encodedPos + bitWidth > encoded.limit()) {
         Arrays.fill(tempEncode, (byte)0);
         encoded.get(tempEncode, 0, encoded.limit() - encodedPos);
