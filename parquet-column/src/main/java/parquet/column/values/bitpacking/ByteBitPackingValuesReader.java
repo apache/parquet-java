@@ -53,10 +53,10 @@ public class ByteBitPackingValuesReader extends ValuesReader {
       if (encodedPos + bitWidth > encoded.limit()) {
         Arrays.fill(tempEncode, (byte)0);
         encoded.get(tempEncode, 0, encoded.limit() - encodedPos);
+        packer.unpack8Values(ByteBuffer.wrap(tempEncode), 0, decoded, 0);
       } else {
-        encoded.get(tempEncode, 0, bitWidth);  
+        packer.unpack8Values(encoded, encodedPos, decoded, 0);
       }      
-      packer.unpack8Values(tempEncode, 0, decoded, 0);
       encodedPos += bitWidth;
       decodedPosition = 0;
     }
