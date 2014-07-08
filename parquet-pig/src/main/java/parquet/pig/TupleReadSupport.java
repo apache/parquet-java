@@ -17,17 +17,19 @@ package parquet.pig;
 
 import static parquet.pig.PigSchemaConverter.parsePigSchema;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.pig.LoadPushDown.RequiredFieldList;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
-
+import org.apache.pig.impl.util.ObjectSerializer;
 import parquet.Log;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
@@ -46,10 +48,12 @@ import parquet.schema.MessageType;
  */
 public class TupleReadSupport extends ReadSupport<Tuple> {
   static final String PARQUET_PIG_SCHEMA = "parquet.pig.schema";
+  static final String PARQUET_COLUMN_INDEX_ACCESS = "parquet.column.index.access";
+  static final String PARQUET_PIG_REQUIRED_FIELDS = "parquet.pig.required.fields";
   static final String PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE = "parquet.pig.elephantbird.compatible";
   private static final Log LOG = Log.getLog(TupleReadSupport.class);
 
-  private static final PigSchemaConverter pigSchemaConverter = new PigSchemaConverter();
+  private static final PigSchemaConverter pigSchemaConverter = new PigSchemaConverter(false);
 
   /**
    * @param configuration the configuration for the current job
@@ -59,6 +63,26 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
     return parsePigSchema(configuration.get(PARQUET_PIG_SCHEMA));
   }
 
+  /**
+   * 
+   * 
+   * @param configuration configuration for the current job
+   * @return List of required fields from pushProjection
+   */
+  static RequiredFieldList getRequiredFields(Configuration configuration) {
+    String requiredFieldString = configuration.get(PARQUET_PIG_REQUIRED_FIELDS);
+    
+    if(requiredFieldString == null) {
+      return null;
+    }
+    
+    try {
+      return (RequiredFieldList) ObjectSerializer.deserialize(requiredFieldString);
+    } catch (IOException iOException) {
+      throw new RuntimeException("Failed to deserialize pushProjection");
+    }
+  }
+  
   /**
    * @param fileSchema the parquet schema from the file
    * @param keyValueMetaData the extra meta data from the files
@@ -131,15 +155,16 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
 
   @Override
   public ReadContext init(InitContext initContext) {
-    Schema requestedPigSchema = getPigSchema(initContext.getConfiguration());
-    if (requestedPigSchema == null) {
+    Schema pigSchema = getPigSchema(initContext.getConfiguration());
+    RequiredFieldList requiredFields = getRequiredFields(initContext.getConfiguration());
+    boolean columnIndexAccess = initContext.getConfiguration().getBoolean(PARQUET_COLUMN_INDEX_ACCESS, false);
+    
+    if (pigSchema == null) {
       return new ReadContext(initContext.getFileSchema());
     } else {
+      
       // project the file schema according to the requested Pig schema
-      MessageType parquetRequestedSchema =
-          pigSchemaConverter.filter(
-          initContext.getFileSchema(),
-          requestedPigSchema);
+      MessageType parquetRequestedSchema = new PigSchemaConverter(columnIndexAccess).filter(initContext.getFileSchema(), pigSchema, requiredFields);;
       return new ReadContext(parquetRequestedSchema);
     }
   }
@@ -152,14 +177,16 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
       ReadContext readContext) {
     MessageType requestedSchema = readContext.getRequestedSchema();
     Schema requestedPigSchema = getPigSchema(configuration);
+    
     if (requestedPigSchema == null) {
       throw new ParquetDecodingException("Missing Pig schema: ParquetLoader sets the schema in the job conf");
     }
     boolean elephantBirdCompatible = configuration.getBoolean(PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE, false);
+    boolean columnIndexAccess = configuration.getBoolean(PARQUET_COLUMN_INDEX_ACCESS, false);
     if (elephantBirdCompatible) {
       LOG.info("Numbers will default to 0 instead of NULL; Boolean will be converted to Int");
     }
-    return new TupleRecordMaterializer(requestedSchema, requestedPigSchema, elephantBirdCompatible);
+    return new TupleRecordMaterializer(requestedSchema, requestedPigSchema, elephantBirdCompatible, columnIndexAccess);
   }
 
 }

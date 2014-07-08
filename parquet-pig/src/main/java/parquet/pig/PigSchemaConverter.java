@@ -16,7 +16,9 @@
 package parquet.pig;
 
 import static parquet.Log.DEBUG;
+import static parquet.pig.TupleReadSupport.PARQUET_PIG_REQUIRED_FIELDS;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,8 +27,11 @@ import org.apache.pig.data.DataType;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
+import org.apache.pig.impl.util.ObjectSerializer;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
+import org.apache.pig.LoadPushDown.RequiredField;
+import org.apache.pig.LoadPushDown.RequiredFieldList;
 
 import parquet.Log;
 import parquet.schema.ConversionPatterns;
@@ -53,6 +58,20 @@ import parquet.schema.Type.Repetition;
  */
 public class PigSchemaConverter {
   private static final Log LOG = Log.getLog(PigSchemaConverter.class);
+  private boolean columnIndexAccess;
+
+  public PigSchemaConverter() {
+    this(false);
+  }
+  
+  /**
+   * 
+   * 
+   * @param columnIndexAccess toggle between name and index based access (default: false)
+   */
+  public PigSchemaConverter(boolean columnIndexAccess) {
+    this.columnIndexAccess = columnIndexAccess;
+  }
 
   /**
    * @param pigSchemaString the pig schema to parse
@@ -75,6 +94,26 @@ public class PigSchemaConverter {
     return pigSchemaString.substring(1, pigSchemaString.length() - 1);
   }
 
+  public static RequiredFieldList deserializeRequiredFieldList(String requiredFieldString) {
+    if(requiredFieldString == null) {
+        return null;
+    }
+    
+    try {
+      return (RequiredFieldList) ObjectSerializer.deserialize(requiredFieldString);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to deserialize pushProjection", e);
+    }
+  }
+  
+  static String serializeRequiredFieldList(RequiredFieldList requiredFieldList) {
+    try {
+      return ObjectSerializer.serialize(requiredFieldList);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to searlize required fields.", e);
+    }
+  }
+  
   /**
    * converts a parquet schema into a pig schema
    * @param parquetSchema the parquet schema to convert to Pig schema
@@ -343,27 +382,61 @@ public class PigSchemaConverter {
    * filters a Parquet schema based on a pig schema for projection
    * @param schemaToFilter the schema to be filter
    * @param requestedPigSchema the pig schema to filter it with
+   * @param requiredFieldList projected required fields
    * @return the resulting filtered schema
    */
-  public MessageType filter(MessageType schemaToFilter, Schema requestedPigSchema) {
+  public MessageType filter(MessageType schemaToFilter, Schema requestedPigSchema, RequiredFieldList requiredFieldList) {
     try {
       if (DEBUG) LOG.debug("filtering schema:\n" + schemaToFilter + "\nwith requested pig schema:\n " + requestedPigSchema);
-      List<Type> result = filterTupleSchema(schemaToFilter, requestedPigSchema);
+      List<Type> result;
+      if(columnIndexAccess && requiredFieldList != null) {
+        result = filterTupleSchema(schemaToFilter, requestedPigSchema, requiredFieldList);
+      } else {
+        result = filterTupleSchema(schemaToFilter, requestedPigSchema);
+      }
       if (DEBUG) LOG.debug("schema:\n" + schemaToFilter + "\nfiltered to:\n" + result);
       return new MessageType(schemaToFilter.getName(), result);
     } catch (RuntimeException e) {
       throw new RuntimeException("can't filter " + schemaToFilter + " with " + requestedPigSchema, e);
     }
-  }
-
+  }  
+  
+  private List<Type> filterTupleSchema(GroupType schemaToFilter, Schema pigSchema, RequiredFieldList requiredFieldsList) {
+    List<RequiredField> requiredFields = requiredFieldsList.getFields();
+    List<FieldSchema> fields = pigSchema.getFields();
+    List<Type> newFields = new ArrayList<Type>();
+    for (int i = 0; i < requiredFields.size(); i++) {
+      try {
+        RequiredField requiredField = requiredFields.get(i);
+        FieldSchema fieldSchema = pigSchema.getField(requiredField.getAlias());
+        String name = name(fieldSchema.alias, "field_" + i);
+        
+        if (requiredField.getIndex() < schemaToFilter.getFieldCount()) {
+          Type type = schemaToFilter.getFields().get(requiredField.getIndex());
+          newFields.add(filter(type, fieldSchema));
+        }
+      } catch (FrontendException e) {
+        throw new RuntimeException("Failed to filter requested fields", e);
+      }
+    }
+    return newFields;
+  }  
+  
   private List<Type> filterTupleSchema(GroupType schemaToFilter, Schema requestedPigSchema) {
     List<FieldSchema> fields = requestedPigSchema.getFields();
     List<Type> newFields = new ArrayList<Type>();
     for (int i = 0; i < fields.size(); i++) {
       FieldSchema fieldSchema = fields.get(i);
       String name = name(fieldSchema.alias, "field_"+i);
-      if (schemaToFilter.containsField(name)) {
-        Type type = schemaToFilter.getType(name);
+      if (schemaToFilter.containsField(name) || columnIndexAccess) {
+        Type type;
+        if(columnIndexAccess) {
+          if(i >= schemaToFilter.getFieldCount())
+            continue;
+          type = schemaToFilter.getType(i);
+        } else {
+          type = schemaToFilter.getType(name);
+        }
         newFields.add(filter(type, fieldSchema));
       }
     }
