@@ -111,6 +111,8 @@ public class TupleConverter extends GroupConverter {
           }
         };
       case DataType.CHARARRAY:
+          //If the orignal type isn't a string, we don't want to use the dictionary because
+          //a custom implementation will be needed for each type.  Just default to no dictionary.
         return new FieldStringConverter(parent, type.getOriginalType() == OriginalType.UTF8);
       case DataType.BYTEARRAY:
         return new FieldByteArrayConverter(parent);

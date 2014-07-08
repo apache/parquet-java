@@ -79,7 +79,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public static final String UNBOUND_RECORD_FILTER = "parquet.read.filter";
   
   /**
-   * key to configure type checking for conflicting schemas
+   * key to configure type checking for conflicting schemas (default: true)
    */
   public static final String STRICT_TYPE_CHECKING = "parquet.strict.typing";
 
