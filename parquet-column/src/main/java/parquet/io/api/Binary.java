@@ -265,46 +265,34 @@ abstract public class Binary {
 
       @Override
       public void writeTo(OutputStream out) throws IOException {
-        for (int i = offset; i < offset + length; i++) {
-          out.write(value.get(i));
-        }
+        out.write(getBytes());
       }
 
       @Override
       public byte[] getBytes() {
         byte[] bytes = new byte[length];
-
+        
+        value.mark();
         value.position(offset);
-        value.get(bytes, 0, length);
+        value.get(bytes).reset();
+        
         return bytes;
       }
 
       @Override
       public int hashCode() {
-        if (value.hasArray()) {
-          return Binary.hashCode(value.array(), value.arrayOffset() + offset,
-              value.arrayOffset() + length);
-        }
         byte[] bytes = getBytes();
         return Binary.hashCode(bytes, 0, bytes.length);
       }
 
       @Override
       boolean equals(Binary other) {
-        if (value.hasArray()) {
-          return other.equals(value.array(), value.arrayOffset() + offset,
-              value.arrayOffset() + length);
-        }
         byte[] bytes = getBytes();
         return other.equals(bytes, 0, bytes.length);
       }
 
       @Override
       boolean equals(byte[] other, int otherOffset, int otherLength) {
-        if (value.hasArray()) {
-          return Binary.equals(value.array(), value.arrayOffset() + offset,
-              value.arrayOffset() + length, other, otherOffset, otherLength);
-        }
         byte[] bytes = getBytes();
         return Binary.equals(bytes, 0, bytes.length, other, otherOffset, otherLength);
       }
@@ -312,20 +300,12 @@ abstract public class Binary {
 
       @Override
       public int compareTo(Binary other) {
-        if (value.hasArray()) {
-          return other.compareTo(value.array(), value.arrayOffset() + offset,
-              value.arrayOffset() + length);
-        }
         byte[] bytes = getBytes();
         return other.compareTo(bytes, 0, bytes.length);
       }
 
       @Override
       int compareTo(byte[] other, int otherOffset, int otherLength) {
-        if (value.hasArray()) {
-          return Binary.compareTwoByteArrays(value.array(), value.arrayOffset() + offset,
-              value.arrayOffset() + length, other, otherOffset, otherLength);
-        }
         byte[] bytes = getBytes();
         return Binary.compareTwoByteArrays(bytes, 0, bytes.length, other, otherOffset, otherLength);
       }
@@ -333,10 +313,11 @@ abstract public class Binary {
       @Override
       public ByteBuffer toByteBuffer() {
         ByteBuffer buf;
-        int pos = value.position();
+        value.mark();
         value.position(offset);
         buf = value.slice();
-        value.position(pos);
+        buf.limit(length);
+        value.reset();
         return buf;
       }
 

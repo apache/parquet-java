@@ -20,6 +20,7 @@ import static parquet.Log.DEBUG;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 import parquet.Log;
 import parquet.Preconditions;
@@ -97,7 +98,7 @@ public class RunLengthBitPackingHybridDecoder {
       bytesToRead = Math.min(bytesToRead, in.available());
       new DataInputStream(in).readFully(bytes, 0, bytesToRead);
       for (int valueIndex = 0, byteIndex = 0; valueIndex < currentCount; valueIndex += 8, byteIndex += bitWidth) {
-        packer.unpack8Values(bytes, byteIndex, currentBuffer, valueIndex);
+        packer.unpack8Values(ByteBuffer.wrap(bytes), byteIndex, currentBuffer, valueIndex);
       }
       break;
     default:

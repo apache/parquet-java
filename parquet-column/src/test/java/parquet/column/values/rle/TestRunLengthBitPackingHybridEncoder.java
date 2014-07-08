@@ -308,7 +308,7 @@ public class TestRunLengthBitPackingHybridEncoder {
         next8Values[i] = (byte) is.read();
       }
 
-      packer.unpack8Values(next8Values, 0, unpacked, 0);
+      packer.unpack8Values(ByteBuffer.wrap(next8Values), 0, unpacked, 0);
 
       for (int v = 0; v < 8; v++) {
         values.add(unpacked[v]);
