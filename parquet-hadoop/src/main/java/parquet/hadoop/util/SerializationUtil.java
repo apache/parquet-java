@@ -18,7 +18,7 @@ import parquet.Log;
  * Serialization utils copied from:
  * https://github.com/kevinweil/elephant-bird/blob/master/core/src/main/java/com/twitter/elephantbird/util/HadoopUtils.java
  *
- * TODO(alexlevenson): Should we depend on elephant-bird or just copy here?
+ * TODO(alexlevenson): Refactor elephant-bird so that we can depend on utils like this without extra baggage.
  */
 public final class SerializationUtil {
   private static final Log LOG = Log.getLog(SerializationUtil.class);
@@ -26,12 +26,12 @@ public final class SerializationUtil {
   private SerializationUtil() { }
 
   /**
-   * Writes an object into a configuration by converting it to a base64 encoded string
-   * obj must be Serializable
+   * Reads an object (that was written using
+   * {@link #writeObjectToConfAsBase64}) from a configuration.
    *
    * @param key for the configuration
-   * @param obj to write
-   * @param conf to write to
+   * @param conf to read from
+   * @return the read object, or null if key is not present in conf
    * @throws IOException
    */
   public static void writeObjectToConfAsBase64(String key, Object obj, Configuration conf) throws IOException {
