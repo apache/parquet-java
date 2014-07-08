@@ -100,12 +100,22 @@ public class RecordPredicateBuilder implements Visitor<RecordPredicate> {
     final GenericColumnReader<T> reader = getColumnReader(eq.getColumn());
     final T value = eq.getValue();
 
+    if (value == null) {
+      return new RecordPredicate() {
+        @Override
+        public boolean isMatch() {
+          return reader.isCurrentValueNull();
+        }
+      };
+    }
+
     return new RecordPredicate() {
       @Override
       public boolean isMatch() {
-        return reader.getCurrentValue().compareTo(value) == 0;
+        return reader.getValue().compareTo(value) == 0;
       }
     };
+
   }
 
   @Override
@@ -113,10 +123,19 @@ public class RecordPredicateBuilder implements Visitor<RecordPredicate> {
     final GenericColumnReader<T> reader = getColumnReader(notEq.getColumn());
     final T value = notEq.getValue();
 
+    if (value == null) {
+      return new RecordPredicate() {
+        @Override
+        public boolean isMatch() {
+          return !reader.isCurrentValueNull();
+        }
+      };
+    }
+
     return new RecordPredicate() {
       @Override
       public boolean isMatch() {
-        return reader.getCurrentValue().compareTo(value) != 0;
+        return reader.getValue().compareTo(value) != 0;
       }
     };
   }
@@ -129,7 +148,7 @@ public class RecordPredicateBuilder implements Visitor<RecordPredicate> {
     return new RecordPredicate() {
       @Override
       public boolean isMatch() {
-        return reader.getCurrentValue().compareTo(value) < 0;
+        return !reader.isCurrentValueNull() && reader.getValue().compareTo(value) < 0;
       }
     };
   }
@@ -142,7 +161,7 @@ public class RecordPredicateBuilder implements Visitor<RecordPredicate> {
     return new RecordPredicate() {
       @Override
       public boolean isMatch() {
-        return reader.getCurrentValue().compareTo(value) <= 0;
+        return !reader.isCurrentValueNull() && reader.getValue().compareTo(value) <= 0;
       }
     };
   }
@@ -155,7 +174,7 @@ public class RecordPredicateBuilder implements Visitor<RecordPredicate> {
     return new RecordPredicate() {
       @Override
       public boolean isMatch() {
-        return reader.getCurrentValue().compareTo(value) > 0;
+        return !reader.isCurrentValueNull() && reader.getValue().compareTo(value) > 0;
       }
     };
   }
@@ -168,7 +187,7 @@ public class RecordPredicateBuilder implements Visitor<RecordPredicate> {
     return new RecordPredicate() {
       @Override
       public boolean isMatch() {
-        return reader.getCurrentValue().compareTo(value) >= 0;
+        return !reader.isCurrentValueNull() && reader.getValue().compareTo(value) >= 0;
       }
     };
   }
@@ -211,18 +230,19 @@ public class RecordPredicateBuilder implements Visitor<RecordPredicate> {
     return new RecordPredicate() {
       @Override
       public boolean isMatch() {
-        return predicate.keep(reader.getCurrentValue());
+        return predicate.keep(reader.getValueOrNull());
       }
     };
   }
 
   @Override
   public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> RecordPredicate visit(final LogicalNotUserDefined<T, U> udp) {
-    final RecordPredicate pred = udp.getUserDefined().accept(this);
+    final GenericColumnReader<T> reader = getColumnReader(udp.getUserDefined().getColumn());
+    final U predicate = udp.getUserDefined().getUserDefinedPredicate();
     return new RecordPredicate() {
       @Override
       public boolean isMatch() {
-        return !pred.isMatch();
+        return !predicate.keep(reader.getValueOrNull());
       }
     };
   }

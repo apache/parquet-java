@@ -12,7 +12,7 @@ import parquet.column.statistics.IntStatistics;
 import parquet.filter2.CollapseLogicalNots;
 import parquet.filter2.FilterPredicate;
 import parquet.filter2.FilterPredicateOperators.Column;
-import parquet.filter2.UserDefinedPredicates.IntUserDefinedPredicate;
+import parquet.filter2.UserDefinedPredicate;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
@@ -28,12 +28,12 @@ import static parquet.filter2.Filter.eq;
 import static parquet.filter2.Filter.gt;
 import static parquet.filter2.Filter.gtEq;
 import static parquet.filter2.Filter.intColumn;
-import static parquet.filter2.Filter.intPredicate;
 import static parquet.filter2.Filter.lt;
 import static parquet.filter2.Filter.ltEq;
 import static parquet.filter2.Filter.not;
 import static parquet.filter2.Filter.notEq;
 import static parquet.filter2.Filter.or;
+import static parquet.filter2.Filter.userDefined;
 import static parquet.hadoop.filter2.StatisticsFilter.canDrop;
 
 public class TestStatisticsFilter {
@@ -217,28 +217,28 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(or(no, no), columnMetas));
   }
 
-  public static class SevensAndEightsUdp extends IntUserDefinedPredicate {
+  public static class SevensAndEightsUdp extends UserDefinedPredicate<Integer> {
 
     @Override
-    public boolean keep(int value) {
+    public boolean keep(Integer value) {
       throw new RuntimeException("this method should not be called");
     }
 
     @Override
-    public boolean canDrop(int min, int max) {
+    public boolean canDrop(Integer min, Integer max) {
       return min == 7 && max == 7;
     }
 
     @Override
-    public boolean inverseCanDrop(int min, int max) {
+    public boolean inverseCanDrop(Integer min, Integer max) {
       return min == 8 && max == 8;
     }
   }
 
   @Test
   public void testUdp() {
-    FilterPredicate pred = intPredicate(intColumn, SevensAndEightsUdp.class);
-    FilterPredicate invPred = CollapseLogicalNots.collapse(not(intPredicate(intColumn, SevensAndEightsUdp.class)));
+    FilterPredicate pred = userDefined(intColumn, SevensAndEightsUdp.class);
+    FilterPredicate invPred = CollapseLogicalNots.collapse(not(userDefined(intColumn, SevensAndEightsUdp.class)));
 
     IntStatistics seven = new IntStatistics();
     seven.setMinMax(7, 7);

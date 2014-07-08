@@ -275,15 +275,15 @@ public class TestInputFormat {
 
     Configuration conf = new Configuration();
     ParquetInputFormat.setFilterPredicate(conf, p);
-    FilterPredicate loaded = ParquetInputFormat.loadFilterPredicate(conf);
+    FilterPredicate loaded = ParquetInputFormat.loadFilterPredicate(conf, "");
     assertEquals(p, loaded);
 
     conf = new Configuration();
     ParquetInputFormat.setFilterPredicate(conf, not(p));
-    loaded = ParquetInputFormat.loadFilterPredicate(conf);
+    loaded = ParquetInputFormat.loadFilterPredicate(conf, "");
     assertEquals(and(notEq(foo, 10), notEq(foo, 11)), loaded);
 
-    assertNull(ParquetInputFormat.loadFilterPredicate(new Configuration()));
+    assertNull(ParquetInputFormat.loadFilterPredicate(new Configuration(), ""));
   }
 
   public static final class DummyUnboundRecordFilter implements UnboundRecordFilter {

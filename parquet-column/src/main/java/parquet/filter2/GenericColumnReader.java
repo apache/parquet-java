@@ -1,5 +1,6 @@
 package parquet.filter2;
 
+import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnReader;
 import parquet.io.api.Binary;
 
@@ -9,12 +10,25 @@ import parquet.io.api.Binary;
  */
 public abstract class GenericColumnReader<T extends Comparable<T>> {
   protected final ColumnReader reader;
+  private final ColumnDescriptor descriptor;
 
   public GenericColumnReader(ColumnReader reader) {
     this.reader = reader;
+    this.descriptor = reader.getDescriptor();
   }
 
-  public  abstract T getCurrentValue();
+  public boolean isCurrentValueNull() {
+    return reader.getCurrentDefinitionLevel() < descriptor.getMaxDefinitionLevel();
+  }
+
+  public T getValueOrNull() {
+    if (isCurrentValueNull()) {
+      return null;
+    }
+    return getValue();
+  }
+
+  public abstract T getValue();
 
   public static class IntColumnReader extends GenericColumnReader<Integer> {
 
@@ -23,7 +37,7 @@ public abstract class GenericColumnReader<T extends Comparable<T>> {
     }
 
     @Override
-    public Integer getCurrentValue() {
+    public Integer getValue() {
       return reader.getInteger();
     }
   }
@@ -35,7 +49,7 @@ public abstract class GenericColumnReader<T extends Comparable<T>> {
     }
 
     @Override
-    public Long getCurrentValue() {
+    public Long getValue() {
       return reader.getLong();
     }
   }
@@ -47,7 +61,7 @@ public abstract class GenericColumnReader<T extends Comparable<T>> {
     }
 
     @Override
-    public Double getCurrentValue() {
+    public Double getValue() {
       return reader.getDouble();
     }
   }
@@ -59,7 +73,7 @@ public abstract class GenericColumnReader<T extends Comparable<T>> {
     }
 
     @Override
-    public Float getCurrentValue() {
+    public Float getValue() {
       return reader.getFloat();
     }
   }
@@ -71,7 +85,7 @@ public abstract class GenericColumnReader<T extends Comparable<T>> {
     }
 
     @Override
-    public Boolean getCurrentValue() {
+    public Boolean getValue() {
       return reader.getBoolean();
     }
   }
@@ -83,7 +97,7 @@ public abstract class GenericColumnReader<T extends Comparable<T>> {
     }
 
     @Override
-    public Binary getCurrentValue() {
+    public Binary getValue() {
       return reader.getBinary();
     }
   }
