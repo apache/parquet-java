@@ -352,16 +352,16 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       }
       if (rf.getSubFields() == null) {
         s.add(f);
-          } else {
+      } else {
         Schema innerSchema = getSchemaFromRequiredFieldList(f.schema, rf.getSubFields());
         if (innerSchema == null) {
           return null;
         } else {
           f.schema = innerSchema;
           s.add(f);
-          }
         }
       }
+    }
     return s;
   }
 

@@ -382,6 +382,16 @@ public class PigSchemaConverter {
    * filters a Parquet schema based on a pig schema for projection
    * @param schemaToFilter the schema to be filter
    * @param requestedPigSchema the pig schema to filter it with
+   * @return the resulting filtered schema
+   */
+  public MessageType filter(MessageType schemaToFilter, Schema requestedPigSchema) {
+    return filter(schemaToFilter, requestedPigSchema, null);
+  }
+  
+  /**
+   * filters a Parquet schema based on a pig schema for projection
+   * @param schemaToFilter the schema to be filter
+   * @param requestedPigSchema the pig schema to filter it with
    * @param requiredFieldList projected required fields
    * @return the resulting filtered schema
    */

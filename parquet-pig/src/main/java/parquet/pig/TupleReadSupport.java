@@ -64,8 +64,6 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
   }
 
   /**
-   * 
-   * 
    * @param configuration configuration for the current job
    * @return List of required fields from pushProjection
    */
