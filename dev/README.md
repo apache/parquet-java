@@ -7,7 +7,7 @@ Merging a pull request requires being a comitter on the project.
 * How to merge a Pull request:
 have an apache and github-apache remote setup
 ```
-git remote add github-apache git@github.com:apache/incubator-parquet-mr.git
+git remote add apache-github git@github.com:apache/incubator-parquet-mr.git
 git remote add apache https://git-wip-us.apache.org/repos/asf/incubator-parquet-mr.git
 ```
 run the following command
