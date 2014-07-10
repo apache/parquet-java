@@ -55,7 +55,7 @@ public class GroupType extends Type {
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param name the name of the field
-   * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
+   * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    * @param fields the contained fields
    */
   public GroupType(Repetition repetition, String name, OriginalType originalType, Type... fields) {
@@ -65,7 +65,7 @@ public class GroupType extends Type {
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param name the name of the field
-   * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
+   * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    * @param fields the contained fields
    */
   public GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields) {
