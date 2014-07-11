@@ -6,6 +6,10 @@ public class Optional<T> {
     this.t = t;
   }
 
+  public boolean isPresent() {
+    return t != null;
+  }
+
   public T get() {
     if (t == null) {
       throw new IllegalStateException("get() called on an Optional.absent()");

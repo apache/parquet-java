@@ -19,7 +19,9 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 
+import parquet.Either;
 import parquet.Log;
+import parquet.Optional;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
 import parquet.column.impl.ColumnReadStoreImpl;
@@ -57,45 +59,40 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   public <T> RecordReader<T> getRecordReader(PageReadStore columns, RecordMaterializer<T> recordMaterializer) {
+    return getRecordReader(columns, recordMaterializer, Optional.<Either<UnboundRecordFilter, FilterPredicate>>absent());
+  }
+
+  public <T> RecordReader<T> getRecordReader(PageReadStore columns,
+                                             RecordMaterializer<T> recordMaterializer,
+                                             Optional<Either<UnboundRecordFilter, FilterPredicate>> filter) {
+
     if (leaves.size() > 0) {
-      return new RecordReaderImplementation<T>(
-        this,
-        recordMaterializer,
-        validating,
-        new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType())
-      );
-    } else {
       return new EmptyRecordReader<T>(recordMaterializer);
     }
-  }
 
-  // TODO(alexlevenson): This is for semver backwards compatibility. We should remove this.
-  // TODO(alexlevenson): This probably didn't need to be public in the first place, if we're going to use semver
-  // TODO(alexlevenson): we should probably be more aggressive about making things private / package private
-  @Deprecated
-  public <T> RecordReader<T> getRecordReader(PageReadStore columns,
-                                             RecordMaterializer<T> recordMaterializer,
-                                             UnboundRecordFilter unboundFilter) {
-    return getRecordReader(columns, recordMaterializer, unboundFilter, null);
-  }
-
-  public <T> RecordReader<T> getRecordReader(PageReadStore columns,
-                                             RecordMaterializer<T> recordMaterializer,
-                                             UnboundRecordFilter unboundFilter,
-                                             FilterPredicate filterPredicate) {
-
-    if (unboundFilter == null && filterPredicate == null) {
-      return getRecordReader(columns, recordMaterializer);
+    if (filter.isPresent() && filter.get().isLeft()) {
+      UnboundRecordFilter unboundRecordFilter = filter.get().asLeft();
+      return new FilteredRecordReader<T>(
+          this,
+          recordMaterializer,
+          validating,
+          new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType()),
+          unboundRecordFilter,
+          columns.getRowCount()
+      );
     }
 
-    return new FilteredRecordReader<T>(
+    Optional<FilterPredicate> filterPredicate = Optional.absent();
+    if (filter.isPresent() && filter.get().isRight()) {
+      filterPredicate = Optional.of(filter.get().asRight());
+    }
+
+    return new RecordReaderImplementation<T>(
         this,
         recordMaterializer,
         validating,
         new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType()),
-        unboundFilter,
-        filterPredicate,
-        columns.getRowCount()
+        filterPredicate
     );
 
   }

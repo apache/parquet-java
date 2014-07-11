@@ -2,18 +2,18 @@ package parquet;
 
 public abstract class Either<L, R> {
 
-  public static <L, R> Left<L, R> left(L left) {
+  public static <L, R> Either<L, R> left(L left) {
     return new Left<L, R>(left);
   }
 
-  public static <L, R> Right<L, R> right(R right) {
+  public static <L, R> Either<L, R> right(R right) {
     return new Right<L, R>(right);
   }
 
   public abstract boolean isLeft();
-  public abstract Left<L, R> asLeft();
+  public abstract L asLeft();
   public abstract boolean isRight();
-  public abstract Right<L, R> asRight();
+  public abstract R asRight();
 
   public static class Left<L, R> extends Either<L, R> {
     private final L left;
@@ -22,18 +22,14 @@ public abstract class Either<L, R> {
       this.left = left;
     }
 
-    public L get() {
-      return left;
-    }
-
     @Override
     public boolean isLeft() {
       return true;
     }
 
     @Override
-    public Left<L, R> asLeft() {
-      return this;
+    public L asLeft() {
+      return left;
     }
 
     @Override
@@ -42,7 +38,7 @@ public abstract class Either<L, R> {
     }
 
     @Override
-    public Right<L, R> asRight() {
+    public R asRight() {
       throw new UnsupportedOperationException("asRight() called on a Left!");
     }
 
@@ -69,17 +65,13 @@ public abstract class Either<L, R> {
       this.right = right;
     }
 
-    public R get() {
-      return right;
-    }
-
     @Override
     public boolean isLeft() {
       return false;
     }
 
     @Override
-    public Left<L, R> asLeft() {
+    public L asLeft() {
       throw new UnsupportedOperationException("asLeft() called on a Right!");
     }
 
@@ -89,8 +81,8 @@ public abstract class Either<L, R> {
     }
 
     @Override
-    public Right<L, R> asRight() {
-      return this;
+    public R asRight() {
+      return right;
     }
 
     @Override

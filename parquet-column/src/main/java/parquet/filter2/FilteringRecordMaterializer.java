@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import parquet.ColumnPath;
 import parquet.filter2.StreamingFilterPredicate.Atom;
 import parquet.io.PrimitiveColumnIO;
 import parquet.io.api.GroupConverter;
@@ -19,7 +20,7 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
   public FilteringRecordMaterializer(
       RecordMaterializer<T> delegate,
       PrimitiveColumnIO[] columnIOs,
-      Map<String, List<Atom>> atomsByColumn,
+      Map<ColumnPath, List<Atom>> atomsByColumn,
       StreamingFilterPredicate filterPredicate) {
 
     Map<List<Integer>, PrimitiveColumnIO> columnIOsByIndexFieldPath = new HashMap<List<Integer>, PrimitiveColumnIO>();
@@ -49,10 +50,14 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
 
   @Override
   public T getCurrentRecord() {
-    if (!StreamingFilterPredicateEvaluator.evaluate(filterPredicate)) {
+    boolean keep = StreamingFilterPredicateEvaluator.evaluate(filterPredicate);
+    StreamingFilterPredicateReseter.reset(filterPredicate);
+
+    if (keep) {
+      return delegate.getCurrentRecord();
+    } else {
       return null;
     }
-    return delegate.getCurrentRecord();
   }
 
   @Override

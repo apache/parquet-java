@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import parquet.ColumnPath;
+import parquet.Preconditions;
 import parquet.filter2.FilterPredicate.Visitor;
 import parquet.filter2.FilterPredicateOperators.And;
 import parquet.filter2.FilterPredicateOperators.Eq;
@@ -41,15 +42,17 @@ import parquet.io.api.Binary;
  * TODO(alexlevenson): user defined functions still autobox however
  */
 public class StreamingFilterPredicateBuilder implements Visitor<StreamingFilterPredicate> {
-
+  private boolean built = false;
   private final Map<ColumnPath, List<Atom>> atomsByColumn = new HashMap<ColumnPath, List<Atom>>();
 
-  private StreamingFilterPredicateBuilder() { }
+  public StreamingFilterPredicateBuilder() { }
 
   public StreamingFilterPredicate build(FilterPredicate pred) {
-    return pred.accept(new StreamingFilterPredicateBuilder());
+    Preconditions.checkArgument(!built, "This builder has already been used");
+    StreamingFilterPredicate streaming = pred.accept(this);
+    built = true;
+    return streaming;
   }
-
   private void addAtom(ColumnPath columnPath, Atom atom) {
     List<Atom> atoms = atomsByColumn.get(columnPath);
     if (atoms == null) {

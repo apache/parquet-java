@@ -44,13 +44,13 @@ import parquet.schema.MessageTypeParser;
 public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
   private static final Log LOG= Log.getLog(ParquetRecordReader.class);
-  private InternalParquetRecordReader<T> internalReader;
+  private final InternalParquetRecordReader<T> internalReader;
 
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
    */
   public ParquetRecordReader(ReadSupport<T> readSupport) {
-    internalReader = new InternalParquetRecordReader<T>(readSupport, null, null);
+    internalReader = new InternalParquetRecordReader<T>(readSupport);
   }
 
   /**
@@ -58,7 +58,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
    * @param filter filter for only returning matching records.
    */
   public ParquetRecordReader(ReadSupport<T> readSupport, UnboundRecordFilter filter) {
-    internalReader = new InternalParquetRecordReader<T>(readSupport, filter, null);
+    internalReader = new InternalParquetRecordReader<T>(readSupport, filter);
   }
 
   /**
@@ -66,7 +66,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
    * @param filterPredicate filter for only returning matching records.
    */
   public ParquetRecordReader(ReadSupport<T> readSupport, FilterPredicate filterPredicate) {
-    internalReader = new InternalParquetRecordReader<T>(readSupport, null, filterPredicate);
+    internalReader = new InternalParquetRecordReader<T>(readSupport, filterPredicate);
   }
 
   /**

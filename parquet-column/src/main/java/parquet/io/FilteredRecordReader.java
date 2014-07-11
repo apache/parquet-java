@@ -15,14 +15,12 @@
  */
 package parquet.io;
 
-import parquet.Preconditions;
+import parquet.Optional;
 import parquet.column.ColumnReader;
 import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.filter.RecordFilter;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.FilterPredicate;
-import parquet.filter2.RecordPredicate;
-import parquet.filter2.RecordPredicateBuilder;
 import parquet.io.api.RecordMaterializer;
 
 /**
@@ -32,9 +30,7 @@ import parquet.io.api.RecordMaterializer;
  */
 class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
 
-  private final RecordFilter boundRecordFilter;
-  private final RecordPredicate recordPredicate;
-
+  private final RecordFilter recordFilter;
   private final long recordCount;
   private long recordsRead = 0;
 
@@ -44,35 +40,15 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
    * @param columnStore
    * @param unboundFilter Filter records, pass in NULL_FILTER to leave unfiltered.
    */
-  public FilteredRecordReader(MessageColumnIO root,
-                              RecordMaterializer<T> recordMaterializer,
-                              boolean validating,
-                              ColumnReadStoreImpl columnStore,
-                              UnboundRecordFilter unboundFilter,
-                              FilterPredicate filterPredicate,
-                              long recordCount) {
-    super(root, recordMaterializer, validating, columnStore);
-
+  public FilteredRecordReader(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating,
+                              ColumnReadStoreImpl columnStore, UnboundRecordFilter unboundFilter, long recordCount) {
+    super(root, recordMaterializer, validating, columnStore, Optional.<FilterPredicate>absent());
     this.recordCount = recordCount;
-
-    Preconditions.checkArgument(unboundFilter != null || filterPredicate !=null,
-        "FilteredRecordReader requires either an unboundFilter or a filterPredicate, they cannot both be null");
-
-    Preconditions.checkArgument(unboundFilter == null || filterPredicate == null,
-        "FilteredRecordReader requires either an unboundFilter or a filterPredicate, you cannot provide both.");
-
-    if (unboundFilter != null) {
-      boundRecordFilter = unboundFilter.bind(getColumnReaders());
+    if ( unboundFilter != null ) {
+      recordFilter = unboundFilter.bind(getColumnReaders());
     } else {
-      boundRecordFilter = null;
+      recordFilter = null;
     }
-
-    if (filterPredicate != null) {
-      this.recordPredicate = RecordPredicateBuilder.build(filterPredicate, getColumnReaders());
-    } else {
-      this.recordPredicate = null;
-    }
-
   }
 
   /**
@@ -88,24 +64,13 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
     return super.read();
   }
 
-  private boolean isMatch() {
-    if (boundRecordFilter != null) {
-      return boundRecordFilter.isMatch();
-    }
-
-    if (recordPredicate != null) {
-      return recordPredicate.isMatch();
-    }
-
-    return true;
-  }
 
   /**
    * Skips forwards until the filter finds the first match. Returns false
    * if none found.
    */
   private void skipToMatch() {
-    while (recordsRead < recordCount && !isMatch()) {
+    while (recordsRead < recordCount && !recordFilter.isMatch()) {
       State currentState = getState(0);
       do {
         ColumnReader columnReader = currentState.column;

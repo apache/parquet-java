@@ -19,7 +19,6 @@ import parquet.filter2.FilterPredicateOperators.Not;
 import parquet.filter2.FilterPredicateOperators.NotEq;
 import parquet.filter2.FilterPredicateOperators.Or;
 import parquet.filter2.FilterPredicateOperators.UserDefined;
-import parquet.schema.ColumnPathUtil;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
 
@@ -47,15 +46,15 @@ public class FilterPredicateTypeValidator implements FilterPredicate.Visitor<Voi
 
   // the columns (keyed by path) according to the file's schema. This is the source of truth, and
   // we are validating that what the user provided agrees with these.
-  private final Map<String, ColumnDescriptor> columnsAccordingToSchema = new HashMap<String, ColumnDescriptor>();
+  private final Map<ColumnPath, ColumnDescriptor> columnsAccordingToSchema = new HashMap<ColumnPath, ColumnDescriptor>();
 
   // the original type of a column, keyed by path
-  private final Map<String, OriginalType> originalTypes = new HashMap<String, OriginalType>();
+  private final Map<ColumnPath, OriginalType> originalTypes = new HashMap<ColumnPath, OriginalType>();
 
   public FilterPredicateTypeValidator(MessageType schema) {
 
     for (ColumnDescriptor cd : schema.getColumns()) {
-      String columnPath = ColumnPathUtil.toDotSeparatedString(cd.getPath());
+      ColumnPath columnPath = ColumnPath.get(cd.getPath());
       columnsAccordingToSchema.put(columnPath, cd);
 
       OriginalType ot = schema.getType(cd.getPath()).getOriginalType();

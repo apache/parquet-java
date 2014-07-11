@@ -24,8 +24,13 @@ import java.util.List;
 import java.util.Map;
 
 import parquet.Log;
+import parquet.Optional;
 import parquet.column.ColumnReader;
 import parquet.column.impl.ColumnReadStoreImpl;
+import parquet.filter2.FilterPredicate;
+import parquet.filter2.FilteringRecordMaterializer;
+import parquet.filter2.StreamingFilterPredicate;
+import parquet.filter2.StreamingFilterPredicateBuilder;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
 import parquet.io.api.PrimitiveConverter;
@@ -240,10 +245,25 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
    * @param validating whether we should validate against the schema
    * @param columnStore where to read the column data from
    */
-  public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnReadStoreImpl columnStore) {
-    this.recordMaterializer = recordMaterializer;
-    this.recordRootConverter = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer), validating, root.getType());
+  public RecordReaderImplementation(MessageColumnIO root,
+                                    RecordMaterializer<T> recordMaterializer,
+                                    boolean validating,
+                                    ColumnReadStoreImpl columnStore,
+                                    Optional<FilterPredicate> filter) {
+
     PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
+
+    if (filter.isPresent()) {
+      FilterPredicate predicate = filter.get();
+      StreamingFilterPredicateBuilder builder = new StreamingFilterPredicateBuilder();
+      StreamingFilterPredicate streamingPredicate = builder.build(predicate);
+      this.recordMaterializer = new FilteringRecordMaterializer<T>(recordMaterializer, leaves, builder.getAtomsByColumn(), streamingPredicate);
+    } else {
+      this.recordMaterializer = recordMaterializer;
+    }
+
+    this.recordRootConverter = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer), validating, root.getType());
+
     columnReaders = new ColumnReader[leaves.length];
     int[][] nextColumnIdxForRepLevel = new int[leaves.length][];
     int[][] levelToClose = new int[leaves.length][];

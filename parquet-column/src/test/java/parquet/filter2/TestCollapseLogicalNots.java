@@ -3,6 +3,8 @@ package parquet.filter2;
 import org.junit.Test;
 
 import parquet.filter2.FilterPredicateOperators.Column;
+import parquet.filter2.FilterPredicateOperators.DoubleColumn;
+import parquet.filter2.FilterPredicateOperators.IntColumn;
 import parquet.filter2.FilterPredicateOperators.LogicalNotUserDefined;
 import parquet.filter2.FilterPredicateOperators.UserDefined;
 
@@ -22,8 +24,8 @@ import static parquet.filter2.Filter.or;
 import static parquet.filter2.Filter.userDefined;
 
 public class TestCollapseLogicalNots {
-  private static final Column<Integer> intColumn = intColumn("a.b.c");
-  private static final Column<Double> doubleColumn = doubleColumn("a.b.c");
+  private static final IntColumn intColumn = intColumn("a.b.c");
+  private static final DoubleColumn doubleColumn = doubleColumn("a.b.c");
 
   private static final FilterPredicate complex =
       and(

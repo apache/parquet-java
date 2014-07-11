@@ -4,22 +4,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import parquet.ColumnPath;
 import parquet.filter2.StreamingFilterPredicate.Atom;
 import parquet.io.PrimitiveColumnIO;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
-import parquet.schema.ColumnPathUtil;
 
 public class FilteringGroupConverter extends GroupConverter {
   private final GroupConverter delegate;
   private final List<Integer> indexFieldPath;
-  private final Map<String, List<Atom>> atomsByColumn;
+  private final Map<ColumnPath, List<Atom>> atomsByColumn;
   private final Map<List<Integer>, PrimitiveColumnIO> columnIOsByIndexFieldPath;
 
   public FilteringGroupConverter(
       GroupConverter delegate,
       List<Integer> indexFieldPath,
-      Map<String, List<Atom>> atomsByColumn, Map<List<Integer>,
+      Map<ColumnPath, List<Atom>> atomsByColumn, Map<List<Integer>,
       PrimitiveColumnIO> columnIOsByIndexFieldPath) {
 
     this.delegate = delegate;
@@ -39,7 +39,7 @@ public class FilteringGroupConverter extends GroupConverter {
 
     if (delegateConverter.isPrimitive()) {
       PrimitiveColumnIO columnIO = columnIOsByIndexFieldPath.get(newIndexFieldPath);
-      String columnPath = ColumnPathUtil.toDotSeparatedString(columnIO.getColumnDescriptor().getPath());
+      ColumnPath columnPath = ColumnPath.get(columnIO.getColumnDescriptor().getPath());
       Atom[] atoms;
       List<Atom> atomsList = atomsByColumn.get(columnPath);
       if (atomsList == null) {

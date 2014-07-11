@@ -22,11 +22,14 @@ import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
+import parquet.Either;
 import parquet.Log;
+import parquet.Optional;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.PageReadStore;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.FilterPredicate;
+import parquet.filter2.FilteringRecordMaterializer;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.util.counters.BenchmarkCounter;
@@ -60,8 +63,7 @@ class InternalParquetRecordReader<T> {
   private int currentBlock = -1;
   private ParquetFileReader reader;
   private parquet.io.RecordReader<T> recordReader;
-  private UnboundRecordFilter unboundRecordFilter;
-  private FilterPredicate filterPredicate;
+  private Optional<Either<UnboundRecordFilter, FilterPredicate>> filter;
   private boolean strictTypeChecking;
 
   private long totalTimeSpentReadingBytes;
@@ -76,18 +78,32 @@ class InternalParquetRecordReader<T> {
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
    */
   public InternalParquetRecordReader(ReadSupport<T> readSupport) {
-    this(readSupport, null, null);
+    this(readSupport, Optional.<Either<UnboundRecordFilter, FilterPredicate>>absent());
   }
 
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
    */
   public InternalParquetRecordReader(ReadSupport<T> readSupport,
-                                     UnboundRecordFilter unboundRecordFilter,
+                                     UnboundRecordFilter unboundRecordFilter) {
+    this(readSupport, Optional.of(Either.<UnboundRecordFilter, FilterPredicate>left(unboundRecordFilter)));
+  }
+
+  /**
+   * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
+   */
+  public InternalParquetRecordReader(ReadSupport<T> readSupport,
                                      FilterPredicate filterPredicate) {
+    this(readSupport, Optional.of(Either.<UnboundRecordFilter, FilterPredicate>right(filterPredicate)));
+  }
+
+  /**
+   * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
+   */
+  private InternalParquetRecordReader(ReadSupport<T> readSupport,
+                                      Optional<Either<UnboundRecordFilter, FilterPredicate>> filter) {
     this.readSupport = readSupport;
-    this.unboundRecordFilter = unboundRecordFilter;
-    this.filterPredicate = filterPredicate;
+    this.filter = filter;
   }
 
   private void checkRead() throws IOException {
@@ -114,7 +130,7 @@ class InternalParquetRecordReader<T> {
       LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
       if (Log.DEBUG) LOG.debug("initializing Record assembly with requested schema " + requestedSchema);
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema, strictTypeChecking);
-      recordReader = columnIO.getRecordReader(pages, recordConverter, unboundRecordFilter, filterPredicate);
+      recordReader = columnIO.getRecordReader(pages, recordConverter, filter);
       startedAssemblingCurrentBlockAt = System.currentTimeMillis();
       totalCountLoadedSoFar += pages.getRowCount();
       ++ currentBlock;

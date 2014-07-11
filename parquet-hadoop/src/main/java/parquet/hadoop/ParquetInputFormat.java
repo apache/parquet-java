@@ -463,6 +463,19 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     return splits;
   }
 
+  /**
+   * Reads the filter predicate out of conf if present, returns null otherwise.
+   *
+   * Additionally, the filter predicate will be rewritten to not contain any use of
+   * the not() operator.
+   *
+   * The FilterPredicate will not yet be validated against the schema of the parquet file
+   * however.
+   *
+   * @param conf hadoop configuration
+   * @param filterAppliedTo used in a log message to indicate what's being filtered (row groups or records or pages etc)
+   * @return a collapsed FilterPredicate, or null
+   */
   static FilterPredicate loadFilterPredicate(Configuration conf, String filterAppliedTo) {
     FilterPredicate filterPredicate = getFilterPredicate(conf);
 

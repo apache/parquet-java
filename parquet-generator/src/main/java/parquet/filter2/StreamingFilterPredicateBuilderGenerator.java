@@ -44,6 +44,7 @@ public class StreamingFilterPredicateBuilderGenerator {
         "import java.util.Map;\n" +
         "\n" +
         "import parquet.ColumnPath;\n" +
+        "import parquet.Preconditions;\n" +
         "import parquet.filter2.FilterPredicate.Visitor;\n" +
         "import parquet.filter2.FilterPredicateOperators.And;\n" +
         "import parquet.filter2.FilterPredicateOperators.Eq;\n" +
@@ -82,15 +83,17 @@ public class StreamingFilterPredicateBuilderGenerator {
 
 
      add("public class StreamingFilterPredicateBuilder implements Visitor<StreamingFilterPredicate> {\n" +
-        "\n" +
+        "  private boolean built = false;\n" +
         "  private final Map<ColumnPath, List<Atom>> atomsByColumn = new HashMap<ColumnPath, List<Atom>>();\n" +
         "\n" +
-        "  private StreamingFilterPredicateBuilder() { }\n" +
+        "  public StreamingFilterPredicateBuilder() { }\n" +
         "\n" +
         "  public StreamingFilterPredicate build(FilterPredicate pred) {\n" +
-        "    return pred.accept(new StreamingFilterPredicateBuilder());\n" +
+        "    Preconditions.checkArgument(!built, \"This builder has already been used\");\n" +
+        "    StreamingFilterPredicate streaming = pred.accept(this);\n" +
+        "    built = true;\n" +
+        "    return streaming;\n" +
         "  }\n" +
-        "\n" +
         "  private void addAtom(ColumnPath columnPath, Atom atom) {\n" +
         "    List<Atom> atoms = atomsByColumn.get(columnPath);\n" +
         "    if (atoms == null) {\n" +

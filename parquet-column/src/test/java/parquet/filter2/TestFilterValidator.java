@@ -2,7 +2,10 @@ package parquet.filter2;
 
 import org.junit.Test;
 
+import parquet.filter2.FilterPredicateOperators.BinaryColumn;
 import parquet.filter2.FilterPredicateOperators.Column;
+import parquet.filter2.FilterPredicateOperators.IntColumn;
+import parquet.filter2.FilterPredicateOperators.LongColumn;
 import parquet.io.api.Binary;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
@@ -23,9 +26,9 @@ import static parquet.filter2.Filter.userDefined;
 import static parquet.filter2.FilterPredicateTypeValidator.validate;
 
 public class TestFilterValidator {
-  private static final Column<Binary> stringC = binaryColumn("c");
-  private static final Column<Long> longBar = longColumn("x.bar");
-  private static final Column<Integer> intBar = intColumn("x.bar");
+  private static final BinaryColumn stringC = binaryColumn("c");
+  private static final LongColumn longBar = longColumn("x.bar");
+  private static final IntColumn intBar = intColumn("x.bar");
 
   private static final String schemaString =
       "message Document {\n"

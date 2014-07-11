@@ -2,7 +2,14 @@ package parquet.filter2;
 
 import org.junit.Test;
 
+import parquet.ColumnPath;
+import parquet.filter2.FilterPredicateOperators.BinaryColumn;
+import parquet.filter2.FilterPredicateOperators.BooleanColumn;
 import parquet.filter2.FilterPredicateOperators.Column;
+import parquet.filter2.FilterPredicateOperators.DoubleColumn;
+import parquet.filter2.FilterPredicateOperators.FloatColumn;
+import parquet.filter2.FilterPredicateOperators.IntColumn;
+import parquet.filter2.FilterPredicateOperators.LongColumn;
 import parquet.io.api.Binary;
 import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -18,12 +25,12 @@ import static parquet.filter2.Filter.longColumn;
 import static parquet.filter2.ValidTypeMap.assertTypeValid;
 
 public class TestValidTypeMap {
-  public static Column<Integer> intColumn = intColumn("int.column");
-  public static Column<Long> longColumn = longColumn("long.column");
-  public static Column<Float> floatColumn = floatColumn("float.column");
-  public static Column<Double> doubleColumn = doubleColumn("double.column");
-  public static Column<Boolean> booleanColumn = booleanColumn("boolean.column");
-  public static Column<Binary> binaryColumn = binaryColumn("binary.column");
+  public static IntColumn intColumn = intColumn("int.column");
+  public static LongColumn longColumn = longColumn("long.column");
+  public static FloatColumn floatColumn = floatColumn("float.column");
+  public static DoubleColumn doubleColumn = doubleColumn("double.column");
+  public static BooleanColumn booleanColumn = booleanColumn("boolean.column");
+  public static BinaryColumn binaryColumn = binaryColumn("binary.column");
 
   private static class InvalidColumnType implements Comparable<InvalidColumnType> {
     @Override
@@ -33,7 +40,7 @@ public class TestValidTypeMap {
   }
 
   public static Column<InvalidColumnType> invalidColumn =
-      new Column<InvalidColumnType>("invalid.column", InvalidColumnType.class);
+      new Column<InvalidColumnType>(ColumnPath.get("invalid"), InvalidColumnType.class) { };
 
   @Test
   public void testValidTypes() {
