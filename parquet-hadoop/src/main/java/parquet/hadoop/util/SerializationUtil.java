@@ -81,11 +81,9 @@ public final class SerializationUtil {
       ois = new ObjectInputStream(gis);
       return (T) ois.readObject();
     } catch (ClassNotFoundException e) {
-      LOG.error("Could not read object from config with key " + key, e);
-      throw new IOException(e);
+      throw new IOException("Could not read object from config with key " + key, e);
     } catch (ClassCastException e) {
-      LOG.error("Couldn't cast object read from config with key " + key, e);
-      throw new IOException(e);
+      throw new IOException("Couldn't cast object read from config with key " + key, e);
     } finally {
       Closeables.close(ois);
       Closeables.close(gis);
