@@ -59,7 +59,7 @@ import parquet.hadoop.CodecFactory.BytesDecompressor;
 import parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
-import parquet.hadoop.metadata.ColumnPath;
+import parquet.ColumnPath;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.counters.BenchmarkCounter;
 import parquet.io.ParquetDecodingException;

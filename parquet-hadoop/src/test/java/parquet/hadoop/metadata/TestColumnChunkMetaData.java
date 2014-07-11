@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.junit.Test;
 
+import parquet.ColumnPath;
 import parquet.column.Encoding;
 import parquet.column.statistics.BinaryStatistics;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;

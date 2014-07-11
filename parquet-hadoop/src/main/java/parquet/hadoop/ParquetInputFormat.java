@@ -126,6 +126,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     Preconditions.checkArgument(getUnboundRecordFilter(configuration) == null,
         "You cannot provide a FilterPredicate after providing an UnboundRecordFilter");
 
+    configuration.set(FILTER_PREDICATE + ".human.readable", filterPredicate.toString());
     try {
       SerializationUtil.writeObjectToConfAsBase64(FILTER_PREDICATE, filterPredicate, configuration);
     } catch (IOException e) {

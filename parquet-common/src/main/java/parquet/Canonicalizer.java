@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.hadoop.metadata;
+package parquet;
 
 import java.util.concurrent.ConcurrentHashMap;
 

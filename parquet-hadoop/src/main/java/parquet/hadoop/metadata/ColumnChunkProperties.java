@@ -18,6 +18,8 @@ package parquet.hadoop.metadata;
 import java.util.Arrays;
 import java.util.Set;
 
+import parquet.Canonicalizer;
+import parquet.ColumnPath;
 import parquet.column.Encoding;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 

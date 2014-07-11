@@ -43,7 +43,7 @@ import parquet.column.statistics.Statistics;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
-import parquet.hadoop.metadata.ColumnPath;
+import parquet.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.GlobalMetaData;
