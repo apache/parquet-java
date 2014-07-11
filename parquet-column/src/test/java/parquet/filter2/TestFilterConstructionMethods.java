@@ -7,10 +7,14 @@ import java.io.ObjectOutputStream;
 
 import org.junit.Test;
 
+import parquet.ColumnPath;
 import parquet.filter2.FilterPredicateOperators.And;
+import parquet.filter2.FilterPredicateOperators.BooleanColumn;
 import parquet.filter2.FilterPredicateOperators.Column;
+import parquet.filter2.FilterPredicateOperators.DoubleColumn;
 import parquet.filter2.FilterPredicateOperators.Eq;
 import parquet.filter2.FilterPredicateOperators.Gt;
+import parquet.filter2.FilterPredicateOperators.IntColumn;
 import parquet.filter2.FilterPredicateOperators.Not;
 import parquet.filter2.FilterPredicateOperators.Or;
 import parquet.filter2.FilterPredicateOperators.UserDefined;
@@ -18,6 +22,7 @@ import parquet.filter2.FilterPredicateOperators.UserDefined;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static parquet.filter2.Filter.and;
+import static parquet.filter2.Filter.booleanColumn;
 import static parquet.filter2.Filter.doubleColumn;
 import static parquet.filter2.Filter.eq;
 import static parquet.filter2.Filter.gt;
@@ -30,8 +35,8 @@ import static parquet.filter2.FilterPredicateOperators.NotEq;
 
 public class TestFilterConstructionMethods {
 
-  private static final Column<Integer> intColumn = intColumn("a.b.c");
-  private static final Column<Double> doubleColumn = doubleColumn("x.y.z");
+  private static final IntColumn intColumn = intColumn("a.b.c");
+  private static final DoubleColumn doubleColumn = doubleColumn("x.y.z");
 
   private static final FilterPredicate predicate =
       and(not(or(eq(intColumn, 7), notEq(intColumn, 17))), gt(doubleColumn, 100.0));
@@ -55,12 +60,12 @@ public class TestFilterConstructionMethods {
     assertTrue(rightNotEq instanceof NotEq);
     assertEquals(7, ((Eq) leftEq).getValue());
     assertEquals(17, ((NotEq) rightNotEq).getValue());
-    assertEquals("a.b.c", ((Eq) leftEq).getColumn().getColumnPath());
-    assertEquals("a.b.c", ((NotEq) rightNotEq).getColumn().getColumnPath());
+    assertEquals(ColumnPath.get("a", "b", "c"), ((Eq) leftEq).getColumn().getColumnPath());
+    assertEquals(ColumnPath.get("a", "b", "c"), ((NotEq) rightNotEq).getColumn().getColumnPath());
 
     assertTrue(gt instanceof Gt);
     assertEquals(100.0, ((Gt) gt).getValue());
-    assertEquals("x.y.z", ((Gt) gt).getColumn().getColumnPath());
+    assertEquals(ColumnPath.get("x", "y", "z"), ((Gt) gt).getColumn().getColumnPath());
   }
 
   @Test

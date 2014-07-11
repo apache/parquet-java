@@ -4,6 +4,7 @@ import java.io.Serializable;
 
 import parquet.ColumnPath;
 import parquet.Preconditions;
+import parquet.io.api.Binary;
 
 /**
  * These are the nodes / tokens / operators in a a filter predicate expression.
@@ -12,7 +13,7 @@ import parquet.Preconditions;
 public final class FilterPredicateOperators {
   private FilterPredicateOperators() { }
 
-  public static final class Column<T extends Comparable<T>> implements Serializable {
+  public static abstract class Column<T extends Comparable<T>> implements Serializable {
     private final ColumnPath columnPath;
     private final Class<T> columnType;
 
@@ -54,6 +55,45 @@ public final class FilterPredicateOperators {
       int result = columnPath.hashCode();
       result = 31 * result + columnType.hashCode();
       return result;
+    }
+  }
+
+  public static interface SupportsEqNotEq { }
+  public static interface SupportsLtGt { }
+
+  public static final class IntColumn extends Column<Integer> implements SupportsEqNotEq, SupportsLtGt {
+    IntColumn(ColumnPath columnPath) {
+      super(columnPath, Integer.class);
+    }
+  }
+
+  public static final class LongColumn extends Column<Long> implements SupportsEqNotEq, SupportsLtGt {
+    LongColumn(ColumnPath columnPath) {
+      super(columnPath, Long.class);
+    }
+  }
+
+  public static final class DoubleColumn extends Column<Double> implements SupportsEqNotEq, SupportsLtGt {
+    DoubleColumn(ColumnPath columnPath) {
+      super(columnPath, Double.class);
+    }
+  }
+
+  public static final class FloatColumn extends Column<Float> implements SupportsEqNotEq, SupportsLtGt {
+    FloatColumn(ColumnPath columnPath) {
+      super(columnPath, Float.class);
+    }
+  }
+
+  public static final class BooleanColumn extends Column<Boolean> implements SupportsEqNotEq {
+    BooleanColumn(ColumnPath columnPath) {
+      super(columnPath, Boolean.class);
+    }
+  }
+
+  public static final class BinaryColumn extends Column<Binary> implements SupportsEqNotEq, SupportsLtGt {
+    BinaryColumn(ColumnPath columnPath) {
+      super(columnPath, Binary.class);
     }
   }
 
