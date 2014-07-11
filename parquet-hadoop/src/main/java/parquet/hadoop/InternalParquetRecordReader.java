@@ -18,8 +18,10 @@ package parquet.hadoop;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.PageReadStore;
@@ -172,17 +174,35 @@ class InternalParquetRecordReader<T> {
   }
 
   public boolean nextKeyValue() throws IOException, InterruptedException {
-    if (current < total) {
+    boolean recordFound = false;
+
+    while (!recordFound) {
+      // no more records left
+      if (current >= total) { return false; }
+
       try {
+        // read a value
         checkRead();
         currentValue = recordReader.read();
-        if (DEBUG) LOG.debug("read value: " + currentValue);
+
+        // if it's null, we need to read the next value because we are skipping this one.
+        recordFound = currentValue != null;
+
+        if (DEBUG) {
+          if (recordFound) {
+            LOG.debug("read value: " + currentValue);
+          } else {
+            LOG.debug("Skipping value");
+          }
+        }
+
         current ++;
       } catch (RuntimeException e) {
         throw new ParquetDecodingException(format("Can not read value at %d in block %d in file %s", current, currentBlock, file), e);
       }
-      return true;
     }
-    return false;
+
+    // we can only get here if we found a record, and current < total
+    return true;
   }
 }

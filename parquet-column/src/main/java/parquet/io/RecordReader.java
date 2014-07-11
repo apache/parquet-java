@@ -26,7 +26,7 @@ public abstract class RecordReader<T> {
 
   /**
    * reads one record and returns it
-   * @return the materialized record
+   * @return the materialized record, or null to signal that this record is being skipped.
    */
   public abstract T read();
 
