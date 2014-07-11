@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import parquet.ColumnPath;
 import parquet.Preconditions;
 import parquet.column.statistics.Statistics;
 import parquet.filter2.FilterPredicate;
@@ -54,7 +55,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     }
   }
 
-  private ColumnChunkMetaData getColumnChunk(String columnPath) {
+  private ColumnChunkMetaData getColumnChunk(ColumnPath columnPath) {
     ColumnChunkMetaData c = columns.get(columnPath);
     Preconditions.checkArgument(c != null, "Column " + columnPath + " not found in schema!");
     return c;

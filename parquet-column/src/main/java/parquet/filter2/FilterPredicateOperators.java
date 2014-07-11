@@ -2,6 +2,7 @@ package parquet.filter2;
 
 import java.io.Serializable;
 
+import parquet.ColumnPath;
 import parquet.Preconditions;
 
 /**
@@ -12,10 +13,10 @@ public final class FilterPredicateOperators {
   private FilterPredicateOperators() { }
 
   public static final class Column<T extends Comparable<T>> implements Serializable {
-    private final String columnPath;
+    private final ColumnPath columnPath;
     private final Class<T> columnType;
 
-    Column(String columnPath, Class<T> columnType) {
+    Column(ColumnPath columnPath, Class<T> columnType) {
       Preconditions.checkNotNull(columnPath, "columnPath");
       Preconditions.checkNotNull(columnType, "columnType");
       this.columnPath = columnPath;
@@ -26,7 +27,7 @@ public final class FilterPredicateOperators {
       return columnType;
     }
 
-    public String getColumnPath() {
+    public ColumnPath getColumnPath() {
       return columnPath;
     }
 

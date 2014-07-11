@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import parquet.ColumnPath;
 import parquet.filter2.FilterPredicateOperators.Column;
 import parquet.io.api.Binary;
 import parquet.schema.OriginalType;
@@ -72,7 +73,7 @@ public final class ValidTypeMap {
    */
   public static <T extends Comparable<T>> void assertTypeValid(Column<T> foundColumn, PrimitiveTypeName primitiveType, OriginalType originalType) {
     Class<T> foundColumnType = foundColumn.getColumnType();
-    String columnPath = foundColumn.getColumnPath();
+    ColumnPath columnPath = foundColumn.getColumnPath();
 
     Set<FullTypeDescriptor> validTypeDescriptors = classToParquetType.get(foundColumnType);
     FullTypeDescriptor typeInFileMetaData = new FullTypeDescriptor(primitiveType, originalType);

@@ -1,5 +1,6 @@
 package parquet.filter2;
 
+import parquet.ColumnPath;
 import parquet.filter2.FilterPredicateOperators.And;
 import parquet.filter2.FilterPredicateOperators.Column;
 import parquet.filter2.FilterPredicateOperators.Eq;
@@ -35,27 +36,27 @@ import parquet.io.api.Binary;
 public final class Filter {
   private Filter() { }
 
-  public static Column<Integer> intColumn(String columnPath) {
+  public static Column<Integer> intColumn(ColumnPath columnPath) {
     return new Column<Integer>(columnPath, Integer.class);
   }
 
-  public static Column<Long> longColumn(String columnPath) {
+  public static Column<Long> longColumn(ColumnPath columnPath) {
     return new Column<Long>(columnPath, Long.class);
   }
 
-  public static Column<Float> floatColumn(String columnPath) {
+  public static Column<Float> floatColumn(ColumnPath columnPath) {
     return new Column<Float>(columnPath, Float.class);
   }
 
-  public static Column<Double> doubleColumn(String columnPath) {
+  public static Column<Double> doubleColumn(ColumnPath columnPath) {
     return new Column<Double>(columnPath, Double.class);
   }
 
-  public static Column<Boolean> booleanColumn(String columnPath) {
+  public static Column<Boolean> booleanColumn(ColumnPath columnPath) {
     return new Column<Boolean>(columnPath, Boolean.class);
   }
 
-  public static Column<Binary> binaryColumn(String columnPath) {
+  public static Column<Binary> binaryColumn(ColumnPath columnPath) {
     return new Column<Binary>(columnPath, Binary.class);
   }
 

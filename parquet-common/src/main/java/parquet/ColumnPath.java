@@ -21,6 +21,7 @@ import java.util.Iterator;
 public final class ColumnPath implements Iterable<String> {
 
   private static Canonicalizer<ColumnPath> paths = new Canonicalizer<ColumnPath>() {
+    @Override
     protected ColumnPath toCanonical(ColumnPath value) {
       String[] path = new String[value.p.length];
       for (int i = 0; i < value.p.length; i++) {

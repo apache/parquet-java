@@ -43,6 +43,7 @@ public class StreamingFilterPredicateBuilderGenerator {
         "import java.util.List;\n" +
         "import java.util.Map;\n" +
         "\n" +
+        "import parquet.ColumnPath;\n" +
         "import parquet.filter2.FilterPredicate.Visitor;\n" +
         "import parquet.filter2.FilterPredicateOperators.And;\n" +
         "import parquet.filter2.FilterPredicateOperators.Eq;\n" +
@@ -82,7 +83,7 @@ public class StreamingFilterPredicateBuilderGenerator {
 
      add("public class StreamingFilterPredicateBuilder implements Visitor<StreamingFilterPredicate> {\n" +
         "\n" +
-        "  private final Map<String, List<Atom>> atomsByColumn = new HashMap<String, List<Atom>>();\n" +
+        "  private final Map<ColumnPath, List<Atom>> atomsByColumn = new HashMap<ColumnPath, List<Atom>>();\n" +
         "\n" +
         "  private StreamingFilterPredicateBuilder() { }\n" +
         "\n" +
@@ -90,7 +91,7 @@ public class StreamingFilterPredicateBuilderGenerator {
         "    return pred.accept(new StreamingFilterPredicateBuilder());\n" +
         "  }\n" +
         "\n" +
-        "  private void addAtom(String columnPath, Atom atom) {\n" +
+        "  private void addAtom(ColumnPath columnPath, Atom atom) {\n" +
         "    List<Atom> atoms = atomsByColumn.get(columnPath);\n" +
         "    if (atoms == null) {\n" +
         "      atoms = new ArrayList<Atom>();\n" +
@@ -98,7 +99,7 @@ public class StreamingFilterPredicateBuilderGenerator {
         "    }\n" +
         "    atoms.add(atom);\n" +
         "  }\n\n" +
-        "  public Map<String, List<Atom>> getAtomsByColumn() {\n" +
+        "  public Map<ColumnPath, List<Atom>> getAtomsByColumn() {\n" +
             "    return atomsByColumn;\n" +
             "  }\n\n"
     );
@@ -179,7 +180,7 @@ public class StreamingFilterPredicateBuilderGenerator {
   private void addVisitBegin(String inVar) {
     add("  @Override\n" +
         "  public <T extends Comparable<T>> StreamingFilterPredicate visit(" + inVar + "<T> pred) {\n" +
-        "    String columnPath = pred.getColumn().getColumnPath();\n" +
+        "    ColumnPath columnPath = pred.getColumn().getColumnPath();\n" +
         "    Class<T> clazz = pred.getColumn().getColumnType();\n" +
         "\n" +
         "    Atom atom = null;\n\n");
@@ -264,7 +265,7 @@ public class StreamingFilterPredicateBuilderGenerator {
   }
 
   private void addUdpBegin() {
-    add("    String columnPath = pred.getColumn().getColumnPath();\n" +
+    add("    ColumnPath columnPath = pred.getColumn().getColumnPath();\n" +
         "    Class<T> clazz = pred.getColumn().getColumnType();\n" +
         "\n" +
         "    Atom atom = null;\n" +

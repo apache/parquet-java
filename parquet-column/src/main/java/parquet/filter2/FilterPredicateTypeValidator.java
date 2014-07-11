@@ -3,6 +3,7 @@ package parquet.filter2;
 import java.util.HashMap;
 import java.util.Map;
 
+import parquet.ColumnPath;
 import parquet.Preconditions;
 import parquet.column.ColumnDescriptor;
 import parquet.filter2.FilterPredicateOperators.And;
@@ -42,7 +43,7 @@ public class FilterPredicateTypeValidator implements FilterPredicate.Visitor<Voi
   // A map of column name to the type the user supplied for this column.
   // Used to validate that the user did not provide different types for the same
   // column.
-  private final Map<String, Class<?>> columnTypesEncountered = new HashMap<String, Class<?>>();
+  private final Map<ColumnPath, Class<?>> columnTypesEncountered = new HashMap<ColumnPath, Class<?>>();
 
   // the columns (keyed by path) according to the file's schema. This is the source of truth, and
   // we are validating that what the user provided agrees with these.
@@ -136,7 +137,7 @@ public class FilterPredicateTypeValidator implements FilterPredicate.Visitor<Voi
   }
 
   private <T extends Comparable<T>> void validateColumn(Column<T> column) {
-    String path = column.getColumnPath();
+    ColumnPath path = column.getColumnPath();
 
     Class<?> alreadySeen = columnTypesEncountered.get(path);
     if (alreadySeen != null && !alreadySeen.equals(column.getColumnType())) {
@@ -152,7 +153,7 @@ public class FilterPredicateTypeValidator implements FilterPredicate.Visitor<Voi
     ValidTypeMap.assertTypeValid(column, descriptor.getType(), originalTypes.get(path));
   }
 
-  private ColumnDescriptor getColumnDescriptor(String columnPath) {
+  private ColumnDescriptor getColumnDescriptor(ColumnPath columnPath) {
     ColumnDescriptor cd = columnsAccordingToSchema.get(columnPath);
     Preconditions.checkArgument(cd != null, "Column " + columnPath + " was not found in schema!");
     return cd;

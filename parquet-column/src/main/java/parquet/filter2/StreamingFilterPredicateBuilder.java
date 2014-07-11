@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import parquet.ColumnPath;
 import parquet.filter2.FilterPredicate.Visitor;
 import parquet.filter2.FilterPredicateOperators.And;
 import parquet.filter2.FilterPredicateOperators.Eq;
@@ -41,7 +42,7 @@ import parquet.io.api.Binary;
  */
 public class StreamingFilterPredicateBuilder implements Visitor<StreamingFilterPredicate> {
 
-  private final Map<String, List<Atom>> atomsByColumn = new HashMap<String, List<Atom>>();
+  private final Map<ColumnPath, List<Atom>> atomsByColumn = new HashMap<ColumnPath, List<Atom>>();
 
   private StreamingFilterPredicateBuilder() { }
 
@@ -49,7 +50,7 @@ public class StreamingFilterPredicateBuilder implements Visitor<StreamingFilterP
     return pred.accept(new StreamingFilterPredicateBuilder());
   }
 
-  private void addAtom(String columnPath, Atom atom) {
+  private void addAtom(ColumnPath columnPath, Atom atom) {
     List<Atom> atoms = atomsByColumn.get(columnPath);
     if (atoms == null) {
       atoms = new ArrayList<Atom>();
@@ -58,13 +59,13 @@ public class StreamingFilterPredicateBuilder implements Visitor<StreamingFilterP
     atoms.add(atom);
   }
 
-  public Map<String, List<Atom>> getAtomsByColumn() {
+  public Map<ColumnPath, List<Atom>> getAtomsByColumn() {
     return atomsByColumn;
   }
 
   @Override
   public <T extends Comparable<T>> StreamingFilterPredicate visit(Eq<T> pred) {
-    String columnPath = pred.getColumn().getColumnPath();
+    ColumnPath columnPath = pred.getColumn().getColumnPath();
     Class<T> clazz = pred.getColumn().getColumnType();
 
     Atom atom = null;
@@ -259,7 +260,7 @@ public class StreamingFilterPredicateBuilder implements Visitor<StreamingFilterP
 
   @Override
   public <T extends Comparable<T>> StreamingFilterPredicate visit(NotEq<T> pred) {
-    String columnPath = pred.getColumn().getColumnPath();
+    ColumnPath columnPath = pred.getColumn().getColumnPath();
     Class<T> clazz = pred.getColumn().getColumnType();
 
     Atom atom = null;
@@ -454,7 +455,7 @@ public class StreamingFilterPredicateBuilder implements Visitor<StreamingFilterP
 
   @Override
   public <T extends Comparable<T>> StreamingFilterPredicate visit(Lt<T> pred) {
-    String columnPath = pred.getColumn().getColumnPath();
+    ColumnPath columnPath = pred.getColumn().getColumnPath();
     Class<T> clazz = pred.getColumn().getColumnType();
 
     Atom atom = null;
@@ -553,7 +554,7 @@ public class StreamingFilterPredicateBuilder implements Visitor<StreamingFilterP
 
   @Override
   public <T extends Comparable<T>> StreamingFilterPredicate visit(LtEq<T> pred) {
-    String columnPath = pred.getColumn().getColumnPath();
+    ColumnPath columnPath = pred.getColumn().getColumnPath();
     Class<T> clazz = pred.getColumn().getColumnType();
 
     Atom atom = null;
@@ -652,7 +653,7 @@ public class StreamingFilterPredicateBuilder implements Visitor<StreamingFilterP
 
   @Override
   public <T extends Comparable<T>> StreamingFilterPredicate visit(Gt<T> pred) {
-    String columnPath = pred.getColumn().getColumnPath();
+    ColumnPath columnPath = pred.getColumn().getColumnPath();
     Class<T> clazz = pred.getColumn().getColumnType();
 
     Atom atom = null;
@@ -751,7 +752,7 @@ public class StreamingFilterPredicateBuilder implements Visitor<StreamingFilterP
 
   @Override
   public <T extends Comparable<T>> StreamingFilterPredicate visit(GtEq<T> pred) {
-    String columnPath = pred.getColumn().getColumnPath();
+    ColumnPath columnPath = pred.getColumn().getColumnPath();
     Class<T> clazz = pred.getColumn().getColumnType();
 
     Atom atom = null;
@@ -866,7 +867,7 @@ public class StreamingFilterPredicateBuilder implements Visitor<StreamingFilterP
 
   @Override
   public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> StreamingFilterPredicate visit(UserDefined<T, U> pred) {
-    String columnPath = pred.getColumn().getColumnPath();
+    ColumnPath columnPath = pred.getColumn().getColumnPath();
     Class<T> clazz = pred.getColumn().getColumnType();
 
     Atom atom = null;
@@ -974,7 +975,7 @@ public class StreamingFilterPredicateBuilder implements Visitor<StreamingFilterP
   @Override
   public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> StreamingFilterPredicate visit(LogicalNotUserDefined<T, U> notPred) {
     UserDefined<T, U> pred = notPred.getUserDefined();
-    String columnPath = pred.getColumn().getColumnPath();
+    ColumnPath columnPath = pred.getColumn().getColumnPath();
     Class<T> clazz = pred.getColumn().getColumnType();
 
     Atom atom = null;
