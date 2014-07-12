@@ -20,14 +20,15 @@ import parquet.filter2.predicate.Operators.UserDefined;
  *
  * See also {@link LogicalInverseRewriter}, which can remove the use
  * of all not() operators without inverting the overall predicate.
- *
- * This class can be reused, it is stateless and thread safe.
  */
-public class LogicalInverter implements Visitor<FilterPredicate> {
+public final class LogicalInverter implements Visitor<FilterPredicate> {
+  private static final LogicalInverter INSTANCE = new LogicalInverter();
 
   public static FilterPredicate invert(FilterPredicate p) {
-    return p.accept(new LogicalInverter());
+    return p.accept(INSTANCE);
   }
+
+  private LogicalInverter() {}
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(Eq<T> eq) {

@@ -26,14 +26,15 @@ import static parquet.filter2.predicate.FilterApi.or;
  *
  * See also {@link LogicalInverter}, which is used
  * to do the inversion.
- *
- * This class can be reused, it is stateless and thread safe.
  */
-public class LogicalInverseRewriter implements Visitor<FilterPredicate> {
+public final class LogicalInverseRewriter implements Visitor<FilterPredicate> {
+  private static final LogicalInverseRewriter INSTANCE = new LogicalInverseRewriter();
 
   public static FilterPredicate rewrite(FilterPredicate pred) {
-    return pred.accept(new LogicalInverseRewriter());
+    return pred.accept(INSTANCE);
   }
+
+  private LogicalInverseRewriter() { }
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(Eq<T> eq) {
