@@ -2,26 +2,26 @@ package parquet.filter2;
 
 import org.junit.Test;
 
-import parquet.filter2.FilterPredicateOperators.Column;
-import parquet.filter2.FilterPredicateOperators.DoubleColumn;
-import parquet.filter2.FilterPredicateOperators.IntColumn;
-import parquet.filter2.FilterPredicateOperators.LogicalNotUserDefined;
-import parquet.filter2.FilterPredicateOperators.UserDefined;
+import parquet.filter2.predicate.Operators.DoubleColumn;
+import parquet.filter2.predicate.Operators.IntColumn;
+import parquet.filter2.predicate.Operators.LogicalNotUserDefined;
+import parquet.filter2.predicate.Operators.UserDefined;
+import parquet.filter2.predicate.FilterPredicate;
 
 import static org.junit.Assert.assertEquals;
-import static parquet.filter2.Filter.and;
-import static parquet.filter2.Filter.doubleColumn;
-import static parquet.filter2.Filter.eq;
-import static parquet.filter2.Filter.gt;
-import static parquet.filter2.Filter.gtEq;
-import static parquet.filter2.Filter.intColumn;
-import static parquet.filter2.Filter.lt;
-import static parquet.filter2.Filter.ltEq;
-import static parquet.filter2.Filter.not;
-import static parquet.filter2.Filter.notEq;
-import static parquet.filter2.Filter.or;
-import static parquet.filter2.Filter.userDefined;
-import static parquet.filter2.FilterPredicateInverter.invert;
+import static parquet.filter2.predicate.FilterApi.and;
+import static parquet.filter2.predicate.FilterApi.doubleColumn;
+import static parquet.filter2.predicate.FilterApi.eq;
+import static parquet.filter2.predicate.FilterApi.gt;
+import static parquet.filter2.predicate.FilterApi.gtEq;
+import static parquet.filter2.predicate.FilterApi.intColumn;
+import static parquet.filter2.predicate.FilterApi.lt;
+import static parquet.filter2.predicate.FilterApi.ltEq;
+import static parquet.filter2.predicate.FilterApi.not;
+import static parquet.filter2.predicate.FilterApi.notEq;
+import static parquet.filter2.predicate.FilterApi.or;
+import static parquet.filter2.predicate.FilterApi.userDefined;
+import static parquet.filter2.predicate.LogicalInverter.invert;
 
 public class TestFilterPredicateInverter {
   private static final IntColumn intColumn = intColumn("a.b.c");

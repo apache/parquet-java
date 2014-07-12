@@ -3,26 +3,25 @@ package parquet.filter2;
 import org.junit.Test;
 
 import parquet.ColumnPath;
-import parquet.filter2.FilterPredicateOperators.BinaryColumn;
-import parquet.filter2.FilterPredicateOperators.BooleanColumn;
-import parquet.filter2.FilterPredicateOperators.Column;
-import parquet.filter2.FilterPredicateOperators.DoubleColumn;
-import parquet.filter2.FilterPredicateOperators.FloatColumn;
-import parquet.filter2.FilterPredicateOperators.IntColumn;
-import parquet.filter2.FilterPredicateOperators.LongColumn;
-import parquet.io.api.Binary;
+import parquet.filter2.predicate.Operators.BinaryColumn;
+import parquet.filter2.predicate.Operators.BooleanColumn;
+import parquet.filter2.predicate.Operators.Column;
+import parquet.filter2.predicate.Operators.DoubleColumn;
+import parquet.filter2.predicate.Operators.FloatColumn;
+import parquet.filter2.predicate.Operators.IntColumn;
+import parquet.filter2.predicate.Operators.LongColumn;
 import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
-import static parquet.filter2.Filter.binaryColumn;
-import static parquet.filter2.Filter.booleanColumn;
-import static parquet.filter2.Filter.doubleColumn;
-import static parquet.filter2.Filter.floatColumn;
-import static parquet.filter2.Filter.intColumn;
-import static parquet.filter2.Filter.longColumn;
-import static parquet.filter2.ValidTypeMap.assertTypeValid;
+import static parquet.filter2.predicate.FilterApi.binaryColumn;
+import static parquet.filter2.predicate.FilterApi.booleanColumn;
+import static parquet.filter2.predicate.FilterApi.doubleColumn;
+import static parquet.filter2.predicate.FilterApi.floatColumn;
+import static parquet.filter2.predicate.FilterApi.intColumn;
+import static parquet.filter2.predicate.FilterApi.longColumn;
+import static parquet.filter2.predicate.ValidTypeMap.assertTypeValid;
 
 public class TestValidTypeMap {
   public static IntColumn intColumn = intColumn("int.column");

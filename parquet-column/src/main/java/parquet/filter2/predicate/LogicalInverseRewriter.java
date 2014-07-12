@@ -1,17 +1,20 @@
-package parquet.filter2;
+package parquet.filter2.predicate;
 
-import parquet.filter2.FilterPredicate.Visitor;
-import parquet.filter2.FilterPredicateOperators.And;
-import parquet.filter2.FilterPredicateOperators.Eq;
-import parquet.filter2.FilterPredicateOperators.Gt;
-import parquet.filter2.FilterPredicateOperators.GtEq;
-import parquet.filter2.FilterPredicateOperators.LogicalNotUserDefined;
-import parquet.filter2.FilterPredicateOperators.Lt;
-import parquet.filter2.FilterPredicateOperators.LtEq;
-import parquet.filter2.FilterPredicateOperators.Not;
-import parquet.filter2.FilterPredicateOperators.NotEq;
-import parquet.filter2.FilterPredicateOperators.Or;
-import parquet.filter2.FilterPredicateOperators.UserDefined;
+import parquet.filter2.predicate.FilterPredicate.Visitor;
+import parquet.filter2.predicate.Operators.And;
+import parquet.filter2.predicate.Operators.Eq;
+import parquet.filter2.predicate.Operators.Gt;
+import parquet.filter2.predicate.Operators.GtEq;
+import parquet.filter2.predicate.Operators.LogicalNotUserDefined;
+import parquet.filter2.predicate.Operators.Lt;
+import parquet.filter2.predicate.Operators.LtEq;
+import parquet.filter2.predicate.Operators.Not;
+import parquet.filter2.predicate.Operators.NotEq;
+import parquet.filter2.predicate.Operators.Or;
+import parquet.filter2.predicate.Operators.UserDefined;
+
+import static parquet.filter2.predicate.FilterApi.and;
+import static parquet.filter2.predicate.FilterApi.or;
 
 /**
  * Recursively removes all use of the not() operator in a predicate
@@ -21,15 +24,15 @@ import parquet.filter2.FilterPredicateOperators.UserDefined;
  * The returned predicate should have the same meaning as the original, but
  * without the use of the not() operator.
  *
- * See also {@link parquet.filter2.FilterPredicateInverter}, which is used
+ * See also {@link LogicalInverter}, which is used
  * to do the inversion.
  *
  * This class can be reused, it is stateless and thread safe.
  */
-public class CollapseLogicalNots implements Visitor<FilterPredicate> {
+public class LogicalInverseRewriter implements Visitor<FilterPredicate> {
 
-  public static FilterPredicate collapse(FilterPredicate pred) {
-    return pred.accept(new CollapseLogicalNots());
+  public static FilterPredicate rewrite(FilterPredicate pred) {
+    return pred.accept(new LogicalInverseRewriter());
   }
 
   @Override
@@ -64,17 +67,17 @@ public class CollapseLogicalNots implements Visitor<FilterPredicate> {
 
   @Override
   public FilterPredicate visit(And and) {
-    return new And(and.getLeft().accept(this), and.getRight().accept(this));
+    return and(and.getLeft().accept(this), and.getRight().accept(this));
   }
 
   @Override
   public FilterPredicate visit(Or or) {
-    return new Or(or.getLeft().accept(this), or.getRight().accept(this));
+    return or(or.getLeft().accept(this), or.getRight().accept(this));
   }
 
   @Override
   public FilterPredicate visit(Not not) {
-    return FilterPredicateInverter.invert(not.getPredicate().accept(this));
+    return LogicalInverter.invert(not.getPredicate().accept(this));
   }
 
   @Override

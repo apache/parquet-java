@@ -27,7 +27,7 @@ import parquet.Log;
 import parquet.Optional;
 import parquet.column.ColumnReader;
 import parquet.column.impl.ColumnReadStoreImpl;
-import parquet.filter2.FilterPredicate;
+import parquet.filter2.predicate.FilterPredicate;
 import parquet.filter2.FilteringRecordMaterializer;
 import parquet.filter2.StreamingFilterPredicate;
 import parquet.filter2.StreamingFilterPredicateBuilder;

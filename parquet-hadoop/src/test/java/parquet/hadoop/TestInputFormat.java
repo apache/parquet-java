@@ -36,8 +36,8 @@ import parquet.column.statistics.BinaryStatistics;
 import parquet.column.statistics.IntStatistics;
 import parquet.filter.RecordFilter;
 import parquet.filter.UnboundRecordFilter;
-import parquet.filter2.FilterPredicate;
-import parquet.filter2.FilterPredicateOperators.Column;
+import parquet.filter2.predicate.FilterPredicate;
+import parquet.filter2.predicate.Operators.Column;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.ColumnPath;
@@ -51,12 +51,12 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
-import static parquet.filter2.Filter.and;
-import static parquet.filter2.Filter.eq;
-import static parquet.filter2.Filter.intColumn;
-import static parquet.filter2.Filter.not;
-import static parquet.filter2.Filter.notEq;
-import static parquet.filter2.Filter.or;
+import static parquet.filter2.predicate.FilterApi.and;
+import static parquet.filter2.predicate.FilterApi.eq;
+import static parquet.filter2.predicate.FilterApi.intColumn;
+import static parquet.filter2.predicate.FilterApi.not;
+import static parquet.filter2.predicate.FilterApi.notEq;
+import static parquet.filter2.predicate.FilterApi.or;
 
 public class TestInputFormat {
 

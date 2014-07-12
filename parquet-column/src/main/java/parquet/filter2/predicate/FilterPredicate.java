@@ -1,16 +1,16 @@
-package parquet.filter2;
+package parquet.filter2.predicate;
 
-import parquet.filter2.FilterPredicateOperators.And;
-import parquet.filter2.FilterPredicateOperators.Eq;
-import parquet.filter2.FilterPredicateOperators.Gt;
-import parquet.filter2.FilterPredicateOperators.GtEq;
-import parquet.filter2.FilterPredicateOperators.LogicalNotUserDefined;
-import parquet.filter2.FilterPredicateOperators.Lt;
-import parquet.filter2.FilterPredicateOperators.LtEq;
-import parquet.filter2.FilterPredicateOperators.Not;
-import parquet.filter2.FilterPredicateOperators.NotEq;
-import parquet.filter2.FilterPredicateOperators.Or;
-import parquet.filter2.FilterPredicateOperators.UserDefined;
+import parquet.filter2.predicate.Operators.And;
+import parquet.filter2.predicate.Operators.Eq;
+import parquet.filter2.predicate.Operators.Gt;
+import parquet.filter2.predicate.Operators.GtEq;
+import parquet.filter2.predicate.Operators.LogicalNotUserDefined;
+import parquet.filter2.predicate.Operators.Lt;
+import parquet.filter2.predicate.Operators.LtEq;
+import parquet.filter2.predicate.Operators.Not;
+import parquet.filter2.predicate.Operators.NotEq;
+import parquet.filter2.predicate.Operators.Or;
+import parquet.filter2.predicate.Operators.UserDefined;
 
 /**
  * A FilterPredicate is an expression tree describing the criteria for which records to keep when loading data from
@@ -23,8 +23,8 @@ import parquet.filter2.FilterPredicateOperators.UserDefined;
  *
  * FilterPredicates are implemented in terms of the visitor pattern.
  *
- * See {@link FilterPredicateOperators} for the implementation of the operator tokens,
- * and {@link parquet.filter2.Filter} for the dsl functions for constructing an expression tree.
+ * See {@link Operators} for the implementation of the operator tokens,
+ * and {@link FilterApi} for the dsl functions for constructing an expression tree.
  */
 public interface FilterPredicate {
 

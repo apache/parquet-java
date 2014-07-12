@@ -7,36 +7,36 @@ import java.util.Map;
 import parquet.ColumnPath;
 import parquet.Preconditions;
 import parquet.column.statistics.Statistics;
-import parquet.filter2.FilterPredicate;
-import parquet.filter2.FilterPredicateOperators.And;
-import parquet.filter2.FilterPredicateOperators.Column;
-import parquet.filter2.FilterPredicateOperators.Eq;
-import parquet.filter2.FilterPredicateOperators.Gt;
-import parquet.filter2.FilterPredicateOperators.GtEq;
-import parquet.filter2.FilterPredicateOperators.LogicalNotUserDefined;
-import parquet.filter2.FilterPredicateOperators.Lt;
-import parquet.filter2.FilterPredicateOperators.LtEq;
-import parquet.filter2.FilterPredicateOperators.Not;
-import parquet.filter2.FilterPredicateOperators.NotEq;
-import parquet.filter2.FilterPredicateOperators.Or;
-import parquet.filter2.FilterPredicateOperators.UserDefined;
-import parquet.filter2.UserDefinedPredicate;
+import parquet.filter2.predicate.FilterPredicate;
+import parquet.filter2.predicate.Operators.And;
+import parquet.filter2.predicate.Operators.Column;
+import parquet.filter2.predicate.Operators.Eq;
+import parquet.filter2.predicate.Operators.Gt;
+import parquet.filter2.predicate.Operators.GtEq;
+import parquet.filter2.predicate.Operators.LogicalNotUserDefined;
+import parquet.filter2.predicate.Operators.Lt;
+import parquet.filter2.predicate.Operators.LtEq;
+import parquet.filter2.predicate.Operators.Not;
+import parquet.filter2.predicate.Operators.NotEq;
+import parquet.filter2.predicate.Operators.Or;
+import parquet.filter2.predicate.Operators.UserDefined;
+import parquet.filter2.predicate.UserDefinedPredicate;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.schema.ColumnPathUtil;
 
 public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   /**
-   * Applies a {@link parquet.filter2.FilterPredicate} to statistics about a group of
+   * Applies a {@link parquet.filter2.predicate.FilterPredicate} to statistics about a group of
    * records.
    *
    * Note: the supplied predicate must not contain any instances of the not() operator as this is not
    * supported by this filter.
    *
-   * the supplied predicate should first be run through {@link parquet.filter2.CollapseLogicalNots} to rewrite it
+   * the supplied predicate should first be run through {@link parquet.filter2.predicate.LogicalInverseRewriter} to rewrite it
    * in a form that doesn't make use of the not() operator.
    *
    * the supplied predicate should also have already been run through
-   * {@link parquet.filter2.FilterPredicateTypeValidator}
+   * {@link parquet.filter2.predicate.SchemaCompatibilityValidator}
    * to make sure it is compatible with the schema of this file.
    *
    * @return true if all the records represented by the statistics in the provided column metadata can be dropped.
@@ -208,7 +208,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   @Override
   public Boolean visit(Not not) {
     throw new IllegalArgumentException(
-        "This predicate contains a not! Did you forget to run this predicate through CollapseLogicalNots? " + not);
+        "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? " + not);
   }
 
   private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud, boolean inverted) {

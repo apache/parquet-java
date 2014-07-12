@@ -1,32 +1,32 @@
-package parquet.filter2;
+package parquet.filter2.predicate;
 
-import parquet.filter2.FilterPredicate.Visitor;
-import parquet.filter2.FilterPredicateOperators.And;
-import parquet.filter2.FilterPredicateOperators.Eq;
-import parquet.filter2.FilterPredicateOperators.Gt;
-import parquet.filter2.FilterPredicateOperators.GtEq;
-import parquet.filter2.FilterPredicateOperators.LogicalNotUserDefined;
-import parquet.filter2.FilterPredicateOperators.Lt;
-import parquet.filter2.FilterPredicateOperators.LtEq;
-import parquet.filter2.FilterPredicateOperators.Not;
-import parquet.filter2.FilterPredicateOperators.NotEq;
-import parquet.filter2.FilterPredicateOperators.Or;
-import parquet.filter2.FilterPredicateOperators.UserDefined;
+import parquet.filter2.predicate.FilterPredicate.Visitor;
+import parquet.filter2.predicate.Operators.And;
+import parquet.filter2.predicate.Operators.Eq;
+import parquet.filter2.predicate.Operators.Gt;
+import parquet.filter2.predicate.Operators.GtEq;
+import parquet.filter2.predicate.Operators.LogicalNotUserDefined;
+import parquet.filter2.predicate.Operators.Lt;
+import parquet.filter2.predicate.Operators.LtEq;
+import parquet.filter2.predicate.Operators.Not;
+import parquet.filter2.predicate.Operators.NotEq;
+import parquet.filter2.predicate.Operators.Or;
+import parquet.filter2.predicate.Operators.UserDefined;
 
 /**
- * Converts a FilterPredicate to its logical inverse.
+ * Converts a {@link FilterPredicate} to its logical inverse.
  * The returned predicate should be equivalent to not(p), but without
  * the use of a not() operator.
  *
- * See also {@link parquet.filter2.CollapseLogicalNots}, which can remove the use
+ * See also {@link LogicalInverseRewriter}, which can remove the use
  * of all not() operators without inverting the overall predicate.
  *
  * This class can be reused, it is stateless and thread safe.
  */
-public class FilterPredicateInverter implements Visitor<FilterPredicate> {
+public class LogicalInverter implements Visitor<FilterPredicate> {
 
   public static FilterPredicate invert(FilterPredicate p) {
-    return p.accept(new FilterPredicateInverter());
+    return p.accept(new LogicalInverter());
   }
 
   @Override

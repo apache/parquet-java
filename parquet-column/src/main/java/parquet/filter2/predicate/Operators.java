@@ -1,4 +1,4 @@
-package parquet.filter2;
+package parquet.filter2.predicate;
 
 import java.io.Serializable;
 
@@ -7,17 +7,17 @@ import parquet.Preconditions;
 import parquet.io.api.Binary;
 
 /**
- * These are the nodes / tokens / operators in a a filter predicate expression.
- * They are constructed by using the methods in {@link Filter}
+ * These are the operators in a filter predicate expression tree.
+ * They are constructed by using the methods in {@link FilterApi}
  */
-public final class FilterPredicateOperators {
-  private FilterPredicateOperators() { }
+public final class Operators {
+  private Operators() { }
 
   public static abstract class Column<T extends Comparable<T>> implements Serializable {
     private final ColumnPath columnPath;
     private final Class<T> columnType;
 
-    Column(ColumnPath columnPath, Class<T> columnType) {
+    protected Column(ColumnPath columnPath, Class<T> columnType) {
       Preconditions.checkNotNull(columnPath, "columnPath");
       Preconditions.checkNotNull(columnType, "columnType");
       this.columnPath = columnPath;
@@ -344,7 +344,7 @@ public final class FilterPredicateOperators {
     }
   }
 
-  public static class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
+  public static final class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
     private final Column<T> column;
     private final Class<U> udpClass;
     private final String toString;
@@ -415,7 +415,7 @@ public final class FilterPredicateOperators {
 
   // Represents the inverse of a UserDefined. It is equivalent to not(userDefined), without the use
   // of the not() operator
-  public static class LogicalNotUserDefined <T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
+  public static final class LogicalNotUserDefined <T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
     private final UserDefined<T, U> udp;
     private final String toString;
 

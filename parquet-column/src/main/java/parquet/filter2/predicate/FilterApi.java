@@ -1,26 +1,25 @@
-package parquet.filter2;
+package parquet.filter2.predicate;
 
 import parquet.ColumnPath;
-import parquet.filter2.FilterPredicateOperators.And;
-import parquet.filter2.FilterPredicateOperators.BinaryColumn;
-import parquet.filter2.FilterPredicateOperators.BooleanColumn;
-import parquet.filter2.FilterPredicateOperators.Column;
-import parquet.filter2.FilterPredicateOperators.DoubleColumn;
-import parquet.filter2.FilterPredicateOperators.Eq;
-import parquet.filter2.FilterPredicateOperators.FloatColumn;
-import parquet.filter2.FilterPredicateOperators.Gt;
-import parquet.filter2.FilterPredicateOperators.GtEq;
-import parquet.filter2.FilterPredicateOperators.IntColumn;
-import parquet.filter2.FilterPredicateOperators.LongColumn;
-import parquet.filter2.FilterPredicateOperators.Lt;
-import parquet.filter2.FilterPredicateOperators.LtEq;
-import parquet.filter2.FilterPredicateOperators.Not;
-import parquet.filter2.FilterPredicateOperators.NotEq;
-import parquet.filter2.FilterPredicateOperators.Or;
-import parquet.filter2.FilterPredicateOperators.SupportsEqNotEq;
-import parquet.filter2.FilterPredicateOperators.SupportsLtGt;
-import parquet.filter2.FilterPredicateOperators.UserDefined;
-import parquet.io.api.Binary;
+import parquet.filter2.predicate.Operators.And;
+import parquet.filter2.predicate.Operators.BinaryColumn;
+import parquet.filter2.predicate.Operators.BooleanColumn;
+import parquet.filter2.predicate.Operators.Column;
+import parquet.filter2.predicate.Operators.DoubleColumn;
+import parquet.filter2.predicate.Operators.Eq;
+import parquet.filter2.predicate.Operators.FloatColumn;
+import parquet.filter2.predicate.Operators.Gt;
+import parquet.filter2.predicate.Operators.GtEq;
+import parquet.filter2.predicate.Operators.IntColumn;
+import parquet.filter2.predicate.Operators.LongColumn;
+import parquet.filter2.predicate.Operators.Lt;
+import parquet.filter2.predicate.Operators.LtEq;
+import parquet.filter2.predicate.Operators.Not;
+import parquet.filter2.predicate.Operators.NotEq;
+import parquet.filter2.predicate.Operators.Or;
+import parquet.filter2.predicate.Operators.SupportsEqNotEq;
+import parquet.filter2.predicate.Operators.SupportsLtGt;
+import parquet.filter2.predicate.Operators.UserDefined;
 
 /**
  * The Filter API is expressed through these static methods.
@@ -38,8 +37,8 @@ import parquet.io.api.Binary;
  */
 // TODO(alexlevenson): Support repeated columns
 // TODO(alexlevenson): Add support for more column types that aren't coupled with parquet types, eg Column<String>
-public final class Filter {
-  private Filter() { }
+public final class FilterApi {
+  private FilterApi() { }
 
   public static IntColumn intColumn(String columnPath) {
     return new IntColumn(ColumnPath.get(columnPath.split("\\.")));
@@ -139,7 +138,7 @@ public final class Filter {
   }
 
   /**
-   * Keeps records that pass the provided {@link parquet.filter2.UserDefinedPredicate}
+   * Keeps records that pass the provided {@link UserDefinedPredicate}
    */
   public static <T extends Comparable<T>, U extends UserDefinedPredicate<T>>
     UserDefined<T, U> userDefined(Column<T> column, Class<U> clazz) {

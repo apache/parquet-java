@@ -27,7 +27,7 @@ import parquet.column.ColumnWriter;
 import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.column.page.PageReadStore;
 import parquet.filter.UnboundRecordFilter;
-import parquet.filter2.FilterPredicate;
+import parquet.filter2.predicate.FilterPredicate;
 import parquet.io.api.Binary;
 import parquet.io.api.RecordConsumer;
 import parquet.io.api.RecordMaterializer;

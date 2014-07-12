@@ -1,4 +1,4 @@
-package parquet.filter2;
+package parquet.filter2.predicate;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -6,37 +6,39 @@ import java.util.Map;
 import parquet.ColumnPath;
 import parquet.Preconditions;
 import parquet.column.ColumnDescriptor;
-import parquet.filter2.FilterPredicateOperators.And;
-import parquet.filter2.FilterPredicateOperators.Column;
-import parquet.filter2.FilterPredicateOperators.ColumnFilterPredicate;
-import parquet.filter2.FilterPredicateOperators.Eq;
-import parquet.filter2.FilterPredicateOperators.Gt;
-import parquet.filter2.FilterPredicateOperators.GtEq;
-import parquet.filter2.FilterPredicateOperators.LogicalNotUserDefined;
-import parquet.filter2.FilterPredicateOperators.Lt;
-import parquet.filter2.FilterPredicateOperators.LtEq;
-import parquet.filter2.FilterPredicateOperators.Not;
-import parquet.filter2.FilterPredicateOperators.NotEq;
-import parquet.filter2.FilterPredicateOperators.Or;
-import parquet.filter2.FilterPredicateOperators.UserDefined;
+import parquet.filter2.predicate.Operators.And;
+import parquet.filter2.predicate.Operators.Column;
+import parquet.filter2.predicate.Operators.ColumnFilterPredicate;
+import parquet.filter2.predicate.Operators.Eq;
+import parquet.filter2.predicate.Operators.Gt;
+import parquet.filter2.predicate.Operators.GtEq;
+import parquet.filter2.predicate.Operators.LogicalNotUserDefined;
+import parquet.filter2.predicate.Operators.Lt;
+import parquet.filter2.predicate.Operators.LtEq;
+import parquet.filter2.predicate.Operators.Not;
+import parquet.filter2.predicate.Operators.NotEq;
+import parquet.filter2.predicate.Operators.Or;
+import parquet.filter2.predicate.Operators.UserDefined;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
 
 /**
- * Inspects the column types found in the provided FilterPredicate and compares them
+ * Inspects the column types found in the provided {@link FilterPredicate} and compares them
  * to the actual schema found in the parquet file. If the provided predicate's types are
  * not consistent with the file schema, and IllegalArgumentException is thrown.
  *
  * Ideally, all this would be checked at compile time, and this class wouldn't be needed.
  * If we can come up with a way to do that, we should.
  *
+ * This class is stateful, cannot be reused, and is not thread safe.
+ *
  * TODO(alexlevenson): detect if a column is optional or required and validate that eq(null)
  * TODO(alexlevenson): is not called on optional fields
  */
-public class FilterPredicateTypeValidator implements FilterPredicate.Visitor<Void> {
+public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Void> {
 
   public static void validate(FilterPredicate predicate, MessageType schema) {
-    predicate.accept(new FilterPredicateTypeValidator(schema));
+    predicate.accept(new SchemaCompatibilityValidator(schema));
   }
 
   // A map of column name to the type the user supplied for this column.
@@ -51,7 +53,7 @@ public class FilterPredicateTypeValidator implements FilterPredicate.Visitor<Voi
   // the original type of a column, keyed by path
   private final Map<ColumnPath, OriginalType> originalTypes = new HashMap<ColumnPath, OriginalType>();
 
-  public FilterPredicateTypeValidator(MessageType schema) {
+  private SchemaCompatibilityValidator(MessageType schema) {
 
     for (ColumnDescriptor cd : schema.getColumns()) {
       ColumnPath columnPath = ColumnPath.get(cd.getPath());

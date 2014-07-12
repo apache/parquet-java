@@ -1,4 +1,4 @@
-package parquet.filter2;
+package parquet.filter2.predicate;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -6,14 +6,14 @@ import java.util.Map;
 import java.util.Set;
 
 import parquet.ColumnPath;
-import parquet.filter2.FilterPredicateOperators.Column;
+import parquet.filter2.predicate.Operators.Column;
 import parquet.io.api.Binary;
 import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * Contains all valid mappings from class -> parquet type (and vice versa) for use in
- * {@link parquet.filter2.FilterPredicate}s
+ * {@link FilterPredicate}s
  *
  * This is a bit ugly, but it allows us to provide good error messages at runtime
  * when there are type mismatches.
@@ -21,7 +21,7 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
  * TODO(alexlevenson): FilterPredicates don't currently support repeated columns,
  * TODO(alexlevenson): so neither does this mapping
  */
-public final class ValidTypeMap {
+public class ValidTypeMap {
   private ValidTypeMap() { }
 
   // classToParquetType and parquetTypeToClass are used as a bi-directional map

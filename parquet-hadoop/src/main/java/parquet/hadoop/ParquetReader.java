@@ -30,7 +30,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import parquet.filter.UnboundRecordFilter;
-import parquet.filter2.FilterPredicate;
+import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;

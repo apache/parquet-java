@@ -26,7 +26,7 @@ import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 
 import parquet.Log;
 import parquet.filter.UnboundRecordFilter;
-import parquet.filter2.FilterPredicate;
+import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.util.ContextUtil;
 import parquet.hadoop.util.counters.BenchmarkCounter;

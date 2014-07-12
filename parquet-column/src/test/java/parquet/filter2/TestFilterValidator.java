@@ -2,28 +2,29 @@ package parquet.filter2;
 
 import org.junit.Test;
 
-import parquet.filter2.FilterPredicateOperators.BinaryColumn;
-import parquet.filter2.FilterPredicateOperators.Column;
-import parquet.filter2.FilterPredicateOperators.IntColumn;
-import parquet.filter2.FilterPredicateOperators.LongColumn;
+import parquet.filter2.predicate.Operators.BinaryColumn;
+import parquet.filter2.predicate.Operators.IntColumn;
+import parquet.filter2.predicate.Operators.LongColumn;
+import parquet.filter2.predicate.FilterPredicate;
+import parquet.filter2.predicate.UserDefinedPredicate;
 import parquet.io.api.Binary;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
-import static parquet.filter2.Filter.and;
-import static parquet.filter2.Filter.binaryColumn;
-import static parquet.filter2.Filter.eq;
-import static parquet.filter2.Filter.gt;
-import static parquet.filter2.Filter.intColumn;
-import static parquet.filter2.Filter.longColumn;
-import static parquet.filter2.Filter.ltEq;
-import static parquet.filter2.Filter.not;
-import static parquet.filter2.Filter.notEq;
-import static parquet.filter2.Filter.or;
-import static parquet.filter2.Filter.userDefined;
-import static parquet.filter2.FilterPredicateTypeValidator.validate;
+import static parquet.filter2.predicate.FilterApi.and;
+import static parquet.filter2.predicate.FilterApi.binaryColumn;
+import static parquet.filter2.predicate.FilterApi.eq;
+import static parquet.filter2.predicate.FilterApi.gt;
+import static parquet.filter2.predicate.FilterApi.intColumn;
+import static parquet.filter2.predicate.FilterApi.longColumn;
+import static parquet.filter2.predicate.FilterApi.ltEq;
+import static parquet.filter2.predicate.FilterApi.not;
+import static parquet.filter2.predicate.FilterApi.notEq;
+import static parquet.filter2.predicate.FilterApi.or;
+import static parquet.filter2.predicate.FilterApi.userDefined;
+import static parquet.filter2.predicate.SchemaCompatibilityValidator.validate;
 
 public class TestFilterValidator {
   private static final BinaryColumn stringC = binaryColumn("c");

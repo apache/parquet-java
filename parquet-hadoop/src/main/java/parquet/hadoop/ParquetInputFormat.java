@@ -39,9 +39,9 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import parquet.Log;
 import parquet.Preconditions;
 import parquet.filter.UnboundRecordFilter;
-import parquet.filter2.CollapseLogicalNots;
-import parquet.filter2.FilterPredicate;
-import parquet.filter2.FilterPredicateTypeValidator;
+import parquet.filter2.predicate.LogicalInverseRewriter;
+import parquet.filter2.predicate.FilterPredicate;
+import parquet.filter2.predicate.SchemaCompatibilityValidator;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
@@ -486,7 +486,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     LOG.info("Filtering " + filterAppliedTo + " using predicate: " + filterPredicate);
 
     // rewrite the predicate to not include the not() operator
-    FilterPredicate collapsedPredicate = CollapseLogicalNots.collapse(filterPredicate);
+    FilterPredicate collapsedPredicate = LogicalInverseRewriter.rewrite(filterPredicate);
 
     if (!filterPredicate.equals(collapsedPredicate)) {
       LOG.info("Predicate has been collapsed to: " + collapsedPredicate);
@@ -497,7 +497,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   static List<BlockMetaData> applyRowGroupFilters(FilterPredicate filterPredicate, MessageType schema, List<BlockMetaData> blocks) {
     // check that the schema of the filter matches the schema of the file
-    FilterPredicateTypeValidator.validate(filterPredicate, schema);
+    SchemaCompatibilityValidator.validate(filterPredicate, schema);
 
     List<BlockMetaData> filteredBlocks = new ArrayList<BlockMetaData>();
 

@@ -9,10 +9,10 @@ import org.junit.Test;
 import parquet.column.Encoding;
 import parquet.column.statistics.DoubleStatistics;
 import parquet.column.statistics.IntStatistics;
-import parquet.filter2.CollapseLogicalNots;
-import parquet.filter2.FilterPredicate;
-import parquet.filter2.FilterPredicateOperators.Column;
-import parquet.filter2.UserDefinedPredicate;
+import parquet.filter2.predicate.LogicalInverseRewriter;
+import parquet.filter2.predicate.FilterPredicate;
+import parquet.filter2.predicate.Operators.Column;
+import parquet.filter2.predicate.UserDefinedPredicate;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
@@ -22,18 +22,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static parquet.filter2.Filter.and;
-import static parquet.filter2.Filter.doubleColumn;
-import static parquet.filter2.Filter.eq;
-import static parquet.filter2.Filter.gt;
-import static parquet.filter2.Filter.gtEq;
-import static parquet.filter2.Filter.intColumn;
-import static parquet.filter2.Filter.lt;
-import static parquet.filter2.Filter.ltEq;
-import static parquet.filter2.Filter.not;
-import static parquet.filter2.Filter.notEq;
-import static parquet.filter2.Filter.or;
-import static parquet.filter2.Filter.userDefined;
+import static parquet.filter2.predicate.FilterApi.and;
+import static parquet.filter2.predicate.FilterApi.doubleColumn;
+import static parquet.filter2.predicate.FilterApi.eq;
+import static parquet.filter2.predicate.FilterApi.gt;
+import static parquet.filter2.predicate.FilterApi.gtEq;
+import static parquet.filter2.predicate.FilterApi.intColumn;
+import static parquet.filter2.predicate.FilterApi.lt;
+import static parquet.filter2.predicate.FilterApi.ltEq;
+import static parquet.filter2.predicate.FilterApi.not;
+import static parquet.filter2.predicate.FilterApi.notEq;
+import static parquet.filter2.predicate.FilterApi.or;
+import static parquet.filter2.predicate.FilterApi.userDefined;
 import static parquet.hadoop.filter2.StatisticsFilter.canDrop;
 
 public class TestStatisticsFilter {
@@ -238,7 +238,7 @@ public class TestStatisticsFilter {
   @Test
   public void testUdp() {
     FilterPredicate pred = userDefined(intColumn, SevensAndEightsUdp.class);
-    FilterPredicate invPred = CollapseLogicalNots.collapse(not(userDefined(intColumn, SevensAndEightsUdp.class)));
+    FilterPredicate invPred = LogicalInverseRewriter.rewrite(not(userDefined(intColumn, SevensAndEightsUdp.class)));
 
     IntStatistics seven = new IntStatistics();
     seven.setMinMax(7, 7);
@@ -286,7 +286,7 @@ public class TestStatisticsFilter {
       canDrop(pred, columnMetas);
       fail("This should throw");
     } catch (IllegalArgumentException e) {
-      assertEquals("This predicate contains a not! Did you forget to run this predicate through CollapseLogicalNots?"
+      assertEquals("This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter?"
           + " not(eq(double.column, 12.0))", e.getMessage());
     }
   }

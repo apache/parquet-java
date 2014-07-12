@@ -3,8 +3,9 @@ package parquet.filter2.dsl
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-import parquet.filter2.{UserDefinedPredicate, Filter}
-import parquet.filter2.FilterPredicateOperators.{UserDefined, Or}
+import parquet.filter2.predicate.{UserDefinedPredicate, Operators, FilterApi}
+import Operators.{UserDefined, Or}
+import FilterApi
 
 class DummyFilter extends UserDefinedPredicate[java.lang.Integer] {
   override def keep(value: java.lang.Integer): Boolean = false
@@ -23,11 +24,11 @@ class DslTest extends FlatSpec{
     val xyz = DoubleColumn("x.y.z")
 
     val complexPredicate = !(abc > 10 && (xyz === 17 || ((xyz !== 13) && (xyz <= 20))))
-    val abcGt = Filter.gt[java.lang.Integer](abc.column, 10)
-    val xyzAnd = Filter.and(Filter.notEq[java.lang.Double](xyz.column, 13.0), Filter.ltEq[java.lang.Double](xyz.column, 20.0))
-    val xyzEq = Filter.eq[java.lang.Double](xyz.column, 17.0)
-    val xyzPred = Filter.or(xyzEq, xyzAnd)
-    val expected = Filter.not(Filter.and(abcGt, xyzPred))
+    val abcGt = FilterApi.gt[java.lang.Integer](abc.column, 10)
+    val xyzAnd = FilterApi.and(FilterApi.notEq[java.lang.Double](xyz.column, 13.0), FilterApi.ltEq[java.lang.Double](xyz.column, 20.0))
+    val xyzEq = FilterApi.eq[java.lang.Double](xyz.column, 17.0)
+    val xyzPred = FilterApi.or(xyzEq, xyzAnd)
+    val expected = FilterApi.not(FilterApi.and(abcGt, xyzPred))
 
     assert(complexPredicate === expected)
   }
@@ -36,7 +37,7 @@ class DslTest extends FlatSpec{
     val abc = IntColumn("a.b.c")
     val pred = (abc > 10) || abc.filterBy(classOf[DummyFilter])
 
-    val expected = Filter.or(Filter.gt[java.lang.Integer](abc.column, 10), Filter.userDefined(abc.column, classOf[DummyFilter]))
+    val expected = FilterApi.or(FilterApi.gt[java.lang.Integer](abc.column, 10), FilterApi.userDefined(abc.column, classOf[DummyFilter]))
     assert(pred === expected)
     val intUserDefined = pred.asInstanceOf[Or].getRight.asInstanceOf[UserDefined[java.lang.Integer, DummyFilter]]
 

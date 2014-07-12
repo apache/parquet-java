@@ -71,7 +71,7 @@ public class StreamingFilterPredicateBuilderGenerator {
         " * Note: the supplied predicate must not contain any instances of the not() operator as this is not\n" +
         " * supported by this filter.\n" +
         " *\n" +
-        " * the supplied predicate should first be run through {@link parquet.filter2.CollapseLogicalNots} to rewrite it\n" +
+        " * the supplied predicate should first be run through {@link parquet.filter2.predicate.LogicalInverseRewriter} to rewrite it\n" +
         " * in a form that doesn't make use of the not() operator.\n" +
         " *\n" +
         " * the supplied predicate should also have already been run through\n" +
@@ -156,7 +156,7 @@ public class StreamingFilterPredicateBuilderGenerator {
         "  @Override\n" +
         "  public StreamingFilterPredicate visit(Not not) {\n" +
         "    throw new IllegalArgumentException(\n" +
-        "        \"This predicate contains a not! Did you forget to run this predicate through CollapseLogicalNots? \" + not);\n" +
+        "        \"This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? \" + not);\n" +
         "  }\n\n");
 
     add("  @Override\n" +

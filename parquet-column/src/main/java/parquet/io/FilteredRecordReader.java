@@ -20,7 +20,7 @@ import parquet.column.ColumnReader;
 import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.filter.RecordFilter;
 import parquet.filter.UnboundRecordFilter;
-import parquet.filter2.FilterPredicate;
+import parquet.filter2.predicate.FilterPredicate;
 import parquet.io.api.RecordMaterializer;
 
 /**

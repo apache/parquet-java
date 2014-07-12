@@ -44,7 +44,7 @@ import parquet.example.data.simple.convert.GroupRecordConverter;
 import parquet.filter.ColumnPredicates.LongPredicateFunction;
 import parquet.filter.ColumnPredicates.PredicateFunction;
 import parquet.filter.UnboundRecordFilter;
-import parquet.filter2.FilterPredicate;
+import parquet.filter2.predicate.FilterPredicate;
 import parquet.io.api.RecordMaterializer;
 
 public class TestFiltered {
