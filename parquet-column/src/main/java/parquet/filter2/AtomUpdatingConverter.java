@@ -15,20 +15,22 @@ public class AtomUpdatingConverter extends PrimitiveConverter {
     this.atoms = Preconditions.checkNotNull(atoms, "atoms");
   }
 
+  // TODO(alexlevenson): this essentially turns of dictionary support
+  // TODO(alexlevenson): even if the underlying delegate supports it
+  // TODO(alexlevenson): we should support it here
   @Override
   public boolean hasDictionarySupport() {
-    return delegate.hasDictionarySupport();
+    return false;
   }
 
   @Override
   public void setDictionary(Dictionary dictionary) {
-    delegate.setDictionary(dictionary);
+    throw new UnsupportedOperationException("AtomUpdatingConverter doesn't have dictionary support");
   }
 
   @Override
   public void addValueFromDictionary(int dictionaryId) {
-    // TODO: ????
-    delegate.addValueFromDictionary(dictionaryId);
+    throw new UnsupportedOperationException("AtomUpdatingConverter doesn't have dictionary support");
   }
 
   @Override
