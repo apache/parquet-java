@@ -1,4 +1,4 @@
-package parquet.filter2;
+package parquet.filter2.recordlevel;
 
 import parquet.Preconditions;
 import parquet.io.api.Binary;

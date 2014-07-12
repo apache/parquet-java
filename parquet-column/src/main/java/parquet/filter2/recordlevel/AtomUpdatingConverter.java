@@ -1,8 +1,8 @@
-package parquet.filter2;
+package parquet.filter2.recordlevel;
 
 import parquet.Preconditions;
 import parquet.column.Dictionary;
-import parquet.filter2.StreamingFilterPredicate.Atom;
+import parquet.filter2.recordlevel.StreamingFilterPredicate.Atom;
 import parquet.io.api.Binary;
 import parquet.io.api.PrimitiveConverter;
 

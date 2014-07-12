@@ -1,9 +1,9 @@
-package parquet.filter2;
+package parquet.filter2.recordlevel;
 
-import parquet.filter2.StreamingFilterPredicate.And;
-import parquet.filter2.StreamingFilterPredicate.Atom;
-import parquet.filter2.StreamingFilterPredicate.Or;
-import parquet.filter2.StreamingFilterPredicate.Visitor;
+import parquet.filter2.recordlevel.StreamingFilterPredicate.And;
+import parquet.filter2.recordlevel.StreamingFilterPredicate.Atom;
+import parquet.filter2.recordlevel.StreamingFilterPredicate.Or;
+import parquet.filter2.recordlevel.StreamingFilterPredicate.Visitor;
 
 public class StreamingFilterPredicateEvaluator implements Visitor {
   private static final StreamingFilterPredicateEvaluator INSTANCE = new StreamingFilterPredicateEvaluator();
