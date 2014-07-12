@@ -34,7 +34,7 @@ import static parquet.filter2.predicate.FilterApi.not;
 import static parquet.filter2.predicate.FilterApi.notEq;
 import static parquet.filter2.predicate.FilterApi.or;
 import static parquet.filter2.predicate.FilterApi.userDefined;
-import static parquet.hadoop.filter2.StatisticsFilter.canDrop;
+import static parquet.hadoop.filter2.statisticslevel.StatisticsFilter.canDrop;
 
 public class TestStatisticsFilter {
 

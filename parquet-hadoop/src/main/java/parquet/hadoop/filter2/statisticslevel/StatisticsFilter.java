@@ -1,4 +1,4 @@
-package parquet.hadoop.filter2;
+package parquet.hadoop.filter2.statisticslevel;
 
 import java.util.HashMap;
 import java.util.List;
@@ -22,36 +22,36 @@ import parquet.filter2.predicate.Operators.Or;
 import parquet.filter2.predicate.Operators.UserDefined;
 import parquet.filter2.predicate.UserDefinedPredicate;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
-import parquet.schema.ColumnPathUtil;
 
+/**
+ * Applies a {@link parquet.filter2.predicate.FilterPredicate} to statistics about a group of
+ * records.
+ *
+ * Note: the supplied predicate must not contain any instances of the not() operator as this is not
+ * supported by this filter.
+ *
+ * the supplied predicate should first be run through {@link parquet.filter2.predicate.LogicalInverseRewriter} to rewrite it
+ * in a form that doesn't make use of the not() operator.
+ *
+ * the supplied predicate should also have already been run through
+ * {@link parquet.filter2.predicate.SchemaCompatibilityValidator}
+ * to make sure it is compatible with the schema of this file.
+ *
+ * @return true if all the records represented by the statistics in the provided column metadata can be dropped.
+ *         false otherwise (including when it is not known, which is often).
+ */
+// TODO(alexlevenson): this belongs in the parquet-column project, but some of the classes here need to be moved too
 public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
-  /**
-   * Applies a {@link parquet.filter2.predicate.FilterPredicate} to statistics about a group of
-   * records.
-   *
-   * Note: the supplied predicate must not contain any instances of the not() operator as this is not
-   * supported by this filter.
-   *
-   * the supplied predicate should first be run through {@link parquet.filter2.predicate.LogicalInverseRewriter} to rewrite it
-   * in a form that doesn't make use of the not() operator.
-   *
-   * the supplied predicate should also have already been run through
-   * {@link parquet.filter2.predicate.SchemaCompatibilityValidator}
-   * to make sure it is compatible with the schema of this file.
-   *
-   * @return true if all the records represented by the statistics in the provided column metadata can be dropped.
-   *         false otherwise (including when it is not known, which is often).
-   */
+
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns) {
     return pred.accept(new StatisticsFilter(columns));
   }
 
-  private final Map<String, ColumnChunkMetaData> columns = new HashMap<String, ColumnChunkMetaData>();
+  private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<ColumnPath, ColumnChunkMetaData>();
 
   private StatisticsFilter(List<ColumnChunkMetaData> columnsList) {
     for (ColumnChunkMetaData chunk : columnsList) {
-      String columnPath = ColumnPathUtil.toDotSeparatedString(chunk.getPath().toArray());
-      columns.put(columnPath, chunk);
+      columns.put(chunk.getPath(), chunk);
     }
   }
 

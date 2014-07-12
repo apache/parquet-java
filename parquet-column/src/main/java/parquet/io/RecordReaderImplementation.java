@@ -257,7 +257,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       FilterPredicate predicate = filter.get();
       IncrementallyUpdatedFilterPredicateBuilder builder = new IncrementallyUpdatedFilterPredicateBuilder();
       IncrementallyUpdatedFilterPredicate streamingPredicate = builder.build(predicate);
-      this.recordMaterializer = new FilteringRecordMaterializer<T>(recordMaterializer, leaves, builder.getAtomsByColumn(), streamingPredicate);
+      this.recordMaterializer = new FilteringRecordMaterializer<T>(recordMaterializer, leaves, builder.getValueInspectorsByColumn(), streamingPredicate);
     } else {
       this.recordMaterializer = recordMaterializer;
     }
