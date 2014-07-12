@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import parquet.ColumnPath;
-import parquet.filter2.recordlevel.StreamingFilterPredicate.Atom;
+import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
 import parquet.io.PrimitiveColumnIO;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
@@ -24,7 +24,7 @@ public class FilteringGroupConverter extends GroupConverter {
 
   // for a given column, which nodes in the filter expression need
   // to be notified of this column's value
-  private final Map<ColumnPath, List<Atom>> atomsByColumn;
+  private final Map<ColumnPath, List<ValueInspector>> atomsByColumn;
 
   // used to go from our indexFieldPath to the PrimitiveColumnIO for that column
   private final Map<List<Integer>, PrimitiveColumnIO> columnIOsByIndexFieldPath;
@@ -32,7 +32,7 @@ public class FilteringGroupConverter extends GroupConverter {
   public FilteringGroupConverter(
       GroupConverter delegate,
       List<Integer> indexFieldPath,
-      Map<ColumnPath, List<Atom>> atomsByColumn, Map<List<Integer>,
+      Map<ColumnPath, List<ValueInspector>> atomsByColumn, Map<List<Integer>,
       PrimitiveColumnIO> columnIOsByIndexFieldPath) {
 
     this.delegate = delegate;
@@ -59,23 +59,23 @@ public class FilteringGroupConverter extends GroupConverter {
     if (delegateConverter.isPrimitive()) {
       PrimitiveColumnIO columnIO = columnIOsByIndexFieldPath.get(newIndexFieldPath);
       ColumnPath columnPath = ColumnPath.get(columnIO.getColumnDescriptor().getPath());
-      Atom[] atoms = getAtoms(columnPath);
-      return new AtomUpdatingConverter(delegateConverter.asPrimitiveConverter(), atoms);
+      ValueInspector[] valueInspectors = getAtoms(columnPath);
+      return new FilteringPrimitiveConverter(delegateConverter.asPrimitiveConverter(), valueInspectors);
     } else {
       return new FilteringGroupConverter(delegateConverter.asGroupConverter(), newIndexFieldPath, atomsByColumn, columnIOsByIndexFieldPath);
     }
 
   }
 
-  private Atom[] getAtoms(ColumnPath columnPath) {
-    Atom[] atoms;
-    List<Atom> atomsList = atomsByColumn.get(columnPath);
+  private ValueInspector[] getAtoms(ColumnPath columnPath) {
+    ValueInspector[] valueInspectors;
+    List<ValueInspector> atomsList = atomsByColumn.get(columnPath);
     if (atomsList == null) {
-      atoms = new Atom[] {};
+      valueInspectors = new ValueInspector[] {};
     } else {
-      atoms = (Atom[]) atomsList.toArray();
+      valueInspectors = (ValueInspector[]) atomsList.toArray();
     }
-    return atoms;
+    return valueInspectors;
   }
 
   @Override

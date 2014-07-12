@@ -29,8 +29,8 @@ import parquet.column.ColumnReader;
 import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.filter2.recordlevel.FilteringRecordMaterializer;
-import parquet.filter2.recordlevel.StreamingFilterPredicate;
-import parquet.filter2.recordlevel.StreamingFilterPredicateBuilder;
+import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate;
+import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicateBuilder;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
 import parquet.io.api.PrimitiveConverter;
@@ -255,8 +255,8 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
 
     if (filter.isPresent()) {
       FilterPredicate predicate = filter.get();
-      StreamingFilterPredicateBuilder builder = new StreamingFilterPredicateBuilder();
-      StreamingFilterPredicate streamingPredicate = builder.build(predicate);
+      IncrementallyUpdatedFilterPredicateBuilder builder = new IncrementallyUpdatedFilterPredicateBuilder();
+      IncrementallyUpdatedFilterPredicate streamingPredicate = builder.build(predicate);
       this.recordMaterializer = new FilteringRecordMaterializer<T>(recordMaterializer, leaves, builder.getAtomsByColumn(), streamingPredicate);
     } else {
       this.recordMaterializer = recordMaterializer;

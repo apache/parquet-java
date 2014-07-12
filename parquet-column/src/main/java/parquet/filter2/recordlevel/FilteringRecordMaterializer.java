@@ -7,13 +7,13 @@ import java.util.List;
 import java.util.Map;
 
 import parquet.ColumnPath;
-import parquet.filter2.recordlevel.StreamingFilterPredicate.Atom;
+import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
 import parquet.io.PrimitiveColumnIO;
 import parquet.io.api.GroupConverter;
 import parquet.io.api.RecordMaterializer;
 
 /**
- * A pass through proxy for a {@link RecordMaterializer} that updates a {@link StreamingFilterPredicate}
+ * A pass through proxy for a {@link RecordMaterializer} that updates a {@link IncrementallyUpdatedFilterPredicate}
  * as it receives concrete values for the current record. If, after the record assembly signals that
  * there are no more values, the predicate indicates that this record should be filtered, {@link #getCurrentRecord()}
  * returns null to signal that this record is being skipped.
@@ -27,13 +27,13 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
   private final FilteringGroupConverter rootConverter;
 
   // the predicate
-  private final StreamingFilterPredicate filterPredicate;
+  private final IncrementallyUpdatedFilterPredicate filterPredicate;
 
   public FilteringRecordMaterializer(
       RecordMaterializer<T> delegate,
       PrimitiveColumnIO[] columnIOs,
-      Map<ColumnPath, List<Atom>> atomsByColumn,
-      StreamingFilterPredicate filterPredicate) {
+      Map<ColumnPath, List<ValueInspector>> atomsByColumn,
+      IncrementallyUpdatedFilterPredicate filterPredicate) {
 
     // keep track of which path if indexes leads to which primitive column
     Map<List<Integer>, PrimitiveColumnIO> columnIOsByIndexFieldPath = new HashMap<List<Integer>, PrimitiveColumnIO>();
@@ -66,10 +66,10 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
   public T getCurrentRecord() {
 
     // find out if the predicate thinks we should keep this record
-    boolean keep = StreamingFilterPredicateEvaluator.evaluate(filterPredicate);
+    boolean keep = IncrementallyUpdatedFilterPredicateEvaluator.evaluate(filterPredicate);
 
     // reset the stateful predicate
-    StreamingFilterPredicateReseter.reset(filterPredicate);
+    IncrementallyUpdatedFilterPredicateResetter.reset(filterPredicate);
 
     if (keep) {
       return delegate.getCurrentRecord();
