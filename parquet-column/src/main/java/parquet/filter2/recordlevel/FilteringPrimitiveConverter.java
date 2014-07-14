@@ -9,7 +9,7 @@ import parquet.io.api.PrimitiveConverter;
 /**
  * see {@link FilteringRecordMaterializer}
  *
- * This pass through proxy for a delegate {@link PrimitiveConverter} also
+ * This pass-through proxy for a delegate {@link PrimitiveConverter} also
  * updates the {@link ValueInspector}s of a {@link IncrementallyUpdatedFilterPredicate}
  */
 public class FilteringPrimitiveConverter extends PrimitiveConverter {
@@ -21,7 +21,7 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
     this.valueInspectors = Preconditions.checkNotNull(valueInspectors, "valueInspectors");
   }
 
-  // TODO(alexlevenson): this essentially turns of dictionary support
+  // TODO(alexlevenson): this essentially turns off dictionary support
   // TODO(alexlevenson): even if the underlying delegate supports it
   // TODO(alexlevenson): we should support it here
   @Override

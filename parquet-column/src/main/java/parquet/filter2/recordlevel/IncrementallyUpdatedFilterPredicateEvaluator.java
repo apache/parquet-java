@@ -9,6 +9,9 @@ import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.Visitor;
  * Determines whether an {@link IncrementallyUpdatedFilterPredicate} is satisfied or not.
  * This implementation makes the assumption that all {@link ValueInspector}s in an unknown state
  * represent columns with a null value, and updates them accordingly.
+ *
+ * TODO(alexlevenson): We could also build an evaluator that detects if enough values are known to determine the outcome
+ *                     of the predicate and quit the record assembly early.
  */
 public class IncrementallyUpdatedFilterPredicateEvaluator implements Visitor {
   private static final IncrementallyUpdatedFilterPredicateEvaluator INSTANCE = new IncrementallyUpdatedFilterPredicateEvaluator();

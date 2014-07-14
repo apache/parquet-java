@@ -10,14 +10,24 @@ import parquet.io.api.Binary;
  *
  * This is used to apply a predicate during record assembly, without assembling a second copy of
  * a record, and without building a stack of update events.
+ *
+ * IncrementallyUpdatedFilterPredicate is implemented via the visitor pattern, as is
+ * {@link parquet.filter2.predicate.FilterPredicate}
  */
 public interface IncrementallyUpdatedFilterPredicate {
+
+  /**
+   * A Visitor for an {@link IncrementallyUpdatedFilterPredicate}, per the visitor pattern.
+   */
   public static interface Visitor {
     boolean visit(ValueInspector p);
     boolean visit(And and);
     boolean visit(Or or);
   }
 
+  /**
+   * A {@link IncrementallyUpdatedFilterPredicate} must accept a {@link Visitor}, per the visitor pattern.
+   */
   boolean accept(Visitor visitor);
 
   /**

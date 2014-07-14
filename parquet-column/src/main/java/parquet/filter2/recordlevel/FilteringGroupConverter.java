@@ -24,7 +24,7 @@ public class FilteringGroupConverter extends GroupConverter {
 
   // for a given column, which nodes in the filter expression need
   // to be notified of this column's value
-  private final Map<ColumnPath, List<ValueInspector>> atomsByColumn;
+  private final Map<ColumnPath, List<ValueInspector>> valueInspectorsByColumn;
 
   // used to go from our indexFieldPath to the PrimitiveColumnIO for that column
   private final Map<List<Integer>, PrimitiveColumnIO> columnIOsByIndexFieldPath;
@@ -32,17 +32,17 @@ public class FilteringGroupConverter extends GroupConverter {
   public FilteringGroupConverter(
       GroupConverter delegate,
       List<Integer> indexFieldPath,
-      Map<ColumnPath, List<ValueInspector>> atomsByColumn, Map<List<Integer>,
+      Map<ColumnPath, List<ValueInspector>> valueInspectorsByColumn, Map<List<Integer>,
       PrimitiveColumnIO> columnIOsByIndexFieldPath) {
 
     this.delegate = delegate;
     this.indexFieldPath = indexFieldPath;
     this.columnIOsByIndexFieldPath = columnIOsByIndexFieldPath;
-    this.atomsByColumn = atomsByColumn;
+    this.valueInspectorsByColumn = valueInspectorsByColumn;
   }
 
   // When a converter is asked for, we get the real one from the delegate, then wrap it
-  // in a filtering pass through proxy.
+  // in a filtering pass-through proxy.
   // TODO: making the assumption that getConverter(i) is only called once, is that valid?
   @Override
   public Converter getConverter(int fieldIndex) {
@@ -59,23 +59,21 @@ public class FilteringGroupConverter extends GroupConverter {
     if (delegateConverter.isPrimitive()) {
       PrimitiveColumnIO columnIO = columnIOsByIndexFieldPath.get(newIndexFieldPath);
       ColumnPath columnPath = ColumnPath.get(columnIO.getColumnDescriptor().getPath());
-      ValueInspector[] valueInspectors = getAtoms(columnPath);
+      ValueInspector[] valueInspectors = getValueInspectors(columnPath);
       return new FilteringPrimitiveConverter(delegateConverter.asPrimitiveConverter(), valueInspectors);
     } else {
-      return new FilteringGroupConverter(delegateConverter.asGroupConverter(), newIndexFieldPath, atomsByColumn, columnIOsByIndexFieldPath);
+      return new FilteringGroupConverter(delegateConverter.asGroupConverter(), newIndexFieldPath, valueInspectorsByColumn, columnIOsByIndexFieldPath);
     }
 
   }
 
-  private ValueInspector[] getAtoms(ColumnPath columnPath) {
-    ValueInspector[] valueInspectors;
-    List<ValueInspector> atomsList = atomsByColumn.get(columnPath);
-    if (atomsList == null) {
-      valueInspectors = new ValueInspector[] {};
+  private ValueInspector[] getValueInspectors(ColumnPath columnPath) {
+    List<ValueInspector> inspectorsList = valueInspectorsByColumn.get(columnPath);
+    if (inspectorsList == null) {
+      return new ValueInspector[] {};
     } else {
-      valueInspectors = (ValueInspector[]) atomsList.toArray();
+      return (ValueInspector[]) inspectorsList.toArray();
     }
-    return valueInspectors;
   }
 
   @Override

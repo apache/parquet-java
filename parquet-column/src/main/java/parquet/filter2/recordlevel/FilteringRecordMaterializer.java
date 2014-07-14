@@ -13,11 +13,11 @@ import parquet.io.api.GroupConverter;
 import parquet.io.api.RecordMaterializer;
 
 /**
- * A pass through proxy for a {@link RecordMaterializer} that updates a {@link IncrementallyUpdatedFilterPredicate}
+ * A pass-through proxy for a {@link RecordMaterializer} that updates a {@link IncrementallyUpdatedFilterPredicate}
  * as it receives concrete values for the current record. If, after the record assembly signals that
- * there are no more values, the predicate indicates that this record should be filtered, {@link #getCurrentRecord()}
+ * there are no more values, the predicate indicates that this record should be dropped, {@link #getCurrentRecord()}
  * returns null to signal that this record is being skipped.
- * Otherwise, the record is retrieved from the proxy delegate.
+ * Otherwise, the record is retrieved from the delegate.
  */
 public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
   // the real record materializer
@@ -32,7 +32,7 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
   public FilteringRecordMaterializer(
       RecordMaterializer<T> delegate,
       PrimitiveColumnIO[] columnIOs,
-      Map<ColumnPath, List<ValueInspector>> atomsByColumn,
+      Map<ColumnPath, List<ValueInspector>> valueInspectorsByColumn,
       IncrementallyUpdatedFilterPredicate filterPredicate) {
 
     // keep track of which path if indexes leads to which primitive column
@@ -47,7 +47,7 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
 
     // create a proxy for the delegate's root converter
     this.rootConverter = new FilteringGroupConverter(
-        delegate.getRootConverter(), Collections.<Integer>emptyList(), atomsByColumn, columnIOsByIndexFieldPath);
+        delegate.getRootConverter(), Collections.<Integer>emptyList(), valueInspectorsByColumn, columnIOsByIndexFieldPath);
   }
 
   public static List<Integer> getIndexFieldPathList(PrimitiveColumnIO c) {
@@ -68,7 +68,7 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
     // find out if the predicate thinks we should keep this record
     boolean keep = IncrementallyUpdatedFilterPredicateEvaluator.evaluate(filterPredicate);
 
-    // reset the stateful predicate
+    // reset the stateful predicate no matter what
     IncrementallyUpdatedFilterPredicateResetter.reset(filterPredicate);
 
     if (keep) {
