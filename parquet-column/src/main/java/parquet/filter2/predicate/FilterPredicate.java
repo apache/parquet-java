@@ -16,7 +16,7 @@ import parquet.filter2.predicate.Operators.UserDefined;
  * A FilterPredicate is an expression tree describing the criteria for which records to keep when loading data from
  * a parquet file. These predicates are applied in multiple places. Currently, they are applied to all row groups at
  * job submission time to see if we can potentially drop entire row groups, and then they are applied during column
- * assembly to skip assembly of records that are not wanted.
+ * assembly to drop individual records that are not wanted.
  *
  * FilterPredicates do not contain closures or instances of anonymous classes, rather they are expressed as
  * an expression tree of operators.

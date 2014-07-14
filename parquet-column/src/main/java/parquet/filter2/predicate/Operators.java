@@ -58,8 +58,8 @@ public final class Operators {
     }
   }
 
-  public static interface SupportsEqNotEq { }
-  public static interface SupportsLtGt { }
+  public static interface SupportsEqNotEq { } // marker for columns that can be used with eq() and notEq()
+  public static interface SupportsLtGt { } // marker for columsn that can be used with lt(), ltEq(), gt(), gtEq()
 
   public static final class IntColumn extends Column<Integer> implements SupportsEqNotEq, SupportsLtGt {
     IntColumn(ColumnPath columnPath) {
@@ -97,7 +97,7 @@ public final class Operators {
     }
   }
 
-  // base class for Eq, Lt, Gt
+  // base class for Eq, Lt, Gt, LtEq, GtEq
   static abstract class ColumnFilterPredicate<T extends Comparable<T>> implements FilterPredicate, Serializable  {
     private final Column<T> column;
     private final T value;

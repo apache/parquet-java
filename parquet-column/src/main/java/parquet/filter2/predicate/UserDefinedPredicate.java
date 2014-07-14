@@ -1,7 +1,7 @@
 package parquet.filter2.predicate;
 
 /**
- * A UserDefinedPredicate decides whether a record should be kept or filtered out, first by
+ * A UserDefinedPredicate decides whether a record should be kept or dropped, first by
  * inspecting meta data about a group of records to see if the entire group can be dropped,
  * then by inspecting actual values of a single column. These predicates can be combined into
  * a complex boolean expression via the {@link FilterApi}.

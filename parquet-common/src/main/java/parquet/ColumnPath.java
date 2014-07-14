@@ -31,6 +31,11 @@ public final class ColumnPath implements Iterable<String> {
     }
   };
 
+  public static ColumnPath fromDotString(String path) {
+    Preconditions.checkNotNull(path, "path");
+    return get(path.split("\\."));
+  }
+
   public static ColumnPath get(String... path){
     return paths.canonicalize(new ColumnPath(path));
   }

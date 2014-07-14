@@ -41,27 +41,27 @@ public final class FilterApi {
   private FilterApi() { }
 
   public static IntColumn intColumn(String columnPath) {
-    return new IntColumn(ColumnPath.get(columnPath.split("\\.")));
+    return new IntColumn(ColumnPath.fromDotString(columnPath));
   }
 
   public static LongColumn longColumn(String columnPath) {
-    return new LongColumn(ColumnPath.get(columnPath.split("\\.")));
+    return new LongColumn(ColumnPath.fromDotString(columnPath));
   }
 
   public static FloatColumn floatColumn(String columnPath) {
-    return new FloatColumn(ColumnPath.get(columnPath.split("\\.")));
+    return new FloatColumn(ColumnPath.fromDotString(columnPath));
   }
 
   public static DoubleColumn doubleColumn(String columnPath) {
-    return new DoubleColumn(ColumnPath.get(columnPath.split("\\.")));
+    return new DoubleColumn(ColumnPath.fromDotString(columnPath));
   }
 
   public static BooleanColumn booleanColumn(String columnPath) {
-    return new BooleanColumn(ColumnPath.get(columnPath.split("\\.")));
+    return new BooleanColumn(ColumnPath.fromDotString(columnPath));
   }
 
   public static BinaryColumn binaryColumn(String columnPath) {
-    return new BinaryColumn(ColumnPath.get(columnPath.split("\\.")));
+    return new BinaryColumn(ColumnPath.fromDotString(columnPath));
   }
 
   /**
@@ -69,7 +69,7 @@ public final class FilterApi {
    * Nulls are treated the same way the java programming language does.
    * For example:
    *   eq(column, null) will keep all records whose value is null.
-   *   eq(column, 7) will keep all records whose value is 7, and will skip records whose value is null
+   *   eq(column, 7) will keep all records whose value is 7, and will drop records whose value is null
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsEqNotEq> Eq<T> eq(C column, T value) {
     return new Eq<T>(column, value);
@@ -96,7 +96,7 @@ public final class FilterApi {
   /**
    * Keeps records if their value is less than (but not equal to) the provided value.
    * The provided value cannot be null, as less than null has no meaning.
-   * Records with null values will be skipped.
+   * Records with null values will be dropped.
    * For example:
    *   lt(column, 7) will keep all records whose value is less than (but not equal to) 7, and not null.
    */
@@ -107,7 +107,7 @@ public final class FilterApi {
   /**
    * Keeps records if their value is less than or equal to the provided value.
    * The provided value cannot be null, as less than null has no meaning.
-   * Records with null values will be skipped.
+   * Records with null values will be dropped.
    * For example:
    *   ltEq(column, 7) will keep all records whose value is less than or equal to 7, and not null.
    */
@@ -118,7 +118,7 @@ public final class FilterApi {
   /**
    * Keeps records if their value is greater than (but not equal to) the provided value.
    * The provided value cannot be null, as less than null has no meaning.
-   * Records with null values will be skipped.
+   * Records with null values will be dropped.
    * For example:
    *   gt(column, 7) will keep all records whose value is greater than (but not equal to) 7, and not null.
    */
@@ -129,7 +129,7 @@ public final class FilterApi {
   /**
    * Keeps records if their value is greater than or equal to the provided value.
    * The provided value cannot be null, as less than null has no meaning.
-   * Records with null values will be skipped.
+   * Records with null values will be dropped.
    * For example:
    *   gtEq(column, 7) will keep all records whose value is greater than or equal to 7, and not null.
    */
