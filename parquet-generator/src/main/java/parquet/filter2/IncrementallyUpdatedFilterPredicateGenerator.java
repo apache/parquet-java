@@ -5,7 +5,20 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 public class IncrementallyUpdatedFilterPredicateGenerator {
-  private FileWriter writer;
+
+  public static void main(String[] args) throws IOException {
+    File srcFile = new File(args[0] + "/parquet/filter2/recordlevel/IncrementallyUpdatedFilterPredicateBuilder.java");
+    srcFile = srcFile.getAbsoluteFile();
+    File parent = srcFile.getParentFile();
+    if (!parent.exists()) {
+      if (!parent.mkdirs()) {
+        throw new IOException("Couldn't mkdirs for " + parent);
+      }
+    }
+    new IncrementallyUpdatedFilterPredicateGenerator(srcFile).run();
+  }
+
+  private final FileWriter writer;
 
   public IncrementallyUpdatedFilterPredicateGenerator(File file) throws IOException {
     this.writer = new FileWriter(file);
@@ -303,9 +316,5 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  public static void main(String[] args) throws IOException {
-    new IncrementallyUpdatedFilterPredicateGenerator(new File(args[0])).run();
   }
 }
