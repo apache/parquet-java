@@ -1,4 +1,4 @@
-package parquet.filter2;
+package parquet.filter2.predicate;
 
 import org.junit.Test;
 
@@ -6,7 +6,6 @@ import parquet.filter2.predicate.Operators.DoubleColumn;
 import parquet.filter2.predicate.Operators.IntColumn;
 import parquet.filter2.predicate.Operators.LogicalNotUserDefined;
 import parquet.filter2.predicate.Operators.UserDefined;
-import parquet.filter2.predicate.FilterPredicate;
 
 import static org.junit.Assert.assertEquals;
 import static parquet.filter2.predicate.FilterApi.and;
@@ -23,7 +22,7 @@ import static parquet.filter2.predicate.FilterApi.or;
 import static parquet.filter2.predicate.FilterApi.userDefined;
 import static parquet.filter2.predicate.LogicalInverter.invert;
 
-public class TestFilterPredicateInverter {
+public class TestLogicalInverter {
   private static final IntColumn intColumn = intColumn("a.b.c");
   private static final DoubleColumn doubleColumn = doubleColumn("a.b.c");
 

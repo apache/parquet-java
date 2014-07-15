@@ -145,7 +145,7 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
     Class<?> alreadySeen = columnTypesEncountered.get(path);
     if (alreadySeen != null && !alreadySeen.equals(column.getColumnType())) {
       throw new IllegalArgumentException("Column: "
-          + path
+          + path.toDotString()
           + " was provided with different types in the same predicate."
           + " Found both: (" + alreadySeen + ", " + column.getColumnType() + ")");
     }

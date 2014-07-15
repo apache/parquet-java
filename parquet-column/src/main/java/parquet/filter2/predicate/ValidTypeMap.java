@@ -82,7 +82,7 @@ public class ValidTypeMap {
       StringBuilder message = new StringBuilder();
       message
           .append("Column ")
-          .append(columnPath)
+          .append(columnPath.toDotString())
           .append(" was declared as type: ")
           .append(foundColumnType.getName())
           .append(" which is not supported in FilterPredicates.");
@@ -102,11 +102,11 @@ public class ValidTypeMap {
       StringBuilder message = new StringBuilder();
       message
           .append("FilterPredicate column: ")
-          .append(columnPath)
+          .append(columnPath.toDotString())
           .append("'s declared type (")
           .append(foundColumnType.getName())
           .append(") does not match the schema found in file metadata. Column ")
-          .append(columnPath)
+          .append(columnPath.toDotString())
           .append(" is of type: ")
           .append(typeInFileMetaData)
           .append("\nValid types for this column are: ")

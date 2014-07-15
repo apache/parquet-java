@@ -1,4 +1,4 @@
-package parquet.filter2;
+package parquet.filter2.predicate;
 
 import org.junit.Test;
 
@@ -6,10 +6,8 @@ import parquet.filter2.predicate.Operators.DoubleColumn;
 import parquet.filter2.predicate.Operators.IntColumn;
 import parquet.filter2.predicate.Operators.LogicalNotUserDefined;
 import parquet.filter2.predicate.Operators.UserDefined;
-import parquet.filter2.predicate.FilterPredicate;
 
 import static org.junit.Assert.assertEquals;
-import static parquet.filter2.predicate.LogicalInverseRewriter.rewrite;
 import static parquet.filter2.predicate.FilterApi.and;
 import static parquet.filter2.predicate.FilterApi.doubleColumn;
 import static parquet.filter2.predicate.FilterApi.eq;
@@ -22,8 +20,9 @@ import static parquet.filter2.predicate.FilterApi.not;
 import static parquet.filter2.predicate.FilterApi.notEq;
 import static parquet.filter2.predicate.FilterApi.or;
 import static parquet.filter2.predicate.FilterApi.userDefined;
+import static parquet.filter2.predicate.LogicalInverseRewriter.rewrite;
 
-public class TestCollapseLogicalNots {
+public class TestLogicalInverseRewriter {
   private static final IntColumn intColumn = intColumn("a.b.c");
   private static final DoubleColumn doubleColumn = doubleColumn("a.b.c");
 

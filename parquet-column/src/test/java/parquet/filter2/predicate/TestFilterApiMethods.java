@@ -1,4 +1,4 @@
-package parquet.filter2;
+package parquet.filter2.predicate;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -16,7 +16,6 @@ import parquet.filter2.predicate.Operators.IntColumn;
 import parquet.filter2.predicate.Operators.Not;
 import parquet.filter2.predicate.Operators.Or;
 import parquet.filter2.predicate.Operators.UserDefined;
-import parquet.filter2.predicate.FilterPredicate;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -31,7 +30,7 @@ import static parquet.filter2.predicate.FilterApi.or;
 import static parquet.filter2.predicate.FilterApi.userDefined;
 import static parquet.filter2.predicate.Operators.NotEq;
 
-public class TestFilterConstructionMethods {
+public class TestFilterApiMethods {
 
   private static final IntColumn intColumn = intColumn("a.b.c");
   private static final DoubleColumn doubleColumn = doubleColumn("x.y.z");

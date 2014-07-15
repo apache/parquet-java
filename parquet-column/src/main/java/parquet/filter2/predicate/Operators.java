@@ -34,7 +34,7 @@ public final class Operators {
 
     @Override
     public String toString() {
-      return "column(" + columnPath + ")";
+      return "column(" + columnPath.toDotString() + ")";
     }
 
     @Override
@@ -109,7 +109,7 @@ public final class Operators {
       this.value = value;
 
       String name = getClass().getSimpleName().toLowerCase();
-      this.toString = name + "(" + column.getColumnPath() + ", " + value + ")";
+      this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + value + ")";
     }
 
     public Column<T> getColumn() {
@@ -357,7 +357,7 @@ public final class Operators {
       this.column = column;
       this.udpClass = udpClass;
       String name = getClass().getSimpleName().toLowerCase();
-      this.toString = name + "(" + column.getColumnPath() + ", " + udpClass.getName() + ")";
+      this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udpClass.getName() + ")";
 
       // defensively try to instantiate the class early to make sure that it's possible
       getUserDefinedPredicate();

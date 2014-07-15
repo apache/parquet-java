@@ -1,4 +1,4 @@
-package parquet.filter2;
+package parquet.filter2.predicate;
 
 import parquet.filter2.predicate.UserDefinedPredicate;
 

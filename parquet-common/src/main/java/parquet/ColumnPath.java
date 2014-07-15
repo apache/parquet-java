@@ -15,10 +15,11 @@
  */
 package parquet;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Iterator;
 
-public final class ColumnPath implements Iterable<String> {
+public final class ColumnPath implements Iterable<String>, Serializable {
 
   private static Canonicalizer<ColumnPath> paths = new Canonicalizer<ColumnPath>() {
     @Override
@@ -41,6 +42,7 @@ public final class ColumnPath implements Iterable<String> {
   }
 
   private final String[] p;
+  private String dotString;
 
   private ColumnPath(String[] path) {
     this.p = path;
@@ -57,6 +59,23 @@ public final class ColumnPath implements Iterable<String> {
   @Override
   public int hashCode() {
     return Arrays.hashCode(p);
+  }
+
+  public String toDotString() {
+    if (dotString != null) {
+      return dotString;
+    }
+
+    Iterator<String> iter = Arrays.asList(p).iterator();
+    StringBuilder sb = new StringBuilder();
+    while (iter.hasNext()) {
+      sb.append(iter.next());
+      if (iter.hasNext()) {
+        sb.append('.');
+      }
+    }
+    dotString = sb.toString();
+    return dotString;
   }
 
   @Override

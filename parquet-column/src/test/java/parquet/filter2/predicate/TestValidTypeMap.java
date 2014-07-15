@@ -1,4 +1,4 @@
-package parquet.filter2;
+package parquet.filter2.predicate;
 
 import org.junit.Test;
 
@@ -39,7 +39,7 @@ public class TestValidTypeMap {
   }
 
   public static Column<InvalidColumnType> invalidColumn =
-      new Column<InvalidColumnType>(ColumnPath.get("invalid"), InvalidColumnType.class) { };
+      new Column<InvalidColumnType>(ColumnPath.get("invalid.column"), InvalidColumnType.class) { };
 
   @Test
   public void testValidTypes() {
@@ -74,7 +74,7 @@ public class TestValidTypeMap {
       fail("This should throw!");
     } catch (IllegalArgumentException e) {
       assertEquals("Column invalid.column was declared as type: "
-          + "parquet.filter2.TestValidTypeMap$InvalidColumnType which is not supported "
+          + "parquet.filter2.predicate.TestValidTypeMap$InvalidColumnType which is not supported "
           + "in FilterPredicates. Supported types for this column are: [class java.lang.Integer]", e.getMessage());
     }
 
@@ -83,7 +83,7 @@ public class TestValidTypeMap {
       fail("This should throw!");
     } catch (IllegalArgumentException e) {
       assertEquals("Column invalid.column was declared as type: "
-          + "parquet.filter2.TestValidTypeMap$InvalidColumnType which is not supported "
+          + "parquet.filter2.predicate.TestValidTypeMap$InvalidColumnType which is not supported "
           + "in FilterPredicates. There are no supported types for columns of FullTypeDescriptor(PrimitiveType: INT32, OriginalType: UTF8)",
           e.getMessage());
     }

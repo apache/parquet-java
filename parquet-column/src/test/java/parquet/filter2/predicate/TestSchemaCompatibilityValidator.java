@@ -1,12 +1,10 @@
-package parquet.filter2;
+package parquet.filter2.predicate;
 
 import org.junit.Test;
 
 import parquet.filter2.predicate.Operators.BinaryColumn;
 import parquet.filter2.predicate.Operators.IntColumn;
 import parquet.filter2.predicate.Operators.LongColumn;
-import parquet.filter2.predicate.FilterPredicate;
-import parquet.filter2.predicate.UserDefinedPredicate;
 import parquet.io.api.Binary;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
@@ -26,7 +24,7 @@ import static parquet.filter2.predicate.FilterApi.or;
 import static parquet.filter2.predicate.FilterApi.userDefined;
 import static parquet.filter2.predicate.SchemaCompatibilityValidator.validate;
 
-public class TestFilterValidator {
+public class TestSchemaCompatibilityValidator {
   private static final BinaryColumn stringC = binaryColumn("c");
   private static final LongColumn longBar = longColumn("x.bar");
   private static final IntColumn intBar = intColumn("x.bar");
