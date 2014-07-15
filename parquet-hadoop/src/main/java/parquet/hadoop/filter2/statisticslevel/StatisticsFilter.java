@@ -44,6 +44,8 @@ import parquet.hadoop.metadata.ColumnChunkMetaData;
 public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns) {
+    Preconditions.checkNotNull(pred, "pred");
+    Preconditions.checkNotNull(columns, "columns");
     return pred.accept(new StatisticsFilter(columns));
   }
 

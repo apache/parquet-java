@@ -31,6 +31,7 @@ import org.apache.hadoop.fs.Path;
 
 import parquet.Either;
 import parquet.Optional;
+import parquet.Preconditions;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.api.InitContext;
@@ -52,7 +53,7 @@ public class ParquetReader<T> implements Closeable {
   private Iterator<Footer> footersIterator;
   private InternalParquetRecordReader<T> reader;
   private GlobalMetaData globalMetaData;
-  private Optional<Either<UnboundRecordFilter, FilterPredicate>> filter;
+  private final Optional<Either<UnboundRecordFilter, FilterPredicate>> filter;
 
   /**
    * @param file the file to read
@@ -107,7 +108,7 @@ public class ParquetReader<T> implements Closeable {
                        ReadSupport<T> readSupport,
                        Optional<Either<UnboundRecordFilter, FilterPredicate>> filter) throws IOException {
     this.readSupport = readSupport;
-    this.filter = filter;
+    this.filter = Preconditions.checkNotNull(filter, "filter");
     this.conf = conf;
 
     FileSystem fs = file.getFileSystem(conf);
