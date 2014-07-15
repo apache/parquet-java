@@ -1,5 +1,6 @@
 package parquet.filter2.recordlevel;
 
+import parquet.Preconditions;
 import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.And;
 import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.Or;
 import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
@@ -17,6 +18,7 @@ public class IncrementallyUpdatedFilterPredicateEvaluator implements Visitor {
   private static final IncrementallyUpdatedFilterPredicateEvaluator INSTANCE = new IncrementallyUpdatedFilterPredicateEvaluator();
 
   public static boolean evaluate(IncrementallyUpdatedFilterPredicate pred) {
+    Preconditions.checkNotNull(pred, "pred");
     return pred.accept(INSTANCE);
   }
 

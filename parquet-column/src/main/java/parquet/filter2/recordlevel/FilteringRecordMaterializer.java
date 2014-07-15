@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import parquet.ColumnPath;
+import parquet.Preconditions;
 import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
 import parquet.io.PrimitiveColumnIO;
 import parquet.io.api.GroupConverter;
@@ -35,15 +36,17 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
       Map<ColumnPath, List<ValueInspector>> valueInspectorsByColumn,
       IncrementallyUpdatedFilterPredicate filterPredicate) {
 
+    Preconditions.checkNotNull(columnIOs, "columnIOs");
+    Preconditions.checkNotNull(valueInspectorsByColumn, "valueInspectorsByColumn");
+    this.filterPredicate = Preconditions.checkNotNull(filterPredicate, "filterPredicate");
+    this.delegate = Preconditions.checkNotNull(delegate, "delegate");
+
     // keep track of which path if indexes leads to which primitive column
     Map<List<Integer>, PrimitiveColumnIO> columnIOsByIndexFieldPath = new HashMap<List<Integer>, PrimitiveColumnIO>();
 
     for (PrimitiveColumnIO c : columnIOs) {
       columnIOsByIndexFieldPath.put(getIndexFieldPathList(c), c);
     }
-
-    this.filterPredicate = filterPredicate;
-    this.delegate = delegate;
 
     // create a proxy for the delegate's root converter
     this.rootConverter = new FilteringGroupConverter(
@@ -54,7 +57,7 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
     return intArrayToList(c.getIndexFieldPath());
   }
 
-  public static List<Integer> intArrayToList(int [] arr) {
+  public static List<Integer> intArrayToList(int[] arr) {
     List<Integer> list = new ArrayList<Integer>(arr.length);
     for (int i : arr) {
       list.add(i);

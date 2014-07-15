@@ -38,6 +38,8 @@ import parquet.schema.OriginalType;
 public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Void> {
 
   public static void validate(FilterPredicate predicate, MessageType schema) {
+    Preconditions.checkNotNull(predicate, "predicate");
+    Preconditions.checkNotNull(schema, "schema");
     predicate.accept(new SchemaCompatibilityValidator(schema));
   }
 

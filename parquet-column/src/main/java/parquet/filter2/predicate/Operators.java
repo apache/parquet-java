@@ -353,7 +353,7 @@ public final class Operators {
 
     UserDefined(Column<T> column, Class<U> udpClass) {
       Preconditions.checkNotNull(column, "column");
-      Preconditions.checkNotNull(udpClass, "userDefinedPredicate");
+      Preconditions.checkNotNull(udpClass, "udpClass");
       this.column = column;
       this.udpClass = udpClass;
       String name = getClass().getSimpleName().toLowerCase();

@@ -3,10 +3,12 @@ package parquet;
 public abstract class Either<L, R> {
 
   public static <L, R> Either<L, R> left(L left) {
+    Preconditions.checkNotNull(left, "left");
     return new Left<L, R>(left);
   }
 
   public static <L, R> Either<L, R> right(R right) {
+    Preconditions.checkNotNull(right, "right");
     return new Right<L, R>(right);
   }
 
@@ -15,7 +17,7 @@ public abstract class Either<L, R> {
   public abstract boolean isRight();
   public abstract R asRight();
 
-  public static class Left<L, R> extends Either<L, R> {
+  public static final class Left<L, R> extends Either<L, R> {
     private final L left;
 
     private Left(L left) {
@@ -58,7 +60,7 @@ public abstract class Either<L, R> {
     }
   }
 
-  public static class Right<L, R> extends Either<L, R> {
+  public static final class Right<L, R> extends Either<L, R> {
     private final R right;
 
     public Right(R right) {
