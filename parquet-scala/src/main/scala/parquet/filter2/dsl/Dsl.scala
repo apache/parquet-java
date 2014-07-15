@@ -1,6 +1,6 @@
 package parquet.filter2.dsl
 
-import parquet.filter2.predicate.{UserDefinedPredicate, Operators, FilterPredicate, FilterApi}
+import parquet.filter2.predicate.{FilterApi, FilterPredicate, Operators, UserDefinedPredicate}
 import parquet.io.api.Binary
 
 /**

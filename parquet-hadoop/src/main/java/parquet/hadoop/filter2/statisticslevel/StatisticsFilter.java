@@ -37,8 +37,8 @@ import parquet.hadoop.metadata.ColumnChunkMetaData;
  * {@link parquet.filter2.predicate.SchemaCompatibilityValidator}
  * to make sure it is compatible with the schema of this file.
  *
- * @return true if all the records represented by the statistics in the provided column metadata can be dropped.
- *         false otherwise (including when it is not known, which is often).
+ * Returns true if all the records represented by the statistics in the provided column metadata can be dropped.
+ *         false otherwise (including when it is not known, which is often the case).
  */
 // TODO(alexlevenson): this belongs in the parquet-column project, but some of the classes here need to be moved too
 public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {

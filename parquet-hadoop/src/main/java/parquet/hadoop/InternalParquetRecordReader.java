@@ -99,8 +99,8 @@ class InternalParquetRecordReader<T> {
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
    */
-  private InternalParquetRecordReader(ReadSupport<T> readSupport,
-                                      Optional<Either<UnboundRecordFilter, FilterPredicate>> filter) {
+  public InternalParquetRecordReader(ReadSupport<T> readSupport,
+                                     Optional<Either<UnboundRecordFilter, FilterPredicate>> filter) {
     this.readSupport = readSupport;
     this.filter = filter;
   }
