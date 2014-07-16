@@ -6,15 +6,16 @@ import java.util.List;
 
 import org.junit.Test;
 
+import parquet.ColumnPath;
 import parquet.column.Encoding;
 import parquet.column.statistics.DoubleStatistics;
 import parquet.column.statistics.IntStatistics;
-import parquet.filter2.predicate.LogicalInverseRewriter;
 import parquet.filter2.predicate.FilterPredicate;
-import parquet.filter2.predicate.Operators.Column;
+import parquet.filter2.predicate.LogicalInverseRewriter;
+import parquet.filter2.predicate.Operators.DoubleColumn;
+import parquet.filter2.predicate.Operators.IntColumn;
 import parquet.filter2.predicate.UserDefinedPredicate;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
-import parquet.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -56,8 +57,8 @@ public class TestStatisticsFilter {
         0L, 0L, valueCount, 0L, 0L);
   }
 
-  private static final Column<Integer> intColumn = intColumn("int.column");
-  private static final Column<Double> doubleColumn = doubleColumn("double.column");
+  private static final IntColumn intColumn = intColumn("int.column");
+  private static final DoubleColumn doubleColumn = doubleColumn("double.column");
 
   private static final IntStatistics intStats = new IntStatistics();
   private static final IntStatistics nullIntStats = new IntStatistics();

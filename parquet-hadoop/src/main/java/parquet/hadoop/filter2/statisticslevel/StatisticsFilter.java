@@ -59,7 +59,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
   private ColumnChunkMetaData getColumnChunk(ColumnPath columnPath) {
     ColumnChunkMetaData c = columns.get(columnPath);
-    Preconditions.checkArgument(c != null, "Column " + columnPath + " not found in schema!");
+    Preconditions.checkArgument(c != null, "Column " + columnPath.toDotString() + " not found in schema!");
     return c;
   }
 

@@ -30,6 +30,7 @@ import org.apache.hadoop.mapreduce.Job;
 import org.junit.Before;
 import org.junit.Test;
 
+import parquet.ColumnPath;
 import parquet.column.ColumnReader;
 import parquet.column.Encoding;
 import parquet.column.statistics.BinaryStatistics;
@@ -37,10 +38,9 @@ import parquet.column.statistics.IntStatistics;
 import parquet.filter.RecordFilter;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.predicate.FilterPredicate;
-import parquet.filter2.predicate.Operators.Column;
+import parquet.filter2.predicate.Operators.IntColumn;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
-import parquet.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.io.ParquetDecodingException;
@@ -107,7 +107,7 @@ public class TestInputFormat {
 
   @Test
   public void testFilterPredicateConfiguration() throws IOException {
-    Column<Integer> intColumn = intColumn("foo");
+    IntColumn intColumn = intColumn("foo");
     FilterPredicate p = or(eq(intColumn, 7), eq(intColumn, 12));
     Configuration conf = new Configuration();
     ParquetInputFormat.setFilterPredicate(conf, p);
@@ -270,7 +270,7 @@ public class TestInputFormat {
 
   @Test
   public void testLoadFilterPredicate() {
-    Column<Integer> foo = intColumn("foo");
+    IntColumn foo = intColumn("foo");
     FilterPredicate p = or(eq(foo, 10), eq(foo, 11));
 
     Configuration conf = new Configuration();
@@ -295,7 +295,7 @@ public class TestInputFormat {
 
   @Test
   public void testOnlyOneKindOfFilterSupported() throws Exception {
-    Column<Integer> foo = intColumn("foo");
+    IntColumn foo = intColumn("foo");
     FilterPredicate p = or(eq(foo, 10), eq(foo, 11));
 
     Job job = new Job();
@@ -381,7 +381,7 @@ public class TestInputFormat {
     blocks.add(b6);
 
     MessageType schema = MessageTypeParser.parseMessageType("message Document { optional int32 foo; }");
-    Column<Integer> foo = intColumn("foo");
+    IntColumn foo = intColumn("foo");
 
     List<BlockMetaData> filtered = ParquetInputFormat.applyRowGroupFilters(eq(foo, 50), schema, blocks);
     assertEquals(Arrays.asList(b1, b2, b5), filtered);
