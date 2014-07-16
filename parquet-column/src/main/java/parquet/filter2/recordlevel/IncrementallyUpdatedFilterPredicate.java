@@ -73,7 +73,7 @@ public interface IncrementallyUpdatedFilterPredicate {
      */
     public final boolean getResult() {
       if (!isKnown) {
-        throw new IllegalStateException("getResult() called on an Atom whose result is not yet known!");
+        throw new IllegalStateException("getResult() called on a ValueInspector whose result is not yet known!");
       }
       return result;
     }
