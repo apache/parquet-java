@@ -85,7 +85,7 @@ abstract public class Type {
   /**
    * @param name the name of the type
    * @param repetition OPTIONAL, REPEATED, REQUIRED
-   * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
+   * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    */
   public Type(String name, Repetition repetition, OriginalType originalType) {
     super();
@@ -103,7 +103,7 @@ abstract public class Type {
 
   /**
    * @param rep
-   * @return if repretition of the type is rep
+   * @return if repetition of the type is rep
    */
   public boolean isRepetition(Repetition rep) {
     return repetition == rep;
@@ -145,7 +145,7 @@ abstract public class Type {
    */
   public PrimitiveType asPrimitiveType() {
     if (!isPrimitive()) {
-      throw new ClassCastException(this + " is not a primititve");
+      throw new ClassCastException(this + " is not primitive");
     }
     return (PrimitiveType)this;
   }
@@ -153,7 +153,7 @@ abstract public class Type {
   /**
    * Writes a string representation to the provided StringBuilder
    * @param sb the StringBuilder to write itself to
-   * @param current indentation level
+   * @param indent indentation level
    */
   abstract public void writeToStringBuilder(StringBuilder sb, String indent);
 
