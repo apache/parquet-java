@@ -1,18 +1,19 @@
 package parquet.filter2.dsl
 
+import java.lang.{Double => JDouble, Integer => JInt}
+
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-import parquet.filter2.predicate.{UserDefinedPredicate, Operators, FilterApi}
-import Operators.{UserDefined, Or}
-import FilterApi
+import parquet.filter2.predicate.Operators.{Or, UserDefined, DoubleColumn => JDoubleColumn, IntColumn => JIntColumn}
+import parquet.filter2.predicate.{FilterApi, UserDefinedPredicate}
 
-class DummyFilter extends UserDefinedPredicate[java.lang.Integer] {
-  override def keep(value: java.lang.Integer): Boolean = false
+class DummyFilter extends UserDefinedPredicate[JInt] {
+  override def keep(value: JInt): Boolean = false
 
-  override def canDrop(min: java.lang.Integer, max: java.lang.Integer): Boolean = false
+  override def canDrop(min: JInt, max: JInt): Boolean = false
 
-  override def inverseCanDrop(min: java.lang.Integer, max: java.lang.Integer): Boolean = false
+  override def inverseCanDrop(min: JInt, max: JInt): Boolean = false
 }
 
 @RunWith(classOf[JUnitRunner])
@@ -24,9 +25,10 @@ class DslTest extends FlatSpec{
     val xyz = DoubleColumn("x.y.z")
 
     val complexPredicate = !(abc > 10 && (xyz === 17 || ((xyz !== 13) && (xyz <= 20))))
-    val abcGt = FilterApi.gt[java.lang.Integer](abc.column, 10)
-    val xyzAnd = FilterApi.and(FilterApi.notEq[java.lang.Double](xyz.column, 13.0), FilterApi.ltEq[java.lang.Double](xyz.column, 20.0))
-    val xyzEq = FilterApi.eq[java.lang.Double](xyz.column, 17.0)
+    val abcGt = FilterApi.gt[JInt, JIntColumn](abc.javaColumn, 10)
+    val xyzAnd = FilterApi.and(FilterApi.notEq[JDouble, JDoubleColumn](xyz.javaColumn, 13.0),
+      FilterApi.ltEq[JDouble, JDoubleColumn](xyz.javaColumn, 20.0))
+    val xyzEq = FilterApi.eq[JDouble, JDoubleColumn](xyz.javaColumn, 17.0)
     val xyzPred = FilterApi.or(xyzEq, xyzAnd)
     val expected = FilterApi.not(FilterApi.and(abcGt, xyzPred))
 
@@ -37,9 +39,9 @@ class DslTest extends FlatSpec{
     val abc = IntColumn("a.b.c")
     val pred = (abc > 10) || abc.filterBy(classOf[DummyFilter])
 
-    val expected = FilterApi.or(FilterApi.gt[java.lang.Integer](abc.column, 10), FilterApi.userDefined(abc.column, classOf[DummyFilter]))
+    val expected = FilterApi.or(FilterApi.gt[JInt, JIntColumn](abc.javaColumn, 10), FilterApi.userDefined(abc.javaColumn, classOf[DummyFilter]))
     assert(pred === expected)
-    val intUserDefined = pred.asInstanceOf[Or].getRight.asInstanceOf[UserDefined[java.lang.Integer, DummyFilter]]
+    val intUserDefined = pred.asInstanceOf[Or].getRight.asInstanceOf[UserDefined[JInt, DummyFilter]]
 
     assert(intUserDefined.getUserDefinedPredicateClass === classOf[DummyFilter])
     assert(intUserDefined.getUserDefinedPredicate.isInstanceOf[DummyFilter])
