@@ -64,6 +64,10 @@ public interface IncrementallyUpdatedFilterPredicate {
      * Subclasses should call this method to signal that the result of this predicate is known.
      */
     protected final void setResult(boolean result) {
+      if (isKnown) {
+        throw new IllegalStateException("setResult() called on a ValueInspector whose result is already known!"
+          + " Did you forget to call reset()?");
+      }
       this.result = result;
       this.isKnown = true;
     }
