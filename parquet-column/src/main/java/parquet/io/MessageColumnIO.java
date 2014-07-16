@@ -66,7 +66,7 @@ public class MessageColumnIO extends GroupColumnIO {
                                              RecordMaterializer<T> recordMaterializer,
                                              Optional<Either<UnboundRecordFilter, FilterPredicate>> filter) {
 
-    if (leaves.size() > 0) {
+    if (leaves.isEmpty()) {
       return new EmptyRecordReader<T>(recordMaterializer);
     }
 
