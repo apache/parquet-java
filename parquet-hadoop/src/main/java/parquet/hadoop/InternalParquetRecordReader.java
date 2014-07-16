@@ -53,7 +53,7 @@ class InternalParquetRecordReader<T> {
 
   private T currentValue;
   private long total;
-  private int current = 0;
+  private long current = 0;
   private int currentBlock = -1;
   private ParquetFileReader reader;
   private parquet.io.RecordReader<T> recordReader;
@@ -173,8 +173,18 @@ class InternalParquetRecordReader<T> {
       try {
         checkRead();
         currentValue = recordReader.read();
-        if (DEBUG) LOG.debug("read value: " + currentValue);
         current ++;
+        while (currentValue == null) { // only happens with FilteredRecordReader at end of block
+          current = totalCountLoadedSoFar;
+          if (current < total) {
+            checkRead();
+            currentValue = recordReader.read();
+            current ++;
+            continue;
+          }
+          return false;
+        }
+        if (DEBUG) LOG.debug("read value: " + currentValue);
       } catch (RuntimeException e) {
         throw new ParquetDecodingException(format("Can not read value at %d in block %d in file %s", current, currentBlock, file), e);
       }
