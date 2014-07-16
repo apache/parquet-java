@@ -65,6 +65,8 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
     return list;
   }
 
+
+
   @Override
   public T getCurrentRecord() {
 

@@ -239,6 +239,8 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
   private State[] states;
   private ColumnReader[] columnReaders;
 
+  private boolean skipCurrentRecord = false;
+
   /**
    * @param root the root of the schema
    * @param recordMaterializer responsible of materializing the records
@@ -431,7 +433,14 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       currentState = currentState.nextState[nextR];
     } while (currentState != null);
     recordRootConverter.end();
-    return recordMaterializer.getCurrentRecord();
+    T record = recordMaterializer.getCurrentRecord();
+    skipCurrentRecord = record == null;
+    return record;
+  }
+
+  @Override
+  public boolean skipCurrentRecord() {
+    return skipCurrentRecord;
   }
 
   private static void log(String string) {

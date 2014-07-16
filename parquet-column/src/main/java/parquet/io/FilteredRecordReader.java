@@ -64,6 +64,10 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
     return super.read();
   }
 
+  @Override
+  public boolean skipCurrentRecord() {
+    return false;
+  }
 
   /**
    * Skips forwards until the filter finds the first match. Returns false

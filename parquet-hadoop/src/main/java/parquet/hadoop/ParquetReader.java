@@ -91,6 +91,16 @@ public class ParquetReader<T> implements Closeable {
    * @param filter the filter to use to filter records
    * @throws IOException
    */
+  public ParquetReader(Configuration conf, Path file, ReadSupport<T> readSupport, UnboundRecordFilter filter) throws IOException {
+    this(conf, file, readSupport,Optional.of(Either.<UnboundRecordFilter, FilterPredicate>left(filter)));
+  }
+
+  /**
+   * @param file the file to read
+   * @param readSupport to materialize records
+   * @param filter the filter to use to filter records
+   * @throws IOException
+   */
   public ParquetReader(Path file, ReadSupport<T> readSupport, FilterPredicate filter) throws IOException {
     this(new Configuration(), file, readSupport,
         Optional.of(Either.<UnboundRecordFilter, FilterPredicate>right(filter)));
