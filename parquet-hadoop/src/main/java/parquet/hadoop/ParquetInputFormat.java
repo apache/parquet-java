@@ -45,7 +45,7 @@ import parquet.filter2.predicate.SchemaCompatibilityValidator;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
-import parquet.hadoop.filter2.statisticslevel.StatisticsFilter;
+import parquet.filter2.statisticslevel.StatisticsFilter;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.FileMetaData;

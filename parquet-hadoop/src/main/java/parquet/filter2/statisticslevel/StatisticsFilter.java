@@ -1,4 +1,4 @@
-package parquet.hadoop.filter2.statisticslevel;
+package parquet.filter2.statisticslevel;
 
 import java.util.HashMap;
 import java.util.List;
