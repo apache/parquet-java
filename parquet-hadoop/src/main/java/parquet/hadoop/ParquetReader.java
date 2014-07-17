@@ -17,7 +17,6 @@ package parquet.hadoop;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -118,7 +117,16 @@ public class ParquetReader<T> implements Closeable {
                        ReadSupport<T> readSupport,
                        Optional<Either<UnboundRecordFilter, FilterPredicate>> filter) throws IOException {
     this.readSupport = readSupport;
-    this.filter = Preconditions.checkNotNull(filter, "filter");
+
+    Preconditions.checkNotNull(filter, "filter");
+    if (filter.isPresent() && filter.get().isRight()) {
+      FilterPredicate p = filter.get().asRight();
+      p = ParquetInputFormat.prepareFilterPredicate(p, "row groups and values");
+      this.filter = Optional.of(Either.<UnboundRecordFilter, FilterPredicate>right(p));
+    } else {
+      this.filter = filter;
+    }
+
     this.conf = conf;
 
     FileSystem fs = file.getFileSystem(conf);
@@ -126,12 +134,6 @@ public class ParquetReader<T> implements Closeable {
     List<Footer> footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(conf, statuses);
     this.footersIterator = footers.iterator();
     globalMetaData = ParquetFileWriter.getGlobalMetaData(footers);
-
-    List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
-    for (Footer footer : footers) {
-      blocks.addAll(footer.getParquetMetadata().getBlocks());
-    }
-
     MessageType schema = globalMetaData.getSchema();
     Map<String, Set<String>> extraMetadata = globalMetaData.getKeyValueMetaData();
     readContext = readSupport.init(new InitContext(conf, extraMetadata, schema));
@@ -161,10 +163,17 @@ public class ParquetReader<T> implements Closeable {
     }
     if (footersIterator.hasNext()) {
       Footer footer = footersIterator.next();
+
+      List<BlockMetaData> blocks = footer.getParquetMetadata().getBlocks();
+
+      if (filter.isPresent() && filter.get().isRight()) {
+        blocks = ParquetInputFormat.applyRowGroupFilters(filter.get().asRight(), footer.getParquetMetadata().getFileMetaData().getSchema(), blocks);
+      }
+
       reader = new InternalParquetRecordReader<T>(readSupport, filter);
       reader.initialize(
           readContext.getRequestedSchema(), globalMetaData.getSchema(), footer.getParquetMetadata().getFileMetaData().getKeyValueMetaData(),
-          readContext.getReadSupportMetadata(), footer.getFile(), footer.getParquetMetadata().getBlocks(), conf);
+          readContext.getReadSupportMetadata(), footer.getFile(), blocks, conf);
     }
   }
 

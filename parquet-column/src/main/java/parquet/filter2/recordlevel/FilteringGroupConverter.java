@@ -79,7 +79,7 @@ public class FilteringGroupConverter extends GroupConverter {
     if (inspectorsList == null) {
       return new ValueInspector[] {};
     } else {
-      return (ValueInspector[]) inspectorsList.toArray();
+      return inspectorsList.toArray(new ValueInspector[inspectorsList.size()]);
     }
   }
 

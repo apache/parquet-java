@@ -33,7 +33,7 @@ import parquet.schema.OriginalType;
  * This class is stateful, cannot be reused, and is not thread safe.
  *
  * TODO(alexlevenson): detect if a column is optional or required and validate that eq(null)
- * TODO(alexlevenson): is not called on optional fields
+ * TODO(alexlevenson): is not called on optional fields (is that too strict?)
  */
 public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Void> {
 
@@ -152,6 +152,11 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
     columnTypesEncountered.put(path, column.getColumnType());
 
     ColumnDescriptor descriptor = getColumnDescriptor(path);
+
+    if (descriptor.getMaxRepetitionLevel() > 0) {
+      throw new IllegalArgumentException("FilterPredicates do not currently support repeated columns. "
+          + "Column " + path.toDotString() + " is repeated.");
+    }
 
     ValidTypeMap.assertTypeValid(column, descriptor.getType(), originalTypes.get(path));
   }

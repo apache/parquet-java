@@ -45,6 +45,11 @@ public abstract class Either<L, R> {
     }
 
     @Override
+    public String toString() {
+      return "Left(" + left + ")";
+    }
+
+    @Override
     public boolean equals(Object o) {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
@@ -85,6 +90,11 @@ public abstract class Either<L, R> {
     @Override
     public R asRight() {
       return right;
+    }
+
+    @Override
+    public String toString() {
+      return "Right(" + right + ")";
     }
 
     @Override

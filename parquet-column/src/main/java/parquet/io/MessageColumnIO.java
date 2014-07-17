@@ -91,7 +91,7 @@ public class MessageColumnIO extends GroupColumnIO {
         this,
         recordMaterializer,
         validating,
-        new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType()),
+        new ColumnReadStoreImpl(columns, getType()),
         filterPredicate
     );
 

@@ -42,10 +42,10 @@ import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.filter2.predicate.LogicalInverseRewriter;
 import parquet.filter2.predicate.SchemaCompatibilityValidator;
+import parquet.filter2.statisticslevel.StatisticsFilter;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
-import parquet.filter2.statisticslevel.StatisticsFilter;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.FileMetaData;
@@ -482,6 +482,10 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     if (filterPredicate == null) {
       return null;
     }
+    return prepareFilterPredicate(filterPredicate, filterAppliedTo);
+  }
+
+  static FilterPredicate prepareFilterPredicate(FilterPredicate filterPredicate, String filterAppliedTo) {
 
     LOG.info("Filtering " + filterAppliedTo + " using predicate: " + filterPredicate);
 

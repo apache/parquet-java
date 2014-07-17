@@ -28,13 +28,15 @@ public class TestSchemaCompatibilityValidator {
   private static final BinaryColumn stringC = binaryColumn("c");
   private static final LongColumn longBar = longColumn("x.bar");
   private static final IntColumn intBar = intColumn("x.bar");
+  private static final LongColumn lotsOfLongs = longColumn("lotsOfLongs");
 
   private static final String schemaString =
       "message Document {\n"
           + "  required int32 a;\n"
           + "  required binary b;\n"
           + "  required binary c (UTF8);\n"
-          + "  required group x { required int32 bar; } "
+          + "  required group x { required int32 bar; }\n"
+          + "  repeated int64 lotsOfLongs;\n"
           + "}\n";
 
   private static final MessageType schema = MessageTypeParser.parseMessageType(schemaString);
@@ -108,5 +110,15 @@ public class TestSchemaCompatibilityValidator {
       assertEquals("Column: x.bar was provided with different types in the same predicate. Found both: (class java.lang.Integer, class java.lang.Long)", e.getMessage());
     }
 
+  }
+
+  @Test
+  public void testRepeatedNotSupported() {
+    try {
+      validate(eq(lotsOfLongs, 10l), schema);
+      fail("this should throw");
+    } catch (IllegalArgumentException e) {
+      assertEquals("FilterPredicates do not currently support repeated columns. Column lotsOfLongs is repeated.", e.getMessage());
+    }
   }
 }

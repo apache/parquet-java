@@ -253,18 +253,19 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
                                     ColumnReadStoreImpl columnStore,
                                     Optional<FilterPredicate> filter) {
 
+
     PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
 
     if (filter.isPresent()) {
       FilterPredicate predicate = filter.get();
       IncrementallyUpdatedFilterPredicateBuilder builder = new IncrementallyUpdatedFilterPredicateBuilder();
       IncrementallyUpdatedFilterPredicate streamingPredicate = builder.build(predicate);
-      this.recordMaterializer = new FilteringRecordMaterializer<T>(recordMaterializer, leaves, builder.getValueInspectorsByColumn(), streamingPredicate);
-    } else {
-      this.recordMaterializer = recordMaterializer;
+      recordMaterializer = new FilteringRecordMaterializer<T>(recordMaterializer, leaves, builder.getValueInspectorsByColumn(), streamingPredicate);
     }
 
+    this.recordMaterializer = recordMaterializer;
     this.recordRootConverter = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer), validating, root.getType());
+    columnStore.setRecordConverter(recordRootConverter);
 
     columnReaders = new ColumnReader[leaves.length];
     int[][] nextColumnIdxForRepLevel = new int[leaves.length][];

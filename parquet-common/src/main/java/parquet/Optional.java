@@ -17,6 +17,15 @@ public class Optional<T> {
     return t;
   }
 
+  @Override
+  public String toString() {
+    if (isPresent()) {
+      return "Optional.of(" + t + ")";
+    } else {
+      return  "Optional.absent()";
+    }
+  }
+
   public static <T> Optional<T> of(T t) {
     if (t == null) {
       throw new IllegalArgumentException("Cannont construct an Optional.of() from null");
