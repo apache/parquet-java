@@ -18,8 +18,7 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
  * This is a bit ugly, but it allows us to provide good error messages at runtime
  * when there are type mismatches.
  *
- * TODO(alexlevenson): FilterPredicates don't currently support repeated columns,
- * TODO(alexlevenson): so neither does this mapping
+ * TODO(alexlevenson): this has some overlap with {@link PrimitiveTypeName#javaType}
  */
 public class ValidTypeMap {
   private ValidTypeMap() { }

@@ -36,6 +36,7 @@ import parquet.filter2.predicate.Operators.UserDefined;
  * }
  */
 // TODO(alexlevenson): Support repeated columns
+// TODO(alexlevenson): Support Group columns (eg, filter where this group is null)
 // TODO(alexlevenson): Add support for more column types that aren't coupled with parquet types, eg Column<String>
 public final class FilterApi {
   private FilterApi() { }
