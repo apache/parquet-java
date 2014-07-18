@@ -437,6 +437,10 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         rowGroupsDropped += blocks.size() - filteredBlocks.size();
       }
 
+      if (filteredBlocks.isEmpty()) {
+        continue;
+      }
+
       BlockLocation[] fileBlockLocations = fs.getFileBlockLocations(fileStatus, 0, fileStatus.getLen());
       splits.addAll(
           generateSplits(

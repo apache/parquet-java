@@ -85,6 +85,11 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
   }
 
   @Override
+  public void skipCurrentRecord() {
+    delegate.skipCurrentRecord();
+  }
+
+  @Override
   public GroupConverter getRootConverter() {
     return rootConverter;
   }
