@@ -436,6 +436,9 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     recordRootConverter.end();
     T record = recordMaterializer.getCurrentRecord();
     skipCurrentRecord = record == null;
+    if (skipCurrentRecord) {
+      recordMaterializer.skipCurrentRecord();
+    }
     return record;
   }
 

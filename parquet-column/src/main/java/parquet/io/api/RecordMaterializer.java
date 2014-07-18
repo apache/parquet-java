@@ -34,6 +34,11 @@ abstract public class RecordMaterializer<T> {
   abstract public T getCurrentRecord();
 
   /**
+   * Called if {@link #getCurrentRecord()} isn't going to be called.
+   */
+  public void skipCurrentRecord() { }
+
+  /**
    * @return the root converter for this tree
    */
   abstract public GroupConverter getRootConverter();
