@@ -208,6 +208,12 @@ public class PhoneBookWriter {
       throw new IOException("couldn't delete tmp file" + f);
     }
 
+    writeToFile(f, users);
+
+    return f;
+  }
+
+  public static void writeToFile(File f, List<User> users) throws IOException {
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
 
@@ -216,7 +222,6 @@ public class PhoneBookWriter {
       writer.write(groupFromUser(u));
     }
     writer.close();
-    return f;
   }
 
   public static List<Group> readFile(File f, Optional<FilterPredicate> filter) throws IOException {
@@ -239,6 +244,11 @@ public class PhoneBookWriter {
     }
 
     return users;
+  }
+
+  public static void main(String[] args) throws IOException {
+    File f = new File(args[0]);
+    writeToFile(f, TestRecordLevelFilters.makeUsers());
   }
 
 }

@@ -9,6 +9,7 @@ import org.junit.Test;
 
 import parquet.ColumnPath;
 import parquet.filter2.predicate.Operators.And;
+import parquet.filter2.predicate.Operators.BinaryColumn;
 import parquet.filter2.predicate.Operators.DoubleColumn;
 import parquet.filter2.predicate.Operators.Eq;
 import parquet.filter2.predicate.Operators.Gt;
@@ -16,10 +17,12 @@ import parquet.filter2.predicate.Operators.IntColumn;
 import parquet.filter2.predicate.Operators.Not;
 import parquet.filter2.predicate.Operators.Or;
 import parquet.filter2.predicate.Operators.UserDefined;
+import parquet.io.api.Binary;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static parquet.filter2.predicate.FilterApi.and;
+import static parquet.filter2.predicate.FilterApi.binaryColumn;
 import static parquet.filter2.predicate.FilterApi.doubleColumn;
 import static parquet.filter2.predicate.FilterApi.eq;
 import static parquet.filter2.predicate.FilterApi.gt;
@@ -83,7 +86,8 @@ public class TestFilterApiMethods {
 
   @Test
   public void testSerializable() throws Exception {
-    FilterPredicate p = and(userDefined(intColumn, DummyUdp.class), predicate);
+    BinaryColumn binary = binaryColumn("foo");
+    FilterPredicate p = or(and(userDefined(intColumn, DummyUdp.class), predicate), eq(binary, Binary.fromString("hi")));
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(baos);
     oos.writeObject(p);

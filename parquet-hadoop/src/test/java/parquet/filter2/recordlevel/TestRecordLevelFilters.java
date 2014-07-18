@@ -34,7 +34,7 @@ import static parquet.filter2.predicate.FilterApi.userDefined;
 
 public class TestRecordLevelFilters {
 
-  private static List<User> makeUsers() {
+  public static List<User> makeUsers() {
     List<User> users = new ArrayList<User>();
 
     users.add(new User(17, null, null, null));
