@@ -15,25 +15,24 @@
  */
 package parquet.pig;
 
-import static parquet.Log.DEBUG;
-import static parquet.pig.TupleReadSupport.PARQUET_PIG_REQUIRED_FIELDS;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
+import org.apache.pig.LoadPushDown.RequiredField;
+import org.apache.pig.LoadPushDown.RequiredFieldList;
 import org.apache.pig.data.DataType;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import org.apache.pig.impl.util.ObjectSerializer;
+import org.apache.pig.impl.util.Pair;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
-import org.apache.pig.LoadPushDown.RequiredField;
-import org.apache.pig.LoadPushDown.RequiredFieldList;
-
 import parquet.Log;
+import static parquet.Log.DEBUG;
+import static parquet.pig.TupleReadSupport.PARQUET_PIG_REQUIRED_FIELDS;
+
 import parquet.schema.ConversionPatterns;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
@@ -58,7 +57,7 @@ import parquet.schema.Type.Repetition;
  */
 public class PigSchemaConverter {
   private static final Log LOG = Log.getLog(PigSchemaConverter.class);
-  private boolean columnIndexAccess;
+  private ColumnAccess columnAccess;
 
   public PigSchemaConverter() {
     this(false);
@@ -66,11 +65,10 @@ public class PigSchemaConverter {
   
   /**
    * 
-   * 
    * @param columnIndexAccess toggle between name and index based access (default: false)
    */
   public PigSchemaConverter(boolean columnIndexAccess) {
-    this.columnIndexAccess = columnIndexAccess;
+    this.columnAccess = columnIndexAccess?new ColumnIndexAccess():new ColumnNameAccess();
   }
 
   /**
@@ -85,6 +83,58 @@ public class PigSchemaConverter {
     }
   }
 
+  interface ColumnAccess {
+    List<Type> filterTupleSchema(GroupType schemaToFilter, Schema pigSchema, RequiredFieldList requiredFieldsList);
+  }
+  
+  class ColumnIndexAccess implements ColumnAccess {
+    @Override
+    public List<Type> filterTupleSchema(GroupType schemaToFilter, Schema pigSchema, RequiredFieldList requiredFieldsList) {
+      List<Type> newFields = new ArrayList<Type>();
+      List<Pair<FieldSchema,Integer>> indexedFields = new ArrayList<Pair<FieldSchema,Integer>>();
+      
+      try {
+        if(requiredFieldsList == null) {
+          int index = 0;
+          for(FieldSchema fs : pigSchema.getFields()) {
+            indexedFields.add(new Pair<FieldSchema, Integer>(fs, index++));
+          }
+        } else {
+          for(RequiredField rf : requiredFieldsList.getFields()) {
+            indexedFields.add(new Pair<FieldSchema, Integer>(pigSchema.getField(rf.getAlias()), rf.getIndex()));
+          }
+        }
+
+        for (Pair<FieldSchema, Integer> p : indexedFields) {
+          FieldSchema fieldSchema = pigSchema.getField(p.first.alias);
+          if (p.second < schemaToFilter.getFieldCount()) {
+            Type type = schemaToFilter.getFields().get(p.second);
+            newFields.add(filter(type, fieldSchema));
+          }
+        }
+      } catch (FrontendException e) {
+          throw new RuntimeException("Failed to filter requested fields", e);
+      }  
+      return newFields;
+    } 
+  }
+  
+  class ColumnNameAccess implements ColumnAccess {
+    @Override
+    public List<Type> filterTupleSchema(GroupType schemaToFilter, Schema requestedPigSchema, RequiredFieldList requiredFieldsList) {
+      List<FieldSchema> fields = requestedPigSchema.getFields();
+      List<Type> newFields = new ArrayList<Type>();
+      for (int i = 0; i < fields.size(); i++) {
+        FieldSchema fieldSchema = fields.get(i);
+        String name = name(fieldSchema.alias, "field_"+i);
+        if (schemaToFilter.containsField(name)) {
+          newFields.add(filter(schemaToFilter.getType(name), fieldSchema));
+        }
+      }
+      return newFields;
+    }
+  }
+  
   /**
    * @param pigSchema the pig schema to turn into a string representation
    * @return the sctring representation of the schema
@@ -398,60 +448,13 @@ public class PigSchemaConverter {
   public MessageType filter(MessageType schemaToFilter, Schema requestedPigSchema, RequiredFieldList requiredFieldList) {
     try {
       if (DEBUG) LOG.debug("filtering schema:\n" + schemaToFilter + "\nwith requested pig schema:\n " + requestedPigSchema);
-      List<Type> result;
-      if(columnIndexAccess && requiredFieldList != null) {
-        result = filterTupleSchema(schemaToFilter, requestedPigSchema, requiredFieldList);
-      } else {
-        result = filterTupleSchema(schemaToFilter, requestedPigSchema);
-      }
+      List<Type> result = columnAccess.filterTupleSchema(schemaToFilter, requestedPigSchema, requiredFieldList);
       if (DEBUG) LOG.debug("schema:\n" + schemaToFilter + "\nfiltered to:\n" + result);
       return new MessageType(schemaToFilter.getName(), result);
     } catch (RuntimeException e) {
       throw new RuntimeException("can't filter " + schemaToFilter + " with " + requestedPigSchema, e);
     }
   }  
-  
-  private List<Type> filterTupleSchema(GroupType schemaToFilter, Schema pigSchema, RequiredFieldList requiredFieldsList) {
-    List<RequiredField> requiredFields = requiredFieldsList.getFields();
-    List<FieldSchema> fields = pigSchema.getFields();
-    List<Type> newFields = new ArrayList<Type>();
-    for (int i = 0; i < requiredFields.size(); i++) {
-      try {
-        RequiredField requiredField = requiredFields.get(i);
-        FieldSchema fieldSchema = pigSchema.getField(requiredField.getAlias());
-        String name = name(fieldSchema.alias, "field_" + i);
-        
-        if (requiredField.getIndex() < schemaToFilter.getFieldCount()) {
-          Type type = schemaToFilter.getFields().get(requiredField.getIndex());
-          newFields.add(filter(type, fieldSchema));
-        }
-      } catch (FrontendException e) {
-        throw new RuntimeException("Failed to filter requested fields", e);
-      }
-    }
-    return newFields;
-  }  
-  
-  private List<Type> filterTupleSchema(GroupType schemaToFilter, Schema requestedPigSchema) {
-    List<FieldSchema> fields = requestedPigSchema.getFields();
-    List<Type> newFields = new ArrayList<Type>();
-    for (int i = 0; i < fields.size(); i++) {
-      FieldSchema fieldSchema = fields.get(i);
-      String name = name(fieldSchema.alias, "field_"+i);
-      if (schemaToFilter.containsField(name) || columnIndexAccess) {
-        Type type;
-        if(columnIndexAccess) {
-          if(i >= schemaToFilter.getFieldCount())
-            continue;
-          type = schemaToFilter.getType(i);
-        } else {
-          type = schemaToFilter.getType(name);
-        }
-        newFields.add(filter(type, fieldSchema));
-      }
-    }
-    return newFields;
-  }
 
   private Type filter(Type type, FieldSchema fieldSchema) {
     if (DEBUG) LOG.debug("filtering type:\n" + type + "\nwith:\n " + fieldSchema);
@@ -475,7 +478,7 @@ public class PigSchemaConverter {
 
   private Type filterTuple(GroupType tupleType, FieldSchema tupleFieldSchema) throws FrontendException {
     if (DEBUG) LOG.debug("filtering TUPLE schema:\n" + tupleType + "\nwith:\n " + tupleFieldSchema);
-    return new GroupType(tupleType.getRepetition(), tupleType.getName(), tupleType.getOriginalType(), filterTupleSchema(tupleType, tupleFieldSchema.schema));
+    return new GroupType(tupleType.getRepetition(), tupleType.getName(), tupleType.getOriginalType(), columnAccess.filterTupleSchema(tupleType, tupleFieldSchema.schema, null));
   }
 
   private Type filterMap(GroupType mapType, FieldSchema mapFieldSchema) throws FrontendException {

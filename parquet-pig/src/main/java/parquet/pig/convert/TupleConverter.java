@@ -70,23 +70,18 @@ public class TupleConverter extends GroupConverter {
       this.converters = new Converter[this.schemaSize];
       for (int i = 0, c = 0; i < schemaSize; i++) {
         FieldSchema field = pigSchema.getField(i);
-        Type type = null;
         if(parquetSchema.containsField(field.alias) || columnIndexAccess) {
-          if(columnIndexAccess) {
-            if(i >= parquetSchema.getFieldCount())
-              continue;
-            type = parquetSchema.getType(i);
-          }else {
-            type = parquetSchema.getType(parquetSchema.getFieldIndex(field.alias));
-          }
+          Type type = getType(columnIndexAccess, field.alias, i);
           
-          final int index = i;
-          converters[c++] = newConverter(field, type, new ParentValueContainer() {
-            @Override
-            void add(Object value) {
-              TupleConverter.this.set(index, value);
-            }
-          }, elephantBirdCompatible, columnIndexAccess);
+          if(type != null) {
+            final int index = i;
+            converters[c++] = newConverter(field, type, new ParentValueContainer() {
+              @Override
+              void add(Object value) {
+                TupleConverter.this.set(index, value);
+              }
+            }, elephantBirdCompatible, columnIndexAccess);
+          }
         }
         
       }
@@ -95,6 +90,18 @@ public class TupleConverter extends GroupConverter {
     }
   }
 
+  private Type getType(boolean columnIndexAccess, String alias, int index) {
+    if(columnIndexAccess) {
+      if(index < parquetSchema.getFieldCount()) {
+        return parquetSchema.getType(index);
+      }
+    } else {
+      return parquetSchema.getType(parquetSchema.getFieldIndex(alias));
+    }
+    
+    return null;
+  }
+  
   static Converter newConverter(FieldSchema pigField, Type type, final ParentValueContainer parent, boolean elephantBirdCompatible, boolean columnIndexAccess) {
     try {
       switch (pigField.type) {

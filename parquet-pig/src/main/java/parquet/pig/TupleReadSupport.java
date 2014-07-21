@@ -48,8 +48,8 @@ import parquet.schema.MessageType;
  */
 public class TupleReadSupport extends ReadSupport<Tuple> {
   static final String PARQUET_PIG_SCHEMA = "parquet.pig.schema";
-  static final String PARQUET_COLUMN_INDEX_ACCESS = "parquet.column.index.access";
-  static final String PARQUET_PIG_REQUIRED_FIELDS = "parquet.pig.required.fields";
+  static final String PARQUET_COLUMN_INDEX_ACCESS = "parquet.private.pig.column.index.access";
+  static final String PARQUET_PIG_REQUIRED_FIELDS = "parquet.private.pig.required.fields";
   static final String PARQUET_PIG_ELEPHANT_BIRD_COMPATIBLE = "parquet.pig.elephantbird.compatible";
   private static final Log LOG = Log.getLog(TupleReadSupport.class);
 
