@@ -43,7 +43,7 @@ public interface IncrementallyUpdatedFilterPredicate {
     private boolean result = false;
     private boolean isKnown = false;
 
-    // this methods signal what the value is
+    // these methods signal what the value is
     public void updateNull() { throw new UnsupportedOperationException(); }
     public void update(int value) { throw new UnsupportedOperationException(); }
     public void update(long value) { throw new UnsupportedOperationException(); }

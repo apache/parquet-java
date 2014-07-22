@@ -26,7 +26,7 @@ public final class Closeables {
    * c.close(). The exception will be logged.
    * @param c can be null
    */
-  public static void closeAndSwallowExceptions(Closeable c) {
+  public static void closeAndSwallowIOExceptions(Closeable c) {
     if (c == null) { return; }
     try {
       c.close();

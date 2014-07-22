@@ -443,7 +443,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
   }
 
   @Override
-  public boolean skipCurrentRecord() {
+  public boolean shouldSkipCurrentRecord() {
     return skipCurrentRecord;
   }
 

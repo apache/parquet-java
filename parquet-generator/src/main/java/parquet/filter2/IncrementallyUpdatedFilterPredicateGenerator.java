@@ -192,7 +192,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     writer.close();
   }
 
-  private void addVisitBegin(String inVar) {
+  private void addVisitBegin(String inVar) throws IOException {
     add("  @Override\n" +
         "  public <T extends Comparable<T>> IncrementallyUpdatedFilterPredicate visit(" + inVar + "<T> pred) {\n" +
         "    ColumnPath columnPath = pred.getColumn().getColumnPath();\n" +
@@ -201,7 +201,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         "    ValueInspector valueInspector = null;\n\n");
   }
 
-  private void addVisitEnd() {
+  private void addVisitEnd() throws IOException {
     add("    if (valueInspector == null) {\n" +
         "      throw new IllegalArgumentException(\"Encountered unknown type \" + clazz);\n" +
         "    }\n" +
@@ -211,7 +211,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         "  }\n\n");
   }
 
-  private void addEqNotEqCase(TypeInfo info, boolean isEq) {
+  private void addEqNotEqCase(TypeInfo info, boolean isEq) throws IOException {
     add("    if (clazz.equals(" + info.className + ".class)) {\n" +
         "      if (pred.getValue() == null) {\n" +
         "        valueInspector = new ValueInspector() {\n" +
@@ -249,7 +249,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         "    }\n\n");
   }
 
-  private void addInequalityCase(TypeInfo info, String op) {
+  private void addInequalityCase(TypeInfo info, String op) throws IOException {
     if (!info.supportsInequality) {
       add("    if (clazz.equals(" + info.className + ".class)) {\n");
       add("      throw new IllegalArgumentException(\"Operator " + op + " not supported for " + info.className + "\");\n");
@@ -279,7 +279,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         "    }\n\n");
   }
 
-  private void addUdpBegin() {
+  private void addUdpBegin() throws IOException {
     add("    ColumnPath columnPath = pred.getColumn().getColumnPath();\n" +
         "    Class<T> clazz = pred.getColumn().getColumnType();\n" +
         "\n" +
@@ -289,7 +289,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         "\n");
   }
 
-  private void addUdpCase(TypeInfo info, boolean invert) {
+  private void addUdpCase(TypeInfo info, boolean invert)throws IOException {
     add("    if (clazz.equals(" + info.className + ".class)) {\n" +
         "      valueInspector = new ValueInspector() {\n" +
         "        @Override\n" +
@@ -310,11 +310,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     return var + ".compareTo(" + target + ")" + (eq ? " == 0 " : " != 0");
   }
 
-  private void add(String s) {
-    try {
-      writer.write(s);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+  private void add(String s) throws IOException {
+    writer.write(s);
   }
 }

@@ -3,8 +3,9 @@ package parquet.filter2.predicate;
 import java.io.Serializable;
 
 import parquet.ColumnPath;
-import parquet.Preconditions;
 import parquet.io.api.Binary;
+
+import static parquet.Preconditions.checkNotNull;
 
 /**
  * These are the operators in a filter predicate expression tree.
@@ -18,8 +19,8 @@ public final class Operators {
     private final Class<T> columnType;
 
     protected Column(ColumnPath columnPath, Class<T> columnType) {
-      Preconditions.checkNotNull(columnPath, "columnPath");
-      Preconditions.checkNotNull(columnType, "columnType");
+      checkNotNull(columnPath, "columnPath");
+      checkNotNull(columnType, "columnType");
       this.columnPath = columnPath;
       this.columnType = columnType;
     }
@@ -59,27 +60,27 @@ public final class Operators {
   }
 
   public static interface SupportsEqNotEq { } // marker for columns that can be used with eq() and notEq()
-  public static interface SupportsLtGt { } // marker for columsn that can be used with lt(), ltEq(), gt(), gtEq()
+  public static interface SupportsLtGt extends SupportsEqNotEq { } // marker for columns that can be used with lt(), ltEq(), gt(), gtEq()
 
-  public static final class IntColumn extends Column<Integer> implements SupportsEqNotEq, SupportsLtGt {
+  public static final class IntColumn extends Column<Integer> implements SupportsLtGt {
     IntColumn(ColumnPath columnPath) {
       super(columnPath, Integer.class);
     }
   }
 
-  public static final class LongColumn extends Column<Long> implements SupportsEqNotEq, SupportsLtGt {
+  public static final class LongColumn extends Column<Long> implements SupportsLtGt {
     LongColumn(ColumnPath columnPath) {
       super(columnPath, Long.class);
     }
   }
 
-  public static final class DoubleColumn extends Column<Double> implements SupportsEqNotEq, SupportsLtGt {
+  public static final class DoubleColumn extends Column<Double> implements SupportsLtGt {
     DoubleColumn(ColumnPath columnPath) {
       super(columnPath, Double.class);
     }
   }
 
-  public static final class FloatColumn extends Column<Float> implements SupportsEqNotEq, SupportsLtGt {
+  public static final class FloatColumn extends Column<Float> implements SupportsLtGt {
     FloatColumn(ColumnPath columnPath) {
       super(columnPath, Float.class);
     }
@@ -91,21 +92,23 @@ public final class Operators {
     }
   }
 
-  public static final class BinaryColumn extends Column<Binary> implements SupportsEqNotEq, SupportsLtGt {
+  public static final class BinaryColumn extends Column<Binary> implements SupportsLtGt {
     BinaryColumn(ColumnPath columnPath) {
       super(columnPath, Binary.class);
     }
   }
 
-  // base class for Eq, Lt, Gt, LtEq, GtEq
+  // base class for Eq, NotEq, Lt, Gt, LtEq, GtEq
   static abstract class ColumnFilterPredicate<T extends Comparable<T>> implements FilterPredicate, Serializable  {
     private final Column<T> column;
     private final T value;
     private final String toString;
 
     protected ColumnFilterPredicate(Column<T> column, T value) {
-      Preconditions.checkNotNull(column, "column");
-      this.column = column;
+      this.column = checkNotNull(column, "column");
+
+      // Eq and NotEq allow value to be null, Lt, Gt, LtEq, GtEq however do not, so they guard against
+      // null in their own constructors.
       this.value = value;
 
       String name = getClass().getSimpleName().toLowerCase();
@@ -179,8 +182,7 @@ public final class Operators {
 
     // value cannot be null
     Lt(Column<T> column, T value) {
-      super(column, value);
-      Preconditions.checkNotNull(value, "value");
+      super(column, checkNotNull(value, "value"));
     }
 
     @Override
@@ -193,8 +195,7 @@ public final class Operators {
 
     // value cannot be null
     LtEq(Column<T> column, T value) {
-      super(column, value);
-      Preconditions.checkNotNull(value, "value");
+      super(column, checkNotNull(value, "value"));
     }
 
     @Override
@@ -208,8 +209,7 @@ public final class Operators {
 
     // value cannot be null
     Gt(Column<T> column, T value) {
-      super(column, value);
-      Preconditions.checkNotNull(value, "value");
+      super(column, checkNotNull(value, "value"));
     }
 
     @Override
@@ -222,8 +222,7 @@ public final class Operators {
 
     // value cannot be null
     GtEq(Column<T> column, T value) {
-      super(column, value);
-      Preconditions.checkNotNull(value, "value");
+      super(column, checkNotNull(value, "value"));
     }
 
     @Override
@@ -239,10 +238,8 @@ public final class Operators {
     private final String toString;
 
     protected BinaryLogicalFilterPredicate(FilterPredicate left, FilterPredicate right) {
-      Preconditions.checkNotNull(left, "left");
-      Preconditions.checkNotNull(right, "right");
-      this.left = left;
-      this.right = right;
+      this.left = checkNotNull(left, "left");
+      this.right = checkNotNull(right, "right");
       String name = getClass().getSimpleName().toLowerCase();
       this.toString = name + "(" + left + ", " + right + ")";
     }
@@ -311,8 +308,7 @@ public final class Operators {
     private final String toString;
 
     Not(FilterPredicate predicate) {
-      Preconditions.checkNotNull(predicate, "predicate");
-      this.predicate = predicate;
+      this.predicate = checkNotNull(predicate, "predicate");
       this.toString = "not(" + predicate + ")";
     }
 
@@ -352,10 +348,8 @@ public final class Operators {
         "Could not instantiate custom filter: %s. User defined predicates must be static classes with a default constructor.";
 
     UserDefined(Column<T> column, Class<U> udpClass) {
-      Preconditions.checkNotNull(column, "column");
-      Preconditions.checkNotNull(udpClass, "udpClass");
-      this.column = column;
-      this.udpClass = udpClass;
+      this.column = checkNotNull(column, "column");
+      this.udpClass = checkNotNull(udpClass, "udpClass");
       String name = getClass().getSimpleName().toLowerCase();
       this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udpClass.getName() + ")";
 
@@ -420,7 +414,7 @@ public final class Operators {
     private final String toString;
 
     LogicalNotUserDefined(UserDefined<T, U> userDefined) {
-      this.udp = Preconditions.checkNotNull(userDefined, "userDefined");
+      this.udp = checkNotNull(userDefined, "userDefined");
       this.toString = "inverted(" + udp + ")";
     }
 

@@ -34,7 +34,7 @@ public abstract class RecordReader<T> {
    * Returns whether the current record should be skipped (dropped)
    * Will be called *after* read()
    */
-  public boolean skipCurrentRecord() {
+  public boolean shouldSkipCurrentRecord() {
     return false;
   }
 }

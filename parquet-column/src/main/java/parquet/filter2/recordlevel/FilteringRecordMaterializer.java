@@ -41,7 +41,7 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
     this.filterPredicate = Preconditions.checkNotNull(filterPredicate, "filterPredicate");
     this.delegate = Preconditions.checkNotNull(delegate, "delegate");
 
-    // keep track of which path if indexes leads to which primitive column
+    // keep track of which path of indices leads to which primitive column
     Map<List<Integer>, PrimitiveColumnIO> columnIOsByIndexFieldPath = new HashMap<List<Integer>, PrimitiveColumnIO>();
 
     for (PrimitiveColumnIO c : columnIOs) {

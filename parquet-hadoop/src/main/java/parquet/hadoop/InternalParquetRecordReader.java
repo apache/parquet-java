@@ -200,7 +200,7 @@ class InternalParquetRecordReader<T> {
         checkRead();
         currentValue = recordReader.read();
         current ++;
-        if (recordReader.skipCurrentRecord()) {
+        if (recordReader.shouldSkipCurrentRecord()) {
           // this record is being filtered via the filter2 package
           if (DEBUG) LOG.debug("skipping record");
           continue;
