@@ -167,7 +167,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     public String toString() {
       if (stringValue != null) {
-        return "Binary{" + stringValue + "}";
+        return "Binary{\"" + stringValue + "\"}";
       }
       return super.toString();
     }

@@ -37,6 +37,7 @@ public class TestFilterApiMethods {
 
   private static final IntColumn intColumn = intColumn("a.b.c");
   private static final DoubleColumn doubleColumn = doubleColumn("x.y.z");
+  private static final BinaryColumn binColumn = binaryColumn("a.string.column");
 
   private static final FilterPredicate predicate =
       and(not(or(eq(intColumn, 7), notEq(intColumn, 17))), gt(doubleColumn, 100.0));
@@ -70,8 +71,10 @@ public class TestFilterApiMethods {
 
   @Test
   public void testToString() {
-    assertEquals("and(not(or(eq(a.b.c, 7), noteq(a.b.c, 17))), gt(x.y.z, 100.0))",
-        predicate.toString());
+    FilterPredicate pred = or(predicate, notEq(binColumn, Binary.fromString("foobarbaz")));
+    assertEquals("or(and(not(or(eq(a.b.c, 7), noteq(a.b.c, 17))), gt(x.y.z, 100.0)), "
+        + "noteq(a.string.column, Binary{\"foobarbaz\"}))",
+        pred.toString());
   }
 
   @Test
