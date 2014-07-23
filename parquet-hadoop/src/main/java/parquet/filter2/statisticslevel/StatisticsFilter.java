@@ -220,10 +220,13 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
     U udp = ud.getUserDefinedPredicate();
     Statistics<T> stats = columnChunk.getStatistics();
+    parquet.filter2.predicate.Statistics<T> udpStats =
+        new parquet.filter2.predicate.Statistics<T>(stats.genericGetMin(), stats.genericGetMax());
+
     if (inverted) {
-      return udp.inverseCanDrop(stats.genericGetMin(), stats.genericGetMax());
+      return udp.inverseCanDrop(udpStats);
     } else {
-      return udp.canDrop(stats.genericGetMin(), stats.genericGetMax());
+      return udp.canDrop(udpStats);
     }
   }
 

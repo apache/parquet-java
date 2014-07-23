@@ -15,6 +15,7 @@ import parquet.example.data.Group;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.filter2.predicate.Operators.BinaryColumn;
 import parquet.filter2.predicate.Operators.DoubleColumn;
+import parquet.filter2.predicate.Statistics;
 import parquet.filter2.predicate.UserDefinedPredicate;
 import parquet.filter2.recordlevel.PhoneBookWriter.Location;
 import parquet.filter2.recordlevel.PhoneBookWriter.PhoneNumber;
@@ -150,12 +151,12 @@ public class TestRecordLevelFilters {
     }
 
     @Override
-    public boolean canDrop(Binary min, Binary max) {
+    public boolean canDrop(Statistics<Binary> statistics) {
       return false;
     }
 
     @Override
-    public boolean inverseCanDrop(Binary min, Binary max) {
+    public boolean inverseCanDrop(Statistics<Binary> statistics) {
       return false;
     }
   }

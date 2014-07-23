@@ -14,6 +14,7 @@ import parquet.filter2.predicate.FilterPredicate;
 import parquet.filter2.predicate.LogicalInverseRewriter;
 import parquet.filter2.predicate.Operators.DoubleColumn;
 import parquet.filter2.predicate.Operators.IntColumn;
+import parquet.filter2.predicate.Statistics;
 import parquet.filter2.predicate.UserDefinedPredicate;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
@@ -226,13 +227,13 @@ public class TestStatisticsFilter {
     }
 
     @Override
-    public boolean canDrop(Integer min, Integer max) {
-      return min == 7 && max == 7;
+    public boolean canDrop(Statistics<Integer> statistics) {
+      return statistics.getMin() == 7 && statistics.getMax() == 7;
     }
 
     @Override
-    public boolean inverseCanDrop(Integer min, Integer max) {
-      return min == 8 && max == 8;
+    public boolean inverseCanDrop(Statistics<Integer> statistics) {
+      return statistics.getMin() == 8 && statistics.getMax() == 8;
     }
   }
 

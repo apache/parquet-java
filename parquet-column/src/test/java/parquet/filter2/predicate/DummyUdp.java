@@ -1,7 +1,5 @@
 package parquet.filter2.predicate;
 
-import parquet.filter2.predicate.UserDefinedPredicate;
-
 public class DummyUdp extends UserDefinedPredicate<Integer> {
 
   @Override
@@ -10,12 +8,12 @@ public class DummyUdp extends UserDefinedPredicate<Integer> {
   }
 
   @Override
-  public boolean canDrop(Integer min, Integer max) {
+  public boolean canDrop(Statistics<Integer> statistics) {
     return false;
   }
 
   @Override
-  public boolean inverseCanDrop(Integer min, Integer max) {
+  public boolean inverseCanDrop(Statistics<Integer> statistics) {
     return false;
   }
 }
