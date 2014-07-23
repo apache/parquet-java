@@ -5,11 +5,13 @@ import java.util.List;
 import java.util.Map;
 
 import parquet.ColumnPath;
-import parquet.Preconditions;
 import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
 import parquet.io.PrimitiveColumnIO;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
+
+import static parquet.Preconditions.checkArgument;
+import static parquet.Preconditions.checkNotNull;
 
 /**
  * See {@link FilteringRecordMaterializer}
@@ -36,10 +38,10 @@ public class FilteringGroupConverter extends GroupConverter {
       Map<ColumnPath, List<ValueInspector>> valueInspectorsByColumn, Map<List<Integer>,
       PrimitiveColumnIO> columnIOsByIndexFieldPath) {
 
-    this.delegate = Preconditions.checkNotNull(delegate, "delegate");
-    this.indexFieldPath = Preconditions.checkNotNull(indexFieldPath, "indexFieldPath");
-    this.columnIOsByIndexFieldPath = Preconditions.checkNotNull(columnIOsByIndexFieldPath, "columnIOsByIndexFieldPath");
-    this.valueInspectorsByColumn = Preconditions.checkNotNull(valueInspectorsByColumn, "valueInspectorsByColumn");
+    this.delegate = checkNotNull(delegate, "delegate");
+    this.indexFieldPath = checkNotNull(indexFieldPath, "indexFieldPath");
+    this.columnIOsByIndexFieldPath = checkNotNull(columnIOsByIndexFieldPath, "columnIOsByIndexFieldPath");
+    this.valueInspectorsByColumn = checkNotNull(valueInspectorsByColumn, "valueInspectorsByColumn");
   }
 
   // When a converter is asked for, we get the real one from the delegate, then wrap it
@@ -49,7 +51,7 @@ public class FilteringGroupConverter extends GroupConverter {
   public Converter getConverter(int fieldIndex) {
 
     // get the real converter from the delegate
-    Converter delegateConverter = Preconditions.checkNotNull(delegate.getConverter(fieldIndex), "delegate converter");
+    Converter delegateConverter = checkNotNull(delegate.getConverter(fieldIndex), "delegate converter");
 
     // determine the indexFieldPath for the converter proxy we're about to make, which is
     // this converter's path + the requested fieldIndex
@@ -70,7 +72,7 @@ public class FilteringGroupConverter extends GroupConverter {
 
   private PrimitiveColumnIO getColumnIO(List<Integer> indexFieldPath) {
     PrimitiveColumnIO found = columnIOsByIndexFieldPath.get(indexFieldPath);
-    Preconditions.checkArgument(found != null, "Did not find PrimitiveColumnIO for index field path" + indexFieldPath);
+    checkArgument(found != null, "Did not find PrimitiveColumnIO for index field path" + indexFieldPath);
     return found;
   }
 

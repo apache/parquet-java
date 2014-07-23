@@ -1,7 +1,8 @@
 package parquet.filter2.recordlevel;
 
-import parquet.Preconditions;
 import parquet.io.api.Binary;
+
+import static parquet.Preconditions.checkNotNull;
 
 /**
  * A rewritten version of a {@link parquet.filter2.predicate.FilterPredicate} which receives
@@ -101,8 +102,8 @@ public interface IncrementallyUpdatedFilterPredicate {
     private final IncrementallyUpdatedFilterPredicate right;
 
     BinaryLogical(IncrementallyUpdatedFilterPredicate left, IncrementallyUpdatedFilterPredicate right) {
-      this.left = Preconditions.checkNotNull(left, "left");
-      this.right = Preconditions.checkNotNull(right, "right");
+      this.left = checkNotNull(left, "left");
+      this.right = checkNotNull(right, "right");
     }
 
     public final IncrementallyUpdatedFilterPredicate getLeft() {

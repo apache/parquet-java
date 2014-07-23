@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 
 import parquet.ColumnPath;
-import parquet.Preconditions;
 import parquet.column.statistics.Statistics;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.filter2.predicate.Operators.And;
@@ -22,6 +21,9 @@ import parquet.filter2.predicate.Operators.Or;
 import parquet.filter2.predicate.Operators.UserDefined;
 import parquet.filter2.predicate.UserDefinedPredicate;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
+
+import static parquet.Preconditions.checkArgument;
+import static parquet.Preconditions.checkNotNull;
 
 /**
  * Applies a {@link parquet.filter2.predicate.FilterPredicate} to statistics about a group of
@@ -44,8 +46,8 @@ import parquet.hadoop.metadata.ColumnChunkMetaData;
 public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns) {
-    Preconditions.checkNotNull(pred, "pred");
-    Preconditions.checkNotNull(columns, "columns");
+    checkNotNull(pred, "pred");
+    checkNotNull(columns, "columns");
     return pred.accept(new StatisticsFilter(columns));
   }
 
@@ -59,7 +61,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
   private ColumnChunkMetaData getColumnChunk(ColumnPath columnPath) {
     ColumnChunkMetaData c = columns.get(columnPath);
-    Preconditions.checkArgument(c != null, "Column " + columnPath.toDotString() + " not found in schema!");
+    checkArgument(c != null, "Column " + columnPath.toDotString() + " not found in schema!");
     return c;
   }
 

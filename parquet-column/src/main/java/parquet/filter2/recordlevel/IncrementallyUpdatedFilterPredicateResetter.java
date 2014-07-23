@@ -1,10 +1,11 @@
 package parquet.filter2.recordlevel;
 
-import parquet.Preconditions;
 import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.And;
 import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.Or;
 import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
 import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.Visitor;
+
+import static parquet.Preconditions.checkNotNull;
 
 /**
  * Resets all the {@link ValueInspector}s in a {@link IncrementallyUpdatedFilterPredicate}.
@@ -13,7 +14,7 @@ public final class IncrementallyUpdatedFilterPredicateResetter implements Visito
   private static final IncrementallyUpdatedFilterPredicateResetter INSTANCE = new IncrementallyUpdatedFilterPredicateResetter();
 
   public static void reset(IncrementallyUpdatedFilterPredicate pred) {
-    Preconditions.checkNotNull(pred, "pred");
+    checkNotNull(pred, "pred");
     pred.accept(INSTANCE);
   }
 

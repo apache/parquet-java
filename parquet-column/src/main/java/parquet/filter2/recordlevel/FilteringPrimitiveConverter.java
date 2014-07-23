@@ -1,10 +1,11 @@
 package parquet.filter2.recordlevel;
 
-import parquet.Preconditions;
 import parquet.column.Dictionary;
 import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
 import parquet.io.api.Binary;
 import parquet.io.api.PrimitiveConverter;
+
+import static parquet.Preconditions.checkNotNull;
 
 /**
  * see {@link FilteringRecordMaterializer}
@@ -17,8 +18,8 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
   private final ValueInspector[] valueInspectors;
 
   public FilteringPrimitiveConverter(PrimitiveConverter delegate, ValueInspector[] valueInspectors) {
-    this.delegate = Preconditions.checkNotNull(delegate, "delegate");
-    this.valueInspectors = Preconditions.checkNotNull(valueInspectors, "valueInspectors");
+    this.delegate = checkNotNull(delegate, "delegate");
+    this.valueInspectors = checkNotNull(valueInspectors, "valueInspectors");
   }
 
   // TODO(alexlevenson): this essentially turns off dictionary support

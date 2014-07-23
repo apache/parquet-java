@@ -25,7 +25,6 @@ import org.apache.hadoop.fs.Path;
 import parquet.Either;
 import parquet.Log;
 import parquet.Optional;
-import parquet.Preconditions;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.PageReadStore;
 import parquet.filter.UnboundRecordFilter;
@@ -43,6 +42,7 @@ import parquet.schema.Type;
 
 import static java.lang.String.format;
 import static parquet.Log.DEBUG;
+import static parquet.Preconditions.checkNotNull;
 import static parquet.hadoop.ParquetInputFormat.STRICT_TYPE_CHECKING;
 
 class InternalParquetRecordReader<T> {
@@ -103,7 +103,7 @@ class InternalParquetRecordReader<T> {
   public InternalParquetRecordReader(ReadSupport<T> readSupport,
                                      Optional<Either<UnboundRecordFilter, FilterPredicate>> filter) {
     this.readSupport = readSupport;
-    this.filter = Preconditions.checkNotNull(filter, "filter");
+    this.filter = checkNotNull(filter, "filter");
   }
 
   private void checkRead() throws IOException {

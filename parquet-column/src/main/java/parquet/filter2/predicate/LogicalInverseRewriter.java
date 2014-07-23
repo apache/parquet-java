@@ -1,6 +1,5 @@
 package parquet.filter2.predicate;
 
-import parquet.Preconditions;
 import parquet.filter2.predicate.FilterPredicate.Visitor;
 import parquet.filter2.predicate.Operators.And;
 import parquet.filter2.predicate.Operators.Eq;
@@ -14,6 +13,7 @@ import parquet.filter2.predicate.Operators.NotEq;
 import parquet.filter2.predicate.Operators.Or;
 import parquet.filter2.predicate.Operators.UserDefined;
 
+import static parquet.Preconditions.checkNotNull;
 import static parquet.filter2.predicate.FilterApi.and;
 import static parquet.filter2.predicate.FilterApi.or;
 
@@ -32,7 +32,7 @@ public final class LogicalInverseRewriter implements Visitor<FilterPredicate> {
   private static final LogicalInverseRewriter INSTANCE = new LogicalInverseRewriter();
 
   public static FilterPredicate rewrite(FilterPredicate pred) {
-    Preconditions.checkNotNull(pred, "pred");
+    checkNotNull(pred, "pred");
     return pred.accept(INSTANCE);
   }
 

@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import parquet.ColumnPath;
-import parquet.Preconditions;
 import parquet.column.ColumnDescriptor;
 import parquet.filter2.predicate.Operators.And;
 import parquet.filter2.predicate.Operators.Column;
@@ -22,6 +21,9 @@ import parquet.filter2.predicate.Operators.UserDefined;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
 
+import static parquet.Preconditions.checkArgument;
+import static parquet.Preconditions.checkNotNull;
+
 /**
  * Inspects the column types found in the provided {@link FilterPredicate} and compares them
  * to the actual schema found in the parquet file. If the provided predicate's types are
@@ -38,8 +40,8 @@ import parquet.schema.OriginalType;
 public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Void> {
 
   public static void validate(FilterPredicate predicate, MessageType schema) {
-    Preconditions.checkNotNull(predicate, "predicate");
-    Preconditions.checkNotNull(schema, "schema");
+    checkNotNull(predicate, "predicate");
+    checkNotNull(schema, "schema");
     predicate.accept(new SchemaCompatibilityValidator(schema));
   }
 
@@ -163,7 +165,7 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
 
   private ColumnDescriptor getColumnDescriptor(ColumnPath columnPath) {
     ColumnDescriptor cd = columnsAccordingToSchema.get(columnPath);
-    Preconditions.checkArgument(cd != null, "Column " + columnPath + " was not found in schema!");
+    checkArgument(cd != null, "Column " + columnPath + " was not found in schema!");
     return cd;
   }
 }

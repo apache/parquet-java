@@ -37,7 +37,6 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
 import parquet.Log;
-import parquet.Preconditions;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.filter2.predicate.LogicalInverseRewriter;
@@ -57,6 +56,8 @@ import parquet.hadoop.util.SerializationUtil;
 import parquet.io.ParquetDecodingException;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
+
+import static parquet.Preconditions.checkArgument;
 
 /**
  * The input format to read a Parquet file.
@@ -104,7 +105,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   public static void setUnboundRecordFilter(Job job, Class<? extends UnboundRecordFilter> filterClass) {
     Configuration conf = ContextUtil.getConfiguration(job);
-    Preconditions.checkArgument(getFilterPredicate(conf) == null,
+    checkArgument(getFilterPredicate(conf) == null,
         "You cannot provide an UnboundRecordFilter after providing a FilterPredicate");
 
     conf.set(UNBOUND_RECORD_FILTER, filterClass.getName());
@@ -123,7 +124,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   public static void setFilterPredicate(Configuration configuration, FilterPredicate filterPredicate) {
-    Preconditions.checkArgument(getUnboundRecordFilter(configuration) == null,
+    checkArgument(getUnboundRecordFilter(configuration) == null,
         "You cannot provide a FilterPredicate after providing an UnboundRecordFilter");
 
     configuration.set(FILTER_PREDICATE + ".human.readable", filterPredicate.toString());
@@ -169,7 +170,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     Class<?> unboundRecordFilterClass = getUnboundRecordFilter(conf);
     FilterPredicate filterPredicate = loadFilterPredicate(conf, "records");
 
-    Preconditions.checkArgument(!(unboundRecordFilterClass != null && filterPredicate != null),
+    checkArgument(!(unboundRecordFilterClass != null && filterPredicate != null),
         "Found both an UnboundRecordFilter and a FilterPredicate. Only one can be provided");
 
     if (unboundRecordFilterClass != null) {

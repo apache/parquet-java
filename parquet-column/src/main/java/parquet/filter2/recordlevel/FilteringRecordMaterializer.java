@@ -7,11 +7,12 @@ import java.util.List;
 import java.util.Map;
 
 import parquet.ColumnPath;
-import parquet.Preconditions;
 import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
 import parquet.io.PrimitiveColumnIO;
 import parquet.io.api.GroupConverter;
 import parquet.io.api.RecordMaterializer;
+
+import static parquet.Preconditions.checkNotNull;
 
 /**
  * A pass-through proxy for a {@link RecordMaterializer} that updates a {@link IncrementallyUpdatedFilterPredicate}
@@ -36,10 +37,10 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
       Map<ColumnPath, List<ValueInspector>> valueInspectorsByColumn,
       IncrementallyUpdatedFilterPredicate filterPredicate) {
 
-    Preconditions.checkNotNull(columnIOs, "columnIOs");
-    Preconditions.checkNotNull(valueInspectorsByColumn, "valueInspectorsByColumn");
-    this.filterPredicate = Preconditions.checkNotNull(filterPredicate, "filterPredicate");
-    this.delegate = Preconditions.checkNotNull(delegate, "delegate");
+    checkNotNull(columnIOs, "columnIOs");
+    checkNotNull(valueInspectorsByColumn, "valueInspectorsByColumn");
+    this.filterPredicate = checkNotNull(filterPredicate, "filterPredicate");
+    this.delegate = checkNotNull(delegate, "delegate");
 
     // keep track of which path of indices leads to which primitive column
     Map<List<Integer>, PrimitiveColumnIO> columnIOsByIndexFieldPath = new HashMap<List<Integer>, PrimitiveColumnIO>();

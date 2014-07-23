@@ -1,6 +1,5 @@
 package parquet.filter2.predicate;
 
-import parquet.Preconditions;
 import parquet.filter2.predicate.FilterPredicate.Visitor;
 import parquet.filter2.predicate.Operators.And;
 import parquet.filter2.predicate.Operators.Eq;
@@ -14,6 +13,8 @@ import parquet.filter2.predicate.Operators.NotEq;
 import parquet.filter2.predicate.Operators.Or;
 import parquet.filter2.predicate.Operators.UserDefined;
 
+import static parquet.Preconditions.checkNotNull;
+
 /**
  * Converts a {@link FilterPredicate} to its logical inverse.
  * The returned predicate should be equivalent to not(p), but without
@@ -26,7 +27,7 @@ public final class LogicalInverter implements Visitor<FilterPredicate> {
   private static final LogicalInverter INSTANCE = new LogicalInverter();
 
   public static FilterPredicate invert(FilterPredicate pred) {
-    Preconditions.checkNotNull(pred, "pred");
+    checkNotNull(pred, "pred");
     return pred.accept(INSTANCE);
   }
 
