@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
@@ -134,13 +135,18 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public RecordReader<Void, T> createRecordReader(
       InputSplit inputSplit,
       TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
-    ReadSupport<T> readSupport = getReadSupport(ContextUtil.getConfiguration(taskAttemptContext));
-    Class<?> unboundRecordFilterClass = getUnboundRecordFilter(ContextUtil.getConfiguration(taskAttemptContext));
+    Configuration conf = ContextUtil.getConfiguration(taskAttemptContext);
+    ReadSupport<T> readSupport = getReadSupport(conf);
+    Class<?> unboundRecordFilterClass = getUnboundRecordFilter(conf);
     if (unboundRecordFilterClass == null) {
       return new ParquetRecordReader<T>(readSupport);
     } else {
       try {
-        return new ParquetRecordReader<T>(readSupport, (UnboundRecordFilter)unboundRecordFilterClass.newInstance());
+        UnboundRecordFilter filter = (UnboundRecordFilter)unboundRecordFilterClass.newInstance();
+        if (filter instanceof Configurable) {
+          ((Configurable)filter).setConf(conf);
+        }
+        return new ParquetRecordReader<T>(readSupport, filter);
       } catch (InstantiationException e) {
         throw new BadConfigurationException("could not instantiate unbound record filter class", e);
       } catch (IllegalAccessException e) {
