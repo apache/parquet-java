@@ -28,10 +28,9 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
-import parquet.Either;
-import parquet.Optional;
-import parquet.filter.UnboundRecordFilter;
-import parquet.filter2.predicate.FilterPredicate;
+import parquet.filter2.compat.FilterCompat;
+import parquet.filter2.compat.FilterCompat.Filter;
+import parquet.filter2.compat.RowGroupFilter;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
@@ -53,7 +52,7 @@ public class ParquetReader<T> implements Closeable {
   private Iterator<Footer> footersIterator;
   private InternalParquetRecordReader<T> reader;
   private GlobalMetaData globalMetaData;
-  private final Optional<Either<UnboundRecordFilter, FilterPredicate>> filter;
+  private final Filter filter;
 
   /**
    * @param file the file to read
@@ -61,7 +60,7 @@ public class ParquetReader<T> implements Closeable {
    * @throws IOException
    */
   public ParquetReader(Path file, ReadSupport<T> readSupport) throws IOException {
-    this(new Configuration(), file, readSupport, Optional.<Either<UnboundRecordFilter, FilterPredicate>>absent());
+    this(new Configuration(), file, readSupport, FilterCompat.NOOP);
   }
 
   /**
@@ -71,7 +70,7 @@ public class ParquetReader<T> implements Closeable {
    * @throws IOException
    */
   public ParquetReader(Configuration conf, Path file, ReadSupport<T> readSupport) throws IOException {
-    this(conf, file, readSupport, Optional.<Either<UnboundRecordFilter, FilterPredicate>>absent());
+    this(conf, file, readSupport, FilterCompat.NOOP);
   }
 
   /**
@@ -80,30 +79,8 @@ public class ParquetReader<T> implements Closeable {
    * @param filter the filter to use to filter records
    * @throws IOException
    */
-  public ParquetReader(Path file, ReadSupport<T> readSupport, UnboundRecordFilter filter) throws IOException {
-    this(new Configuration(), file, readSupport,
-        Optional.of(Either.<UnboundRecordFilter, FilterPredicate>left(filter)));
-  }
-
-  /**
-   * @param file the file to read
-   * @param readSupport to materialize records
-   * @param filter the filter to use to filter records
-   * @throws IOException
-   */
-  public ParquetReader(Configuration conf, Path file, ReadSupport<T> readSupport, UnboundRecordFilter filter) throws IOException {
-    this(conf, file, readSupport,Optional.of(Either.<UnboundRecordFilter, FilterPredicate>left(filter)));
-  }
-
-  /**
-   * @param file the file to read
-   * @param readSupport to materialize records
-   * @param filter the filter to use to filter records
-   * @throws IOException
-   */
-  public ParquetReader(Path file, ReadSupport<T> readSupport, FilterPredicate filter) throws IOException {
-    this(new Configuration(), file, readSupport,
-        Optional.of(Either.<UnboundRecordFilter, FilterPredicate>right(filter)));
+  public ParquetReader(Path file, ReadSupport<T> readSupport, Filter filter) throws IOException {
+    this(new Configuration(), file, readSupport, filter);
   }
 
   /**
@@ -116,17 +93,10 @@ public class ParquetReader<T> implements Closeable {
   public ParquetReader(Configuration conf,
                        Path file,
                        ReadSupport<T> readSupport,
-                       Optional<Either<UnboundRecordFilter, FilterPredicate>> filter) throws IOException {
+                       Filter filter) throws IOException {
     this.readSupport = readSupport;
 
-    checkNotNull(filter, "filter");
-    if (filter.isPresent() && filter.get().isRight()) {
-      FilterPredicate p = filter.get().asRight();
-      p = ParquetInputFormat.prepareFilterPredicate(p, "row groups and values");
-      this.filter = Optional.of(Either.<UnboundRecordFilter, FilterPredicate>right(p));
-    } else {
-      this.filter = filter;
-    }
+    this.filter = checkNotNull(filter, "filter");
 
     this.conf = conf;
 
@@ -167,14 +137,12 @@ public class ParquetReader<T> implements Closeable {
 
       List<BlockMetaData> blocks = footer.getParquetMetadata().getBlocks();
 
-      if (filter.isPresent() && filter.get().isRight()) {
-        blocks = ParquetInputFormat.applyRowGroupFilters(filter.get().asRight(), footer.getParquetMetadata().getFileMetaData().getSchema(), blocks);
-      }
+      List<BlockMetaData> filteredBlocks = RowGroupFilter.filterRowGroups(filter, blocks, footer.getParquetMetadata().getFileMetaData().getSchema());
 
       reader = new InternalParquetRecordReader<T>(readSupport, filter);
       reader.initialize(
           readContext.getRequestedSchema(), globalMetaData.getSchema(), footer.getParquetMetadata().getFileMetaData().getKeyValueMetaData(),
-          readContext.getReadSupportMetadata(), footer.getFile(), blocks, conf);
+          readContext.getReadSupportMetadata(), footer.getFile(), filteredBlocks, conf);
     }
   }
 

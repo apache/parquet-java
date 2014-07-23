@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import parquet.filter2.compat.FilterCompat;
 import thrift.test.OneOfEach;
 
 import org.apache.thrift.TBase;
@@ -154,7 +155,7 @@ public class TestParquetReadProtocol {
     columns.flush();
 
     ThriftRecordConverter<T> converter = new TBaseRecordConverter<T>(thriftClass, schema, thriftType);
-    final RecordReader<T> recordReader = columnIO.getRecordReader(memPageStore, converter);
+    final RecordReader<T> recordReader = columnIO.getRecordReader(memPageStore, converter, FilterCompat.NOOP);
 
     final T result = recordReader.read();
 

@@ -33,7 +33,7 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
 
   public FilteringRecordMaterializer(
       RecordMaterializer<T> delegate,
-      PrimitiveColumnIO[] columnIOs,
+      List<PrimitiveColumnIO> columnIOs,
       Map<ColumnPath, List<ValueInspector>> valueInspectorsByColumn,
       IncrementallyUpdatedFilterPredicate filterPredicate) {
 

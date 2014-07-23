@@ -19,19 +19,26 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 
-import parquet.Either;
 import parquet.Log;
-import parquet.Optional;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
 import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.column.page.PageReadStore;
-import parquet.filter.UnboundRecordFilter;
+import parquet.filter2.compat.FilterCompat.Filter;
+import parquet.filter2.compat.FilterCompat.FilterPredicateCompat;
+import parquet.filter2.compat.FilterCompat.NoOpFilter;
+import parquet.filter2.compat.FilterCompat.UnboundRecordFilterCompat;
+import parquet.filter2.compat.FilterCompat.Visitor;
 import parquet.filter2.predicate.FilterPredicate;
+import parquet.filter2.recordlevel.FilteringRecordMaterializer;
+import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate;
+import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicateBuilder;
 import parquet.io.api.Binary;
 import parquet.io.api.RecordConsumer;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
+
+import static parquet.Preconditions.checkNotNull;
 
 /**
  * Message level of the IO structure
@@ -58,43 +65,59 @@ public class MessageColumnIO extends GroupColumnIO {
     return super.getColumnNames();
   }
 
-  public <T> RecordReader<T> getRecordReader(PageReadStore columns, RecordMaterializer<T> recordMaterializer) {
-    return getRecordReader(columns, recordMaterializer, Optional.<Either<UnboundRecordFilter, FilterPredicate>>absent());
-  }
-
-  public <T> RecordReader<T> getRecordReader(PageReadStore columns,
-                                             RecordMaterializer<T> recordMaterializer,
-                                             Optional<Either<UnboundRecordFilter, FilterPredicate>> filter) {
+  public <T> RecordReader<T> getRecordReader(final PageReadStore columns,
+                                             final RecordMaterializer<T> recordMaterializer,
+                                             final Filter filter) {
+    checkNotNull(columns, "columns");
+    checkNotNull(recordMaterializer, "recordMaterializer");
+    checkNotNull(filter, "filter");
 
     if (leaves.isEmpty()) {
       return new EmptyRecordReader<T>(recordMaterializer);
     }
 
-    if (filter.isPresent() && filter.get().isLeft()) {
-      UnboundRecordFilter unboundRecordFilter = filter.get().asLeft();
-      return new FilteredRecordReader<T>(
-          this,
-          recordMaterializer,
-          validating,
-          new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType()),
-          unboundRecordFilter,
-          columns.getRowCount()
-      );
-    }
+    return filter.accept(new Visitor<RecordReader<T>>() {
+      @Override
+      public RecordReader<T> visit(FilterPredicateCompat filterPredicateCompat) {
 
-    Optional<FilterPredicate> filterPredicate = Optional.absent();
-    if (filter.isPresent() && filter.get().isRight()) {
-      filterPredicate = Optional.of(filter.get().asRight());
-    }
+        FilterPredicate predicate = filterPredicateCompat.getFilterPredicate();
+        IncrementallyUpdatedFilterPredicateBuilder builder = new IncrementallyUpdatedFilterPredicateBuilder();
+        IncrementallyUpdatedFilterPredicate streamingPredicate = builder.build(predicate);
+        RecordMaterializer<T> filteringRecordMaterializer = new FilteringRecordMaterializer<T>(
+            recordMaterializer,
+            leaves,
+            builder.getValueInspectorsByColumn(),
+            streamingPredicate);
 
-    return new RecordReaderImplementation<T>(
-        this,
-        recordMaterializer,
-        validating,
-        new ColumnReadStoreImpl(columns, getType()),
-        filterPredicate
-    );
+        return new RecordReaderImplementation<T>(
+            MessageColumnIO.this,
+            filteringRecordMaterializer,
+            validating,
+            new ColumnReadStoreImpl(columns, filteringRecordMaterializer.getRootConverter(), getType()));
+      }
 
+      @Override
+      public RecordReader<T> visit(UnboundRecordFilterCompat unboundRecordFilterCompat) {
+        return new FilteredRecordReader<T>(
+            MessageColumnIO.this,
+            recordMaterializer,
+            validating,
+            new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType()),
+            unboundRecordFilterCompat.getUnboundRecordFilter(),
+            columns.getRowCount()
+        );
+
+      }
+
+      @Override
+      public RecordReader<T> visit(NoOpFilter noOpFilter) {
+        return new RecordReaderImplementation<T>(
+            MessageColumnIO.this,
+            recordMaterializer,
+            validating,
+            new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType()));
+      }
+    });
   }
 
   private class MessageColumnIORecordConsumer extends RecordConsumer {

@@ -15,12 +15,10 @@
  */
 package parquet.io;
 
-import parquet.Optional;
 import parquet.column.ColumnReader;
 import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.filter.RecordFilter;
 import parquet.filter.UnboundRecordFilter;
-import parquet.filter2.predicate.FilterPredicate;
 import parquet.io.api.RecordMaterializer;
 
 /**
@@ -42,7 +40,7 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
    */
   public FilteredRecordReader(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating,
                               ColumnReadStoreImpl columnStore, UnboundRecordFilter unboundFilter, long recordCount) {
-    super(root, recordMaterializer, validating, columnStore, Optional.<FilterPredicate>absent());
+    super(root, recordMaterializer, validating, columnStore);
     this.recordCount = recordCount;
     if ( unboundFilter != null ) {
       recordFilter = unboundFilter.bind(getColumnReaders());

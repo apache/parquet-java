@@ -37,6 +37,9 @@ import parquet.column.statistics.BinaryStatistics;
 import parquet.column.statistics.IntStatistics;
 import parquet.filter.RecordFilter;
 import parquet.filter.UnboundRecordFilter;
+import parquet.filter2.compat.FilterCompat;
+import parquet.filter2.compat.FilterCompat.Filter;
+import parquet.filter2.compat.FilterCompat.FilterPredicateCompat;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.filter2.predicate.Operators.IntColumn;
 import parquet.hadoop.metadata.BlockMetaData;
@@ -49,7 +52,7 @@ import parquet.schema.MessageTypeParser;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static parquet.filter2.predicate.FilterApi.and;
 import static parquet.filter2.predicate.FilterApi.eq;
@@ -106,13 +109,22 @@ public class TestInputFormat {
   }
 
   @Test
-  public void testFilterPredicateConfiguration() throws IOException {
+  public void testGetFilter() throws IOException {
     IntColumn intColumn = intColumn("foo");
     FilterPredicate p = or(eq(intColumn, 7), eq(intColumn, 12));
     Configuration conf = new Configuration();
     ParquetInputFormat.setFilterPredicate(conf, p);
-    FilterPredicate read = ParquetInputFormat.getFilterPredicate(conf);
-    assertEquals(p, read);
+    Filter read = ParquetInputFormat.getFilter(conf);
+    assertTrue(read instanceof FilterPredicateCompat);
+    assertEquals(p, ((FilterPredicateCompat) read).getFilterPredicate());
+
+    conf = new Configuration();
+    ParquetInputFormat.setFilterPredicate(conf, not(p));
+    read = ParquetInputFormat.getFilter(conf);
+    assertTrue(read instanceof FilterPredicateCompat);
+    assertEquals(and(notEq(intColumn, 7), notEq(intColumn, 12)), ((FilterPredicateCompat) read).getFilterPredicate());
+
+    assertEquals(FilterCompat.NOOP, ParquetInputFormat.getFilter(new Configuration()));
   }
 
   /*
@@ -268,24 +280,6 @@ public class TestInputFormat {
     shouldSplitLengthBe(splits, 20, 20, 10, 20, 20, 10);
   }
 
-  @Test
-  public void testLoadFilterPredicate() {
-    IntColumn foo = intColumn("foo");
-    FilterPredicate p = or(eq(foo, 10), eq(foo, 11));
-
-    Configuration conf = new Configuration();
-    ParquetInputFormat.setFilterPredicate(conf, p);
-    FilterPredicate loaded = ParquetInputFormat.loadFilterPredicate(conf, "");
-    assertEquals(p, loaded);
-
-    conf = new Configuration();
-    ParquetInputFormat.setFilterPredicate(conf, not(p));
-    loaded = ParquetInputFormat.loadFilterPredicate(conf, "");
-    assertEquals(and(notEq(foo, 10), notEq(foo, 11)), loaded);
-
-    assertNull(ParquetInputFormat.loadFilterPredicate(new Configuration(), ""));
-  }
-
   public static final class DummyUnboundRecordFilter implements UnboundRecordFilter {
     @Override
     public RecordFilter bind(Iterable<ColumnReader> readers) {
@@ -322,7 +316,7 @@ public class TestInputFormat {
 
   }
 
-  private BlockMetaData makeBlockFromStats(IntStatistics stats, long valueCount) {
+  public static BlockMetaData makeBlockFromStats(IntStatistics stats, long valueCount) {
     BlockMetaData blockMetaData = new BlockMetaData();
 
     ColumnChunkMetaData column = ColumnChunkMetaData.get(ColumnPath.get("foo"),
@@ -335,69 +329,6 @@ public class TestInputFormat {
     blockMetaData.setTotalByteSize(200l);
     blockMetaData.setRowCount(valueCount);
     return blockMetaData;
-  }
-
-  @Test
-  public void testApplyRowGroupFilters() {
-
-    List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
-
-    IntStatistics stats1 = new IntStatistics();
-    stats1.setMinMax(10, 100);
-    stats1.setNumNulls(4);
-    BlockMetaData b1 = makeBlockFromStats(stats1, 301);
-    blocks.add(b1);
-
-    IntStatistics stats2 = new IntStatistics();
-    stats2.setMinMax(8, 102);
-    stats2.setNumNulls(0);
-    BlockMetaData b2 = makeBlockFromStats(stats2, 302);
-    blocks.add(b2);
-
-    IntStatistics stats3 = new IntStatistics();
-    stats3.setMinMax(100, 102);
-    stats3.setNumNulls(12);
-    BlockMetaData b3 = makeBlockFromStats(stats3, 303);
-    blocks.add(b3);
-
-
-    IntStatistics stats4 = new IntStatistics();
-    stats4.setMinMax(0, 0);
-    stats4.setNumNulls(304);
-    BlockMetaData b4 = makeBlockFromStats(stats4, 304);
-    blocks.add(b4);
-
-
-    IntStatistics stats5 = new IntStatistics();
-    stats5.setMinMax(50, 50);
-    stats5.setNumNulls(7);
-    BlockMetaData b5 = makeBlockFromStats(stats5, 305);
-    blocks.add(b5);
-
-    IntStatistics stats6 = new IntStatistics();
-    stats6.setMinMax(0, 0);
-    stats6.setNumNulls(12);
-    BlockMetaData b6 = makeBlockFromStats(stats6, 306);
-    blocks.add(b6);
-
-    MessageType schema = MessageTypeParser.parseMessageType("message Document { optional int32 foo; }");
-    IntColumn foo = intColumn("foo");
-
-    List<BlockMetaData> filtered = ParquetInputFormat.applyRowGroupFilters(eq(foo, 50), schema, blocks);
-    assertEquals(Arrays.asList(b1, b2, b5), filtered);
-
-    filtered = ParquetInputFormat.applyRowGroupFilters(notEq(foo, 50), schema, blocks);
-    assertEquals(Arrays.asList(b1, b2, b3, b4, b5, b6), filtered);
-
-    filtered = ParquetInputFormat.applyRowGroupFilters(eq(foo, null), schema, blocks);
-    assertEquals(Arrays.asList(b1, b3, b4, b5, b6), filtered);
-
-    filtered = ParquetInputFormat.applyRowGroupFilters(notEq(foo, null), schema, blocks);
-    assertEquals(Arrays.asList(b1, b2, b3, b5, b6), filtered);
-
-    filtered = ParquetInputFormat.applyRowGroupFilters(eq(foo, 0), schema, blocks);
-    assertEquals(Arrays.asList(b6), filtered);
-
   }
 
   private List<ParquetInputSplit> generateSplitByMinMaxSize(long min, long max) throws IOException {

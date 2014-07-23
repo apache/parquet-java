@@ -38,7 +38,7 @@ import parquet.schema.Type;
 public class ColumnReadStoreImpl implements ColumnReadStore {
 
   private final PageReadStore pageReadStore;
-  private GroupConverter recordConverter;
+  private final GroupConverter recordConverter;
   private final MessageType schema;
 
   /**
@@ -51,21 +51,6 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
     this.pageReadStore = pageReadStore;
     this.recordConverter = recordConverter;
     this.schema = schema;
-  }
-
-  /**
-   * If you use this constructor, you must call {@link #setRecordConverter(GroupConverter)}
-   * @param pageReadStore uderlying page storage
-   * @param schema the schema we are reading
-   */
-  public ColumnReadStoreImpl(PageReadStore pageReadStore, MessageType schema) {
-    super();
-    this.pageReadStore = pageReadStore;
-    this.schema = schema;
-  }
-
-  public void setRecordConverter(GroupConverter recordConverter) {
-    this.recordConverter = recordConverter;
   }
 
   @Override

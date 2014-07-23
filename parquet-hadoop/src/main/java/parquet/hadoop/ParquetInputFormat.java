@@ -38,10 +38,10 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
 import parquet.Log;
 import parquet.filter.UnboundRecordFilter;
+import parquet.filter2.compat.FilterCompat;
+import parquet.filter2.compat.FilterCompat.Filter;
+import parquet.filter2.compat.RowGroupFilter;
 import parquet.filter2.predicate.FilterPredicate;
-import parquet.filter2.predicate.LogicalInverseRewriter;
-import parquet.filter2.predicate.SchemaCompatibilityValidator;
-import parquet.filter2.statisticslevel.StatisticsFilter;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
@@ -111,7 +111,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     conf.set(UNBOUND_RECORD_FILTER, filterClass.getName());
   }
 
-  public static Class<?> getUnboundRecordFilter(Configuration configuration) {
+  private static Class<?> getUnboundRecordFilter(Configuration configuration) {
     return ConfigurationUtil.getClassFromConfig(configuration, UNBOUND_RECORD_FILTER, UnboundRecordFilter.class);
   }
 
@@ -135,12 +135,22 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     }
   }
 
-  public static FilterPredicate getFilterPredicate(Configuration configuration) {
+  private static FilterPredicate getFilterPredicate(Configuration configuration) {
     try {
       return SerializationUtil.readObjectFromConfAsBase64(FILTER_PREDICATE, configuration);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Returns a non-null Filter, which is a wrapper around either a
+   * FilterPredicate, an UnboundRecordFilter, or a no-op filter.
+   */
+  public static Filter getFilter(Configuration conf) {
+    FilterPredicate filterPredicate = getFilterPredicate(conf);
+    Class<?> unboundRecordFilterClazz = getUnboundRecordFilter(conf);
+    return FilterCompat.get(filterPredicate, unboundRecordFilterClazz);
   }
 
   /**
@@ -164,30 +174,12 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public RecordReader<Void, T> createRecordReader(
       InputSplit inputSplit,
       TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
+
     ReadSupport<T> readSupport = getReadSupport(ContextUtil.getConfiguration(taskAttemptContext));
 
     Configuration conf = ContextUtil.getConfiguration(taskAttemptContext);
-    Class<?> unboundRecordFilterClass = getUnboundRecordFilter(conf);
-    FilterPredicate filterPredicate = loadFilterPredicate(conf, "records");
 
-    checkArgument(!(unboundRecordFilterClass != null && filterPredicate != null),
-        "Found both an UnboundRecordFilter and a FilterPredicate. Only one can be provided");
-
-    if (unboundRecordFilterClass != null) {
-      try {
-        return new ParquetRecordReader<T>(readSupport, (UnboundRecordFilter)unboundRecordFilterClass.newInstance());
-      } catch (InstantiationException e) {
-        throw new BadConfigurationException("could not instantiate unbound record filter class", e);
-      } catch (IllegalAccessException e) {
-        throw new BadConfigurationException("could not instantiate unbound record filter class", e);
-      }
-    }
-
-    if (filterPredicate != null) {
-      return new ParquetRecordReader<T>(readSupport, filterPredicate);
-    }
-
-    return new ParquetRecordReader<T>(readSupport);
+    return new ParquetRecordReader<T>(readSupport, getFilter(conf));
   }
 
   /**
@@ -417,7 +409,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         globalMetaData.getKeyValueMetaData(),
         globalMetaData.getSchema()));
 
-    FilterPredicate filterPredicate = loadFilterPredicate(configuration, "row groups");
+    Filter filter = getFilter(configuration);
 
     long rowGroupsDropped = 0;
     long totalRowGroups = 0;
@@ -432,11 +424,9 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
       List<BlockMetaData> filteredBlocks = blocks;
 
-      if (filterPredicate != null) {
-        filteredBlocks = applyRowGroupFilters(filterPredicate, parquetMetaData.getFileMetaData().getSchema(), blocks);
-        totalRowGroups += blocks.size();
-        rowGroupsDropped += blocks.size() - filteredBlocks.size();
-      }
+      totalRowGroups += blocks.size();
+      filteredBlocks = RowGroupFilter.filterRowGroups(filter, blocks, parquetMetaData.getFileMetaData().getSchema());
+      rowGroupsDropped += blocks.size() - filteredBlocks.size();
 
       if (filteredBlocks.isEmpty()) {
         continue;
@@ -456,67 +446,14 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
           );
     }
 
-    if (filterPredicate != null) {
-      if (rowGroupsDropped > 0 && totalRowGroups > 0) {
-        int percentDropped = (int) ((((double) rowGroupsDropped) / totalRowGroups) * 100);
-        LOG.info("Dropping " + rowGroupsDropped + " row groups that do not pass predicate! (" + percentDropped + "%)");
-      } else {
-        LOG.info("There were no row groups that could be dropped.");
-      }
+    if (rowGroupsDropped > 0 && totalRowGroups > 0) {
+      int percentDropped = (int) ((((double) rowGroupsDropped) / totalRowGroups) * 100);
+      LOG.info("Dropping " + rowGroupsDropped + " row groups that do not pass filter predicate! (" + percentDropped + "%)");
+    } else {
+      LOG.info("There were no row groups that could be dropped due to filter predicates");
     }
 
     return splits;
-  }
-
-  /**
-   * Reads the filter predicate out of conf if present, returns null otherwise.
-   *
-   * Additionally, the filter predicate will be rewritten to not contain any use of
-   * the not() operator.
-   *
-   * The FilterPredicate will not yet be validated against the schema of the parquet file
-   * however.
-   *
-   * @param conf hadoop configuration
-   * @param filterAppliedTo used in a log message to indicate what's being filtered (row groups or records or pages etc)
-   * @return a collapsed FilterPredicate, or null
-   */
-  static FilterPredicate loadFilterPredicate(Configuration conf, String filterAppliedTo) {
-    FilterPredicate filterPredicate = getFilterPredicate(conf);
-
-    if (filterPredicate == null) {
-      return null;
-    }
-    return prepareFilterPredicate(filterPredicate, filterAppliedTo);
-  }
-
-  static FilterPredicate prepareFilterPredicate(FilterPredicate filterPredicate, String filterAppliedTo) {
-
-    LOG.info("Filtering " + filterAppliedTo + " using predicate: " + filterPredicate);
-
-    // rewrite the predicate to not include the not() operator
-    FilterPredicate collapsedPredicate = LogicalInverseRewriter.rewrite(filterPredicate);
-
-    if (!filterPredicate.equals(collapsedPredicate)) {
-      LOG.info("Predicate has been collapsed to: " + collapsedPredicate);
-    }
-
-    return collapsedPredicate;
-  }
-
-  static List<BlockMetaData> applyRowGroupFilters(FilterPredicate filterPredicate, MessageType schema, List<BlockMetaData> blocks) {
-    // check that the schema of the filter matches the schema of the file
-    SchemaCompatibilityValidator.validate(filterPredicate, schema);
-
-    List<BlockMetaData> filteredBlocks = new ArrayList<BlockMetaData>();
-
-    for (BlockMetaData block : blocks) {
-      if (!StatisticsFilter.canDrop(filterPredicate, block.getColumns())) {
-        filteredBlocks.add(block);
-      }
-    }
-
-    return filteredBlocks;
   }
 
   /*

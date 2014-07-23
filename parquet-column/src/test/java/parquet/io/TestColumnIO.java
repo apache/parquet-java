@@ -15,6 +15,44 @@
  */
 package parquet.io;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import parquet.Log;
+import parquet.column.ColumnDescriptor;
+import parquet.column.ColumnWriteStore;
+import parquet.column.ColumnWriter;
+import parquet.column.ParquetProperties.WriterVersion;
+import parquet.column.impl.ColumnWriteStoreImpl;
+import parquet.column.page.PageReadStore;
+import parquet.column.page.mem.MemPageStore;
+import parquet.example.data.Group;
+import parquet.example.data.GroupFactory;
+import parquet.example.data.GroupWriter;
+import parquet.example.data.simple.NanoTime;
+import parquet.example.data.simple.SimpleGroupFactory;
+import parquet.example.data.simple.convert.GroupRecordConverter;
+import parquet.filter2.compat.FilterCompat;
+import parquet.io.api.Binary;
+import parquet.io.api.RecordConsumer;
+import parquet.io.api.RecordMaterializer;
+import parquet.schema.GroupType;
+import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
+import parquet.schema.PrimitiveType;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.schema.Type;
+import parquet.schema.Type.Repetition;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static parquet.example.Paper.pr1;
@@ -27,45 +65,6 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static parquet.schema.Type.Repetition.OPTIONAL;
 import static parquet.schema.Type.Repetition.REQUIRED;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-
-import org.junit.Assert;
-import org.junit.Test;
-
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import parquet.Log;
-import parquet.column.ColumnDescriptor;
-import parquet.column.ColumnWriteStore;
-import parquet.column.ColumnWriter;
-import parquet.column.ParquetProperties.WriterVersion;
-import parquet.column.statistics.Statistics;
-import parquet.column.impl.ColumnWriteStoreImpl;
-import parquet.column.page.PageReadStore;
-import parquet.column.page.mem.MemPageStore;
-import parquet.example.data.Group;
-import parquet.example.data.GroupFactory;
-import parquet.example.data.GroupWriter;
-import parquet.example.data.simple.NanoTime;
-import parquet.example.data.simple.SimpleGroupFactory;
-import parquet.example.data.simple.convert.GroupRecordConverter;
-import parquet.io.api.Binary;
-import parquet.io.api.RecordConsumer;
-import parquet.io.api.RecordMaterializer;
-import parquet.schema.GroupType;
-import parquet.schema.MessageType;
-import parquet.schema.MessageTypeParser;
-import parquet.schema.PrimitiveType;
-import parquet.schema.PrimitiveType.PrimitiveTypeName;
-import parquet.schema.Type;
-import parquet.schema.Type.Repetition;
 
 @RunWith(Parameterized.class)
 public class TestColumnIO {
@@ -478,7 +477,7 @@ public class TestColumnIO {
   private RecordReaderImplementation<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, PageReadStore pageReadStore) {
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
 
-    return (RecordReaderImplementation<Group>)columnIO.getRecordReader(pageReadStore, recordConverter);
+    return (RecordReaderImplementation<Group>)columnIO.getRecordReader(pageReadStore, recordConverter, FilterCompat.NOOP);
   }
 
   private void log(Object o) {
@@ -508,7 +507,7 @@ public class TestColumnIO {
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
     columns.flush();
 
-    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectedEventsForR1, schema));
+    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectedEventsForR1, schema), FilterCompat.NOOP);
     recordReader.read();
 
   }

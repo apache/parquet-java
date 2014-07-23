@@ -22,13 +22,10 @@ import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
-import parquet.Either;
 import parquet.Log;
-import parquet.Optional;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.PageReadStore;
-import parquet.filter.UnboundRecordFilter;
-import parquet.filter2.predicate.FilterPredicate;
+import parquet.filter2.compat.FilterCompat.Filter;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.util.counters.BenchmarkCounter;
@@ -49,6 +46,7 @@ class InternalParquetRecordReader<T> {
   private static final Log LOG = Log.getLog(InternalParquetRecordReader.class);
 
   private final ColumnIOFactory columnIOFactory = new ColumnIOFactory();
+  private final Filter filter;
 
   private MessageType requestedSchema;
   private MessageType fileSchema;
@@ -63,7 +61,6 @@ class InternalParquetRecordReader<T> {
   private int currentBlock = -1;
   private ParquetFileReader reader;
   private parquet.io.RecordReader<T> recordReader;
-  private final Optional<Either<UnboundRecordFilter, FilterPredicate>> filter;
   private boolean strictTypeChecking;
 
   private long totalTimeSpentReadingBytes;
@@ -76,32 +73,9 @@ class InternalParquetRecordReader<T> {
 
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
+   * @param filter for filtering individual records
    */
-  public InternalParquetRecordReader(ReadSupport<T> readSupport) {
-    this(readSupport, Optional.<Either<UnboundRecordFilter, FilterPredicate>>absent());
-  }
-
-  /**
-   * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
-   */
-  public InternalParquetRecordReader(ReadSupport<T> readSupport,
-                                     UnboundRecordFilter unboundRecordFilter) {
-    this(readSupport, Optional.of(Either.<UnboundRecordFilter, FilterPredicate>left(unboundRecordFilter)));
-  }
-
-  /**
-   * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
-   */
-  public InternalParquetRecordReader(ReadSupport<T> readSupport,
-                                     FilterPredicate filterPredicate) {
-    this(readSupport, Optional.of(Either.<UnboundRecordFilter, FilterPredicate>right(filterPredicate)));
-  }
-
-  /**
-   * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
-   */
-  public InternalParquetRecordReader(ReadSupport<T> readSupport,
-                                     Optional<Either<UnboundRecordFilter, FilterPredicate>> filter) {
+  public InternalParquetRecordReader(ReadSupport<T> readSupport, Filter filter) {
     this.readSupport = readSupport;
     this.filter = checkNotNull(filter, "filter");
   }

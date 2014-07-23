@@ -10,8 +10,8 @@ import java.util.List;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import parquet.Optional;
 import parquet.example.data.Group;
+import parquet.filter2.compat.FilterCompat;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.filter2.predicate.Operators.BinaryColumn;
 import parquet.filter2.predicate.Operators.DoubleColumn;
@@ -105,7 +105,7 @@ public class TestRecordLevelFilters {
 
   @Test
   public void testNoFilter() throws Exception {
-    List<Group> found = PhoneBookWriter.readFile(phonebookFile, Optional.<FilterPredicate>absent());
+    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.NOOP);
     assertFilter(found, new UserFilter() {
       @Override
       public boolean keep(User u) {
@@ -120,7 +120,7 @@ public class TestRecordLevelFilters {
 
     FilterPredicate pred = eq(name, Binary.fromString("no matches"));
 
-    List<Group> found = PhoneBookWriter.readFile(phonebookFile, Optional.of(pred));
+    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
     assertEquals(new ArrayList<Group>(), found);
   }
 
@@ -130,7 +130,7 @@ public class TestRecordLevelFilters {
 
     FilterPredicate pred = notEq(name, null);
 
-    List<Group> found = PhoneBookWriter.readFile(phonebookFile, Optional.of(pred));
+    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
 
     assertFilter(found, new UserFilter() {
       @Override
@@ -167,7 +167,7 @@ public class TestRecordLevelFilters {
 
     FilterPredicate pred = not(userDefined(name, StartWithP.class));
 
-    List<Group> found = PhoneBookWriter.readFile(phonebookFile, Optional.of(pred));
+    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
 
     assertFilter(found, new UserFilter() {
       @Override
@@ -185,7 +185,7 @@ public class TestRecordLevelFilters {
 
     FilterPredicate pred = or(and(gt(lon, 150.0), notEq(lat, null)), eq(name, Binary.fromString("alice")));
 
-    List<Group> found = PhoneBookWriter.readFile(phonebookFile, Optional.of(pred));
+    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
 
     assertFilter(found, new UserFilter() {
       @Override

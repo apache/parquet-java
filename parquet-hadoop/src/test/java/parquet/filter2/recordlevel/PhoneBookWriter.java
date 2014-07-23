@@ -8,12 +8,9 @@ import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
-import parquet.Either;
-import parquet.Optional;
 import parquet.example.data.Group;
 import parquet.example.data.simple.SimpleGroup;
-import parquet.filter.UnboundRecordFilter;
-import parquet.filter2.predicate.FilterPredicate;
+import parquet.filter2.compat.FilterCompat.Filter;
 import parquet.hadoop.ParquetReader;
 import parquet.hadoop.ParquetWriter;
 import parquet.hadoop.example.GroupReadSupport;
@@ -224,16 +221,11 @@ public class PhoneBookWriter {
     writer.close();
   }
 
-  public static List<Group> readFile(File f, Optional<FilterPredicate> filter) throws IOException {
+  public static List<Group> readFile(File f, Filter filter) throws IOException {
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
 
-    Optional<Either<UnboundRecordFilter, FilterPredicate>> eitherFilter = Optional.absent();
-    if (filter.isPresent()) {
-      eitherFilter = Optional.of(Either.<UnboundRecordFilter, FilterPredicate>right(filter.get()));
-    }
-
-    ParquetReader<Group> reader = new ParquetReader<Group>(conf, new Path(f.getAbsolutePath()), new GroupReadSupport(), eitherFilter);
+    ParquetReader<Group> reader = new ParquetReader<Group>(conf, new Path(f.getAbsolutePath()), new GroupReadSupport(), filter);
     Group current;
     List<Group> users = new ArrayList<Group>();
 

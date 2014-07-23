@@ -24,13 +24,8 @@ import java.util.List;
 import java.util.Map;
 
 import parquet.Log;
-import parquet.Optional;
 import parquet.column.ColumnReader;
 import parquet.column.impl.ColumnReadStoreImpl;
-import parquet.filter2.predicate.FilterPredicate;
-import parquet.filter2.recordlevel.FilteringRecordMaterializer;
-import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate;
-import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicateBuilder;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
 import parquet.io.api.PrimitiveConverter;
@@ -239,7 +234,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
   private State[] states;
   private ColumnReader[] columnReaders;
 
-  private boolean skipCurrentRecord = false;
+  private boolean shouldSkipCurrentRecord = false;
 
   /**
    * @param root the root of the schema
@@ -247,26 +242,10 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
    * @param validating whether we should validate against the schema
    * @param columnStore where to read the column data from
    */
-  public RecordReaderImplementation(MessageColumnIO root,
-                                    RecordMaterializer<T> recordMaterializer,
-                                    boolean validating,
-                                    ColumnReadStoreImpl columnStore,
-                                    Optional<FilterPredicate> filter) {
-
-
-    PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
-
-    if (filter.isPresent()) {
-      FilterPredicate predicate = filter.get();
-      IncrementallyUpdatedFilterPredicateBuilder builder = new IncrementallyUpdatedFilterPredicateBuilder();
-      IncrementallyUpdatedFilterPredicate streamingPredicate = builder.build(predicate);
-      recordMaterializer = new FilteringRecordMaterializer<T>(recordMaterializer, leaves, builder.getValueInspectorsByColumn(), streamingPredicate);
-    }
-
+  public RecordReaderImplementation(MessageColumnIO root, RecordMaterializer<T> recordMaterializer, boolean validating, ColumnReadStoreImpl columnStore) {
     this.recordMaterializer = recordMaterializer;
     this.recordRootConverter = recordMaterializer.getRootConverter(); // TODO: validator(wrap(recordMaterializer), validating, root.getType());
-    columnStore.setRecordConverter(recordRootConverter);
-
+    PrimitiveColumnIO[] leaves = root.getLeaves().toArray(new PrimitiveColumnIO[root.getLeaves().size()]);
     columnReaders = new ColumnReader[leaves.length];
     int[][] nextColumnIdxForRepLevel = new int[leaves.length][];
     int[][] levelToClose = new int[leaves.length][];
@@ -435,8 +414,8 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     } while (currentState != null);
     recordRootConverter.end();
     T record = recordMaterializer.getCurrentRecord();
-    skipCurrentRecord = record == null;
-    if (skipCurrentRecord) {
+    shouldSkipCurrentRecord = record == null;
+    if (shouldSkipCurrentRecord) {
       recordMaterializer.skipCurrentRecord();
     }
     return record;
@@ -444,7 +423,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
 
   @Override
   public boolean shouldSkipCurrentRecord() {
-    return skipCurrentRecord;
+    return shouldSkipCurrentRecord;
   }
 
   private static void log(String string) {
