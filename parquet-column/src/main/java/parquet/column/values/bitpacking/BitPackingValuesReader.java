@@ -77,6 +77,11 @@ public class BitPackingValuesReader extends ValuesReader {
   }
   
   @Override
+  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException{
+    this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
+  }
+  
+  @Override
   public int getNextOffset() {
     return nextOffset;
   }

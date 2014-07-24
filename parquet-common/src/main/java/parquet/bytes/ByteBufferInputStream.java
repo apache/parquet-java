@@ -17,6 +17,10 @@ public class ByteBufferInputStream extends InputStream {
     byteBuf.limit(count);
   }
   
+  public ByteBuffer toByteBuffer() {
+    return byteBuf.slice();
+  }
+  
   @Override
   public int read() throws IOException {
     if (!byteBuf.hasRemaining()) {
