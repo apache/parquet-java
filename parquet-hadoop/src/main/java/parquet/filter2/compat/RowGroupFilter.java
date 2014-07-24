@@ -14,6 +14,11 @@ import parquet.schema.MessageType;
 
 import static parquet.Preconditions.checkNotNull;
 
+/**
+ * Given a {@link Filter} applies it to a list of BlockMetaData (row groups)
+ * If the Filter is an {@link parquet.filter.UnboundRecordFilter} or the no op filter,
+ * no filtering will be performed.
+ */
 public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
   private final List<BlockMetaData> blocks;
   private final MessageType schema;
