@@ -12,8 +12,8 @@ import static parquet.Preconditions.checkNotNull;
  * This implementation makes the assumption that all {@link ValueInspector}s in an unknown state
  * represent columns with a null value, and updates them accordingly.
  *
- * TODO(alexlevenson): We could also build an evaluator that detects if enough values are known to determine the outcome
- *                     of the predicate and quit the record assembly early.
+ * TODO: We could also build an evaluator that detects if enough values are known to determine the outcome
+ * TODO: of the predicate and quit the record assembly early. (https://issues.apache.org/jira/browse/PARQUET-37)
  */
 public class IncrementallyUpdatedFilterPredicateEvaluator implements Visitor {
   private static final IncrementallyUpdatedFilterPredicateEvaluator INSTANCE = new IncrementallyUpdatedFilterPredicateEvaluator();

@@ -8,8 +8,8 @@ package parquet.filter2.predicate;
  *
  * @param <T> The type of the column this predicate is applied to.
  */
-// TODO(alexlevenson): consider avoiding autoboxing and adding the specialized methods for each type
-// TODO(alexlevenson): downside is that's fairly unwieldy for users
+// TODO: consider avoiding autoboxing and adding the specialized methods for each type
+// TODO: downside is that's fairly unwieldy for users
 public abstract class UserDefinedPredicate<T extends Comparable<T>> {
 
   /**

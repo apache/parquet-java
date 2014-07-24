@@ -34,8 +34,9 @@ import static parquet.Preconditions.checkNotNull;
  *
  * This class is stateful, cannot be reused, and is not thread safe.
  *
- * TODO(alexlevenson): detect if a column is optional or required and validate that eq(null)
- * TODO(alexlevenson): is not called on optional fields (is that too strict?)
+ * TODO: detect if a column is optional or required and validate that eq(null)
+ * TODO: is not called on required fields (is that too strict?)
+ * TODO: (https://issues.apache.org/jira/browse/PARQUET-44)
  */
 public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Void> {
 

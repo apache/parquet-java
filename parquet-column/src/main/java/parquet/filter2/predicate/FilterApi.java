@@ -35,9 +35,13 @@ import parquet.filter2.predicate.Operators.UserDefined;
  *
  * }
  */
-// TODO(alexlevenson): Support repeated columns
-// TODO(alexlevenson): Support Group columns (eg, filter where this group is null)
-// TODO(alexlevenson): Add support for more column types that aren't coupled with parquet types, eg Column<String>
+// TODO: Support repeated columns (https://issues.apache.org/jira/browse/PARQUET-34)
+//
+// TODO: Support filtering on groups (eg, filter where this group is / isn't null)
+// TODO: (https://issues.apache.org/jira/browse/PARQUET-43)
+
+// TODO: Consider adding support for more column types that aren't coupled with parquet types, eg Column<String>
+// TODO: (https://issues.apache.org/jira/browse/PARQUET-35)
 public final class FilterApi {
   private FilterApi() { }
 

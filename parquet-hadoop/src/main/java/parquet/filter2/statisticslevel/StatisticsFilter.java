@@ -42,7 +42,8 @@ import static parquet.Preconditions.checkNotNull;
  * Returns true if all the records represented by the statistics in the provided column metadata can be dropped.
  *         false otherwise (including when it is not known, which is often the case).
  */
-// TODO(alexlevenson): this belongs in the parquet-column project, but some of the classes here need to be moved too
+// TODO: this belongs in the parquet-column project, but some of the classes here need to be moved too
+// TODO: (https://issues.apache.org/jira/browse/PARQUET-38)
 public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns) {

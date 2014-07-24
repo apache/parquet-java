@@ -18,7 +18,8 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
  * This is a bit ugly, but it allows us to provide good error messages at runtime
  * when there are type mismatches.
  *
- * TODO(alexlevenson): this has some overlap with {@link PrimitiveTypeName#javaType}
+ * TODO: this has some overlap with {@link PrimitiveTypeName#javaType}
+ * TODO: (https://issues.apache.org/jira/browse/PARQUET-30)
  */
 public class ValidTypeMap {
   private ValidTypeMap() { }

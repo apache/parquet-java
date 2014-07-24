@@ -31,7 +31,8 @@ import static parquet.Preconditions.checkArgument;
  * the supplied predicate should also have already been run through
  * {@link parquet.filter2.predicate.SchemaCompatibilityValidator}
  * to make sure it is compatible with the schema of this file.
- * TODO(alexlevenson): user defined functions still autobox however
+ *
+ * TODO: UserDefinedPredicates still autobox however
  */
 public abstract class IncrementallyUpdatedFilterPredicateBuilderBase implements Visitor<IncrementallyUpdatedFilterPredicate> {
   private boolean built = false;

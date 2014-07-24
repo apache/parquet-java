@@ -22,9 +22,10 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
     this.valueInspectors = checkNotNull(valueInspectors, "valueInspectors");
   }
 
-  // TODO(alexlevenson): this essentially turns off dictionary support
-  // TODO(alexlevenson): even if the underlying delegate supports it
-  // TODO(alexlevenson): we should support it here
+  // TODO: this works, but
+  // TODO: essentially turns off the benefits of dictionary support
+  // TODO: even if the underlying delegate supports it.
+  // TODO: we should support it here. (https://issues.apache.org/jira/browse/PARQUET-36)
   @Override
   public boolean hasDictionarySupport() {
     return false;

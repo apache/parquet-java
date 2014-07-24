@@ -42,7 +42,7 @@ import static parquet.Preconditions.checkNotNull;
 
 /**
  * Read records from a Parquet file.
- * // TODO(alexlevenson): too many constructors
+ * TODO: too many constructors (https://issues.apache.org/jira/browse/PARQUET-39)
  */
 public class ParquetReader<T> implements Closeable {
 
