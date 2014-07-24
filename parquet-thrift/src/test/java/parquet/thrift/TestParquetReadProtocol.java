@@ -15,9 +15,6 @@
  */
 package parquet.thrift;
 
-import static com.twitter.data.proto.tutorial.thrift.PhoneType.MOBILE;
-import static org.junit.Assert.assertEquals;
-
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,23 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import parquet.filter2.compat.FilterCompat;
-import thrift.test.OneOfEach;
-
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.junit.Test;
-
-import parquet.Log;
-import parquet.column.ParquetProperties.WriterVersion;
-import parquet.column.impl.ColumnWriteStoreImpl;
-import parquet.column.page.mem.MemPageStore;
-import parquet.io.ColumnIOFactory;
-import parquet.io.MessageColumnIO;
-import parquet.io.RecordReader;
-import parquet.io.api.RecordConsumer;
-import parquet.schema.MessageType;
-import parquet.thrift.struct.ThriftType.StructType;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
@@ -57,6 +40,21 @@ import com.twitter.elephantbird.thrift.test.TestNameSet;
 import com.twitter.elephantbird.thrift.test.TestPerson;
 import com.twitter.elephantbird.thrift.test.TestPhoneType;
 import com.twitter.elephantbird.thrift.test.TestStructInMap;
+
+import parquet.Log;
+import parquet.column.ParquetProperties.WriterVersion;
+import parquet.column.impl.ColumnWriteStoreImpl;
+import parquet.column.page.mem.MemPageStore;
+import parquet.io.ColumnIOFactory;
+import parquet.io.MessageColumnIO;
+import parquet.io.RecordReader;
+import parquet.io.api.RecordConsumer;
+import parquet.schema.MessageType;
+import parquet.thrift.struct.ThriftType.StructType;
+import thrift.test.OneOfEach;
+
+import static com.twitter.data.proto.tutorial.thrift.PhoneType.MOBILE;
+import static org.junit.Assert.assertEquals;
 
 public class TestParquetReadProtocol {
   private static final Log LOG = Log.getLog(TestParquetReadProtocol.class);
@@ -155,7 +153,7 @@ public class TestParquetReadProtocol {
     columns.flush();
 
     ThriftRecordConverter<T> converter = new TBaseRecordConverter<T>(thriftClass, schema, thriftType);
-    final RecordReader<T> recordReader = columnIO.getRecordReader(memPageStore, converter, FilterCompat.NOOP);
+    final RecordReader<T> recordReader = columnIO.getRecordReader(memPageStore, converter);
 
     final T result = recordReader.read();
 

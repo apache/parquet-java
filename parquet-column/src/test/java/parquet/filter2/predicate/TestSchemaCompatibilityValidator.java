@@ -56,12 +56,12 @@ public class TestSchemaCompatibilityValidator {
     }
 
     @Override
-    public boolean canDrop(Long min, Long max) {
+    public boolean canDrop(Statistics<Long> statistics) {
       return false;
     }
 
     @Override
-    public boolean inverseCanDrop(Long min, Long max) {
+    public boolean inverseCanDrop(Statistics<Long> statistics) {
       return false;
     }
   }

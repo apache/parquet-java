@@ -41,7 +41,6 @@ import parquet.example.data.GroupWriter;
 import parquet.example.data.simple.NanoTime;
 import parquet.example.data.simple.SimpleGroupFactory;
 import parquet.example.data.simple.convert.GroupRecordConverter;
-import parquet.filter2.compat.FilterCompat;
 import parquet.io.api.Binary;
 import parquet.io.api.RecordConsumer;
 import parquet.io.api.RecordMaterializer;
@@ -477,7 +476,7 @@ public class TestColumnIO {
   private RecordReaderImplementation<Group> getRecordReader(MessageColumnIO columnIO, MessageType schema, PageReadStore pageReadStore) {
     RecordMaterializer<Group> recordConverter = new GroupRecordConverter(schema);
 
-    return (RecordReaderImplementation<Group>)columnIO.getRecordReader(pageReadStore, recordConverter, FilterCompat.NOOP);
+    return (RecordReaderImplementation<Group>)columnIO.getRecordReader(pageReadStore, recordConverter);
   }
 
   private void log(Object o) {
@@ -507,7 +506,7 @@ public class TestColumnIO {
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
     columns.flush();
 
-    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectedEventsForR1, schema), FilterCompat.NOOP);
+    RecordReader<Void> recordReader = columnIO.getRecordReader(memPageStore, new ExpectationValidatingConverter(expectedEventsForR1, schema));
     recordReader.read();
 
   }
