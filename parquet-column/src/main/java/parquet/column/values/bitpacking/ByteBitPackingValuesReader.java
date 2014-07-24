@@ -48,10 +48,11 @@ public class ByteBitPackingValuesReader extends ValuesReader {
   public int readInteger() {
     ++ decodedPosition;
     if (decodedPosition == decoded.length) {
-      byte[] tempEncode = new byte[bitWidth];
       encoded.position(encodedPos);
       if (encodedPos + bitWidth > encoded.limit()) {
-        Arrays.fill(tempEncode, (byte)0);
+        // unpack8Values needs at least bitWidth bytes to read from,
+        // We have to fill in 0 byte at the end of encoded bytes.
+        byte[] tempEncode = new byte[bitWidth];
         encoded.get(tempEncode, 0, encoded.limit() - encodedPos);
         packer.unpack8Values(ByteBuffer.wrap(tempEncode), 0, decoded, 0);
       } else {
@@ -73,6 +74,11 @@ public class ByteBitPackingValuesReader extends ValuesReader {
     this.encodedPos = offset;
     this.decodedPosition = VALUES_AT_A_TIME - 1;
     this.nextOffset = offset + length;
+  }
+  
+  @Override
+  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException{
+    this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
   }
   
   @Override

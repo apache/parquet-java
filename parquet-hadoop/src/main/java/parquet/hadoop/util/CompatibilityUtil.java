@@ -35,25 +35,40 @@ import parquet.org.apache.thrift.transport.TTransportException;
 
 public class CompatibilityUtil {
   private static final boolean useV21;
-  
   private static final Log LOG = Log.getLog(CompatibilityUtil.class);
-  private static final Constructor<?> ELASTIC_BYTE_BUFFER_CONSTRUCTOR;
-  private static final Class<?> ElasticByteBufferCls;
-  private static final Class<?> ByteBufferCls;
-  private static final Class<? extends Enum> ReadOptionCls;
-  private static final Method READ_METHOD;
-  private static final Method RELEASE_BUFFER_METHOD;
-  private static final Method GET_BUFFER_METHOD;
-  private static final Method PUT_BUFFER_METHOD;
-  private static final Object bufferPool;
+  public static final V21FileAPI fileAPI;
   private static final int MAX_SIZE = 1 << 20;
+  private static final Object bufferPool;
+  
+  private static class V21FileAPI {
+    private final Constructor<?> ELASTIC_BYTE_BUFFER_CONSTRUCTOR;
+    private final Class<?> ElasticByteBufferCls;
+    private final Class<?> ByteBufferCls;
+    private final Class<? extends Enum> ReadOptionCls;
+    private final Method READ_METHOD;
+    private final Method RELEASE_BUFFER_METHOD;
+    private final Method GET_BUFFER_METHOD;
+    private final Method PUT_BUFFER_METHOD;
+    private final Class<?> FSDataInputStreamCls;
+    
+    private V21FileAPI() throws ClassNotFoundException, NoSuchMethodException, SecurityException {
+      final String PACKAGE = "org.apache.hadoop";
+      ElasticByteBufferCls = Class.forName(PACKAGE + ".io.ElasticByteBufferPool");
+      ELASTIC_BYTE_BUFFER_CONSTRUCTOR = ElasticByteBufferCls.getConstructor();
+      ByteBufferCls = Class.forName(PACKAGE + ".io.ByteBufferPool");
+      FSDataInputStreamCls = Class.forName(PACKAGE + ".fs.FSDataInputStream");
+      ReadOptionCls = (Class<Enum>)Class.forName(PACKAGE + ".fs.ReadOption");
+      READ_METHOD = FSDataInputStreamCls.getMethod("read", ByteBufferCls, int.class, EnumSet.class);
+      RELEASE_BUFFER_METHOD = FSDataInputStreamCls.getMethod("releaseBuffer", ByteBuffer.class);
+      GET_BUFFER_METHOD = ElasticByteBufferCls.getMethod("getBuffer", boolean.class, int.class);
+      PUT_BUFFER_METHOD = ElasticByteBufferCls.getMethod("putBuffer", ByteBuffer.class);
+    }
+  }
   
   static {
     boolean v21 = true;
-    final String PACKAGE = "org.apache.hadoop";
-    Class<?> FSDataInputStreamCls;
     try {
-      Class.forName(PACKAGE + ".io.ElasticByteBufferPool");
+      Class.forName("org.apache.hadoop.io.ElasticByteBufferPool");
     } catch (ClassNotFoundException cnfe) {
       v21 = false;
     }
@@ -61,25 +76,10 @@ public class CompatibilityUtil {
     useV21 = v21;
     try {
       if (v21) {
-        ElasticByteBufferCls = Class.forName(PACKAGE + ".io.ElasticByteBufferPool");
-        ELASTIC_BYTE_BUFFER_CONSTRUCTOR = ElasticByteBufferCls.getConstructor();
-        ByteBufferCls = Class.forName(PACKAGE + ".io.ByteBufferPool");
-        FSDataInputStreamCls = Class.forName(PACKAGE + ".fs.FSDataInputStream");
-        ReadOptionCls = (Class<Enum>)Class.forName(PACKAGE + ".fs.ReadOption");
-        READ_METHOD = FSDataInputStreamCls.getMethod("read", ByteBufferCls, int.class, EnumSet.class);
-        RELEASE_BUFFER_METHOD = FSDataInputStreamCls.getMethod("releaseBuffer", ByteBuffer.class);
-        GET_BUFFER_METHOD = ElasticByteBufferCls.getMethod("getBuffer", boolean.class, int.class);
-        PUT_BUFFER_METHOD = ElasticByteBufferCls.getMethod("putBuffer", ByteBuffer.class);
-        bufferPool = ELASTIC_BYTE_BUFFER_CONSTRUCTOR.newInstance();
+        fileAPI = new V21FileAPI();
+        bufferPool = fileAPI.ELASTIC_BYTE_BUFFER_CONSTRUCTOR.newInstance();
       } else {
-        ELASTIC_BYTE_BUFFER_CONSTRUCTOR = null;
-        ElasticByteBufferCls = null;
-        ByteBufferCls = null;
-        ReadOptionCls = null;
-        READ_METHOD = null;
-        RELEASE_BUFFER_METHOD = null;
-        GET_BUFFER_METHOD = null;
-        PUT_BUFFER_METHOD = null;
+        fileAPI = null;
         bufferPool = null;
       }
     } catch (ClassNotFoundException e) {
@@ -100,7 +100,7 @@ public class CompatibilityUtil {
   public static void releaseBuffer(FSDataInputStream f, ByteBuffer buf) {
     if (useV21) {
       try {
-        RELEASE_BUFFER_METHOD.invoke(f, buf);
+        fileAPI.RELEASE_BUFFER_METHOD.invoke(f, buf);
       } catch (IllegalAccessException e) {
         throw new IllegalArgumentException("Can't call method", e);
       } catch (IllegalArgumentException e) {
@@ -135,10 +135,10 @@ public class CompatibilityUtil {
     ByteBuffer res = null;
     if (useV21) {
       try {
-        res = (ByteBuffer) READ_METHOD.invoke(f,
-                                              ELASTIC_BYTE_BUFFER_CONSTRUCTOR.newInstance(),
+        res = (ByteBuffer) fileAPI.READ_METHOD.invoke(f,
+                                              fileAPI.ELASTIC_BYTE_BUFFER_CONSTRUCTOR.newInstance(),
                                               maxSize,
-                                              EnumSet.of(Enum.valueOf(ReadOptionCls, "SKIP_CHECKSUMS")));
+                                              EnumSet.of(Enum.valueOf(fileAPI.ReadOptionCls, "SKIP_CHECKSUMS")));
       } catch (Exception e) {
         byte[] buf = new byte[maxSize];
         f.read(buf,0,  maxSize);
@@ -308,7 +308,7 @@ public class CompatibilityUtil {
               return slice;
             } else {
               try {
-                newBuf = (ByteBuffer)GET_BUFFER_METHOD.invoke(bufferPool, false, size);
+                newBuf = (ByteBuffer)fileAPI.GET_BUFFER_METHOD.invoke(bufferPool, false, size);
               } catch (IllegalAccessException e) {
                 throw new TTransportException("Hadoop FS", e);
               } catch (IllegalArgumentException e) {
@@ -347,7 +347,7 @@ public class CompatibilityUtil {
         }
       } else {
         try {
-          PUT_BUFFER_METHOD.invoke(bufferPool, b);
+          fileAPI.PUT_BUFFER_METHOD.invoke(bufferPool, b);
         } catch (IllegalAccessException e) {
           throw new IllegalArgumentException("Can't call method", e);
         } catch (IllegalArgumentException e) {

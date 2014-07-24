@@ -68,4 +68,8 @@ public class BinaryPlainValuesReader extends ValuesReader {
     this.offset = offset;
   }
 
+  @Override
+  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException{
+    this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
+  }
 }

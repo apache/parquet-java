@@ -385,14 +385,18 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
       @Override
       boolean equals(Binary other) {
-        byte[] bytes = getBytes();
-        return other.equals(bytes, 0, bytes.length);
+        if (value.compareTo(other.toByteBuffer()) == 0) {
+          return true;
+        }
+        return false;
       }
 
       @Override
       boolean equals(byte[] other, int otherOffset, int otherLength) {
-        byte[] bytes = getBytes();
-        return Binary.equals(bytes, 0, bytes.length, other, otherOffset, otherLength);
+         if (value.compareTo(ByteBuffer.wrap(other, otherOffset, otherLength)) == 0) {
+           return true;
+         }
+         return false;
       }
 
       @Override

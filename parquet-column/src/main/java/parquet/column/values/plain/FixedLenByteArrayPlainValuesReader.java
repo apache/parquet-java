@@ -66,4 +66,9 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
     this.in = in;
     this.offset = offset;
   }
+  
+  @Override
+  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException{
+    this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
+  }
 }
