@@ -15,6 +15,7 @@
  */
 package parquet.hadoop;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,6 +26,7 @@ import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
 import org.junit.Before;
@@ -46,14 +48,17 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
+import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.ParquetDecodingException;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
 import static parquet.filter2.predicate.FilterApi.and;
 import static parquet.filter2.predicate.FilterApi.eq;
 import static parquet.filter2.predicate.FilterApi.intColumn;
@@ -329,6 +334,49 @@ public class TestInputFormat {
     blockMetaData.setTotalByteSize(200l);
     blockMetaData.setRowCount(valueCount);
     return blockMetaData;
+  }
+
+  @Test
+  public void testFooterCacheValueIsCurrent() throws IOException, InterruptedException {
+    File tempFile = getTempFile();
+    FileSystem fs = FileSystem.getLocal(new Configuration());
+    ParquetInputFormat.FootersCacheValue cacheValue = getDummyCacheValue(tempFile, fs);
+
+    assertTrue(tempFile.setLastModified(tempFile.lastModified() + 5000));
+    assertFalse(cacheValue.isCurrent(new ParquetInputFormat.FileStatusWrapper(fs.getFileStatus(new Path(tempFile.getAbsolutePath())))));
+  }
+
+  @Test
+  public void testFooterCacheValueIsNewer() throws IOException {
+    File tempFile = getTempFile();
+    FileSystem fs = FileSystem.getLocal(new Configuration());
+    ParquetInputFormat.FootersCacheValue cacheValue = getDummyCacheValue(tempFile, fs);
+
+    assertTrue(cacheValue.isNewerThan(null));
+    assertFalse(cacheValue.isNewerThan(cacheValue));
+
+    assertTrue(tempFile.setLastModified(tempFile.lastModified() + 5000));
+    ParquetInputFormat.FootersCacheValue newerCacheValue = getDummyCacheValue(tempFile, fs);
+
+    assertTrue(newerCacheValue.isNewerThan(cacheValue));
+    assertFalse(cacheValue.isNewerThan(newerCacheValue));
+  }
+
+  private File getTempFile() throws IOException {
+    File tempFile = File.createTempFile("footer_", ".txt");
+    tempFile.deleteOnExit();
+    return tempFile;
+  }
+
+  private ParquetInputFormat.FootersCacheValue getDummyCacheValue(File file, FileSystem fs) throws IOException {
+    Path path = new Path(file.getPath());
+    FileStatus status = fs.getFileStatus(path);
+    ParquetInputFormat.FileStatusWrapper statusWrapper = new ParquetInputFormat.FileStatusWrapper(status);
+    ParquetMetadata mockMetadata = mock(ParquetMetadata.class);
+    ParquetInputFormat.FootersCacheValue cacheValue =
+            new ParquetInputFormat.FootersCacheValue(statusWrapper, new Footer(path, mockMetadata));
+    assertTrue(cacheValue.isCurrent(statusWrapper));
+    return cacheValue;
   }
 
   private List<ParquetInputSplit> generateSplitByMinMaxSize(long min, long max) throws IOException {

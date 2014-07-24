@@ -417,6 +417,20 @@ public class TestDictionary {
     roundTripFloat(cw, reader, maxDictionaryByteSize);
   }
 
+  @Test
+  public void testZeroValues() throws IOException {
+    DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(100, 100);
+    cw.writeInteger(34);
+    cw.writeInteger(34);
+    getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
+    DictionaryValuesReader reader = initDicReader(cw, INT32);
+
+    // pretend there are 100 nulls. what matters is offset = bytes.length.
+    byte[] bytes = {0x00, 0x01, 0x02, 0x03}; // data doesn't matter
+    int offset = bytes.length;
+    reader.initFromPage(100, bytes, offset);
+  }
+
   private DictionaryValuesReader initDicReader(ValuesWriter cw, PrimitiveTypeName type)
       throws IOException {
     final DictionaryPage dictionaryPage = cw.createDictionaryPage().copy();

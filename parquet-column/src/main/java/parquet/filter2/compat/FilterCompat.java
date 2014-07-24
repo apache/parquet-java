@@ -69,21 +69,6 @@ public class FilterCompat {
   }
 
   /**
-   * Given the class of an UnboundRecordFilter, return a Filter that wraps an instance of it.
-   */
-  public static Filter get(Class<?> unboundRecordFilterClass) {
-    checkNotNull(unboundRecordFilterClass, "unboundRecordFilterClass");
-    try {
-      UnboundRecordFilter unboundRecordFilter = (UnboundRecordFilter) unboundRecordFilterClass.newInstance();
-      return get(unboundRecordFilter);
-    } catch (InstantiationException e) {
-      throw new RuntimeException("could not instantiate unbound record filter class", e);
-    } catch (IllegalAccessException e) {
-      throw new RuntimeException("could not instantiate unbound record filter class", e);
-    }
-  }
-
-  /**
    * Given either a FilterPredicate or the class of an UnboundRecordFilter, or neither (but not both)
    * return a Filter that wraps whichever was provided.
    *
@@ -91,16 +76,16 @@ public class FilterCompat {
    *
    * If both are null, the no op filter will be returned.
    */
-  public static Filter get(FilterPredicate filterPredicate, Class<?> unboundRecordFilterClass) {
-    checkArgument(filterPredicate == null || unboundRecordFilterClass == null,
+  public static Filter get(FilterPredicate filterPredicate, UnboundRecordFilter unboundRecordFilter) {
+    checkArgument(filterPredicate == null || unboundRecordFilter == null,
         "Cannot provide both a FilterPredicate and an UnboundRecordFilter");
 
     if (filterPredicate != null) {
       return get(filterPredicate);
     }
 
-    if (unboundRecordFilterClass != null) {
-      return get(unboundRecordFilterClass);
+    if (unboundRecordFilter != null) {
+      return get(unboundRecordFilter);
     }
 
     return NOOP;
