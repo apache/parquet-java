@@ -26,12 +26,12 @@ import parquet.column.Dictionary;
 abstract public class PrimitiveConverter extends Converter {
 
   @Override
-  public final boolean isPrimitive() {
+  public boolean isPrimitive() {
     return true;
   }
 
   @Override
-  public final PrimitiveConverter asPrimitiveConverter() {
+  public PrimitiveConverter asPrimitiveConverter() {
     return this;
   }
 

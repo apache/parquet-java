@@ -24,6 +24,7 @@ import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
 import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.column.page.PageReadStore;
+import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.compat.FilterCompat;
 import parquet.filter2.compat.FilterCompat.Filter;
 import parquet.filter2.compat.FilterCompat.FilterPredicateCompat;
@@ -66,9 +67,19 @@ public class MessageColumnIO extends GroupColumnIO {
     return super.getColumnNames();
   }
 
-  public <T> RecordReader<T> getRecordReader(final PageReadStore columns,
-                                             final RecordMaterializer<T> recordMaterializer) {
+  public <T> RecordReader<T> getRecordReader(PageReadStore columns,
+                                             RecordMaterializer<T> recordMaterializer) {
     return getRecordReader(columns, recordMaterializer, FilterCompat.NOOP);
+  }
+
+  /**
+   * @deprecated use {@link #getRecordReader(PageReadStore, RecordMaterializer, Filter)}
+   */
+  @Deprecated
+  public <T> RecordReader<T> getRecordReader(PageReadStore columns,
+                                             RecordMaterializer<T> recordMaterializer,
+                                             UnboundRecordFilter filter) {
+    return getRecordReader(columns, recordMaterializer, FilterCompat.get(filter));
   }
 
   public <T> RecordReader<T> getRecordReader(final PageReadStore columns,

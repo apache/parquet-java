@@ -25,12 +25,12 @@ package parquet.io.api;
 abstract public class GroupConverter extends Converter {
 
   @Override
-  public final boolean isPrimitive() {
+  public boolean isPrimitive() {
     return false;
   }
 
   @Override
-  public final GroupConverter asGroupConverter() {
+  public GroupConverter asGroupConverter() {
     return this;
   }
 

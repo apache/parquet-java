@@ -6,14 +6,14 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 import parquet.filter2.predicate.Operators.{Or, UserDefined, DoubleColumn => JDoubleColumn, IntColumn => JIntColumn}
-import parquet.filter2.predicate.{FilterApi, UserDefinedPredicate}
+import parquet.filter2.predicate.{FilterApi, Statistics, UserDefinedPredicate}
 
 class DummyFilter extends UserDefinedPredicate[JInt] {
   override def keep(value: JInt): Boolean = false
 
-  override def canDrop(min: JInt, max: JInt): Boolean = false
+  override def canDrop(statistics: Statistics[JInt]): Boolean = false
 
-  override def inverseCanDrop(min: JInt, max: JInt): Boolean = false
+  override def inverseCanDrop(statistics: Statistics[JInt]): Boolean = false
 }
 
 @RunWith(classOf[JUnitRunner])

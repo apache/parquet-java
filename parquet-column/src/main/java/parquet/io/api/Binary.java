@@ -70,7 +70,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     return "Binary{" + length() + " bytes, " + Arrays.toString(getBytes()) + "}";
   }
 
-  public static class ByteArraySliceBackedBinary extends Binary {
+  private static class ByteArraySliceBackedBinary extends Binary {
     private final byte[] value;
     private final int offset;
     private final int length;
@@ -146,7 +146,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     return new ByteArraySliceBackedBinary(value, offset, length);
   }
 
-  public static class ByteArrayBackedBinary extends Binary {
+  private static class ByteArrayBackedBinary extends Binary {
     private final byte[] value;
     private final String stringValue;
 
@@ -233,7 +233,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     return new ByteArrayBackedBinary(value);
   }
 
-  public static class ByteBufferBackedBinary extends Binary {
+  private static class ByteBufferBackedBinary extends Binary {
     private transient ByteBuffer value;
 
     public ByteBufferBackedBinary(ByteBuffer value) {

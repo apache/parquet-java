@@ -225,7 +225,12 @@ public class PhoneBookWriter {
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
 
-    ParquetReader<Group> reader = new ParquetReader<Group>(conf, new Path(f.getAbsolutePath()), new GroupReadSupport(), filter);
+    ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), new Path(f.getAbsolutePath()))
+                     .withConf(conf)
+                     .withFilter(filter)
+                     .build();
+
     Group current;
     List<Group> users = new ArrayList<Group>();
 
