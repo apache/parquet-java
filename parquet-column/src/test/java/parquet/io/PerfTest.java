@@ -15,6 +15,12 @@
  */
 package parquet.io;
 
+import static parquet.example.Paper.r1;
+import static parquet.example.Paper.r2;
+import static parquet.example.Paper.schema;
+import static parquet.example.Paper.schema2;
+import static parquet.example.Paper.schema3;
+
 import java.util.logging.Level;
 
 import parquet.Log;
@@ -25,12 +31,6 @@ import parquet.example.DummyRecordConverter;
 import parquet.example.data.GroupWriter;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
-
-import static parquet.example.Paper.r1;
-import static parquet.example.Paper.r2;
-import static parquet.example.Paper.schema;
-import static parquet.example.Paper.schema2;
-import static parquet.example.Paper.schema3;
 
 
 /**

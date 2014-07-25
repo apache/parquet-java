@@ -15,23 +15,38 @@
  */
 package parquet.io;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static parquet.example.Paper.pr1;
+import static parquet.example.Paper.pr2;
+import static parquet.example.Paper.r1;
+import static parquet.example.Paper.r2;
+import static parquet.example.Paper.schema;
+import static parquet.example.Paper.schema2;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static parquet.schema.Type.Repetition.OPTIONAL;
+import static parquet.schema.Type.Repetition.REQUIRED;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.Assert;
 import org.junit.Test;
+
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
 import parquet.column.ParquetProperties.WriterVersion;
+import parquet.column.statistics.Statistics;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.mem.MemPageStore;
@@ -51,19 +66,6 @@ import parquet.schema.PrimitiveType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type;
 import parquet.schema.Type.Repetition;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-import static parquet.example.Paper.pr1;
-import static parquet.example.Paper.pr2;
-import static parquet.example.Paper.r1;
-import static parquet.example.Paper.r2;
-import static parquet.example.Paper.schema;
-import static parquet.example.Paper.schema2;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static parquet.schema.Type.Repetition.OPTIONAL;
-import static parquet.schema.Type.Repetition.REQUIRED;
 
 @RunWith(Parameterized.class)
 public class TestColumnIO {

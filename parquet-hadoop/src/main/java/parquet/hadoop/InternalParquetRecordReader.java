@@ -25,6 +25,8 @@ import org.apache.hadoop.fs.Path;
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.PageReadStore;
+import parquet.filter.UnboundRecordFilter;
+import parquet.filter2.compat.FilterCompat;
 import parquet.filter2.compat.FilterCompat.Filter;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
@@ -78,6 +80,23 @@ class InternalParquetRecordReader<T> {
   public InternalParquetRecordReader(ReadSupport<T> readSupport, Filter filter) {
     this.readSupport = readSupport;
     this.filter = checkNotNull(filter, "filter");
+  }
+
+  /**
+   * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
+   */
+  public InternalParquetRecordReader(ReadSupport<T> readSupport) {
+    this(readSupport, FilterCompat.NOOP);
+  }
+
+  /**
+   * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
+   * @param filter Optional filter for only returning matching records.
+   * @deprecated use {@link #InternalParquetRecordReader(ReadSupport, Filter)}
+   */
+  @Deprecated
+  public InternalParquetRecordReader(ReadSupport<T> readSupport, UnboundRecordFilter filter) {
+    this(readSupport, FilterCompat.get(filter));
   }
 
   private void checkRead() throws IOException {

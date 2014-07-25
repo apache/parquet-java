@@ -31,8 +31,6 @@ import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
-
-import parquet.filter2.compat.FilterCompat;
 import parquet.hadoop.ParquetReader;
 import parquet.hadoop.ParquetWriter;
 import parquet.hadoop.metadata.CompressionCodecName;
@@ -70,7 +68,7 @@ public class TestSpecificReadWrite {
   @Test
   public void testFilterMatchesMultiple() throws IOException {
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, FilterCompat.get(column("make", equalTo("Volkswagen"))));
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Volkswagen")));
     for (int i = 0; i < 10; i++) {
       assertEquals(getVwPolo().toString(), reader.read().toString());
       assertEquals(getVwPassat().toString(), reader.read().toString());
@@ -81,7 +79,7 @@ public class TestSpecificReadWrite {
   @Test
   public void testFilterMatchesMultipleBlocks() throws IOException {
     Path path = writeCarsToParquetFile(10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE/64, DEFAULT_PAGE_SIZE/64);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, FilterCompat.get(column("make", equalTo("Volkswagen"))));
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Volkswagen")));
     for (int i = 0; i < 10000; i++) {
       assertEquals(getVwPolo().toString(), reader.read().toString());
       assertEquals(getVwPassat().toString(), reader.read().toString());
@@ -92,7 +90,7 @@ public class TestSpecificReadWrite {
   @Test
   public void testFilterMatchesNoBlocks() throws IOException {
     Path path = writeCarsToParquetFile(10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE/64, DEFAULT_PAGE_SIZE/64);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, FilterCompat.get(column("make", equalTo("Bogus"))));
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Bogus")));
     assertNull(reader.read());
   }
 
@@ -118,8 +116,8 @@ public class TestSpecificReadWrite {
     writer.write(bmwMini); // only write BMW in last block
     writer.close();
 
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, FilterCompat.get(column("make",
-        equalTo("BMW"))));
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make",
+        equalTo("BMW")));
     assertEquals(getBmwMini().toString(), reader.read().toString());
     assertNull(reader.read());
   }
@@ -127,7 +125,7 @@ public class TestSpecificReadWrite {
   @Test
   public void testFilterWithDictionary() throws IOException {
     Path path = writeCarsToParquetFile(1,CompressionCodecName.UNCOMPRESSED,true);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, FilterCompat.get(column("make", equalTo("Volkswagen"))));
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Volkswagen")));
     assertEquals(getVwPolo().toString(), reader.read().toString());
     assertEquals(getVwPassat().toString(), reader.read().toString());
     assertNull(reader.read());
@@ -137,15 +135,15 @@ public class TestSpecificReadWrite {
   public void testFilterOnSubAttribute() throws IOException {
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
     
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, FilterCompat.get(column("engine.type", equalTo(EngineType.DIESEL))));
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("engine.type", equalTo(EngineType.DIESEL)));
     assertEquals(reader.read().toString(), getVwPassat().toString());
     assertNull(reader.read());
 
-    reader = new AvroParquetReader<Car>(path, FilterCompat.get(column("engine.capacity", equalTo(1.4f))));
+    reader = new AvroParquetReader<Car>(path, column("engine.capacity", equalTo(1.4f)));
     assertEquals(getVwPolo().toString(), reader.read().toString());
     assertNull(reader.read());
 
-    reader = new AvroParquetReader<Car>(path, FilterCompat.get(column("engine.hasTurboCharger", equalTo(true))));
+    reader = new AvroParquetReader<Car>(path, column("engine.hasTurboCharger", equalTo(true)));
     assertEquals(getBmwMini().toString(), reader.read().toString());
     assertNull(reader.read());
   }

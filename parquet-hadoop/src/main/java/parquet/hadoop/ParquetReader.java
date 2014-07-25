@@ -28,6 +28,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
+import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.compat.FilterCompat;
 import parquet.filter2.compat.FilterCompat.Filter;
 import parquet.filter2.compat.RowGroupFilter;
@@ -46,19 +47,22 @@ import static parquet.Preconditions.checkNotNull;
  */
 public class ParquetReader<T> implements Closeable {
 
-  private ReadSupport<T> readSupport;
-  private Configuration conf;
-  private ReadContext readContext;
-  private Iterator<Footer> footersIterator;
-  private InternalParquetRecordReader<T> reader;
-  private GlobalMetaData globalMetaData;
+  private final ReadSupport<T> readSupport;
+  private final Configuration conf;
+  private final ReadContext readContext;
+  private final Iterator<Footer> footersIterator;
+  private final GlobalMetaData globalMetaData;
   private final Filter filter;
+
+  private InternalParquetRecordReader<T> reader;
 
   /**
    * @param file the file to read
    * @param readSupport to materialize records
    * @throws IOException
+   * @deprecated use {@link #builder(ReadSupport, Path)}
    */
+  @Deprecated
   public ParquetReader(Path file, ReadSupport<T> readSupport) throws IOException {
     this(new Configuration(), file, readSupport, FilterCompat.NOOP);
   }
@@ -68,7 +72,9 @@ public class ParquetReader<T> implements Closeable {
    * @param file the file to read
    * @param readSupport to materialize records
    * @throws IOException
+   * @deprecated use {@link #builder(ReadSupport, Path)}
    */
+  @Deprecated
   public ParquetReader(Configuration conf, Path file, ReadSupport<T> readSupport) throws IOException {
     this(conf, file, readSupport, FilterCompat.NOOP);
   }
@@ -76,28 +82,34 @@ public class ParquetReader<T> implements Closeable {
   /**
    * @param file the file to read
    * @param readSupport to materialize records
-   * @param filter the filter to use to filter records
+   * @param unboundRecordFilter the filter to use to filter records
    * @throws IOException
+   * @deprecated use {@link #builder(ReadSupport, Path)}
    */
-  public ParquetReader(Path file, ReadSupport<T> readSupport, Filter filter) throws IOException {
-    this(new Configuration(), file, readSupport, filter);
+  @Deprecated
+  public ParquetReader(Path file, ReadSupport<T> readSupport, UnboundRecordFilter unboundRecordFilter) throws IOException {
+    this(new Configuration(), file, readSupport, FilterCompat.get(unboundRecordFilter));
   }
 
   /**
    * @param conf the configuration
    * @param file the file to read
    * @param readSupport to materialize records
-   * @param filter the filter to use to filter records
+   * @param unboundRecordFilter the filter to use to filter records
    * @throws IOException
+   * @deprecated use {@link #builder(ReadSupport, Path)}
    */
-  public ParquetReader(Configuration conf,
+  @Deprecated
+  public ParquetReader(Configuration conf, Path file, ReadSupport<T> readSupport, UnboundRecordFilter unboundRecordFilter) throws IOException {
+    this(conf, file, readSupport, FilterCompat.get(unboundRecordFilter));
+  }
+
+  private ParquetReader(Configuration conf,
                        Path file,
                        ReadSupport<T> readSupport,
                        Filter filter) throws IOException {
     this.readSupport = readSupport;
-
     this.filter = checkNotNull(filter, "filter");
-
     this.conf = conf;
 
     FileSystem fs = file.getFileSystem(conf);
@@ -150,6 +162,38 @@ public class ParquetReader<T> implements Closeable {
   public void close() throws IOException {
     if (reader != null) {
       reader.close();
+    }
+  }
+
+  public static <T> Builder<T> builder(ReadSupport<T> readSupport, Path path) {
+    return new Builder<T>(readSupport, path);
+  }
+
+  public static class Builder<T> {
+    private final ReadSupport<T> readSupport;
+    private final Path file;
+    private Configuration conf;
+    private Filter filter;
+
+    private Builder(ReadSupport<T> readSupport, Path path) {
+      this.readSupport = checkNotNull(readSupport, "readSupport");
+      this.file = checkNotNull(path, "path");
+      this.conf = new Configuration();
+      this.filter = FilterCompat.NOOP;
+    }
+
+    public Builder<T> withConf(Configuration conf) {
+      this.conf = checkNotNull(conf, "conf");
+      return this;
+    }
+
+    public Builder<T> withFilter(Filter filter) {
+      this.filter = checkNotNull(filter, "filter");
+      return this;
+    }
+
+    public ParquetReader<T> build() throws IOException {
+      return new ParquetReader<T>(conf, file, readSupport, filter);
     }
   }
 }
