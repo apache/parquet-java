@@ -28,9 +28,11 @@ import parquet.bytes.BytesUtils;
 import parquet.io.ParquetEncodingException;
 
 import static parquet.bytes.BytesUtils.UTF8;
-import static parquet.bytes.BytesUtils.readIntLittleEndian;
 
 abstract public class Binary implements Comparable<Binary>, Serializable {
+
+  // this isn't really something others should extend
+  private Binary() { }
 
   public static final Binary EMPTY = fromByteArray(new byte[0]);
 
@@ -142,34 +144,26 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   }
 
+  private static class FromStringBinary extends ByteArrayBackedBinary {
+    public FromStringBinary(byte[] value) {
+      super(value);
+    }
+
+    @Override
+    public String toString() {
+      return "Binary{\"" + toStringUsingUTF8() + "\"}";
+    }
+  }
+
   public static Binary fromByteArray(final byte[] value, final int offset, final int length) {
     return new ByteArraySliceBackedBinary(value, offset, length);
   }
 
   private static class ByteArrayBackedBinary extends Binary {
     private final byte[] value;
-    private final String stringValue;
 
     public ByteArrayBackedBinary(byte[] value) {
-      this.stringValue = null;
       this.value = value;
-    }
-
-    public ByteArrayBackedBinary(String stringValue) {
-      this.stringValue = stringValue;
-      try {
-        this.value = stringValue.getBytes("UTF-8");
-      } catch (UnsupportedEncodingException e) {
-        throw new ParquetEncodingException("UTF-8 not supported.", e);
-      }
-    }
-
-    @Override
-    public String toString() {
-      if (stringValue != null) {
-        return "Binary{\"" + stringValue + "\"}";
-      }
-      return super.toString();
     }
 
     @Override
@@ -350,7 +344,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   }
 
   public static Binary fromString(final String value) {
-    return new ByteArrayBackedBinary(value);
+    try {
+      return new FromStringBinary(value.getBytes("UTF-8"));
+    } catch (UnsupportedEncodingException e) {
+      throw new ParquetEncodingException("UTF-8 not supported.", e);
+    }
   }
 
   /**
