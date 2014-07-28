@@ -97,10 +97,10 @@ public class ParquetScroogeSchemeTest {
     job.setInputFormatClass(ParquetThriftInputFormat.class);
     ParquetThriftInputFormat.setInputPaths(job, parquetFile);
     final JobID jobID = new JobID("local", 1);
-    List<InputSplit> splits = parquetScroogeInputFormat.getSplits(new JobContext(ContextUtil.getConfiguration(job), jobID));
+    List<InputSplit> splits = parquetScroogeInputFormat.getSplits(ContextUtil.newJobContext(ContextUtil.getConfiguration(job), jobID));
     T readValue = null;
     for (InputSplit split : splits) {
-      TaskAttemptContext taskAttemptContext = new TaskAttemptContext(ContextUtil.getConfiguration(job), new TaskAttemptID(new TaskID(jobID, true, 1), 0));
+      TaskAttemptContext taskAttemptContext = ContextUtil.newTaskAttemptContext(ContextUtil.getConfiguration(job), new TaskAttemptID(new TaskID(jobID, true, 1), 0));
       final RecordReader<Void, T> reader = parquetScroogeInputFormat.createRecordReader(split, taskAttemptContext);
       reader.initialize(split, taskAttemptContext);
       if (reader.nextKeyValue()) {
