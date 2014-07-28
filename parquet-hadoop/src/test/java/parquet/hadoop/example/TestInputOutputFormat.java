@@ -46,6 +46,7 @@ import parquet.example.data.Group;
 import parquet.example.data.simple.SimpleGroupFactory;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.ParquetOutputFormat;
+import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.api.DelegatingReadSupport;
 import parquet.hadoop.api.DelegatingWriteSupport;
 import parquet.hadoop.api.InitContext;
@@ -258,6 +259,35 @@ public class TestInputOutputFormat {
     assertTrue(readJob.getCounters().getGroup("parquet").findCounter("bytesread").getValue() == 0L);
     assertTrue(readJob.getCounters().getGroup("parquet").findCounter("bytestotal").getValue() == 0L);
     assertTrue(readJob.getCounters().getGroup("parquet").findCounter("timeread").getValue() == 0L);
+  }
+
+  @Test
+  public void testExtraMetadata() throws Exception {
+    Map<String,String> extraMetaData = new HashMap<String,String>();
+    extraMetaData.put("foo", "bar");
+
+    ParquetOutputFormat.addExtraMetaData(conf, extraMetaData);
+    runMapReduceJob(CompressionCodecName.GZIP);
+
+    Map<String,String> finalMetaData = ParquetFileReader.readFooter(conf, new Path(parquetPath + "/part-m-00000.gz.parquet")).getFileMetaData().getKeyValueMetaData();
+    assertEquals("bar", finalMetaData.get("foo"));
+  }
+
+  @Test
+  public void testExtraMetadataTwice() throws Exception {
+    Map<String,String> extraMetaData = new HashMap<String,String>();
+    extraMetaData.put("foo", "bar");
+
+    Map<String,String> extraMetaData2 = new HashMap<String,String>();
+    extraMetaData2.put("baz", "qux");
+
+    ParquetOutputFormat.addExtraMetaData(conf, extraMetaData);
+    ParquetOutputFormat.addExtraMetaData(conf, extraMetaData2);
+    runMapReduceJob(CompressionCodecName.GZIP);
+
+    Map<String,String> finalMetaData = ParquetFileReader.readFooter(conf, new Path(parquetPath + "/part-m-00000.gz.parquet")).getFileMetaData().getKeyValueMetaData();
+    assertEquals("bar", finalMetaData.get("foo"));
+    assertEquals("qux", finalMetaData.get("baz"));
   }
 
   private void waitForJob(Job job) throws InterruptedException, IOException {

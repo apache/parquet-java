@@ -22,6 +22,8 @@ import static parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
 import static parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.HashMap;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -32,6 +34,9 @@ import org.apache.hadoop.mapreduce.OutputCommitter;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.type.TypeReference;
 
 import parquet.Log;
 import parquet.column.ParquetProperties.WriterVersion;
@@ -99,6 +104,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String ENABLE_DICTIONARY    = "parquet.enable.dictionary";
   public static final String VALIDATION           = "parquet.validation";
   public static final String WRITER_VERSION       = "parquet.writer.version";
+  public static final String EXTRA_EXTRA_METADATA = "parquet.extraextrametadata";
 
   public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
     getConfiguration(job).set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
@@ -206,11 +212,37 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return configuration.getBoolean(VALIDATION, false);
   }
 
+  public static void addExtraMetaData(Configuration configuration, Map<String, String> newMetaData) {
+    Map<String, String> metaData = getAddedExtraMetaData(configuration);
+    if (metaData == null) {
+      metaData = newMetaData;
+    } else {
+      metaData.putAll(newMetaData);
+    }
+
+    try {
+      configuration.set(EXTRA_EXTRA_METADATA, new ObjectMapper().writeValueAsString(metaData));
+    } catch (IOException e) {
+      throw new BadConfigurationException("Unable to serialize extra extra metadata: " + newMetaData, e);
+    }
+  }
+
+  private static Map<String, String> getAddedExtraMetaData(Configuration configuration) {
+    String jsonString = configuration.get(EXTRA_EXTRA_METADATA);
+    if (jsonString == null) {
+      return null;
+    }
+
+    try {
+      return new ObjectMapper().readValue(jsonString, new TypeReference<HashMap<String,String>>(){});
+    } catch (IOException e) {
+      throw new BadConfigurationException("Unable to deserialize extra extra metadata: " + jsonString, e);
+    }
+  }
+
   private CompressionCodecName getCodec(TaskAttemptContext taskAttemptContext) {
     return CodecConfig.from(taskAttemptContext).getCodec();
   }
-
-
 
   private WriteSupport<T> writeSupport;
   private ParquetOutputCommitter committer;
@@ -274,11 +306,19 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     ParquetFileWriter w = new ParquetFileWriter(conf, init.getSchema(), file);
     w.start();
 
+    Map<String, String> metaData = new HashMap<String, String>();
+    metaData.putAll(init.getExtraMetaData());
+
+    Map<String, String> addedExtraMetaData = getAddedExtraMetaData(conf);
+    if (addedExtraMetaData != null) {
+      metaData.putAll(addedExtraMetaData);
+    }
+
     return new ParquetRecordWriter<T>(
         w,
         writeSupport,
         init.getSchema(),
-        init.getExtraMetaData(),
+        metaData,
         blockSize, pageSize,
         codecFactory.getCompressor(codec, pageSize),
         dictionaryPageSize,
