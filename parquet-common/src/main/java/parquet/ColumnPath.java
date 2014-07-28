@@ -42,7 +42,6 @@ public final class ColumnPath implements Iterable<String>, Serializable {
   }
 
   private final String[] p;
-  private String dotString;
 
   private ColumnPath(String[] path) {
     this.p = path;
@@ -62,10 +61,6 @@ public final class ColumnPath implements Iterable<String>, Serializable {
   }
 
   public String toDotString() {
-    if (dotString != null) {
-      return dotString;
-    }
-
     Iterator<String> iter = Arrays.asList(p).iterator();
     StringBuilder sb = new StringBuilder();
     while (iter.hasNext()) {
@@ -74,8 +69,7 @@ public final class ColumnPath implements Iterable<String>, Serializable {
         sb.append('.');
       }
     }
-    dotString = sb.toString();
-    return dotString;
+    return sb.toString();
   }
 
   @Override
