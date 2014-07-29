@@ -15,9 +15,6 @@
  */
 package parquet.hadoop;
 
-import static parquet.Log.DEBUG;
-import static parquet.format.Util.writeFileMetaData;
-
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -40,10 +37,10 @@ import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.DictionaryPage;
 import parquet.column.statistics.Statistics;
+import parquet.common.schema.ColumnPath;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
-import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.GlobalMetaData;
@@ -51,6 +48,9 @@ import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.ParquetEncodingException;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
+
+import static parquet.Log.DEBUG;
+import static parquet.format.Util.writeFileMetaData;
 
 /**
  * Internal implementation of the Parquet file writer as a block container

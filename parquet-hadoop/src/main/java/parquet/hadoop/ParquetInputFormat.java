@@ -43,6 +43,10 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
 import parquet.Log;
 import parquet.filter.UnboundRecordFilter;
+import parquet.filter2.compat.FilterCompat;
+import parquet.filter2.compat.FilterCompat.Filter;
+import parquet.filter2.compat.RowGroupFilter;
+import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
@@ -53,9 +57,12 @@ import parquet.hadoop.metadata.GlobalMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.ConfigurationUtil;
 import parquet.hadoop.util.ContextUtil;
+import parquet.hadoop.util.SerializationUtil;
 import parquet.io.ParquetDecodingException;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
+
+import static parquet.Preconditions.checkArgument;
 
 /**
  * The input format to read a Parquet file.
@@ -88,6 +95,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    */
   public static final String STRICT_TYPE_CHECKING = "parquet.strict.typing";
 
+  /**
+   * key to configure the filter predicate
+   */
+  public static final String FILTER_PREDICATE = "parquet.private.read.filter.predicate";
+
   private static final int MIN_FOOTER_CACHE_SIZE = 100;
 
   private LruCache<FileStatusWrapper, FootersCacheValue> footersCache;
@@ -99,11 +111,38 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   public static void setUnboundRecordFilter(Job job, Class<? extends UnboundRecordFilter> filterClass) {
-    ContextUtil.getConfiguration(job).set(UNBOUND_RECORD_FILTER, filterClass.getName());
+    Configuration conf = ContextUtil.getConfiguration(job);
+    checkArgument(getFilterPredicate(conf) == null,
+        "You cannot provide an UnboundRecordFilter after providing a FilterPredicate");
+
+    conf.set(UNBOUND_RECORD_FILTER, filterClass.getName());
   }
 
+  /**
+   * @deprecated use {@link #getFilter(Configuration)}
+   */
+  @Deprecated
   public static Class<?> getUnboundRecordFilter(Configuration configuration) {
     return ConfigurationUtil.getClassFromConfig(configuration, UNBOUND_RECORD_FILTER, UnboundRecordFilter.class);
+  }
+
+  private static UnboundRecordFilter getUnboundRecordFilterInstance(Configuration configuration) {
+    Class<?> clazz = ConfigurationUtil.getClassFromConfig(configuration, UNBOUND_RECORD_FILTER, UnboundRecordFilter.class);
+    if (clazz == null) { return null; }
+
+    try {
+      UnboundRecordFilter unboundRecordFilter = (UnboundRecordFilter) clazz.newInstance();
+
+      if (unboundRecordFilter instanceof Configurable) {
+        ((Configurable)unboundRecordFilter).setConf(configuration);
+      }
+
+      return unboundRecordFilter;
+    } catch (InstantiationException e) {
+      throw new BadConfigurationException("could not instantiate unbound record filter class", e);
+    } catch (IllegalAccessException e) {
+      throw new BadConfigurationException("could not instantiate unbound record filter class", e);
+    }
   }
 
   public static void setReadSupportClass(JobConf conf, Class<?> readSupportClass) {
@@ -112,6 +151,34 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   public static Class<?> getReadSupportClass(Configuration configuration) {
     return ConfigurationUtil.getClassFromConfig(configuration, READ_SUPPORT_CLASS, ReadSupport.class);
+  }
+
+  public static void setFilterPredicate(Configuration configuration, FilterPredicate filterPredicate) {
+    checkArgument(getUnboundRecordFilter(configuration) == null,
+        "You cannot provide a FilterPredicate after providing an UnboundRecordFilter");
+
+    configuration.set(FILTER_PREDICATE + ".human.readable", filterPredicate.toString());
+    try {
+      SerializationUtil.writeObjectToConfAsBase64(FILTER_PREDICATE, filterPredicate, configuration);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static FilterPredicate getFilterPredicate(Configuration configuration) {
+    try {
+      return SerializationUtil.readObjectFromConfAsBase64(FILTER_PREDICATE, configuration);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Returns a non-null Filter, which is a wrapper around either a
+   * FilterPredicate, an UnboundRecordFilter, or a no-op filter.
+   */
+  public static Filter getFilter(Configuration conf) {
+    return FilterCompat.get(getFilterPredicate(conf), getUnboundRecordFilterInstance(conf));
   }
 
   /**
@@ -135,24 +202,12 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public RecordReader<Void, T> createRecordReader(
       InputSplit inputSplit,
       TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
+
+    ReadSupport<T> readSupport = getReadSupport(ContextUtil.getConfiguration(taskAttemptContext));
+
     Configuration conf = ContextUtil.getConfiguration(taskAttemptContext);
-    ReadSupport<T> readSupport = getReadSupport(conf);
-    Class<?> unboundRecordFilterClass = getUnboundRecordFilter(conf);
-    if (unboundRecordFilterClass == null) {
-      return new ParquetRecordReader<T>(readSupport);
-    } else {
-      try {
-        UnboundRecordFilter filter = (UnboundRecordFilter)unboundRecordFilterClass.newInstance();
-        if (filter instanceof Configurable) {
-          ((Configurable)filter).setConf(conf);
-        }
-        return new ParquetRecordReader<T>(readSupport, filter);
-      } catch (InstantiationException e) {
-        throw new BadConfigurationException("could not instantiate unbound record filter class", e);
-      } catch (IllegalAccessException e) {
-        throw new BadConfigurationException("could not instantiate unbound record filter class", e);
-      }
-    }
+
+    return new ParquetRecordReader<T>(readSupport, getFilter(conf));
   }
 
   /**
@@ -381,6 +436,12 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         configuration,
         globalMetaData.getKeyValueMetaData(),
         globalMetaData.getSchema()));
+
+    Filter filter = getFilter(configuration);
+
+    long rowGroupsDropped = 0;
+    long totalRowGroups = 0;
+
     for (Footer footer : footers) {
       final Path file = footer.getFile();
       LOG.debug(file);
@@ -388,10 +449,21 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       FileStatus fileStatus = fs.getFileStatus(file);
       ParquetMetadata parquetMetaData = footer.getParquetMetadata();
       List<BlockMetaData> blocks = parquetMetaData.getBlocks();
+
+      List<BlockMetaData> filteredBlocks = blocks;
+
+      totalRowGroups += blocks.size();
+      filteredBlocks = RowGroupFilter.filterRowGroups(filter, blocks, parquetMetaData.getFileMetaData().getSchema());
+      rowGroupsDropped += blocks.size() - filteredBlocks.size();
+
+      if (filteredBlocks.isEmpty()) {
+        continue;
+      }
+
       BlockLocation[] fileBlockLocations = fs.getFileBlockLocations(fileStatus, 0, fileStatus.getLen());
       splits.addAll(
           generateSplits(
-              blocks,
+              filteredBlocks,
               fileBlockLocations,
               fileStatus,
               parquetMetaData.getFileMetaData(),
@@ -401,6 +473,14 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
               maxSplitSize)
           );
     }
+
+    if (rowGroupsDropped > 0 && totalRowGroups > 0) {
+      int percentDropped = (int) ((((double) rowGroupsDropped) / totalRowGroups) * 100);
+      LOG.info("Dropping " + rowGroupsDropped + " row groups that do not pass filter predicate! (" + percentDropped + "%)");
+    } else {
+      LOG.info("There were no row groups that could be dropped due to filter predicates");
+    }
+
     return splits;
   }
 

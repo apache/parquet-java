@@ -15,9 +15,6 @@
  */
 package parquet.format.converter;
 
-import static parquet.format.Util.readFileMetaData;
-import static parquet.format.Util.writePageHeader;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -33,8 +30,9 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import parquet.Log;
-import parquet.format.ConvertedType;
+import parquet.common.schema.ColumnPath;
 import parquet.format.ColumnChunk;
+import parquet.format.ConvertedType;
 import parquet.format.DataPageHeader;
 import parquet.format.DictionaryPageHeader;
 import parquet.format.Encoding;
@@ -49,11 +47,9 @@ import parquet.format.Statistics;
 import parquet.format.Type;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
-import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.ParquetDecodingException;
-import parquet.schema.Types;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
@@ -61,6 +57,10 @@ import parquet.schema.PrimitiveType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type.Repetition;
 import parquet.schema.TypeVisitor;
+import parquet.schema.Types;
+
+import static parquet.format.Util.readFileMetaData;
+import static parquet.format.Util.writePageHeader;
 
 public class ParquetMetadataConverter {
   private static final Log LOG = Log.getLog(ParquetMetadataConverter.class);

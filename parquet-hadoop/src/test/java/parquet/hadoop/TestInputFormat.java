@@ -15,18 +15,37 @@
  */
 package parquet.hadoop;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapreduce.Job;
 import org.junit.Before;
 import org.junit.Test;
+
+import parquet.column.ColumnReader;
 import parquet.column.Encoding;
 import parquet.column.statistics.BinaryStatistics;
+import parquet.column.statistics.IntStatistics;
+import parquet.common.schema.ColumnPath;
+import parquet.filter.RecordFilter;
+import parquet.filter.UnboundRecordFilter;
+import parquet.filter2.compat.FilterCompat;
+import parquet.filter2.compat.FilterCompat.Filter;
+import parquet.filter2.compat.FilterCompat.FilterPredicateCompat;
+import parquet.filter2.predicate.FilterPredicate;
+import parquet.filter2.predicate.Operators.IntColumn;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
-import parquet.hadoop.metadata.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
@@ -35,16 +54,17 @@ import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Arrays;
-
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
+import static parquet.filter2.predicate.FilterApi.and;
+import static parquet.filter2.predicate.FilterApi.eq;
+import static parquet.filter2.predicate.FilterApi.intColumn;
+import static parquet.filter2.predicate.FilterApi.not;
+import static parquet.filter2.predicate.FilterApi.notEq;
+import static parquet.filter2.predicate.FilterApi.or;
 
 public class TestInputFormat {
 
@@ -91,6 +111,25 @@ public class TestInputFormat {
       assertEquals("maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = -50; minSplitSize is -100"
               , e.getMessage());
     }
+  }
+
+  @Test
+  public void testGetFilter() throws IOException {
+    IntColumn intColumn = intColumn("foo");
+    FilterPredicate p = or(eq(intColumn, 7), eq(intColumn, 12));
+    Configuration conf = new Configuration();
+    ParquetInputFormat.setFilterPredicate(conf, p);
+    Filter read = ParquetInputFormat.getFilter(conf);
+    assertTrue(read instanceof FilterPredicateCompat);
+    assertEquals(p, ((FilterPredicateCompat) read).getFilterPredicate());
+
+    conf = new Configuration();
+    ParquetInputFormat.setFilterPredicate(conf, not(p));
+    read = ParquetInputFormat.getFilter(conf);
+    assertTrue(read instanceof FilterPredicateCompat);
+    assertEquals(and(notEq(intColumn, 7), notEq(intColumn, 12)), ((FilterPredicateCompat) read).getFilterPredicate());
+
+    assertEquals(FilterCompat.NOOP, ParquetInputFormat.getFilter(new Configuration()));
   }
 
   /*
@@ -244,6 +283,57 @@ public class TestInputFormat {
     shouldSplitBlockSizeBe(splits, 2, 2, 1, 2, 2, 1);
     shouldSplitLocationBe(splits, 0, 0, 0, 1, 1, 1);
     shouldSplitLengthBe(splits, 20, 20, 10, 20, 20, 10);
+  }
+
+  public static final class DummyUnboundRecordFilter implements UnboundRecordFilter {
+    @Override
+    public RecordFilter bind(Iterable<ColumnReader> readers) {
+      return null;
+    }
+  }
+
+  @Test
+  public void testOnlyOneKindOfFilterSupported() throws Exception {
+    IntColumn foo = intColumn("foo");
+    FilterPredicate p = or(eq(foo, 10), eq(foo, 11));
+
+    Job job = new Job();
+
+    Configuration conf = job.getConfiguration();
+    ParquetInputFormat.setUnboundRecordFilter(job, DummyUnboundRecordFilter.class);
+    try {
+      ParquetInputFormat.setFilterPredicate(conf, p);
+      fail("this should throw");
+    } catch (IllegalArgumentException e) {
+      assertEquals("You cannot provide a FilterPredicate after providing an UnboundRecordFilter", e.getMessage());
+    }
+
+    job = new Job();
+    conf = job.getConfiguration();
+
+    ParquetInputFormat.setFilterPredicate(conf, p);
+    try {
+      ParquetInputFormat.setUnboundRecordFilter(job, DummyUnboundRecordFilter.class);
+      fail("this should throw");
+    } catch (IllegalArgumentException e) {
+      assertEquals("You cannot provide an UnboundRecordFilter after providing a FilterPredicate", e.getMessage());
+    }
+
+  }
+
+  public static BlockMetaData makeBlockFromStats(IntStatistics stats, long valueCount) {
+    BlockMetaData blockMetaData = new BlockMetaData();
+
+    ColumnChunkMetaData column = ColumnChunkMetaData.get(ColumnPath.get("foo"),
+        PrimitiveTypeName.INT32,
+        CompressionCodecName.GZIP,
+        new HashSet<Encoding>(Arrays.asList(Encoding.PLAIN)),
+        stats,
+        100l, 100l, valueCount, 100l, 100l);
+    blockMetaData.addColumn(column);
+    blockMetaData.setTotalByteSize(200l);
+    blockMetaData.setRowCount(valueCount);
+    return blockMetaData;
   }
 
   @Test

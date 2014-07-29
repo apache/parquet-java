@@ -26,7 +26,7 @@ import java.util.Arrays;
  *
  * @author Katya Gonina
  */
-public abstract class Statistics {
+public abstract class Statistics<T extends Comparable<T>> {
 
   private boolean firstValueAccountedFor;
   private long num_nulls;
@@ -161,6 +161,9 @@ public abstract class Statistics {
    * @param maxBytes byte array to set the max value to
    */
   abstract public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
+
+  abstract public T genericGetMin();
+  abstract public T genericGetMax();
 
   /**
    * Abstract method to return the max value as a byte array
