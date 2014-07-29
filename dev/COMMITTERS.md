@@ -1,22 +1,23 @@
-Committers (in aplhabetical order):
-| Name              | Apache Id  | github id | Area of expertise                |
-|-------------------|------------|-----------|----------------------------------|
-|Aniket Mokashi     | aniket486  |           | Pig, Thrift, Encodings           |
-|Brock Noland       | brock      |           | Hive                             |
-|Chris Aniszczyk    | caniszczyk |           |                                  |
-|Dmitriy Ryaboy     | dvryaboy   |           |                                  |
-|Jake Farrell       | jfarrell   |           |                                  |
-|Jonathan Coveney   | jcoveney   |           |                                  |
-|Julien Le Dem      | julien     |           | encodings, assembly, Thrift, Pig |
-|Lukas Nalezenec    | lukas      |           | ProtoBuf                         |
-|Marcel Kornacker   | marcel     |           | format                           |
-|Mickael Lacour     | mlacour    |           | Hive                             |
-|Nong Li            | nong       |           | format, Snappy, cpp              |
-|Remy Pecqueur      | rpecqueur  |           | Hive                             |
-|Ryan Blue          | blue       |           | Avro                             |
-|Tianshuo Deng      | tianshuo   |           | Thrift, Scrooge, Projection      |
-|Tom White          | tomwhite   |           | Avro                             |
-|Wesley Graham Peck | wesleypeck |           | tools                            |
+# Committers (in aplhabetical order):
+
+| Name               | Apache Id  | github id   | Area of expertise                |
+|--------------------|------------|-------------|----------------------------------|
+| Aniket Mokashi     | aniket486  |             | Pig, Thrift, Encodings           |
+| Brock Noland       | brock      |             | Hive                             |
+| Chris Aniszczyk    | caniszczyk |             |                                  |
+| Dmitriy Ryaboy     | dvryaboy   |             |                                  |
+| Jake Farrell       | jfarrell   |             |                                  |
+| Jonathan Coveney   | jcoveney   |             |                                  |
+| Julien Le Dem      | julien     | julienledem | encodings, assembly, Thrift, Pig |
+| Lukas Nalezenec    | lukas      |             | ProtoBuf                         |
+| Marcel Kornacker   | marcel     |             | format                           |
+| Mickael Lacour     | mlacour    |             | Hive                             |
+| Nong Li            | nong       |             | format, Snappy, cpp              |
+| Remy Pecqueur      | rpecqueur  |             | Hive                             |
+| Ryan Blue          | blue       |             | Avro                             |
+| Tianshuo Deng      | tianshuo   |             | Thrift, Scrooge, Projection      |
+| Tom White          | tomwhite   |             | Avro                             |
+| Wesley Graham Peck | wesleypeck |             | tools                            |
 
 Reviewing guidelines:
 Committers have the responsibility to give constructive and timely feedback on the pull requests.
