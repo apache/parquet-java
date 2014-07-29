@@ -40,9 +40,9 @@ import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import parquet.Log;
 import parquet.column.Encoding;
 import parquet.column.statistics.IntStatistics;
+import parquet.common.schema.ColumnPath;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
-import parquet.ColumnPath;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 

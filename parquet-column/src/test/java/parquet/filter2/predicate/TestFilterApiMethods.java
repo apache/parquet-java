@@ -7,7 +7,7 @@ import java.io.ObjectOutputStream;
 
 import org.junit.Test;
 
-import parquet.ColumnPath;
+import parquet.common.schema.ColumnPath;
 import parquet.filter2.predicate.Operators.And;
 import parquet.filter2.predicate.Operators.BinaryColumn;
 import parquet.filter2.predicate.Operators.DoubleColumn;

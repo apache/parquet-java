@@ -18,9 +18,9 @@ package parquet.hadoop.metadata;
 import java.util.Arrays;
 import java.util.Set;
 
-import parquet.Canonicalizer;
-import parquet.ColumnPath;
 import parquet.column.Encoding;
+import parquet.common.internal.Canonicalizer;
+import parquet.common.schema.ColumnPath;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 public class ColumnChunkProperties {

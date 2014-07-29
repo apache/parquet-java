@@ -98,7 +98,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   /**
    * key to configure the filter predicate
    */
-  public static final String FILTER_PREDICATE = "parquet.read.filter.predicate";
+  public static final String FILTER_PREDICATE = "parquet.private.read.filter.predicate";
 
   private static final int MIN_FOOTER_CACHE_SIZE = 100;
 

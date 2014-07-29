@@ -2,7 +2,7 @@ package parquet.filter2.predicate;
 
 import org.junit.Test;
 
-import parquet.ColumnPath;
+import parquet.common.schema.ColumnPath;
 import parquet.filter2.predicate.Operators.BinaryColumn;
 import parquet.filter2.predicate.Operators.BooleanColumn;
 import parquet.filter2.predicate.Operators.Column;

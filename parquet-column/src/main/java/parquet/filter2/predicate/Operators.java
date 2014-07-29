@@ -2,7 +2,7 @@ package parquet.filter2.predicate;
 
 import java.io.Serializable;
 
-import parquet.ColumnPath;
+import parquet.common.schema.ColumnPath;
 import parquet.io.api.Binary;
 
 import static parquet.Preconditions.checkNotNull;

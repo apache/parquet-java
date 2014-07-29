@@ -13,11 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet;
+package parquet.common.schema;
 
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Iterator;
+
+import parquet.common.internal.Canonicalizer;
+
+import static parquet.Preconditions.checkNotNull;
 
 public final class ColumnPath implements Iterable<String>, Serializable {
 
@@ -33,7 +37,7 @@ public final class ColumnPath implements Iterable<String>, Serializable {
   };
 
   public static ColumnPath fromDotString(String path) {
-    Preconditions.checkNotNull(path, "path");
+    checkNotNull(path, "path");
     return get(path.split("\\."));
   }
 

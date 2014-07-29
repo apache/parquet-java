@@ -6,10 +6,10 @@ import java.util.List;
 
 import org.junit.Test;
 
-import parquet.ColumnPath;
 import parquet.column.Encoding;
 import parquet.column.statistics.DoubleStatistics;
 import parquet.column.statistics.IntStatistics;
+import parquet.common.schema.ColumnPath;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.filter2.predicate.LogicalInverseRewriter;
 import parquet.filter2.predicate.Operators.DoubleColumn;

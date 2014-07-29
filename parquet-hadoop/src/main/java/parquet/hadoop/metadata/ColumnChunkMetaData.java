@@ -17,10 +17,10 @@ package parquet.hadoop.metadata;
 
 import java.util.Set;
 
-import parquet.ColumnPath;
 import parquet.column.Encoding;
-import parquet.column.statistics.Statistics;
 import parquet.column.statistics.BooleanStatistics;
+import parquet.column.statistics.Statistics;
+import parquet.common.schema.ColumnPath;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**

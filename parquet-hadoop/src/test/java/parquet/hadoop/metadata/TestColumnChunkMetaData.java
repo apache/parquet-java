@@ -1,18 +1,18 @@
 package parquet.hadoop.metadata;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-
 import java.util.HashSet;
 import java.util.Set;
 
 import org.junit.Test;
 
-import parquet.ColumnPath;
 import parquet.column.Encoding;
 import parquet.column.statistics.BinaryStatistics;
+import parquet.common.schema.ColumnPath;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 
 public class TestColumnChunkMetaData {
 

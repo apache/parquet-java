@@ -19,8 +19,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-import parquet.Canonicalizer;
 import parquet.column.Encoding;
+import parquet.common.internal.Canonicalizer;
 
 public class EncodingList implements Iterable<Encoding> {
 
