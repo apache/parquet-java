@@ -11,7 +11,7 @@
 | Julien Le Dem      | julien     | julienledem | encodings, assembly, Thrift, Pig |
 | Lukas Nalezenec    | lukas      |             | ProtoBuf                         |
 | Marcel Kornacker   | marcel     |             | format                           |
-| Mickael Lacour     | mlacour    |             | Hive                             |
+| Mickael Lacour     | mlacour    | mickaellcr  | Hive                             |
 | Nong Li            | nong       |             | format, Snappy, cpp              |
 | Remy Pecqueur      | rpecqueur  |             | Hive                             |
 | Ryan Blue          | blue       |             | Avro                             |
