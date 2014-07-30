@@ -16,7 +16,7 @@ dev/merge_parquet_pr.py
 ```
 
 Note:
-* The parent directory of your parquet repoistory must be called paruqet-mr
+* The parent directory of your parquet repository must be called parquet-mr
 * Without jira-python installed you'll have to close the JIRA manually
 
 example output:
