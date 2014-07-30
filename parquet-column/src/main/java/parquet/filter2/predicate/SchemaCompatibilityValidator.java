@@ -152,7 +152,10 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
           + " was provided with different types in the same predicate."
           + " Found both: (" + alreadySeen + ", " + column.getColumnType() + ")");
     }
-    columnTypesEncountered.put(path, column.getColumnType());
+
+    if (alreadySeen == null) {
+      columnTypesEncountered.put(path, column.getColumnType());
+    }
 
     ColumnDescriptor descriptor = getColumnDescriptor(path);
 
