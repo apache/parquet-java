@@ -80,4 +80,3 @@ public class ShowSchemaCommand extends ArgsOnlyCommand {
     }
   }
 }
-
