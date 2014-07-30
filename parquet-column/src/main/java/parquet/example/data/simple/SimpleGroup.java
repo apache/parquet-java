@@ -127,6 +127,11 @@ public class SimpleGroup extends Group {
   }
 
   @Override
+  public long getLong(int fieldIndex, int index) {
+    return ((LongValue)getValue(fieldIndex, index)).getLong();
+  }
+
+  @Override
   public boolean getBoolean(int fieldIndex, int index) {
     return ((BooleanValue)getValue(fieldIndex, index)).getBoolean();
   }
