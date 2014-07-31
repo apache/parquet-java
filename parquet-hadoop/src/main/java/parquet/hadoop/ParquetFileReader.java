@@ -60,6 +60,7 @@ import org.apache.hadoop.mapred.Utils;
 import parquet.Log;
 import parquet.bytes.ByteBufferInputStream;
 import parquet.bytes.BytesInput;
+import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.DataPage;
 import parquet.column.page.DataPageV1;
@@ -425,22 +426,11 @@ public class ParquetFileReader implements Closeable {
       if (Log.DEBUG) LOG.debug("reading footer index at " + footerLengthIndex);
 
       f.seek(footerLengthIndex);
-      final int footerLength = CompatibilityUtil.getInt(f);
-      final ByteBuffer refMagicBuf = ByteBuffer.wrap(MAGIC);
-      for (int magicRemaining = MAGIC.length; magicRemaining > 0;) {
-        final ByteBuffer magicBuf = CompatibilityUtil.getBuf(f, magicRemaining);
-        refMagicBuf.clear();
-        refMagicBuf.position(MAGIC.length - magicRemaining);
-        refMagicBuf.limit(refMagicBuf.position() + magicBuf.remaining());
-        if (!magicBuf.equals(refMagicBuf)) {
-          final String expMagicStr = refMagicBuf.asCharBuffer().toString();
-          final String actMagicStr = magicBuf.asCharBuffer().toString();
-          throw new RuntimeException(file.getPath() + " is not a Parquet file. "
-              + "Expected magic number at tail " + expMagicStr + " but found "
-              + actMagicStr);
-        }
-        magicRemaining -= magicBuf.remaining();
-        CompatibilityUtil.releaseBuffer(f, magicBuf);
+      int footerLength = readIntLittleEndian(f);
+      byte[] magic = new byte[MAGIC.length];
+      f.readFully(magic);
+      if (!Arrays.equals(MAGIC, magic)) {
+        throw new RuntimeException(file.getPath() + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
       }
       long footerIndex = footerLengthIndex - footerLength;
       if (Log.DEBUG) LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
