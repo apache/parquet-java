@@ -18,10 +18,15 @@ package parquet.hadoop;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
@@ -38,6 +43,10 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
 import parquet.Log;
 import parquet.filter.UnboundRecordFilter;
+import parquet.filter2.compat.FilterCompat;
+import parquet.filter2.compat.FilterCompat.Filter;
+import parquet.filter2.compat.RowGroupFilter;
+import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
@@ -48,9 +57,12 @@ import parquet.hadoop.metadata.GlobalMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.ConfigurationUtil;
 import parquet.hadoop.util.ContextUtil;
+import parquet.hadoop.util.SerializationUtil;
 import parquet.io.ParquetDecodingException;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
+
+import static parquet.Preconditions.checkArgument;
 
 /**
  * The input format to read a Parquet file.
@@ -77,20 +89,60 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * key to configure the filter
    */
   public static final String UNBOUND_RECORD_FILTER = "parquet.read.filter";
+  
+  /**
+   * key to configure type checking for conflicting schemas (default: true)
+   */
+  public static final String STRICT_TYPE_CHECKING = "parquet.strict.typing";
+
+  /**
+   * key to configure the filter predicate
+   */
+  public static final String FILTER_PREDICATE = "parquet.private.read.filter.predicate";
+
+  private static final int MIN_FOOTER_CACHE_SIZE = 100;
+
+  private LruCache<FileStatusWrapper, FootersCacheValue> footersCache;
 
   private Class<?> readSupportClass;
-  private List<Footer> footers;
 
   public static void setReadSupportClass(Job job,  Class<?> readSupportClass) {
     ContextUtil.getConfiguration(job).set(READ_SUPPORT_CLASS, readSupportClass.getName());
   }
 
   public static void setUnboundRecordFilter(Job job, Class<? extends UnboundRecordFilter> filterClass) {
-    ContextUtil.getConfiguration(job).set(UNBOUND_RECORD_FILTER, filterClass.getName());
+    Configuration conf = ContextUtil.getConfiguration(job);
+    checkArgument(getFilterPredicate(conf) == null,
+        "You cannot provide an UnboundRecordFilter after providing a FilterPredicate");
+
+    conf.set(UNBOUND_RECORD_FILTER, filterClass.getName());
   }
 
+  /**
+   * @deprecated use {@link #getFilter(Configuration)}
+   */
+  @Deprecated
   public static Class<?> getUnboundRecordFilter(Configuration configuration) {
     return ConfigurationUtil.getClassFromConfig(configuration, UNBOUND_RECORD_FILTER, UnboundRecordFilter.class);
+  }
+
+  private static UnboundRecordFilter getUnboundRecordFilterInstance(Configuration configuration) {
+    Class<?> clazz = ConfigurationUtil.getClassFromConfig(configuration, UNBOUND_RECORD_FILTER, UnboundRecordFilter.class);
+    if (clazz == null) { return null; }
+
+    try {
+      UnboundRecordFilter unboundRecordFilter = (UnboundRecordFilter) clazz.newInstance();
+
+      if (unboundRecordFilter instanceof Configurable) {
+        ((Configurable)unboundRecordFilter).setConf(configuration);
+      }
+
+      return unboundRecordFilter;
+    } catch (InstantiationException e) {
+      throw new BadConfigurationException("could not instantiate unbound record filter class", e);
+    } catch (IllegalAccessException e) {
+      throw new BadConfigurationException("could not instantiate unbound record filter class", e);
+    }
   }
 
   public static void setReadSupportClass(JobConf conf, Class<?> readSupportClass) {
@@ -99,6 +151,34 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   public static Class<?> getReadSupportClass(Configuration configuration) {
     return ConfigurationUtil.getClassFromConfig(configuration, READ_SUPPORT_CLASS, ReadSupport.class);
+  }
+
+  public static void setFilterPredicate(Configuration configuration, FilterPredicate filterPredicate) {
+    checkArgument(getUnboundRecordFilter(configuration) == null,
+        "You cannot provide a FilterPredicate after providing an UnboundRecordFilter");
+
+    configuration.set(FILTER_PREDICATE + ".human.readable", filterPredicate.toString());
+    try {
+      SerializationUtil.writeObjectToConfAsBase64(FILTER_PREDICATE, filterPredicate, configuration);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static FilterPredicate getFilterPredicate(Configuration configuration) {
+    try {
+      return SerializationUtil.readObjectFromConfAsBase64(FILTER_PREDICATE, configuration);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Returns a non-null Filter, which is a wrapper around either a
+   * FilterPredicate, an UnboundRecordFilter, or a no-op filter.
+   */
+  public static Filter getFilter(Configuration conf) {
+    return FilterCompat.get(getFilterPredicate(conf), getUnboundRecordFilterInstance(conf));
   }
 
   /**
@@ -122,19 +202,12 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public RecordReader<Void, T> createRecordReader(
       InputSplit inputSplit,
       TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
+
     ReadSupport<T> readSupport = getReadSupport(ContextUtil.getConfiguration(taskAttemptContext));
-    Class<?> unboundRecordFilterClass = getUnboundRecordFilter(ContextUtil.getConfiguration(taskAttemptContext));
-    if (unboundRecordFilterClass == null) {
-      return new ParquetRecordReader<T>(readSupport);
-    } else {
-      try {
-        return new ParquetRecordReader<T>(readSupport, (UnboundRecordFilter)unboundRecordFilterClass.newInstance());
-      } catch (InstantiationException e) {
-        throw new BadConfigurationException("could not instantiate unbound record filter class", e);
-      } catch (IllegalAccessException e) {
-        throw new BadConfigurationException("could not instantiate unbound record filter class", e);
-      }
-    }
+
+    Configuration conf = ContextUtil.getConfiguration(taskAttemptContext);
+
+    return new ParquetRecordReader<T>(readSupport, getFilter(conf));
   }
 
   /**
@@ -358,11 +431,17 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       throw new ParquetDecodingException("maxSplitSize or minSplitSie should not be negative: maxSplitSize = " + maxSplitSize + "; minSplitSize = " + minSplitSize);
     }
     List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
-    GlobalMetaData globalMetaData = ParquetFileWriter.getGlobalMetaData(footers);
+    GlobalMetaData globalMetaData = ParquetFileWriter.getGlobalMetaData(footers, configuration.getBoolean(STRICT_TYPE_CHECKING, true));
     ReadContext readContext = getReadSupport(configuration).init(new InitContext(
         configuration,
         globalMetaData.getKeyValueMetaData(),
         globalMetaData.getSchema()));
+
+    Filter filter = getFilter(configuration);
+
+    long rowGroupsDropped = 0;
+    long totalRowGroups = 0;
+
     for (Footer footer : footers) {
       final Path file = footer.getFile();
       LOG.debug(file);
@@ -370,10 +449,21 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       FileStatus fileStatus = fs.getFileStatus(file);
       ParquetMetadata parquetMetaData = footer.getParquetMetadata();
       List<BlockMetaData> blocks = parquetMetaData.getBlocks();
+
+      List<BlockMetaData> filteredBlocks = blocks;
+
+      totalRowGroups += blocks.size();
+      filteredBlocks = RowGroupFilter.filterRowGroups(filter, blocks, parquetMetaData.getFileMetaData().getSchema());
+      rowGroupsDropped += blocks.size() - filteredBlocks.size();
+
+      if (filteredBlocks.isEmpty()) {
+        continue;
+      }
+
       BlockLocation[] fileBlockLocations = fs.getFileBlockLocations(fileStatus, 0, fileStatus.getLen());
       splits.addAll(
           generateSplits(
-              blocks,
+              filteredBlocks,
               fileBlockLocations,
               fileStatus,
               parquetMetaData.getFileMetaData(),
@@ -383,6 +473,14 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
               maxSplitSize)
           );
     }
+
+    if (rowGroupsDropped > 0 && totalRowGroups > 0) {
+      int percentDropped = (int) ((((double) rowGroupsDropped) / totalRowGroups) * 100);
+      LOG.info("Dropping " + rowGroupsDropped + " row groups that do not pass filter predicate! (" + percentDropped + "%)");
+    } else {
+      LOG.info("There were no row groups that could be dropped due to filter predicates");
+    }
+
     return splits;
   }
 
@@ -399,9 +497,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   private static List<FileStatus> getAllFileRecursively(
       List<FileStatus> files, Configuration conf) throws IOException {
     List<FileStatus> result = new ArrayList<FileStatus>();
-    int len = files.size();
-    for (int i = 0; i < len; ++i) {
-      FileStatus file = files.get(i);
+    for (FileStatus file : files) {
       if (file.isDir()) {
         Path p = file.getPath();
         FileSystem fs = p.getFileSystem(conf);
@@ -439,10 +535,58 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @throws IOException
    */
   public List<Footer> getFooters(JobContext jobContext) throws IOException {
-    if (footers == null) {
-      footers = getFooters(ContextUtil.getConfiguration(jobContext), listStatus(jobContext));
+    List<FileStatus> statuses = listStatus(jobContext);
+    if (statuses.isEmpty()) {
+      return Collections.emptyList();
     }
 
+    Configuration config = ContextUtil.getConfiguration(jobContext);
+    List<Footer> footers = new ArrayList<Footer>(statuses.size());
+    Set<FileStatus> missingStatuses = new HashSet<FileStatus>();
+    Map<Path, FileStatusWrapper> missingStatusesMap =
+            new HashMap<Path, FileStatusWrapper>(missingStatuses.size());
+
+    if (footersCache == null) {
+      footersCache =
+              new LruCache<FileStatusWrapper, FootersCacheValue>(Math.max(statuses.size(), MIN_FOOTER_CACHE_SIZE));
+    }
+    for (FileStatus status : statuses) {
+      FileStatusWrapper statusWrapper = new FileStatusWrapper(status);
+      FootersCacheValue cacheEntry =
+              footersCache.getCurrentValue(statusWrapper);
+      if (Log.DEBUG) {
+        LOG.debug("Cache entry " + (cacheEntry == null ? "not " : "")
+                + " found for '" + status.getPath() + "'");
+      }
+      if (cacheEntry != null) {
+        footers.add(cacheEntry.getFooter());
+      } else {
+        missingStatuses.add(status);
+        missingStatusesMap.put(status.getPath(), statusWrapper);
+      }
+    }
+    if (Log.DEBUG) {
+      LOG.debug("found " + footers.size() + " footers in cache and adding up "
+              + "to " + missingStatuses.size() + " missing footers to the cache");
+    }
+
+
+    if (missingStatuses.isEmpty()) {
+      return footers;
+    }
+
+    List<Footer> newFooters =
+            getFooters(config, new ArrayList<FileStatus>(missingStatuses));
+    for (Footer newFooter : newFooters) {
+      // Use the original file status objects to make sure we store a
+      // conservative (older) modification time (i.e. in case the files and
+      // footers were modified and it's not clear which version of the footers
+      // we have)
+      FileStatusWrapper fileStatus = missingStatusesMap.get(newFooter.getFile());
+      footersCache.put(fileStatus, new FootersCacheValue(fileStatus, newFooter));
+    }
+
+    footers.addAll(newFooters);
     return footers;
   }
 
@@ -454,7 +598,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @throws IOException
    */
   public List<Footer> getFooters(Configuration configuration, List<FileStatus> statuses) throws IOException {
-    LOG.debug("reading " + statuses.size() + " files");
+    if (Log.DEBUG) LOG.debug("reading " + statuses.size() + " files");
     return ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses);
   }
 
@@ -465,6 +609,82 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    */
   public GlobalMetaData getGlobalMetaData(JobContext jobContext) throws IOException {
     return ParquetFileWriter.getGlobalMetaData(getFooters(jobContext));
+  }
+
+  /**
+   * A simple wrapper around {@link parquet.hadoop.Footer} that also includes a
+   * modification time associated with that footer.  The modification time is
+   * used to determine whether the footer is still current.
+   */
+  static final class FootersCacheValue
+          implements LruCache.Value<FileStatusWrapper, FootersCacheValue> {
+    private final long modificationTime;
+    private final Footer footer;
+
+    public FootersCacheValue(FileStatusWrapper status, Footer footer) {
+      this.modificationTime = status.getModificationTime();
+      this.footer = new Footer(footer.getFile(), footer.getParquetMetadata());
+    }
+
+    @Override
+    public boolean isCurrent(FileStatusWrapper key) {
+      long currentModTime = key.getModificationTime();
+      boolean isCurrent = modificationTime >= currentModTime;
+      if (Log.DEBUG && !isCurrent) {
+        LOG.debug("The cache value for '" + key + "' is not current: "
+                + "cached modification time=" + modificationTime + ", "
+                + "current modification time: " + currentModTime);
+      }
+      return isCurrent;
+    }
+
+    public Footer getFooter() {
+      return footer;
+    }
+
+    @Override
+    public boolean isNewerThan(FootersCacheValue otherValue) {
+      return otherValue == null ||
+              modificationTime > otherValue.modificationTime;
+    }
+
+    public Path getPath() {
+      return footer.getFile();
+    }
+  }
+
+  /**
+   * A simple wrapper around {@link org.apache.hadoop.fs.FileStatus} with a
+   * meaningful "toString()" method
+   */
+  static final class FileStatusWrapper {
+    private final FileStatus status;
+    public FileStatusWrapper(FileStatus fileStatus) {
+      if (fileStatus == null) {
+        throw new IllegalArgumentException("FileStatus object cannot be null");
+      }
+      status = fileStatus;
+    }
+
+    public long getModificationTime() {
+      return status.getModificationTime();
+    }
+
+    @Override
+    public int hashCode() {
+      return status.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      return other instanceof FileStatusWrapper &&
+              status.equals(((FileStatusWrapper) other).status);
+    }
+
+    @Override
+    public String toString() {
+      return status.getPath().toString();
+    }
   }
 
 }

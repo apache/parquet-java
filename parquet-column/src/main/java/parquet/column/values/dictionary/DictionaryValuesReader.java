@@ -19,7 +19,6 @@ import static parquet.Log.DEBUG;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 
 import parquet.Log;
 import parquet.bytes.BytesUtils;
@@ -51,11 +50,21 @@ public class DictionaryValuesReader extends ValuesReader {
   @Override
   public void initFromPage(int valueCount, byte[] page, int offset)
       throws IOException {
-    if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (page.length - offset));
     this.in = new ByteArrayInputStream(page, offset, page.length - offset);
-    int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
-    if (DEBUG) LOG.debug("bit width " + bitWidth);
-    decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
+    if (page.length - offset > 0) {
+      if (DEBUG)
+        LOG.debug("init from page at offset " + offset + " for length " + (page.length - offset));
+      int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
+      if (DEBUG) LOG.debug("bit width " + bitWidth);
+      decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
+    } else {
+      decoder = new RunLengthBitPackingHybridDecoder(1, in) {
+        @Override
+        public int readInt() throws IOException {
+          throw new IOException("Attempt to read from empty page");
+        }
+      };
+    }
   }
 
   @Override

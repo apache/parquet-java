@@ -55,7 +55,7 @@ public class GroupType extends Type {
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param name the name of the field
-   * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
+   * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    * @param fields the contained fields
    */
   public GroupType(Repetition repetition, String name, OriginalType originalType, Type... fields) {
@@ -65,7 +65,7 @@ public class GroupType extends Type {
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param name the name of the field
-   * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
+   * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    * @param fields the contained fields
    */
   public GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields) {
@@ -293,6 +293,11 @@ public class GroupType extends Type {
 
   @Override
   protected Type union(Type toMerge) {
+    return union(toMerge, true);
+  }
+
+  @Override
+  protected Type union(Type toMerge, boolean strict) {
     if (toMerge.isPrimitive()) {
       throw new IncompatibleSchemaModificationException("can not merge primitive type " + toMerge + " into group type " + this);
     }
@@ -305,6 +310,16 @@ public class GroupType extends Type {
    * @return the merged list
    */
   List<Type> mergeFields(GroupType toMerge) {
+    return mergeFields(toMerge, true);
+  }
+  
+  /**
+   * produces the list of fields resulting from merging toMerge into the fields of this
+   * @param toMerge the group containing the fields to merge
+   * @param strict should schema primitive types match
+   * @return the merged list
+   */
+  List<Type> mergeFields(GroupType toMerge, boolean strict) {
     List<Type> newFields = new ArrayList<Type>();
     // merge existing fields
     for (Type type : this.getFields()) {
@@ -314,7 +329,7 @@ public class GroupType extends Type {
         if (fieldToMerge.getRepetition().isMoreRestrictiveThan(type.getRepetition())) {
           throw new IncompatibleSchemaModificationException("repetition constraint is more restrictive: can not merge type " + fieldToMerge + " into " + type);
         }
-        merged = type.union(fieldToMerge);
+        merged = type.union(fieldToMerge, strict);
       } else {
         merged = type;
       }

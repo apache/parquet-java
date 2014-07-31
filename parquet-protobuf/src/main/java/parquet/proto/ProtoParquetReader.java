@@ -15,25 +15,40 @@
  */
 package parquet.proto;
 
+import java.io.IOException;
+
 import com.google.protobuf.MessageOrBuilder;
+
 import org.apache.hadoop.fs.Path;
+
 import parquet.filter.UnboundRecordFilter;
 import parquet.hadoop.ParquetReader;
-import parquet.hadoop.api.ReadSupport;
-
-import java.io.IOException;
 
 /**
  * Read Protobuf records from a Parquet file.
  */
 public class ProtoParquetReader<T extends MessageOrBuilder> extends ParquetReader<T> {
 
+  @SuppressWarnings("unchecked")
+  public Builder<T> builder(Path file) {
+    return ParquetReader.builder(new ProtoReadSupport(), file);
+  }
+
+  /**
+   * @deprecated use {@link #builder(Path)}
+   */
+  @Deprecated
+  @SuppressWarnings("unchecked")
   public ProtoParquetReader(Path file) throws IOException {
     super(file, new ProtoReadSupport());
   }
 
+  /**
+   * @deprecated use {@link #builder(Path)}
+   */
+  @Deprecated
+  @SuppressWarnings("unchecked")
   public ProtoParquetReader(Path file, UnboundRecordFilter recordFilter) throws IOException {
     super(file, new ProtoReadSupport(), recordFilter);
   }
-
 }

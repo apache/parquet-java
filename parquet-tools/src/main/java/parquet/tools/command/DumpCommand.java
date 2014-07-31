@@ -314,7 +314,6 @@ public class DumpCommand extends ArgsOnlyCommand {
     }
 
     private static final class DumpConverter extends PrimitiveConverter {
-        @Override public boolean isPrimitive() { return true; }
         @Override public GroupConverter asGroupConverter() { return new DumpGroupConverter(); }
     }
 }
