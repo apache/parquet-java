@@ -1,23 +1,23 @@
 # Committers (in aplhabetical order):
 
-| Name               | Apache Id  | github id   | Area of expertise                |
-|--------------------|------------|-------------|----------------------------------|
-| Aniket Mokashi     | aniket486  | aniket486   | Encodings           |
-| Brock Noland       | brock      | brockn      |
-| Chris Aniszczyk    | caniszczyk |             | build, maven                     |
-| Dmitriy Ryaboy     | dvryaboy   | dvryaboy    | 
-| Jake Farrell       | jfarrell   |             |                                  |
-| Jonathan Coveney   | jcoveney   | jcoveney    |                                  |
-| Julien Le Dem      | julien     | julienledem | encodings, assembly|
-| Lukas Nalezenec    | lukas      | lukasnalezenec | ProtoBuf                         |
-| Marcel Kornacker   | marcel     |             | format                           |
-| Mickael Lacour     | mlacour    | mickaellcr  |
-| Nong Li            | nong       |             | format, Snappy, cpp              |
-| Remy Pecqueur      | rpecqueur  |             |
-| Ryan Blue          | blue       | rdblue      |
-| Tianshuo Deng      | tianshuo   | tsdeng      | Scrooge, Projection      |
-| Tom White          | tomwhite   | tomwhite    |
-| Wesley Graham Peck | wesleypeck | wesleypeck  |
+| Name               | Apache Id  | github id      | JIRA id     |
+|--------------------|------------|----------------|-------------|
+| Aniket Mokashi     | aniket486  | aniket486      |             |
+| Brock Noland       | brock      | brockn         |             |
+| Chris Aniszczyk    | caniszczyk |                |             |
+| Dmitriy Ryaboy     | dvryaboy   | dvryaboy       |             |
+| Jake Farrell       | jfarrell   |                |             |
+| Jonathan Coveney   | jcoveney   | jcoveney       |             |
+| Julien Le Dem      | julien     | julienledem    | julienledem |
+| Lukas Nalezenec    | lukas      | lukasnalezenec |             |
+| Marcel Kornacker   | marcel     |                |             |
+| Mickael Lacour     | mlacour    | mickaellcr     |             |
+| Nong Li            | nong       | nongli         |             |
+| Remy Pecqueur      | rpecqueur  | Lordshinjo     |             |
+| Ryan Blue          | blue       | rdblue         |             |
+| Tianshuo Deng      | tianshuo   | tsdeng         |             |
+| Tom White          | tomwhite   | tomwhite       |             |
+| Wesley Graham Peck | wesleypeck | wesleypeck     |             |
 
 Reviewing guidelines:
 Committers have the responsibility to give constructive and timely feedback on the pull requests.
