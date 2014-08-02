@@ -132,6 +132,12 @@ public class TestParquetMetadataConverter {
     for (Type type : Type.values()) {
       assertEquals(type, c.getType(c.getPrimitive(type)));
     }
+    for (OriginalType original : OriginalType.values()) {
+      assertEquals(original, c.getOriginalType(c.getConvertedType(original)));
+    }
+    for (ConvertedType converted : ConvertedType.values()) {
+      assertEquals(converted, c.getConvertedType(c.getOriginalType(converted)));
+    }
   }
 
   private FileMetaData metadata(long... sizes) {

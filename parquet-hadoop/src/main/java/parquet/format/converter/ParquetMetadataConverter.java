@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.apache.hadoop.io.UTF8;
 import parquet.Log;
 import parquet.common.schema.ColumnPath;
 import parquet.format.ColumnChunk;
@@ -311,6 +312,34 @@ public class ParquetMetadataConverter {
         return OriginalType.ENUM;
       case DECIMAL:
         return OriginalType.DECIMAL;
+      case DATE:
+        return OriginalType.DATE;
+      case TIME_MILLIS:
+        return OriginalType.TIME_MILLIS;
+      case TIMESTAMP_MILLIS:
+        return OriginalType.TIMESTAMP_MILLIS;
+      case INTERVAL:
+        return OriginalType.INTERVAL;
+      case INT_8:
+        return OriginalType.INT_8;
+      case INT_16:
+        return OriginalType.INT_16;
+      case INT_32:
+        return OriginalType.INT_32;
+      case INT_64:
+        return OriginalType.INT_64;
+      case UINT_8:
+        return OriginalType.UINT_8;
+      case UINT_16:
+        return OriginalType.UINT_16;
+      case UINT_32:
+        return OriginalType.UINT_32;
+      case UINT_64:
+        return OriginalType.UINT_64;
+      case JSON:
+        return OriginalType.JSON;
+      case BSON:
+        return OriginalType.BSON;
       default:
         throw new RuntimeException("Unknown converted type " + type);
     }
@@ -330,6 +359,34 @@ public class ParquetMetadataConverter {
         return ConvertedType.ENUM;
       case DECIMAL:
         return ConvertedType.DECIMAL;
+      case DATE:
+        return ConvertedType.DATE;
+      case TIME_MILLIS:
+        return ConvertedType.TIME_MILLIS;
+      case TIMESTAMP_MILLIS:
+        return ConvertedType.TIMESTAMP_MILLIS;
+      case INTERVAL:
+        return ConvertedType.INTERVAL;
+      case INT_8:
+        return ConvertedType.INT_8;
+      case INT_16:
+        return ConvertedType.INT_16;
+      case INT_32:
+        return ConvertedType.INT_32;
+      case INT_64:
+        return ConvertedType.INT_64;
+      case UINT_8:
+        return ConvertedType.UINT_8;
+      case UINT_16:
+        return ConvertedType.UINT_16;
+      case UINT_32:
+        return ConvertedType.UINT_32;
+      case UINT_64:
+        return ConvertedType.UINT_64;
+      case JSON:
+        return ConvertedType.JSON;
+      case BSON:
+        return ConvertedType.BSON;
       default:
         throw new RuntimeException("Unknown original type " + type);
      }
