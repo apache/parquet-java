@@ -30,6 +30,7 @@ import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
 
+import parquet.io.InvalidRecordException;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
 import parquet.io.api.Converter;
@@ -778,6 +779,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   private final ParquetReadProtocol protocol;
   private final GroupConverter structConverter;
   private List<TProtocol> rootEvents = new ArrayList<TProtocol>();
+  private boolean missingRequiredFieldsInProjection = false;
 
   /**
    *
@@ -791,7 +793,35 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     this.thriftReader = thriftReader;
     this.protocol = new ParquetReadProtocol();
     this.thriftType = thriftType;
+    MessageType fullSchema = new ThriftSchemaConverter().convert(thriftType);
+    missingRequiredFieldsInProjection = hasMissingRequiredFieldFromProjection(requestedParquetSchema, fullSchema);
     this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
+  }
+
+  private boolean hasMissingRequiredFieldFromProjection(MessageType requestedParquetSchema, MessageType fullSchema) {
+    return hasMissingRequiredFieldInGroupType(requestedParquetSchema, fullSchema);
+  }
+
+  private boolean hasMissingRequiredFieldInGroupType(GroupType requested, GroupType fullSchema) {
+    for (Type field : fullSchema.getFields()) {
+      Type requestedType = null;
+
+      try {
+        requestedType = requested.getType(field.getName());
+      } catch (InvalidRecordException e) {
+        if (field.getRepetition() == Type.Repetition.REQUIRED)
+          return true;
+        else
+          continue; //The missing field is not required, then continue checking next field
+      }
+
+      //if the type is a group type, then recursive checking
+      if (!field.isPrimitive()) {
+        if (hasMissingRequiredFieldInGroupType(requestedType.asGroupType(), field.asGroupType()))
+          return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -802,8 +832,13 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   @Override
   public T getCurrentRecord() {
     try {
-      List<TProtocol> fixedEvents = new ProtocolEventsAmender(rootEvents).amendMissingRequiredFields(thriftType);
-      protocol.addAll(fixedEvents);
+      if (missingRequiredFieldsInProjection) {
+        List<TProtocol> fixedEvents = new ProtocolEventsAmender(rootEvents).amendMissingRequiredFields(thriftType);
+        protocol.addAll(fixedEvents);
+      }else{
+        protocol.addAll(rootEvents);
+      }
+
       rootEvents.clear();
       return thriftReader.readOneRecord(protocol);
     } catch (TException e) {
