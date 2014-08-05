@@ -16,17 +16,21 @@
 package parquet.hadoop;
 
 import java.io.IOException;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
+
 import parquet.Log;
 import parquet.filter.UnboundRecordFilter;
+import parquet.filter2.compat.FilterCompat;
+import parquet.filter2.compat.FilterCompat.Filter;
 import parquet.hadoop.api.ReadSupport;
-import parquet.hadoop.util.counters.BenchmarkCounter;
 import parquet.hadoop.util.ContextUtil;
+import parquet.hadoop.util.counters.BenchmarkCounter;
 import parquet.schema.MessageTypeParser;
 
 /**
@@ -41,21 +45,31 @@ import parquet.schema.MessageTypeParser;
 public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
   private static final Log LOG= Log.getLog(ParquetRecordReader.class);
-  private InternalParquetRecordReader<T> internalReader;
+  private final InternalParquetRecordReader<T> internalReader;
 
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
    */
   public ParquetRecordReader(ReadSupport<T> readSupport) {
-    this(readSupport, null);
+    this(readSupport, FilterCompat.NOOP);
   }
 
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
-   * @param filter Optional filter for only returning matching records.
+   * @param filter for filtering individual records
    */
-  public ParquetRecordReader(ReadSupport<T> readSupport, UnboundRecordFilter filter) {
+  public ParquetRecordReader(ReadSupport<T> readSupport, Filter filter) {
     internalReader = new InternalParquetRecordReader<T>(readSupport, filter);
+  }
+
+  /**
+   * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
+   * @param filter for filtering individual records
+   * @deprecated use {@link #ParquetRecordReader(ReadSupport, Filter)}
+   */
+  @Deprecated
+  public ParquetRecordReader(ReadSupport<T> readSupport, UnboundRecordFilter filter) {
+    this(readSupport, FilterCompat.get(filter));
   }
 
   /**

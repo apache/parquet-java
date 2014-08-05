@@ -15,11 +15,11 @@
  */
 package parquet.io.api;
 
-import static parquet.bytes.BytesUtils.UTF8;
-
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.ObjectStreamException;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -27,225 +27,320 @@ import java.util.Arrays;
 import parquet.bytes.BytesUtils;
 import parquet.io.ParquetEncodingException;
 
-abstract public class Binary {
+import static parquet.bytes.BytesUtils.UTF8;
+
+abstract public class Binary implements Comparable<Binary>, Serializable {
+
+  // this isn't really something others should extend
+  private Binary() { }
 
   public static final Binary EMPTY = fromByteArray(new byte[0]);
 
-  public static Binary fromByteArray(
-      final byte[] value,
-      final int offset,
-      final int length) {
+  abstract public String toStringUsingUTF8();
 
-    return new Binary() {
-      @Override
-      public String toStringUsingUTF8() {
-        return UTF8.decode(ByteBuffer.wrap(value, offset, length)).toString();
-        // TODO: figure out why the following line was much slower
-        // rdb: new String(...) is slower because it instantiates a new Decoder,
-        //      while Charset#decode uses a thread-local decoder cache
-        // return new String(value, offset, length, BytesUtils.UTF8);
-      }
+  abstract public int length();
 
-      @Override
-      public int length() {
-        return length;
-      }
+  abstract public void writeTo(OutputStream out) throws IOException;
 
-      @Override
-      public void writeTo(OutputStream out) throws IOException {
-        out.write(value, offset, length);
-      }
+  abstract public void writeTo(DataOutput out) throws IOException;
 
-      @Override
-      public byte[] getBytes() {
-        return Arrays.copyOfRange(value, offset, offset + length);
-      }
+  abstract public byte[] getBytes();
 
-      @Override
-      public int hashCode() {
-        return Binary.hashCode(value, offset, length);
-      }
+  abstract boolean equals(byte[] bytes, int offset, int length);
 
-      @Override
-      boolean equals(Binary other) {
-        return other.equals(value, offset, length);
-      }
+  abstract boolean equals(Binary other);
 
-      @Override
-      boolean equals(byte[] other, int otherOffset, int otherLength) {
-        return Binary.equals(value, offset, length, other, otherOffset, otherLength);
-      }
+  abstract public int compareTo(Binary other);
 
-      @Override
-      public int compareTo(Binary other) {
-        return other.compareTo(value, offset, length);
-      }
+  abstract int compareTo(byte[] bytes, int offset, int length);
 
-      @Override
-      int compareTo(byte[] other, int otherOffset, int otherLength) {
-        return Binary.compareTwoByteArrays(value, offset, length, other, otherOffset, otherLength);
-      }
+  abstract public ByteBuffer toByteBuffer();
 
-      @Override
-      public ByteBuffer toByteBuffer() {
-        return ByteBuffer.wrap(value, offset, length);
-      }
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null) {
+      return false;
+    }
+    if (obj instanceof Binary) {
+      return equals((Binary)obj);
+    }
+    return false;
+  }
 
-      @Override
-      public void writeTo(DataOutput out) throws IOException {
-        out.write(value, offset, length);
-      }
+  @Override
+  public String toString() {
+    return "Binary{" + length() + " bytes, " + Arrays.toString(getBytes()) + "}";
+  }
 
-    };
+  private static class ByteArraySliceBackedBinary extends Binary {
+    private final byte[] value;
+    private final int offset;
+    private final int length;
+
+    public ByteArraySliceBackedBinary(byte[] value, int offset, int length) {
+      this.value = value;
+      this.offset = offset;
+      this.length = length;
+    }
+
+    @Override
+    public String toStringUsingUTF8() {
+      return UTF8.decode(ByteBuffer.wrap(value, offset, length)).toString();
+      // TODO: figure out why the following line was much slower
+      // rdb: new String(...) is slower because it instantiates a new Decoder,
+      //      while Charset#decode uses a thread-local decoder cache
+      // return new String(value, offset, length, BytesUtils.UTF8);
+    }
+
+    @Override
+    public int length() {
+      return length;
+    }
+
+    @Override
+    public void writeTo(OutputStream out) throws IOException {
+      out.write(value, offset, length);
+    }
+
+    @Override
+    public byte[] getBytes() {
+      return Arrays.copyOfRange(value, offset, offset + length);
+    }
+
+    @Override
+    public int hashCode() {
+      return Binary.hashCode(value, offset, length);
+    }
+
+    @Override
+    boolean equals(Binary other) {
+      return other.equals(value, offset, length);
+    }
+
+    @Override
+    boolean equals(byte[] other, int otherOffset, int otherLength) {
+      return Binary.equals(value, offset, length, other, otherOffset, otherLength);
+    }
+
+    @Override
+    public int compareTo(Binary other) {
+      return other.compareTo(value, offset, length);
+    }
+
+    @Override
+    int compareTo(byte[] other, int otherOffset, int otherLength) {
+      return Binary.compareTwoByteArrays(value, offset, length, other, otherOffset, otherLength);
+    }
+
+    @Override
+    public ByteBuffer toByteBuffer() {
+      return ByteBuffer.wrap(value, offset, length);
+    }
+
+    @Override
+    public void writeTo(DataOutput out) throws IOException {
+      out.write(value, offset, length);
+    }
+
+  }
+
+  private static class FromStringBinary extends ByteArrayBackedBinary {
+    public FromStringBinary(byte[] value) {
+      super(value);
+    }
+
+    @Override
+    public String toString() {
+      return "Binary{\"" + toStringUsingUTF8() + "\"}";
+    }
+  }
+
+  public static Binary fromByteArray(final byte[] value, final int offset, final int length) {
+    return new ByteArraySliceBackedBinary(value, offset, length);
+  }
+
+  private static class ByteArrayBackedBinary extends Binary {
+    private final byte[] value;
+
+    public ByteArrayBackedBinary(byte[] value) {
+      this.value = value;
+    }
+
+    @Override
+    public String toStringUsingUTF8() {
+      return new String(value, BytesUtils.UTF8);
+    }
+
+    @Override
+    public int length() {
+      return value.length;
+    }
+
+    @Override
+    public void writeTo(OutputStream out) throws IOException {
+      out.write(value);
+    }
+
+    @Override
+    public byte[] getBytes() {
+      return value;
+    }
+
+    @Override
+    public int hashCode() {
+      return Binary.hashCode(value, 0, value.length);
+    }
+
+    @Override
+    boolean equals(Binary other) {
+      return other.equals(value, 0, value.length);
+    }
+
+    @Override
+    boolean equals(byte[] other, int otherOffset, int otherLength) {
+      return Binary.equals(value, 0, value.length, other, otherOffset, otherLength);
+    }
+
+    @Override
+    public int compareTo(Binary other) {
+      return other.compareTo(value, 0, value.length);
+    }
+
+    @Override
+    int compareTo(byte[] other, int otherOffset, int otherLength) {
+      return Binary.compareTwoByteArrays(value, 0, value.length, other, otherOffset, otherLength);
+    }
+
+    @Override
+    public ByteBuffer toByteBuffer() {
+      return ByteBuffer.wrap(value);
+    }
+
+    @Override
+    public void writeTo(DataOutput out) throws IOException {
+      out.write(value);
+    }
+
   }
 
   public static Binary fromByteArray(final byte[] value) {
-    return new Binary() {
-      @Override
-      public String toStringUsingUTF8() {
-        return new String(value, BytesUtils.UTF8);
-      }
+    return new ByteArrayBackedBinary(value);
+  }
 
-      @Override
-      public int length() {
-        return value.length;
-      }
+  private static class ByteBufferBackedBinary extends Binary {
+    private transient ByteBuffer value;
 
-      @Override
-      public void writeTo(OutputStream out) throws IOException {
-        out.write(value);
-      }
+    public ByteBufferBackedBinary(ByteBuffer value) {
+      this.value = value;
+    }
 
-      @Override
-      public byte[] getBytes() {
-        return value;
-      }
+    @Override
+    public String toStringUsingUTF8() {
+      return new String(getBytes(), BytesUtils.UTF8);
+    }
 
-      @Override
-      public int hashCode() {
-        return Binary.hashCode(value, 0, value.length);
-      }
+    @Override
+    public int length() {
+      return value.remaining();
+    }
 
-      @Override
-      boolean equals(Binary other) {
-        return other.equals(value, 0, value.length);
-      }
+    @Override
+    public void writeTo(OutputStream out) throws IOException {
+      // TODO: should not have to materialize those bytes
+      out.write(getBytes());
+    }
 
-      @Override
-      boolean equals(byte[] other, int otherOffset, int otherLength) {
-        return Binary.equals(value, 0, value.length, other, otherOffset, otherLength);
-      }
+    @Override
+    public byte[] getBytes() {
+      byte[] bytes = new byte[value.remaining()];
 
-      @Override
-      public int compareTo(Binary other) {
-        return other.compareTo(value, 0, value.length);
-      }
+      value.mark();
+      value.get(bytes).reset();
+      return bytes;
+    }
 
-      @Override
-      int compareTo(byte[] other, int otherOffset, int otherLength) {
-        return Binary.compareTwoByteArrays(value, 0, value.length, other, otherOffset, otherLength);
+    @Override
+    public int hashCode() {
+      if (value.hasArray()) {
+        return Binary.hashCode(value.array(), value.arrayOffset() + value.position(),
+            value.arrayOffset() + value.remaining());
       }
+      byte[] bytes = getBytes();
+      return Binary.hashCode(bytes, 0, bytes.length);
+    }
 
-      @Override
-      public ByteBuffer toByteBuffer() {
-        return ByteBuffer.wrap(value);
+    @Override
+    boolean equals(Binary other) {
+      if (value.hasArray()) {
+        return other.equals(value.array(), value.arrayOffset() + value.position(),
+            value.arrayOffset() + value.remaining());
       }
+      byte[] bytes = getBytes();
+      return other.equals(bytes, 0, bytes.length);
+    }
 
-      @Override
-      public void writeTo(DataOutput out) throws IOException {
-        out.write(value);
+    @Override
+    boolean equals(byte[] other, int otherOffset, int otherLength) {
+      if (value.hasArray()) {
+        return Binary.equals(value.array(), value.arrayOffset() + value.position(),
+            value.arrayOffset() + value.remaining(), other, otherOffset, otherLength);
       }
-    };
+      byte[] bytes = getBytes();
+      return Binary.equals(bytes, 0, bytes.length, other, otherOffset, otherLength);
+    }
+
+    @Override
+    public int compareTo(Binary other) {
+      if (value.hasArray()) {
+        return other.compareTo(value.array(), value.arrayOffset() + value.position(),
+            value.arrayOffset() + value.remaining());
+      }
+      byte[] bytes = getBytes();
+      return other.compareTo(bytes, 0, bytes.length);
+    }
+
+    @Override
+    int compareTo(byte[] other, int otherOffset, int otherLength) {
+      if (value.hasArray()) {
+        return Binary.compareTwoByteArrays(value.array(), value.arrayOffset() + value.position(),
+            value.arrayOffset() + value.remaining(), other, otherOffset, otherLength);
+      }
+      byte[] bytes = getBytes();
+      return Binary.compareTwoByteArrays(bytes, 0, bytes.length, other, otherOffset, otherLength);
+    }
+
+    @Override
+    public ByteBuffer toByteBuffer() {
+      return value;
+    }
+
+    @Override
+    public void writeTo(DataOutput out) throws IOException {
+      // TODO: should not have to materialize those bytes
+      out.write(getBytes());
+    }
+
+    private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+      byte[] bytes = getBytes();
+      out.writeInt(bytes.length);
+      out.write(bytes);
+    }
+
+    private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+      int length = in.readInt();
+      byte[] bytes = new byte[length];
+      in.readFully(bytes, 0, length);
+      this.value = ByteBuffer.wrap(bytes);
+    }
+
+    private void readObjectNoData() throws ObjectStreamException {
+      this.value = ByteBuffer.wrap(new byte[0]);
+    }
+
   }
 
   public static Binary fromByteBuffer(final ByteBuffer value) {
-    return new Binary() {
-      @Override
-      public String toStringUsingUTF8() {
-        return new String(getBytes(), BytesUtils.UTF8);
-      }
-
-      @Override
-      public int length() {
-        return value.remaining();
-      }
-
-      @Override
-      public void writeTo(OutputStream out) throws IOException {
-        // TODO: should not have to materialize those bytes
-        out.write(getBytes());
-      }
-
-      @Override
-      public byte[] getBytes() {
-        byte[] bytes = new byte[value.remaining()];
-
-        value.mark();
-        value.get(bytes).reset();
-        return bytes;
-      }
-
-      @Override
-      public int hashCode() {
-        if (value.hasArray()) {
-          return Binary.hashCode(value.array(), value.arrayOffset() + value.position(),
-              value.arrayOffset() + value.remaining());
-        }
-        byte[] bytes = getBytes();
-        return Binary.hashCode(bytes, 0, bytes.length);
-      }
-
-      @Override
-      boolean equals(Binary other) {
-        if (value.hasArray()) {
-          return other.equals(value.array(), value.arrayOffset() + value.position(),
-              value.arrayOffset() + value.remaining());
-        }
-        byte[] bytes = getBytes();
-        return other.equals(bytes, 0, bytes.length);
-      }
-
-      @Override
-      boolean equals(byte[] other, int otherOffset, int otherLength) {
-        if (value.hasArray()) {
-          return Binary.equals(value.array(), value.arrayOffset() + value.position(),
-              value.arrayOffset() + value.remaining(), other, otherOffset, otherLength);
-        }
-        byte[] bytes = getBytes();
-        return Binary.equals(bytes, 0, bytes.length, other, otherOffset, otherLength);
-      }
-
-      @Override
-      public int compareTo(Binary other) {
-        if (value.hasArray()) {
-          return other.compareTo(value.array(), value.arrayOffset() + value.position(),
-              value.arrayOffset() + value.remaining());
-        }
-        byte[] bytes = getBytes();
-        return other.compareTo(bytes, 0, bytes.length);
-      }
-
-      @Override
-      int compareTo(byte[] other, int otherOffset, int otherLength) {
-        if (value.hasArray()) {
-          return Binary.compareTwoByteArrays(value.array(), value.arrayOffset() + value.position(),
-              value.arrayOffset() + value.remaining(), other, otherOffset, otherLength);
-        }
-        byte[] bytes = getBytes();
-        return Binary.compareTwoByteArrays(bytes, 0, bytes.length, other, otherOffset, otherLength);
-      }
-
-      @Override
-      public ByteBuffer toByteBuffer() {
-        return value;
-      }
-
-      @Override
-      public void writeTo(DataOutput out) throws IOException {
-        // TODO: should not have to materialize those bytes
-        out.write(getBytes());
-      }
-    };
+    return new ByteBufferBackedBinary(value);
   }
   
   public static Binary fromByteBuffer(
@@ -335,7 +430,7 @@ abstract public class Binary {
 
   public static Binary fromString(final String value) {
     try {
-      return fromByteArray(value.getBytes("UTF-8"));
+      return new FromStringBinary(value.getBytes("UTF-8"));
     } catch (UnsupportedEncodingException e) {
       throw new ParquetEncodingException("UTF-8 not supported.", e);
     }
@@ -398,39 +493,4 @@ abstract public class Binary {
     else if (length1 < length2) { return 1;}
     else { return -1; }
   }
-
-  abstract public String toStringUsingUTF8();
-
-  abstract public int length();
-
-  abstract public void writeTo(OutputStream out) throws IOException;
-
-  abstract public void writeTo(DataOutput out) throws IOException;
-
-  abstract public byte[] getBytes();
-
-  abstract boolean equals(byte[] bytes, int offset, int length);
-
-  abstract boolean equals(Binary other);
-
-  abstract public int compareTo(Binary other);
-
-  abstract int compareTo(byte[] bytes, int offset, int length);
-
-  @Override
-  public boolean equals(Object obj) {
-    if (obj == null) {
-      return false;
-    }
-    if (obj instanceof Binary) {
-      return equals((Binary)obj);
-    }
-    return false;
-  }
-
-  abstract public ByteBuffer toByteBuffer();
-
-  public String toString() {
-    return "Binary{" + length() + " bytes, " + Arrays.toString(getBytes()) + "}";
-  };
 }

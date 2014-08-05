@@ -21,7 +21,10 @@ import static parquet.Log.DEBUG;
 import static parquet.hadoop.util.ContextUtil.getConfiguration;
 import static parquet.pig.PigSchemaConverter.parsePigSchema;
 import static parquet.pig.PigSchemaConverter.pigSchemaToString;
+import static parquet.pig.PigSchemaConverter.serializeRequiredFieldList;
 import static parquet.pig.TupleReadSupport.PARQUET_PIG_SCHEMA;
+import static parquet.pig.TupleReadSupport.PARQUET_PIG_REQUIRED_FIELDS;
+import static parquet.pig.TupleReadSupport.PARQUET_COLUMN_INDEX_ACCESS;
 import static parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
 
 import java.io.IOException;
@@ -71,12 +74,14 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   static final Map<String, Reference<ParquetInputFormat<Tuple>>> inputFormatCache = new WeakHashMap<String, Reference<ParquetInputFormat<Tuple>>>();
 
   private Schema requestedSchema;
+  private boolean columnIndexAccess;
 
   private String location;
   private boolean setLocationHasBeenCalled = false;
   private RecordReader<Void, Tuple> reader;
   private ParquetInputFormat<Tuple> parquetInputFormat;
   private Schema schema;
+  private RequiredFieldList requiredFieldList = null;
   protected String signature;
 
   /**
@@ -91,7 +96,40 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
    * @param requestedSchemaStr a subset of the original pig schema in the file
    */
   public ParquetLoader(String requestedSchemaStr) {
-    this.requestedSchema = parsePigSchema(requestedSchemaStr);
+    this(parsePigSchema(requestedSchemaStr), false);
+  }
+  
+  /**
+   * To read only a subset of the columns in the file optionally assigned by 
+   * column positions.  Using column positions allows for renaming the fields
+   * and is more inline with the "schema-on-read" approach to accessing file
+   * data.
+   * 
+   * Example: 
+   * File Schema:  'c1:int, c2:float, c3:double, c4:long'
+   * ParquetLoader('n1:int, n2:float, n3:double, n4:long', 'true');
+   * 
+   * This will use the names provided in the requested schema and assign them
+   * to column positions indicated by order.
+   * 
+   * @param requestedSchemaStr a subset of the original pig schema in the file
+   * @param columnIndexAccess use column index positions as opposed to name (default: false)
+   */
+  public ParquetLoader(String requestedSchemaStr, String columnIndexAccess) {
+    this(parsePigSchema(requestedSchemaStr), Boolean.parseBoolean(columnIndexAccess));
+  }
+  
+  /**
+   * Use the provided schema to access the underlying file data.
+   * 
+   * The same as the string based constructor but for programmatic use.
+   * 
+   * @param requestedSchema a subset of the original pig schema in the file
+   * @param columnIndexAccess  
+   */
+  public ParquetLoader(Schema requestedSchema, boolean columnIndexAccess) {
+    this.requestedSchema = requestedSchema;
+    this.columnIndexAccess = columnIndexAccess;
   }
 
   @Override
@@ -99,6 +137,14 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     if (DEBUG) LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
     setInput(location, job);
     getConfiguration(job).set(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
+    
+    if(requiredFieldList != null) {
+      getConfiguration(job).set(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
+    }
+    
+    if(this.columnIndexAccess) {
+        getConfiguration(job).set(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
+    }
   }
 
   private void setInput(String location, Job job) throws IOException {
@@ -194,6 +240,8 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       return;
     }
     schema = PigSchemaConverter.parsePigSchema(getPropertyFromUDFContext(PARQUET_PIG_SCHEMA));
+    requiredFieldList = PigSchemaConverter.deserializeRequiredFieldList(getPropertyFromUDFContext(PARQUET_PIG_REQUIRED_FIELDS));
+    columnIndexAccess = columnIndexAccess || Boolean.parseBoolean(getPropertyFromUDFContext(PARQUET_COLUMN_INDEX_ACCESS));
     if (schema == null && requestedSchema != null) {
       // this is only true in front-end
       schema = requestedSchema;
@@ -275,10 +323,15 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   @Override
   public RequiredFieldResponse pushProjection(RequiredFieldList requiredFieldList)
       throws FrontendException {
+    this.requiredFieldList = requiredFieldList;
+    
     if (requiredFieldList == null)
       return null;
+    
     schema = getSchemaFromRequiredFieldList(schema, requiredFieldList.getFields());
     storeInUDFContext(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
+    storeInUDFContext(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
+    
     return new RequiredFieldResponse(true);
   }
 

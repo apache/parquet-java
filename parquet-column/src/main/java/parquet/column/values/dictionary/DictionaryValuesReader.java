@@ -52,11 +52,21 @@ public class DictionaryValuesReader extends ValuesReader {
   @Override
   public void initFromPage(int valueCount, ByteBuffer page, int offset)
       throws IOException {
-    if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (page.limit() - offset));
-    this.in = new ByteBufferInputStream(page.duplicate(), offset, page.limit() - offset);
-    int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
-    if (DEBUG) LOG.debug("bit width " + bitWidth);
-    decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
+    this.in = new ByteBufferInputStream(page, offset, page.limit() - offset);
+    if (page.limit() - offset > 0) {
+      if (DEBUG)
+        LOG.debug("init from page at offset " + offset + " for length " + (page.limit() - offset));
+      int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
+      if (DEBUG) LOG.debug("bit width " + bitWidth);
+      decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
+    } else {
+      decoder = new RunLengthBitPackingHybridDecoder(1, in) {
+        @Override
+        public int readInt() throws IOException {
+          throw new IOException("Attempt to read from empty page");
+        }
+      };
+    }
   }
   
   @Override
