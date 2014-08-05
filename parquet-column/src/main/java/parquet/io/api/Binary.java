@@ -385,7 +385,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
       @Override
       boolean equals(Binary other) {
-        if (value.compareTo(other.toByteBuffer()) == 0) {
+        if (toByteBuffer().compareTo(other.toByteBuffer()) == 0) {
           return true;
         }
         return false;
@@ -393,7 +393,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
       @Override
       boolean equals(byte[] other, int otherOffset, int otherLength) {
-         if (value.compareTo(ByteBuffer.wrap(other, otherOffset, otherLength)) == 0) {
+         if (toByteBuffer().compareTo(ByteBuffer.wrap(other, otherOffset, otherLength)) == 0) {
            return true;
          }
          return false;
