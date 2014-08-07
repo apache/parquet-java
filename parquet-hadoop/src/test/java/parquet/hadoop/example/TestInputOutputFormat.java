@@ -16,12 +16,17 @@
 package parquet.hadoop.example;
 
 import static java.lang.Thread.sleep;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -38,6 +43,11 @@ import org.junit.Test;
 import parquet.Log;
 import parquet.example.data.Group;
 import parquet.example.data.simple.SimpleGroupFactory;
+import parquet.hadoop.ParquetInputFormat;
+import parquet.hadoop.ParquetOutputFormat;
+import parquet.hadoop.api.DelegatingReadSupport;
+import parquet.hadoop.api.DelegatingWriteSupport;
+import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.util.ContextUtil;
@@ -55,8 +65,8 @@ public class TestInputOutputFormat {
   private String partialSchema;
   private Configuration conf;
 
-  private Class readMapperClass;
-  private Class writeMapperClass;
+  private Class<? extends Mapper<?,?,?,?>> readMapperClass;
+  private Class<? extends Mapper<?,?,?,?>> writeMapperClass;
 
   @Before
   public void setUp() {
@@ -75,8 +85,44 @@ public class TestInputOutputFormat {
             "required int32 line;\n" +
             "}";
 
-    readMapperClass =ReadMapper.class;
-    writeMapperClass=WriteMapper.class;
+    readMapperClass = ReadMapper.class;
+    writeMapperClass = WriteMapper.class;
+  }
+
+
+  public static final class MyWriteSupport extends DelegatingWriteSupport<Group> {
+
+    private long count = 0;
+
+    public MyWriteSupport() {
+      super(new GroupWriteSupport());
+    }
+
+    @Override
+    public void write(Group record) {
+      super.write(record);
+      ++ count;
+    }
+
+    @Override
+    public parquet.hadoop.api.WriteSupport.FinalizedWriteContext finalizeWrite() {
+      Map<String, String> extraMetadata = new HashMap<String, String>();
+      extraMetadata.put("my.count", String.valueOf(count));
+      return new FinalizedWriteContext(extraMetadata);
+    }
+  }
+
+  public static final class MyReadSupport extends DelegatingReadSupport<Group> {
+    public MyReadSupport() {
+      super(new GroupReadSupport());
+    }
+
+    @Override
+    public parquet.hadoop.api.ReadSupport.ReadContext init(InitContext context) {
+      Set<String> counts = context.getKeyValueMetadata().get("my.count");
+      assertTrue("counts: " + counts, counts.size() > 0);
+      return super.init(context);
+    }
   }
 
   public static class ReadMapper extends Mapper<LongWritable, Text, Void, Group> {
@@ -117,26 +163,26 @@ public class TestInputOutputFormat {
       TextInputFormat.addInputPath(writeJob, inputPath);
       writeJob.setInputFormatClass(TextInputFormat.class);
       writeJob.setNumReduceTasks(0);
-      ExampleOutputFormat.setCompression(writeJob, codec);
-      ExampleOutputFormat.setOutputPath(writeJob, parquetPath);
-      writeJob.setOutputFormatClass(ExampleOutputFormat.class);
+      ParquetOutputFormat.setCompression(writeJob, codec);
+      ParquetOutputFormat.setOutputPath(writeJob, parquetPath);
+      writeJob.setOutputFormatClass(ParquetOutputFormat.class);
       writeJob.setMapperClass(readMapperClass);
 
-      ExampleOutputFormat.setSchema(
-              writeJob,
-              MessageTypeParser.parseMessageType(
-                      writeSchema));
+      ParquetOutputFormat.setWriteSupportClass(writeJob, MyWriteSupport.class);
+      GroupWriteSupport.setSchema(
+              MessageTypeParser.parseMessageType(writeSchema),
+              writeJob.getConfiguration());
       writeJob.submit();
       waitForJob(writeJob);
     }
     {
-
       conf.set(ReadSupport.PARQUET_READ_SCHEMA, readSchema);
       readJob = new Job(conf, "read");
 
-      readJob.setInputFormatClass(ExampleInputFormat.class);
+      readJob.setInputFormatClass(ParquetInputFormat.class);
+      ParquetInputFormat.setReadSupportClass(readJob, MyReadSupport.class);
 
-      ExampleInputFormat.setInputPaths(readJob, parquetPath);
+      ParquetInputFormat.setInputPaths(readJob, parquetPath);
       readJob.setOutputFormatClass(TextOutputFormat.class);
       TextOutputFormat.setOutputPath(readJob, outputPath);
       readJob.setMapperClass(writeMapperClass);
