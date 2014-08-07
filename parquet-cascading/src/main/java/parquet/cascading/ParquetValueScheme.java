@@ -21,14 +21,18 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.RecordReader;
 
-import parquet.hadoop.mapred.Container;
-
 import cascading.flow.FlowProcess;
 import cascading.scheme.Scheme;
-import cascading.scheme.SourceCall;
 import cascading.scheme.SinkCall;
+import cascading.scheme.SourceCall;
+import cascading.tap.Tap;
 import cascading.tuple.Tuple;
 import cascading.tuple.TupleEntry;
+import parquet.filter2.predicate.FilterPredicate;
+import parquet.hadoop.ParquetInputFormat;
+import parquet.hadoop.mapred.Container;
+
+import static parquet.Preconditions.checkNotNull;
 
 /**
  * A Cascading Scheme that returns a simple Tuple with a single value, the "value" object
@@ -38,8 +42,23 @@ import cascading.tuple.TupleEntry;
  * correctly in the respective Init methods.
  */
 public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader, OutputCollector, Object[], Object[]>{
-
   private static final long serialVersionUID = 157560846420730043L;
+  private final FilterPredicate filterPredicate;
+
+  public ParquetValueScheme() {
+    this.filterPredicate = null;
+  }
+
+  public ParquetValueScheme(FilterPredicate filterPredicate) {
+    this.filterPredicate = checkNotNull(filterPredicate, "filterPredicate");
+  }
+
+  @Override
+  public void sourceConfInit(FlowProcess<JobConf> jobConfFlowProcess, Tap<JobConf, RecordReader, OutputCollector> jobConfRecordReaderOutputCollectorTap, final JobConf jobConf) {
+    if (filterPredicate != null) {
+      ParquetInputFormat.setFilterPredicate(jobConf, filterPredicate);
+    }
+  }
 
   @SuppressWarnings("unchecked")
   @Override
