@@ -139,7 +139,7 @@ class InternalParquetRecordWriter<T> {
   private void flushStore()
       throws IOException {
     LOG.info(format("Flushing mem store to file. allocated memory: %,d", store.allocatedSize()));
-    if (store.allocatedSize() > 3 * blockSize) {
+    if (store.allocatedSize() > 3 * (long) blockSize) {
       LOG.warn("Too much memory used: " + store.memUsageString());
     }
     w.startBlock(recordCount);
