@@ -135,16 +135,17 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   @Override
   public void setLocation(String location, Job job) throws IOException {
     if (DEBUG) LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
+    storeInUDFContext(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
+    
     setInput(location, job);
+    
+    storeInUDFContext(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
     getConfiguration(job).set(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
+
+    storeInUDFContext(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
+    getConfiguration(job).set(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
     
-    if(requiredFieldList != null) {
-      getConfiguration(job).set(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
-    }
-    
-    if(this.columnIndexAccess) {
-        getConfiguration(job).set(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
-    }
+    getConfiguration(job).set(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
   }
 
   private void setInput(String location, Job job) throws IOException {
@@ -241,7 +242,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     }
     schema = PigSchemaConverter.parsePigSchema(getPropertyFromUDFContext(PARQUET_PIG_SCHEMA));
     requiredFieldList = PigSchemaConverter.deserializeRequiredFieldList(getPropertyFromUDFContext(PARQUET_PIG_REQUIRED_FIELDS));
-    columnIndexAccess = columnIndexAccess || Boolean.parseBoolean(getPropertyFromUDFContext(PARQUET_COLUMN_INDEX_ACCESS));
+    columnIndexAccess = Boolean.parseBoolean(getPropertyFromUDFContext(PARQUET_COLUMN_INDEX_ACCESS));
     if (schema == null && requestedSchema != null) {
       // this is only true in front-end
       schema = requestedSchema;
