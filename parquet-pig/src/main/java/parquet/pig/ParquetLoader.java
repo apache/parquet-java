@@ -135,24 +135,33 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   @Override
   public void setLocation(String location, Job job) throws IOException {
     if (DEBUG) LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
-    storeInUDFContext(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
     
     setInput(location, job);
-    
-    storeInUDFContext(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
-    getConfiguration(job).set(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
-
-    storeInUDFContext(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
-    getConfiguration(job).set(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
-    
-    getConfiguration(job).set(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
   }
 
   private void setInput(String location, Job job) throws IOException {
     this.setLocationHasBeenCalled  = true;
     this.location = location;
     setInputPaths(job, location);
+    
+    //This is prior to load because the initial value comes from the constructor
+    //not file metadata or pig framework and would get overwritten in initSchema().
+    if(UDFContext.getUDFContext().isFrontend()) {
+      storeInUDFContext(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
+    }
+    
     initSchema(job);
+    
+    if(UDFContext.getUDFContext().isFrontend()) {
+      //Setting for task-side loading via initSchema()
+      storeInUDFContext(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
+      storeInUDFContext(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
+    } else {
+      //Used by task-side loader via TupleReadSupport
+      getConfiguration(job).set(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
+      getConfiguration(job).set(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
+      getConfiguration(job).set(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
+    }
   }
 
   @Override
