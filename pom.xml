@@ -3,7 +3,7 @@
 
   <groupId>com.twitter</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.6.0-SNAPSHOT</version>
+  <version>1.6.0210-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Parquet MR</name>
@@ -40,15 +40,21 @@
 
   <distributionManagement>
     <snapshotRepository>
+      <id>artifactory-snapshot</id>
+      <name>libs-snapshots</name>
+      <url>http://artifactory.local.twitter.com/libs-snapshots-local</url>
+    </snapshotRepository>
+<!--    <snapshotRepository>
       <id>sonatype-nexus-snapshots</id>
       <name>Sonatype OSS</name>
       <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-    </snapshotRepository>
+    </snapshotRepository> -->
     <repository>
       <id>sonatype-nexus-staging</id>
       <name>Nexus Release Repository</name>
       <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
     </repository>
+
   </distributionManagement>
 
   <repositories>
