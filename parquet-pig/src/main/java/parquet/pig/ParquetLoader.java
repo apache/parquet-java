@@ -156,12 +156,12 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       //Setting for task-side loading via initSchema()
       storeInUDFContext(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
       storeInUDFContext(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
-    } else {
-      //Used by task-side loader via TupleReadSupport
-      getConfiguration(job).set(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
-      getConfiguration(job).set(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
-      getConfiguration(job).set(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
     }
+    
+    //Used by task-side loader via TupleReadSupport
+    getConfiguration(job).set(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
+    getConfiguration(job).set(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
+    getConfiguration(job).set(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
   }
 
   @Override
