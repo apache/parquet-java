@@ -150,6 +150,10 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       storeInUDFContext(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
     }
     
+    schema = PigSchemaConverter.parsePigSchema(getPropertyFromUDFContext(PARQUET_PIG_SCHEMA));
+    requiredFieldList = PigSchemaConverter.deserializeRequiredFieldList(getPropertyFromUDFContext(PARQUET_PIG_REQUIRED_FIELDS));
+    columnIndexAccess = Boolean.parseBoolean(getPropertyFromUDFContext(PARQUET_COLUMN_INDEX_ACCESS));
+    
     initSchema(job);
     
     if(UDFContext.getUDFContext().isFrontend()) {
@@ -249,9 +253,6 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     if (schema != null) {
       return;
     }
-    schema = PigSchemaConverter.parsePigSchema(getPropertyFromUDFContext(PARQUET_PIG_SCHEMA));
-    requiredFieldList = PigSchemaConverter.deserializeRequiredFieldList(getPropertyFromUDFContext(PARQUET_PIG_REQUIRED_FIELDS));
-    columnIndexAccess = Boolean.parseBoolean(getPropertyFromUDFContext(PARQUET_COLUMN_INDEX_ACCESS));
     if (schema == null && requestedSchema != null) {
       // this is only true in front-end
       schema = requestedSchema;
