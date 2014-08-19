@@ -17,6 +17,7 @@ import org.apache.hadoop.io.Writable;
 
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
+import parquet.schema.OriginalType;
 import parquet.schema.Type;
 import parquet.schema.Type.Repetition;
 
@@ -31,7 +32,7 @@ public abstract class HiveGroupConverter extends GroupConverter {
       return ETypeConverter.getNewConverter(type.asPrimitiveType().getPrimitiveTypeName().javaType,
           index, parent);
     } else {
-      if (type.asGroupType().getRepetition() == Repetition.REPEATED) {
+      if (type.getOriginalType().equals(OriginalType.LIST)) {
         return new ArrayWritableGroupConverter(type.asGroupType(), parent, index);
       } else {
         return new DataWritableGroupConverter(type.asGroupType(), parent, index);
