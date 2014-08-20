@@ -18,6 +18,7 @@ package parquet.column.values.boundedint;
 import static parquet.bytes.BytesInput.concat;
 import static parquet.column.Encoding.RLE;
 import parquet.Log;
+import parquet.bytes.ByteBufferAllocator;
 import parquet.bytes.BytesInput;
 import parquet.column.Encoding;
 import parquet.column.values.ValuesWriter;
@@ -46,6 +47,7 @@ class BoundedIntValuesWriter extends ValuesWriter {
   private int bitsPerValue;
   private BitWriter bitWriter;
   private boolean isFirst = true;
+  private ByteBufferAllocator allocator;
 
   private static final int[] byteToTrueMask = new int[8];
   static {
@@ -56,11 +58,12 @@ class BoundedIntValuesWriter extends ValuesWriter {
     }
   }
 
-  public BoundedIntValuesWriter(int bound, int initialCapacity) {
+  public BoundedIntValuesWriter(int bound, int initialCapacity, ByteBufferAllocator allocator) {
     if (bound == 0) {
       throw new ParquetEncodingException("Value bound cannot be 0. Use DevNullColumnWriter instead.");
     }
-    this.bitWriter = new BitWriter(initialCapacity);
+    this.allocator=allocator;
+    this.bitWriter = new BitWriter(initialCapacity, allocator);
     bitsPerValue = (int)Math.ceil(Math.log(bound + 1)/Math.log(2));
     shouldRepeatThreshold = (bitsPerValue + 9)/(1 + bitsPerValue);
     if (Log.DEBUG) LOG.debug("init column with bit width of " + bitsPerValue + " and repeat threshold of " + shouldRepeatThreshold);
@@ -95,6 +98,16 @@ class BoundedIntValuesWriter extends ValuesWriter {
     thereIsABufferedValue = false;
     isFirst = true;
     bitWriter.reset();
+  }
+
+  @Override
+  public void close() {
+    currentValue = -1;
+    currentValueCt = -1;
+    currentValueIsRepeated = false;
+    thereIsABufferedValue = false;
+    isFirst = true;
+    bitWriter.close();
   }
 
   @Override

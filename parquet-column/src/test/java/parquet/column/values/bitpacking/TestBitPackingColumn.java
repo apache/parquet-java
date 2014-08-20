@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import org.junit.Test;
 
 import parquet.Log;
+import parquet.bytes.DirectByteBufferAllocator;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.ValuesWriter;
 
@@ -186,7 +187,7 @@ public class TestBitPackingColumn {
         return new BitPackingValuesReader(bound);
       }
       public ValuesWriter getWriter(final int bound) {
-        return new BitPackingValuesWriter(bound, 32*1024);
+        return new BitPackingValuesWriter(bound, 32*1024, new DirectByteBufferAllocator());
       }
     }
     ,
@@ -195,7 +196,7 @@ public class TestBitPackingColumn {
         return new ByteBitPackingValuesReader(bound, BIG_ENDIAN);
       }
       public ValuesWriter getWriter(final int bound) {
-        return new ByteBitPackingValuesWriter(bound, BIG_ENDIAN);
+        return new ByteBitPackingValuesWriter(bound, BIG_ENDIAN, new DirectByteBufferAllocator());
       }
     }
     ;

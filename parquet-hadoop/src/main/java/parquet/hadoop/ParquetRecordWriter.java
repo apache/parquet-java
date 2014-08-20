@@ -20,6 +20,7 @@ import java.util.Map;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
+import parquet.bytes.HeapByteBufferAllocator;
 import parquet.column.ParquetProperties.WriterVersion;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.hadoop.api.WriteSupport;
@@ -61,8 +62,19 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       boolean enableDictionary,
       boolean validating,
       WriterVersion writerVersion) {
-    internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
-        extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary, validating, writerVersion);
+    internalWriter = new InternalParquetRecordWriter<T>(
+      w,
+      writeSupport,
+      schema,
+      extraMetaData,
+      blockSize,
+      pageSize,
+      compressor,
+      dictionaryPageSize,
+      enableDictionary,
+      validating,
+      writerVersion,
+      new HeapByteBufferAllocator());
   }
 
   /**

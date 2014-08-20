@@ -114,6 +114,14 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
     }
   }
 
+  @Override
+  public void close() {
+    Collection<ColumnWriterImpl> values = columns.values();
+    for (ColumnWriterImpl memColumn : values) {
+      memColumn.close();
+    }
+  }
+
   public String memUsageString() {
     StringBuilder b = new StringBuilder("Store {\n");
     Collection<ColumnWriterImpl> values = columns.values();

@@ -15,12 +15,15 @@
  */
 package parquet.column.values.deltastrings;
 
+import parquet.bytes.ByteBufferAllocator;
 import parquet.bytes.BytesInput;
 import parquet.column.Encoding;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesWriter;
 import parquet.io.api.Binary;
+
+import java.nio.ByteBuffer;
 
 /**
  * Write prefix lengths using delta encoding, followed by suffixes with Delta length byte arrays
@@ -37,10 +40,12 @@ public class DeltaByteArrayWriter extends ValuesWriter{
   private ValuesWriter prefixLengthWriter;
   private ValuesWriter suffixWriter;
   private byte[] previous;
+  private ByteBufferAllocator allocator;
 
-  public DeltaByteArrayWriter(int initialCapacity) {
-    this.prefixLengthWriter = new DeltaBinaryPackingValuesWriter(128, 4, initialCapacity);
-    this.suffixWriter = new DeltaLengthByteArrayValuesWriter(initialCapacity);
+  public DeltaByteArrayWriter(int initialCapacity, ByteBufferAllocator allocator) {
+    this.allocator=allocator;
+    this.prefixLengthWriter = new DeltaBinaryPackingValuesWriter(128, 4, initialCapacity, this.allocator);
+    this.suffixWriter = new DeltaLengthByteArrayValuesWriter(initialCapacity, this.allocator);
     this.previous = new byte[0];
   }
 
@@ -63,6 +68,12 @@ public class DeltaByteArrayWriter extends ValuesWriter{
   public void reset() {
     prefixLengthWriter.reset();
     suffixWriter.reset();
+  }
+
+  @Override
+  public void close() {
+    prefixLengthWriter.close();
+    suffixWriter.close();
   }
 
   @Override

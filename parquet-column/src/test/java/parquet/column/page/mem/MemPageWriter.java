@@ -22,7 +22,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import parquet.Log;
+import parquet.bytes.ByteBufferAllocator;
 import parquet.bytes.BytesInput;
+import parquet.bytes.HeapByteBufferAllocator;
 import parquet.column.Encoding;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.Page;
@@ -38,6 +40,7 @@ public class MemPageWriter implements PageWriter {
   private DictionaryPage dictionaryPage;
   private long memSize = 0;
   private long totalValueCount = 0;
+  private ByteBufferAllocator allocator;
 
   @Deprecated
   @Override
@@ -102,5 +105,21 @@ public class MemPageWriter implements PageWriter {
     return String.format("%s %,d bytes", prefix, memSize);
 
   }
+
+  @Override
+  public ByteBufferAllocator getAllocator() {
+    if(this.allocator==null)
+      this.allocator=new HeapByteBufferAllocator();
+    return this.allocator;
+  }
+
+  @Override
+  public void reset() {
+  }
+
+  @Override
+  public void close() {
+  }
+
 
 }
