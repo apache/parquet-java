@@ -20,6 +20,8 @@ package parquet.column.values.plain;
 
 import static parquet.column.Encoding.PLAIN;
 import static parquet.column.values.bitpacking.Packer.LITTLE_ENDIAN;
+
+import parquet.bytes.ByteBufferAllocator;
 import parquet.bytes.BytesInput;
 import parquet.column.Encoding;
 import parquet.column.values.ValuesWriter;
@@ -35,9 +37,11 @@ import parquet.column.values.bitpacking.ByteBitPackingValuesWriter;
 public class BooleanPlainValuesWriter extends ValuesWriter {
 
   private ByteBitPackingValuesWriter bitPackingWriter;
+  private ByteBufferAllocator allocator;
 
-  public BooleanPlainValuesWriter() {
-    bitPackingWriter = new ByteBitPackingValuesWriter(1, LITTLE_ENDIAN);
+  public BooleanPlainValuesWriter(ByteBufferAllocator allocator) {
+    this.allocator=allocator;
+    bitPackingWriter = new ByteBitPackingValuesWriter(1, LITTLE_ENDIAN, this.allocator);
   }
 
   @Override
@@ -58,6 +62,11 @@ public class BooleanPlainValuesWriter extends ValuesWriter {
   @Override
   public void reset() {
     bitPackingWriter.reset();
+  }
+
+  @Override
+  public void close() {
+    bitPackingWriter.close();
   }
 
   @Override

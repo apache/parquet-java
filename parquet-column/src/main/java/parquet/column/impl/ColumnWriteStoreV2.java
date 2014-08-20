@@ -128,6 +128,13 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
   }
 
   @Override
+  public void close() {
+    for (ColumnWriterV2 memColumn : columns.values()) {
+      memColumn.close();
+    }
+  }
+
+  @Override
   public void endRecord() {
     ++ rowCount;
     if (rowCount >= rowCountForNextSizeCheck) {

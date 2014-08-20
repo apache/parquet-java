@@ -23,6 +23,7 @@ import com.carrotsearch.junitbenchmarks.annotation.AxisRange;
 import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import parquet.bytes.DirectByteBufferAllocator;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import java.util.Random;
@@ -42,7 +43,7 @@ public class SmallRangeWritingBenchmarkTest extends RandomWritingBenchmarkTest {
   @BenchmarkOptions(benchmarkRounds = 10, warmupRounds = 2)
   @Test
   public void writeRLEWithSmallBitWidthTest(){
-    ValuesWriter writer = new RunLengthBitPackingHybridValuesWriter(2,100);
+    ValuesWriter writer = new RunLengthBitPackingHybridValuesWriter(2,100, new DirectByteBufferAllocator());
     runWriteTest(writer);
   }
 }

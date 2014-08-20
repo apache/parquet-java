@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.junit.Rule;
 import org.junit.Test;
 
+import parquet.bytes.DirectByteBufferAllocator;
 import parquet.column.values.Utils;
 import parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesReader;
 import parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesWriter;
@@ -47,7 +48,7 @@ public class BenchmarkDeltaLengthByteArray {
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void benchmarkRandomStringsWithPlainValuesWriter() throws IOException {
-    PlainValuesWriter writer = new PlainValuesWriter(64*1024);
+    PlainValuesWriter writer = new PlainValuesWriter(64*1024, new DirectByteBufferAllocator());
     BinaryPlainValuesReader reader = new BinaryPlainValuesReader();
     
     Utils.writeData(writer, values);
@@ -59,7 +60,7 @@ public class BenchmarkDeltaLengthByteArray {
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void benchmarkRandomStringsWithDeltaLengthByteArrayValuesWriter() throws IOException {
-    DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64*1024);
+    DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64*1024, new DirectByteBufferAllocator());
     DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
     
     Utils.writeData(writer, values);

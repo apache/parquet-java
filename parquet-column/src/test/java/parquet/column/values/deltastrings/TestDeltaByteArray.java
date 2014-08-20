@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.junit.Test;
 import org.junit.Assert;
 
+import parquet.bytes.DirectByteBufferAllocator;
 import parquet.column.values.Utils;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.delta.DeltaBinaryPackingValuesReader;
@@ -35,7 +36,7 @@ public class TestDeltaByteArray {
 
   @Test
   public void testSerialization () throws IOException {
-    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024);
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024, new DirectByteBufferAllocator());
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
 
     Utils.writeData(writer, values);
@@ -48,7 +49,7 @@ public class TestDeltaByteArray {
   
   @Test
   public void testRandomStrings() throws IOException {
-    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024);
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024, new DirectByteBufferAllocator());
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
 
     Utils.writeData(writer, randvalues);
@@ -61,7 +62,7 @@ public class TestDeltaByteArray {
 
   @Test
   public void testLengths() throws IOException {
-    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024);
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024, new DirectByteBufferAllocator());
     ValuesReader reader = new DeltaBinaryPackingValuesReader();
 
     Utils.writeData(writer, values);

@@ -33,6 +33,7 @@ import org.apache.hadoop.fs.Path;
 import org.junit.Test;
 
 import parquet.bytes.BytesInput;
+import parquet.bytes.HeapByteBufferAllocator;
 import parquet.bytes.LittleEndianDataInputStream;
 import parquet.column.ColumnDescriptor;
 import parquet.column.Encoding;
@@ -82,7 +83,7 @@ public class TestColumnChunkPageWriteStore {
       writer.start();
       writer.startBlock(rowCount);
       {
-        ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(f.getCompressor(codec, pageSize ), schema , initialSize);
+        ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(f.getCompressor(codec, pageSize ), schema , initialSize, new HeapByteBufferAllocator());
         PageWriter pageWriter = store.getPageWriter(col);
         pageWriter.writePageV2(
             rowCount, nullCount, valueCount,

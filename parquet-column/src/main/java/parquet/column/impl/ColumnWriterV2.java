@@ -36,6 +36,7 @@ import parquet.column.values.ValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
@@ -65,8 +66,8 @@ final class ColumnWriterV2 implements ColumnWriter {
     this.path = path;
     this.pageWriter = pageWriter;
     resetStatistics();
-    this.repetitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxRepetitionLevel()), initialSizePerCol);
-    this.definitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxDefinitionLevel()), initialSizePerCol);
+    this.repetitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxRepetitionLevel()), initialSizePerCol, pageWriter.getAllocator());
+    this.definitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxDefinitionLevel()), initialSizePerCol, pageWriter.getAllocator());
     this.dataColumn = parquetProps.getValuesWriter(path, initialSizePerCol);
   }
 
@@ -105,6 +106,42 @@ final class ColumnWriterV2 implements ColumnWriter {
     definitionLevel(definitionLevel);
     statistics.incrementNumNulls();
     ++ valueCount;
+  }
+
+  @Override
+  public void flush() {
+//    if (valueCount > 0) {
+//      writePage();
+//    }
+//    final DictionaryPage dictionaryPage = dataColumn.createDictionaryPage();
+//    if (dictionaryPage != null) {
+//      if (DEBUG) LOG.debug("write dictionary");
+//      try {
+//        pageWriter.writeDictionaryPage(dictionaryPage);
+//      } catch (IOException e) {
+//        throw new ParquetEncodingException("could not write dictionary page for " + path, e);
+//      }
+//      dataColumn.resetDictionary();
+//    }
+    // I need to figure out what value to pass to writePage()
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public void close() {
+    flush();
+    // Close the Values writers.
+    repetitionLevelColumn.close();
+    definitionLevelColumn.close();
+    dataColumn.close();
+  }
+
+  @Override
+  public long getBufferedSizeInMemory() {
+    return repetitionLevelColumn.getBufferedSize()
+      + definitionLevelColumn.getBufferedSize()
+      + dataColumn.getBufferedSize()
+      + pageWriter.getMemSize();
   }
 
   /**
@@ -246,7 +283,7 @@ final class ColumnWriterV2 implements ColumnWriter {
   }
 
   /**
-   * @param prefix a prefix to format lines
+   * @param indent a prefix to format lines
    * @return a formatted string showing how memory is used
    */
   public String memUsageString(String indent) {

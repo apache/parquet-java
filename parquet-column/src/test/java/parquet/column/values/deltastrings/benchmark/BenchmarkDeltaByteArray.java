@@ -24,6 +24,7 @@ import java.util.Arrays;
 import org.junit.Rule;
 import org.junit.Test;
 
+import parquet.bytes.DirectByteBufferAllocator;
 import parquet.column.values.Utils;
 import parquet.column.values.deltastrings.DeltaByteArrayReader;
 import parquet.column.values.deltastrings.DeltaByteArrayWriter;
@@ -54,7 +55,7 @@ public class BenchmarkDeltaByteArray {
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void benchmarkRandomStringsWithPlainValuesWriter() throws IOException {
-    PlainValuesWriter writer = new PlainValuesWriter(64*1024);
+    PlainValuesWriter writer = new PlainValuesWriter(64*1024, new DirectByteBufferAllocator());
     BinaryPlainValuesReader reader = new BinaryPlainValuesReader();
     
     Utils.writeData(writer, values);
@@ -66,7 +67,7 @@ public class BenchmarkDeltaByteArray {
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void benchmarkRandomStringsWithDeltaLengthByteArrayValuesWriter() throws IOException {
-    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024);
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024, new DirectByteBufferAllocator());
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
     
     Utils.writeData(writer, values);
@@ -78,7 +79,7 @@ public class BenchmarkDeltaByteArray {
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void benchmarkSortedStringsWithPlainValuesWriter() throws IOException {
-    PlainValuesWriter writer = new PlainValuesWriter(64*1024);
+    PlainValuesWriter writer = new PlainValuesWriter(64*1024, new DirectByteBufferAllocator());
     BinaryPlainValuesReader reader = new BinaryPlainValuesReader();
     
     Utils.writeData(writer, sortedVals);
@@ -90,7 +91,7 @@ public class BenchmarkDeltaByteArray {
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void benchmarkSortedStringsWithDeltaLengthByteArrayValuesWriter() throws IOException {
-    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024);
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024, new DirectByteBufferAllocator());
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
     
     Utils.writeData(writer, sortedVals);

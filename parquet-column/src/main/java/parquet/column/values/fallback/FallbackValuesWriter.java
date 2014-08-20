@@ -97,6 +97,12 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     currentWriter.reset();
   }
 
+  @Override
+  public void close() {
+    initialWriter.close();
+    fallBackWriter.close();
+  }
+
   public DictionaryPage createDictionaryPage() {
     if (initialUsedAndHadDictionary) {
       return initialWriter.createDictionaryPage();

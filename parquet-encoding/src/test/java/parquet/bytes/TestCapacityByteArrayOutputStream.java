@@ -32,7 +32,7 @@ public class TestCapacityByteArrayOutputStream {
 
   @Test
   public void testWrite() throws Throwable {
-    CapacityByteArrayOutputStream capacityByteArrayOutputStream = new CapacityByteArrayOutputStream(10);
+    CapacityByteArrayOutputStream capacityByteArrayOutputStream = new CapacityByteArrayOutputStream(10, new HeapByteBufferAllocator());
     final int expectedSize = 54;
     for (int i = 0; i < expectedSize; i++) {
       capacityByteArrayOutputStream.write(i);
@@ -43,7 +43,7 @@ public class TestCapacityByteArrayOutputStream {
 
   @Test
   public void testWriteArray() throws Throwable {
-    CapacityByteArrayOutputStream capacityByteArrayOutputStream = new CapacityByteArrayOutputStream(10);
+    CapacityByteArrayOutputStream capacityByteArrayOutputStream = new CapacityByteArrayOutputStream(10, new DirectByteBufferAllocator());
     int v = 23;
     writeArraysOf3(capacityByteArrayOutputStream, v);
     validate(capacityByteArrayOutputStream, v * 3);
@@ -51,7 +51,7 @@ public class TestCapacityByteArrayOutputStream {
 
   @Test
   public void testWriteArrayAndInt() throws Throwable {
-    CapacityByteArrayOutputStream capacityByteArrayOutputStream = new CapacityByteArrayOutputStream(10);
+    CapacityByteArrayOutputStream capacityByteArrayOutputStream = new CapacityByteArrayOutputStream(10, new DirectByteBufferAllocator());
     for (int i = 0; i < 23; i++) {
       byte[] toWrite = { (byte)(i * 3), (byte)(i * 3 + 1)};
       capacityByteArrayOutputStream.write(toWrite);
@@ -64,7 +64,7 @@ public class TestCapacityByteArrayOutputStream {
 
   @Test
   public void testReset() throws Throwable {
-    CapacityByteArrayOutputStream capacityByteArrayOutputStream = new CapacityByteArrayOutputStream(10);
+    CapacityByteArrayOutputStream capacityByteArrayOutputStream = new CapacityByteArrayOutputStream(10, new DirectByteBufferAllocator());
     for (int i = 0; i < 54; i++) {
       capacityByteArrayOutputStream.write(i);
       assertEquals(i + 1, capacityByteArrayOutputStream.size());
@@ -83,7 +83,7 @@ public class TestCapacityByteArrayOutputStream {
 
   @Test
   public void testWriteArrayBiggerThanSlab() throws Throwable {
-    CapacityByteArrayOutputStream capacityByteArrayOutputStream = new CapacityByteArrayOutputStream(10);
+    CapacityByteArrayOutputStream capacityByteArrayOutputStream = new CapacityByteArrayOutputStream(10, new DirectByteBufferAllocator());
     int v = 23;
     writeArraysOf3(capacityByteArrayOutputStream, v);
     int n = v * 3;
@@ -109,7 +109,7 @@ public class TestCapacityByteArrayOutputStream {
 
   @Test
   public void testWriteArrayManySlabs() throws Throwable {
-    CapacityByteArrayOutputStream capacityByteArrayOutputStream = new CapacityByteArrayOutputStream(10);
+    CapacityByteArrayOutputStream capacityByteArrayOutputStream = new CapacityByteArrayOutputStream(10, new DirectByteBufferAllocator());
     int it = 500;
     int v = 23;
     for (int j = 0; j < it; j++) {
@@ -137,7 +137,7 @@ public class TestCapacityByteArrayOutputStream {
   public void testReplaceByte() throws Throwable {
     // test replace the first value
     {
-      CapacityByteArrayOutputStream cbaos = new CapacityByteArrayOutputStream(5);
+      CapacityByteArrayOutputStream cbaos = new CapacityByteArrayOutputStream(5, new DirectByteBufferAllocator());
       cbaos.write(10);
       assertEquals(0, cbaos.getCurrentIndex());
       cbaos.setByte(0, (byte) 7);
@@ -148,7 +148,7 @@ public class TestCapacityByteArrayOutputStream {
 
     // test replace value in the first slab
     {
-      CapacityByteArrayOutputStream cbaos = new CapacityByteArrayOutputStream(5);
+      CapacityByteArrayOutputStream cbaos = new CapacityByteArrayOutputStream(5, new DirectByteBufferAllocator());
       cbaos.write(10);
       cbaos.write(13);
       cbaos.write(15);
@@ -163,7 +163,7 @@ public class TestCapacityByteArrayOutputStream {
 
     // test replace in *not* the first slab
     {
-      CapacityByteArrayOutputStream cbaos = new CapacityByteArrayOutputStream(5);
+      CapacityByteArrayOutputStream cbaos = new CapacityByteArrayOutputStream(5, new DirectByteBufferAllocator());
 
       // advance part way through the 3rd slab
       for (int i = 0; i < 12; i++) {
@@ -181,7 +181,7 @@ public class TestCapacityByteArrayOutputStream {
 
     // test replace last value of a slab
     {
-      CapacityByteArrayOutputStream cbaos = new CapacityByteArrayOutputStream(5);
+      CapacityByteArrayOutputStream cbaos = new CapacityByteArrayOutputStream(5, new DirectByteBufferAllocator());
 
       // advance part way through the 3rd slab
       for (int i = 0; i < 12; i++) {
@@ -199,7 +199,7 @@ public class TestCapacityByteArrayOutputStream {
 
     // test replace last value
     {
-      CapacityByteArrayOutputStream cbaos = new CapacityByteArrayOutputStream(5);
+      CapacityByteArrayOutputStream cbaos = new CapacityByteArrayOutputStream(5, new DirectByteBufferAllocator());
 
       // advance part way through the 3rd slab
       for (int i = 0; i < 12; i++) {

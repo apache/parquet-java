@@ -25,6 +25,7 @@ import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
+import parquet.bytes.DirectByteBufferAllocator;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
@@ -50,21 +51,21 @@ public class RandomWritingBenchmarkTest extends BenchMarkTest{
   @BenchmarkOptions(benchmarkRounds = 10, warmupRounds = 2)
   @Test
   public void writeDeltaPackingTest(){
-    DeltaBinaryPackingValuesWriter writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100);
+    DeltaBinaryPackingValuesWriter writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100, new DirectByteBufferAllocator());
     runWriteTest(writer);
   }
 
   @BenchmarkOptions(benchmarkRounds = 10, warmupRounds = 2)
   @Test
   public void writeRLETest(){
-    ValuesWriter writer = new RunLengthBitPackingHybridValuesWriter(32,100);
+    ValuesWriter writer = new RunLengthBitPackingHybridValuesWriter(32,100, new DirectByteBufferAllocator());
     runWriteTest(writer);
   }
 
   @BenchmarkOptions(benchmarkRounds = 10, warmupRounds = 2)
   @Test
   public void writeDeltaPackingTest2(){
-    DeltaBinaryPackingValuesWriter writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100);
+    DeltaBinaryPackingValuesWriter writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100, new DirectByteBufferAllocator());
     runWriteTest(writer);
   }
 }

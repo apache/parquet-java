@@ -29,6 +29,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import parquet.bytes.BytesInput;
+import parquet.bytes.DirectByteBufferAllocator;
 import parquet.column.values.ValuesWriter;
 import parquet.io.ParquetDecodingException;
 
@@ -43,13 +44,13 @@ public class DeltaBinaryPackingValuesWriterTest {
   public void setUp() {
     blockSize = 128;
     miniBlockNum = 4;
-    writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100);
+    writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100, new DirectByteBufferAllocator());
     random = new Random();
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void miniBlockSizeShouldBeMultipleOf8() {
-    new DeltaBinaryPackingValuesWriter(1281, 4, 100);
+    new DeltaBinaryPackingValuesWriter(1281, 4, 100, new DirectByteBufferAllocator());
   }
 
   /* When data size is multiple of Block*/

@@ -25,6 +25,8 @@ import static parquet.column.Encoding.RLE_DICTIONARY;
 import parquet.column.impl.ColumnWriteStoreV1;
 import parquet.column.impl.ColumnWriteStoreV2;
 import parquet.column.page.PageWriteStore;
+import parquet.bytes.ByteBufferAllocator;
+import parquet.bytes.HeapByteBufferAllocator;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.boundedint.DevNullValuesWriter;
 import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
@@ -74,36 +76,42 @@ public class ParquetProperties {
   private final int dictionaryPageSizeThreshold;
   private final WriterVersion writerVersion;
   private final boolean enableDictionary;
+  private ByteBufferAllocator allocator;
 
   public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict) {
+    this(dictPageSize, writerVersion, enableDict, new HeapByteBufferAllocator());
+  }
+
+  public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict, ByteBufferAllocator allocator) {
     this.dictionaryPageSizeThreshold = dictPageSize;
     this.writerVersion = writerVersion;
     this.enableDictionary = enableDict;
+    this.allocator=allocator;
   }
 
-  public static ValuesWriter getColumnDescriptorValuesWriter(int maxLevel,  int initialSizePerCol) {
+  public static ValuesWriter getColumnDescriptorValuesWriter(int maxLevel,  int initialSizePerCol, ByteBufferAllocator allocator) {
     if (maxLevel == 0) {
       return new DevNullValuesWriter();
     } else {
       return new RunLengthBitPackingHybridValuesWriter(
-          getWidthFromMaxInt(maxLevel), initialSizePerCol);
+          getWidthFromMaxInt(maxLevel), initialSizePerCol, allocator!=null?allocator:new HeapByteBufferAllocator());
     }
   }
 
   private ValuesWriter plainWriter(ColumnDescriptor path, int initialSizePerCol) {
     switch (path.getType()) {
     case BOOLEAN:
-      return new BooleanPlainValuesWriter();
+      return new BooleanPlainValuesWriter(this.allocator);
     case INT96:
-      return new FixedLenByteArrayPlainValuesWriter(12, initialSizePerCol);
+      return new FixedLenByteArrayPlainValuesWriter(12, initialSizePerCol, this.allocator);
     case FIXED_LEN_BYTE_ARRAY:
-      return new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol);
+      return new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol, this.allocator);
     case BINARY:
     case INT32:
     case INT64:
     case DOUBLE:
     case FLOAT:
-      return new PlainValuesWriter(initialSizePerCol);
+      return new PlainValuesWriter(initialSizePerCol, this.allocator);
     default:
       throw new IllegalArgumentException("Unknown type " + path.getType());
     }
@@ -128,19 +136,19 @@ public class ParquetProperties {
     case BOOLEAN:
       throw new IllegalArgumentException("no dictionary encoding for BOOLEAN");
     case BINARY:
-      return new PlainBinaryDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage);
+      return new PlainBinaryDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage, this.allocator);
     case INT32:
-      return new PlainIntegerDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage);
+      return new PlainIntegerDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage, this.allocator);
     case INT64:
-      return new PlainLongDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage);
+      return new PlainLongDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage, this.allocator);
     case INT96:
-      return new PlainFixedLenArrayDictionaryValuesWriter(dictionaryPageSizeThreshold, 12, encodingForDataPage, encodingForDictionaryPage);
+      return new PlainFixedLenArrayDictionaryValuesWriter(dictionaryPageSizeThreshold, 12, encodingForDataPage, encodingForDictionaryPage, this.allocator);
     case DOUBLE:
-      return new PlainDoubleDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage);
+      return new PlainDoubleDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage, this.allocator);
     case FLOAT:
-      return new PlainFloatDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage);
+      return new PlainFloatDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage, this.allocator);
     case FIXED_LEN_BYTE_ARRAY:
-      return new PlainFixedLenArrayDictionaryValuesWriter(dictionaryPageSizeThreshold, path.getTypeLength(), encodingForDataPage, encodingForDictionaryPage);
+      return new PlainFixedLenArrayDictionaryValuesWriter(dictionaryPageSizeThreshold, path.getTypeLength(), encodingForDataPage, encodingForDictionaryPage, this.allocator);
     default:
       throw new IllegalArgumentException("Unknown type " + path.getType());
     }
@@ -153,12 +161,12 @@ public class ParquetProperties {
     case PARQUET_2_0:
       switch (path.getType()) {
       case BOOLEAN:
-        return new RunLengthBitPackingHybridValuesWriter(1, initialSizePerCol);
+        return new RunLengthBitPackingHybridValuesWriter(1, initialSizePerCol, this.allocator);
       case BINARY:
       case FIXED_LEN_BYTE_ARRAY:
-        return new DeltaByteArrayWriter(initialSizePerCol);
+        return new DeltaByteArrayWriter(initialSizePerCol, this.allocator);
       case INT32:
-        return new DeltaBinaryPackingValuesWriter(initialSizePerCol);
+        return new DeltaBinaryPackingValuesWriter(initialSizePerCol, this.allocator);
       case INT96:
       case INT64:
       case DOUBLE:

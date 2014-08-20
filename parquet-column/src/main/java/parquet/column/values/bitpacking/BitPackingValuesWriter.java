@@ -24,6 +24,7 @@ import static parquet.column.values.bitpacking.BitPacking.getBitPackingWriter;
 
 import java.io.IOException;
 
+import parquet.bytes.ByteBufferAllocator;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.column.Encoding;
@@ -42,13 +43,15 @@ public class BitPackingValuesWriter extends ValuesWriter {
   private CapacityByteArrayOutputStream out;
   private BitPackingWriter bitPackingWriter;
   private int bitsPerValue;
+  private ByteBufferAllocator allocator;
 
   /**
    * @param bound the maximum value stored by this column
    */
-  public BitPackingValuesWriter(int bound, int initialCapacity) {
+  public BitPackingValuesWriter(int bound, int initialCapacity, ByteBufferAllocator allocator) {
     this.bitsPerValue = getWidthFromMaxInt(bound);
-    this.out = new CapacityByteArrayOutputStream(initialCapacity);
+    this.allocator=allocator;
+    this.out = new CapacityByteArrayOutputStream(initialCapacity, this.allocator);
     init();
   }
 
@@ -100,6 +103,11 @@ public class BitPackingValuesWriter extends ValuesWriter {
   public void reset() {
     out.reset();
     init();
+  }
+
+  @Override
+  public void close() {
+    out.close();
   }
 
   /**

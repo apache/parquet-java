@@ -83,5 +83,22 @@ public interface ColumnWriter {
    */
   void writeNull(int repetitionLevel, int definitionLevel);
 
+  /**
+   * Flushes the underlying store. This should be called when there are no
+   * remaining triplets to be written.
+   */
+  void flush();
+
+ /**
+  * Close the underlying store. This should be called when there are no
+  * more data to be written.
+  */
+  void close();
+
+  /**
+   * used to decide when to write a page or row group
+   * @return the number of bytes of memory used to buffer the current data
+   */
+  long getBufferedSizeInMemory();
 }
 

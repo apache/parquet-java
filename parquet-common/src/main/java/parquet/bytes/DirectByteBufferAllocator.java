@@ -16,18 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.column.values.boundedint;
+package parquet.bytes;
 
-import parquet.bytes.ByteBufferAllocator;
-import parquet.column.values.ValuesReader;
-import parquet.column.values.ValuesWriter;
+import java.nio.ByteBuffer;
 
-public abstract class BoundedIntValuesFactory {
-  public static ValuesReader getBoundedReader(int bound) {
-    return bound == 0 ? new ZeroIntegerValuesReader() : new BoundedIntValuesReader(bound);
+public class DirectByteBufferAllocator implements ByteBufferAllocator{
+  public static final DirectByteBufferAllocator getInstance(){return new DirectByteBufferAllocator();}
+  public DirectByteBufferAllocator() {
+    super();
   }
 
-  public static ValuesWriter getBoundedWriter(int bound, int initialCapacity, ByteBufferAllocator allocator) {
-    return bound == 0 ? new DevNullValuesWriter() : new BoundedIntValuesWriter(bound, initialCapacity, allocator);
+  public ByteBuffer allocate(final int size) {
+    return ByteBuffer.allocateDirect(size);
   }
+
+  @Override
+  public void release(ByteBuffer b) {
+    return;
+  }
+
+
 }

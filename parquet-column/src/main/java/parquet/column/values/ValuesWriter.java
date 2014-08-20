@@ -56,6 +56,12 @@ public abstract class ValuesWriter {
   public abstract void reset();
 
   /**
+   * Called to close the values writer. Any output stream is closed and can no longer be used.
+   * All resources are released.
+   */
+  public abstract void close();
+
+  /**
    * @return the dictionary page or null if not dictionary based
    */
   public DictionaryPage createDictionaryPage() {

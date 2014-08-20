@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 
 import parquet.Log;
+import parquet.bytes.ByteBufferAllocator;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.bytes.LittleEndianDataOutputStream;
@@ -43,9 +44,11 @@ public class PlainValuesWriter extends ValuesWriter {
 
   private CapacityByteArrayOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
+  private ByteBufferAllocator allocator;
 
-  public PlainValuesWriter(int initialSize) {
-    arrayOut = new CapacityByteArrayOutputStream(initialSize);
+  public PlainValuesWriter(int initialSize, ByteBufferAllocator allocator) {
+    this.allocator=allocator;
+    arrayOut = new CapacityByteArrayOutputStream(initialSize, this.allocator);
     out = new LittleEndianDataOutputStream(arrayOut);
   }
 
@@ -123,6 +126,11 @@ public class PlainValuesWriter extends ValuesWriter {
   @Override
   public void reset() {
     arrayOut.reset();
+  }
+
+  @Override
+  public void close() {
+    arrayOut.close();
   }
 
   @Override

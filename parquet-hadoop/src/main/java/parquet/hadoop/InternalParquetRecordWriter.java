@@ -32,9 +32,8 @@ import parquet.Ints;
 import parquet.Log;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ParquetProperties;
+import parquet.bytes.ByteBufferAllocator;
 import parquet.column.ParquetProperties.WriterVersion;
-import parquet.column.impl.ColumnWriteStoreV1;
-import parquet.column.impl.ColumnWriteStoreV2;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.hadoop.api.WriteSupport;
 import parquet.hadoop.api.WriteSupport.FinalizedWriteContext;
@@ -65,6 +64,7 @@ class InternalParquetRecordWriter<T> {
 
   private ColumnWriteStore columnStore;
   private ColumnChunkPageWriteStore pageStore;
+  private ByteBufferAllocator allocator;
 
 
   /**
@@ -86,7 +86,8 @@ class InternalParquetRecordWriter<T> {
       int dictionaryPageSize,
       boolean enableDictionary,
       boolean validating,
-      WriterVersion writerVersion) {
+      WriterVersion writerVersion,
+      ByteBufferAllocator allocator) {
     this.parquetFileWriter = parquetFileWriter;
     this.writeSupport = checkNotNull(writeSupport, "writeSupport");
     this.schema = schema;
@@ -97,6 +98,7 @@ class InternalParquetRecordWriter<T> {
     this.compressor = compressor;
     this.validating = validating;
     this.parquetProperties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary);
+    this.allocator=allocator;
     initStore();
   }
 
@@ -108,7 +110,7 @@ class InternalParquetRecordWriter<T> {
     // therefore this size is cast to int, since allocating byte array in under layer needs to
     // limit the array size in an int scope.
     int initialBlockBufferSize = Ints.checkedCast(max(MINIMUM_BUFFER_SIZE, rowGroupSize / schema.getColumns().size() / 5));
-    pageStore = new ColumnChunkPageWriteStore(compressor, schema, initialBlockBufferSize);
+    pageStore = new ColumnChunkPageWriteStore(compressor, schema, initialBlockBufferSize, this.allocator);
     // we don't want this number to be too small either
     // ideally, slightly bigger than the page size, but not bigger than the block buffer
     int initialPageBufferSize = max(MINIMUM_BUFFER_SIZE, min(pageSize + pageSize / 10, initialBlockBufferSize));
