@@ -32,7 +32,7 @@ public abstract class HiveGroupConverter extends GroupConverter {
       return ETypeConverter.getNewConverter(type.asPrimitiveType().getPrimitiveTypeName().javaType,
           index, parent);
     } else {
-      if (type.getOriginalType().equals(OriginalType.LIST)) {
+      if (type.getOriginalType().equals(OriginalType.LIST) || type.asGroupType().getRepetition() == Repetition.REPEATED) {
         return new ArrayWritableGroupConverter(type.asGroupType(), parent, index);
       } else {
         return new DataWritableGroupConverter(type.asGroupType(), parent, index);
