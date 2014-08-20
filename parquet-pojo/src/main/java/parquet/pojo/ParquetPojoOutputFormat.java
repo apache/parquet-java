@@ -35,7 +35,6 @@ import java.util.Map;
  * }
  * </pre>
  *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
 public class ParquetPojoOutputFormat extends ParquetOutputFormat {
   public ParquetPojoOutputFormat() {
@@ -49,14 +48,14 @@ public class ParquetPojoOutputFormat extends ParquetOutputFormat {
    * @param clazz the class who's name will be serialized
    */
   public static void setSchemaClass(Job job, Class clazz) {
-    SchemaUtils.setSchemaClass(SchemaUtils.Type.Output, job, clazz);
+    SchemaUtils.setSchemaClass(PojoType.Output, job, clazz);
   }
 
   public static void setMapSchemaClass(Job job, Class<? extends Map> clazz, Class keyClass, Class valueClass) {
-    SchemaUtils.setMapSchemaClass(SchemaUtils.Type.Output, job, clazz, keyClass, valueClass);
+    SchemaUtils.setMapSchemaClass(PojoType.Output, job, clazz, keyClass, valueClass);
   }
 
   public static void setListSchemaClass(Job job, Class<? extends List> clazz, Class valueClass) {
-    SchemaUtils.setListSchemaClass(SchemaUtils.Type.Output, job, clazz, valueClass);
+    SchemaUtils.setListSchemaClass(PojoType.Output, job, clazz, valueClass);
   }
 }

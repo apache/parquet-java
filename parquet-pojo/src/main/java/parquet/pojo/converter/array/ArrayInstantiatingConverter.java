@@ -22,7 +22,6 @@ import java.lang.reflect.Array;
 /**
  * Converter whos sole job is to read a integer value and create a array of that size for the next converter to use
  *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
 public class ArrayInstantiatingConverter extends PrimitiveConverter {
   private final Class componentType;

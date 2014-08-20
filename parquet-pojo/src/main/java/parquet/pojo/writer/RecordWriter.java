@@ -20,17 +20,15 @@ import parquet.pojo.field.FieldAccessor;
 
 /**
  * Writes objects to the underlying consumer
- *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
-public interface RecordWriter {
+public interface RecordWriter<T> {
   /**
    * Writes values and any dependent fields / groups, but does not write the containing field.
    *
    * @param value
    * @param recordConsumer
    */
-  void writeValue(Object value, RecordConsumer recordConsumer);
+  void writeValue(T value, RecordConsumer recordConsumer);
 
   /**
    * Writes values / dependent fields as well as the containing field. Uses the <code>fieldAccessor</code> to extract the correct field from

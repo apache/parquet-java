@@ -70,7 +70,7 @@ public class Resolver {
     return newResolver(clazz, fieldIfPresent, genericArgumentsIfPresent, parentContainerIfPresent).getType();
   }
 
-  public RecordWriter getWriter() {
+  public <T> RecordWriter<T> getWriter() {
     return newResolver(clazz, fieldIfPresent, genericArgumentsIfPresent, parentContainerIfPresent).getWriter();
   }
 

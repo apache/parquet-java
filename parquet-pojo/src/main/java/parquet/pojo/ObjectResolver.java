@@ -70,6 +70,9 @@ class ObjectResolver extends Resolver {
     List<Resolver> resolvers = new ArrayList<Resolver>();
     List<Field> fields = FieldUtils.getAllFields(clazz);
 
+    //if we have a field, then we have a parent object that expects us to fill out a object and put it in the container which it will read
+    //after the converter runs, if we don't, we are either a top level object, or a child object of an array / list / map which reaches into the container
+    //for this object and uses it to populate its collection
     Container c = (fieldIfPresent != null) ? parentContainerIfPresent : container;
     for (Field field : fields) {
       Class[] genericArguments = getGenericArgs(field);

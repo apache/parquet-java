@@ -27,8 +27,6 @@ import java.util.Map;
 /**
  * A {@link RecordWriter} for types that implement {@link Map}
  * Writes a map as a series of repeated groups of keys and values, handles nulls correctly
- *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
 public class MapWriter implements RecordWriter {
   private final RecordWriter keyWriter;

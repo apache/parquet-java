@@ -19,8 +19,6 @@ import java.lang.reflect.Field;
 
 /**
  * Uses reflection to access fields, usually used as a fall back to byte-code generation if the fields are private
- *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
 public class ReflectionFieldAccessor implements FieldAccessor {
   private final Field field;

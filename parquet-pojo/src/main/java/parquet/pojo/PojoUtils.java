@@ -15,8 +15,22 @@
  */
 package parquet.pojo;
 
-public class PojoUtils {
+import java.util.HashMap;
+import java.util.Map;
 
+public class PojoUtils {
+  private static final Map<String, Class> namesToClasses = new HashMap<String, Class>();
+
+  static {
+    namesToClasses.put(boolean.class.getName(), boolean.class);
+    namesToClasses.put(byte.class.getName(), byte.class);
+    namesToClasses.put(short.class.getName(), short.class);
+    namesToClasses.put(int.class.getName(), int.class);
+    namesToClasses.put(char.class.getName(), char.class);
+    namesToClasses.put(long.class.getName(), long.class);
+    namesToClasses.put(float.class.getName(), float.class);
+    namesToClasses.put(double.class.getName(), double.class);
+  }
   /**
    * Utility method for resolving classes to name
    *
@@ -25,24 +39,10 @@ public class PojoUtils {
    * @throws ClassNotFoundException if the class doesn't exist
    */
   public static Class classForNameWithPrimitiveSupport(String name) throws ClassNotFoundException {
-    if (name.equals(boolean.class.getName())) {
-      return boolean.class;
-    } else if (name.equals(byte.class.getName())) {
-      return byte.class;
-    } else if (name.equals(short.class.getName())) {
-      return short.class;
-    } else if (name.equals(int.class.getName())) {
-      return int.class;
-    } else if (name.equals(char.class.getName())) {
-      return char.class;
-    } else if (name.equals(long.class.getName())) {
-      return long.class;
-    } else if (name.equals(float.class.getName())) {
-      return float.class;
-    } else if (name.equals(double.class.getName())) {
-      return double.class;
-    } else {
-      return Class.forName(name);
+    Class clazz = namesToClasses.get(name);
+    if(clazz != null) {
+      return clazz;
     }
+    return Class.forName(name);
   }
 }

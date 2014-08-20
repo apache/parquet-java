@@ -21,8 +21,6 @@ import parquet.pojo.field.FieldAccessor;
 
 /**
  * Writers for primitives and their object equivalents
- *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
 public class PrimitiveWriters {
   public static class BooleanWriter implements RecordWriter {

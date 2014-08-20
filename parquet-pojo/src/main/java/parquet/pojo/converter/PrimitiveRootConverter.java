@@ -22,7 +22,6 @@ import parquet.pojo.Resolver;
 /**
  * {@link GroupConverter} wrapper for primitive converters so they can be used at the top level
  *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
 public class PrimitiveRootConverter extends GroupConverter implements PojoConverter {
   private final Converter converter;
@@ -45,11 +44,11 @@ public class PrimitiveRootConverter extends GroupConverter implements PojoConver
 
   @Override
   public void end() {
-    currentObject = pojoConverter.getRawValue();
+    currentObject = pojoConverter.getValueAndReset();
   }
 
   @Override
-  public Object getRawValue() {
+  public Object getValueAndReset() {
     return currentObject;
   }
 }

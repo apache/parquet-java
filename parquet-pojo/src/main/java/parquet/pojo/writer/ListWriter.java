@@ -26,13 +26,12 @@ import java.util.List;
 
 /**
  * {@link RecordWriter} for classes that implement {@link java.util.List}
- *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
-public class ListWriter implements RecordWriter {
-  private final RecordWriter valuesWriter;
+public class ListWriter<T> implements RecordWriter<List<T>> {
+  private final RecordWriter<T> valuesWriter;
 
   public ListWriter(Field field, Class... genericArguments) {
+    //check if we've explicitly passed the generic arguments down
     if (genericArguments.length == 1) {
       valuesWriter = Resolver.newResolver(genericArguments[0], null, genericArguments).getWriter();
     } else {
@@ -48,16 +47,14 @@ public class ListWriter implements RecordWriter {
   }
 
   @Override
-  public void writeValue(Object value, RecordConsumer recordConsumer) {
-    List list = (List) value;
-
+  public void writeValue(List<T> list, RecordConsumer recordConsumer) {
     if (list == null) {
       return;
     }
 
     recordConsumer.startField(null, 0);
 
-    for (Object v : list) {
+    for (T v : list) {
       recordConsumer.startGroup();
 
       if (v != null) {
@@ -76,7 +73,7 @@ public class ListWriter implements RecordWriter {
   public void writeFromField(
     Object parent, RecordConsumer recordConsumer, int index, FieldAccessor fieldAccessor
   ) {
-    List list = (List) fieldAccessor.get(parent);
+    List<T> list = (List<T>) fieldAccessor.get(parent);
 
     if (list == null) {
       return;
@@ -87,7 +84,7 @@ public class ListWriter implements RecordWriter {
     recordConsumer.startGroup();
 
     recordConsumer.startField(null, 0);
-    for (Object v : list) {
+    for (T v : list) {
       recordConsumer.startGroup();
       if(v != null) {
         recordConsumer.startField(null, 0);

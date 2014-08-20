@@ -25,6 +25,9 @@ import parquet.schema.Type;
 
 import java.lang.reflect.Field;
 
+/**
+ * Resolves classes of type {@link java.util.List}, only works on lists with generic declarations, through fields or through configuration
+ */
 class ListResolver extends Resolver {
   private Resolver valuesResolver;
 
@@ -36,6 +39,13 @@ class ListResolver extends Resolver {
 
     if (fieldIfPresent != null) {
       genericArgumentsIfPresent = getGenericArgs(fieldIfPresent);
+    }
+
+    //check if we've been provided a valid generic type arg
+    if(genericArgumentsIfPresent.length != 1) {
+      throw new BadGenericsConfigurationException(
+        "List type requires 1 generic argument, provided through a field declaration or through configuration."
+      );
     }
 
     valuesResolver = new Resolver(genericArgumentsIfPresent[0], null, null, null);

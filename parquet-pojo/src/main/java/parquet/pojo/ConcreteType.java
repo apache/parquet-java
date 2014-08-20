@@ -33,7 +33,6 @@ import java.lang.annotation.Target;
  * }
  * </pre>
  *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
 @Target(value = ElementType.FIELD)
 @Retention(value = RetentionPolicy.RUNTIME)

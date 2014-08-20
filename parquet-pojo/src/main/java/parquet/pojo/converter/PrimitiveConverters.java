@@ -28,7 +28,6 @@ import java.util.Map;
 /**
  * Converters for all the primitive types as well as {@link String}, byte array and {@link Enum} support
  *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
 public class PrimitiveConverters {
 
@@ -66,7 +65,7 @@ public class PrimitiveConverters {
     }
 
     @Override
-    public Object getRawValue() {
+    public Object getValueAndReset() {
       Object tmp = boxedValue;
       boxedValue = null;
       return tmp;

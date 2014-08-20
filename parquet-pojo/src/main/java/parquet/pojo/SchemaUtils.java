@@ -25,10 +25,6 @@ import java.util.List;
 import java.util.Map;
 
 public class SchemaUtils {
-  public enum Type {
-    Input,
-    Output
-  }
 
   /**
    * Encodes the class to be used in writing into the job conf, this is then written into the file header
@@ -36,24 +32,16 @@ public class SchemaUtils {
    * @param job   configuration for the job
    * @param clazz the class who's name will be serialized
    */
-  public static void setSchemaClass(Type type, Job job, Class clazz) {
+  public static <T> void setSchemaClass(PojoType type, Job job, Class<T> clazz) {
     Preconditions.checkArgument(!FieldUtils.isMap(clazz), "Use setMapSchemaClass for map classes.");
     Preconditions.checkArgument(!FieldUtils.isList(clazz), "Use setListSchemaClass for list classes.");
 
     Configuration configuration = ContextUtil.getConfiguration(job);
-
-    switch (type) {
-      case Input: {
-        configuration.set(ParquetPojoConstants.PARQUET_POJO_INPUT_CLASS_KEY, clazz.getName());
-      }
-      case Output: {
-        configuration.set(ParquetPojoConstants.PARQUET_POJO_OUTPUT_CLASS_KEY, clazz.getName());
-      }
-    }
+    type.addToConfiguration(clazz, configuration);
   }
 
-  public static void setMapSchemaClass(
-    Type type, Job job, Class<? extends Map> clazz, Class keyClass, Class valueClass
+  public static <K, V> void setMapSchemaClass(
+    PojoType type, Job job, Class<? extends Map> clazz, Class<K> keyClass, Class<V> valueClass
   ) {
     Preconditions.checkArgument(
       FieldUtils.isMap(clazz),
@@ -62,22 +50,10 @@ public class SchemaUtils {
     Preconditions.checkArgument(clazz != Map.class, "Cannot use java.util.Map on top level fields");
 
     Configuration configuration = ContextUtil.getConfiguration(job);
-
-    switch (type) {
-      case Input: {
-        configuration.set(ParquetPojoConstants.PARQUET_POJO_INPUT_CLASS_KEY, clazz.getName());
-        configuration.set(ParquetPojoConstants.PARQUET_POJO_INPUT_MAP_KEY_CLASS, keyClass.getName());
-        configuration.set(ParquetPojoConstants.PARQUET_POJO_INPUT_MAP_VALUE_CLASS, valueClass.getName());
-      }
-      case Output: {
-        configuration.set(ParquetPojoConstants.PARQUET_POJO_OUTPUT_CLASS_KEY, clazz.getName());
-        configuration.set(ParquetPojoConstants.PARQUET_POJO_OUTPUT_MAP_KEY_CLASS, keyClass.getName());
-        configuration.set(ParquetPojoConstants.PARQUET_POJO_OUTPUT_MAP_VALUE_CLASS, valueClass.getName());
-      }
-    }
+    type.addMapClassToConfiguration(clazz, keyClass, valueClass, configuration);
   }
 
-  public static void setListSchemaClass(Type type, Job job, Class<? extends List> clazz, Class valueClass) {
+  public static <T> void setListSchemaClass(PojoType type, Job job, Class<? extends List> clazz, Class<T> valueClass) {
     Preconditions.checkArgument(
       FieldUtils.isList(clazz), "Method only valid on classes that implement java.util.List"
     );
@@ -87,16 +63,6 @@ public class SchemaUtils {
     );
 
     Configuration configuration = ContextUtil.getConfiguration(job);
-
-    switch (type) {
-      case Input: {
-        configuration.set(ParquetPojoConstants.PARQUET_POJO_INPUT_CLASS_KEY, clazz.getName());
-        configuration.set(ParquetPojoConstants.PARQUET_POJO_INPUT_LIST_VALUE_CLASS, valueClass.getName());
-      }
-      case Output: {
-        configuration.set(ParquetPojoConstants.PARQUET_POJO_OUTPUT_CLASS_KEY, clazz.getName());
-        configuration.set(ParquetPojoConstants.PARQUET_POJO_OUTPUT_LIST_VALUE_CLASS, valueClass.getName());
-      }
-    }
+    type.addListClassToConfiguration(clazz, valueClass, configuration);
   }
 }

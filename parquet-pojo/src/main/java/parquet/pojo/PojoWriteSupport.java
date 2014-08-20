@@ -26,9 +26,6 @@ import parquet.schema.MessageType;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * @author Jason Ruckman https://github.com/JasonRuckman
- */
 public class PojoWriteSupport extends WriteSupport {
   private RecordConsumer recordConsumer;
   private RootWriter rootWriter;

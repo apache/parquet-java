@@ -17,9 +17,8 @@ package parquet.pojo.converter;
 
 public interface PojoConverter {
   /**
-   * @return the fully materialized value of this converter, boxed if necessary
-   * @author Jason Ruckman
+   * @return the fully materialized value of this converter, boxed if necessary, nulls out the reference to the current value after returning
    * Used to get the value of a child converter
    */
-  Object getRawValue();
+  Object getValueAndReset();
 }

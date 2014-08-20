@@ -34,7 +34,6 @@ import java.util.Map;
 /**
  * Converter for types that implement {@link Map}. Uses {@link ConcreteType} to resolve ambiguities about interfaces on left sides of field declarations
  *
- * @author Jason Ruckman
  */
 public class MapConverter extends GroupConverter implements PojoConverter {
   private final Container mapContainer = new Container();
@@ -46,6 +45,8 @@ public class MapConverter extends GroupConverter implements PojoConverter {
   public MapConverter(Class clazz, Field field, Container parentContainer, Class... genericArguments) {
     this.parentContainer = parentContainer;
 
+    //represents the types for the key and value of the map, if we don't have a field to interrogate,
+    //so the key type will be in [0] and the value in [1]
     if (genericArguments.length == 2) {
       Converter keyConverter = Resolver.newResolver(genericArguments[0], null, null).getConverter();
       Converter valueConverter = Resolver.newResolver(genericArguments[1], null, null).getConverter();
@@ -108,7 +109,7 @@ public class MapConverter extends GroupConverter implements PojoConverter {
   }
 
   @Override
-  public Object getRawValue() {
+  public Object getValueAndReset() {
     return mapContainer.get();
   }
 
@@ -150,12 +151,12 @@ public class MapConverter extends GroupConverter implements PojoConverter {
     @Override
     public void end() {
       mapContainer.get().put(
-        keyConverterAsPojoConverter.getRawValue(), valueConverterAsPojoConverter.getRawValue()
+        keyConverterAsPojoConverter.getValueAndReset(), valueConverterAsPojoConverter.getValueAndReset()
       );
     }
 
     @Override
-    public Object getRawValue() {
+    public Object getValueAndReset() {
       throw new NotImplementedException();
     }
   }

@@ -36,7 +36,7 @@ public class PojoRecordMaterializer extends RecordMaterializer {
 
   @Override
   public Object getCurrentRecord() {
-    return pojoConverter.getRawValue();
+    return pojoConverter.getValueAndReset();
   }
 
   @Override

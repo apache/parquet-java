@@ -29,7 +29,7 @@ import java.util.Map;
  * ReadSupport for reading native java objects from a parquet file.
  */
 public class PojoReadSupport extends ReadSupport<Object> {
-  private String getFromMetadataOrFallbackToConf(
+  private String getFromConfOrFallbackToMetadata(
     String key, Configuration configuration, Map<String, String> metadata
   ) {
     String result = configuration.get(key);
@@ -50,7 +50,7 @@ public class PojoReadSupport extends ReadSupport<Object> {
     Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema,
     ReadContext readContext
   ) {
-    String className = getFromMetadataOrFallbackToConf(
+    String className = getFromConfOrFallbackToMetadata(
       ParquetPojoConstants.PARQUET_POJO_INPUT_CLASS_KEY, configuration, keyValueMetaData
     );
 
@@ -71,12 +71,12 @@ public class PojoReadSupport extends ReadSupport<Object> {
       if (FieldUtils.isMap(encodedClass)) {
         genericArguments = new Class[]{
           PojoUtils.classForNameWithPrimitiveSupport(
-            getFromMetadataOrFallbackToConf(
+            getFromConfOrFallbackToMetadata(
               ParquetPojoConstants.PARQUET_POJO_OUTPUT_MAP_KEY_CLASS, configuration, keyValueMetaData
             )
           ),
           PojoUtils.classForNameWithPrimitiveSupport(
-            getFromMetadataOrFallbackToConf(
+            getFromConfOrFallbackToMetadata(
               ParquetPojoConstants.PARQUET_POJO_OUTPUT_MAP_VALUE_CLASS, configuration, keyValueMetaData
             )
           )
@@ -84,7 +84,7 @@ public class PojoReadSupport extends ReadSupport<Object> {
       } else if (FieldUtils.isList(encodedClass)) {
         genericArguments = new Class[]{
           PojoUtils.classForNameWithPrimitiveSupport(
-            getFromMetadataOrFallbackToConf(
+            getFromConfOrFallbackToMetadata(
               ParquetPojoConstants.PARQUET_POJO_OUTPUT_LIST_VALUE_CLASS, configuration, keyValueMetaData
             )
           )

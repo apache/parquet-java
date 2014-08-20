@@ -30,7 +30,6 @@ import java.util.List;
 /**
  * A converter that is used for non-primitive / array / map or list types
  *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
 public class ObjectConverter extends GroupConverter implements PojoConverter {
   private final Class clazz;
@@ -79,7 +78,7 @@ public class ObjectConverter extends GroupConverter implements PojoConverter {
   }
 
   @Override
-  public Object getRawValue() {
+  public Object getValueAndReset() {
     return thisInstanceContainer.get();
   }
 }

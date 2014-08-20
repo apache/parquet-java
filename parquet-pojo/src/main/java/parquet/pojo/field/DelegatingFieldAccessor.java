@@ -20,8 +20,6 @@ import java.lang.reflect.Modifier;
 
 /**
  * Checks if a field is not private, if so it will delegate to {@link AsmFieldAccessor} otherwise it will delegate to {@link ReflectionFieldAccessor}
- *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
 public class DelegatingFieldAccessor implements FieldAccessor {
   private final Field field;

@@ -24,7 +24,7 @@ public class ArrayWriters {
   /**
    * Base class for writing array objects to {@link RecordConsumer}. Writes lengths as integers, then writes the repeated values
    */
-  public static abstract class ArrayWriter implements RecordWriter {
+  public static abstract class ArrayWriter<T> implements RecordWriter<T> {
     protected void writeLengthToConsumer(Object value, RecordConsumer recordConsumer) {
       int length = Array.getLength(value);
       recordConsumer.startField(null, 0);
@@ -33,11 +33,11 @@ public class ArrayWriters {
     }
 
     protected abstract void writeToConsumer(
-      Object array, RecordConsumer recordConsumer
+      T array, RecordConsumer recordConsumer
     );
 
     @Override
-    public void writeValue(Object value, RecordConsumer recordConsumer) {
+    public void writeValue(T value, RecordConsumer recordConsumer) {
       if (value == null) {
         return;
       }
@@ -61,7 +61,7 @@ public class ArrayWriters {
       recordConsumer.startField(null, index);
       recordConsumer.startGroup();
 
-      writeValue(value, recordConsumer);
+      writeValue((T)value, recordConsumer);
 
       recordConsumer.endGroup();
       recordConsumer.endField(null, index);
@@ -69,104 +69,92 @@ public class ArrayWriters {
     }
   }
 
-  public static class BoolArrayWriter extends ArrayWriter {
+  public static class BoolArrayWriter extends ArrayWriter<boolean[]> {
     @Override
-    protected void writeToConsumer(Object array, RecordConsumer recordConsumer) {
-      boolean[] values = (boolean[]) array;
-
-      for(boolean b : values) {
+    protected void writeToConsumer(boolean[] array, RecordConsumer recordConsumer) {
+      for(boolean b : array) {
         recordConsumer.addBoolean(b);
       }
     }
   }
 
-  public static class CharArrayWriter extends ArrayWriter {
+  public static class CharArrayWriter extends ArrayWriter<char[]> {
     @Override
-    protected void writeToConsumer(Object array,  RecordConsumer recordConsumer) {
-      char[] chars = (char[]) array;
-      for(char c : chars) {
+    protected void writeToConsumer(char[] array,  RecordConsumer recordConsumer) {
+      for(char c : array) {
         recordConsumer.addInteger(c);
       }
     }
   }
 
-  public static class ShortArrayWriter extends ArrayWriter {
+  public static class ShortArrayWriter extends ArrayWriter<short[]> {
     @Override
-    protected void writeToConsumer(Object array, RecordConsumer recordConsumer) {
-      short[] shorts = (short[]) array;
-      for(short s : shorts) {
+    protected void writeToConsumer(short[] array, RecordConsumer recordConsumer) {
+      for(short s : array) {
         recordConsumer.addInteger(s);
       }
     }
   }
 
-  public static class IntArrayWriter extends ArrayWriter {
+  public static class IntArrayWriter extends ArrayWriter<int[]> {
     @Override
-    protected void writeToConsumer(Object array, RecordConsumer recordConsumer) {
-      int[] ints = (int[]) array;
-      for(int i : ints) {
+    protected void writeToConsumer(int[] array, RecordConsumer recordConsumer) {
+      for(int i : array) {
         recordConsumer.addInteger(i);
       }
     }
   }
 
-  public static class LongArrayWriter extends ArrayWriter {
+  public static class LongArrayWriter extends ArrayWriter<long[]> {
     @Override
-    protected void writeToConsumer(Object array, RecordConsumer recordConsumer) {
-      long[] longs = (long[]) array;
-      for(long l : longs) {
+    protected void writeToConsumer(long[] array, RecordConsumer recordConsumer) {
+      for(long l : array) {
         recordConsumer.addLong(l);
       }
     }
   }
 
-  public static class FloatArrayWriter extends ArrayWriter {
+  public static class FloatArrayWriter extends ArrayWriter<float[]> {
     @Override
-    protected void writeToConsumer(Object array, RecordConsumer recordConsumer) {
-      float[] floats = (float[]) array;
-      for(float f : floats) {
+    protected void writeToConsumer(float[] array, RecordConsumer recordConsumer) {
+      for(float f : array) {
         recordConsumer.addFloat(f);
       }
     }
   }
 
-  public static class DoubleArrayWriter extends ArrayWriter {
+  public static class DoubleArrayWriter extends ArrayWriter<double[]> {
     @Override
-    protected void writeToConsumer(Object array, RecordConsumer recordConsumer) {
-      double[] doubles = (double[]) array;
-      for(double d : doubles) {
+    protected void writeToConsumer(double[] array, RecordConsumer recordConsumer) {
+      for(double d : array) {
         recordConsumer.addDouble(d);
       }
     }
   }
 
-  public static class ObjectArrayWriter extends ArrayWriter {
-    private final RecordWriter recordWriter;
+  public static class ObjectArrayWriter<T> extends ArrayWriter<T[]> {
+    private final RecordWriter<T> recordWriter;
 
     public ObjectArrayWriter(RecordWriter recordWriter) {
       this.recordWriter = recordWriter;
     }
 
     @Override
-    protected void writeToConsumer(Object array,  RecordConsumer recordConsumer) {
-      Object[] objects = (Object[]) array;
-      for(Object o : objects) {
+    protected void writeToConsumer(T[] array,  RecordConsumer recordConsumer) {
+      for(T o : array) {
         recordWriter.writeValue(o, recordConsumer);
       }
     }
 
     @Override
-    public void writeValue(Object array, RecordConsumer recordConsumer) {
-      if (array == null) {
+    public void writeValue(T[] arr, RecordConsumer recordConsumer) {
+      if (arr == null) {
         return;
       }
 
-      writeLengthToConsumer(array, recordConsumer);
-      Object[] arr = (Object[]) array;
+      writeLengthToConsumer(arr, recordConsumer);
       recordConsumer.startField(null, 1);
-      for (int i = 0; i < arr.length; i++) {
-        Object value = arr[i];
-
+      for(T value : arr) {
         if (value != null) {
           recordConsumer.startGroup();
           recordConsumer.startField(null, 0);

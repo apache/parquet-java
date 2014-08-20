@@ -24,7 +24,6 @@ import java.util.Map;
 /**
  * A {@link ParquetInputFormat} for reading parquet files into POJOs (Plain Old Java Objects)
  *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
 public class ParquetPojoInputFormat extends ParquetInputFormat {
   public ParquetPojoInputFormat() {
@@ -38,14 +37,14 @@ public class ParquetPojoInputFormat extends ParquetInputFormat {
    * @param clazz the class who's name will be serialized
    */
   public static void setSchemaClass(Job job, Class clazz) {
-    SchemaUtils.setSchemaClass(SchemaUtils.Type.Input, job, clazz);
+    SchemaUtils.setSchemaClass(PojoType.Input, job, clazz);
   }
 
   public static void setMapSchemaClass(Job job, Class<? extends Map> clazz, Class keyClass, Class valueClass) {
-    SchemaUtils.setMapSchemaClass(SchemaUtils.Type.Input, job, clazz, keyClass, valueClass);
+    SchemaUtils.setMapSchemaClass(PojoType.Input, job, clazz, keyClass, valueClass);
   }
 
   public static void setListSchemaClass(Job job, Class<? extends List> clazz, Class valueClass) {
-    SchemaUtils.setListSchemaClass(SchemaUtils.Type.Input, job, clazz, valueClass);
+    SchemaUtils.setListSchemaClass(PojoType.Input, job, clazz, valueClass);
   }
 }

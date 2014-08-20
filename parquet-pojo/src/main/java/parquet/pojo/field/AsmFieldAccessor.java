@@ -21,8 +21,6 @@ import java.lang.reflect.Field;
 
 /**
  * Uses byte-code generation to provide high speed access to non-private fields
- *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
 public class AsmFieldAccessor implements FieldAccessor {
   private final int index;

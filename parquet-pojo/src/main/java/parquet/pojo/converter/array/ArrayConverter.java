@@ -30,7 +30,6 @@ import java.lang.reflect.Field;
 /**
  * Converter for array types
  *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
 public class ArrayConverter extends GroupConverter implements PojoConverter {
   private final Container parentContainer;
@@ -77,7 +76,7 @@ public class ArrayConverter extends GroupConverter implements PojoConverter {
   }
 
   @Override
-  public Object getRawValue() {
+  public Object getValueAndReset() {
     return arrayInstantiatingConverter.currentArray();
   }
 
@@ -104,7 +103,7 @@ public class ArrayConverter extends GroupConverter implements PojoConverter {
 
     @Override
     public void end() {
-      ((Object[]) arrayInstantiatingConverter.currentArray())[index] = asPojoConverter.getRawValue();
+      ((Object[]) arrayInstantiatingConverter.currentArray())[index] = asPojoConverter.getValueAndReset();
       index++;
     }
 

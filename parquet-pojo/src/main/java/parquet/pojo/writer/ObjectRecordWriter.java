@@ -27,8 +27,6 @@ import java.util.List;
 /**
  * A writer for types that are not primitives or maps / arrays / lists
  * Iterates through its fields and generates {@link RecordWriter} for them, then uses those to decompose the given object.
- *
- * @author Jason Ruckman https://github.com/JasonRuckman
  */
 public class ObjectRecordWriter implements RecordWriter {
   private final RecordWriter[] recordWriters;

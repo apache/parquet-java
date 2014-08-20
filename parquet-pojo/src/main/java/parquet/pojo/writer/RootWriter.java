@@ -26,8 +26,6 @@ import java.util.List;
 
 /**
  * Helper class for writing at the root of an object hierarchy
- *
- * @author Jason Ruckman
  */
 public class RootWriter {
   private final WriterDelegate writerDelegate;

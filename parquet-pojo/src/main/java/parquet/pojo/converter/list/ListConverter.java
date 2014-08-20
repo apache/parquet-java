@@ -34,7 +34,6 @@ import java.util.List;
 /**
  * Converter for types that implement {@link List}
  *
- * @author Jason Ruckman
  */
 public class ListConverter extends GroupConverter implements PojoConverter {
   private final Container listContainer = new Container();
@@ -99,7 +98,7 @@ public class ListConverter extends GroupConverter implements PojoConverter {
   }
 
   @Override
-  public Object getRawValue() {
+  public Object getValueAndReset() {
     return listContainer.get();
   }
 
@@ -129,11 +128,11 @@ public class ListConverter extends GroupConverter implements PojoConverter {
 
     @Override
     public void end() {
-      listContainer.get().add(asPojoConverter.getRawValue());
+      listContainer.get().add(asPojoConverter.getValueAndReset());
     }
 
     @Override
-    public Object getRawValue() {
+    public Object getValueAndReset() {
       throw new NotImplementedException();
     }
   }
