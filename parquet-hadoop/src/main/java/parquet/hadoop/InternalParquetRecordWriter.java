@@ -22,6 +22,7 @@ import static parquet.Log.DEBUG;
 import static parquet.Preconditions.checkNotNull;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 import parquet.Log;
@@ -29,6 +30,7 @@ import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.impl.ColumnWriteStoreImpl;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.hadoop.api.WriteSupport;
+import parquet.hadoop.api.WriteSupport.FinalizedWriteContext;
 import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.schema.MessageType;
@@ -108,7 +110,10 @@ class InternalParquetRecordWriter<T> {
 
   public void close() throws IOException, InterruptedException {
     flushStore();
-    w.end(extraMetaData);
+    FinalizedWriteContext finalWriteContext = writeSupport.finalizeWrite();
+    Map<String, String> finalMetadata = new HashMap<String, String>(extraMetaData);
+    finalMetadata.putAll(finalWriteContext.getExtraMetaData());
+    w.end(finalMetadata);
   }
 
   public void write(T value) throws IOException, InterruptedException {
