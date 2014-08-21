@@ -208,7 +208,7 @@ abstract public class Type {
    * @param newName The name to change this type to
    * @return A copy of this type with a new name
    */
-  public abstract Type rename(String newName) ;
+  public abstract Type rename(String newName);
 
   /**
    * Changes this type to a new repetition level
