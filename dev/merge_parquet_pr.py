@@ -51,9 +51,9 @@ PR_REMOTE_NAME = os.environ.get("PR_REMOTE_NAME", "apache-github")
 # Remote name which points to Apache git
 PUSH_REMOTE_NAME = os.environ.get("PUSH_REMOTE_NAME", "apache")
 # ASF JIRA username
-JIRA_USERNAME = os.environ.get("JIRA_USERNAME", "setme")
+JIRA_USERNAME = os.environ.get("JIRA_USERNAME")
 # ASF JIRA password
-JIRA_PASSWORD = os.environ.get("JIRA_PASSWORD", "setme")
+JIRA_PASSWORD = os.environ.get("JIRA_PASSWORD")
 
 GITHUB_BASE = "https://github.com/apache/" + PROJECT_NAME + "/pull"
 GITHUB_API_BASE = "https://api.github.com/repos/apache/" + PROJECT_NAME
@@ -276,6 +276,12 @@ def resolve_jira(title, merge_branches, comment):
 
     print "Succesfully resolved %s with fixVersions=%s!" % (jira_id, fix_versions)
 
+
+if not JIRA_USERNAME:
+    JIRA_USERNAME =  raw_input("Env JIRA_USERNAME not set, please enter your JIRA username:")
+
+if not JIRA_PASSWORD:
+    JIRA_PASSWORD =  raw_input("Env JIRA_PASSWORD not set, please enter your JIRA password:")
 
 branches = get_json("%s/branches" % GITHUB_API_BASE)
 branch_names = filter(lambda x: x.startswith("branch-"), [x['name'] for x in branches])

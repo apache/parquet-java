@@ -22,16 +22,17 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.RecordReader;
 
+import com.twitter.scrooge.ThriftStruct;
+
+import cascading.flow.FlowProcess;
+import cascading.scheme.SinkCall;
+import cascading.tap.Tap;
 import parquet.cascading.ParquetValueScheme;
+import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
 import parquet.hadoop.thrift.ParquetThriftInputFormat;
 import parquet.hadoop.thrift.ThriftReadSupport;
-import cascading.flow.FlowProcess;
-import cascading.scheme.SinkCall;
-import cascading.tap.Tap;
-
-import com.twitter.scrooge.ThriftStruct;
 
 public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueScheme<T> {
 
@@ -39,6 +40,11 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
   private final Class<T> klass;
 
   public ParquetScroogeScheme(Class<T> klass) {
+    this.klass = klass;
+  }
+
+  public ParquetScroogeScheme(FilterPredicate filterPredicate, Class<T> klass) {
+    super(filterPredicate);
     this.klass = klass;
   }
 

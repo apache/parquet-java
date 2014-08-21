@@ -204,6 +204,19 @@ public class ParquetWriter<T> implements Closeable {
     this(file, writeSupport, DEFAULT_COMPRESSION_CODEC_NAME, DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
   }
 
+  public ParquetWriter(Path file, Configuration conf, WriteSupport<T> writeSupport) throws IOException {
+    this(file,
+        writeSupport,
+        DEFAULT_COMPRESSION_CODEC_NAME,
+        DEFAULT_BLOCK_SIZE,
+        DEFAULT_PAGE_SIZE,
+        DEFAULT_PAGE_SIZE,
+        DEFAULT_IS_DICTIONARY_ENABLED,
+        DEFAULT_IS_VALIDATING_ENABLED,
+        DEFAULT_WRITER_VERSION,
+        conf);
+  }
+
   public void write(T object) throws IOException {
     try {
       writer.write(object);

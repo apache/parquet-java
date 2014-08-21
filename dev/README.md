@@ -2,18 +2,23 @@
 This directory contains scripts useful to developers when packaging,
 testing, or committing to Parquet.
 
-Merging a pull request requires being a comitter on the project.
+Merging a pull request requires being a committer on the project.
 
 * How to merge a Pull request:
-have an apache and github-apache remote setup
+have an apache and apache-github remote setup
 ```
-git remote add github-apache git@github.com:apache/incubator-parquet-mr.git
+git remote add apache-github git@github.com:apache/incubator-parquet-mr.git
 git remote add apache https://git-wip-us.apache.org/repos/asf/incubator-parquet-mr.git
 ```
 run the following command
 ```
 dev/merge_parquet_pr.py
 ```
+
+Note:
+* The parent directory of your parquet repository must be called parquet-mr
+* Without jira-python installed you'll have to close the JIRA manually
+
 example output:
 ```
 Which pull request would you like to merge? (e.g. 34):

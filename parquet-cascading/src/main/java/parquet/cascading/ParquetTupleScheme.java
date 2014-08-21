@@ -15,33 +15,36 @@
  */
  package parquet.cascading;
 
- import java.io.IOException;
- import java.util.List;
- import org.apache.hadoop.mapred.JobConf;
- import org.apache.hadoop.mapred.OutputCollector;
- import org.apache.hadoop.mapred.RecordReader;
+import java.io.IOException;
+import java.util.List;
 
- import parquet.hadoop.ParquetInputFormat;
- import parquet.hadoop.Footer;
- import parquet.hadoop.mapred.Container;
- import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
- import parquet.schema.MessageType;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.OutputCollector;
+import org.apache.hadoop.mapred.RecordReader;
 
- import cascading.flow.FlowProcess;
- import cascading.scheme.SinkCall;
- import cascading.scheme.Scheme;
- import cascading.scheme.SourceCall;
- import cascading.tap.Tap;
- import cascading.tap.TapException;
- import cascading.tap.CompositeTap;
- import cascading.tap.hadoop.Hfs;
- import cascading.tuple.Tuple;
- import cascading.tuple.Fields;
- import cascading.tuple.TupleEntry;
- import parquet.hadoop.ParquetOutputFormat;
- import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
+import cascading.flow.FlowProcess;
+import cascading.scheme.Scheme;
+import cascading.scheme.SinkCall;
+import cascading.scheme.SourceCall;
+import cascading.tap.CompositeTap;
+import cascading.tap.Tap;
+import cascading.tap.TapException;
+import cascading.tap.hadoop.Hfs;
+import cascading.tuple.Fields;
+import cascading.tuple.Tuple;
+import cascading.tuple.TupleEntry;
+import parquet.filter2.predicate.FilterPredicate;
+import parquet.hadoop.Footer;
+import parquet.hadoop.ParquetInputFormat;
+import parquet.hadoop.ParquetOutputFormat;
+import parquet.hadoop.mapred.Container;
+import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
+import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
+import parquet.schema.MessageType;
 
- /**
+import static parquet.Preconditions.checkNotNull;
+
+/**
   * A Cascading Scheme that converts Parquet groups into Cascading tuples.
   * If you provide it with sourceFields, it will selectively materialize only the columns for those fields.
   * The names must match the names in the Parquet schema.
@@ -57,13 +60,25 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
 
   private static final long serialVersionUID = 0L;
   private String parquetSchema;
+  private final FilterPredicate filterPredicate;
 
   public ParquetTupleScheme() {
     super();
+    this.filterPredicate = null;
   }
 
   public ParquetTupleScheme(Fields sourceFields) {
     super(sourceFields);
+    this.filterPredicate = null;
+  }
+
+  public ParquetTupleScheme(FilterPredicate filterPredicate) {
+    this.filterPredicate = checkNotNull(filterPredicate, "filterPredicate");
+  }
+
+  public ParquetTupleScheme(FilterPredicate filterPredicate, Fields sourceFields) {
+    super(sourceFields);
+    this.filterPredicate = checkNotNull(filterPredicate, "filterPredicate");
   }
 
   /**
@@ -78,12 +93,18 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
   public ParquetTupleScheme(Fields sourceFields, Fields sinkFields, final String schema) {
     super(sourceFields, sinkFields);
     parquetSchema = schema;
+    this.filterPredicate = null;
   }
 
   @SuppressWarnings("rawtypes")
   @Override
   public void sourceConfInit(FlowProcess<JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
+
+    if (filterPredicate != null) {
+      ParquetInputFormat.setFilterPredicate(jobConf, filterPredicate);
+    }
+
     jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
     ParquetInputFormat.setReadSupportClass(jobConf, TupleReadSupport.class);
     TupleReadSupport.setRequestedFields(jobConf, getSourceFields());

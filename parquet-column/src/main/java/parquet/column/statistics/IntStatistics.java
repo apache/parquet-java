@@ -17,7 +17,7 @@ package parquet.column.statistics;
 
 import parquet.bytes.BytesUtils;
 
-public class IntStatistics extends Statistics{
+public class IntStatistics extends Statistics<Integer> {
 
   private int max;
   private int min;
@@ -75,6 +75,16 @@ public class IntStatistics extends Statistics{
       min = min_value;
       max = max_value;
       this.markAsNotEmpty();
+  }
+
+  @Override
+  public Integer genericGetMin() {
+    return min;
+  }
+
+  @Override
+  public Integer genericGetMax() {
+    return max;
   }
 
   public int getMax() {

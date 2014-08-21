@@ -44,7 +44,6 @@ public class ShowSchemaCommand extends ArgsOnlyCommand {
     OPTIONS = new Options();
     Option help = OptionBuilder.withLongOpt("detailed")
                                .withDescription("Show detailed information about the schema.")
-                               .hasOptionalArg()
                                .create('d');
     OPTIONS.addOption(help);
   }

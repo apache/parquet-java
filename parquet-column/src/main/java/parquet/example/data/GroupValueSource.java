@@ -36,6 +36,10 @@ abstract public class GroupValueSource {
     return getInteger(getType().getFieldIndex(field), index);
   }
 
+  public long getLong(String field, int index) {
+    return getLong(getType().getFieldIndex(field), index);
+  }
+
   public boolean getBoolean(String field, int index) {
     return getBoolean(getType().getFieldIndex(field), index);
   }
@@ -55,6 +59,8 @@ abstract public class GroupValueSource {
   abstract public String getString(int fieldIndex, int index);
 
   abstract public int getInteger(int fieldIndex, int index);
+
+  abstract public long getLong(int fieldIndex, int index);
 
   abstract public boolean getBoolean(int fieldIndex, int index);
 

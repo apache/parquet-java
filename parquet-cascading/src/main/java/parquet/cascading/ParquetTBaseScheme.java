@@ -20,6 +20,9 @@ import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.thrift.TBase;
 
+import cascading.flow.FlowProcess;
+import cascading.tap.Tap;
+import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
@@ -27,8 +30,6 @@ import parquet.hadoop.thrift.ParquetThriftInputFormat;
 import parquet.hadoop.thrift.ThriftReadSupport;
 import parquet.hadoop.thrift.ThriftWriteSupport;
 import parquet.thrift.TBaseRecordConverter;
-import cascading.flow.FlowProcess;
-import cascading.tap.Tap;
 
 public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme<T> {
 
@@ -42,10 +43,21 @@ public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme
     this.thriftClass = thriftClass;
   }
 
+  public ParquetTBaseScheme(FilterPredicate filterPredicate) {
+    super(filterPredicate);
+  }
+
+  public ParquetTBaseScheme(FilterPredicate filterPredicate, Class<T> thriftClass) {
+    super(filterPredicate);
+    this.thriftClass = thriftClass;
+  }
+
   @SuppressWarnings("rawtypes")
   @Override
   public void sourceConfInit(FlowProcess<JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
+
+    super.sourceConfInit(fp, tap, jobConf);
     jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
     ParquetInputFormat.setReadSupportClass(jobConf, ThriftReadSupport.class);
     ThriftReadSupport.setRecordConverterClass(jobConf, TBaseRecordConverter.class);
