@@ -7,6 +7,7 @@ import java.io.OutputStream;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
 
 /**
@@ -34,12 +35,16 @@ public class Util {
     return read(from, new FileMetaData());
   }
 
-  private static TCompactProtocol protocol(OutputStream to) {
-    return new TCompactProtocol(new TIOStreamTransport(to));
+  private static TProtocol protocol(OutputStream to) {
+    return protocol(new TIOStreamTransport(to));
   }
 
-  private static TCompactProtocol protocol(InputStream from) {
-    return new TCompactProtocol(new TIOStreamTransport(from));
+  private static TProtocol protocol(InputStream from) {
+    return protocol(new TIOStreamTransport(from));
+  }
+
+  private static InterningProtocol protocol(TIOStreamTransport t) {
+    return new InterningProtocol(new TCompactProtocol(t));
   }
 
   private static <T extends TBase<?,?>> T read(InputStream from, T tbase) throws IOException {
