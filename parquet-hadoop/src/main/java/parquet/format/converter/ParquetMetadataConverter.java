@@ -340,8 +340,8 @@ public class ParquetMetadataConverter {
     fileMetaData.addToKey_value_metadata(keyValue);
   }
 
-  public ParquetMetadata readParquetMetadata(InputStream from) throws IOException {
-    FileMetaData fileMetaData = readFileMetaData(from);
+  public ParquetMetadata readParquetMetadata(InputStream from, boolean skipRowGroups) throws IOException {
+    FileMetaData fileMetaData = readFileMetaData(from, skipRowGroups);
     if (Log.DEBUG) LOG.debug(fileMetaData);
     ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData);
     if (Log.DEBUG) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));

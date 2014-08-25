@@ -46,22 +46,19 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
   public InputSplit[] getSplits(JobConf job, int numSplits) throws IOException {
     List<Footer> footers = getFooters(job);
     List<ParquetInputSplit> splits = realInputFormat.getSplits(job, footers);
-
-      if (splits == null) {
-        return null;
-      }
-
-      InputSplit[] resultSplits = new InputSplit[splits.size()];
-      int i = 0;
-      for (ParquetInputSplit split : splits) {
-          resultSplits[i++] = new ParquetInputSplitWrapper(split);
-      }
-
-      return resultSplits;
+    if (splits == null) {
+      return null;
+    }
+    InputSplit[] resultSplits = new InputSplit[splits.size()];
+    int i = 0;
+    for (ParquetInputSplit split : splits) {
+      resultSplits[i++] = new ParquetInputSplitWrapper(split);
+    }
+    return resultSplits;
   }
 
   public List<Footer> getFooters(JobConf job) throws IOException {
-    return realInputFormat.getFooters(job, Arrays.asList(super.listStatus(job)));
+    return realInputFormat.getFooters(job, Arrays.asList(super.listStatus(job)), true);
   }
 
   private static class RecordReaderWrapper<V> implements RecordReader<Void, Container<V>> {

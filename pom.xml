@@ -85,7 +85,7 @@
     <shade.prefix>parquet</shade.prefix>
     <hadoop.version>1.1.0</hadoop.version>
     <cascading.version>2.5.3</cascading.version>
-    <parquet.format.version>2.1.0</parquet.format.version>
+    <parquet.format.version>2.1.1-SNAPSHOT</parquet.format.version>
     <log4j.version>1.2.17</log4j.version>
     <previous.version>1.6.0rc1</previous.version>
     <thrift.executable>thrift</thrift.executable>

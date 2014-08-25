@@ -61,7 +61,7 @@ import parquet.hadoop.util.SerializationUtil;
 import parquet.io.ParquetDecodingException;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
-
+import static java.util.Arrays.asList;
 import static parquet.Preconditions.checkArgument;
 
 /**
@@ -89,7 +89,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * key to configure the filter
    */
   public static final String UNBOUND_RECORD_FILTER = "parquet.read.filter";
-  
+
   /**
    * key to configure type checking for conflicting schemas (default: true)
    */
@@ -428,7 +428,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     final long maxSplitSize = configuration.getLong("mapred.max.split.size", Long.MAX_VALUE);
     final long minSplitSize = Math.max(getFormatMinSplitSize(), configuration.getLong("mapred.min.split.size", 0L));
     if (maxSplitSize < 0 || minSplitSize < 0) {
-      throw new ParquetDecodingException("maxSplitSize or minSplitSie should not be negative: maxSplitSize = " + maxSplitSize + "; minSplitSize = " + minSplitSize);
+      throw new ParquetDecodingException("maxSplitSize or minSplitSize should not be negative: maxSplitSize = " + maxSplitSize + "; minSplitSize = " + minSplitSize);
     }
     List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
     GlobalMetaData globalMetaData = ParquetFileWriter.getGlobalMetaData(footers, configuration.getBoolean(STRICT_TYPE_CHECKING, true));
@@ -576,7 +576,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     }
 
     List<Footer> newFooters =
-            getFooters(config, new ArrayList<FileStatus>(missingStatuses));
+            getFooters(config, new ArrayList<FileStatus>(missingStatuses), true);
     for (Footer newFooter : newFooters) {
       // Use the original file status objects to make sure we store a
       // conservative (older) modification time (i.e. in case the files and
@@ -597,9 +597,16 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @return the footers of the files
    * @throws IOException
    */
-  public List<Footer> getFooters(Configuration configuration, List<FileStatus> statuses) throws IOException {
+  public List<Footer> getFooters(Configuration configuration, List<FileStatus> statuses, boolean skipRowGroups) throws IOException {
     if (Log.DEBUG) LOG.debug("reading " + statuses.size() + " files");
-    return ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses);
+    if (statuses.size() == 1) {
+      FileStatus file = statuses.get(0);
+      return asList(
+          new Footer(file.getPath(), ParquetFileReader.readFooter(configuration, file, skipRowGroups))
+      );
+    } else {
+      return ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses, skipRowGroups);
+    }
   }
 
   /**

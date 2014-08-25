@@ -84,7 +84,21 @@ public class ParquetFileReader implements Closeable {
    * @return the footers for those files using the summary file if possible.
    * @throws IOException
    */
-  public static List<Footer> readAllFootersInParallelUsingSummaryFiles(final Configuration configuration, List<FileStatus> partFiles) throws IOException {
+  @Deprecated
+  public static List<Footer> readAllFootersInParallelUsingSummaryFiles(Configuration configuration, List<FileStatus> partFiles) throws IOException {
+    return readAllFootersInParallelUsingSummaryFiles(configuration, partFiles, false);
+  }
+
+  /**
+   * for files provided, check if there's a summary file.
+   * If a summary file is found it is used otherwise the file footer is used.
+   * @param configuration the hadoop conf to connect to the file system;
+   * @param partFiles the part files to read
+   * @param skipRowGroups to skipRowGroups
+   * @return the footers for those files using the summary file if possible.
+   * @throws IOException
+   */
+  public static List<Footer> readAllFootersInParallelUsingSummaryFiles(final Configuration configuration, List<FileStatus> partFiles, final boolean skipRowGroups) throws IOException {
 
     // figure out list of all parents to part files
     Set<Path> parents = new HashSet<Path>();
@@ -103,7 +117,7 @@ public class ParquetFileReader implements Closeable {
           Path summaryFile = new Path(path, PARQUET_METADATA_FILE);
           if (fileSystem.exists(summaryFile)) {
             if (Log.INFO) LOG.info("reading summary file: " + summaryFile);
-            final List<Footer> footers = readSummaryFile(configuration, fileSystem.getFileStatus(summaryFile));
+            final List<Footer> footers = readSummaryFile(configuration, fileSystem.getFileStatus(summaryFile), skipRowGroups);
             Map<Path, Footer> map = new HashMap<Path, Footer>();
             for (Footer footer : footers) {
               // the folder may have been moved
@@ -143,7 +157,7 @@ public class ParquetFileReader implements Closeable {
     if (toRead.size() > 0) {
       // read the footers of the files that did not have a summary file
       if (Log.INFO) LOG.info("reading another " + toRead.size() + " footers");
-      result.addAll(readAllFootersInParallel(configuration, toRead));
+      result.addAll(readAllFootersInParallel(configuration, toRead, skipRowGroups));
     }
 
     return result;
@@ -170,14 +184,14 @@ public class ParquetFileReader implements Closeable {
     }
   }
 
-  public static List<Footer> readAllFootersInParallel(final Configuration configuration, List<FileStatus> partFiles) throws IOException {
+  public static List<Footer> readAllFootersInParallel(final Configuration configuration, List<FileStatus> partFiles, final boolean skipRowGroups) throws IOException {
     List<Callable<Footer>> footers = new ArrayList<Callable<Footer>>();
     for (final FileStatus currentFile : partFiles) {
       footers.add(new Callable<Footer>() {
         @Override
         public Footer call() throws Exception {
           try {
-            return new Footer(currentFile.getPath(), ParquetFileReader.readFooter(configuration, currentFile));
+            return new Footer(currentFile.getPath(), ParquetFileReader.readFooter(configuration, currentFile, skipRowGroups));
           } catch (IOException e) {
             throw new IOException("Could not read footer for file " + currentFile, e);
           }
@@ -191,7 +205,12 @@ public class ParquetFileReader implements Closeable {
     }
   }
 
+  @Deprecated
   public static List<Footer> readAllFootersInParallel(Configuration configuration, FileStatus fileStatus) throws IOException {
+    return readAllFootersInParallel(configuration, fileStatus, false);
+  }
+
+  public static List<Footer> readAllFootersInParallel(Configuration configuration, FileStatus fileStatus, boolean skipRowGroups) throws IOException {
     final FileSystem fs = fileStatus.getPath().getFileSystem(configuration);
     List<FileStatus> statuses;
     if (fileStatus.isDir()) {
@@ -200,29 +219,37 @@ public class ParquetFileReader implements Closeable {
       statuses = new ArrayList<FileStatus>();
       statuses.add(fileStatus);
     }
-    return readAllFootersInParallel(configuration, statuses);
+    return readAllFootersInParallel(configuration, statuses, skipRowGroups);
   }
 
+  @Deprecated
   public static List<Footer> readFooters(Configuration configuration, FileStatus pathStatus) throws IOException {
+    return readFooters(configuration, pathStatus, false);
+  }
+  public static List<Footer> readFooters(Configuration configuration, FileStatus pathStatus, boolean skipRowGroups) throws IOException {
     try {
       if (pathStatus.isDir()) {
         Path summaryPath = new Path(pathStatus.getPath(), PARQUET_METADATA_FILE);
         FileSystem fs = summaryPath.getFileSystem(configuration);
         if (fs.exists(summaryPath)) {
           FileStatus summaryStatus = fs.getFileStatus(summaryPath);
-          return readSummaryFile(configuration, summaryStatus);
+          return readSummaryFile(configuration, summaryStatus, skipRowGroups);
         }
       }
     } catch (IOException e) {
       LOG.warn("can not read summary file for " + pathStatus.getPath(), e);
     }
-    return readAllFootersInParallel(configuration, pathStatus);
+    return readAllFootersInParallel(configuration, pathStatus, skipRowGroups);
 
   }
 
+  @Deprecated
   public static List<Footer> readSummaryFile(Configuration configuration, FileStatus summaryStatus) throws IOException {
+    return readSummaryFile(configuration, summaryStatus, false);
+  }
+  public static List<Footer> readSummaryFile(Configuration configuration, FileStatus summaryStatus, boolean skipRowGroups) throws IOException {
     final Path parent = summaryStatus.getPath().getParent();
-    ParquetMetadata mergedFooters = readFooter(configuration, summaryStatus);
+    ParquetMetadata mergedFooters = readFooter(configuration, summaryStatus, skipRowGroups);
     Map<Path, ParquetMetadata> footers = new HashMap<Path, ParquetMetadata>();
     List<BlockMetaData> blocks = mergedFooters.getBlocks();
     for (BlockMetaData block : blocks) {
@@ -249,15 +276,28 @@ public class ParquetFileReader implements Closeable {
    * @return the metadata blocks in the footer
    * @throws IOException if an error occurs while reading the file
    */
+  @Deprecated
   public static final ParquetMetadata readFooter(Configuration configuration, Path file) throws IOException {
+    return readFooter(configuration, file, false);
+  }
+
+  /**
+   * Reads the meta data block in the footer of the file
+   * @param configuration
+   * @param file the parquet File
+   * @param skipRowGroups skips the row groups if true
+   * @return the metadata blocks in the footer
+   * @throws IOException if an error occurs while reading the file
+   */
+  public static final ParquetMetadata readFooter(Configuration configuration, Path file, boolean skipRowGroups) throws IOException {
     FileSystem fileSystem = file.getFileSystem(configuration);
-    return readFooter(configuration, fileSystem.getFileStatus(file));
+    return readFooter(configuration, fileSystem.getFileStatus(file), skipRowGroups);
   }
 
 
-  public static final List<Footer> readFooters(Configuration configuration, Path file) throws IOException {
+  public static final List<Footer> readFooters(Configuration configuration, Path file, boolean skipRowGroups) throws IOException {
     FileSystem fileSystem = file.getFileSystem(configuration);
-    return readFooters(configuration, fileSystem.getFileStatus(file));
+    return readFooters(configuration, fileSystem.getFileStatus(file), skipRowGroups);
   }
 
   /**
@@ -267,7 +307,7 @@ public class ParquetFileReader implements Closeable {
    * @return the metadata blocks in the footer
    * @throws IOException if an error occurs while reading the file
    */
-  public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file) throws IOException {
+  public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file, boolean skipRowGroups) throws IOException {
     FileSystem fileSystem = file.getPath().getFileSystem(configuration);
     FSDataInputStream f = fileSystem.open(file.getPath());
     try {
@@ -293,7 +333,7 @@ public class ParquetFileReader implements Closeable {
         throw new RuntimeException("corrupted file: the footer index is not within the file");
       }
       f.seek(footerIndex);
-      return parquetMetadataConverter.readParquetMetadata(f);
+      return parquetMetadataConverter.readParquetMetadata(f, skipRowGroups);
     } finally {
       f.close();
     }

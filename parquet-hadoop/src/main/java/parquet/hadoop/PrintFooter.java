@@ -70,7 +70,7 @@ public class PrintFooter {
     if (fileStatus.isDir() && fs.exists(summary)) {
       System.out.println("reading summary file");
       FileStatus summaryStatus = fs.getFileStatus(summary);
-      List<Footer> readSummaryFile = ParquetFileReader.readSummaryFile(configuration, summaryStatus);
+      List<Footer> readSummaryFile = ParquetFileReader.readSummaryFile(configuration, summaryStatus, false);
       for (Footer footer : readSummaryFile) {
         add(footer.getParquetMetadata());
       }
@@ -99,7 +99,7 @@ public class PrintFooter {
             @Override
             public ParquetMetadata call() throws Exception {
               try {
-                ParquetMetadata footer = ParquetFileReader.readFooter(configuration, currentFile);
+                ParquetMetadata footer = ParquetFileReader.readFooter(configuration, currentFile, false);
                 return footer;
               } catch (Exception e) {
                 throw new ParquetDecodingException("could not read footer", e);
