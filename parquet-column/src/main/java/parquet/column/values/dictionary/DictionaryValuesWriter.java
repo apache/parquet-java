@@ -321,7 +321,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter {
       }
     }
 
-    protected static Binary copy(Binary binary) {
+    static Binary copy(Binary binary) {
       return Binary.fromByteArray(
           Arrays.copyOf(binary.getBytes(), binary.length()));
     }
