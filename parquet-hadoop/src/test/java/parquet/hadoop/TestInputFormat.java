@@ -340,7 +340,7 @@ public class TestInputFormat {
   public void testFooterCacheValueIsCurrent() throws IOException, InterruptedException {
     File tempFile = getTempFile();
     FileSystem fs = FileSystem.getLocal(new Configuration());
-    ParquetInputFormat.CachedFooter cacheValue = getDummyCacheValue(tempFile, fs);
+    ParquetInputFormat.FootersCacheValue cacheValue = getDummyCacheValue(tempFile, fs);
 
     assertTrue(tempFile.setLastModified(tempFile.lastModified() + 5000));
     assertFalse(cacheValue.isCurrent(new ParquetInputFormat.FileStatusWrapper(fs.getFileStatus(new Path(tempFile.getAbsolutePath())))));
@@ -350,13 +350,13 @@ public class TestInputFormat {
   public void testFooterCacheValueIsNewer() throws IOException {
     File tempFile = getTempFile();
     FileSystem fs = FileSystem.getLocal(new Configuration());
-    ParquetInputFormat.CachedFooter cacheValue = getDummyCacheValue(tempFile, fs);
+    ParquetInputFormat.FootersCacheValue cacheValue = getDummyCacheValue(tempFile, fs);
 
     assertTrue(cacheValue.isNewerThan(null));
     assertFalse(cacheValue.isNewerThan(cacheValue));
 
     assertTrue(tempFile.setLastModified(tempFile.lastModified() + 5000));
-    ParquetInputFormat.CachedFooter newerCacheValue = getDummyCacheValue(tempFile, fs);
+    ParquetInputFormat.FootersCacheValue newerCacheValue = getDummyCacheValue(tempFile, fs);
 
     assertTrue(newerCacheValue.isNewerThan(cacheValue));
     assertFalse(cacheValue.isNewerThan(newerCacheValue));
@@ -368,13 +368,13 @@ public class TestInputFormat {
     return tempFile;
   }
 
-  private ParquetInputFormat.CachedFooter getDummyCacheValue(File file, FileSystem fs) throws IOException {
+  private ParquetInputFormat.FootersCacheValue getDummyCacheValue(File file, FileSystem fs) throws IOException {
     Path path = new Path(file.getPath());
     FileStatus status = fs.getFileStatus(path);
     ParquetInputFormat.FileStatusWrapper statusWrapper = new ParquetInputFormat.FileStatusWrapper(status);
     ParquetMetadata mockMetadata = mock(ParquetMetadata.class);
-    ParquetInputFormat.CachedFooter cacheValue =
-            new ParquetInputFormat.CachedFooter(statusWrapper, new Footer(path, mockMetadata));
+    ParquetInputFormat.FootersCacheValue cacheValue =
+            new ParquetInputFormat.FootersCacheValue(statusWrapper, new Footer(path, mockMetadata));
     assertTrue(cacheValue.isCurrent(statusWrapper));
     return cacheValue;
   }
