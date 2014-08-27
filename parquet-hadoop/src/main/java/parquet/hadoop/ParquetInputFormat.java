@@ -15,7 +15,6 @@
  */
 package parquet.hadoop;
 
-import static java.util.Arrays.asList;
 import static parquet.Preconditions.checkArgument;
 import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
@@ -252,7 +251,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   /**
    * @param configuration the configuration to connect to the file system
    * @param footers the footers of the files to read
-   * @param taskSideMetaData
    * @return the splits for the footers
    * @throws IOException
    */
@@ -388,19 +386,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     if (Log.DEBUG) LOG.debug("reading " + statuses.size() + " files");
     boolean taskSideMetaData = isTaskSideMetaData(configuration);
     MetadataFilter filter = taskSideMetaData ? SKIP_ROW_GROUPS : NO_FILTER;
-    if (statuses.size() == 1) {
-      FileStatus file = statuses.iterator().next();
-      return asList(
-          new Footer(file.getPath(), ParquetFileReader.readFooter(configuration, file, filter))
-      );
-    } else {
-      return ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses, filter);
-    }
+    return ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses, filter);
   }
 
   /**
    * @param jobContext the current job context
-   * @param skipRowGroups
    * @return the merged metadata from the footers
    * @throws IOException
    */
@@ -486,11 +476,14 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
 }
 abstract class SplitStrategy {
+  private static final Log LOG = Log.getLog(SplitStrategy.class);
 
   static SplitStrategy getSplitStrategy(boolean taskSideMetaData) {
     if (taskSideMetaData) {
+      LOG.info("Using Task Side Metadata Split Strategy");
       return new TaskSideMetadataSplitStrategy();
     } else {
+      LOG.info("Using Client Side Metadata Split Strategy");
       return new ClientSideMetadataSplitStrategy();
     }
   }
@@ -680,7 +673,7 @@ class ClientSideMetadataSplitStrategy extends SplitStrategy {
       return rowGroups.size();
     }
 
-    public ParquetInputSplit getParquetInputSplit(FileStatus fileStatus, FileMetaData fileMetaData, String requestedSchema, Map<String, String> readSupportMetadata, String fileSchema) throws IOException {
+    public ParquetInputSplit getParquetInputSplit(FileStatus fileStatus, FileMetaData fileMetaData, String requestedSchema, Map<String, String> readSupportMetadata) throws IOException {
       MessageType requested = MessageTypeParser.parseMessageType(requestedSchema);
       long length = 0;
 
@@ -789,14 +782,13 @@ class ClientSideMetadataSplitStrategy extends SplitStrategy {
           String requestedSchema,
           Map<String, String> readSupportMetadata, long minSplitSize, long maxSplitSize) throws IOException {
 
-    String fileSchema = fileMetaData.getSchema().toString().intern();
     List<SplitInfo> splitRowGroups =
         generateSplitInfo(rowGroupBlocks, hdfsBlocksArray, minSplitSize, maxSplitSize);
 
     //generate splits from rowGroups of each split
     List<ParquetInputSplit> resultSplits = new ArrayList<ParquetInputSplit>();
     for (SplitInfo splitInfo : splitRowGroups) {
-      ParquetInputSplit split = splitInfo.getParquetInputSplit(fileStatus, fileMetaData, requestedSchema, readSupportMetadata, fileSchema);
+      ParquetInputSplit split = splitInfo.getParquetInputSplit(fileStatus, fileMetaData, requestedSchema, readSupportMetadata);
       resultSplits.add(split);
     }
     return resultSplits;
