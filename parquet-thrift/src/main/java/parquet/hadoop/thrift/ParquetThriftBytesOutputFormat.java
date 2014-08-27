@@ -35,11 +35,11 @@ import parquet.thrift.FieldIgnoredHandler;
 public class ParquetThriftBytesOutputFormat extends ParquetOutputFormat<BytesWritable> {
 
   public static void setThriftClass(Job job, Class<? extends TBase<?, ?>> thriftClass) {
-    ThriftWriteSupport.setThriftClass(ContextUtil.getConfiguration(job), thriftClass);
+    TBaseWriteSupport.setTBaseClass(ContextUtil.getConfiguration(job), thriftClass);
   }
 
   public static Class<? extends TBase<?,?>> getThriftClass(Job job) {
-    return ThriftWriteSupport.getThriftClass(ContextUtil.getConfiguration(job));
+    return TBaseWriteSupport.getTBaseClass(ContextUtil.getConfiguration(job));
   }
 
   public static <U extends TProtocol> void setTProtocolClass(Job job, Class<U> tProtocolClass) {

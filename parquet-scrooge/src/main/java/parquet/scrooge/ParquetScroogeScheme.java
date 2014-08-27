@@ -30,7 +30,9 @@ import cascading.tap.Tap;
 import parquet.cascading.ParquetValueScheme;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.ParquetInputFormat;
+import parquet.hadoop.ParquetOutputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
+import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
 import parquet.hadoop.thrift.ParquetThriftInputFormat;
 import parquet.hadoop.thrift.ThriftReadSupport;
 
@@ -50,17 +52,12 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
 
   @SuppressWarnings("rawtypes")
   @Override
-  public void sinkConfInit(FlowProcess<JobConf> arg0,
-      Tap<JobConf, RecordReader, OutputCollector> arg1, JobConf arg2) {
-    throw new UnsupportedOperationException("ParquetScroogeScheme does not support Sinks");
+  public void sinkConfInit(FlowProcess<JobConf> fp,
+      Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
+    jobConf.setOutputFormat(DeprecatedParquetOutputFormat.class);
+    ParquetOutputFormat.setWriteSupportClass(jobConf, ScroogeWriteSupport.class);
+    ScroogeWriteSupport.setScroogeClass(jobConf, klass);
   }
-
-  /**
-   * TODO: currently we cannot write Parquet files from Scrooge objects.
-   */
-  @Override
-  public boolean isSink() { return false; }
-
 
   @SuppressWarnings("rawtypes")
   @Override
@@ -70,11 +67,5 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
     ParquetInputFormat.setReadSupportClass(jobConf, ScroogeReadSupport.class);
     ThriftReadSupport.setRecordConverterClass(jobConf, ScroogeRecordConverter.class);
     ParquetThriftInputFormat.<T>setThriftClass(jobConf, klass);
-  }
-
-  @Override
-  public void sink(FlowProcess<JobConf> arg0, SinkCall<Object[], OutputCollector> arg1)
-      throws IOException {
-    throw new UnsupportedOperationException("ParquetScroogeScheme does not support Sinks");
   }
 }

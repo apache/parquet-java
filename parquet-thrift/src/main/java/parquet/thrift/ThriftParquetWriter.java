@@ -23,7 +23,7 @@ import org.apache.thrift.TBase;
 
 import parquet.hadoop.ParquetWriter;
 import parquet.hadoop.metadata.CompressionCodecName;
-import parquet.hadoop.thrift.ThriftWriteSupport;
+import parquet.hadoop.thrift.TBaseWriteSupport;
 
 /**
  * To generate Parquet files using thrift
@@ -35,15 +35,15 @@ import parquet.hadoop.thrift.ThriftWriteSupport;
 public class ThriftParquetWriter<T extends TBase<?,?>> extends ParquetWriter<T> {
 
   public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName) throws IOException {
-    super(file, new ThriftWriteSupport<T>(thriftClass), compressionCodecName, ParquetWriter.DEFAULT_BLOCK_SIZE, ParquetWriter.DEFAULT_PAGE_SIZE);
+    super(file, new TBaseWriteSupport<T>(thriftClass), compressionCodecName, ParquetWriter.DEFAULT_BLOCK_SIZE, ParquetWriter.DEFAULT_PAGE_SIZE);
   }
 
   public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName, int blockSize, int pageSize, boolean enableDictionary, boolean validating) throws IOException {
-    super(file, new ThriftWriteSupport<T>(thriftClass), compressionCodecName, blockSize, pageSize, enableDictionary, validating);
+    super(file, new TBaseWriteSupport<T>(thriftClass), compressionCodecName, blockSize, pageSize, enableDictionary, validating);
   }
 
   public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName, int blockSize, int pageSize, boolean enableDictionary, boolean validating, Configuration conf) throws IOException {
-    super(file, new ThriftWriteSupport<T>(thriftClass), compressionCodecName,
+    super(file, new TBaseWriteSupport<T>(thriftClass), compressionCodecName,
         blockSize, pageSize, pageSize, enableDictionary, validating,
         DEFAULT_WRITER_VERSION, conf);
   }

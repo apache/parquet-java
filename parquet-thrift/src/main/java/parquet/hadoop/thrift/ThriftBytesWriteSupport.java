@@ -64,10 +64,10 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
 
   private final boolean buffered;
   @SuppressWarnings("rawtypes") // TODO: fix type
-  private final ThriftWriteSupport<?> thriftWriteSupport = new ThriftWriteSupport();
+  private final TBaseWriteSupport<?> thriftWriteSupport = new TBaseWriteSupport();
   private ProtocolPipe readToWrite;
   private TProtocolFactory protocolFactory;
-  private Class<? extends TBase<?, ?>> thriftClass;
+  private Class<? extends TBase<?,?>> thriftClass;
   private MessageType schema;
   private StructType thriftStruct;
   private ParquetWriteProtocol parquetWriteProtocol;
@@ -101,13 +101,13 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
       }
     }
     if (thriftClass != null) {
-      ThriftWriteSupport.setThriftClass(configuration, thriftClass);
+      TBaseWriteSupport.setTBaseClass(configuration, thriftClass);
     } else {
-      thriftClass = ThriftWriteSupport.getThriftClass(configuration);
+      thriftClass = (Class<? extends TBase<?,?>>)ThriftWriteSupport.getThriftClass(configuration);
     }
     ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter();
     this.thriftStruct = thriftSchemaConverter.toStructType(thriftClass);
-    this.schema = thriftSchemaConverter.convert(thriftClass);
+    this.schema = thriftSchemaConverter.convert(thriftStruct);
     if (buffered) {
       readToWrite = new BufferedProtocolReadToWrite(thriftStruct, errorHandler);
     } else {
