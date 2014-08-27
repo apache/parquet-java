@@ -15,6 +15,9 @@
  */
 package parquet.hadoop;
 
+import static parquet.Log.DEBUG;
+import static parquet.format.Util.writeFileMetaData;
+
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -49,9 +52,6 @@ import parquet.io.ParquetEncodingException;
 import parquet.schema.MessageType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
-import static parquet.Log.DEBUG;
-import static parquet.format.Util.writeFileMetaData;
-
 /**
  * Internal implementation of the Parquet file writer as a block container
  *
@@ -83,7 +83,7 @@ public class ParquetFileWriter {
   private long currentChunkFirstDataPage;
   private long currentChunkDictionaryPageOffset;
   private long currentChunkValueCount;
-  
+
   private Statistics currentStatistics;
 
   /**
@@ -439,11 +439,10 @@ public class ParquetFileWriter {
    * @param footers the list files footers to merge
    * @return the global meta data for all the footers
    */
-  
   static GlobalMetaData getGlobalMetaData(List<Footer> footers) {
     return getGlobalMetaData(footers, true);
   }
-  
+
   static GlobalMetaData getGlobalMetaData(List<Footer> footers, boolean strict) {
     GlobalMetaData fileMetaData = null;
     for (Footer footer : footers) {
@@ -464,7 +463,7 @@ public class ParquetFileWriter {
       GlobalMetaData mergedMetadata) {
     return mergeInto(toMerge, mergedMetadata, true);
   }
-  
+
   static GlobalMetaData mergeInto(
       FileMetaData toMerge,
       GlobalMetaData mergedMetadata,
@@ -505,7 +504,7 @@ public class ParquetFileWriter {
   static MessageType mergeInto(MessageType toMerge, MessageType mergedSchema) {
     return mergeInto(toMerge, mergedSchema, true);
   }
-  
+
   /**
    * will return the result of merging toMerge into mergedSchema
    * @param toMerge the schema to merge into mergedSchema
@@ -517,7 +516,7 @@ public class ParquetFileWriter {
     if (mergedSchema == null) {
       return toMerge;
     }
-    
+
     return mergedSchema.union(toMerge, strict);
   }
 

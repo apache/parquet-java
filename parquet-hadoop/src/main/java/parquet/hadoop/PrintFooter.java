@@ -15,6 +15,7 @@
  */
 package parquet.hadoop;
 
+import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
 import java.net.URI;
@@ -70,7 +71,7 @@ public class PrintFooter {
     if (fileStatus.isDir() && fs.exists(summary)) {
       System.out.println("reading summary file");
       FileStatus summaryStatus = fs.getFileStatus(summary);
-      List<Footer> readSummaryFile = ParquetFileReader.readSummaryFile(configuration, summaryStatus, false);
+      List<Footer> readSummaryFile = ParquetFileReader.readSummaryFile(configuration, summaryStatus, NO_FILTER);
       for (Footer footer : readSummaryFile) {
         add(footer.getParquetMetadata());
       }
@@ -99,7 +100,7 @@ public class PrintFooter {
             @Override
             public ParquetMetadata call() throws Exception {
               try {
-                ParquetMetadata footer = ParquetFileReader.readFooter(configuration, currentFile, false);
+                ParquetMetadata footer = ParquetFileReader.readFooter(configuration, currentFile, NO_FILTER);
                 return footer;
               } catch (Exception e) {
                 throw new ParquetDecodingException("could not read footer", e);

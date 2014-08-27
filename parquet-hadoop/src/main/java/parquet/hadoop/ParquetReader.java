@@ -15,6 +15,9 @@
  */
 package parquet.hadoop;
 
+import static parquet.Preconditions.checkNotNull;
+import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
@@ -38,8 +41,6 @@ import parquet.hadoop.api.ReadSupport.ReadContext;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.GlobalMetaData;
 import parquet.schema.MessageType;
-
-import static parquet.Preconditions.checkNotNull;
 
 /**
  * Read records from a Parquet file.
@@ -114,7 +115,7 @@ public class ParquetReader<T> implements Closeable {
 
     FileSystem fs = file.getFileSystem(conf);
     List<FileStatus> statuses = Arrays.asList(fs.listStatus(file));
-    List<Footer> footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(conf, statuses, false);
+    List<Footer> footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(conf, statuses, NO_FILTER);
     this.footersIterator = footers.iterator();
     globalMetaData = ParquetFileWriter.getGlobalMetaData(footers);
     MessageType schema = globalMetaData.getSchema();

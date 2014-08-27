@@ -15,6 +15,18 @@
  */
 package parquet.hadoop;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static parquet.filter2.predicate.FilterApi.and;
+import static parquet.filter2.predicate.FilterApi.eq;
+import static parquet.filter2.predicate.FilterApi.intColumn;
+import static parquet.filter2.predicate.FilterApi.not;
+import static parquet.filter2.predicate.FilterApi.notEq;
+import static parquet.filter2.predicate.FilterApi.or;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -53,18 +65,6 @@ import parquet.io.ParquetDecodingException;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.mockito.Mockito.mock;
-import static parquet.filter2.predicate.FilterApi.and;
-import static parquet.filter2.predicate.FilterApi.eq;
-import static parquet.filter2.predicate.FilterApi.intColumn;
-import static parquet.filter2.predicate.FilterApi.not;
-import static parquet.filter2.predicate.FilterApi.notEq;
-import static parquet.filter2.predicate.FilterApi.or;
 
 public class TestInputFormat {
 
@@ -138,33 +138,46 @@ public class TestInputFormat {
   @Test
   public void testGenerateSplitsAlignedWithHDFSBlock() throws IOException {
     withHDFSBlockSize(50, 50);
-    List<ParquetInputSplit> splits = generateSplitByMinMaxSize(50, 50);
+    List<ClientSideMetadataSplitStrategy.SplitInfo> splits = generateSplitByMinMaxSize(50, 50);
     shouldSplitBlockSizeBe(splits, 5, 5);
-    shouldSplitLocationBe(splits, 0, 1);
-    shouldSplitLengthBe(splits, 50, 50);
+    shouldSplitLocationBe(toSplits(splits), 0, 1);
+    shouldSplitLengthBe(toSplits(splits), 50, 50);
 
     splits = generateSplitByMinMaxSize(0, Long.MAX_VALUE);
     shouldSplitBlockSizeBe(splits, 5, 5);
-    shouldSplitLocationBe(splits, 0, 1);
-    shouldSplitLengthBe(splits, 50, 50);
+    shouldSplitLocationBe(toSplits(splits), 0, 1);
+    shouldSplitLengthBe(toSplits(splits), 50, 50);
 
+  }
+
+  private List<ParquetInputSplit> toSplits(List<ClientSideMetadataSplitStrategy.SplitInfo> infos) throws IOException {
+    List<ParquetInputSplit> result = new ArrayList<ParquetInputSplit>();
+    for (ClientSideMetadataSplitStrategy.SplitInfo splitInfo : infos) {
+      result.add(splitInfo.getParquetInputSplit(
+          fileStatus,
+          fileMetaData,
+          schema.toString(),
+          new HashMap<String, String>() {{ put("specific", "foo"); }},
+          schema.toString()));
+    }
+    return result;
   }
 
   @Test
   public void testRowGroupNotAlignToHDFSBlock() throws IOException {
     //Test HDFS blocks size(51) is not multiple of row group size(10)
     withHDFSBlockSize(51, 51);
-    List<ParquetInputSplit> splits = generateSplitByMinMaxSize(50, 50);
+    List<ClientSideMetadataSplitStrategy.SplitInfo> splits = generateSplitByMinMaxSize(50, 50);
     shouldSplitBlockSizeBe(splits, 5, 5);
-    shouldSplitLocationBe(splits, 0, 0);//for the second split, the first byte will still be in the first hdfs block, therefore the locations are both 0
-    shouldSplitLengthBe(splits, 50, 50);
+    shouldSplitLocationBe(toSplits(splits), 0, 0);//for the second split, the first byte will still be in the first hdfs block, therefore the locations are both 0
+    shouldSplitLengthBe(toSplits(splits), 50, 50);
 
     //Test a rowgroup is greater than the hdfsBlock boundary
     withHDFSBlockSize(49, 49);
     splits = generateSplitByMinMaxSize(50, 50);
     shouldSplitBlockSizeBe(splits, 5, 5);
-    shouldSplitLocationBe(splits, 0, 1);
-    shouldSplitLengthBe(splits, 50, 50);
+    shouldSplitLocationBe(toSplits(splits), 0, 1);
+    shouldSplitLengthBe(toSplits(splits), 50, 50);
 
     /*
     aaaa bbbbb c
@@ -175,8 +188,8 @@ public class TestInputFormat {
     withHDFSBlockSize(44,44,44);
     splits = generateSplitByMinMaxSize(40, 50);
     shouldSplitBlockSizeBe(splits, 4, 5, 1);
-    shouldSplitLocationBe(splits, 0, 0, 2);
-    shouldSplitLengthBe(splits, 40, 50, 10);
+    shouldSplitLocationBe(toSplits(splits), 0, 0, 2);
+    shouldSplitLengthBe(toSplits(splits), 40, 50, 10);
   }
 
   /*
@@ -186,22 +199,22 @@ public class TestInputFormat {
   @Test
   public void testGenerateSplitsNotAlignedWithHDFSBlock() throws IOException, InterruptedException {
     withHDFSBlockSize(50, 50);
-    List<ParquetInputSplit> splits = generateSplitByMinMaxSize(55, 56);
+    List<ClientSideMetadataSplitStrategy.SplitInfo> splits = generateSplitByMinMaxSize(55, 56);
     shouldSplitBlockSizeBe(splits, 6, 4);
-    shouldSplitLocationBe(splits, 0, 1);
-    shouldSplitLengthBe(splits, 60, 40);
+    shouldSplitLocationBe(toSplits(splits), 0, 1);
+    shouldSplitLengthBe(toSplits(splits), 60, 40);
 
     withHDFSBlockSize(51, 51);
     splits = generateSplitByMinMaxSize(55, 56);
     shouldSplitBlockSizeBe(splits, 6, 4);
-    shouldSplitLocationBe(splits, 0, 1);//since a whole row group of split a is added to the second hdfs block, so the location of split b is still 1
-    shouldSplitLengthBe(splits, 60, 40);
+    shouldSplitLocationBe(toSplits(splits), 0, 1);//since a whole row group of split a is added to the second hdfs block, so the location of split b is still 1
+    shouldSplitLengthBe(toSplits(splits), 60, 40);
 
     withHDFSBlockSize(49, 49, 49);
     splits = generateSplitByMinMaxSize(55, 56);
     shouldSplitBlockSizeBe(splits, 6, 4);
-    shouldSplitLocationBe(splits, 0, 1);
-    shouldSplitLengthBe(splits, 60, 40);
+    shouldSplitLocationBe(toSplits(splits), 0, 1);
+    shouldSplitLengthBe(toSplits(splits), 60, 40);
 
   }
 
@@ -213,10 +226,10 @@ public class TestInputFormat {
   @Test
   public void testGenerateSplitsSmallerThanMaxSizeAndAlignToHDFS() throws Exception {
     withHDFSBlockSize(50, 50);
-    List<ParquetInputSplit> splits = generateSplitByMinMaxSize(18, 30);
+    List<ClientSideMetadataSplitStrategy.SplitInfo> splits = generateSplitByMinMaxSize(18, 30);
     shouldSplitBlockSizeBe(splits, 3, 2, 3, 2);
-    shouldSplitLocationBe(splits, 0, 0, 1, 1);
-    shouldSplitLengthBe(splits, 30, 20, 30, 20);
+    shouldSplitLocationBe(toSplits(splits), 0, 0, 1, 1);
+    shouldSplitLengthBe(toSplits(splits), 30, 20, 30, 20);
 
     /*
     aaabb cccdd
@@ -224,8 +237,8 @@ public class TestInputFormat {
     withHDFSBlockSize(51, 51);
     splits = generateSplitByMinMaxSize(18, 30);
     shouldSplitBlockSizeBe(splits, 3, 2, 3, 2);
-    shouldSplitLocationBe(splits, 0, 0, 0, 1);//the first byte of split c is in the first hdfs block
-    shouldSplitLengthBe(splits, 30, 20, 30, 20);
+    shouldSplitLocationBe(toSplits(splits), 0, 0, 0, 1);//the first byte of split c is in the first hdfs block
+    shouldSplitLengthBe(toSplits(splits), 30, 20, 30, 20);
 
     /*
     aaabb cccdd
@@ -233,8 +246,8 @@ public class TestInputFormat {
     withHDFSBlockSize(49, 49, 49);
     splits = generateSplitByMinMaxSize(18, 30);
     shouldSplitBlockSizeBe(splits, 3, 2, 3, 2);
-    shouldSplitLocationBe(splits, 0, 0, 1, 1);
-    shouldSplitLengthBe(splits, 30, 20, 30, 20);
+    shouldSplitLocationBe(toSplits(splits), 0, 0, 1, 1);
+    shouldSplitLengthBe(toSplits(splits), 30, 20, 30, 20);
   }
 
   /*
@@ -244,10 +257,10 @@ public class TestInputFormat {
   @Test
   public void testGenerateSplitsCrossHDFSBlockBoundaryToSatisfyMinSize() throws Exception {
     withHDFSBlockSize(50, 50);
-    List<ParquetInputSplit> splits = generateSplitByMinMaxSize(25, 30);
+    List<ClientSideMetadataSplitStrategy.SplitInfo> splits = generateSplitByMinMaxSize(25, 30);
     shouldSplitBlockSizeBe(splits, 3, 3, 3, 1);
-    shouldSplitLocationBe(splits, 0, 0, 1, 1);
-    shouldSplitLengthBe(splits, 30, 30, 30, 10);
+    shouldSplitLocationBe(toSplits(splits), 0, 0, 1, 1);
+    shouldSplitLengthBe(toSplits(splits), 30, 30, 30, 10);
   }
 
   /*
@@ -257,10 +270,10 @@ public class TestInputFormat {
   @Test
   public void testMultipleRowGroupsInABlockToAlignHDFSBlock() throws Exception {
     withHDFSBlockSize(50, 50);
-    List<ParquetInputSplit> splits = generateSplitByMinMaxSize(10, 18);
+    List<ClientSideMetadataSplitStrategy.SplitInfo> splits = generateSplitByMinMaxSize(10, 18);
     shouldSplitBlockSizeBe(splits, 2, 2, 1, 2, 2, 1);
-    shouldSplitLocationBe(splits, 0, 0, 0, 1, 1, 1);
-    shouldSplitLengthBe(splits, 20, 20, 10, 20, 20, 10);
+    shouldSplitLocationBe(toSplits(splits), 0, 0, 0, 1, 1, 1);
+    shouldSplitLengthBe(toSplits(splits), 20, 20, 10, 20, 20, 10);
 
     /*
     aabbc ddeef
@@ -271,8 +284,8 @@ public class TestInputFormat {
     withHDFSBlockSize(51, 51);
     splits = generateSplitByMinMaxSize(10, 18);
     shouldSplitBlockSizeBe(splits, 2, 2, 1, 2, 2, 1);
-    shouldSplitLocationBe(splits, 0, 0, 0, 0, 1, 1);// location of split d should be 0, since the first byte is in the first hdfs block
-    shouldSplitLengthBe(splits, 20, 20, 10, 20, 20, 10);
+    shouldSplitLocationBe(toSplits(splits), 0, 0, 0, 0, 1, 1);// location of split d should be 0, since the first byte is in the first hdfs block
+    shouldSplitLengthBe(toSplits(splits), 20, 20, 10, 20, 20, 10);
 
     /*
     aabbc ddeef
@@ -281,8 +294,8 @@ public class TestInputFormat {
     withHDFSBlockSize(49, 49);
     splits = generateSplitByMinMaxSize(10, 18);
     shouldSplitBlockSizeBe(splits, 2, 2, 1, 2, 2, 1);
-    shouldSplitLocationBe(splits, 0, 0, 0, 1, 1, 1);
-    shouldSplitLengthBe(splits, 20, 20, 10, 20, 20, 10);
+    shouldSplitLocationBe(toSplits(splits), 0, 0, 0, 1, 1, 1);
+    shouldSplitLengthBe(toSplits(splits), 20, 20, 10, 20, 20, 10);
   }
 
   public static final class DummyUnboundRecordFilter implements UnboundRecordFilter {
@@ -379,25 +392,21 @@ public class TestInputFormat {
     return cacheValue;
   }
 
-  private List<ParquetInputSplit> generateSplitByMinMaxSize(long min, long max) throws IOException {
-    return ParquetInputFormat.generateSplits(
-            blocks, hdfsBlocks, fileStatus, fileMetaData, schema.toString(), new HashMap<String, String>() {{
-              put("specific", "foo");
-            }}, min, max
-    );
+  private List<ClientSideMetadataSplitStrategy.SplitInfo> generateSplitByMinMaxSize(long min, long max) throws IOException {
+    return ClientSideMetadataSplitStrategy.generateSplitInfo(blocks, hdfsBlocks, min, max);
   }
 
-  private void shouldSplitBlockSizeBe(List<ParquetInputSplit> splits, int... sizes) {
+  private void shouldSplitBlockSizeBe(List<ClientSideMetadataSplitStrategy.SplitInfo> splits, int... sizes) {
     assertEquals(sizes.length, splits.size());
     for (int i = 0; i < sizes.length; i++) {
-      assertEquals(sizes[i], splits.get(i).getBlocks().size());
-      assertEquals("foo", splits.get(i).getReadSupportMetadata().get("specific"));
+      assertEquals(sizes[i], splits.get(i).getRowGroups().size());
     }
   }
 
   private void shouldSplitLocationBe(List<ParquetInputSplit> splits, int... locations) throws IOException {
     assertEquals(locations.length, splits.size());
     for (int i = 0; i < locations.length; i++) {
+      assertEquals("foo", splits.get(i).getReadSupportMetadata().get("specific"));
       assertEquals("[foo" + locations[i] + ".datanode, bar" + locations[i] + ".datanode]", Arrays.toString(splits.get(i).getLocations()));
     }
   }
