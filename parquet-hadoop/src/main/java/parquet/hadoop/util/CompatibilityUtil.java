@@ -30,6 +30,7 @@ import parquet.org.apache.thrift.TBase;
 import parquet.org.apache.thrift.TException;
 import parquet.format.FileMetaData;
 import parquet.org.apache.thrift.protocol.*;
+import parquet.org.apache.thrift.transport.TIOStreamTransport;
 import parquet.org.apache.thrift.transport.TTransport;
 import parquet.org.apache.thrift.transport.TTransportException;
 
@@ -160,11 +161,6 @@ public class CompatibilityUtil {
   public static ByteBuffer getBuf(FSDataInputStream f, ByteBuffer readBuf, int maxSize) throws IOException {
     Class<?>[] ZCopyArgs = {ByteBuffer.class};
     int res=0;
-    //try {
-      //Use Zero Copy API if available
-    //  f.getClass().getMethod("read", ZCopyArgs);
-    //} catch (NoSuchMethodException e)
-    //}
     int l=readBuf.remaining();
     if (useV21) {
       try {
@@ -196,7 +192,9 @@ public class CompatibilityUtil {
   public static <T extends TBase<?,?>> T read(FSDataInputStream f, T tbase)
       throws IOException {
     try {
-      tbase.read(new TCompactProtocol(new FSDISTransport(f)));
+      // Reverting to using TIOStreamTransport instead of the FSDistTransport
+      // implementation below. FSDistTransport is 4x slower when reading footers.
+      tbase.read(new TCompactProtocol(new TIOStreamTransport(f)));
       return tbase;
     } catch (TException e) {
       throw new IOException("can not read " + tbase.getClass() + ": "
