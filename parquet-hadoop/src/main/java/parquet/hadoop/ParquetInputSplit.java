@@ -29,6 +29,7 @@ import java.util.Map.Entry;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+import org.apache.hadoop.classification.InterfaceAudience.Private;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
@@ -39,8 +40,12 @@ import parquet.bytes.BytesUtils;
  * An input split for the Parquet format
  * It contains the information to read one block of the file.
  *
+ * This class is private to the ParquetInputFormat.
+ * Backward compatibility is not maintained.
+ *
  * @author Julien Le Dem
  */
+@Private
 public class ParquetInputSplit extends FileSplit implements Writable {
 
 
@@ -81,28 +86,28 @@ public class ParquetInputSplit extends FileSplit implements Writable {
   /**
    * @return the requested schema
    */
-  public String getRequestedSchema() {
+  String getRequestedSchema() {
     return requestedSchema;
   }
 
   /**
    * @return the end offset of that split
    */
-  public long getEnd() {
+  long getEnd() {
     return end;
   }
 
   /**
    * @return app specific metadata provided by the read support in the init phase
    */
-  public Map<String, String> getReadSupportMetadata() {
+  Map<String, String> getReadSupportMetadata() {
     return readSupportMetadata;
   }
 
   /**
    * @return the offsets of the row group selected if this has been determined on the client side
    */
-  public long[] getRowGroupOffsets() {
+  long[] getRowGroupOffsets() {
     return rowGroupOffsets;
   }
 

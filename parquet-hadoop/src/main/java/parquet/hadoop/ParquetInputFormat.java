@@ -372,6 +372,10 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     return footers;
   }
 
+  public List<Footer> getFooters(Configuration configuration, List<FileStatus> statuses) throws IOException {
+    return getFooters(configuration, (Collection<FileStatus>)statuses);
+  }
+
   /**
    * the footers for the files
    * @param configuration to connect to the file system

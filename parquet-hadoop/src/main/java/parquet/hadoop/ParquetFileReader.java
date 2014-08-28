@@ -201,6 +201,11 @@ public class ParquetFileReader implements Closeable {
     }
   }
 
+  @Deprecated
+  public static List<Footer> readAllFootersInParallel(final Configuration configuration, List<FileStatus> partFiles) throws IOException {
+    return readAllFootersInParallel(configuration, partFiles, false);
+  }
+
   /**
    * read all the footers of the files provided
    * (not using summary files)
@@ -243,6 +248,15 @@ public class ParquetFileReader implements Closeable {
   public static List<Footer> readAllFootersInParallel(Configuration configuration, FileStatus fileStatus) throws IOException {
     List<FileStatus> statuses = listFiles(configuration, fileStatus);
     return readAllFootersInParallel(configuration, statuses, false);
+  }
+
+  @Deprecated
+  public static List<Footer> readFooters(Configuration configuration, Path path) throws IOException {
+    return readFooters(configuration, status(configuration, path));
+  }
+
+  private static FileStatus status(Configuration configuration, Path path) throws IOException {
+    return path.getFileSystem(configuration).getFileStatus(path);
   }
 
   /**
@@ -362,6 +376,14 @@ public class ParquetFileReader implements Closeable {
   public static ParquetMetadata readFooter(Configuration configuration, Path file, MetadataFilter filter) throws IOException {
     FileSystem fileSystem = file.getFileSystem(configuration);
     return readFooter(configuration, fileSystem.getFileStatus(file), filter);
+  }
+
+  /**
+   * @deprecated use {@link ParquetFileReader#readFooter(Configuration, FileStatus, MetadataFilter)}
+   */
+  @Deprecated
+  public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file) throws IOException {
+    return readFooter(configuration, file, NO_FILTER);
   }
 
   /**

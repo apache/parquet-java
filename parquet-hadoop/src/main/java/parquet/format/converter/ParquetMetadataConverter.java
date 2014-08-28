@@ -407,6 +407,11 @@ public class ParquetMetadataConverter {
     }
   }
 
+  @Deprecated
+  public ParquetMetadata readParquetMetadata(InputStream from) throws IOException {
+    return readParquetMetadata(from, NO_FILTER);
+  }
+
   public ParquetMetadata readParquetMetadata(final InputStream from, MetadataFilter filter) throws IOException {
     FileMetaData fileMetaData = filter.accept(new MetadataFilterVisitor<FileMetaData, IOException>() {
       @Override
