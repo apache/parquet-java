@@ -62,6 +62,7 @@ public class ParquetFileWriter {
   private static final Log LOG = Log.getLog(ParquetFileWriter.class);
 
   public static final String PARQUET_METADATA_FILE = "_metadata";
+  public static final String PARQUET_COMMON_METADATA_FILE = "_common_metadata";
   public static final byte[] MAGIC = "PAR1".getBytes(Charset.forName("ASCII"));
   public static final int CURRENT_VERSION = 1;
 
@@ -387,19 +388,26 @@ public class ParquetFileWriter {
   }
 
   /**
-   * writes a _metadata file
+   * writes a _metadata and _common_metadata file
    * @param configuration the configuration to use to get the FileSystem
    * @param outputPath the directory to write the _metadata file to
    * @param footers the list of footers to merge
    * @throws IOException
    */
   public static void writeMetadataFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
-    Path metaDataPath = new Path(outputPath, PARQUET_METADATA_FILE);
+    ParquetMetadata metadataFooter = mergeFooters(outputPath, footers);
     FileSystem fs = outputPath.getFileSystem(configuration);
     outputPath = outputPath.makeQualified(fs);
+    writeMetadataFile(outputPath, metadataFooter, fs, PARQUET_METADATA_FILE);
+    metadataFooter.getBlocks().clear();
+    writeMetadataFile(outputPath, metadataFooter, fs, PARQUET_COMMON_METADATA_FILE);
+  }
+
+  private static void writeMetadataFile(Path outputPath, ParquetMetadata metadataFooter, FileSystem fs, String parquetMetadataFile)
+      throws IOException {
+    Path metaDataPath = new Path(outputPath, parquetMetadataFile);
     FSDataOutputStream metadata = fs.create(metaDataPath);
     metadata.write(MAGIC);
-    ParquetMetadata metadataFooter = mergeFooters(outputPath, footers);
     serializeFooter(metadataFooter, metadata);
     metadata.close();
   }

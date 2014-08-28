@@ -15,8 +15,6 @@
  */
 package parquet.hadoop;
 
-import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
-
 import java.io.IOException;
 import java.util.List;
 
@@ -47,7 +45,7 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
       Configuration configuration = ContextUtil.getConfiguration(jobContext);
       final FileSystem fileSystem = outputPath.getFileSystem(configuration);
       FileStatus outputStatus = fileSystem.getFileStatus(outputPath);
-      List<Footer> footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus, NO_FILTER);
+      List<Footer> footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus, false);
       try {
         ParquetFileWriter.writeMetadataFile(configuration, outputPath, footers);
       } catch (Exception e) {

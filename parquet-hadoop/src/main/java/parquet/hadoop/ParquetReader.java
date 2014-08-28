@@ -16,7 +16,6 @@
 package parquet.hadoop;
 
 import static parquet.Preconditions.checkNotNull;
-import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -115,7 +114,7 @@ public class ParquetReader<T> implements Closeable {
 
     FileSystem fs = file.getFileSystem(conf);
     List<FileStatus> statuses = Arrays.asList(fs.listStatus(file));
-    List<Footer> footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(conf, statuses, NO_FILTER);
+    List<Footer> footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(conf, statuses, false);
     this.footersIterator = footers.iterator();
     globalMetaData = ParquetFileWriter.getGlobalMetaData(footers);
     MessageType schema = globalMetaData.getSchema();

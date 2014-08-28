@@ -16,8 +16,6 @@
 package parquet.hadoop;
 
 import static parquet.Preconditions.checkArgument;
-import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
-import static parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -52,7 +50,6 @@ import parquet.filter2.compat.FilterCompat;
 import parquet.filter2.compat.FilterCompat.Filter;
 import parquet.filter2.compat.RowGroupFilter;
 import parquet.filter2.predicate.FilterPredicate;
-import parquet.format.converter.ParquetMetadataConverter.MetadataFilter;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
@@ -385,8 +382,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public List<Footer> getFooters(Configuration configuration, Collection<FileStatus> statuses) throws IOException {
     if (Log.DEBUG) LOG.debug("reading " + statuses.size() + " files");
     boolean taskSideMetaData = isTaskSideMetaData(configuration);
-    MetadataFilter filter = taskSideMetaData ? SKIP_ROW_GROUPS : NO_FILTER;
-    return ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses, filter);
+    return ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, statuses, taskSideMetaData);
   }
 
   /**
@@ -547,7 +543,10 @@ class TaskSideMetadataSplitStrategy extends SplitStrategy {
     Arrays.sort(hdfsBlocksArray, new Comparator<BlockLocation>() {
       @Override
       public int compare(BlockLocation o1, BlockLocation o2) {
-        return Long.compare(o1.getOffset(), o2.getOffset());
+        return compare(o1.getOffset(), o2.getOffset());
+      }
+      private int compare(long x, long y) {
+        return (x < y) ? -1 : ((x == y) ? 0 : 1);
       }
     });
     final BlockLocation lastBlock =
@@ -565,17 +564,15 @@ class TaskSideMetadataSplitStrategy extends SplitStrategy {
         // no block boundary between min and max
         endOffset = startOffset + maxSplitSize;
         blockLocation = hdfsBlocksArray[nextBlockMax];
-      } else if (nextBlockMax > 0) {
+      } else if (nextBlockMin > -1) {
         // block boundary between min and max
-        // we end the split there
-        endOffset = hdfsBlocksArray[nextBlockMax].getOffset();
-        blockLocation = hdfsBlocksArray[nextBlockMax - 1];
-      } else if (nextBlockMax == -1) {
-        // max after last block
+        // we end the split at the first block boundary
+        blockLocation = hdfsBlocksArray[nextBlockMin];
+        endOffset = blockLocation.getOffset() + blockLocation.getLength();
+      } else {
+        // min and max after last block
         endOffset = fileStatus.getLen();
         blockLocation = lastBlock;
-      } else {
-        throw new IllegalStateException("offs:" + startOffset + " bmin:" + nextBlockMin + " bmax:" + nextBlockMax);
       }
       resultSplits.add(
           new ParquetInputSplit(
