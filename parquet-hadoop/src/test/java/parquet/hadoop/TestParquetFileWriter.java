@@ -278,16 +278,17 @@ public class TestParquetFileWriter {
     createFile(configuration, new Path(testDirPath, "part2"), schema);
 
     FileStatus outputStatus = fs.getFileStatus(testDirPath);
-    List<Footer> footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus);
+    List<Footer> footers = ParquetFileReader.readFooters(configuration, outputStatus, false);
     validateFooters(footers);
     ParquetFileWriter.writeMetadataFile(configuration, testDirPath, footers);
 
-    footers = ParquetFileReader.readFooters(configuration, outputStatus);
+    footers = ParquetFileReader.readFooters(configuration, outputStatus, false);
     validateFooters(footers);
-    footers = ParquetFileReader.readFooters(configuration, fs.getFileStatus(new Path(testDirPath, "part0")));
+    footers = ParquetFileReader.readFooters(configuration, fs.getFileStatus(new Path(testDirPath, "part0")), false);
     assertEquals(1, footers.size());
 
     final FileStatus metadataFile = fs.getFileStatus(new Path(testDirPath, ParquetFileWriter.PARQUET_METADATA_FILE));
+    final FileStatus metadataFileLight = fs.getFileStatus(new Path(testDirPath, ParquetFileWriter.PARQUET_COMMON_METADATA_FILE));
     final List<Footer> metadata = ParquetFileReader.readSummaryFile(configuration, metadataFile);
 
     validateFooters(metadata);
@@ -297,19 +298,20 @@ public class TestParquetFileWriter {
       public boolean accept(Path p) {
         return !p.getName().startsWith("_");
       }
-    })));
+    })), false);
     validateFooters(footers);
 
     fs.delete(metadataFile.getPath(), false);
+    fs.delete(metadataFileLight.getPath(), false);
 
-    footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, Arrays.asList(fs.listStatus(testDirPath)));
+    footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, Arrays.asList(fs.listStatus(testDirPath)), false);
     validateFooters(footers);
 
   }
 
   private void validateFooters(final List<Footer> metadata) {
     LOG.debug(metadata);
-    assertEquals(3, metadata.size());
+    assertEquals(String.valueOf(metadata), 3, metadata.size());
     for (Footer footer : metadata) {
       final File file = new File(footer.getFile().toUri());
       assertTrue(file.getName(), file.getName().startsWith("part"));

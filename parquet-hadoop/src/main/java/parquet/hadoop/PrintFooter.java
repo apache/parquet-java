@@ -71,7 +71,7 @@ public class PrintFooter {
     if (fileStatus.isDir() && fs.exists(summary)) {
       System.out.println("reading summary file");
       FileStatus summaryStatus = fs.getFileStatus(summary);
-      List<Footer> readSummaryFile = ParquetFileReader.readSummaryFile(configuration, summaryStatus, false);
+      List<Footer> readSummaryFile = ParquetFileReader.readSummaryFile(configuration, summaryStatus);
       for (Footer footer : readSummaryFile) {
         add(footer.getParquetMetadata());
       }
