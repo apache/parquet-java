@@ -352,7 +352,7 @@ public class ParquetMetadataConverter {
   public static final MetadataFilter NO_FILTER = new NoFilter();
   public static final MetadataFilter SKIP_ROW_GROUPS = new SkipMetadataFilter();
   /**
-   * [ startOffset, endOffset (
+   * [ startOffset, endOffset )
    * @param startOffset
    * @param endOffset
    * @return the filter

@@ -509,7 +509,6 @@ class TaskSideMetadataSplitStrategy extends SplitStrategy {
       splits.addAll(generateTaskSideMDSplits(
           fileBlockLocations,
           fileStatus,
-          footer.getParquetMetadata().getFileMetaData(),
           readContext.getRequestedSchema().toString(),
           readContext.getReadSupportMetadata(),
           minSplitSize,
@@ -532,7 +531,6 @@ class TaskSideMetadataSplitStrategy extends SplitStrategy {
   static <T> List<ParquetInputSplit> generateTaskSideMDSplits(
       BlockLocation[] hdfsBlocksArray,
       FileStatus fileStatus,
-      FileMetaData fileMetaData,
       String requestedSchema,
       Map<String, String> readSupportMetadata, long minSplitSize, long maxSplitSize) throws IOException {
     if (maxSplitSize < minSplitSize || maxSplitSize < 0 || minSplitSize < 0) {
@@ -560,12 +558,9 @@ class TaskSideMetadataSplitStrategy extends SplitStrategy {
       BlockLocation blockLocation;
       final int nextBlockMin = findBlockIndex(hdfsBlocksArray, startOffset + minSplitSize);
       final int nextBlockMax = findBlockIndex(hdfsBlocksArray, startOffset + maxSplitSize);
-      if (nextBlockMax == -1 && nextBlockMin == -1) {
-        // small last split
-        endOffset = fileStatus.getLen();
-        blockLocation = lastBlock;
-      } else if (nextBlockMax == nextBlockMin) {
+      if (nextBlockMax == nextBlockMin && nextBlockMax != -1) {
         // no block boundary between min and max
+        // => use max for the size of the split
         endOffset = startOffset + maxSplitSize;
         blockLocation = hdfsBlocksArray[nextBlockMax];
       } else if (nextBlockMin > -1) {
@@ -575,6 +570,7 @@ class TaskSideMetadataSplitStrategy extends SplitStrategy {
         endOffset = blockLocation.getOffset() + blockLocation.getLength();
       } else {
         // min and max after last block
+        // small last split
         endOffset = fileStatus.getLen();
         blockLocation = lastBlock;
       }
@@ -674,7 +670,7 @@ class ClientSideMetadataSplitStrategy extends SplitStrategy {
       return rowGroups.size();
     }
 
-    public ParquetInputSplit getParquetInputSplit(FileStatus fileStatus, FileMetaData fileMetaData, String requestedSchema, Map<String, String> readSupportMetadata) throws IOException {
+    public ParquetInputSplit getParquetInputSplit(FileStatus fileStatus, String requestedSchema, Map<String, String> readSupportMetadata) throws IOException {
       MessageType requested = MessageTypeParser.parseMessageType(requestedSchema);
       long length = 0;
 
@@ -744,7 +740,6 @@ class ClientSideMetadataSplitStrategy extends SplitStrategy {
               filteredBlocks,
               fileBlockLocations,
               fileStatus,
-              parquetMetaData.getFileMetaData(),
               readContext.getRequestedSchema().toString(),
               readContext.getReadSupportMetadata(),
               minSplitSize,
@@ -767,7 +762,6 @@ class ClientSideMetadataSplitStrategy extends SplitStrategy {
    * @param rowGroupBlocks      data blocks (row groups)
    * @param hdfsBlocksArray     hdfs blocks
    * @param fileStatus          the containing file
-   * @param fileMetaData        file level meta data
    * @param requestedSchema     the schema requested by the user
    * @param readSupportMetadata the metadata provided by the readSupport implementation in init
    * @param minSplitSize        the mapred.min.split.size
@@ -779,7 +773,6 @@ class ClientSideMetadataSplitStrategy extends SplitStrategy {
           List<BlockMetaData> rowGroupBlocks,
           BlockLocation[] hdfsBlocksArray,
           FileStatus fileStatus,
-          FileMetaData fileMetaData,
           String requestedSchema,
           Map<String, String> readSupportMetadata, long minSplitSize, long maxSplitSize) throws IOException {
 
@@ -789,7 +782,7 @@ class ClientSideMetadataSplitStrategy extends SplitStrategy {
     //generate splits from rowGroups of each split
     List<ParquetInputSplit> resultSplits = new ArrayList<ParquetInputSplit>();
     for (SplitInfo splitInfo : splitRowGroups) {
-      ParquetInputSplit split = splitInfo.getParquetInputSplit(fileStatus, fileMetaData, requestedSchema, readSupportMetadata);
+      ParquetInputSplit split = splitInfo.getParquetInputSplit(fileStatus, requestedSchema, readSupportMetadata);
       resultSplits.add(split);
     }
     return resultSplits;
