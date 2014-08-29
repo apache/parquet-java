@@ -76,15 +76,13 @@ public class TestHiveSchemaConverter {
 
   @Test
   public void testArray() throws Exception {
-    testConversion("arrayCol",
-            "array<int>",
-            "message hive_schema {\n"
-            + "  optional group arrayCol (LIST) {\n"
-            + "    repeated group bag {\n"
-            + "      optional int32 array_element;\n"
-            + "    }\n"
-            + "  }\n"
-            + "}\n");
+      testConversion("arrayCol",
+              "array<int>",
+              "message hive_schema {\n"
+                      + "  optional group arrayCol (LIST) {\n"
+                      + "      repeated int32 array_element;\n"
+                      + "  }\n"
+                      + "}\n");
   }
 
   @Test

@@ -20,6 +20,9 @@ import parquet.io.ParquetDecodingException;
 import parquet.io.api.Converter;
 import parquet.schema.GroupType;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ArrayWritableGroupConverter extends HiveGroupConverter {
 
   private final Converter[] converters;
@@ -28,6 +31,7 @@ public class ArrayWritableGroupConverter extends HiveGroupConverter {
   private final boolean isMap;
   private Writable currentValue;
   private Writable[] mapPairContainer;
+  private List<Writable> arrayValues;
 
   public ArrayWritableGroupConverter(final GroupType groupType, final HiveGroupConverter parent,
       final int index) {
@@ -54,6 +58,7 @@ public class ArrayWritableGroupConverter extends HiveGroupConverter {
     if (isMap) {
       mapPairContainer = new Writable[2];
     }
+      arrayValues = new ArrayList<Writable>();
   }
 
   @Override
@@ -61,7 +66,11 @@ public class ArrayWritableGroupConverter extends HiveGroupConverter {
     if (isMap) {
       currentValue = new ArrayWritable(Writable.class, mapPairContainer);
     }
-    parent.add(index, currentValue);
+    else {
+        currentValue = new ArrayWritable(Writable.class,arrayValues.toArray(new Writable[0]));
+    }
+
+      parent.add(index, currentValue);
   }
 
   @Override
@@ -74,7 +83,7 @@ public class ArrayWritableGroupConverter extends HiveGroupConverter {
     if (isMap) {
       mapPairContainer[index] = value;
     } else {
-      currentValue = value;
+        arrayValues.add(value);
     }
   }
 

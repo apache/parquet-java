@@ -100,8 +100,7 @@ public class HiveSchemaConverter {
   // 1 anonymous element "array_element"
   private static GroupType convertArrayType(final String name, final ListTypeInfo typeInfo) {
     final TypeInfo subType = typeInfo.getListElementTypeInfo();
-    return listWrapper(name, OriginalType.LIST, new GroupType(Repetition.REPEATED,
-        ParquetHiveSerDe.ARRAY.toString(), convertType("array_element", subType)));
+    return new GroupType(Repetition.OPTIONAL, name, OriginalType.LIST,convertType("array_element", subType, Repetition.REPEATED));
   }
 
   // An optional group containing multiple elements
