@@ -15,7 +15,10 @@
  */
 package parquet.hadoop.api;
 
+import static parquet.Preconditions.checkNotNull;
+
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
@@ -43,16 +46,14 @@ abstract public class WriteSupport<T> {
     private final MessageType schema;
     private final Map<String, String> extraMetaData;
 
+    /**
+     * @param schema the schema of the data
+     * @param extraMetaData application specific metadata to add in the file
+     */
     public WriteContext(MessageType schema, Map<String, String> extraMetaData) {
       super();
-      if (schema == null) {
-        throw new NullPointerException("schema");
-      }
-      if (extraMetaData == null) {
-        throw new NullPointerException("extraMetaData");
-      }
-      this.schema = schema;
-      this.extraMetaData = Collections.unmodifiableMap(extraMetaData);
+      this.schema = checkNotNull(schema, "schema");
+      this.extraMetaData = Collections.unmodifiableMap(checkNotNull(extraMetaData, "extraMetaData"));
     }
     /**
      * @return the schema of the file
@@ -60,6 +61,34 @@ abstract public class WriteSupport<T> {
     public MessageType getSchema() {
       return schema;
     }
+    /**
+     * @return application specific metadata
+     */
+    public Map<String, String> getExtraMetaData() {
+      return extraMetaData;
+    }
+
+  }
+
+  /**
+   * Information to be added in the file once all the records have been written
+   *
+   * @author Julien Le Dem
+   *
+   */
+  public static final class FinalizedWriteContext {
+    private final Map<String, String> extraMetaData;
+    // this class exists to facilitate evolution of the API
+    // we can add more fields later
+
+    /**
+     * @param extraMetaData application specific metadata to add in the file
+     */
+    public FinalizedWriteContext(Map<String, String> extraMetaData) {
+      super();
+      this.extraMetaData = Collections.unmodifiableMap(checkNotNull(extraMetaData, "extraMetaData"));
+    }
+
     /**
      * @return application specific metadata
      */
@@ -87,5 +116,13 @@ abstract public class WriteSupport<T> {
    * @param record one record to write to the previously provided record consumer
    */
   public abstract void write(T record);
+
+  /**
+   * called once in the end after the last record was written
+   * @return information to be added in the file
+   */
+  public FinalizedWriteContext finalizeWrite() {
+    return new FinalizedWriteContext(new HashMap<String, String>());
+  }
 
 }
