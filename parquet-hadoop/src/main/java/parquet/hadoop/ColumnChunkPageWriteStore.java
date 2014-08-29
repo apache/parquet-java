@@ -77,8 +77,18 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
                           Encoding dlEncoding,
                           Encoding valuesEncoding) throws IOException {
       long uncompressedSize = bytes.size();
+      if (uncompressedSize > Integer.MAX_VALUE) {
+        throw new ParquetEncodingException(
+            "Cannot write page larger than Integer.MAX_VALUE bytes: " +
+                uncompressedSize);
+      }
       BytesInput compressedBytes = compressor.compress(bytes);
       long compressedSize = compressedBytes.size();
+      if (compressedSize > Integer.MAX_VALUE) {
+        throw new ParquetEncodingException(
+            "Cannot write compressed page larger than Integer.MAX_VALUE bytes: "
+                + compressedSize);
+      }
       BooleanStatistics statistics = new BooleanStatistics(); // dummy stats object
       parquetMetadataConverter.writeDataPageHeader(
           (int)uncompressedSize,
@@ -107,8 +117,18 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
                           Encoding dlEncoding,
                           Encoding valuesEncoding) throws IOException {
       long uncompressedSize = bytes.size();
+      if (uncompressedSize > Integer.MAX_VALUE) {
+        throw new ParquetEncodingException(
+            "Cannot write page larger than Integer.MAX_VALUE bytes: " +
+            uncompressedSize);
+      }
       BytesInput compressedBytes = compressor.compress(bytes);
       long compressedSize = compressedBytes.size();
+      if (compressedSize > Integer.MAX_VALUE) {
+        throw new ParquetEncodingException(
+            "Cannot write compressed page larger than Integer.MAX_VALUE bytes: "
+            + compressedSize);
+      }
       parquetMetadataConverter.writeDataPageHeader(
           (int)uncompressedSize,
           (int)compressedSize,
