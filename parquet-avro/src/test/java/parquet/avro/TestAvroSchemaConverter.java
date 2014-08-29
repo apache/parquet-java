@@ -41,16 +41,22 @@ public class TestAvroSchemaConverter {
       "    required int32 mynestedint;\n" +
       "  }\n" +
       "  required binary myenum (ENUM);\n" +
-      "  required group myarray (LIST) {\n" +
-      "    repeated int32 array;\n" +
+      "  optional group myarray (LIST) {\n" +
+      "    repeated group bag {\n" +
+      "       optional int32 array_element;\n" +
+      "   }\n" +
       "  }\n" +
       "  optional group myoptionalarray (LIST) {\n" +
-      "    repeated int32 array;\n" +
+      "    repeated group bag {\n" +
+      "       optional int32 array_element;\n" +
+      "   }\n" +
       "  }\n" +
-      "  required group myrecordarray (LIST) {\n" +
-      "    repeated group array {\n" +
-      "      required int32 a;\n" +
-      "      required int32 b;\n" +
+      "  optional group myrecordarray (LIST) {\n" +
+      "    repeated group bag {\n" +
+      "     optional group array_element {\n" +
+      "       required int32 a;\n" +
+      "       required int32 b;\n" +
+      "     }\n" +
       "    }\n" +
       "  }\n" +
       "  required group mymap (MAP) {\n" +
@@ -116,14 +122,20 @@ public class TestAvroSchemaConverter {
             "    required int32 mynestedint;\n" +
             "  }\n" +
             "  required binary myenum (ENUM);\n" +
-            "  required group myarray (LIST) {\n" +
-            "    repeated int32 array;\n" +
+            "  optional group myarray (LIST) {\n" +
+            "    repeated group bag {\n" +
+            "       optional int32 array_element;\n" +
+            "   }\n" +
             "  }\n" +
-            "  required group myemptyarray (LIST) {\n" +
-            "    repeated int32 array;\n" +
+            "  optional group myemptyarray (LIST) {\n" +
+            "    repeated group bag {\n" +
+            "       optional int32 array_element;\n" +
+            "   }\n" +
             "  }\n" +
             "  optional group myoptionalarray (LIST) {\n" +
-            "    repeated int32 array;\n" +
+            "    repeated group bag {\n" +
+            "       optional int32 array_element;\n" +
+            "   }\n" +
             "  }\n" +
             "  required group mymap (MAP) {\n" +
             "    repeated group map (MAP_KEY_VALUE) {\n" +
@@ -214,10 +226,12 @@ public class TestAvroSchemaConverter {
     System.err.println("Avro schema: " + schema.toString(true));
 
     testAvroToParquetConversion(schema, "message HasArray {\n" +
-        "  required group myarray (LIST) {\n" +
-        "    repeated group array {\n" +
-        "      optional binary s1 (UTF8);\n" +
-        "      optional binary s2 (UTF8);\n" +
+        "  optional group myarray (LIST) {\n" +
+        "    repeated group bag {\n" +
+        "       optional group array_element {\n" +
+        "         optional binary s1 (UTF8);\n" +
+        "         optional binary s2 (UTF8);\n" +
+        "      }\n" +
         "    }\n" +
         "  }\n" +
         "}\n");
