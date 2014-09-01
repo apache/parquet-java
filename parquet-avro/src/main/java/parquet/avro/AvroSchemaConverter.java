@@ -108,7 +108,7 @@ public class AvroSchemaConverter {
     } else if (type.equals(Schema.Type.ENUM)) {
       return primitive(fieldName, BINARY, repetition, ENUM);
     } else if (type.equals(Schema.Type.ARRAY)) {
-      return new GroupType(Type.Repetition.OPTIONAL,fieldName,OriginalType.LIST,
+      return new GroupType(repetition,fieldName,OriginalType.LIST,
               new GroupType(Type.Repetition.REPEATED, "bag", convertField("array_element", schema.getElementType(), Type.Repetition.OPTIONAL)));
     } else if (type.equals(Schema.Type.MAP)) {
       Type valType = convertField("value", schema.getValueType());

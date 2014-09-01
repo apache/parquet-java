@@ -41,7 +41,7 @@ public class TestAvroSchemaConverter {
       "    required int32 mynestedint;\n" +
       "  }\n" +
       "  required binary myenum (ENUM);\n" +
-      "  optional group myarray (LIST) {\n" +
+      "  required group myarray (LIST) {\n" +
       "    repeated group bag {\n" +
       "       optional int32 array_element;\n" +
       "   }\n" +
@@ -51,7 +51,7 @@ public class TestAvroSchemaConverter {
       "       optional int32 array_element;\n" +
       "   }\n" +
       "  }\n" +
-      "  optional group myrecordarray (LIST) {\n" +
+      "  required group myrecordarray (LIST) {\n" +
       "    repeated group bag {\n" +
       "     optional group array_element {\n" +
       "       required int32 a;\n" +
@@ -122,12 +122,12 @@ public class TestAvroSchemaConverter {
             "    required int32 mynestedint;\n" +
             "  }\n" +
             "  required binary myenum (ENUM);\n" +
-            "  optional group myarray (LIST) {\n" +
+            "  required group myarray (LIST) {\n" +
             "    repeated group bag {\n" +
             "       optional int32 array_element;\n" +
             "   }\n" +
             "  }\n" +
-            "  optional group myemptyarray (LIST) {\n" +
+            "  required group myemptyarray (LIST) {\n" +
             "    repeated group bag {\n" +
             "       optional int32 array_element;\n" +
             "   }\n" +
@@ -226,7 +226,7 @@ public class TestAvroSchemaConverter {
     System.err.println("Avro schema: " + schema.toString(true));
 
     testAvroToParquetConversion(schema, "message HasArray {\n" +
-        "  optional group myarray (LIST) {\n" +
+        "  required group myarray (LIST) {\n" +
         "    repeated group bag {\n" +
         "       optional group array_element {\n" +
         "         optional binary s1 (UTF8);\n" +

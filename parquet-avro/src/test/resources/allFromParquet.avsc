@@ -56,7 +56,7 @@
       "type" : "array",
       "items" : {
         "type" : "record",
-        "name" : "array",
+        "name" : "array_element",
         "namespace" : "",
         "fields" : [ {
            "name" : "a",

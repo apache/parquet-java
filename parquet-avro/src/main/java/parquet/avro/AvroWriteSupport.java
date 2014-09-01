@@ -120,15 +120,15 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
                               Iterable<T> array) {
     recordConsumer.startGroup(); // group wrapper (original type LIST)
     if (array.iterator().hasNext()) {
-      recordConsumer.startField("bag", 0);
+      recordConsumer.startField(schema.getType(0).getName(), 0);
       recordConsumer.startGroup();
       recordConsumer.startField("array_element", 0);
       for (T elt : array) {
-        writeValue(schema.getType(0), avroSchema.getElementType(), elt);
+        writeValue(schema.getType(0).asGroupType().getType(0), avroSchema.getElementType(), elt);
       }
       recordConsumer.endField("array_element", 0);
       recordConsumer.endGroup();
-      recordConsumer.endField("bag", 0);
+      recordConsumer.endField(schema.getType(0).getName(), 0);
     }
     recordConsumer.endGroup();
   }
