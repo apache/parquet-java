@@ -804,8 +804,11 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
         Type requestedType = requested.getType(field.getName());
         // if a field is in requested schema and the type of it is a group type, then do recursive check
         if (!field.isPrimitive()) {
-          if (hasMissingRequiredFieldInGroupType(requestedType.asGroupType(), field.asGroupType()))
+          if (hasMissingRequiredFieldInGroupType(requestedType.asGroupType(), field.asGroupType())) {
             return true;
+          } else {
+            continue;// check next field
+          }
         }
       } else {
         if (field.getRepetition() == Type.Repetition.REQUIRED) {
