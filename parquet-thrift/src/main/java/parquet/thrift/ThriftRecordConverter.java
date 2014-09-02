@@ -816,6 +816,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
         }
       }
     }
+
     return false;
   }
 
