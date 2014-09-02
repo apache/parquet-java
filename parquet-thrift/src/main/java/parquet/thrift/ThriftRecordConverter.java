@@ -30,7 +30,6 @@ import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
 
-import parquet.io.InvalidRecordException;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
 import parquet.io.api.Converter;
