@@ -835,7 +835,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
       if (missingRequiredFieldsInProjection) {
         List<TProtocol> fixedEvents = new ProtocolEventsAmender(rootEvents).amendMissingRequiredFields(thriftType);
         protocol.addAll(fixedEvents);
-      }else{
+      } else {
         protocol.addAll(rootEvents);
       }
 
