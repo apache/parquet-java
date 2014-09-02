@@ -32,6 +32,7 @@ import java.util.Set;
 import parquet.Log;
 import parquet.common.schema.ColumnPath;
 import parquet.format.ColumnChunk;
+import parquet.format.ColumnMetaData;
 import parquet.format.ConvertedType;
 import parquet.format.DataPageHeader;
 import parquet.format.DictionaryPageHeader;
@@ -58,6 +59,7 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type.Repetition;
 import parquet.schema.TypeVisitor;
 import parquet.schema.Types;
+import static java.lang.Math.min;
 import static parquet.format.Util.readFileMetaData;
 import static parquet.format.Util.writePageHeader;
 
@@ -417,16 +419,29 @@ public class ParquetMetadataConverter {
     List<RowGroup> newRowGroups = new ArrayList<RowGroup>();
     for (RowGroup rowGroup : rowGroups) {
       long totalSize = 0;
+      long startIndex = getOffset(rowGroup.getColumns().get(0));
       for (ColumnChunk col : rowGroup.getColumns()) {
         totalSize += col.getMeta_data().getTotal_compressed_size();
       }
-      long midPoint = rowGroup.getColumns().get(0).getFile_offset() + totalSize / 2;
+      long midPoint = startIndex + totalSize / 2;
       if (filter.contains(midPoint)) {
         newRowGroups.add(rowGroup);
       }
     }
     metaData.setRow_groups(newRowGroups);
     return metaData;
+  }
+
+  static long getOffset(RowGroup rowGroup) {
+    return getOffset(rowGroup.getColumns().get(0));
+  }
+  static long getOffset(ColumnChunk columnChunk) {
+    ColumnMetaData md = columnChunk.getMeta_data();
+    long offset = md.getData_page_offset();
+    if (md.isSetDictionary_page_offset() && offset > md.getDictionary_page_offset()) {
+      offset = md.getDictionary_page_offset();
+    }
+    return offset;
   }
 
   public ParquetMetadata readParquetMetadata(final InputStream from, MetadataFilter filter) throws IOException {

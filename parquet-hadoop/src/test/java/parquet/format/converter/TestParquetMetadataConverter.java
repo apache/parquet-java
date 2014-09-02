@@ -23,6 +23,7 @@ import static parquet.format.Type.INT32;
 import static parquet.format.Util.readPageHeader;
 import static parquet.format.Util.writePageHeader;
 import static parquet.format.converter.ParquetMetadataConverter.filterFileMetaData;
+import static parquet.format.converter.ParquetMetadataConverter.getOffset;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -31,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -158,7 +160,7 @@ public class TestParquetMetadataConverter {
     for (int i = 0; i < offsets.length; i++) {
       long offset = offsets[i];
       RowGroup rowGroup = md.getRow_groups().get(i);
-      assertEquals(offset, offset(rowGroup));
+      assertEquals(offset, getOffset(rowGroup));
     }
   }
 
@@ -173,7 +175,7 @@ public class TestParquetMetadataConverter {
     for (long start = 0; start < fileSize(md); start += splitWidth) {
       FileMetaData filtered = filter(md, start, start + splitWidth);
       for (RowGroup rg : filtered.getRow_groups()) {
-        long o = offset(rg);
+        long o = getOffset(rg);
         if (offsetsFound.contains(o)) {
           fail("found the offset twice: " + o);
         } else {
@@ -186,10 +188,6 @@ public class TestParquetMetadataConverter {
           + "found: " + offsetsFound
           + "\nexpected " + md.getRow_groups());
     }
-  }
-
-  public long offset(RowGroup rg) {
-    return rg.getColumns().get(0).getFile_offset();
   }
 
   private long fileSize(FileMetaData md) {
@@ -224,6 +222,25 @@ public class TestParquetMetadataConverter {
     verifyAllFilters(metadata(11, 9, 10), 10);
     verifyAllFilters(metadata(11, 9, 10), 9);
     verifyAllFilters(metadata(11, 9, 10), 8);
+  }
+
+  @Test
+  public void randomTestFilterMetaData() {
+    // randomized property based testing
+    // if it fails add the case above
+    Random random = new Random(System.currentTimeMillis());
+    for (int j = 0; j < 100; j++) {
+      long[] rgs = new long[random.nextInt(50)];
+      for (int i = 0; i < rgs.length; i++) {
+        rgs[i] = random.nextInt(10000) + 1; // No empty row groups
+      }
+      int splitSize = random.nextInt(10000);
+      try {
+        verifyAllFilters(metadata(rgs), splitSize);
+      } catch (AssertionError e) {
+        throw new AssertionError("fail verifyAllFilters(metadata(" + Arrays.toString(rgs) + "), " + splitSize + ")", e);
+      }
+    }
   }
 
 }
