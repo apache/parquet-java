@@ -803,7 +803,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
       if (requested.containsField(field.getName())) {
         Type requestedType = requested.getType(field.getName());
-        //if a field is in requested schema and the type of it is a group type, then do recursive check
+        // if a field is in requested schema and the type of it is a group type, then do recursive check
         if (!field.isPrimitive()) {
           if (hasMissingRequiredFieldInGroupType(requestedType.asGroupType(), field.asGroupType()))
             return true;
@@ -812,7 +812,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
         if (field.getRepetition() == Type.Repetition.REQUIRED) {
           return true; // if a field is missing in requested schema and it's required
         } else {
-          continue; //The missing field is not required, then continue checking next field
+          continue; // the missing field is not required, then continue checking next field
         }
       }
     }
