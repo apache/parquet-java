@@ -386,10 +386,10 @@ public class ParquetMetadataConverter {
    * [ startOffset, endOffset (
    * @author Julien Le Dem
    */
-  private static final class RangeMetadataFilter extends MetadataFilter {
+  static final class RangeMetadataFilter extends MetadataFilter {
     final long startOffset;
     final long endOffset;
-    private RangeMetadataFilter(long startOffset, long endOffset) {
+    RangeMetadataFilter(long startOffset, long endOffset) {
       super();
       this.startOffset = startOffset;
       this.endOffset = endOffset;
@@ -412,6 +412,23 @@ public class ParquetMetadataConverter {
     return readParquetMetadata(from, NO_FILTER);
   }
 
+  static FileMetaData filterFileMetaData(FileMetaData metaData, RangeMetadataFilter filter) {
+    List<RowGroup> rowGroups = metaData.getRow_groups();
+    List<RowGroup> newRowGroups = new ArrayList<RowGroup>();
+    for (RowGroup rowGroup : rowGroups) {
+      long totalSize = 0;
+      for (ColumnChunk col : rowGroup.getColumns()) {
+        totalSize += col.getMeta_data().getTotal_compressed_size();
+      }
+      long midPoint = rowGroup.getColumns().get(0).getFile_offset() + totalSize / 2;
+      if (filter.contains(midPoint)) {
+        newRowGroups.add(rowGroup);
+      }
+    }
+    metaData.setRow_groups(newRowGroups);
+    return metaData;
+  }
+
   public ParquetMetadata readParquetMetadata(final InputStream from, MetadataFilter filter) throws IOException {
     FileMetaData fileMetaData = filter.accept(new MetadataFilterVisitor<FileMetaData, IOException>() {
       @Override
@@ -424,21 +441,7 @@ public class ParquetMetadataConverter {
       }
       @Override
       public FileMetaData visit(RangeMetadataFilter filter) throws IOException {
-        FileMetaData metaData = readFileMetaData(from);
-        List<RowGroup> rowGroups = metaData.getRow_groups();
-        List<RowGroup> newRowGroups = new ArrayList<RowGroup>();
-        for (RowGroup rowGroup : rowGroups) {
-          long totalSize = 0;
-          for (ColumnChunk col : rowGroup.getColumns()) {
-            totalSize += col.getMeta_data().getTotal_compressed_size();
-          }
-          long midPoint = rowGroup.getColumns().get(0).getFile_offset() + totalSize / 2;
-          if (filter.contains(midPoint)) {
-            newRowGroups.add(rowGroup);
-          }
-        }
-        metaData.setRow_groups(newRowGroups);
-        return metaData;
+        return filterFileMetaData(readFileMetaData(from), filter);
       }
     });
     if (Log.DEBUG) LOG.debug(fileMetaData);

@@ -19,6 +19,7 @@ import static parquet.format.converter.ParquetMetadataConverter.range;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -157,7 +158,18 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
           filteredBlocks.add(block);
         }
       }
-
+      if (filteredBlocks.size() != rowGroupOffsets.length) {
+        long[] foundRowGroupOffsets = new long[footer.getBlocks().size()];
+        for (int i = 0; i < foundRowGroupOffsets.length; i++) {
+          foundRowGroupOffsets[i] = footer.getBlocks().get(i).getStartingPos();
+        }
+        throw new IllegalStateException(
+            "All the offsets listed in the split should be found in the file."
+            + " expected: " + Arrays.toString(rowGroupOffsets)
+            + " found: " + filteredBlocks
+            + " out of: " + Arrays.toString(foundRowGroupOffsets)
+            + " in range " + split.getStart() + ", " + split.getEnd());
+      }
     }
     internalReader.initialize(
         MessageTypeParser.parseMessageType(split.getRequestedSchema()),

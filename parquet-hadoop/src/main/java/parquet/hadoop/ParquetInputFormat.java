@@ -518,10 +518,11 @@ class TaskSideMetadataSplitStrategy extends SplitStrategy {
     return splits;
   }
 
-  private static int findBlockIndex(BlockLocation[] hdfsBlocksArray, long offset) {
+  private static int findBlockIndex(BlockLocation[] hdfsBlocksArray, long endOffset) {
     for (int i = 0; i < hdfsBlocksArray.length; i++) {
       BlockLocation block = hdfsBlocksArray[i];
-      if (offset >= block.getOffset() && offset < (block.getOffset() + block.getLength())) {
+      // end offset is exclusive. We want the block that contains the point right before.
+      if (endOffset > block.getOffset() && endOffset <= (block.getOffset() + block.getLength())) {
         return i;
       }
     }
