@@ -794,31 +794,26 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     this.protocol = new ParquetReadProtocol();
     this.thriftType = thriftType;
     MessageType fullSchema = new ThriftSchemaConverter().convert(thriftType);
-    missingRequiredFieldsInProjection = hasMissingRequiredFieldFromProjection(requestedParquetSchema, fullSchema);
+    missingRequiredFieldsInProjection = hasMissingRequiredFieldInGroupType(requestedParquetSchema, fullSchema);
     this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
-  }
-
-  private boolean hasMissingRequiredFieldFromProjection(MessageType requestedParquetSchema, MessageType fullSchema) {
-    return hasMissingRequiredFieldInGroupType(requestedParquetSchema, fullSchema);
   }
 
   private boolean hasMissingRequiredFieldInGroupType(GroupType requested, GroupType fullSchema) {
     for (Type field : fullSchema.getFields()) {
-      Type requestedType = null;
 
-      try {
-        requestedType = requested.getType(field.getName());
-      } catch (InvalidRecordException e) {
-        if (field.getRepetition() == Type.Repetition.REQUIRED)
-          return true;
-        else
+      if (requested.containsField(field.getName())) {
+        Type requestedType = requested.getType(field.getName());
+        //if a field is in requested schema and the type of it is a group type, then do recursive check
+        if (!field.isPrimitive()) {
+          if (hasMissingRequiredFieldInGroupType(requestedType.asGroupType(), field.asGroupType()))
+            return true;
+        }
+      } else {
+        if (field.getRepetition() == Type.Repetition.REQUIRED) {
+          return true; // if a field is missing in requested schema and it's required
+        } else {
           continue; //The missing field is not required, then continue checking next field
-      }
-
-      //if the type is a group type, then recursive checking
-      if (!field.isPrimitive()) {
-        if (hasMissingRequiredFieldInGroupType(requestedType.asGroupType(), field.asGroupType()))
-          return true;
+        }
       }
     }
     return false;
