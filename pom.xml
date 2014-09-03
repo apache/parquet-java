@@ -20,27 +20,55 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
+  <parent>
+    <groupId>org.apache</groupId>
+    <artifactId>apache</artifactId>
+    <version>14</version>
+  </parent>
+
   <groupId>com.twitter</groupId>
   <artifactId>parquet-format</artifactId>
   <version>2.1.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <name>parquet format metadata</name>
-  <url>http://github.com/Parquet/parquet-format</url>
+  <name>Apache Parquet Format (Incubating)</name>
+  <url>http://parquet.incubator.apache.org/</url>
   <description>Parquet is a columnar storage format that supports nested data. This provides all generated metadata code.</description>
 
   <scm>
-    <connection>scm:git:git@github.com:Parquet/parquet-format.git</connection>
-    <url>scm:git:git@github.com:Parquet/parquet-format.git</url>
-    <developerConnection>scm:git:git@github.com:Parquet/parquet-format.git</developerConnection>
+    <connection>scm:git:git@github.com:apache/incubator-parquet-format.git</connection>
+    <url>scm:git:git@github.com:apache/incubator-parquet-format.git</url>
+    <developerConnection>scm:git:https://git-wip-us.apache.org/repos/asf/incubator-parquet-format.git</developerConnection>
   </scm>
 
   <licenses>
+    <!-- This is also in the Apache parent POM, but adding it here includes it
+         in dependency-reduced-pom.xml so that it passes the rat check. -->
     <license>
       <name>The Apache Software License, Version 2.0</name>
       <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
     </license>
   </licenses>
+
+  <issueManagement>
+    <system>JIRA</system>
+    <url>https://issues.apache.org/jira/browse/PARQUET</url>
+  </issueManagement>
+
+  <mailingLists>
+    <mailingList>
+      <name>Dev Mailing List</name>
+      <post>dev@parquet.incubator.apache.org</post>
+      <subscribe>dev-subscribe@parquet.incubator.apache.org</subscribe>
+      <unsubscribe>dev-unsubscribe@parquet.incubator.apache.org</unsubscribe>
+    </mailingList>
+    <mailingList>
+      <name>Commits Mailing List</name>
+      <post>commits@parquet.incubator.apache.org</post>
+      <subscribe>commits-subscribe@parquet.incubator.apache.org</subscribe>
+      <unsubscribe>commits-unsubscribe@parquet.incubator.apache.org</unsubscribe>
+    </mailingList>
+  </mailingLists>
 
   <developers>
     <developer>
@@ -91,11 +119,24 @@
   <properties>
     <maven.compiler.source>1.6</maven.compiler.source>
     <maven.compiler.target>1.6</maven.compiler.target>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <rat.version>0.10</rat.version>
   </properties>
 
   <build>
+    <resources>
+      <resource>
+        <!-- the default resources directory -->
+        <directory>src/main/resources</directory>
+      </resource>
+      <resource>
+        <!-- copy NOTICE and LICENSE -->
+        <directory>${basedir}</directory>
+        <targetPath>META-INF</targetPath>
+        <includes>
+          <include>NOTICE</include>
+          <include>LICENSE</include>
+        </includes>
+      </resource>
+    </resources>
     <pluginManagement>
       <plugins>
         <plugin>
@@ -128,6 +169,15 @@
             </goals>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <!-- Override source and target from the ASF parent -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>${maven.compiler.source}</source>
+          <target>${maven.compiler.target}</target>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -172,7 +222,6 @@
       <plugin>
         <groupId>org.apache.rat</groupId>
         <artifactId>apache-rat-plugin</artifactId>
-        <version>${rat.version}</version>
         <executions>
           <execution>
             <phase>test</phase>
