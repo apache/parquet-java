@@ -16,6 +16,7 @@
 package parquet.column.values.boundedint;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import parquet.column.values.ValuesReader;
 
@@ -33,8 +34,13 @@ public class ZeroIntegerValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
+  public void initFromPage(int valueCount, ByteBuffer in, int offset) throws IOException {
     this.nextOffset = offset;
+  }
+  
+  @Override
+  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException{
+    this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
   }
   
   @Override

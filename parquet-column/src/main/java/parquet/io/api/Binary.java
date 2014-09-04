@@ -342,6 +342,91 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   public static Binary fromByteBuffer(final ByteBuffer value) {
     return new ByteBufferBackedBinary(value);
   }
+  
+  public static Binary fromByteBuffer(
+      final ByteBuffer value,
+      final int offset,
+      final int length) {
+    return new Binary() {
+      @Override
+      public String toStringUsingUTF8() {
+        return new String(getBytes(), BytesUtils.UTF8);
+      }
+
+      @Override
+      public int length() {
+        return length;
+      }
+
+      @Override
+      public void writeTo(OutputStream out) throws IOException {
+        out.write(getBytes());
+      }
+
+      @Override
+      public byte[] getBytes() {
+        byte[] bytes = new byte[length];
+        
+        value.mark();
+        value.position(offset);
+        value.get(bytes).reset();
+        
+        return bytes;
+      }
+
+      @Override
+      public int hashCode() {
+        byte[] bytes = getBytes();
+        return Binary.hashCode(bytes, 0, bytes.length);
+      }
+
+      @Override
+      boolean equals(Binary other) {
+        if (toByteBuffer().compareTo(other.toByteBuffer()) == 0) {
+          return true;
+        }
+        return false;
+      }
+
+      @Override
+      boolean equals(byte[] other, int otherOffset, int otherLength) {
+         if (toByteBuffer().compareTo(ByteBuffer.wrap(other, otherOffset, otherLength)) == 0) {
+           return true;
+         }
+         return false;
+      }
+
+      @Override
+      public int compareTo(Binary other) {
+        byte[] bytes = getBytes();
+        return other.compareTo(bytes, 0, bytes.length);
+      }
+
+      @Override
+      int compareTo(byte[] other, int otherOffset, int otherLength) {
+        byte[] bytes = getBytes();
+        return Binary.compareTwoByteArrays(bytes, 0, bytes.length, other, otherOffset, otherLength);
+      }
+
+      @Override
+      public ByteBuffer toByteBuffer() {
+        ByteBuffer buf;
+        value.mark();
+        value.position(offset);
+        buf = value.slice();
+        buf.limit(length);
+        value.reset();
+        return buf;
+      }
+
+      @Override
+      public void writeTo(DataOutput out) throws IOException {
+        for (int i = offset; i < offset + length; i++) {
+          out.write(value.get(i));
+        }
+      }
+    };
+  }
 
   public static Binary fromString(final String value) {
     try {

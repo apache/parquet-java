@@ -17,10 +17,12 @@ package parquet.column.values.dictionary;
 
 import static parquet.Log.DEBUG;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 import parquet.Log;
+import parquet.bytes.ByteBufferInputStream;
 import parquet.bytes.BytesUtils;
 import parquet.column.Dictionary;
 import parquet.column.values.ValuesReader;
@@ -37,7 +39,7 @@ import parquet.io.api.Binary;
 public class DictionaryValuesReader extends ValuesReader {
   private static final Log LOG = Log.getLog(DictionaryValuesReader.class);
 
-  private ByteArrayInputStream in;
+  private ByteBufferInputStream in;
 
   private Dictionary dictionary;
 
@@ -48,12 +50,12 @@ public class DictionaryValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, byte[] page, int offset)
+  public void initFromPage(int valueCount, ByteBuffer page, int offset)
       throws IOException {
-    this.in = new ByteArrayInputStream(page, offset, page.length - offset);
-    if (page.length - offset > 0) {
+    this.in = new ByteBufferInputStream(page, offset, page.limit() - offset);
+    if (page.limit() - offset > 0) {
       if (DEBUG)
-        LOG.debug("init from page at offset " + offset + " for length " + (page.length - offset));
+        LOG.debug("init from page at offset " + offset + " for length " + (page.limit() - offset));
       int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
       if (DEBUG) LOG.debug("bit width " + bitWidth);
       decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
@@ -66,7 +68,12 @@ public class DictionaryValuesReader extends ValuesReader {
       };
     }
   }
-
+  
+  @Override
+  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException{
+    this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
+  }
+  
   @Override
   public int readValueDictionaryId() {
     try {

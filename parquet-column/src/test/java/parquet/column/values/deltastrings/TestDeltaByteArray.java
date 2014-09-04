@@ -39,7 +39,7 @@ public class TestDeltaByteArray {
     Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
-      Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
+      Assert.assertEquals(Binary.fromString(values[i]).toStringUsingUTF8(), bin[i].toStringUsingUTF8());
     }
   }
   
@@ -52,7 +52,7 @@ public class TestDeltaByteArray {
     Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), randvalues.length);
 
     for(int i =0; i< bin.length ; i++) {
-      Assert.assertEquals(Binary.fromString(randvalues[i]), bin[i]);
+      Assert.assertEquals(Binary.fromString(randvalues[i]).toStringUsingUTF8(), bin[i].toStringUsingUTF8());
     }
   }
 
