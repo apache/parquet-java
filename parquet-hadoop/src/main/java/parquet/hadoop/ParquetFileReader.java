@@ -317,16 +317,16 @@ public class ParquetFileReader implements Closeable {
   }
 
   static ParquetMetadata readSummaryMetadata(Configuration configuration, Path basePath, boolean skipRowGroups) throws IOException {
-    Path summaryFile = new Path(basePath, PARQUET_METADATA_FILE);
-    Path summaryFileLight = new Path(basePath, PARQUET_COMMON_METADATA_FILE);
+    Path metadataFile = new Path(basePath, PARQUET_METADATA_FILE);
+    Path commonMetaDataFile = new Path(basePath, PARQUET_COMMON_METADATA_FILE);
     FileSystem fileSystem = basePath.getFileSystem(configuration);
-    if (skipRowGroups && fileSystem.exists(summaryFileLight)) {
+    if (skipRowGroups && fileSystem.exists(commonMetaDataFile)) {
       // reading the summary file that does not contain the row groups
-      if (Log.INFO) LOG.info("reading summary file: " + summaryFileLight);
-      return readFooter(configuration, summaryFileLight, filter(skipRowGroups));
-    } else if (fileSystem.exists(summaryFile)) {
-      if (Log.INFO) LOG.info("reading summary file: " + summaryFile);
-      return readFooter(configuration, summaryFile, filter(skipRowGroups));
+      if (Log.INFO) LOG.info("reading summary file: " + commonMetaDataFile);
+      return readFooter(configuration, commonMetaDataFile, filter(skipRowGroups));
+    } else if (fileSystem.exists(metadataFile)) {
+      if (Log.INFO) LOG.info("reading summary file: " + metadataFile);
+      return readFooter(configuration, metadataFile, filter(skipRowGroups));
     } else {
       return null;
     }

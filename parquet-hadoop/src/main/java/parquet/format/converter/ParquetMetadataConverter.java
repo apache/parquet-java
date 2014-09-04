@@ -385,7 +385,7 @@ public class ParquetMetadataConverter {
     }
   }
   /**
-   * [ startOffset, endOffset (
+   * [ startOffset, endOffset )
    * @author Julien Le Dem
    */
   static final class RangeMetadataFilter extends MetadataFilter {

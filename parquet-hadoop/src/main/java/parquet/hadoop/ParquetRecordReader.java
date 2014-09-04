@@ -144,10 +144,13 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
         configuration, path, range(split.getStart(), split.getEnd()));
     long[] rowGroupOffsets = split.getRowGroupOffsets();
     List<BlockMetaData> filteredBlocks;
+    // if task.side.metadata is set, rowGroupOffsets is null
     if (rowGroupOffsets == null) {
+      // then we need to apply the predicate push down filter
       Filter filter = ParquetInputFormat.getFilter(configuration);
       filteredBlocks = RowGroupFilter.filterRowGroups(filter, footer.getBlocks(), footer.getFileMetaData().getSchema());
     } else {
+      // otherwise we find the row groups that were selected on the client
       Set<Long> offsets = new HashSet<Long>();
       for (long offset : rowGroupOffsets) {
         offsets.add(offset);
@@ -158,11 +161,14 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
           filteredBlocks.add(block);
         }
       }
+      // verify we found them all
       if (filteredBlocks.size() != rowGroupOffsets.length) {
         long[] foundRowGroupOffsets = new long[footer.getBlocks().size()];
         for (int i = 0; i < foundRowGroupOffsets.length; i++) {
           foundRowGroupOffsets[i] = footer.getBlocks().get(i).getStartingPos();
         }
+        // this should never happen.
+        // provide a good error message in case there's a bug
         throw new IllegalStateException(
             "All the offsets listed in the split should be found in the file."
             + " expected: " + Arrays.toString(rowGroupOffsets)
