@@ -16,10 +16,12 @@
 package parquet.column.values.deltalengthbytearray;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import org.junit.Test;
 import org.junit.Assert;
 
+import parquet.bytes.DirectByteBufferAllocator;
 import parquet.column.values.Utils;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.delta.DeltaBinaryPackingValuesReader;
@@ -31,20 +33,20 @@ public class TestDeltaLengthByteArray {
 
   @Test
   public void testSerialization () throws IOException {
-    DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64*1024);
+    DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64*1024, new DirectByteBufferAllocator());
     DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
-
+    
     Utils.writeData(writer, values);
     Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
-      Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
+      Assert.assertEquals(Binary.fromString(values[i]).toStringUsingUTF8(), bin[i].toStringUsingUTF8());
     }
   }
   
   @Test
   public void testRandomStrings() throws IOException {
-    DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64*1024);
+    DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64*1024, new DirectByteBufferAllocator());
     DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
 
     String[] values = Utils.getRandomStringSamples(1000, 32);
@@ -52,13 +54,13 @@ public class TestDeltaLengthByteArray {
     Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
 
     for(int i =0; i< bin.length ; i++) {
-      Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
+      Assert.assertEquals(Binary.fromString(values[i]).toStringUsingUTF8(), bin[i].toStringUsingUTF8());
     }
   }
 
   @Test
   public void testLengths() throws IOException {
-    DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64*1024);
+    DeltaLengthByteArrayValuesWriter writer = new DeltaLengthByteArrayValuesWriter(64*1024, new DirectByteBufferAllocator());
     ValuesReader reader = new DeltaBinaryPackingValuesReader();
 
     Utils.writeData(writer, values);

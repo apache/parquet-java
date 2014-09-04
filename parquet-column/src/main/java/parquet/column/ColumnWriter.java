@@ -87,6 +87,12 @@ public interface ColumnWriter {
    */
   void flush();
 
+ /**
+  * Close the underlying store. This should be called when there are no
+  * more data to be written.
+  */
+  void close();
+
   /**
    * used to decide when to write a page or row group
    * @return the number of bytes of memory used to buffer the current data

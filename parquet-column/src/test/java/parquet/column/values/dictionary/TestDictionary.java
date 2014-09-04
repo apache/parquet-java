@@ -30,6 +30,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import parquet.bytes.BytesInput;
+import parquet.bytes.DirectByteBufferAllocator;
 import parquet.column.ColumnDescriptor;
 import parquet.column.Dictionary;
 import parquet.column.Encoding;
@@ -51,7 +52,7 @@ public class TestDictionary {
   @Test
   public void testBinaryDictionary() throws IOException {
     int COUNT = 100;
-    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(200, 10000);
+    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(200, 10000, new DirectByteBufferAllocator());
     writeRepeated(COUNT, cw, "a");
     BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
     writeRepeated(COUNT, cw, "b");
@@ -71,7 +72,7 @@ public class TestDictionary {
   public void testBinaryDictionaryFallBack() throws IOException {
     int slabSize = 100;
     int maxDictionaryByteSize = 50;
-    final DictionaryValuesWriter cw = new PlainBinaryDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    final DictionaryValuesWriter cw = new PlainBinaryDictionaryValuesWriter(maxDictionaryByteSize, slabSize, new DirectByteBufferAllocator());
     int fallBackThreshold = maxDictionaryByteSize;
     int dataSize=0;
     for (long i = 0; i < 100; i++) {
@@ -87,10 +88,11 @@ public class TestDictionary {
 
     //Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
     ValuesReader reader = new BinaryPlainValuesReader();
-    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+    reader.initFromPage(100, cw.getBytes().toByteBuffer(), 0);
 
     for (long i = 0; i < 100; i++) {
-      assertEquals(Binary.fromString("str" + i), reader.readBytes());
+      assertEquals(Binary.fromString("str" + i).toStringUsingUTF8(),
+                    reader.readBytes().toStringUsingUTF8());
     }
 
     //simulate cutting the page
@@ -101,7 +103,7 @@ public class TestDictionary {
   @Test
   public void testBinaryDictionaryChangedValues() throws IOException {
     int COUNT = 100;
-    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(200, 10000);
+    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(200, 10000, new DirectByteBufferAllocator());
     writeRepeatedWithReuse(COUNT, cw, "a");
     BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
     writeRepeatedWithReuse(COUNT, cw, "b");
@@ -120,7 +122,7 @@ public class TestDictionary {
   @Test
   public void testFirstPageFallBack() throws IOException {
     int COUNT = 1000;
-    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(10000, 10000);
+    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(10000, 10000, new DirectByteBufferAllocator());
     writeDistinct(COUNT, cw, "a");
     // not efficient so falls back
     BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN);
@@ -138,7 +140,7 @@ public class TestDictionary {
   public void testSecondPageFallBack() throws IOException {
 
     int COUNT = 1000;
-    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(1000, 10000);
+    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(1000, 10000, new DirectByteBufferAllocator());
     writeRepeated(COUNT, cw, "a");
     BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
     writeDistinct(COUNT, cw, "b");
@@ -160,7 +162,7 @@ public class TestDictionary {
 
     int COUNT = 1000;
     int COUNT2 = 2000;
-    final DictionaryValuesWriter cw = new PlainLongDictionaryValuesWriter(10000, 10000);
+    final DictionaryValuesWriter cw = new PlainLongDictionaryValuesWriter(10000, 10000, new DirectByteBufferAllocator());
     for (long i = 0; i < COUNT; i++) {
       cw.writeLong(i % 50);
     }
@@ -175,13 +177,13 @@ public class TestDictionary {
 
     DictionaryValuesReader cr = initDicReader(cw, PrimitiveTypeName.INT64);
 
-    cr.initFromPage(COUNT, bytes1.toByteArray(), 0);
+    cr.initFromPage(COUNT, bytes1.toByteBuffer(), 0);
     for (long i = 0; i < COUNT; i++) {
       long back = cr.readLong();
       assertEquals(i % 50, back);
     }
 
-    cr.initFromPage(COUNT2, bytes2.toByteArray(), 0);
+    cr.initFromPage(COUNT2, bytes2.toByteBuffer(), 0);
     for (long i = COUNT2; i > 0; i--) {
       long back = cr.readLong();
       assertEquals(i % 50, back);
@@ -199,7 +201,7 @@ public class TestDictionary {
       }
     }
 
-    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+    reader.initFromPage(100, cw.getBytes().toByteBuffer(), 0);
 
     for (long i = 0; i < 100; i++) {
       assertEquals(i, reader.readLong());
@@ -210,7 +212,7 @@ public class TestDictionary {
   public void testLongDictionaryFallBack() throws IOException {
     int slabSize = 100;
     int maxDictionaryByteSize = 50;
-    final DictionaryValuesWriter cw = new PlainLongDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    final DictionaryValuesWriter cw = new PlainLongDictionaryValuesWriter(maxDictionaryByteSize, slabSize, new DirectByteBufferAllocator());
     // Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
     ValuesReader reader = new PlainValuesReader.LongPlainValuesReader();
     
@@ -228,7 +230,7 @@ public class TestDictionary {
 
     int COUNT = 1000;
     int COUNT2 = 2000;
-    final DictionaryValuesWriter cw = new PlainDoubleDictionaryValuesWriter(10000, 10000);
+    final DictionaryValuesWriter cw = new PlainDoubleDictionaryValuesWriter(10000, 10000, new DirectByteBufferAllocator());
 
     for (double i = 0; i < COUNT; i++) {
       cw.writeDouble(i % 50);
@@ -245,13 +247,13 @@ public class TestDictionary {
 
     final DictionaryValuesReader cr = initDicReader(cw, DOUBLE);
 
-    cr.initFromPage(COUNT, bytes1.toByteArray(), 0);
+    cr.initFromPage(COUNT, bytes1.toByteBuffer(), 0);
     for (double i = 0; i < COUNT; i++) {
       double back = cr.readDouble();
       assertEquals(i % 50, back, 0.0);
     }
 
-    cr.initFromPage(COUNT2, bytes2.toByteArray(), 0);
+    cr.initFromPage(COUNT2, bytes2.toByteBuffer(), 0);
     for (double i = COUNT2; i > 0; i--) {
       double back = cr.readDouble();
       assertEquals(i % 50, back, 0.0);
@@ -270,7 +272,7 @@ public class TestDictionary {
       }
     }
 
-    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+    reader.initFromPage(100, cw.getBytes().toByteBuffer(), 0);
 
     for (double i = 0; i < 100; i++) {
       assertEquals(i, reader.readDouble(), 0.00001);
@@ -281,7 +283,7 @@ public class TestDictionary {
   public void testDoubleDictionaryFallBack() throws IOException {
     int slabSize = 100;
     int maxDictionaryByteSize = 50;
-    final DictionaryValuesWriter cw = new PlainDoubleDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    final DictionaryValuesWriter cw = new PlainDoubleDictionaryValuesWriter(maxDictionaryByteSize, slabSize, new DirectByteBufferAllocator());
     
     // Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
     ValuesReader reader = new PlainValuesReader.DoublePlainValuesReader();
@@ -300,7 +302,7 @@ public class TestDictionary {
 
     int COUNT = 2000;
     int COUNT2 = 4000;
-    final DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(10000, 10000);
+    final DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(10000, 10000, new DirectByteBufferAllocator());
 
     for (int i = 0; i < COUNT; i++) {
       cw.writeInteger(i % 50);
@@ -316,13 +318,13 @@ public class TestDictionary {
 
     DictionaryValuesReader cr = initDicReader(cw, INT32);
 
-    cr.initFromPage(COUNT, bytes1.toByteArray(), 0);
+    cr.initFromPage(COUNT, bytes1.toByteBuffer(), 0);
     for (int i = 0; i < COUNT; i++) {
       int back = cr.readInteger();
       assertEquals(i % 50, back);
     }
 
-    cr.initFromPage(COUNT2, bytes2.toByteArray(), 0);
+    cr.initFromPage(COUNT2, bytes2.toByteBuffer(), 0);
     for (int i = COUNT2; i > 0; i--) {
       int back = cr.readInteger();
       assertEquals(i % 50, back);
@@ -341,7 +343,7 @@ public class TestDictionary {
       }
     }
 
-    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+    reader.initFromPage(100, cw.getBytes().toByteBuffer(), 0);
 
     for (int i = 0; i < 100; i++) {
       assertEquals(i, reader.readInteger());
@@ -352,7 +354,7 @@ public class TestDictionary {
   public void testIntDictionaryFallBack() throws IOException {
     int slabSize = 100;
     int maxDictionaryByteSize = 50;
-    final DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    final DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(maxDictionaryByteSize, slabSize, new DirectByteBufferAllocator());
     
     // Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
     ValuesReader reader = new PlainValuesReader.IntegerPlainValuesReader();
@@ -371,7 +373,7 @@ public class TestDictionary {
 
     int COUNT = 2000;
     int COUNT2 = 4000;
-    final DictionaryValuesWriter cw = new PlainFloatDictionaryValuesWriter(10000, 10000);
+    final DictionaryValuesWriter cw = new PlainFloatDictionaryValuesWriter(10000, 10000, new DirectByteBufferAllocator());
 
     for (float i = 0; i < COUNT; i++) {
       cw.writeFloat(i % 50);
@@ -387,13 +389,13 @@ public class TestDictionary {
 
     DictionaryValuesReader cr = initDicReader(cw, FLOAT);
 
-    cr.initFromPage(COUNT, bytes1.toByteArray(), 0);
+    cr.initFromPage(COUNT, bytes1.toByteBuffer(), 0);
     for (float i = 0; i < COUNT; i++) {
       float back = cr.readFloat();
       assertEquals(i % 50, back, 0.0f);
     }
 
-    cr.initFromPage(COUNT2, bytes2.toByteArray(), 0);
+    cr.initFromPage(COUNT2, bytes2.toByteBuffer(), 0);
     for (float i = COUNT2; i > 0; i--) {
       float back = cr.readFloat();
       assertEquals(i % 50, back, 0.0f);
@@ -412,7 +414,7 @@ public class TestDictionary {
       }
     }
 
-    reader.initFromPage(100, cw.getBytes().toByteArray(), 0);
+    reader.initFromPage(100, cw.getBytes().toByteBuffer(), 0);
 
     for (float i = 0; i < 100; i++) {
       assertEquals(i, reader.readFloat(), 0.00001);
@@ -423,7 +425,7 @@ public class TestDictionary {
   public void testFloatDictionaryFallBack() throws IOException {
     int slabSize = 100;
     int maxDictionaryByteSize = 50;
-    final DictionaryValuesWriter cw = new PlainFloatDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    final DictionaryValuesWriter cw = new PlainFloatDictionaryValuesWriter(maxDictionaryByteSize, slabSize, new DirectByteBufferAllocator());
     
     // Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
     ValuesReader reader = new PlainValuesReader.FloatPlainValuesReader();
@@ -439,7 +441,7 @@ public class TestDictionary {
 
   @Test
   public void testZeroValues() throws IOException {
-    DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(100, 100);
+    DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(100, 100, new DirectByteBufferAllocator());
     cw.writeInteger(34);
     cw.writeInteger(34);
     getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
@@ -461,14 +463,14 @@ public class TestDictionary {
   }
 
   private void checkDistinct(int COUNT, BytesInput bytes, ValuesReader cr, String prefix) throws IOException {
-    cr.initFromPage(COUNT, bytes.toByteArray(), 0);
+    cr.initFromPage(COUNT, bytes.toByteBuffer(), 0);
     for (int i = 0; i < COUNT; i++) {
       Assert.assertEquals(prefix + i, cr.readBytes().toStringUsingUTF8());
     }
   }
 
   private void checkRepeated(int COUNT, BytesInput bytes, ValuesReader cr, String prefix) throws IOException {
-    cr.initFromPage(COUNT, bytes.toByteArray(), 0);
+    cr.initFromPage(COUNT, bytes.toByteBuffer(), 0);
     for (int i = 0; i < COUNT; i++) {
       Assert.assertEquals(prefix + i % 10, cr.readBytes().toStringUsingUTF8());
     }

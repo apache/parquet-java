@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import parquet.Log;
+import parquet.bytes.ByteBufferAllocator;
 import parquet.column.ColumnDescriptor;
 import parquet.column.UnknownColumnException;
 import parquet.column.page.Page;

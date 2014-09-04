@@ -17,8 +17,10 @@ package parquet.column.values.rle;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import parquet.Ints;
+import parquet.bytes.ByteBufferAllocator;
 import parquet.bytes.BytesInput;
 import parquet.bytes.BytesUtils;
 import parquet.column.Encoding;
@@ -31,9 +33,11 @@ import parquet.io.ParquetEncodingException;
 public class RunLengthBitPackingHybridValuesWriter extends ValuesWriter {
   private final RunLengthBitPackingHybridEncoder encoder;
   private final ByteArrayOutputStream length;
+  private ByteBufferAllocator allocator;
 
-  public RunLengthBitPackingHybridValuesWriter(int bitWidth, int initialCapacity) {
-    this.encoder = new RunLengthBitPackingHybridEncoder(bitWidth, initialCapacity);
+  public RunLengthBitPackingHybridValuesWriter(int bitWidth, int initialCapacity, ByteBufferAllocator allocator) {
+    this.allocator=allocator;
+    this.encoder = new RunLengthBitPackingHybridEncoder(bitWidth, initialCapacity, this.allocator);
     this.length = new ByteArrayOutputStream(4);
   }
 
@@ -82,6 +86,16 @@ public class RunLengthBitPackingHybridValuesWriter extends ValuesWriter {
   public void reset() {
     encoder.reset();
     length.reset();
+  }
+
+  @Override
+  public void close() {
+    encoder.close();
+    try {
+      length.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   @Override

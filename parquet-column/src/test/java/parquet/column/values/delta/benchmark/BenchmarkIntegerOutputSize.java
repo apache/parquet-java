@@ -16,6 +16,7 @@
 package parquet.column.values.delta.benchmark;
 
 import org.junit.Test;
+import parquet.bytes.DirectByteBufferAllocator;
 import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import java.util.Random;
@@ -74,8 +75,8 @@ public class BenchmarkIntegerOutputSize {
   }
 
   public void testRandomIntegers(IntFunc func,int bitWidth) {
-    DeltaBinaryPackingValuesWriter delta=new DeltaBinaryPackingValuesWriter(blockSize,miniBlockNum,100);
-    RunLengthBitPackingHybridValuesWriter rle= new RunLengthBitPackingHybridValuesWriter(bitWidth,100);
+    DeltaBinaryPackingValuesWriter delta=new DeltaBinaryPackingValuesWriter(blockSize,miniBlockNum,100, new DirectByteBufferAllocator());
+    RunLengthBitPackingHybridValuesWriter rle= new RunLengthBitPackingHybridValuesWriter(bitWidth,100, new DirectByteBufferAllocator());
     for (int i = 0; i < dataSize; i++) {
       int v = func.getIntValue();
       delta.writeInteger(v);

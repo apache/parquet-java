@@ -18,6 +18,7 @@ package parquet.column.values.deltalengthbytearray;
 import java.io.IOException;
 
 import parquet.Log;
+import parquet.bytes.ByteBufferAllocator;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.bytes.LittleEndianDataOutputStream;
@@ -44,14 +45,16 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
   private ValuesWriter lengthWriter;
   private CapacityByteArrayOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
+  private ByteBufferAllocator allocator;
 
-  public DeltaLengthByteArrayValuesWriter(int initialSize) {
-    arrayOut = new CapacityByteArrayOutputStream(initialSize);
+  public DeltaLengthByteArrayValuesWriter(int initialSize, ByteBufferAllocator allocator) {
+    arrayOut = new CapacityByteArrayOutputStream(initialSize, allocator);
     out = new LittleEndianDataOutputStream(arrayOut);
+    this.allocator=allocator;
     lengthWriter = new DeltaBinaryPackingValuesWriter(
         DeltaBinaryPackingValuesWriter.DEFAULT_NUM_BLOCK_VALUES,
         DeltaBinaryPackingValuesWriter.DEFAULT_NUM_MINIBLOCKS,
-        initialSize);
+        initialSize, this.allocator);
   }
 
   @Override
@@ -89,6 +92,12 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
   public void reset() {
     lengthWriter.reset();
     arrayOut.reset();
+  }
+
+  @Override
+  public void close() {
+    lengthWriter.close();
+    arrayOut.close();
   }
 
   @Override

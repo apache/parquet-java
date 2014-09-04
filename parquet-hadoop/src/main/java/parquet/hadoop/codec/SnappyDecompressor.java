@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.apache.hadoop.io.compress.Decompressor;
+import org.apache.hadoop.io.compress.DirectDecompressor;
 import org.xerial.snappy.Snappy;
 
 import parquet.Preconditions;
@@ -144,4 +145,25 @@ public class SnappyDecompressor implements Decompressor {
   public void setDictionary(byte[] b, int off, int len) {
     // No-op		
   }
-}
+
+  public static class SnappyDirectDecompressor extends SnappyDecompressor implements DirectDecompressor {
+
+    public SnappyDirectDecompressor() {
+      super();
+    }
+
+    public synchronized void decompress(ByteBuffer src, ByteBuffer dst) throws java.io.IOException{
+        if(!dst.hasRemaining()){
+            return;
+        }
+        dst.clear();
+        //int decompressedSize = Snappy.uncompressedLength(src);
+        int size = Snappy.uncompress(src, dst);
+        dst.limit(size);
+        // We've decompressed the entire input
+        super.finished = true;
+    } // decompress
+
+  } // class SnappyDirectDecompressor
+
+} //class SnappyDecompressor

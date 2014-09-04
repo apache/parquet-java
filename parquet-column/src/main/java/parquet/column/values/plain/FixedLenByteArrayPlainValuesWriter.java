@@ -18,6 +18,7 @@ package parquet.column.values.plain;
 import java.io.IOException;
 
 import parquet.Log;
+import parquet.bytes.ByteBufferAllocator;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.bytes.LittleEndianDataOutputStream;
@@ -37,10 +38,12 @@ public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
   private CapacityByteArrayOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
   private int length;
+  private ByteBufferAllocator allocator;
   
-  public FixedLenByteArrayPlainValuesWriter(int length, int initialSize) {
+  public FixedLenByteArrayPlainValuesWriter(int length, int initialSize, ByteBufferAllocator allocator) {
     this.length = length;
-    this.arrayOut = new CapacityByteArrayOutputStream(initialSize);
+    this.allocator=allocator;
+    this.arrayOut = new CapacityByteArrayOutputStream(initialSize, this.allocator);
     this.out = new LittleEndianDataOutputStream(arrayOut);
   }
 
@@ -76,6 +79,11 @@ public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
   @Override
   public void reset() {
     arrayOut.reset();
+  }
+
+  @Override
+  public void close() {
+    arrayOut.close();
   }
 
   @Override

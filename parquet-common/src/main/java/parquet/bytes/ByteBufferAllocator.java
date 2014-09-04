@@ -13,29 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.column;
 
-/**
- * Container which can construct writers for multiple columns to be stored
- * together.
- *
- * @author Julien Le Dem
- */
-public interface ColumnWriteStore {
-  /**
-   * @param path the column for which to create a writer
-   * @return the column writer for the given column
-   */
-  abstract public ColumnWriter getColumnWriter(ColumnDescriptor path);
+package parquet.bytes;
 
-  /**
-   * when we are done writing to flush to the underlying storage
-   */
-  abstract public void flush();
+import java.nio.ByteBuffer;
 
-  /**
-   * Close the related output stream and release any resources
-   */
-  abstract public void close();
+public interface ByteBufferAllocator {
+  ByteBuffer allocate(int size);
+
+  //For RefCounted implementations using direct memory, the release method
+  //needs to be called to free references to the allocated memory
+  void release(ByteBuffer b);
 
 }

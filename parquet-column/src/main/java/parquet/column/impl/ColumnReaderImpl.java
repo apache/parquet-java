@@ -20,6 +20,7 @@ import static parquet.Log.DEBUG;
 import static parquet.Preconditions.checkNotNull;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
@@ -518,16 +519,16 @@ class ColumnReaderImpl implements ColumnReader {
     this.pageValueCount = page.getValueCount();
     this.endOfPageValueCount = readValues + pageValueCount;
     try {
-      byte[] bytes = page.getBytes().toByteArray();
-      if (DEBUG) LOG.debug("page size " + bytes.length + " bytes and " + pageValueCount + " records");
+      ByteBuffer byteBuf = page.getBytes().toByteBuffer();
+      if (DEBUG) LOG.debug("page size " + page.getBytes().size() + " bytes and " + pageValueCount + " records");
       if (DEBUG) LOG.debug("reading repetition levels at 0");
-      repetitionLevelColumn.initFromPage(pageValueCount, bytes, 0);
+      repetitionLevelColumn.initFromPage(pageValueCount, byteBuf, 0);
       int next = repetitionLevelColumn.getNextOffset();
       if (DEBUG) LOG.debug("reading definition levels at " + next);
-      definitionLevelColumn.initFromPage(pageValueCount, bytes, next);
+      definitionLevelColumn.initFromPage(pageValueCount, byteBuf, next);
       next = definitionLevelColumn.getNextOffset();
       if (DEBUG) LOG.debug("reading data at " + next);
-      dataColumn.initFromPage(pageValueCount, bytes, next);
+      dataColumn.initFromPage(pageValueCount, byteBuf, next);
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read page " + page + " in col " + path, e);
     }

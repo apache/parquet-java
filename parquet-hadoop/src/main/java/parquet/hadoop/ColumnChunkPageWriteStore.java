@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 
 import parquet.Log;
+import parquet.bytes.ByteBufferAllocator;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.column.ColumnDescriptor;
@@ -61,11 +62,16 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private Set<Encoding> encodings = new HashSet<Encoding>();
 
     private Statistics totalStatistics;
+    private ByteBufferAllocator allocator;
 
-    private ColumnChunkPageWriter(ColumnDescriptor path, BytesCompressor compressor, int initialSize) {
+    private ColumnChunkPageWriter(ColumnDescriptor path,
+                                  BytesCompressor compressor,
+                                  int initialSize,
+                                  ByteBufferAllocator allocator) {
       this.path = path;
       this.compressor = compressor;
-      this.buf = new CapacityByteArrayOutputStream(initialSize);
+      this.allocator=allocator;
+      this.buf = new CapacityByteArrayOutputStream(initialSize, allocator);
       this.totalStatistics = Statistics.getStatsBasedOnType(this.path.getType());
     }
 
@@ -176,23 +182,40 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     public String memUsageString(String prefix) {
       return buf.memUsageString(prefix + " ColumnChunkPageWriter");
     }
+
+    @Override
+    public ByteBufferAllocator getAllocator() {
+      return this.allocator;
+    }
+
+    @Override
+    public void reset(){
+      this.buf.reset();
+    }
+
+    @Override
+    public void close(){
+      this.buf.close();
+    }
   }
 
   private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
   private final MessageType schema;
   private final BytesCompressor compressor;
   private final int initialSize;
+  private ByteBufferAllocator allocator;
 
-  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, int initialSize) {
+  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, int initialSize, ByteBufferAllocator allocator) {
     this.compressor = compressor;
     this.schema = schema;
     this.initialSize = initialSize;
+    this.allocator=allocator;
   }
 
   @Override
   public PageWriter getPageWriter(ColumnDescriptor path) {
     if (!writers.containsKey(path)) {
-      writers.put(path,  new ColumnChunkPageWriter(path, compressor, initialSize));
+      writers.put(path,  new ColumnChunkPageWriter(path, compressor, initialSize, this.allocator));
     }
     return writers.get(path);
   }
@@ -202,6 +225,16 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     for (ColumnDescriptor columnDescriptor : columns) {
       ColumnChunkPageWriter pageWriter = writers.get(columnDescriptor);
       pageWriter.writeToFileWriter(writer);
+      pageWriter.reset();
+    }
+  }
+
+  public void close() throws IOException {
+    List<ColumnDescriptor> columns = schema.getColumns();
+    for (ColumnDescriptor columnDescriptor : columns) {
+      ColumnChunkPageWriter pageWriter = writers.get(columnDescriptor);
+      pageWriter.close();
+      writers.remove(pageWriter);
     }
   }
 

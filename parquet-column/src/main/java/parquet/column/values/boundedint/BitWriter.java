@@ -16,6 +16,7 @@
 package parquet.column.values.boundedint;
 
 import parquet.Log;
+import parquet.bytes.ByteBufferAllocator;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
 
@@ -29,6 +30,7 @@ class BitWriter {
   private static final int[] byteToTrueMask = new int[8];
   private static final int[] byteToFalseMask = new int[8];
   private boolean finished = false;
+  private ByteBufferAllocator allocator;
   static {
     int currentMask = 1;
     for (int i = 0; i < byteToTrueMask.length; i++) {
@@ -38,8 +40,9 @@ class BitWriter {
     }
   }
 
-  public BitWriter(int initialCapacity) {
-    this.baos = new CapacityByteArrayOutputStream(initialCapacity);
+  public BitWriter(int initialCapacity, ByteBufferAllocator allocator) {
+    this.allocator=allocator;
+    this.baos = new CapacityByteArrayOutputStream(initialCapacity, allocator);
   }
 
   public void writeBit(boolean bit) {
@@ -152,5 +155,12 @@ class BitWriter {
 
   public String memUsageString(String prefix) {
     return baos.memUsageString(prefix);
+  }
+
+  public void close() {
+    currentByte = 0;
+    currentBytePosition = 0;
+    finished = false;
+    baos.close();
   }
 }

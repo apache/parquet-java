@@ -15,10 +15,12 @@
  */
 package parquet.column.values.rle;
 
-import java.io.ByteArrayInputStream;
+import java.nio.ByteBuffer;
 import java.io.InputStream;
 
+import parquet.bytes.ByteBufferInputStream;
 import org.junit.Test;
+import parquet.bytes.DirectByteBufferAllocator;
 
 import static org.junit.Assert.assertEquals;
 
@@ -37,7 +39,7 @@ public class RunLengthBitPackingHybridIntegrationTest {
   private void doIntegrationTest(int bitWidth) throws Exception {
     long modValue = 1L << bitWidth;
 
-    RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(bitWidth, 1000);
+    RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(bitWidth, 1000, new DirectByteBufferAllocator());
     int numValues = 0;
 
     for (int i = 0; i < 100; i++) {
@@ -67,8 +69,8 @@ public class RunLengthBitPackingHybridIntegrationTest {
     }
     numValues += 1000;
 
-    byte[] encodedBytes = encoder.toBytes().toByteArray();
-    ByteArrayInputStream in = new ByteArrayInputStream(encodedBytes);
+    ByteBuffer encodedBytes = encoder.toBytes().toByteBuffer();
+    ByteBufferInputStream in = new ByteBufferInputStream(encodedBytes);
 
     RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
 

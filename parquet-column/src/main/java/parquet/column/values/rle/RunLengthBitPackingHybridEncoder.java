@@ -19,6 +19,7 @@ import java.io.IOException;
 
 import parquet.Log;
 import parquet.Preconditions;
+import parquet.bytes.ByteBufferAllocator;
 import parquet.bytes.BytesInput;
 import parquet.bytes.BytesUtils;
 import parquet.bytes.CapacityByteArrayOutputStream;
@@ -113,7 +114,9 @@ public class RunLengthBitPackingHybridEncoder {
 
   private boolean toBytesCalled;
 
-  public RunLengthBitPackingHybridEncoder(int bitWidth, int initialCapacity) {
+  private ByteBufferAllocator allocator;
+
+  public RunLengthBitPackingHybridEncoder(int bitWidth, int initialCapacity, ByteBufferAllocator allocator) {
     if (DEBUG) {
       LOG.debug(String.format("Encoding: RunLengthBitPackingHybridEncoder with "
         + "bithWidth: %d initialCapacity %d", bitWidth, initialCapacity));
@@ -122,7 +125,8 @@ public class RunLengthBitPackingHybridEncoder {
     Preconditions.checkArgument(bitWidth >= 0 && bitWidth <= 32, "bitWidth must be >= 0 and <= 32");
 
     this.bitWidth = bitWidth;
-    this.baos = new CapacityByteArrayOutputStream(initialCapacity);
+    this.allocator=allocator;
+    this.baos = new CapacityByteArrayOutputStream(initialCapacity, this.allocator);
     this.packBuffer = new byte[bitWidth];
     this.bufferedValues = new int[8];
     this.packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
@@ -276,6 +280,11 @@ public class RunLengthBitPackingHybridEncoder {
    */
   public void reset() {
     reset(true);
+  }
+
+  public void close() {
+    reset(false);
+    baos.close();
   }
 
   public long getBufferedSize() {

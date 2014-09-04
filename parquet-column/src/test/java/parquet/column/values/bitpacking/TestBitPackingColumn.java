@@ -20,10 +20,12 @@ import static org.junit.Assert.assertEquals;
 import static parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.junit.Test;
 
 import parquet.Log;
+import parquet.bytes.DirectByteBufferAllocator;
 import parquet.column.values.ValuesReader;
 import parquet.column.values.ValuesWriter;
 
@@ -169,7 +171,7 @@ public class TestBitPackingColumn {
       LOG.debug("bytes: " + TestBitPacking.toString(bytes));
       assertEquals(type.toString(), expected, TestBitPacking.toString(bytes));
       ValuesReader r = type.getReader(bound);
-      r.initFromPage(vals.length, bytes, 0);
+      r.initFromPage(vals.length, ByteBuffer.wrap(bytes), 0);
       int[] result = new int[vals.length];
       for (int i = 0; i < result.length; i++) {
         result[i] = r.readInteger();
@@ -185,7 +187,7 @@ public class TestBitPackingColumn {
         return new BitPackingValuesReader(bound);
       }
       public ValuesWriter getWriter(final int bound) {
-        return new BitPackingValuesWriter(bound, 32*1024);
+        return new BitPackingValuesWriter(bound, 32*1024, new DirectByteBufferAllocator());
       }
     }
     ,
@@ -194,7 +196,7 @@ public class TestBitPackingColumn {
         return new ByteBitPackingValuesReader(bound, BIG_ENDIAN);
       }
       public ValuesWriter getWriter(final int bound) {
-        return new ByteBitPackingValuesWriter(bound, BIG_ENDIAN);
+        return new ByteBitPackingValuesWriter(bound, BIG_ENDIAN, new DirectByteBufferAllocator());
       }
     }
     ;

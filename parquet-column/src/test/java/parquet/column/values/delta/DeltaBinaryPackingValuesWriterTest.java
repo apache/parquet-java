@@ -19,12 +19,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Random;
 
 import org.junit.Before;
 import org.junit.Test;
 
 import parquet.bytes.BytesInput;
+import parquet.bytes.DirectByteBufferAllocator;
 import parquet.column.values.ValuesWriter;
 import parquet.io.ParquetDecodingException;
 
@@ -39,13 +41,13 @@ public class DeltaBinaryPackingValuesWriterTest {
   public void setUp() {
     blockSize = 128;
     miniBlockNum = 4;
-    writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100);
+    writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100, new DirectByteBufferAllocator());
     random = new Random();
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void miniBlockSizeShouldBeMultipleOf8() {
-    new DeltaBinaryPackingValuesWriter(1281, 4, 100);
+    new DeltaBinaryPackingValuesWriter(1281, 4, 100, new DirectByteBufferAllocator());
   }
 
   /* When data size is multiple of Block*/
@@ -151,7 +153,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     System.arraycopy(valueContent, 0, pageContent, contentOffsetInPage, valueContent.length);
 
     //offset should be correct
-    reader.initFromPage(100, pageContent, contentOffsetInPage);
+    reader.initFromPage(100, ByteBuffer.wrap(pageContent), contentOffsetInPage);
     int offset= reader.getNextOffset();
     assertEquals(valueContent.length + contentOffsetInPage, offset);
 
@@ -184,7 +186,7 @@ public class DeltaBinaryPackingValuesWriterTest {
     }
     writeData(data);
     reader = new DeltaBinaryPackingValuesReader();
-    reader.initFromPage(100, writer.getBytes().toByteArray(), 0);
+    reader.initFromPage(100, writer.getBytes().toByteBuffer(), 0);
     for (int i = 0; i < data.length; i++) {
       if (i % 3 == 0) {
         reader.skip();
@@ -240,7 +242,7 @@ public class DeltaBinaryPackingValuesWriterTest {
         + blockFlushed * miniBlockNum //bitWidth of mini blocks
         + (5.0 * blockFlushed);//min delta for each block
     assertTrue(estimatedSize >= page.length);
-    reader.initFromPage(100, page, 0);
+    reader.initFromPage(100, ByteBuffer.wrap(page), 0);
 
     for (int i = 0; i < length; i++) {
       assertEquals(data[i], reader.readInteger());
