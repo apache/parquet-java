@@ -62,7 +62,8 @@ public class ParquetFileWriter {
   private static final Log LOG = Log.getLog(ParquetFileWriter.class);
 
   public static final String PARQUET_METADATA_FILE = "_metadata";
-  public static final byte[] MAGIC = "PAR1".getBytes(Charset.forName("ASCII"));
+  public static final String MAGIC_STR = "PAR1";
+  public static final byte[] MAGIC = MAGIC_STR.getBytes(Charset.forName("ASCII"));
   public static final int CURRENT_VERSION = 1;
 
   private static final ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter();
