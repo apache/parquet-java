@@ -89,7 +89,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * key to configure the filter
    */
   public static final String UNBOUND_RECORD_FILTER = "parquet.read.filter";
-  
+
   /**
    * key to configure type checking for conflicting schemas (default: true)
    */
@@ -414,23 +414,21 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   @Override
   public List<InputSplit> getSplits(JobContext jobContext) throws IOException {
     List<InputSplit> splits = new ArrayList<InputSplit>();
-    splits.addAll(getSplits(ContextUtil.getConfiguration(jobContext), getFooters(jobContext)));
+    splits.addAll(getSplitsWithCachedFooters(ContextUtil.getConfiguration(jobContext), getCachedFooters(jobContext)));
     return splits;
   }
 
-  /**
-   * @param configuration the configuration to connect to the file system
-   * @param footers the footers of the files to read
-   * @return the splits for the footers
-   * @throws IOException
-   */
-  public List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers) throws IOException {
+  private List<ParquetInputSplit> getSplitsWithCachedFooters(Configuration configuration, List<FootersCacheValue> cachedFooters) throws IOException {
     final long maxSplitSize = configuration.getLong("mapred.max.split.size", Long.MAX_VALUE);
     final long minSplitSize = Math.max(getFormatMinSplitSize(), configuration.getLong("mapred.min.split.size", 0L));
     if (maxSplitSize < 0 || minSplitSize < 0) {
       throw new ParquetDecodingException("maxSplitSize or minSplitSie should not be negative: maxSplitSize = " + maxSplitSize + "; minSplitSize = " + minSplitSize);
     }
     List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
+    List<Footer> footers = new ArrayList<Footer>(cachedFooters.size());
+    for (FootersCacheValue cacheFooter : cachedFooters) {
+      footers.add(cacheFooter.footer);
+    }
     GlobalMetaData globalMetaData = ParquetFileWriter.getGlobalMetaData(footers, configuration.getBoolean(STRICT_TYPE_CHECKING, true));
     ReadContext readContext = getReadSupport(configuration).init(new InitContext(
         configuration,
@@ -442,12 +440,12 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     long rowGroupsDropped = 0;
     long totalRowGroups = 0;
 
-    for (Footer footer : footers) {
-      final Path file = footer.getFile();
+    for (FootersCacheValue cachedFooter : cachedFooters) {
+      final Path file = cachedFooter.footer.getFile();
       LOG.debug(file);
       FileSystem fs = file.getFileSystem(configuration);
-      FileStatus fileStatus = fs.getFileStatus(file);
-      ParquetMetadata parquetMetaData = footer.getParquetMetadata();
+      FileStatus fileStatus = cachedFooter.getFileStatus();
+      ParquetMetadata parquetMetaData = cachedFooter.footer.getParquetMetadata();
       List<BlockMetaData> blocks = parquetMetaData.getBlocks();
 
       List<BlockMetaData> filteredBlocks = blocks;
@@ -482,6 +480,24 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     }
 
     return splits;
+  }
+
+  /**
+   * @param configuration the configuration to connect to the file system
+   * @param footers the footers of the files to read
+   * @return the splits for the footers
+   * @throws IOException
+   */
+  public List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers) throws IOException {
+    List<FootersCacheValue> cachedFooters = new ArrayList<FootersCacheValue>(footers.size());
+
+    for (Footer footer : footers) {
+      FileSystem fs = footer.getFile().getFileSystem(configuration);
+      FileStatus status = fs.getFileStatus(footer.getFile());
+      cachedFooters.add(new FootersCacheValue(new FileStatusWrapper(status), footer));
+    }
+
+    return getSplitsWithCachedFooters(configuration, cachedFooters);
   }
 
   /*
@@ -535,13 +551,24 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @throws IOException
    */
   public List<Footer> getFooters(JobContext jobContext) throws IOException {
+    List<FootersCacheValue> cacheFooters= getCachedFooters(jobContext);
+    List<Footer> footers = new ArrayList<Footer>(cacheFooters.size());
+
+    for (FootersCacheValue cachedFooter: cacheFooters) {
+      footers.add(cachedFooter.footer);
+    }
+
+    return footers;
+  }
+
+  private List<FootersCacheValue> getCachedFooters(JobContext jobContext) throws IOException {
     List<FileStatus> statuses = listStatus(jobContext);
     if (statuses.isEmpty()) {
       return Collections.emptyList();
     }
 
     Configuration config = ContextUtil.getConfiguration(jobContext);
-    List<Footer> footers = new ArrayList<Footer>(statuses.size());
+    List<FootersCacheValue> footers = new ArrayList<FootersCacheValue>(statuses.size());
     Set<FileStatus> missingStatuses = new HashSet<FileStatus>();
     Map<Path, FileStatusWrapper> missingStatusesMap =
             new HashMap<Path, FileStatusWrapper>(missingStatuses.size());
@@ -559,7 +586,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
                 + " found for '" + status.getPath() + "'");
       }
       if (cacheEntry != null) {
-        footers.add(cacheEntry.getFooter());
+        footers.add(cacheEntry);
       } else {
         missingStatuses.add(status);
         missingStatusesMap.put(status.getPath(), statusWrapper);
@@ -583,10 +610,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       // footers were modified and it's not clear which version of the footers
       // we have)
       FileStatusWrapper fileStatus = missingStatusesMap.get(newFooter.getFile());
-      footersCache.put(fileStatus, new FootersCacheValue(fileStatus, newFooter));
+      FootersCacheValue cacheEntry = new FootersCacheValue(fileStatus, newFooter);
+      footersCache.put(fileStatus, cacheEntry);
+      footers.add(cacheEntry);
     }
 
-    footers.addAll(newFooters);
     return footers;
   }
 
@@ -620,10 +648,12 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
           implements LruCache.Value<FileStatusWrapper, FootersCacheValue> {
     private final long modificationTime;
     private final Footer footer;
+    private final FileStatus status;
 
     public FootersCacheValue(FileStatusWrapper status, Footer footer) {
       this.modificationTime = status.getModificationTime();
       this.footer = new Footer(footer.getFile(), footer.getParquetMetadata());
+      this.status = status.status;
     }
 
     @Override
@@ -640,6 +670,10 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
     public Footer getFooter() {
       return footer;
+    }
+
+    public FileStatus getFileStatus() {
+      return status;
     }
 
     @Override
