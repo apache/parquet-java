@@ -170,4 +170,8 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
       throw new RuntimeException("Unable to create Thrift Converter for Thrift metadata " + thriftMetaData, t);
     }
   }
+
+  public static void setProjectionPushdown(JobConf jobConf, String projectionString) {
+    jobConf.set(THRIFT_COLUMN_FILTER_KEY, projectionString);
+  }
 }

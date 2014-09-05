@@ -38,6 +38,7 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
 
   private static final long serialVersionUID = -8332274507341448397L;
   private final Class<T> klass;
+  private String projectionString;
 
   public ParquetScroogeScheme(Class<T> klass) {
     this.klass = klass;
@@ -46,6 +47,11 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
   public ParquetScroogeScheme(FilterPredicate filterPredicate, Class<T> klass) {
     super(filterPredicate);
     this.klass = klass;
+  }
+
+  public ParquetScroogeScheme withProjection(String str) {
+    this.projectionString = str;
+    return this;
   }
 
   @SuppressWarnings("rawtypes")
@@ -69,7 +75,14 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
     jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
     ParquetInputFormat.setReadSupportClass(jobConf, ScroogeReadSupport.class);
     ThriftReadSupport.setRecordConverterClass(jobConf, ScroogeRecordConverter.class);
+    setProjectionPushdown(jobConf);
     ParquetThriftInputFormat.<T>setThriftClass(jobConf, klass);
+  }
+
+  private void setProjectionPushdown(JobConf jobConf) {
+    if (this.projectionString != null) {
+      ThriftReadSupport.setProjectionPushdown(jobConf, this.projectionString);
+    }
   }
 
   @Override
