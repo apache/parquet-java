@@ -73,7 +73,7 @@
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>scrooge-core_2.10</artifactId>
+      <artifactId>scrooge-core_${scala.binary.version}</artifactId>
       <version>3.16.3</version>
     </dependency>
     <dependency>

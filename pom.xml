@@ -96,6 +96,8 @@
     <previous.version>1.6.0rc1</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <scala.version>2.10.4</scala.version>
+    <!-- scala.binary.version is used for project that fetch dependencies that are in scala -->
+    <scala.binary.version>2.10</scala.binary.version>
   </properties>
 
   <modules>
