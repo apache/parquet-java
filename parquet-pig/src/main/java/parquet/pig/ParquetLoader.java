@@ -98,34 +98,34 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   public ParquetLoader(String requestedSchemaStr) {
     this(parsePigSchema(requestedSchemaStr), false);
   }
-  
+
   /**
-   * To read only a subset of the columns in the file optionally assigned by 
+   * To read only a subset of the columns in the file optionally assigned by
    * column positions.  Using column positions allows for renaming the fields
    * and is more inline with the "schema-on-read" approach to accessing file
    * data.
-   * 
-   * Example: 
+   *
+   * Example:
    * File Schema:  'c1:int, c2:float, c3:double, c4:long'
    * ParquetLoader('n1:int, n2:float, n3:double, n4:long', 'true');
-   * 
+   *
    * This will use the names provided in the requested schema and assign them
    * to column positions indicated by order.
-   * 
+   *
    * @param requestedSchemaStr a subset of the original pig schema in the file
    * @param columnIndexAccess use column index positions as opposed to name (default: false)
    */
   public ParquetLoader(String requestedSchemaStr, String columnIndexAccess) {
     this(parsePigSchema(requestedSchemaStr), Boolean.parseBoolean(columnIndexAccess));
   }
-  
+
   /**
    * Use the provided schema to access the underlying file data.
-   * 
+   *
    * The same as the string based constructor but for programmatic use.
-   * 
+   *
    * @param requestedSchema a subset of the original pig schema in the file
-   * @param columnIndexAccess  
+   * @param columnIndexAccess
    */
   public ParquetLoader(Schema requestedSchema, boolean columnIndexAccess) {
     this.requestedSchema = requestedSchema;
@@ -135,7 +135,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   @Override
   public void setLocation(String location, Job job) throws IOException {
     if (DEBUG) LOG.debug("LoadFunc.setLocation(" + location + ", " + job + ")");
-    
+
     setInput(location, job);
   }
 
@@ -143,25 +143,25 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     this.setLocationHasBeenCalled  = true;
     this.location = location;
     setInputPaths(job, location);
-    
+
     //This is prior to load because the initial value comes from the constructor
     //not file metadata or pig framework and would get overwritten in initSchema().
     if(UDFContext.getUDFContext().isFrontend()) {
       storeInUDFContext(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
     }
-    
+
     schema = PigSchemaConverter.parsePigSchema(getPropertyFromUDFContext(PARQUET_PIG_SCHEMA));
     requiredFieldList = PigSchemaConverter.deserializeRequiredFieldList(getPropertyFromUDFContext(PARQUET_PIG_REQUIRED_FIELDS));
     columnIndexAccess = Boolean.parseBoolean(getPropertyFromUDFContext(PARQUET_COLUMN_INDEX_ACCESS));
-    
+
     initSchema(job);
-    
+
     if(UDFContext.getUDFContext().isFrontend()) {
       //Setting for task-side loading via initSchema()
       storeInUDFContext(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
       storeInUDFContext(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
     }
-    
+
     //Used by task-side loader via TupleReadSupport
     getConfiguration(job).set(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
     getConfiguration(job).set(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
@@ -335,14 +335,14 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   public RequiredFieldResponse pushProjection(RequiredFieldList requiredFieldList)
       throws FrontendException {
     this.requiredFieldList = requiredFieldList;
-    
+
     if (requiredFieldList == null)
       return null;
-    
+
     schema = getSchemaFromRequiredFieldList(schema, requiredFieldList.getFields());
     storeInUDFContext(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
     storeInUDFContext(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
-    
+
     return new RequiredFieldResponse(true);
   }
 
