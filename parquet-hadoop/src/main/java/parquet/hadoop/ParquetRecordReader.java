@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
@@ -42,6 +43,7 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.ContextUtil;
 import parquet.hadoop.util.counters.BenchmarkCounter;
+import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 
 /**
@@ -145,10 +147,11 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
     long[] rowGroupOffsets = split.getRowGroupOffsets();
     List<BlockMetaData> filteredBlocks;
     // if task.side.metadata is set, rowGroupOffsets is null
+    MessageType fileSchema = footer.getFileMetaData().getSchema();
     if (rowGroupOffsets == null) {
       // then we need to apply the predicate push down filter
       Filter filter = ParquetInputFormat.getFilter(configuration);
-      filteredBlocks = RowGroupFilter.filterRowGroups(filter, footer.getBlocks(), footer.getFileMetaData().getSchema());
+      filteredBlocks = RowGroupFilter.filterRowGroups(filter, footer.getBlocks(), fileSchema);
     } else {
       // otherwise we find the row groups that were selected on the client
       Set<Long> offsets = new HashSet<Long>();
@@ -177,10 +180,13 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
             + " in range " + split.getStart() + ", " + split.getEnd());
       }
     }
+    MessageType requestedSchema = MessageTypeParser.parseMessageType(split.getRequestedSchema());
+    Map<String, String> fileMetaData = footer.getFileMetaData().getKeyValueMetaData();
+    Map<String, String> readSupportMetadata = split.getReadSupportMetadata();
     internalReader.initialize(
-        MessageTypeParser.parseMessageType(split.getRequestedSchema()),
-        footer.getFileMetaData().getSchema(),
-        footer.getFileMetaData().getKeyValueMetaData(), split.getReadSupportMetadata(), path,
+        requestedSchema,fileSchema,
+        fileMetaData, readSupportMetadata,
+        path,
         filteredBlocks, configuration);
   }
 

@@ -24,6 +24,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.zip.GZIPInputStream;
@@ -35,6 +36,7 @@ import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 
 import parquet.bytes.BytesUtils;
+import parquet.hadoop.metadata.BlockMetaData;
 
 /**
  * An input split for the Parquet format
@@ -62,8 +64,52 @@ public class ParquetInputSplit extends FileSplit implements Writable {
   }
 
   /**
+   * For compatibility only
+   * use {@link ParquetInputSplit#ParquetInputSplit(Path, long, long, long, String[], long[], String, Map)}
+   * @param path
+   * @param start
+   * @param length
+   * @param hosts
+   * @param blocks
+   * @param requestedSchema
+   * @param fileSchema
+   * @param extraMetadata
+   * @param readSupportMetadata
+   */
+  @Deprecated
+  public ParquetInputSplit(
+      Path path,
+      long start,
+      long length,
+      String[] hosts,
+      List<BlockMetaData> blocks,
+      String requestedSchema,
+      String fileSchema,
+      Map<String, String> extraMetadata,
+      Map<String, String> readSupportMetadata) {
+    this(
+        path, start, length, end(blocks), hosts,
+        offsets(blocks),
+        requestedSchema, readSupportMetadata
+        );
+  }
+
+  private static long end(List<BlockMetaData> blocks) {
+    BlockMetaData last = blocks.get(blocks.size() - 1);
+    return last.getStartingPos() + last.getCompressedSize();
+  }
+
+  private static long[] offsets(List<BlockMetaData> blocks) {
+    long[] offsets = new long[blocks.size()];
+    for (int i = 0; i < offsets.length; i++) {
+      offsets[i] = blocks.get(0).getStartingPos();
+    }
+    return offsets;
+  }
+
+  /**
    * @param file the path of the file for that split
-   * @param start the strat offset in the file
+   * @param start the start offset in the file
    * @param end the end offset in the file
    * @param length the actual size in bytes that we expect to read
    * @param hosts the hosts with the replicas of this data
@@ -71,7 +117,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    * @param requestedSchema the user requested schema
    * @param readSupportMetadata metadata from the read support
    */
-  ParquetInputSplit(
+  public ParquetInputSplit(
       Path file, long start, long end, long length, String[] hosts,
       long[] rowGroupOffsets,
       String requestedSchema,
