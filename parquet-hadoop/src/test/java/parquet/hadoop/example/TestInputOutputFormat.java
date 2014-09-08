@@ -24,6 +24,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -152,9 +153,14 @@ public class TestInputOutputFormat {
       context.write(new LongWritable(value.getInteger("line", 0)), new Text("dummy"));
     }
   }
-
   private void runMapReduceJob(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException {
-
+    runMapReduceJob(codec, Collections.<String, String>emptyMap());
+  }
+  private void runMapReduceJob(CompressionCodecName codec, Map<String, String> extraConf) throws IOException, ClassNotFoundException, InterruptedException {
+    Configuration conf = new Configuration(this.conf);
+    for (Map.Entry<String, String> entry : extraConf.entrySet()) {
+      conf.set(entry.getKey(), entry.getValue());
+    }
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);
     fileSystem.delete(outputPath, true);
@@ -193,7 +199,10 @@ public class TestInputOutputFormat {
   }
 
   private void testReadWrite(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException {
-    runMapReduceJob(codec);
+    testReadWrite(codec, Collections.<String, String>emptyMap());
+  }
+  private void testReadWrite(CompressionCodecName codec, Map<String, String> conf) throws IOException, ClassNotFoundException, InterruptedException {
+    runMapReduceJob(codec, conf);
     final BufferedReader in = new BufferedReader(new FileReader(new File(inputPath.toString())));
     final BufferedReader out = new BufferedReader(new FileReader(new File(outputPath.toString(), "part-m-00000")));
     String lineIn;
@@ -204,8 +213,8 @@ public class TestInputOutputFormat {
       lineOut = lineOut.substring(lineOut.indexOf("\t") + 1);
       assertEquals("line " + lineNumber, lineIn, lineOut);
     }
-    assertNull("line " + lineNumber, lineIn);
     assertNull("line " + lineNumber, out.readLine());
+    assertNull("line " + lineNumber, lineIn);
     in.close();
     out.close();
   }
@@ -219,9 +228,14 @@ public class TestInputOutputFormat {
   }
 
   @Test
+  public void testReadWriteTaskSideMD() throws IOException, ClassNotFoundException, InterruptedException {
+    testReadWrite(CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {{ put("parquet.task.side.metadata", "true"); }});
+  }
+
+  @Test
   public void testProjection() throws Exception{
     readSchema=partialSchema;
-    writeMapperClass=PartialWriteMapper.class;
+    writeMapperClass = PartialWriteMapper.class;
     runMapReduceJob(CompressionCodecName.GZIP);
   }
 
