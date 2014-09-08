@@ -38,20 +38,24 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
 
   private static final long serialVersionUID = -8332274507341448397L;
   private final Class<T> klass;
-  private String projectionString;
+  private final String projectionString;
 
   public ParquetScroogeScheme(Class<T> klass) {
-    this.klass = klass;
+    this(klass, null, null);
   }
 
   public ParquetScroogeScheme(FilterPredicate filterPredicate, Class<T> klass) {
+    this(klass,filterPredicate, null);
+  }
+
+  private ParquetScroogeScheme(Class<T> klass, FilterPredicate filterPredicate, String projectionString) {
     super(filterPredicate);
     this.klass = klass;
+    this.projectionString = projectionString;
   }
 
   public ParquetScroogeScheme withProjection(String str) {
-    this.projectionString = str;
-    return this;
+    return new ParquetScroogeScheme(klass, filterPredicate, str);
   }
 
   @SuppressWarnings("rawtypes")

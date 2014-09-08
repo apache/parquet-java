@@ -43,7 +43,7 @@ import static parquet.Preconditions.checkNotNull;
  */
 public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader, OutputCollector, Object[], Object[]>{
   private static final long serialVersionUID = 157560846420730043L;
-  private final FilterPredicate filterPredicate;
+  protected final FilterPredicate filterPredicate;
 
   public ParquetValueScheme() {
     this.filterPredicate = null;
