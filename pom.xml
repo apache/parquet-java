@@ -40,15 +40,10 @@
 
   <distributionManagement>
     <snapshotRepository>
-      <id>artifactory-snapshot</id>
-      <name>libs-snapshots</name>
-      <url>http://artifactory.local.twitter.com/libs-snapshots-local</url>
-    </snapshotRepository>
-<!--    <snapshotRepository>
       <id>sonatype-nexus-snapshots</id>
       <name>Sonatype OSS</name>
       <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-    </snapshotRepository> -->
+    </snapshotRepository>
     <repository>
       <id>sonatype-nexus-staging</id>
       <name>Nexus Release Repository</name>
