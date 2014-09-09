@@ -33,38 +33,35 @@ import parquet.thrift.TBaseRecordConverter;
 
 public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme<T> {
 
-  private Class<T> thriftClass;
-
   // In the case of reads, we can read the thrift class from the file metadata
   public ParquetTBaseScheme() {
+    this(new Config());
   }
 
   public ParquetTBaseScheme(Class<T> thriftClass) {
-    this.thriftClass = thriftClass;
+    this(new Config().withRecordClass(thriftClass));
   }
 
   public ParquetTBaseScheme(FilterPredicate filterPredicate) {
-    super(filterPredicate);
+    this(new Config().withFilterPredicate(filterPredicate));
   }
 
   public ParquetTBaseScheme(FilterPredicate filterPredicate, Class<T> thriftClass) {
-    super(filterPredicate);
-    this.thriftClass = thriftClass;
+    this(new Config().withRecordClass(thriftClass).withFilterPredicate(filterPredicate));
+  }
+
+  public ParquetTBaseScheme(Config config) {
+    super(config);
   }
 
   @SuppressWarnings("rawtypes")
   @Override
   public void sourceConfInit(FlowProcess<JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
-
     super.sourceConfInit(fp, tap, jobConf);
     jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
     ParquetInputFormat.setReadSupportClass(jobConf, ThriftReadSupport.class);
     ThriftReadSupport.setRecordConverterClass(jobConf, TBaseRecordConverter.class);
-
-    if (thriftClass != null) {
-      ParquetThriftInputFormat.setThriftClass(jobConf, thriftClass);
-    }
   }
 
   @SuppressWarnings("rawtypes")
@@ -72,12 +69,12 @@ public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme
   public void sinkConfInit(FlowProcess<JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
 
-    if (thriftClass == null) {
+    if (this.config.getKlass() == null) {
       throw new IllegalArgumentException("To use ParquetTBaseScheme as a sink, you must specify a thrift class in the constructor");
     }
 
     jobConf.setOutputFormat(DeprecatedParquetOutputFormat.class);
     DeprecatedParquetOutputFormat.setWriteSupportClass(jobConf, ThriftWriteSupport.class);
-    ThriftWriteSupport.<T>setThriftClass(jobConf, thriftClass);
+    ThriftWriteSupport.<T>setThriftClass(jobConf, this.config.getKlass());
   }
 }

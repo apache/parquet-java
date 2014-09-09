@@ -37,19 +37,17 @@ import parquet.hadoop.thrift.ThriftReadSupport;
 public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueScheme<T> {
 
   private static final long serialVersionUID = -8332274507341448397L;
-  private final Class<T> klass;
 
   public ParquetScroogeScheme(Class<T> klass) {
-    this(klass, Config.builder().build());
+    this(new Config().withRecordClass(klass));
   }
 
   public ParquetScroogeScheme(FilterPredicate filterPredicate, Class<T> klass) {
-    this(klass, Config.builder().withFilterPredicate(filterPredicate).build());
+    this(new Config().withFilterPredicate(filterPredicate));
   }
 
-  public ParquetScroogeScheme(Class<T> klass, Config config) {
+  public ParquetScroogeScheme(Config config) {
     super(config);
-    this.klass = klass;
   }
 
   @SuppressWarnings("rawtypes")
@@ -74,7 +72,6 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
     jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
     ParquetInputFormat.setReadSupportClass(jobConf, ScroogeReadSupport.class);
     ThriftReadSupport.setRecordConverterClass(jobConf, ScroogeRecordConverter.class);
-    ParquetThriftInputFormat.<T>setThriftClass(jobConf, klass);
   }
 
   @Override

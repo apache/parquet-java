@@ -107,7 +107,7 @@ public class ParquetScroogeSchemeTest {
     final Path parquetFile = new Path(PARQUET_PATH);
     writeParquetFile(recordsToWrite, conf, parquetFile);
 
-    Scheme sourceScheme = new ParquetScroogeScheme(readClass, Config.builder().withProjectionString(projectionFilter).build());
+    Scheme sourceScheme = new ParquetScroogeScheme(new Config().withRecordClass(readClass).withProjectionString(projectionFilter));
     Tap source = new Hfs(sourceScheme, PARQUET_PATH);
 
     Scheme sinkScheme = new TextLine(new Fields("first", "last"));

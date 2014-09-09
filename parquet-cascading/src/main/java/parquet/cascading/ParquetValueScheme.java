@@ -16,6 +16,7 @@
 package parquet.cascading;
 
 import java.io.IOException;
+import java.io.Serializable;
 
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
@@ -31,7 +32,10 @@ import cascading.tuple.TupleEntry;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.mapred.Container;
+import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
+import parquet.hadoop.thrift.ParquetThriftInputFormat;
 import parquet.hadoop.thrift.ThriftReadSupport;
+import parquet.hadoop.thrift.ThriftWriteSupport;
 
 import static parquet.Preconditions.checkNotNull;
 
@@ -44,67 +48,84 @@ import static parquet.Preconditions.checkNotNull;
  */
 public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader, OutputCollector, Object[], Object[]>{
 
-  public static class Config {
+  public static class Config<T> implements Serializable {
     private final FilterPredicate filterPredicate;
     private final String projectionString;
-    public Config(FilterPredicate filterPredicate, String projectionString) {
+    private final Class<T> klass;
+    public Config(Class<T> klass, FilterPredicate filterPredicate, String projectionString) {
       this.filterPredicate = filterPredicate;
       this.projectionString = projectionString;
+      this.klass = klass;
     }
 
-    public static Builder builder(){
-      return new Builder();
+    public Config(){
+      filterPredicate = null;
+      projectionString = null;
+      klass = null;
     }
 
-    public static class Builder {
-      private FilterPredicate filterPredicate = null;
-      private String projectionString = null;
-      public Builder withFilterPredicate(FilterPredicate f) {
-        this.filterPredicate = checkNotNull(f, "filterPredicate");
-        return this;
-      }
-      public Builder withProjectionString(String p) {
-        this.projectionString = checkNotNull(p, "projectionString");
-        return this;
-      }
-      public Config build() {
-        return new Config(filterPredicate, projectionString);
-      }
+    public FilterPredicate getFilterPredicate() {
+      return filterPredicate;
+    }
+
+    public String getProjectionString() {
+      return projectionString;
+    }
+
+    public Class<T> getKlass() {
+      return klass;
+    }
+
+    public Config withFilterPredicate(FilterPredicate f) {
+      return new Config(this.klass, checkNotNull(f, "filterPredicate"), this.projectionString);
+    }
+
+    public Config withProjectionString(String p) {
+      return new Config(this.klass, this.filterPredicate, checkNotNull(p, "projectionFilter"));
+    }
+
+    public Config withRecordClass(Class<T> klass) {
+      return new Config(checkNotNull(klass, "recordClass"), this.filterPredicate, this.projectionString);
     }
   }
 
   private static final long serialVersionUID = 157560846420730043L;
-  protected final FilterPredicate filterPredicate;
-  protected final String projectionString;
+  protected final Config config;
 
   public ParquetValueScheme() {
-    this(Config.builder().build());
+    this(new Config());
   }
 
   public ParquetValueScheme(FilterPredicate filterPredicate) {
-    this(Config.builder().withFilterPredicate(filterPredicate).build());
+    this(new Config().withFilterPredicate(filterPredicate));
   }
 
   public ParquetValueScheme(Config config) {
-    this.projectionString = config.projectionString;
-    this.filterPredicate = config.filterPredicate;
+    this.config = config;
   }
 
   private void setProjectionPushdown(JobConf jobConf) {
-    if (this.projectionString!= null) {
-      ThriftReadSupport.setProjectionPushdown(jobConf, this.projectionString);
+    if (this.config.projectionString!= null) {
+      ThriftReadSupport.setProjectionPushdown(jobConf, this.config.projectionString);
     }
   }
 
   private void setPredicatePushdown(JobConf jobConf) {
-    if (this.filterPredicate != null) {
-      ParquetInputFormat.setFilterPredicate(jobConf, this.filterPredicate);
+    if (this.config.filterPredicate != null) {
+      ParquetInputFormat.setFilterPredicate(jobConf, this.config.filterPredicate);
     }
   }
   @Override
   public void sourceConfInit(FlowProcess<JobConf> jobConfFlowProcess, Tap<JobConf, RecordReader, OutputCollector> jobConfRecordReaderOutputCollectorTap, final JobConf jobConf) {
     setPredicatePushdown(jobConf);
     setProjectionPushdown(jobConf);
+    setRecordClass(jobConf);
+  }
+
+  private void setRecordClass(JobConf jobConf) {
+    if (config.klass != null) {
+      ParquetThriftInputFormat.setThriftClass(jobConf, config.klass);
+    }
   }
 
   @SuppressWarnings("unchecked")
