@@ -45,11 +45,15 @@ import static parquet.Preconditions.checkNotNull;
 public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader, OutputCollector, Object[], Object[]>{
 
   public static class Config {
-    public final FilterPredicate filterPredicate;
-    public final String projectionString;
+    private final FilterPredicate filterPredicate;
+    private final String projectionString;
     public Config(FilterPredicate filterPredicate, String projectionString) {
       this.filterPredicate = filterPredicate;
       this.projectionString = projectionString;
+    }
+
+    public static Builder builder(){
+      return new Builder();
     }
 
     public static class Builder {
