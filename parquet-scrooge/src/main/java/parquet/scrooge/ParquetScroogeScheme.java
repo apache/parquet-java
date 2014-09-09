@@ -38,24 +38,18 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
 
   private static final long serialVersionUID = -8332274507341448397L;
   private final Class<T> klass;
-  private final String projectionString;
 
   public ParquetScroogeScheme(Class<T> klass) {
-    this(klass, null, null);
+    this(klass, new Config.Builder().build());
   }
 
   public ParquetScroogeScheme(FilterPredicate filterPredicate, Class<T> klass) {
-    this(klass,filterPredicate, null);
+    this(klass, new Config.Builder().withFilterPredicate(filterPredicate).build());
   }
 
-  private ParquetScroogeScheme(Class<T> klass, FilterPredicate filterPredicate, String projectionString) {
-    super(filterPredicate);
+  public ParquetScroogeScheme(Class<T> klass, Config config) {
+    super(config);
     this.klass = klass;
-    this.projectionString = projectionString;
-  }
-
-  public ParquetScroogeScheme withProjection(String str) {
-    return new ParquetScroogeScheme(klass, filterPredicate, str);
   }
 
   @SuppressWarnings("rawtypes")
@@ -76,17 +70,11 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
   @Override
   public void sourceConfInit(FlowProcess<JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
+    super.sourceConfInit(fp, tap, jobConf);
     jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
     ParquetInputFormat.setReadSupportClass(jobConf, ScroogeReadSupport.class);
     ThriftReadSupport.setRecordConverterClass(jobConf, ScroogeRecordConverter.class);
-    setProjectionPushdown(jobConf);
     ParquetThriftInputFormat.<T>setThriftClass(jobConf, klass);
-  }
-
-  private void setProjectionPushdown(JobConf jobConf) {
-    if (this.projectionString != null) {
-      ThriftReadSupport.setProjectionPushdown(jobConf, this.projectionString);
-    }
   }
 
   @Override

@@ -41,6 +41,7 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.junit.Test;
+import parquet.cascading.ParquetValueScheme.Config;
 import parquet.hadoop.thrift.ThriftToParquetFileWriter;
 import parquet.hadoop.util.ContextUtil;
 import parquet.scrooge.test.TestPersonWithAllInformation;
@@ -106,7 +107,7 @@ public class ParquetScroogeSchemeTest {
     final Path parquetFile = new Path(PARQUET_PATH);
     writeParquetFile(recordsToWrite, conf, parquetFile);
 
-    Scheme sourceScheme = new ParquetScroogeScheme(readClass).withProjection(projectionFilter);
+    Scheme sourceScheme = new ParquetScroogeScheme(readClass, new Config.Builder().withProjectionString(projectionFilter).build());
     Tap source = new Hfs(sourceScheme, PARQUET_PATH);
 
     Scheme sinkScheme = new TextLine(new Fields("first", "last"));
