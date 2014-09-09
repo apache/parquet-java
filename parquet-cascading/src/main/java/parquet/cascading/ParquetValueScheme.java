@@ -78,11 +78,11 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
   protected final String projectionString;
 
   public ParquetValueScheme() {
-    this(new Config.Builder().build());
+    this(Config.builder().build());
   }
 
   public ParquetValueScheme(FilterPredicate filterPredicate) {
-    this(new Config.Builder().withFilterPredicate(filterPredicate).build());
+    this(Config.builder().withFilterPredicate(filterPredicate).build());
   }
 
   public ParquetValueScheme(Config config) {

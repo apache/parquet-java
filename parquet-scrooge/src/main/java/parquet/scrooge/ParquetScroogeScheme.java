@@ -40,11 +40,11 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
   private final Class<T> klass;
 
   public ParquetScroogeScheme(Class<T> klass) {
-    this(klass, new Config.Builder().build());
+    this(klass, Config.builder().build());
   }
 
   public ParquetScroogeScheme(FilterPredicate filterPredicate, Class<T> klass) {
-    this(klass, new Config.Builder().withFilterPredicate(filterPredicate).build());
+    this(klass, Config.builder().withFilterPredicate(filterPredicate).build());
   }
 
   public ParquetScroogeScheme(Class<T> klass, Config config) {
