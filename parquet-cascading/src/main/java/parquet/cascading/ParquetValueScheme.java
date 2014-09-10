@@ -52,13 +52,13 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
     private final FilterPredicate filterPredicate;
     private final String projectionString;
     private final Class<T> klass;
-    public Config(Class<T> klass, FilterPredicate filterPredicate, String projectionString) {
+    private Config(Class<T> klass, FilterPredicate filterPredicate, String projectionString) {
       this.filterPredicate = filterPredicate;
       this.projectionString = projectionString;
       this.klass = klass;
     }
 
-    public Config(){
+    public Config() {
       filterPredicate = null;
       projectionString = null;
       klass = null;
