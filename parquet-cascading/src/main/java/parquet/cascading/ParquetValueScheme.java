@@ -48,7 +48,7 @@ import static parquet.Preconditions.checkNotNull;
  */
 public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader, OutputCollector, Object[], Object[]>{
 
-  public static class Config<T> implements Serializable {
+  public static final class Config<T> implements Serializable {
     private final FilterPredicate filterPredicate;
     private final String projectionString;
     private final Class<T> klass;
