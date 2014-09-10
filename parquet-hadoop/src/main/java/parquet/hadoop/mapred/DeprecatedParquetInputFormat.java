@@ -15,10 +15,11 @@
  */
 package parquet.hadoop.mapred;
 
+import static java.util.Arrays.asList;
+
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.hadoop.mapred.InputSplit;
@@ -31,7 +32,6 @@ import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.ParquetInputSplit;
 import parquet.hadoop.ParquetRecordReader;
 
-@SuppressWarnings("deprecation")
 public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.FileInputFormat<Void, Container<V>> {
 
   protected ParquetInputFormat<V> realInputFormat = new ParquetInputFormat<V>();
@@ -46,22 +46,19 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
   public InputSplit[] getSplits(JobConf job, int numSplits) throws IOException {
     List<Footer> footers = getFooters(job);
     List<ParquetInputSplit> splits = realInputFormat.getSplits(job, footers);
-
-      if (splits == null) {
-        return null;
-      }
-
-      InputSplit[] resultSplits = new InputSplit[splits.size()];
-      int i = 0;
-      for (ParquetInputSplit split : splits) {
-          resultSplits[i++] = new ParquetInputSplitWrapper(split);
-      }
-
-      return resultSplits;
+    if (splits == null) {
+      return null;
+    }
+    InputSplit[] resultSplits = new InputSplit[splits.size()];
+    int i = 0;
+    for (ParquetInputSplit split : splits) {
+      resultSplits[i++] = new ParquetInputSplitWrapper(split);
+    }
+    return resultSplits;
   }
 
   public List<Footer> getFooters(JobConf job) throws IOException {
-    return realInputFormat.getFooters(job, Arrays.asList(super.listStatus(job)));
+    return realInputFormat.getFooters(job, asList(super.listStatus(job)));
   }
 
   private static class RecordReaderWrapper<V> implements RecordReader<Void, Container<V>> {
@@ -157,12 +154,9 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
     }
   }
 
-
-
   private static class ParquetInputSplitWrapper implements InputSplit {
 
     ParquetInputSplit realSplit;
-
 
     @SuppressWarnings("unused") // MapReduce instantiates this.
     public ParquetInputSplitWrapper() {}

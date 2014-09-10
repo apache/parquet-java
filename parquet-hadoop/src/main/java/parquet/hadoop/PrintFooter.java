@@ -15,6 +15,7 @@
  */
 package parquet.hadoop;
 
+import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
 import java.net.URI;
@@ -99,7 +100,7 @@ public class PrintFooter {
             @Override
             public ParquetMetadata call() throws Exception {
               try {
-                ParquetMetadata footer = ParquetFileReader.readFooter(configuration, currentFile);
+                ParquetMetadata footer = ParquetFileReader.readFooter(configuration, currentFile, NO_FILTER);
                 return footer;
               } catch (Exception e) {
                 throw new ParquetDecodingException("could not read footer", e);

@@ -49,6 +49,7 @@
       <name>Nexus Release Repository</name>
       <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
     </repository>
+
   </distributionManagement>
 
   <repositories>
@@ -85,11 +86,13 @@
     <shade.prefix>parquet</shade.prefix>
     <hadoop.version>1.1.0</hadoop.version>
     <cascading.version>2.5.3</cascading.version>
-    <parquet.format.version>2.1.0</parquet.format.version>
+    <parquet.format.version>2.2.0-rc1</parquet.format.version>
     <log4j.version>1.2.17</log4j.version>
     <previous.version>1.6.0rc1</previous.version>
     <thrift.executable>thrift</thrift.executable>
-    <scala.version>2.9.2</scala.version>
+    <scala.version>2.10.4</scala.version>
+    <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
+    <scala.binary.version>2.10</scala.binary.version>
   </properties>
 
   <modules>
@@ -209,6 +212,7 @@
                    <previousVersion>${previous.version}</previousVersion>
                    <excludes>
                      <exclude>parquet/org/**</exclude>
+                     <exclude>parquet/hadoop/ParquetInputSplit</exclude>
                    </excludes>
                  </requireBackwardCompatibility>
                </rules>

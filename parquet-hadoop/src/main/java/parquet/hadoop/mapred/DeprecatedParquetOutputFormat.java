@@ -15,12 +15,6 @@
  */
 package parquet.hadoop.mapred;
 
-import parquet.Log;
-import parquet.hadoop.ParquetOutputFormat;
-import parquet.hadoop.ParquetRecordWriter;
-import parquet.hadoop.codec.CodecConfig;
-import parquet.hadoop.metadata.CompressionCodecName;
-
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
@@ -31,9 +25,12 @@ import org.apache.hadoop.mapred.RecordWriter;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.util.Progressable;
 
-@SuppressWarnings("deprecation")
+import parquet.hadoop.ParquetOutputFormat;
+import parquet.hadoop.ParquetRecordWriter;
+import parquet.hadoop.codec.CodecConfig;
+import parquet.hadoop.metadata.CompressionCodecName;
+
 public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.FileOutputFormat<Void, V> {
-  private static final Log LOG = Log.getLog(DeprecatedParquetOutputFormat.class);
 
   public static void setWriteSupportClass(Configuration configuration,  Class<?> writeSupportClass) {
     configuration.set(ParquetOutputFormat.WRITE_SUPPORT_CLASS, writeSupportClass.getName());
@@ -69,10 +66,10 @@ public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.F
   @Override
   public RecordWriter<Void, V> getRecordWriter(FileSystem fs,
       JobConf conf, String name, Progressable progress) throws IOException {
-    return new RecordWriterWrapper<V>(realOutputFormat, fs, conf, name, progress);
+    return new RecordWriterWrapper(realOutputFormat, fs, conf, name, progress);
   }
 
-  private class RecordWriterWrapper<V> implements RecordWriter<Void, V> {
+  private class RecordWriterWrapper implements RecordWriter<Void, V> {
 
     private ParquetRecordWriter<V> realWriter;
 
