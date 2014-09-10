@@ -36,11 +36,6 @@ import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.junit.Test;
 
-import parquet.pig.summary.MapSummaryData;
-import parquet.pig.summary.Summary;
-import parquet.pig.summary.SummaryData;
-import parquet.pig.summary.TupleSummaryData;
-
 public class TestSummary {
 
   private static final TupleFactory tf = TupleFactory.getInstance();
@@ -50,9 +45,9 @@ public class TestSummary {
       t(b(t(1l), t(2l, m("foo", "bar")), t(3))),
       t(b(t(1l), t(1l), t(3, "blah"))),
       t(b(t(1l), t(2l), t(2, "bloh"))),
-      t(b(t(1l), null, t(2, "bloh"))),
-      t(b(t("foo"), null, t(2, "bloh"))),
-      t(b(t(b(t("bar"))), null, t(2, "bloh"))),
+      t(b(t(1l), t(2, "bloh"))),
+      t(b(t("foo"), t(2, "bloh"))),
+      t(b(t(b(t("bar"))), t(2, "bloh"))),
       t(b(t(b(t("bar"))), t(1l, m("foo", "bar", "baz", "buz")), t(2, "bloh"))),
       t(),
       t(null, null)
@@ -115,7 +110,7 @@ public class TestSummary {
     assertEquals(9 * factor, s.getCount());
     assertEquals(1 * factor, s.getFields().get(0).getNull().longValue());
     assertEquals(7 * factor, s.getFields().get(0).getBag().getCount());
-    assertEquals(15 * factor,
+    assertEquals(18 * factor,
         s.getFields().get(0).getBag().getContent().getTuple().getFields().get(0).getCount());
     MapSummaryData map =
         s.getFields().get(0).getBag().getContent().getTuple().getFields().get(1).getMap();
