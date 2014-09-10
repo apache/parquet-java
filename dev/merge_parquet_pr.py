@@ -211,27 +211,27 @@ def fix_version_from_branch(branch, versions):
         branch_ver = branch.replace("branch-", "")
         return filter(lambda x: x.name.startswith(branch_ver), versions)[-1]
 
-def check_jira(title):
+def exctract_jira_id(title):
     m = re.search('^(PARQUET-[0-9]+):.*$', title)
     if m and m.groups > 0:
-        jira_id = m.group(1)
-        asf_jira = jira.client.JIRA({'server': JIRA_API_BASE},
-                                basic_auth=(JIRA_USERNAME, JIRA_PASSWORD))
-        try:
-            issue = asf_jira.issue(jira_id)
-        except Exception as e:
-            fail("ASF JIRA could not find %s\n%s" % (jira_id, e))
+        return m.group(1)
     else:
-      fail("PR title should be prefixed by a jira id \"PARQUET-XXX: ...\", found: \"%s\"" % title)
+        fail("PR title should be prefixed by a jira id \"PARQUET-XXX: ...\", found: \"%s\"" % title)
+
+def check_jira(title):
+    jira_id = exctract_jira_id(title)
+    asf_jira = jira.client.JIRA({'server': JIRA_API_BASE},
+                                basic_auth=(JIRA_USERNAME, JIRA_PASSWORD))
+    try:
+        issue = asf_jira.issue(jira_id)
+    except Exception as e:
+        fail("ASF JIRA could not find %s\n%s" % (jira_id, e))
 
 def resolve_jira(title, merge_branches, comment):
     asf_jira = jira.client.JIRA({'server': JIRA_API_BASE},
                                 basic_auth=(JIRA_USERNAME, JIRA_PASSWORD))
 
-    default_jira_id = ""
-    search = re.findall("PARQUET-[0-9]{4,5}", title)
-    if len(search) > 0:
-        default_jira_id = search[0]
+    default_jira_id = exctract_jira_id(title)
 
     jira_id = raw_input("Enter a JIRA id [%s]: " % default_jira_id)
     if jira_id == "":
@@ -348,7 +348,6 @@ while raw_input("\n%s (y/n): " % pick_prompt).lower() == "y":
     merged_refs = merged_refs + [cherry_pick(pr_num, merge_hash, latest_branch)]
 
 if JIRA_IMPORTED:
-    continue_maybe("Would you like to update an associated JIRA?")
     jira_comment = "Issue resolved by pull request %s\n[%s/%s]" % (pr_num, GITHUB_BASE, pr_num)
     resolve_jira(title, merged_refs, jira_comment)
 else:
