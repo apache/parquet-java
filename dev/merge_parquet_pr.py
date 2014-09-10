@@ -348,6 +348,7 @@ while raw_input("\n%s (y/n): " % pick_prompt).lower() == "y":
     merged_refs = merged_refs + [cherry_pick(pr_num, merge_hash, latest_branch)]
 
 if JIRA_IMPORTED:
+    continue_maybe("Would you like to update the associated JIRA?")
     jira_comment = "Issue resolved by pull request %s\n[%s/%s]" % (pr_num, GITHUB_BASE, pr_num)
     resolve_jira(title, merged_refs, jira_comment)
 else:
