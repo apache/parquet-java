@@ -31,6 +31,7 @@ import subprocess
 import sys
 import tempfile
 import urllib2
+import getpass
 
 try:
     import jira.client
@@ -210,13 +211,25 @@ def fix_version_from_branch(branch, versions):
         branch_ver = branch.replace("branch-", "")
         return filter(lambda x: x.name.startswith(branch_ver), versions)[-1]
 
+def check_jira(title):
+    m = re.search('^(PARQUET-[0-9]+):.*$', title)
+    if m and m.groups > 0:
+        jira_id = m.group(1)
+        asf_jira = jira.client.JIRA({'server': JIRA_API_BASE},
+                                basic_auth=(JIRA_USERNAME, JIRA_PASSWORD))
+        try:
+            issue = asf_jira.issue(jira_id)
+        except Exception as e:
+            fail("ASF JIRA could not find %s\n%s" % (jira_id, e))
+    else:
+      fail("PR title should be prefixed by a jira id \"PARQUET-XXX: ...\", found: \"%s\"" % title)
 
 def resolve_jira(title, merge_branches, comment):
     asf_jira = jira.client.JIRA({'server': JIRA_API_BASE},
                                 basic_auth=(JIRA_USERNAME, JIRA_PASSWORD))
 
     default_jira_id = ""
-    search = re.findall("SPARK-[0-9]{4,5}", title)
+    search = re.findall("PARQUET-[0-9]{4,5}", title)
     if len(search) > 0:
         default_jira_id = search[0]
 
@@ -281,7 +294,7 @@ if not JIRA_USERNAME:
     JIRA_USERNAME =  raw_input("Env JIRA_USERNAME not set, please enter your JIRA username:")
 
 if not JIRA_PASSWORD:
-    JIRA_PASSWORD =  raw_input("Env JIRA_PASSWORD not set, please enter your JIRA password:")
+    JIRA_PASSWORD =  getpass.getpass("Env JIRA_PASSWORD not set, please enter your JIRA password:")
 
 branches = get_json("%s/branches" % GITHUB_API_BASE)
 branch_names = filter(lambda x: x.startswith("branch-"), [x['name'] for x in branches])
@@ -294,6 +307,7 @@ pr = get_json("%s/pulls/%s" % (GITHUB_API_BASE, pr_num))
 
 url = pr["url"]
 title = pr["title"]
+check_jira(title)
 body = pr["body"]
 target_ref = pr["base"]["ref"]
 user_login = pr["user"]["login"]
