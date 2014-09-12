@@ -117,6 +117,7 @@ public class Types {
 
     protected Type.Repetition repetition = null;
     protected OriginalType originalType = null;
+    protected Integer id = null;
     private boolean repetitionAlreadySet = false;
 
     /**
@@ -174,6 +175,19 @@ public class Types {
       return self();
     }
 
+    /**
+     * adds an id annotation to the type being built.
+     * <p>
+     * ids are used to capture the original id when converting from models using ids (thrift, protobufs)
+     *
+     * @param id the id of the field
+     * @return this builder for method chaining
+     */
+    public T id(int id) {
+      this.id = id;
+      return self();
+    }
+
     abstract protected Type build(String name);
 
     /**
@@ -204,6 +218,7 @@ public class Types {
         return returnClass.cast(type);
       }
     }
+
   }
 
   /**
@@ -296,7 +311,6 @@ public class Types {
                 primitiveType == PrimitiveTypeName.BINARY,
                 "UTF8 can only annotate binary fields");
             break;
-
           case DECIMAL:
             Preconditions.checkState(
                 (primitiveType == PrimitiveTypeName.INT32) ||
@@ -321,11 +335,18 @@ public class Types {
                   "FIXED(" + length + ") cannot store " + meta.getPrecision() +
                   " digits (max " + maxPrecision(length) + ")");
             }
+            break;
+          case ENUM:
+            Preconditions.checkState(
+                primitiveType == PrimitiveTypeName.BINARY,
+                "ENUM can only annotate binary fields");
+            break;
+          default:
+            throw new IllegalStateException(originalType + " can not be applied to a primitive type");
         }
       }
 
-      return new PrimitiveType(
-          repetition, primitiveType, length, name, originalType, meta);
+      return new PrimitiveType(repetition, primitiveType, length, name, originalType, meta, id);
     }
 
     private static long maxPrecision(int numBytes) {
@@ -487,7 +508,7 @@ public class Types {
     protected GroupType build(String name) {
       Preconditions.checkState(!fields.isEmpty(),
           "Cannot build an empty group");
-      return new GroupType(repetition, name, originalType, fields);
+      return new GroupType(repetition, name, originalType, fields, id);
     }
   }
 

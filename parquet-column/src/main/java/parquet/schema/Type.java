@@ -15,8 +15,11 @@
  */
 package parquet.schema;
 
+import static parquet.Preconditions.checkNotNull;
+
 import java.util.List;
 
+import parquet.Preconditions;
 import parquet.io.InvalidRecordException;
 
 /**
@@ -73,6 +76,7 @@ abstract public class Type {
   private final String name;
   private final Repetition repetition;
   private final OriginalType originalType;
+  private final Integer id;
 
   /**
    * @param name the name of the type
@@ -88,11 +92,24 @@ abstract public class Type {
    * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    */
   public Type(String name, Repetition repetition, OriginalType originalType) {
-    super();
-    this.name = name;
-    this.repetition = repetition;
-    this.originalType = originalType;
+    this(name, repetition, originalType, null);
   }
+
+  /**
+   * @param name the name of the type
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
+   * @param id (optional) the id of the fields.
+   */
+  Type(String name, Repetition repetition, OriginalType originalType, Integer id) {
+    super();
+    this.name = checkNotNull(name, "name");
+    this.repetition = checkNotNull(repetition, "repetition");
+    this.originalType = originalType;
+    this.id = id;
+  }
+
+  public abstract Type withId(int id);
 
   /**
    * @return the name of the type
@@ -114,6 +131,13 @@ abstract public class Type {
    */
   public Repetition getRepetition() {
     return repetition;
+  }
+
+  /**
+   * @return the id of the field (if defined)
+   */
+  public Integer getId() {
+    return id;
   }
 
   /**
@@ -165,19 +189,35 @@ abstract public class Type {
 
   @Override
   public int hashCode() {
-    return typeHashCode();
+    int c = repetition.hashCode();
+    c = 31 * c + name.hashCode();
+    if (originalType != null) {
+      c = 31 * c +  originalType.hashCode();
+    }
+    if (id != null) {
+      c = 31 * c + id.hashCode();
+    }
+    return c;
   }
 
-  protected abstract int typeHashCode();
-
-  protected abstract boolean typeEquals(Type other);
+  protected boolean equals(Type other) {
+    return
+        name.equals(other.name)
+        && repetition == other.repetition
+        && eqOrBothNull(repetition, other.repetition)
+        && eqOrBothNull(id, other.id);
+  };
 
   @Override
   public boolean equals(Object other) {
     if (!(other instanceof Type) || other == null) {
       return false;
     }
-    return typeEquals((Type)other);
+    return equals((Type)other);
+  }
+
+  protected boolean eqOrBothNull(Object o1, Object o2) {
+    return (o1 == null && o2 == null) || (o1 != null && o1.equals(o2));
   }
 
   protected abstract int getMaxRepetitionLevel(String[] path, int i);
@@ -195,7 +235,7 @@ abstract public class Type {
    * @return the union result of merging toMerge into this
    */
   protected abstract Type union(Type toMerge);
-  
+
   /**
    * @param toMerge the type to merge into this one
    * @param strict should schema primitive types match

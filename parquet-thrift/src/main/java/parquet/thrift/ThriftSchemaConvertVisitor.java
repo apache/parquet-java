@@ -16,20 +16,34 @@
 
 package parquet.thrift;
 
-import parquet.schema.*;
+import static parquet.schema.OriginalType.ENUM;
+import static parquet.schema.OriginalType.UTF8;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static parquet.schema.Type.Repetition.OPTIONAL;
+import static parquet.schema.Type.Repetition.REPEATED;
+import static parquet.schema.Type.Repetition.REQUIRED;
+import static parquet.schema.Types.primitive;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import parquet.schema.ConversionPatterns;
+import parquet.schema.GroupType;
+import parquet.schema.MessageType;
+import parquet.schema.OriginalType;
+import parquet.schema.PrimitiveType;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.schema.Type;
+import parquet.schema.Types.PrimitiveBuilder;
 import parquet.thrift.projection.FieldProjectionFilter;
 import parquet.thrift.projection.FieldsPath;
 import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static parquet.schema.OriginalType.ENUM;
-import static parquet.schema.OriginalType.UTF8;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
-import static parquet.schema.Type.Repetition.*;
 
 /**
  * Visitor Class for converting a thrift definiton to parquet message type.
@@ -98,7 +112,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
     currentName = currentName + "_tuple";
     currentRepetition = REPEATED;
     setElemField.getType().accept(this);
-    //after convertion, currentType is the nested type
+    //after conversion, currentType is the nested type
     if (currentType == null) {
       return;
     } else {
@@ -114,7 +128,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
     currentName = currentName + "_tuple";
     currentRepetition = REPEATED;
     setElemField.getType().accept(this);
-    //after convertion, currentType is the nested type
+    //after conversion, currentType is the nested type
     if (currentType == null) {
       return;
     } else {
@@ -160,7 +174,8 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
       currentFieldPath.push(field);
       field.getType().accept(this);
       if (currentType != null) {
-        types.add(currentType);//currentType is converted with the currentName(fieldName)
+        // currentType is converted with the currentName(fieldName)
+        types.add(currentType.withId(field.getFieldId()));
       }
       currentFieldPath.pop();
     }
@@ -169,66 +184,64 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
 
   private boolean isCurrentlyMatchedFilter(){
      if(!fieldProjectionFilter.isMatched(currentFieldPath)){
-       currentType=null;
+       currentType = null;
        return false;
      }
     return true;
   }
 
+  private void primitiveType(PrimitiveTypeName type) {
+    primitiveType(type, null);
+  }
+
+  private void primitiveType(PrimitiveTypeName type, OriginalType orig) {
+    if (isCurrentlyMatchedFilter()) {
+      PrimitiveBuilder<PrimitiveType> b = primitive(type, currentRepetition);
+      if (orig != null) {
+        b = b.as(orig);
+      }
+      currentType = b.named(currentName);
+    }
+  }
+
   @Override
   public void visit(ThriftType.EnumType enumType) {
-    if (isCurrentlyMatchedFilter()){
-      currentType = new PrimitiveType(currentRepetition, BINARY, currentName, ENUM);
-    }
+    primitiveType(BINARY, ENUM);
   }
 
   @Override
   public void visit(ThriftType.BoolType boolType) {
-    if (isCurrentlyMatchedFilter()){
-      currentType = new PrimitiveType(currentRepetition, BOOLEAN, currentName);
-    }
+    primitiveType(BOOLEAN);
   }
 
   @Override
   public void visit(ThriftType.ByteType byteType) {
-    if (isCurrentlyMatchedFilter()){
-      currentType = new PrimitiveType(currentRepetition, INT32, currentName);
-    }
+    primitiveType(INT32);
   }
 
   @Override
   public void visit(ThriftType.DoubleType doubleType) {
-    if (isCurrentlyMatchedFilter()){
-      currentType = new PrimitiveType(currentRepetition, DOUBLE, currentName);
-    }
+    primitiveType(DOUBLE);
   }
 
   @Override
   public void visit(ThriftType.I16Type i16Type) {
-    if (isCurrentlyMatchedFilter()){
-      currentType = new PrimitiveType(currentRepetition, INT32, currentName);
-    }
+    primitiveType(INT32);
   }
 
   @Override
   public void visit(ThriftType.I32Type i32Type) {
-    if (isCurrentlyMatchedFilter()){
-      currentType = new PrimitiveType(currentRepetition, INT32, currentName);
-    }
+    primitiveType(INT32);
   }
 
   @Override
   public void visit(ThriftType.I64Type i64Type) {
-    if (isCurrentlyMatchedFilter()){
-      currentType = new PrimitiveType(currentRepetition, INT64, currentName);
-    }
+    primitiveType(INT64);
   }
 
   @Override
   public void visit(ThriftType.StringType stringType) {
-    if (isCurrentlyMatchedFilter()){
-      currentType = new PrimitiveType(currentRepetition, BINARY, currentName, UTF8);
-    }
+    primitiveType(BINARY, UTF8);
   }
 
   /**

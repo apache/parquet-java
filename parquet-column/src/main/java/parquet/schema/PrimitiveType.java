@@ -276,15 +276,15 @@ public final class PrimitiveType extends Type {
   private final PrimitiveTypeName primitive;
   private final int length;
   private final DecimalMetadata decimalMeta;
-  
+
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param primitive STRING, INT64, ...
    * @param name the name of the type
    */
-  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, 
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
                        String name) {
-    this(repetition, primitive, 0, name, null, null);
+    this(repetition, primitive, 0, name, null, null, null);
   }
 
   /**
@@ -294,7 +294,7 @@ public final class PrimitiveType extends Type {
    * @param name the name of the type
    */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, int length, String name) {
-    this(repetition, primitive, length, name, null, null);
+    this(repetition, primitive, length, name, null, null, null);
   }
 
   /**
@@ -303,9 +303,9 @@ public final class PrimitiveType extends Type {
    * @param name the name of the type
    * @param originalType (optional) the original type to help with cross schema convertion (LIST, MAP, ...)
    */
-  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive, 
+  public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
                        String name, OriginalType originalType) {
-    this(repetition, primitive, 0, name, originalType, null);
+    this(repetition, primitive, 0, name, originalType, null, null);
   }
 
   /**
@@ -317,7 +317,7 @@ public final class PrimitiveType extends Type {
    */
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
                        int length, String name, OriginalType originalType) {
-    this(repetition, primitive, length, name, originalType, null);
+    this(repetition, primitive, length, name, originalType, null, null);
   }
 
   /**
@@ -327,14 +327,24 @@ public final class PrimitiveType extends Type {
    * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise
    * @param originalType (optional) the original type (MAP, DECIMAL, UTF8, ...)
    * @param decimalMeta (optional) metadata about the decimal type
+   * @param id the id of the field
    */
-  PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
-                       int length, String name, OriginalType originalType,
-                       DecimalMetadata decimalMeta) {
-    super(name, repetition, originalType);
+  PrimitiveType(
+      Repetition repetition, PrimitiveTypeName primitive,
+      int length, String name, OriginalType originalType,
+      DecimalMetadata decimalMeta, Integer id) {
+    super(name, repetition, originalType, id);
     this.primitive = primitive;
     this.length = length;
     this.decimalMeta = decimalMeta;
+  }
+
+  /**
+   * @param id the field id
+   * @return a new GroupType with the same fields and a new id
+   */
+  public PrimitiveType withId(int id) {
+    return new PrimitiveType(getRepetition(), primitive, length, getName(), getOriginalType(), decimalMeta, id);
   }
 
   /**
@@ -399,24 +409,8 @@ public final class PrimitiveType extends Type {
       }
       sb.append(")");
     }
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  protected boolean typeEquals(Type other) {
-    if (other.isPrimitive()) {
-      PrimitiveType primitiveType = other.asPrimitiveType();
-      if ((getPrimitiveTypeName() == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) &&
-          (getTypeLength() != primitiveType.getTypeLength())) {
-        return false;
-      }
-      return getRepetition() == primitiveType.getRepetition() &&
-          getPrimitiveTypeName().equals(primitiveType.getPrimitiveTypeName()) &&
-          getName().equals(primitiveType.getName());
-    } else {
-      return false;
+    if (getId() != null) {
+      sb.append(" = ").append(getId());
     }
   }
 
@@ -424,11 +418,28 @@ public final class PrimitiveType extends Type {
    * {@inheritDoc}
    */
   @Override
-  protected int typeHashCode() {
-    int hash = 17;
-    hash += 31 * getRepetition().hashCode();
-    hash += 31 * getPrimitiveTypeName().hashCode();
-    hash += 31 * getName().hashCode();
+  protected boolean equals(Type other) {
+    if (!other.isPrimitive()) {
+      return false;
+    }
+    PrimitiveType otherPrimitive = other.asPrimitiveType();
+    return super.equals(other)
+        && primitive == otherPrimitive.getPrimitiveTypeName()
+        && length == otherPrimitive.length
+        && eqOrBothNull(decimalMeta, otherPrimitive.decimalMeta);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public int hashCode() {
+    int hash = super.hashCode();
+    hash = hash * 31 + primitive.hashCode();
+    hash = hash * 31 + length;
+    if (decimalMeta != null) {
+      hash = hash * 31 + decimalMeta.hashCode();
+    }
     return hash;
   }
 

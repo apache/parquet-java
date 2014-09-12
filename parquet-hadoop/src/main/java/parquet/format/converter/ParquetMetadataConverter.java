@@ -559,6 +559,9 @@ public class ParquetMetadataConverter {
       if (schemaElement.isSetConverted_type()) {
         childBuilder.as(getOriginalType(schemaElement.converted_type));
       }
+      if (schemaElement.isSetField_id()) {
+        childBuilder.id(schemaElement.field_id);
+      }
 
       childBuilder.named(schemaElement.name);
     }

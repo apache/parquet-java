@@ -15,10 +15,13 @@
  */
 package parquet.pig;
 
+import static parquet.Log.DEBUG;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
 import org.apache.pig.LoadPushDown.RequiredField;
 import org.apache.pig.LoadPushDown.RequiredFieldList;
 import org.apache.pig.data.DataType;
@@ -29,10 +32,8 @@ import org.apache.pig.impl.util.ObjectSerializer;
 import org.apache.pig.impl.util.Pair;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
-import parquet.Log;
-import static parquet.Log.DEBUG;
-import static parquet.pig.TupleReadSupport.PARQUET_PIG_REQUIRED_FIELDS;
 
+import parquet.Log;
 import parquet.schema.ConversionPatterns;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
@@ -62,9 +63,9 @@ public class PigSchemaConverter {
   public PigSchemaConverter() {
     this(false);
   }
-  
+
   /**
-   * 
+   *
    * @param columnIndexAccess toggle between name and index based access (default: false)
    */
   public PigSchemaConverter(boolean columnIndexAccess) {
@@ -86,13 +87,13 @@ public class PigSchemaConverter {
   interface ColumnAccess {
     List<Type> filterTupleSchema(GroupType schemaToFilter, Schema pigSchema, RequiredFieldList requiredFieldsList);
   }
-  
+
   class ColumnIndexAccess implements ColumnAccess {
     @Override
     public List<Type> filterTupleSchema(GroupType schemaToFilter, Schema pigSchema, RequiredFieldList requiredFieldsList) {
       List<Type> newFields = new ArrayList<Type>();
       List<Pair<FieldSchema,Integer>> indexedFields = new ArrayList<Pair<FieldSchema,Integer>>();
-      
+
       try {
         if(requiredFieldsList == null) {
           int index = 0;
@@ -114,11 +115,11 @@ public class PigSchemaConverter {
         }
       } catch (FrontendException e) {
           throw new RuntimeException("Failed to filter requested fields", e);
-      }  
+      }
       return newFields;
-    } 
+    }
   }
-  
+
   class ColumnNameAccess implements ColumnAccess {
     @Override
     public List<Type> filterTupleSchema(GroupType schemaToFilter, Schema requestedPigSchema, RequiredFieldList requiredFieldsList) {
@@ -134,7 +135,7 @@ public class PigSchemaConverter {
       return newFields;
     }
   }
-  
+
   /**
    * @param pigSchema the pig schema to turn into a string representation
    * @return the sctring representation of the schema
@@ -148,14 +149,14 @@ public class PigSchemaConverter {
     if(requiredFieldString == null) {
         return null;
     }
-    
+
     try {
       return (RequiredFieldList) ObjectSerializer.deserialize(requiredFieldString);
     } catch (IOException e) {
       throw new RuntimeException("Failed to deserialize pushProjection", e);
     }
   }
-  
+
   static String serializeRequiredFieldList(RequiredFieldList requiredFieldList) {
     try {
       return ObjectSerializer.serialize(requiredFieldList);
@@ -163,7 +164,7 @@ public class PigSchemaConverter {
       throw new RuntimeException("Failed to searlize required fields.", e);
     }
   }
-  
+
   /**
    * converts a parquet schema into a pig schema
    * @param parquetSchema the parquet schema to convert to Pig schema
@@ -202,37 +203,37 @@ public class PigSchemaConverter {
 
   private FieldSchema getSimpleFieldSchema(final String fieldName, Type parquetType)
       throws FrontendException {
-    final PrimitiveTypeName parquetPrimitiveTypeName = 
+    final PrimitiveTypeName parquetPrimitiveTypeName =
         parquetType.asPrimitiveType().getPrimitiveTypeName();
     final OriginalType originalType = parquetType.getOriginalType();
     return parquetPrimitiveTypeName.convert(
         new PrimitiveTypeNameConverter<Schema.FieldSchema, FrontendException>() {
       @Override
-      public FieldSchema convertFLOAT(PrimitiveTypeName primitiveTypeName) 
+      public FieldSchema convertFLOAT(PrimitiveTypeName primitiveTypeName)
           throws FrontendException {
         return new FieldSchema(fieldName, null, DataType.FLOAT);
       }
 
       @Override
-      public FieldSchema convertDOUBLE(PrimitiveTypeName primitiveTypeName) 
+      public FieldSchema convertDOUBLE(PrimitiveTypeName primitiveTypeName)
           throws FrontendException {
         return new FieldSchema(fieldName, null, DataType.DOUBLE);
       }
 
       @Override
-      public FieldSchema convertINT32(PrimitiveTypeName primitiveTypeName) 
+      public FieldSchema convertINT32(PrimitiveTypeName primitiveTypeName)
           throws FrontendException {
         return new FieldSchema(fieldName, null, DataType.INTEGER);
       }
 
       @Override
-      public FieldSchema convertINT64(PrimitiveTypeName primitiveTypeName) 
+      public FieldSchema convertINT64(PrimitiveTypeName primitiveTypeName)
           throws FrontendException {
         return new FieldSchema(fieldName, null, DataType.LONG);
       }
 
       @Override
-      public FieldSchema convertINT96(PrimitiveTypeName primitiveTypeName) 
+      public FieldSchema convertINT96(PrimitiveTypeName primitiveTypeName)
           throws FrontendException {
         throw new FrontendException("NYI");
       }
@@ -244,13 +245,13 @@ public class PigSchemaConverter {
       }
 
       @Override
-      public FieldSchema convertBOOLEAN(PrimitiveTypeName primitiveTypeName) 
+      public FieldSchema convertBOOLEAN(PrimitiveTypeName primitiveTypeName)
           throws FrontendException {
         return new FieldSchema(fieldName, null, DataType.BOOLEAN);
       }
 
       @Override
-      public FieldSchema convertBINARY(PrimitiveTypeName primitiveTypeName) 
+      public FieldSchema convertBINARY(PrimitiveTypeName primitiveTypeName)
           throws FrontendException {
         if (originalType != null && originalType == OriginalType.UTF8) {
           return new FieldSchema(fieldName, null, DataType.CHARARRAY);
@@ -437,7 +438,7 @@ public class PigSchemaConverter {
   public MessageType filter(MessageType schemaToFilter, Schema requestedPigSchema) {
     return filter(schemaToFilter, requestedPigSchema, null);
   }
-  
+
   /**
    * filters a Parquet schema based on a pig schema for projection
    * @param schemaToFilter the schema to be filter
@@ -454,7 +455,7 @@ public class PigSchemaConverter {
     } catch (RuntimeException e) {
       throw new RuntimeException("can't filter " + schemaToFilter + " with " + requestedPigSchema, e);
     }
-  }  
+  }
 
   private Type filter(Type type, FieldSchema fieldSchema) {
     if (DEBUG) LOG.debug("filtering type:\n" + type + "\nwith:\n " + fieldSchema);
@@ -478,7 +479,7 @@ public class PigSchemaConverter {
 
   private Type filterTuple(GroupType tupleType, FieldSchema tupleFieldSchema) throws FrontendException {
     if (DEBUG) LOG.debug("filtering TUPLE schema:\n" + tupleType + "\nwith:\n " + tupleFieldSchema);
-    return new GroupType(tupleType.getRepetition(), tupleType.getName(), tupleType.getOriginalType(), columnAccess.filterTupleSchema(tupleType, tupleFieldSchema.schema, null));
+    return tupleType.withNewFields(columnAccess.filterTupleSchema(tupleType, tupleFieldSchema.schema, null));
   }
 
   private Type filterMap(GroupType mapType, FieldSchema mapFieldSchema) throws FrontendException {
@@ -491,13 +492,7 @@ public class PigSchemaConverter {
       throw new RuntimeException("this should be a Map Key/Value: " + mapType);
     }
     FieldSchema innerField = mapFieldSchema.schema.getField(0);
-    return new GroupType(
-        mapType.getRepetition(), mapType.getName(), mapType.getOriginalType(),
-        new GroupType(nested.getRepetition(), nested.getName(), nested.getOriginalType(),
-            nested.getType(0),
-            filter(nested.getType(1), innerField)
-            )
-        );
+    return mapType.withNewFields(nested.withNewFields(nested.getType(0), filter(nested.getType(1), innerField)));
   }
 
   private Type filterBag(GroupType bagType, FieldSchema bagFieldSchema) throws FrontendException {
@@ -511,9 +506,6 @@ public class PigSchemaConverter {
       // Bags always contain tuples => we skip the extra tuple that was inserted in that case.
       innerField = innerField.schema.getField(0);
     }
-    return new GroupType(
-        bagType.getRepetition(), bagType.getName(), bagType.getOriginalType(),
-        filter(nested, innerField)
-        );
+    return bagType.withNewFields(filter(nested, innerField));
   }
 }
