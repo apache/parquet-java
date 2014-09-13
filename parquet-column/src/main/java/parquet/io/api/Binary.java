@@ -366,10 +366,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       @Override
       public byte[] getBytes() {
         byte[] bytes = new byte[length];
+        ByteBuffer temp;
         
-        value.mark();
-        value.position(offset);
-        value.get(bytes).reset();
+        temp = value.duplicate();
+        temp.position(offset);
+        temp.get(bytes);
         
         return bytes;
       }
