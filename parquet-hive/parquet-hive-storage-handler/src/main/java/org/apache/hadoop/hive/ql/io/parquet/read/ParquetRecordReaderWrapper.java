@@ -13,9 +13,9 @@
  */
 package org.apache.hadoop.hive.ql.io.parquet.read;
 
+import static parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
+
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -35,7 +35,6 @@ import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.ParquetInputSplit;
 import parquet.hadoop.api.ReadSupport.ReadContext;
-import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.ContextUtil;
@@ -194,45 +193,33 @@ public class ParquetRecordReaderWrapper  implements RecordReader<Void, ArrayWrit
       final InputSplit oldSplit,
       final JobConf conf
       ) throws IOException {
-    ParquetInputSplit split;
     if (oldSplit instanceof FileSplit) {
-      final Path finalPath = ((FileSplit) oldSplit).getPath();
+      FileSplit fileSplit = (FileSplit) oldSplit;
+      final long splitStart = fileSplit.getStart();
+      final long splitLength = fileSplit.getLength();
+      final Path finalPath = fileSplit.getPath();
       final JobConf cloneJob = hiveBinding.pushProjectionsAndFilters(conf, finalPath.getParent());
 
-      final ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(cloneJob, finalPath);
-      final List<BlockMetaData> blocks = parquetMetadata.getBlocks();
+      final ParquetMetadata parquetMetadata = ParquetFileReader.readFooter(cloneJob, finalPath, SKIP_ROW_GROUPS);
       final FileMetaData fileMetaData = parquetMetadata.getFileMetaData();
+      final ReadContext readContext =
+          new DataWritableReadSupport()
+            .init(cloneJob, fileMetaData.getKeyValueMetaData(), fileMetaData.getSchema());
 
-      final ReadContext readContext = new DataWritableReadSupport()
-          .init(cloneJob, fileMetaData.getKeyValueMetaData(), fileMetaData.getSchema());
-      schemaSize = MessageTypeParser.parseMessageType(readContext.getReadSupportMetadata()
-          .get(DataWritableReadSupport.HIVE_SCHEMA_KEY)).getFieldCount();
-      final List<BlockMetaData> splitGroup = new ArrayList<BlockMetaData>();
-      final long splitStart = ((FileSplit) oldSplit).getStart();
-      final long splitLength = ((FileSplit) oldSplit).getLength();
-      for (final BlockMetaData block : blocks) {
-        final long firstDataPage = block.getColumns().get(0).getFirstDataPageOffset();
-        if (firstDataPage >= splitStart && firstDataPage < splitStart + splitLength) {
-          splitGroup.add(block);
-        }
-      }
-      if (splitGroup.isEmpty()) {
-        LOG.warn("Skipping split, could not find row group in: " + (FileSplit) oldSplit);
-        split = null;
-      } else {
-        split = new ParquetInputSplit(finalPath,
+      schemaSize = MessageTypeParser.parseMessageType(
+            readContext.getReadSupportMetadata().get(DataWritableReadSupport.HIVE_SCHEMA_KEY)
+          ).getFieldCount();
+       return new ParquetInputSplit(
+                finalPath,
                 splitStart,
+                splitStart + splitLength,
                 splitLength,
-                ((FileSplit) oldSplit).getLocations(),
-                splitGroup,
+                fileSplit.getLocations(),
+                null,
                 readContext.getRequestedSchema().toString(),
-                fileMetaData.getSchema().toString(),
-                fileMetaData.getKeyValueMetaData(),
                 readContext.getReadSupportMetadata());
-      }
     } else {
       throw new IllegalArgumentException("Unknown split type: " + oldSplit);
     }
-    return split;
   }
 }

@@ -15,25 +15,40 @@
  */
 package parquet.format.converter;
 
+import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static parquet.format.CompressionCodec.UNCOMPRESSED;
+import static parquet.format.Type.INT32;
 import static parquet.format.Util.readPageHeader;
 import static parquet.format.Util.writePageHeader;
+import static parquet.format.converter.ParquetMetadataConverter.filterFileMetaData;
+import static parquet.format.converter.ParquetMetadataConverter.getOffset;
 
-import com.google.common.collect.Lists;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
+import java.util.Set;
+import java.util.TreeSet;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import parquet.column.Encoding;
 import parquet.example.Paper;
+import parquet.format.ColumnChunk;
+import parquet.format.ColumnMetaData;
 import parquet.format.ConvertedType;
 import parquet.format.FieldRepetitionType;
+import parquet.format.FileMetaData;
 import parquet.format.PageHeader;
 import parquet.format.PageType;
+import parquet.format.RowGroup;
 import parquet.format.SchemaElement;
 import parquet.format.Type;
 import parquet.schema.MessageType;
@@ -41,6 +56,8 @@ import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type.Repetition;
 import parquet.schema.Types;
+
+import com.google.common.collect.Lists;
 
 public class TestParquetMetadataConverter {
 
@@ -114,6 +131,115 @@ public class TestParquetMetadataConverter {
     }
     for (Type type : Type.values()) {
       assertEquals(type, c.getType(c.getPrimitive(type)));
+    }
+  }
+
+  private FileMetaData metadata(long... sizes) {
+    List<SchemaElement> schema = emptyList();
+    List<RowGroup> rowGroups = new ArrayList<RowGroup>();
+    long offset = 0;
+    for (long size : sizes) {
+      ColumnChunk columnChunk = new ColumnChunk(offset);
+      columnChunk.setMeta_data(new ColumnMetaData(
+          INT32,
+          Collections.<parquet.format.Encoding>emptyList(),
+          Collections.<String>emptyList(),
+          UNCOMPRESSED, 10l, size * 2, size, offset));
+      rowGroups.add(new RowGroup(Arrays.asList(columnChunk), size, 1));
+      offset += size;
+    }
+    return new FileMetaData(1, schema, sizes.length, rowGroups);
+  }
+
+  private FileMetaData filter(FileMetaData md, long start, long end) {
+    return filterFileMetaData(new FileMetaData(md), new ParquetMetadataConverter.RangeMetadataFilter(start, end));
+  }
+
+  private void verifyMD(FileMetaData md, long... offsets) {
+    assertEquals(offsets.length, md.row_groups.size());
+    for (int i = 0; i < offsets.length; i++) {
+      long offset = offsets[i];
+      RowGroup rowGroup = md.getRow_groups().get(i);
+      assertEquals(offset, getOffset(rowGroup));
+    }
+  }
+
+  /**
+   * verifies that splits will end up being a partition of the rowgroup
+   * they are all found only once
+   * @param md
+   * @param splitWidth
+   */
+  private void verifyAllFilters(FileMetaData md, long splitWidth) {
+    Set<Long> offsetsFound = new TreeSet<Long>();
+    for (long start = 0; start < fileSize(md); start += splitWidth) {
+      FileMetaData filtered = filter(md, start, start + splitWidth);
+      for (RowGroup rg : filtered.getRow_groups()) {
+        long o = getOffset(rg);
+        if (offsetsFound.contains(o)) {
+          fail("found the offset twice: " + o);
+        } else {
+          offsetsFound.add(o);
+        }
+      }
+    }
+    if (offsetsFound.size() != md.row_groups.size()) {
+      fail("missing row groups, "
+          + "found: " + offsetsFound
+          + "\nexpected " + md.getRow_groups());
+    }
+  }
+
+  private long fileSize(FileMetaData md) {
+    long size = 0;
+    for (RowGroup rg : md.getRow_groups()) {
+      size += rg.total_byte_size;
+    }
+    return size;
+  }
+
+  @Test
+  public void testFilterMetaData() {
+    verifyMD(filter(metadata(50, 50, 50), 0, 50), 0);
+    verifyMD(filter(metadata(50, 50, 50), 50, 100), 50);
+    verifyMD(filter(metadata(50, 50, 50), 100, 150), 100);
+    // picks up first RG
+    verifyMD(filter(metadata(50, 50, 50), 25, 75), 0);
+    // picks up no RG
+    verifyMD(filter(metadata(50, 50, 50), 26, 75));
+    // picks up second RG
+    verifyMD(filter(metadata(50, 50, 50), 26, 76), 50);
+
+    verifyAllFilters(metadata(50, 50, 50), 10);
+    verifyAllFilters(metadata(50, 50, 50), 51);
+    verifyAllFilters(metadata(50, 50, 50), 25); // corner cases are in the middle
+    verifyAllFilters(metadata(50, 50, 50), 24);
+    verifyAllFilters(metadata(50, 50, 50), 26);
+    verifyAllFilters(metadata(50, 50, 50), 110);
+    verifyAllFilters(metadata(10, 50, 500), 110);
+    verifyAllFilters(metadata(10, 50, 500), 10);
+    verifyAllFilters(metadata(10, 50, 500), 600);
+    verifyAllFilters(metadata(11, 9, 10), 10);
+    verifyAllFilters(metadata(11, 9, 10), 9);
+    verifyAllFilters(metadata(11, 9, 10), 8);
+  }
+
+  @Test
+  public void randomTestFilterMetaData() {
+    // randomized property based testing
+    // if it fails add the case above
+    Random random = new Random(System.currentTimeMillis());
+    for (int j = 0; j < 100; j++) {
+      long[] rgs = new long[random.nextInt(50)];
+      for (int i = 0; i < rgs.length; i++) {
+        rgs[i] = random.nextInt(10000) + 1; // No empty row groups
+      }
+      int splitSize = random.nextInt(10000);
+      try {
+        verifyAllFilters(metadata(rgs), splitSize);
+      } catch (AssertionError e) {
+        throw new AssertionError("fail verifyAllFilters(metadata(" + Arrays.toString(rgs) + "), " + splitSize + ")", e);
+      }
     }
   }
 

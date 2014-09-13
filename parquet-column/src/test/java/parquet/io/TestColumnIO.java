@@ -80,6 +80,7 @@ public class TestColumnIO {
   + "  required boolean e;\n"
   + "  required binary f;\n"
   + "  required int96 g;\n"
+  + "  required fixed_len_byte_array(3) h;\n"
   + "}\n";
 
   private static final String schemaString =
@@ -363,7 +364,8 @@ public class TestColumnIO {
         .append("d", 4.0d)
         .append("e", true)
         .append("f", Binary.fromString("6"))
-        .append("g", new NanoTime(1234, System.currentTimeMillis() * 1000));
+        .append("g", new NanoTime(1234, System.currentTimeMillis() * 1000))
+        .append("h", Binary.fromString("abc"));
 
     testSchema(oneOfEachSchema, Arrays.asList(g1));
   }

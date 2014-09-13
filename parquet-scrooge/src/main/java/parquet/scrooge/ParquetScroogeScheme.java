@@ -22,24 +22,32 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.RecordReader;
 
+import com.twitter.scrooge.ThriftStruct;
+
+import cascading.flow.FlowProcess;
+import cascading.scheme.SinkCall;
+import cascading.tap.Tap;
 import parquet.cascading.ParquetValueScheme;
+import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
 import parquet.hadoop.thrift.ParquetThriftInputFormat;
 import parquet.hadoop.thrift.ThriftReadSupport;
-import cascading.flow.FlowProcess;
-import cascading.scheme.SinkCall;
-import cascading.tap.Tap;
-
-import com.twitter.scrooge.ThriftStruct;
 
 public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueScheme<T> {
 
   private static final long serialVersionUID = -8332274507341448397L;
-  private final Class<T> klass;
 
   public ParquetScroogeScheme(Class<T> klass) {
-    this.klass = klass;
+    this(new Config().withRecordClass(klass));
+  }
+
+  public ParquetScroogeScheme(FilterPredicate filterPredicate, Class<T> klass) {
+    this(new Config().withFilterPredicate(filterPredicate));
+  }
+
+  public ParquetScroogeScheme(Config config) {
+    super(config);
   }
 
   @SuppressWarnings("rawtypes")
@@ -60,10 +68,10 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
   @Override
   public void sourceConfInit(FlowProcess<JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
+    super.sourceConfInit(fp, tap, jobConf);
     jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
     ParquetInputFormat.setReadSupportClass(jobConf, ScroogeReadSupport.class);
     ThriftReadSupport.setRecordConverterClass(jobConf, ScroogeRecordConverter.class);
-    ParquetThriftInputFormat.<T>setThriftClass(jobConf, klass);
   }
 
   @Override

@@ -179,6 +179,7 @@ public class SimpleGroup extends Group {
   public void add(int fieldIndex, Binary value) {
     switch (getType().getType(fieldIndex).asPrimitiveType().getPrimitiveTypeName()) {
       case BINARY:
+      case FIXED_LEN_BYTE_ARRAY:
         add(fieldIndex, new BinaryValue(value));
         break;
       case INT96:

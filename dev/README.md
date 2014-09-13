@@ -14,6 +14,11 @@ run the following command
 ```
 dev/merge_parquet_pr.py
 ```
+
+Note:
+* The parent directory of your parquet repository must be called parquet-mr
+* Without jira-python installed you'll have to close the JIRA manually
+
 example output:
 ```
 Which pull request would you like to merge? (e.g. 34):

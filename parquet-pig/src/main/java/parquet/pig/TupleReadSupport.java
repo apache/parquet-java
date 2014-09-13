@@ -69,18 +69,18 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
    */
   static RequiredFieldList getRequiredFields(Configuration configuration) {
     String requiredFieldString = configuration.get(PARQUET_PIG_REQUIRED_FIELDS);
-    
+
     if(requiredFieldString == null) {
       return null;
     }
-    
+
     try {
       return (RequiredFieldList) ObjectSerializer.deserialize(requiredFieldString);
     } catch (IOException iOException) {
       throw new RuntimeException("Failed to deserialize pushProjection");
     }
   }
-  
+
   /**
    * @param fileSchema the parquet schema from the file
    * @param keyValueMetaData the extra meta data from the files
@@ -156,13 +156,13 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
     Schema pigSchema = getPigSchema(initContext.getConfiguration());
     RequiredFieldList requiredFields = getRequiredFields(initContext.getConfiguration());
     boolean columnIndexAccess = initContext.getConfiguration().getBoolean(PARQUET_COLUMN_INDEX_ACCESS, false);
-    
+
     if (pigSchema == null) {
       return new ReadContext(initContext.getFileSchema());
     } else {
-      
+
       // project the file schema according to the requested Pig schema
-      MessageType parquetRequestedSchema = new PigSchemaConverter(columnIndexAccess).filter(initContext.getFileSchema(), pigSchema, requiredFields);;
+      MessageType parquetRequestedSchema = new PigSchemaConverter(columnIndexAccess).filter(initContext.getFileSchema(), pigSchema, requiredFields);
       return new ReadContext(parquetRequestedSchema);
     }
   }
@@ -175,7 +175,7 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
       ReadContext readContext) {
     MessageType requestedSchema = readContext.getRequestedSchema();
     Schema requestedPigSchema = getPigSchema(configuration);
-    
+
     if (requestedPigSchema == null) {
       throw new ParquetDecodingException("Missing Pig schema: ParquetLoader sets the schema in the job conf");
     }
