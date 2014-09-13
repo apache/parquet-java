@@ -16,12 +16,18 @@
 package parquet.hadoop.example;
 
 import static java.lang.Thread.sleep;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -38,6 +44,11 @@ import org.junit.Test;
 import parquet.Log;
 import parquet.example.data.Group;
 import parquet.example.data.simple.SimpleGroupFactory;
+import parquet.hadoop.ParquetInputFormat;
+import parquet.hadoop.ParquetOutputFormat;
+import parquet.hadoop.api.DelegatingReadSupport;
+import parquet.hadoop.api.DelegatingWriteSupport;
+import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.util.ContextUtil;
@@ -55,8 +66,8 @@ public class TestInputOutputFormat {
   private String partialSchema;
   private Configuration conf;
 
-  private Class readMapperClass;
-  private Class writeMapperClass;
+  private Class<? extends Mapper<?,?,?,?>> readMapperClass;
+  private Class<? extends Mapper<?,?,?,?>> writeMapperClass;
 
   @Before
   public void setUp() {
@@ -75,8 +86,44 @@ public class TestInputOutputFormat {
             "required int32 line;\n" +
             "}";
 
-    readMapperClass =ReadMapper.class;
-    writeMapperClass=WriteMapper.class;
+    readMapperClass = ReadMapper.class;
+    writeMapperClass = WriteMapper.class;
+  }
+
+
+  public static final class MyWriteSupport extends DelegatingWriteSupport<Group> {
+
+    private long count = 0;
+
+    public MyWriteSupport() {
+      super(new GroupWriteSupport());
+    }
+
+    @Override
+    public void write(Group record) {
+      super.write(record);
+      ++ count;
+    }
+
+    @Override
+    public parquet.hadoop.api.WriteSupport.FinalizedWriteContext finalizeWrite() {
+      Map<String, String> extraMetadata = new HashMap<String, String>();
+      extraMetadata.put("my.count", String.valueOf(count));
+      return new FinalizedWriteContext(extraMetadata);
+    }
+  }
+
+  public static final class MyReadSupport extends DelegatingReadSupport<Group> {
+    public MyReadSupport() {
+      super(new GroupReadSupport());
+    }
+
+    @Override
+    public parquet.hadoop.api.ReadSupport.ReadContext init(InitContext context) {
+      Set<String> counts = context.getKeyValueMetadata().get("my.count");
+      assertTrue("counts: " + counts, counts.size() > 0);
+      return super.init(context);
+    }
   }
 
   public static class ReadMapper extends Mapper<LongWritable, Text, Void, Group> {
@@ -106,9 +153,14 @@ public class TestInputOutputFormat {
       context.write(new LongWritable(value.getInteger("line", 0)), new Text("dummy"));
     }
   }
-
   private void runMapReduceJob(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException {
-
+    runMapReduceJob(codec, Collections.<String, String>emptyMap());
+  }
+  private void runMapReduceJob(CompressionCodecName codec, Map<String, String> extraConf) throws IOException, ClassNotFoundException, InterruptedException {
+    Configuration conf = new Configuration(this.conf);
+    for (Map.Entry<String, String> entry : extraConf.entrySet()) {
+      conf.set(entry.getKey(), entry.getValue());
+    }
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);
     fileSystem.delete(outputPath, true);
@@ -117,26 +169,26 @@ public class TestInputOutputFormat {
       TextInputFormat.addInputPath(writeJob, inputPath);
       writeJob.setInputFormatClass(TextInputFormat.class);
       writeJob.setNumReduceTasks(0);
-      ExampleOutputFormat.setCompression(writeJob, codec);
-      ExampleOutputFormat.setOutputPath(writeJob, parquetPath);
-      writeJob.setOutputFormatClass(ExampleOutputFormat.class);
+      ParquetOutputFormat.setCompression(writeJob, codec);
+      ParquetOutputFormat.setOutputPath(writeJob, parquetPath);
+      writeJob.setOutputFormatClass(ParquetOutputFormat.class);
       writeJob.setMapperClass(readMapperClass);
 
-      ExampleOutputFormat.setSchema(
-              writeJob,
-              MessageTypeParser.parseMessageType(
-                      writeSchema));
+      ParquetOutputFormat.setWriteSupportClass(writeJob, MyWriteSupport.class);
+      GroupWriteSupport.setSchema(
+              MessageTypeParser.parseMessageType(writeSchema),
+              writeJob.getConfiguration());
       writeJob.submit();
       waitForJob(writeJob);
     }
     {
-
       conf.set(ReadSupport.PARQUET_READ_SCHEMA, readSchema);
       readJob = new Job(conf, "read");
 
-      readJob.setInputFormatClass(ExampleInputFormat.class);
+      readJob.setInputFormatClass(ParquetInputFormat.class);
+      ParquetInputFormat.setReadSupportClass(readJob, MyReadSupport.class);
 
-      ExampleInputFormat.setInputPaths(readJob, parquetPath);
+      ParquetInputFormat.setInputPaths(readJob, parquetPath);
       readJob.setOutputFormatClass(TextOutputFormat.class);
       TextOutputFormat.setOutputPath(readJob, outputPath);
       readJob.setMapperClass(writeMapperClass);
@@ -147,7 +199,10 @@ public class TestInputOutputFormat {
   }
 
   private void testReadWrite(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException {
-    runMapReduceJob(codec);
+    testReadWrite(codec, Collections.<String, String>emptyMap());
+  }
+  private void testReadWrite(CompressionCodecName codec, Map<String, String> conf) throws IOException, ClassNotFoundException, InterruptedException {
+    runMapReduceJob(codec, conf);
     final BufferedReader in = new BufferedReader(new FileReader(new File(inputPath.toString())));
     final BufferedReader out = new BufferedReader(new FileReader(new File(outputPath.toString(), "part-m-00000")));
     String lineIn;
@@ -158,8 +213,8 @@ public class TestInputOutputFormat {
       lineOut = lineOut.substring(lineOut.indexOf("\t") + 1);
       assertEquals("line " + lineNumber, lineIn, lineOut);
     }
-    assertNull("line " + lineNumber, lineIn);
     assertNull("line " + lineNumber, out.readLine());
+    assertNull("line " + lineNumber, lineIn);
     in.close();
     out.close();
   }
@@ -173,9 +228,14 @@ public class TestInputOutputFormat {
   }
 
   @Test
+  public void testReadWriteTaskSideMD() throws IOException, ClassNotFoundException, InterruptedException {
+    testReadWrite(CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {{ put("parquet.task.side.metadata", "true"); }});
+  }
+
+  @Test
   public void testProjection() throws Exception{
     readSchema=partialSchema;
-    writeMapperClass=PartialWriteMapper.class;
+    writeMapperClass = PartialWriteMapper.class;
     runMapReduceJob(CompressionCodecName.GZIP);
   }
 

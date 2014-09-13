@@ -119,7 +119,11 @@ public class ParquetProperties {
         return new PlainValuesWriter(initialSizePerCol);
       }
     case FIXED_LEN_BYTE_ARRAY:
-      return new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol);
+      if (enableDictionary && (writerVersion == WriterVersion.PARQUET_2_0)) {
+        return new PlainFixedLenArrayDictionaryValuesWriter(dictionaryPageSizeThreshold, initialSizePerCol, path.getTypeLength());
+      } else {
+        return new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol);
+      }
     default:
       return new PlainValuesWriter(initialSizePerCol);
     }

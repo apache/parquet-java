@@ -86,4 +86,6 @@ object Dsl {
     def unary_! = FilterApi.not(pred)
   }
 
+  implicit def stringToBinary(s: String): Binary = Binary.fromString(s)
+
 }
