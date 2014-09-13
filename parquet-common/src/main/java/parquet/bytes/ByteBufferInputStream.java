@@ -4,6 +4,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
+/**
+ * This ByteBufferInputStream does not consume the ByteBuffer being passed in, 
+ * but will create a slice of the current buffer.
+ */
 public class ByteBufferInputStream extends InputStream {
 	
   protected ByteBuffer byteBuf;
@@ -14,8 +18,9 @@ public class ByteBufferInputStream extends InputStream {
   }
   
   public ByteBufferInputStream(ByteBuffer buffer, int offset, int count) {
-    buffer.position(offset);
-    byteBuf = buffer.slice();
+    ByteBuffer temp = buffer.duplicate();
+    temp.position(offset);
+    byteBuf = temp.slice();
     byteBuf.limit(count);
     this.initPos = offset;
     this.count = count;

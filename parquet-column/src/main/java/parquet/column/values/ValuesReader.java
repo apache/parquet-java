@@ -61,7 +61,7 @@ public abstract class ValuesReader {
    */
   public abstract void initFromPage(int valueCount, ByteBuffer page, int offset) throws IOException;
   
-  /*
+  /**
    * Compatitble Interface.
    */
   public abstract void initFromPage(int valueCount, byte[] page, int offset) throws IOException;
