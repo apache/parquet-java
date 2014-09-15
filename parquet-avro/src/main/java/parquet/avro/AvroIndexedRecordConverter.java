@@ -402,7 +402,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     private GenericArray<T> array;
 
     public AvroArrayConverter(ParentValueContainer parent, Type parquetSchema,
-                        Schema avroSchema) {
+        Schema avroSchema) {
       this.parent = parent;
       this.avroSchema = avroSchema;
       this.converter = new ArrayValueConverter(parquetSchema, avroSchema);
@@ -458,46 +458,6 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     }
    }
 
-
-
-//  static final class AvroArrayConverter<T> extends GroupConverter {
-//
-//    private final ParentValueContainer parent;
-//    private final Schema avroSchema;
-//    private final Converter converter;
-//    private GenericArray<T> array;
-//
-//    public AvroArrayConverter(ParentValueContainer parent, Type parquetSchema,
-//        Schema avroSchema) {
-//      this.parent = parent;
-//      this.avroSchema = avroSchema;
-//      Type elementType = parquetSchema.asGroupType().getType(0).asGroupType().getType(0);
-//      Schema elementSchema = avroSchema.getElementType();
-//      converter = newConverter(elementSchema, elementType, new ParentValueContainer() {
-//        @Override
-//        @SuppressWarnings("unchecked")
-//        void add(Object value) {
-//          array.add((T) value);
-//        }
-//      });
-//    }
-//
-//    @Override
-//    public Converter getConverter(int fieldIndex) {
-//      return converter;
-//    }
-//
-//    @Override
-//    public void start() {
-//      array = new GenericData.Array<T>(0, avroSchema);
-//    }
-//
-//    @Override
-//    public void end() {
-//      parent.add(array);
-//    }
-//  }
-
   static final class AvroUnionConverter<T> extends GroupConverter {
 
     private final ParentValueContainer parent;
@@ -550,7 +510,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     private Map<String, V> map;
 
     public MapConverter(ParentValueContainer parent, Type parquetSchema,
-                        Schema avroSchema) {
+        Schema avroSchema) {
       this.parent = parent;
       this.keyValueConverter = new MapKeyValueConverter(parquetSchema, avroSchema);
     }
@@ -618,4 +578,5 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
       }
     }
   }
+
 }
