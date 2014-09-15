@@ -187,6 +187,12 @@ abstract public class Type {
    */
   abstract public void accept(TypeVisitor visitor);
 
+  @Deprecated
+  abstract protected int typeHashCode();
+
+  @Deprecated
+  abstract protected boolean typeEquals(Type other);
+
   @Override
   public int hashCode() {
     int c = repetition.hashCode();

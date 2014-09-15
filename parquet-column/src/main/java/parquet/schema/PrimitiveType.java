@@ -414,6 +414,16 @@ public final class PrimitiveType extends Type {
     }
   }
 
+  @Override @Deprecated
+  protected int typeHashCode() {
+    return hashCode();
+  }
+
+  @Override @Deprecated
+  protected boolean typeEquals(Type other) {
+    return equals(other);
+  }
+
   /**
    * {@inheritDoc}
    */

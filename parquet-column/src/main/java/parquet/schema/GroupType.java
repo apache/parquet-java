@@ -221,6 +221,16 @@ public class GroupType extends Type {
     visitor.visit(this);
   }
 
+  @Override @Deprecated
+  protected int typeHashCode() {
+    return hashCode();
+  }
+
+  @Override @Deprecated
+  protected boolean typeEquals(Type other) {
+    return equals(other);
+  }
+
   /**
    * {@inheritDoc}
    */
