@@ -81,20 +81,21 @@ public class ProtoSchemaConverter {
 
     JavaType javaType = descriptor.getJavaType();
 
+    int number = descriptor.getNumber();
     switch (javaType) {
-      case BOOLEAN : return primitive(fieldName, PrimitiveTypeName.BOOLEAN, repetition);
-      case INT : return primitive(fieldName, PrimitiveTypeName.INT32, repetition);
-      case LONG : return primitive(fieldName, PrimitiveTypeName.INT64, repetition);
-      case FLOAT : return primitive(fieldName, PrimitiveTypeName.FLOAT, repetition);
-      case DOUBLE: return primitive(fieldName, PrimitiveTypeName.DOUBLE, repetition);
-      case BYTE_STRING: return primitive(fieldName, PrimitiveTypeName.BINARY, repetition);
-      case STRING: return primitive(fieldName, PrimitiveTypeName.BINARY, repetition, OriginalType.UTF8);
+      case BOOLEAN : return primitive(fieldName, PrimitiveTypeName.BOOLEAN, repetition, number);
+      case INT : return primitive(fieldName, PrimitiveTypeName.INT32, repetition, number);
+      case LONG : return primitive(fieldName, PrimitiveTypeName.INT64, repetition, number);
+      case FLOAT : return primitive(fieldName, PrimitiveTypeName.FLOAT, repetition, number);
+      case DOUBLE: return primitive(fieldName, PrimitiveTypeName.DOUBLE, repetition, number);
+      case BYTE_STRING: return primitive(fieldName, PrimitiveTypeName.BINARY, repetition, number);
+      case STRING: return primitive(fieldName, PrimitiveTypeName.BINARY, repetition, OriginalType.UTF8, number);
       case MESSAGE: {
         Descriptors.Descriptor messageDescriptor = descriptor.getMessageType();
         List<Type> fields = convertFields(messageDescriptor.getFields());
-        return new GroupType(repetition, fieldName, fields);
+        return new GroupType(repetition, fieldName, fields).withId(number);
       }
-      case ENUM: return primitive(fieldName, PrimitiveTypeName.BINARY, repetition, OriginalType.ENUM);
+      case ENUM: return primitive(fieldName, PrimitiveTypeName.BINARY, repetition, OriginalType.ENUM, number);
     }
 
     throw new UnsupportedOperationException("Cannot convert Protocol Buffer: unknown type " + javaType + " fieldName " + fieldName);
@@ -103,14 +104,12 @@ public class ProtoSchemaConverter {
   /**
    * Makes primitive type with additional information. Used for String and Binary types
    */
-  private Type primitive(String name, PrimitiveTypeName primitive,
-                         Type.Repetition repetition, OriginalType originalType) {
-    return new PrimitiveType(repetition, primitive, name, originalType);
+  private PrimitiveType primitive(String name, PrimitiveTypeName primitive, Type.Repetition repetition, OriginalType originalType, int number) {
+    return new PrimitiveType(repetition, primitive, name, originalType).withId(number);
   }
 
-  private PrimitiveType primitive(String name, PrimitiveTypeName
-          primitive, Type.Repetition repetition) {
-    return new PrimitiveType(repetition, primitive, name, null);
+  private PrimitiveType primitive(String name, PrimitiveTypeName primitive, Type.Repetition repetition, int number) {
+    return primitive(name, primitive, repetition, null, number);
   }
 
 }
