@@ -20,12 +20,7 @@ import java.util.*;
 import org.apache.avro.Schema;
 
 import org.codehaus.jackson.node.NullNode;
-import parquet.schema.ConversionPatterns;
-import parquet.schema.GroupType;
-import parquet.schema.MessageType;
-import parquet.schema.OriginalType;
-import parquet.schema.PrimitiveType;
-import parquet.schema.Type;
+import parquet.schema.*;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 import static parquet.schema.OriginalType.*;
@@ -108,8 +103,9 @@ public class AvroSchemaConverter {
     } else if (type.equals(Schema.Type.ENUM)) {
       return primitive(fieldName, BINARY, repetition, ENUM);
     } else if (type.equals(Schema.Type.ARRAY)) {
-      return new GroupType(repetition,fieldName,OriginalType.LIST,
-              new GroupType(Type.Repetition.REPEATED, "bag", convertField("array_element", schema.getElementType(), Type.Repetition.OPTIONAL)));
+      return ConversionPatterns.listType(repetition, fieldName,
+              Types.repeatedGroup().addField(convertField("array_element", schema.getElementType(),
+                      Type.Repetition.OPTIONAL)).named("bag"));
     } else if (type.equals(Schema.Type.MAP)) {
       Type valType = convertField("value", schema.getValueType());
       // avro map key type is always string
