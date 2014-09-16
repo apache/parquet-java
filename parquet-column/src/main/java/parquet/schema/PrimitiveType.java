@@ -315,6 +315,7 @@ public final class PrimitiveType extends Type {
    * @param length the length if the type is FIXED_LEN_BYTE_ARRAY, 0 otherwise (XXX)
    * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    */
+  @Deprecated
   public PrimitiveType(Repetition repetition, PrimitiveTypeName primitive,
                        int length, String name, OriginalType originalType) {
     this(repetition, primitive, length, name, originalType, null, null);
@@ -332,7 +333,7 @@ public final class PrimitiveType extends Type {
   PrimitiveType(
       Repetition repetition, PrimitiveTypeName primitive,
       int length, String name, OriginalType originalType,
-      DecimalMetadata decimalMeta, Integer id) {
+      DecimalMetadata decimalMeta, ID id) {
     super(name, repetition, originalType, id);
     this.primitive = primitive;
     this.length = length;
@@ -341,10 +342,20 @@ public final class PrimitiveType extends Type {
 
   /**
    * @param id the field id
-   * @return a new GroupType with the same fields and a new id
+   * @return a new PrimitiveType with the same fields and a new id
    */
+  @Override
   public PrimitiveType withId(int id) {
-    return new PrimitiveType(getRepetition(), primitive, length, getName(), getOriginalType(), decimalMeta, id);
+    return new PrimitiveType(getRepetition(), primitive, length, getName(), getOriginalType(), decimalMeta, new ID(id));
+  }
+
+  /**
+   * @param originalType the originalType for this field
+   * @return a new PrimitiveType with the same fields and a new OriginalType
+   */
+  @Override
+  public PrimitiveType withOriginalType(OriginalType originalType) {
+    return new PrimitiveType(getRepetition(), primitive, length, getName(), originalType, decimalMeta, getId());
   }
 
   /**

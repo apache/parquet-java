@@ -19,7 +19,6 @@ import static parquet.Preconditions.checkNotNull;
 
 import java.util.List;
 
-import parquet.Preconditions;
 import parquet.io.InvalidRecordException;
 
 /**
@@ -29,6 +28,39 @@ import parquet.io.InvalidRecordException;
  * repeated, required, or optional.
  */
 abstract public class Type {
+
+  /**
+   * represents a field ID
+   *
+   * @author Julien Le Dem
+   *
+   */
+  public static final class ID {
+    private final int id;
+
+    public ID(int id) {
+      this.id = id;
+    }
+
+    public int intValue() {
+      return id;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return (obj instanceof ID) && ((ID)obj).id == id;
+    }
+
+    @Override
+    public int hashCode() {
+      return id;
+    }
+
+    @Override
+    public String toString() {
+      return String.valueOf(id);
+    }
+  }
 
   /**
    * Constraint on the repetition of a field
@@ -76,14 +108,15 @@ abstract public class Type {
   private final String name;
   private final Repetition repetition;
   private final OriginalType originalType;
-  private final Integer id;
+  private final ID id;
 
   /**
    * @param name the name of the type
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    */
+  @Deprecated
   public Type(String name, Repetition repetition) {
-    this(name, repetition, null);
+    this(name, repetition, null, null);
   }
 
   /**
@@ -91,6 +124,7 @@ abstract public class Type {
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    */
+  @Deprecated
   public Type(String name, Repetition repetition, OriginalType originalType) {
     this(name, repetition, originalType, null);
   }
@@ -101,7 +135,7 @@ abstract public class Type {
    * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    * @param id (optional) the id of the fields.
    */
-  Type(String name, Repetition repetition, OriginalType originalType, Integer id) {
+  Type(String name, Repetition repetition, OriginalType originalType, ID id) {
     super();
     this.name = checkNotNull(name, "name");
     this.repetition = checkNotNull(repetition, "repetition");
@@ -109,7 +143,17 @@ abstract public class Type {
     this.id = id;
   }
 
+  /**
+   * @param id
+   * @return the same type with the id field set
+   */
   public abstract Type withId(int id);
+
+  /**
+   * @param originalType
+   * @return the same type with the originalType field set
+   */
+  public abstract Type withOriginalType(OriginalType originalType);
 
   /**
    * @return the name of the type
@@ -136,7 +180,7 @@ abstract public class Type {
   /**
    * @return the id of the field (if defined)
    */
-  public Integer getId() {
+  public ID getId() {
     return id;
   }
 

@@ -42,7 +42,7 @@ public class GroupType extends Type {
    * @param fields the contained fields
    */
   public GroupType(Repetition repetition, String name, List<Type> fields) {
-    this(repetition, name, null, fields);
+    this(repetition, name, null, fields, null);
   }
 
   /**
@@ -51,7 +51,7 @@ public class GroupType extends Type {
    * @param fields the contained fields
    */
   public GroupType(Repetition repetition, String name, Type... fields) {
-    this(repetition, name, null, fields);
+    this(repetition, name, Arrays.asList(fields));
   }
 
   /**
@@ -60,6 +60,7 @@ public class GroupType extends Type {
    * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    * @param fields the contained fields
    */
+  @Deprecated
   public GroupType(Repetition repetition, String name, OriginalType originalType, Type... fields) {
     this(repetition, name, originalType, Arrays.asList(fields));
   }
@@ -70,6 +71,7 @@ public class GroupType extends Type {
    * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    * @param fields the contained fields
    */
+  @Deprecated
   public GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields) {
     this(repetition, name, originalType, fields, null);
   }
@@ -81,7 +83,7 @@ public class GroupType extends Type {
    * @param fields the contained fields
    * @param id the id of the field
    */
-  public GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields, Integer id) {
+  GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields, ID id) {
     super(name, repetition, originalType, id);
     this.fields = fields;
     this.indexByName = new HashMap<String, Integer>();
@@ -94,8 +96,18 @@ public class GroupType extends Type {
    * @param id the field id
    * @return a new GroupType with the same fields and a new id
    */
+  @Override
   public GroupType withId(int id) {
-    return new GroupType(getRepetition(), getName(), getOriginalType(), fields, id);
+    return new GroupType(getRepetition(), getName(), getOriginalType(), fields, new ID(id));
+  }
+
+  /**
+   * @param originalType the field original type
+   * @return a new GroupType with the same fields and a new originalType
+   */
+  @Override
+  public GroupType withOriginalType(OriginalType originalType) {
+    return new GroupType(getRepetition(), getName(), originalType, fields, getId());
   }
 
   /**

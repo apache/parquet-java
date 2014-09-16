@@ -2,8 +2,10 @@ package parquet.schema;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import parquet.Preconditions;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.schema.Type.ID;
 
 /**
  * This class provides fluent builders that produce Parquet schema Types.
@@ -117,7 +119,7 @@ public class Types {
 
     protected Type.Repetition repetition = null;
     protected OriginalType originalType = null;
-    protected Integer id = null;
+    protected Type.ID id = null;
     private boolean repetitionAlreadySet = false;
 
     /**
@@ -184,7 +186,7 @@ public class Types {
      * @return this builder for method chaining
      */
     public T id(int id) {
-      this.id = id;
+      this.id = new ID(id);
       return self();
     }
 

@@ -16,19 +16,24 @@
 package parquet.parser;
 
 import static org.junit.Assert.assertEquals;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
-import static parquet.schema.Type.Repetition.*;
+import static parquet.schema.MessageTypeParser.parseMessageType;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static parquet.schema.Type.Repetition.OPTIONAL;
+import static parquet.schema.Type.Repetition.REPEATED;
+import static parquet.schema.Type.Repetition.REQUIRED;
+import static parquet.schema.Types.buildMessage;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
-import parquet.schema.MessageTypeParser;
 import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
-import parquet.schema.Types;
+import parquet.schema.Types.MessageTypeBuilder;
 
 public class TestParquetParser {
   @Test
@@ -44,7 +49,7 @@ public class TestParquetParser {
         "      required binary Code;\n" +
         "      required binary Country; }\n" +
         "    optional binary Url; }}";
-    MessageType parsed = MessageTypeParser.parseMessageType(example);
+    MessageType parsed = parseMessageType(example);
     MessageType manuallyMade =
         new MessageType("Document",
             new PrimitiveType(REQUIRED, INT64, "DocId"),
@@ -58,11 +63,11 @@ public class TestParquetParser {
                         new PrimitiveType(OPTIONAL, BINARY, "Url")));
     assertEquals(manuallyMade, parsed);
 
-    MessageType parsedThenReparsed = MessageTypeParser.parseMessageType(parsed.toString());
+    MessageType parsedThenReparsed = parseMessageType(parsed.toString());
 
     assertEquals(manuallyMade, parsedThenReparsed);
 
-    parsed = MessageTypeParser.parseMessageType("message m { required group a {required binary b;} required group c { required int64 d; }}");
+    parsed = parseMessageType("message m { required group a {required binary b;} required group c { required int64 d; }}");
     manuallyMade =
         new MessageType("m",
             new GroupType(REQUIRED, "a",
@@ -72,14 +77,14 @@ public class TestParquetParser {
 
     assertEquals(manuallyMade, parsed);
 
-    parsedThenReparsed = MessageTypeParser.parseMessageType(parsed.toString());
+    parsedThenReparsed = parseMessageType(parsed.toString());
 
     assertEquals(manuallyMade, parsedThenReparsed);
   }
 
   @Test
   public void testEachPrimitiveType() {
-    Types.MessageTypeBuilder builder = Types.buildMessage();
+    MessageTypeBuilder builder = buildMessage();
     StringBuilder schema = new StringBuilder();
     schema.append("message EachType {\n");
     for (PrimitiveTypeName type : PrimitiveTypeName.values()) {
@@ -96,11 +101,11 @@ public class TestParquetParser {
     schema.append("}\n");
     MessageType expected = builder.named("EachType");
 
-    MessageType parsed = MessageTypeParser.parseMessageType(schema.toString());
+    MessageType parsed = parseMessageType(schema.toString());
 
-    Assert.assertEquals(expected, parsed);
-    MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
-    Assert.assertEquals(expected, reparsed);
+    assertEquals(expected, parsed);
+    MessageType reparsed = parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
   }
 
   @Test
@@ -110,14 +115,14 @@ public class TestParquetParser {
         "  required binary string (UTF8);\n" +
         "}\n";
 
-    MessageType parsed = MessageTypeParser.parseMessageType(message);
-    MessageType expected = Types.buildMessage()
+    MessageType parsed = parseMessageType(message);
+    MessageType expected = buildMessage()
         .required(BINARY).as(OriginalType.UTF8).named("string")
         .named("StringMessage");
 
-    Assert.assertEquals(expected, parsed);
-    MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
-    Assert.assertEquals(expected, reparsed);
+    assertEquals(expected, parsed);
+    MessageType reparsed = parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
   }
 
   @Test
@@ -130,17 +135,17 @@ public class TestParquetParser {
         "  required binary s3 =4;\n" +
         "}\n";
 
-    MessageType parsed = MessageTypeParser.parseMessageType(message);
-    MessageType expected = Types.buildMessage()
+    MessageType parsed = parseMessageType(message);
+    MessageType expected = buildMessage()
         .required(BINARY).as(OriginalType.UTF8).id(6).named("string")
         .required(INT32).id(1).named("i")
         .required(BINARY).id(3).named("s2")
         .required(BINARY).id(4).named("s3")
         .named("Message");
 
-    Assert.assertEquals(expected, parsed);
-    MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
-    Assert.assertEquals(expected, reparsed);
+    assertEquals(expected, parsed);
+    MessageType reparsed = parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
   }
 
   @Test
@@ -156,8 +161,8 @@ public class TestParquetParser {
         "  }\n" +
         "}\n";
 
-    MessageType parsed = MessageTypeParser.parseMessageType(message);
-    MessageType expected = Types.buildMessage()
+    MessageType parsed = parseMessageType(message);
+    MessageType expected = buildMessage()
         .optionalGroup()
         .repeatedGroup()
         .required(BINARY).as(OriginalType.UTF8).named("key")
@@ -166,9 +171,9 @@ public class TestParquetParser {
         .named("aMap")
         .named("Message");
 
-    Assert.assertEquals(expected, parsed);
-    MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
-    Assert.assertEquals(expected, reparsed);
+    assertEquals(expected, parsed);
+    MessageType reparsed = parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
   }
 
   @Test
@@ -181,16 +186,16 @@ public class TestParquetParser {
         "  }\n" +
         "}\n";
 
-    MessageType parsed = MessageTypeParser.parseMessageType(message);
-    MessageType expected = Types.buildMessage()
+    MessageType parsed = parseMessageType(message);
+    MessageType expected = buildMessage()
         .requiredGroup()
         .repeated(BINARY).as(OriginalType.UTF8).named("string")
         .named("aList")
         .named("Message");
 
-    Assert.assertEquals(expected, parsed);
-    MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
-    Assert.assertEquals(expected, reparsed);
+    assertEquals(expected, parsed);
+    MessageType reparsed = parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
   }
 
   @Test
@@ -200,16 +205,16 @@ public class TestParquetParser {
         "  required FIXED_LEN_BYTE_ARRAY(4) aDecimal (DECIMAL(9,2));\n" +
         "}\n";
 
-    MessageType parsed = MessageTypeParser.parseMessageType(message);
-    MessageType expected = Types.buildMessage()
+    MessageType parsed = parseMessageType(message);
+    MessageType expected = buildMessage()
         .required(FIXED_LEN_BYTE_ARRAY).length(4)
         .as(OriginalType.DECIMAL).precision(9).scale(2)
         .named("aDecimal")
         .named("DecimalMessage");
 
-    Assert.assertEquals(expected, parsed);
-    MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
-    Assert.assertEquals(expected, reparsed);
+    assertEquals(expected, parsed);
+    MessageType reparsed = parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
   }
 
   @Test
@@ -219,15 +224,15 @@ public class TestParquetParser {
         "  required binary aDecimal (DECIMAL(9,2));\n" +
         "}\n";
 
-    MessageType parsed = MessageTypeParser.parseMessageType(message);
-    MessageType expected = Types.buildMessage()
+    MessageType parsed = parseMessageType(message);
+    MessageType expected = buildMessage()
         .required(BINARY).as(OriginalType.DECIMAL).precision(9).scale(2)
         .named("aDecimal")
         .named("DecimalMessage");
 
-    Assert.assertEquals(expected, parsed);
-    MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
-    Assert.assertEquals(expected, reparsed);
+    assertEquals(expected, parsed);
+    MessageType reparsed = parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
   }
 
 }
