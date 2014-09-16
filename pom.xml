@@ -122,21 +122,6 @@
   </properties>
 
   <build>
-    <resources>
-      <resource>
-        <!-- the default resources directory -->
-        <directory>src/main/resources</directory>
-      </resource>
-      <resource>
-        <!-- copy NOTICE and LICENSE -->
-        <directory>${basedir}</directory>
-        <targetPath>META-INF</targetPath>
-        <includes>
-          <include>NOTICE</include>
-          <include>LICENSE</include>
-        </includes>
-      </resource>
-    </resources>
     <pluginManagement>
       <plugins>
         <plugin>
