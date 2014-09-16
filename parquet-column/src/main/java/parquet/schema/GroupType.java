@@ -187,6 +187,22 @@ public class GroupType extends Type {
    * {@inheritDoc}
    */
   @Override
+  public Type rename(String newName) {
+    return new GroupType(getRepetition(), newName, getOriginalType(), getFields());
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public Type changeRepetition(Repetition repetition) {
+    return new GroupType(repetition, getName(), getOriginalType(), getFields());
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   protected int typeHashCode() {
     int c = 17;
     c += 31 * getRepetition().hashCode();

@@ -106,6 +106,7 @@
     <module>parquet-jackson</module>
     <module>parquet-pig</module>
     <module>parquet-pig-bundle</module>
+    <module>parquet-pojo</module>
     <module>parquet-protobuf</module>
     <module>parquet-scala</module>
     <module>parquet-scrooge</module>
