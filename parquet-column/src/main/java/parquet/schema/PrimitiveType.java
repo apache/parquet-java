@@ -276,7 +276,7 @@ public final class PrimitiveType extends Type {
   private final PrimitiveTypeName primitive;
   private final int length;
   private final DecimalMetadata decimalMeta;
-
+  
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param primitive STRING, INT64, ...
@@ -486,7 +486,12 @@ public final class PrimitiveType extends Type {
 
   @Override
   protected Type union(Type toMerge) {
-    if (!toMerge.isPrimitive() || !primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName())) {
+    return union(toMerge, true);
+  }
+
+  @Override
+  protected Type union(Type toMerge, boolean strict) {
+    if (!toMerge.isPrimitive() || (strict && !primitive.equals(toMerge.asPrimitiveType().getPrimitiveTypeName()))) {
       throw new IncompatibleSchemaModificationException("can not merge type " + toMerge + " into " + this);
     }
     Types.PrimitiveBuilder<PrimitiveType> builder = Types.primitive(

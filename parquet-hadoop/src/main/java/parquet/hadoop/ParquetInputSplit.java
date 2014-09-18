@@ -15,53 +15,46 @@
  */
 package parquet.hadoop;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.DataOutput;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+import org.apache.hadoop.classification.InterfaceAudience.Private;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 
-import parquet.Log;
-import parquet.column.Encoding;
-import parquet.column.statistics.IntStatistics;
+import parquet.bytes.BytesUtils;
 import parquet.hadoop.metadata.BlockMetaData;
-import parquet.hadoop.metadata.ColumnChunkMetaData;
-import parquet.hadoop.metadata.ColumnPath;
-import parquet.hadoop.metadata.CompressionCodecName;
-import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * An input split for the Parquet format
  * It contains the information to read one block of the file.
  *
+ * This class is private to the ParquetInputFormat.
+ * Backward compatibility is not maintained.
+ *
  * @author Julien Le Dem
  */
+@Private
 public class ParquetInputSplit extends FileSplit implements Writable {
 
-  private static final Log LOG = Log.getLog(ParquetInputSplit.class);
 
-  private List<BlockMetaData> blocks;
+  private long end;
+  private long[] rowGroupOffsets;
   private String requestedSchema;
-  private String fileSchema;
-  private Map<String, String> extraMetadata;
   private Map<String, String> readSupportMetadata;
-
 
   /**
    * Writables must have a parameterless constructor
@@ -71,19 +64,19 @@ public class ParquetInputSplit extends FileSplit implements Writable {
   }
 
   /**
-   * Used by {@link ParquetInputFormat#getSplits(org.apache.hadoop.mapreduce.JobContext)}
-   * @param path the path to the file
-   * @param start the offset of the block in the file
-   * @param length the size of the block in the file
-   * @param hosts the hosts where this block can be found
-   * @param blocks the block meta data (Columns locations)
-   * @param schema the file schema
-   * @param readSupportClass the class used to materialize records
-   * @param requestedSchema the requested schema for materialization
-   * @param fileSchema the schema of the file
-   * @param extraMetadata the app specific meta data in the file
-   * @param readSupportMetadata the read support specific metadata
+   * For compatibility only
+   * use {@link ParquetInputSplit#ParquetInputSplit(Path, long, long, long, String[], long[], String, Map)}
+   * @param path
+   * @param start
+   * @param length
+   * @param hosts
+   * @param blocks
+   * @param requestedSchema
+   * @param fileSchema
+   * @param extraMetadata
+   * @param readSupportMetadata
    */
+  @Deprecated
   public ParquetInputSplit(
       Path path,
       long start,
@@ -94,212 +87,168 @@ public class ParquetInputSplit extends FileSplit implements Writable {
       String fileSchema,
       Map<String, String> extraMetadata,
       Map<String, String> readSupportMetadata) {
-    super(path, start, length, hosts);
-    this.blocks = blocks;
-    this.requestedSchema = requestedSchema;
-    this.fileSchema = fileSchema;
-    this.extraMetadata = extraMetadata;
-    this.readSupportMetadata = readSupportMetadata;
+    this(
+        path, start, length, end(blocks), hosts,
+        offsets(blocks),
+        requestedSchema, readSupportMetadata
+        );
+  }
+
+  private static long end(List<BlockMetaData> blocks) {
+    BlockMetaData last = blocks.get(blocks.size() - 1);
+    return last.getStartingPos() + last.getCompressedSize();
+  }
+
+  private static long[] offsets(List<BlockMetaData> blocks) {
+    long[] offsets = new long[blocks.size()];
+    for (int i = 0; i < offsets.length; i++) {
+      offsets[i] = blocks.get(0).getStartingPos();
+    }
+    return offsets;
   }
 
   /**
-   * @return the block meta data
+   * @param file the path of the file for that split
+   * @param start the start offset in the file
+   * @param end the end offset in the file
+   * @param length the actual size in bytes that we expect to read
+   * @param hosts the hosts with the replicas of this data
+   * @param rowGroupOffsets the offsets of the rowgroups selected if loaded on the client
+   * @param requestedSchema the user requested schema
+   * @param readSupportMetadata metadata from the read support
    */
-  public List<BlockMetaData> getBlocks() {
-    return blocks;
+  public ParquetInputSplit(
+      Path file, long start, long end, long length, String[] hosts,
+      long[] rowGroupOffsets,
+      String requestedSchema,
+      Map<String, String> readSupportMetadata) {
+    super(file, start, length, hosts);
+    this.end = end;
+    this.rowGroupOffsets = rowGroupOffsets;
+    this.requestedSchema = requestedSchema;
+    this.readSupportMetadata = readSupportMetadata;
   }
 
   /**
    * @return the requested schema
    */
-  public String getRequestedSchema() {
+  String getRequestedSchema() {
     return requestedSchema;
   }
 
   /**
-   * @return the file schema
+   * @return the end offset of that split
    */
-  public String getFileSchema() {
-    return fileSchema;
-  }
-
-  /**
-   * @return app specific metadata from the file
-   */
-  public Map<String, String> getExtraMetadata() {
-    return extraMetadata;
+  long getEnd() {
+    return end;
   }
 
   /**
    * @return app specific metadata provided by the read support in the init phase
    */
-  public Map<String, String> getReadSupportMetadata() {
+  Map<String, String> getReadSupportMetadata() {
     return readSupportMetadata;
   }
 
   /**
-   * {@inheritDoc}
+   * @return the offsets of the row group selected if this has been determined on the client side
    */
+  long[] getRowGroupOffsets() {
+    return rowGroupOffsets;
+  }
+
   @Override
-  public void readFields(DataInput in) throws IOException {
-    super.readFields(in);
-    int blocksSize = in.readInt();
-    this.blocks = new ArrayList<BlockMetaData>(blocksSize);
-    for (int i = 0; i < blocksSize; i++) {
-      blocks.add(readBlock(in));
+  public String toString() {
+    String hosts;
+    try{
+       hosts = Arrays.toString(getLocations());
+    } catch (Exception e) {
+      // IOException/InterruptedException could be thrown
+      hosts = "(" + e + ")";
     }
-    this.requestedSchema = decompressString(in);
-    this.fileSchema = decompressString(in);
-    this.extraMetadata = readKeyValues(in);
-    this.readSupportMetadata = readKeyValues(in);
+
+    return this.getClass().getSimpleName() + "{" +
+           "part: " + getPath()
+        + " start: " + getStart()
+        + " end: " + getEnd()
+        + " length: " + getLength()
+        + " hosts: " + hosts
+        + (rowGroupOffsets == null ? "" : (" row groups: " + Arrays.toString(rowGroupOffsets)))
+        + " requestedSchema: " +  requestedSchema
+        + " readSupportMetadata: " + readSupportMetadata
+        + "}";
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public void write(DataOutput out) throws IOException {
+  final public void readFields(DataInput hin) throws IOException {
+    byte[] bytes = readArray(hin);
+    DataInputStream in = new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(bytes)));
+    super.readFields(in);
+    this.end = in.readLong();
+    if (in.readBoolean()) {
+      this.rowGroupOffsets = new long[in.readInt()];
+      for (int i = 0; i < rowGroupOffsets.length; i++) {
+        rowGroupOffsets[i] = in.readLong();
+      }
+    }
+    this.requestedSchema = readUTF8(in);
+    this.readSupportMetadata = readKeyValues(in);
+    in.close();
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  final public void write(DataOutput hout) throws IOException {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataOutputStream out = new DataOutputStream(new GZIPOutputStream(baos));
     super.write(out);
-    out.writeInt(blocks.size());
-    for (BlockMetaData block : blocks) {
-      writeBlock(out, block);
+    out.writeLong(end);
+    out.writeBoolean(rowGroupOffsets != null);
+    if (rowGroupOffsets != null) {
+      out.writeInt(rowGroupOffsets.length);
+      for (long o : rowGroupOffsets) {
+        out.writeLong(o);
+      }
     }
-    byte[] compressedSchema = compressString(requestedSchema);
-    out.writeInt(compressedSchema.length);
-    out.write(compressedSchema);
-    compressedSchema = compressString(fileSchema);
-    out.writeInt(compressedSchema.length);
-    out.write(compressedSchema);
-    writeKeyValues(out, extraMetadata);
+    writeUTF8(out, requestedSchema);
     writeKeyValues(out, readSupportMetadata);
+    out.close();
+    writeArray(hout, baos.toByteArray());
   }
 
-  byte[] compressString(String str) {
-    ByteArrayOutputStream obj = new ByteArrayOutputStream();
-    GZIPOutputStream gzip;
-    try {
-      gzip = new GZIPOutputStream(obj);
-      gzip.write(str.getBytes("UTF-8"));
-      gzip.close();
-    } catch (IOException e) {
-      // Not really sure how we can get here. I guess the best thing to do is to croak.
-      LOG.error("Unable to gzip InputSplit string " + str, e);
-      throw new RuntimeException("Unable to gzip InputSplit string", e);
-    }
-    return obj.toByteArray();
+  private static void writeUTF8(DataOutput out, String string) throws IOException {
+    byte[] bytes = string.getBytes(BytesUtils.UTF8);
+    writeArray(out, bytes);
   }
 
-  String decompressString(DataInput in) throws IOException {
+  private static String readUTF8(DataInput in) throws IOException {
+    byte[] bytes = readArray(in);
+    return new String(bytes, BytesUtils.UTF8).intern();
+  }
+
+  private static void writeArray(DataOutput out, byte[] bytes) throws IOException {
+    out.writeInt(bytes.length);
+    out.write(bytes, 0, bytes.length);
+  }
+
+  private static byte[] readArray(DataInput in) throws IOException {
     int len = in.readInt();
     byte[] bytes = new byte[len];
     in.readFully(bytes);
-    return decompressString(bytes);
-  }
-
-  String decompressString(byte[] bytes) {
-    ByteArrayInputStream obj = new ByteArrayInputStream(bytes);
-    GZIPInputStream gzip = null;
-    String outStr = "";
-    try {
-      gzip = new GZIPInputStream(obj);
-      BufferedReader reader = new BufferedReader(new InputStreamReader(gzip, "UTF-8"));
-      char[] buffer = new char[1024];
-      int n = 0;
-      StringBuilder sb = new StringBuilder();
-      while (-1 != (n = reader.read(buffer))) {
-        sb.append(buffer, 0, n);
-      }
-      outStr = sb.toString();
-    } catch (IOException e) {
-      // Not really sure how we can get here. I guess the best thing to do is to croak.
-      LOG.error("Unable to uncompress InputSplit string", e);
-      throw new RuntimeException("Unable to uncompress InputSplit String", e);
-    } finally {
-      if (null != gzip) {
-        try {
-          gzip.close();
-        } catch (IOException e) {
-          LOG.error("Unable to uncompress InputSplit", e);
-          throw new RuntimeException("Unable to uncompress InputSplit String", e);
-        }
-      }
-    }
-    return outStr;
-  }
-
-  private BlockMetaData readBlock(DataInput in) throws IOException {
-    final BlockMetaData block = new BlockMetaData();
-    int size = in.readInt();
-    for (int i = 0; i < size; i++) {
-      block.addColumn(readColumn(in));
-    }
-    block.setRowCount(in.readLong());
-    block.setTotalByteSize(in.readLong());
-    if (!in.readBoolean()) {
-      block.setPath(in.readUTF().intern());
-    }
-    return block;
-  }
-
-  private void writeBlock(DataOutput out, BlockMetaData block)
-      throws IOException {
-    out.writeInt(block.getColumns().size());
-    for (ColumnChunkMetaData column : block.getColumns()) {
-      writeColumn(out, column);
-    }
-    out.writeLong(block.getRowCount());
-    out.writeLong(block.getTotalByteSize());
-    out.writeBoolean(block.getPath() == null);
-    if (block.getPath() != null) {
-      out.writeUTF(block.getPath());
-    }
-  }
-
-  private ColumnChunkMetaData readColumn(DataInput in)
-      throws IOException {
-    CompressionCodecName codec = CompressionCodecName.values()[in.readInt()];
-    String[] columnPath = new String[in.readInt()];
-    for (int i = 0; i < columnPath.length; i++) {
-      columnPath[i] = in.readUTF().intern();
-    }
-    PrimitiveTypeName type = PrimitiveTypeName.values()[in.readInt()];
-    int encodingsSize = in.readInt();
-    Set<Encoding> encodings = new HashSet<Encoding>(encodingsSize);
-    for (int i = 0; i < encodingsSize; i++) {
-      encodings.add(Encoding.values()[in.readInt()]);
-    }
-    IntStatistics emptyStats = new IntStatistics();
-    ColumnChunkMetaData column = ColumnChunkMetaData.get(
-        ColumnPath.get(columnPath), type, codec, encodings, emptyStats,
-        in.readLong(), in.readLong(), in.readLong(), in.readLong(), in.readLong());
-    return column;
-  }
-
-  private void writeColumn(DataOutput out, ColumnChunkMetaData column)
-      throws IOException {
-    out.writeInt(column.getCodec().ordinal());
-    out.writeInt(column.getPath().size());
-    for (String s : column.getPath()) {
-      out.writeUTF(s);
-    }
-    out.writeInt(column.getType().ordinal());
-    out.writeInt(column.getEncodings().size());
-    for (Encoding encoding : column.getEncodings()) {
-      out.writeInt(encoding.ordinal());
-    }
-    out.writeLong(column.getFirstDataPageOffset());
-    out.writeLong(column.getDictionaryPageOffset());
-    out.writeLong(column.getValueCount());
-    out.writeLong(column.getTotalSize());
-    out.writeLong(column.getTotalUncompressedSize());
+    return bytes;
   }
 
   private Map<String, String> readKeyValues(DataInput in) throws IOException {
     int size = in.readInt();
     Map<String, String> map = new HashMap<String, String>(size);
     for (int i = 0; i < size; i++) {
-      String key = decompressString(in).intern();
-      String value = decompressString(in).intern();
+      String key = readUTF8(in).intern();
+      String value = readUTF8(in).intern();
       map.put(key, value);
     }
     return map;
@@ -311,35 +260,10 @@ public class ParquetInputSplit extends FileSplit implements Writable {
     } else {
       out.writeInt(map.size());
       for (Entry<String, String> entry : map.entrySet()) {
-        byte[] compr = compressString(entry.getKey());
-        out.writeInt(compr.length);
-        out.write(compr);
-        compr = compressString(entry.getValue());
-        out.writeInt(compr.length);
-        out.write(compr);
+        writeUTF8(out, entry.getKey());
+        writeUTF8(out, entry.getValue());
       }
     }
-  }
-
-
-  @Override
-  public String toString() {
-    String hosts[] = {};
-    try{
-       hosts = getLocations();
-    }catch(Exception ignore){} // IOException/InterruptedException could be thrown
-
-    return this.getClass().getSimpleName() + "{" +
-           "part: " + getPath()
-        + " start: " + getStart()
-        + " length: " + getLength()
-        + " hosts: " + Arrays.toString(hosts)
-        + " blocks: " + blocks.size()
-        + " requestedSchema: " + (fileSchema.equals(requestedSchema) ? "same as file" : requestedSchema)
-        + " fileSchema: " + fileSchema
-        + " extraMetadata: " + extraMetadata
-        + " readSupportMetadata: " + readSupportMetadata
-        + "}";
   }
 
 }

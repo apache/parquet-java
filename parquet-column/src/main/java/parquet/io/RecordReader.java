@@ -25,9 +25,16 @@ package parquet.io;
 public abstract class RecordReader<T> {
 
   /**
-   * reads one record and returns it
+   * Reads one record and returns it.
    * @return the materialized record
    */
   public abstract T read();
 
+  /**
+   * Returns whether the current record should be skipped (dropped)
+   * Will be called *after* read()
+   */
+  public boolean shouldSkipCurrentRecord() {
+    return false;
+  }
 }

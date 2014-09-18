@@ -16,6 +16,7 @@
 package parquet.hadoop;
 
 import static parquet.Log.INFO;
+import static parquet.Preconditions.checkNotNull;
 import static parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
 import static parquet.hadoop.util.ContextUtil.getConfiguration;
@@ -183,7 +184,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static int getDictionaryPageSize(Configuration configuration) {
     return configuration.getInt(DICTIONARY_PAGE_SIZE, DEFAULT_PAGE_SIZE);
   }
-  
+
   public static WriterVersion getWriterVersion(Configuration configuration) {
     String writerVersion = configuration.get(WRITER_VERSION, WriterVersion.PARQUET_1_0.toString());
     return WriterVersion.fromString(writerVersion);
@@ -272,7 +273,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     WriteContext init = writeSupport.init(conf);
     ParquetFileWriter w = new ParquetFileWriter(conf, init.getSchema(), file);
     w.start();
-    
+
     return new ParquetRecordWriter<T>(
         w,
         writeSupport,
@@ -294,9 +295,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public WriteSupport<T> getWriteSupport(Configuration configuration){
     if (writeSupport != null) return writeSupport;
     Class<?> writeSupportClass = getWriteSupportClass(configuration);
-
     try {
-      return (WriteSupport<T>)writeSupportClass.newInstance();
+      return (WriteSupport<T>)checkNotNull(writeSupportClass, "writeSupportClass").newInstance();
     } catch (InstantiationException e) {
       throw new BadConfigurationException("could not instantiate write support class: " + writeSupportClass, e);
     } catch (IllegalAccessException e) {

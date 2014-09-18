@@ -17,7 +17,7 @@ package parquet.column.statistics;
 
 import parquet.io.api.Binary;
 
-public class BinaryStatistics extends Statistics{
+public class BinaryStatistics extends Statistics<Binary> {
 
   private Binary max;
   private Binary min;
@@ -75,6 +75,16 @@ public class BinaryStatistics extends Statistics{
       min = min_value;
       max = max_value;
       this.markAsNotEmpty();
+  }
+
+  @Override
+  public Binary genericGetMin() {
+    return min;
+  }
+
+  @Override
+  public Binary genericGetMax() {
+    return max;
   }
 
   public Binary getMax() {

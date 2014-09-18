@@ -62,6 +62,12 @@ class FilteredRecordReader<T> extends RecordReaderImplementation<T> {
     return super.read();
   }
 
+  // FilteredRecordReader skips forwards itself, it never asks the layer above to do the skipping for it.
+  // This is different from how filtering is handled in the filter2 API
+  @Override
+  public boolean shouldSkipCurrentRecord() {
+    return false;
+  }
 
   /**
    * Skips forwards until the filter finds the first match. Returns false

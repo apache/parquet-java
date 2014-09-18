@@ -110,7 +110,7 @@ public class DeprecatedInputFormatTest {
   }
 
   @Test
-  public void testReadWriteWithCounteDeprecated() throws Exception {
+  public void testReadWriteWithCountDeprecated() throws Exception {
     runMapReduceJob(CompressionCodecName.GZIP);
     assertTrue(mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytesread").getValue() > 0L);
     assertTrue(mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytestotal").getValue() > 0L);
