@@ -17,7 +17,7 @@ package parquet.column.statistics;
 
 import parquet.bytes.BytesUtils;
 
-public class FloatStatistics extends Statistics{
+public class FloatStatistics extends Statistics<Float> {
 
   private float max;
   private float min;
@@ -75,6 +75,16 @@ public class FloatStatistics extends Statistics{
       min = min_value;
       max = max_value;
       this.markAsNotEmpty();
+  }
+
+  @Override
+  public Float genericGetMin() {
+    return min;
+  }
+
+  @Override
+  public Float genericGetMax() {
+    return max;
   }
 
   public float getMax() {

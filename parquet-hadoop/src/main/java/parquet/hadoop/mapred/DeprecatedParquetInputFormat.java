@@ -15,28 +15,23 @@
  */
 package parquet.hadoop.mapred;
 
+import static java.util.Arrays.asList;
+
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
-import java.util.Arrays;
 
-import org.apache.hadoop.io.Writable;
-import org.apache.hadoop.io.WritableUtils;
-import org.apache.hadoop.mapred.Counters;
-import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
-import org.apache.hadoop.mapreduce.InputFormat;
 
+import parquet.hadoop.Footer;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.ParquetInputSplit;
 import parquet.hadoop.ParquetRecordReader;
-import parquet.hadoop.Footer;
 
-@SuppressWarnings("deprecation")
 public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.FileInputFormat<Void, Container<V>> {
 
   protected ParquetInputFormat<V> realInputFormat = new ParquetInputFormat<V>();
@@ -51,22 +46,19 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
   public InputSplit[] getSplits(JobConf job, int numSplits) throws IOException {
     List<Footer> footers = getFooters(job);
     List<ParquetInputSplit> splits = realInputFormat.getSplits(job, footers);
-
-      if (splits == null) {
-        return null;
-      }
-
-      InputSplit[] resultSplits = new InputSplit[splits.size()];
-      int i = 0;
-      for (ParquetInputSplit split : splits) {
-          resultSplits[i++] = new ParquetInputSplitWrapper(split);
-      }
-
-      return resultSplits;
+    if (splits == null) {
+      return null;
+    }
+    InputSplit[] resultSplits = new InputSplit[splits.size()];
+    int i = 0;
+    for (ParquetInputSplit split : splits) {
+      resultSplits[i++] = new ParquetInputSplitWrapper(split);
+    }
+    return resultSplits;
   }
 
   public List<Footer> getFooters(JobConf job) throws IOException {
-    return realInputFormat.getFooters(job, Arrays.asList(super.listStatus(job)));
+    return realInputFormat.getFooters(job, asList(super.listStatus(job)));
   }
 
   private static class RecordReaderWrapper<V> implements RecordReader<Void, Container<V>> {
@@ -87,7 +79,9 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
       splitLen = oldSplit.getLength();
 
       try {
-        realReader = new ParquetRecordReader<V>(newInputFormat.getReadSupport(oldJobConf));
+        realReader = new ParquetRecordReader<V>(newInputFormat.getReadSupport(oldJobConf),
+            ParquetInputFormat.getFilter(oldJobConf));
+
         realReader.initialize(((ParquetInputSplitWrapper)oldSplit).realSplit, oldJobConf, reporter);
 
         // read once to gain access to key and value objects
@@ -160,12 +154,9 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
     }
   }
 
-
-
   private static class ParquetInputSplitWrapper implements InputSplit {
 
     ParquetInputSplit realSplit;
-
 
     @SuppressWarnings("unused") // MapReduce instantiates this.
     public ParquetInputSplitWrapper() {}

@@ -62,7 +62,7 @@ public class TupleConverter extends GroupConverter {
 
   private final boolean elephantBirdCompatible;
 
-  public TupleConverter(GroupType parquetSchema, Schema pigSchema, boolean elephantBirdCompatible) {
+  public TupleConverter(GroupType parquetSchema, Schema pigSchema, boolean elephantBirdCompatible, boolean columnIndexAccess) {
     this.parquetSchema = parquetSchema;
     this.elephantBirdCompatible = elephantBirdCompatible;
     try {
@@ -70,17 +70,18 @@ public class TupleConverter extends GroupConverter {
       this.converters = new Converter[this.schemaSize];
       for (int i = 0, c = 0; i < schemaSize; i++) {
         FieldSchema field = pigSchema.getField(i);
-        Type type = null;
-        if(parquetSchema.containsField(field.alias)) {
-            type = parquetSchema.getType(parquetSchema.getFieldIndex(field.alias));
-            
+        if(parquetSchema.containsField(field.alias) || columnIndexAccess) {
+          Type type = getType(columnIndexAccess, field.alias, i);
+          
+          if(type != null) {
             final int index = i;
             converters[c++] = newConverter(field, type, new ParentValueContainer() {
               @Override
               void add(Object value) {
                 TupleConverter.this.set(index, value);
               }
-            }, elephantBirdCompatible);
+            }, elephantBirdCompatible, columnIndexAccess);
+          }
         }
         
       }
@@ -89,15 +90,27 @@ public class TupleConverter extends GroupConverter {
     }
   }
 
-  static Converter newConverter(FieldSchema pigField, Type type, final ParentValueContainer parent, boolean elephantBirdCompatible) {
+  private Type getType(boolean columnIndexAccess, String alias, int index) {
+    if(columnIndexAccess) {
+      if(index < parquetSchema.getFieldCount()) {
+        return parquetSchema.getType(index);
+      }
+    } else {
+      return parquetSchema.getType(parquetSchema.getFieldIndex(alias));
+    }
+    
+    return null;
+  }
+  
+  static Converter newConverter(FieldSchema pigField, Type type, final ParentValueContainer parent, boolean elephantBirdCompatible, boolean columnIndexAccess) {
     try {
       switch (pigField.type) {
       case DataType.BAG:
-        return new BagConverter(type.asGroupType(), pigField, parent, elephantBirdCompatible);
+        return new BagConverter(type.asGroupType(), pigField, parent, elephantBirdCompatible, columnIndexAccess);
       case DataType.MAP:
-        return new MapConverter(type.asGroupType(), pigField, parent, elephantBirdCompatible);
+        return new MapConverter(type.asGroupType(), pigField, parent, elephantBirdCompatible, columnIndexAccess);
       case DataType.TUPLE:
-        return new TupleConverter(type.asGroupType(), pigField.schema, elephantBirdCompatible) {
+        return new TupleConverter(type.asGroupType(), pigField.schema, elephantBirdCompatible, columnIndexAccess) {
           @Override
           public void end() {
             super.end();
@@ -105,7 +118,9 @@ public class TupleConverter extends GroupConverter {
           }
         };
       case DataType.CHARARRAY:
-        return new FieldStringConverter(parent);
+          //If the orignal type isn't a string, we don't want to use the dictionary because
+          //a custom implementation will be needed for each type.  Just default to no dictionary.
+        return new FieldStringConverter(parent, type.getOriginalType() == OriginalType.UTF8);
       case DataType.BYTEARRAY:
         return new FieldByteArrayConverter(parent);
       case DataType.INTEGER:
@@ -205,10 +220,12 @@ public class TupleConverter extends GroupConverter {
 
     private final ParentValueContainer parent;
 
+    private boolean dictionarySupport;
     private String[] dict;
 
-    public FieldStringConverter(ParentValueContainer parent) {
+    public FieldStringConverter(ParentValueContainer parent, boolean dictionarySupport) {
       this.parent = parent;
+      this.dictionarySupport = dictionarySupport;
     }
 
     @Override
@@ -218,7 +235,7 @@ public class TupleConverter extends GroupConverter {
 
     @Override
     public boolean hasDictionarySupport() {
-      return true;
+      return dictionarySupport;
     }
 
     @Override
@@ -233,6 +250,33 @@ public class TupleConverter extends GroupConverter {
     public void addValueFromDictionary(int dictionaryId) {
       parent.add(dict[dictionaryId]);
     }
+
+    @Override
+    public void addLong(long value) {
+      parent.add(Long.toString(value));
+    }
+
+    @Override
+    public void addInt(int value) {
+      parent.add(Integer.toString(value));
+    }
+
+    @Override
+    public void addFloat(float value) {
+      parent.add(Float.toString(value));
+    }
+
+    @Override
+    public void addDouble(double value) {
+      parent.add(Double.toString(value));
+    }
+
+    @Override
+    public void addBoolean(boolean value) {
+      parent.add(Boolean.toString(value));
+    }
+    
+    
   }
 
   /**
@@ -273,6 +317,31 @@ public class TupleConverter extends GroupConverter {
       parent.add(value);
     }
 
+    @Override
+    public void addLong(long value) {
+      parent.add((double)value);
+    }
+
+    @Override
+    public void addInt(int value) {
+      parent.add((double)value);
+    }
+
+    @Override
+    public void addFloat(float value) {
+      parent.add((double)value);
+    }
+
+    @Override
+    public void addBoolean(boolean value) {
+      parent.add(value ? 1.0d : 0.0d);
+    }
+
+    @Override
+    public void addBinary(Binary value) {
+      parent.add(Double.parseDouble(value.toStringUsingUTF8()));
+    }
+
   }
 
   /**
@@ -291,6 +360,31 @@ public class TupleConverter extends GroupConverter {
     @Override
     final public void addFloat(float value) {
       parent.add(value);
+    }
+
+    @Override
+    public void addLong(long value) {
+      parent.add((float)value);
+    }
+
+    @Override
+    public void addInt(int value) {
+      parent.add((float)value);
+    }
+
+    @Override
+    public void addDouble(double value) {
+      parent.add((float)value);
+    }
+
+    @Override
+    public void addBoolean(boolean value) {
+      parent.add(value ? 1.0f : 0.0f);
+    }
+
+    @Override
+    public void addBinary(Binary value) {
+      parent.add(Float.parseFloat(value.toStringUsingUTF8()));
     }
 
   }
@@ -314,6 +408,31 @@ public class TupleConverter extends GroupConverter {
       parent.add(value);
     }
 
+    @Override
+    public void addInt(int value) {
+      parent.add((long)value); 
+    }
+
+    @Override
+    public void addFloat(float value) {
+      parent.add((long)value);
+    }
+
+    @Override
+    public void addDouble(double value) {
+      parent.add((long)value);
+    }
+
+    @Override
+    public void addBoolean(boolean value) {
+      parent.add(value ? 1L : 0L);
+    }
+
+    @Override
+    public void addBinary(Binary value) {
+      parent.add(Long.parseLong(value.toStringUsingUTF8()));
+    }
+    
   }
 
   /**
@@ -337,6 +456,26 @@ public class TupleConverter extends GroupConverter {
     @Override
     final public void addInt(int value) {
       parent.add(value);
+    }
+
+    @Override
+    public void addLong(long value) {
+      parent.add((int)value);
+    }
+
+    @Override
+    public void addFloat(float value) {
+      parent.add((int)value);
+    }
+
+    @Override
+    public void addDouble(double value) {
+      parent.add((int)value);
+    }
+
+    @Override
+    public void addBinary(Binary value) {
+      parent.add(Integer.parseInt(value.toStringUsingUTF8()));
     }
 
   }
@@ -364,6 +503,27 @@ public class TupleConverter extends GroupConverter {
       parent.add(value != 0);
     }
 
+    @Override
+    public void addLong(long value) {
+      parent.add(value!=0);
+    }
+
+    @Override
+    public void addFloat(float value) {
+      parent.add(value!=0);
+    }
+
+    @Override
+    public void addDouble(double value) {
+      parent.add(value!=0);
+    }
+
+    @Override
+    public void addBinary(Binary value) {
+      parent.add(Boolean.parseBoolean(value.toStringUsingUTF8()));
+    }
+
+    
   }
 
   /**
@@ -378,7 +538,7 @@ public class TupleConverter extends GroupConverter {
     private final Converter child;
     private final ParentValueContainer parent;
 
-    BagConverter(GroupType parquetSchema, FieldSchema pigSchema, ParentValueContainer parent, boolean numbersDefaultToZero) throws FrontendException {
+    BagConverter(GroupType parquetSchema, FieldSchema pigSchema, ParentValueContainer parent, boolean numbersDefaultToZero, boolean columnIndexAccess) throws FrontendException {
       this.parent = parent;
       if (parquetSchema.getFieldCount() != 1) {
         throw new IllegalArgumentException("bags have only one field. " + parquetSchema + " size = " + parquetSchema.getFieldCount());
@@ -404,7 +564,7 @@ public class TupleConverter extends GroupConverter {
           }};
         pigField = pigSchema.schema.getField(0);
       }
-      child = newConverter(pigField, nestedType, childsParent, numbersDefaultToZero);
+      child = newConverter(pigField, nestedType, childsParent, numbersDefaultToZero, columnIndexAccess);
     }
 
     @Override

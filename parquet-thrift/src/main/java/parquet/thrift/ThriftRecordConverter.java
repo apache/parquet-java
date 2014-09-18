@@ -778,6 +778,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   private final ParquetReadProtocol protocol;
   private final GroupConverter structConverter;
   private List<TProtocol> rootEvents = new ArrayList<TProtocol>();
+  private boolean missingRequiredFieldsInProjection = false;
 
   /**
    *
@@ -791,7 +792,34 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     this.thriftReader = thriftReader;
     this.protocol = new ParquetReadProtocol();
     this.thriftType = thriftType;
+    MessageType fullSchema = new ThriftSchemaConverter().convert(thriftType);
+    missingRequiredFieldsInProjection = hasMissingRequiredFieldInGroupType(requestedParquetSchema, fullSchema);
     this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
+  }
+
+  private boolean hasMissingRequiredFieldInGroupType(GroupType requested, GroupType fullSchema) {
+    for (Type field : fullSchema.getFields()) {
+
+      if (requested.containsField(field.getName())) {
+        Type requestedType = requested.getType(field.getName());
+        // if a field is in requested schema and the type of it is a group type, then do recursive check
+        if (!field.isPrimitive()) {
+          if (hasMissingRequiredFieldInGroupType(requestedType.asGroupType(), field.asGroupType())) {
+            return true;
+          } else {
+            continue;// check next field
+          }
+        }
+      } else {
+        if (field.getRepetition() == Type.Repetition.REQUIRED) {
+          return true; // if a field is missing in requested schema and it's required
+        } else {
+          continue; // the missing field is not required, then continue checking next field
+        }
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -802,13 +830,23 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   @Override
   public T getCurrentRecord() {
     try {
-      List<TProtocol> fixedEvents = new ProtocolEventsAmender(rootEvents).amendMissingRequiredFields(thriftType);
-      protocol.addAll(fixedEvents);
+      if (missingRequiredFieldsInProjection) {
+        List<TProtocol> fixedEvents = new ProtocolEventsAmender(rootEvents).amendMissingRequiredFields(thriftType);
+        protocol.addAll(fixedEvents);
+      } else {
+        protocol.addAll(rootEvents);
+      }
+
       rootEvents.clear();
       return thriftReader.readOneRecord(protocol);
     } catch (TException e) {
       throw new ParquetDecodingException("Could not read thrift object from protocol", e);
     }
+  }
+
+  @Override
+  public void skipCurrentRecord() {
+    rootEvents.clear();
   }
 
   /**

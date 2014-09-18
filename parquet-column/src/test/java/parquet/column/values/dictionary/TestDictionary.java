@@ -20,6 +20,7 @@ import static parquet.column.Encoding.PLAIN;
 import static parquet.column.Encoding.PLAIN_DICTIONARY;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 
@@ -94,7 +95,26 @@ public class TestDictionary {
 
     //simulate cutting the page
     cw.reset();
-    assertEquals(0,cw.getBufferedSize());
+    assertEquals(0, cw.getBufferedSize());
+  }
+
+  @Test
+  public void testBinaryDictionaryChangedValues() throws IOException {
+    int COUNT = 100;
+    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(200, 10000);
+    writeRepeatedWithReuse(COUNT, cw, "a");
+    BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
+    writeRepeatedWithReuse(COUNT, cw, "b");
+    BytesInput bytes2 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
+    // now we will fall back
+    writeDistinct(COUNT, cw, "c");
+    BytesInput bytes3 = getBytesAndCheckEncoding(cw, PLAIN);
+
+    DictionaryValuesReader cr = initDicReader(cw, BINARY);
+    checkRepeated(COUNT, bytes1, cr, "a");
+    checkRepeated(COUNT, bytes2, cr, "b");
+    BinaryPlainValuesReader cr2 = new BinaryPlainValuesReader();
+    checkDistinct(COUNT, bytes3, cr2, "c");
   }
 
   @Test
@@ -417,6 +437,20 @@ public class TestDictionary {
     roundTripFloat(cw, reader, maxDictionaryByteSize);
   }
 
+  @Test
+  public void testZeroValues() throws IOException {
+    DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(100, 100);
+    cw.writeInteger(34);
+    cw.writeInteger(34);
+    getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
+    DictionaryValuesReader reader = initDicReader(cw, INT32);
+
+    // pretend there are 100 nulls. what matters is offset = bytes.length.
+    byte[] bytes = {0x00, 0x01, 0x02, 0x03}; // data doesn't matter
+    int offset = bytes.length;
+    reader.initFromPage(100, bytes, offset);
+  }
+
   private DictionaryValuesReader initDicReader(ValuesWriter cw, PrimitiveTypeName type)
       throws IOException {
     final DictionaryPage dictionaryPage = cw.createDictionaryPage().copy();
@@ -449,6 +483,15 @@ public class TestDictionary {
   private void writeRepeated(int COUNT, ValuesWriter cw, String prefix) {
     for (int i = 0; i < COUNT; i++) {
       cw.writeBytes(Binary.fromString(prefix + i % 10));
+    }
+  }
+
+  private void writeRepeatedWithReuse(int COUNT, ValuesWriter cw, String prefix) {
+    Binary reused = Binary.fromString(prefix + "0");
+    for (int i = 0; i < COUNT; i++) {
+      Binary content = Binary.fromString(prefix + i % 10);
+      System.arraycopy(content.getBytes(), 0, reused.getBytes(), 0, reused.length());
+      cw.writeBytes(reused);
     }
   }
 

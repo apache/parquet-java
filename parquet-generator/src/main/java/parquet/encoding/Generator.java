@@ -19,7 +19,7 @@ import parquet.encoding.bitpacking.ByteBasedBitPackingGenerator;
 import parquet.encoding.bitpacking.IntBasedBitPackingGenerator;
 
 /**
- * main class for code generation hook in build
+ * main class for code generation hook in build for encodings generation
  *
  * @author Julien Le Dem
  *
