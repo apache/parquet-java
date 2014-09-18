@@ -38,6 +38,11 @@
         <version>${project.version}</version>
     </dependency>
     <dependency>
+        <groupId>com.twitter</groupId>
+        <artifactId>parquet-protobuf</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>
       <version>${hadoop.version}</version>
