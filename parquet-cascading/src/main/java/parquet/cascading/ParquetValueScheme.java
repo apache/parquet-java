@@ -32,10 +32,8 @@ import cascading.tuple.TupleEntry;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.mapred.Container;
-import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
 import parquet.hadoop.thrift.ParquetThriftInputFormat;
 import parquet.hadoop.thrift.ThriftReadSupport;
-import parquet.hadoop.thrift.ThriftWriteSupport;
 
 import static parquet.Preconditions.checkNotNull;
 
@@ -76,31 +74,31 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
       return klass;
     }
 
-    public Config withFilterPredicate(FilterPredicate f) {
-      return new Config(this.klass, checkNotNull(f, "filterPredicate"), this.projectionString);
+    public Config<T> withFilterPredicate(FilterPredicate f) {
+      return new Config<T>(this.klass, checkNotNull(f, "filterPredicate"), this.projectionString);
     }
 
-    public Config withProjectionString(String p) {
-      return new Config(this.klass, this.filterPredicate, checkNotNull(p, "projectionFilter"));
+    public Config<T> withProjectionString(String p) {
+      return new Config<T>(this.klass, this.filterPredicate, checkNotNull(p, "projectionFilter"));
     }
 
-    public Config withRecordClass(Class<T> klass) {
-      return new Config(checkNotNull(klass, "recordClass"), this.filterPredicate, this.projectionString);
+    public Config<T> withRecordClass(Class<T> klass) {
+      return new Config<T>(checkNotNull(klass, "recordClass"), this.filterPredicate, this.projectionString);
     }
   }
 
   private static final long serialVersionUID = 157560846420730043L;
-  protected final Config config;
+  protected final Config<T> config;
 
   public ParquetValueScheme() {
-    this(new Config());
+    this(new Config<T>());
   }
 
   public ParquetValueScheme(FilterPredicate filterPredicate) {
-    this(new Config().withFilterPredicate(filterPredicate));
+    this(new Config<T>().withFilterPredicate(filterPredicate));
   }
 
-  public ParquetValueScheme(Config config) {
+  public ParquetValueScheme(Config<T> config) {
     this.config = config;
   }
 
@@ -143,6 +141,7 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
     return true;
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public void sink(FlowProcess<JobConf> fp, SinkCall<Object[], OutputCollector> sc)
       throws IOException {

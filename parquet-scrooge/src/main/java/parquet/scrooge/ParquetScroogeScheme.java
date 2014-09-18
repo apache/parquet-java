@@ -31,7 +31,6 @@ import parquet.cascading.ParquetValueScheme;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
-import parquet.hadoop.thrift.ParquetThriftInputFormat;
 import parquet.hadoop.thrift.ThriftReadSupport;
 
 public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueScheme<T> {
@@ -39,18 +38,17 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
   private static final long serialVersionUID = -8332274507341448397L;
 
   public ParquetScroogeScheme(Class<T> klass) {
-    this(new Config().withRecordClass(klass));
+    this(new Config<T>().withRecordClass(klass));
   }
 
   public ParquetScroogeScheme(FilterPredicate filterPredicate, Class<T> klass) {
-    this(new Config().withFilterPredicate(filterPredicate));
+    this(new Config<T>().withFilterPredicate(filterPredicate).withRecordClass(klass));
   }
 
-  public ParquetScroogeScheme(Config config) {
+  public ParquetScroogeScheme(Config<T> config) {
     super(config);
   }
 
-  @SuppressWarnings("rawtypes")
   @Override
   public void sinkConfInit(FlowProcess<JobConf> arg0,
       Tap<JobConf, RecordReader, OutputCollector> arg1, JobConf arg2) {
@@ -63,8 +61,6 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
   @Override
   public boolean isSink() { return false; }
 
-
-  @SuppressWarnings("rawtypes")
   @Override
   public void sourceConfInit(FlowProcess<JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
