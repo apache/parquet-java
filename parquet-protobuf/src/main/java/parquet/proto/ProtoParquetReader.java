@@ -30,7 +30,7 @@ import parquet.hadoop.ParquetReader;
 public class ProtoParquetReader<T extends MessageOrBuilder> extends ParquetReader<T> {
 
   @SuppressWarnings("unchecked")
-  public Builder<T> builder(Path file) {
+  public static Builder<T> builder(Path file) {
     return ParquetReader.builder(new ProtoReadSupport(), file);
   }
 
