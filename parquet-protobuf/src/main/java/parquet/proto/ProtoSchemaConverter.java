@@ -15,22 +15,28 @@
  */
 package parquet.proto;
 
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.Message;
-import com.twitter.elephantbird.util.Protobufs;
-import parquet.Log;
-import parquet.schema.ConversionPatterns;
-import parquet.schema.GroupType;
-import parquet.schema.MessageType;
-import parquet.schema.OriginalType;
-import parquet.schema.PrimitiveType;
-import parquet.schema.Type;
+import static parquet.schema.OriginalType.ENUM;
+import static parquet.schema.OriginalType.UTF8;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.Log;
+import parquet.schema.MessageType;
+import parquet.schema.Type;
+import parquet.schema.Types;
+import parquet.schema.Types.Builder;
+import parquet.schema.Types.GroupBuilder;
+
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
+import com.google.protobuf.Message;
+import com.twitter.elephantbird.util.Protobufs;
 
 /**
  * <p/>
@@ -45,71 +51,54 @@ public class ProtoSchemaConverter {
   public MessageType convert(Class<? extends Message> protobufClass) {
     LOG.debug("Converting protocol buffer class \"" + protobufClass + "\" to parquet schema.");
     Descriptors.Descriptor descriptor = Protobufs.getMessageDescriptor(protobufClass);
-
-    MessageType messageType = new MessageType(descriptor.getFullName(), convertFields(descriptor.getFields()));
-
+    MessageType messageType =
+        convertFields(Types.buildMessage(), descriptor.getFields())
+        .named(descriptor.getFullName());
     LOG.debug("Converter info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
     return messageType;
   }
 
   /* Iterates over list of fields. **/
-  private List<Type> convertFields(List<Descriptors.FieldDescriptor> fieldDescriptors) {
-    List<Type> types = new ArrayList<Type>();
-
+  private <T> GroupBuilder<T> convertFields(GroupBuilder<T> groupBuilder, List<Descriptors.FieldDescriptor> fieldDescriptors) {
     for (Descriptors.FieldDescriptor fieldDescriptor : fieldDescriptors) {
-      String fieldName = fieldDescriptor.getName();
-      Type.Repetition repetition = getRepetition(fieldDescriptor);
-      Type type = convertScalarField(fieldName, fieldDescriptor, repetition);
-      types.add(type);
+      groupBuilder =
+          addField(fieldDescriptor, groupBuilder)
+          .id(fieldDescriptor.getNumber())
+          .named(fieldDescriptor.getName());
     }
-    return types;
+    return groupBuilder;
   }
 
   private Type.Repetition getRepetition(Descriptors.FieldDescriptor descriptor) {
-    Type.Repetition repetition;
     if (descriptor.isRequired()) {
-      repetition = Type.Repetition.REQUIRED;
+      return Type.Repetition.REQUIRED;
     } else if (descriptor.isRepeated()) {
-      repetition = Type.Repetition.REPEATED;
+      return Type.Repetition.REPEATED;
     } else {
-      repetition = Type.Repetition.OPTIONAL;
+      return Type.Repetition.OPTIONAL;
     }
-    return repetition;
   }
 
-  private Type convertScalarField(String fieldName, Descriptors.FieldDescriptor descriptor, Type.Repetition repetition) {
-
+  private <T> Builder<? extends Builder<?, GroupBuilder<T>>, GroupBuilder<T>> addField(Descriptors.FieldDescriptor descriptor, GroupBuilder<T> builder) {
+    Type.Repetition repetition = getRepetition(descriptor);
     JavaType javaType = descriptor.getJavaType();
-
-    int number = descriptor.getNumber();
     switch (javaType) {
-      case BOOLEAN : return primitive(fieldName, PrimitiveTypeName.BOOLEAN, repetition, number);
-      case INT : return primitive(fieldName, PrimitiveTypeName.INT32, repetition, number);
-      case LONG : return primitive(fieldName, PrimitiveTypeName.INT64, repetition, number);
-      case FLOAT : return primitive(fieldName, PrimitiveTypeName.FLOAT, repetition, number);
-      case DOUBLE: return primitive(fieldName, PrimitiveTypeName.DOUBLE, repetition, number);
-      case BYTE_STRING: return primitive(fieldName, PrimitiveTypeName.BINARY, repetition, number);
-      case STRING: return primitive(fieldName, PrimitiveTypeName.BINARY, repetition, OriginalType.UTF8, number);
-      case MESSAGE: {
-        Descriptors.Descriptor messageDescriptor = descriptor.getMessageType();
-        List<Type> fields = convertFields(messageDescriptor.getFields());
-        return new GroupType(repetition, fieldName, fields).withId(number);
-      }
-      case ENUM: return primitive(fieldName, PrimitiveTypeName.BINARY, repetition, OriginalType.ENUM, number);
+    case BOOLEAN : return builder.primitive(BOOLEAN, repetition);
+    case INT : return builder.primitive(INT32, repetition);
+    case LONG : return builder.primitive(INT64, repetition);
+    case FLOAT : return builder.primitive(FLOAT, repetition);
+    case DOUBLE: return builder.primitive(DOUBLE, repetition);
+    case BYTE_STRING: return builder.primitive(BINARY, repetition);
+    case STRING: return builder.primitive(BINARY, repetition).as(UTF8);
+    case MESSAGE: {
+      GroupBuilder<GroupBuilder<T>> group = builder.group(repetition);
+      convertFields(group, descriptor.getMessageType().getFields());
+      return group;
     }
-
-    throw new UnsupportedOperationException("Cannot convert Protocol Buffer: unknown type " + javaType + " fieldName " + fieldName);
-  }
-
-  /**
-   * Makes primitive type with additional information. Used for String and Binary types
-   */
-  private PrimitiveType primitive(String name, PrimitiveTypeName primitive, Type.Repetition repetition, OriginalType originalType, int number) {
-    return new PrimitiveType(repetition, primitive, name, originalType).withId(number);
-  }
-
-  private PrimitiveType primitive(String name, PrimitiveTypeName primitive, Type.Repetition repetition, int number) {
-    return primitive(name, primitive, repetition, null, number);
+    case ENUM: return builder.primitive(BINARY, repetition).as(ENUM);
+    default:
+      throw new UnsupportedOperationException("Cannot convert Protocol Buffer: unknown type " + javaType);
+    }
   }
 
 }

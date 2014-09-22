@@ -16,6 +16,8 @@
 
 package parquet.thrift;
 
+import static parquet.schema.ConversionPatterns.listType;
+import static parquet.schema.ConversionPatterns.mapType;
 import static parquet.schema.OriginalType.ENUM;
 import static parquet.schema.OriginalType.UTF8;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
@@ -31,7 +33,6 @@ import static parquet.schema.Types.primitive;
 import java.util.ArrayList;
 import java.util.List;
 
-import parquet.schema.ConversionPatterns;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
@@ -99,7 +100,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
     //restore Env
     currentName = mapName;
     currentRepetition = mapRepetition;
-    currentType = ConversionPatterns.mapType(currentRepetition, currentName,
+    currentType = mapType(currentRepetition, currentName,
             keyType,
             valueType);
   }
@@ -116,7 +117,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
     if (currentType == null) {
       return;
     } else {
-      currentType = ConversionPatterns.listType(setRepetition, setName, currentType);
+      currentType = listType(setRepetition, setName, currentType);
     }
   }
 
@@ -132,7 +133,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
     if (currentType == null) {
       return;
     } else {
-      currentType = ConversionPatterns.listType(listRepetition, listName, currentType);
+      currentType = listType(listRepetition, listName, currentType);
     }
 
   }
@@ -142,7 +143,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
     if (currentType == null)
       return new MessageType(currentName, new ArrayList<Type>());
 
-    GroupType rootType = (GroupType) currentType;
+    GroupType rootType = currentType.asGroupType();
     return new MessageType(currentName, rootType.getFields());
   }
 

@@ -150,12 +150,6 @@ abstract public class Type {
   public abstract Type withId(int id);
 
   /**
-   * @param originalType
-   * @return the same type with the originalType field set
-   */
-  public abstract Type withOriginalType(OriginalType originalType);
-
-  /**
    * @return the name of the type
    */
   public String getName() {

@@ -350,15 +350,6 @@ public final class PrimitiveType extends Type {
   }
 
   /**
-   * @param originalType the originalType for this field
-   * @return a new PrimitiveType with the same fields and a new OriginalType
-   */
-  @Override
-  public PrimitiveType withOriginalType(OriginalType originalType) {
-    return new PrimitiveType(getRepetition(), primitive, length, getName(), originalType, decimalMeta, getId());
-  }
-
-  /**
    * @return the primitive type
    */
   public PrimitiveTypeName getPrimitiveTypeName() {

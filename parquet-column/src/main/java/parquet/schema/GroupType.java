@@ -102,15 +102,6 @@ public class GroupType extends Type {
   }
 
   /**
-   * @param originalType the field original type
-   * @return a new GroupType with the same fields and a new originalType
-   */
-  @Override
-  public GroupType withOriginalType(OriginalType originalType) {
-    return new GroupType(getRepetition(), getName(), originalType, fields, getId());
-  }
-
-  /**
    * @param newFields
    * @return a group with the same attributes and new fields.
    */
