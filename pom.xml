@@ -93,6 +93,8 @@
     <scala.version>2.10.4</scala.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
     <scala.binary.version>2.10</scala.binary.version>
+    <pig.version>0.11.1</pig.version>
+    <pig.classifier></pig.classifier>
   </properties>
 
   <modules>
@@ -110,7 +112,6 @@
     <module>parquet-scala</module>
     <module>parquet-scrooge</module>
     <module>parquet-thrift</module>
-    <module>parquet-test-hadoop2</module>
     <module>parquet-hadoop-bundle</module>
     <module>parquet-hive</module>
     <module>parquet-hive-bundle</module>
@@ -458,6 +459,23 @@
           </plugin>
         </plugins>
       </build>
+    </profile>
+
+    <profile>
+      <id>hadoop-2</id>
+      <activation>
+        <property>
+          <name>hadoop.profile</name>
+          <value>hadoop2</value>
+        </property>
+      </activation>
+      <properties>
+        <!-- test hadoop-1 with the same jars that were produced for default profile -->
+        <maven.main.skip>true</maven.main.skip>
+        <hadoop.version>2.3.0</hadoop.version>
+        <pig.version>0.13.0</pig.version>
+        <pig.classifier>h2</pig.classifier>
+      </properties>
     </profile>
   </profiles>
 
