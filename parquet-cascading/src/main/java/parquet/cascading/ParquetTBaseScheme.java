@@ -26,7 +26,6 @@ import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
-import parquet.hadoop.thrift.ParquetThriftInputFormat;
 import parquet.hadoop.thrift.ThriftReadSupport;
 import parquet.hadoop.thrift.ThriftWriteSupport;
 import parquet.thrift.TBaseRecordConverter;
@@ -35,26 +34,25 @@ public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme
 
   // In the case of reads, we can read the thrift class from the file metadata
   public ParquetTBaseScheme() {
-    this(new Config());
+    this(new Config<T>());
   }
 
   public ParquetTBaseScheme(Class<T> thriftClass) {
-    this(new Config().withRecordClass(thriftClass));
+    this(new Config<T>().withRecordClass(thriftClass));
   }
 
   public ParquetTBaseScheme(FilterPredicate filterPredicate) {
-    this(new Config().withFilterPredicate(filterPredicate));
+    this(new Config<T>().withFilterPredicate(filterPredicate));
   }
 
   public ParquetTBaseScheme(FilterPredicate filterPredicate, Class<T> thriftClass) {
-    this(new Config().withRecordClass(thriftClass).withFilterPredicate(filterPredicate));
+    this(new Config<T>().withRecordClass(thriftClass).withFilterPredicate(filterPredicate));
   }
 
-  public ParquetTBaseScheme(Config config) {
+  public ParquetTBaseScheme(Config<T> config) {
     super(config);
   }
 
-  @SuppressWarnings("rawtypes")
   @Override
   public void sourceConfInit(FlowProcess<JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
@@ -64,7 +62,6 @@ public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme
     ThriftReadSupport.setRecordConverterClass(jobConf, TBaseRecordConverter.class);
   }
 
-  @SuppressWarnings("rawtypes")
   @Override
   public void sinkConfInit(FlowProcess<JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
