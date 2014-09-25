@@ -32,7 +32,6 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
 public class TestMessageType {
   @Test
   public void test() throws Exception {
-    System.out.println(Paper.schema.toString());
     MessageType schema = MessageTypeParser.parseMessageType(Paper.schema.toString());
     assertEquals(Paper.schema, schema);
     assertEquals(schema.toString(), Paper.schema.toString());
@@ -129,5 +128,18 @@ public class TestMessageType {
     } catch (IncompatibleSchemaModificationException e) {
       assertEquals("can not merge type optional int32 a into optional binary a", e.getMessage());
     }
+  }
+
+  @Test
+  public void testIDs() throws Exception {
+    MessageType schema = new MessageType("test",
+        new PrimitiveType(REQUIRED, BINARY, "foo").withId(4),
+        new GroupType(REQUIRED, "bar",
+            new PrimitiveType(REQUIRED, BINARY, "baz").withId(3)
+            ).withId(8)
+        );
+    MessageType schema2 = MessageTypeParser.parseMessageType(schema.toString());
+    assertEquals(schema, schema2);
+    assertEquals(schema.toString(), schema2.toString());
   }
 }
