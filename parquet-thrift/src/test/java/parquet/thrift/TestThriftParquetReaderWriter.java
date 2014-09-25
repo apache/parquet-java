@@ -16,6 +16,8 @@
 package parquet.thrift;
 
 import static java.util.Arrays.asList;
+import static org.junit.Assert.assertEquals;
+import static parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -32,7 +34,9 @@ import parquet.hadoop.ParquetReader;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.thrift.ThriftReadSupport;
 import parquet.thrift.test.EmptyStruct;
+import parquet.thrift.test.FormerlyEmptyStruct;
 import parquet.thrift.test.UnionWithEmptyStruct;
+import parquet.thrift.test.UnionWithFormerlyEmptyStruct;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
@@ -91,7 +95,7 @@ public class TestThriftParquetReaderWriter {
     List<UnionWithEmptyStruct> originals = asList(empty, name);
 
     { // write
-      ThriftParquetWriter<UnionWithEmptyStruct> thriftParquetWriter = new ThriftParquetWriter<UnionWithEmptyStruct>(f, UnionWithEmptyStruct.class, CompressionCodecName.UNCOMPRESSED);
+      ThriftParquetWriter<UnionWithEmptyStruct> thriftParquetWriter = new ThriftParquetWriter<UnionWithEmptyStruct>(f, UnionWithEmptyStruct.class, UNCOMPRESSED);
       for (UnionWithEmptyStruct original : originals) {
         thriftParquetWriter.write(original);
       }
@@ -103,7 +107,52 @@ public class TestThriftParquetReaderWriter {
       for (int i = 0; i < originals.size(); i++) {
         UnionWithEmptyStruct original = originals.get(i);
         UnionWithEmptyStruct read = thriftParquetReader.read();
-        Assert.assertEquals(original, read);
+        assertEquals(original, read);
+      }
+      thriftParquetReader.close();
+    }
+
+    { // read with newer struct that has fields now
+      ParquetReader<UnionWithFormerlyEmptyStruct> thriftParquetReader = ThriftParquetReader.build(f, UnionWithFormerlyEmptyStruct.class).build();
+      for (int i = 0; i < originals.size(); i++) {
+        UnionWithEmptyStruct original = originals.get(i);
+        UnionWithFormerlyEmptyStruct read = thriftParquetReader.read();
+        assertEquals(original.getSetField().getFieldName(), read.getSetField().getFieldName());
+      }
+      thriftParquetReader.close();
+    }
+
+  }
+
+  @Test
+  public void testWriteReadEmptyStructBack() throws IOException {
+    Configuration configuration = new Configuration();
+    Path f = new Path("target/test/TestThriftParquetReaderWriterEmptyStructBack");
+    FileSystem fs = f.getFileSystem(configuration);
+    if (fs.exists(f)) {
+      fs.delete(f, true);
+    }
+
+    UnionWithFormerlyEmptyStruct empty = new UnionWithFormerlyEmptyStruct();
+    empty.setEmpty(new FormerlyEmptyStruct());
+    UnionWithFormerlyEmptyStruct name = new UnionWithFormerlyEmptyStruct();
+    name.setName(new parquet.thrift.test.Name("Bob"));
+    List<UnionWithFormerlyEmptyStruct> originals = asList(empty, name);
+
+    { // write
+      ThriftParquetWriter<UnionWithFormerlyEmptyStruct> thriftParquetWriter = new ThriftParquetWriter<UnionWithFormerlyEmptyStruct>(f, UnionWithFormerlyEmptyStruct.class, UNCOMPRESSED);
+      for (UnionWithFormerlyEmptyStruct original : originals) {
+        thriftParquetWriter.write(original);
+      }
+      thriftParquetWriter.close();
+    }
+
+    { // read with older struct that hasn't any fields
+      ParquetReader<UnionWithEmptyStruct> thriftParquetReader = ThriftParquetReader.build(f, UnionWithEmptyStruct.class).build();
+      for (int i = 0; i < originals.size(); i++) {
+        UnionWithFormerlyEmptyStruct original = originals.get(i);
+        UnionWithEmptyStruct read = thriftParquetReader.read();
+        assertEquals(original.getSetField().getFieldName(), read.getSetField().getFieldName());
       }
       thriftParquetReader.close();
     }

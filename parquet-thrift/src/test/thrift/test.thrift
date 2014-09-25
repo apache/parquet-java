@@ -84,3 +84,12 @@ union UnionWithEmptyStruct {
   1: EmptyStruct empty
   2: Name name
 }
+
+struct FormerlyEmptyStruct {
+  1: optional i32 newField
+}
+
+union UnionWithFormerlyEmptyStruct {
+  1: FormerlyEmptyStruct empty
+  2: Name name
+}
