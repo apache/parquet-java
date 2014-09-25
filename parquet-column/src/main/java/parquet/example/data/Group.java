@@ -56,6 +56,10 @@ abstract public class Group extends GroupValueSource {
     add(getType().getFieldIndex(field), value);
   }
 
+  public void add(String field, Group value) {
+    add(getType().getFieldIndex(field), value);
+  }
+
   public Group addGroup(String field) {
     if (DEBUG) logger.debug("add group "+field+" to "+getType().getName());
     return addGroup(getType().getFieldIndex(field));
@@ -80,6 +84,8 @@ abstract public class Group extends GroupValueSource {
   abstract public void add(int fieldIndex, float value);
 
   abstract public void add(int fieldIndex, double value);
+
+  abstract public void add(int fieldIndex, Group value);
 
   abstract public Group addGroup(int fieldIndex);
 
