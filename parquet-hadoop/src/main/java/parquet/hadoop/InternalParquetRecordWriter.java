@@ -148,7 +148,7 @@ class InternalParquetRecordWriter<T> {
       LOG.warn("Too much memory used: " + columnStore.memUsageString());
     }
 
-    if (recordCount >0 ) {
+    if (recordCount > 0) {
       parquetFileWriter.startBlock(recordCount);
       columnStore.flush();
       pageStore.flushToFileWriter(parquetFileWriter);
