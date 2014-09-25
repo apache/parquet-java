@@ -42,7 +42,7 @@ class InternalParquetRecordWriter<T> {
   private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
   private static final int MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
 
-  private final ParquetFileWriter w;
+  private final ParquetFileWriter parquetFileWriter;
   private final WriteSupport<T> writeSupport;
   private final MessageType schema;
   private final Map<String, String> extraMetaData;
@@ -57,19 +57,19 @@ class InternalParquetRecordWriter<T> {
   private long recordCount = 0;
   private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
 
-  private ColumnWriteStoreImpl store;
+  private ColumnWriteStoreImpl columnStore;
   private ColumnChunkPageWriteStore pageStore;
 
   /**
-   * @param w the file to write to
+   * @param parquetFileWriter the file to write to
    * @param writeSupport the class to convert incoming records
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to write in the footer of the file
    * @param blockSize the size of a block in the file (this will be approximate)
-   * @param codec the codec used to compress
+   * @param compressor the codec used to compress
    */
   public InternalParquetRecordWriter(
-      ParquetFileWriter w,
+      ParquetFileWriter parquetFileWriter,
       WriteSupport<T> writeSupport,
       MessageType schema,
       Map<String, String> extraMetaData,
@@ -80,7 +80,7 @@ class InternalParquetRecordWriter<T> {
       boolean enableDictionary,
       boolean validating,
       WriterVersion writerVersion) {
-    this.w = w;
+    this.parquetFileWriter = parquetFileWriter;
     this.writeSupport = checkNotNull(writeSupport, "writeSupport");
     this.schema = schema;
     this.extraMetaData = extraMetaData;
@@ -103,17 +103,17 @@ class InternalParquetRecordWriter<T> {
     // we don't want this number to be too small either
     // ideally, slightly bigger than the page size, but not bigger than the block buffer
     int initialPageBufferSize = max(MINIMUM_BUFFER_SIZE, min(pageSize + pageSize / 10, initialBlockBufferSize));
-    store = new ColumnWriteStoreImpl(pageStore, pageSize, initialPageBufferSize, dictionaryPageSize, enableDictionary, writerVersion);
+    columnStore = new ColumnWriteStoreImpl(pageStore, pageSize, initialPageBufferSize, dictionaryPageSize, enableDictionary, writerVersion);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
-    writeSupport.prepareForWrite(columnIO.getRecordWriter(store));
+    writeSupport.prepareForWrite(columnIO.getRecordWriter(columnStore));
   }
 
   public void close() throws IOException, InterruptedException {
-    flushStore();
+    flushRowGroupToStore();
     FinalizedWriteContext finalWriteContext = writeSupport.finalizeWrite();
     Map<String, String> finalMetadata = new HashMap<String, String>(extraMetaData);
     finalMetadata.putAll(finalWriteContext.getExtraMetaData());
-    w.end(finalMetadata);
+    parquetFileWriter.end(finalMetadata);
   }
 
   public void write(T value) throws IOException, InterruptedException {
@@ -124,10 +124,10 @@ class InternalParquetRecordWriter<T> {
 
   private void checkBlockSizeReached() throws IOException {
     if (recordCount >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it for every record.
-      long memSize = store.memSize();
+      long memSize = columnStore.memSize();
       if (memSize > blockSize) {
         LOG.info(format("mem size %,d > %,d: flushing %,d records to disk.", memSize, blockSize, recordCount));
-        flushStore();
+        flushRowGroupToStore();
         initStore();
         recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
       } else {
@@ -141,18 +141,22 @@ class InternalParquetRecordWriter<T> {
     }
   }
 
-  private void flushStore()
+  private void flushRowGroupToStore()
       throws IOException {
-    LOG.info(format("Flushing mem store to file. allocated memory: %,d", store.allocatedSize()));
-    if (store.allocatedSize() > 3 * (long) blockSize) {
-      LOG.warn("Too much memory used: " + store.memUsageString());
+    LOG.info(format("Flushing mem columnStore to file. allocated memory: %,d", columnStore.allocatedSize()));
+    if (columnStore.allocatedSize() > 3 * (long) blockSize) {
+      LOG.warn("Too much memory used: " + columnStore.memUsageString());
     }
-    w.startBlock(recordCount);
-    store.flush();
-    pageStore.flushToFileWriter(w);
-    recordCount = 0;
-    w.endBlock();
-    store = null;
+
+    if (recordCount >0 ) {
+      parquetFileWriter.startBlock(recordCount);
+      columnStore.flush();
+      pageStore.flushToFileWriter(parquetFileWriter);
+      recordCount = 0;
+      parquetFileWriter.endBlock();
+    }
+
+    columnStore = null;
     pageStore = null;
   }
 }
