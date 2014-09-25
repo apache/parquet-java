@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 import parquet.Log;
-import parquet.Preconditions;
 import parquet.column.ColumnReader;
 import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.io.api.Converter;

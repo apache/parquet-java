@@ -18,8 +18,6 @@ package parquet.pig;
 import static org.junit.Assert.assertEquals;
 import static parquet.pig.PigSchemaConverter.pigSchemaToString;
 import static parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
-import static parquet.schema.Type.Repetition.OPTIONAL;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -33,9 +31,6 @@ import org.junit.Test;
 
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
-import parquet.schema.PrimitiveType;
-import parquet.schema.PrimitiveType.PrimitiveTypeName;
-import parquet.schema.Type.Repetition;
 
 
 public class TestPigSchemaConverter {

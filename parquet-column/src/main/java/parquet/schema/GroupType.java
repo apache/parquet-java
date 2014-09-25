@@ -15,7 +15,6 @@
  */
 package parquet.schema;
 
-import static parquet.Preconditions.checkArgument;
 import static parquet.Preconditions.checkNotNull;
 
 import java.util.ArrayList;
@@ -24,7 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import parquet.Preconditions;
 import parquet.io.InvalidRecordException;
 
 /**
@@ -78,8 +76,7 @@ public class GroupType extends Type {
         checkNotNull(repetition, "repetition"),
         originalType
         );
-    checkNotNull(fields, "fields");
-    this.fields = fields;
+    this.fields = checkNotNull(fields, "fields");
     this.indexByName = new HashMap<String, Integer>();
     for (int i = 0; i < fields.size(); i++) {
       indexByName.put(fields.get(i).getName(), i);
