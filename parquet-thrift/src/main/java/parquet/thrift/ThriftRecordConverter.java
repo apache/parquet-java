@@ -15,6 +15,9 @@
  */
 package parquet.thrift;
 
+import static parquet.thrift.ThriftSchemaConverter.SYNTHETIC_PLACEHOLDER_FIELD;
+import static parquet.thrift.struct.ThriftField.Requirement.OPTIONAL;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -49,6 +52,7 @@ import parquet.thrift.struct.ThriftType.ListType;
 import parquet.thrift.struct.ThriftType.MapType;
 import parquet.thrift.struct.ThriftType.SetType;
 import parquet.thrift.struct.ThriftType.StructType;
+import parquet.thrift.struct.ThriftType.BoolType;
 import parquet.thrift.struct.ThriftTypeID;
 
 /**
@@ -715,6 +719,12 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
       for (int i = 0; i < schemaSize; i++) {
         Type schemaType = parquetSchema.getType(i);
         String fieldName = schemaType.getName();
+        if (thriftChildren.size() == 0 && fieldName.equals(SYNTHETIC_PLACEHOLDER_FIELD)) {
+          ThriftField thriftField = new ThriftField(fieldName, Short.MAX_VALUE, OPTIONAL, new BoolType());
+          converters[i] = new PrimitiveFieldHandler(new FieldPrimitiveConverter(events, field), thriftField, events);
+          // to deal with empty structs we need a converter that will never be called
+          continue;
+        }
         ThriftField matchingThrift = null;
         for (ThriftField childField: thriftChildren) {
           String thriftChildName = childField.getName();
@@ -724,15 +734,15 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
           }
         }
         if (matchingThrift == null) {
-        	// this means the file did not contain that field
+          // this means the file did not contain that field
           // it will never be populated in this instance
           // other files might populate it
-        	continue;
+          continue;
         }
         if (schemaType.isPrimitive()) {
-        	converters[i] = new PrimitiveFieldHandler(newConverter(events, schemaType, matchingThrift).asPrimitiveConverter(), matchingThrift, events);
+          converters[i] = new PrimitiveFieldHandler(newConverter(events, schemaType, matchingThrift).asPrimitiveConverter(), matchingThrift, events);
         } else {
-        	converters[i] = new GroupFieldhandler(newConverter(events, schemaType, matchingThrift).asGroupConverter(), matchingThrift, events);
+          converters[i] = new GroupFieldhandler(newConverter(events, schemaType, matchingThrift).asGroupConverter(), matchingThrift, events);
         }
       }
     }

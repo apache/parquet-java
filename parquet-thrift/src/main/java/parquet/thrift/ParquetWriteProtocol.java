@@ -16,10 +16,10 @@
 package parquet.thrift;
 
 import static parquet.Log.DEBUG;
+import static parquet.Preconditions.checkNotNull;
+import static parquet.thrift.ThriftSchemaConverter.SYNTHETIC_PLACEHOLDER_FIELD;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
@@ -32,6 +32,7 @@ import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
 
 import parquet.Log;
+import parquet.Preconditions;
 import parquet.io.ColumnIO;
 import parquet.io.GroupColumnIO;
 import parquet.io.MessageColumnIO;
@@ -308,19 +309,24 @@ public class ParquetWriteProtocol extends ParquetProtocol {
 
     public StructWriteProtocol(GroupColumnIO schema, StructType thriftType, Events returnClause) {
       super(returnClause);
-      if (schema == null) {
-        throw new NullPointerException("schema");
+      checkNotNull(schema, "schema");
+      if (thriftType.getChildren().size() == 0 && schema.getChildrenCount() == 1 && schema.getChild(0).getName().equals(SYNTHETIC_PLACEHOLDER_FIELD)) {
+        // we're good
+        // special case to deal with empty structs
+      } else if (schema.getChildrenCount() != thriftType.getChildren().size()) {
+        throw new ParquetEncodingException("schema sizes don't match:\nParquet: " + schema.getType() + "\n" + schema + "\nThrift: " + thriftType.getChildren().size() + "\n" + thriftType);
       }
       this.thriftType = thriftType;
       int maxFieldId = 0;
       for (ThriftField field : thriftType.getChildren()) {
+        if (field.getFieldId() < 0) {
+          throw new ParquetEncodingException("negative field id not supported:\n" + thriftType);
+        }
         maxFieldId = Math.max(maxFieldId, field.getFieldId());
       }
       thriftFieldIdToParquetField = new ColumnIO[maxFieldId + 1];
       for (int i = 0; i < thriftType.getChildren().size(); i++) {
         thriftFieldIdToParquetField[thriftType.getChildren().get(i).getFieldId()] = schema.getChild(i);
-      }
-      for (ThriftField field : thriftType.getChildren()) {
       }
       this.schema = schema;
       children = new TProtocol[thriftType.getChildren().size()];

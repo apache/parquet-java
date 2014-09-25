@@ -41,7 +41,7 @@ class ParquetReadProtocol extends ParquetProtocol {
     super("read");
   }
 
-  private Deque<TProtocol> events = new  LinkedList<TProtocol>();
+  private Deque<TProtocol> events = new LinkedList<TProtocol>();
 
   public void add(TProtocol p) {
     events.addLast(p);
@@ -155,4 +155,8 @@ class ParquetReadProtocol extends ParquetProtocol {
     return next().readBinary();
   }
 
+  @Override
+  public String toString() {
+    return this.getClass().getName() + "{next event: " + events.peekFirst() +"}";
+  }
 }

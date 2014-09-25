@@ -18,7 +18,9 @@ package parquet.thrift;
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.elephantbird.thrift.test.TestStructInMap;
+
 import org.junit.Test;
+
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 import parquet.thrift.projection.FieldProjectionFilter;
@@ -26,7 +28,7 @@ import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftType.StructType;
 import parquet.thrift.test.TestPerson;
-
+import parquet.thrift.test.UnionWithEmptyStruct;
 import static org.junit.Assert.assertEquals;
 
 public class TestThriftSchemaConverter {
@@ -212,7 +214,6 @@ public class TestThriftSchemaConverter {
     return new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftClass);
   }
 
-
   @Test
   public void testToThriftType() throws Exception {
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
@@ -221,5 +222,22 @@ public class TestThriftSchemaConverter {
     System.out.println(json);
     final ThriftType fromJSON = StructType.fromJSON(json);
     assertEquals(json, fromJSON.toJSON());
+  }
+
+  @Test
+  public void testEmptyStruct() {
+    String expected =
+        "message ParquetSchema {\n" +
+        "  optional group empty {\n" +
+        "    optional boolean parquet_synthetic_placeholder_field;\n" +
+        "  }\n" +
+        "  optional group name {\n" +
+        "    required binary first_name (UTF8);\n" +
+        "    optional binary last_name (UTF8);\n" +
+        "  }\n" +
+        "}";
+    ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
+    final MessageType converted = schemaConverter.convert(UnionWithEmptyStruct.class);
+    assertEquals(MessageTypeParser.parseMessageType(expected), converted);
   }
 }

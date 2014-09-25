@@ -16,20 +16,32 @@
 
 package parquet.thrift;
 
-import parquet.schema.*;
+import static parquet.schema.OriginalType.ENUM;
+import static parquet.schema.OriginalType.UTF8;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static parquet.schema.Type.Repetition.OPTIONAL;
+import static parquet.schema.Type.Repetition.REPEATED;
+import static parquet.schema.Type.Repetition.REQUIRED;
+import static parquet.thrift.ThriftSchemaConverter.SYNTHETIC_PLACEHOLDER_FIELD;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import parquet.schema.ConversionPatterns;
+import parquet.schema.GroupType;
+import parquet.schema.MessageType;
+import parquet.schema.PrimitiveType;
+import parquet.schema.Type;
 import parquet.thrift.projection.FieldProjectionFilter;
 import parquet.thrift.projection.FieldsPath;
 import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static parquet.schema.OriginalType.ENUM;
-import static parquet.schema.OriginalType.UTF8;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
-import static parquet.schema.Type.Repetition.*;
 
 /**
  * Visitor Class for converting a thrift definiton to parquet message type.
@@ -125,29 +137,31 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
 
   public MessageType getConvertedMessageType() {
     // the root should be a GroupType
-    if (currentType == null)
+    if (currentType == null) {
       return new MessageType(currentName, new ArrayList<Type>());
-
-    GroupType rootType = (GroupType) currentType;
+    }
+    GroupType rootType = currentType.asGroupType();
     return new MessageType(currentName, rootType.getFields());
   }
 
   @Override
   public void visit(ThriftType.StructType structType) {
     List<ThriftField> fields = structType.getChildren();
-
     String oldName = currentName;
     Type.Repetition oldRepetition = currentRepetition;
 
-    List<Type> types = getFieldsTypes(fields);
+    List<Type> types;
+    if (fields.size() == 0) {
+      types = Arrays.<Type>asList(
+          new PrimitiveType(OPTIONAL, BOOLEAN, SYNTHETIC_PLACEHOLDER_FIELD)
+          );
+    } else {
+      types = getFieldsTypes(fields);
+    }
 
     currentName = oldName;
     currentRepetition = oldRepetition;
-    if (types.size() > 0) {
-      currentType = new GroupType(currentRepetition, currentName, types);
-    } else {
-      currentType = null;
-    }
+    currentType = types.size() == 0 ? null : new GroupType(currentRepetition, currentName, types);
   }
 
   private List<Type> getFieldsTypes(List<ThriftField> fields) {

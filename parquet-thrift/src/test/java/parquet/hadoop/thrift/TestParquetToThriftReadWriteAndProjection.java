@@ -15,7 +15,9 @@
  */
 package parquet.hadoop.thrift;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static parquet.hadoop.thrift.ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY;
 
 import java.io.ByteArrayOutputStream;
 import java.util.*;
@@ -46,6 +48,7 @@ import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
+
 import parquet.thrift.test.*;
 
 public class TestParquetToThriftReadWriteAndProjection {
@@ -68,7 +71,7 @@ public class TestParquetToThriftReadWriteAndProjection {
             "  }\n" +
             "}";
     conf.set(ReadSupport.PARQUET_READ_SCHEMA, readProjectionSchema);
-    TBase toWrite=new AddressBook(
+    TBase<?, ?> toWrite=new AddressBook(
             Arrays.asList(
                     new Person(
                             new Name("Bob", "Roberts"),
@@ -76,7 +79,7 @@ public class TestParquetToThriftReadWriteAndProjection {
                             "bob.roberts@example.com",
                             Arrays.asList(new PhoneNumber("1234567890")))));
 
-    TBase toRead=new AddressBook(
+    TBase<?, ?> toRead=new AddressBook(
             Arrays.asList(
                     new Person(
                             new Name("Bob", "Roberts"),
@@ -89,7 +92,7 @@ public class TestParquetToThriftReadWriteAndProjection {
   @Test
   public void testPullingInRequiredStructWithFilter() throws Exception {
     final String projectionFilterDesc = "persons/{id};persons/email";
-    TBase toWrite=new AddressBook(
+    TBase<?, ?> toWrite=new AddressBook(
             Arrays.asList(
                     new Person(
                             new Name("Bob", "Roberts"),
@@ -97,7 +100,7 @@ public class TestParquetToThriftReadWriteAndProjection {
                             "bob.roberts@example.com",
                             Arrays.asList(new PhoneNumber("1234567890")))));
 
-    TBase toRead=new AddressBook(
+    TBase<?, ?> toRead=new AddressBook(
             Arrays.asList(
                     new Person(
                             new Name("", ""),
@@ -120,16 +123,16 @@ public class TestParquetToThriftReadWriteAndProjection {
   @Test
   public void testNotPullInOptionalFields() throws Exception {
     final String projectionFilterDesc = "nomatch";
-    TBase toWrite=new AddressBook(
-            Arrays.asList(
-                    new Person(
-                            new Name("Bob", "Roberts"),
-                            0,
-                            "bob.roberts@example.com",
-                            Arrays.asList(new PhoneNumber("1234567890")))));
+    TBase<?, ?> toWrite = new AddressBook(
+        asList(
+            new Person(
+                new Name("Bob", "Roberts"),
+                0,
+                "bob.roberts@example.com",
+                asList(new PhoneNumber("1234567890")))));
 
-    TBase toRead=new AddressBook();
-    shouldDoProjectionWithThriftColumnFilter(projectionFilterDesc, toWrite, toRead,AddressBook.class);
+    TBase<?, ?> toRead = new AddressBook();
+    shouldDoProjectionWithThriftColumnFilter(projectionFilterDesc, toWrite, toRead, AddressBook.class);
   }
 
   @Test
@@ -187,14 +190,14 @@ public class TestParquetToThriftReadWriteAndProjection {
     shouldDoProjectionWithThriftColumnFilter(filter,toWrite,toRead,RequiredPrimitiveFixture.class);
   }
 
-  private void shouldDoProjectionWithThriftColumnFilter(String filterDesc,TBase toWrite, TBase toRead,Class<? extends TBase<?,?>> thriftClass) throws Exception {
+  private void shouldDoProjectionWithThriftColumnFilter(String filterDesc, TBase<?, ?> toWrite, TBase<?, ?> toRead, Class<? extends TBase<?, ?>> thriftClass) throws Exception {
     Configuration conf = new Configuration();
-    conf.set(ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY, filterDesc);
-    shouldDoProjection(conf,toWrite,toRead,thriftClass);
+    conf.set(THRIFT_COLUMN_FILTER_KEY, filterDesc);
+    shouldDoProjection(conf, toWrite, toRead, thriftClass);
   }
 
 
-  private <T extends TBase<?,?>> void shouldDoProjection(Configuration conf,T recordToWrite,T exptectedReadResult, Class<? extends TBase<?,?>> thriftClass) throws Exception {
+  private <T extends TBase<?, ?>> void shouldDoProjection(Configuration conf, T recordToWrite, T exptectedReadResult, Class<? extends TBase<?, ?>> thriftClass) throws Exception {
     final Path parquetFile = new Path("target/test/TestParquetToThriftReadWriteAndProjection/file.parquet");
     final FileSystem fs = parquetFile.getFileSystem(conf);
     if (fs.exists(parquetFile)) {

@@ -18,6 +18,8 @@ package parquet.pig;
 import static org.junit.Assert.assertEquals;
 import static parquet.pig.PigSchemaConverter.pigSchemaToString;
 import static parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static parquet.schema.Type.Repetition.OPTIONAL;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -31,6 +33,9 @@ import org.junit.Test;
 
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
+import parquet.schema.PrimitiveType;
+import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.schema.Type.Repetition;
 
 
 public class TestPigSchemaConverter {
@@ -174,7 +179,7 @@ public class TestPigSchemaConverter {
         "  }\n" +
         "}\n");
   }
-  
+
   private void testFixedConversion(String schemaString, String pigSchemaString)
       throws Exception {
     Schema expectedPigSchema = Utils.getSchemaFromString(pigSchemaString);
@@ -183,7 +188,7 @@ public class TestPigSchemaConverter {
     assertEquals("converting " + schemaString + " to " + pigSchemaString,
                  expectedPigSchema, pigSchema);
   }
-  
+
   @Test
   public void testMapWithFixed() throws Exception {
     testFixedConversion(

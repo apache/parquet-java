@@ -15,12 +15,16 @@
  */
 package parquet.schema;
 
+import static parquet.Preconditions.checkArgument;
+import static parquet.Preconditions.checkNotNull;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import parquet.Preconditions;
 import parquet.io.InvalidRecordException;
 
 /**
@@ -69,7 +73,12 @@ public class GroupType extends Type {
    * @param fields the contained fields
    */
   public GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields) {
-    super(name, repetition, originalType);
+    super(
+        checkNotNull(name, "name"),
+        checkNotNull(repetition, "repetition"),
+        originalType
+        );
+    checkNotNull(fields, "fields");
     this.fields = fields;
     this.indexByName = new HashMap<String, Integer>();
     for (int i = 0; i < fields.size(); i++) {
@@ -312,7 +321,7 @@ public class GroupType extends Type {
   List<Type> mergeFields(GroupType toMerge) {
     return mergeFields(toMerge, true);
   }
-  
+
   /**
    * produces the list of fields resulting from merging toMerge into the fields of this
    * @param toMerge the group containing the fields to merge

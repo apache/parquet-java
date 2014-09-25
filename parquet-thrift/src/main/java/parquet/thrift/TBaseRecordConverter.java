@@ -37,6 +37,8 @@ public class TBaseRecordConverter<T extends TBase<?,?>> extends ThriftRecordConv
             throw new ParquetDecodingException("Could not instantiate Thrift " + thriftClass, e);
           } catch (IllegalAccessException e) {
             throw new ParquetDecodingException("Thrift class or constructor not public " + thriftClass, e);
+          } catch (RuntimeException e) {
+            throw new ParquetDecodingException("Could not read thrift " + thriftClass + " from protocol " + protocol, e);
           }
       }
     }, thriftClass.getSimpleName(), requestedParquetSchema, thriftType);

@@ -37,6 +37,8 @@ import java.util.List;
  */
 public class ThriftSchemaConverter {
 
+  static final String SYNTHETIC_PLACEHOLDER_FIELD = "parquet_synthetic_placeholder_field";
+
   private final FieldProjectionFilter fieldProjectionFilter;
 
   public ThriftSchemaConverter() {

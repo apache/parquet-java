@@ -76,3 +76,11 @@ struct StructWithExtraField {
   3: required Phone extraPhone,
   6: required Phone phone
 }
+
+struct EmptyStruct {
+}
+
+union UnionWithEmptyStruct {
+  1: EmptyStruct empty
+  2: Name name
+}

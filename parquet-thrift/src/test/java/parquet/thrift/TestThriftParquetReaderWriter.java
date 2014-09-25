@@ -15,17 +15,24 @@
  */
 package parquet.thrift;
 
+import static java.util.Arrays.asList;
+
 import java.io.IOException;
 import java.util.Arrays;
-
-import org.junit.Assert;
+import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.thrift.TBase;
+import org.junit.Assert;
 import org.junit.Test;
 
+import parquet.hadoop.ParquetReader;
 import parquet.hadoop.metadata.CompressionCodecName;
+import parquet.hadoop.thrift.ThriftReadSupport;
+import parquet.thrift.test.EmptyStruct;
+import parquet.thrift.test.UnionWithEmptyStruct;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
@@ -54,17 +61,52 @@ public class TestThriftParquetReaderWriter {
     }
 
     { // read
-      ThriftParquetReader<AddressBook> thriftParquetReader = new ThriftParquetReader<AddressBook>(f, AddressBook.class);
+      ParquetReader<AddressBook> thriftParquetReader = ThriftParquetReader.build(f, AddressBook.class).build();
       AddressBook read = thriftParquetReader.read();
       Assert.assertEquals(original, read);
       thriftParquetReader.close();
     }
 
     { // read without providing a thrift class
-      ThriftParquetReader<AddressBook> thriftParquetReader = new ThriftParquetReader<AddressBook>(f);
-      AddressBook read = thriftParquetReader.read();
+      ParquetReader<TBase<?, ?>> thriftParquetReader = ThriftParquetReader.build(f).build();
+      TBase<?, ?> read = thriftParquetReader.read();
       Assert.assertEquals(original, read);
       thriftParquetReader.close();
     }
+  }
+
+  @Test
+  public void testWriteReadEmptyStruct() throws IOException {
+    Configuration configuration = new Configuration();
+    Path f = new Path("target/test/TestThriftParquetReaderWriterEmptyStruct");
+    FileSystem fs = f.getFileSystem(configuration);
+    if (fs.exists(f)) {
+      fs.delete(f, true);
+    }
+
+    UnionWithEmptyStruct empty = new UnionWithEmptyStruct();
+    empty.setEmpty(new EmptyStruct());
+    UnionWithEmptyStruct name = new UnionWithEmptyStruct();
+    name.setName(new parquet.thrift.test.Name("Bob"));
+    List<UnionWithEmptyStruct> originals = asList(empty, name);
+
+    { // write
+      ThriftParquetWriter<UnionWithEmptyStruct> thriftParquetWriter = new ThriftParquetWriter<UnionWithEmptyStruct>(f, UnionWithEmptyStruct.class, CompressionCodecName.UNCOMPRESSED);
+      for (UnionWithEmptyStruct original : originals) {
+        thriftParquetWriter.write(original);
+      }
+      thriftParquetWriter.close();
+    }
+
+    { // read
+      ParquetReader<UnionWithEmptyStruct> thriftParquetReader = ThriftParquetReader.build(f, UnionWithEmptyStruct.class).build();
+      for (int i = 0; i < originals.size(); i++) {
+        UnionWithEmptyStruct original = originals.get(i);
+        UnionWithEmptyStruct read = thriftParquetReader.read();
+        Assert.assertEquals(original, read);
+      }
+      thriftParquetReader.close();
+    }
+
   }
 }

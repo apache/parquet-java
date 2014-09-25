@@ -15,6 +15,8 @@
  */
 package parquet.thrift;
 
+import static parquet.Preconditions.checkNotNull;
+
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
@@ -26,8 +28,6 @@ import parquet.filter2.compat.FilterCompat.Filter;
 import parquet.hadoop.ParquetReader;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.thrift.ThriftReadSupport;
-
-import static parquet.Preconditions.checkNotNull;
 
 /**
  * To read a parquet file into thrift objects
@@ -86,6 +86,10 @@ public class ThriftParquetReader<T extends TBase<?,?>> extends ParquetReader<T> 
     return new Builder<T>(file);
   }
 
+  public static <T extends TBase<?,?>> Builder<T> build(Path file, Class<T> thriftClass) {
+    return new Builder<T>(file).withThriftClass(thriftClass);
+  }
+
   public static class Builder<T extends TBase<?,?>> {
     private final Path file;
     private Configuration conf;
@@ -127,9 +131,9 @@ public class ThriftParquetReader<T extends TBase<?,?>> extends ParquetReader<T> 
       } else {
         readSupport = new ThriftReadSupport<T>();
       }
-
       return ParquetReader.builder(readSupport, file).withConf(conf).withFilter(filter).build();
     }
+
   }
 
 }
