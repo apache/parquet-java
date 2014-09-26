@@ -3,7 +3,7 @@
 
   <groupId>com.twitter</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.6.1-SNAPSHOT</version>
+  <version>1.6.0rc3-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Parquet MR</name>
@@ -49,6 +49,7 @@
       <name>Nexus Release Repository</name>
       <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
     </repository>
+
   </distributionManagement>
 
   <repositories>
@@ -89,7 +90,11 @@
     <log4j.version>1.2.17</log4j.version>
     <previous.version>1.6.0rc1</previous.version>
     <thrift.executable>thrift</thrift.executable>
-    <scala.version>2.9.2</scala.version>
+    <scala.version>2.10.4</scala.version>
+    <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
+    <scala.binary.version>2.10</scala.binary.version>
+    <pig.version>0.11.1</pig.version>
+    <pig.classifier></pig.classifier>
   </properties>
 
   <modules>
@@ -107,7 +112,6 @@
     <module>parquet-scala</module>
     <module>parquet-scrooge</module>
     <module>parquet-thrift</module>
-    <module>parquet-test-hadoop2</module>
     <module>parquet-hadoop-bundle</module>
     <module>parquet-hive</module>
     <module>parquet-hive-bundle</module>
@@ -192,7 +196,7 @@
             <dependency>
               <groupId>org.semver</groupId>
               <artifactId>enforcer-rule</artifactId>
-              <version>0.9.27</version>
+              <version>0.9.28</version>
             </dependency>
          </dependencies>
          <executions>
@@ -455,6 +459,23 @@
           </plugin>
         </plugins>
       </build>
+    </profile>
+
+    <profile>
+      <id>hadoop-2</id>
+      <activation>
+        <property>
+          <name>hadoop.profile</name>
+          <value>hadoop2</value>
+        </property>
+      </activation>
+      <properties>
+        <!-- test hadoop-1 with the same jars that were produced for default profile -->
+        <maven.main.skip>true</maven.main.skip>
+        <hadoop.version>2.3.0</hadoop.version>
+        <pig.version>0.13.0</pig.version>
+        <pig.classifier>h2</pig.classifier>
+      </properties>
     </profile>
   </profiles>
 

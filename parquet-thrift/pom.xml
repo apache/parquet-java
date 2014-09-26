@@ -3,7 +3,7 @@
     <groupId>com.twitter</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.6.1-SNAPSHOT</version>
+    <version>1.6.0rc3-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -81,7 +81,8 @@
     <dependency>
       <groupId>org.apache.pig</groupId>
       <artifactId>pig</artifactId>
-      <version>0.11.1</version>
+      <version>${pig.version}</version>
+      <classifier>${pig.classifier}</classifier>
       <scope>provided</scope>
     </dependency>
     <dependency>

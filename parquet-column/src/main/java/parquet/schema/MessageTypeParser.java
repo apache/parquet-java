@@ -21,6 +21,8 @@ import java.util.StringTokenizer;
 import parquet.Log;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type.Repetition;
+import parquet.schema.Types.GroupBuilder;
+import parquet.schema.Types.PrimitiveBuilder;
 
 /**
  * Parses a schema from a textual format similar to that described in the Dremel paper.
@@ -38,7 +40,7 @@ public class MessageTypeParser {
     private StringBuffer currentLine = new StringBuffer();
 
     public Tokenizer(String schemaString, String string) {
-      st = new StringTokenizer(schemaString, " ,;{}()\n\t", true);
+      st = new StringTokenizer(schemaString, " ,;{}()\n\t=", true);
     }
 
     public String nextToken() {
@@ -107,8 +109,8 @@ public class MessageTypeParser {
     }
   }
 
-  private static void addGroupType(String t, Tokenizer st, Repetition r, Types.GroupBuilder builder) {
-    Types.GroupBuilder childBuilder = builder.group(r);
+  private static void addGroupType(String t, Tokenizer st, Repetition r, GroupBuilder<?> builder) {
+    GroupBuilder<?> childBuilder = builder.group(r);
     String name = st.nextToken();
 
     // Read annotation, if any.
@@ -120,7 +122,10 @@ public class MessageTypeParser {
       check(st.nextToken(), ")", "original type ended by )", st);
       t = st.nextToken();
     }
-
+    if (t.equals("=")) {
+      childBuilder.id(Integer.parseInt(st.nextToken()));
+      t = st.nextToken();
+    }
     try {
       addGroupTypeFields(t, st, childBuilder);
     } catch (IllegalArgumentException e) {
@@ -130,8 +135,8 @@ public class MessageTypeParser {
     childBuilder.named(name);
   }
 
-  private static void addPrimitiveType(String t, Tokenizer st, PrimitiveTypeName type, Repetition r, Types.GroupBuilder builder) {
-    Types.PrimitiveBuilder childBuilder = builder.primitive(type, r);
+  private static void addPrimitiveType(String t, Tokenizer st, PrimitiveTypeName type, Repetition r, Types.GroupBuilder<?> builder) {
+    PrimitiveBuilder<?> childBuilder = builder.primitive(type, r);
 
     if (type == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
       t = st.nextToken();
@@ -168,6 +173,10 @@ public class MessageTypeParser {
         t = st.nextToken();
       }
       check(t, ")", "original type ended by )", st);
+      t = st.nextToken();
+    }
+    if (t.equals("=")) {
+      childBuilder.id(Integer.parseInt(st.nextToken()));
       t = st.nextToken();
     }
     check(t, ";", "field ended by ';'", st);

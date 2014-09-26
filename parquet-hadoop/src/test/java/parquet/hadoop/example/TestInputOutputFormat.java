@@ -24,6 +24,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -34,6 +35,8 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Counter;
+import org.apache.hadoop.mapreduce.CounterGroup;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
@@ -239,13 +242,25 @@ public class TestInputOutputFormat {
     runMapReduceJob(CompressionCodecName.GZIP);
   }
 
+  private static long value(Job job, String groupName, String name) throws Exception {
+    // getGroup moved to AbstractCounters
+    Method getGroup = org.apache.hadoop.mapreduce.Counters.class.getMethod("getGroup", String.class);
+    // CounterGroup changed to an interface
+    Method findCounter = org.apache.hadoop.mapreduce.CounterGroup.class.getMethod("findCounter", String.class);
+    // Counter changed to an interface
+    Method getValue = org.apache.hadoop.mapreduce.Counter.class.getMethod("getValue");
+    CounterGroup group = (CounterGroup) getGroup.invoke(job.getCounters(), groupName);
+    Counter counter = (Counter) findCounter.invoke(group, name);
+    return (Long) getValue.invoke(counter);
+  }
+
   @Test
   public void testReadWriteWithCounter() throws Exception {
     runMapReduceJob(CompressionCodecName.GZIP);
-    assertTrue(readJob.getCounters().getGroup("parquet").findCounter("bytesread").getValue() > 0L);
-    assertTrue(readJob.getCounters().getGroup("parquet").findCounter("bytestotal").getValue() > 0L);
-    assertTrue(readJob.getCounters().getGroup("parquet").findCounter("bytesread").getValue()
-            == readJob.getCounters().getGroup("parquet").findCounter("bytestotal").getValue());
+    assertTrue(value(readJob, "parquet", "bytesread") > 0L);
+    assertTrue(value(readJob, "parquet", "bytestotal") > 0L);
+    assertTrue(value(readJob, "parquet", "bytesread")
+            == value(readJob, "parquet", "bytestotal"));
     //not testing the time read counter since it could be zero due to the size of data is too small
   }
 
@@ -255,9 +270,9 @@ public class TestInputOutputFormat {
     conf.set("parquet.benchmark.bytes.total", "false");
     conf.set("parquet.benchmark.bytes.read", "false");
     runMapReduceJob(CompressionCodecName.GZIP);
-    assertTrue(readJob.getCounters().getGroup("parquet").findCounter("bytesread").getValue() == 0L);
-    assertTrue(readJob.getCounters().getGroup("parquet").findCounter("bytestotal").getValue() == 0L);
-    assertTrue(readJob.getCounters().getGroup("parquet").findCounter("timeread").getValue() == 0L);
+    assertTrue(value(readJob, "parquet", "bytesread") == 0L);
+    assertTrue(value(readJob, "parquet", "bytestotal") == 0L);
+    assertTrue(value(readJob, "parquet", "timeread") == 0L);
   }
 
   private void waitForJob(Job job) throws InterruptedException, IOException {

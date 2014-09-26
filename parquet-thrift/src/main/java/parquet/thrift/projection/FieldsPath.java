@@ -15,11 +15,10 @@
  */
 package parquet.thrift.projection;
 
-import com.twitter.elephantbird.thrift.TStructDescriptor;
+import java.util.ArrayList;
+
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
-
-import java.util.ArrayList;
 
 /**
  * represent field path for thrift field

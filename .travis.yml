@@ -22,3 +22,10 @@ before_install:
   - ./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang
   - sudo make install
   - cd ..
+
+env:
+  - HADOOP_PROFILE=default
+  - HADOOP_PROFILE=hadoop-2
+
+install: mvn install -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true
+script: mvn test -P $HADOOP_PROFILE

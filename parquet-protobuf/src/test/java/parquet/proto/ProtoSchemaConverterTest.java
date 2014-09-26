@@ -45,28 +45,28 @@ public class ProtoSchemaConverterTest {
   public void testConvertAllDatatypes() throws Exception {
     String expectedSchema =
       "message TestProtobuf.SchemaConverterAllDatatypes {\n" +
-      "  optional double optionalDouble;\n" +
-      "  optional float optionalFloat;\n" +
-      "  optional int32 optionalInt32;\n" +
-      "  optional int64 optionalInt64;\n" +
-      "  optional int32 optionalUInt32;\n" +
-      "  optional int64 optionalUInt64;\n" +
-      "  optional int32 optionalSInt32;\n" +
-      "  optional int64 optionalSInt64;\n" +
-      "  optional int32 optionalFixed32;\n" +
-      "  optional int64 optionalFixed64;\n" +
-      "  optional int32 optionalSFixed32;\n" +
-      "  optional int64 optionalSFixed64;\n" +
-      "  optional boolean optionalBool;\n" +
-      "  optional binary optionalString (UTF8);\n" +
-      "  optional binary optionalBytes;\n" +
-      "  optional group optionalMessage {\n" +
-      "    optional int32 someId;\n" +
+      "  optional double optionalDouble = 1;\n" +
+      "  optional float optionalFloat = 2;\n" +
+      "  optional int32 optionalInt32 = 3;\n" +
+      "  optional int64 optionalInt64 = 4;\n" +
+      "  optional int32 optionalUInt32 = 5;\n" +
+      "  optional int64 optionalUInt64 = 6;\n" +
+      "  optional int32 optionalSInt32 = 7;\n" +
+      "  optional int64 optionalSInt64 = 8;\n" +
+      "  optional int32 optionalFixed32 = 9;\n" +
+      "  optional int64 optionalFixed64 = 10;\n" +
+      "  optional int32 optionalSFixed32 = 11;\n" +
+      "  optional int64 optionalSFixed64 = 12;\n" +
+      "  optional boolean optionalBool = 13;\n" +
+      "  optional binary optionalString (UTF8) = 14;\n" +
+      "  optional binary optionalBytes = 15;\n" +
+      "  optional group optionalMessage = 16 {\n" +
+      "    optional int32 someId = 3;\n" +
       "  }\n" +
-      "  optional group pbgroup {\n" +
-      "    optional int32 groupInt;\n" +
+      "  optional group pbgroup = 17 {\n" +
+      "    optional int32 groupInt = 2;\n" +
       "  }\n" +
-      " optional binary optionalEnum (ENUM);" +
+      " optional binary optionalEnum (ENUM)  = 18;" +
       "}";
 
     testConversion(TestProtobuf.SchemaConverterAllDatatypes.class, expectedSchema);
@@ -76,17 +76,17 @@ public class ProtoSchemaConverterTest {
   public void testConvertRepetition() throws Exception {
     String expectedSchema =
       "message TestProtobuf.SchemaConverterRepetition {\n" +
-        "  optional int32 optionalPrimitive;\n" +
-        "  required int32 requiredPrimitive;\n" +
-        "  repeated int32 repeatedPrimitive;\n" +
-        "  optional group optionalMessage {\n" +
-        "    optional int32 someId;\n" +
+        "  optional int32 optionalPrimitive = 1;\n" +
+        "  required int32 requiredPrimitive = 2;\n" +
+        "  repeated int32 repeatedPrimitive = 3;\n" +
+        "  optional group optionalMessage = 7 {\n" +
+        "    optional int32 someId = 3;\n" +
         "  }\n" +
-        "  required group requiredMessage {" +
-        "    optional int32 someId;\n" +
+        "  required group requiredMessage = 8 {" +
+        "    optional int32 someId= 3;\n" +
         "  }\n" +
-        "  repeated group repeatedMessage {" +
-        "    optional int32 someId;\n" +
+        "  repeated group repeatedMessage = 9 {" +
+        "    optional int32 someId = 3;\n" +
         "  }\n" +
         "}";
 
