@@ -15,7 +15,11 @@
  */
 package parquet.hadoop;
 
+import static parquet.filter2.compat.RowGroupFilter.filterRowGroups;
+import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static parquet.format.converter.ParquetMetadataConverter.range;
+import static parquet.hadoop.ParquetFileReader.readFooter;
+import static parquet.hadoop.ParquetInputFormat.getFilter;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -36,8 +40,8 @@ import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 import parquet.Log;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.compat.FilterCompat;
-import parquet.filter2.compat.RowGroupFilter;
 import parquet.filter2.compat.FilterCompat.Filter;
+import parquet.filter2.compat.RowGroupFilter;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
@@ -142,18 +146,19 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
   private void initializeInternalReader(ParquetInputSplit split, Configuration configuration) throws IOException {
     Path path = split.getPath();
-    ParquetMetadata footer = ParquetFileReader.readFooter(
-        configuration, path, range(split.getStart(), split.getEnd()));
     long[] rowGroupOffsets = split.getRowGroupOffsets();
     List<BlockMetaData> filteredBlocks;
+    ParquetMetadata footer;
     // if task.side.metadata is set, rowGroupOffsets is null
-    MessageType fileSchema = footer.getFileMetaData().getSchema();
     if (rowGroupOffsets == null) {
       // then we need to apply the predicate push down filter
-      Filter filter = ParquetInputFormat.getFilter(configuration);
-      filteredBlocks = RowGroupFilter.filterRowGroups(filter, footer.getBlocks(), fileSchema);
+      footer = readFooter(configuration, path, range(split.getStart(), split.getEnd()));
+      MessageType fileSchema = footer.getFileMetaData().getSchema();
+      Filter filter = getFilter(configuration);
+      filteredBlocks = filterRowGroups(filter, footer.getBlocks(), fileSchema);
     } else {
       // otherwise we find the row groups that were selected on the client
+      footer = readFooter(configuration, path, NO_FILTER);
       Set<Long> offsets = new HashSet<Long>();
       for (long offset : rowGroupOffsets) {
         offsets.add(offset);
@@ -180,11 +185,12 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
             + " in range " + split.getStart() + ", " + split.getEnd());
       }
     }
+    MessageType fileSchema = footer.getFileMetaData().getSchema();
     MessageType requestedSchema = MessageTypeParser.parseMessageType(split.getRequestedSchema());
     Map<String, String> fileMetaData = footer.getFileMetaData().getKeyValueMetaData();
     Map<String, String> readSupportMetadata = split.getReadSupportMetadata();
     internalReader.initialize(
-        requestedSchema,fileSchema,
+        requestedSchema, fileSchema,
         fileMetaData, readSupportMetadata,
         path,
         filteredBlocks, configuration);

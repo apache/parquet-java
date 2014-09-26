@@ -20,8 +20,6 @@ import java.util.List;
 
 import parquet.column.ColumnDescriptor;
 import parquet.io.InvalidRecordException;
-import parquet.schema.PrimitiveType.PrimitiveTypeName;
-
 
 /**
  * The root of a schema
@@ -109,10 +107,10 @@ public final class MessageType extends GroupType {
       // TODO: optimize this
       PrimitiveType primitiveType = getType(path).asPrimitiveType();
       columns.add(new ColumnDescriptor(
-                      path, 
-                      primitiveType.getPrimitiveTypeName(), 
+                      path,
+                      primitiveType.getPrimitiveTypeName(),
                       primitiveType.getTypeLength(),
-                      getMaxRepetitionLevel(path), 
+                      getMaxRepetitionLevel(path),
                       getMaxDefinitionLevel(path)));
     }
     return columns;
@@ -139,7 +137,7 @@ public final class MessageType extends GroupType {
   public MessageType union(MessageType toMerge) {
     return union(toMerge, true);
   }
-  
+
   public MessageType union(MessageType toMerge, boolean strict) {
     return new MessageType(this.getName(), mergeFields(toMerge, strict));
   }

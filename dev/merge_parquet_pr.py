@@ -31,6 +31,7 @@ import subprocess
 import sys
 import tempfile
 import urllib2
+import getpass
 
 try:
     import jira.client
@@ -210,15 +211,27 @@ def fix_version_from_branch(branch, versions):
         branch_ver = branch.replace("branch-", "")
         return filter(lambda x: x.name.startswith(branch_ver), versions)[-1]
 
+def exctract_jira_id(title):
+    m = re.search('^(PARQUET-[0-9]+):.*$', title)
+    if m and m.groups > 0:
+        return m.group(1)
+    else:
+        fail("PR title should be prefixed by a jira id \"PARQUET-XXX: ...\", found: \"%s\"" % title)
+
+def check_jira(title):
+    jira_id = exctract_jira_id(title)
+    asf_jira = jira.client.JIRA({'server': JIRA_API_BASE},
+                                basic_auth=(JIRA_USERNAME, JIRA_PASSWORD))
+    try:
+        issue = asf_jira.issue(jira_id)
+    except Exception as e:
+        fail("ASF JIRA could not find %s\n%s" % (jira_id, e))
 
 def resolve_jira(title, merge_branches, comment):
     asf_jira = jira.client.JIRA({'server': JIRA_API_BASE},
                                 basic_auth=(JIRA_USERNAME, JIRA_PASSWORD))
 
-    default_jira_id = ""
-    search = re.findall("SPARK-[0-9]{4,5}", title)
-    if len(search) > 0:
-        default_jira_id = search[0]
+    default_jira_id = exctract_jira_id(title)
 
     jira_id = raw_input("Enter a JIRA id [%s]: " % default_jira_id)
     if jira_id == "":
@@ -281,7 +294,7 @@ if not JIRA_USERNAME:
     JIRA_USERNAME =  raw_input("Env JIRA_USERNAME not set, please enter your JIRA username:")
 
 if not JIRA_PASSWORD:
-    JIRA_PASSWORD =  raw_input("Env JIRA_PASSWORD not set, please enter your JIRA password:")
+    JIRA_PASSWORD =  getpass.getpass("Env JIRA_PASSWORD not set, please enter your JIRA password:")
 
 branches = get_json("%s/branches" % GITHUB_API_BASE)
 branch_names = filter(lambda x: x.startswith("branch-"), [x['name'] for x in branches])
@@ -294,6 +307,7 @@ pr = get_json("%s/pulls/%s" % (GITHUB_API_BASE, pr_num))
 
 url = pr["url"]
 title = pr["title"]
+check_jira(title)
 body = pr["body"]
 target_ref = pr["base"]["ref"]
 user_login = pr["user"]["login"]
@@ -334,7 +348,7 @@ while raw_input("\n%s (y/n): " % pick_prompt).lower() == "y":
     merged_refs = merged_refs + [cherry_pick(pr_num, merge_hash, latest_branch)]
 
 if JIRA_IMPORTED:
-    continue_maybe("Would you like to update an associated JIRA?")
+    continue_maybe("Would you like to update the associated JIRA?")
     jira_comment = "Issue resolved by pull request %s\n[%s/%s]" % (pr_num, GITHUB_BASE, pr_num)
     resolve_jira(title, merged_refs, jira_comment)
 else:

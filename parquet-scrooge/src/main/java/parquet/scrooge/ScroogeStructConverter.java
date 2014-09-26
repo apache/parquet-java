@@ -25,6 +25,7 @@ import static parquet.thrift.struct.ThriftField.Requirement.*;
 
 import scala.collection.Iterator;
 import scala.collection.JavaConversions;
+import scala.collection.JavaConversions$;
 import scala.collection.Seq;
 import scala.reflect.Manifest;
 
@@ -75,7 +76,7 @@ public class ScroogeStructConverter {
     }
 
     List<ThriftField> children = new LinkedList<ThriftField>();//{@link ThriftType.StructType} uses foreach loop to iterate the children, yields O(n) time for linked list
-    Iterable<ThriftStructField> scroogeFields = JavaConversions.asIterable(companionObject.metaData().fields());
+    Iterable<ThriftStructField> scroogeFields = JavaConversions$.MODULE$.asJavaIterable(companionObject.metaData().fields());
     for (ThriftStructField field : scroogeFields) {
       children.add(toThriftField(field));
     }

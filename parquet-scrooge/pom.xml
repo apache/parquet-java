@@ -3,12 +3,12 @@
     <groupId>com.twitter</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.6.1-SNAPSHOT</version>
+    <version>1.6.0rc3-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>parquet-scrooge</artifactId>
+  <artifactId>parquet-scrooge_${scala.binary.version}</artifactId>
   <packaging>jar</packaging>
 
   <name>Parquet Scrooge</name>
@@ -73,8 +73,8 @@
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>scrooge-core_2.9.2</artifactId>
-      <version>3.12.1</version>
+      <artifactId>scrooge-core_${scala.binary.version}</artifactId>
+      <version>3.16.3</version>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>

@@ -15,6 +15,8 @@
  */
 package parquet.schema;
 
+import static java.util.Arrays.asList;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -40,7 +42,7 @@ public class GroupType extends Type {
    * @param fields the contained fields
    */
   public GroupType(Repetition repetition, String name, List<Type> fields) {
-    this(repetition, name, null, fields);
+    this(repetition, name, null, fields, null);
   }
 
   /**
@@ -49,7 +51,7 @@ public class GroupType extends Type {
    * @param fields the contained fields
    */
   public GroupType(Repetition repetition, String name, Type... fields) {
-    this(repetition, name, null, fields);
+    this(repetition, name, Arrays.asList(fields));
   }
 
   /**
@@ -58,6 +60,7 @@ public class GroupType extends Type {
    * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    * @param fields the contained fields
    */
+  @Deprecated
   public GroupType(Repetition repetition, String name, OriginalType originalType, Type... fields) {
     this(repetition, name, originalType, Arrays.asList(fields));
   }
@@ -68,13 +71,50 @@ public class GroupType extends Type {
    * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    * @param fields the contained fields
    */
+  @Deprecated
   public GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields) {
-    super(name, repetition, originalType);
+    this(repetition, name, originalType, fields, null);
+  }
+
+  /**
+   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param name the name of the field
+   * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
+   * @param fields the contained fields
+   * @param id the id of the field
+   */
+  GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields, ID id) {
+    super(name, repetition, originalType, id);
     this.fields = fields;
     this.indexByName = new HashMap<String, Integer>();
     for (int i = 0; i < fields.size(); i++) {
       indexByName.put(fields.get(i).getName(), i);
     }
+  }
+
+  /**
+   * @param id the field id
+   * @return a new GroupType with the same fields and a new id
+   */
+  @Override
+  public GroupType withId(int id) {
+    return new GroupType(getRepetition(), getName(), getOriginalType(), fields, new ID(id));
+  }
+
+  /**
+   * @param newFields
+   * @return a group with the same attributes and new fields.
+   */
+  public GroupType withNewFields(List<Type> newFields) {
+    return new GroupType(getRepetition(), getName(), getOriginalType(), newFields, getId());
+  }
+
+  /**
+   * @param newFields
+   * @return a group with the same attributes and new fields.
+   */
+  public GroupType withNewFields(Type... newFields) {
+    return withNewFields(asList(newFields));
   }
 
   /**
@@ -169,6 +209,7 @@ public class GroupType extends Type {
         .append(" group ")
         .append(getName())
         .append(getOriginalType() == null ? "" : " (" + getOriginalType() +")")
+        .append(getId() == null ? "" : " = " + getId())
         .append(" {\n");
     membersDisplayString(sb, indent + "  ");
     sb.append(indent)
@@ -183,32 +224,33 @@ public class GroupType extends Type {
     visitor.visit(this);
   }
 
-  /**
-   * {@inheritDoc}
-   */
-  @Override
+  @Override @Deprecated
   protected int typeHashCode() {
-    int c = 17;
-    c += 31 * getRepetition().hashCode();
-    c += 31 * getName().hashCode();
-    c += 31 * getFields().hashCode();
-    return c;
+    return hashCode();
+  }
+
+  @Override @Deprecated
+  protected boolean typeEquals(Type other) {
+    return equals(other);
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  protected boolean typeEquals(Type other) {
-    Type otherType = (Type) other;
-    if (otherType.isPrimitive()) {
-      return false;
-    } else {
-      GroupType groupType = otherType.asGroupType();
-      return getRepetition() == groupType.getRepetition() &&
-          getName().equals(groupType.getName()) &&
-          getFields().equals(groupType.getFields());
-    }
+  public int hashCode() {
+    return super.hashCode() * 31 + getFields().hashCode();
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  protected boolean equals(Type otherType) {
+    return
+        !otherType.isPrimitive()
+        && super.equals(otherType)
+        && getFields().equals(otherType.asGroupType().getFields());
   }
 
   @Override
@@ -312,7 +354,7 @@ public class GroupType extends Type {
   List<Type> mergeFields(GroupType toMerge) {
     return mergeFields(toMerge, true);
   }
-  
+
   /**
    * produces the list of fields resulting from merging toMerge into the fields of this
    * @param toMerge the group containing the fields to merge

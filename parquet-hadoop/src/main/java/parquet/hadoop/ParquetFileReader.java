@@ -79,6 +79,8 @@ public class ParquetFileReader implements Closeable {
 
   private static final Log LOG = Log.getLog(ParquetFileReader.class);
 
+  public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
+
   private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
   /**
@@ -151,7 +153,7 @@ public class ParquetFileReader implements Closeable {
 
     Map<Path, Footer> cache = new HashMap<Path, Footer>();
     try {
-      List<Map<Path, Footer>> footersFromSummaries = runAllInParallel(5, summaries);
+      List<Map<Path, Footer>> footersFromSummaries = runAllInParallel(configuration.getInt(PARQUET_READ_PARALLELISM, 5), summaries);
       for (Map<Path, Footer> footers : footersFromSummaries) {
         cache.putAll(footers);
       }
@@ -181,6 +183,7 @@ public class ParquetFileReader implements Closeable {
   }
 
   private static <T> List<T> runAllInParallel(int parallelism, List<Callable<T>> toRun) throws ExecutionException {
+    LOG.info("Initiating action with parallelism: " + parallelism);
     ExecutorService threadPool = Executors.newFixedThreadPool(parallelism);
     try {
       List<Future<T>> futures = new ArrayList<Future<T>>();
@@ -230,7 +233,7 @@ public class ParquetFileReader implements Closeable {
       });
     }
     try {
-      return runAllInParallel(5, footers);
+      return runAllInParallel(configuration.getInt(PARQUET_READ_PARALLELISM, 5), footers);
     } catch (ExecutionException e) {
       throw new IOException("Could not read footer: " + e.getMessage(), e.getCause());
     }
