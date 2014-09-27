@@ -73,6 +73,10 @@ import parquet.hadoop.util.ConfigurationUtil;
  *
  * # To enable/disable dictionary encoding
  * parquet.enable.dictionary=true # false to disable dictionary encoding
+ *
+ * # To enable/disable summary metadata aggregation at the end of a MR job
+ * # The default is true (enabled)
+ * parquet.enable.summary-metadata=true # false to disable summary aggregation
  * </pre>
  *
  * If parquet.compression is not set, the following properties are checked (FileOutputFormat behavior).
@@ -99,6 +103,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String ENABLE_DICTIONARY    = "parquet.enable.dictionary";
   public static final String VALIDATION           = "parquet.validation";
   public static final String WRITER_VERSION       = "parquet.writer.version";
+  public static final String ENABLE_JOB_SUMMARY   = "parquet.enable.summary-metadata";
 
   public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
     getConfiguration(job).set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
