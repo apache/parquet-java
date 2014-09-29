@@ -15,21 +15,23 @@
  */
 package parquet.tools.command;
 
-import java.io.PrintWriter;
+import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 
+import parquet.hadoop.Footer;
 import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.tools.util.MetadataUtils;
 import parquet.tools.util.PrettyPrintWriter;
 import parquet.tools.util.PrettyPrintWriter.WhiteSpaceHandler;
 
+import java.util.List;
+
 public class ShowMetaCommand extends ArgsOnlyCommand {
-  public static final String TABS = "    ";
-  public static final int BLOCK_BUFFER_SIZE = 64 * 1024;
   public static final String[] USAGE = new String[] {
     "<input>",
     "where <input> is the parquet file to print to stdout"
@@ -52,7 +54,9 @@ public class ShowMetaCommand extends ArgsOnlyCommand {
     String input = args[0];
     
     Configuration conf = new Configuration();
-    ParquetMetadata metaData = ParquetFileReader.readFooter(conf, new Path(input));
+    Path inputPath = new Path(input);
+    FileStatus inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath);
+    List<Footer> footers = ParquetFileReader.readFooters(conf, inputFileStatus, false);
 
     PrettyPrintWriter out = PrettyPrintWriter.stdoutPrettyPrinter()
                                              .withAutoColumn()
@@ -61,7 +65,9 @@ public class ShowMetaCommand extends ArgsOnlyCommand {
                                              .withColumnPadding(1)
                                              .build();
 
-    MetadataUtils.showDetails(out, metaData);
-    out.flushColumns();
+    for(Footer f: footers) {
+      MetadataUtils.showDetails(out, f.getParquetMetadata());
+      out.flushColumns();
+    }
   }
 }
