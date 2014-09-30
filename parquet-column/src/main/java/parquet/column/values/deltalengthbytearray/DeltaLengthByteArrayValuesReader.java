@@ -18,6 +18,7 @@ package parquet.column.values.deltalengthbytearray;
 import static parquet.Log.DEBUG;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import parquet.Log;
 import parquet.column.values.ValuesReader;
@@ -34,7 +35,7 @@ public class DeltaLengthByteArrayValuesReader extends ValuesReader {
 
   private static final Log LOG = Log.getLog(DeltaLengthByteArrayValuesReader.class);
   private ValuesReader lengthReader;
-  private byte[] in;
+  private ByteBuffer in;
   private int offset;
 
   public DeltaLengthByteArrayValuesReader() {
@@ -42,9 +43,9 @@ public class DeltaLengthByteArrayValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, byte[] in, int offset)
+  public void initFromPage(int valueCount, ByteBuffer in, int offset)
       throws IOException {
-    if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));
+    if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.limit() - offset));
     lengthReader.initFromPage(valueCount, in, offset);
     offset = lengthReader.getNextOffset();
     this.in = in;
@@ -52,11 +53,16 @@ public class DeltaLengthByteArrayValuesReader extends ValuesReader {
   }
 
   @Override
+  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException{
+    this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
+  }
+  
+  @Override
   public Binary readBytes() {
     int length = lengthReader.readInteger();
     int start = offset;
     offset = start + length;
-    return Binary.fromByteArray(in, start, length);
+    return Binary.fromByteBuffer(in, start, length);
   }
 
   @Override

@@ -16,6 +16,7 @@
 package parquet.column.values.deltastrings;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import parquet.column.values.ValuesReader;
 import parquet.column.values.delta.DeltaBinaryPackingValuesReader;
@@ -41,11 +42,16 @@ public class DeltaByteArrayReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, byte[] page, int offset)
+  public void initFromPage(int valueCount, ByteBuffer page, int offset)
       throws IOException {
     prefixLengthReader.initFromPage(valueCount, page, offset);
     int next = prefixLengthReader.getNextOffset();
     suffixReader.initFromPage(valueCount, page, next);	
+  }
+  
+  @Override
+  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException{
+    this.initFromPage(valueCount, ByteBuffer.wrap(page), offset);
   }
 
   @Override

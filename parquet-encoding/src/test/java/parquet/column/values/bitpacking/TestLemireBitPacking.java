@@ -18,6 +18,7 @@ package parquet.column.values.bitpacking;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -61,7 +62,7 @@ public class TestLemireBitPacking {
   private void packUnpack(BytePacker packer, int[] values, int[] unpacked) {
     byte[] packed = new byte[packer.getBitWidth() * 4];
     packer.pack32Values(values, 0, packed, 0);
-    packer.unpack32Values(packed, 0, unpacked, 0);
+    packer.unpack32Values(ByteBuffer.wrap(packed), 0, unpacked, 0);
   }
 
   private int[] generateValues(int bitWidth) {
