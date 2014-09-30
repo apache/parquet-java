@@ -19,7 +19,7 @@ The resulting jar is target/parquet-tools-<Version>.jar
 See Commands Usage for command to use
 
 ```sh
-hadoop --config jar ./parquet-tools-<VERSION>.jar <command> my_parquet_file.lzo.parquet
+hadoop jar ./parquet-tools-<VERSION>.jar <command> my_parquet_file.lzo.parquet
 ```
 
 #Run locally
@@ -31,6 +31,8 @@ java jar ./parquet-tools-<VERSION>.jar <command> my_parquet_file.lzo.parquet
 ```
 
 ## Commands Usage
+
+To run it on hadoop, you should use "hadoop jar" instead of "java jar"
 
 ```sh
 usage: java jar ./parquet-tools-<VERSION>.jar cat [option...] <input>
