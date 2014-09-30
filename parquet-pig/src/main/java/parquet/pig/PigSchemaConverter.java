@@ -43,6 +43,7 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.PrimitiveType.PrimitiveTypeNameConverter;
 import parquet.schema.Type;
 import parquet.schema.Type.Repetition;
+import parquet.schema.Types;
 
 
 /**
@@ -506,6 +507,24 @@ public class PigSchemaConverter {
       // Bags always contain tuples => we skip the extra tuple that was inserted in that case.
       innerField = innerField.schema.getField(0);
     }
-    return bagType.withNewFields(filter(nested, innerField));
+
+    // handle repeated group bag { ... } types from Avro and Hive
+    // if there is no corresponding pig type, filter the inner fields
+    Type filtered;
+    if (nested.isRepetition(Repetition.REPEATED) && !nested.isPrimitive() &&
+        nested.asGroupType().getFieldCount() == 1 &&
+        !nested.getName().equals(innerField.alias)) {
+      // filter the inner type and wrap it in the missing bag or array group
+      filtered = Types.repeatedGroup()
+          .addField(filter(nested.asGroupType().getType(0), innerField))
+          .named(nested.getName());
+    } else {
+      filtered = filter(nested, innerField);
+    }
+
+    return Types.buildGroup(bagType.getRepetition())
+        .as(bagType.getOriginalType())
+        .addField(filtered)
+        .named(bagType.getName());
   }
 }
