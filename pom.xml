@@ -187,6 +187,8 @@
                   <artifact>org.apache.thrift:libthrift</artifact>
                   <excludes>
                     <exclude>**/*.java</exclude>
+                    <exclude>META-INF/LICENSE.txt</exclude>
+                    <exclude>META-INF/NOTICE.txt</exclude>
                   </excludes>
                 </filter>
               </filters>
