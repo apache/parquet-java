@@ -183,7 +183,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    * {@inheritDoc}
    */
   @Override
-  public void readFields(DataInput hin) throws IOException {
+  protected void readFields(DataInput hin) throws IOException {
     byte[] bytes = readArray(hin);
     DataInputStream in = new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(bytes)));
     super.readFields(in);
@@ -203,7 +203,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    * {@inheritDoc}
    */
   @Override
-  public void write(DataOutput hout) throws IOException {
+  protected void write(DataOutput hout) throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     DataOutputStream out = new DataOutputStream(new GZIPOutputStream(baos));
     super.write(out);
