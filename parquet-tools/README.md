@@ -8,11 +8,21 @@ Currently these tools are available for UN*X systems.
 
 ## Build
 
+If you want to use parquet-tools in local mode, you should use the local profile so the 
+hadoop client dependency is included.
+
 ```sh
-cd parquet-tools && mvn package 
+cd parquet-tools && mvn clean package -Plocal 
 ```
 
-The resulting jar is target/parquet-tools-<Version>.jar
+To use it in hadoop mode, the default profile will exclude the hadoop client dependency
+
+```sh
+cd parquet-tools && mvn clean package 
+```
+
+The resulting jar is target/parquet-tools-<Version>.jar, you can copy it to the place where you
+want to use it
 
 #Run from hadoop
 
