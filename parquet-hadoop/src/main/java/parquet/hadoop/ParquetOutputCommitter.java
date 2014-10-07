@@ -41,22 +41,24 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
 
   public void commitJob(JobContext jobContext) throws IOException {
     super.commitJob(jobContext);
-    try {
-      Configuration configuration = ContextUtil.getConfiguration(jobContext);
-      final FileSystem fileSystem = outputPath.getFileSystem(configuration);
-      FileStatus outputStatus = fileSystem.getFileStatus(outputPath);
-      List<Footer> footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus);
+    Configuration configuration = ContextUtil.getConfiguration(jobContext);
+    if (configuration.getBoolean(ParquetOutputFormat.ENABLE_JOB_SUMMARY, true)) {
       try {
-        ParquetFileWriter.writeMetadataFile(configuration, outputPath, footers);
+        final FileSystem fileSystem = outputPath.getFileSystem(configuration);
+        FileStatus outputStatus = fileSystem.getFileStatus(outputPath);
+        List<Footer> footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus);
+        try {
+          ParquetFileWriter.writeMetadataFile(configuration, outputPath, footers);
+        } catch (Exception e) {
+          LOG.warn("could not write summary file for " + outputPath, e);
+          final Path metadataPath = new Path(outputPath, ParquetFileWriter.PARQUET_METADATA_FILE);
+          if (fileSystem.exists(metadataPath)) {
+            fileSystem.delete(metadataPath, true);
+          }
+        }
       } catch (Exception e) {
         LOG.warn("could not write summary file for " + outputPath, e);
-        final Path metadataPath = new Path(outputPath, ParquetFileWriter.PARQUET_METADATA_FILE);
-        if (fileSystem.exists(metadataPath)) {
-          fileSystem.delete(metadataPath, true);
-        }
       }
-    } catch (Exception e) {
-      LOG.warn("could not write summary file for " + outputPath, e);
     }
   }
 

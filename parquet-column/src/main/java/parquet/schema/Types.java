@@ -309,9 +309,11 @@ public class Types {
       if (originalType != null) {
         switch (originalType) {
           case UTF8:
+          case JSON:
+          case BSON:
             Preconditions.checkState(
                 primitiveType == PrimitiveTypeName.BINARY,
-                "UTF8 can only annotate binary fields");
+                originalType.toString() + " can only annotate binary fields");
             break;
           case DECIMAL:
             Preconditions.checkState(
@@ -337,6 +339,29 @@ public class Types {
                   "FIXED(" + length + ") cannot store " + meta.getPrecision() +
                   " digits (max " + maxPrecision(length) + ")");
             }
+            break;
+          case DATE:
+          case TIME_MILLIS:
+          case UINT_8:
+          case UINT_16:
+          case UINT_32:
+          case INT_8:
+          case INT_16:
+          case INT_32:
+            Preconditions.checkState(primitiveType == PrimitiveTypeName.INT32,
+                originalType.toString() + " can only annotate INT32");
+            break;
+          case TIMESTAMP_MILLIS:
+          case UINT_64:
+          case INT_64:
+            Preconditions.checkState(primitiveType == PrimitiveTypeName.INT64,
+                originalType.toString() + " can only annotate INT64");
+            break;
+          case INTERVAL:
+            Preconditions.checkState(
+                (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) &&
+                (length == 12),
+                "INTERVAL can only annotate FIXED_LEN_BYTE_ARRAY(12)");
             break;
           case ENUM:
             Preconditions.checkState(

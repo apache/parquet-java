@@ -24,6 +24,7 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static parquet.schema.Type.Repetition.OPTIONAL;
 import static parquet.schema.Type.Repetition.REPEATED;
 import static parquet.schema.Type.Repetition.REQUIRED;
+import static parquet.schema.OriginalType.*;
 import static parquet.schema.Types.buildMessage;
 
 import org.junit.Test;
@@ -31,8 +32,10 @@ import org.junit.Test;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
+import parquet.schema.MessageTypeParser;
 import parquet.schema.PrimitiveType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.schema.Types;
 import parquet.schema.Types.MessageTypeBuilder;
 
 public class TestParquetParser {
@@ -117,7 +120,7 @@ public class TestParquetParser {
 
     MessageType parsed = parseMessageType(message);
     MessageType expected = buildMessage()
-        .required(BINARY).as(OriginalType.UTF8).named("string")
+        .required(BINARY).as(UTF8).named("string")
         .named("StringMessage");
 
     assertEquals(expected, parsed);
@@ -165,7 +168,7 @@ public class TestParquetParser {
     MessageType expected = buildMessage()
         .optionalGroup()
         .repeatedGroup()
-        .required(BINARY).as(OriginalType.UTF8).named("key")
+        .required(BINARY).as(UTF8).named("key")
         .required(INT32).named("value")
         .named("map")
         .named("aMap")
@@ -189,7 +192,7 @@ public class TestParquetParser {
     MessageType parsed = parseMessageType(message);
     MessageType expected = buildMessage()
         .requiredGroup()
-        .repeated(BINARY).as(OriginalType.UTF8).named("string")
+        .repeated(BINARY).as(UTF8).named("string")
         .named("aList")
         .named("Message");
 
@@ -208,7 +211,7 @@ public class TestParquetParser {
     MessageType parsed = parseMessageType(message);
     MessageType expected = buildMessage()
         .required(FIXED_LEN_BYTE_ARRAY).length(4)
-        .as(OriginalType.DECIMAL).precision(9).scale(2)
+        .as(DECIMAL).precision(9).scale(2)
         .named("aDecimal")
         .named("DecimalMessage");
 
@@ -226,7 +229,7 @@ public class TestParquetParser {
 
     MessageType parsed = parseMessageType(message);
     MessageType expected = buildMessage()
-        .required(BINARY).as(OriginalType.DECIMAL).precision(9).scale(2)
+        .required(BINARY).as(DECIMAL).precision(9).scale(2)
         .named("aDecimal")
         .named("DecimalMessage");
 
@@ -235,4 +238,73 @@ public class TestParquetParser {
     assertEquals(expected, reparsed);
   }
 
+  @Test
+  public void testTimeAnnotations() {
+    String message = "message TimeMessage {" +
+        "  required int32 date (DATE);" +
+        "  required int32 time (TIME_MILLIS);" +
+        "  required int64 timestamp (TIMESTAMP_MILLIS);" +
+        "  required FIXED_LEN_BYTE_ARRAY(12) interval (INTERVAL);" +
+        "}\n";
+
+    MessageType parsed = MessageTypeParser.parseMessageType(message);
+    MessageType expected = Types.buildMessage()
+        .required(INT32).as(DATE).named("date")
+        .required(INT32).as(TIME_MILLIS).named("time")
+        .required(INT64).as(TIMESTAMP_MILLIS).named("timestamp")
+        .required(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("interval")
+        .named("TimeMessage");
+
+    assertEquals(expected, parsed);
+    MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
+  }
+
+  @Test
+  public void testIntAnnotations() {
+    String message = "message IntMessage {" +
+        "  required int32 i8 (INT_8);" +
+        "  required int32 i16 (INT_16);" +
+        "  required int32 i32 (INT_32);" +
+        "  required int64 i64 (INT_64);" +
+        "  required int32 u8 (UINT_8);" +
+        "  required int32 u16 (UINT_16);" +
+        "  required int32 u32 (UINT_32);" +
+        "  required int64 u64 (UINT_64);" +
+        "}\n";
+
+    MessageType parsed = MessageTypeParser.parseMessageType(message);
+    MessageType expected = Types.buildMessage()
+        .required(INT32).as(INT_8).named("i8")
+        .required(INT32).as(INT_16).named("i16")
+        .required(INT32).as(INT_32).named("i32")
+        .required(INT64).as(INT_64).named("i64")
+        .required(INT32).as(UINT_8).named("u8")
+        .required(INT32).as(UINT_16).named("u16")
+        .required(INT32).as(UINT_32).named("u32")
+        .required(INT64).as(UINT_64).named("u64")
+        .named("IntMessage");
+
+    assertEquals(expected, parsed);
+    MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
+  }
+
+  @Test
+  public void testEmbeddedAnnotations() {
+    String message = "message EmbeddedMessage {" +
+        "  required binary json (JSON);" +
+        "  required binary bson (BSON);" +
+        "}\n";
+
+    MessageType parsed = MessageTypeParser.parseMessageType(message);
+    MessageType expected = Types.buildMessage()
+        .required(BINARY).as(JSON).named("json")
+        .required(BINARY).as(BSON).named("bson")
+        .named("EmbeddedMessage");
+
+    assertEquals(expected, parsed);
+    MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
+  }
 }
