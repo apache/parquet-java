@@ -60,12 +60,12 @@ public class ShowMetaCommand extends ArgsOnlyCommand {
 
     PrettyPrintWriter out = PrettyPrintWriter.stdoutPrettyPrinter()
                                              .withAutoColumn()
-                                             .withAutoCrop()
                                              .withWhitespaceHandler(WhiteSpaceHandler.COLLAPSE_WHITESPACE)
                                              .withColumnPadding(1)
                                              .build();
 
     for(Footer f: footers) {
+      out.format("file: %s%n" , f.getFile());
       MetadataUtils.showDetails(out, f.getParquetMetadata());
       out.flushColumns();
     }
