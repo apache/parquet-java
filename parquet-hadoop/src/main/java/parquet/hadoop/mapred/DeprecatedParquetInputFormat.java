@@ -44,8 +44,7 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
 
   @Override
   public InputSplit[] getSplits(JobConf job, int numSplits) throws IOException {
-    List<Footer> footers = getFooters(job);
-    List<ParquetInputSplit> splits = realInputFormat.getSplits(job, footers);
+    List<ParquetInputSplit> splits = realInputFormat.getSplits(job, asList(super.listStatus(job)));
     if (splits == null) {
       return null;
     }
