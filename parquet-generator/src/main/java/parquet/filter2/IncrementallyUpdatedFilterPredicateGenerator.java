@@ -221,6 +221,8 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         "    ValueInspector valueInspector = null;\n" +
         "\n" +
         "    final U udp = pred.getUserDefinedPredicate();\n" +
+        "\n" +
+        "    final Object o = pred.getFilterObject();\n" +
         "\n");
   }
 
@@ -229,13 +231,13 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         "      valueInspector = new ValueInspector() {\n" +
         "        @Override\n" +
         "        public void updateNull() {\n" +
-        "          setResult(" + (invert ? "!" : "") + "udp.keep(null));\n" +
+        "          setResult(" + (invert ? "!" : "") + "udp.keep(null, o));\n" +
         "        }\n" +
         "\n" +
         "        @SuppressWarnings(\"unchecked\")\n" +
         "        @Override\n" +
         "        public void update(" + info.primitiveName + " value) {\n" +
-        "          setResult(" + (invert ? "!" : "") + "udp.keep((T) (Object) value));\n" +
+        "          setResult(" + (invert ? "!" : "") + "udp.keep((T) (Object) value, o));\n" +
         "        }\n" +
         "      };\n" +
         "    }\n\n");

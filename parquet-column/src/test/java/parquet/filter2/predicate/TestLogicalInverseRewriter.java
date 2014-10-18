@@ -32,7 +32,7 @@ public class TestLogicalInverseRewriter {
               or(ltEq(doubleColumn, 12.0),
                   and(
                       not(or(eq(intColumn, 7), notEq(intColumn, 17))),
-                      userDefined(intColumn, DummyUdp.class)))),
+                      userDefined(intColumn, DummyUdp.class, null)))),
           or(gt(doubleColumn, 100.0), not(gtEq(intColumn, 77))));
 
   private static final FilterPredicate complexCollapsed =
@@ -40,7 +40,7 @@ public class TestLogicalInverseRewriter {
           and(gt(doubleColumn, 12.0),
               or(
                   or(eq(intColumn, 7), notEq(intColumn, 17)),
-                  new LogicalNotUserDefined<Integer, DummyUdp>(userDefined(intColumn, DummyUdp.class)))),
+                  new LogicalNotUserDefined<Integer, DummyUdp>(userDefined(intColumn, DummyUdp.class, null)))),
           or(gt(doubleColumn, 100.0), lt(intColumn, 77)));
 
   private static void assertNoOp(FilterPredicate p) {
@@ -49,7 +49,7 @@ public class TestLogicalInverseRewriter {
 
   @Test
   public void testBaseCases() {
-    UserDefined<Integer, DummyUdp> ud = userDefined(intColumn, DummyUdp.class);
+    UserDefined<Integer, DummyUdp> ud = userDefined(intColumn, DummyUdp.class, null);
 
     assertNoOp(eq(intColumn, 17));
     assertNoOp(notEq(intColumn, 17));

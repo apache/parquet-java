@@ -146,8 +146,8 @@ public final class FilterApi {
    * Keeps records that pass the provided {@link UserDefinedPredicate}
    */
   public static <T extends Comparable<T>, U extends UserDefinedPredicate<T>>
-    UserDefined<T, U> userDefined(Column<T> column, Class<U> clazz) {
-    return new UserDefined<T, U>(column, clazz);
+    UserDefined<T, U> userDefined(Column<T> column, Class<U> clazz, Object o) {
+    return new UserDefined<T, U>(column, clazz, o);
   }
 
   /**

@@ -79,7 +79,7 @@ public class TestFilterApiMethods {
 
   @Test
   public void testUdp() {
-    FilterPredicate predicate = or(eq(doubleColumn, 12.0), userDefined(intColumn, DummyUdp.class));
+    FilterPredicate predicate = or(eq(doubleColumn, 12.0), userDefined(intColumn, DummyUdp.class, null));
     assertTrue(predicate instanceof Or);
     FilterPredicate ud = ((Or) predicate).getRight();
     assertTrue(ud instanceof UserDefined);
@@ -90,7 +90,7 @@ public class TestFilterApiMethods {
   @Test
   public void testSerializable() throws Exception {
     BinaryColumn binary = binaryColumn("foo");
-    FilterPredicate p = or(and(userDefined(intColumn, DummyUdp.class), predicate), eq(binary, Binary.fromString("hi")));
+    FilterPredicate p = or(and(userDefined(intColumn, DummyUdp.class, null), predicate), eq(binary, Binary.fromString("hi")));
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(baos);
     oos.writeObject(p);

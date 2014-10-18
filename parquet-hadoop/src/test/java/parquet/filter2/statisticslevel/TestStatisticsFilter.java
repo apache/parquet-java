@@ -222,7 +222,7 @@ public class TestStatisticsFilter {
   public static class SevensAndEightsUdp extends UserDefinedPredicate<Integer> {
 
     @Override
-    public boolean keep(Integer value) {
+    public boolean keep(Integer value, Object o) {
       throw new RuntimeException("this method should not be called");
     }
 
@@ -239,8 +239,8 @@ public class TestStatisticsFilter {
 
   @Test
   public void testUdp() {
-    FilterPredicate pred = userDefined(intColumn, SevensAndEightsUdp.class);
-    FilterPredicate invPred = LogicalInverseRewriter.rewrite(not(userDefined(intColumn, SevensAndEightsUdp.class)));
+    FilterPredicate pred = userDefined(intColumn, SevensAndEightsUdp.class, null);
+    FilterPredicate invPred = LogicalInverseRewriter.rewrite(not(userDefined(intColumn, SevensAndEightsUdp.class, null)));
 
     IntStatistics seven = new IntStatistics();
     seven.setMinMax(7, 7);

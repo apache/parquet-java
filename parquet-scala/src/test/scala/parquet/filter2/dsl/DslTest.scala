@@ -9,7 +9,7 @@ import parquet.filter2.predicate.Operators.{Or, UserDefined, DoubleColumn => JDo
 import parquet.filter2.predicate.{FilterApi, Statistics, UserDefinedPredicate}
 
 class DummyFilter extends UserDefinedPredicate[JInt] {
-  override def keep(value: JInt): Boolean = false
+  override def keep(value: JInt, o: Object): Boolean = false
 
   override def canDrop(statistics: Statistics[JInt]): Boolean = false
 
@@ -39,7 +39,7 @@ class DslTest extends FlatSpec{
     val abc = IntColumn("a.b.c")
     val pred = (abc > 10) || abc.filterBy(classOf[DummyFilter])
 
-    val expected = FilterApi.or(FilterApi.gt[JInt, JIntColumn](abc.javaColumn, 10), FilterApi.userDefined(abc.javaColumn, classOf[DummyFilter]))
+    val expected = FilterApi.or(FilterApi.gt[JInt, JIntColumn](abc.javaColumn, 10), FilterApi.userDefined(abc.javaColumn, classOf[DummyFilter], null))
     assert(pred === expected)
     val intUserDefined = pred.asInstanceOf[Or].getRight.asInstanceOf[UserDefined[JInt, DummyFilter]]
 

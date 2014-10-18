@@ -143,7 +143,7 @@ public class TestRecordLevelFilters {
   public static class StartWithP extends UserDefinedPredicate<Binary> {
 
     @Override
-    public boolean keep(Binary value) {
+    public boolean keep(Binary value, Object o) {
       if (value == null) {
         return false;
       }
@@ -165,7 +165,7 @@ public class TestRecordLevelFilters {
   public void testNameNotStartWithP() throws Exception {
     BinaryColumn name = binaryColumn("name");
 
-    FilterPredicate pred = not(userDefined(name, StartWithP.class));
+    FilterPredicate pred = not(userDefined(name, StartWithP.class, null));
 
     List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
 

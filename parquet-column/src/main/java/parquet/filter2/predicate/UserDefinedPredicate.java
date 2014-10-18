@@ -22,8 +22,9 @@ public abstract class UserDefinedPredicate<T extends Comparable<T>> {
 
   /**
    * Return true to keep the record with this value, false to drop it.
+   * o is a filter object that can be used for filtering the value.
    */
-  public abstract boolean keep(T value);
+  public abstract boolean keep(T value, Object o);
 
   /**
    * Given information about a group of records (eg, the min and max value)

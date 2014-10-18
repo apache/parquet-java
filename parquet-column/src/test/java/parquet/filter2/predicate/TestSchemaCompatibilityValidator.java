@@ -46,12 +46,12 @@ public class TestSchemaCompatibilityValidator {
           or(ltEq(stringC, Binary.fromString("foo")),
               and(
                   not(or(eq(intBar, 17), notEq(intBar, 17))),
-                  userDefined(intBar, DummyUdp.class))),
+                  userDefined(intBar, DummyUdp.class, null))),
           or(gt(stringC, Binary.fromString("bar")), notEq(stringC, Binary.fromString("baz"))));
 
   static class LongDummyUdp extends UserDefinedPredicate<Long> {
     @Override
-    public boolean keep(Long value) {
+    public boolean keep(Long value, Object o) {
       return false;
     }
 
@@ -71,7 +71,7 @@ public class TestSchemaCompatibilityValidator {
           or(ltEq(stringC, Binary.fromString("foo")),
               and(
                   not(or(eq(longBar, 17L), notEq(longBar, 17L))),
-                  userDefined(longBar, LongDummyUdp.class))),
+                  userDefined(longBar, LongDummyUdp.class, null))),
           or(gt(stringC, Binary.fromString("bar")), notEq(stringC, Binary.fromString("baz"))));
 
   private static final FilterPredicate complexMixedType =
@@ -79,7 +79,7 @@ public class TestSchemaCompatibilityValidator {
           or(ltEq(stringC, Binary.fromString("foo")),
               and(
                   not(or(eq(intBar, 17), notEq(longBar, 17L))),
-                  userDefined(longBar, LongDummyUdp.class))),
+                  userDefined(longBar, LongDummyUdp.class, null))),
           or(gt(stringC, Binary.fromString("bar")), notEq(stringC, Binary.fromString("baz"))));
 
   @Test

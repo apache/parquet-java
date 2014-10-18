@@ -3,7 +3,7 @@ package parquet.filter2.predicate;
 public class DummyUdp extends UserDefinedPredicate<Integer> {
 
   @Override
-  public boolean keep(Integer value) {
+  public boolean keep(Integer value, Object o) {
     return false;
   }
 

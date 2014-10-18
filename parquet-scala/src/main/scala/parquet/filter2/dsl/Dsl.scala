@@ -29,7 +29,7 @@ object Dsl {
   private[Dsl] trait Column[T <: Comparable[T], C <: Operators.Column[T]] {
     val javaColumn: C
 
-    def filterBy[U <: UserDefinedPredicate[T]](clazz: Class[U]) = FilterApi.userDefined(javaColumn, clazz)
+    def filterBy[U <: UserDefinedPredicate[T]](clazz: Class[U]) = FilterApi.userDefined(javaColumn, clazz, null)
 
     // this is not supported because it allows for easy mistakes. For example:
     // val pred = IntColumn("foo") == "hello"
