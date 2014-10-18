@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -15,6 +17,7 @@ import parquet.filter2.compat.FilterCompat;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.filter2.predicate.Operators.BinaryColumn;
 import parquet.filter2.predicate.Operators.DoubleColumn;
+import parquet.filter2.predicate.Operators.LongColumn;
 import parquet.filter2.predicate.Statistics;
 import parquet.filter2.predicate.UserDefinedPredicate;
 import parquet.filter2.recordlevel.PhoneBookWriter.Location;
@@ -26,6 +29,7 @@ import static org.junit.Assert.assertEquals;
 import static parquet.filter2.predicate.FilterApi.and;
 import static parquet.filter2.predicate.FilterApi.binaryColumn;
 import static parquet.filter2.predicate.FilterApi.doubleColumn;
+import static parquet.filter2.predicate.FilterApi.longColumn;
 import static parquet.filter2.predicate.FilterApi.eq;
 import static parquet.filter2.predicate.FilterApi.gt;
 import static parquet.filter2.predicate.FilterApi.not;
@@ -160,6 +164,29 @@ public class TestRecordLevelFilters {
       return false;
     }
   }
+  
+  public static class SetInFilter extends UserDefinedPredicate<Long> {
+
+    @Override
+    public boolean keep(Long value, Object o) {
+      if (value == null) {
+        return false;
+      }
+
+      Set<Long> hSet = (HashSet<Long>) o;
+      return hSet.contains(value);
+    }
+
+    @Override
+    public boolean canDrop(Statistics<Long> statistics) {
+      return false;
+    }
+
+    @Override
+    public boolean inverseCanDrop(Statistics<Long> statistics) {
+      return false;
+    }
+  }
 
   @Test
   public void testNameNotStartWithP() throws Exception {
@@ -173,6 +200,28 @@ public class TestRecordLevelFilters {
       @Override
       public boolean keep(User u) {
         return u.getName() == null || !u.getName().startsWith("p");
+      }
+    });
+  }
+  
+  @Test
+  public void testIdIn() throws Exception {
+    LongColumn name = longColumn("id");
+
+    Set<Long> h = new HashSet<Long>() {{
+          add(20L); add(27L); add(28L);
+    }}; 
+    FilterPredicate pred = userDefined(name, SetInFilter.class, h);
+
+    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
+
+    assertFilter(found, new UserFilter() {
+      @Override
+      public boolean keep(User u) {
+        Set<Long> h = new HashSet<Long>() {{
+          add(20L); add(27L); add(28L);
+        }}; 
+        return h.contains(u.getId());
       }
     });
   }
