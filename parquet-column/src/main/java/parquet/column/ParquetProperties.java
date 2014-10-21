@@ -65,7 +65,7 @@ public class ParquetProperties {
     }
   }
 
-  private ValuesWriter getPlainWriter(ColumnDescriptor path, int initialSizePerCol) {
+  private ValuesWriter plainWriter(ColumnDescriptor path, int initialSizePerCol) {
     switch (path.getType()) {
     case BOOLEAN:
       return new BooleanPlainValuesWriter();
@@ -84,7 +84,7 @@ public class ParquetProperties {
     }
   }
 
-  private DictionaryValuesWriter getDictionaryWriter(ColumnDescriptor path, int initialSizePerCol) {
+  private DictionaryValuesWriter dictionaryWriter(ColumnDescriptor path, int initialSizePerCol) {
     switch (path.getType()) {
     case BOOLEAN:
       throw new IllegalArgumentException("no dictionary encoding for BOOLEAN");
@@ -110,7 +110,7 @@ public class ParquetProperties {
   private ValuesWriter fallbackWriter(ColumnDescriptor path, int initialSizePerCol) {
     switch(writerVersion) {
     case PARQUET_1_0:
-      return getPlainWriter(path, initialSizePerCol);
+      return plainWriter(path, initialSizePerCol);
     case PARQUET_2_0:
       switch (path.getType()) {
       case BOOLEAN:
@@ -124,7 +124,7 @@ public class ParquetProperties {
       case INT64:
       case DOUBLE:
       case FLOAT:
-        return getPlainWriter(path, initialSizePerCol);
+        return plainWriter(path, initialSizePerCol);
       default:
         throw new IllegalArgumentException("Unknown type " + path.getType());
       }
@@ -137,7 +137,7 @@ public class ParquetProperties {
     ValuesWriter fallbackWriter = fallbackWriter(path, initialSizePerCol);
     if (enableDictionary) {
       return FallbackValuesWriter.of(
-          getDictionaryWriter(path, initialSizePerCol),
+          dictionaryWriter(path, initialSizePerCol),
           fallbackWriter);
     } else {
      return fallbackWriter;
