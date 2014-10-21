@@ -2,8 +2,10 @@ package parquet.schema;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import parquet.Preconditions;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import parquet.schema.Type.ID;
 
 /**
  * This class provides fluent builders that produce Parquet schema Types.
@@ -117,6 +119,7 @@ public class Types {
 
     protected Type.Repetition repetition = null;
     protected OriginalType originalType = null;
+    protected Type.ID id = null;
     private boolean repetitionAlreadySet = false;
 
     /**
@@ -174,6 +177,19 @@ public class Types {
       return self();
     }
 
+    /**
+     * adds an id annotation to the type being built.
+     * <p>
+     * ids are used to capture the original id when converting from models using ids (thrift, protobufs)
+     *
+     * @param id the id of the field
+     * @return this builder for method chaining
+     */
+    public T id(int id) {
+      this.id = new ID(id);
+      return self();
+    }
+
     abstract protected Type build(String name);
 
     /**
@@ -204,6 +220,7 @@ public class Types {
         return returnClass.cast(type);
       }
     }
+
   }
 
   /**
@@ -292,11 +309,12 @@ public class Types {
       if (originalType != null) {
         switch (originalType) {
           case UTF8:
+          case JSON:
+          case BSON:
             Preconditions.checkState(
                 primitiveType == PrimitiveTypeName.BINARY,
-                "UTF8 can only annotate binary fields");
+                originalType.toString() + " can only annotate binary fields");
             break;
-
           case DECIMAL:
             Preconditions.checkState(
                 (primitiveType == PrimitiveTypeName.INT32) ||
@@ -321,11 +339,41 @@ public class Types {
                   "FIXED(" + length + ") cannot store " + meta.getPrecision() +
                   " digits (max " + maxPrecision(length) + ")");
             }
+            break;
+          case DATE:
+          case TIME_MILLIS:
+          case UINT_8:
+          case UINT_16:
+          case UINT_32:
+          case INT_8:
+          case INT_16:
+          case INT_32:
+            Preconditions.checkState(primitiveType == PrimitiveTypeName.INT32,
+                originalType.toString() + " can only annotate INT32");
+            break;
+          case TIMESTAMP_MILLIS:
+          case UINT_64:
+          case INT_64:
+            Preconditions.checkState(primitiveType == PrimitiveTypeName.INT64,
+                originalType.toString() + " can only annotate INT64");
+            break;
+          case INTERVAL:
+            Preconditions.checkState(
+                (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) &&
+                (length == 12),
+                "INTERVAL can only annotate FIXED_LEN_BYTE_ARRAY(12)");
+            break;
+          case ENUM:
+            Preconditions.checkState(
+                primitiveType == PrimitiveTypeName.BINARY,
+                "ENUM can only annotate binary fields");
+            break;
+          default:
+            throw new IllegalStateException(originalType + " can not be applied to a primitive type");
         }
       }
 
-      return new PrimitiveType(
-          repetition, primitiveType, length, name, originalType, meta);
+      return new PrimitiveType(repetition, primitiveType, length, name, originalType, meta, id);
     }
 
     private static long maxPrecision(int numBytes) {
@@ -487,7 +535,7 @@ public class Types {
     protected GroupType build(String name) {
       Preconditions.checkState(!fields.isEmpty(),
           "Cannot build an empty group");
-      return new GroupType(repetition, name, originalType, fields);
+      return new GroupType(repetition, name, originalType, fields, id);
     }
   }
 
