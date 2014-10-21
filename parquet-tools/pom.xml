@@ -15,7 +15,17 @@
   <url>https://github.com/Parquet/parquet-mr</url>
 
   <properties>
+      <hadoop.scope>provided</hadoop.scope>
   </properties>
+
+  <profiles>
+    <profile>
+      <id>local</id>
+      <properties>
+        <hadoop.scope>compile</hadoop.scope>
+      </properties>
+    </profile>
+  </profiles>
 
   <dependencies>
     <dependency>
@@ -32,6 +42,7 @@
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>
       <version>${hadoop.version}</version>
+      <scope>${hadoop.scope}</scope>
     </dependency>
     <dependency>
       <groupId>commons-cli</groupId>
@@ -47,28 +58,40 @@
 
   <build>
     <plugins>
+      <!--We do not turn on semver checking for parquet-tools, since it's not considered as an API-->
       <plugin>
-        <artifactId>maven-enforcer-plugin</artifactId>
-      </plugin>
-      <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
         <configuration>
-          <descriptors>
-            <descriptor>src/main/assembly/assembly.xml</descriptor>
-          </descriptors>
+          <archive>
+            <manifest>
+              <mainClass>parquet.tools.Main</mainClass>
+            </manifest>
+          </archive>
         </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
         <executions>
           <execution>
-            <id>make-assembly</id>
             <phase>package</phase>
             <goals>
-              <goal>single</goal>
+              <goal>shade</goal>
             </goals>
+            <configuration>
+              <minimizeJar>false</minimizeJar>
+              <artifactSet>
+                <includes>
+                  <include>*</include>
+                </includes>
+              </artifactSet>
+            </configuration>
           </execution>
         </executions>
       </plugin>
     </plugins>
   </build>
-
 
 </project>
