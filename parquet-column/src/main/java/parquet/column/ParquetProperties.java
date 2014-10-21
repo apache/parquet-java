@@ -1,6 +1,9 @@
 package parquet.column;
 
 import static parquet.bytes.BytesUtils.getWidthFromMaxInt;
+import static parquet.column.Encoding.PLAIN;
+import static parquet.column.Encoding.PLAIN_DICTIONARY;
+import static parquet.column.Encoding.RLE_DICTIONARY;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.boundedint.DevNullValuesWriter;
 import parquet.column.values.fallback.FallbackValuesWriter;
@@ -85,23 +88,37 @@ public class ParquetProperties {
   }
 
   private DictionaryValuesWriter dictionaryWriter(ColumnDescriptor path, int initialSizePerCol) {
+    Encoding encodingForDataPage;
+    Encoding encodingForDictionaryPage;
+    switch(writerVersion) {
+    case PARQUET_1_0:
+      encodingForDataPage = PLAIN_DICTIONARY;
+      encodingForDictionaryPage = PLAIN_DICTIONARY;
+      break;
+    case PARQUET_2_0:
+      encodingForDataPage = RLE_DICTIONARY;
+      encodingForDictionaryPage = PLAIN;
+      break;
+    default:
+      throw new IllegalArgumentException("Unknown version: " + writerVersion);
+    }
     switch (path.getType()) {
     case BOOLEAN:
       throw new IllegalArgumentException("no dictionary encoding for BOOLEAN");
     case BINARY:
-      return new PlainBinaryDictionaryValuesWriter(dictionaryPageSizeThreshold);
+      return new PlainBinaryDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage);
     case INT32:
-      return new PlainIntegerDictionaryValuesWriter(dictionaryPageSizeThreshold);
+      return new PlainIntegerDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage);
     case INT64:
-      return new PlainLongDictionaryValuesWriter(dictionaryPageSizeThreshold);
+      return new PlainLongDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage);
     case INT96:
-      return new PlainFixedLenArrayDictionaryValuesWriter(dictionaryPageSizeThreshold, 12);
+      return new PlainFixedLenArrayDictionaryValuesWriter(dictionaryPageSizeThreshold, 12, encodingForDataPage, encodingForDictionaryPage);
     case DOUBLE:
-      return new PlainDoubleDictionaryValuesWriter(dictionaryPageSizeThreshold);
+      return new PlainDoubleDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage);
     case FLOAT:
-      return new PlainFloatDictionaryValuesWriter(dictionaryPageSizeThreshold);
+      return new PlainFloatDictionaryValuesWriter(dictionaryPageSizeThreshold, encodingForDataPage, encodingForDictionaryPage);
     case FIXED_LEN_BYTE_ARRAY:
-      return new PlainFixedLenArrayDictionaryValuesWriter(dictionaryPageSizeThreshold, path.getTypeLength());
+      return new PlainFixedLenArrayDictionaryValuesWriter(dictionaryPageSizeThreshold, path.getTypeLength(), encodingForDataPage, encodingForDictionaryPage);
     default:
       throw new IllegalArgumentException("Unknown type " + path.getType());
     }

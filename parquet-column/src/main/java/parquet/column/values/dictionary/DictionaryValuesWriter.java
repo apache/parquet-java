@@ -17,7 +17,6 @@ package parquet.column.values.dictionary;
 
 import static parquet.Log.DEBUG;
 import static parquet.bytes.BytesInput.concat;
-import static parquet.column.Encoding.PLAIN_DICTIONARY;
 import it.unimi.dsi.fastutil.doubles.Double2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.doubles.Double2IntMap;
 import it.unimi.dsi.fastutil.doubles.DoubleIterator;
@@ -64,6 +63,12 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   /* max entries allowed for the dictionary will fail over to plain encoding if reached */
   private static final int MAX_DICTIONARY_ENTRIES = Integer.MAX_VALUE - 1;
 
+  /* encoding to label the data page */
+  private final Encoding encodingForDataPage;
+
+  /* encoding to label the dictionary page */
+  protected final Encoding encodingForDictionaryPage;
+
   /* maximum size in bytes allowed for the dictionary will fail over to plain encoding if reached */
   protected final int maxDictionaryByteSize;
 
@@ -85,8 +90,14 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   /**
    * @param maxDictionaryByteSize
    */
-  protected DictionaryValuesWriter(int maxDictionaryByteSize) {
+  protected DictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage) {
     this.maxDictionaryByteSize = maxDictionaryByteSize;
+    this.encodingForDataPage = encodingForDataPage;
+    this.encodingForDictionaryPage = encodingForDictionaryPage;
+  }
+
+  protected DictionaryPage dictPage(ValuesWriter dictionaryEncoder) {
+    return new DictionaryPage(dictionaryEncoder.getBytes(), lastUsedDictionarySize, encodingForDictionaryPage);
   }
 
   @Override
@@ -154,7 +165,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
 
   @Override
   public Encoding getEncoding() {
-    return PLAIN_DICTIONARY;
+    return encodingForDataPage;
   }
 
   @Override
@@ -205,8 +216,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     /**
      * @param maxDictionaryByteSize
      */
-    public PlainBinaryDictionaryValuesWriter(int maxDictionaryByteSize) {
-      super(maxDictionaryByteSize);
+    public PlainBinaryDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage) {
+      super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage);
       binaryDictionaryContent.defaultReturnValue(-1);
     }
 
@@ -233,7 +244,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
           Binary entry = binaryIterator.next();
           dictionaryEncoder.writeBytes(entry);
         }
-        return new DictionaryPage(dictionaryEncoder.getBytes(), lastUsedDictionarySize, PLAIN_DICTIONARY);
+        return dictPage(dictionaryEncoder);
       }
       return null;
     }
@@ -281,8 +292,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
      * @param maxDictionaryByteSize
      * @param initialSize
      */
-    public PlainFixedLenArrayDictionaryValuesWriter(int maxDictionaryByteSize, int length) {
-      super(maxDictionaryByteSize);
+    public PlainFixedLenArrayDictionaryValuesWriter(int maxDictionaryByteSize, int length, Encoding encodingForDataPage, Encoding encodingForDictionaryPage) {
+      super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage);
       this.length = length;
     }
 
@@ -308,7 +319,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
           Binary entry = binaryIterator.next();
           dictionaryEncoder.writeBytes(entry);
         }
-        return new DictionaryPage(dictionaryEncoder.getBytes(), lastUsedDictionarySize, PLAIN_DICTIONARY);
+        return dictPage(dictionaryEncoder);
       }
       return null;
     }
@@ -326,8 +337,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
      * @param maxDictionaryByteSize
      * @param initialSize
      */
-    public PlainLongDictionaryValuesWriter(int maxDictionaryByteSize) {
-      super(maxDictionaryByteSize);
+    public PlainLongDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage) {
+      super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage);
       longDictionaryContent.defaultReturnValue(-1);
     }
 
@@ -352,7 +363,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         for (int i = 0; i < lastUsedDictionarySize; i++) {
           dictionaryEncoder.writeLong(longIterator.nextLong());
         }
-        return new DictionaryPage(dictionaryEncoder.getBytes(), lastUsedDictionarySize, PLAIN_DICTIONARY);
+        return dictPage(dictionaryEncoder);
       }
       return null;
     }
@@ -398,8 +409,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
      * @param maxDictionaryByteSize
      * @param initialSize
      */
-    public PlainDoubleDictionaryValuesWriter(int maxDictionaryByteSize) {
-      super(maxDictionaryByteSize);
+    public PlainDoubleDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage) {
+      super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage);
       doubleDictionaryContent.defaultReturnValue(-1);
     }
 
@@ -424,7 +435,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         for (int i = 0; i < lastUsedDictionarySize; i++) {
           dictionaryEncoder.writeDouble(doubleIterator.nextDouble());
         }
-        return new DictionaryPage(dictionaryEncoder.getBytes(), lastUsedDictionarySize, PLAIN_DICTIONARY);
+        return dictPage(dictionaryEncoder);
       }
       return null;
     }
@@ -470,8 +481,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
      * @param maxDictionaryByteSize
      * @param initialSize
      */
-    public PlainIntegerDictionaryValuesWriter(int maxDictionaryByteSize) {
-      super(maxDictionaryByteSize);
+    public PlainIntegerDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage) {
+      super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage);
       intDictionaryContent.defaultReturnValue(-1);
     }
 
@@ -496,7 +507,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         for (int i = 0; i < lastUsedDictionarySize; i++) {
           dictionaryEncoder.writeInteger(intIterator.nextInt());
         }
-        return new DictionaryPage(dictionaryEncoder.getBytes(), lastUsedDictionarySize, PLAIN_DICTIONARY);
+        return dictPage(dictionaryEncoder);
       }
       return null;
     }
@@ -542,8 +553,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
      * @param maxDictionaryByteSize
      * @param initialSize
      */
-    public PlainFloatDictionaryValuesWriter(int maxDictionaryByteSize) {
-      super(maxDictionaryByteSize);
+    public PlainFloatDictionaryValuesWriter(int maxDictionaryByteSize, Encoding encodingForDataPage, Encoding encodingForDictionaryPage) {
+      super(maxDictionaryByteSize, encodingForDataPage, encodingForDictionaryPage);
       floatDictionaryContent.defaultReturnValue(-1);
     }
 
@@ -568,7 +579,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         for (int i = 0; i < lastUsedDictionarySize; i++) {
           dictionaryEncoder.writeFloat(floatIterator.nextFloat());
         }
-        return new DictionaryPage(dictionaryEncoder.getBytes(), lastUsedDictionarySize, PLAIN_DICTIONARY);
+        return dictPage(dictionaryEncoder);
       }
       return null;
     }
