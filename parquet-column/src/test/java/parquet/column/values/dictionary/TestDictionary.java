@@ -478,7 +478,7 @@ public class TestDictionary {
       throws IOException {
     final DictionaryPage dictionaryPage = cw.createDictionaryPage().copy();
     final ColumnDescriptor descriptor = new ColumnDescriptor(new String[] {"foo"}, type, 0, 0);
-    final Dictionary dictionary = PLAIN_DICTIONARY.initDictionary(descriptor, dictionaryPage);
+    final Dictionary dictionary = PLAIN.initDictionary(descriptor, dictionaryPage);
     final DictionaryValuesReader cr = new DictionaryValuesReader(dictionary);
     return cr;
   }
