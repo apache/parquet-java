@@ -27,7 +27,7 @@ import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ParquetProperties.WriterVersion;
-import parquet.column.impl.ColumnWriteStoreImpl;
+import parquet.column.impl.ColumnWriteStoreV1;
 import parquet.column.page.Page;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
@@ -60,7 +60,7 @@ public class GenerateIntTestFile {
       MessageType schema = new MessageType("int_test_file", new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.INT32, "int_col"));
 
       MemPageStore pageStore = new MemPageStore(100);
-      ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 8*1024, 8*1024, 8*1024, false, WriterVersion.PARQUET_1_0);
+      ColumnWriteStoreV1 store = new ColumnWriteStoreV1(pageStore, 8*1024, 8*1024, 8*1024, false, WriterVersion.PARQUET_1_0);
       MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
 
       RecordConsumer recordWriter = columnIO.getRecordWriter(store);

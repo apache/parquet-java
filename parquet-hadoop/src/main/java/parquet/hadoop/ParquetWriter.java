@@ -178,7 +178,7 @@ public class ParquetWriter<T> implements Closeable {
 
     CodecFactory codecFactory = new CodecFactory(conf);
     CodecFactory.BytesCompressor compressor =	codecFactory.getCompressor(compressionCodecName, 0);
-    this.writer = new InternalParquetRecordWriter<T>(
+    this.writer = new InternalParquetRecordWriterV1<T>(
         fileWriter,
         writeSupport,
         schema,

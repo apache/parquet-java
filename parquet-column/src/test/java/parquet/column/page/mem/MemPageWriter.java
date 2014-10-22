@@ -20,6 +20,7 @@ import static parquet.Log.DEBUG;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
@@ -29,7 +30,6 @@ import parquet.column.page.Page;
 import parquet.column.page.PageWriter;
 import parquet.column.statistics.Statistics;
 import parquet.io.ParquetEncodingException;
-
 
 public class MemPageWriter implements PageWriter {
   private static final Log LOG = Log.getLog(MemPageWriter.class);

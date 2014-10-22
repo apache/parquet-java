@@ -61,7 +61,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       boolean enableDictionary,
       boolean validating,
       WriterVersion writerVersion) {
-    internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
+    internalWriter = new InternalParquetRecordWriterV1<T>(w, writeSupport, schema,
         extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary, validating, writerVersion);
   }
 

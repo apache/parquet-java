@@ -26,11 +26,11 @@ public interface ColumnWriteStore {
    * @param path the column for which to create a writer
    * @return the column writer for the given column
    */
-  abstract public ColumnWriter getColumnWriter(ColumnDescriptor path);
+  public abstract ColumnWriter getColumnWriter(ColumnDescriptor path);
 
   /**
-   * when we are done writing to flush to the underlying storage
+   * called to notify of record boundaries
    */
-  abstract public void flush();
+  public abstract void endRecord();
 
 }

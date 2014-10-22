@@ -168,9 +168,11 @@ public class MessageColumnIO extends GroupColumnIO {
     private final FieldsMarker[] fieldsWritten;
     private final int[] r;
     private final ColumnWriter[] columnWriter;
+    private final ColumnWriteStore columns;
     private boolean emptyField = true;
 
     public MessageColumnIORecordConsumer(ColumnWriteStore columns) {
+      this.columns = columns;
       int maxDepth = 0;
       this.columnWriter = new ColumnWriter[MessageColumnIO.this.getLeaves().size()];
       for (PrimitiveColumnIO primitiveColumnIO : MessageColumnIO.this.getLeaves()) {
@@ -214,6 +216,7 @@ public class MessageColumnIO extends GroupColumnIO {
     @Override
     public void endMessage() {
       writeNullForMissingFieldsAtCurrentLevel();
+      columns.endRecord();
       if (DEBUG) log("< MESSAGE END >");
       if (DEBUG) printState();
     }
