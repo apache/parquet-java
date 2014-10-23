@@ -100,8 +100,13 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
     return total;
   }
 
-  public void finalizeColumnChunk() {
+  @Override
+  public void flush() {
     for (ColumnWriterV2 memColumn : columns.values()) {
+      long rows = rowCount - memColumn.getRowsWrittenSoFar();
+      if (rows > 0) {
+        memColumn.writePage(rowCount);
+      }
       memColumn.finalizeColumnChunk();
     }
   }

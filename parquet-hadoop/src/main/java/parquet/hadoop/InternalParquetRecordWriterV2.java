@@ -127,7 +127,6 @@ class InternalParquetRecordWriterV2<T> extends InternalParquetRecordWriter<T> {
 
   private void checkBlockSizeReached() throws IOException {
     if (recordCount >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it for every record.
-      columnStore.checkPageSizeReached();
       long memSize = columnStore.memSize();
       if (memSize > rowGroupSize) {
         LOG.info(format("mem size %,d > %,d: flushing %,d records to disk.", memSize, rowGroupSize, recordCount));
@@ -154,7 +153,7 @@ class InternalParquetRecordWriterV2<T> extends InternalParquetRecordWriter<T> {
 
     if (recordCount > 0) {
       parquetFileWriter.startBlock(recordCount);
-      columnStore.flush();
+      columnStore.finalizeColumnChunk();
       pageStore.flushToFileWriter(parquetFileWriter);
       recordCount = 0;
       parquetFileWriter.endBlock();

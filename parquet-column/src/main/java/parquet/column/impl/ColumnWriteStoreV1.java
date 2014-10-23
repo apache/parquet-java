@@ -105,6 +105,7 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
     return max;
   }
 
+  @Override
   public void flush() {
     Collection<ColumnWriterV1> values = columns.values();
     for (ColumnWriterV1 memColumn : values) {
