@@ -275,8 +275,7 @@ final class ColumnWriterV2 implements ColumnWriter {
           definitionLevelColumn.toBytes(),
           dataColumn.getEncoding(),
           dataColumn.getBytes(),
-          statistics,
-          null
+          statistics
           );
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write page for " + path, e);

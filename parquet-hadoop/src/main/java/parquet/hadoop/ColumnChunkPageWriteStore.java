@@ -21,11 +21,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import parquet.Ints;
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.CapacityByteArrayOutputStream;
@@ -35,7 +33,6 @@ import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriteStore;
 import parquet.column.page.PageWriter;
 import parquet.column.statistics.Statistics;
-import parquet.column.statistics.BooleanStatistics;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.io.ParquetEncodingException;
@@ -68,46 +65,6 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       this.compressor = compressor;
       this.buf = new CapacityByteArrayOutputStream(initialSize);
       this.totalStatistics = Statistics.getStatsBasedOnType(this.path.getType());
-    }
-
-    @Deprecated
-    @Override
-    public void writePage(BytesInput bytes,
-                          int valueCount,
-                          Encoding rlEncoding,
-                          Encoding dlEncoding,
-                          Encoding valuesEncoding) throws IOException {
-      long uncompressedSize = bytes.size();
-      if (uncompressedSize > Integer.MAX_VALUE) {
-        throw new ParquetEncodingException(
-            "Cannot write page larger than Integer.MAX_VALUE bytes: " +
-                uncompressedSize);
-      }
-      BytesInput compressedBytes = compressor.compress(bytes);
-      long compressedSize = compressedBytes.size();
-      if (compressedSize > Integer.MAX_VALUE) {
-        throw new ParquetEncodingException(
-            "Cannot write compressed page larger than Integer.MAX_VALUE bytes: "
-                + compressedSize);
-      }
-      BooleanStatistics statistics = new BooleanStatistics(); // dummy stats object
-      parquetMetadataConverter.writeDataPageHeader(
-          (int)uncompressedSize,
-          (int)compressedSize,
-          valueCount,
-          statistics,
-          rlEncoding,
-          dlEncoding,
-          valuesEncoding,
-          buf);
-      this.uncompressedLength += uncompressedSize;
-      this.compressedLength += compressedSize;
-      this.totalValueCount += valueCount;
-      this.pageCount += 1;
-      compressedBytes.writeAllTo(buf);
-      encodings.add(rlEncoding);
-      encodings.add(dlEncoding);
-      encodings.add(valuesEncoding);
     }
 
     @Override
@@ -155,8 +112,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
         int rowCount, int nullCount, int valueCount,
         BytesInput repetitionLevels, BytesInput definitionLevels,
         Encoding dataEncoding, BytesInput data,
-        Statistics<?> statistics,
-        Map<String, String> metadata) throws IOException {
+        Statistics<?> statistics) throws IOException {
       int rlByteLength = toIntWithCheck(repetitionLevels.size());
       int dlByteLength = toIntWithCheck(definitionLevels.size());
       int uncompressedSize = toIntWithCheck(

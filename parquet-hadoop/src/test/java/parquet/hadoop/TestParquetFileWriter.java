@@ -42,6 +42,7 @@ import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.Encoding;
 import parquet.column.page.DataPage;
+import parquet.column.page.DataPageV1;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
 import parquet.column.statistics.BinaryStatistics;
@@ -371,7 +372,7 @@ public class TestParquetFileWriter {
     PageReader pageReader = pages.getPageReader(schema.getColumnDescription(path));
     DataPage page = pageReader.readPage();
     assertEquals(values, page.getValueCount());
-    assertArrayEquals(bytes.toByteArray(), page.getBytes().toByteArray());
+    assertArrayEquals(bytes.toByteArray(), ((DataPageV1)page).getBytes().toByteArray());
   }
 
   @Test

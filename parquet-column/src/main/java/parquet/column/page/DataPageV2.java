@@ -1,7 +1,5 @@
 package parquet.column.page;
 
-import java.util.Map;
-
 import parquet.Ints;
 import parquet.bytes.BytesInput;
 import parquet.column.Encoding;
@@ -18,22 +16,19 @@ public class DataPageV2 extends DataPage {
    * @param dataEncoding encoding for the data
    * @param data data encoded with dataEncoding
    * @param statistics optional statistics for this page
-   * @param metadata optional free-form key values
    * @return an uncompressed page
    */
   public static DataPageV2 uncompressed(
       int rowCount, int nullCount, int valueCount,
       BytesInput repetitionLevels, BytesInput definitionLevels,
       Encoding dataEncoding, BytesInput data,
-      Statistics<?> statistics,
-      Map<String, String> metadata) {
+      Statistics<?> statistics) {
     return new DataPageV2(
         rowCount, nullCount, valueCount,
         repetitionLevels, definitionLevels,
         dataEncoding, data,
         Ints.checkedCast(repetitionLevels.size() + definitionLevels.size() + data.size()),
         statistics,
-        metadata,
         false);
   }
 
@@ -47,7 +42,6 @@ public class DataPageV2 extends DataPage {
    * @param data data encoded with dataEncoding and compressed
    * @param uncompressedSize total size uncompressed (rl + dl + data)
    * @param statistics optional statistics for this page
-   * @param metadata optional free-form key values
    * @return a compressed page
    */
   public static DataPageV2 compressed(
@@ -55,27 +49,23 @@ public class DataPageV2 extends DataPage {
       BytesInput repetitionLevels, BytesInput definitionLevels,
       Encoding dataEncoding, BytesInput data,
       int uncompressedSize,
-      Statistics<?> statistics,
-      Map<String, String> metadata) {
+      Statistics<?> statistics) {
     return new DataPageV2(
         rowCount, nullCount, valueCount,
         repetitionLevels, definitionLevels,
         dataEncoding, data,
         uncompressedSize,
         statistics,
-        metadata,
         true);
   }
 
   private final int rowCount;
   private final int nullCount;
-  private final int valueCount;
   private final BytesInput repetitionLevels;
   private final BytesInput definitionLevels;
   private final Encoding dataEncoding;
   private final BytesInput data;
   private final Statistics<?> statistics;
-  private final Map<String, String> metadata;
   private final boolean isCompressed;
 
   public DataPageV2(
@@ -84,18 +74,15 @@ public class DataPageV2 extends DataPage {
       Encoding dataEncoding, BytesInput data,
       int uncompressedSize,
       Statistics<?> statistics,
-      Map<String, String> metadata,
       boolean isCompressed) {
-    super(Ints.checkedCast(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize);
+    super(Ints.checkedCast(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize, valueCount);
     this.rowCount = rowCount;
     this.nullCount = nullCount;
-    this.valueCount = valueCount;
     this.repetitionLevels = repetitionLevels;
     this.definitionLevels = definitionLevels;
     this.dataEncoding = dataEncoding;
     this.data = data;
     this.statistics = statistics;
-    this.metadata = metadata;
     this.isCompressed = isCompressed;
   }
 
@@ -105,10 +92,6 @@ public class DataPageV2 extends DataPage {
 
   public int getNullCount() {
     return nullCount;
-  }
-
-  public int getValueCount() {
-    return valueCount;
   }
 
   public BytesInput getRepetitionLevels() {
@@ -129,10 +112,6 @@ public class DataPageV2 extends DataPage {
 
   public Statistics<?> getStatistics() {
     return statistics;
-  }
-
-  public Map<String, String> getMetadata() {
-    return metadata;
   }
 
   public boolean isCompressed() {

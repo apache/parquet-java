@@ -25,6 +25,8 @@ import java.util.Map;
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.Encoding;
+import parquet.column.page.DataPageV1;
+import parquet.column.page.DataPageV2;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.DataPage;
 import parquet.column.page.PageWriter;
@@ -39,19 +41,6 @@ public class MemPageWriter implements PageWriter {
   private long memSize = 0;
   private long totalValueCount = 0;
 
-  @Deprecated
-  @Override
-  public void writePage(BytesInput bytesInput, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding)
-      throws IOException {
-    if (valueCount == 0) {
-      throw new ParquetEncodingException("illegal page of 0 values");
-    }
-    memSize += bytesInput.size();
-    pages.add(new DataPage(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), rlEncoding, dlEncoding, valuesEncoding));
-    totalValueCount += valueCount;
-    if (DEBUG) LOG.debug("page written for " + bytesInput.size() + " bytes and " + valueCount + " records");
-  }
-
   @Override
   public void writePage(BytesInput bytesInput, int valueCount, Statistics statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding)
       throws IOException {
@@ -59,9 +48,24 @@ public class MemPageWriter implements PageWriter {
       throw new ParquetEncodingException("illegal page of 0 values");
     }
     memSize += bytesInput.size();
-    pages.add(new DataPage(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), statistics, rlEncoding, dlEncoding, valuesEncoding));
+    pages.add(new DataPageV1(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), statistics, rlEncoding, dlEncoding, valuesEncoding));
     totalValueCount += valueCount;
     if (DEBUG) LOG.debug("page written for " + bytesInput.size() + " bytes and " + valueCount + " records");
+  }
+
+  @Override
+  public void writePageV2(int rowCount, int nullCount, int valueCount,
+      BytesInput repetitionLevels, BytesInput definitionLevels,
+      Encoding dataEncoding, BytesInput data, Statistics<?> statistics) throws IOException {
+    if (valueCount == 0) {
+      throw new ParquetEncodingException("illegal page of 0 values");
+    }
+    long size = repetitionLevels.size() + definitionLevels.size() + data.size();
+    memSize += size;
+    pages.add(DataPageV2.uncompressed(rowCount, nullCount, valueCount, BytesInput.copy(repetitionLevels), BytesInput.copy(definitionLevels), dataEncoding, BytesInput.copy(data), statistics));
+    totalValueCount += valueCount;
+    if (DEBUG) LOG.debug("page written for " + size + " bytes and " + valueCount + " records");
+
   }
 
   @Override

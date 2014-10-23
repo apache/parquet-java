@@ -30,18 +30,6 @@ import parquet.column.statistics.Statistics;
  */
 public interface PageWriter {
 
-  @Deprecated
-  /**
-   * writes a single page
-   * @param bytesInput the bytes for the page
-   * @param valueCount the number of values in that page
-   * @param rlEncoding repetition level encoding
-   * @param dlEncoding definition level encoding
-   * @param valuesEncoding values encoding
-   * @throws IOException
-   */
-  void writePage(BytesInput bytesInput, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
-
   /**
    * writes a single page
    * @param bytesInput the bytes for the page
@@ -52,7 +40,7 @@ public interface PageWriter {
    * @param valuesEncoding values encoding
    * @throws IOException
    */
-  void writePage(BytesInput bytesInput, int valueCount, Statistics statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
+  void writePage(BytesInput bytesInput, int valueCount, Statistics<?> statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
 
   /**
    * writes a single page in the new format
@@ -72,8 +60,7 @@ public interface PageWriter {
       BytesInput repetitionLevels, BytesInput definitionLevels,
       Encoding dataEncoding,
       BytesInput data,
-      Statistics<?> statistics,
-      Map<String, String> metadata) throws IOException;
+      Statistics<?> statistics) throws IOException;
 
   /**
    * @return the current size used in the memory buffer for that column chunk

@@ -8,7 +8,6 @@ import parquet.column.statistics.Statistics;
 public class DataPageV1 extends DataPage {
 
   private final BytesInput bytes;
-  private final int valueCount;
   private final Statistics<?> statistics;
   private final Encoding rlEncoding;
   private final Encoding dlEncoding;
@@ -25,9 +24,8 @@ public class DataPageV1 extends DataPage {
    * @param dlEncoding
    */
   public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize, Statistics<?> stats, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
-    super(Ints.checkedCast(bytes.size()), uncompressedSize);
+    super(Ints.checkedCast(bytes.size()), uncompressedSize, valueCount);
     this.bytes = bytes;
-    this.valueCount = valueCount;
     this.statistics = stats;
     this.rlEncoding = rlEncoding;
     this.dlEncoding = dlEncoding;
@@ -39,13 +37,6 @@ public class DataPageV1 extends DataPage {
    */
   public BytesInput getBytes() {
     return bytes;
-  }
-
-  /**
-   * @return the number of values in that page
-   */
-  public int getValueCount() {
-    return valueCount;
   }
 
   /**
@@ -79,7 +70,7 @@ public class DataPageV1 extends DataPage {
 
   @Override
   public String toString() {
-    return "Page [bytes.size=" + bytes.size() + ", valueCount=" + valueCount + ", uncompressedSize=" + getUncompressedSize() + "]";
+    return "Page [bytes.size=" + bytes.size() + ", valueCount=" + getValueCount() + ", uncompressedSize=" + getUncompressedSize() + "]";
   }
 
   @Override

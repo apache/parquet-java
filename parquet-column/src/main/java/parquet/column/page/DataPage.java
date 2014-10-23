@@ -23,8 +23,18 @@ package parquet.column.page;
  */
 abstract public class DataPage extends Page {
 
-  DataPage(int compressedSize, int uncompressedSize) {
+  private final int valueCount;
+
+  DataPage(int compressedSize, int uncompressedSize, int valueCount) {
     super(compressedSize, uncompressedSize);
+    this.valueCount = valueCount;
+  }
+
+  /**
+   * @return the number of values in that page
+   */
+  public int getValueCount() {
+    return valueCount;
   }
 
   public abstract <T> T accept(Visitor<T> visitor);

@@ -649,4 +649,23 @@ final class ValidatingColumnWriteStore implements ColumnWriteStore {
   @Override
   public void endRecord() {
   }
+
+  @Override
+  public void flush() {
+  }
+
+  @Override
+  public long getAllocatedSize() {
+    return 0;
+  }
+
+  @Override
+  public long getBufferedSize() {
+    return 0;
+  }
+
+  @Override
+  public String memUsageString() {
+    return null;
+  }
 }

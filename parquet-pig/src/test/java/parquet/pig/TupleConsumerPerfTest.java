@@ -60,7 +60,7 @@ public class TupleConsumerPerfTest {
     write(memPageStore, columns, schema, pigSchema);
     columns.flush();
     read(memPageStore, pigSchema, pigSchemaProjected, pigSchemaNoString);
-    System.out.println(columns.memSize()+" bytes used total");
+    System.out.println(columns.getBufferedSize()+" bytes used total");
     System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
   }
 

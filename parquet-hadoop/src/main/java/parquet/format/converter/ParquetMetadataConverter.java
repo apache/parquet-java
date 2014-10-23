@@ -15,6 +15,9 @@
  */
 package parquet.format.converter;
 
+import static parquet.format.Util.readFileMetaData;
+import static parquet.format.Util.writePageHeader;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -28,8 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-
-import org.apache.hadoop.io.UTF8;
 
 import parquet.Log;
 import parquet.common.schema.ColumnPath;
@@ -62,9 +63,6 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type.Repetition;
 import parquet.schema.TypeVisitor;
 import parquet.schema.Types;
-import static java.lang.Math.min;
-import static parquet.format.Util.readFileMetaData;
-import static parquet.format.Util.writePageHeader;
 
 public class ParquetMetadataConverter {
   private static final Log LOG = Log.getLog(ParquetMetadataConverter.class);

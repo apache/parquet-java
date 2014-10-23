@@ -19,7 +19,10 @@ import static parquet.Log.DEBUG;
 import static parquet.bytes.BytesUtils.readIntLittleEndian;
 import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
-import static parquet.hadoop.ParquetFileWriter.*;
+import static parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics;
+import static parquet.hadoop.ParquetFileWriter.MAGIC;
+import static parquet.hadoop.ParquetFileWriter.PARQUET_COMMON_METADATA_FILE;
+import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
@@ -29,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -48,15 +50,19 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
-import org.apache.hadoop.mapred.Utils;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
-import parquet.column.page.DictionaryPage;
 import parquet.column.page.DataPage;
+import parquet.column.page.DataPageV1;
+import parquet.column.page.DataPageV2;
+import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageReadStore;
 import parquet.common.schema.ColumnPath;
+import parquet.format.DataPageHeader;
+import parquet.format.DataPageHeaderV2;
+import parquet.format.DictionaryPageHeader;
 import parquet.format.PageHeader;
 import parquet.format.Util;
 import parquet.format.converter.ParquetMetadataConverter;
@@ -81,7 +87,7 @@ public class ParquetFileReader implements Closeable {
 
   public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
 
-  private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+  private static ParquetMetadataConverter converter = new ParquetMetadataConverter();
 
   /**
    * for files provided, check if there's a summary file.
@@ -423,7 +429,7 @@ public class ParquetFileReader implements Closeable {
         throw new RuntimeException("corrupted file: the footer index is not within the file");
       }
       f.seek(footerIndex);
-      return parquetMetadataConverter.readParquetMetadata(f, filter);
+      return converter.readParquetMetadata(f, filter);
     } finally {
       f.close();
     }
@@ -540,36 +546,58 @@ public class ParquetFileReader implements Closeable {
       long valuesCountReadSoFar = 0;
       while (valuesCountReadSoFar < descriptor.metadata.getValueCount()) {
         PageHeader pageHeader = readPageHeader();
+        int uncompressedPageSize = pageHeader.getUncompressed_page_size();
+        int compressedPageSize = pageHeader.getCompressed_page_size();
         switch (pageHeader.type) {
           case DICTIONARY_PAGE:
             // there is only one dictionary page per column chunk
             if (dictionaryPage != null) {
               throw new ParquetDecodingException("more than one dictionary page in column " + descriptor.col);
             }
-            dictionaryPage =
+          DictionaryPageHeader dicHeader = pageHeader.getDictionary_page_header();
+          dictionaryPage =
                 new DictionaryPage(
-                    this.readAsBytesInput(pageHeader.compressed_page_size),
-                    pageHeader.uncompressed_page_size,
-                    pageHeader.dictionary_page_header.num_values,
-                    parquetMetadataConverter.getEncoding(pageHeader.dictionary_page_header.encoding)
+                    this.readAsBytesInput(compressedPageSize),
+                    uncompressedPageSize,
+                    dicHeader.getNum_values(),
+                    converter.getEncoding(dicHeader.getEncoding())
                     );
             break;
           case DATA_PAGE:
+            DataPageHeader dataHeaderV1 = pageHeader.getData_page_header();
             pagesInChunk.add(
-                new DataPage(
-                    this.readAsBytesInput(pageHeader.compressed_page_size),
-                    pageHeader.data_page_header.num_values,
-                    pageHeader.uncompressed_page_size,
-                    ParquetMetadataConverter.fromParquetStatistics(pageHeader.data_page_header.statistics, descriptor.col.getType()),
-                    parquetMetadataConverter.getEncoding(pageHeader.data_page_header.repetition_level_encoding),
-                    parquetMetadataConverter.getEncoding(pageHeader.data_page_header.definition_level_encoding),
-                    parquetMetadataConverter.getEncoding(pageHeader.data_page_header.encoding)
+                new DataPageV1(
+                    this.readAsBytesInput(compressedPageSize),
+                    dataHeaderV1.getNum_values(),
+                    uncompressedPageSize,
+                    fromParquetStatistics(dataHeaderV1.getStatistics(), descriptor.col.getType()),
+                    converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
+                    converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
+                    converter.getEncoding(dataHeaderV1.getEncoding())
                     ));
-            valuesCountReadSoFar += pageHeader.data_page_header.num_values;
+            valuesCountReadSoFar += dataHeaderV1.getNum_values();
+            break;
+          case DATA_PAGE_V2:
+            DataPageHeaderV2 dataHeaderV2 = pageHeader.getData_page_header_v2();
+            int dataSize = compressedPageSize - dataHeaderV2.getRepetition_levels_byte_length() - dataHeaderV2.getDefinition_levels_byte_length();
+            pagesInChunk.add(
+                new DataPageV2(
+                    dataHeaderV2.getNum_rows(),
+                    dataHeaderV2.getNum_nulls(),
+                    dataHeaderV2.getNum_values(),
+                    this.readAsBytesInput(dataHeaderV2.getRepetition_levels_byte_length()),
+                    this.readAsBytesInput(dataHeaderV2.getDefinition_levels_byte_length()),
+                    converter.getEncoding(dataHeaderV2.getEncoding()),
+                    this.readAsBytesInput(dataSize),
+                    uncompressedPageSize,
+                    fromParquetStatistics(dataHeaderV2.getStatistics(), descriptor.col.getType()),
+                    dataHeaderV2.isIs_compressed()
+                    ));
+            valuesCountReadSoFar += dataHeaderV2.getNum_values();
             break;
           default:
-            if (DEBUG) LOG.debug("skipping page of type " + pageHeader.type + " of size " + pageHeader.compressed_page_size);
-            this.skip(pageHeader.compressed_page_size);
+            if (DEBUG) LOG.debug("skipping page of type " + pageHeader.getType() + " of size " + compressedPageSize);
+            this.skip(compressedPageSize);
             break;
         }
       }

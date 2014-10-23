@@ -90,7 +90,7 @@ public class PerfTest {
     write(memPageStore, groupWriter, 1000000);
     columns.flush();
     System.out.println();
-    System.out.println(columns.memSize()+" bytes used total");
+    System.out.println(columns.getBufferedSize() + " bytes used total");
     System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
   }
 
