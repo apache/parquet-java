@@ -11,6 +11,7 @@ import static parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static parquet.hadoop.ParquetFileReader.readFooter;
+import static parquet.hadoop.TestUtils.enforceEmptyDir;
 import static parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 import static parquet.schema.MessageTypeParser.parseMessageType;
 
@@ -40,11 +41,7 @@ public class TestParquetWriter {
   public void test() throws Exception {
     Configuration conf = new Configuration();
     Path root = new Path("target/tests/TestParquetWriter/");
-    FileSystem fs = root.getFileSystem(conf);
-    if (fs.exists(root)) {
-      fs.delete(root, true);
-    }
-    fs.mkdirs(root);
+    enforceEmptyDir(conf, root);
     MessageType schema = parseMessageType(
         "message test { "
         + "required binary binary_field; "
