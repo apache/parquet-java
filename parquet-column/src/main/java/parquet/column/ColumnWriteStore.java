@@ -38,4 +38,21 @@ public interface ColumnWriteStore {
    */
   abstract public void endRecord();
 
+  /**
+   * used for information
+   * @return approximate size used in memory
+   */
+  abstract public long getAllocatedSize();
+
+  /**
+   * used to flush row groups to disk
+   * @return approximate size of the buffered encoded binary data
+   */
+  abstract public long getBufferedSize();
+
+  /**
+   * used for debugging pupose
+   * @return a formated string representing memory usage per column
+   */
+  abstract public String memUsageString();
 }

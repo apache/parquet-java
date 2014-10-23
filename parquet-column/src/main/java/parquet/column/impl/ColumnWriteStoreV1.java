@@ -78,7 +78,8 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
       return sb.toString();
   }
 
-  public long allocatedSize() {
+  @Override
+  public long getAllocatedSize() {
     Collection<ColumnWriterV1> values = columns.values();
     long total = 0;
     for (ColumnWriterV1 memColumn : values) {
@@ -87,13 +88,25 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
     return total;
   }
 
-  public long memSize() {
+  @Override
+  public long getBufferedSize() {
     Collection<ColumnWriterV1> values = columns.values();
     long total = 0;
     for (ColumnWriterV1 memColumn : values) {
       total += memColumn.getBufferedSizeInMemory();
     }
     return total;
+  }
+
+  @Override
+  public String memUsageString() {
+    StringBuilder b = new StringBuilder("Store {\n");
+    Collection<ColumnWriterV1> values = columns.values();
+    for (ColumnWriterV1 memColumn : values) {
+      b.append(memColumn.memUsageString(" "));
+    }
+    b.append("}\n");
+    return b.toString();
   }
 
   public long maxColMemSize() {
@@ -111,16 +124,6 @@ public class ColumnWriteStoreV1 implements ColumnWriteStore {
     for (ColumnWriterV1 memColumn : values) {
       memColumn.flush();
     }
-  }
-
-  public String memUsageString() {
-    StringBuilder b = new StringBuilder("Store {\n");
-    Collection<ColumnWriterV1> values = columns.values();
-    for (ColumnWriterV1 memColumn : values) {
-      b.append(memColumn.memUsageString(" "));
-    }
-    b.append("}\n");
-    return b.toString();
   }
 
   @Override

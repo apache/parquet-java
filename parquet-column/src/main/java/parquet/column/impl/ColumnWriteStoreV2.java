@@ -84,7 +84,8 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
       return sb.toString();
   }
 
-  public long allocatedSize() {
+  @Override
+  public long getAllocatedSize() {
     long total = 0;
     for (ColumnWriterV2 memColumn : columns.values()) {
       total += memColumn.allocatedSize();
@@ -92,7 +93,8 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
     return total;
   }
 
-  public long memSize() {
+  @Override
+  public long getBufferedSize() {
     long total = 0;
     for (ColumnWriterV2 memColumn : columns.values()) {
       total += memColumn.getTotalBufferedSize();
