@@ -82,7 +82,7 @@ public class GenerateTPCH {
       ++ recordCount;
     }
     store.flush();
-    System.out.printf("mem size %,d, maxColSize %,d, allocated %,d\n", store.memSize(), store.maxColMemSize(), store.allocatedSize());
+    System.out.printf("mem size %,d, maxColSize %,d, allocated %,d\n", store.getBufferedSize(), store.maxColMemSize(), store.getAllocatedSize());
     System.out.println(store.memUsageString());
     writeToFile(testFile, configuration, schema, pageStore, recordCount);
 
