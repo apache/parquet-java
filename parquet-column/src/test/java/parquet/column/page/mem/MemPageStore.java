@@ -23,7 +23,7 @@ import java.util.Map;
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.UnknownColumnException;
-import parquet.column.page.Page;
+import parquet.column.page.DataPage;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
 import parquet.column.page.PageWriteStore;
@@ -58,7 +58,7 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
     if (pageWriter == null) {
       throw new UnknownColumnException(descriptor);
     }
-    List<Page> pages = new ArrayList<Page>(pageWriter.getPages());
+    List<DataPage> pages = new ArrayList<DataPage>(pageWriter.getPages());
     if (Log.DEBUG) LOG.debug("initialize page reader with "+ pageWriter.getTotalValueCount() + " values and " + pages.size() + " pages");
     return new MemPageReader(pageWriter.getTotalValueCount(), pages.iterator(), pageWriter.getDictionaryPage());
   }

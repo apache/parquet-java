@@ -703,7 +703,7 @@ public class ParquetMetadataConverter {
   private PageHeader newDataPageV2Header(
       int uncompressedSize, int compressedSize,
       int valueCount, int nullCount, int rowCount,
-      parquet.column.statistics.Statistics statistics,
+      parquet.column.statistics.Statistics<?> statistics,
       parquet.column.Encoding dataEncoding,
       int rlByteLength, int dlByteLength) {
     // TODO: pageHeader.crc = ...;

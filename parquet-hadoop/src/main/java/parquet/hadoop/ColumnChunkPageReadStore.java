@@ -24,7 +24,7 @@ import java.util.Map;
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.DictionaryPage;
-import parquet.column.page.Page;
+import parquet.column.page.DataPage;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
 import parquet.hadoop.CodecFactory.BytesDecompressor;
@@ -49,15 +49,15 @@ class ColumnChunkPageReadStore implements PageReadStore {
 
     private final BytesDecompressor decompressor;
     private final long valueCount;
-    private final List<Page> compressedPages;
+    private final List<DataPage> compressedPages;
     private final DictionaryPage compressedDictionaryPage;
 
-    ColumnChunkPageReader(BytesDecompressor decompressor, List<Page> compressedPages, DictionaryPage compressedDictionaryPage) {
+    ColumnChunkPageReader(BytesDecompressor decompressor, List<DataPage> compressedPages, DictionaryPage compressedDictionaryPage) {
       this.decompressor = decompressor;
-      this.compressedPages = new LinkedList<Page>(compressedPages);
+      this.compressedPages = new LinkedList<DataPage>(compressedPages);
       this.compressedDictionaryPage = compressedDictionaryPage;
       int count = 0;
-      for (Page p : compressedPages) {
+      for (DataPage p : compressedPages) {
         count += p.getValueCount();
       }
       this.valueCount = count;
@@ -69,13 +69,13 @@ class ColumnChunkPageReadStore implements PageReadStore {
     }
 
     @Override
-    public Page readPage() {
+    public DataPage readPage() {
       if (compressedPages.isEmpty()) {
         return null;
       }
-      Page compressedPage = compressedPages.remove(0);
+      DataPage compressedPage = compressedPages.remove(0);
       try {
-        return new Page(
+        return new DataPage(
             decompressor.decompress(compressedPage.getBytes(), compressedPage.getUncompressedSize()),
             compressedPage.getValueCount(),
             compressedPage.getUncompressedSize(),

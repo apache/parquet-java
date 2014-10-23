@@ -41,7 +41,7 @@ import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.Encoding;
-import parquet.column.page.Page;
+import parquet.column.page.DataPage;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
 import parquet.column.statistics.BinaryStatistics;
@@ -369,7 +369,7 @@ public class TestParquetFileWriter {
 
   private void validateContains(MessageType schema, PageReadStore pages, String[] path, int values, BytesInput bytes) throws IOException {
     PageReader pageReader = pages.getPageReader(schema.getColumnDescription(path));
-    Page page = pageReader.readPage();
+    DataPage page = pageReader.readPage();
     assertEquals(values, page.getValueCount());
     assertArrayEquals(bytes.toByteArray(), page.getBytes().toByteArray());
   }

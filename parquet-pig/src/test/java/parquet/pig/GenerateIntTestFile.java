@@ -28,7 +28,7 @@ import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.impl.ColumnWriteStoreV1;
-import parquet.column.page.Page;
+import parquet.column.page.DataPage;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
 import parquet.column.page.mem.MemPageStore;
@@ -117,7 +117,7 @@ public class GenerateIntTestFile {
       w.startColumn(columnDescriptor, totalValueCount, CompressionCodecName.UNCOMPRESSED);
       int n = 0;
       do {
-        Page page = pageReader.readPage();
+        DataPage page = pageReader.readPage();
         n += page.getValueCount();
         // TODO: change INTFC
         w.writeDataPage(

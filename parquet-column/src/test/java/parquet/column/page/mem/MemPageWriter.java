@@ -26,7 +26,7 @@ import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.Encoding;
 import parquet.column.page.DictionaryPage;
-import parquet.column.page.Page;
+import parquet.column.page.DataPage;
 import parquet.column.page.PageWriter;
 import parquet.column.statistics.Statistics;
 import parquet.io.ParquetEncodingException;
@@ -34,7 +34,7 @@ import parquet.io.ParquetEncodingException;
 public class MemPageWriter implements PageWriter {
   private static final Log LOG = Log.getLog(MemPageWriter.class);
 
-  private final List<Page> pages = new ArrayList<Page>();
+  private final List<DataPage> pages = new ArrayList<DataPage>();
   private DictionaryPage dictionaryPage;
   private long memSize = 0;
   private long totalValueCount = 0;
@@ -47,7 +47,7 @@ public class MemPageWriter implements PageWriter {
       throw new ParquetEncodingException("illegal page of 0 values");
     }
     memSize += bytesInput.size();
-    pages.add(new Page(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), rlEncoding, dlEncoding, valuesEncoding));
+    pages.add(new DataPage(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), rlEncoding, dlEncoding, valuesEncoding));
     totalValueCount += valueCount;
     if (DEBUG) LOG.debug("page written for " + bytesInput.size() + " bytes and " + valueCount + " records");
   }
@@ -59,7 +59,7 @@ public class MemPageWriter implements PageWriter {
       throw new ParquetEncodingException("illegal page of 0 values");
     }
     memSize += bytesInput.size();
-    pages.add(new Page(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), statistics, rlEncoding, dlEncoding, valuesEncoding));
+    pages.add(new DataPage(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), statistics, rlEncoding, dlEncoding, valuesEncoding));
     totalValueCount += valueCount;
     if (DEBUG) LOG.debug("page written for " + bytesInput.size() + " bytes and " + valueCount + " records");
   }
@@ -69,7 +69,7 @@ public class MemPageWriter implements PageWriter {
     return memSize;
   }
 
-  public List<Page> getPages() {
+  public List<DataPage> getPages() {
     return pages;
   }
 

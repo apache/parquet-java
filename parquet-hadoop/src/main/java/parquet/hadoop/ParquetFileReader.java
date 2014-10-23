@@ -54,7 +54,7 @@ import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.DictionaryPage;
-import parquet.column.page.Page;
+import parquet.column.page.DataPage;
 import parquet.column.page.PageReadStore;
 import parquet.common.schema.ColumnPath;
 import parquet.format.PageHeader;
@@ -535,7 +535,7 @@ public class ParquetFileReader implements Closeable {
      * @return the list of pages
      */
     public ColumnChunkPageReader readAllPages() throws IOException {
-      List<Page> pagesInChunk = new ArrayList<Page>();
+      List<DataPage> pagesInChunk = new ArrayList<DataPage>();
       DictionaryPage dictionaryPage = null;
       long valuesCountReadSoFar = 0;
       while (valuesCountReadSoFar < descriptor.metadata.getValueCount()) {
@@ -556,7 +556,7 @@ public class ParquetFileReader implements Closeable {
             break;
           case DATA_PAGE:
             pagesInChunk.add(
-                new Page(
+                new DataPage(
                     this.readAsBytesInput(pageHeader.compressed_page_size),
                     pageHeader.data_page_header.num_values,
                     pageHeader.uncompressed_page_size,

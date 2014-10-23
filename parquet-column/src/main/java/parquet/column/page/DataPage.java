@@ -16,25 +16,25 @@
 package parquet.column.page;
 
 /**
- * Reader for a sequence a page from a given column chunk
+ * one data page in a chunk
  *
  * @author Julien Le Dem
  *
  */
-public interface PageReader {
+abstract public class DataPage extends Page {
 
- /**
-  * @return the dictionary page in that chunk or null if none
-  */
-  DictionaryPage readDictionaryPage();
+  DataPage(int compressedSize, int uncompressedSize) {
+    super(compressedSize, uncompressedSize);
+  }
 
-  /**
-   * @return the total number of values in the column chunk
-   */
-  long getTotalValueCount();
+  public abstract <T> T accept(Visitor<T> visitor);
 
-  /**
-   * @return the next page in that chunk or null if after the last page
-   */
-  DataPage readPage();
+  public static interface Visitor<T> {
+
+    T visit(DataPageV1 dataPageV1);
+
+    T visit(DataPageV2 dataPageV2);
+
+  }
+
 }

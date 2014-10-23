@@ -22,7 +22,7 @@ import java.util.Iterator;
 
 import parquet.Log;
 import parquet.column.page.DictionaryPage;
-import parquet.column.page.Page;
+import parquet.column.page.DataPage;
 import parquet.column.page.PageReader;
 import parquet.io.ParquetDecodingException;
 
@@ -31,10 +31,10 @@ public class MemPageReader implements PageReader {
   private static final Log LOG = Log.getLog(MemPageReader.class);
 
   private final long totalValueCount;
-  private final Iterator<Page> pages;
+  private final Iterator<DataPage> pages;
   private final DictionaryPage dictionaryPage;
 
-  public MemPageReader(long totalValueCount, Iterator<Page> pages, DictionaryPage dictionaryPage) {
+  public MemPageReader(long totalValueCount, Iterator<DataPage> pages, DictionaryPage dictionaryPage) {
     super();
     checkNotNull(pages, "pages");
     this.totalValueCount = totalValueCount;
@@ -48,9 +48,9 @@ public class MemPageReader implements PageReader {
   }
 
   @Override
-  public Page readPage() {
+  public DataPage readPage() {
     if (pages.hasNext()) {
-      Page next = pages.next();
+      DataPage next = pages.next();
       if (DEBUG) LOG.debug("read page " + next);
       return next;
     } else {
