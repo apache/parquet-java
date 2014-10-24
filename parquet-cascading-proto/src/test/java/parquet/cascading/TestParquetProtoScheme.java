@@ -9,6 +9,7 @@ import cascading.operation.FunctionCall;
 import cascading.pipe.Each;
 import cascading.pipe.Pipe;
 import cascading.scheme.Scheme;
+import cascading.scheme.hadoop.TextDelimited;
 import cascading.scheme.hadoop.TextLine;
 import cascading.tap.Tap;
 import cascading.tap.hadoop.Hfs;
@@ -28,10 +29,12 @@ import java.io.File;
 import static org.junit.Assert.assertEquals;
 
 public class TestParquetProtoScheme {
-  final String txtInputPath = "src/test/resources/names.txt";
+  final String namesInputPath = "src/test/resources/names.txt";
+  final String namesAndAddressesInputPath = "src/test/resources/names_and_addresses.txt";
   final String parquetInputPath = "target/test/ParquetProtoScheme/names-parquet-in";
   final String parquetOutputPath = "target/test/ParquetProtoScheme/names-parquet-out";
   final String txtOutputPath = "target/test/ParquetProtoScheme/names-txt-out";
+  private static final Fields packedFields = new Fields("name_obj");
 
   @Test
   public void testWrite() throws Exception {
@@ -40,13 +43,32 @@ public class TestParquetProtoScheme {
     if (fs.exists(path)) fs.delete(path, true);
 
     Scheme sourceScheme = new TextLine( new Fields( "first", "last" ) );
-    Tap source = new Hfs(sourceScheme, txtInputPath);
+    Tap source = new Hfs(sourceScheme, namesInputPath);
 
     Scheme sinkScheme = new ParquetProtoScheme<ProtoName.Name>(ProtoName.Name.class);
     Tap sink = new Hfs(sinkScheme, parquetOutputPath);
 
     Pipe assembly = new Pipe( "namecp" );
     assembly = new Each(assembly, new PackProtoFunction());
+    Flow flow  = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
+
+    flow.complete();
+  }
+
+  @Test
+  public void testWriteWithSpecifiedFields() throws Exception {
+    Path path = new Path(parquetOutputPath);
+    final FileSystem fs = path.getFileSystem(new Configuration());
+    if (fs.exists(path)) fs.delete(path, true);
+
+    Scheme sourceScheme = new TextDelimited( new Fields( "first", "last", "address" ), false, "\t" );
+    Tap source = new Hfs(sourceScheme, namesAndAddressesInputPath);
+
+    Scheme sinkScheme = new ParquetProtoScheme<ProtoName.Name>(ProtoName.Name.class, packedFields);
+    Tap sink = new Hfs(sinkScheme, parquetOutputPath);
+
+    Pipe assembly = new Pipe( "namecp" );
+    assembly = new Each(assembly, new Fields("first", "last"), new PackProtoFunction(), Fields.SWAP);
     Flow flow  = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
 
     flow.complete();
@@ -104,6 +126,11 @@ public class TestParquetProtoScheme {
   }
 
   private static class PackProtoFunction extends BaseOperation implements Function {
+
+    public PackProtoFunction() {
+      super(1, packedFields);
+    }
+
     @Override
     public void operate(FlowProcess flowProcess, FunctionCall functionCall) {
       TupleEntry arguments = functionCall.getArguments();

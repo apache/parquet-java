@@ -2,6 +2,7 @@ package parquet.cascading;
 
 import cascading.flow.FlowProcess;
 import cascading.tap.Tap;
+import cascading.tuple.Fields;
 import com.google.protobuf.Message;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
@@ -21,7 +22,13 @@ public class ParquetProtoScheme<T extends Message> extends ParquetValueScheme<T>
   }
 
   public ParquetProtoScheme(Class<T> protoClass) {
+    this(protoClass, Fields.ALL);
+  }
+
+  public ParquetProtoScheme(Class<T> protoClass, Fields fields) {
     this.protoClass = protoClass;
+    super.setSinkFields(fields);
+    super.setSourceFields(fields);
   }
 
   @Override
