@@ -708,7 +708,7 @@ public class ParquetMetadataConverter {
     DataPageHeaderV2 dataPageHeaderV2 = new DataPageHeaderV2(
         valueCount, nullCount, rowCount,
         getEncoding(dataEncoding),
-        rlByteLength, dlByteLength);
+        dlByteLength, rlByteLength);
     if (!statistics.isEmpty()) {
       dataPageHeaderV2.setStatistics(toParquetStatistics(statistics));
     }

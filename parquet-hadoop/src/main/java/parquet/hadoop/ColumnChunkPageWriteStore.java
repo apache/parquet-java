@@ -118,6 +118,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       int uncompressedSize = toIntWithCheck(
           data.size() + repetitionLevels.size() + definitionLevels.size()
       );
+      // TODO: decide if we compress
       BytesInput compressedData = compressor.compress(data);
       int compressedSize = toIntWithCheck(
           compressedData.size() + repetitionLevels.size() + definitionLevels.size()
@@ -134,7 +135,9 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
       this.totalValueCount += valueCount;
       this.pageCount += 1;
       this.totalStatistics.mergeStatistics(statistics);
-      BytesInput.concat(repetitionLevels, definitionLevels, compressedData).writeAllTo(buf);
+      repetitionLevels.writeAllTo(buf);
+      definitionLevels.writeAllTo(buf);
+      compressedData.writeAllTo(buf);
       encodings.add(dataEncoding);
     }
 

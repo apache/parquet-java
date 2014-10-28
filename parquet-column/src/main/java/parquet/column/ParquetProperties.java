@@ -1,39 +1,43 @@
 package parquet.column;
 
 import parquet.bytes.BytesUtils;
+import parquet.column.impl.ColumnWriteStoreV1;
+import parquet.column.impl.ColumnWriteStoreV2;
+import parquet.column.page.PageWriteStore;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.boundedint.DevNullValuesWriter;
 import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import parquet.column.values.deltastrings.DeltaByteArrayWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
-import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
 import parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
+import parquet.schema.MessageType;
 
 /**
  * This class represents all the configurable Parquet properties.
- * 
+ *
  * @author amokashi
  *
  */
 public class ParquetProperties {
-  
+
   public enum WriterVersion {
     PARQUET_1_0 ("v1"),
     PARQUET_2_0 ("v2");
-    
+
     private final String shortName;
-    
+
     WriterVersion(String shortname) {
       this.shortName = shortname;
     }
-    
+
     public static WriterVersion fromString(String name) {
       for(WriterVersion v : WriterVersion.values()) {
         if (v.shortName.equals(name)) {
@@ -53,7 +57,7 @@ public class ParquetProperties {
     this.writerVersion = writerVersion;
     this.enableDictionary = enableDict;
   }
-  
+
   public static ValuesWriter getColumnDescriptorValuesWriter(int maxLevel,  int initialSizePerCol) {
     if (maxLevel == 0) {
       return new DevNullValuesWriter();
@@ -80,7 +84,7 @@ public class ParquetProperties {
           return new PlainValuesWriter(initialSizePerCol);
         } else if (writerVersion == WriterVersion.PARQUET_2_0) {
           return new DeltaByteArrayWriter(initialSizePerCol);
-        } 
+        }
       }
       break;
     case INT32:
@@ -140,5 +144,26 @@ public class ParquetProperties {
 
   public boolean isEnableDictionary() {
     return enableDictionary;
+  }
+
+  public ColumnWriteStore newColumnWriteStore(
+      MessageType schema,
+      PageWriteStore pageStore, int pageSize,
+      int initialPageBufferSize) {
+    switch (writerVersion) {
+    case PARQUET_1_0:
+      return new ColumnWriteStoreV1(
+          pageStore,
+          pageSize, initialPageBufferSize, dictionaryPageSizeThreshold,
+          enableDictionary, writerVersion);
+    case PARQUET_2_0:
+      return new ColumnWriteStoreV2(
+          schema,
+          pageStore,
+          pageSize, initialPageBufferSize,
+          new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary));
+    default:
+      throw new IllegalArgumentException("unknown version " + writerVersion);
+    }
   }
 }

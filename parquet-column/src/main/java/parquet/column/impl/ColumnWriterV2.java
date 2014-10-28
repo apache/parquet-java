@@ -15,14 +15,16 @@
  */
 package parquet.column.impl;
 
+import static parquet.bytes.BytesUtils.getWidthFromMaxInt;
+
 import java.io.IOException;
 
 import parquet.Ints;
 import parquet.Log;
+import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
 import parquet.column.ParquetProperties;
-import parquet.column.impl.ColumnWriterV2;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
 import parquet.column.statistics.Statistics;
@@ -59,8 +61,8 @@ final class ColumnWriterV2 implements ColumnWriter {
     this.path = path;
     this.pageWriter = pageWriter;
     resetStatistics();
-    this.repetitionLevelColumn = new RunLengthBitPackingHybridEncoder(path.getMaxRepetitionLevel(), initialSizePerCol);
-    this.definitionLevelColumn = new RunLengthBitPackingHybridEncoder(path.getMaxDefinitionLevel(), initialSizePerCol);
+    this.repetitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxRepetitionLevel()), initialSizePerCol);
+    this.definitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxDefinitionLevel()), initialSizePerCol);
     this.dataColumn = parquetProps.getValuesWriter(path, initialSizePerCol);
   }
 
@@ -263,7 +265,7 @@ final class ColumnWriterV2 implements ColumnWriter {
    * @param rowCount how many rows have been written so far
    */
   public void writePage(long rowCount) {
-    int pageRowCount = Ints.checkedCast(rowsWrittenSoFar - rowCount);
+    int pageRowCount = Ints.checkedCast(rowCount - rowsWrittenSoFar);
     this.rowsWrittenSoFar = rowCount;
     if (DEBUG) LOG.debug("write page");
     try {
@@ -271,8 +273,8 @@ final class ColumnWriterV2 implements ColumnWriter {
           pageRowCount,
           Ints.checkedCast(statistics.getNumNulls()),
           valueCount,
-          repetitionLevelColumn.toBytes(),
-          definitionLevelColumn.toBytes(),
+          path.getMaxRepetitionLevel() == 0 ? BytesInput.empty() : repetitionLevelColumn.toBytes(),
+          path.getMaxDefinitionLevel() == 0 ? BytesInput.empty() : definitionLevelColumn.toBytes(),
           dataColumn.getEncoding(),
           dataColumn.getBytes(),
           statistics

@@ -123,4 +123,16 @@ public class DataPageV2 extends DataPage {
     return visitor.visit(this);
   }
 
+  @Override
+  public String toString() {
+    return "Page V2 ["
+        + "dl size=" + definitionLevels.size() + ", "
+        + "rl size=" + repetitionLevels.size() + ", "
+        + "data size=" + data.size() + ", "
+        + "data enc=" + dataEncoding + ", "
+        + "valueCount=" + getValueCount() + ", "
+        + "rowCount=" + getRowCount() + ", "
+        + "is compressed=" + isCompressed + ", "
+        + "uncompressedSize=" + getUncompressedSize() + "]";
+  }
 }

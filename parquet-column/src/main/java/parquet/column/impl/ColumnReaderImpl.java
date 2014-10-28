@@ -567,8 +567,8 @@ class ColumnReaderImpl implements ColumnReader {
   }
 
   private void readPageV2(DataPageV2 page) {
-    this.repetitionLevelColumn = newRLEIterator(path.getMaxDefinitionLevel(), page.getDefinitionLevels());
-    this.definitionLevelColumn = newRLEIterator(path.getMaxRepetitionLevel(), page.getRepetitionLevels());
+    this.repetitionLevelColumn = newRLEIterator(path.getMaxRepetitionLevel(), page.getRepetitionLevels());
+    this.definitionLevelColumn = newRLEIterator(path.getMaxDefinitionLevel(), page.getDefinitionLevels());
     try {
       if (DEBUG) LOG.debug("page data size " + page.getData().size() + " bytes and " + pageValueCount + " records");
       initDataReader(page.getDataEncoding(), page.getData().toByteArray(), 0, page.getValueCount());
@@ -577,8 +577,11 @@ class ColumnReaderImpl implements ColumnReader {
     }
   }
 
-  private RLEIntIterator newRLEIterator(int maxLevel, BytesInput bytes) {
+  private IntIterator newRLEIterator(int maxLevel, BytesInput bytes) {
     try {
+      if (maxLevel == 0) {
+        return new NullIntIterator();
+      }
       return new RLEIntIterator(
           new RunLengthBitPackingHybridDecoder(
               BytesUtils.getWidthFromMaxInt(maxLevel),
@@ -646,4 +649,10 @@ class ColumnReaderImpl implements ColumnReader {
     }
   }
 
+  private static final class NullIntIterator extends IntIterator {
+    @Override
+    int nextInt() {
+      return 0;
+    }
+  }
 }

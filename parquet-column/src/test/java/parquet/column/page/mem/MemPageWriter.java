@@ -16,6 +16,7 @@
 package parquet.column.page.mem;
 
 import static parquet.Log.DEBUG;
+import static parquet.bytes.BytesInput.copy;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -62,7 +63,7 @@ public class MemPageWriter implements PageWriter {
     }
     long size = repetitionLevels.size() + definitionLevels.size() + data.size();
     memSize += size;
-    pages.add(DataPageV2.uncompressed(rowCount, nullCount, valueCount, BytesInput.copy(repetitionLevels), BytesInput.copy(definitionLevels), dataEncoding, BytesInput.copy(data), statistics));
+    pages.add(DataPageV2.uncompressed(rowCount, nullCount, valueCount, copy(repetitionLevels), copy(definitionLevels), dataEncoding, copy(data), statistics));
     totalValueCount += valueCount;
     if (DEBUG) LOG.debug("page written for " + size + " bytes and " + valueCount + " records");
 

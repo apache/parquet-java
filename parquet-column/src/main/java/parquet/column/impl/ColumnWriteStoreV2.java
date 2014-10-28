@@ -16,6 +16,7 @@
 package parquet.column.impl;
 
 import static java.lang.Math.max;
+import static java.lang.Math.min;
 import static java.util.Collections.unmodifiableMap;
 
 import java.util.Arrays;
@@ -37,6 +38,7 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
 
   // will wait for at least that many records before checking again
   private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
+  private static final int MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
   // will flush even if size bellow the threshold by this much to facilitate page alignment
   private static final float THRESHOLD_TOLERANCE_RATIO = 0.1f; // 10 %
 
@@ -140,7 +142,10 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
         writer.writePage(rowCount);
         remainingMem = pageSizeThreshold;
       }
-      long rowsToFillPage = (long)((float)rows) / usedMem * remainingMem;
+      long rowsToFillPage =
+          usedMem == 0 ?
+              MAXIMUM_RECORD_COUNT_FOR_CHECK
+              : (long)((float)rows) / usedMem * remainingMem;
       if (rowsToFillPage < minRecordToWait) {
         minRecordToWait = rowsToFillPage;
       }
@@ -149,7 +154,10 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
       minRecordToWait = MINIMUM_RECORD_COUNT_FOR_CHECK;
     }
     // will check again halfway
-    rowCountForNextSizeCheck = rowCount + max(MINIMUM_RECORD_COUNT_FOR_CHECK, minRecordToWait / 2);
+    rowCountForNextSizeCheck = rowCount +
+        min(
+            max(minRecordToWait / 2, MINIMUM_RECORD_COUNT_FOR_CHECK), // no less than MINIMUM_RECORD_COUNT_FOR_CHECK
+            MAXIMUM_RECORD_COUNT_FOR_CHECK); // no more than MAXIMUM_RECORD_COUNT_FOR_CHECK
   }
 
 }
