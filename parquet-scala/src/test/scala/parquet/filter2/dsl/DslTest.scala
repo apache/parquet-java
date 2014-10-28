@@ -1,6 +1,7 @@
 package parquet.filter2.dsl
 
 import java.lang.{Double => JDouble, Integer => JInt}
+import java.io.Serializable;
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
@@ -9,7 +10,7 @@ import parquet.filter2.predicate.Operators.{Or, UserDefined, DoubleColumn => JDo
 import parquet.filter2.predicate.{FilterApi, Statistics, UserDefinedPredicate}
 
 class DummyFilter extends UserDefinedPredicate[JInt] {
-  override def keep(value: JInt, o: Object): Boolean = false
+  override def keep(value: JInt, o: Serializable): Boolean = false
 
   override def canDrop(statistics: Statistics[JInt]): Boolean = false
 

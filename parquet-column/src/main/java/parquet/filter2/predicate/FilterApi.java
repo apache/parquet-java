@@ -1,5 +1,7 @@
 package parquet.filter2.predicate;
 
+import java.io.Serializable;
+
 import parquet.common.schema.ColumnPath;
 import parquet.filter2.predicate.Operators.And;
 import parquet.filter2.predicate.Operators.BinaryColumn;
@@ -146,7 +148,7 @@ public final class FilterApi {
    * Keeps records that pass the provided {@link UserDefinedPredicate}
    */
   public static <T extends Comparable<T>, U extends UserDefinedPredicate<T>>
-    UserDefined<T, U> userDefined(Column<T> column, Class<U> clazz, Object o) {
+    UserDefined<T, U> userDefined(Column<T> column, Class<U> clazz, Serializable o) {
     return new UserDefined<T, U>(column, clazz, o);
   }
 

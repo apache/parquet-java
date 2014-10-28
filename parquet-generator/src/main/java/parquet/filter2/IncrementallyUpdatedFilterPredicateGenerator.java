@@ -50,6 +50,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
   public void run() throws IOException {
     add("package parquet.filter2.recordlevel;\n" +
         "\n" +
+        "import java.io.Serializable;\n" +
         "import parquet.common.schema.ColumnPath;\n" +
         "import parquet.filter2.predicate.Operators.Eq;\n" +
         "import parquet.filter2.predicate.Operators.Gt;\n" +
@@ -222,7 +223,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         "\n" +
         "    final U udp = pred.getUserDefinedPredicate();\n" +
         "\n" +
-        "    final Object o = pred.getFilterObject();\n" +
+        "    final Serializable o = pred.getFilterObject();\n" +
         "\n");
   }
 

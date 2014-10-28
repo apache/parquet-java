@@ -344,11 +344,11 @@ public final class Operators {
     private final Column<T> column;
     private final Class<U> udpClass;
     private final String toString;
-    private final Object o;
+    private final Serializable o;
     private static final String INSTANTIATION_ERROR_MESSAGE =
         "Could not instantiate custom filter: %s. User defined predicates must be static classes with a default constructor.";
 
-    UserDefined(Column<T> column, Class<U> udpClass, Object o) {
+    UserDefined(Column<T> column, Class<U> udpClass, Serializable o) {
       this.column = checkNotNull(column, "column");
       this.udpClass = checkNotNull(udpClass, "udpClass");
       String name = getClass().getSimpleName().toLowerCase();
@@ -367,7 +367,7 @@ public final class Operators {
       return udpClass;
     }
 
-    public Object getFilterObject() {
+    public Serializable getFilterObject() {
       return o;
     }
 

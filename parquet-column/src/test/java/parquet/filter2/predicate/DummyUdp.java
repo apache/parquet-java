@@ -1,9 +1,11 @@
 package parquet.filter2.predicate;
 
+import java.io.Serializable;
+
 public class DummyUdp extends UserDefinedPredicate<Integer> {
 
   @Override
-  public boolean keep(Integer value, Object o) {
+  public boolean keep(Integer value, Serializable o) {
     return false;
   }
 

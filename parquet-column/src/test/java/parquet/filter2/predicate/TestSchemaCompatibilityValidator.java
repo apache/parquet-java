@@ -2,6 +2,7 @@ package parquet.filter2.predicate;
 
 import org.junit.Test;
 
+import java.io.Serializable;
 import parquet.filter2.predicate.Operators.BinaryColumn;
 import parquet.filter2.predicate.Operators.IntColumn;
 import parquet.filter2.predicate.Operators.LongColumn;
@@ -51,7 +52,7 @@ public class TestSchemaCompatibilityValidator {
 
   static class LongDummyUdp extends UserDefinedPredicate<Long> {
     @Override
-    public boolean keep(Long value, Object o) {
+    public boolean keep(Long value, Serializable o) {
       return false;
     }
 

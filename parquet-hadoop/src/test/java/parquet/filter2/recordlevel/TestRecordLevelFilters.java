@@ -2,6 +2,7 @@ package parquet.filter2.recordlevel;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -147,7 +148,7 @@ public class TestRecordLevelFilters {
   public static class StartWithP extends UserDefinedPredicate<Binary> {
 
     @Override
-    public boolean keep(Binary value, Object o) {
+    public boolean keep(Binary value, Serializable o) {
       if (value == null) {
         return false;
       }
@@ -168,7 +169,7 @@ public class TestRecordLevelFilters {
   public static class SetInFilter extends UserDefinedPredicate<Long> {
 
     @Override
-    public boolean keep(Long value, Object o) {
+    public boolean keep(Long value, Serializable o) {
       if (value == null) {
         return false;
       }
@@ -208,7 +209,7 @@ public class TestRecordLevelFilters {
   public void testIdIn() throws Exception {
     LongColumn name = longColumn("id");
 
-    Set<Long> h = new HashSet<Long>() {{
+    HashSet<Long> h = new HashSet<Long>() {{
           add(20L); add(27L); add(28L);
     }}; 
     FilterPredicate pred = userDefined(name, SetInFilter.class, h);

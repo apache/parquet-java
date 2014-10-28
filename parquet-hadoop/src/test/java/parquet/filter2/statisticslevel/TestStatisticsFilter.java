@@ -3,6 +3,7 @@ package parquet.filter2.statisticslevel;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.io.Serializable;
 
 import org.junit.Test;
 
@@ -219,10 +220,10 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(or(no, no), columnMetas));
   }
 
-  public static class SevensAndEightsUdp extends UserDefinedPredicate<Integer> {
+  public static class SevensAndEightsUdp extends UserDefinedPredicate<Integer, Serializable> {
 
     @Override
-    public boolean keep(Integer value, Object o) {
+    public boolean keep(Integer value, Serializable o) {
       throw new RuntimeException("this method should not be called");
     }
 
