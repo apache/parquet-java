@@ -6,16 +6,16 @@ import static parquet.column.Encoding.PLAIN_DICTIONARY;
 import static parquet.column.Encoding.RLE_DICTIONARY;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.boundedint.DevNullValuesWriter;
-import parquet.column.values.fallback.FallbackValuesWriter;
 import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import parquet.column.values.deltastrings.DeltaByteArrayWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter;
+import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
-import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter;
+import parquet.column.values.fallback.FallbackValuesWriter;
 import parquet.column.values.plain.BooleanPlainValuesWriter;
 import parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
@@ -124,7 +124,7 @@ public class ParquetProperties {
     }
   }
 
-  private ValuesWriter fallbackWriter(ColumnDescriptor path, int initialSizePerCol) {
+  private ValuesWriter writerToFallbackTo(ColumnDescriptor path, int initialSizePerCol) {
     switch(writerVersion) {
     case PARQUET_1_0:
       return plainWriter(path, initialSizePerCol);
@@ -151,26 +151,26 @@ public class ParquetProperties {
   }
 
   private ValuesWriter dictWriterWithFallBack(ColumnDescriptor path, int initialSizePerCol) {
-    ValuesWriter fallbackWriter = fallbackWriter(path, initialSizePerCol);
+    ValuesWriter writerToFallBackTo = writerToFallbackTo(path, initialSizePerCol);
     if (enableDictionary) {
       return FallbackValuesWriter.of(
           dictionaryWriter(path, initialSizePerCol),
-          fallbackWriter);
+          writerToFallBackTo);
     } else {
-     return fallbackWriter;
+     return writerToFallBackTo;
     }
   }
 
   public ValuesWriter getValuesWriter(ColumnDescriptor path, int initialSizePerCol) {
     switch (path.getType()) {
     case BOOLEAN: // no dictionary encoding for boolean
-      return fallbackWriter(path, initialSizePerCol);
+      return writerToFallbackTo(path, initialSizePerCol);
     case FIXED_LEN_BYTE_ARRAY:
       // dictionary encoding for that type was not enabled in PARQUET 1.0
       if (writerVersion == WriterVersion.PARQUET_2_0) {
         return dictWriterWithFallBack(path, initialSizePerCol);
       } else {
-       return fallbackWriter(path, initialSizePerCol);
+       return writerToFallbackTo(path, initialSizePerCol);
       }
     case BINARY:
     case INT32:
