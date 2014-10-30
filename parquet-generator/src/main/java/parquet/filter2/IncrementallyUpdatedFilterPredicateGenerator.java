@@ -108,7 +108,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     addVisitEnd();
 
     add("  @Override\n" +
-        "  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> IncrementallyUpdatedFilterPredicate visit(UserDefined<T, U> pred) {\n");
+        "  public <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> IncrementallyUpdatedFilterPredicate visit(UserDefined<T, U, S> pred) {\n");
     addUdpBegin();
     for (TypeInfo info : TYPES) {
       addUdpCase(info, false);
@@ -116,8 +116,8 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     addVisitEnd();
 
     add("  @Override\n" +
-        "  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> IncrementallyUpdatedFilterPredicate visit(LogicalNotUserDefined<T, U> notPred) {\n" +
-        "    UserDefined<T, U> pred = notPred.getUserDefined();\n");
+        "  public <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> IncrementallyUpdatedFilterPredicate visit(LogicalNotUserDefined<T, U, S> notPred) {\n" +
+        "    UserDefined<T, U, S> pred = notPred.getUserDefined();\n");
     addUdpBegin();
     for (TypeInfo info : TYPES) {
       addUdpCase(info, true);
@@ -223,7 +223,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         "\n" +
         "    final U udp = pred.getUserDefinedPredicate();\n" +
         "\n" +
-        "    final Serializable o = pred.getFilterObject();\n" +
+        "    final S o = pred.getFilterObject();\n" +
         "\n");
   }
 

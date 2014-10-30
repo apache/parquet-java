@@ -1,5 +1,6 @@
 package parquet.filter2.predicate;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -128,13 +129,13 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Void visit(UserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> Void visit(UserDefined<T, U, S> udp) {
     validateColumn(udp.getColumn());
     return null;
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Void visit(LogicalNotUserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> Void visit(LogicalNotUserDefined<T, U, S> udp) {
     return udp.getUserDefined().accept(this);
   }
 

@@ -9,8 +9,8 @@ import org.scalatest.junit.JUnitRunner
 import parquet.filter2.predicate.Operators.{Or, UserDefined, DoubleColumn => JDoubleColumn, IntColumn => JIntColumn}
 import parquet.filter2.predicate.{FilterApi, Statistics, UserDefinedPredicate}
 
-class DummyFilter extends UserDefinedPredicate[JInt] {
-  override def keep(value: JInt, o: Serializable): Boolean = false
+class DummyFilter extends UserDefinedPredicate[JInt, java.io.Serializable] {
+  override def keep(value: JInt, o: java.io.Serializable): Boolean = false
 
   override def canDrop(statistics: Statistics[JInt]): Boolean = false
 
@@ -38,11 +38,11 @@ class DslTest extends FlatSpec{
 
   "user defined predicates" should "be correctly constructed" in {
     val abc = IntColumn("a.b.c")
-    val pred = (abc > 10) || abc.filterBy(classOf[DummyFilter])
+    val pred = (abc > 10) || abc.filterBy(classOf[DummyFilter], null)
 
-    val expected = FilterApi.or(FilterApi.gt[JInt, JIntColumn](abc.javaColumn, 10), FilterApi.userDefined(abc.javaColumn, classOf[DummyFilter], null))
+    val expected = FilterApi.or(FilterApi.gt[JInt, JIntColumn](abc.javaColumn, 10), FilterApi.userDefined[JInt, DummyFilter, java.io.Serializable](abc.javaColumn, classOf[DummyFilter], null))
     assert(pred === expected)
-    val intUserDefined = pred.asInstanceOf[Or].getRight.asInstanceOf[UserDefined[JInt, DummyFilter]]
+    val intUserDefined = pred.asInstanceOf[Or].getRight.asInstanceOf[UserDefined[JInt, DummyFilter, java.io.Serializable]]
 
     assert(intUserDefined.getUserDefinedPredicateClass === classOf[DummyFilter])
     assert(intUserDefined.getUserDefinedPredicate.isInstanceOf[DummyFilter])

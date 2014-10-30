@@ -2,7 +2,7 @@ package parquet.filter2.predicate;
 
 import java.io.Serializable;
 
-public class DummyUdp extends UserDefinedPredicate<Integer> {
+public class DummyUdp extends UserDefinedPredicate<Integer, Serializable> {
 
   @Override
   public boolean keep(Integer value, Serializable o) {

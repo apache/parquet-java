@@ -1,5 +1,7 @@
 package parquet.filter2.predicate;
 
+import java.io.Serializable;
+
 import parquet.filter2.predicate.Operators.And;
 import parquet.filter2.predicate.Operators.Eq;
 import parquet.filter2.predicate.Operators.Gt;
@@ -47,8 +49,8 @@ public interface FilterPredicate {
     R visit(And and);
     R visit(Or or);
     R visit(Not not);
-    <T extends Comparable<T>, U extends UserDefinedPredicate<T>> R visit(UserDefined<T, U> udp);
-    <T extends Comparable<T>, U extends UserDefinedPredicate<T>> R visit(LogicalNotUserDefined<T, U> udp);
+    <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> R visit(UserDefined<T, U, S> udp);
+    <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> R visit(LogicalNotUserDefined<T, U, S> udp);
   }
 
 }

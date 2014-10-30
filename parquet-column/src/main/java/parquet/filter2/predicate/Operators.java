@@ -340,15 +340,15 @@ public final class Operators {
     }
   }
 
-  public static final class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
+  public static final class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> implements FilterPredicate, Serializable {
     private final Column<T> column;
     private final Class<U> udpClass;
     private final String toString;
-    private final Serializable o;
+    private final S o;
     private static final String INSTANTIATION_ERROR_MESSAGE =
         "Could not instantiate custom filter: %s. User defined predicates must be static classes with a default constructor.";
 
-    UserDefined(Column<T> column, Class<U> udpClass, Serializable o) {
+    UserDefined(Column<T> column, Class<U> udpClass, S o) {
       this.column = checkNotNull(column, "column");
       this.udpClass = checkNotNull(udpClass, "udpClass");
       String name = getClass().getSimpleName().toLowerCase();
@@ -367,7 +367,7 @@ public final class Operators {
       return udpClass;
     }
 
-    public Serializable getFilterObject() {
+    public S getFilterObject() {
       return o;
     }
 
@@ -415,16 +415,16 @@ public final class Operators {
 
   // Represents the inverse of a UserDefined. It is equivalent to not(userDefined), without the use
   // of the not() operator
-  public static final class LogicalNotUserDefined <T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
-    private final UserDefined<T, U> udp;
+  public static final class LogicalNotUserDefined <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> implements FilterPredicate, Serializable {
+    private final UserDefined<T, U, S> udp;
     private final String toString;
 
-    LogicalNotUserDefined(UserDefined<T, U> userDefined) {
+    LogicalNotUserDefined(UserDefined<T, U, S> userDefined) {
       this.udp = checkNotNull(userDefined, "userDefined");
       this.toString = "inverted(" + udp + ")";
     }
 
-    public UserDefined<T, U> getUserDefined() {
+    public UserDefined<T, U, S> getUserDefined() {
       return udp;
     }
 

@@ -1,5 +1,7 @@
 package parquet.filter2.predicate;
 
+import java.io.Serializable;
+
 import parquet.filter2.predicate.FilterPredicate.Visitor;
 import parquet.filter2.predicate.Operators.And;
 import parquet.filter2.predicate.Operators.Eq;
@@ -84,12 +86,12 @@ public final class LogicalInverseRewriter implements Visitor<FilterPredicate> {
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(UserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> FilterPredicate visit(UserDefined<T, U, S> udp) {
     return udp;
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(LogicalNotUserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> FilterPredicate visit(LogicalNotUserDefined<T, U, S> udp) {
     return udp;
   }
 }

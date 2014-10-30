@@ -145,7 +145,7 @@ public class TestRecordLevelFilters {
     });
   }
 
-  public static class StartWithP extends UserDefinedPredicate<Binary> {
+  public static class StartWithP extends UserDefinedPredicate<Binary, Serializable> {
 
     @Override
     public boolean keep(Binary value, Serializable o) {
@@ -166,16 +166,15 @@ public class TestRecordLevelFilters {
     }
   }
   
-  public static class SetInFilter extends UserDefinedPredicate<Long> {
+  public static class SetInFilter extends UserDefinedPredicate<Long, HashSet<Long>> {
 
     @Override
-    public boolean keep(Long value, Serializable o) {
+    public boolean keep(Long value, HashSet o) {
       if (value == null) {
         return false;
       }
 
-      Set<Long> hSet = (HashSet<Long>) o;
-      return hSet.contains(value);
+      return o.contains(value);
     }
 
     @Override

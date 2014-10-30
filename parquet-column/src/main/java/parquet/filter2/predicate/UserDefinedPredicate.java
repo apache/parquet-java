@@ -12,7 +12,7 @@ import java.io.Serializable;
  */
 // TODO: consider avoiding autoboxing and adding the specialized methods for each type
 // TODO: downside is that's fairly unwieldy for users
-public abstract class UserDefinedPredicate<T extends Comparable<T>> {
+public abstract class UserDefinedPredicate<T extends Comparable<T>, S extends Serializable> {
 
   /**
    * A udp must have a default constructor.
@@ -26,7 +26,7 @@ public abstract class UserDefinedPredicate<T extends Comparable<T>> {
    * Return true to keep the record with this value, false to drop it.
    * o is a filter object that can be used for filtering the value.
    */
-  public abstract boolean keep(T value, Serializable o);
+  public abstract boolean keep(T value, S o);
 
   /**
    * Given information about a group of records (eg, the min and max value)

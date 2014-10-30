@@ -1,5 +1,6 @@
 package parquet.filter2.predicate;
 
+import java.io.Serializable;
 import org.junit.Test;
 
 import java.io.Serializable;
@@ -50,7 +51,7 @@ public class TestSchemaCompatibilityValidator {
                   userDefined(intBar, DummyUdp.class, null))),
           or(gt(stringC, Binary.fromString("bar")), notEq(stringC, Binary.fromString("baz"))));
 
-  static class LongDummyUdp extends UserDefinedPredicate<Long> {
+  static class LongDummyUdp extends UserDefinedPredicate<Long, Serializable> {
     @Override
     public boolean keep(Long value, Serializable o) {
       return false;
