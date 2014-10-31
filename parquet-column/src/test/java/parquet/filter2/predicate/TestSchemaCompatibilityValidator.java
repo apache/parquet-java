@@ -53,7 +53,7 @@ public class TestSchemaCompatibilityValidator {
 
   static class LongDummyUdp extends UserDefinedPredicate<Long, Serializable> {
     @Override
-    public boolean keep(Long value, Serializable o) {
+    public boolean keep(Long value) {
       return false;
     }
 

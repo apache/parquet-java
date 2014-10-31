@@ -5,7 +5,7 @@ import java.io.Serializable;
 public class DummyUdp extends UserDefinedPredicate<Integer, Serializable> {
 
   @Override
-  public boolean keep(Integer value, Serializable o) {
+  public boolean keep(Integer value) {
     return false;
   }
 

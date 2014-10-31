@@ -1,5 +1,6 @@
 package parquet.filter2.statisticslevel;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -216,7 +217,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
         "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? " + not);
   }
 
-  private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud, boolean inverted) {
+  private <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> Boolean visit(UserDefined<T, U, S> ud, boolean inverted) {
     Column<T> filterColumn = ud.getColumn();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
     U udp = ud.getUserDefinedPredicate();
@@ -232,12 +233,12 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> Boolean visit(UserDefined<T, U, S> ud) {
     return visit(ud, false);
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(LogicalNotUserDefined<T, U> lnud) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> Boolean visit(LogicalNotUserDefined<T, U, S> lnud) {
     return visit(lnud.getUserDefined(), true);
   }
 

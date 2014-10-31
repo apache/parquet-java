@@ -10,7 +10,7 @@ import parquet.filter2.predicate.Operators.{Or, UserDefined, DoubleColumn => JDo
 import parquet.filter2.predicate.{FilterApi, Statistics, UserDefinedPredicate}
 
 class DummyFilter extends UserDefinedPredicate[JInt, java.io.Serializable] {
-  override def keep(value: JInt, o: java.io.Serializable): Boolean = false
+  override def keep(value: JInt): Boolean = false
 
   override def canDrop(statistics: Statistics[JInt]): Boolean = false
 

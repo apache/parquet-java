@@ -223,7 +223,7 @@ public class TestStatisticsFilter {
   public static class SevensAndEightsUdp extends UserDefinedPredicate<Integer, Serializable> {
 
     @Override
-    public boolean keep(Integer value, Serializable o) {
+    public boolean keep(Integer value) {
       throw new RuntimeException("this method should not be called");
     }
 
