@@ -413,11 +413,11 @@ public class ParquetFileWriter {
   }
 
   private static ParquetMetadata mergeFooters(Path root, List<Footer> footers) {
-    String rootPath = root.toString();
+    String rootPath = root.toUri().getPath();
     GlobalMetaData fileMetaData = null;
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     for (Footer footer : footers) {
-      String path = footer.getFile().toString();
+      String path = footer.getFile().toUri().getPath();
       if (!path.startsWith(rootPath)) {
         throw new ParquetEncodingException(path + " invalid: all the files must be contained in the root " + root);
       }
