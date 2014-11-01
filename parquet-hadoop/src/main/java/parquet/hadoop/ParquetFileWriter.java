@@ -412,22 +412,22 @@ public class ParquetFileWriter {
     metadata.close();
   }
 
-  private static ParquetMetadata mergeFooters(Path root, List<Footer> footers) {
+  static ParquetMetadata mergeFooters(Path root, List<Footer> footers) {
     String rootPath = root.toUri().getPath();
     GlobalMetaData fileMetaData = null;
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     for (Footer footer : footers) {
-      String path = footer.getFile().toUri().getPath();
-      if (!path.startsWith(rootPath)) {
-        throw new ParquetEncodingException(path + " invalid: all the files must be contained in the root " + root);
+        String footerPath = footer.getFile().toUri().getPath();
+      if (!footerPath.startsWith(rootPath)) {
+        throw new ParquetEncodingException(footerPath + " invalid: all the files must be contained in the root " + root);
       }
-      path = path.substring(rootPath.length());
-      while (path.startsWith("/")) {
-        path = path.substring(1);
+      footerPath = footerPath.substring(rootPath.length());
+      while (footerPath.startsWith("/")) {
+        footerPath = footerPath.substring(1);
       }
       fileMetaData = mergeInto(footer.getParquetMetadata().getFileMetaData(), fileMetaData);
       for (BlockMetaData block : footer.getParquetMetadata().getBlocks()) {
-        block.setPath(path);
+        block.setPath(footerPath);
         blocks.add(block);
       }
     }
