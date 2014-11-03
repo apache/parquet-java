@@ -22,6 +22,7 @@ import java.util.*;
 
 import org.apache.avro.Schema;
 
+import org.apache.hadoop.conf.Configuration;
 import org.codehaus.jackson.node.NullNode;
 import parquet.schema.ConversionPatterns;
 import parquet.schema.GroupType;
@@ -41,6 +42,21 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
  * </p>
  */
 public class AvroSchemaConverter {
+
+  static final String ADD_LIST_ELEMENT_RECORDS =
+      "parquet.avro.add-list-element-records";
+  private static final boolean ADD_LIST_ELEMENT_RECORDS_DEFAULT = true;
+
+  private final boolean assumeRepeatedIsListElement;
+
+  public AvroSchemaConverter() {
+    this.assumeRepeatedIsListElement = ADD_LIST_ELEMENT_RECORDS_DEFAULT;
+  }
+
+  public AvroSchemaConverter(Configuration conf) {
+    this.assumeRepeatedIsListElement = conf.getBoolean(
+        ADD_LIST_ELEMENT_RECORDS, ADD_LIST_ELEMENT_RECORDS_DEFAULT);
+  }
 
   /**
    * Given a schema, check to see if it is a union of a null type and a regular schema,
@@ -67,7 +83,7 @@ public class AvroSchemaConverter {
       return schema;
     }
   }
-  
+
   public MessageType convert(Schema avroSchema) {
     if (!avroSchema.getType().equals(Schema.Type.RECORD)) {
       throw new IllegalArgumentException("Avro schema must be a record.");
@@ -254,11 +270,22 @@ public class AvroSchemaConverter {
             if (parquetGroupType.getFieldCount()!= 1) {
               throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
             }
-            Type elementType = parquetGroupType.getType(0);
-            if (!elementType.isRepetition(Type.Repetition.REPEATED)) {
+            Type repeatedType = parquetGroupType.getType(0);
+            if (!repeatedType.isRepetition(Type.Repetition.REPEATED)) {
               throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
             }
-            return Schema.createArray(convertField(elementType));
+            if (isElementType(repeatedType, parquetGroupType.getName())) {
+              // repeated element types are always required
+              return Schema.createArray(convertField(repeatedType));
+            } else {
+              Type elementType = repeatedType.asGroupType().getType(0);
+              if (elementType.isRepetition(Type.Repetition.OPTIONAL)) {
+                return Schema.createArray(optional(convertField(elementType)));
+              } else {
+                return Schema.createArray(convertField(elementType));
+              }
+            }
+          case MAP_KEY_VALUE: // for backward-compatibility
           case MAP:
             if (parquetGroupType.getFieldCount() != 1 || parquetGroupType.getType(0).isPrimitive()) {
               throw new UnsupportedOperationException("Invalid map type " + parquetGroupType);
@@ -284,7 +311,6 @@ public class AvroSchemaConverter {
             }
           case ENUM:
             return Schema.create(Schema.Type.STRING);
-          case MAP_KEY_VALUE:
           case UTF8:
           default:
             throw new UnsupportedOperationException("Cannot convert Parquet type " +
@@ -296,6 +322,28 @@ public class AvroSchemaConverter {
         return convertFields(parquetGroupType.getName(), parquetGroupType.getFields());
       }
     }
+  }
+
+  /**
+   * Implements the rules for interpreting existing data from the logical type
+   * spec for the LIST annotation. This is used to produce the expected schema.
+   * <p>
+   * The AvroArrayConverter will decide whether the repeated type is the array
+   * element type by testing whether the element schema and repeated type are
+   * the same. This ensures that the LIST rules are followed when there is no
+   * schema and that a schema can be provided to override the default behavior.
+   */
+  private boolean isElementType(Type repeatedType, String parentName) {
+    return (
+        // can't be a synthetic layer because it would be invalid
+        repeatedType.isPrimitive() ||
+        repeatedType.asGroupType().getFieldCount() > 1 ||
+        // known patterns without the synthetic layer
+        repeatedType.getName().equals("array") ||
+        repeatedType.getName().equals(parentName + "_tuple") ||
+        // default assumption
+        assumeRepeatedIsListElement
+    );
   }
 
   private static Schema optional(Schema original) {
