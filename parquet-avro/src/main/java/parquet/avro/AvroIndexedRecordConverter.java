@@ -141,9 +141,9 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     } else if (schema.getType().equals(Schema.Type.ENUM)) {
       return new FieldEnumConverter(parent, schema, model);
     } else if (schema.getType().equals(Schema.Type.ARRAY)) {
-      return new AvroArrayConverter(parent, type, schema, model);
+      return new AvroArrayConverter(parent, type.asGroupType(), schema, model);
     } else if (schema.getType().equals(Schema.Type.MAP)) {
-      return new MapConverter(parent, type, schema, model);
+      return new MapConverter(parent, type.asGroupType(), schema, model);
     } else if (schema.getType().equals(Schema.Type.UNION)) {
       return new AvroUnionConverter(parent, type, schema, model);
     } else if (schema.getType().equals(Schema.Type.FIXED)) {
@@ -436,6 +436,21 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     }
   }
 
+  /**
+   * Converter for a list.
+   *
+   * <pre>
+   *   optional group the_list (LIST) { <-- this layer
+   *     repeated group array {
+   *       optional (type) element;
+   *     }
+   *   }
+   * </pre>
+   *
+   * This class also implements LIST element backward-compatibility rules.
+   *
+   * @param <T> The type of elements in the list
+   */
   static final class AvroArrayConverter<T> extends GroupConverter {
 
     private final ParentValueContainer parent;
@@ -443,19 +458,25 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     private final Converter converter;
     private GenericArray<T> array;
 
-    public AvroArrayConverter(ParentValueContainer parent, Type parquetSchema,
+    public AvroArrayConverter(ParentValueContainer parent, GroupType type,
         Schema avroSchema, GenericData model) {
       this.parent = parent;
       this.avroSchema = avroSchema;
-      Type elementType = parquetSchema.asGroupType().getType(0);
-      Schema elementSchema = avroSchema.getElementType();
-      converter = newConverter(elementSchema, elementType, model, new ParentValueContainer() {
-        @Override
-        @SuppressWarnings("unchecked")
-        void add(Object value) {
-          array.add((T) value);
-        }
-      });
+      Schema elementSchema = this.avroSchema.getElementType();
+      Type repeatedType = type.getType(0);
+      if (AvroSchemaConverter.isElementType(repeatedType)) {
+        // the element type is the repeated type (and required)
+        converter = newConverter(elementSchema, repeatedType, model, new ParentValueContainer() {
+          @Override
+          @SuppressWarnings("unchecked")
+          void add(Object value) {
+            array.add((T) value);
+          }
+        });
+      } else {
+        // the element is wrapped in a synthetic group and may be optional
+        converter = new ElementConverter(repeatedType.asGroupType(), elementSchema, model);
+      }
     }
 
     @Override
@@ -471,6 +492,51 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     @Override
     public void end() {
       parent.add(array);
+    }
+
+    /**
+     * Converter for list elements.
+     *
+     * <pre>
+     *   optional group the_list (LIST) {
+     *     repeated group array { <-- this layer
+     *       optional (type) element;
+     *     }
+     *   }
+     * </pre>
+     */
+    final class ElementConverter extends GroupConverter {
+      private T element;
+      private final Converter elementConverter;
+
+      public ElementConverter(GroupType repeatedType, Schema elementSchema, GenericData model) {
+        Type elementType = repeatedType.getType(0);
+        Schema nonNullElementSchema = AvroSchemaConverter.getNonNull(elementSchema);
+        this.elementConverter = newConverter(nonNullElementSchema, elementType, model, new ParentValueContainer() {
+          @Override
+          @SuppressWarnings("unchecked")
+          void add(Object value) {
+            ElementConverter.this.element = (T) value;
+          }
+        });
+      }
+
+      @Override
+      public Converter getConverter(int fieldIndex) {
+        Preconditions.checkArgument(
+            fieldIndex == 0, "Illegal field index: " + fieldIndex);
+        return elementConverter;
+      }
+
+      @Override
+      public void start() {
+        element = null;
+      }
+
+      @Override
+      public void end() {
+        array.add(element);
+      }
     }
   }
 
@@ -525,10 +591,12 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     private final Converter keyValueConverter;
     private Map<String, V> map;
 
-    public MapConverter(ParentValueContainer parent, Type parquetSchema,
-        Schema avroSchema, GenericData model) {
+    public MapConverter(ParentValueContainer parent, GroupType mapType,
+        Schema mapSchema, GenericData model) {
       this.parent = parent;
-      this.keyValueConverter = new MapKeyValueConverter(parquetSchema, avroSchema, model);
+      GroupType repeatedKeyValueType = mapType.getType(0).asGroupType();
+      this.keyValueConverter = new MapKeyValueConverter(
+          repeatedKeyValueType, mapSchema, model);
     }
 
     @Override
@@ -553,7 +621,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
       private final Converter keyConverter;
       private final Converter valueConverter;
 
-      public MapKeyValueConverter(Type parquetSchema, Schema avroSchema,
+      public MapKeyValueConverter(GroupType keyValueType, Schema mapSchema,
           GenericData model) {
         keyConverter = new PrimitiveConverter() {
           @Override
@@ -562,8 +630,8 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
           }
         };
 
-        Type valueType = parquetSchema.asGroupType().getType(0).asGroupType().getType(1);
-        Schema nonNullValueSchema = AvroSchemaConverter.getNonNull(avroSchema.getValueType());
+        Type valueType = keyValueType.getType(1);
+        Schema nonNullValueSchema = AvroSchemaConverter.getNonNull(mapSchema.getValueType());
         valueConverter = newConverter(nonNullValueSchema, valueType, model, new ParentValueContainer() {
           @Override
           @SuppressWarnings("unchecked")

@@ -67,7 +67,16 @@ public class AvroSchemaConverter {
       return schema;
     }
   }
-  
+
+  static boolean isElementType(Type repeatedType) {
+    if (repeatedType.isPrimitive()) {
+      return true;
+    } else if (repeatedType.asGroupType().getFieldCount() > 1) {
+      return true;
+    }
+    return false;
+  }
+
   public MessageType convert(Schema avroSchema) {
     if (!avroSchema.getType().equals(Schema.Type.RECORD)) {
       throw new IllegalArgumentException("Avro schema must be a record.");
@@ -111,8 +120,8 @@ public class AvroSchemaConverter {
     } else if (type.equals(Schema.Type.ENUM)) {
       return primitive(fieldName, BINARY, repetition, ENUM);
     } else if (type.equals(Schema.Type.ARRAY)) {
-      return ConversionPatterns.listType(repetition, fieldName,
-          convertField("array", schema.getElementType(), Type.Repetition.REPEATED));
+      return ConversionPatterns.listOfElements(repetition, fieldName,
+          convertField("element", schema.getElementType()));
     } else if (type.equals(Schema.Type.MAP)) {
       Type valType = convertField("value", schema.getValueType());
       // avro map key type is always string
@@ -254,11 +263,21 @@ public class AvroSchemaConverter {
             if (parquetGroupType.getFieldCount()!= 1) {
               throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
             }
-            Type elementType = parquetGroupType.getType(0);
-            if (!elementType.isRepetition(Type.Repetition.REPEATED)) {
+            Type repeatedType = parquetGroupType.getType(0);
+            if (!repeatedType.isRepetition(Type.Repetition.REPEATED)) {
               throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
             }
-            return Schema.createArray(convertField(elementType));
+            if (isElementType(repeatedType)) {
+              // repeated element types are always required
+              return Schema.createArray(convertField(repeatedType));
+            } else {
+              Type elementType = repeatedType.asGroupType().getType(0);
+              if (elementType.isRepetition(Type.Repetition.OPTIONAL)) {
+                return Schema.createArray(optional(convertField(elementType)));
+              } else {
+                return Schema.createArray(convertField(elementType));
+              }
+            }
           case MAP:
             if (parquetGroupType.getFieldCount() != 1 || parquetGroupType.getType(0).isPrimitive()) {
               throw new UnsupportedOperationException("Invalid map type " + parquetGroupType);

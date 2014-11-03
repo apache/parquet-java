@@ -64,6 +64,12 @@
        "items" : "int"
     }]
   }, {
+    "name" : "myarrayoptional",
+    "type" : {
+       "type" : "array",
+       "items" : [ "null", "int" ]
+    }
+  }, {
     "name" : "mymap",
     "type" : {
       "type" : "map",

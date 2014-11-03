@@ -213,6 +213,13 @@ public class TestReadWrite {
     List<Integer> emptyArray = new ArrayList<Integer>();
     ImmutableMap emptyMap = new ImmutableMap.Builder<String, Integer>().build();
 
+    Schema arrayOfOptionalIntegers = Schema.createArray(
+        optional(Schema.create(Schema.Type.INT)));
+    GenericData.Array<Integer> genericIntegerArrayWithNulls =
+        new GenericData.Array<Integer>(
+            arrayOfOptionalIntegers,
+            Arrays.asList(1, null, 2, null, 3));
+
     GenericData.Record record = new GenericRecordBuilder(schema)
         .set("mynull", null)
         .set("myboolean", true)
@@ -227,6 +234,7 @@ public class TestReadWrite {
         .set("myarray", genericIntegerArray)
         .set("myemptyarray", emptyArray)
         .set("myoptionalarray", genericIntegerArray)
+        .set("myarrayoptional", genericIntegerArrayWithNulls)
         .set("mymap", ImmutableMap.of("a", 1, "b", 2))
         .set("myemptymap", emptyMap)
         .set("myfixed", genericFixed)
@@ -347,6 +355,22 @@ public class TestReadWrite {
         recordConsumer.endGroup();
         recordConsumer.endField("myoptionalarray", index++);
 
+        recordConsumer.startField("myarrayoptional", index);
+        recordConsumer.startGroup();
+        recordConsumer.startField("array", 0);
+        for (Integer val : (Integer[]) record.get("myarrayoptional")) {
+          recordConsumer.startGroup();
+          if (val != null) {
+            recordConsumer.startField("element", 0);
+            recordConsumer.addInteger(val);
+            recordConsumer.endField("element", 0);
+          }
+          recordConsumer.endGroup();
+        }
+        recordConsumer.endField("array", 0);
+        recordConsumer.endGroup();
+        recordConsumer.endField("myarrayoptional", index++);
+
         recordConsumer.startField("myrecordarray", index);
         recordConsumer.startGroup();
         recordConsumer.startField("array", 0);
@@ -405,6 +429,7 @@ public class TestReadWrite {
     record.put("mynestedint", 1);
     record.put("myarray", new int[] {1, 2, 3});
     record.put("myoptionalarray", new int[]{1, 2, 3});
+    record.put("myarrayoptional", new Integer[]{1, null, 2, null, 3});
     record.put("myrecordarraya", new int[] {1, 2, 3});
     record.put("myrecordarrayb", new int[] {4, 5, 6});
     record.put("mymap", ImmutableMap.of("a", 1, "b", 2));
@@ -457,4 +482,9 @@ public class TestReadWrite {
 
   }
 
+  public static Schema optional(Schema original) {
+    return Schema.createUnion(Lists.newArrayList(
+        Schema.create(Schema.Type.NULL),
+        original));
+  }
 }

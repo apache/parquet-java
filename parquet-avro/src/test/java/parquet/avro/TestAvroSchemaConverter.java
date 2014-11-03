@@ -50,6 +50,11 @@ public class TestAvroSchemaConverter {
       "  optional group myoptionalarray (LIST) {\n" +
       "    repeated int32 array;\n" +
       "  }\n" +
+      "  required group myarrayoptional (LIST) {\n" +
+      "    repeated group array {\n" +
+      "      optional int32 element;\n" +
+      "    }\n" +
+      "  }\n" +
       "  required group myrecordarray (LIST) {\n" +
       "    repeated group array {\n" +
       "      required int32 a;\n" +
@@ -120,13 +125,24 @@ public class TestAvroSchemaConverter {
             "  }\n" +
             "  required binary myenum (ENUM);\n" +
             "  required group myarray (LIST) {\n" +
-            "    repeated int32 array;\n" +
+            "    repeated group array {\n" +
+            "      required int32 element;\n" +
+            "    }\n" +
             "  }\n" +
             "  required group myemptyarray (LIST) {\n" +
-            "    repeated int32 array;\n" +
+            "    repeated group array {\n" +
+            "      required int32 element;\n" +
+            "    }\n" +
             "  }\n" +
             "  optional group myoptionalarray (LIST) {\n" +
-            "    repeated int32 array;\n" +
+            "    repeated group array {\n" +
+            "      required int32 element;\n" +
+            "    }\n" +
+            "  }\n" +
+            "  required group myarrayoptional (LIST) {\n" +
+            "    repeated group array {\n" +
+            "      optional int32 element;\n" +
+            "    }\n" +
             "  }\n" +
             "  required group mymap (MAP) {\n" +
             "    repeated group map (MAP_KEY_VALUE) {\n" +
@@ -201,6 +217,24 @@ public class TestAvroSchemaConverter {
   }
 
   @Test
+  public void testOptionalArrayElement() throws Exception {
+    Schema schema = Schema.createRecord("record1", null, null, false);
+    Schema optionalIntArray = Schema.createArray(optional(Schema.create(Schema.Type.INT)));
+    schema.setFields(Arrays.asList(
+        new Schema.Field("myintarray", optionalIntArray, null, null)
+    ));
+    testRoundTripConversion(
+        schema,
+        "message record1 {\n" +
+            "  required group myintarray (LIST) {\n" +
+            "    repeated group array {\n" +
+            "      optional int32 element;\n" +
+            "    }\n" +
+            "  }\n" +
+            "}\n");
+  }
+
+  @Test
   public void testUnionOfTwoTypes() throws Exception {
     Schema schema = Schema.createRecord("record2", null, null, false);
     Schema multipleTypes = Schema.createUnion(Arrays.asList(Schema.create(Schema.Type
@@ -241,8 +275,10 @@ public class TestAvroSchemaConverter {
     testAvroToParquetConversion(schema, "message HasArray {\n" +
         "  required group myarray (LIST) {\n" +
         "    repeated group array {\n" +
-        "      optional binary s1 (UTF8);\n" +
-        "      optional binary s2 (UTF8);\n" +
+        "      optional group element {\n" +
+        "        optional binary s1 (UTF8);\n" +
+        "        optional binary s2 (UTF8);\n" +
+        "      }\n" +
         "    }\n" +
         "  }\n" +
         "}\n");
