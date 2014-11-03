@@ -563,8 +563,8 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
         };
 
         Type valueType = parquetSchema.asGroupType().getType(0).asGroupType().getType(1);
-        Schema valueSchema = avroSchema.getValueType();
-        valueConverter = newConverter(valueSchema, valueType, model, new ParentValueContainer() {
+        Schema nonNullValueSchema = AvroSchemaConverter.getNonNull(avroSchema.getValueType());
+        valueConverter = newConverter(nonNullValueSchema, valueType, model, new ParentValueContainer() {
           @Override
           @SuppressWarnings("unchecked")
           void add(Object value) {
