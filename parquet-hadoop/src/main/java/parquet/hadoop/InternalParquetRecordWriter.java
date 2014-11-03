@@ -46,13 +46,14 @@ class InternalParquetRecordWriter<T> {
   private final WriteSupport<T> writeSupport;
   private final MessageType schema;
   private final Map<String, String> extraMetaData;
-  private final int rowGroupSize;
+  private int rowGroupSize;
   private final int pageSize;
   private final BytesCompressor compressor;
   private final int dictionaryPageSize;
   private final boolean enableDictionary;
   private final boolean validating;
   private final WriterVersion writerVersion;
+  private final MemoryManager memoryManager = MemoryManager.getMemoryManager();
 
   private long recordCount = 0;
   private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
@@ -91,6 +92,7 @@ class InternalParquetRecordWriter<T> {
     this.enableDictionary = enableDictionary;
     this.validating = validating;
     this.writerVersion = writerVersion;
+    memoryManager.addWriter(this, rowGroupSize);
     initStore();
   }
 
@@ -114,6 +116,8 @@ class InternalParquetRecordWriter<T> {
     Map<String, String> finalMetadata = new HashMap<String, String>(extraMetaData);
     finalMetadata.putAll(finalWriteContext.getExtraMetaData());
     parquetFileWriter.end(finalMetadata);
+
+    memoryManager.removeWriter(this);
   }
 
   public void write(T value) throws IOException, InterruptedException {
@@ -158,5 +162,13 @@ class InternalParquetRecordWriter<T> {
 
     columnStore = null;
     pageStore = null;
+  }
+
+  public void setRowGroupSize(int rowGroupSize) {
+    this.rowGroupSize = rowGroupSize;
+  }
+
+  int getRowGroupSize() {
+    return rowGroupSize;
   }
 }

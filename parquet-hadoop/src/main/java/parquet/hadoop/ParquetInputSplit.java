@@ -102,7 +102,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
   private static long[] offsets(List<BlockMetaData> blocks) {
     long[] offsets = new long[blocks.size()];
     for (int i = 0; i < offsets.length; i++) {
-      offsets[i] = blocks.get(0).getStartingPos();
+      offsets[i] = blocks.get(i).getStartingPos();
     }
     return offsets;
   }
