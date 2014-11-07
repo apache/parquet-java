@@ -97,7 +97,11 @@
       <version>3.4</version>
       <scope>test</scope>
     </dependency>
-
+    <dependency>
+      <groupId>org.apache.thrift</groupId>
+      <artifactId>libthrift</artifactId>
+      <version>0.9.1</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -113,7 +117,7 @@
       <plugin>
         <groupId>org.apache.thrift.tools</groupId>
         <artifactId>maven-thrift-plugin</artifactId>
-        <version>0.1.10</version>
+        <version>0.1.11</version>
         <configuration>
           <thriftExecutable>${thrift.executable}</thriftExecutable>
         </configuration>
