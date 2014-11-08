@@ -89,13 +89,13 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
     // reset the stateful predicate no matter what
     IncrementallyUpdatedFilterPredicateResetter.reset(filterPredicate);
 
-     if (keep) {
-       return delegate.getCurrentRecord();
-     } else {
-       // signals a skip
-       return null;
-     }
-  }  
+    if (keep) {
+      return delegate.getCurrentRecord();
+    } else {
+      // signals a skip
+      return null;
+    }
+  } 
 
   @Override
   public void skipCurrentRecord() {
