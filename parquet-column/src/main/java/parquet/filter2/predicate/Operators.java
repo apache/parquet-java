@@ -99,7 +99,7 @@ public final class Operators {
   }
 
   // base class for Eq, NotEq, Lt, Gt, LtEq, GtEq
-  static abstract class ColumnFilterPredicate<T extends Comparable<T>> implements FilterPredicate, Serializable  {
+  public static abstract class ColumnFilterPredicate<T extends Comparable<T>> implements FilterPredicate, Serializable  {
     private final Column<T> column;
     private final T value;
     private final String toString;
@@ -232,7 +232,7 @@ public final class Operators {
   }
 
   // base class for And, Or
-  private static abstract class BinaryLogicalFilterPredicate implements FilterPredicate, Serializable {
+  public static abstract class BinaryLogicalFilterPredicate implements FilterPredicate, Serializable {
     private final FilterPredicate left;
     private final FilterPredicate right;
     private final String toString;
