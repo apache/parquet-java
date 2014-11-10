@@ -23,6 +23,7 @@ import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 
+import parquet.hadoop.MemoryManager;
 import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
 
@@ -37,6 +38,20 @@ import parquet.schema.MessageType;
 abstract public class WriteSupport<T> {
 
   /**
+   * This memory manager is for all the writers in one task.
+   * It will be passed down to writers in WriteContext.
+   * Subclass could configure the ratio to specify the total managed memory size in init() method.
+   */
+  private static MemoryManager memoryManager;
+
+  private static synchronized MemoryManager createMemoryManager() {
+    if (memoryManager == null) {
+      memoryManager = new MemoryManager();
+    }
+    return memoryManager;
+  }
+
+  /**
    * information to be persisted in the file
    *
    * @author Julien Le Dem
@@ -45,6 +60,7 @@ abstract public class WriteSupport<T> {
   public static final class WriteContext {
     private final MessageType schema;
     private final Map<String, String> extraMetaData;
+    private final MemoryManager memoryManager;
 
     /**
      * @param schema the schema of the data
@@ -54,6 +70,7 @@ abstract public class WriteSupport<T> {
       super();
       this.schema = checkNotNull(schema, "schema");
       this.extraMetaData = Collections.unmodifiableMap(checkNotNull(extraMetaData, "extraMetaData"));
+      memoryManager = createMemoryManager();
     }
     /**
      * @return the schema of the file
@@ -66,6 +83,13 @@ abstract public class WriteSupport<T> {
      */
     public Map<String, String> getExtraMetaData() {
       return extraMetaData;
+    }
+
+    /**
+     * @return memory manager of parquet writers in one task
+     */
+    public MemoryManager getMemoryManager() {
+      return memoryManager;
     }
 
   }

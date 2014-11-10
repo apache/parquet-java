@@ -289,7 +289,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         dictionaryPageSize,
         enableDictionary,
         validating,
-        writerVersion);
+        writerVersion,
+        init.getMemoryManager());
   }
 
   /**

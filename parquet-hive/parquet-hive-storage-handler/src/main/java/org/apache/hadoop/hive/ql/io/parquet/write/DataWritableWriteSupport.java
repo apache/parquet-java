@@ -18,6 +18,7 @@ import java.util.HashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.ArrayWritable;
 
+import parquet.hadoop.MemoryManager;
 import parquet.hadoop.api.WriteSupport;
 import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
@@ -45,6 +46,7 @@ public class DataWritableWriteSupport extends WriteSupport<ArrayWritable> {
 
   @Override
   public WriteContext init(final Configuration configuration) {
+    MemoryManager.setMemoryPoolRatio(0.5);
     schema = getSchema(configuration);
     return new WriteContext(schema, new HashMap<String, String>());
   }

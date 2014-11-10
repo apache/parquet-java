@@ -32,70 +32,81 @@ import java.lang.management.ManagementFactory;
  */
 public class TestMemoryManager {
 
-  WriteSupport.WriteContext writeContext;
-  CodecFactory.BytesCompressor compressor;
-  WriteSupport writeSupport;
+
+
+  Configuration conf = new Configuration();
+  String writeSchema = "message example {\n" +
+      "required int32 line;\n" +
+      "required binary content;\n" +
+      "}";
+  long expectPoolSize;
 
   /**
    * A fake class to simplify the construction and close method of InternalParquetRecordWriter
    * for testing.
    */
   class MyInternalParquetRecordWriter extends InternalParquetRecordWriter {
-    MyInternalParquetRecordWriter(int rowGroupSize) {
+    private MemoryManager memoryManager;
+
+    MyInternalParquetRecordWriter(int rowGroupSize, WriteSupport writeSupport,
+                                  WriteSupport.WriteContext writeContext,
+                                  CodecFactory.BytesCompressor compressor) {
       super(null, writeSupport, writeContext.getSchema(),
           writeContext.getExtraMetaData(), rowGroupSize, 1000, compressor, 1000, true, false,
-          ParquetProperties.WriterVersion.PARQUET_1_0);
+          ParquetProperties.WriterVersion.PARQUET_1_0, writeContext.getMemoryManager());
+      memoryManager = writeContext.getMemoryManager();
     }
 
     @Override
     public void close() {
-      MemoryManager.getMemoryManager().removeWriter(this);
+      memoryManager.removeWriter(this);
     }
   }
 
   @Before
   public void setUp() {
-    Configuration conf = new Configuration();
-    String writeSchema = "message example {\n" +
-        "required int32 line;\n" +
-        "required binary content;\n" +
-        "}";
     GroupWriteSupport.setSchema(MessageTypeParser.parseMessageType(writeSchema),conf);
-    writeSupport = new GroupWriteSupport();
-    writeContext = writeSupport.init(conf);
-    CodecFactory codecFactory = new CodecFactory(conf);
-    compressor = codecFactory.getCompressor(CompressionCodecName.UNCOMPRESSED, 1000);
   }
 
   @Test
   public void testMemoryManager() throws Exception {
-    //Verify the memory pool
-    MemoryManager memoryManager = MemoryManager.getMemoryManager();
-    long expectPoolSize = Math.round(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
-        () * MemoryManager.MEMORY_POOL_PERCENTAGE);
-    Assert.assertEquals("memory pool size is incorrect.", expectPoolSize,
-        memoryManager.getTotalMemoryPool());
+    expectPoolSize = Math.round(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
+        () * MemoryManager.DEFAULT_MEMORY_POOL_RATIO);
 
     //Verify the adjusted rowGroupSize of writers
     int rowGroupSize = (int) Math.floor(expectPoolSize / 2);
 
-    MyInternalParquetRecordWriter writer1 = new MyInternalParquetRecordWriter(rowGroupSize);
-    Assert.assertEquals("unmatched rowGroupSize", rowGroupSize, writer1.getRowGroupSize());
+    MyInternalParquetRecordWriter writer1 = createWriter(rowGroupSize);
+    Assert.assertEquals("unmatched rowGroupSize", rowGroupSize, writer1.getRowGroupSizeThreshold());
 
-    MyInternalParquetRecordWriter writer2 = new MyInternalParquetRecordWriter(rowGroupSize);
-    Assert.assertEquals("unmatched rowGroupSize", rowGroupSize, writer2.getRowGroupSize());
+    MyInternalParquetRecordWriter writer2 = createWriter(rowGroupSize);
+    Assert.assertEquals("unmatched rowGroupSize", rowGroupSize, writer2.getRowGroupSizeThreshold());
 
-    MyInternalParquetRecordWriter writer3 = new MyInternalParquetRecordWriter(rowGroupSize);
+    MyInternalParquetRecordWriter writer3 = createWriter(rowGroupSize);
     Assert.assertEquals("unmatched rowGroupSize", (int) Math.floor(expectPoolSize / 3),
-        writer3.getRowGroupSize(), 1);
+        writer3.getRowGroupSizeThreshold(), 1);
 
     writer1.close();
-    Assert.assertEquals("unmatched rowGroupSize", rowGroupSize, writer2.getRowGroupSize());
-    Assert.assertEquals("unmatched rowGroupSize", rowGroupSize, writer3.getRowGroupSize());
+    Assert.assertEquals("unmatched rowGroupSize", rowGroupSize, writer2.getRowGroupSizeThreshold());
+    Assert.assertEquals("unmatched rowGroupSize", rowGroupSize, writer3.getRowGroupSizeThreshold());
 
     writer2.close();
-    Assert.assertEquals("unmatched rowGroupSize", rowGroupSize, writer3.getRowGroupSize());
+    Assert.assertEquals("unmatched rowGroupSize", rowGroupSize, writer3.getRowGroupSizeThreshold());
 
     writer3.close();
+  }
+
+  private MyInternalParquetRecordWriter createWriter(int rowGroupSize) {
+    WriteSupport writeSupport = new GroupWriteSupport();
+    WriteSupport.WriteContext writeContext = writeSupport.init(conf);
+    CodecFactory codecFactory = new CodecFactory(conf);
+    CodecFactory.BytesCompressor compressor = codecFactory.getCompressor(
+        CompressionCodecName.UNCOMPRESSED, 1000);
+
+    //Verify the memory pool
+    Assert.assertEquals("memory pool size is incorrect.", expectPoolSize,
+        writeContext.getMemoryManager().getTotalMemoryPool());
+
+    return new MyInternalParquetRecordWriter(rowGroupSize, writeSupport, writeContext, compressor);
   }
 }

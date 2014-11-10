@@ -189,7 +189,8 @@ public class ParquetWriter<T> implements Closeable {
         dictionaryPageSize,
         enableDictionary,
         validating,
-        writerVersion);
+        writerVersion,
+        writeContext.getMemoryManager());
   }
 
   /**

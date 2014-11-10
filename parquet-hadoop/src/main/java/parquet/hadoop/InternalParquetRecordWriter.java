@@ -46,14 +46,15 @@ class InternalParquetRecordWriter<T> {
   private final WriteSupport<T> writeSupport;
   private final MessageType schema;
   private final Map<String, String> extraMetaData;
-  private int rowGroupSize;
+  private final int rowGroupSize;
+  private int rowGroupSizeThreshold;
   private final int pageSize;
   private final BytesCompressor compressor;
   private final int dictionaryPageSize;
   private final boolean enableDictionary;
   private final boolean validating;
   private final WriterVersion writerVersion;
-  private final MemoryManager memoryManager = MemoryManager.getMemoryManager();
+  private final MemoryManager memoryManager;
 
   private long recordCount = 0;
   private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
@@ -80,18 +81,21 @@ class InternalParquetRecordWriter<T> {
       int dictionaryPageSize,
       boolean enableDictionary,
       boolean validating,
-      WriterVersion writerVersion) {
+      WriterVersion writerVersion,
+      MemoryManager memoryManager) {
     this.parquetFileWriter = parquetFileWriter;
     this.writeSupport = checkNotNull(writeSupport, "writeSupport");
     this.schema = schema;
     this.extraMetaData = extraMetaData;
     this.rowGroupSize = rowGroupSize;
+    this.rowGroupSizeThreshold = rowGroupSize;
     this.pageSize = pageSize;
     this.compressor = compressor;
     this.dictionaryPageSize = dictionaryPageSize;
     this.enableDictionary = enableDictionary;
     this.validating = validating;
     this.writerVersion = writerVersion;
+    this.memoryManager = checkNotNull(memoryManager, "memoryManager");
     memoryManager.addWriter(this, rowGroupSize);
     initStore();
   }
@@ -129,15 +133,15 @@ class InternalParquetRecordWriter<T> {
   private void checkBlockSizeReached() throws IOException {
     if (recordCount >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it for every record.
       long memSize = columnStore.memSize();
-      if (memSize > rowGroupSize) {
-        LOG.info(format("mem size %,d > %,d: flushing %,d records to disk.", memSize, rowGroupSize, recordCount));
+      if (memSize > rowGroupSizeThreshold) {
+        LOG.info(format("mem size %,d > %,d: flushing %,d records to disk.", memSize, rowGroupSizeThreshold, recordCount));
         flushRowGroupToStore();
         initStore();
         recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
       } else {
         float recordSize = (float) memSize / recordCount;
         recordCountForNextMemCheck = min(
-            max(MINIMUM_RECORD_COUNT_FOR_CHECK, (recordCount + (long)(rowGroupSize / recordSize)) / 2), // will check halfway
+            max(MINIMUM_RECORD_COUNT_FOR_CHECK, (recordCount + (long)(rowGroupSizeThreshold / recordSize)) / 2), // will check halfway
             recordCount + MAXIMUM_RECORD_COUNT_FOR_CHECK // will not look more than max records ahead
             );
         if (DEBUG) LOG.debug(format("Checked mem at %,d will check again at: %,d ", recordCount, recordCountForNextMemCheck));
@@ -148,7 +152,7 @@ class InternalParquetRecordWriter<T> {
   private void flushRowGroupToStore()
       throws IOException {
     LOG.info(format("Flushing mem columnStore to file. allocated memory: %,d", columnStore.allocatedSize()));
-    if (columnStore.allocatedSize() > 3 * (long)rowGroupSize) {
+    if (columnStore.allocatedSize() > 3 * (long)rowGroupSizeThreshold) {
       LOG.warn("Too much memory used: " + columnStore.memUsageString());
     }
 
@@ -164,11 +168,11 @@ class InternalParquetRecordWriter<T> {
     pageStore = null;
   }
 
-  public void setRowGroupSize(int rowGroupSize) {
-    this.rowGroupSize = rowGroupSize;
+  int getRowGroupSizeThreshold() {
+    return rowGroupSizeThreshold;
   }
 
-  int getRowGroupSize() {
-    return rowGroupSize;
+  public void setRowGroupSizeThreshold(int rowGroupSizeThreshold) {
+    this.rowGroupSizeThreshold = rowGroupSizeThreshold;
   }
 }

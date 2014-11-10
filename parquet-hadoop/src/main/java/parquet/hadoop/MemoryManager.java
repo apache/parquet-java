@@ -35,24 +35,25 @@ import java.util.Map;
  */
 public class MemoryManager {
   private static final Log LOG = Log.getLog(MemoryManager.class);
-  static final double MEMORY_POOL_PERCENTAGE = 0.5;
+  static final double DEFAULT_MEMORY_POOL_RATIO = 0.95;
+  private static double memoryPoolRatio = -1;
+  private static boolean isRatioConfigured = false;
 
-  private static MemoryManager memoryManager = null;
   private final long totalMemoryPool;
   private final Map<InternalParquetRecordWriter, Integer> writerList = new
       HashMap<InternalParquetRecordWriter, Integer>();
 
-  private MemoryManager() {
-    totalMemoryPool = Math.round(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
-        () * MEMORY_POOL_PERCENTAGE);
-    LOG.debug(String.format("Allocated total memory pool is: %,d", totalMemoryPool));
-  }
-
-  public static synchronized MemoryManager getMemoryManager() {
-    if (memoryManager == null) {
-      memoryManager = new MemoryManager();
+  public MemoryManager() {
+    double ratio;
+    if (memoryPoolRatio > 0 && memoryPoolRatio <= 1) {
+      ratio = memoryPoolRatio;
+    } else {
+      ratio = DEFAULT_MEMORY_POOL_RATIO;
     }
-    return memoryManager;
+
+    totalMemoryPool = Math.round(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
+        () * ratio);
+    LOG.debug(String.format("Allocated total memory pool is: %,d", totalMemoryPool));
   }
 
   /**
@@ -102,13 +103,13 @@ public class MemoryManager {
 
     if (!isAllocationExceed) {
       for (Map.Entry<InternalParquetRecordWriter, Integer> entry : writerList.entrySet()) {
-        entry.getKey().setRowGroupSize(entry.getValue());
+        entry.getKey().setRowGroupSizeThreshold(entry.getValue());
       }
     } else {
       double scale = (double) totalMemoryPool / totalAllocations;
       for (Map.Entry<InternalParquetRecordWriter, Integer> entry : writerList.entrySet()) {
         int newSize = (int) Math.floor(entry.getValue() * scale);
-        entry.getKey().setRowGroupSize(newSize);
+        entry.getKey().setRowGroupSizeThreshold(newSize);
         LOG.debug(String.format("Adjust block size to %,d for writer: %s", newSize, entry.getKey()));
       }
     }
@@ -120,5 +121,17 @@ public class MemoryManager {
    */
   long getTotalMemoryPool() {
     return totalMemoryPool;
+  }
+
+  /**
+   * Set the ratio of memory allocated for all the writers.
+   * Different users may have different preferred ratio.
+   * @param memoryPoolRatio equal (allocated memory size / JVM total memory size)
+   */
+  public static void setMemoryPoolRatio(double ratio) {
+    if (!isRatioConfigured) {
+      memoryPoolRatio = ratio;
+      isRatioConfigured = true;
+    }
   }
 }
