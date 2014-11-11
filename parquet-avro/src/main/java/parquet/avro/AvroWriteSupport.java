@@ -43,7 +43,7 @@ import parquet.schema.Type;
  */
 public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
 
-  private static final String AVRO_SCHEMA = "parquet.avro.schema";
+  static final String AVRO_SCHEMA = "parquet.avro.schema";
   private static final Schema MAP_KEY_SCHEMA = Schema.create(Schema.Type.STRING);
 
   private RecordConsumer recordConsumer;

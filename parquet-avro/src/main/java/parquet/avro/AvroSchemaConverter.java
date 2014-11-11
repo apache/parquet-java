@@ -69,9 +69,23 @@ public class AvroSchemaConverter {
   }
 
   static boolean isElementType(Type repeatedType) {
+    return isElementType(repeatedType, null);
+  }
+
+  static boolean isElementType(Type repeatedType, Schema elementSchema) {
     if (repeatedType.isPrimitive()) {
       return true;
     } else if (repeatedType.asGroupType().getFieldCount() > 1) {
+      return true;
+    } else if (elementSchema != null &&
+        elementSchema.getType() == Schema.Type.RECORD &&
+        elementSchema.getFields().size() == 1 &&
+        elementSchema.getFields().get(0).name().equals(repeatedType.asGroupType().getFieldName(0))) {
+      // this case is for avro-specific backward-compatibility: files that were
+      // missing the synthetic group for array elements written by parquet-avro
+      // will have an avro schema set in the file metadata. if the repeated
+      // record appears in that avro schema, then it must not be synthetic.
+      // this can also be used with non-avro files by setting the read schema.
       return true;
     }
     return false;

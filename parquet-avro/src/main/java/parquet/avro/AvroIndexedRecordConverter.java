@@ -464,7 +464,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
       this.avroSchema = avroSchema;
       Schema elementSchema = this.avroSchema.getElementType();
       Type repeatedType = type.getType(0);
-      if (AvroSchemaConverter.isElementType(repeatedType)) {
+      if (AvroSchemaConverter.isElementType(repeatedType, elementSchema)) {
         // the element type is the repeated type (and required)
         converter = newConverter(elementSchema, repeatedType, model, new ParentValueContainer() {
           @Override

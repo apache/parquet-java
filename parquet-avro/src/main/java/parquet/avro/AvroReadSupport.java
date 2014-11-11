@@ -38,7 +38,7 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
   public static String AVRO_REQUESTED_PROJECTION = "parquet.avro.projection";
   private static final String AVRO_READ_SCHEMA = "parquet.avro.read.schema";
 
-  static final String AVRO_SCHEMA_METADATA_KEY = "avro.schema";
+  static final String AVRO_SCHEMA_METADATA_KEY = "parquet.avro.schema";
   private static final String AVRO_READ_SCHEMA_METADATA_KEY = "avro.read.schema";
 
   public static String AVRO_DATA_SUPPLIER = "parquet.avro.data.supplier";
@@ -63,14 +63,16 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
   }
 
   @Override
-  public ReadContext init(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
-    MessageType schema = fileSchema;
+  public ReadContext init(Configuration configuration,
+                          Map<String, String> keyValueMetaData,
+                          MessageType fileSchema) {
+    MessageType projection = fileSchema;
     Map<String, String> metadata = null;
 
     String requestedProjectionString = configuration.get(AVRO_REQUESTED_PROJECTION);
     if (requestedProjectionString != null) {
       Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);
-      schema = new AvroSchemaConverter().convert(avroRequestedProjection);
+      projection = new AvroSchemaConverter().convert(avroRequestedProjection);
     }
     String avroReadSchema = configuration.get(AVRO_READ_SCHEMA);
     if (avroReadSchema != null) {
@@ -79,11 +81,13 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
     }
     // use getSchemaForRead because it checks that the requested schema is a
     // subset of the columns in the file schema
-    return new ReadContext(getSchemaForRead(fileSchema, schema), metadata);
+    return new ReadContext(getSchemaForRead(fileSchema, projection), metadata);
   }
 
   @Override
-  public RecordMaterializer<T> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema, ReadContext readContext) {
+  public RecordMaterializer<T> prepareForRead(
+      Configuration configuration, Map<String, String> keyValueMetaData,
+      MessageType fileSchema, ReadContext readContext) {
     MessageType parquetSchema = readContext.getRequestedSchema();
     Schema avroSchema;
     if (readContext.getReadSupportMetadata() != null &&
