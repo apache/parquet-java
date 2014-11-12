@@ -44,7 +44,7 @@ public class MemoryManager {
       HashMap<InternalParquetRecordWriter, Integer>();
 
   public MemoryManager() {
-    double ratio;
+    float ratio;
     if (memoryPoolRatio > 0 && memoryPoolRatio <= 1) {
       ratio = memoryPoolRatio;
     } else {
