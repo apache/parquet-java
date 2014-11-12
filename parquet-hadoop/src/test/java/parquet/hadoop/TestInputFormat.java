@@ -516,6 +516,18 @@ public class TestInputFormat {
     assertFalse(cacheValue.isNewerThan(newerCacheValue));
   }
 
+  @Test
+  public void testDeprecatedConstructorOfParquetInputSplit() throws Exception {
+    withHDFSBlockSize(50, 50);
+    List<ParquetInputSplit> splits = generateSplitByDeprecatedConstructor(50, 50);
+
+    shouldSplitBlockSizeBe(splits, 5, 5);
+    shouldOneSplitRowGroupOffsetBe(splits.get(0), 0, 10, 20, 30, 40);
+    shouldOneSplitRowGroupOffsetBe(splits.get(1), 50, 60, 70, 80, 90);
+    shouldSplitLengthBe(splits, 50, 50);
+    shouldSplitStartBe(splits, 0, 50);
+  }
+
   private File getTempFile() throws IOException {
     File tempFile = File.createTempFile("footer_", ".txt");
     tempFile.deleteOnExit();
@@ -558,6 +570,25 @@ public class TestInputFormat {
         min, max);
   }
 
+  private List<ParquetInputSplit> generateSplitByDeprecatedConstructor(long min, long max) throws
+      IOException {
+    List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
+    List<ClientSideMetadataSplitStrategy.SplitInfo> splitInfos = ClientSideMetadataSplitStrategy
+        .generateSplitInfo(blocks, hdfsBlocks, min, max);
+
+    for (ClientSideMetadataSplitStrategy.SplitInfo splitInfo : splitInfos) {
+      BlockMetaData lastRowGroup = splitInfo.getRowGroups().get(splitInfo.getRowGroupCount() - 1);
+      long end = lastRowGroup.getStartingPos() + lastRowGroup.getTotalByteSize();
+
+      ParquetInputSplit split = new ParquetInputSplit(fileStatus.getPath(),
+          splitInfo.hdfsBlock.getOffset(), end, splitInfo.hdfsBlock.getHosts(),
+          splitInfo.rowGroups, schema.toString(), null, null, extramd);
+      splits.add(split);
+    }
+
+    return splits;
+  }
+
   private void shouldSplitStartBe(List<ParquetInputSplit> splits, long... offsets) {
     assertEquals(message(splits), offsets.length, splits.size());
     for (int i = 0; i < offsets.length; i++) {
@@ -579,6 +610,13 @@ public class TestInputFormat {
       ParquetInputSplit split = splits.get(i);
       assertEquals(message(splits) + i, "foo", split.getReadSupportMetadata().get("specific"));
       assertEquals(message(splits) + i, "[foo" + loc + ".datanode, bar" + loc + ".datanode]", Arrays.toString(split.getLocations()));
+    }
+  }
+
+  private void shouldOneSplitRowGroupOffsetBe(ParquetInputSplit split, int... rowGroupOffsets) {
+    assertEquals(split.toString(), rowGroupOffsets.length, split.getRowGroupOffsets().length);
+    for (int i = 0; i < rowGroupOffsets.length; i++) {
+      assertEquals(split.toString(), rowGroupOffsets[i], split.getRowGroupOffsets()[i]);
     }
   }
 

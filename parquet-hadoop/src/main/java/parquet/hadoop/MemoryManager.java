@@ -128,10 +128,15 @@ public class MemoryManager {
    * Different users may have different preferred ratio.
    * @param memoryPoolRatio equal (allocated memory size / JVM total memory size)
    */
-  public static void setMemoryPoolRatio(double ratio) {
+  public static synchronized void setMemoryPoolRatio(double ratio) {
     if (!isRatioConfigured) {
-      memoryPoolRatio = ratio;
-      isRatioConfigured = true;
+      if (ratio > 0 && ratio <= 1) {
+        memoryPoolRatio = ratio;
+        isRatioConfigured = true;
+      } else {
+        throw new IllegalArgumentException("The configured memory pool ratio " + ratio + " is " +
+            "not between 0 and 1.");
+      }
     }
   }
 }

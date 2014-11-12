@@ -37,6 +37,9 @@ import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 
 import parquet.bytes.BytesUtils;
 import parquet.hadoop.metadata.BlockMetaData;
+import parquet.hadoop.metadata.ColumnChunkMetaData;
+import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 
 /**
  * An input split for the Parquet format
@@ -88,15 +91,25 @@ public class ParquetInputSplit extends FileSplit implements Writable {
       Map<String, String> extraMetadata,
       Map<String, String> readSupportMetadata) {
     this(
-        path, start, length, end(blocks), hosts,
+        path, start, length, end(blocks, requestedSchema), hosts,
         offsets(blocks),
         requestedSchema, readSupportMetadata
         );
   }
 
-  private static long end(List<BlockMetaData> blocks) {
-    BlockMetaData last = blocks.get(blocks.size() - 1);
-    return last.getStartingPos() + last.getCompressedSize();
+  private static long end(List<BlockMetaData> blocks, String requestedSchema) {
+    MessageType requested = MessageTypeParser.parseMessageType(requestedSchema);
+    long length = 0;
+
+    for (BlockMetaData block : blocks) {
+      List<ColumnChunkMetaData> columns = block.getColumns();
+      for (ColumnChunkMetaData column : columns) {
+        if (requested.containsPath(column.getPath().toArray())) {
+          length += column.getTotalSize();
+        }
+      }
+    }
+    return length;
   }
 
   private static long[] offsets(List<BlockMetaData> blocks) {
