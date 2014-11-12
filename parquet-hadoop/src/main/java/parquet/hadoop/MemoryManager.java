@@ -35,8 +35,8 @@ import java.util.Map;
  */
 public class MemoryManager {
   private static final Log LOG = Log.getLog(MemoryManager.class);
-  static final double DEFAULT_MEMORY_POOL_RATIO = 0.95;
-  private static double memoryPoolRatio = -1;
+  public static final float DEFAULT_MEMORY_POOL_RATIO = 0.95f;
+  private static float memoryPoolRatio = -1f;
   private static boolean isRatioConfigured = false;
 
   private final long totalMemoryPool;
@@ -128,15 +128,35 @@ public class MemoryManager {
    * Different users may have different preferred ratio.
    * @param memoryPoolRatio equal (allocated memory size / JVM total memory size)
    */
-  public static synchronized void setMemoryPoolRatio(double ratio) {
+  public static synchronized boolean setMemoryPoolRatio(float ratio) {
+    boolean success;
+
     if (!isRatioConfigured) {
+      // This is the first time to configure the ratio
       if (ratio > 0 && ratio <= 1) {
         memoryPoolRatio = ratio;
         isRatioConfigured = true;
+        success = true;
       } else {
         throw new IllegalArgumentException("The configured memory pool ratio " + ratio + " is " +
             "not between 0 and 1.");
       }
+    } else {
+      // The ratio has been configured. It is better to not change it during the task lifecycle.
+      if (ratio == memoryPoolRatio) {
+        success = true;
+      } else {
+        success = false;
+      }
     }
+    return success;
+  }
+
+  /**
+   * Get the ratio of memory allocated for all the writers.
+   * @return the memory pool ratio
+   */
+  public static synchronized float getMemoryPoolRatio() {
+    return memoryPoolRatio;
   }
 }

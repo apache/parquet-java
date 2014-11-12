@@ -19,6 +19,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.ArrayWritable;
 
 import parquet.hadoop.MemoryManager;
+import parquet.hadoop.ParquetOutputFormat;
 import parquet.hadoop.api.WriteSupport;
 import parquet.io.api.RecordConsumer;
 import parquet.schema.MessageType;
@@ -46,12 +47,12 @@ public class DataWritableWriteSupport extends WriteSupport<ArrayWritable> {
 
   @Override
   public WriteContext init(final Configuration configuration) {
-//  TODO: After Hive add below conf param, we should use conf instead of hard coding the ratio.
-//    HiveConf.ConfVars poolVar = HiveConf.ConfVars.HIVE_PARQUET_FILE_MEMORY_POOL_RATIO;
-//    double maxLoad = configuration.getFloat(poolVar.varname, poolVar.defaultFloatVal);
-//    MemoryManager.setMemoryPoolRatio(maxLoad);
+    float maxLoad = configuration.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO,
+        MemoryManager.DEFAULT_MEMORY_POOL_RATIO);
+    if (maxLoad != MemoryManager.getMemoryPoolRatio()) {
+      MemoryManager.setMemoryPoolRatio(maxLoad);
+    }
 
-    MemoryManager.setMemoryPoolRatio(0.5);
     schema = getSchema(configuration);
     return new WriteContext(schema, new HashMap<String, String>());
   }
