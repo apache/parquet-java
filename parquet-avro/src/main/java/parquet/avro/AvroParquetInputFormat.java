@@ -24,7 +24,7 @@ import parquet.hadoop.util.ContextUtil;
 /**
  * A Hadoop {@link org.apache.hadoop.mapreduce.InputFormat} for Parquet files.
  */
-public class AvroParquetInputFormat extends ParquetInputFormat<IndexedRecord> {
+public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
   public AvroParquetInputFormat() {
     super(AvroReadSupport.class);
   }
