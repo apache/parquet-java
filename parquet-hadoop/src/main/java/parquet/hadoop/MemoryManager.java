@@ -66,9 +66,9 @@ public class MemoryManager {
     if (oldValue == null) {
       writerList.put(writer, allocation);
     } else {
-      //This should not happen.
-      LOG.warn("The memory manager already contains writer: " + writer);
-      return;
+      throw new IllegalArgumentException("[BUG] The Parquet Memory Manager should not add an " +
+          "instance of InternalParquetRecordWriter more than once. The Manager already contains " +
+          "the writer: " + writer);
     }
     updateAllocation();
   }
@@ -124,9 +124,19 @@ public class MemoryManager {
   }
 
   /**
+   * Get the writers list
+   * @return the writers in this memory manager
+   */
+  Map<InternalParquetRecordWriter, Integer> getWriterList() {
+    return writerList;
+  }
+
+  /**
    * Set the ratio of memory allocated for all the writers.
    * Different users may have different preferred ratio.
    * @param memoryPoolRatio equal (allocated memory size / JVM total memory size)
+   * @return return true if the ratio is set successfully or its value has already been set
+   *         return false if the ratio does not equal the already configured memoryPoolRatio
    */
   public static synchronized boolean setMemoryPoolRatio(float ratio) {
     boolean success;

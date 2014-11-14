@@ -280,6 +280,15 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     ParquetFileWriter w = new ParquetFileWriter(conf, init.getSchema(), file);
     w.start();
 
+    float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO,
+        MemoryManager.DEFAULT_MEMORY_POOL_RATIO);
+    if (maxLoad != MemoryManager.getMemoryPoolRatio()) {
+      if (!MemoryManager.setMemoryPoolRatio(maxLoad)) {
+        throw new IllegalArgumentException("The configuration " + MEMORY_POOL_RATIO + " has been " +
+            "set. It should not reset by the new value: " + maxLoad);
+      }
+    }
+
     return new ParquetRecordWriter<T>(
         w,
         writeSupport,
@@ -291,7 +300,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         enableDictionary,
         validating,
         writerVersion,
-        init.getMemoryManager());
+        getMemoryManager());
   }
 
   /**
@@ -319,5 +328,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       committer = new ParquetOutputCommitter(output, context);
     }
     return committer;
+  }
+
+
+  /**
+   * This memory manager is for all the real writers (InternalParquetRecordWriter) in one task.
+   */
+  private static MemoryManager memoryManager;
+
+  static synchronized MemoryManager getMemoryManager() {
+    if (memoryManager == null) {
+      memoryManager = new MemoryManager();
+    }
+    return memoryManager;
   }
 }

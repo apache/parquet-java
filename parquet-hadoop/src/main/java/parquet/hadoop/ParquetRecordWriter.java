@@ -25,6 +25,8 @@ import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.hadoop.api.WriteSupport;
 import parquet.schema.MessageType;
 
+import static parquet.Preconditions.checkNotNull;
+
 /**
  * Writes records to a Parquet file
  *
@@ -37,6 +39,7 @@ import parquet.schema.MessageType;
 public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
 
   private InternalParquetRecordWriter<T> internalWriter;
+  private MemoryManager memoryManager;
 
   /**
    *
@@ -93,7 +96,9 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       MemoryManager memoryManager) {
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
         extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary,
-        validating, writerVersion, memoryManager);
+        validating, writerVersion);
+    this.memoryManager = checkNotNull(memoryManager, "memoryManager");
+    memoryManager.addWriter(internalWriter, blockSize);
   }
 
   /**
@@ -102,6 +107,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
   @Override
   public void close(TaskAttemptContext context) throws IOException, InterruptedException {
     internalWriter.close();
+    memoryManager.removeWriter(internalWriter);
   }
 
   /**

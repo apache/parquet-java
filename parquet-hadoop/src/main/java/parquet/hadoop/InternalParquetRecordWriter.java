@@ -54,7 +54,6 @@ class InternalParquetRecordWriter<T> {
   private final boolean enableDictionary;
   private final boolean validating;
   private final WriterVersion writerVersion;
-  private final MemoryManager memoryManager;
 
   private long recordCount = 0;
   private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
@@ -81,8 +80,7 @@ class InternalParquetRecordWriter<T> {
       int dictionaryPageSize,
       boolean enableDictionary,
       boolean validating,
-      WriterVersion writerVersion,
-      MemoryManager memoryManager) {
+      WriterVersion writerVersion) {
     this.parquetFileWriter = parquetFileWriter;
     this.writeSupport = checkNotNull(writeSupport, "writeSupport");
     this.schema = schema;
@@ -95,8 +93,6 @@ class InternalParquetRecordWriter<T> {
     this.enableDictionary = enableDictionary;
     this.validating = validating;
     this.writerVersion = writerVersion;
-    this.memoryManager = checkNotNull(memoryManager, "memoryManager");
-    memoryManager.addWriter(this, rowGroupSize);
     initStore();
   }
 
@@ -120,8 +116,6 @@ class InternalParquetRecordWriter<T> {
     Map<String, String> finalMetadata = new HashMap<String, String>(extraMetaData);
     finalMetadata.putAll(finalWriteContext.getExtraMetaData());
     parquetFileWriter.end(finalMetadata);
-
-    memoryManager.removeWriter(this);
   }
 
   public void write(T value) throws IOException, InterruptedException {
