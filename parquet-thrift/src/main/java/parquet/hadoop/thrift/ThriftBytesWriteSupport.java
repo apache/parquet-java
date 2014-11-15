@@ -118,14 +118,6 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
 
   private TProtocol protocol(BytesWritable record) {
     TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(new ByteArrayInputStream(record.getBytes())));
-
-    /* Reduce the chance of OOM when data is corrupted. When readBinary is called on TBinaryProtocol, it reads the length of the binary first,
-     so if the data is corrupted, it could read a big integer as the length of the binary and therefore causes OOM to happen.
-     Currently this fix only applies to TBinaryProtocol which has the setReadLength defined.
-      */
-    if (protocol instanceof TBinaryProtocol) {
-      ((TBinaryProtocol)protocol).setReadLength(record.getLength());
-    }
     return protocol;
   }
 
