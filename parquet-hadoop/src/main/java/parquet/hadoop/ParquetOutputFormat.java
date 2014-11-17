@@ -284,8 +284,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         MemoryManager.DEFAULT_MEMORY_POOL_RATIO);
     if (maxLoad != MemoryManager.getMemoryPoolRatio()) {
       if (!MemoryManager.setMemoryPoolRatio(maxLoad)) {
-        throw new IllegalArgumentException("The configuration " + MEMORY_POOL_RATIO + " has been " +
-            "set. It should not reset by the new value: " + maxLoad);
+        LOG.debug("The configuration " + MEMORY_POOL_RATIO + " has been set. It should not " +
+            "be reset by the new value: " + maxLoad);
       }
     }
 
