@@ -287,8 +287,9 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   public ResourceStatistics getStatistics(String location, Job job)
       throws IOException {
     if (DEBUG) LOG.debug("LoadMetadata.getStatistics(" + location + ", " + job + ")");
-    // We do not need to call setInput
-    // as setLocation is guaranteed to be called before this
+    /* We need to call setInput since setLocation is not 
+       guaranteed to be called before this*/
+    setInput(location, job);
     long length = 0;
     try {
       for (InputSplit split : getParquetInputFormat().getSplits(job)) {
