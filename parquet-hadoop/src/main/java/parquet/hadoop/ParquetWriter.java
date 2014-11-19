@@ -169,11 +169,44 @@ public class ParquetWriter<T> implements Closeable {
       boolean validating,
       WriterVersion writerVersion,
       Configuration conf) throws IOException {
+    this(file, ParquetFileWriter.CREATE, writeSupport, compressionCodecName,
+        blockSize, pageSize, dictionaryPageSize, enableDictionary,
+        validating, writerVersion, conf);
+  }
+  /**
+   * Create a new ParquetWriter.
+   *
+   * @param file the file to create
+   * @param mode file creation mode
+   * @param writeSupport the implementation to write a record to a RecordConsumer
+   * @param compressionCodecName the compression codec to use
+   * @param blockSize the block size threshold
+   * @param pageSize the page size threshold
+   * @param dictionaryPageSize the page size threshold for the dictionary pages
+   * @param enableDictionary to turn dictionary encoding on
+   * @param validating to turn on validation using the schema
+   * @param writerVersion version of parquetWriter from {@link ParquetProperties.WriterVersion}
+   * @param conf Hadoop configuration to use while accessing the filesystem
+   * @throws IOException
+   */
+  public ParquetWriter(
+      Path file,
+      int mode,
+      WriteSupport<T> writeSupport,
+      CompressionCodecName compressionCodecName,
+      int blockSize,
+      int pageSize,
+      int dictionaryPageSize,
+      boolean enableDictionary,
+      boolean validating,
+      WriterVersion writerVersion,
+      Configuration conf) throws IOException {
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
     MessageType schema = writeContext.getSchema();
 
-    ParquetFileWriter fileWriter = new ParquetFileWriter(conf, schema, file);
+    ParquetFileWriter fileWriter = new ParquetFileWriter(conf, schema, file,
+        mode);
     fileWriter.start();
 
     CodecFactory codecFactory = new CodecFactory(conf);

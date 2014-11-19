@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.util.*;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -62,6 +63,39 @@ import parquet.format.converter.ParquetMetadataConverter;
 
 public class TestParquetFileWriter {
   private static final Log LOG = Log.getLog(TestParquetFileWriter.class);
+
+
+  @Test
+  public void testWriteMode() throws Exception {
+    File testFile
+        = new File("target/test/TestParquetFileWriter/testParquetFile");
+    testFile = testFile.getAbsoluteFile();
+    testFile.createNewFile();
+    MessageType schema = MessageTypeParser.parseMessageType(
+        "message m { required group a {required binary b;} required group "
+        + "c { required int64 d; }}");
+    Configuration conf = new Configuration();
+
+    ParquetFileWriter writer = null;
+    boolean exceptionThrown = false;
+    Path path = new Path(testFile.toURI());
+    try {
+      writer = new ParquetFileWriter(conf, schema, path,
+          ParquetFileWriter.CREATE);
+    } catch(IOException ioe1) {
+      exceptionThrown = true;
+    }
+    assertTrue(exceptionThrown);
+    exceptionThrown = false;
+    try {
+      writer = new ParquetFileWriter(conf, schema, path,
+          ParquetFileWriter.OVERWRITE);
+    } catch(IOException ioe2) {
+      exceptionThrown = true;
+    }
+    assertTrue(!exceptionThrown);
+    testFile.delete();
+  }
 
   @Test
   public void testWriteRead() throws Exception {
