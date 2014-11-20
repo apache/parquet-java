@@ -464,7 +464,9 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
       this.avroSchema = avroSchema;
       Schema elementSchema = this.avroSchema.getElementType();
       Type repeatedType = type.getType(0);
-      if (AvroSchemaConverter.isElementType(repeatedType, elementSchema)) {
+      // always determine whether the repeated type is the element type by
+      // matching it against the element schema.
+      if (isElementType(repeatedType, elementSchema)) {
         // the element type is the repeated type (and required)
         converter = newConverter(elementSchema, repeatedType, model, new ParentValueContainer() {
           @Override
@@ -492,6 +494,24 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     @Override
     public void end() {
       parent.add(array);
+    }
+
+    static boolean isElementType(Type repeatedType, Schema elementSchema) {
+      if (repeatedType.isPrimitive() ||
+          repeatedType.asGroupType().getFieldCount() > 1) {
+        // The repeated type must be the element type because it is an invalid
+        // synthetic wrapper (must be a group with one field).
+        return true;
+      } else if (elementSchema != null &&
+          elementSchema.getType() == Schema.Type.RECORD &&
+          elementSchema.getFields().size() == 1 &&
+          elementSchema.getFields().get(0).name().equals(
+              repeatedType.asGroupType().getFieldName(0))) {
+        // The repeated type must be the element type because it matches the
+        // structure of the Avro element's schema.
+        return true;
+      }
+      return false;
     }
 
     /**

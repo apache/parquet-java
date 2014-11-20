@@ -72,7 +72,7 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
     String requestedProjectionString = configuration.get(AVRO_REQUESTED_PROJECTION);
     if (requestedProjectionString != null) {
       Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);
-      projection = new AvroSchemaConverter().convert(avroRequestedProjection);
+      projection = new AvroSchemaConverter(configuration).convert(avroRequestedProjection);
     }
     String avroReadSchema = configuration.get(AVRO_READ_SCHEMA);
     if (avroReadSchema != null) {
@@ -99,7 +99,7 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
       avroSchema = new Schema.Parser().parse(keyValueMetaData.get(AVRO_SCHEMA_METADATA_KEY));
     } else {
       // default to converting the Parquet schema into an Avro schema
-      avroSchema = new AvroSchemaConverter().convert(parquetSchema);
+      avroSchema = new AvroSchemaConverter(configuration).convert(parquetSchema);
     }
     Class<? extends AvroDataSupplier> suppClass = configuration.getClass(AVRO_DATA_SUPPLIER,
         SpecificDataSupplier.class,

@@ -22,6 +22,7 @@ import java.util.*;
 
 import org.apache.avro.Schema;
 
+import org.apache.hadoop.conf.Configuration;
 import org.codehaus.jackson.node.NullNode;
 import parquet.schema.ConversionPatterns;
 import parquet.schema.GroupType;
@@ -41,6 +42,21 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
  * </p>
  */
 public class AvroSchemaConverter {
+
+  static final String REPEATED_IS_LIST_ELEMENT =
+      "parquet.avro.repeated-is-list-element";
+  private static final boolean REPEATED_IS_LIST_ELEMENT_DEFAULT = true;
+
+  private final boolean assumeRepeatedIsListElement;
+
+  public AvroSchemaConverter() {
+    this.assumeRepeatedIsListElement = REPEATED_IS_LIST_ELEMENT_DEFAULT;
+  }
+
+  public AvroSchemaConverter(Configuration conf) {
+    this.assumeRepeatedIsListElement = conf.getBoolean(
+        REPEATED_IS_LIST_ELEMENT, REPEATED_IS_LIST_ELEMENT_DEFAULT);
+  }
 
   /**
    * Given a schema, check to see if it is a union of a null type and a regular schema,
@@ -66,29 +82,6 @@ public class AvroSchemaConverter {
     } else {
       return schema;
     }
-  }
-
-  static boolean isElementType(Type repeatedType) {
-    return isElementType(repeatedType, null);
-  }
-
-  static boolean isElementType(Type repeatedType, Schema elementSchema) {
-    if (repeatedType.isPrimitive()) {
-      return true;
-    } else if (repeatedType.asGroupType().getFieldCount() > 1) {
-      return true;
-    } else if (elementSchema != null &&
-        elementSchema.getType() == Schema.Type.RECORD &&
-        elementSchema.getFields().size() == 1 &&
-        elementSchema.getFields().get(0).name().equals(repeatedType.asGroupType().getFieldName(0))) {
-      // this case is for avro-specific backward-compatibility: files that were
-      // missing the synthetic group for array elements written by parquet-avro
-      // will have an avro schema set in the file metadata. if the repeated
-      // record appears in that avro schema, then it must not be synthetic.
-      // this can also be used with non-avro files by setting the read schema.
-      return true;
-    }
-    return false;
   }
 
   public MessageType convert(Schema avroSchema) {
@@ -281,7 +274,7 @@ public class AvroSchemaConverter {
             if (!repeatedType.isRepetition(Type.Repetition.REPEATED)) {
               throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
             }
-            if (isElementType(repeatedType)) {
+            if (isElementType(repeatedType, parquetGroupType.getName())) {
               // repeated element types are always required
               return Schema.createArray(convertField(repeatedType));
             } else {
@@ -329,6 +322,28 @@ public class AvroSchemaConverter {
         return convertFields(parquetGroupType.getName(), parquetGroupType.getFields());
       }
     }
+  }
+
+  /**
+   * Implements the rules for interpreting existing data from the logical type
+   * spec for the LIST annotation. This is used to produce the expected schema.
+   * <p>
+   * The AvroArrayConverter will decide whether the repeated type is the array
+   * element type by testing whether the element schema and repeated type are
+   * the same. This ensures that the LIST rules are followed when there is no
+   * schema and that a schema can be provided to override the default behavior.
+   */
+  private boolean isElementType(Type repeatedType, String parentName) {
+    return (
+        // can't be a synthetic layer because it would be invalid
+        repeatedType.isPrimitive() ||
+        repeatedType.asGroupType().getFieldCount() > 1 ||
+        // known patterns without the synthetic layer
+        repeatedType.getName().equals("array") ||
+        repeatedType.getName().equals(parentName + "_tuple") ||
+        // default assumption
+        assumeRepeatedIsListElement
+    );
   }
 
   private static Schema optional(Schema original) {
