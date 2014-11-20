@@ -123,18 +123,8 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
     recordConsumer.startGroup(); // group wrapper (original type LIST)
     if (array.size() > 0) {
       recordConsumer.startField("array", 0);
-      GroupType repeatedType = schema.getType(0).asGroupType();
-      Type elementType = repeatedType.getType(0);
       for (T elt : array) {
-        recordConsumer.startGroup(); // repeated group array, middle layer
-        if (elt != null) {
-          recordConsumer.startField("element", 0);
-          writeValue(elementType, avroSchema.getElementType(), elt);
-          recordConsumer.endField("element", 0);
-        } else if (!elementType.isRepetition(Type.Repetition.OPTIONAL)) {
-          throw new RuntimeException("Null array element for " + avroSchema.getName());
-        }
-        recordConsumer.endGroup();
+        writeValue(schema.getType(0), avroSchema.getElementType(), elt);
       }
       recordConsumer.endField("array", 0);
     }

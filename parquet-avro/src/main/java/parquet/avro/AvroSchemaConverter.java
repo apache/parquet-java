@@ -127,8 +127,8 @@ public class AvroSchemaConverter {
     } else if (type.equals(Schema.Type.ENUM)) {
       return primitive(fieldName, BINARY, repetition, ENUM);
     } else if (type.equals(Schema.Type.ARRAY)) {
-      return ConversionPatterns.listOfElements(repetition, fieldName,
-          convertField("element", schema.getElementType()));
+      return ConversionPatterns.listType(repetition, fieldName,
+          convertField("array", schema.getElementType(), Type.Repetition.REPEATED));
     } else if (type.equals(Schema.Type.MAP)) {
       Type valType = convertField("value", schema.getValueType());
       // avro map key type is always string
