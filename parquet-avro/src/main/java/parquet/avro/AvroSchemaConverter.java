@@ -20,12 +20,7 @@ import java.util.*;
 import org.apache.avro.Schema;
 
 import org.codehaus.jackson.node.NullNode;
-import parquet.schema.ConversionPatterns;
-import parquet.schema.GroupType;
-import parquet.schema.MessageType;
-import parquet.schema.OriginalType;
-import parquet.schema.PrimitiveType;
-import parquet.schema.Type;
+import parquet.schema.*;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 import static parquet.schema.OriginalType.*;
@@ -109,7 +104,8 @@ public class AvroSchemaConverter {
       return primitive(fieldName, BINARY, repetition, ENUM);
     } else if (type.equals(Schema.Type.ARRAY)) {
       return ConversionPatterns.listType(repetition, fieldName,
-          convertField("array", schema.getElementType(), Type.Repetition.REPEATED));
+              Types.repeatedGroup().addField(convertField("array_element", schema.getElementType(),
+                      Type.Repetition.OPTIONAL)).named("bag"));
     } else if (type.equals(Schema.Type.MAP)) {
       Type valType = convertField("value", schema.getValueType());
       // avro map key type is always string
@@ -255,10 +251,11 @@ public class AvroSchemaConverter {
             if (parquetGroupType.getFieldCount()!= 1) {
               throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
             }
-            Type elementType = parquetGroupType.getType(0);
-            if (!elementType.isRepetition(Type.Repetition.REPEATED)) {
+            Type bagType = parquetGroupType.getType(0);
+            if (!bagType.isRepetition(Type.Repetition.REPEATED)) {
               throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
             }
+            Type elementType = bagType.asGroupType().getType(0);
             return Schema.createArray(convertField(elementType));
           case MAP:
             if (parquetGroupType.getFieldCount() != 1 || parquetGroupType.getType(0).isPrimitive()) {

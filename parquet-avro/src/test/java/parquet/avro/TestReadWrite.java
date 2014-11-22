@@ -269,27 +269,37 @@ public class TestReadWrite {
 
         recordConsumer.startField("myarray", index);
         recordConsumer.startGroup();
-        recordConsumer.startField("array", 0);
+        recordConsumer.startField("bag", 0);
+        recordConsumer.startGroup();
+        recordConsumer.startField("array_element", 0);
         for (int val : (int[]) record.get("myarray")) {
           recordConsumer.addInteger(val);
         }
-        recordConsumer.endField("array", 0);
+        recordConsumer.endField("array_element", 0);
+        recordConsumer.endGroup();
+        recordConsumer.endField("bag",0);
         recordConsumer.endGroup();
         recordConsumer.endField("myarray", index++);
 
         recordConsumer.startField("myoptionalarray", index);
         recordConsumer.startGroup();
-        recordConsumer.startField("array", 0);
+        recordConsumer.startField("bag", 0);
+        recordConsumer.startGroup();
+        recordConsumer.startField("array_element", 0);
         for (int val : (int[]) record.get("myoptionalarray")) {
           recordConsumer.addInteger(val);
         }
-        recordConsumer.endField("array", 0);
+        recordConsumer.endField("array_element", 0);
+        recordConsumer.endGroup();
+        recordConsumer.endField("bag",0);
         recordConsumer.endGroup();
         recordConsumer.endField("myoptionalarray", index++);
 
         recordConsumer.startField("myrecordarray", index);
         recordConsumer.startGroup();
-        recordConsumer.startField("array", 0);
+        recordConsumer.startField("bag", 0);
+        recordConsumer.startGroup();
+        recordConsumer.startField("array_element", 0);
         recordConsumer.startGroup();
         recordConsumer.startField("a", 0);
         for (int val : (int[]) record.get("myrecordarraya")) {
@@ -302,10 +312,11 @@ public class TestReadWrite {
         }
         recordConsumer.endField("b", 1);
         recordConsumer.endGroup();
-        recordConsumer.endField("array", 0);
+        recordConsumer.endField("array_element", 0);
+        recordConsumer.endGroup();
+        recordConsumer.endField("bag",0);
         recordConsumer.endGroup();
         recordConsumer.endField("myrecordarray", index++);
-
         recordConsumer.startField("mymap", index);
         recordConsumer.startGroup();
         recordConsumer.startField("map", 0);
@@ -361,7 +372,7 @@ public class TestReadWrite {
 
     List<Integer> integerArray = Arrays.asList(1, 2, 3);
 
-    Schema recordArraySchema = Schema.createRecord("array", null, null, false);
+    Schema recordArraySchema = Schema.createRecord("array_element", null, null, false);
     recordArraySchema.setFields(Arrays.asList(
         new Schema.Field("a", Schema.create(Schema.Type.INT), null, null),
         new Schema.Field("b", Schema.create(Schema.Type.INT), null, null)

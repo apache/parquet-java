@@ -427,15 +427,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
         Schema avroSchema) {
       this.parent = parent;
       this.avroSchema = avroSchema;
-      Type elementType = parquetSchema.asGroupType().getType(0);
-      Schema elementSchema = avroSchema.getElementType();
-      converter = newConverter(elementSchema, elementType, new ParentValueContainer() {
-        @Override
-        @SuppressWarnings("unchecked")
-        void add(Object value) {
-          array.add((T) value);
-        }
-      });
+      this.converter = new ArrayValueConverter(parquetSchema, avroSchema);
     }
 
     @Override
@@ -445,14 +437,48 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
 
     @Override
     public void start() {
-      array = new GenericData.Array<T>(0, avroSchema);
+      this.array = new GenericData.Array<T>(0,avroSchema);
     }
 
     @Override
     public void end() {
       parent.add(array);
     }
-  }
+
+    final class ArrayValueConverter extends GroupConverter {
+
+      private T value;
+      private final Converter valueConverter;
+
+      public ArrayValueConverter(Type parquetSchema, Schema avroSchema) {
+
+        Type valueType = parquetSchema.asGroupType().getType(0).asGroupType().getType(0);
+        Schema valueSchema = avroSchema.getElementType();
+        valueConverter = newConverter(valueSchema, valueType, new ParentValueContainer() {
+          @Override
+          @SuppressWarnings("unchecked")
+          void add(Object value) {
+            ArrayValueConverter.this.value = (T) value;
+          }
+        });
+      }
+
+      @Override
+      public Converter getConverter(int fieldIndex) {
+        return valueConverter;
+      }
+
+      @Override
+      public void start() {
+        value = null;
+      }
+
+      @Override
+      public void end() {
+        array.add(value);
+      }
+    }
+   }
 
   static final class AvroUnionConverter<T> extends GroupConverter {
 
