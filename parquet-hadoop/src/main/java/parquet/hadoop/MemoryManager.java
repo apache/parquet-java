@@ -40,8 +40,8 @@ public class MemoryManager {
   private static boolean isRatioConfigured = false;
 
   private final long totalMemoryPool;
-  private final Map<InternalParquetRecordWriter, Integer> writerList = new
-      HashMap<InternalParquetRecordWriter, Integer>();
+  private final Map<InternalParquetRecordWriter, Long> writerList = new
+      HashMap<InternalParquetRecordWriter, Long>();
 
   public MemoryManager() {
     float ratio;
@@ -61,8 +61,8 @@ public class MemoryManager {
    * @param writer the new created writer
    * @param allocation the requested buffer size
    */
-  synchronized void addWriter(InternalParquetRecordWriter writer, Integer allocation) {
-    Integer oldValue = writerList.get(writer);
+  synchronized void addWriter(InternalParquetRecordWriter writer, Long allocation) {
+    Long oldValue = writerList.get(writer);
     if (oldValue == null) {
       writerList.put(writer, allocation);
     } else {
@@ -90,28 +90,22 @@ public class MemoryManager {
    * Update the allocated size of each writer based on the current allocations and pool size.
    */
   private void updateAllocation() {
-    int totalAllocations = 0;
-    boolean isAllocationExceed;
-    for (Integer allocation : writerList.values()) {
+    long totalAllocations = 0;
+    double scale;
+    for (Long allocation : writerList.values()) {
       totalAllocations += allocation;
     }
     if (totalAllocations <= totalMemoryPool) {
-      isAllocationExceed = false;
+      scale = 1.0;
     } else {
-      isAllocationExceed = true;
+      scale = (double) totalMemoryPool / totalAllocations;
     }
 
-    if (!isAllocationExceed) {
-      for (Map.Entry<InternalParquetRecordWriter, Integer> entry : writerList.entrySet()) {
-        entry.getKey().setRowGroupSizeThreshold(entry.getValue());
-      }
-    } else {
-      double scale = (double) totalMemoryPool / totalAllocations;
-      for (Map.Entry<InternalParquetRecordWriter, Integer> entry : writerList.entrySet()) {
-        int newSize = (int) Math.floor(entry.getValue() * scale);
-        entry.getKey().setRowGroupSizeThreshold(newSize);
-        LOG.debug(String.format("Adjust block size to %,d for writer: %s", newSize, entry.getKey()));
-      }
+    for (Map.Entry<InternalParquetRecordWriter, Long> entry : writerList.entrySet()) {
+      long newSize = (long) Math.floor(entry.getValue() * scale);
+      entry.getKey().setRowGroupSizeThreshold(newSize);
+      LOG.debug(String.format("Adjust block size from %,d to %,d for writer: %s",
+            entry.getValue(), newSize, entry.getKey()));
     }
   }
 
@@ -127,7 +121,7 @@ public class MemoryManager {
    * Get the writers list
    * @return the writers in this memory manager
    */
-  Map<InternalParquetRecordWriter, Integer> getWriterList() {
+  Map<InternalParquetRecordWriter, Long> getWriterList() {
     return writerList;
   }
 

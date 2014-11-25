@@ -47,7 +47,7 @@ class InternalParquetRecordWriter<T> {
   private final MessageType schema;
   private final Map<String, String> extraMetaData;
   private final int rowGroupSize;
-  private int rowGroupSizeThreshold;
+  private long rowGroupSizeThreshold;
   private final int pageSize;
   private final BytesCompressor compressor;
   private final int dictionaryPageSize;
@@ -162,11 +162,11 @@ class InternalParquetRecordWriter<T> {
     pageStore = null;
   }
 
-  int getRowGroupSizeThreshold() {
+  long getRowGroupSizeThreshold() {
     return rowGroupSizeThreshold;
   }
 
-  public void setRowGroupSizeThreshold(int rowGroupSizeThreshold) {
+  public void setRowGroupSizeThreshold(long rowGroupSizeThreshold) {
     this.rowGroupSizeThreshold = rowGroupSizeThreshold;
   }
 }

@@ -282,11 +282,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
     float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO,
         MemoryManager.DEFAULT_MEMORY_POOL_RATIO);
-    if (maxLoad != MemoryManager.getMemoryPoolRatio()) {
-      if (!MemoryManager.setMemoryPoolRatio(maxLoad)) {
-        LOG.debug("The configuration " + MEMORY_POOL_RATIO + " has been set. It should not " +
-            "be reset by the new value: " + maxLoad);
-      }
+    if (!MemoryManager.setMemoryPoolRatio(maxLoad)) {
+      LOG.debug("The configuration " + MEMORY_POOL_RATIO + " has been set. It should not " +
+          "be reset by the new value: " + maxLoad);
     }
 
     return new ParquetRecordWriter<T>(
