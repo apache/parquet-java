@@ -11,6 +11,7 @@ import static parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static parquet.hadoop.ParquetFileReader.readFooter;
+import static parquet.hadoop.TestUtils.enforceEmptyDir;
 import static parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 import static parquet.schema.MessageTypeParser.parseMessageType;
 
@@ -34,17 +35,13 @@ import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.io.api.Binary;
 import parquet.schema.MessageType;
 
-public class TestParquetWriterNewPage {
+public class TestParquetWriter {
 
   @Test
   public void test() throws Exception {
     Configuration conf = new Configuration();
     Path root = new Path("target/tests/TestParquetWriter/");
-    FileSystem fs = root.getFileSystem(conf);
-    if (fs.exists(root)) {
-      fs.delete(root, true);
-    }
-    fs.mkdirs(root);
+    enforceEmptyDir(conf, root);
     MessageType schema = parseMessageType(
         "message test { "
         + "required binary binary_field; "
@@ -55,7 +52,6 @@ public class TestParquetWriterNewPage {
         + "required double double_field; "
         + "required fixed_len_byte_array(3) flba_field; "
         + "required int96 int96_field; "
-        + "optional binary null_field; "
         + "} ");
     GroupWriteSupport.setSchema(schema, conf);
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
@@ -84,7 +80,6 @@ public class TestParquetWriterNewPage {
               .append("int96_field", Binary.fromByteArray(new byte[12])));
         }
         writer.close();
-
         ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file).withConf(conf).build();
         for (int i = 0; i < 1000; i++) {
           Group group = reader.read();
@@ -96,7 +91,6 @@ public class TestParquetWriterNewPage {
           assertEquals(2.0d, group.getDouble("double_field", 0), 0.001);
           assertEquals("foo", group.getBinary("flba_field", 0).toStringUsingUTF8());
           assertEquals(Binary.fromByteArray(new byte[12]), group.getInt96("int96_field", 0));
-          assertEquals(0, group.getFieldRepetitionCount("null_field"));
         }
         reader.close();
         ParquetMetadata footer = readFooter(conf, file, NO_FILTER);

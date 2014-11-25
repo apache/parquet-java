@@ -20,6 +20,7 @@ import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -78,7 +79,7 @@ final class MapConverter extends GroupConverter {
 
   @Override
   public void end() {
-    parent.add(new HashMap<String, Object>(buffer));
+    parent.add(new LinkedHashMap<String, Object>(buffer));
   }
 
   /**

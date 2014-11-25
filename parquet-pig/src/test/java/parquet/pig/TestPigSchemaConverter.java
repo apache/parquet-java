@@ -22,11 +22,14 @@ import static parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import parquet.schema.MessageType;
@@ -214,8 +217,8 @@ public class TestPigSchemaConverter {
 
   @Test
   public void testSchemaEvolution() {
-    Map<String, Set<String>> map = new HashMap<String, Set<String>>();
-    map.put("pig.schema", new HashSet<String>(Arrays.asList(
+    Map<String, Set<String>> map = new LinkedHashMap<String, Set<String>>();
+    map.put("pig.schema", new LinkedHashSet<String>(Arrays.asList(
         "a:int, b:int, c:int, d:int, e:int, f:int",
         "aa:int, aaa:int, b:int, c:int, ee:int")));
     Schema result = getPigSchemaFromMultipleFiles(new MessageType("empty"), map);

@@ -24,6 +24,7 @@ import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
+import parquet.column.Encoding;
 import parquet.column.ParquetProperties;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriter;
@@ -269,14 +270,17 @@ final class ColumnWriterV2 implements ColumnWriter {
     this.rowsWrittenSoFar = rowCount;
     if (DEBUG) LOG.debug("write page");
     try {
+      // TODO: rework this API. Those must be called *in that order*
+      BytesInput bytes = dataColumn.getBytes();
+      Encoding encoding = dataColumn.getEncoding();
       pageWriter.writePageV2(
           pageRowCount,
           Ints.checkedCast(statistics.getNumNulls()),
           valueCount,
           path.getMaxRepetitionLevel() == 0 ? BytesInput.empty() : repetitionLevelColumn.toBytes(),
           path.getMaxDefinitionLevel() == 0 ? BytesInput.empty() : definitionLevelColumn.toBytes(),
-          dataColumn.getEncoding(),
-          dataColumn.getBytes(),
+          encoding,
+          bytes,
           statistics
           );
     } catch (IOException e) {

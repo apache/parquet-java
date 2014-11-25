@@ -25,6 +25,7 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.specific.SpecificData;
 import parquet.Preconditions;
+import parquet.column.Dictionary;
 import parquet.io.InvalidRecordException;
 import parquet.io.api.Binary;
 import parquet.io.api.Converter;
@@ -32,6 +33,7 @@ import parquet.io.api.GroupConverter;
 import parquet.io.api.PrimitiveConverter;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
+import parquet.schema.OriginalType;
 import parquet.schema.Type;
 
 class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter {
@@ -119,7 +121,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     } else if (schema.getType().equals(Schema.Type.BYTES)) {
       return new FieldBytesConverter(parent);
     } else if (schema.getType().equals(Schema.Type.STRING)) {
-      return new FieldStringConverter(parent);
+      return new FieldStringConverter(parent, type.getOriginalType() == OriginalType.UTF8);
     } else if (schema.getType().equals(Schema.Type.RECORD)) {
       return new AvroIndexedRecordConverter(parent, type.asGroupType(), schema);
     } else if (schema.getType().equals(Schema.Type.ENUM)) {
@@ -320,9 +322,12 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
   static final class FieldStringConverter extends PrimitiveConverter {
 
     private final ParentValueContainer parent;
+    private final boolean dictionarySupport;
+    private String[] dict;
 
-    public FieldStringConverter(ParentValueContainer parent) {
+    public FieldStringConverter(ParentValueContainer parent, boolean dictionarySupport) {
       this.parent = parent;
+      this.dictionarySupport = dictionarySupport;
     }
 
     @Override
@@ -330,6 +335,23 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
       parent.add(value.toStringUsingUTF8());
     }
 
+    @Override
+    public boolean hasDictionarySupport() {
+      return dictionarySupport;
+    }
+
+    @Override
+    public void setDictionary(Dictionary dictionary) {
+      dict = new String[dictionary.getMaxId() + 1];
+      for (int i = 0; i <= dictionary.getMaxId(); i++) {
+        dict[i] = dictionary.decodeToBinary(i).toStringUsingUTF8();
+      }
+    }
+
+    @Override
+    public void addValueFromDictionary(int dictionaryId) {
+      parent.add(dict[dictionaryId]);
+    }
   }
 
   static final class FieldEnumConverter extends PrimitiveConverter {
