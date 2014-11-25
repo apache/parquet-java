@@ -165,21 +165,20 @@ public class Main {
     Main.out = System.out;
     Main.err = System.err;
 
-    System.setOut(new PrintStream(new OutputStream() {
-      @Override public void write(int b) throws IOException { }
-      @Override public void write(byte[] b) throws IOException { }
-      @Override public void write(byte[] b, int off, int len) throws IOException { }
-      @Override public void flush() throws IOException { }
-      @Override public void close() throws IOException { }
-    }));
-
-    System.setErr(new PrintStream(new OutputStream() {
-      @Override public void write(int b) throws IOException { }
-      @Override public void write(byte[] b) throws IOException { }
-      @Override public void write(byte[] b, int off, int len) throws IOException { }
-      @Override public void flush() throws IOException { }
-      @Override public void close() throws IOException { }
-    }));
+    PrintStream VoidStream = new PrintStream(new OutputStream() {
+      @Override
+      public void write(int b) throws IOException {}
+      @Override
+      public void write(byte[] b) throws IOException {}
+      @Override
+      public void write(byte[] b, int off, int len) throws IOException {}
+      @Override
+      public void flush() throws IOException {}
+      @Override
+      public void close() throws IOException {}
+    });
+    System.setOut(VoidStream);
+    System.setErr(VoidStream);
 
     if (args.length == 0) {
       die("No command specified", true, null, null);

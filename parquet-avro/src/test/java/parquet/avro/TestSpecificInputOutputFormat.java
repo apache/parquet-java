@@ -18,6 +18,7 @@ package parquet.avro;
 import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.google.common.collect.Lists;
@@ -50,11 +51,11 @@ public class TestSpecificInputOutputFormat {
     Car.Builder carBuilder = Car.newBuilder()
         .setDoors(2)
         .setMake("Tesla")
-        .setModel("Model X")
+        .setModel(String.format("Model X v%d", i % 2))
         .setVin(new Vin(vin.getBytes()))
         .setYear(2014 + i)
         .setOptionalExtra(LeatherTrim.newBuilder().setColour("black").build())
-        .setRegistration("Calfornia");
+        .setRegistration("California");
     Engine.Builder engineBuilder = Engine.newBuilder()
         .setCapacity(85.0f)
         .setHasTurboCharger(false);
@@ -186,8 +187,13 @@ public class TestSpecificInputOutputFormat {
         "part-m-00000.parquet");
     final AvroParquetReader<Car> out = new AvroParquetReader<Car>(mapperOutput);
     Car car;
+    Car previousCar = null;
     int lineNumber = 0;
     while ((car = out.read()) != null) {
+      if (previousCar != null) {
+         // Testing reference equality here. The "model" field should be dictionary-encoded.
+         assertTrue(car.getModel() == previousCar.getModel());
+      }
       // Make sure that predicate push down worked as expected
       if (car.getEngine().getType() == EngineType.PETROL) {
         fail("UnboundRecordFilter failed to remove cars with PETROL engines");
@@ -199,6 +205,7 @@ public class TestSpecificInputOutputFormat {
       expectedCar.setOptionalExtra(null);
       assertEquals("line " + lineNumber, expectedCar, car);
       ++lineNumber;
+      previousCar = car;
     }
     out.close();
   }

@@ -75,8 +75,9 @@
   </pluginRepositories>
 
   <properties>
+    <targetJavaVersion>1.6</targetJavaVersion>
     <maven.compiler.source>1.6</maven.compiler.source>
-    <maven.compiler.target>1.6</maven.compiler.target>
+    <maven.compiler.target>${targetJavaVersion}</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <github.global.server>github</github.global.server>
     <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
@@ -93,6 +94,7 @@
     <scala.version>2.10.4</scala.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
     <scala.binary.version>2.10</scala.binary.version>
+    <scala.maven.test.skip>false</scala.maven.test.skip>
     <pig.version>0.11.1</pig.version>
     <pig.classifier></pig.classifier>
   </properties>
@@ -319,7 +321,7 @@
         <configuration>
           <argLine>-XX:MaxPermSize=256m</argLine>
           <source>1.6</source>
-          <target>1.6</target>
+          <target>${targetJavaVersion}</target>
           <encoding>UTF-8</encoding>
         </configuration>
       </plugin>

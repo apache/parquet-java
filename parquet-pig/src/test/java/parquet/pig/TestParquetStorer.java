@@ -121,16 +121,28 @@ public class TestParquetStorer {
 
     final Schema schema = data.getSchema("out");
     assertEquals(2, schema.size());
-    assertEquals("a", schema.getField(0).alias);
-    assertEquals("b", schema.getField(1).alias);
+    // union could be in either order
+    int ai;
+    int bi;
+    if ("a".equals(schema.getField(0).alias)) {
+      ai = 0;
+      bi = 1;
+      assertEquals("a", schema.getField(0).alias);
+      assertEquals("b", schema.getField(1).alias);
+    } else {
+      ai = 1;
+      bi = 0;
+      assertEquals("b", schema.getField(0).alias);
+      assertEquals("a", schema.getField(1).alias);
+    }
 
     assertEquals(rows * 2, result.size());
 
     int a = 0;
     int b = 0;
     for (Tuple tuple : result) {
-      String fa = (String) tuple.get(0);
-      String fb = (String) tuple.get(1);
+      String fa = (String) tuple.get(ai);
+      String fb = (String) tuple.get(bi);
       if (fa != null) {
         assertEquals("a" + a, fa);
         ++a;
