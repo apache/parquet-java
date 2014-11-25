@@ -15,10 +15,14 @@
  */
 package parquet.hadoop.example;
 
+import static parquet.Preconditions.checkNotNull;
+import static parquet.schema.MessageTypeParser.parseMessageType;
+
 import java.util.HashMap;
 
 import org.apache.hadoop.conf.Configuration;
 
+import parquet.Preconditions;
 import parquet.example.data.Group;
 import parquet.example.data.GroupWriter;
 import parquet.hadoop.api.WriteSupport;
@@ -35,7 +39,7 @@ public class GroupWriteSupport extends WriteSupport<Group> {
   }
 
   public static MessageType getSchema(Configuration configuration) {
-    return MessageTypeParser.parseMessageType(configuration.get(PARQUET_EXAMPLE_SCHEMA));
+    return parseMessageType(checkNotNull(configuration.get(PARQUET_EXAMPLE_SCHEMA), PARQUET_EXAMPLE_SCHEMA));
   }
 
   private MessageType schema;
