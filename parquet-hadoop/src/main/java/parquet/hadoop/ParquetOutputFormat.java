@@ -179,8 +179,13 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return configuration.getBoolean(ENABLE_DICTIONARY, true);
   }
 
+  @Deprecated
   public static int getBlockSize(Configuration configuration) {
     return configuration.getInt(BLOCK_SIZE, DEFAULT_BLOCK_SIZE);
+  }
+
+  public static long getLongBlockSize(Configuration configuration) {
+    return configuration.getLong(BLOCK_SIZE, DEFAULT_BLOCK_SIZE);
   }
 
   public static int getPageSize(Configuration configuration) {
@@ -263,7 +268,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     final WriteSupport<T> writeSupport = getWriteSupport(conf);
 
     CodecFactory codecFactory = new CodecFactory(conf);
-    int blockSize = getBlockSize(conf);
+    long blockSize = getLongBlockSize(conf);
     if (INFO) LOG.info("Parquet block size to " + blockSize);
     int pageSize = getPageSize(conf);
     if (INFO) LOG.info("Parquet page size to " + pageSize);

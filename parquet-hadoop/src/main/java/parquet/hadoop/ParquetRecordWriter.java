@@ -87,7 +87,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       WriteSupport<T> writeSupport,
       MessageType schema,
       Map<String, String> extraMetaData,
-      int blockSize, int pageSize,
+      long blockSize, int pageSize,
       BytesCompressor compressor,
       int dictionaryPageSize,
       boolean enableDictionary,
@@ -98,7 +98,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
         extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary,
         validating, writerVersion);
     this.memoryManager = checkNotNull(memoryManager, "memoryManager");
-    memoryManager.addWriter(internalWriter, (long) blockSize);
+    memoryManager.addWriter(internalWriter, blockSize);
   }
 
   /**

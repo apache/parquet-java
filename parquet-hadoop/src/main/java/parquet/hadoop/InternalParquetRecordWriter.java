@@ -46,7 +46,7 @@ class InternalParquetRecordWriter<T> {
   private final WriteSupport<T> writeSupport;
   private final MessageType schema;
   private final Map<String, String> extraMetaData;
-  private final int rowGroupSize;
+  private final long rowGroupSize;
   private long rowGroupSizeThreshold;
   private final int pageSize;
   private final BytesCompressor compressor;
@@ -74,7 +74,7 @@ class InternalParquetRecordWriter<T> {
       WriteSupport<T> writeSupport,
       MessageType schema,
       Map<String, String> extraMetaData,
-      int rowGroupSize,
+      long rowGroupSize,
       int pageSize,
       BytesCompressor compressor,
       int dictionaryPageSize,
@@ -100,7 +100,11 @@ class InternalParquetRecordWriter<T> {
     // we don't want this number to be too small
     // ideally we divide the block equally across the columns
     // it is unlikely all columns are going to be the same size.
-    int initialBlockBufferSize = max(MINIMUM_BUFFER_SIZE, rowGroupSize / schema.getColumns().size() / 5);
+    // its value is likely below Integer.MAX_VALUE (2GB), although rowGroupSize is a long type.
+    // therefore this size is cast to int, since allocating byte array in under layer needs to
+    // limit the array size in an int scope.
+    int initialBlockBufferSize = (int) max(MINIMUM_BUFFER_SIZE, rowGroupSize / schema.getColumns()
+        .size() / 5);
     pageStore = new ColumnChunkPageWriteStore(compressor, schema, initialBlockBufferSize);
     // we don't want this number to be too small either
     // ideally, slightly bigger than the page size, but not bigger than the block buffer
