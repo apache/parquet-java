@@ -33,11 +33,12 @@ public class ScroogeStructConverterTest {
 
   }
 
-// Union support is broken due to scrooge not generating fieldInfos for union, need to be fixed
-//  @Test
-//  public void testUnion() throws Exception {
-//    new ScroogeStructConverter().convert(TestUnion.class);
-//  }
+  @Test
+  public void testUnion() throws Exception {
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestUnion.class);
+    ThriftType.StructType scroogeUnion = new ScroogeStructConverter().convert(TestUnion.class);
+    assertEquals(expected, scroogeUnion);
+  }
 
   @Test
   public void testConvertPrimitiveMapValue() throws Exception{

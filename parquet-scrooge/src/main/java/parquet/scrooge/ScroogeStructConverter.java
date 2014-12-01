@@ -16,16 +16,18 @@
 package parquet.scrooge;
 
 import com.twitter.scrooge.ThriftStructCodec;
+import com.twitter.scrooge.ThriftStructField;
 import com.twitter.scrooge.ThriftStructFieldInfo;
+import org.apache.thrift.protocol.TField;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftTypeID;
 import scala.collection.JavaConversions;
 import scala.collection.JavaConversions$;
 import scala.collection.Seq;
+import scala.reflect.Manifest;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.lang.reflect.*;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -49,18 +51,18 @@ public class ScroogeStructConverter {
    * @throws Exception
    */
   public ThriftType.StructType convert(Class scroogeClass) {
-    return convertStructFromClassName(scroogeClass.getName());
+    return convertStructFromClassName(scroogeClass);
   }
 
-  private ThriftType.StructType convertStructFromClassName(String className) {
-    //Struct metadata is stored in the companion class
-    Class<?> companionClass = null;
+  private Class getCompanionClass(Class klass) {
     try {
-      companionClass = Class.forName(className + "$");
+     return Class.forName(klass.getName() + "$");
     } catch (ClassNotFoundException e) {
-      throw new IllegalArgumentException("Can not find companion object for scrooge class " + className, e);
+      throw new IllegalArgumentException("Can not find companion object for scrooge class " + klass, e);
     }
-    return convertCompanionClassToStruct(companionClass);
+  }
+  private ThriftType.StructType convertStructFromClassName(Class klass) {
+    return convertCompanionClassToStruct(getCompanionClass(klass));
   }
 
   private ThriftType.StructType convertCompanionClassToStruct(Class<?> companionClass) {
@@ -80,13 +82,48 @@ public class ScroogeStructConverter {
   }
 
   private Iterable<ThriftStructFieldInfo> getFieldInfos(ThriftStructCodec c) {
-    try {
-      Object r = c.getClass().getMethod("fieldInfos").invoke(c);
-      Iterable<ThriftStructFieldInfo> a = JavaConversions$.MODULE$.asJavaIterable((scala.collection.Iterable<ThriftStructFieldInfo>)r);
-      return a;
-    } catch (Exception e) {
-      throw new RuntimeException("can not get field Info from: " + c.toString(), e);
+    Class<? extends ThriftStructCodec> klass = c.getClass();
+    if (isUnion(klass)){
+      // Union needs special treatment since currently scrooge does not generates the fieldInfos
+      // field in the parent union class
+      return getFieldInfosForUnion(klass);
+    } else {
+      //each struct has a generated fieldInfos method to provide metadata to its fields
+      try {
+        Object r = klass.getMethod("fieldInfos").invoke(c);
+        Iterable<ThriftStructFieldInfo> a = JavaConversions$.MODULE$.asJavaIterable((scala.collection.Iterable<ThriftStructFieldInfo>)r);
+        return a;
+      } catch (Exception e) {
+        throw new RuntimeException("can not get field Info from: " + c.toString(), e);
+      }
     }
+  }
+
+
+  private Iterable<ThriftStructFieldInfo> getFieldInfosForUnion(Class klass) {
+    ArrayList<ThriftStructFieldInfo> fields = new ArrayList<ThriftStructFieldInfo>();
+    for(Field f: klass.getDeclaredFields()){
+       if (f.getType().equals(Manifest.class)) {
+         Class unionClass = (Class)((ParameterizedType)f.getGenericType()).getActualTypeArguments()[0];
+         Class companionUnionClass = getCompanionClass(unionClass);
+         try {
+           Object companionUnionObj = companionUnionClass.getField("MODULE$").get(null);
+           ThriftStructFieldInfo info = (ThriftStructFieldInfo)companionUnionClass.getMethod("fieldInfo").invoke(companionUnionObj);
+           fields.add(info);
+         } catch (Exception e) {
+           throw new RuntimeException("can not find fiedInfo for " + unionClass, e);
+         }
+      }
+    }
+    return fields;
+  }
+
+  private boolean isUnion(Class klass){
+    for(Field f: klass.getDeclaredFields()) {
+         if (f.getName().equals("Union"))
+           return true;
+    }
+    return false;
   }
 
 
@@ -230,12 +267,12 @@ public class ScroogeStructConverter {
     } else if (typeClass == String.class) {
       return new ThriftType.StringType();
     } else {
-      return convertStructFromClassName(typeClass.getName());
+      return convertStructFromClassName(typeClass);
     }
   }
 
   private ThriftType convertStructTypeField(ThriftStructFieldInfo f) {
-    return convertStructFromClassName(f.manifest().runtimeClass().getName());
+    return convertStructFromClassName(f.manifest().runtimeClass());
   }
 
   /**

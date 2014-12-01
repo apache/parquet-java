@@ -133,10 +133,10 @@ struct TestMapPrimitiveValue {
   7: required map<string,string> string_map
 }
 
-//union TestUnion {
-//  1: TestPerson first_person
-//  2: TestMapComplex second_map
-//}
+union TestUnion {
+  1: TestPerson first_person
+  2: TestMapComplex second_map
+}
 
 enum Operation {
   ADD = 1,
