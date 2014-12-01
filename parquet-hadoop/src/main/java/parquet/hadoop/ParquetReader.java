@@ -30,6 +30,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
+import org.apache.hadoop.fs.PathFilter;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.compat.FilterCompat;
 import parquet.filter2.compat.FilterCompat.Filter;
@@ -113,7 +114,12 @@ public class ParquetReader<T> implements Closeable {
     this.conf = conf;
 
     FileSystem fs = file.getFileSystem(conf);
-    List<FileStatus> statuses = Arrays.asList(fs.listStatus(file));
+    List<FileStatus> statuses = Arrays.asList(fs.listStatus(file, new PathFilter() {
+      @Override
+      public boolean accept(Path p) {
+        return !p.getName().startsWith("_") && !p.getName().startsWith(".");
+      }
+    }));
     List<Footer> footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(conf, statuses, false);
     this.footersIterator = footers.iterator();
     globalMetaData = ParquetFileWriter.getGlobalMetaData(footers);
