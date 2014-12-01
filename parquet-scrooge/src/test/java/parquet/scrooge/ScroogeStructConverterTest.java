@@ -16,15 +16,7 @@
 package parquet.scrooge;
 
 import org.junit.Test;
-import parquet.scrooge.test.AddressWithStreetWithDefaultRequirement;
-import parquet.scrooge.test.TestFieldOfEnum;
-import parquet.scrooge.test.TestListPrimitive;
-import parquet.scrooge.test.TestMapComplex;
-import parquet.scrooge.test.TestMapPrimitiveKey;
-import parquet.scrooge.test.TestMapPrimitiveValue;
-import parquet.scrooge.test.TestOptionalMap;
-import parquet.scrooge.test.TestPersonWithAllInformation;
-import parquet.scrooge.test.TestSetPrimitive;
+import parquet.scrooge.test.*;
 import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType;
 import static org.junit.Assert.assertEquals;
@@ -40,6 +32,12 @@ public class ScroogeStructConverterTest {
     assertEquals(expected,scroogeMap);
 
   }
+
+// Union support is broken due to scrooge not generating fieldInfos for union, need to be fixed
+//  @Test
+//  public void testUnion() throws Exception {
+//    new ScroogeStructConverter().convert(TestUnion.class);
+//  }
 
   @Test
   public void testConvertPrimitiveMapValue() throws Exception{
@@ -92,7 +90,7 @@ public class ScroogeStructConverterTest {
   public void testDefaultFields() throws Exception{
     ThriftType.StructType scroogePerson = new ScroogeStructConverter().convert(AddressWithStreetWithDefaultRequirement.class);
     ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.AddressWithStreetWithDefaultRequirement.class);
-//    assertEquals(expected.toJSON(), scroogePerson.toJSON());
+    assertEquals(expected.toJSON(), scroogePerson.toJSON());
   }
 
   @Test
