@@ -20,6 +20,7 @@ import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.util.ReflectionUtils;
 import parquet.hadoop.api.ReadSupport;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
@@ -37,6 +38,8 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
   static final String AVRO_SCHEMA_METADATA_KEY = "avro.schema";
   private static final String AVRO_READ_SCHEMA_METADATA_KEY = "avro.read.schema";
 
+  public static String AVRO_DATA_SUPPLIER = "parquet.avro.data.supplier";
+
   /**
    * @see parquet.avro.AvroParquetInputFormat#setRequestedProjection(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
@@ -49,6 +52,11 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
    */
   public static void setAvroReadSchema(Configuration configuration, Schema avroReadSchema) {
     configuration.set(AVRO_READ_SCHEMA, avroReadSchema.toString());
+  }
+
+  public static void setAvroDataSupplier(Configuration configuration,
+      Class<? extends AvroDataSupplier> clazz) {
+    configuration.set(AVRO_DATA_SUPPLIER, clazz.toString());
   }
 
   @Override
@@ -84,6 +92,10 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
       // default to converting the Parquet schema into an Avro schema
       avroSchema = new AvroSchemaConverter().convert(parquetSchema);
     }
-    return new AvroRecordMaterializer<T>(parquetSchema, avroSchema);
+    Class<? extends AvroDataSupplier> suppClass = configuration.getClass(AVRO_DATA_SUPPLIER,
+        SpecificDataSupplier.class,
+        AvroDataSupplier.class);
+    AvroDataSupplier supplier =ReflectionUtils.newInstance(suppClass, configuration);
+    return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, supplier.get());
   }
 }

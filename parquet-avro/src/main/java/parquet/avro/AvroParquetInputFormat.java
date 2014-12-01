@@ -67,4 +67,15 @@ public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
     AvroReadSupport.setAvroReadSchema(ContextUtil.getConfiguration(job), avroReadSchema);
   }
 
+  /**
+   * Uses an instance of the specified {@link AvroDataSupplier} class to control how the
+   * {@link org.apache.avro.specific.SpecificData} instance that is used to find
+   * Avro specific records is created.
+   * @param job
+   * @param supplierClass
+   */
+  public static void setAvroDataSupplier(Job job,
+      Class<? extends AvroDataSupplier> supplierClass) {
+    AvroReadSupport.setAvroDataSupplier(ContextUtil.getConfiguration(job), supplierClass);
+  }
 }
