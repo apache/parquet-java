@@ -16,7 +16,17 @@
 package parquet.scrooge;
 
 import org.junit.Test;
-import parquet.scrooge.test.*;
+
+import parquet.scrooge.test.AddressWithStreetWithDefaultRequirement;
+import parquet.scrooge.test.TestFieldOfEnum;
+import parquet.scrooge.test.TestListPrimitive;
+import parquet.scrooge.test.TestMapComplex;
+import parquet.scrooge.test.TestMapPrimitiveKey;
+import parquet.scrooge.test.TestMapPrimitiveValue;
+import parquet.scrooge.test.TestOptionalMap;
+import parquet.scrooge.test.TestPersonWithAllInformation;
+import parquet.scrooge.test.TestSetPrimitive;
+import parquet.scrooge.test.TestUnion;
 import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType;
 import static org.junit.Assert.assertEquals;

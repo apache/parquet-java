@@ -16,9 +16,7 @@
 package parquet.scrooge;
 
 import com.twitter.scrooge.ThriftStructCodec;
-import com.twitter.scrooge.ThriftStructField;
 import com.twitter.scrooge.ThriftStructFieldInfo;
-import org.apache.thrift.protocol.TField;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftTypeID;
@@ -51,17 +49,18 @@ public class ScroogeStructConverter {
    * @throws Exception
    */
   public ThriftType.StructType convert(Class scroogeClass) {
-    return convertStructFromClassName(scroogeClass);
+    return convertStructFromClass(scroogeClass);
   }
 
   private Class getCompanionClass(Class klass) {
     try {
      return Class.forName(klass.getName() + "$");
     } catch (ClassNotFoundException e) {
-      throw new IllegalArgumentException("Can not find companion object for scrooge class " + klass, e);
+      throw new ScroogeSchemaConversionException("Can not find companion object for scrooge class " + klass, e);
     }
   }
-  private ThriftType.StructType convertStructFromClassName(Class klass) {
+
+  private ThriftType.StructType convertStructFromClass(Class klass) {
     return convertCompanionClassToStruct(getCompanionClass(klass));
   }
 
@@ -69,8 +68,8 @@ public class ScroogeStructConverter {
     ThriftStructCodec companionObject = null;
     try {
       companionObject = (ThriftStructCodec<?>)companionClass.getField("MODULE$").get(null);
-    } catch (Exception e) {
-      throw new RuntimeException("Can not get ThriftStructCodec from companion object of " + companionClass.getName(), e);
+    } catch (ReflectiveOperationException e) {
+      throw new ScroogeSchemaConversionException("Can not get ThriftStructCodec from companion object of " + companionClass.getName(), e);
     }
 
     List<ThriftField> children = new LinkedList<ThriftField>();//{@link ThriftType.StructType} uses foreach loop to iterate the children, yields O(n) time for linked list
@@ -93,8 +92,8 @@ public class ScroogeStructConverter {
         Object r = klass.getMethod("fieldInfos").invoke(c);
         Iterable<ThriftStructFieldInfo> a = JavaConversions$.MODULE$.asJavaIterable((scala.collection.Iterable<ThriftStructFieldInfo>)r);
         return a;
-      } catch (Exception e) {
-        throw new RuntimeException("can not get field Info from: " + c.toString(), e);
+      } catch (ReflectiveOperationException e) {
+        throw new ScroogeSchemaConversionException("can not get field Info from: " + c.toString(), e);
       }
     }
   }
@@ -110,8 +109,8 @@ public class ScroogeStructConverter {
            Object companionUnionObj = companionUnionClass.getField("MODULE$").get(null);
            ThriftStructFieldInfo info = (ThriftStructFieldInfo)companionUnionClass.getMethod("fieldInfo").invoke(companionUnionObj);
            fields.add(info);
-         } catch (Exception e) {
-           throw new RuntimeException("can not find fiedInfo for " + unionClass, e);
+         } catch (ReflectiveOperationException e) {
+           throw new ScroogeSchemaConversionException("can not find fiedInfo for " + unionClass, e);
          }
       }
     }
@@ -135,7 +134,7 @@ public class ScroogeStructConverter {
     } else if (!f.isOptional() && !f.isRequired()) {
       return DEFAULT;
     } else {
-      throw new RuntimeException("can not determine requirement type for : " + f.toString()
+      throw new ScroogeSchemaConversionException("can not determine requirement type for : " + f.toString()
               + ", isOptional=" + f.isOptional() + ", isRequired=" + f.isRequired());
     }
   }
@@ -267,12 +266,12 @@ public class ScroogeStructConverter {
     } else if (typeClass == String.class) {
       return new ThriftType.StringType();
     } else {
-      return convertStructFromClassName(typeClass);
+      return convertStructFromClass(typeClass);
     }
   }
 
   private ThriftType convertStructTypeField(ThriftStructFieldInfo f) {
-    return convertStructFromClassName(f.manifest().runtimeClass());
+    return convertStructFromClass(f.manifest().runtimeClass());
   }
 
   /**
@@ -299,8 +298,8 @@ public class ScroogeStructConverter {
         enumValues.add(new ThriftType.EnumValue(enumDesc.id, enumDesc.originalName));
       }
       return new ThriftType.EnumType(enumValues);
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Can not convert enum field " + f, e);
+    } catch (ReflectiveOperationException e) {
+      throw new ScroogeSchemaConversionException("Can not convert enum field " + f, e);
     }
 
   }
