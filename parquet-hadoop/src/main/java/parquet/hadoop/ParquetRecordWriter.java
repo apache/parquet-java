@@ -65,9 +65,9 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       boolean enableDictionary,
       boolean validating,
       WriterVersion writerVersion) {
-    this(w, writeSupport, schema,
+    internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
         extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary,
-        validating, writerVersion, null);
+        validating, writerVersion);
   }
 
   /**
@@ -107,7 +107,9 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
   @Override
   public void close(TaskAttemptContext context) throws IOException, InterruptedException {
     internalWriter.close();
-    memoryManager.removeWriter(internalWriter);
+    if (memoryManager != null) {
+      memoryManager.removeWriter(internalWriter);
+    }
   }
 
   /**

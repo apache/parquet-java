@@ -35,25 +35,27 @@ import java.util.Map;
  */
 public class MemoryManager {
   private static final Log LOG = Log.getLog(MemoryManager.class);
-  public static final float DEFAULT_MEMORY_POOL_RATIO = 0.95f;
-  private static float memoryPoolRatio = -1f;
-  private static boolean isRatioConfigured = false;
+  static final float DEFAULT_MEMORY_POOL_RATIO = 0.95f;
+  private final float memoryPoolRatio;
 
   private final long totalMemoryPool;
   private final Map<InternalParquetRecordWriter, Long> writerList = new
       HashMap<InternalParquetRecordWriter, Long>();
 
-  public MemoryManager() {
-    float ratio;
-    if (memoryPoolRatio > 0 && memoryPoolRatio <= 1) {
-      ratio = memoryPoolRatio;
-    } else {
-      ratio = DEFAULT_MEMORY_POOL_RATIO;
-    }
+  public MemoryManager(float ratio) {
+    checkRatio(ratio);
 
+    memoryPoolRatio = ratio;
     totalMemoryPool = Math.round(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
         () * ratio);
     LOG.debug(String.format("Allocated total memory pool is: %,d", totalMemoryPool));
+  }
+
+  private void checkRatio(float ratio) {
+    if (ratio <= 0 || ratio > 1) {
+      throw new IllegalArgumentException("The configured memory pool ratio " + ratio + " is " +
+          "not between 0 and 1.");
+    }
   }
 
   /**
@@ -126,41 +128,10 @@ public class MemoryManager {
   }
 
   /**
-   * Set the ratio of memory allocated for all the writers.
-   * Different users may have different preferred ratio.
-   * @param memoryPoolRatio equal (allocated memory size / JVM total memory size)
-   * @return return true if the ratio is set successfully or its value has already been set
-   *         return false if the ratio does not equal the already configured memoryPoolRatio
-   */
-  public static synchronized boolean setMemoryPoolRatio(float ratio) {
-    boolean success;
-
-    if (!isRatioConfigured) {
-      // This is the first time to configure the ratio
-      if (ratio > 0 && ratio <= 1) {
-        memoryPoolRatio = ratio;
-        isRatioConfigured = true;
-        success = true;
-      } else {
-        throw new IllegalArgumentException("The configured memory pool ratio " + ratio + " is " +
-            "not between 0 and 1.");
-      }
-    } else {
-      // The ratio has been configured. It is better to not change it during the task lifecycle.
-      if (ratio == memoryPoolRatio) {
-        success = true;
-      } else {
-        success = false;
-      }
-    }
-    return success;
-  }
-
-  /**
    * Get the ratio of memory allocated for all the writers.
    * @return the memory pool ratio
    */
-  public static synchronized float getMemoryPoolRatio() {
+  float getMemoryPoolRatio() {
     return memoryPoolRatio;
   }
 }

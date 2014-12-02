@@ -287,8 +287,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
     float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO,
         MemoryManager.DEFAULT_MEMORY_POOL_RATIO);
-    if (!MemoryManager.setMemoryPoolRatio(maxLoad)) {
-      LOG.debug("The configuration " + MEMORY_POOL_RATIO + " has been set. It should not " +
+    if (memoryManager == null) {
+      memoryManager = new MemoryManager(maxLoad);
+    } else if (memoryManager.getMemoryPoolRatio() != maxLoad) {
+      LOG.warn("The configuration " + MEMORY_POOL_RATIO + " has been set. It should not " +
           "be reset by the new value: " + maxLoad);
     }
 
@@ -303,7 +305,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         enableDictionary,
         validating,
         writerVersion,
-        getMemoryManager());
+        memoryManager);
   }
 
   /**
@@ -339,10 +341,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
    */
   private static MemoryManager memoryManager;
 
-  static synchronized MemoryManager getMemoryManager() {
-    if (memoryManager == null) {
-      memoryManager = new MemoryManager();
-    }
+  static MemoryManager getMemoryManager() {
     return memoryManager;
   }
 }

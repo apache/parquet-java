@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import parquet.Ints;
 import parquet.Log;
 import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.impl.ColumnWriteStoreImpl;
@@ -103,8 +104,7 @@ class InternalParquetRecordWriter<T> {
     // its value is likely below Integer.MAX_VALUE (2GB), although rowGroupSize is a long type.
     // therefore this size is cast to int, since allocating byte array in under layer needs to
     // limit the array size in an int scope.
-    int initialBlockBufferSize = (int) max(MINIMUM_BUFFER_SIZE, rowGroupSize / schema.getColumns()
-        .size() / 5);
+    int initialBlockBufferSize = Ints.checkedCast(max(MINIMUM_BUFFER_SIZE, rowGroupSize / schema.getColumns().size() / 5));
     pageStore = new ColumnChunkPageWriteStore(compressor, schema, initialBlockBufferSize);
     // we don't want this number to be too small either
     // ideally, slightly bigger than the page size, but not bigger than the block buffer
@@ -170,7 +170,7 @@ class InternalParquetRecordWriter<T> {
     return rowGroupSizeThreshold;
   }
 
-  public void setRowGroupSizeThreshold(long rowGroupSizeThreshold) {
+  void setRowGroupSizeThreshold(long rowGroupSizeThreshold) {
     this.rowGroupSizeThreshold = rowGroupSizeThreshold;
   }
 }
