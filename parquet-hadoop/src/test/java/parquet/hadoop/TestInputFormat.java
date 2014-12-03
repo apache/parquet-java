@@ -568,8 +568,6 @@ public class TestInputFormat {
     return TaskSideMetadataSplitStrategy.generateTaskSideMDSplits(
         hdfsBlocks,
         fileStatus,
-        schema.toString(),
-        extramd,
         min, max);
   }
 
@@ -611,7 +609,6 @@ public class TestInputFormat {
     for (int i = 0; i < locations.length; i++) {
       int loc = locations[i];
       ParquetInputSplit split = splits.get(i);
-      assertEquals(message(splits) + i, "foo", split.getReadSupportMetadata().get("specific"));
       assertEquals(message(splits) + i, "[foo" + loc + ".datanode, bar" + loc + ".datanode]", Arrays.toString(split.getLocations()));
     }
   }

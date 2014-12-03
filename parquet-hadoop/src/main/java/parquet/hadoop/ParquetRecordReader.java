@@ -44,14 +44,12 @@ import parquet.Log;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.compat.FilterCompat;
 import parquet.filter2.compat.FilterCompat.Filter;
-import parquet.filter2.compat.RowGroupFilter;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.ContextUtil;
 import parquet.hadoop.util.counters.BenchmarkCounter;
 import parquet.schema.MessageType;
-import parquet.schema.MessageTypeParser;
 
 /**
  * Reads the records from a block of a Parquet file
@@ -189,14 +187,9 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       }
     }
     MessageType fileSchema = footer.getFileMetaData().getSchema();
-    MessageType requestedSchema = MessageTypeParser.parseMessageType(split.getRequestedSchema());
     Map<String, String> fileMetaData = footer.getFileMetaData().getKeyValueMetaData();
-    Map<String, String> readSupportMetadata = split.getReadSupportMetadata();
     internalReader.initialize(
-        requestedSchema, fileSchema,
-        fileMetaData, readSupportMetadata,
-        path,
-        filteredBlocks, configuration);
+        fileSchema, fileMetaData, path, filteredBlocks, configuration);
   }
 
   /**

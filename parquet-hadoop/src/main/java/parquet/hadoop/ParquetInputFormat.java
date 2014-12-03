@@ -523,8 +523,6 @@ class TaskSideMetadataSplitStrategy extends SplitStrategy {
       splits.addAll(generateTaskSideMDSplits(
           fileBlockLocations,
           fileStatus,
-          readContext.getRequestedSchema().toString(),
-          readContext.getReadSupportMetadata(),
           minSplitSize,
           maxSplitSize));
 
@@ -545,9 +543,8 @@ class TaskSideMetadataSplitStrategy extends SplitStrategy {
 
   static <T> List<ParquetInputSplit> generateTaskSideMDSplits(
       BlockLocation[] hdfsBlocksArray,
-      FileStatus fileStatus,
-      String requestedSchema,
-      Map<String, String> readSupportMetadata, long minSplitSize, long maxSplitSize) throws IOException {
+      FileStatus fileStatus, long minSplitSize, long maxSplitSize)
+      throws IOException {
     if (maxSplitSize < minSplitSize || maxSplitSize < 0 || minSplitSize < 0) {
       throw new ParquetDecodingException("maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = " + maxSplitSize + "; minSplitSize is " + minSplitSize);
     }
@@ -594,8 +591,7 @@ class TaskSideMetadataSplitStrategy extends SplitStrategy {
               fileStatus.getPath(),
               startOffset, endOffset, endOffset - startOffset,
               blockLocation == null ? new String[0] : blockLocation.getHosts(),
-              null,
-              requestedSchema, readSupportMetadata));
+              null));
     }
     return resultSplits;
   }
@@ -712,9 +708,7 @@ class ClientSideMetadataSplitStrategy extends SplitStrategy {
               end,
               length,
               hdfsBlock.getHosts(),
-              rowGroupOffsets,
-              requestedSchema,
-              readSupportMetadata
+              rowGroupOffsets
       );
     }
   }
