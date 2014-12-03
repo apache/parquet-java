@@ -42,7 +42,7 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
   @Override
   public RecordReader<Void, Container<V>> getRecordReader(InputSplit split, JobConf job,
                   Reporter reporter) throws IOException {
-    return new RecordReaderWrapper<V>(realInputFormat, split, job, reporter);
+    return new RecordReaderWrapper<V>(split, job, reporter);
   }
 
   @Override
@@ -74,15 +74,14 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
     private boolean firstRecord = false;
     private boolean eof = false;
 
-    public RecordReaderWrapper(ParquetInputFormat<V> newInputFormat,
-                               InputSplit oldSplit,
-                               JobConf oldJobConf,
-                               Reporter reporter) throws IOException {
-
+    public RecordReaderWrapper(
+        InputSplit oldSplit, JobConf oldJobConf, Reporter reporter)
+        throws IOException {
       splitLen = oldSplit.getLength();
 
       try {
-        realReader = new ParquetRecordReader<V>(newInputFormat.getReadSupport(oldJobConf),
+        realReader = new ParquetRecordReader<V>(
+            ParquetInputFormat.<V>getReadSupportInstance(oldJobConf),
             ParquetInputFormat.getFilter(oldJobConf));
 
         realReader.initialize(((ParquetInputSplitWrapper)oldSplit).realSplit, oldJobConf, reporter);

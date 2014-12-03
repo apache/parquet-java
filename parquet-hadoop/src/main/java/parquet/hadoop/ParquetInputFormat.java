@@ -204,12 +204,13 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   private LruCache<FileStatusWrapper, FootersCacheValue> footersCache;
 
-  private Class<?> readSupportClass;
+  private final Class<? extends ReadSupport<T>> readSupportClass;
 
   /**
    * Hadoop will instantiate using this constructor
    */
   public ParquetInputFormat() {
+    this.readSupportClass = null;
   }
 
   /**
@@ -235,14 +236,36 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   /**
    * @param configuration to find the configuration for the read support
    * @return the configured read support
+   * @deprecated use getReadSupportInstance static methods instead
    */
+  @Deprecated
   public ReadSupport<T> getReadSupport(Configuration configuration){
+    if (readSupportClass != null) {
+      return getReadSupportInstance(readSupportClass);
+    } else {
+      return getReadSupportInstance(configuration);
+    }
+  }
+
+  /**
+   * @param configuration to find the configuration for the read support
+   * @return the configured read support
+   */
+  @SuppressWarnings("unchecked")
+  public static <T> ReadSupport<T> getReadSupportInstance(Configuration configuration){
+    return getReadSupportInstance(
+        (Class<? extends ReadSupport<T>>) getReadSupportClass(configuration));
+  }
+
+  /**
+   * @param readSupportClass to instantiate
+   * @return the configured read support
+   */
+  @SuppressWarnings("unchecked")
+  public static <T> ReadSupport<T> getReadSupportInstance(
+      Class<? extends ReadSupport<T>> readSupportClass){
     try {
-      if (readSupportClass == null) {
-        // TODO: fix this weird caching independent of the conf parameter
-        readSupportClass = getReadSupportClass(configuration);
-      }
-      return (ReadSupport<T>)readSupportClass.newInstance();
+      return readSupportClass.newInstance();
     } catch (InstantiationException e) {
       throw new BadConfigurationException("could not instantiate read support class", e);
     } catch (IllegalAccessException e) {
