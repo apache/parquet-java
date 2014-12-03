@@ -78,51 +78,6 @@ public enum Encoding {
         throw new ParquetDecodingException("no plain reader for type " + descriptor.getType());
       }
     }
-  },
-
-  /**
-   * Actually a combination of bit packing and run length encoding.
-   * TODO: Should we rename this to be more clear?
-   */
-  RLE {
-    @Override
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      int bitWidth = BytesUtils.getWidthFromMaxInt(getMaxLevel(descriptor, valuesType));
-      if(bitWidth == 0) {
-        return new ZeroIntegerValuesReader();
-      }
-      return new RunLengthBitPackingHybridValuesReader(bitWidth);
-    }
-  },
-
-  /**
-   * This is no longer used, and has been replaced by {@link #RLE}
-   * which is combination of bit packing and rle
-   */
-  @Deprecated
-  BIT_PACKED {
-    @Override
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      return new ByteBitPackingValuesReader(getMaxLevel(descriptor, valuesType), BIG_ENDIAN);
-    }
-  },
-
-  PLAIN_DICTIONARY {
-    @Override
-    public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
-      switch (descriptor.getType()) {
-      case BINARY:
-      case FIXED_LEN_BYTE_ARRAY:
-      case INT96:
-      case INT64:
-      case DOUBLE:
-      case INT32:
-      case FLOAT:
-        return new DictionaryValuesReader(dictionary);
-      default:
-        throw new ParquetDecodingException("Dictionary encoding not supported for type: " + descriptor.getType());
-      }
-    }
 
     @Override
     public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage) throws IOException {
@@ -145,6 +100,49 @@ public enum Encoding {
         throw new ParquetDecodingException("Dictionary encoding not supported for type: " + descriptor.getType());
       }
 
+    }
+  },
+
+  /**
+   * Actually a combination of bit packing and run length encoding.
+   * TODO: Should we rename this to be more clear?
+   */
+  RLE {
+    @Override
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+      int bitWidth = BytesUtils.getWidthFromMaxInt(getMaxLevel(descriptor, valuesType));
+      if(bitWidth == 0) {
+        return new ZeroIntegerValuesReader();
+      }
+      return new RunLengthBitPackingHybridValuesReader(bitWidth);
+    }
+  },
+
+  /**
+   * @deprecated This is no longer used, and has been replaced by {@link #RLE}
+   * which is combination of bit packing and rle
+   */
+  @Deprecated
+  BIT_PACKED {
+    @Override
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
+      return new ByteBitPackingValuesReader(getMaxLevel(descriptor, valuesType), BIG_ENDIAN);
+    }
+  },
+
+  /**
+   * @deprecated now replaced by RLE_DICTIONARY for the data page encoding and PLAIN for the dictionary page encoding
+   */
+  @Deprecated
+  PLAIN_DICTIONARY {
+    @Override
+    public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
+      return RLE_DICTIONARY.getDictionaryBasedValuesReader(descriptor, valuesType, dictionary);
+    }
+
+    @Override
+    public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage) throws IOException {
+      return PLAIN.initDictionary(descriptor, dictionaryPage);
     }
 
     @Override
@@ -201,7 +199,30 @@ public enum Encoding {
   /**
    * Dictionary encoding: the ids are encoded using the RLE encoding
    */
-  RLE_DICTIONARY;
+  RLE_DICTIONARY {
+
+    @Override
+    public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
+      switch (descriptor.getType()) {
+      case BINARY:
+      case FIXED_LEN_BYTE_ARRAY:
+      case INT96:
+      case INT64:
+      case DOUBLE:
+      case INT32:
+      case FLOAT:
+        return new DictionaryValuesReader(dictionary);
+      default:
+        throw new ParquetDecodingException("Dictionary encoding not supported for type: " + descriptor.getType());
+      }
+    }
+
+    @Override
+    public boolean usesDictionary() {
+      return true;
+    }
+
+  };
 
   int getMaxLevel(ColumnDescriptor descriptor, ValuesType valuesType) {
     int maxLevel;

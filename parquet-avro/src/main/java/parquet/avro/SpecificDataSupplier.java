@@ -15,29 +15,12 @@
  */
 package parquet.avro;
 
-import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.IndexedRecord;
-import parquet.io.api.GroupConverter;
-import parquet.io.api.RecordMaterializer;
-import parquet.schema.MessageType;
+import org.apache.avro.specific.SpecificData;
 
-class AvroRecordMaterializer<T extends IndexedRecord> extends RecordMaterializer<T> {
-
-  private AvroIndexedRecordConverter<T> root;
-
-  public AvroRecordMaterializer(MessageType requestedSchema, Schema avroSchema,
-      GenericData baseModel) {
-    this.root = new AvroIndexedRecordConverter<T>(requestedSchema, avroSchema, baseModel);
-  }
-
+class SpecificDataSupplier implements AvroDataSupplier {
   @Override
-  public T getCurrentRecord() {
-    return root.getCurrentRecord();
-  }
-
-  @Override
-  public GroupConverter getRootConverter() {
-    return root;
+  public GenericData get() {
+    return SpecificData.get();
   }
 }

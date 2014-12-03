@@ -24,7 +24,7 @@ import parquet.hadoop.util.ContextUtil;
 /**
  * A Hadoop {@link org.apache.hadoop.mapreduce.InputFormat} for Parquet files.
  */
-public class AvroParquetInputFormat extends ParquetInputFormat<IndexedRecord> {
+public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
   public AvroParquetInputFormat() {
     super(AvroReadSupport.class);
   }
@@ -67,4 +67,15 @@ public class AvroParquetInputFormat extends ParquetInputFormat<IndexedRecord> {
     AvroReadSupport.setAvroReadSchema(ContextUtil.getConfiguration(job), avroReadSchema);
   }
 
+  /**
+   * Uses an instance of the specified {@link AvroDataSupplier} class to control how the
+   * {@link org.apache.avro.specific.SpecificData} instance that is used to find
+   * Avro specific records is created.
+   * @param job
+   * @param supplierClass
+   */
+  public static void setAvroDataSupplier(Job job,
+      Class<? extends AvroDataSupplier> supplierClass) {
+    AvroReadSupport.setAvroDataSupplier(ContextUtil.getConfiguration(job), supplierClass);
+  }
 }

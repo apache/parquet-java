@@ -20,7 +20,6 @@ import static parquet.column.Encoding.PLAIN;
 import static parquet.column.Encoding.PLAIN_DICTIONARY;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 
@@ -41,17 +40,43 @@ import parquet.column.values.dictionary.DictionaryValuesWriter.PlainDoubleDictio
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
 import parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
+import parquet.column.values.fallback.FallbackValuesWriter;
 import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader;
+import parquet.column.values.plain.PlainValuesWriter;
 import parquet.io.api.Binary;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 public class TestDictionary {
 
+  private <I extends DictionaryValuesWriter> FallbackValuesWriter<I, PlainValuesWriter> plainFallBack(I dvw, int initialSize) {
+    return FallbackValuesWriter.of(dvw, new PlainValuesWriter(initialSize));
+  }
+
+  private FallbackValuesWriter<PlainBinaryDictionaryValuesWriter, PlainValuesWriter> newPlainBinaryDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
+    return plainFallBack(new PlainBinaryDictionaryValuesWriter(maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY), initialSize);
+  }
+
+  private FallbackValuesWriter<PlainLongDictionaryValuesWriter, PlainValuesWriter> newPlainLongDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
+    return plainFallBack(new PlainLongDictionaryValuesWriter(maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY), initialSize);
+  }
+
+  private FallbackValuesWriter<PlainIntegerDictionaryValuesWriter, PlainValuesWriter> newPlainIntegerDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
+    return plainFallBack(new PlainIntegerDictionaryValuesWriter(maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY), initialSize);
+  }
+
+  private FallbackValuesWriter<PlainDoubleDictionaryValuesWriter, PlainValuesWriter> newPlainDoubleDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
+    return plainFallBack(new PlainDoubleDictionaryValuesWriter(maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY), initialSize);
+  }
+
+  private FallbackValuesWriter<PlainFloatDictionaryValuesWriter, PlainValuesWriter> newPlainFloatDictionaryValuesWriter(int maxDictionaryByteSize, int initialSize) {
+    return plainFallBack(new PlainFloatDictionaryValuesWriter(maxDictionaryByteSize, PLAIN_DICTIONARY, PLAIN_DICTIONARY), initialSize);
+  }
+
   @Test
   public void testBinaryDictionary() throws IOException {
     int COUNT = 100;
-    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(200, 10000);
+    ValuesWriter cw = newPlainBinaryDictionaryValuesWriter(200, 10000);
     writeRepeated(COUNT, cw, "a");
     BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
     writeRepeated(COUNT, cw, "b");
@@ -71,17 +96,17 @@ public class TestDictionary {
   public void testBinaryDictionaryFallBack() throws IOException {
     int slabSize = 100;
     int maxDictionaryByteSize = 50;
-    final DictionaryValuesWriter cw = new PlainBinaryDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    final ValuesWriter cw = newPlainBinaryDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
     int fallBackThreshold = maxDictionaryByteSize;
     int dataSize=0;
     for (long i = 0; i < 100; i++) {
       Binary binary = Binary.fromString("str" + i);
       cw.writeBytes(binary);
-      dataSize+=(binary.length()+4);
+      dataSize += (binary.length() + 4);
       if (dataSize < fallBackThreshold) {
-        assertEquals( PLAIN_DICTIONARY,cw.getEncoding());
+        assertEquals(PLAIN_DICTIONARY, cw.getEncoding());
       } else {
-        assertEquals(PLAIN,cw.getEncoding());
+        assertEquals(PLAIN, cw.getEncoding());
       }
     }
 
@@ -101,7 +126,7 @@ public class TestDictionary {
   @Test
   public void testBinaryDictionaryChangedValues() throws IOException {
     int COUNT = 100;
-    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(200, 10000);
+    ValuesWriter cw = newPlainBinaryDictionaryValuesWriter(200, 10000);
     writeRepeatedWithReuse(COUNT, cw, "a");
     BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
     writeRepeatedWithReuse(COUNT, cw, "b");
@@ -120,7 +145,7 @@ public class TestDictionary {
   @Test
   public void testFirstPageFallBack() throws IOException {
     int COUNT = 1000;
-    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(10000, 10000);
+    ValuesWriter cw = newPlainBinaryDictionaryValuesWriter(10000, 10000);
     writeDistinct(COUNT, cw, "a");
     // not efficient so falls back
     BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN);
@@ -136,9 +161,8 @@ public class TestDictionary {
 
   @Test
   public void testSecondPageFallBack() throws IOException {
-
     int COUNT = 1000;
-    ValuesWriter cw = new PlainBinaryDictionaryValuesWriter(1000, 10000);
+    ValuesWriter cw = newPlainBinaryDictionaryValuesWriter(1000, 10000);
     writeRepeated(COUNT, cw, "a");
     BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
     writeDistinct(COUNT, cw, "b");
@@ -157,21 +181,20 @@ public class TestDictionary {
 
   @Test
   public void testLongDictionary() throws IOException {
-
     int COUNT = 1000;
     int COUNT2 = 2000;
-    final DictionaryValuesWriter cw = new PlainLongDictionaryValuesWriter(10000, 10000);
+    final FallbackValuesWriter<PlainLongDictionaryValuesWriter, PlainValuesWriter> cw = newPlainLongDictionaryValuesWriter(10000, 10000);
     for (long i = 0; i < COUNT; i++) {
       cw.writeLong(i % 50);
     }
     BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-    assertEquals(50, cw.getDictionarySize());
+    assertEquals(50, cw.initialWriter.getDictionarySize());
 
     for (long i = COUNT2; i > 0; i--) {
       cw.writeLong(i % 50);
     }
     BytesInput bytes2 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-    assertEquals(50, cw.getDictionarySize());
+    assertEquals(50, cw.initialWriter.getDictionarySize());
 
     DictionaryValuesReader cr = initDicReader(cw, PrimitiveTypeName.INT64);
 
@@ -187,8 +210,8 @@ public class TestDictionary {
       assertEquals(i % 50, back);
     }
   }
-  
-  private void roundTripLong(DictionaryValuesWriter cw,  ValuesReader reader, int maxDictionaryByteSize) throws IOException {
+
+  private void roundTripLong(FallbackValuesWriter<PlainLongDictionaryValuesWriter, PlainValuesWriter> cw,  ValuesReader reader, int maxDictionaryByteSize) throws IOException {
     int fallBackThreshold = maxDictionaryByteSize / 8;
     for (long i = 0; i < 100; i++) {
       cw.writeLong(i);
@@ -210,16 +233,16 @@ public class TestDictionary {
   public void testLongDictionaryFallBack() throws IOException {
     int slabSize = 100;
     int maxDictionaryByteSize = 50;
-    final DictionaryValuesWriter cw = new PlainLongDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+    final FallbackValuesWriter<PlainLongDictionaryValuesWriter, PlainValuesWriter> cw = newPlainLongDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
     // Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
     ValuesReader reader = new PlainValuesReader.LongPlainValuesReader();
-    
+
     roundTripLong(cw, reader, maxDictionaryByteSize);
     //simulate cutting the page
     cw.reset();
     assertEquals(0,cw.getBufferedSize());
     cw.resetDictionary();
-  
+
     roundTripLong(cw, reader, maxDictionaryByteSize);
   }
 
@@ -228,20 +251,20 @@ public class TestDictionary {
 
     int COUNT = 1000;
     int COUNT2 = 2000;
-    final DictionaryValuesWriter cw = new PlainDoubleDictionaryValuesWriter(10000, 10000);
+    final FallbackValuesWriter<PlainDoubleDictionaryValuesWriter, PlainValuesWriter> cw = newPlainDoubleDictionaryValuesWriter(10000, 10000);
 
     for (double i = 0; i < COUNT; i++) {
       cw.writeDouble(i % 50);
     }
 
     BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-    assertEquals(50, cw.getDictionarySize());
+    assertEquals(50, cw.initialWriter.getDictionarySize());
 
     for (double i = COUNT2; i > 0; i--) {
       cw.writeDouble(i % 50);
     }
     BytesInput bytes2 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-    assertEquals(50, cw.getDictionarySize());
+    assertEquals(50, cw.initialWriter.getDictionarySize());
 
     final DictionaryValuesReader cr = initDicReader(cw, DOUBLE);
 
@@ -258,8 +281,8 @@ public class TestDictionary {
     }
 
   }
-  
-  private void roundTripDouble(DictionaryValuesWriter cw,  ValuesReader reader, int maxDictionaryByteSize) throws IOException {
+
+  private void roundTripDouble(FallbackValuesWriter<PlainDoubleDictionaryValuesWriter, PlainValuesWriter> cw,  ValuesReader reader, int maxDictionaryByteSize) throws IOException {
     int fallBackThreshold = maxDictionaryByteSize / 8;
     for (double i = 0; i < 100; i++) {
       cw.writeDouble(i);
@@ -276,22 +299,22 @@ public class TestDictionary {
       assertEquals(i, reader.readDouble(), 0.00001);
     }
   }
-  
+
   @Test
   public void testDoubleDictionaryFallBack() throws IOException {
     int slabSize = 100;
     int maxDictionaryByteSize = 50;
-    final DictionaryValuesWriter cw = new PlainDoubleDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
-    
+    final FallbackValuesWriter<PlainDoubleDictionaryValuesWriter, PlainValuesWriter> cw = newPlainDoubleDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+
     // Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
     ValuesReader reader = new PlainValuesReader.DoublePlainValuesReader();
-    
+
     roundTripDouble(cw, reader, maxDictionaryByteSize);
     //simulate cutting the page
     cw.reset();
     assertEquals(0,cw.getBufferedSize());
     cw.resetDictionary();
-  
+
     roundTripDouble(cw, reader, maxDictionaryByteSize);
   }
 
@@ -300,19 +323,19 @@ public class TestDictionary {
 
     int COUNT = 2000;
     int COUNT2 = 4000;
-    final DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(10000, 10000);
+    final FallbackValuesWriter<PlainIntegerDictionaryValuesWriter, PlainValuesWriter> cw = newPlainIntegerDictionaryValuesWriter(10000, 10000);
 
     for (int i = 0; i < COUNT; i++) {
       cw.writeInteger(i % 50);
     }
     BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-    assertEquals(50, cw.getDictionarySize());
+    assertEquals(50, cw.initialWriter.getDictionarySize());
 
     for (int i = COUNT2; i > 0; i--) {
       cw.writeInteger(i % 50);
     }
     BytesInput bytes2 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-    assertEquals(50, cw.getDictionarySize());
+    assertEquals(50, cw.initialWriter.getDictionarySize());
 
     DictionaryValuesReader cr = initDicReader(cw, INT32);
 
@@ -329,8 +352,8 @@ public class TestDictionary {
     }
 
   }
-  
-  private void roundTripInt(DictionaryValuesWriter cw,  ValuesReader reader, int maxDictionaryByteSize) throws IOException {
+
+  private void roundTripInt(FallbackValuesWriter<PlainIntegerDictionaryValuesWriter, PlainValuesWriter> cw,  ValuesReader reader, int maxDictionaryByteSize) throws IOException {
     int fallBackThreshold = maxDictionaryByteSize / 4;
     for (int i = 0; i < 100; i++) {
       cw.writeInteger(i);
@@ -347,22 +370,22 @@ public class TestDictionary {
       assertEquals(i, reader.readInteger());
     }
   }
-  
+
   @Test
   public void testIntDictionaryFallBack() throws IOException {
     int slabSize = 100;
     int maxDictionaryByteSize = 50;
-    final DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
-    
+    final FallbackValuesWriter<PlainIntegerDictionaryValuesWriter, PlainValuesWriter> cw = newPlainIntegerDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+
     // Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
     ValuesReader reader = new PlainValuesReader.IntegerPlainValuesReader();
-    
+
     roundTripInt(cw, reader, maxDictionaryByteSize);
     //simulate cutting the page
     cw.reset();
     assertEquals(0,cw.getBufferedSize());
     cw.resetDictionary();
-  
+
     roundTripInt(cw, reader, maxDictionaryByteSize);
   }
 
@@ -371,19 +394,19 @@ public class TestDictionary {
 
     int COUNT = 2000;
     int COUNT2 = 4000;
-    final DictionaryValuesWriter cw = new PlainFloatDictionaryValuesWriter(10000, 10000);
+    final FallbackValuesWriter<PlainFloatDictionaryValuesWriter, PlainValuesWriter> cw = newPlainFloatDictionaryValuesWriter(10000, 10000);
 
     for (float i = 0; i < COUNT; i++) {
       cw.writeFloat(i % 50);
     }
     BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-    assertEquals(50, cw.getDictionarySize());
+    assertEquals(50, cw.initialWriter.getDictionarySize());
 
     for (float i = COUNT2; i > 0; i--) {
       cw.writeFloat(i % 50);
     }
     BytesInput bytes2 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
-    assertEquals(50, cw.getDictionarySize());
+    assertEquals(50, cw.initialWriter.getDictionarySize());
 
     DictionaryValuesReader cr = initDicReader(cw, FLOAT);
 
@@ -400,8 +423,8 @@ public class TestDictionary {
     }
 
   }
-  
-  private void roundTripFloat(DictionaryValuesWriter cw,  ValuesReader reader, int maxDictionaryByteSize) throws IOException {
+
+  private void roundTripFloat(FallbackValuesWriter<PlainFloatDictionaryValuesWriter, PlainValuesWriter> cw,  ValuesReader reader, int maxDictionaryByteSize) throws IOException {
     int fallBackThreshold = maxDictionaryByteSize / 4;
     for (float i = 0; i < 100; i++) {
       cw.writeFloat(i);
@@ -418,28 +441,28 @@ public class TestDictionary {
       assertEquals(i, reader.readFloat(), 0.00001);
     }
   }
-  
+
   @Test
   public void testFloatDictionaryFallBack() throws IOException {
     int slabSize = 100;
     int maxDictionaryByteSize = 50;
-    final DictionaryValuesWriter cw = new PlainFloatDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
-    
+    final FallbackValuesWriter<PlainFloatDictionaryValuesWriter, PlainValuesWriter> cw = newPlainFloatDictionaryValuesWriter(maxDictionaryByteSize, slabSize);
+
     // Fallbacked to Plain encoding, therefore use PlainValuesReader to read it back
     ValuesReader reader = new PlainValuesReader.FloatPlainValuesReader();
-    
+
     roundTripFloat(cw, reader, maxDictionaryByteSize);
     //simulate cutting the page
     cw.reset();
     assertEquals(0,cw.getBufferedSize());
     cw.resetDictionary();
-  
+
     roundTripFloat(cw, reader, maxDictionaryByteSize);
   }
 
   @Test
   public void testZeroValues() throws IOException {
-    DictionaryValuesWriter cw = new PlainIntegerDictionaryValuesWriter(100, 100);
+    FallbackValuesWriter<PlainIntegerDictionaryValuesWriter, PlainValuesWriter> cw = newPlainIntegerDictionaryValuesWriter(100, 100);
     cw.writeInteger(34);
     cw.writeInteger(34);
     getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
@@ -455,7 +478,7 @@ public class TestDictionary {
       throws IOException {
     final DictionaryPage dictionaryPage = cw.createDictionaryPage().copy();
     final ColumnDescriptor descriptor = new ColumnDescriptor(new String[] {"foo"}, type, 0, 0);
-    final Dictionary dictionary = PLAIN_DICTIONARY.initDictionary(descriptor, dictionaryPage);
+    final Dictionary dictionary = PLAIN.initDictionary(descriptor, dictionaryPage);
     final DictionaryValuesReader cr = new DictionaryValuesReader(dictionary);
     return cr;
   }

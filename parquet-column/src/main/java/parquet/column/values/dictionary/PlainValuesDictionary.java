@@ -17,6 +17,7 @@ package parquet.column.values.dictionary;
 
 import static parquet.bytes.BytesUtils.readIntLittleEndian;
 import static parquet.column.Encoding.PLAIN_DICTIONARY;
+import static parquet.column.Encoding.PLAIN;
 
 import java.io.IOException;
 
@@ -42,7 +43,8 @@ public abstract class PlainValuesDictionary extends Dictionary {
    */
   protected PlainValuesDictionary(DictionaryPage dictionaryPage) throws IOException {
     super(dictionaryPage.getEncoding());
-    if (dictionaryPage.getEncoding() != PLAIN_DICTIONARY) {
+    if (dictionaryPage.getEncoding() != PLAIN_DICTIONARY
+        && dictionaryPage.getEncoding() != PLAIN) {
       throw new ParquetDecodingException("Dictionary data encoding type not supported: " + dictionaryPage.getEncoding());
     }
   }

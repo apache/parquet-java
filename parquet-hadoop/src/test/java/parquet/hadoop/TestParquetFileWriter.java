@@ -21,6 +21,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static parquet.column.Encoding.BIT_PACKED;
 import static parquet.column.Encoding.PLAIN;
+import static parquet.hadoop.TestUtils.enforceEmptyDir;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static parquet.schema.Type.Repetition.OPTIONAL;
 import static parquet.schema.Type.Repetition.REPEATED;
@@ -269,8 +270,7 @@ public class TestParquetFileWriter {
     Configuration configuration = new Configuration();
 
     final FileSystem fs = testDirPath.getFileSystem(configuration);
-    fs.delete(testDirPath, true);
-    fs.mkdirs(testDirPath);
+    enforceEmptyDir(configuration, testDirPath);
 
     MessageType schema = MessageTypeParser.parseMessageType("message m { required group a {required binary b;} required group c { required int64 d; }}");
     createFile(configuration, new Path(testDirPath, "part0"), schema);
