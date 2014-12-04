@@ -23,7 +23,7 @@ import org.junit.Test;
 
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
-import parquet.column.page.Page;
+import parquet.column.page.DataPage;
 import parquet.column.page.PageReader;
 import parquet.column.page.PageWriter;
 import parquet.column.page.mem.MemPageStore;
@@ -49,7 +49,7 @@ public class TestMemPageStore {
     System.out.println(totalValueCount);
     int total = 0;
     do {
-      Page readPage = pageReader.readPage();
+      DataPage readPage = pageReader.readPage();
       total += readPage.getValueCount();
       System.out.println(readPage);
       // TODO: assert

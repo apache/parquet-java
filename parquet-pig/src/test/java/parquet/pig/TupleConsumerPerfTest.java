@@ -29,7 +29,7 @@ import org.apache.pig.parser.ParserException;
 
 import parquet.Log;
 import parquet.column.ParquetProperties.WriterVersion;
-import parquet.column.impl.ColumnWriteStoreImpl;
+import parquet.column.impl.ColumnWriteStoreV1;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.mem.MemPageStore;
 import parquet.hadoop.api.ReadSupport.ReadContext;
@@ -56,11 +56,11 @@ public class TupleConsumerPerfTest {
     MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchema));
 
     MemPageStore memPageStore = new MemPageStore(0);
-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 50*1024*1024, 50*1024*1024, 50*1024*1024, false, WriterVersion.PARQUET_1_0);
+    ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(memPageStore, 50*1024*1024, 50*1024*1024, 50*1024*1024, false, WriterVersion.PARQUET_1_0);
     write(memPageStore, columns, schema, pigSchema);
     columns.flush();
     read(memPageStore, pigSchema, pigSchemaProjected, pigSchemaNoString);
-    System.out.println(columns.memSize()+" bytes used total");
+    System.out.println(columns.getBufferedSize()+" bytes used total");
     System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
   }
 
@@ -153,7 +153,7 @@ public class TupleConsumerPerfTest {
     return map;
   }
 
-  private static void write(MemPageStore memPageStore, ColumnWriteStoreImpl columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
+  private static void write(MemPageStore memPageStore, ColumnWriteStoreV1 columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
     MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     TupleWriteSupport tupleWriter = TupleWriteSupport.fromPigSchema(pigSchemaString);
     tupleWriter.init(null);

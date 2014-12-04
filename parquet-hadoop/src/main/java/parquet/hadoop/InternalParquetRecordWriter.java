@@ -26,8 +26,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 import parquet.Log;
+import parquet.column.ColumnWriteStore;
+import parquet.column.ParquetProperties;
 import parquet.column.ParquetProperties.WriterVersion;
-import parquet.column.impl.ColumnWriteStoreImpl;
+import parquet.column.impl.ColumnWriteStoreV1;
+import parquet.column.impl.ColumnWriteStoreV2;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.hadoop.api.WriteSupport;
 import parquet.hadoop.api.WriteSupport.FinalizedWriteContext;
@@ -49,16 +52,15 @@ class InternalParquetRecordWriter<T> {
   private final int rowGroupSize;
   private final int pageSize;
   private final BytesCompressor compressor;
-  private final int dictionaryPageSize;
-  private final boolean enableDictionary;
   private final boolean validating;
-  private final WriterVersion writerVersion;
+  private final ParquetProperties parquetProperties;
 
   private long recordCount = 0;
   private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
 
-  private ColumnWriteStoreImpl columnStore;
+  private ColumnWriteStore columnStore;
   private ColumnChunkPageWriteStore pageStore;
+
 
   /**
    * @param parquetFileWriter the file to write to
@@ -87,10 +89,8 @@ class InternalParquetRecordWriter<T> {
     this.rowGroupSize = rowGroupSize;
     this.pageSize = pageSize;
     this.compressor = compressor;
-    this.dictionaryPageSize = dictionaryPageSize;
-    this.enableDictionary = enableDictionary;
     this.validating = validating;
-    this.writerVersion = writerVersion;
+    this.parquetProperties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary);
     initStore();
   }
 
@@ -103,7 +103,11 @@ class InternalParquetRecordWriter<T> {
     // we don't want this number to be too small either
     // ideally, slightly bigger than the page size, but not bigger than the block buffer
     int initialPageBufferSize = max(MINIMUM_BUFFER_SIZE, min(pageSize + pageSize / 10, initialBlockBufferSize));
-    columnStore = new ColumnWriteStoreImpl(pageStore, pageSize, initialPageBufferSize, dictionaryPageSize, enableDictionary, writerVersion);
+    columnStore = parquetProperties.newColumnWriteStore(
+        schema,
+        pageStore,
+        pageSize,
+        initialPageBufferSize);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
     writeSupport.prepareForWrite(columnIO.getRecordWriter(columnStore));
   }
@@ -124,7 +128,7 @@ class InternalParquetRecordWriter<T> {
 
   private void checkBlockSizeReached() throws IOException {
     if (recordCount >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it for every record.
-      long memSize = columnStore.memSize();
+      long memSize = columnStore.getBufferedSize();
       if (memSize > rowGroupSize) {
         LOG.info(format("mem size %,d > %,d: flushing %,d records to disk.", memSize, rowGroupSize, recordCount));
         flushRowGroupToStore();
@@ -143,8 +147,8 @@ class InternalParquetRecordWriter<T> {
 
   private void flushRowGroupToStore()
       throws IOException {
-    LOG.info(format("Flushing mem columnStore to file. allocated memory: %,d", columnStore.allocatedSize()));
-    if (columnStore.allocatedSize() > 3 * (long)rowGroupSize) {
+    LOG.info(format("Flushing mem columnStore to file. allocated memory: %,d", columnStore.getAllocatedSize()));
+    if (columnStore.getAllocatedSize() > 3 * (long)rowGroupSize) {
       LOG.warn("Too much memory used: " + columnStore.memUsageString());
     }
 

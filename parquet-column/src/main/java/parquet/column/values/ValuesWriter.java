@@ -66,9 +66,8 @@ public abstract class ValuesWriter {
   }
 
   /**
-   *
+   * ( > {@link #getBufferedMemorySize} )
    * @return the allocated size of the buffer
-   * ( > {@link #getBufferedMemorySize()() )
    */
   abstract public long getAllocatedSize();
 

@@ -5,7 +5,7 @@ before_install:
   - mkdir protobuf_install
   - pushd protobuf_install
   - wget http://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz
-  - tar xzvf protobuf-2.5.0.tar.gz
+  - tar xzf protobuf-2.5.0.tar.gz
   - cd  protobuf-2.5.0
   - ./configure
   - make
@@ -27,5 +27,5 @@ env:
   - HADOOP_PROFILE=default
   - HADOOP_PROFILE=hadoop-2
 
-install: mvn install -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true
+install: mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true > mvn_install.log || cat mvn_install.log
 script: mvn test -P $HADOOP_PROFILE

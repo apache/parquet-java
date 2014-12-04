@@ -29,18 +29,6 @@ import parquet.column.statistics.Statistics;
  */
 public interface PageWriter {
 
-  @Deprecated
-  /**
-   * writes a single page
-   * @param bytesInput the bytes for the page
-   * @param valueCount the number of values in that page
-   * @param rlEncoding repetition level encoding
-   * @param dlEncoding definition level encoding
-   * @param valuesEncoding values encoding
-   * @throws IOException
-   */
-  void writePage(BytesInput bytesInput, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
-
   /**
    * writes a single page
    * @param bytesInput the bytes for the page
@@ -51,7 +39,27 @@ public interface PageWriter {
    * @param valuesEncoding values encoding
    * @throws IOException
    */
-  void writePage(BytesInput bytesInput, int valueCount, Statistics statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
+  void writePage(BytesInput bytesInput, int valueCount, Statistics<?> statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
+
+  /**
+   * writes a single page in the new format
+   * @param rowCount the number of rows in this page
+   * @param nullCount the number of null values (out of valueCount)
+   * @param valueCount the number of values in that page (there could be multiple values per row for repeated fields)
+   * @param repetitionLevels the repetition levels encoded in RLE without any size header
+   * @param definitionLevels the definition levels encoded in RLE without any size header
+   * @param dataEncoding the encoding for the data
+   * @param data the data encoded with dataEncoding
+   * @param statistics optional stats for this page
+   * @param metadata optional free form key values
+   * @throws IOException
+   */
+  void writePageV2(
+      int rowCount, int nullCount, int valueCount,
+      BytesInput repetitionLevels, BytesInput definitionLevels,
+      Encoding dataEncoding,
+      BytesInput data,
+      Statistics<?> statistics) throws IOException;
 
   /**
    * @return the current size used in the memory buffer for that column chunk
@@ -69,6 +77,10 @@ public interface PageWriter {
    */
   void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException;
 
-  public abstract String memUsageString(String prefix);
+  /**
+   * @param prefix a prefix header to add at every line
+   * @return a string presenting a summary of how memory is used
+   */
+  String memUsageString(String prefix);
 
 }

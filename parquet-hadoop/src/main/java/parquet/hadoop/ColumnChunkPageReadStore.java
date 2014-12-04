@@ -21,13 +21,17 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import parquet.Ints;
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
+import parquet.column.page.DataPage;
+import parquet.column.page.DataPageV1;
+import parquet.column.page.DataPageV2;
 import parquet.column.page.DictionaryPage;
-import parquet.column.page.Page;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
 import parquet.hadoop.CodecFactory.BytesDecompressor;
+import parquet.io.ParquetDecodingException;
 
 /**
  * TODO: should this actually be called RowGroupImpl or something?
@@ -49,15 +53,15 @@ class ColumnChunkPageReadStore implements PageReadStore {
 
     private final BytesDecompressor decompressor;
     private final long valueCount;
-    private final List<Page> compressedPages;
+    private final List<DataPage> compressedPages;
     private final DictionaryPage compressedDictionaryPage;
 
-    ColumnChunkPageReader(BytesDecompressor decompressor, List<Page> compressedPages, DictionaryPage compressedDictionaryPage) {
+    ColumnChunkPageReader(BytesDecompressor decompressor, List<DataPage> compressedPages, DictionaryPage compressedDictionaryPage) {
       this.decompressor = decompressor;
-      this.compressedPages = new LinkedList<Page>(compressedPages);
+      this.compressedPages = new LinkedList<DataPage>(compressedPages);
       this.compressedDictionaryPage = compressedDictionaryPage;
       int count = 0;
-      for (Page p : compressedPages) {
+      for (DataPage p : compressedPages) {
         count += p.getValueCount();
       }
       this.valueCount = count;
@@ -69,23 +73,53 @@ class ColumnChunkPageReadStore implements PageReadStore {
     }
 
     @Override
-    public Page readPage() {
+    public DataPage readPage() {
       if (compressedPages.isEmpty()) {
         return null;
       }
-      Page compressedPage = compressedPages.remove(0);
-      try {
-        return new Page(
-            decompressor.decompress(compressedPage.getBytes(), compressedPage.getUncompressedSize()),
-            compressedPage.getValueCount(),
-            compressedPage.getUncompressedSize(),
-            compressedPage.getStatistics(),
-            compressedPage.getRlEncoding(),
-            compressedPage.getDlEncoding(),
-            compressedPage.getValueEncoding());
-      } catch (IOException e) {
-        throw new RuntimeException(e); // TODO: cleanup
-      }
+      DataPage compressedPage = compressedPages.remove(0);
+      return compressedPage.accept(new DataPage.Visitor<DataPage>() {
+        @Override
+        public DataPage visit(DataPageV1 dataPageV1) {
+          try {
+            return new DataPageV1(
+                decompressor.decompress(dataPageV1.getBytes(), dataPageV1.getUncompressedSize()),
+                dataPageV1.getValueCount(),
+                dataPageV1.getUncompressedSize(),
+                dataPageV1.getStatistics(),
+                dataPageV1.getRlEncoding(),
+                dataPageV1.getDlEncoding(),
+                dataPageV1.getValueEncoding());
+          } catch (IOException e) {
+            throw new ParquetDecodingException("could not decompress page", e);
+          }
+        }
+
+        @Override
+        public DataPage visit(DataPageV2 dataPageV2) {
+          if (!dataPageV2.isCompressed()) {
+            return dataPageV2;
+          }
+          try {
+            int uncompressedSize = Ints.checkedCast(
+                dataPageV2.getUncompressedSize()
+                - dataPageV2.getDefinitionLevels().size()
+                - dataPageV2.getRepetitionLevels().size());
+            return DataPageV2.uncompressed(
+                dataPageV2.getRowCount(),
+                dataPageV2.getNullCount(),
+                dataPageV2.getValueCount(),
+                dataPageV2.getRepetitionLevels(),
+                dataPageV2.getDefinitionLevels(),
+                dataPageV2.getDataEncoding(),
+                decompressor.decompress(dataPageV2.getData(), uncompressedSize),
+                dataPageV2.getStatistics()
+                );
+          } catch (IOException e) {
+            throw new ParquetDecodingException("could not decompress page", e);
+          }
+        }
+      });
     }
 
     @Override

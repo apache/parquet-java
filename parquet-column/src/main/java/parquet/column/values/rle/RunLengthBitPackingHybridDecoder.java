@@ -20,7 +20,6 @@ import static parquet.Log.DEBUG;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 
 import parquet.Log;
 import parquet.Preconditions;
@@ -76,8 +75,8 @@ public class RunLengthBitPackingHybridDecoder {
     return result;
   }
 
-  private void readNext() throws IOException {	
-	Preconditions.checkArgument(in.available() > 0, "Reading past RLE/BitPacking stream.");
+  private void readNext() throws IOException {
+    Preconditions.checkArgument(in.available() > 0, "Reading past RLE/BitPacking stream.");
     final int header = BytesUtils.readUnsignedVarInt(in);
     mode = (header & 1) == 0 ? MODE.RLE : MODE.PACKED;
     switch (mode) {
@@ -92,7 +91,7 @@ public class RunLengthBitPackingHybridDecoder {
       if (DEBUG) LOG.debug("reading " + currentCount + " values BIT PACKED");
       currentBuffer = new int[currentCount]; // TODO: reuse a buffer
       byte[] bytes = new byte[numGroups * bitWidth];
-      // At the end of the file RLE data though, there might not be that many bytes left. 
+      // At the end of the file RLE data though, there might not be that many bytes left.
       int bytesToRead = (int)Math.ceil(currentCount * bitWidth / 8.0);
       bytesToRead = Math.min(bytesToRead, in.available());
       new DataInputStream(in).readFully(bytes, 0, bytesToRead);
