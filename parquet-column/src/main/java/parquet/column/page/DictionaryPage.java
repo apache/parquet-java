@@ -19,6 +19,7 @@ import static parquet.Preconditions.checkNotNull;
 
 import java.io.IOException;
 
+import parquet.Ints;
 import parquet.bytes.BytesInput;
 import parquet.column.Encoding;
 
@@ -28,10 +29,9 @@ import parquet.column.Encoding;
  * @author Julien Le Dem
  *
  */
-public class DictionaryPage {
+public class DictionaryPage extends Page {
 
   private final BytesInput bytes;
-  private final int uncompressedSize;
   private final int dictionarySize;
   private final Encoding encoding;
 
@@ -53,18 +53,14 @@ public class DictionaryPage {
    * @param encoding the encoding used
    */
   public DictionaryPage(BytesInput bytes, int uncompressedSize, int dictionarySize, Encoding encoding) {
+    super(Ints.checkedCast(bytes.size()), uncompressedSize);
     this.bytes = checkNotNull(bytes, "bytes");
-    this.uncompressedSize = uncompressedSize;
     this.dictionarySize = dictionarySize;
     this.encoding = checkNotNull(encoding, "encoding");
   }
 
   public BytesInput getBytes() {
     return bytes;
-  }
-
-  public int getUncompressedSize() {
-    return uncompressedSize;
   }
 
   public int getDictionarySize() {
@@ -76,13 +72,13 @@ public class DictionaryPage {
   }
 
   public DictionaryPage copy() throws IOException {
-    return new DictionaryPage(BytesInput.copy(bytes), uncompressedSize, dictionarySize, encoding);
+    return new DictionaryPage(BytesInput.copy(bytes), getUncompressedSize(), dictionarySize, encoding);
   }
 
 
   @Override
   public String toString() {
-    return "Page [bytes.size=" + bytes.size() + ", entryCount=" + dictionarySize + ", uncompressedSize=" + uncompressedSize + ", encoding=" + encoding + "]";
+    return "Page [bytes.size=" + bytes.size() + ", entryCount=" + dictionarySize + ", uncompressedSize=" + getUncompressedSize() + ", encoding=" + encoding + "]";
   }
 
 

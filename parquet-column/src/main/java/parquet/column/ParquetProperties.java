@@ -4,6 +4,9 @@ import static parquet.bytes.BytesUtils.getWidthFromMaxInt;
 import static parquet.column.Encoding.PLAIN;
 import static parquet.column.Encoding.PLAIN_DICTIONARY;
 import static parquet.column.Encoding.RLE_DICTIONARY;
+import parquet.column.impl.ColumnWriteStoreV1;
+import parquet.column.impl.ColumnWriteStoreV2;
+import parquet.column.page.PageWriteStore;
 import parquet.column.values.ValuesWriter;
 import parquet.column.values.boundedint.DevNullValuesWriter;
 import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
@@ -20,6 +23,7 @@ import parquet.column.values.plain.BooleanPlainValuesWriter;
 import parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
 import parquet.column.values.plain.PlainValuesWriter;
 import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
+import parquet.schema.MessageType;
 
 /**
  * This class represents all the configurable Parquet properties.
@@ -194,5 +198,26 @@ public class ParquetProperties {
 
   public boolean isEnableDictionary() {
     return enableDictionary;
+  }
+
+  public ColumnWriteStore newColumnWriteStore(
+      MessageType schema,
+      PageWriteStore pageStore, int pageSize,
+      int initialPageBufferSize) {
+    switch (writerVersion) {
+    case PARQUET_1_0:
+      return new ColumnWriteStoreV1(
+          pageStore,
+          pageSize, initialPageBufferSize, dictionaryPageSizeThreshold,
+          enableDictionary, writerVersion);
+    case PARQUET_2_0:
+      return new ColumnWriteStoreV2(
+          schema,
+          pageStore,
+          pageSize, initialPageBufferSize,
+          new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary));
+    default:
+      throw new IllegalArgumentException("unknown version " + writerVersion);
+    }
   }
 }

@@ -29,10 +29,9 @@ import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.page.PageWriteStore;
 import parquet.column.page.PageWriter;
 
+public class ColumnWriteStoreV1 implements ColumnWriteStore {
 
-public class ColumnWriteStoreImpl implements ColumnWriteStore {
-
-  private final Map<ColumnDescriptor, ColumnWriterImpl> columns = new TreeMap<ColumnDescriptor, ColumnWriterImpl>();
+  private final Map<ColumnDescriptor, ColumnWriterV1> columns = new TreeMap<ColumnDescriptor, ColumnWriterV1>();
   private final PageWriteStore pageWriteStore;
   private final int pageSizeThreshold;
   private final int dictionaryPageSizeThreshold;
@@ -40,7 +39,7 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
   private final int initialSizePerCol;
   private final WriterVersion writerVersion;
 
-  public ColumnWriteStoreImpl(PageWriteStore pageWriteStore, int pageSizeThreshold, int initialSizePerCol, int dictionaryPageSizeThreshold, boolean enableDictionary, WriterVersion writerVersion) {
+  public ColumnWriteStoreV1(PageWriteStore pageWriteStore, int pageSizeThreshold, int initialSizePerCol, int dictionaryPageSizeThreshold, boolean enableDictionary, WriterVersion writerVersion) {
     super();
     this.pageWriteStore = pageWriteStore;
     this.pageSizeThreshold = pageSizeThreshold;
@@ -51,7 +50,7 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
   }
 
   public ColumnWriter getColumnWriter(ColumnDescriptor path) {
-    ColumnWriterImpl column = columns.get(path);
+    ColumnWriterV1 column = columns.get(path);
     if (column == null) {
       column = newMemColumn(path);
       columns.put(path, column);
@@ -63,15 +62,15 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
     return columns.keySet();
   }
 
-  private ColumnWriterImpl newMemColumn(ColumnDescriptor path) {
+  private ColumnWriterV1 newMemColumn(ColumnDescriptor path) {
     PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-    return new ColumnWriterImpl(path, pageWriter, pageSizeThreshold, initialSizePerCol, dictionaryPageSizeThreshold, enableDictionary, writerVersion);
+    return new ColumnWriterV1(path, pageWriter, pageSizeThreshold, initialSizePerCol, dictionaryPageSizeThreshold, enableDictionary, writerVersion);
   }
 
   @Override
   public String toString() {
       StringBuilder sb = new StringBuilder();
-      for (Entry<ColumnDescriptor, ColumnWriterImpl> entry : columns.entrySet()) {
+      for (Entry<ColumnDescriptor, ColumnWriterV1> entry : columns.entrySet()) {
         sb.append(Arrays.toString(entry.getKey().getPath())).append(": ");
         sb.append(entry.getValue().getBufferedSizeInMemory()).append(" bytes");
         sb.append("\n");
@@ -79,28 +78,41 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
       return sb.toString();
   }
 
-  public long allocatedSize() {
-    Collection<ColumnWriterImpl> values = columns.values();
+  @Override
+  public long getAllocatedSize() {
+    Collection<ColumnWriterV1> values = columns.values();
     long total = 0;
-    for (ColumnWriterImpl memColumn : values) {
+    for (ColumnWriterV1 memColumn : values) {
       total += memColumn.allocatedSize();
     }
     return total;
   }
 
-  public long memSize() {
-    Collection<ColumnWriterImpl> values = columns.values();
+  @Override
+  public long getBufferedSize() {
+    Collection<ColumnWriterV1> values = columns.values();
     long total = 0;
-    for (ColumnWriterImpl memColumn : values) {
+    for (ColumnWriterV1 memColumn : values) {
       total += memColumn.getBufferedSizeInMemory();
     }
     return total;
   }
 
+  @Override
+  public String memUsageString() {
+    StringBuilder b = new StringBuilder("Store {\n");
+    Collection<ColumnWriterV1> values = columns.values();
+    for (ColumnWriterV1 memColumn : values) {
+      b.append(memColumn.memUsageString(" "));
+    }
+    b.append("}\n");
+    return b.toString();
+  }
+
   public long maxColMemSize() {
-    Collection<ColumnWriterImpl> values = columns.values();
+    Collection<ColumnWriterV1> values = columns.values();
     long max = 0;
-    for (ColumnWriterImpl memColumn : values) {
+    for (ColumnWriterV1 memColumn : values) {
       max = Math.max(max, memColumn.getBufferedSizeInMemory());
     }
     return max;
@@ -108,20 +120,15 @@ public class ColumnWriteStoreImpl implements ColumnWriteStore {
 
   @Override
   public void flush() {
-    Collection<ColumnWriterImpl> values = columns.values();
-    for (ColumnWriterImpl memColumn : values) {
+    Collection<ColumnWriterV1> values = columns.values();
+    for (ColumnWriterV1 memColumn : values) {
       memColumn.flush();
     }
   }
 
-  public String memUsageString() {
-    StringBuilder b = new StringBuilder("Store {\n");
-    Collection<ColumnWriterImpl> values = columns.values();
-    for (ColumnWriterImpl memColumn : values) {
-      b.append(memColumn.memUsageString(" "));
-    }
-    b.append("}\n");
-    return b.toString();
+  @Override
+  public void endRecord() {
+    // V1 does not take record boundaries into account
   }
 
 }
