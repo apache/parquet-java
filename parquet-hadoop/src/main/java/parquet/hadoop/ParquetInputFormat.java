@@ -263,6 +263,10 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @throws IOException
    */
   public List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers) throws IOException {
+    return getSplits(configuration, footers, null);
+  }
+
+  public List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers, MessageType readSchema) throws IOException {
     boolean taskSideMetaData = isTaskSideMetaData(configuration);
     boolean strictTypeChecking = configuration.getBoolean(STRICT_TYPE_CHECKING, true);
     final long maxSplitSize = configuration.getLong("mapred.max.split.size", Long.MAX_VALUE);
@@ -270,13 +274,15 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     if (maxSplitSize < 0 || minSplitSize < 0) {
       throw new ParquetDecodingException("maxSplitSize or minSplitSize should not be negative: maxSplitSize = " + maxSplitSize + "; minSplitSize = " + minSplitSize);
     }
-    GlobalMetaData globalMetaData = ParquetFileWriter.getGlobalMetaData(footers, strictTypeChecking);
+    GlobalMetaData globalMetaData = ParquetFileWriter.getGlobalMetaData(readSchema, footers, strictTypeChecking);
+
     ReadContext readContext = getReadSupport(configuration).init(new InitContext(
-        configuration,
-        globalMetaData.getKeyValueMetaData(),
-        globalMetaData.getSchema()));
+            configuration,
+            globalMetaData.getKeyValueMetaData(),
+            globalMetaData.getSchema()));
 
     return SplitStrategy.getSplitStrategy(taskSideMetaData).getSplits(configuration, footers, maxSplitSize, minSplitSize, readContext);
+
   }
 
   /*

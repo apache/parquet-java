@@ -17,9 +17,16 @@ package parquet.avro;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.JobContext;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.util.ContextUtil;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A Hadoop {@link org.apache.hadoop.mapreduce.InputFormat} for Parquet files.
@@ -27,6 +34,20 @@ import parquet.hadoop.util.ContextUtil;
 public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
   public AvroParquetInputFormat() {
     super(AvroReadSupport.class);
+  }
+
+  @Override
+  public List<InputSplit> getSplits(JobContext jobContext) throws IOException {
+    Configuration configuration = ContextUtil.getConfiguration(jobContext);
+    String readSchema = AvroReadSupport.getAvroReadSchema(configuration);
+    if(readSchema == null) {
+      return super.getSplits(jobContext);
+    }
+
+    List<InputSplit> splits = new ArrayList<InputSplit>();
+    splits.addAll(getSplits(configuration,getFooters(jobContext),new AvroSchemaConverter().convert(new Schema.Parser().parse(readSchema))));
+    return splits;
+
   }
 
   /**
