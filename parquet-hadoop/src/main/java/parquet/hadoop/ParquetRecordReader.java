@@ -40,7 +40,9 @@ import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import parquet.Log;
+import parquet.Preconditions;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.compat.FilterCompat;
 import parquet.filter2.compat.FilterCompat.Filter;
@@ -136,7 +138,18 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
               + context.getClass().getCanonicalName());
     }
 
-    initializeInternalReader((ParquetInputSplit)inputSplit, ContextUtil.getConfiguration(context));
+    // ensure all splits are ParquetInputSplits
+    ParquetInputSplit parquetSplit;
+    if (inputSplit instanceof ParquetInputSplit) {
+      parquetSplit = (ParquetInputSplit) inputSplit;
+    } else if (inputSplit instanceof FileSplit) {
+      parquetSplit = ParquetInputSplit.from((FileSplit) inputSplit);
+    } else {
+      throw new IllegalArgumentException(
+          "Invalid split (not a FileSplit or ParquetInputSplit): " + inputSplit);
+    }
+
+    initializeInternalReader(parquetSplit, ContextUtil.getConfiguration(context));
   }
 
   public void initialize(InputSplit inputSplit, Configuration configuration, Reporter reporter)

@@ -26,10 +26,8 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -38,7 +36,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 
-import parquet.bytes.BytesUtils;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.schema.MessageType;
@@ -115,6 +112,33 @@ public class ParquetInputSplit extends FileSplit implements Writable {
       offsets[i] = blocks.get(i).getStartingPos();
     }
     return offsets;
+  }
+
+  /**
+   * Builds a {@code ParquetInputSplit} from a mapreduce {@link FileSplit}.
+   *
+   * @param split a mapreduce FileSplit
+   * @return a ParquetInputSplit
+   * @throws IOException
+   */
+  static ParquetInputSplit from(FileSplit split) throws IOException {
+    return new ParquetInputSplit(split.getPath(),
+        split.getStart(), split.getStart() + split.getLength(),
+        split.getLength(), split.getLocations(), null);
+  }
+
+  /**
+   * Builds a {@code ParquetInputSplit} from a mapred
+   * {@link org.apache.hadoop.mapred.FileSplit}.
+   *
+   * @param split a mapreduce FileSplit
+   * @return a ParquetInputSplit
+   * @throws IOException
+   */
+  static ParquetInputSplit from(org.apache.hadoop.mapred.FileSplit split) throws IOException {
+    return new ParquetInputSplit(split.getPath(),
+        split.getStart(), split.getStart() + split.getLength(),
+        split.getLength(), split.getLocations(), null);
   }
 
   /**

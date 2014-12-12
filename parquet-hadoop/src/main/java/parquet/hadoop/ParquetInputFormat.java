@@ -48,7 +48,9 @@ import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import parquet.Log;
+import parquet.Preconditions;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.compat.FilterCompat;
 import parquet.filter2.compat.FilterCompat.Filter;
@@ -204,7 +206,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   private LruCache<FileStatusWrapper, FootersCacheValue> footersCache;
 
-  private final Class<? extends ReadSupport<T>> readSupportClass;
+  private final Class<? extends ReadSupport> readSupportClass;
 
   /**
    * Hadoop will instantiate using this constructor
@@ -214,8 +216,13 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   /**
-   * constructor used when this InputFormat in wrapped in another one (In Pig for example)
-   * @param readSupportClass the class to materialize records
+   * Constructor for subclasses, such as AvroParquetInputFormat, or wrappers.
+   * <p>
+   * Subclasses and wrappers may use this constructor to set the ReadSupport
+   * class that will be used when reading instead of requiring the user to set
+   * the read support property in their configuration.
+   *
+   * @param readSupportClass a ReadSupport subclass
    */
   public <S extends ReadSupport<T>> ParquetInputFormat(Class<S> readSupportClass) {
     this.readSupportClass = readSupportClass;
@@ -254,7 +261,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   @SuppressWarnings("unchecked")
   public static <T> ReadSupport<T> getReadSupportInstance(Configuration configuration){
     return getReadSupportInstance(
-        (Class<? extends ReadSupport<T>>) getReadSupportClass(configuration));
+        (Class<? extends ReadSupport>) getReadSupportClass(configuration));
   }
 
   /**
@@ -263,7 +270,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    */
   @SuppressWarnings("unchecked")
   public static <T> ReadSupport<T> getReadSupportInstance(
-      Class<? extends ReadSupport<T>> readSupportClass){
+      Class<? extends ReadSupport> readSupportClass){
     try {
       return readSupportClass.newInstance();
     } catch (InstantiationException e) {
@@ -279,7 +286,23 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   @Override
   public List<InputSplit> getSplits(JobContext jobContext) throws IOException {
     Configuration configuration = ContextUtil.getConfiguration(jobContext);
-    return new ArrayList<InputSplit>(getSplits(configuration, getFooters(jobContext)));
+    List<InputSplit> splits = new ArrayList<InputSplit>();
+
+    if (isTaskSideMetaData(configuration)) {
+      // Although not required by the API, some clients may depend on always
+      // receiving ParquetInputSplit. Translation is required at some point.
+      for (InputSplit split : super.getSplits(jobContext)) {
+        Preconditions.checkArgument(split instanceof FileSplit,
+            "Cannot wrap non-FileSplit: " + split);
+        splits.add(ParquetInputSplit.from((FileSplit) split));
+      }
+      return splits;
+
+    } else {
+      splits.addAll(getSplits(configuration, getFooters(jobContext)));
+    }
+
+    return splits;
   }
 
   /**
@@ -289,7 +312,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @throws IOException
    */
   public List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers) throws IOException {
-    boolean taskSideMetaData = isTaskSideMetaData(configuration);
     boolean strictTypeChecking = configuration.getBoolean(STRICT_TYPE_CHECKING, true);
     final long maxSplitSize = configuration.getLong("mapred.max.split.size", Long.MAX_VALUE);
     final long minSplitSize = Math.max(getFormatMinSplitSize(), configuration.getLong("mapred.min.split.size", 0L));
@@ -302,7 +324,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         globalMetaData.getKeyValueMetaData(),
         globalMetaData.getSchema()));
 
-    return SplitStrategy.getSplitStrategy(taskSideMetaData).getSplits(configuration, footers, maxSplitSize, minSplitSize, readContext);
+    return new ClientSideMetadataSplitStrategy().getSplits(
+        configuration, footers, maxSplitSize, minSplitSize, readContext);
   }
 
   /*
@@ -512,114 +535,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
 }
-abstract class SplitStrategy {
-  private static final Log LOG = Log.getLog(SplitStrategy.class);
 
-  static SplitStrategy getSplitStrategy(boolean taskSideMetaData) {
-    if (taskSideMetaData) {
-      LOG.info("Using Task Side Metadata Split Strategy");
-      return new TaskSideMetadataSplitStrategy();
-    } else {
-      LOG.info("Using Client Side Metadata Split Strategy");
-      return new ClientSideMetadataSplitStrategy();
-    }
-  }
-
-  abstract List<ParquetInputSplit> getSplits(
-      Configuration configuration,
-      List<Footer> footers,
-      final long maxSplitSize, final long minSplitSize,
-      ReadContext readContext) throws IOException;
-}
-class TaskSideMetadataSplitStrategy extends SplitStrategy {
-
-  @Override
-  List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers,
-      long maxSplitSize, long minSplitSize, ReadContext readContext) throws IOException {
-    List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
-    for (Footer footer : footers) {
-      // TODO: keep status in Footer
-      final Path file = footer.getFile();
-      FileSystem fs = file.getFileSystem(configuration);
-      FileStatus fileStatus = fs.getFileStatus(file);
-      BlockLocation[] fileBlockLocations = fs.getFileBlockLocations(fileStatus, 0, fileStatus.getLen());
-      splits.addAll(generateTaskSideMDSplits(
-          fileBlockLocations,
-          fileStatus,
-          minSplitSize,
-          maxSplitSize));
-
-    }
-    return splits;
-  }
-
-  private static int findBlockIndex(BlockLocation[] hdfsBlocksArray, long endOffset) {
-    for (int i = 0; i < hdfsBlocksArray.length; i++) {
-      BlockLocation block = hdfsBlocksArray[i];
-      // end offset is exclusive. We want the block that contains the point right before.
-      if (endOffset > block.getOffset() && endOffset <= (block.getOffset() + block.getLength())) {
-        return i;
-      }
-    }
-    return -1;
-  }
-
-  static <T> List<ParquetInputSplit> generateTaskSideMDSplits(
-      BlockLocation[] hdfsBlocksArray,
-      FileStatus fileStatus, long minSplitSize, long maxSplitSize)
-      throws IOException {
-    if (maxSplitSize < minSplitSize || maxSplitSize < 0 || minSplitSize < 0) {
-      throw new ParquetDecodingException("maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = " + maxSplitSize + "; minSplitSize is " + minSplitSize);
-    }
-    //generate splits from rowGroups of each split
-    List<ParquetInputSplit> resultSplits = new ArrayList<ParquetInputSplit>();
-    // [startOffset, endOffset)
-    long startOffset = 0;
-    long endOffset = 0;
-    // they should already be sorted
-    Arrays.sort(hdfsBlocksArray, new Comparator<BlockLocation>() {
-      @Override
-      public int compare(BlockLocation o1, BlockLocation o2) {
-        return compare(o1.getOffset(), o2.getOffset());
-      }
-      private int compare(long x, long y) {
-        return (x < y) ? -1 : ((x == y) ? 0 : 1);
-      }
-    });
-    final BlockLocation lastBlock =
-        hdfsBlocksArray.length == 0 ? null : hdfsBlocksArray[hdfsBlocksArray.length - 1];
-    while (endOffset < fileStatus.getLen()) {
-      startOffset = endOffset;
-      BlockLocation blockLocation;
-      final int nextBlockMin = findBlockIndex(hdfsBlocksArray, startOffset + minSplitSize);
-      final int nextBlockMax = findBlockIndex(hdfsBlocksArray, startOffset + maxSplitSize);
-      if (nextBlockMax == nextBlockMin && nextBlockMax != -1) {
-        // no block boundary between min and max
-        // => use max for the size of the split
-        endOffset = startOffset + maxSplitSize;
-        blockLocation = hdfsBlocksArray[nextBlockMax];
-      } else if (nextBlockMin > -1) {
-        // block boundary between min and max
-        // we end the split at the first block boundary
-        blockLocation = hdfsBlocksArray[nextBlockMin];
-        endOffset = blockLocation.getOffset() + blockLocation.getLength();
-      } else {
-        // min and max after last block
-        // small last split
-        endOffset = fileStatus.getLen();
-        blockLocation = lastBlock;
-      }
-      resultSplits.add(
-          new ParquetInputSplit(
-              fileStatus.getPath(),
-              startOffset, endOffset, endOffset - startOffset,
-              blockLocation == null ? new String[0] : blockLocation.getHosts(),
-              null));
-    }
-    return resultSplits;
-  }
-}
-class ClientSideMetadataSplitStrategy extends SplitStrategy {
+class ClientSideMetadataSplitStrategy {
   //Wrapper of hdfs blocks, keep track of which HDFS block is being used
   private static class HDFSBlocks {
     BlockLocation[] hdfsBlocks;
@@ -738,7 +655,6 @@ class ClientSideMetadataSplitStrategy extends SplitStrategy {
 
   private static final Log LOG = Log.getLog(ClientSideMetadataSplitStrategy.class);
 
-  @Override
   List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers,
       long maxSplitSize, long minSplitSize, ReadContext readContext)
       throws IOException {

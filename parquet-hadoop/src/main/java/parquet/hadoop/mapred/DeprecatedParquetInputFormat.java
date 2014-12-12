@@ -18,6 +18,7 @@
  */
 package parquet.hadoop.mapred;
 
+import static java.lang.Boolean.TRUE;
 import static java.util.Arrays.asList;
 
 import java.io.DataInput;
@@ -25,6 +26,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
 
+import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
@@ -47,6 +49,10 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
 
   @Override
   public InputSplit[] getSplits(JobConf job, int numSplits) throws IOException {
+    if (isTaskSideMetaData(job)) {
+      return toParquetSplits(super.getSplits(job, numSplits));
+    }
+
     List<Footer> footers = getFooters(job);
     List<ParquetInputSplit> splits = realInputFormat.getSplits(job, footers);
     if (splits == null) {
@@ -154,6 +160,21 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
       eof = true; // strictly not required, just for consistency
       return false;
     }
+  }
+
+  public static boolean isTaskSideMetaData(JobConf job) {
+    return job.getBoolean(ParquetInputFormat.TASK_SIDE_METADATA, TRUE);
+  }
+
+  private InputSplit[] toParquetSplits(InputSplit[] splits) throws IOException {
+    InputSplit[] parquetSplits = new InputSplit[splits.length];
+    for (int i = 0; i < splits.length; i += 1) {
+      if (splits[i] instanceof FileSplit) {
+        parquetSplits[i] = new ParquetInputSplitWrapper(
+            ParquetInputSplit.from((FileSplit) splits[i]));
+      }
+    }
+    return parquetSplits;
   }
 
   private static class ParquetInputSplitWrapper implements InputSplit {
