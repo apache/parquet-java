@@ -16,20 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.format;
+package org.apache.parquet.format;
 
 import static java.util.Arrays.asList;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNull;
-import static parquet.format.Util.readFileMetaData;
-import static parquet.format.Util.writeFileMetaData;
+import static org.apache.parquet.format.Util.readFileMetaData;
+import static org.apache.parquet.format.Util.writeFileMetaData;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
 import org.junit.Test;
 
-import parquet.format.Util.DefaultFileMetaDataConsumer;
+import org.apache.parquet.format.Util.DefaultFileMetaDataConsumer;
 public class TestUtil {
 
   @Test

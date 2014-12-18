@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package parquet.format;
+package org.apache.parquet.format;
 
 import java.nio.ByteBuffer;
 

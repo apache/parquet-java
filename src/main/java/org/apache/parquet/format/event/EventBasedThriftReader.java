@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.format.event;
+package org.apache.parquet.format.event;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
@@ -26,9 +26,9 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TType;
 
-import parquet.format.event.TypedConsumer.ListConsumer;
-import parquet.format.event.TypedConsumer.MapConsumer;
-import parquet.format.event.TypedConsumer.SetConsumer;
+import org.apache.parquet.format.event.TypedConsumer.ListConsumer;
+import org.apache.parquet.format.event.TypedConsumer.MapConsumer;
+import org.apache.parquet.format.event.TypedConsumer.SetConsumer;
 
 /**
  * Event based reader for Thrift

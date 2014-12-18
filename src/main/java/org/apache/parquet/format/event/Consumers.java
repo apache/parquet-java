@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.format.event;
+package org.apache.parquet.format.event;
 
 import static java.util.Collections.unmodifiableMap;
 
@@ -33,10 +33,10 @@ import org.apache.thrift.protocol.TList;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolUtil;
 
-import parquet.format.event.Consumers.Consumer;
-import parquet.format.event.TypedConsumer.BoolConsumer;
-import parquet.format.event.TypedConsumer.ListConsumer;
-import parquet.format.event.TypedConsumer.StructConsumer;
+import org.apache.parquet.format.event.Consumers.Consumer;
+import org.apache.parquet.format.event.TypedConsumer.BoolConsumer;
+import org.apache.parquet.format.event.TypedConsumer.ListConsumer;
+import org.apache.parquet.format.event.TypedConsumer.StructConsumer;
 
 /**
  * Entry point for reading thrift in a streaming fashion

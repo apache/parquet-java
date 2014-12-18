@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.format.event;
+package org.apache.parquet.format.event;
 
 import static org.apache.thrift.protocol.TType.BOOL;
 import static org.apache.thrift.protocol.TType.BYTE;

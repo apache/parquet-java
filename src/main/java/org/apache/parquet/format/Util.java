@@ -17,18 +17,18 @@
  * under the License.
  */
 
-package parquet.format;
+package org.apache.parquet.format;
 
-import static parquet.format.FileMetaData._Fields.CREATED_BY;
-import static parquet.format.FileMetaData._Fields.KEY_VALUE_METADATA;
-import static parquet.format.FileMetaData._Fields.NUM_ROWS;
-import static parquet.format.FileMetaData._Fields.ROW_GROUPS;
-import static parquet.format.FileMetaData._Fields.SCHEMA;
-import static parquet.format.FileMetaData._Fields.VERSION;
-import static parquet.format.event.Consumers.fieldConsumer;
-import static parquet.format.event.Consumers.listElementsOf;
-import static parquet.format.event.Consumers.listOf;
-import static parquet.format.event.Consumers.struct;
+import static org.apache.parquet.format.FileMetaData._Fields.CREATED_BY;
+import static org.apache.parquet.format.FileMetaData._Fields.KEY_VALUE_METADATA;
+import static org.apache.parquet.format.FileMetaData._Fields.NUM_ROWS;
+import static org.apache.parquet.format.FileMetaData._Fields.ROW_GROUPS;
+import static org.apache.parquet.format.FileMetaData._Fields.SCHEMA;
+import static org.apache.parquet.format.FileMetaData._Fields.VERSION;
+import static org.apache.parquet.format.event.Consumers.fieldConsumer;
+import static org.apache.parquet.format.event.Consumers.listElementsOf;
+import static org.apache.parquet.format.event.Consumers.listOf;
+import static org.apache.parquet.format.event.Consumers.struct;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,12 +41,12 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
 
-import parquet.format.event.Consumers.Consumer;
-import parquet.format.event.Consumers.DelegatingFieldConsumer;
-import parquet.format.event.EventBasedThriftReader;
-import parquet.format.event.TypedConsumer.I32Consumer;
-import parquet.format.event.TypedConsumer.I64Consumer;
-import parquet.format.event.TypedConsumer.StringConsumer;
+import org.apache.parquet.format.event.Consumers.Consumer;
+import org.apache.parquet.format.event.Consumers.DelegatingFieldConsumer;
+import org.apache.parquet.format.event.EventBasedThriftReader;
+import org.apache.parquet.format.event.TypedConsumer.I32Consumer;
+import org.apache.parquet.format.event.TypedConsumer.I64Consumer;
+import org.apache.parquet.format.event.TypedConsumer.StringConsumer;
 
 /**
  * Utility to read/write metadata
@@ -65,7 +65,7 @@ public class Util {
     return read(from, new PageHeader());
   }
 
-  public static void writeFileMetaData(parquet.format.FileMetaData fileMetadata, OutputStream to) throws IOException {
+  public static void writeFileMetaData(org.apache.parquet.format.FileMetaData fileMetadata, OutputStream to) throws IOException {
     write(fileMetadata, to);
   }
 

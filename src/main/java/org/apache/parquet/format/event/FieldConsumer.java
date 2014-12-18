@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.format.event;
+package org.apache.parquet.format.event;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
