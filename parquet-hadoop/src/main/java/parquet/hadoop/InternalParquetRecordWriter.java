@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import parquet.Ints;
 import parquet.Log;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ParquetProperties;
@@ -49,7 +50,8 @@ class InternalParquetRecordWriter<T> {
   private final WriteSupport<T> writeSupport;
   private final MessageType schema;
   private final Map<String, String> extraMetaData;
-  private final int rowGroupSize;
+  private final long rowGroupSize;
+  private long rowGroupSizeThreshold;
   private final int pageSize;
   private final BytesCompressor compressor;
   private final boolean validating;
@@ -75,7 +77,7 @@ class InternalParquetRecordWriter<T> {
       WriteSupport<T> writeSupport,
       MessageType schema,
       Map<String, String> extraMetaData,
-      int rowGroupSize,
+      long rowGroupSize,
       int pageSize,
       BytesCompressor compressor,
       int dictionaryPageSize,
@@ -87,6 +89,7 @@ class InternalParquetRecordWriter<T> {
     this.schema = schema;
     this.extraMetaData = extraMetaData;
     this.rowGroupSize = rowGroupSize;
+    this.rowGroupSizeThreshold = rowGroupSize;
     this.pageSize = pageSize;
     this.compressor = compressor;
     this.validating = validating;
@@ -98,7 +101,10 @@ class InternalParquetRecordWriter<T> {
     // we don't want this number to be too small
     // ideally we divide the block equally across the columns
     // it is unlikely all columns are going to be the same size.
-    int initialBlockBufferSize = max(MINIMUM_BUFFER_SIZE, rowGroupSize / schema.getColumns().size() / 5);
+    // its value is likely below Integer.MAX_VALUE (2GB), although rowGroupSize is a long type.
+    // therefore this size is cast to int, since allocating byte array in under layer needs to
+    // limit the array size in an int scope.
+    int initialBlockBufferSize = Ints.checkedCast(max(MINIMUM_BUFFER_SIZE, rowGroupSize / schema.getColumns().size() / 5));
     pageStore = new ColumnChunkPageWriteStore(compressor, schema, initialBlockBufferSize);
     // we don't want this number to be too small either
     // ideally, slightly bigger than the page size, but not bigger than the block buffer
@@ -129,15 +135,15 @@ class InternalParquetRecordWriter<T> {
   private void checkBlockSizeReached() throws IOException {
     if (recordCount >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it for every record.
       long memSize = columnStore.getBufferedSize();
-      if (memSize > rowGroupSize) {
-        LOG.info(format("mem size %,d > %,d: flushing %,d records to disk.", memSize, rowGroupSize, recordCount));
+      if (memSize > rowGroupSizeThreshold) {
+        LOG.info(format("mem size %,d > %,d: flushing %,d records to disk.", memSize, rowGroupSizeThreshold, recordCount));
         flushRowGroupToStore();
         initStore();
         recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
       } else {
         float recordSize = (float) memSize / recordCount;
         recordCountForNextMemCheck = min(
-            max(MINIMUM_RECORD_COUNT_FOR_CHECK, (recordCount + (long)(rowGroupSize / recordSize)) / 2), // will check halfway
+            max(MINIMUM_RECORD_COUNT_FOR_CHECK, (recordCount + (long)(rowGroupSizeThreshold / recordSize)) / 2), // will check halfway
             recordCount + MAXIMUM_RECORD_COUNT_FOR_CHECK // will not look more than max records ahead
             );
         if (DEBUG) LOG.debug(format("Checked mem at %,d will check again at: %,d ", recordCount, recordCountForNextMemCheck));
@@ -148,7 +154,7 @@ class InternalParquetRecordWriter<T> {
   private void flushRowGroupToStore()
       throws IOException {
     LOG.info(format("Flushing mem columnStore to file. allocated memory: %,d", columnStore.getAllocatedSize()));
-    if (columnStore.getAllocatedSize() > 3 * (long)rowGroupSize) {
+    if (columnStore.getAllocatedSize() > 3 * (long)rowGroupSizeThreshold) {
       LOG.warn("Too much memory used: " + columnStore.memUsageString());
     }
 
@@ -162,5 +168,13 @@ class InternalParquetRecordWriter<T> {
 
     columnStore = null;
     pageStore = null;
+  }
+
+  long getRowGroupSizeThreshold() {
+    return rowGroupSizeThreshold;
+  }
+
+  void setRowGroupSizeThreshold(long rowGroupSizeThreshold) {
+    this.rowGroupSizeThreshold = rowGroupSizeThreshold;
   }
 }
