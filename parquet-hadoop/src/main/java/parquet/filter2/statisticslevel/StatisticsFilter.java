@@ -72,9 +72,9 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     return (column.getStatistics().isEmpty()) || (column.getStatistics().getNumNulls() == column.getValueCount());
   }
 
-  // are there any nulls in this column chunk?
+  // are there any nulls in this column chunk? 
   private boolean hasNulls(ColumnChunkMetaData column) {
-    return column.getStatistics().getNumNulls() > 0;
+    return (column.getStatistics().getNumNulls() > 0) || (isAllNulls(column));
   }
 
   @Override
