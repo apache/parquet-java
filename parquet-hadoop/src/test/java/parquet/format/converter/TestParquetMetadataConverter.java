@@ -244,7 +244,7 @@ public class TestParquetMetadataConverter {
       try {
         verifyAllFilters(metadata(rgs), splitSize);
       } catch (AssertionError e) {
-	  throw new AssertionError("fail verifyAllFilters(metadata(" + Arrays.toString(rgs) + "), " + splitSize + ")", e);
+	  throw (AssertionError) new AssertionError("fail verifyAllFilters(metadata(" + Arrays.toString(rgs) + "), " + splitSize + ")").initCause(e);
       }
     }
   }
