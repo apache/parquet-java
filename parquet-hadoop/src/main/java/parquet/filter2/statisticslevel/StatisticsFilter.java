@@ -67,8 +67,9 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   // is this column chunk composed entirely of nulls?
+  // in case of all nulls, the stats object read from file metadata is empty
   private boolean isAllNulls(ColumnChunkMetaData column) {
-    return column.getStatistics().getNumNulls() == column.getValueCount();
+    return (column.getStatistics().isEmpty()) || (column.getStatistics().getNumNulls() == column.getValueCount());
   }
 
   // are there any nulls in this column chunk?
