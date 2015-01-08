@@ -51,8 +51,8 @@ public class BenchmarkReadingRandomIntegers {
       data[i] = random.nextInt(100) - 200;
     }
 
-    ValuesWriter delta = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100);
-    ValuesWriter rle = new RunLengthBitPackingHybridValuesWriter(32, 100);
+    ValuesWriter delta = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100, 20000);
+    ValuesWriter rle = new RunLengthBitPackingHybridValuesWriter(32, 100, 20000);
 
     for (int i = 0; i < data.length; i++) {
       delta.writeInteger(data[i]);

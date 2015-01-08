@@ -58,13 +58,14 @@ final class ColumnWriterV2 implements ColumnWriter {
       ColumnDescriptor path,
       PageWriter pageWriter,
       int initialSizePerCol,
-      ParquetProperties parquetProps) {
+      ParquetProperties parquetProps,
+      int pageSize) {
     this.path = path;
     this.pageWriter = pageWriter;
     resetStatistics();
-    this.repetitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxRepetitionLevel()), initialSizePerCol);
-    this.definitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxDefinitionLevel()), initialSizePerCol);
-    this.dataColumn = parquetProps.getValuesWriter(path, initialSizePerCol);
+    this.repetitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxRepetitionLevel()), initialSizePerCol, pageSize);
+    this.definitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxDefinitionLevel()), initialSizePerCol, pageSize);
+    this.dataColumn = parquetProps.getValuesWriter(path, initialSizePerCol, pageSize);
   }
 
   private void log(Object value, int r, int d) {

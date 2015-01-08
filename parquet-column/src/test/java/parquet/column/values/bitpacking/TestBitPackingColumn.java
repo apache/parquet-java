@@ -185,7 +185,7 @@ public class TestBitPackingColumn {
         return new BitPackingValuesReader(bound);
       }
       public ValuesWriter getWriter(final int bound) {
-        return new BitPackingValuesWriter(bound, 32*1024);
+        return new BitPackingValuesWriter(bound, 32*1024, 64*1024);
       }
     }
     ,

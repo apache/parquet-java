@@ -36,10 +36,10 @@ import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 @AxisRange(min = 0, max = 1)
 @BenchmarkMethodChart(filePrefix = "benchmark-encoding-writing-random")
 public class BenchmarkDeltaByteArray {
-  
+
   @Rule
   public org.junit.rules.TestRule benchmarkRun = new BenchmarkRule();
-  
+
   static String[] values = Utils.getRandomStringSamples(1000000, 32);
   static String[] sortedVals;
   static
@@ -47,49 +47,49 @@ public class BenchmarkDeltaByteArray {
    sortedVals = Arrays.copyOf(values, values.length);
    Arrays.sort(sortedVals);
   }
-  
+
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void benchmarkRandomStringsWithPlainValuesWriter() throws IOException {
-    PlainValuesWriter writer = new PlainValuesWriter(64*1024);
+    PlainValuesWriter writer = new PlainValuesWriter(64 * 1024, 64 * 1024);
     BinaryPlainValuesReader reader = new BinaryPlainValuesReader();
-    
+
     Utils.writeData(writer, values);
     byte [] data = writer.getBytes().toByteArray();
     Binary[] bin = Utils.readData(reader, data, values.length);
     System.out.println("size " + data.length);
   }
-  
+
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void benchmarkRandomStringsWithDeltaLengthByteArrayValuesWriter() throws IOException {
-    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024);
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024);
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
-    
+
     Utils.writeData(writer, values);
     byte [] data = writer.getBytes().toByteArray();
     Binary[] bin = Utils.readData(reader, data, values.length);
     System.out.println("size " + data.length);
   }
-  
+
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void benchmarkSortedStringsWithPlainValuesWriter() throws IOException {
-    PlainValuesWriter writer = new PlainValuesWriter(64*1024);
+    PlainValuesWriter writer = new PlainValuesWriter(64 * 1024, 64 * 1024);
     BinaryPlainValuesReader reader = new BinaryPlainValuesReader();
-    
+
     Utils.writeData(writer, sortedVals);
     byte [] data = writer.getBytes().toByteArray();
     Binary[] bin = Utils.readData(reader, data, values.length);
     System.out.println("size " + data.length);
   }
-  
+
   @BenchmarkOptions(benchmarkRounds = 20, warmupRounds = 4)
   @Test
   public void benchmarkSortedStringsWithDeltaLengthByteArrayValuesWriter() throws IOException {
-    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024);
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024);
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
-    
+
     Utils.writeData(writer, sortedVals);
     byte [] data = writer.getBytes().toByteArray();
     Binary[] bin = Utils.readData(reader, data, values.length);

@@ -63,29 +63,29 @@ public class ParquetProperties {
     this.enableDictionary = enableDict;
   }
 
-  public static ValuesWriter getColumnDescriptorValuesWriter(int maxLevel,  int initialSizePerCol) {
+  public static ValuesWriter getColumnDescriptorValuesWriter(int maxLevel, int initialSizePerCol, int pageSize) {
     if (maxLevel == 0) {
       return new DevNullValuesWriter();
     } else {
       return new RunLengthBitPackingHybridValuesWriter(
-          getWidthFromMaxInt(maxLevel), initialSizePerCol);
+          getWidthFromMaxInt(maxLevel), initialSizePerCol, pageSize);
     }
   }
 
-  private ValuesWriter plainWriter(ColumnDescriptor path, int initialSizePerCol) {
+  private ValuesWriter plainWriter(ColumnDescriptor path, int initialSizePerCol, int pageSize) {
     switch (path.getType()) {
     case BOOLEAN:
       return new BooleanPlainValuesWriter();
     case INT96:
-      return new FixedLenByteArrayPlainValuesWriter(12, initialSizePerCol);
+      return new FixedLenByteArrayPlainValuesWriter(12, initialSizePerCol, pageSize);
     case FIXED_LEN_BYTE_ARRAY:
-      return new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol);
+      return new FixedLenByteArrayPlainValuesWriter(path.getTypeLength(), initialSizePerCol, pageSize);
     case BINARY:
     case INT32:
     case INT64:
     case DOUBLE:
     case FLOAT:
-      return new PlainValuesWriter(initialSizePerCol);
+      return new PlainValuesWriter(initialSizePerCol, pageSize);
     default:
       throw new IllegalArgumentException("Unknown type " + path.getType());
     }
@@ -128,24 +128,24 @@ public class ParquetProperties {
     }
   }
 
-  private ValuesWriter writerToFallbackTo(ColumnDescriptor path, int initialSizePerCol) {
+  private ValuesWriter writerToFallbackTo(ColumnDescriptor path, int initialSizePerCol, int pageSize) {
     switch(writerVersion) {
     case PARQUET_1_0:
-      return plainWriter(path, initialSizePerCol);
+      return plainWriter(path, initialSizePerCol, pageSize);
     case PARQUET_2_0:
       switch (path.getType()) {
       case BOOLEAN:
-        return new RunLengthBitPackingHybridValuesWriter(1, initialSizePerCol);
+        return new RunLengthBitPackingHybridValuesWriter(1, initialSizePerCol, pageSize);
       case BINARY:
       case FIXED_LEN_BYTE_ARRAY:
-        return new DeltaByteArrayWriter(initialSizePerCol);
+        return new DeltaByteArrayWriter(initialSizePerCol, pageSize);
       case INT32:
-        return new DeltaBinaryPackingValuesWriter(initialSizePerCol);
+        return new DeltaBinaryPackingValuesWriter(initialSizePerCol, pageSize);
       case INT96:
       case INT64:
       case DOUBLE:
       case FLOAT:
-        return plainWriter(path, initialSizePerCol);
+        return plainWriter(path, initialSizePerCol, pageSize);
       default:
         throw new IllegalArgumentException("Unknown type " + path.getType());
       }
@@ -154,8 +154,8 @@ public class ParquetProperties {
     }
   }
 
-  private ValuesWriter dictWriterWithFallBack(ColumnDescriptor path, int initialSizePerCol) {
-    ValuesWriter writerToFallBackTo = writerToFallbackTo(path, initialSizePerCol);
+  private ValuesWriter dictWriterWithFallBack(ColumnDescriptor path, int initialSizePerCol, int pageSize) {
+    ValuesWriter writerToFallBackTo = writerToFallbackTo(path, initialSizePerCol, pageSize);
     if (enableDictionary) {
       return FallbackValuesWriter.of(
           dictionaryWriter(path, initialSizePerCol),
@@ -165,16 +165,16 @@ public class ParquetProperties {
     }
   }
 
-  public ValuesWriter getValuesWriter(ColumnDescriptor path, int initialSizePerCol) {
+  public ValuesWriter getValuesWriter(ColumnDescriptor path, int initialSizePerCol, int pageSize) {
     switch (path.getType()) {
     case BOOLEAN: // no dictionary encoding for boolean
-      return writerToFallbackTo(path, initialSizePerCol);
+      return writerToFallbackTo(path, initialSizePerCol, pageSize);
     case FIXED_LEN_BYTE_ARRAY:
       // dictionary encoding for that type was not enabled in PARQUET 1.0
       if (writerVersion == WriterVersion.PARQUET_2_0) {
-        return dictWriterWithFallBack(path, initialSizePerCol);
+        return dictWriterWithFallBack(path, initialSizePerCol, pageSize);
       } else {
-       return writerToFallbackTo(path, initialSizePerCol);
+       return writerToFallbackTo(path, initialSizePerCol, pageSize);
       }
     case BINARY:
     case INT32:
@@ -182,7 +182,7 @@ public class ParquetProperties {
     case INT96:
     case DOUBLE:
     case FLOAT:
-      return dictWriterWithFallBack(path, initialSizePerCol);
+      return dictWriterWithFallBack(path, initialSizePerCol, pageSize);
     default:
       throw new IllegalArgumentException("Unknown type " + path.getType());
     }

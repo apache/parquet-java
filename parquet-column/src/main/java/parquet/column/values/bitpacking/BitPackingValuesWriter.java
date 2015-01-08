@@ -42,10 +42,11 @@ public class BitPackingValuesWriter extends ValuesWriter {
 
   /**
    * @param bound the maximum value stored by this column
+   * @param pageSize
    */
-  public BitPackingValuesWriter(int bound, int initialCapacity) {
+  public BitPackingValuesWriter(int bound, int initialCapacity, int pageSize) {
     this.bitsPerValue = getWidthFromMaxInt(bound);
-    this.out = new CapacityByteArrayOutputStream(initialCapacity);
+    this.out = new CapacityByteArrayOutputStream(initialCapacity, pageSize);
     init();
   }
 

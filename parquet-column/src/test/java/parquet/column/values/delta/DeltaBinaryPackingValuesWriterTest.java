@@ -39,13 +39,13 @@ public class DeltaBinaryPackingValuesWriterTest {
   public void setUp() {
     blockSize = 128;
     miniBlockNum = 4;
-    writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100);
+    writer = new DeltaBinaryPackingValuesWriter(blockSize, miniBlockNum, 100, 200);
     random = new Random();
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void miniBlockSizeShouldBeMultipleOf8() {
-    new DeltaBinaryPackingValuesWriter(1281, 4, 100);
+    new DeltaBinaryPackingValuesWriter(1281, 4, 100, 100);
   }
 
   /* When data size is multiple of Block*/

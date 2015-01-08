@@ -39,7 +39,7 @@ public class SmallRangeWritingBenchmarkTest extends RandomWritingBenchmarkTest {
   @BenchmarkOptions(benchmarkRounds = 10, warmupRounds = 2)
   @Test
   public void writeRLEWithSmallBitWidthTest(){
-    ValuesWriter writer = new RunLengthBitPackingHybridValuesWriter(2,100);
+    ValuesWriter writer = new RunLengthBitPackingHybridValuesWriter(2, 100, 20000);
     runWriteTest(writer);
   }
 }

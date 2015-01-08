@@ -26,13 +26,13 @@ import parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import parquet.io.api.Binary;
 
 public class TestDeltaByteArray {
-  
+
   static String[] values = {"parquet-mr", "parquet", "parquet-format"};
   static String[] randvalues = Utils.getRandomStringSamples(10000, 32);
 
   @Test
   public void testSerialization () throws IOException {
-    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024);
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024);
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
 
     Utils.writeData(writer, values);
@@ -42,10 +42,10 @@ public class TestDeltaByteArray {
       Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
     }
   }
-  
+
   @Test
   public void testRandomStrings() throws IOException {
-    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024);
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024);
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
 
     Utils.writeData(writer, randvalues);
@@ -58,7 +58,7 @@ public class TestDeltaByteArray {
 
   @Test
   public void testLengths() throws IOException {
-    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64*1024);
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024);
     ValuesReader reader = new DeltaBinaryPackingValuesReader();
 
     Utils.writeData(writer, values);
@@ -69,7 +69,7 @@ public class TestDeltaByteArray {
     Assert.assertEquals(0, bin[0]);
     Assert.assertEquals(7, bin[1]);
     Assert.assertEquals(7, bin[2]);
-    
+
     int offset = reader.getNextOffset();
     reader = new DeltaBinaryPackingValuesReader();
     bin = Utils.readInts(reader, writer.getBytes().toByteArray(), offset, values.length);

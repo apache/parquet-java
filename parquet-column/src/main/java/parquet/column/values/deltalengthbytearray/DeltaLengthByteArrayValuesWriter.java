@@ -32,7 +32,7 @@ import parquet.io.api.Binary;
  * <pre>
  *   {@code
  *   delta-length-byte-array : length* byte-array*
- *   } 
+ *   }
  * </pre>
  * @author Aniket Mokashi
  *
@@ -45,13 +45,13 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
   private CapacityByteArrayOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
 
-  public DeltaLengthByteArrayValuesWriter(int initialSize) {
-    arrayOut = new CapacityByteArrayOutputStream(initialSize);
+  public DeltaLengthByteArrayValuesWriter(int initialSize, int pageSize) {
+    arrayOut = new CapacityByteArrayOutputStream(initialSize, pageSize);
     out = new LittleEndianDataOutputStream(arrayOut);
     lengthWriter = new DeltaBinaryPackingValuesWriter(
         DeltaBinaryPackingValuesWriter.DEFAULT_NUM_BLOCK_VALUES,
         DeltaBinaryPackingValuesWriter.DEFAULT_NUM_MINIBLOCKS,
-        initialSize);
+        initialSize, pageSize);
   }
 
   @Override
@@ -98,6 +98,6 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
 
   @Override
   public String memUsageString(String prefix) {
-    return arrayOut.memUsageString(lengthWriter.memUsageString(prefix) + " DELTA_LENGTH_BYTE_ARRAY"); 
+    return arrayOut.memUsageString(lengthWriter.memUsageString(prefix) + " DELTA_LENGTH_BYTE_ARRAY");
   }
 }

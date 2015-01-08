@@ -16,6 +16,7 @@
 package parquet.hadoop;
 
 import static parquet.Log.INFO;
+import static parquet.column.statistics.Statistics.getStatsBasedOnType;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -60,11 +61,11 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
     private Statistics totalStatistics;
 
-    private ColumnChunkPageWriter(ColumnDescriptor path, BytesCompressor compressor, int initialSize) {
+    private ColumnChunkPageWriter(ColumnDescriptor path, BytesCompressor compressor, int initialSize, int pageSize) {
       this.path = path;
       this.compressor = compressor;
-      this.buf = new CapacityByteArrayOutputStream(initialSize);
-      this.totalStatistics = Statistics.getStatsBasedOnType(this.path.getType());
+      this.buf = new CapacityByteArrayOutputStream(initialSize, pageSize);
+      this.totalStatistics = getStatsBasedOnType(this.path.getType());
     }
 
     @Override
@@ -201,9 +202,9 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
   private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
 
-  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, int initialSize) {
+  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, int initialSize, int pageSize) {
     for (ColumnDescriptor path : schema.getColumns()) {
-      writers.put(path,  new ColumnChunkPageWriter(path, compressor, initialSize));
+      writers.put(path,  new ColumnChunkPageWriter(path, compressor, initialSize, pageSize));
     }
   }
 
