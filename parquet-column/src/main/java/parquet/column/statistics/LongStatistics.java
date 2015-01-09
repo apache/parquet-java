@@ -24,7 +24,7 @@ public class LongStatistics extends Statistics<Long> {
 
   @Override
   public void updateStats(long value) {
-    if (this.isEmpty()) {
+    if (this.isEmpty() || !this.hasValidValue()) {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
@@ -34,7 +34,7 @@ public class LongStatistics extends Statistics<Long> {
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
     LongStatistics longStats = (LongStatistics)stats;
-    if (this.isEmpty()) {
+    if (this.isEmpty() || !this.hasValidValue()) {
       initializeStats(longStats.getMin(), longStats.getMax());
     } else {
       updateStats(longStats.getMin(), longStats.getMax());
@@ -45,6 +45,7 @@ public class LongStatistics extends Statistics<Long> {
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
     max = BytesUtils.bytesToLong(maxBytes);
     min = BytesUtils.bytesToLong(minBytes);
+    this.markHasValidValue();
     this.markAsNotEmpty();
   }
 
@@ -60,8 +61,10 @@ public class LongStatistics extends Statistics<Long> {
 
   @Override
   public String toString() {
-    if(!this.isEmpty())
+    if(this.hasValidValue())
       return String.format("min: %d, max: %d, num_nulls: %d", min, max, this.getNumNulls());
+    else if(!this.isEmpty())
+      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
     else
       return "no stats for this column";
   }
@@ -74,6 +77,7 @@ public class LongStatistics extends Statistics<Long> {
   public void initializeStats(long min_value, long max_value) {
       min = min_value;
       max = max_value;
+      this.markHasValidValue();
       this.markAsNotEmpty();
   }
 
@@ -85,6 +89,24 @@ public class LongStatistics extends Statistics<Long> {
   @Override
   public Long genericGetMax() {
     return max;
+  }
+  
+  @Override
+  public void incrementNumNulls() {
+    if (this.isEmpty()) {
+      this.markAsNotEmpty();
+    }
+    
+    super.incrementNumNulls();
+  }
+
+  @Override
+  public void incrementNumNulls(long increment) {
+    if (this.isEmpty()) {
+      this.markAsNotEmpty();
+    }
+
+    super.incrementNumNulls(increment);
   }
 
   public long getMax() {
@@ -98,6 +120,7 @@ public class LongStatistics extends Statistics<Long> {
   public void setMinMax(long min, long max) {
     this.max = max;
     this.min = min;
+    this.markHasValidValue();
     this.markAsNotEmpty();
   }
 }

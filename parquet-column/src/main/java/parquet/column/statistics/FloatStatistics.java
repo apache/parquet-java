@@ -24,7 +24,7 @@ public class FloatStatistics extends Statistics<Float> {
 
   @Override
   public void updateStats(float value) {
-    if (this.isEmpty()) {
+    if (this.isEmpty() || !this.hasValidValue()) {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
@@ -34,7 +34,7 @@ public class FloatStatistics extends Statistics<Float> {
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
     FloatStatistics floatStats = (FloatStatistics)stats;
-    if (this.isEmpty()) {
+    if (this.isEmpty() || !this.hasValidValue()) {
       initializeStats(floatStats.getMin(), floatStats.getMax());
     } else {
       updateStats(floatStats.getMin(), floatStats.getMax());
@@ -45,6 +45,7 @@ public class FloatStatistics extends Statistics<Float> {
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
     max = Float.intBitsToFloat(BytesUtils.bytesToInt(maxBytes));
     min = Float.intBitsToFloat(BytesUtils.bytesToInt(minBytes));
+    this.markHasValidValue();
     this.markAsNotEmpty();
   }
 
@@ -60,8 +61,10 @@ public class FloatStatistics extends Statistics<Float> {
 
   @Override
   public String toString() {
-    if(!this.isEmpty())
+    if(this.hasValidValue())
       return String.format("min: %.5f, max: %.5f, num_nulls: %d", min, max, this.getNumNulls());
+    else if(!this.isEmpty())
+      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
     else
       return "no stats for this column";
   }
@@ -74,6 +77,7 @@ public class FloatStatistics extends Statistics<Float> {
   public void initializeStats(float min_value, float max_value) {
       min = min_value;
       max = max_value;
+      this.markHasValidValue();
       this.markAsNotEmpty();
   }
 
@@ -85,6 +89,24 @@ public class FloatStatistics extends Statistics<Float> {
   @Override
   public Float genericGetMax() {
     return max;
+  }
+  
+  @Override
+  public void incrementNumNulls() {
+    if (this.isEmpty()) {
+      this.markAsNotEmpty();
+    }
+    
+    super.incrementNumNulls();
+  }
+
+  @Override
+  public void incrementNumNulls(long increment) {
+    if (this.isEmpty()) {
+      this.markAsNotEmpty();
+    }
+
+    super.incrementNumNulls(increment);
   }
 
   public float getMax() {
@@ -98,6 +120,7 @@ public class FloatStatistics extends Statistics<Float> {
   public void setMinMax(float min, float max) {
     this.max = max;
     this.min = min;
+    this.markHasValidValue();
     this.markAsNotEmpty();
   }
 }

@@ -24,7 +24,7 @@ public class IntStatistics extends Statistics<Integer> {
 
   @Override
   public void updateStats(int value) {
-    if (this.isEmpty()) {
+    if (this.isEmpty() || !this.hasValidValue()) {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
@@ -34,7 +34,7 @@ public class IntStatistics extends Statistics<Integer> {
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
     IntStatistics intStats = (IntStatistics)stats;
-    if (this.isEmpty()) {
+    if (this.isEmpty() || !this.hasValidValue()) {
       initializeStats(intStats.getMin(), intStats.getMax());
     } else {
       updateStats(intStats.getMin(), intStats.getMax());
@@ -45,6 +45,7 @@ public class IntStatistics extends Statistics<Integer> {
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
     max = BytesUtils.bytesToInt(maxBytes);
     min = BytesUtils.bytesToInt(minBytes);
+    this.markHasValidValue();
     this.markAsNotEmpty();
   }
 
@@ -60,8 +61,10 @@ public class IntStatistics extends Statistics<Integer> {
 
   @Override
   public String toString() {
-    if(!this.isEmpty())
+    if(this.hasValidValue())
       return String.format("min: %d, max: %d, num_nulls: %d", min, max, this.getNumNulls());
+    else if(!this.isEmpty())
+      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
     else
       return "no stats for this column";
   }
@@ -74,6 +77,7 @@ public class IntStatistics extends Statistics<Integer> {
   public void initializeStats(int min_value, int max_value) {
       min = min_value;
       max = max_value;
+      this.markHasValidValue();
       this.markAsNotEmpty();
   }
 
@@ -85,6 +89,24 @@ public class IntStatistics extends Statistics<Integer> {
   @Override
   public Integer genericGetMax() {
     return max;
+  }
+  
+  @Override
+  public void incrementNumNulls() {
+    if (this.isEmpty()) {
+      this.markAsNotEmpty();
+    }
+    
+    super.incrementNumNulls();
+  }
+
+  @Override
+  public void incrementNumNulls(long increment) {
+    if (this.isEmpty()) {
+      this.markAsNotEmpty();
+    }
+
+    super.incrementNumNulls(increment);
   }
 
   public int getMax() {
@@ -98,6 +120,7 @@ public class IntStatistics extends Statistics<Integer> {
   public void setMinMax(int min, int max) {
     this.max = max;
     this.min = min;
+    this.markHasValidValue();
     this.markAsNotEmpty();
   }
 }
