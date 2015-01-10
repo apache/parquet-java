@@ -22,16 +22,35 @@ import org.apache.hadoop.io.compress.Decompressor;
 import org.xerial.snappy.Snappy;
 
 import parquet.Preconditions;
+import parquet.hadoop.codec.buffers.*;
+import parquet.hadoop.codec.buffers.CodecByteBufferFactory.BufferReuseOption;
 
 public class SnappyDecompressor implements Decompressor {
   // Buffer for uncompressed output. This buffer grows as necessary.
-  private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
+  private CodecByteBuffer outputBuffer;
 
   // Buffer for compressed input. This buffer grows as necessary.
-  private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(0);
+  private CodecByteBuffer inputBuffer;
 
   private boolean finished;
-  
+
+  private CodecByteBufferFactory byteBufferFactory;
+
+  public SnappyDecompressor() {
+    // default buffer behaviour unless overridden
+    this.byteBufferFactory = new CodecByteBufferFactory(BufferReuseOption.ReuseOnReset);
+    outputBuffer = byteBufferFactory.create(0);
+    inputBuffer = byteBufferFactory.create(0);
+  }
+
+  public CodecByteBufferFactory getByteBufferFactory() {
+    return byteBufferFactory;
+  }
+
+  public void setByteBufferFactory(CodecByteBufferFactory byteBufferFactory) {
+    this.byteBufferFactory = byteBufferFactory;
+  }
+
   /**
    * Fills specified buffer with uncompressed data. Returns actual number
    * of bytes of uncompressed data. A return value of 0 indicates that
@@ -47,33 +66,33 @@ public class SnappyDecompressor implements Decompressor {
   @Override
   public synchronized int decompress(byte[] buffer, int off, int len) throws IOException {
     SnappyUtil.validateBuffer(buffer, off, len);
-	if (inputBuffer.position() == 0 && !outputBuffer.hasRemaining()) {
+	if (inputBuffer.get().position() == 0 && !outputBuffer.get().hasRemaining()) {
       return 0;
     }
     
-    if (!outputBuffer.hasRemaining()) {
-      inputBuffer.rewind();
-      Preconditions.checkArgument(inputBuffer.position() == 0, "Invalid position of 0.");
-      Preconditions.checkArgument(outputBuffer.position() == 0, "Invalid position of 0.");
+    if (!outputBuffer.get().hasRemaining()) {
+      inputBuffer.get().rewind();
+      Preconditions.checkArgument(inputBuffer.get().position() == 0, "Invalid position of 0.");
+      Preconditions.checkArgument(outputBuffer.get().position() == 0, "Invalid position of 0.");
       // There is compressed input, decompress it now.
-      int decompressedSize = Snappy.uncompressedLength(inputBuffer);
-      if (decompressedSize > outputBuffer.capacity()) {
-        outputBuffer = ByteBuffer.allocateDirect(decompressedSize);
+      int decompressedSize = Snappy.uncompressedLength(inputBuffer.get());
+      if (decompressedSize > outputBuffer.get().capacity()) {
+        outputBuffer = byteBufferFactory.create(decompressedSize);
       }
 
-      // Reset the previous outputBuffer (i.e. set position to 0)
-      outputBuffer.clear();
-      int size = Snappy.uncompress(inputBuffer, outputBuffer);
-      outputBuffer.limit(size);
+      // Reset the previous outputBuffer.get() (i.e. set position to 0)
+      outputBuffer.get().clear();
+      int size = Snappy.uncompress(inputBuffer.get(), outputBuffer.get());
+      outputBuffer.get().limit(size);
       // We've decompressed the entire input, reset the input now
-      inputBuffer.clear();
-      inputBuffer.limit(0);
+      inputBuffer.get().clear();
+      inputBuffer.get().limit(0);
       finished = true;
     }
 
     // Return compressed output up to 'len'
-    int numBytes = Math.min(len, outputBuffer.remaining());
-    outputBuffer.get(buffer, off, numBytes);
+    int numBytes = Math.min(len, outputBuffer.get().remaining());
+    outputBuffer.get().get(buffer, off, numBytes);
     return numBytes;	    
   }
 
@@ -95,15 +114,15 @@ public class SnappyDecompressor implements Decompressor {
   public synchronized void setInput(byte[] buffer, int off, int len) {
     SnappyUtil.validateBuffer(buffer, off, len);
 
-    if (inputBuffer.capacity() - inputBuffer.position() < len) {
-      ByteBuffer newBuffer = ByteBuffer.allocateDirect(inputBuffer.position() + len);
-      inputBuffer.rewind();
-      newBuffer.put(inputBuffer);
-      inputBuffer = newBuffer;      
+    if (inputBuffer.get().capacity() - inputBuffer.get().position() < len) {
+      CodecByteBuffer newBuffer = byteBufferFactory.create(inputBuffer.get().position() + len);
+      inputBuffer.get().rewind();
+      newBuffer.get().put(inputBuffer.get());
+      inputBuffer = newBuffer;
     } else {
-      inputBuffer.limit(inputBuffer.position() + len);
+      inputBuffer.get().limit(inputBuffer.get().position() + len);
     }
-    inputBuffer.put(buffer, off, len);
+    inputBuffer.get().put(buffer, off, len);
   }
 
   @Override
@@ -113,7 +132,7 @@ public class SnappyDecompressor implements Decompressor {
 
   @Override
   public synchronized boolean finished() {
-    return finished && !outputBuffer.hasRemaining();
+    return finished && !outputBuffer.get().hasRemaining();
   }
 
   @Override
@@ -123,16 +142,16 @@ public class SnappyDecompressor implements Decompressor {
 
   @Override
   public synchronized boolean needsInput() {
-    return !inputBuffer.hasRemaining() && !outputBuffer.hasRemaining();
+    return !inputBuffer.get().hasRemaining() && !outputBuffer.get().hasRemaining();
   }
 
   @Override
   public synchronized void reset() {
     finished = false;
-    inputBuffer.rewind();
-    outputBuffer.rewind();
-    inputBuffer.limit(0);
-    outputBuffer.limit(0);
+    inputBuffer.get().rewind();
+    outputBuffer.get().rewind();
+    inputBuffer.get().limit(0);
+    outputBuffer.get().limit(0);
   }
 
   @Override

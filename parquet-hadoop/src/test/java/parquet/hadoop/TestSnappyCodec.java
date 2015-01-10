@@ -31,23 +31,45 @@ import org.xerial.snappy.Snappy;
 import parquet.hadoop.codec.SnappyCodec;
 import parquet.hadoop.codec.SnappyCompressor;
 import parquet.hadoop.codec.SnappyDecompressor;
+import parquet.hadoop.codec.buffers.CodecByteBufferFactory;
 
 public class TestSnappyCodec {
+
   @Test
-  public void TestSnappy() throws IOException {
+  public void TestSnappyFreeBuffesToReuseBuffers() throws IOException {
     // Reuse the snappy objects between test cases
     SnappyCompressor compressor = new SnappyCompressor();
+    compressor.setByteBufferFactory(new
+        CodecByteBufferFactory(CodecByteBufferFactory.BufferReuseOption.FreeOnReset));
     SnappyDecompressor decompressor = new SnappyDecompressor();
+    decompressor.setByteBufferFactory(new
+        CodecByteBufferFactory(CodecByteBufferFactory.BufferReuseOption.ReuseOnReset));
+    TestSnappy(compressor,decompressor);
+  }
 
-    TestSnappy(compressor, decompressor, "");    
-    TestSnappy(compressor, decompressor, "FooBar");    
-    TestSnappy(compressor, decompressor, "FooBar1", "FooBar2");    
-    TestSnappy(compressor, decompressor, "FooBar");
-    TestSnappy(compressor, decompressor, "a", "blahblahblah", "abcdef");    
+  @Test
+  public void TestSnappyReuseBuffersToFreeBuffers() throws IOException {
+    // Reuse the snappy objects between test cases
+    SnappyCompressor compressor = new SnappyCompressor();
+    compressor.setByteBufferFactory(new
+        CodecByteBufferFactory(CodecByteBufferFactory.BufferReuseOption.ReuseOnReset));
+    SnappyDecompressor decompressor = new SnappyDecompressor();
+    decompressor.setByteBufferFactory(new
+        CodecByteBufferFactory(CodecByteBufferFactory.BufferReuseOption.FreeOnReset));
+    TestSnappy(compressor,decompressor);
+  }
+
+  public void TestSnappyDriver(SnappyCompressor compressor, SnappyDecompressor decompressor) throws IOException  {
     TestSnappy(compressor, decompressor, "");
     TestSnappy(compressor, decompressor, "FooBar");
+    TestSnappy(compressor, decompressor, "FooBar1", "FooBar2");
+    TestSnappy(compressor, decompressor, "FooBar");
+    TestSnappy(compressor, decompressor, "a", "blahblahblah", "abcdef");
+    TestSnappy(compressor, decompressor, "");
+    TestSnappy(compressor, decompressor, "FooBar", "Apache Parquet is a columnar storage format available to any project" +
+        "in the Hadoop ecosystem, regardless of the choice of data processing framework, data model or programming language.");
   }
-  
+
   @Test
   public void TestSnappyStream() throws IOException {
     SnappyCodec codec = new SnappyCodec();

@@ -23,6 +23,8 @@ import org.apache.hadoop.io.compress.Compressor;
 import org.xerial.snappy.Snappy;
 
 import parquet.Preconditions;
+import parquet.hadoop.codec.buffers.*;
+import parquet.hadoop.codec.buffers.CodecByteBufferFactory.BufferReuseOption;
 
 /**
  * This class is a wrapper around the snappy compressor. It always consumes the
@@ -30,14 +32,31 @@ import parquet.Preconditions;
  */
 public class SnappyCompressor implements Compressor {
   // Buffer for compressed output. This buffer grows as necessary.
-  private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
+  private CodecByteBuffer outputBuffer;
 
   // Buffer for uncompressed input. This buffer grows as necessary.
-  private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(0);
+  private CodecByteBuffer inputBuffer;
+
+  private CodecByteBufferFactory byteBufferFactory;
 
   private long bytesRead = 0L;
   private long bytesWritten = 0L;
   private boolean finishCalled = false;
+
+  public SnappyCompressor() {
+    // default buffer behaviour unless overridden
+    this.byteBufferFactory = new CodecByteBufferFactory(BufferReuseOption.ReuseOnReset);
+    inputBuffer = byteBufferFactory.create(0);
+    outputBuffer = byteBufferFactory.create(0);
+  }
+
+  public CodecByteBufferFactory getByteBufferFactory() {
+    return byteBufferFactory;
+  }
+
+  public void setByteBufferFactory(CodecByteBufferFactory byteBufferFactory) {
+    this.byteBufferFactory = byteBufferFactory;
+  }
 
   /**
    * Fills specified buffer with compressed data. Returns actual number
@@ -59,26 +78,26 @@ public class SnappyCompressor implements Compressor {
       return 0;
     }
 
-    if (!outputBuffer.hasRemaining()) {
+    if (!outputBuffer.get().hasRemaining()) {
       // There is uncompressed input, compress it now
-      int maxOutputSize = Snappy.maxCompressedLength(inputBuffer.position());
-      if (maxOutputSize > outputBuffer.capacity()) {
-        outputBuffer = ByteBuffer.allocateDirect(maxOutputSize);
+      int maxOutputSize = Snappy.maxCompressedLength(inputBuffer.get().position());
+      if (maxOutputSize > outputBuffer.get().capacity()) {
+        outputBuffer = byteBufferFactory.create(maxOutputSize);
       }
-      // Reset the previous outputBuffer
-      outputBuffer.clear();
-      inputBuffer.limit(inputBuffer.position());
-      inputBuffer.position(0);
+      // Reset the previous outputBuffer.get()
+      outputBuffer.get().clear();
+      inputBuffer.get().limit(inputBuffer.get().position());
+      inputBuffer.get().position(0);
 
-      int size = Snappy.compress(inputBuffer, outputBuffer);
-      outputBuffer.limit(size);
-      inputBuffer.limit(0);
-      inputBuffer.rewind();
+      int size = Snappy.compress(inputBuffer.get(), outputBuffer.get());
+      outputBuffer.get().limit(size);
+      inputBuffer.get().limit(0);
+      inputBuffer.get().rewind();
     }
 
     // Return compressed output up to 'len'
-    int numBytes = Math.min(len, outputBuffer.remaining());
-    outputBuffer.get(buffer, off, numBytes);    
+    int numBytes = Math.min(len, outputBuffer.get().remaining());
+    outputBuffer.get().get(buffer, off, numBytes);
     bytesWritten += numBytes;
     return numBytes;	    
   }
@@ -87,20 +106,20 @@ public class SnappyCompressor implements Compressor {
   public synchronized void setInput(byte[] buffer, int off, int len) {  
     SnappyUtil.validateBuffer(buffer, off, len);
     
-    Preconditions.checkArgument(!outputBuffer.hasRemaining(), 
+    Preconditions.checkArgument(!outputBuffer.get().hasRemaining(),
         "Output buffer should be empty. Caller must call compress()");
 
-    if (inputBuffer.capacity() - inputBuffer.position() < len) {
-      ByteBuffer tmp = ByteBuffer.allocateDirect(inputBuffer.position() + len);
-      inputBuffer.rewind();
-      tmp.put(inputBuffer);
+    if (inputBuffer.get().capacity() - inputBuffer.get().position() < len) {
+      CodecByteBuffer tmp = byteBufferFactory.create(inputBuffer.get().position() + len);
+      inputBuffer.get().rewind();
+      tmp.get().put(inputBuffer.get());
       inputBuffer = tmp;
     } else {
-      inputBuffer.limit(inputBuffer.position() + len);
+      inputBuffer.get().limit(inputBuffer.get().position() + len);
     }
 
     // Append the current bytes to the input buffer
-    inputBuffer.put(buffer, off, len);
+    inputBuffer.get().put(buffer, off, len);
     bytesRead += len;
   }
 
@@ -116,7 +135,7 @@ public class SnappyCompressor implements Compressor {
 
   @Override
   public synchronized boolean finished() {
-    return finishCalled && inputBuffer.position() == 0 && !outputBuffer.hasRemaining();
+    return finishCalled && inputBuffer.get().position() == 0 && !outputBuffer.get().hasRemaining();
   }
 
   @Override
@@ -145,14 +164,16 @@ public class SnappyCompressor implements Compressor {
   public synchronized void reset() {
     finishCalled = false;
     bytesRead = bytesWritten = 0;
-    inputBuffer.rewind();
-    outputBuffer.rewind();
-    inputBuffer.limit(0);
-    outputBuffer.limit(0);
+    inputBuffer.get().rewind();
+    outputBuffer.get().rewind();
+    inputBuffer.get().limit(0);
+    outputBuffer.get().limit(0);
   }
 
   @Override
   public void setDictionary(byte[] dictionary, int off, int len) {
     // No-op		
   }
+
+
 }
