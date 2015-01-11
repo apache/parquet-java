@@ -279,10 +279,10 @@ public class TestStatisticsFilter {
   @Test
   public void testClearExceptionForNots() {
     List<ColumnChunkMetaData> columnMetas = Arrays.asList(
-        getDoubleColumnMeta(new DoubleStatistics(), 0L),
-        getIntColumnMeta(new IntStatistics(), 0L));
+        getIntColumnMeta(new IntStatistics(), 0L),
+        getDoubleColumnMeta(new DoubleStatistics(), 0L));
 
-    FilterPredicate pred = and(not(eq(doubleColumn, 12.0)), eq(intColumn, 17));
+    FilterPredicate pred = and(eq(intColumn, 17), not(eq(doubleColumn, 12.0)));
 
     try {
       canDrop(pred, columnMetas);
@@ -297,7 +297,7 @@ public class TestStatisticsFilter {
   public void testMissingColumn() {
     List<ColumnChunkMetaData> columnMetas = Arrays.asList(getIntColumnMeta(new IntStatistics(), 0L));
     try {
-      canDrop(and(eq(doubleColumn, 12.0), eq(intColumn, 17)), columnMetas);
+      canDrop(and(eq(intColumn, 17), eq(doubleColumn, 12.0)), columnMetas);
       fail("This should throw");
     } catch (IllegalArgumentException e) {
       assertEquals("Column double.column not found in schema!", e.getMessage());

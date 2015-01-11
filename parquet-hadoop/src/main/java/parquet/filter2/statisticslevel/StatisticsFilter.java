@@ -67,11 +67,13 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   // is this column chunk composed entirely of nulls?
+  // assumes the column chunk's statistics is not empty
   private boolean isAllNulls(ColumnChunkMetaData column) {
     return column.getStatistics().getNumNulls() == column.getValueCount();
   }
 
   // are there any nulls in this column chunk?
+  // assumes the column chunk's statistics is not empty
   private boolean hasNulls(ColumnChunkMetaData column) {
     return column.getStatistics().getNumNulls() > 0;
   }
@@ -84,11 +86,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Statistics<T> stats = columnChunk.getStatistics();
 
     if (stats.isEmpty()) {
-     // Do not filter in case of empty statistics
-     // pre-statistics files will have no such info
-     // best not to filter these.
-     // Also, in case of all nulls in a column, empty statistics object 
-     // is returned. This fixes the read path because of that bug
+      // we have no statistics available, we cannot drop any chunks
       return false;
     }
 
@@ -116,11 +114,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Statistics<T> stats = columnChunk.getStatistics();
 
     if (stats.isEmpty()) {
-     // Do not filter in case of empty statistics
-     // pre-statistics files will have no such info
-     // best not to filter these.
-     // Also, in case of all nulls in a column, empty statistics object 
-     // is returned. This fixes the read path because of that bug
+      // we have no statistics available, we cannot drop any chunks
       return false;
     }
 
@@ -136,6 +130,13 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return false;
     }
 
+    if (isAllNulls(columnChunk)) {
+      // there is no min max, there is nothing
+      // else we can say about this chunk, we
+      // cannot drop it.
+      return false;
+    }
+
     // drop if this is a column where min = max = value
     return value.compareTo(stats.genericGetMin()) == 0 && value.compareTo(stats.genericGetMax()) == 0;
   }
@@ -148,11 +149,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Statistics<T> stats = columnChunk.getStatistics();
 
     if (stats.isEmpty()) {
-     // Do not filter in case of empty statistics
-     // pre-statistics files will have no such info
-     // best not to filter these.
-     // Also, in case of all nulls in a column, empty statistics object 
-     // is returned. This fixes the read path because of that bug
+      // we have no statistics available, we cannot drop any chunks
       return false;
     }
 
@@ -174,11 +171,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Statistics<T> stats = columnChunk.getStatistics();
 
     if (stats.isEmpty()) {
-     // Do not filter in case of empty statistics
-     // pre-statistics files will have no such info
-     // best not to filter these.
-     // Also, in case of all nulls in a column, empty statistics object 
-     // is returned. This fixes the read path because of that bug
+      // we have no statistics available, we cannot drop any chunks
       return false;
     }
 
@@ -200,11 +193,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Statistics<T> stats = columnChunk.getStatistics();
 
     if (stats.isEmpty()) {
-     // Do not filter in case of empty statistics
-     // pre-statistics files will have no such info
-     // best not to filter these.
-     // Also, in case of all nulls in a column, empty statistics object 
-     // is returned. This fixes the read path because of that bug
+      // we have no statistics available, we cannot drop any chunks
       return false;
     }
 
@@ -226,11 +215,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Statistics<T> stats = columnChunk.getStatistics();
 
     if (stats.isEmpty()) {
-     // Do not filter in case of empty statistics
-     // pre-statistics files will have no such info
-     // best not to filter these.
-     // Also, in case of all nulls in a column, empty statistics object 
-     // is returned. This fixes the read path because of that bug
+      // we have no statistics available, we cannot drop any chunks
       return false;
     }
 
@@ -269,12 +254,16 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
     U udp = ud.getUserDefinedPredicate();
     Statistics<T> stats = columnChunk.getStatistics();
+
     if (stats.isEmpty()) {
-     // Do not filter in case of empty statistics
-     // pre-statistics files will have no such info
-     // best not to filter these.
-     // Also, in case of all nulls in a column, empty statistics object 
-     // is returned. This fixes the read path because of that bug
+      // we have no statistics available, we cannot drop any chunks
+      return false;
+    }
+
+    if (isAllNulls(columnChunk)) {
+      // there is no min max, there is nothing
+      // else we can say about this chunk, we
+      // cannot drop it.
       return false;
     }
 
