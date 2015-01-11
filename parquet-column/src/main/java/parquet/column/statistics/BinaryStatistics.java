@@ -24,7 +24,7 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public void updateStats(Binary value) {
-    if (this.isEmpty()) {
+    if (!this.hasNonNullValue()) {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
@@ -34,7 +34,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
     BinaryStatistics binaryStats = (BinaryStatistics)stats;
-    if (this.isEmpty()) {
+    if (!this.hasNonNullValue()) {
       initializeStats(binaryStats.getMin(), binaryStats.getMax());
     } else {
       updateStats(binaryStats.getMin(), binaryStats.getMax());
@@ -60,9 +60,11 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public String toString() {
-    if(!this.isEmpty())
+    if (this.hasNonNullValue())
       return String.format("min: %s, max: %s, num_nulls: %d", min.toStringUsingUTF8(), max.toStringUsingUTF8(), this.getNumNulls());
-    else
+   else if (!this.isEmpty())
+      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
+   else
       return "no stats for this column";
   }
 

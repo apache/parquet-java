@@ -24,7 +24,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public void updateStats(boolean value) {
-    if (this.isEmpty()) {
+    if (!this.hasNonNullValue()) {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
@@ -34,7 +34,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
     BooleanStatistics boolStats = (BooleanStatistics)stats;
-    if (this.isEmpty()) {
+    if (!this.hasNonNullValue()) {
       initializeStats(boolStats.getMin(), boolStats.getMax());
     } else {
       updateStats(boolStats.getMin(), boolStats.getMax());
@@ -60,9 +60,11 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public String toString() {
-    if(!this.isEmpty())
+    if (this.hasNonNullValue())
       return String.format("min: %b, max: %b, num_nulls: %d", min, max, this.getNumNulls());
-    else
+    else if(!this.isEmpty())
+      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
+    else  
       return "no stats for this column";
   }
 

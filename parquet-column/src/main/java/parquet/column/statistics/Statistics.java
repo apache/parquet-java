@@ -232,7 +232,11 @@ public abstract class Statistics<T extends Comparable<T>> {
   public boolean hasNonNullValue() {
     return hasNonNullValue;
   }
-  
+ 
+  /**
+   * Sets the page/column as having a valid non-null value
+   * kind of misnomer here
+   */ 
   protected void markAsNotEmpty() {
     hasNonNullValue = true;
   }

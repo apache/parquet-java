@@ -24,7 +24,7 @@ public class LongStatistics extends Statistics<Long> {
 
   @Override
   public void updateStats(long value) {
-    if (this.isEmpty()) {
+    if (!this.hasNonNullValue()) {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
@@ -34,7 +34,7 @@ public class LongStatistics extends Statistics<Long> {
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
     LongStatistics longStats = (LongStatistics)stats;
-    if (this.isEmpty()) {
+    if (!this.hasNonNullValue()) {
       initializeStats(longStats.getMin(), longStats.getMax());
     } else {
       updateStats(longStats.getMin(), longStats.getMax());
@@ -60,8 +60,10 @@ public class LongStatistics extends Statistics<Long> {
 
   @Override
   public String toString() {
-    if(!this.isEmpty())
+    if (this.hasNonNullValue())
       return String.format("min: %d, max: %d, num_nulls: %d", min, max, this.getNumNulls());
+    else if (!this.isEmpty())
+      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
     else
       return "no stats for this column";
   }
