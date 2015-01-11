@@ -62,8 +62,14 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.format.Statistics;
 import parquet.format.converter.ParquetMetadataConverter;
 
+import parquet.example.data.Group;
+import parquet.example.data.simple.SimpleGroup;
+
+import parquet.hadoop.example.GroupWriteSupport;
+
 public class TestParquetFileWriter {
   private static final Log LOG = Log.getLog(TestParquetFileWriter.class);
+  private String writeSchema;
 
   @Test
   public void testWriteRead() throws Exception {
@@ -308,6 +314,39 @@ public class TestParquetFileWriter {
     footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, Arrays.asList(fs.listStatus(testDirPath)), false);
     validateFooters(footers);
 
+  }
+
+  @Test
+  public void testWriteReadStatisticsAllNulls() throws Exception {
+
+    File testFile = new File("target/test/TestParquetFileWriter/testParquetFile").getAbsoluteFile();
+    testFile.delete();
+
+    writeSchema = "message example {\n" +
+            "required binary content;\n" +
+            "}";
+
+    Path path = new Path(testFile.toURI());
+
+    MessageType schema = MessageTypeParser.parseMessageType(writeSchema);
+    Configuration configuration = new Configuration();
+    GroupWriteSupport.setSchema(schema, configuration);
+
+    ParquetWriter<Group> writer = new ParquetWriter<Group>(path, configuration, new GroupWriteSupport());
+   
+    Group r1 = new SimpleGroup(schema);
+    writer.write(r1);
+    writer.close();
+    
+    ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
+    for (BlockMetaData block : readFooter.getBlocks()) {
+      for (ColumnChunkMetaData col : block.getColumns()) {
+        col.getPath();
+      }
+    }
+    { // assert the number of nulls are correct for the first block
+      assertEquals(1, (readFooter.getBlocks().get(0).getColumns().get(0).getStatistics().getNumNulls()));
+    }
   }
 
   private void validateFooters(final List<Footer> metadata) {
