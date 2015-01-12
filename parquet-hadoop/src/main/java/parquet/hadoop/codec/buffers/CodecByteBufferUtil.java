@@ -20,13 +20,17 @@ import sun.nio.ch.DirectBuffer;
 import java.nio.ByteBuffer;
 
 /**
- * Util class for manipulating bytebuffer s
+ * Util class for manipulating bytebuffers
  */
 public abstract class CodecByteBufferUtil {
   private static final Log LOG = Log.getLog(CodecByteBufferUtil.class);
 
-  private CodecByteBufferUtil() {};
+  private CodecByteBufferUtil() {}
 
+  /**
+   * Immediately frees the ByteBuffer, not waiting for GC to ocurr.
+   * @param buff Buffer to immediately free
+   */
   public static void freeOffHeapBuffer(ByteBuffer buff) {
     if ((buff != null) && (buff.isDirect())) {
       // even though nio.DirectBuffer is package private, it implements
@@ -42,4 +46,6 @@ public abstract class CodecByteBufferUtil {
       }
     }
   }
+
+
 }

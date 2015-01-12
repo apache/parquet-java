@@ -19,19 +19,13 @@ import java.nio.ByteBuffer;
  * ByteBuffer wrapper the ensures the directBuffer is freed if it
  * is not currently being used, and then re-allocated when it is needed
  */
-public class FreeOnResetByteBuffer implements CodecByteBuffer {
-  private ByteBuffer buf = null;
-  private final int buffsize;
+public class FreeOnResetByteBuffer extends AbstractCodecByteBuffer {
 
   public FreeOnResetByteBuffer(int buffsize) {
-    this.buffsize = buffsize;
+    super(buffsize);
   }
 
-  private void allocateBuffer()
-  {
-    buf = ByteBuffer.allocateDirect(buffsize);
-  }
-
+  @Override
   public ByteBuffer get() {
     if (buf == null) {
       allocateBuffer();
@@ -39,23 +33,8 @@ public class FreeOnResetByteBuffer implements CodecByteBuffer {
     return buf;
   }
 
-  /**
-   * If the buffer is no longer needed then immediately free it so the memory
-   * can be used elsewhere
-   */
+  @Override
   public void resetBuffer() {
     freeBuffer();
   }
-
-  /**
-   * Explicitly free the off-heap buffer
-   */
-  public void freeBuffer() {
-    if (buf != null) {
-      CodecByteBufferUtil.freeOffHeapBuffer(buf);
-      // The rest will be cleaned up when the buffer object is finalized
-      buf = null;
-    }
-  }
-
 }

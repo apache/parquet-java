@@ -15,23 +15,22 @@
  */
 package parquet.hadoop;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.junit.Test;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-
 import org.xerial.snappy.Snappy;
-
 import parquet.hadoop.codec.SnappyCodec;
 import parquet.hadoop.codec.SnappyCompressor;
 import parquet.hadoop.codec.SnappyDecompressor;
 import parquet.hadoop.codec.buffers.CodecByteBufferFactory;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 public class TestSnappyCodec {
 
@@ -40,10 +39,10 @@ public class TestSnappyCodec {
     // Reuse the snappy objects between test cases
     SnappyCompressor compressor = new SnappyCompressor();
     compressor.setByteBufferFactory(new
-        CodecByteBufferFactory(CodecByteBufferFactory.BufferReuseOption.FreeOnReset));
+        CodecByteBufferFactory(CodecByteBufferFactory.BuffReuseOpt.FreeOnReset));
     SnappyDecompressor decompressor = new SnappyDecompressor();
     decompressor.setByteBufferFactory(new
-        CodecByteBufferFactory(CodecByteBufferFactory.BufferReuseOption.ReuseOnReset));
+        CodecByteBufferFactory(CodecByteBufferFactory.BuffReuseOpt.ReuseOnReset));
     TestSnappy(compressor,decompressor);
   }
 
@@ -52,11 +51,11 @@ public class TestSnappyCodec {
     // Reuse the snappy objects between test cases
     SnappyCompressor compressor = new SnappyCompressor();
     compressor.setByteBufferFactory(new
-        CodecByteBufferFactory(CodecByteBufferFactory.BufferReuseOption.ReuseOnReset));
+        CodecByteBufferFactory(CodecByteBufferFactory.BuffReuseOpt.ReuseOnReset));
     SnappyDecompressor decompressor = new SnappyDecompressor();
     decompressor.setByteBufferFactory(new
-        CodecByteBufferFactory(CodecByteBufferFactory.BufferReuseOption.FreeOnReset));
-    TestSnappy(compressor,decompressor);
+        CodecByteBufferFactory(CodecByteBufferFactory.BuffReuseOpt.FreeOnReset));
+    TestSnappyDriver(compressor, decompressor);
   }
 
   public void TestSnappyDriver(SnappyCompressor compressor, SnappyDecompressor decompressor) throws IOException  {

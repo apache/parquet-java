@@ -16,24 +16,37 @@
 package parquet.hadoop.codec.buffers;
 
 /**
- * abstracts out the difference between reusing the same
- * byte buffer everytime, or freeing/reallocating the buffer as required
- * to save on memory overheads (at the cost some cpu overhead)
+ * Factory class that simplifies the creation of the different CodecByteBuffers
  */
 public class CodecByteBufferFactory {
-  public enum BufferReuseOption {
+
+  /**
+   * <li>{@link #ReuseOnReset}</li>*
+   * <li>{@link #FreeOnReset}</li>
+   */
+
+  public enum BuffReuseOpt {
+    /**
+     * Do not free the buffer when it is released, keep
+     * it around and recycle it for the next use
+     */
     ReuseOnReset,
+
+    /**
+     * Immediately free then buffer when it is released
+     * Reallocate a new buffer when it becomes time to use it again
+     */
     FreeOnReset
-  };
+  }
 
-  private final BufferReuseOption bufferReuseOption;
+  private final BuffReuseOpt buffReuseOpt;
 
-  public CodecByteBufferFactory(BufferReuseOption bufferReuseOption) {
-    this.bufferReuseOption = bufferReuseOption;
+  public CodecByteBufferFactory(BuffReuseOpt buffReuseOpt) {
+    this.buffReuseOpt = buffReuseOpt;
   }
 
   public CodecByteBuffer create(int bufsize) {
-    return bufferReuseOption == BufferReuseOption.ReuseOnReset ?
+    return buffReuseOpt == BuffReuseOpt.ReuseOnReset ?
         new ReuseOnResetByteBuffer(bufsize) :
         new FreeOnResetByteBuffer(bufsize);
   }

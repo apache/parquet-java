@@ -20,24 +20,20 @@ import java.nio.ByteBuffer;
  * behaviour of keeping the bytebuffer allocated even when
  * we are finished using it so we can reuse it when needed
  */
-public class ReuseOnResetByteBuffer implements CodecByteBuffer {
-  private ByteBuffer buf;
-  private int buffsize;
+public class ReuseOnResetByteBuffer extends AbstractCodecByteBuffer {
 
   public ReuseOnResetByteBuffer(int buffsize) {
-    buf = ByteBuffer.allocateDirect(buffsize);
-    this.buffsize = buffsize;
+    super(buffsize);
+    allocateBuffer();
   }
 
+  @Override
   public ByteBuffer get() { return buf; }
 
+  @Override
   public void resetBuffer() {
     buf.rewind();
     buf.limit(0);
   }
 
-  public void freeBuffer() {
-    CodecByteBufferUtil.freeOffHeapBuffer(buf);
-    buf = null;
-  }
 }

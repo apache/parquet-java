@@ -15,15 +15,14 @@
  */
 package parquet.hadoop.codec;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
 import org.apache.hadoop.io.compress.Decompressor;
 import org.xerial.snappy.Snappy;
-
 import parquet.Preconditions;
-import parquet.hadoop.codec.buffers.*;
-import parquet.hadoop.codec.buffers.CodecByteBufferFactory.BufferReuseOption;
+import parquet.hadoop.codec.buffers.CodecByteBuffer;
+import parquet.hadoop.codec.buffers.CodecByteBufferFactory;
+import parquet.hadoop.codec.buffers.CodecByteBufferFactory.BuffReuseOpt;
+
+import java.io.IOException;
 
 public class SnappyDecompressor implements Decompressor {
   // Buffer for uncompressed output. This buffer grows as necessary.
@@ -38,16 +37,12 @@ public class SnappyDecompressor implements Decompressor {
 
   public SnappyDecompressor() {
     // default buffer behaviour unless overridden
-    this.byteBufferFactory = new CodecByteBufferFactory(BufferReuseOption.ReuseOnReset);
+    this.byteBufferFactory = new CodecByteBufferFactory(BuffReuseOpt.ReuseOnReset);
     outputBuffer = byteBufferFactory.create(0);
     inputBuffer = byteBufferFactory.create(0);
   }
 
-  public CodecByteBufferFactory getByteBufferFactory() {
-    return byteBufferFactory;
-  }
-
-  public void setByteBufferFactory(CodecByteBufferFactory byteBufferFactory) {
+  public void setByteBufferFactory(final CodecByteBufferFactory byteBufferFactory) {
     this.byteBufferFactory = byteBufferFactory;
   }
 
@@ -66,11 +61,11 @@ public class SnappyDecompressor implements Decompressor {
   @Override
   public synchronized int decompress(byte[] buffer, int off, int len) throws IOException {
     SnappyUtil.validateBuffer(buffer, off, len);
-	if (inputBuffer.get().position() == 0 && !outputBuffer.get().hasRemaining()) {
+	  if (!outputBuffer.hasRemaining() && inputBuffer.get().position() == 0) {
       return 0;
     }
     
-    if (!outputBuffer.get().hasRemaining()) {
+    if (!outputBuffer.hasRemaining()) {
       inputBuffer.get().rewind();
       Preconditions.checkArgument(inputBuffer.get().position() == 0, "Invalid position of 0.");
       Preconditions.checkArgument(outputBuffer.get().position() == 0, "Invalid position of 0.");
@@ -85,14 +80,17 @@ public class SnappyDecompressor implements Decompressor {
       int size = Snappy.uncompress(inputBuffer.get(), outputBuffer.get());
       outputBuffer.get().limit(size);
       // We've decompressed the entire input, reset the input now
-      inputBuffer.get().clear();
-      inputBuffer.get().limit(0);
+      inputBuffer.resetBuffer();
       finished = true;
     }
 
     // Return compressed output up to 'len'
     int numBytes = Math.min(len, outputBuffer.get().remaining());
     outputBuffer.get().get(buffer, off, numBytes);
+
+    if (!outputBuffer.hasRemaining()) {
+      outputBuffer.resetBuffer();
+    }
     return numBytes;	    
   }
 
@@ -118,6 +116,7 @@ public class SnappyDecompressor implements Decompressor {
       CodecByteBuffer newBuffer = byteBufferFactory.create(inputBuffer.get().position() + len);
       inputBuffer.get().rewind();
       newBuffer.get().put(inputBuffer.get());
+      inputBuffer.freeBuffer();
       inputBuffer = newBuffer;
     } else {
       inputBuffer.get().limit(inputBuffer.get().position() + len);
@@ -132,7 +131,7 @@ public class SnappyDecompressor implements Decompressor {
 
   @Override
   public synchronized boolean finished() {
-    return finished && !outputBuffer.get().hasRemaining();
+    return finished && !outputBuffer.hasRemaining();
   }
 
   @Override
@@ -142,7 +141,7 @@ public class SnappyDecompressor implements Decompressor {
 
   @Override
   public synchronized boolean needsInput() {
-    return !inputBuffer.get().hasRemaining() && !outputBuffer.get().hasRemaining();
+    return !inputBuffer.hasRemaining() && !outputBuffer.hasRemaining();
   }
 
   @Override
