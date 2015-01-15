@@ -24,7 +24,7 @@ public class DoubleStatistics extends Statistics<Double> {
 
   @Override
   public void updateStats(double value) {
-    if (this.isEmpty()) {
+    if (this.isEmpty() || !this.hasValidValue()) {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
@@ -34,7 +34,7 @@ public class DoubleStatistics extends Statistics<Double> {
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
     DoubleStatistics doubleStats = (DoubleStatistics)stats;
-    if (this.isEmpty()) {
+    if (this.isEmpty() || !this.hasValidValue()) {
       initializeStats(doubleStats.getMin(), doubleStats.getMax());
     } else {
       updateStats(doubleStats.getMin(), doubleStats.getMax());
@@ -45,6 +45,7 @@ public class DoubleStatistics extends Statistics<Double> {
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
     max = Double.longBitsToDouble(BytesUtils.bytesToLong(maxBytes));
     min = Double.longBitsToDouble(BytesUtils.bytesToLong(minBytes));
+    this.markHasValidValue();
     this.markAsNotEmpty();
   }
 
@@ -60,9 +61,11 @@ public class DoubleStatistics extends Statistics<Double> {
 
   @Override
   public String toString() {
-    if(!this.isEmpty())
+    if(this.hasValidValue())
       return String.format("min: %.5f, max: %.5f, num_nulls: %d", min, max, this.getNumNulls());
-    else
+    else if(!this.isEmpty())
+      return String.format("num_nulls: %d, min, max not defined", this.getNumNulls());
+    else  
       return "no stats for this column";
   }
 
@@ -74,6 +77,7 @@ public class DoubleStatistics extends Statistics<Double> {
   public void initializeStats(double min_value, double max_value) {
       min = min_value;
       max = max_value;
+      this.markHasValidValue();
       this.markAsNotEmpty();
   }
 
@@ -87,6 +91,24 @@ public class DoubleStatistics extends Statistics<Double> {
     return max;
   }
 
+  @Override
+  public void incrementNumNulls() {
+    if (this.isEmpty()) {
+      this.markAsNotEmpty();
+    }
+    
+    super.incrementNumNulls();
+  }
+
+  @Override
+  public void incrementNumNulls(long increment) {
+    if (this.isEmpty()) {
+      this.markAsNotEmpty();
+    }
+
+    super.incrementNumNulls(increment);
+  }
+
   public double getMax() {
     return max;
   }
@@ -98,6 +120,7 @@ public class DoubleStatistics extends Statistics<Double> {
   public void setMinMax(double min, double max) {
     this.max = max;
     this.min = min;
+    this.markHasValidValue();
     this.markAsNotEmpty();
   }
 }

@@ -24,7 +24,7 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public void updateStats(Binary value) {
-    if (this.isEmpty()) {
+    if (this.isEmpty() || !this.hasValidValue()) {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
@@ -34,17 +34,18 @@ public class BinaryStatistics extends Statistics<Binary> {
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
     BinaryStatistics binaryStats = (BinaryStatistics)stats;
-    if (this.isEmpty()) {
-      initializeStats(binaryStats.getMin(), binaryStats.getMax());
-    } else {
-      updateStats(binaryStats.getMin(), binaryStats.getMax());
-    }
+      if (this.isEmpty() || !this.hasValidValue()) {
+        initializeStats(binaryStats.getMin(), binaryStats.getMax());
+      } else {
+        updateStats(binaryStats.getMin(), binaryStats.getMax());
+      }
   }
 
   @Override
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
     max = Binary.fromByteArray(maxBytes);
     min = Binary.fromByteArray(minBytes);
+    this.markHasValidValue();
     this.markAsNotEmpty();
   }
 
@@ -60,8 +61,10 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public String toString() {
-    if(!this.isEmpty())
+    if(this.hasValidValue())
       return String.format("min: %s, max: %s, num_nulls: %d", min.toStringUsingUTF8(), max.toStringUsingUTF8(), this.getNumNulls());
+    else if(!this.isEmpty())
+      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
     else
       return "no stats for this column";
   }
@@ -74,6 +77,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   public void initializeStats(Binary min_value, Binary max_value) {
       min = min_value;
       max = max_value;
+      this.markHasValidValue();
       this.markAsNotEmpty();
   }
 
@@ -87,6 +91,24 @@ public class BinaryStatistics extends Statistics<Binary> {
     return max;
   }
 
+  @Override
+  public void incrementNumNulls() {
+    if (this.isEmpty()) {
+      this.markAsNotEmpty();
+    }
+    
+    super.incrementNumNulls();
+  }
+
+  @Override
+  public void incrementNumNulls(long increment) {
+    if (this.isEmpty()) {
+      this.markAsNotEmpty();
+    }
+
+    super.incrementNumNulls(increment);
+  }
+
   public Binary getMax() {
     return max;
   }
@@ -98,6 +120,8 @@ public class BinaryStatistics extends Statistics<Binary> {
   public void setMinMax(Binary min, Binary max) {
     this.max = max;
     this.min = min;
+    this.markHasValidValue();
     this.markAsNotEmpty();
   }
+
 }

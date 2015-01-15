@@ -29,6 +29,7 @@ import java.util.Arrays;
 public abstract class Statistics<T extends Comparable<T>> {
 
   private boolean firstValueAccountedFor;
+  private boolean containsValidValue;
   private long num_nulls;
 
   public Statistics() {
@@ -142,7 +143,8 @@ public abstract class Statistics<T extends Comparable<T>> {
 
     if (this.getClass() == stats.getClass()) {
       incrementNumNulls(stats.getNumNulls());
-      mergeStatisticsMinMax(stats);
+      if(stats.hasValidValue())
+        mergeStatisticsMinMax(stats);
     } else {
       throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
     }
@@ -185,6 +187,7 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * Increments the null count by one
+   * Should call markAsNotEmpty, but called in the derived class
    */
   public void incrementNumNulls() {
     num_nulls++ ;
@@ -193,6 +196,7 @@ public abstract class Statistics<T extends Comparable<T>> {
   /**
    * Increments the null count by the parameter value
    * @param increment value to increment the null count by
+   * Should call markAsNotEmpty, but called in the derived class
    */
   public void incrementNumNulls(long increment) {
     num_nulls += increment ;
@@ -216,7 +220,7 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * Returns a boolean specifying if the Statistics object is empty,
-   * i.e does not contain valid statistics for the page/column yet
+   * i.e page/column does not contain any value yet
    * @return true if object is empty, false otherwise
    */
   public boolean isEmpty() {
@@ -226,5 +230,20 @@ public abstract class Statistics<T extends Comparable<T>> {
   protected void markAsNotEmpty() {
     firstValueAccountedFor = true;
   }
+
+  /**
+   * Returns a boolean specifying if the min/max of Statistics
+   * object has a valid value, since it contains non-null
+   * values
+   * @return true if page/column has non-null value, false otherwise
+   */
+  public boolean hasValidValue() {
+    return containsValidValue;
+  }
+
+  protected void markHasValidValue() {
+    containsValidValue = true;
+  }
+
 }
 

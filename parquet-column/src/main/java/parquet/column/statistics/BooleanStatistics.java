@@ -24,7 +24,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public void updateStats(boolean value) {
-    if (this.isEmpty()) {
+    if (this.isEmpty() || !this.hasValidValue()) {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
@@ -34,7 +34,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
     BooleanStatistics boolStats = (BooleanStatistics)stats;
-    if (this.isEmpty()) {
+    if (this.isEmpty() || !this.hasValidValue()) {
       initializeStats(boolStats.getMin(), boolStats.getMax());
     } else {
       updateStats(boolStats.getMin(), boolStats.getMax());
@@ -45,6 +45,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
     max = BytesUtils.bytesToBool(maxBytes);
     min = BytesUtils.bytesToBool(minBytes);
+    this.markHasValidValue();
     this.markAsNotEmpty();
   }
 
@@ -60,8 +61,10 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public String toString() {
-    if(!this.isEmpty())
+    if(this.hasValidValue())
       return String.format("min: %b, max: %b, num_nulls: %d", min, max, this.getNumNulls());
+    else if(!this.isEmpty())
+      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
     else
       return "no stats for this column";
   }
@@ -74,6 +77,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   public void initializeStats(boolean min_value, boolean max_value) {
       min = min_value;
       max = max_value;
+      this.markHasValidValue();
       this.markAsNotEmpty();
   }
 
@@ -85,6 +89,24 @@ public class BooleanStatistics extends Statistics<Boolean> {
   @Override
   public Boolean genericGetMax() {
     return max;
+  }
+  
+  @Override
+  public void incrementNumNulls() {
+    if (this.isEmpty()) {
+      this.markAsNotEmpty();
+    }
+    
+    super.incrementNumNulls();
+  }
+
+  @Override
+  public void incrementNumNulls(long increment) {
+    if (this.isEmpty()) {
+      this.markAsNotEmpty();
+    }
+
+    super.incrementNumNulls(increment);
   }
 
   public boolean getMax() {
@@ -98,6 +120,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   public void setMinMax(boolean min, boolean max) {
     this.max = max;
     this.min = min;
+    this.markHasValidValue();
     this.markAsNotEmpty();
   }
 }
