@@ -15,6 +15,7 @@
  */
 package parquet.hadoop;
 
+import static java.lang.Boolean.TRUE;
 import static parquet.Preconditions.checkArgument;
 
 import java.io.IOException;
@@ -55,7 +56,6 @@ import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.api.ReadSupport.ReadContext;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
-import parquet.hadoop.metadata.FileMetaData;
 import parquet.hadoop.metadata.GlobalMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.ConfigurationUtil;
@@ -72,6 +72,12 @@ import parquet.schema.MessageTypeParser;
  *
  * The requestedSchema will control how the original records get projected by the loader.
  * It must be a subset of the original schema. Only the columns needed to reconstruct the records with the requestedSchema will be scanned.
+ *
+ * @see #READ_SUPPORT_CLASS
+ * @see #UNBOUND_RECORD_FILTER
+ * @see #STRICT_TYPE_CHECKING
+ * @see #FILTER_PREDICATE
+ * @see #TASK_SIDE_METADATA
  *
  * @author Julien Le Dem
  *
@@ -101,6 +107,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    */
   public static final String FILTER_PREDICATE = "parquet.private.read.filter.predicate";
 
+  /**
+   * key to turn on or off task side metadata loading (default true)
+   * if true then metadata is read on the task side and some tasks may finish immediately.
+   * if false metadata is read on the client which is slower if there is a lot of metadata but tasks will only be spawn if there is work to do.
+   */
   public static final String TASK_SIDE_METADATA = "parquet.task.side.metadata";
 
   private static final int MIN_FOOTER_CACHE_SIZE = 100;
@@ -110,7 +121,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   public static boolean isTaskSideMetaData(Configuration configuration) {
-    return configuration.getBoolean(TASK_SIDE_METADATA, Boolean.FALSE);
+    return configuration.getBoolean(TASK_SIDE_METADATA, TRUE);
   }
 
   public static void setReadSupportClass(Job job,  Class<?> readSupportClass) {

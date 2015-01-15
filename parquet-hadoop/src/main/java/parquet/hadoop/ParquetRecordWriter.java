@@ -25,6 +25,8 @@ import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.hadoop.api.WriteSupport;
 import parquet.schema.MessageType;
 
+import static parquet.Preconditions.checkNotNull;
+
 /**
  * Writes records to a Parquet file
  *
@@ -37,6 +39,36 @@ import parquet.schema.MessageType;
 public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
 
   private InternalParquetRecordWriter<T> internalWriter;
+  private MemoryManager memoryManager;
+
+  /**
+   *
+   * @param w the file to write to
+   * @param writeSupport the class to convert incoming records
+   * @param schema the schema of the records
+   * @param extraMetaData extra meta data to write in the footer of the file
+   * @param blockSize the size of a block in the file (this will be approximate)
+   * @param compressor the compressor used to compress the pages
+   * @param dictionaryPageSize the threshold for dictionary size
+   * @param enableDictionary to enable the dictionary
+   * @param validating if schema validation should be turned on
+   */
+  @Deprecated
+  public ParquetRecordWriter(
+      ParquetFileWriter w,
+      WriteSupport<T> writeSupport,
+      MessageType schema,
+      Map<String, String> extraMetaData,
+      int blockSize, int pageSize,
+      BytesCompressor compressor,
+      int dictionaryPageSize,
+      boolean enableDictionary,
+      boolean validating,
+      WriterVersion writerVersion) {
+    internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
+        extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary,
+        validating, writerVersion);
+  }
 
   /**
    *
@@ -55,14 +87,18 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       WriteSupport<T> writeSupport,
       MessageType schema,
       Map<String, String> extraMetaData,
-      int blockSize, int pageSize,
+      long blockSize, int pageSize,
       BytesCompressor compressor,
       int dictionaryPageSize,
       boolean enableDictionary,
       boolean validating,
-      WriterVersion writerVersion) {
+      WriterVersion writerVersion,
+      MemoryManager memoryManager) {
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
-        extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary, validating, writerVersion);
+        extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary,
+        validating, writerVersion);
+    this.memoryManager = checkNotNull(memoryManager, "memoryManager");
+    memoryManager.addWriter(internalWriter, blockSize);
   }
 
   /**
@@ -71,6 +107,9 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
   @Override
   public void close(TaskAttemptContext context) throws IOException, InterruptedException {
     internalWriter.close();
+    if (memoryManager != null) {
+      memoryManager.removeWriter(internalWriter);
+    }
   }
 
   /**

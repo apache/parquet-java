@@ -34,20 +34,18 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import org.junit.Assert;
 import org.junit.Test;
-
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+
 import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriteStore;
 import parquet.column.ColumnWriter;
 import parquet.column.ParquetProperties.WriterVersion;
-import parquet.column.statistics.Statistics;
-import parquet.column.impl.ColumnWriteStoreImpl;
+import parquet.column.impl.ColumnWriteStoreV1;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.mem.MemPageStore;
 import parquet.example.data.Group;
@@ -285,7 +283,7 @@ public class TestColumnIO {
 
   private void writeGroups(MessageType writtenSchema, MemPageStore memPageStore, Group... groups) {
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
-    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
+    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
     MessageColumnIO columnIO = columnIOFactory.getColumnIO(writtenSchema);
     GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), writtenSchema);
     for (Group group : groups) {
@@ -303,7 +301,7 @@ public class TestColumnIO {
     log(r2);
 
     MemPageStore memPageStore = new MemPageStore(2);
-    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
+    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     {
@@ -453,7 +451,7 @@ public class TestColumnIO {
 
   private void testSchema(MessageType messageSchema, List<Group> groups) {
     MemPageStore memPageStore = new MemPageStore(groups.size());
-    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
+    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
 
     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
     MessageColumnIO columnIO = columnIOFactory.getColumnIO(messageSchema);
@@ -505,7 +503,7 @@ public class TestColumnIO {
   @Test
   public void testPushParser() {
     MemPageStore memPageStore = new MemPageStore(1);
-    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
+    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
     columns.flush();
@@ -515,14 +513,14 @@ public class TestColumnIO {
 
   }
 
-  private ColumnWriteStoreImpl newColumnWriteStore(MemPageStore memPageStore) {
-    return new ColumnWriteStoreImpl(memPageStore, 800, 800, 800, useDictionary, WriterVersion.PARQUET_1_0);
+  private ColumnWriteStoreV1 newColumnWriteStore(MemPageStore memPageStore) {
+    return new ColumnWriteStoreV1(memPageStore, 800, 800, 800, useDictionary, WriterVersion.PARQUET_1_0);
   }
 
   @Test
   public void testEmptyField() {
     MemPageStore memPageStore = new MemPageStore(1);
-    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
+    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
     MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
     final RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
     recordWriter.startMessage();
@@ -579,77 +577,95 @@ public class TestColumnIO {
         "[Name, Url]: http://C, r:0, d:2",
         "[Name, Language, Code]: null, r:0, d:1",
         "[Name, Language, Country]: null, r:0, d:1"
-
     };
 
-    ColumnWriteStore columns = new ColumnWriteStore() {
-      int counter = 0;
-
-      @Override
-      public ColumnWriter getColumnWriter(final ColumnDescriptor path) {
-        return new ColumnWriter() {
-          private void validate(Object value, int repetitionLevel,
-              int definitionLevel) {
-            String actual = Arrays.toString(path.getPath())+": "+value+", r:"+repetitionLevel+", d:"+definitionLevel;
-            assertEquals("event #" + counter, expected[counter], actual);
-            ++ counter;
-          }
-
-          @Override
-          public void writeNull(int repetitionLevel, int definitionLevel) {
-            validate(null, repetitionLevel, definitionLevel);
-          }
-
-          @Override
-          public void write(Binary value, int repetitionLevel, int definitionLevel) {
-            validate(value.toStringUsingUTF8(), repetitionLevel, definitionLevel);
-          }
-
-          @Override
-          public void write(boolean value, int repetitionLevel, int definitionLevel) {
-            validate(value, repetitionLevel, definitionLevel);
-          }
-
-          @Override
-          public void write(int value, int repetitionLevel, int definitionLevel) {
-            validate(value, repetitionLevel, definitionLevel);
-          }
-
-          @Override
-          public void write(long value, int repetitionLevel, int definitionLevel) {
-            validate(value, repetitionLevel, definitionLevel);
-          }
-
-          @Override
-          public void write(float value, int repetitionLevel, int definitionLevel) {
-            validate(value, repetitionLevel, definitionLevel);
-          }
-
-          @Override
-          public void write(double value, int repetitionLevel, int definitionLevel) {
-            validate(value, repetitionLevel, definitionLevel);
-          }
-
-          @Override
-          public void flush() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public long getBufferedSizeInMemory() {
-            throw new UnsupportedOperationException();
-          }
-        };
-      }
-      @Override
-      public void flush() {
-        assertEquals("read all events", expected.length, counter);
-      }
-    };
+    ValidatingColumnWriteStore columns = new ValidatingColumnWriteStore(expected);
     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
     groupWriter.write(r1);
     groupWriter.write(r2);
-    columns.flush();
+    columns.validate();
+  }
+}
+final class ValidatingColumnWriteStore implements ColumnWriteStore {
+  private final String[] expected;
+  int counter = 0;
+
+  ValidatingColumnWriteStore(String[] expected) {
+    this.expected = expected;
+  }
+
+  @Override
+  public ColumnWriter getColumnWriter(final ColumnDescriptor path) {
+    return new ColumnWriter() {
+      private void validate(Object value, int repetitionLevel,
+          int definitionLevel) {
+        String actual = Arrays.toString(path.getPath())+": "+value+", r:"+repetitionLevel+", d:"+definitionLevel;
+        assertEquals("event #" + counter, expected[counter], actual);
+        ++ counter;
+      }
+
+      @Override
+      public void writeNull(int repetitionLevel, int definitionLevel) {
+        validate(null, repetitionLevel, definitionLevel);
+      }
+
+      @Override
+      public void write(Binary value, int repetitionLevel, int definitionLevel) {
+        validate(value.toStringUsingUTF8(), repetitionLevel, definitionLevel);
+      }
+
+      @Override
+      public void write(boolean value, int repetitionLevel, int definitionLevel) {
+        validate(value, repetitionLevel, definitionLevel);
+      }
+
+      @Override
+      public void write(int value, int repetitionLevel, int definitionLevel) {
+        validate(value, repetitionLevel, definitionLevel);
+      }
+
+      @Override
+      public void write(long value, int repetitionLevel, int definitionLevel) {
+        validate(value, repetitionLevel, definitionLevel);
+      }
+
+      @Override
+      public void write(float value, int repetitionLevel, int definitionLevel) {
+        validate(value, repetitionLevel, definitionLevel);
+      }
+
+      @Override
+      public void write(double value, int repetitionLevel, int definitionLevel) {
+        validate(value, repetitionLevel, definitionLevel);
+      }
+    };
+  }
+
+  public void validate() {
+    assertEquals("read all events", expected.length, counter);
+  }
+
+  @Override
+  public void endRecord() {
+  }
+
+  @Override
+  public void flush() {
+  }
+
+  @Override
+  public long getAllocatedSize() {
+    return 0;
+  }
+
+  @Override
+  public long getBufferedSize() {
+    return 0;
+  }
+
+  @Override
+  public String memUsageString() {
+    return null;
   }
 }

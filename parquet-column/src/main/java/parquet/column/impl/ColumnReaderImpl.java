@@ -18,18 +18,27 @@ package parquet.column.impl;
 import static java.lang.String.format;
 import static parquet.Log.DEBUG;
 import static parquet.Preconditions.checkNotNull;
+import static parquet.column.ValuesType.DEFINITION_LEVEL;
+import static parquet.column.ValuesType.REPETITION_LEVEL;
+import static parquet.column.ValuesType.VALUES;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 import parquet.Log;
+import parquet.bytes.BytesInput;
+import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnReader;
 import parquet.column.Dictionary;
-import parquet.column.ValuesType;
+import parquet.column.Encoding;
+import parquet.column.page.DataPage;
+import parquet.column.page.DataPageV1;
+import parquet.column.page.DataPageV2;
 import parquet.column.page.DictionaryPage;
-import parquet.column.page.Page;
 import parquet.column.page.PageReader;
 import parquet.column.values.ValuesReader;
+import parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
 import parquet.io.api.PrimitiveConverter;
@@ -95,7 +104,7 @@ class ColumnReaderImpl implements ColumnReader {
     public long getLong() {
       throw new UnsupportedOperationException();
     }
-    
+
     /**
      * @return current value
      */
@@ -123,8 +132,8 @@ class ColumnReaderImpl implements ColumnReader {
   private final PageReader pageReader;
   private final Dictionary dictionary;
 
-  private ValuesReader repetitionLevelColumn;
-  private ValuesReader definitionLevelColumn;
+  private IntIterator repetitionLevelColumn;
+  private IntIterator definitionLevelColumn;
   protected ValuesReader dataColumn;
 
   private int repetitionLevel;
@@ -478,8 +487,8 @@ class ColumnReaderImpl implements ColumnReader {
 
   // TODO: change the logic around read() to not tie together reading from the 3 columns
   private void readRepetitionAndDefinitionLevels() {
-    repetitionLevel = repetitionLevelColumn.readInteger();
-    definitionLevel = definitionLevelColumn.readInteger();
+    repetitionLevel = repetitionLevelColumn.nextInt();
+    definitionLevel = definitionLevelColumn.nextInt();
     ++readValues;
   }
 
@@ -497,39 +506,88 @@ class ColumnReaderImpl implements ColumnReader {
 
   private void readPage() {
     if (DEBUG) LOG.debug("loading page");
-    Page page = pageReader.readPage();
+    DataPage page = pageReader.readPage();
+    page.accept(new DataPage.Visitor<Void>() {
+      @Override
+      public Void visit(DataPageV1 dataPageV1) {
+        readPageV1(dataPageV1);
+        return null;
+      }
+      @Override
+      public Void visit(DataPageV2 dataPageV2) {
+        readPageV2(dataPageV2);
+        return null;
+      }
+    });
+  }
 
-    this.repetitionLevelColumn = page.getRlEncoding().getValuesReader(path, ValuesType.REPETITION_LEVEL);
-    this.definitionLevelColumn = page.getDlEncoding().getValuesReader(path, ValuesType.DEFINITION_LEVEL);
-    if (page.getValueEncoding().usesDictionary()) {
+  private void initDataReader(Encoding dataEncoding, byte[] bytes, int offset, int valueCount) {
+    this.pageValueCount = valueCount;
+    this.endOfPageValueCount = readValues + pageValueCount;
+    if (dataEncoding.usesDictionary()) {
       if (dictionary == null) {
         throw new ParquetDecodingException(
-            "could not read page " + page + " in col " + path + " as the dictionary was missing for encoding " + page.getValueEncoding());
+            "could not read page in col " + path + " as the dictionary was missing for encoding " + dataEncoding);
       }
-      this.dataColumn = page.getValueEncoding().getDictionaryBasedValuesReader(path, ValuesType.VALUES, dictionary);
+      this.dataColumn = dataEncoding.getDictionaryBasedValuesReader(path, VALUES, dictionary);
     } else {
-      this.dataColumn = page.getValueEncoding().getValuesReader(path, ValuesType.VALUES);
+      this.dataColumn = dataEncoding.getValuesReader(path, VALUES);
     }
-    if (page.getValueEncoding().usesDictionary() && converter.hasDictionarySupport()) {
+    if (dataEncoding.usesDictionary() && converter.hasDictionarySupport()) {
       bindToDictionary(dictionary);
     } else {
       bind(path.getType());
     }
-    this.pageValueCount = page.getValueCount();
-    this.endOfPageValueCount = readValues + pageValueCount;
+    try {
+      dataColumn.initFromPage(pageValueCount, bytes, offset);
+    } catch (IOException e) {
+      throw new ParquetDecodingException("could not read page in col " + path, e);
+    }
+  }
+
+  private void readPageV1(DataPageV1 page) {
+    ValuesReader rlReader = page.getRlEncoding().getValuesReader(path, REPETITION_LEVEL);
+    ValuesReader dlReader = page.getDlEncoding().getValuesReader(path, DEFINITION_LEVEL);
+    this.repetitionLevelColumn = new ValuesReaderIntIterator(rlReader);
+    this.definitionLevelColumn = new ValuesReaderIntIterator(dlReader);
     try {
       byte[] bytes = page.getBytes().toByteArray();
       if (DEBUG) LOG.debug("page size " + bytes.length + " bytes and " + pageValueCount + " records");
       if (DEBUG) LOG.debug("reading repetition levels at 0");
-      repetitionLevelColumn.initFromPage(pageValueCount, bytes, 0);
-      int next = repetitionLevelColumn.getNextOffset();
+      rlReader.initFromPage(pageValueCount, bytes, 0);
+      int next = rlReader.getNextOffset();
       if (DEBUG) LOG.debug("reading definition levels at " + next);
-      definitionLevelColumn.initFromPage(pageValueCount, bytes, next);
-      next = definitionLevelColumn.getNextOffset();
+      dlReader.initFromPage(pageValueCount, bytes, next);
+      next = dlReader.getNextOffset();
       if (DEBUG) LOG.debug("reading data at " + next);
-      dataColumn.initFromPage(pageValueCount, bytes, next);
+      initDataReader(page.getValueEncoding(), bytes, next, page.getValueCount());
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read page " + page + " in col " + path, e);
+    }
+  }
+
+  private void readPageV2(DataPageV2 page) {
+    this.repetitionLevelColumn = newRLEIterator(path.getMaxRepetitionLevel(), page.getRepetitionLevels());
+    this.definitionLevelColumn = newRLEIterator(path.getMaxDefinitionLevel(), page.getDefinitionLevels());
+    try {
+      if (DEBUG) LOG.debug("page data size " + page.getData().size() + " bytes and " + pageValueCount + " records");
+      initDataReader(page.getDataEncoding(), page.getData().toByteArray(), 0, page.getValueCount());
+    } catch (IOException e) {
+      throw new ParquetDecodingException("could not read page " + page + " in col " + path, e);
+    }
+  }
+
+  private IntIterator newRLEIterator(int maxLevel, BytesInput bytes) {
+    try {
+      if (maxLevel == 0) {
+        return new NullIntIterator();
+      }
+      return new RLEIntIterator(
+          new RunLengthBitPackingHybridDecoder(
+              BytesUtils.getWidthFromMaxInt(maxLevel),
+              new ByteArrayInputStream(bytes.toByteArray())));
+    } catch (IOException e) {
+      throw new ParquetDecodingException("could not read levels in page for col " + path, e);
     }
   }
 
@@ -556,4 +614,45 @@ class ColumnReaderImpl implements ColumnReader {
     return totalValueCount;
   }
 
+  static abstract class IntIterator {
+    abstract int nextInt();
+  }
+
+  static class ValuesReaderIntIterator extends IntIterator {
+    ValuesReader delegate;
+
+    public ValuesReaderIntIterator(ValuesReader delegate) {
+      super();
+      this.delegate = delegate;
+    }
+
+    @Override
+    int nextInt() {
+      return delegate.readInteger();
+    }
+  }
+
+  static class RLEIntIterator extends IntIterator {
+    RunLengthBitPackingHybridDecoder delegate;
+
+    public RLEIntIterator(RunLengthBitPackingHybridDecoder delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    int nextInt() {
+      try {
+        return delegate.readInt();
+      } catch (IOException e) {
+        throw new ParquetDecodingException(e);
+      }
+    }
+  }
+
+  private static final class NullIntIterator extends IntIterator {
+    @Override
+    int nextInt() {
+      return 0;
+    }
+  }
 }

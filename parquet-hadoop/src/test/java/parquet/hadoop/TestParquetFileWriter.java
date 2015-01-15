@@ -15,6 +15,7 @@
  */
 package parquet.hadoop;
 
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -25,7 +26,8 @@ import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.Encoding;
-import parquet.column.page.Page;
+import parquet.column.page.DataPage;
+import parquet.column.page.DataPageV1;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
 import parquet.column.statistics.BinaryStatistics;
@@ -47,6 +49,7 @@ import static parquet.column.Encoding.BIT_PACKED;
 import static parquet.column.Encoding.PLAIN;
 import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static parquet.schema.Type.Repetition.*;
+import static parquet.hadoop.TestUtils.enforceEmptyDir;
 
 public class TestParquetFileWriter {
   private static final Log LOG = Log.getLog(TestParquetFileWriter.class);
@@ -257,8 +260,7 @@ public class TestParquetFileWriter {
     Configuration configuration = new Configuration();
 
     final FileSystem fs = testDirPath.getFileSystem(configuration);
-    fs.delete(testDirPath, true);
-    fs.mkdirs(testDirPath);
+    enforceEmptyDir(configuration, testDirPath);
 
     MessageType schema = MessageTypeParser.parseMessageType("message m { required group a {required binary b;} required group c { required int64 d; }}");
     createFile(configuration, new Path(testDirPath, "part0"), schema);
@@ -357,9 +359,9 @@ public class TestParquetFileWriter {
 
   private void validateContains(MessageType schema, PageReadStore pages, String[] path, int values, BytesInput bytes) throws IOException {
     PageReader pageReader = pages.getPageReader(schema.getColumnDescription(path));
-    Page page = pageReader.readPage();
+    DataPage page = pageReader.readPage();
     assertEquals(values, page.getValueCount());
-    assertArrayEquals(bytes.toByteArray(), page.getBytes().toByteArray());
+    assertArrayEquals(bytes.toByteArray(), ((DataPageV1)page).getBytes().toByteArray());
   }
 
   @Test
