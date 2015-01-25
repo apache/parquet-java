@@ -130,13 +130,6 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return false;
     }
 
-    if (isAllNulls(columnChunk)) {
-      // there is no min max, there is nothing
-      // else we can say about this chunk, we
-      // cannot drop it.
-      return false;
-    }
-
     // drop if this is a column where min = max = value
     return value.compareTo(stats.genericGetMin()) == 0 && value.compareTo(stats.genericGetMax()) == 0;
   }
