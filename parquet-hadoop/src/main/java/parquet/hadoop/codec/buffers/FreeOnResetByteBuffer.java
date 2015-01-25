@@ -1,6 +1,4 @@
 /**
- * Copyright 2012 Twitter, Inc.
- *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,23 +11,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.hadoop.codec;
-
-import parquet.Log;
-import parquet.Preconditions;
-import sun.misc.Cleaner;
-import sun.nio.ch.DirectBuffer;
+package parquet.hadoop.codec.buffers;
 
 import java.nio.ByteBuffer;
 
 /**
- * Utilities for SnappyCompressor and SnappyDecompressor.
+ * ByteBuffer wrapper the ensures the directBuffer is freed if it
+ * is not currently being used, and then re-allocated when it is needed
  */
-public class SnappyUtil {
-  public static void validateBuffer(byte[] buffer, int off, int len) {
-    Preconditions.checkNotNull(buffer, "buffer");
-    Preconditions.checkArgument(off >= 0 && len >= 0 && off <= buffer.length - len,
-        "Invalid offset or length. Out of buffer bounds. buffer.length=" + buffer.length
-        + " off=" + off + " len=" + len);
+public class FreeOnResetByteBuffer extends AbstractCodecByteBuffer {
+
+  public FreeOnResetByteBuffer(int buffsize) {
+    super(buffsize);
+  }
+
+  @Override
+  public ByteBuffer get() {
+    if (buf == null) {
+      allocateBuffer();
+    }
+    return buf;
+  }
+
+  @Override
+  public void resetBuffer() {
+    freeBuffer();
   }
 }

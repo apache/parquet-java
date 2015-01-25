@@ -15,17 +15,15 @@
  */
 package parquet.hadoop.codec;
 
+import org.apache.hadoop.conf.Configurable;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.compress.*;
+import parquet.hadoop.codec.buffers.CodecByteBufferFactory;
+import parquet.hadoop.codec.buffers.CodecByteBufferFactory.BuffReuseOpt;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-
-import org.apache.hadoop.conf.Configurable;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.io.compress.CompressionInputStream;
-import org.apache.hadoop.io.compress.CompressionOutputStream;
-import org.apache.hadoop.io.compress.Compressor;
-import org.apache.hadoop.io.compress.Decompressor;
 
 /**
  * Snappy compression codec for Parquet.  We do not use the default hadoop
@@ -37,7 +35,10 @@ import org.apache.hadoop.io.compress.Decompressor;
 public class SnappyCodec implements Configurable, CompressionCodec {
   private Configuration conf;
   // Hadoop config for how big to make intermediate buffers.
-  private final String BUFFER_SIZE_CONFIG = "io.file.buffer.size";
+  private static final String BUFFER_SIZE_CONFIG = "io.file.buffer.size";
+
+  // Whether to use onheap buffers or not
+  public static final String REUSE_BUFFER_CONFIG = "org.apache.hadoop.io.compress.SnappyCodec.keepBuffersForReuse";
 
   @Override
   public void setConf(Configuration conf) {
@@ -49,14 +50,25 @@ public class SnappyCodec implements Configurable, CompressionCodec {
     return conf;
   }
 
+  private CodecByteBufferFactory getBufferFactory() {
+    // by default maintain the existing behaviour of re-using directByteBuffers
+    return conf.getBoolean(SnappyCodec.REUSE_BUFFER_CONFIG, true) ?
+      new CodecByteBufferFactory(BuffReuseOpt.ReuseOnReset) :
+      new CodecByteBufferFactory(BuffReuseOpt.FreeOnReset);
+  }
+
   @Override
   public Compressor createCompressor() {
-    return new SnappyCompressor();
+    final SnappyCompressor snappyCompressor = new SnappyCompressor();
+    snappyCompressor.setByteBufferFactory( getBufferFactory() );
+    return snappyCompressor;
   }
 
   @Override
   public Decompressor createDecompressor() {
-    return new SnappyDecompressor();
+    final SnappyDecompressor snappyDecompressor = new SnappyDecompressor();
+    snappyDecompressor.setByteBufferFactory( getBufferFactory() );
+    return snappyDecompressor;
   }
 
   @Override
