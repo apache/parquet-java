@@ -28,11 +28,11 @@ import java.util.Arrays;
  */
 public abstract class Statistics<T extends Comparable<T>> {
 
-  private boolean firstValueAccountedFor;
+  private boolean hasNonNullValue;
   private long num_nulls;
 
   public Statistics() {
-    firstValueAccountedFor = false;
+    hasNonNullValue = false;
     num_nulls = 0;
   }
 
@@ -142,7 +142,10 @@ public abstract class Statistics<T extends Comparable<T>> {
 
     if (this.getClass() == stats.getClass()) {
       incrementNumNulls(stats.getNumNulls());
-      mergeStatisticsMinMax(stats);
+      if (stats.hasNonNullValue()) {
+        mergeStatisticsMinMax(stats);
+        markAsNotEmpty();
+      }
     } else {
       throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
     }
@@ -220,11 +223,22 @@ public abstract class Statistics<T extends Comparable<T>> {
    * @return true if object is empty, false otherwise
    */
   public boolean isEmpty() {
-    return !firstValueAccountedFor;
+    return !hasNonNullValue && num_nulls == 0;
   }
 
+  /**
+   * Returns whether there have been non-null values added to this statistics
+   */
+  public boolean hasNonNullValue() {
+    return hasNonNullValue;
+  }
+ 
+  /**
+   * Sets the page/column as having a valid non-null value
+   * kind of misnomer here
+   */ 
   protected void markAsNotEmpty() {
-    firstValueAccountedFor = true;
+    hasNonNullValue = true;
   }
 }
 

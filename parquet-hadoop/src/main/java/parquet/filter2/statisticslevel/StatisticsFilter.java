@@ -67,11 +67,13 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   // is this column chunk composed entirely of nulls?
+  // assumes the column chunk's statistics is not empty
   private boolean isAllNulls(ColumnChunkMetaData column) {
     return column.getStatistics().getNumNulls() == column.getValueCount();
   }
 
   // are there any nulls in this column chunk?
+  // assumes the column chunk's statistics is not empty
   private boolean hasNulls(ColumnChunkMetaData column) {
     return column.getStatistics().getNumNulls() > 0;
   }
@@ -81,6 +83,12 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Column<T> filterColumn = eq.getColumn();
     T value = eq.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
+    Statistics<T> stats = columnChunk.getStatistics();
+
+    if (stats.isEmpty()) {
+      // we have no statistics available, we cannot drop any chunks
+      return false;
+    }
 
     if (value == null) {
       // we are looking for records where v eq(null)
@@ -94,8 +102,6 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return true;
     }
 
-    Statistics<T> stats = columnChunk.getStatistics();
-
     // drop if value < min || value > max
     return value.compareTo(stats.genericGetMin()) < 0 || value.compareTo(stats.genericGetMax()) > 0;
   }
@@ -105,6 +111,12 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Column<T> filterColumn = notEq.getColumn();
     T value = notEq.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
+    Statistics<T> stats = columnChunk.getStatistics();
+
+    if (stats.isEmpty()) {
+      // we have no statistics available, we cannot drop any chunks
+      return false;
+    }
 
     if (value == null) {
       // we are looking for records where v notEq(null)
@@ -118,8 +130,6 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return false;
     }
 
-    Statistics<T> stats = columnChunk.getStatistics();
-
     // drop if this is a column where min = max = value
     return value.compareTo(stats.genericGetMin()) == 0 && value.compareTo(stats.genericGetMax()) == 0;
   }
@@ -129,14 +139,18 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Column<T> filterColumn = lt.getColumn();
     T value = lt.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
+    Statistics<T> stats = columnChunk.getStatistics();
+
+    if (stats.isEmpty()) {
+      // we have no statistics available, we cannot drop any chunks
+      return false;
+    }
 
     if (isAllNulls(columnChunk)) {
       // we are looking for records where v < someValue
       // this chunk is all nulls, so we can drop it
       return true;
     }
-
-    Statistics<T> stats = columnChunk.getStatistics();
 
     // drop if value <= min
     return  value.compareTo(stats.genericGetMin()) <= 0;
@@ -147,14 +161,18 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Column<T> filterColumn = ltEq.getColumn();
     T value = ltEq.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
+    Statistics<T> stats = columnChunk.getStatistics();
+
+    if (stats.isEmpty()) {
+      // we have no statistics available, we cannot drop any chunks
+      return false;
+    }
 
     if (isAllNulls(columnChunk)) {
       // we are looking for records where v <= someValue
       // this chunk is all nulls, so we can drop it
       return true;
     }
-
-    Statistics<T> stats = columnChunk.getStatistics();
 
     // drop if value < min
     return value.compareTo(stats.genericGetMin()) < 0;
@@ -165,14 +183,18 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Column<T> filterColumn = gt.getColumn();
     T value = gt.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
+    Statistics<T> stats = columnChunk.getStatistics();
+
+    if (stats.isEmpty()) {
+      // we have no statistics available, we cannot drop any chunks
+      return false;
+    }
 
     if (isAllNulls(columnChunk)) {
       // we are looking for records where v > someValue
       // this chunk is all nulls, so we can drop it
       return true;
     }
-
-    Statistics<T> stats = columnChunk.getStatistics();
 
     // drop if value >= max
     return value.compareTo(stats.genericGetMax()) >= 0;
@@ -183,14 +205,18 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     Column<T> filterColumn = gtEq.getColumn();
     T value = gtEq.getValue();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
+    Statistics<T> stats = columnChunk.getStatistics();
+
+    if (stats.isEmpty()) {
+      // we have no statistics available, we cannot drop any chunks
+      return false;
+    }
 
     if (isAllNulls(columnChunk)) {
       // we are looking for records where v >= someValue
       // this chunk is all nulls, so we can drop it
       return true;
     }
-
-    Statistics<T> stats = columnChunk.getStatistics();
 
     // drop if value >= max
     return value.compareTo(stats.genericGetMax()) > 0;
@@ -221,6 +247,19 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
     U udp = ud.getUserDefinedPredicate();
     Statistics<T> stats = columnChunk.getStatistics();
+
+    if (stats.isEmpty()) {
+      // we have no statistics available, we cannot drop any chunks
+      return false;
+    }
+
+    if (isAllNulls(columnChunk)) {
+      // there is no min max, there is nothing
+      // else we can say about this chunk, we
+      // cannot drop it.
+      return false;
+    }
+
     parquet.filter2.predicate.Statistics<T> udpStats =
         new parquet.filter2.predicate.Statistics<T>(stats.genericGetMin(), stats.genericGetMax());
 
