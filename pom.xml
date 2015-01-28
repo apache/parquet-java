@@ -1,19 +1,25 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
+  <parent>
+    <groupId>org.apache</groupId>
+    <artifactId>apache</artifactId>
+    <version>14</version>
+  </parent>
+
   <groupId>com.twitter</groupId>
   <artifactId>parquet</artifactId>
   <version>1.6.0rc3-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>Parquet MR</name>
-  <url>https://github.com/Parquet/parquet-mr</url>
+  <name>Apache Parquet MR (Incubating)</name>
+  <url>http://parquet.incubator.apache.org/</url>
   <description>Parquet is a columnar storage format that supports nested data. This provides the java implementation.</description>
 
   <scm>
-    <connection>scm:git:git@github.com:Parquet/parquet-mr.git</connection>
-    <url>scm:git:git@github.com:Parquet/parquet-mr.git</url>
-    <developerConnection>scm:git:git@github.com:Parquet/parquet-mr.git</developerConnection>
+    <connection>scm:git:git@github.com:apache/incubator-parquet-mr.git</connection>
+    <url>scm:git:git@github.com:apache/incubator-parquet-mr.git</url>
+    <developerConnection>scm:git:https://git-wip-us.apache.org/repos/asf/incubator-parquet-format.git</developerConnection>
   </scm>
 
   <licenses>
@@ -23,11 +29,23 @@
     </license>
   </licenses>
 
+  <issueManagement>
+    <system>JIRA</system>
+    <url>https://issues.apache.org/jira/browse/PARQUET</url>
+  </issueManagement>
+
   <mailingLists>
     <mailingList>
-      <name>Dev List</name>
-      <post>parquet-dev@googlegroups.com</post>
-      <archive>https://groups.google.com/d/forum/parquet-dev</archive>
+      <name>Dev Mailing List</name>
+      <post>dev@parquet.incubator.apache.org</post>
+      <subscribe>dev-subscribe@parquet.incubator.apache.org</subscribe>
+      <unsubscribe>dev-unsubscribe@parquet.incubator.apache.org</unsubscribe>
+    </mailingList>
+    <mailingList>
+      <name>Commits Mailing List</name>
+      <post>commits@parquet.incubator.apache.org</post>
+      <subscribe>commits-subscribe@parquet.incubator.apache.org</subscribe>
+      <unsubscribe>commits-unsubscribe@parquet.incubator.apache.org</unsubscribe>
     </mailingList>
   </mailingLists>
 
@@ -314,14 +332,13 @@
         </executions-->
       </plugin>
       <plugin>
+        <!-- Override source and target from the ASF parent -->
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>2.0.2</version>
         <configuration>
           <argLine>-XX:MaxPermSize=256m</argLine>
-          <source>1.6</source>
-          <target>${targetJavaVersion}</target>
-          <encoding>UTF-8</encoding>
+          <source>${maven.compiler.source}</source>
+          <target>${maven.compiler.target}</target>
         </configuration>
       </plugin>
       <plugin>
