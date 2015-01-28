@@ -246,12 +246,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @deprecated use getReadSupportInstance static methods instead
    */
   @Deprecated
-  public ReadSupport<T> getReadSupport(Configuration configuration){
-    if (readSupportClass != null) {
-      return getReadSupportInstance(readSupportClass);
-    } else {
-      return getReadSupportInstance(configuration);
-    }
+  @SuppressWarnings("unchecked")
+  ReadSupport<T> getReadSupport(Configuration configuration){
+    return getReadSupportInstance(readSupportClass == null ?
+        (Class<? extends ReadSupport>) getReadSupportClass(configuration) :
+        readSupportClass);
   }
 
   /**
@@ -261,7 +260,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   @SuppressWarnings("unchecked")
   public static <T> ReadSupport<T> getReadSupportInstance(Configuration configuration){
     return getReadSupportInstance(
-        (Class<? extends ReadSupport>) getReadSupportClass(configuration));
+        (Class<? extends ReadSupport<T>>) getReadSupportClass(configuration));
   }
 
   /**
@@ -269,8 +268,8 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @return the configured read support
    */
   @SuppressWarnings("unchecked")
-  public static <T> ReadSupport<T> getReadSupportInstance(
-      Class<? extends ReadSupport> readSupportClass){
+  static <T> ReadSupport<T> getReadSupportInstance(
+      Class<? extends ReadSupport<T>> readSupportClass){
     try {
       return readSupportClass.newInstance();
     } catch (InstantiationException e) {
@@ -310,7 +309,9 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @param footers the footers of the files to read
    * @return the splits for the footers
    * @throws IOException
+   * @deprecated split planning using file footers will be removed
    */
+  @Deprecated
   public List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers) throws IOException {
     boolean strictTypeChecking = configuration.getBoolean(STRICT_TYPE_CHECKING, true);
     final long maxSplitSize = configuration.getLong("mapred.max.split.size", Long.MAX_VALUE);

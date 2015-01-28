@@ -144,6 +144,9 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       parquetSplit = (ParquetInputSplit) inputSplit;
     } else if (inputSplit instanceof FileSplit) {
       parquetSplit = ParquetInputSplit.from((FileSplit) inputSplit);
+    } else if (inputSplit instanceof org.apache.hadoop.mapred.FileSplit) {
+      parquetSplit = ParquetInputSplit.from(
+          (org.apache.hadoop.mapred.FileSplit) inputSplit);
     } else {
       throw new IllegalArgumentException(
           "Invalid split (not a FileSplit or ParquetInputSplit): " + inputSplit);
