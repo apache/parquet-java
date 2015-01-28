@@ -40,10 +40,6 @@ import static parquet.avro.AvroReadSupport.*;
  * Avro implementation of {@link ReadSupport} for Avro {@link IndexedRecord}s which cover both Avro Specific and
  * Generic. Users should use {@link AvroParquetReader} or {@link AvroParquetInputFormat} rather than using
  * this class directly.
- * <p>{@code AvroReadSupport} that will perform schema evolution, if possible.</p>
- * <p>It is required to set the {@link AvroReadSupport#AVRO_READ_SCHEMA} in the context {@link Configuration}.</p>
- * <p>Avro schemas found in input files will be checked for compatibility against the {@code AVRO_READ_SCHEMA}.</p>
- * <p>A {@code RuntimeException} will be thrown if schemas are not compatible.</p>
  */
 public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
 
@@ -78,10 +74,17 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
     configuration.set(AVRO_DATA_SUPPLIER, clazz.toString());
   }
 
+  /**
+   * Enable the resolution of Avro schemas in the metadata against the {@link #AVRO_READ_SCHEMA}.
+   */
   public static void enableAvroSchemaCompatibilityCheck(Configuration configuration) {
     configuration.setBoolean(AVRO_SCHEMA_COMPATIBILITY_CHECK, true);
   }
 
+  /**
+   * Disable the resolution of Avro schemas in the metadata against the {@link #AVRO_READ_SCHEMA}.
+   * Avro schema compatibility checks are disabled by default.
+   */
   public static void disableAvroSchemaCompatibilityCheck(Configuration configuration) {
     configuration.setBoolean(AVRO_SCHEMA_COMPATIBILITY_CHECK, false);
   }
@@ -115,7 +118,7 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
    * Attempt to merge the Avro schemas listed under the {@code AVRO_SCHEMA_METADATA_KEY} by checking
    * if each schema is compatible with the requested "reader" schema.
    *
-   * <p>Avro schemas in the metadata may differ across our Parquet files, but they may be compatible in terms of Avro schema evolution.</p>
+   * <p>Avro schemas in the metadata may differ, but they may be compatible in terms of Avro schema evolution.</p>
    * <p>For other keys in the metadata, follow the conventions of {@link InitContext#getMergedKeyValueMetaData}.</p>
    *
    * @param context init context that contains unmerged key-value metadata
@@ -159,8 +162,9 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
   }
 
   /**
-   * To initialize, {@link #AVRO_READ_SCHEMA} must be defined in the context configuration.
-   * @see ReadSupport#init(InitContext)
+   * If an {@link #AVRO_READ_SCHEMA} is provided and the {@link #AVRO_SCHEMA_COMPATIBILITY_CHECK}
+   * flag has been set, all Avro schemas found in the metadata will be checked for compatibility
+   * against the {@code AVRO_READ_SCHEMA}.
    */
   @Override
   public ReadContext init(InitContext context) {
