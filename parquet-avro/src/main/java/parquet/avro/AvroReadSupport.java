@@ -34,7 +34,6 @@ import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 
 import static org.apache.avro.SchemaCompatibility.*;
-import static parquet.avro.AvroReadSupport.*;
 
 /**
  * Avro implementation of {@link ReadSupport} for Avro {@link IndexedRecord}s which cover both Avro Specific and
