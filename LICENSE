@@ -187,3 +187,13 @@ Home page: http://lemire.me/en/
 Project page: https://github.com/lemire/JavaFastPFOR
 License: Apache License Version 2.0 http://www.apache.org/licenses/LICENSE-2.0
 
+--------------------------------------------------------------------------------
+
+This product includes code from Apache Spark.
+
+* dev/merge_parquet_pr.py is based on Spark's dev/merge_spark_pr.py
+
+Copyright: 2014 The Apache Software Foundation.
+Home page: https://spark.apache.org/
+License: http://www.apache.org/licenses/LICENSE-2.0
+
