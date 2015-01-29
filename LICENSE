@@ -175,3 +175,15 @@
       of your accepting any such warranty or additional liability.
 
    END OF TERMS AND CONDITIONS
+
+--------------------------------------------------------------------------------
+
+This project includes code from Daniel Lemire's JavaFastPFOR project. The
+"Lemire" bit packing source code produced by parquet-generator is derived from
+the JavaFastPFOR project.
+
+Copyright: 2013 Daniel Lemire
+Home page: http://lemire.me/en/
+Project page: https://github.com/lemire/JavaFastPFOR
+License: Apache License Version 2.0 http://www.apache.org/licenses/LICENSE-2.0
+
