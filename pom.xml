@@ -400,6 +400,7 @@
             <exclude>protobuf_install/**</exclude>
             <exclude>thrift-0.7.0/**</exclude>
             <exclude>thrift-0.7.0.tar.gz</exclude>
+            <exclude>**/dependency-reduced-pom.xml</exclude>
           </excludes>
         </configuration>
       </plugin>
