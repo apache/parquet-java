@@ -29,8 +29,8 @@
   <artifactId>parquet-jackson</artifactId>
   <packaging>jar</packaging>
 
-  <name>Parquet Jackson</name>
-  <url>https://github.com/Parquet/parquet-mr</url>
+  <name>Apache Parquet Jackson (Incubating)</name>
+  <url>https://parquet.incubator.apache.org</url>
 
   <dependencies>
     <dependency>

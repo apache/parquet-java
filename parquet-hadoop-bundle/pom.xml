@@ -29,8 +29,8 @@
   <artifactId>parquet-hadoop-bundle</artifactId>
   <packaging>jar</packaging>
 
-  <name>Parquet Hadoop Bundle</name>
-  <url>https://github.com/Parquet/parquet-mr</url>
+  <name>Apache Parquet Hadoop Bundle (Incubating)</name>
+  <url>https://parquet.incubator.apache.org</url>
 
   <properties>
   </properties>

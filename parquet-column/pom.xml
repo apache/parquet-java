@@ -29,8 +29,8 @@
   <artifactId>parquet-column</artifactId>
   <packaging>jar</packaging>
 
-  <name>Parquet Column</name>
-  <url>https://github.com/Parquet/parquet-mr</url>
+  <name>Apache Parquet Column (Incubating)</name>
+  <url>https://parquet.incubator.apache.org</url>
 
   <properties>
   </properties>

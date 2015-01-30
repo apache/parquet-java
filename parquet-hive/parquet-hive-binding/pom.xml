@@ -27,7 +27,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>parquet-hive-binding</artifactId>
-  <name>Parquet Hive Binding Parent</name>
+  <name>Apache Parquet Hive Binding Parent (Incubating)</name>
   <packaging>pom</packaging>
 
   <!-- provides javax.jdo:jdo2-api:jar:2.3-ec -->

@@ -13,7 +13,7 @@
   <packaging>pom</packaging>
 
   <name>Apache Parquet MR (Incubating)</name>
-  <url>http://parquet.incubator.apache.org/</url>
+  <url>https://parquet.incubator.apache.org</url>
   <description>Parquet is a columnar storage format that supports nested data. This provides the java implementation.</description>
 
   <scm>

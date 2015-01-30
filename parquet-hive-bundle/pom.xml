@@ -29,8 +29,8 @@
   <artifactId>parquet-hive-bundle</artifactId>
   <packaging>jar</packaging>
 
-  <name>Parquet Hive Bundle</name>
-  <url>https://github.com/Parquet/parquet-mr</url>
+  <name>Apache Parquet Hive Bundle (Incubating)</name>
+  <url>https://parquet.incubator.apache.org</url>
 
   <properties>
   </properties>

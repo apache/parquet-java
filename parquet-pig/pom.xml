@@ -29,8 +29,8 @@
   <artifactId>parquet-pig</artifactId>
   <packaging>jar</packaging>
 
-  <name>Parquet Pig</name>
-  <url>https://github.com/Parquet/parquet-mr</url>
+  <name>Apache Parquet Pig (Incubating)</name>
+  <url>https://parquet.incubator.apache.org</url>
 
   <properties>
   </properties>

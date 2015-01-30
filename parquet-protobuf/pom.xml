@@ -17,8 +17,8 @@
   </properties>
 
 
-  <name>Parquet Protobuf</name>
-  <url>https://github.com/Parquet/parquet-mr</url>
+  <name>Apache Parquet Protobuf (Incubating)</name>
+  <url>https://parquet.incubator.apache.org</url>
 
   <dependencies>
     <dependency>

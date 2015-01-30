@@ -29,8 +29,8 @@
   <artifactId>parquet-generator</artifactId>
   <packaging>jar</packaging>
 
-  <name>Parquet Generator</name>
-  <url>https://github.com/Parquet/parquet-mr</url>
+  <name>Apache Parquet Generator (Incubating)</name>
+  <url>https://parquet.incubator.apache.org</url>
 
   <properties>
   </properties>

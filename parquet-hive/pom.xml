@@ -29,8 +29,8 @@
   <artifactId>parquet-hive</artifactId>
   <packaging>pom</packaging>
 
-  <name>Parquet Hive</name>
-  <url>https://github.com/Parquet/parquet-mr</url>
+  <name>Apache Parquet Hive (Incubating)</name>
+  <url>https://parquet.incubator.apache.org</url>
 
   <developers>
     <developer>

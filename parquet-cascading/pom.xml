@@ -29,8 +29,8 @@
   <artifactId>parquet-cascading</artifactId>
   <packaging>jar</packaging>
 
-  <name>Parquet Cascading</name>
-  <url>https://github.com/Parquet/parquet-mr</url>
+  <name>Apache Parquet Cascading (Incubating)</name>
+  <url>https://parquet.incubator.apache.org</url>
 
   <repositories>
     <repository>
