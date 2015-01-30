@@ -82,6 +82,21 @@
             </goals>
             <configuration>
               <minimizeJar>false</minimizeJar>
+              <filters>
+                <filter>
+                  <artifact>org.xerial.snappy:*</artifact>
+                  <excludes>
+                    <exclude>**/LICENSE</exclude>
+                  </excludes>
+                </filter>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/LICENSE.txt</exclude>
+                    <exclude>META-INF/NOTICE.txt</exclude>
+                  </excludes>
+                </filter>
+              </filters>
               <artifactSet>
                 <includes>
                   <include>*</include>
