@@ -131,7 +131,6 @@ public class MessageColumnIO extends GroupColumnIO {
         } 
          
         getFilterColumnNames(predicate, hSet);
-        System.out.println(hSet.toString());
         IncrementallyUpdatedFilterPredicateBuilder builder = new IncrementallyUpdatedFilterPredicateBuilder();
         IncrementallyUpdatedFilterPredicate streamingPredicate = builder.build(predicate);
         FilteringRecordMaterializer<T> filteringRecordMaterializer = new FilteringRecordMaterializer<T>(
