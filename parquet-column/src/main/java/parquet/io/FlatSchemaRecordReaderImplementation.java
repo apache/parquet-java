@@ -93,9 +93,9 @@ class FlatSchemaRecordReaderImplementation<T> extends RecordReader<T> {
     }
 
     for(int i = 0; i < leaves.length; i++) {
-      PrimitiveColumnIO leafColumnIO = leaves[i];
-      maxDefinitionLevel[order[i]] = leafColumnIO.getDefinitionLevel();
-      columnReaders[order[i]] = columnStore.getColumnReader(leafColumnIO.getColumnDescriptor());
+      PrimitiveColumnIO leafColumnIO = leaves[order[i]];
+      maxDefinitionLevel[i] = leafColumnIO.getDefinitionLevel();
+      columnReaders[i] = columnStore.getColumnReader(leafColumnIO.getColumnDescriptor());
     }
   }
 
@@ -122,6 +122,7 @@ class FlatSchemaRecordReaderImplementation<T> extends RecordReader<T> {
         ColumnReader columnReader = columnReaders[i];
         int d = columnReader.getCurrentDefinitionLevel();
         int m = maxDefinitionLevel[i];
+
         if (d >= m) {
           // not null
           columnReader.writeCurrentValueToConverter();
@@ -131,7 +132,6 @@ class FlatSchemaRecordReaderImplementation<T> extends RecordReader<T> {
     
     // evaluate the filter
     if(!recordMaterializer.getFilterResult()) {
-      
       // row is rejected, skip the rest of the read
       for(int i = filterStatesOffset; i < numCols; i++) {
         ColumnReader columnReader = columnReaders[i];
