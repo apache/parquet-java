@@ -461,7 +461,7 @@ public final class Operators {
 
   // Represents the inverse of a UserDefined. It is equivalent to not(userDefined), without the use
   // of the not() operator
-  public static final class LogicalNotUserDefined <T extends Comparable<T>, U extends UserDefinedPredicate<T> > implements FilterPredicate, Serializable {
+  public static final class LogicalNotUserDefined <T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
     private final UserDefined<T, U> udp;
     private final String toString;
 
