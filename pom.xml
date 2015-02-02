@@ -365,6 +365,44 @@
          </execution>
        </executions>
       </plugin>
+      <plugin>
+        <groupId>org.apache.rat</groupId>
+        <artifactId>apache-rat-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>test</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <excludes>
+            <exclude>**/*.parquet</exclude>
+            <exclude>**/*.avro</exclude>
+            <exclude>**/*.json</exclude>
+            <exclude>**/names.txt</exclude> <!-- parquet-cascading test data -->
+            <exclude>**/*.avsc</exclude>
+            <exclude>**/*.iml</exclude>
+            <exclude>**/*.log</exclude>
+            <exclude>**/*.md.vm</exclude>
+            <exclude>**/.classpath</exclude>
+            <exclude>**/.project</exclude>
+            <exclude>**/.settings/**</exclude>
+            <exclude>**/build/**</exclude>
+            <exclude>**/target/**</exclude>
+            <exclude>.git/**</exclude>
+            <exclude>.gitignore</exclude>
+            <exclude>.idea/**</exclude>
+            <exclude>*/jdiff/*.xml</exclude>
+            <exclude>.travis.yml</exclude>
+            <exclude>licenses/**</exclude>
+            <exclude>protobuf_install/**</exclude>
+            <exclude>thrift-0.7.0/**</exclude>
+            <exclude>thrift-0.7.0.tar.gz</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 
