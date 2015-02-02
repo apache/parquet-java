@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaCompatibility.SchemaCompatibilityType;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ReflectionUtils;
@@ -33,7 +34,7 @@ import parquet.hadoop.api.ReadSupport;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
 
-import static org.apache.avro.SchemaCompatibility.*;
+import static org.apache.avro.SchemaCompatibility.checkReaderWriterCompatibility;
 
 /**
  * Avro implementation of {@link ReadSupport} for Avro {@link IndexedRecord}s which cover both Avro Specific and
@@ -44,11 +45,11 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
 
   public static String AVRO_REQUESTED_PROJECTION = "parquet.avro.projection";
 
-  public static final String AVRO_READ_SCHEMA = "parquet.avro.read.schema";
+  static final String AVRO_READ_SCHEMA = "parquet.avro.read.schema";
 
-  public static final String AVRO_SCHEMA_COMPATIBILITY_CHECK = "parquet.avro.schema.compatibility";
+  static final String AVRO_SCHEMA_COMPATIBILITY_CHECK = "parquet.avro.schema.compatibility";
 
-  public static final String AVRO_SCHEMA_METADATA_KEY = "avro.schema";
+  static final String AVRO_SCHEMA_METADATA_KEY = "avro.schema";
 
   private static final String AVRO_READ_SCHEMA_METADATA_KEY = "avro.read.schema";
 
@@ -146,8 +147,9 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
           Schema writerSchema = parser.parse(s);
           writerSchemas.add(writerSchema);
         }
-        if (!areSchemasCompatible(readerSchema, writerSchemas))
+        if (!areSchemasCompatible(readerSchema, writerSchemas)) {
           throw new RuntimeException("could not merge metadata: key " + AVRO_SCHEMA_METADATA_KEY + " contains incompatible schemas");
+        }
         // if all writer schemas are compatible with the reader, reassign metadata schema to the reader schema
         mergedKeyValueMetadata.put(AVRO_SCHEMA_METADATA_KEY, readerSchema.toString());
       } else if (entry.getValue().size() > 1) {
@@ -160,13 +162,12 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
     return mergedKeyValueMetadata;
   }
 
-  /**
+ /**
    * If an {@link #AVRO_READ_SCHEMA} is provided and the {@link #AVRO_SCHEMA_COMPATIBILITY_CHECK}
    * flag has been set, all Avro schemas found in the metadata will be checked for compatibility
    * against the {@code AVRO_READ_SCHEMA}.
    */
-  @Override
-  public ReadContext init(InitContext context) {
+  static Map<String, String> getMergedKeyValueMetadata(InitContext context) {
     Configuration configuration = context.getConfiguration();
     String readerSchemaString = configuration.get(AVRO_READ_SCHEMA);
     boolean checkSchemaCompatibility = configuration.getBoolean(AVRO_SCHEMA_COMPATIBILITY_CHECK, false);
@@ -175,18 +176,24 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
     if (readerSchemaString != null && checkSchemaCompatibility) {
       Schema.Parser parser = new Schema.Parser();
       Schema readerSchema = parser.parse(readerSchemaString);
-      return init(configuration, mergeKeyValueMetadata(context, readerSchema), context.getFileSchema());
+      return mergeKeyValueMetadata(context, readerSchema);
     // otherwise, do not attempt to perform schema resolution/evolution
     } else {
-      return init(configuration, context.getMergedKeyValueMetaData(), context.getFileSchema());
+      Map<String, String> metadata = context.getMergedKeyValueMetaData();
+      if (readerSchemaString != null) {
+        metadata.put(AVRO_READ_SCHEMA_METADATA_KEY, readerSchemaString);
+      }
+      return metadata;
     }
   }
 
   @Override
-  public ReadContext init(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
+  public ReadContext init(InitContext context) {
+    MessageType fileSchema = context.getFileSchema();
     MessageType schema = fileSchema;
-    Map<String, String> metadata = null;
-
+    Map<String, String> metadata = getMergedKeyValueMetadata(context);
+    // replace Parquet schema with one created from an Avro projection, iff one is supplied
+    Configuration configuration = context.getConfiguration();
     String requestedProjectionString = configuration.get(AVRO_REQUESTED_PROJECTION);
     if (requestedProjectionString != null) {
       Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);
