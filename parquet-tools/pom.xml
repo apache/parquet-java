@@ -11,8 +11,8 @@
   <artifactId>parquet-tools</artifactId>
   <packaging>jar</packaging>
 
-  <name>Parquet Tools</name>
-  <url>https://github.com/Parquet/parquet-mr</url>
+  <name>Apache Parquet Tools (Incubating)</name>
+  <url>https://parquet.incubator.apache.org</url>
 
   <properties>
       <hadoop.scope>provided</hadoop.scope>
@@ -82,6 +82,21 @@
             </goals>
             <configuration>
               <minimizeJar>false</minimizeJar>
+              <filters>
+                <filter>
+                  <artifact>org.xerial.snappy:*</artifact>
+                  <excludes>
+                    <exclude>**/LICENSE</exclude>
+                  </excludes>
+                </filter>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/LICENSE.txt</exclude>
+                    <exclude>META-INF/NOTICE.txt</exclude>
+                  </excludes>
+                </filter>
+              </filters>
               <artifactSet>
                 <includes>
                   <include>*</include>
