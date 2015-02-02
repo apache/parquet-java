@@ -13,12 +13,14 @@ import parquet.filter2.predicate.Operators.Eq;
 import parquet.filter2.predicate.Operators.Gt;
 import parquet.filter2.predicate.Operators.GtEq;
 import parquet.filter2.predicate.Operators.LogicalNotUserDefined;
+import parquet.filter2.predicate.Operators.LogicalNotConfiguredUserDefined;
 import parquet.filter2.predicate.Operators.Lt;
 import parquet.filter2.predicate.Operators.LtEq;
 import parquet.filter2.predicate.Operators.Not;
 import parquet.filter2.predicate.Operators.NotEq;
 import parquet.filter2.predicate.Operators.Or;
 import parquet.filter2.predicate.Operators.UserDefined;
+import parquet.filter2.predicate.Operators.ConfiguredUserDefined;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
 
@@ -129,13 +131,24 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> Void visit(UserDefined<T, U, S> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> > Void visit(UserDefined<T, U> udp) {
     validateColumn(udp.getColumn());
     return null;
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> Void visit(LogicalNotUserDefined<T, U, S> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> Void visit(ConfiguredUserDefined<T, U> udp) {
+    validateColumn(udp.getColumn());
+    return null;
+  }
+
+  @Override
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> > Void visit(LogicalNotUserDefined<T, U> udp) {
+    return udp.getUserDefined().accept(this);
+  }
+
+  @Override
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> Void visit(LogicalNotConfiguredUserDefined<T, U> udp) {
     return udp.getUserDefined().accept(this);
   }
 

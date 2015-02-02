@@ -340,20 +340,19 @@ public final class Operators {
     }
   }
 
-  public static final class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> implements FilterPredicate, Serializable {
+  public static final class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T> > implements FilterPredicate, Serializable {
     private final Column<T> column;
     private final Class<U> udpClass;
     private final String toString;
-    private final S udpConfig;
+
     private static final String INSTANTIATION_ERROR_MESSAGE =
         "Could not instantiate custom filter: %s. User defined predicates must be static classes with a default constructor.";
 
-    UserDefined(Column<T> column, Class<U> udpClass, S udpConfigParam) {
+    UserDefined(Column<T> column, Class<U> udpClass) {
       this.column = checkNotNull(column, "column");
       this.udpClass = checkNotNull(udpClass, "udpClass");
       String name = getClass().getSimpleName().toLowerCase();
       this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udpClass.getName() + ")";
-      this.udpConfig = udpConfigParam;
 
       // defensively try to instantiate the class early to make sure that it's possible
       getUserDefinedPredicate();
@@ -369,9 +368,7 @@ public final class Operators {
 
     public U getUserDefinedPredicate() {
       try {
-        U udpInstance = udpClass.newInstance();
-        udpInstance.configure(udpConfig);
-        return udpInstance;
+        return udpClass.newInstance();
       } catch (InstantiationException e) {
         throw new RuntimeException(String.format(INSTANTIATION_ERROR_MESSAGE, udpClass), e);
       } catch (IllegalAccessException e) {
@@ -411,18 +408,70 @@ public final class Operators {
     }
   }
 
-  // Represents the inverse of a UserDefined. It is equivalent to not(userDefined), without the use
-  // of the not() operator
-  public static final class LogicalNotUserDefined <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable> implements FilterPredicate, Serializable {
-    private final UserDefined<T, U, S> udp;
+  public static final class ConfiguredUserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable > implements FilterPredicate {
+    private final Column<T> column;
+    private final U udp;
     private final String toString;
 
-    LogicalNotUserDefined(UserDefined<T, U, S> userDefined) {
+    ConfiguredUserDefined(Column<T> column, U udp) {
+      this.column = checkNotNull(column, "column");
+      this.udp = checkNotNull(udp, "udp");
+      String name = getClass().getSimpleName().toLowerCase();
+      this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udp.getClass().getName() + ")";
+    }
+
+    public Column<T> getColumn() {
+      return column;
+    }
+
+    public U getUserDefinedPredicate() {
+      return udp;
+    }
+
+    @Override
+    public <R> R accept(Visitor<R> visitor) {
+      return visitor.visit(this);
+    }
+
+    @Override
+    public String toString() {
+      return toString;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      ConfiguredUserDefined that = (ConfiguredUserDefined) o;
+
+      if (!column.equals(that.column)) return false;
+      if (!udp.equals(that.udp)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = column.hashCode();
+      result = 31 * result + udp.hashCode();
+      result = result * 31 + getClass().hashCode();
+      return result;
+    }
+  }
+
+  // Represents the inverse of a UserDefined. It is equivalent to not(userDefined), without the use
+  // of the not() operator
+  public static final class LogicalNotUserDefined <T extends Comparable<T>, U extends UserDefinedPredicate<T> > implements FilterPredicate, Serializable {
+    private final UserDefined<T, U> udp;
+    private final String toString;
+
+    LogicalNotUserDefined(UserDefined<T, U> userDefined) {
       this.udp = checkNotNull(userDefined, "userDefined");
       this.toString = "inverted(" + udp + ")";
     }
 
-    public UserDefined<T, U, S> getUserDefined() {
+    public UserDefined<T, U> getUserDefined() {
       return udp;
     }
 
@@ -456,4 +505,48 @@ public final class Operators {
     }
   }
 
+  // Represents the inverse of a ConfiguredUserDefined. It is equivalent to not(userDefined), without the use
+  // of the not() operator
+  public static final class LogicalNotConfiguredUserDefined <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable > implements FilterPredicate, Serializable {
+    private final ConfiguredUserDefined<T, U> udp;
+    private final String toString;
+
+    LogicalNotConfiguredUserDefined(ConfiguredUserDefined<T, U> configuredUserDefined) {
+      this.udp = checkNotNull(configuredUserDefined, "configuredUserDefined");
+      this.toString = "inverted(" + udp + ")";
+    }
+
+    public ConfiguredUserDefined<T, U> getUserDefined() {
+      return udp;
+    }
+
+    @Override
+    public <R> R accept(Visitor<R> visitor) {
+      return visitor.visit(this);
+    }
+
+    @Override
+    public String toString() {
+      return toString;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      LogicalNotUserDefined that = (LogicalNotUserDefined) o;
+
+      if (!udp.equals(that.udp)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = udp.hashCode();
+      result = result * 31 + getClass().hashCode();
+      return result;
+    }
+  }
 }

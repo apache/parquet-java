@@ -1,6 +1,5 @@
 package parquet.filter2.predicate;
 
-import java.io.Serializable;
 import org.junit.Test;
 
 import parquet.filter2.predicate.Operators.DoubleColumn;
@@ -27,14 +26,14 @@ public class TestLogicalInverter {
   private static final IntColumn intColumn = intColumn("a.b.c");
   private static final DoubleColumn doubleColumn = doubleColumn("a.b.c");
 
-  private  static  final UserDefined<Integer, DummyUdp, Serializable> ud = userDefined(intColumn, DummyUdp.class, null);
+  private  static  final UserDefined<Integer, DummyUdp> ud = userDefined(intColumn, DummyUdp.class);
 
   private static final FilterPredicate complex =
       and(
           or(ltEq(doubleColumn, 12.0),
               and(
                   not(or(eq(intColumn, 7), notEq(intColumn, 17))),
-                  userDefined(intColumn, DummyUdp.class, null))),
+                  userDefined(intColumn, DummyUdp.class))),
           or(gt(doubleColumn, 100.0), notEq(intColumn, 77)));
 
   private static final FilterPredicate complexInverse =
@@ -42,7 +41,7 @@ public class TestLogicalInverter {
           and(gt(doubleColumn, 12.0),
               or(
                   or(eq(intColumn, 7), notEq(intColumn, 17)),
-                  new LogicalNotUserDefined<Integer, DummyUdp, Serializable>(userDefined(intColumn, DummyUdp.class, null)))),
+                  new LogicalNotUserDefined<Integer, DummyUdp>(userDefined(intColumn, DummyUdp.class)))),
           and(ltEq(doubleColumn, 100.0), eq(intColumn, 77)));
 
   @Test
@@ -64,10 +63,10 @@ public class TestLogicalInverter {
 
     assertEquals(eq(intColumn, 17), invert(not(eq(intColumn, 17))));
 
-    UserDefined<Integer, DummyUdp, Serializable> ud = userDefined(intColumn, DummyUdp.class, null);
-    assertEquals(new LogicalNotUserDefined<Integer, DummyUdp, Serializable>(ud), invert(ud));
+    UserDefined<Integer, DummyUdp> ud = userDefined(intColumn, DummyUdp.class);
+    assertEquals(new LogicalNotUserDefined<Integer, DummyUdp>(ud), invert(ud));
     assertEquals(ud, invert(not(ud)));
-    assertEquals(ud, invert(new LogicalNotUserDefined<Integer, DummyUdp, Serializable>(ud)));
+    assertEquals(ud, invert(new LogicalNotUserDefined<Integer, DummyUdp>(ud)));
   }
 
   @Test

@@ -145,7 +145,7 @@ public class TestRecordLevelFilters {
     });
   }
 
-  public static class StartWithP extends UserDefinedPredicate<Binary, Serializable> {
+  public static class StartWithP extends UserDefinedPredicate<Binary> {
 
     @Override
     public boolean keep(Binary value) {
@@ -166,7 +166,13 @@ public class TestRecordLevelFilters {
     }
   }
   
-  public static class SetInFilter extends UserDefinedPredicate<Long, HashSet<Long>> {
+  public static class SetInFilter extends UserDefinedPredicate<Long> implements Serializable {
+
+    HashSet<Long> hSet;
+
+    public SetInFilter(HashSet<Long> phSet) {
+      hSet = phSet;
+    }
 
     @Override
     public boolean keep(Long value) {
@@ -174,7 +180,7 @@ public class TestRecordLevelFilters {
         return false;
       }
 
-      return udpConfig.contains(value);
+      return hSet.contains(value);
     }
 
     @Override
@@ -192,7 +198,7 @@ public class TestRecordLevelFilters {
   public void testNameNotStartWithP() throws Exception {
     BinaryColumn name = binaryColumn("name");
 
-    FilterPredicate pred = not(userDefined(name, StartWithP.class, null));
+    FilterPredicate pred = not(userDefined(name, StartWithP.class));
 
     List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
 
@@ -211,7 +217,7 @@ public class TestRecordLevelFilters {
     HashSet<Long> h = new HashSet<Long>() {{
           add(20L); add(27L); add(28L);
     }}; 
-    FilterPredicate pred = userDefined(name, SetInFilter.class, h);
+    FilterPredicate pred = userDefined(name, new SetInFilter(h));
 
     List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
 

@@ -7,6 +7,7 @@ import parquet.filter2.predicate.Operators.And;
 import parquet.filter2.predicate.Operators.BinaryColumn;
 import parquet.filter2.predicate.Operators.BooleanColumn;
 import parquet.filter2.predicate.Operators.Column;
+import parquet.filter2.predicate.Operators.ConfiguredUserDefined;
 import parquet.filter2.predicate.Operators.DoubleColumn;
 import parquet.filter2.predicate.Operators.Eq;
 import parquet.filter2.predicate.Operators.FloatColumn;
@@ -147,10 +148,16 @@ public final class FilterApi {
   /**
    * Keeps records that pass the provided {@link UserDefinedPredicate}
    */
-  public static <T extends Comparable<T>, U extends UserDefinedPredicate<T, S>, S extends Serializable>
-    UserDefined<T, U, S> userDefined(Column<T> column, Class<U> clazz, S o) {
-    return new UserDefined<T, U, S>(column, clazz, o);
+  public static <T extends Comparable<T>, U extends UserDefinedPredicate<T>>
+    UserDefined<T, U> userDefined(Column<T> column, Class<U> clazz) {
+    return new UserDefined<T, U>(column, clazz);
   }
+
+  public static <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable>
+    ConfiguredUserDefined<T, U> userDefined(Column<T> column, U udp) {
+    return new ConfiguredUserDefined<T, U> (column, udp);
+  }
+
 
   /**
    * Constructs the logical and of two predicates. Records will be kept if both the left and right predicate agree

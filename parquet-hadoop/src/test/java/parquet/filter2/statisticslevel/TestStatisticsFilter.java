@@ -220,7 +220,7 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(or(no, no), columnMetas));
   }
 
-  public static class SevensAndEightsUdp extends UserDefinedPredicate<Integer, Serializable> {
+  public static class SevensAndEightsUdp extends UserDefinedPredicate<Integer> {
 
     @Override
     public boolean keep(Integer value) {
@@ -240,8 +240,8 @@ public class TestStatisticsFilter {
 
   @Test
   public void testUdp() {
-    FilterPredicate pred = userDefined(intColumn, SevensAndEightsUdp.class, null);
-    FilterPredicate invPred = LogicalInverseRewriter.rewrite(not(userDefined(intColumn, SevensAndEightsUdp.class, null)));
+    FilterPredicate pred = userDefined(intColumn, SevensAndEightsUdp.class);
+    FilterPredicate invPred = LogicalInverseRewriter.rewrite(not(userDefined(intColumn, SevensAndEightsUdp.class)));
 
     IntStatistics seven = new IntStatistics();
     seven.setMinMax(7, 7);

@@ -3,7 +3,6 @@ package parquet.filter2.predicate;
 import java.io.Serializable;
 import org.junit.Test;
 
-import java.io.Serializable;
 import parquet.filter2.predicate.Operators.BinaryColumn;
 import parquet.filter2.predicate.Operators.IntColumn;
 import parquet.filter2.predicate.Operators.LongColumn;
@@ -48,10 +47,10 @@ public class TestSchemaCompatibilityValidator {
           or(ltEq(stringC, Binary.fromString("foo")),
               and(
                   not(or(eq(intBar, 17), notEq(intBar, 17))),
-                  userDefined(intBar, DummyUdp.class, null))),
+                  userDefined(intBar, DummyUdp.class))),
           or(gt(stringC, Binary.fromString("bar")), notEq(stringC, Binary.fromString("baz"))));
 
-  static class LongDummyUdp extends UserDefinedPredicate<Long, Serializable> {
+  static class LongDummyUdp extends UserDefinedPredicate<Long> {
     @Override
     public boolean keep(Long value) {
       return false;
@@ -73,7 +72,7 @@ public class TestSchemaCompatibilityValidator {
           or(ltEq(stringC, Binary.fromString("foo")),
               and(
                   not(or(eq(longBar, 17L), notEq(longBar, 17L))),
-                  userDefined(longBar, LongDummyUdp.class, null))),
+                  userDefined(longBar, LongDummyUdp.class))),
           or(gt(stringC, Binary.fromString("bar")), notEq(stringC, Binary.fromString("baz"))));
 
   private static final FilterPredicate complexMixedType =
@@ -81,7 +80,7 @@ public class TestSchemaCompatibilityValidator {
           or(ltEq(stringC, Binary.fromString("foo")),
               and(
                   not(or(eq(intBar, 17), notEq(longBar, 17L))),
-                  userDefined(longBar, LongDummyUdp.class, null))),
+                  userDefined(longBar, LongDummyUdp.class))),
           or(gt(stringC, Binary.fromString("bar")), notEq(stringC, Binary.fromString("baz"))));
 
   @Test

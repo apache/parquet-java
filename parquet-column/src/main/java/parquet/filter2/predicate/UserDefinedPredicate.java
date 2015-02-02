@@ -1,7 +1,5 @@
 package parquet.filter2.predicate;
 
-import java.io.Serializable;
-
 /**
  * A UserDefinedPredicate decides whether a record should be kept or dropped, first by
  * inspecting meta data about a group of records to see if the entire group can be dropped,
@@ -12,12 +10,7 @@ import java.io.Serializable;
  */
 // TODO: consider avoiding autoboxing and adding the specialized methods for each type
 // TODO: downside is that's fairly unwieldy for users
-public abstract class UserDefinedPredicate<T extends Comparable<T>, S extends Serializable> {
-
-  /*
-   * An object that can be used for filtering in the keep method 
-   */
-  protected S udpConfig;
+public abstract class UserDefinedPredicate<T extends Comparable<T> > {
   /**
    * A udp must have a default constructor.
    * The udp passed to {@link FilterApi} will not be serialized along with its state.
@@ -26,17 +19,8 @@ public abstract class UserDefinedPredicate<T extends Comparable<T>, S extends Se
    */
   public UserDefinedPredicate() { }
 
-  /*
-   * This method is used to set the object that is used in the keep method for filtering.
-   * Called before returning the new instance of this class.
-   */
-  public void configure(S udpConfigParam) { 
-    this.udpConfig = udpConfigParam; 
-  }
-
   /**
    * Return true to keep the record with this value, false to drop it.
-   * o is a filter object that can be used for filtering the value.
    */
   public abstract boolean keep(T value);
 

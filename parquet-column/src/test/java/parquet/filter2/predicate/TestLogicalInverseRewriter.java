@@ -1,6 +1,5 @@
 package parquet.filter2.predicate;
 
-import java.io.Serializable;
 import org.junit.Test;
 
 import parquet.filter2.predicate.Operators.DoubleColumn;
@@ -33,7 +32,7 @@ public class TestLogicalInverseRewriter {
               or(ltEq(doubleColumn, 12.0),
                   and(
                       not(or(eq(intColumn, 7), notEq(intColumn, 17))),
-                      userDefined(intColumn, DummyUdp.class, null)))),
+                      userDefined(intColumn, DummyUdp.class)))),
           or(gt(doubleColumn, 100.0), not(gtEq(intColumn, 77))));
 
   private static final FilterPredicate complexCollapsed =
@@ -41,7 +40,7 @@ public class TestLogicalInverseRewriter {
           and(gt(doubleColumn, 12.0),
               or(
                   or(eq(intColumn, 7), notEq(intColumn, 17)),
-                  new LogicalNotUserDefined<Integer, DummyUdp, Serializable>(userDefined(intColumn, DummyUdp.class, null)))),
+                  new LogicalNotUserDefined<Integer, DummyUdp>(userDefined(intColumn, DummyUdp.class)))),
           or(gt(doubleColumn, 100.0), lt(intColumn, 77)));
 
   private static void assertNoOp(FilterPredicate p) {
@@ -50,7 +49,7 @@ public class TestLogicalInverseRewriter {
 
   @Test
   public void testBaseCases() {
-    UserDefined<Integer, DummyUdp, Serializable> ud = userDefined(intColumn, DummyUdp.class, null);
+    UserDefined<Integer, DummyUdp> ud = userDefined(intColumn, DummyUdp.class);
 
     assertNoOp(eq(intColumn, 17));
     assertNoOp(notEq(intColumn, 17));
@@ -68,7 +67,7 @@ public class TestLogicalInverseRewriter {
     assertEquals(gt(intColumn, 17), rewrite(not(ltEq(intColumn, 17))));
     assertEquals(ltEq(intColumn, 17), rewrite(not(gt(intColumn, 17))));
     assertEquals(lt(intColumn, 17), rewrite(not(gtEq(intColumn, 17))));
-    assertEquals(new LogicalNotUserDefined<Integer, DummyUdp, Serializable>(ud), rewrite(not(ud)));
+    assertEquals(new LogicalNotUserDefined<Integer, DummyUdp>(ud), rewrite(not(ud)));
 
     FilterPredicate notedAnd = not(and(eq(intColumn, 17), eq(doubleColumn, 12.0)));
     FilterPredicate distributedAnd = or(notEq(intColumn, 17), notEq(doubleColumn, 12.0));
