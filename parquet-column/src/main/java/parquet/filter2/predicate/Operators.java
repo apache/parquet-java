@@ -340,11 +340,10 @@ public final class Operators {
     }
   }
 
-  public static final class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T> > implements FilterPredicate, Serializable {
+  public static final class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
     private final Column<T> column;
     private final Class<U> udpClass;
     private final String toString;
-
     private static final String INSTANTIATION_ERROR_MESSAGE =
         "Could not instantiate custom filter: %s. User defined predicates must be static classes with a default constructor.";
 

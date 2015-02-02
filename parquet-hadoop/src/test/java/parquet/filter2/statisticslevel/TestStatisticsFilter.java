@@ -3,7 +3,6 @@ package parquet.filter2.statisticslevel;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.io.Serializable;
 
 import org.junit.Test;
 

@@ -110,7 +110,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     addVisitEnd();
 
     add("  @Override\n" +
-        "  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> > IncrementallyUpdatedFilterPredicate visit(UserDefined<T, U> pred) {\n");
+        "  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> IncrementallyUpdatedFilterPredicate visit(UserDefined<T, U> pred) {\n");
     addUdpBegin();
     for (TypeInfo info : TYPES) {
       addUdpCase(info, false);
@@ -126,7 +126,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     addVisitEnd();
 
     add("  @Override\n" +
-        "  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> > IncrementallyUpdatedFilterPredicate visit(LogicalNotUserDefined<T, U> notPred) {\n" +
+        "  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> IncrementallyUpdatedFilterPredicate visit(LogicalNotUserDefined<T, U> notPred) {\n" +
         "    UserDefined<T, U> pred = notPred.getUserDefined();\n");
     addUdpBegin();
     for (TypeInfo info : TYPES) {

@@ -219,7 +219,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
         "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? " + not);
   }
 
-  private <T extends Comparable<T>, U extends UserDefinedPredicate<T> > Boolean visit(UserDefined<T, U> ud, boolean inverted) {
+  private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud, boolean inverted) {
     Column<T> filterColumn = ud.getColumn();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
     U udp = ud.getUserDefinedPredicate();
@@ -250,7 +250,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> > Boolean visit(UserDefined<T, U> ud) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud) {
     return visit(ud, false);
   }
 
@@ -260,12 +260,12 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> > Boolean visit(LogicalNotUserDefined<T, U> lnud) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(LogicalNotUserDefined<T, U> lnud) {
     return visit(lnud.getUserDefined(), true);
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable > Boolean visit(LogicalNotConfiguredUserDefined<T, U> lnud) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> Boolean visit(LogicalNotConfiguredUserDefined<T, U> lnud) {
     return visit(lnud.getUserDefined(), true);
   }
 }

@@ -10,7 +10,7 @@ package parquet.filter2.predicate;
  */
 // TODO: consider avoiding autoboxing and adding the specialized methods for each type
 // TODO: downside is that's fairly unwieldy for users
-public abstract class UserDefinedPredicate<T extends Comparable<T> > {
+public abstract class UserDefinedPredicate<T extends Comparable<T>> {
   /**
    * A udp must have a default constructor.
    * The udp passed to {@link FilterApi} will not be serialized along with its state.

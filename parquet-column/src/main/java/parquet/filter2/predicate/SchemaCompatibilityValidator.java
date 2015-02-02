@@ -131,7 +131,7 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> > Void visit(UserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Void visit(UserDefined<T, U> udp) {
     validateColumn(udp.getColumn());
     return null;
   }
@@ -143,7 +143,7 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> > Void visit(LogicalNotUserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Void visit(LogicalNotUserDefined<T, U> udp) {
     return udp.getUserDefined().accept(this);
   }
 

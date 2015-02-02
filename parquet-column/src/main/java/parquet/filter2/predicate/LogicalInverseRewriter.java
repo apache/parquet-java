@@ -88,7 +88,7 @@ public final class LogicalInverseRewriter implements Visitor<FilterPredicate> {
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> > FilterPredicate visit(UserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(UserDefined<T, U> udp) {
     return udp;
   }
 
@@ -98,7 +98,7 @@ public final class LogicalInverseRewriter implements Visitor<FilterPredicate> {
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> > FilterPredicate visit(LogicalNotUserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(LogicalNotUserDefined<T, U> udp) {
     return udp;
   }
 

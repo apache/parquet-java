@@ -1,7 +1,5 @@
 package parquet.filter2.predicate;
 
-import java.io.Serializable;
-
 public class DummyUdp extends UserDefinedPredicate<Integer> {
 
   @Override

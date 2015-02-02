@@ -1,6 +1,5 @@
 package parquet.filter2.predicate;
 
-import java.io.Serializable;
 import org.junit.Test;
 
 import parquet.filter2.predicate.Operators.BinaryColumn;

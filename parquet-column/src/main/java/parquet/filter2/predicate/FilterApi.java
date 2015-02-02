@@ -152,12 +152,14 @@ public final class FilterApi {
     UserDefined<T, U> userDefined(Column<T> column, Class<U> clazz) {
     return new UserDefined<T, U>(column, clazz);
   }
-
+  
+  /**
+   * Similar to above but allows to pass Serializable {@link UserDefinedPredicate}
+   */
   public static <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable>
     ConfiguredUserDefined<T, U> userDefined(Column<T> column, U udp) {
     return new ConfiguredUserDefined<T, U> (column, udp);
   }
-
 
   /**
    * Constructs the logical and of two predicates. Records will be kept if both the left and right predicate agree

@@ -15,6 +15,7 @@ import parquet.filter2.predicate.Operators.Not;
 import parquet.filter2.predicate.Operators.NotEq;
 import parquet.filter2.predicate.Operators.Or;
 import parquet.filter2.predicate.Operators.UserDefined;
+
 /**
  * A FilterPredicate is an expression tree describing the criteria for which records to keep when loading data from
  * a parquet file. These predicates are applied in multiple places. Currently, they are applied to all row groups at
@@ -50,10 +51,10 @@ public interface FilterPredicate {
     R visit(And and);
     R visit(Or or);
     R visit(Not not);
-    <T extends Comparable<T>, U extends UserDefinedPredicate<T> > R visit(UserDefined<T, U> udp);
-    <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable > R visit(ConfiguredUserDefined<T, U> udp);
-    <T extends Comparable<T>, U extends UserDefinedPredicate<T> > R visit(LogicalNotUserDefined<T, U> udp);
-    <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable > R visit(LogicalNotConfiguredUserDefined<T, U> udp);
+    <T extends Comparable<T>, U extends UserDefinedPredicate<T>> R visit(UserDefined<T, U> udp);
+    <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> R visit(ConfiguredUserDefined<T, U> udp);
+    <T extends Comparable<T>, U extends UserDefinedPredicate<T>> R visit(LogicalNotUserDefined<T, U> udp);
+    <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> R visit(LogicalNotConfiguredUserDefined<T, U> udp);
   }
 
 }
