@@ -242,7 +242,11 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
   @Override
   public Boolean visit(And and) {
-    return and.getLeft().accept(this) && and.getRight().accept(this);
+    // seems unintuitive to put an || not an && here but we can
+    // drop a chunk of records if we know that either the left or
+    // the right predicate agrees that no matter what we don't
+    // need this chunk.
+    return and.getLeft().accept(this) || and.getRight().accept(this);
   }
 
   @Override

@@ -222,8 +222,8 @@ public class TestStatisticsFilter {
     FilterPredicate yes = eq(intColumn, 9);
     FilterPredicate no = eq(doubleColumn, 50D);
     assertTrue(canDrop(and(yes, yes), columnMetas));
-    assertFalse(canDrop(and(yes, no), columnMetas));
-    assertFalse(canDrop(and(no, yes), columnMetas));
+    assertTrue(canDrop(and(yes, no), columnMetas));
+    assertTrue(canDrop(and(no, yes), columnMetas));
     assertFalse(canDrop(and(no, no), columnMetas));
   }
 
