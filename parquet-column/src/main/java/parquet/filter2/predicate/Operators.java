@@ -405,7 +405,7 @@ public final class Operators {
       return column;
     }
 
-    public Class<U> getUserDefinedPredicateClass(){
+    public Class<U> getUserDefinedPredicateClass() {
       return udpClass;
     }
 

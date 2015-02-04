@@ -1,6 +1,5 @@
 package parquet.filter2.statisticslevel;
 
-import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -241,4 +240,5 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(LogicalNotUserDefined<T, U> lnud) {
     return visit(lnud.getUserDefined(), true);
   }
+
 }
