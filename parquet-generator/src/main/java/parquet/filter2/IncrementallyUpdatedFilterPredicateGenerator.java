@@ -50,14 +50,11 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
   public void run() throws IOException {
     add("package parquet.filter2.recordlevel;\n" +
         "\n" +
-        "import java.io.Serializable;\n" +
         "import parquet.common.schema.ColumnPath;\n" +
-        "import parquet.filter2.predicate.Operators.ConfiguredUserDefined;\n" +
         "import parquet.filter2.predicate.Operators.Eq;\n" +
         "import parquet.filter2.predicate.Operators.Gt;\n" +
         "import parquet.filter2.predicate.Operators.GtEq;\n" +
         "import parquet.filter2.predicate.Operators.LogicalNotUserDefined;\n" +
-        "import parquet.filter2.predicate.Operators.LogicalNotConfiguredUserDefined;\n" +
         "import parquet.filter2.predicate.Operators.Lt;\n" +
         "import parquet.filter2.predicate.Operators.LtEq;\n" +
         "import parquet.filter2.predicate.Operators.NotEq;\n" +
@@ -118,28 +115,11 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     addVisitEnd();
 
     add("  @Override\n" +
-        "  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> IncrementallyUpdatedFilterPredicate visit(ConfiguredUserDefined<T, U> pred) {\n");
-    addUdpBegin();
-    for (TypeInfo info : TYPES) {
-        addUdpCase(info, false);
-    }
-    addVisitEnd();
-
-    add("  @Override\n" +
         "  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> IncrementallyUpdatedFilterPredicate visit(LogicalNotUserDefined<T, U> notPred) {\n" +
         "    UserDefined<T, U> pred = notPred.getUserDefined();\n");
     addUdpBegin();
     for (TypeInfo info : TYPES) {
       addUdpCase(info, true);
-    }
-    addVisitEnd();
-
-    add("  @Override\n" +
-        "  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> IncrementallyUpdatedFilterPredicate visit(LogicalNotConfiguredUserDefined<T, U> notPred) {\n" +
-              "    ConfiguredUserDefined<T, U> pred = notPred.getUserDefined();\n");
-    addUdpBegin();
-    for (TypeInfo info : TYPES) {
-        addUdpCase(info, true);
     }
     addVisitEnd();
 

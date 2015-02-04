@@ -22,6 +22,7 @@ import parquet.filter2.predicate.Operators.NotEq;
 import parquet.filter2.predicate.Operators.Or;
 import parquet.filter2.predicate.Operators.SupportsEqNotEq;
 import parquet.filter2.predicate.Operators.SupportsLtGt;
+import parquet.filter2.predicate.Operators.SimpleUserDefined;
 import parquet.filter2.predicate.Operators.UserDefined;
 
 /**
@@ -150,14 +151,14 @@ public final class FilterApi {
    */
   public static <T extends Comparable<T>, U extends UserDefinedPredicate<T>>
     UserDefined<T, U> userDefined(Column<T> column, Class<U> clazz) {
-    return new UserDefined<T, U>(column, clazz);
+    return new SimpleUserDefined<T, U>(column, clazz);
   }
   
   /**
    * Similar to above but allows to pass Serializable {@link UserDefinedPredicate}
    */
   public static <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable>
-    ConfiguredUserDefined<T, U> userDefined(Column<T> column, U udp) {
+    UserDefined<T, U> userDefined(Column<T> column, U udp) {
     return new ConfiguredUserDefined<T, U> (column, udp);
   }
 

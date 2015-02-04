@@ -16,6 +16,7 @@ import parquet.filter2.predicate.Operators.Gt;
 import parquet.filter2.predicate.Operators.IntColumn;
 import parquet.filter2.predicate.Operators.Not;
 import parquet.filter2.predicate.Operators.Or;
+import parquet.filter2.predicate.Operators.SimpleUserDefined;
 import parquet.filter2.predicate.Operators.UserDefined;
 import parquet.io.api.Binary;
 
@@ -82,8 +83,8 @@ public class TestFilterApiMethods {
     FilterPredicate predicate = or(eq(doubleColumn, 12.0), userDefined(intColumn, DummyUdp.class));
     assertTrue(predicate instanceof Or);
     FilterPredicate ud = ((Or) predicate).getRight();
-    assertTrue(ud instanceof UserDefined);
-    assertEquals(DummyUdp.class, ((UserDefined) ud).getUserDefinedPredicateClass());
+    assertTrue(ud instanceof SimpleUserDefined);
+    assertEquals(DummyUdp.class, ((SimpleUserDefined) ud).getUserDefinedPredicateClass());
     assertTrue(((UserDefined) ud).getUserDefinedPredicate() instanceof DummyUdp);
   }
 

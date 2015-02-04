@@ -5,7 +5,7 @@ import java.lang.{Double => JDouble, Integer => JInt}
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-import parquet.filter2.predicate.Operators.{Or, UserDefined, DoubleColumn => JDoubleColumn, IntColumn => JIntColumn}
+import parquet.filter2.predicate.Operators.{Or, SimpleUserDefined, DoubleColumn => JDoubleColumn, IntColumn => JIntColumn}
 import parquet.filter2.predicate.{FilterApi, Statistics, UserDefinedPredicate}
 
 class DummyFilter extends UserDefinedPredicate[JInt] {
@@ -41,7 +41,7 @@ class DslTest extends FlatSpec{
 
     val expected = FilterApi.or(FilterApi.gt[JInt, JIntColumn](abc.javaColumn, 10), FilterApi.userDefined(abc.javaColumn, classOf[DummyFilter]))
     assert(pred === expected)
-    val intUserDefined = pred.asInstanceOf[Or].getRight.asInstanceOf[UserDefined[JInt, DummyFilter]]
+    val intUserDefined = pred.asInstanceOf[Or].getRight.asInstanceOf[SimpleUserDefined[JInt, DummyFilter]]
 
     assert(intUserDefined.getUserDefinedPredicateClass === classOf[DummyFilter])
     assert(intUserDefined.getUserDefinedPredicate.isInstanceOf[DummyFilter])
