@@ -87,7 +87,7 @@ public class TestFilterApiMethods {
     FilterPredicate predicate = or(eq(doubleColumn, 12.0), userDefined(intColumn, DummyUdp.class));
     assertTrue(predicate instanceof Or);
     FilterPredicate ud = ((Or) predicate).getRight();
-    assertTrue(ud instanceof UserDefined);
+    assertTrue(ud instanceof UserDefinedByClass);
     assertEquals(DummyUdp.class, ((UserDefinedByClass) ud).getUserDefinedPredicateClass());
     assertTrue(((UserDefined) ud).getUserDefinedPredicate() instanceof DummyUdp);
   }
