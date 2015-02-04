@@ -1,5 +1,6 @@
 # Parquet #
 
+
 ### Version 1.5.0 ###
 * ISSUE [399](https://github.com/Parquet/parquet-mr/pull/399): Fixed resetting stats after writePage bug, unit testing of readFooter
 * ISSUE [397](https://github.com/Parquet/parquet-mr/pull/397): Fixed issue with column pruning when using requested schema
