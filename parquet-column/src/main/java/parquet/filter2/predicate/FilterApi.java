@@ -7,7 +7,6 @@ import parquet.filter2.predicate.Operators.And;
 import parquet.filter2.predicate.Operators.BinaryColumn;
 import parquet.filter2.predicate.Operators.BooleanColumn;
 import parquet.filter2.predicate.Operators.Column;
-import parquet.filter2.predicate.Operators.ConfiguredUserDefined;
 import parquet.filter2.predicate.Operators.DoubleColumn;
 import parquet.filter2.predicate.Operators.Eq;
 import parquet.filter2.predicate.Operators.FloatColumn;
@@ -23,6 +22,8 @@ import parquet.filter2.predicate.Operators.Or;
 import parquet.filter2.predicate.Operators.SupportsEqNotEq;
 import parquet.filter2.predicate.Operators.SupportsLtGt;
 import parquet.filter2.predicate.Operators.UserDefined;
+import parquet.filter2.predicate.Operators.UserDefinedByClass;
+import parquet.filter2.predicate.Operators.UserDefinedByInstance;
 
 /**
  * The Filter API is expressed through these static methods.
@@ -147,18 +148,23 @@ public final class FilterApi {
 
   /**
    * Keeps records that pass the provided {@link UserDefinedPredicate}
+   *
+   * The provided class must have a default constructor. To use an instance
+   * of a UserDefinedPredicate instead, see {@link #userDefined(column, udp)} below.
    */
   public static <T extends Comparable<T>, U extends UserDefinedPredicate<T>>
     UserDefined<T, U> userDefined(Column<T> column, Class<U> clazz) {
-    return new UserDefined<T, U>(column, clazz);
+    return new UserDefinedByClass<T, U>(column, clazz);
   }
   
   /**
-   * Similar to above but allows to pass Serializable {@link UserDefinedPredicate}
+   * Keeps records that pass the provided {@link UserDefinedPredicate}
+   *
+   * The provided instance of UserDefinedPredicate must be serializable.
    */
   public static <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable>
-    ConfiguredUserDefined<T, U> userDefined(Column<T> column, U udp) {
-    return new ConfiguredUserDefined<T, U> (column, udp);
+    UserDefined<T, U> userDefined(Column<T> column, U udp) {
+    return new UserDefinedByInstance<T, U>(column, udp);
   }
 
   /**

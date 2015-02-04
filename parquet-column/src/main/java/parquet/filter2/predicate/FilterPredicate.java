@@ -1,14 +1,10 @@
 package parquet.filter2.predicate;
 
-import java.io.Serializable;
-
 import parquet.filter2.predicate.Operators.And;
-import parquet.filter2.predicate.Operators.ConfiguredUserDefined;
 import parquet.filter2.predicate.Operators.Eq;
 import parquet.filter2.predicate.Operators.Gt;
 import parquet.filter2.predicate.Operators.GtEq;
 import parquet.filter2.predicate.Operators.LogicalNotUserDefined;
-import parquet.filter2.predicate.Operators.LogicalNotConfiguredUserDefined;
 import parquet.filter2.predicate.Operators.Lt;
 import parquet.filter2.predicate.Operators.LtEq;
 import parquet.filter2.predicate.Operators.Not;
@@ -52,9 +48,7 @@ public interface FilterPredicate {
     R visit(Or or);
     R visit(Not not);
     <T extends Comparable<T>, U extends UserDefinedPredicate<T>> R visit(UserDefined<T, U> udp);
-    <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> R visit(ConfiguredUserDefined<T, U> udp);
     <T extends Comparable<T>, U extends UserDefinedPredicate<T>> R visit(LogicalNotUserDefined<T, U> udp);
-    <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> R visit(LogicalNotConfiguredUserDefined<T, U> udp);
   }
 
 }

@@ -340,15 +340,33 @@ public final class Operators {
     }
   }
 
-  public static final class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
-    private final Column<T> column;
+  public static abstract class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
+    protected final Column<T> column;
+
+    UserDefined(Column<T> column) {
+      this.column = checkNotNull(column, "column");
+    }
+
+    public Column<T> getColumn() {
+      return column;
+    }
+
+    public abstract U getUserDefinedPredicate();
+
+    @Override
+    public <R> R accept(Visitor<R> visitor) {
+      return visitor.visit(this);
+    }
+  }
+    
+  public static final class UserDefinedByClass<T extends Comparable<T>, U extends UserDefinedPredicate<T>> extends UserDefined<T, U> {
     private final Class<U> udpClass;
     private final String toString;
     private static final String INSTANTIATION_ERROR_MESSAGE =
         "Could not instantiate custom filter: %s. User defined predicates must be static classes with a default constructor.";
 
-    UserDefined(Column<T> column, Class<U> udpClass) {
-      this.column = checkNotNull(column, "column");
+    UserDefinedByClass(Column<T> column, Class<U> udpClass) {
+      super(column);
       this.udpClass = checkNotNull(udpClass, "udpClass");
       String name = getClass().getSimpleName().toLowerCase();
       this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udpClass.getName() + ")";
@@ -357,14 +375,11 @@ public final class Operators {
       getUserDefinedPredicate();
     }
 
-    public Column<T> getColumn() {
-      return column;
-    }
-
     public Class<U> getUserDefinedPredicateClass() {
       return udpClass;
     }
 
+    @Override
     public U getUserDefinedPredicate() {
       try {
         return udpClass.newInstance();
@@ -373,11 +388,6 @@ public final class Operators {
       } catch (IllegalAccessException e) {
         throw new RuntimeException(String.format(INSTANTIATION_ERROR_MESSAGE, udpClass), e);
       }
-    }
-
-    @Override
-    public <R> R accept(Visitor<R> visitor) {
-      return visitor.visit(this);
     }
 
     @Override
@@ -390,7 +400,7 @@ public final class Operators {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
 
-      UserDefined that = (UserDefined) o;
+      UserDefinedByClass that = (UserDefinedByClass) o;
 
       if (!column.equals(that.column)) return false;
       if (!udpClass.equals(that.udpClass)) return false;
@@ -406,30 +416,21 @@ public final class Operators {
       return result;
     }
   }
-
-  public static final class ConfiguredUserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable > implements FilterPredicate {
-    private final Column<T> column;
-    private final U udp;
+  
+  public static final class UserDefinedByInstance<T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> extends UserDefined<T, U> {
     private final String toString;
+    private final U udpInstance;
 
-    ConfiguredUserDefined(Column<T> column, U udp) {
-      this.column = checkNotNull(column, "column");
-      this.udp = checkNotNull(udp, "udp");
+    UserDefinedByInstance(Column<T> column, U udpInstance) {
+      super(column);
+      this.udpInstance = checkNotNull(udpInstance, "udpInstance");
       String name = getClass().getSimpleName().toLowerCase();
-      this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udp.getClass().getName() + ")";
-    }
-
-    public Column<T> getColumn() {
-      return column;
-    }
-
-    public U getUserDefinedPredicate() {
-      return udp;
+      this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udpInstance + ")";
     }
 
     @Override
-    public <R> R accept(Visitor<R> visitor) {
-      return visitor.visit(this);
+    public U getUserDefinedPredicate() {
+      return udpInstance;
     }
 
     @Override
@@ -442,10 +443,10 @@ public final class Operators {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
 
-      ConfiguredUserDefined that = (ConfiguredUserDefined) o;
+      UserDefinedByInstance that = (UserDefinedByInstance) o;
 
       if (!column.equals(that.column)) return false;
-      if (!udp.equals(that.udp)) return false;
+      if (!udpInstance.equals(that.udpInstance)) return false;
 
       return true;
     }
@@ -453,7 +454,7 @@ public final class Operators {
     @Override
     public int hashCode() {
       int result = column.hashCode();
-      result = 31 * result + udp.hashCode();
+      result = 31 * result + udpInstance.hashCode();
       result = result * 31 + getClass().hashCode();
       return result;
     }
@@ -504,48 +505,4 @@ public final class Operators {
     }
   }
 
-  // Represents the inverse of a ConfiguredUserDefined. It is equivalent to not(userDefined), without the use
-  // of the not() operator
-  public static final class LogicalNotConfiguredUserDefined <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable > implements FilterPredicate, Serializable {
-    private final ConfiguredUserDefined<T, U> udp;
-    private final String toString;
-
-    LogicalNotConfiguredUserDefined(ConfiguredUserDefined<T, U> configuredUserDefined) {
-      this.udp = checkNotNull(configuredUserDefined, "configuredUserDefined");
-      this.toString = "inverted(" + udp + ")";
-    }
-
-    public ConfiguredUserDefined<T, U> getUserDefined() {
-      return udp;
-    }
-
-    @Override
-    public <R> R accept(Visitor<R> visitor) {
-      return visitor.visit(this);
-    }
-
-    @Override
-    public String toString() {
-      return toString;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-
-      LogicalNotUserDefined that = (LogicalNotUserDefined) o;
-
-      if (!udp.equals(that.udp)) return false;
-
-      return true;
-    }
-
-    @Override
-    public int hashCode() {
-      int result = udp.hashCode();
-      result = result * 31 + getClass().hashCode();
-      return result;
-    }
-  }
 }

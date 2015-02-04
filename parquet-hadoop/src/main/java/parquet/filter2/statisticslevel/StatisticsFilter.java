@@ -1,6 +1,5 @@
 package parquet.filter2.statisticslevel;
 
-import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,14 +13,12 @@ import parquet.filter2.predicate.Operators.Eq;
 import parquet.filter2.predicate.Operators.Gt;
 import parquet.filter2.predicate.Operators.GtEq;
 import parquet.filter2.predicate.Operators.LogicalNotUserDefined;
-import parquet.filter2.predicate.Operators.LogicalNotConfiguredUserDefined;
 import parquet.filter2.predicate.Operators.Lt;
 import parquet.filter2.predicate.Operators.LtEq;
 import parquet.filter2.predicate.Operators.Not;
 import parquet.filter2.predicate.Operators.NotEq;
 import parquet.filter2.predicate.Operators.Or;
 import parquet.filter2.predicate.Operators.UserDefined;
-import parquet.filter2.predicate.Operators.ConfiguredUserDefined;
 import parquet.filter2.predicate.UserDefinedPredicate;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 
@@ -234,28 +231,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     }
   }
 
-  private <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> Boolean visit(ConfiguredUserDefined<T, U> ud, boolean inverted) {
-    Column<T> filterColumn = ud.getColumn();
-    ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
-    U udp = ud.getUserDefinedPredicate();
-    Statistics<T> stats = columnChunk.getStatistics();
-    parquet.filter2.predicate.Statistics<T> udpStats =
-            new parquet.filter2.predicate.Statistics<T>(stats.genericGetMin(), stats.genericGetMax());
-
-    if (inverted) {
-      return udp.inverseCanDrop(udpStats);
-    } else {
-      return udp.canDrop(udpStats);
-    }
-  }
-
   @Override
   public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud) {
-    return visit(ud, false);
-  }
-
-  @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> Boolean visit(ConfiguredUserDefined<T, U> ud) {
     return visit(ud, false);
   }
 
@@ -264,8 +241,4 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     return visit(lnud.getUserDefined(), true);
   }
 
-  @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> Boolean visit(LogicalNotConfiguredUserDefined<T, U> lnud) {
-    return visit(lnud.getUserDefined(), true);
-  }
 }
