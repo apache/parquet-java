@@ -19,6 +19,7 @@
 package parquet.hadoop;
 
 import parquet.Log;
+import parquet.ParquetRuntimeException;
 
 import java.lang.management.ManagementFactory;
 import java.util.HashMap;
@@ -39,16 +40,19 @@ import java.util.Map;
 public class MemoryManager {
   private static final Log LOG = Log.getLog(MemoryManager.class);
   static final float DEFAULT_MEMORY_POOL_RATIO = 0.95f;
+  static final long DEFAULT_MIN_MEMORY_ALLOCATION = 0;
   private final float memoryPoolRatio;
 
   private final long totalMemoryPool;
+  private final long minMemoryAllocation;
   private final Map<InternalParquetRecordWriter, Long> writerList = new
       HashMap<InternalParquetRecordWriter, Long>();
 
-  public MemoryManager(float ratio) {
+  public MemoryManager(float ratio, long minAllocation) {
     checkRatio(ratio);
 
     memoryPoolRatio = ratio;
+    minMemoryAllocation = minAllocation;
     totalMemoryPool = Math.round(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
         () * ratio);
     LOG.debug(String.format("Allocated total memory pool is: %,d", totalMemoryPool));
@@ -108,6 +112,10 @@ public class MemoryManager {
 
     for (Map.Entry<InternalParquetRecordWriter, Long> entry : writerList.entrySet()) {
       long newSize = (long) Math.floor(entry.getValue() * scale);
+      if(minMemoryAllocation > 0 && newSize < minMemoryAllocation) {
+          throw new ParquetRuntimeException(String.format("New Memory allocation %d"+
+          " exceeds minimum allocation size %d", newSize, minMemoryAllocation)){};
+      }
       entry.getKey().setRowGroupSizeThreshold(newSize);
       LOG.debug(String.format("Adjust block size from %,d to %,d for writer: %s",
             entry.getValue(), newSize, entry.getKey()));
