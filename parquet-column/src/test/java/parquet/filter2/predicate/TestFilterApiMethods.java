@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 
 import org.junit.Test;
 
@@ -14,10 +15,11 @@ import parquet.filter2.predicate.Operators.DoubleColumn;
 import parquet.filter2.predicate.Operators.Eq;
 import parquet.filter2.predicate.Operators.Gt;
 import parquet.filter2.predicate.Operators.IntColumn;
+import parquet.filter2.predicate.Operators.LongColumn;
 import parquet.filter2.predicate.Operators.Not;
 import parquet.filter2.predicate.Operators.Or;
-import parquet.filter2.predicate.Operators.SimpleUserDefined;
 import parquet.filter2.predicate.Operators.UserDefined;
+import parquet.filter2.predicate.Operators.UserDefinedByClass;
 import parquet.io.api.Binary;
 
 import static org.junit.Assert.assertEquals;
@@ -28,6 +30,7 @@ import static parquet.filter2.predicate.FilterApi.doubleColumn;
 import static parquet.filter2.predicate.FilterApi.eq;
 import static parquet.filter2.predicate.FilterApi.gt;
 import static parquet.filter2.predicate.FilterApi.intColumn;
+import static parquet.filter2.predicate.FilterApi.longColumn;
 import static parquet.filter2.predicate.FilterApi.not;
 import static parquet.filter2.predicate.FilterApi.notEq;
 import static parquet.filter2.predicate.FilterApi.or;
@@ -37,6 +40,7 @@ import static parquet.filter2.predicate.Operators.NotEq;
 public class TestFilterApiMethods {
 
   private static final IntColumn intColumn = intColumn("a.b.c");
+  private static final LongColumn longColumn = longColumn("a.b.l");
   private static final DoubleColumn doubleColumn = doubleColumn("x.y.z");
   private static final BinaryColumn binColumn = binaryColumn("a.string.column");
 
@@ -83,15 +87,15 @@ public class TestFilterApiMethods {
     FilterPredicate predicate = or(eq(doubleColumn, 12.0), userDefined(intColumn, DummyUdp.class));
     assertTrue(predicate instanceof Or);
     FilterPredicate ud = ((Or) predicate).getRight();
-    assertTrue(ud instanceof SimpleUserDefined);
-    assertEquals(DummyUdp.class, ((SimpleUserDefined) ud).getUserDefinedPredicateClass());
+    assertTrue(ud instanceof UserDefinedByClass);
+    assertEquals(DummyUdp.class, ((UserDefinedByClass) ud).getUserDefinedPredicateClass());
     assertTrue(((UserDefined) ud).getUserDefinedPredicate() instanceof DummyUdp);
   }
 
   @Test
-  public void testSerializable() throws Exception {
+  public void testSerializable() throws Exception {    
     BinaryColumn binary = binaryColumn("foo");
-    FilterPredicate p = or(and(userDefined(intColumn, DummyUdp.class), predicate), eq(binary, Binary.fromString("hi")));
+    FilterPredicate p = and(or(and(userDefined(intColumn, DummyUdp.class), predicate), eq(binary, Binary.fromString("hi"))), userDefined(longColumn, new IsMultipleOf(7)));
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(baos);
     oos.writeObject(p);
@@ -100,5 +104,51 @@ public class TestFilterApiMethods {
     ObjectInputStream is = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()));
     FilterPredicate read = (FilterPredicate) is.readObject();
     assertEquals(p, read);
+  }
+
+  public static class IsMultipleOf extends UserDefinedPredicate<Long> implements Serializable {
+
+    private long of; 
+
+    public IsMultipleOf(long of) {
+      this.of = of;
+    }
+
+    @Override
+    public boolean keep(Long value) {
+      if (value == null) {
+        return false;
+      }
+      return value % of == 0;
+    }
+
+    @Override
+    public boolean canDrop(Statistics<Long> statistics) {
+      return false;
+    }
+
+    @Override
+    public boolean inverseCanDrop(Statistics<Long> statistics) {
+      return false;
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      IsMultipleOf that = (IsMultipleOf) o;
+      return this.of == that.of;
+    }
+    
+    @Override
+    public int hashCode() {
+      return new Long(of).hashCode();
+    }
+    
+    @Override
+    public String toString() {
+      return "IsMultipleOf(" + of + ")";
+    }
   }
 }

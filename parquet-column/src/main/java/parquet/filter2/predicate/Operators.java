@@ -342,14 +342,9 @@ public final class Operators {
 
   public static abstract class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
     protected final Column<T> column;
-    protected String toString;
-    private static final String INSTANTIATION_ERROR_MESSAGE =
-        "Could not instantiate custom filter: %s. User defined predicates must be static classes with a default constructor.";
 
     UserDefined(Column<T> column) {
       this.column = checkNotNull(column, "column");
-      String name = getClass().getSimpleName().toLowerCase();
-      this.toString = name + "(" + column.getColumnPath().toDotString() + ", UserDefined)";
     }
 
     public Column<T> getColumn() {
@@ -359,39 +354,18 @@ public final class Operators {
     public abstract U getUserDefinedPredicate();
 
     @Override
-    public abstract <R> R accept(Visitor<R> visitor);
-
-    @Override
-    public String toString() {
-      return toString;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-
-      UserDefined that = (UserDefined) o;
-
-      if (!column.equals(that.column)) return false;
-
-      return true;
-    }
-
-    @Override
-    public int hashCode() {
-      int result = column.hashCode();
-      result = result * 31 + getClass().hashCode();
-      return result;
+    public <R> R accept(Visitor<R> visitor) {
+      return visitor.visit(this);
     }
   }
-
-  public static final class SimpleUserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>> extends UserDefined<T, U> {
+    
+  public static final class UserDefinedByClass<T extends Comparable<T>, U extends UserDefinedPredicate<T>> extends UserDefined<T, U> {
     private final Class<U> udpClass;
+    private final String toString;
     private static final String INSTANTIATION_ERROR_MESSAGE =
-            "Could not instantiate custom filter: %s. User defined predicates must be static classes with a default constructor.";
+        "Could not instantiate custom filter: %s. User defined predicates must be static classes with a default constructor.";
 
-    SimpleUserDefined(Column<T> column, Class<U> udpClass) {
+    UserDefinedByClass(Column<T> column, Class<U> udpClass) {
       super(column);
       this.udpClass = checkNotNull(udpClass, "udpClass");
       String name = getClass().getSimpleName().toLowerCase();
@@ -401,14 +375,11 @@ public final class Operators {
       getUserDefinedPredicate();
     }
 
-    public Column<T> getColumn() {
-      return column;
-    }
-
     public Class<U> getUserDefinedPredicateClass() {
       return udpClass;
     }
 
+    @Override
     public U getUserDefinedPredicate() {
       try {
         return udpClass.newInstance();
@@ -420,11 +391,6 @@ public final class Operators {
     }
 
     @Override
-    public <R> R accept(Visitor<R> visitor) {
-      return visitor.visit(this);
-    }
-
-    @Override
     public String toString() {
       return toString;
     }
@@ -434,7 +400,7 @@ public final class Operators {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
 
-      SimpleUserDefined that = (SimpleUserDefined) o;
+      UserDefinedByClass that = (UserDefinedByClass) o;
 
       if (!column.equals(that.column)) return false;
       if (!udpClass.equals(that.udpClass)) return false;
@@ -450,28 +416,21 @@ public final class Operators {
       return result;
     }
   }
-
-  public static final class ConfiguredUserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable > extends UserDefined<T, U> {
-    //private final Column<T> column;
-    private final U udp;
+  
+  public static final class UserDefinedByInstance<T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> extends UserDefined<T, U> {
     private final String toString;
+    private final U udpInstance;
 
-    ConfiguredUserDefined(Column<T> column, U udp) {
-      //column = checkNotNull(column, "column");
+    UserDefinedByInstance(Column<T> column, U udpInstance) {
       super(column);
-      this.udp = checkNotNull(udp, "udp");
+      this.udpInstance = checkNotNull(udpInstance, "udpInstance");
       String name = getClass().getSimpleName().toLowerCase();
-      this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udp.getClass().getName() + ")";
+      this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udpInstance + ")";
     }
 
     @Override
     public U getUserDefinedPredicate() {
-      return udp;
-    }
-
-    @Override
-    public <R> R accept(Visitor<R> visitor) {
-      return visitor.visit(this);
+      return udpInstance;
     }
 
     @Override
@@ -484,10 +443,10 @@ public final class Operators {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
 
-      ConfiguredUserDefined that = (ConfiguredUserDefined) o;
+      UserDefinedByInstance that = (UserDefinedByInstance) o;
 
       if (!column.equals(that.column)) return false;
-      if (!udp.equals(that.udp)) return false;
+      if (!udpInstance.equals(that.udpInstance)) return false;
 
       return true;
     }
@@ -495,7 +454,7 @@ public final class Operators {
     @Override
     public int hashCode() {
       int result = column.hashCode();
-      result = 31 * result + udp.hashCode();
+      result = 31 * result + udpInstance.hashCode();
       result = result * 31 + getClass().hashCode();
       return result;
     }
@@ -545,4 +504,5 @@ public final class Operators {
       return result;
     }
   }
+
 }

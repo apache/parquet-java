@@ -168,7 +168,7 @@ public class TestRecordLevelFilters {
   
   public static class SetInFilter extends UserDefinedPredicate<Long> implements Serializable {
 
-    HashSet<Long> hSet;
+    private HashSet<Long> hSet;
 
     public SetInFilter(HashSet<Long> phSet) {
       hSet = phSet;
@@ -211,12 +211,14 @@ public class TestRecordLevelFilters {
   }
   
   @Test
-  public void testIdIn() throws Exception {
+  public void testUserDefinedByInstance() throws Exception {
     LongColumn name = longColumn("id");
 
-    HashSet<Long> h = new HashSet<Long>() {{
-          add(20L); add(27L); add(28L);
-    }}; 
+    final HashSet<Long> h = new HashSet<Long>();
+    h.add(20L); 
+    h.add(27L);
+    h.add(28L);
+    
     FilterPredicate pred = userDefined(name, new SetInFilter(h));
 
     List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
@@ -224,10 +226,7 @@ public class TestRecordLevelFilters {
     assertFilter(found, new UserFilter() {
       @Override
       public boolean keep(User u) {
-        Set<Long> h = new HashSet<Long>() {{
-          add(20L); add(27L); add(28L);
-        }}; 
-        return h.contains(u.getId());
+        return u != null && h.contains(u.getId());
       }
     });
   }
