@@ -24,6 +24,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ReflectionUtils;
+import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.io.api.RecordMaterializer;
 import parquet.schema.MessageType;
@@ -57,9 +58,18 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
     configuration.set(AVRO_READ_SCHEMA, avroReadSchema.toString());
   }
 
+  public static String getAvroReadSchema(Configuration configuration) {
+    return configuration.get(AVRO_READ_SCHEMA);
+  }
+
   public static void setAvroDataSupplier(Configuration configuration,
       Class<? extends AvroDataSupplier> clazz) {
     configuration.set(AVRO_DATA_SUPPLIER, clazz.toString());
+  }
+
+  @Override
+  public ReadContext init(InitContext context) {
+    return init(context.getConfiguration(), null, context.getFileSchema());
   }
 
   @Override

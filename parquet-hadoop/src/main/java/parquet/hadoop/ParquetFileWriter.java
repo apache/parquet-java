@@ -454,11 +454,24 @@ public class ParquetFileWriter {
     return getGlobalMetaData(footers, true);
   }
 
+
   static GlobalMetaData getGlobalMetaData(List<Footer> footers, boolean strict) {
-    GlobalMetaData fileMetaData = null;
+    return getGlobalMetaData(null, footers, new MergedSchemaLast(),strict);
+  }
+
+  static GlobalMetaData getGlobalMetaData(MessageType readSchema, List<Footer> footers, boolean strict) {
+    if (readSchema == null) {
+      return getGlobalMetaData(null, footers, new MergedSchemaLast(), strict);
+    }
+    GlobalMetaData fileMetaData = new GlobalMetaData(readSchema, new HashMap<String, Set<String>>(), new HashSet<String>());
+    return getGlobalMetaData(fileMetaData, footers, new MergedSchemaFirst(), strict);
+  }
+
+  static GlobalMetaData getGlobalMetaData(GlobalMetaData existing, List<Footer> footers, MergeStrategy mergeStrategy, boolean strict) {
+    GlobalMetaData fileMetaData = existing;
     for (Footer footer : footers) {
       ParquetMetadata currentMetadata = footer.getParquetMetadata();
-      fileMetaData = mergeInto(currentMetadata.getFileMetaData(), fileMetaData, strict);
+      fileMetaData = mergeInto(currentMetadata.getFileMetaData(), fileMetaData, mergeStrategy, strict);
     }
     return fileMetaData;
   }
@@ -472,12 +485,13 @@ public class ParquetFileWriter {
   static GlobalMetaData mergeInto(
       FileMetaData toMerge,
       GlobalMetaData mergedMetadata) {
-    return mergeInto(toMerge, mergedMetadata, true);
+    return mergeInto(toMerge, mergedMetadata, new MergedSchemaLast(), true);
   }
 
   static GlobalMetaData mergeInto(
       FileMetaData toMerge,
       GlobalMetaData mergedMetadata,
+      MergeStrategy mergeStrategy,
       boolean strict) {
     MessageType schema = null;
     Map<String, Set<String>> newKeyValues = new HashMap<String, Set<String>>();
@@ -489,7 +503,7 @@ public class ParquetFileWriter {
     }
     if ((schema == null && toMerge.getSchema() != null)
         || (schema != null && !schema.equals(toMerge.getSchema()))) {
-      schema = mergeInto(toMerge.getSchema(), schema, strict);
+      schema = mergeStrategy.merge(toMerge.getSchema(), schema, strict);
     }
     for (Entry<String, String> entry : toMerge.getKeyValueMetaData().entrySet()) {
       Set<String> values = newKeyValues.get(entry.getKey());
@@ -531,4 +545,23 @@ public class ParquetFileWriter {
     return mergedSchema.union(toMerge, strict);
   }
 
+  public static class MergedSchemaFirst implements MergeStrategy {
+
+    @Override
+    public MessageType merge(MessageType toMerge, MessageType mergedSchema, boolean strict) {
+      return mergeInto(mergedSchema, toMerge,strict);
+    }
+  }
+
+  public static class MergedSchemaLast implements MergeStrategy {
+
+    @Override
+    public MessageType merge(MessageType toMerge, MessageType mergedSchema, boolean strict) {
+      return mergeInto(toMerge, mergedSchema,strict);
+    }
+  }
+
+  interface MergeStrategy {
+    MessageType merge(MessageType toMerge, MessageType mergedSchema, boolean strict);
+  }
 }
