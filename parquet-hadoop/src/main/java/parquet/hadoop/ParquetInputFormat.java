@@ -206,7 +206,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   private LruCache<FileStatusWrapper, FootersCacheValue> footersCache;
 
-  private final Class<? extends ReadSupport> readSupportClass;
+  private final Class<? extends ReadSupport<T>> readSupportClass;
 
   /**
    * Hadoop will instantiate using this constructor
@@ -249,7 +249,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   @SuppressWarnings("unchecked")
   ReadSupport<T> getReadSupport(Configuration configuration){
     return getReadSupportInstance(readSupportClass == null ?
-        (Class<? extends ReadSupport>) getReadSupportClass(configuration) :
+        (Class<? extends ReadSupport<T>>) getReadSupportClass(configuration) :
         readSupportClass);
   }
 

@@ -26,6 +26,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
 
+import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
@@ -89,7 +90,14 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
             ParquetInputFormat.<V>getReadSupportInstance(oldJobConf),
             ParquetInputFormat.getFilter(oldJobConf));
 
-        realReader.initialize(((ParquetInputSplitWrapper)oldSplit).realSplit, oldJobConf, reporter);
+        if (oldSplit instanceof ParquetInputSplitWrapper) {
+          realReader.initialize(((ParquetInputSplitWrapper) oldSplit).realSplit, oldJobConf, reporter);
+        } else if (oldSplit instanceof FileSplit) {
+          realReader.initialize((FileSplit) oldSplit, oldJobConf, reporter);
+        } else {
+          throw new IllegalArgumentException(
+              "Invalid split (not a FileSplit or ParquetInputSplitWrapper): " + oldSplit);
+        }
 
         // read once to gain access to key and value objects
         if (realReader.nextKeyValue()) {
