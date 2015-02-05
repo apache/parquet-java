@@ -20,7 +20,6 @@ import java.math.BigInteger;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -35,13 +34,14 @@ import org.apache.commons.cli.Options;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
-import com.google.common.base.Joiner;
-
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnReader;
 import parquet.column.impl.ColumnReadStoreImpl;
+import parquet.column.page.DataPage;
+import parquet.column.page.DataPage.Visitor;
+import parquet.column.page.DataPageV1;
+import parquet.column.page.DataPageV2;
 import parquet.column.page.DictionaryPage;
-import parquet.column.page.Page;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
 import parquet.hadoop.ParquetFileReader;
@@ -56,6 +56,8 @@ import parquet.schema.MessageType;
 import parquet.tools.util.MetadataUtils;
 import parquet.tools.util.PrettyPrintWriter;
 import parquet.tools.util.PrettyPrintWriter.WhiteSpaceHandler;
+
+import com.google.common.base.Joiner;
 
 public class DumpCommand extends ArgsOnlyCommand {
     private static final Charset UTF8 = Charset.forName("UTF-8");
@@ -227,7 +229,7 @@ public class DumpCommand extends ArgsOnlyCommand {
         }
     }
 
-    public static void dump(PrettyPrintWriter out, PageReadStore store, ColumnDescriptor column) throws IOException {
+    public static void dump(final PrettyPrintWriter out, PageReadStore store, ColumnDescriptor column) throws IOException {
         PageReader reader = store.getPageReader(column);
 
         long vc = reader.getTotalValueCount();
@@ -244,12 +246,26 @@ public class DumpCommand extends ArgsOnlyCommand {
         out.println();
         out.rule('-');
 
-        Page page = reader.readPage();
+        DataPage page = reader.readPage();
         for (long count = 0; page != null; count++) {
             out.format("page %d:", count);
-            out.format(" DLE:%s", page.getDlEncoding());
-            out.format(" RLE:%s", page.getRlEncoding());
-            out.format(" VLE:%s", page.getValueEncoding());
+            page.accept(new Visitor<Void>() {
+              @Override
+              public Void visit(DataPageV1 pageV1) {
+                out.format(" DLE:%s", pageV1.getDlEncoding());
+                out.format(" RLE:%s", pageV1.getRlEncoding());
+                out.format(" VLE:%s", pageV1.getValueEncoding());
+                return null;
+              }
+
+              @Override
+              public Void visit(DataPageV2 pageV2) {
+                out.format(" DLE:RLE");
+                out.format(" RLE:RLE");
+                out.format(" VLE:%s", pageV2.getDataEncoding());
+                return null;
+              }
+            });
             out.format(" SZ:%d", page.getUncompressedSize());
             out.format(" VC:%d", page.getValueCount());
             out.println();

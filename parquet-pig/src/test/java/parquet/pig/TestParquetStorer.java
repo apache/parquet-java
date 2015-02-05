@@ -1,17 +1,20 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.pig;
 
@@ -121,16 +124,28 @@ public class TestParquetStorer {
 
     final Schema schema = data.getSchema("out");
     assertEquals(2, schema.size());
-    assertEquals("a", schema.getField(0).alias);
-    assertEquals("b", schema.getField(1).alias);
+    // union could be in either order
+    int ai;
+    int bi;
+    if ("a".equals(schema.getField(0).alias)) {
+      ai = 0;
+      bi = 1;
+      assertEquals("a", schema.getField(0).alias);
+      assertEquals("b", schema.getField(1).alias);
+    } else {
+      ai = 1;
+      bi = 0;
+      assertEquals("b", schema.getField(0).alias);
+      assertEquals("a", schema.getField(1).alias);
+    }
 
     assertEquals(rows * 2, result.size());
 
     int a = 0;
     int b = 0;
     for (Tuple tuple : result) {
-      String fa = (String) tuple.get(0);
-      String fb = (String) tuple.get(1);
+      String fa = (String) tuple.get(ai);
+      String fb = (String) tuple.get(bi);
       if (fa != null) {
         assertEquals("a" + a, fa);
         ++a;

@@ -32,8 +32,6 @@ import parquet.tools.util.MetadataUtils;
 import parquet.tools.util.PrettyPrintWriter;
 
 public class ShowSchemaCommand extends ArgsOnlyCommand {
-  public static final DecimalFormat FRACTIONAL = new DecimalFormat("#,##0.##");
-  public static final DecimalFormat WHOLE = new DecimalFormat("#,##0");
   public static final String[] USAGE = new String[] {
     "<input>",
     "where <input> is the parquet file containing the schema to show"

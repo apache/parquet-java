@@ -52,7 +52,7 @@ public class Main {
                                .create();
 
     Option debg = OptionBuilder.withLongOpt("debug")
-                               .withDescription("Disable color output even if supported")
+                               .withDescription("Enable debug output")
                                .create();
 
     OPTIONS.addOption(help);
@@ -95,7 +95,7 @@ public class Main {
     if (usage != null && usage.length >= 1) {
       ustr = ustr + " " + usage[0];
     }
-      
+
     format.printUsage(err, WIDTH, ustr);
     format.printWrapped(err, WIDTH, LEFT_PAD, "where option is one of:");
     format.printOptions(err, WIDTH, options, LEFT_PAD, DESC_PAD);
@@ -165,21 +165,20 @@ public class Main {
     Main.out = System.out;
     Main.err = System.err;
 
-    System.setOut(new PrintStream(new OutputStream() {
-      @Override public void write(int b) throws IOException { }
-      @Override public void write(byte[] b) throws IOException { }
-      @Override public void write(byte[] b, int off, int len) throws IOException { }
-      @Override public void flush() throws IOException { }
-      @Override public void close() throws IOException { }
-    }));
-
-    System.setErr(new PrintStream(new OutputStream() {
-      @Override public void write(int b) throws IOException { }
-      @Override public void write(byte[] b) throws IOException { }
-      @Override public void write(byte[] b, int off, int len) throws IOException { }
-      @Override public void flush() throws IOException { }
-      @Override public void close() throws IOException { }
-    }));
+    PrintStream VoidStream = new PrintStream(new OutputStream() {
+      @Override
+      public void write(int b) throws IOException {}
+      @Override
+      public void write(byte[] b) throws IOException {}
+      @Override
+      public void write(byte[] b, int off, int len) throws IOException {}
+      @Override
+      public void flush() throws IOException {}
+      @Override
+      public void close() throws IOException {}
+    });
+    System.setOut(VoidStream);
+    System.setErr(VoidStream);
 
     if (args.length == 0) {
       die("No command specified", true, null, null);

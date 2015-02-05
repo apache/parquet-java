@@ -1,34 +1,23 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.hadoop;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static parquet.column.Encoding.BIT_PACKED;
-import static parquet.column.Encoding.PLAIN;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static parquet.schema.Type.Repetition.OPTIONAL;
-import static parquet.schema.Type.Repetition.REPEATED;
-import static parquet.schema.Type.Repetition.REQUIRED;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -36,32 +25,43 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.junit.Test;
-
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.column.ColumnDescriptor;
 import parquet.column.Encoding;
-import parquet.column.page.Page;
+import parquet.column.page.DataPage;
+import parquet.column.page.DataPageV1;
 import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
 import parquet.column.statistics.BinaryStatistics;
 import parquet.column.statistics.LongStatistics;
-import parquet.hadoop.metadata.BlockMetaData;
-import parquet.hadoop.metadata.ColumnChunkMetaData;
-import parquet.hadoop.metadata.CompressionCodecName;
-import parquet.hadoop.metadata.FileMetaData;
-import parquet.hadoop.metadata.GlobalMetaData;
-import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.format.Statistics;
+import parquet.hadoop.metadata.*;
 import parquet.io.api.Binary;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
 import parquet.schema.PrimitiveType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
-import parquet.format.Statistics;
-import parquet.format.converter.ParquetMetadataConverter;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+
+import static org.junit.Assert.*;
+import static parquet.column.Encoding.BIT_PACKED;
+import static parquet.column.Encoding.PLAIN;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static parquet.schema.Type.Repetition.*;
+import static parquet.hadoop.TestUtils.enforceEmptyDir;
+
+import parquet.example.data.Group;
+import parquet.example.data.simple.SimpleGroup;
+
+import parquet.hadoop.example.GroupWriteSupport;
 
 public class TestParquetFileWriter {
   private static final Log LOG = Log.getLog(TestParquetFileWriter.class);
+  private String writeSchema;
 
   @Test
   public void testWriteRead() throws Exception {
@@ -269,8 +269,7 @@ public class TestParquetFileWriter {
     Configuration configuration = new Configuration();
 
     final FileSystem fs = testDirPath.getFileSystem(configuration);
-    fs.delete(testDirPath, true);
-    fs.mkdirs(testDirPath);
+    enforceEmptyDir(configuration, testDirPath);
 
     MessageType schema = MessageTypeParser.parseMessageType("message m { required group a {required binary b;} required group c { required int64 d; }}");
     createFile(configuration, new Path(testDirPath, "part0"), schema);
@@ -307,6 +306,36 @@ public class TestParquetFileWriter {
     footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, Arrays.asList(fs.listStatus(testDirPath)), false);
     validateFooters(footers);
 
+  }
+
+  @Test
+  public void testWriteReadStatisticsAllNulls() throws Exception {
+
+    File testFile = new File("target/test/TestParquetFileWriter/testParquetFile").getAbsoluteFile();
+    testFile.delete();
+
+    writeSchema = "message example {\n" +
+            "required binary content;\n" +
+            "}";
+
+    Path path = new Path(testFile.toURI());
+
+    MessageType schema = MessageTypeParser.parseMessageType(writeSchema);
+    Configuration configuration = new Configuration();
+    GroupWriteSupport.setSchema(schema, configuration);
+
+    ParquetWriter<Group> writer = new ParquetWriter<Group>(path, configuration, new GroupWriteSupport());
+   
+    Group r1 = new SimpleGroup(schema);
+    writer.write(r1);
+    writer.close();
+    
+    ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
+    
+    // assert the statistics object is not empty
+    assertTrue((readFooter.getBlocks().get(0).getColumns().get(0).getStatistics().isEmpty()) == false);
+    // assert the number of nulls are correct for the first block
+    assertEquals(1, (readFooter.getBlocks().get(0).getColumns().get(0).getStatistics().getNumNulls()));
   }
 
   private void validateFooters(final List<Footer> metadata) {
@@ -369,9 +398,9 @@ public class TestParquetFileWriter {
 
   private void validateContains(MessageType schema, PageReadStore pages, String[] path, int values, BytesInput bytes) throws IOException {
     PageReader pageReader = pages.getPageReader(schema.getColumnDescription(path));
-    Page page = pageReader.readPage();
+    DataPage page = pageReader.readPage();
     assertEquals(values, page.getValueCount());
-    assertArrayEquals(bytes.toByteArray(), page.getBytes().toByteArray());
+    assertArrayEquals(bytes.toByteArray(), ((DataPageV1)page).getBytes().toByteArray());
   }
 
   @Test
@@ -394,6 +423,49 @@ public class TestParquetFileWriter {
             new PrimitiveType(REQUIRED, BINARY, "c"))
         );
 
+  }
+
+  @Test
+  public void testMergeFooters() {
+    List<BlockMetaData> oneBlocks = new ArrayList<BlockMetaData>();
+    oneBlocks.add(new BlockMetaData());
+    oneBlocks.add(new BlockMetaData());
+    List<BlockMetaData> twoBlocks = new ArrayList<BlockMetaData>();
+    twoBlocks.add(new BlockMetaData());
+    List<BlockMetaData> expected = new ArrayList<BlockMetaData>();
+    expected.addAll(oneBlocks);
+    expected.addAll(twoBlocks);
+
+    Footer one = new Footer(new Path("file:/tmp/output/one.parquet"),
+        new ParquetMetadata(new FileMetaData(
+            new MessageType("root1",
+                new PrimitiveType(REPEATED, BINARY, "a"),
+                new PrimitiveType(OPTIONAL, BINARY, "b")),
+            new HashMap<String, String>(), "test"),
+        oneBlocks));
+
+    Footer two = new Footer(new Path("/tmp/output/two.parquet"),
+        new ParquetMetadata(new FileMetaData(
+            new MessageType("root2",
+                new PrimitiveType(REQUIRED, BINARY, "c")),
+            new HashMap<String, String>(), "test2"),
+            twoBlocks));
+
+    List<Footer> footers = new ArrayList<Footer>();
+    footers.add(one);
+    footers.add(two);
+
+    ParquetMetadata merged = ParquetFileWriter.mergeFooters(
+        new Path("/tmp"), footers);
+
+    assertEquals(
+        new MessageType("root1",
+            new PrimitiveType(REPEATED, BINARY, "a"),
+            new PrimitiveType(OPTIONAL, BINARY, "b"),
+            new PrimitiveType(REQUIRED, BINARY, "c")),
+        merged.getFileMetaData().getSchema());
+
+    assertEquals("Should have all blocks", expected, merged.getBlocks());
   }
 
 }

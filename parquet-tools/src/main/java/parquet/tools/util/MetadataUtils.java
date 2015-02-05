@@ -79,8 +79,9 @@ public class MetadataUtils {
   private static void showDetails(PrettyPrintWriter out, BlockMetaData meta, Long num) {
     long rows = meta.getRowCount();
     long tbs = meta.getTotalByteSize();
+    long offset = meta.getStartingPos();
 
-    out.format("row group%s: RC:%d TS:%d%n", (num == null ? "" : " " + num), rows, tbs);
+    out.format("row group%s: RC:%d TS:%d OFFSET:%d%n", (num == null ? "" : " " + num), rows, tbs, offset);
     out.rule('-');
     showDetails(out, meta.getColumns());
   }

@@ -1,17 +1,20 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.avro;
 
@@ -25,6 +28,7 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.specific.SpecificData;
 import parquet.Preconditions;
+import parquet.column.Dictionary;
 import parquet.io.InvalidRecordException;
 import parquet.io.api.Binary;
 import parquet.io.api.Converter;
@@ -32,6 +36,7 @@ import parquet.io.api.GroupConverter;
 import parquet.io.api.PrimitiveConverter;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
+import parquet.schema.OriginalType;
 import parquet.schema.Type;
 
 class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter {
@@ -47,18 +52,29 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
   private final Map<Schema.Field, Object> recordDefaults = new HashMap<Schema.Field, Object>();
 
   public AvroIndexedRecordConverter(MessageType parquetSchema, Schema avroSchema) {
-    this(null, parquetSchema, avroSchema);
+    this(parquetSchema, avroSchema, SpecificData.get());
+  }
+
+  public AvroIndexedRecordConverter(MessageType parquetSchema, Schema avroSchema,
+      GenericData baseModel) {
+    this(null, parquetSchema, avroSchema, baseModel);
   }
 
   public AvroIndexedRecordConverter(ParentValueContainer parent, GroupType
       parquetSchema, Schema avroSchema) {
+    this(parent, parquetSchema, avroSchema, SpecificData.get());
+  }
+
+  public AvroIndexedRecordConverter(ParentValueContainer parent, GroupType
+      parquetSchema, Schema avroSchema, GenericData baseModel) {
     this.parent = parent;
     this.avroSchema = avroSchema;
     int schemaSize = parquetSchema.getFieldCount();
     this.converters = new Converter[schemaSize];
-    this.specificClass = SpecificData.get().getClass(avroSchema);
+    this.specificClass = baseModel instanceof SpecificData ?
+        ((SpecificData) baseModel).getClass(avroSchema) : null;
 
-    model = this.specificClass == null ? GenericData.get() : SpecificData.get();
+    this.model = this.specificClass == null ? GenericData.get() : baseModel;
 
     Map<String, Integer> avroFieldIndexes = new HashMap<String, Integer>();
     int avroFieldIndex = 0;
@@ -70,7 +86,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
       Schema.Field avroField = getAvroField(parquetField.getName());
       Schema nonNullSchema = AvroSchemaConverter.getNonNull(avroField.schema());
       final int finalAvroIndex = avroFieldIndexes.remove(avroField.name());
-      converters[parquetFieldIndex++] = newConverter(nonNullSchema, parquetField, new ParentValueContainer() {
+      converters[parquetFieldIndex++] = newConverter(nonNullSchema, parquetField, model, new ParentValueContainer() {
         @Override
         void add(Object value) {
           AvroIndexedRecordConverter.this.set(finalAvroIndex, value);
@@ -105,7 +121,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
   }
 
   private static Converter newConverter(Schema schema, Type type,
-      ParentValueContainer parent) {
+      GenericData model, ParentValueContainer parent) {
     if (schema.getType().equals(Schema.Type.BOOLEAN)) {
       return new FieldBooleanConverter(parent);
     } else if (schema.getType().equals(Schema.Type.INT)) {
@@ -119,19 +135,19 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     } else if (schema.getType().equals(Schema.Type.BYTES)) {
       return new FieldBytesConverter(parent);
     } else if (schema.getType().equals(Schema.Type.STRING)) {
-      return new FieldStringConverter(parent);
+      return new FieldStringConverter(parent, type.getOriginalType() == OriginalType.UTF8);
     } else if (schema.getType().equals(Schema.Type.RECORD)) {
-      return new AvroIndexedRecordConverter(parent, type.asGroupType(), schema);
+      return new AvroIndexedRecordConverter(parent, type.asGroupType(), schema, model);
     } else if (schema.getType().equals(Schema.Type.ENUM)) {
-      return new FieldEnumConverter(parent,schema);
+      return new FieldEnumConverter(parent, schema, model);
     } else if (schema.getType().equals(Schema.Type.ARRAY)) {
-      return new AvroArrayConverter(parent, type, schema);
+      return new AvroArrayConverter(parent, type, schema, model);
     } else if (schema.getType().equals(Schema.Type.MAP)) {
-      return new MapConverter(parent, type, schema);
+      return new MapConverter(parent, type, schema, model);
     } else if (schema.getType().equals(Schema.Type.UNION)) {
-      return new AvroUnionConverter(parent, type, schema);
+      return new AvroUnionConverter(parent, type, schema, model);
     } else if (schema.getType().equals(Schema.Type.FIXED)) {
-      return new FieldFixedConverter(parent, schema);
+      return new FieldFixedConverter(parent, schema, model);
     }
     throw new UnsupportedOperationException(String.format("Cannot convert Avro type: %s" +
         " (Parquet type: %s) ", schema, type));
@@ -151,7 +167,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     // Should do the right thing whether it is generic or specific
     this.currentRecord = (T) ((this.specificClass == null) ?
             new GenericData.Record(avroSchema) :
-            SpecificData.newInstance(specificClass, avroSchema));
+            ((SpecificData) model).newInstance(specificClass, avroSchema));
   }
 
   @Override
@@ -320,9 +336,12 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
   static final class FieldStringConverter extends PrimitiveConverter {
 
     private final ParentValueContainer parent;
+    private final boolean dictionarySupport;
+    private String[] dict;
 
-    public FieldStringConverter(ParentValueContainer parent) {
+    public FieldStringConverter(ParentValueContainer parent, boolean dictionarySupport) {
       this.parent = parent;
+      this.dictionarySupport = dictionarySupport;
     }
 
     @Override
@@ -330,6 +349,23 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
       parent.add(value.toStringUsingUTF8());
     }
 
+    @Override
+    public boolean hasDictionarySupport() {
+      return dictionarySupport;
+    }
+
+    @Override
+    public void setDictionary(Dictionary dictionary) {
+      dict = new String[dictionary.getMaxId() + 1];
+      for (int i = 0; i <= dictionary.getMaxId(); i++) {
+        dict[i] = dictionary.decodeToBinary(i).toStringUsingUTF8();
+      }
+    }
+
+    @Override
+    public void addValueFromDictionary(int dictionaryId) {
+      parent.add(dict[dictionaryId]);
+    }
   }
 
   static final class FieldEnumConverter extends PrimitiveConverter {
@@ -337,9 +373,12 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     private final ParentValueContainer parent;
     private final Class<? extends Enum> enumClass;
 
-    public FieldEnumConverter(ParentValueContainer parent, Schema enumSchema) {
+    public FieldEnumConverter(ParentValueContainer parent, Schema enumSchema,
+        GenericData model) {
       this.parent = parent;
-      this.enumClass = SpecificData.get().getClass(enumSchema);
+      this.enumClass = model instanceof SpecificData ?
+          ((SpecificData) model).getClass(enumSchema) :
+          SpecificData.get().getClass(enumSchema);
     }
 
     @Override
@@ -359,10 +398,13 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     private final Class<? extends GenericData.Fixed> fixedClass;
     private final Constructor fixedClassCtor;
 
-    public FieldFixedConverter(ParentValueContainer parent, Schema avroSchema) {
+    public FieldFixedConverter(ParentValueContainer parent, Schema avroSchema,
+        GenericData model) {
       this.parent = parent;
       this.avroSchema = avroSchema;
-      this.fixedClass = SpecificData.get().getClass(avroSchema);
+      this.fixedClass = model instanceof SpecificData ?
+          ((SpecificData) model).getClass(avroSchema) :
+          SpecificData.get().getClass(avroSchema);
       if (fixedClass != null) {
         try {
           this.fixedClassCtor = 
@@ -402,12 +444,12 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     private GenericArray<T> array;
 
     public AvroArrayConverter(ParentValueContainer parent, Type parquetSchema,
-        Schema avroSchema) {
+        Schema avroSchema, GenericData model) {
       this.parent = parent;
       this.avroSchema = avroSchema;
       Type elementType = parquetSchema.asGroupType().getType(0);
       Schema elementSchema = avroSchema.getElementType();
-      converter = newConverter(elementSchema, elementType, new ParentValueContainer() {
+      converter = newConverter(elementSchema, elementType, model, new ParentValueContainer() {
         @Override
         @SuppressWarnings("unchecked")
         void add(Object value) {
@@ -439,7 +481,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     private Object memberValue = null;
 
     public AvroUnionConverter(ParentValueContainer parent, Type parquetSchema,
-                              Schema avroSchema) {
+                              Schema avroSchema, GenericData model) {
       this.parent = parent;
       GroupType parquetGroup = parquetSchema.asGroupType();
       this.memberConverters = new Converter[ parquetGroup.getFieldCount()];
@@ -449,7 +491,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
         Schema memberSchema = avroSchema.getTypes().get(index);
         if (!memberSchema.getType().equals(Schema.Type.NULL)) {
           Type memberType = parquetGroup.getType(parquetIndex);
-          memberConverters[parquetIndex] = newConverter(memberSchema, memberType, new ParentValueContainer() {
+          memberConverters[parquetIndex] = newConverter(memberSchema, memberType, model, new ParentValueContainer() {
             @Override
             void add(Object value) {
               Preconditions.checkArgument(memberValue==null, "Union is resolving to more than one type");
@@ -484,9 +526,9 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     private Map<String, V> map;
 
     public MapConverter(ParentValueContainer parent, Type parquetSchema,
-        Schema avroSchema) {
+        Schema avroSchema, GenericData model) {
       this.parent = parent;
-      this.keyValueConverter = new MapKeyValueConverter(parquetSchema, avroSchema);
+      this.keyValueConverter = new MapKeyValueConverter(parquetSchema, avroSchema, model);
     }
 
     @Override
@@ -511,7 +553,8 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
       private final Converter keyConverter;
       private final Converter valueConverter;
 
-      public MapKeyValueConverter(Type parquetSchema, Schema avroSchema) {
+      public MapKeyValueConverter(Type parquetSchema, Schema avroSchema,
+          GenericData model) {
         keyConverter = new PrimitiveConverter() {
           @Override
           final public void addBinary(Binary value) {
@@ -521,7 +564,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
 
         Type valueType = parquetSchema.asGroupType().getType(0).asGroupType().getType(1);
         Schema valueSchema = avroSchema.getValueType();
-        valueConverter = newConverter(valueSchema, valueType, new ParentValueContainer() {
+        valueConverter = newConverter(valueSchema, valueType, model, new ParentValueContainer() {
           @Override
           @SuppressWarnings("unchecked")
           void add(Object value) {

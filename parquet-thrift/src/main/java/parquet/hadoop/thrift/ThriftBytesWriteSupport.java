@@ -1,17 +1,20 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.hadoop.thrift;
 
@@ -64,10 +67,10 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
 
   private final boolean buffered;
   @SuppressWarnings("rawtypes") // TODO: fix type
-  private final ThriftWriteSupport<?> thriftWriteSupport = new ThriftWriteSupport();
+  private final TBaseWriteSupport<?> thriftWriteSupport = new TBaseWriteSupport();
   private ProtocolPipe readToWrite;
   private TProtocolFactory protocolFactory;
-  private Class<? extends TBase<?, ?>> thriftClass;
+  private Class<? extends TBase<?,?>> thriftClass;
   private MessageType schema;
   private StructType thriftStruct;
   private ParquetWriteProtocol parquetWriteProtocol;
@@ -101,13 +104,13 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
       }
     }
     if (thriftClass != null) {
-      ThriftWriteSupport.setThriftClass(configuration, thriftClass);
+      TBaseWriteSupport.setThriftClass(configuration, thriftClass);
     } else {
-      thriftClass = ThriftWriteSupport.getThriftClass(configuration);
+      thriftClass = TBaseWriteSupport.getThriftClass(configuration);
     }
     ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter();
     this.thriftStruct = thriftSchemaConverter.toStructType(thriftClass);
-    this.schema = thriftSchemaConverter.convert(thriftClass);
+    this.schema = thriftSchemaConverter.convert(thriftStruct);
     if (buffered) {
       readToWrite = new BufferedProtocolReadToWrite(thriftStruct, errorHandler);
     } else {

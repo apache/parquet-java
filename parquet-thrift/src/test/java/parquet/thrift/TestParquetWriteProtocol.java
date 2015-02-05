@@ -1,17 +1,20 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.thrift;
 
@@ -27,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
+import org.junit.ComparisonFailure;
 import thrift.test.OneOfEach;
 
 import org.apache.pig.data.Tuple;
@@ -95,12 +99,48 @@ public class TestParquetWriteProtocol {
          "endField(names, 1)",
         "endMessage()"
     };
+    String[] expectationsAlt = {
+        "startMessage()",
+         "startField(name, 0)",
+          "addBinary(map_name)",
+         "endField(name, 0)",
+         "startField(names, 1)",
+          "startGroup()",
+           "startField(map, 0)",
+            "startGroup()",
+             "startField(key, 0)",
+              "addBinary(foo2)",
+             "endField(key, 0)",
+             "startField(value, 1)",
+              "addBinary(bar2)",
+             "endField(value, 1)",
+            "endGroup()",
+            "startGroup()",
+             "startField(key, 0)",
+              "addBinary(foo)",
+             "endField(key, 0)",
+             "startField(value, 1)",
+              "addBinary(bar)",
+             "endField(value, 1)",
+            "endGroup()",
+           "endField(map, 0)",
+          "endGroup()",
+         "endField(names, 1)",
+        "endMessage()"
+    };
 
     final Map<String, String> map = new TreeMap<String, String>();
     map.put("foo", "bar");
     map.put("foo2", "bar2");
     TestMap testMap = new TestMap("map_name", map);
-    validatePig(expectations, testMap);
+    try {
+      validatePig(expectations, testMap);
+    } catch (ComparisonFailure e) {
+      // This can happen despite using a stable TreeMap, since ThriftToPig#toPigMap
+      // in com.twitter.elephantbird.pig.util creates a HashMap.
+      // So we test with the map elements in reverse order
+      validatePig(expectationsAlt, testMap);
+    }
     validateThrift(expectations, testMap);
   }
 

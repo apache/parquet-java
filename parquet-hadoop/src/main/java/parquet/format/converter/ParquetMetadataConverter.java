@@ -1,19 +1,25 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.format.converter;
+
+import static parquet.format.Util.readFileMetaData;
+import static parquet.format.Util.writePageHeader;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,13 +35,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.apache.hadoop.io.UTF8;
 import parquet.Log;
 import parquet.common.schema.ColumnPath;
 import parquet.format.ColumnChunk;
 import parquet.format.ColumnMetaData;
 import parquet.format.ConvertedType;
 import parquet.format.DataPageHeader;
+import parquet.format.DataPageHeaderV2;
 import parquet.format.DictionaryPageHeader;
 import parquet.format.Encoding;
 import parquet.format.FieldRepetitionType;
@@ -60,9 +66,6 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
 import parquet.schema.Type.Repetition;
 import parquet.schema.TypeVisitor;
 import parquet.schema.Types;
-import static java.lang.Math.min;
-import static parquet.format.Util.readFileMetaData;
-import static parquet.format.Util.writePageHeader;
 
 public class ParquetMetadataConverter {
   private static final Log LOG = Log.getLog(ParquetMetadataConverter.class);
@@ -234,9 +237,11 @@ public class ParquetMetadataConverter {
   public static Statistics toParquetStatistics(parquet.column.statistics.Statistics statistics) {
     Statistics stats = new Statistics();
     if (!statistics.isEmpty()) {
-      stats.setMax(statistics.getMaxBytes());
-      stats.setMin(statistics.getMinBytes());
       stats.setNull_count(statistics.getNumNulls());
+      if(statistics.hasNonNullValue()) {
+        stats.setMax(statistics.getMaxBytes());
+        stats.setMin(statistics.getMinBytes());
+     }
     }
     return stats;
   }
@@ -246,7 +251,9 @@ public class ParquetMetadataConverter {
     parquet.column.statistics.Statistics stats = parquet.column.statistics.Statistics.getStatsBasedOnType(type);
     // If there was no statistics written to the footer, create an empty Statistics object and return
     if (statistics != null) {
-      stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
+      if (statistics.isSetMax() && statistics.isSetMin()) {
+        stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
+      }
       stats.setNumNulls(statistics.null_count);
     }
     return stats;
@@ -671,14 +678,49 @@ public class ParquetMetadataConverter {
       parquet.column.Encoding valuesEncoding) {
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedSize, compressedSize);
     // TODO: pageHeader.crc = ...;
-    pageHeader.data_page_header = new DataPageHeader(
+    pageHeader.setData_page_header(new DataPageHeader(
         valueCount,
         getEncoding(valuesEncoding),
         getEncoding(dlEncoding),
-        getEncoding(rlEncoding));
+        getEncoding(rlEncoding)));
     if (!statistics.isEmpty()) {
-      pageHeader.data_page_header.setStatistics(toParquetStatistics(statistics));
+      pageHeader.getData_page_header().setStatistics(toParquetStatistics(statistics));
     }
+    return pageHeader;
+  }
+
+  public void writeDataPageV2Header(
+      int uncompressedSize, int compressedSize,
+      int valueCount, int nullCount, int rowCount,
+      parquet.column.statistics.Statistics statistics,
+      parquet.column.Encoding dataEncoding,
+      int rlByteLength, int dlByteLength,
+      OutputStream to) throws IOException {
+    writePageHeader(
+        newDataPageV2Header(
+            uncompressedSize, compressedSize,
+            valueCount, nullCount, rowCount,
+            statistics,
+            dataEncoding,
+            rlByteLength, dlByteLength), to);
+  }
+
+  private PageHeader newDataPageV2Header(
+      int uncompressedSize, int compressedSize,
+      int valueCount, int nullCount, int rowCount,
+      parquet.column.statistics.Statistics<?> statistics,
+      parquet.column.Encoding dataEncoding,
+      int rlByteLength, int dlByteLength) {
+    // TODO: pageHeader.crc = ...;
+    DataPageHeaderV2 dataPageHeaderV2 = new DataPageHeaderV2(
+        valueCount, nullCount, rowCount,
+        getEncoding(dataEncoding),
+        dlByteLength, rlByteLength);
+    if (!statistics.isEmpty()) {
+      dataPageHeaderV2.setStatistics(toParquetStatistics(statistics));
+    }
+    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE_V2, uncompressedSize, compressedSize);
+    pageHeader.setData_page_header_v2(dataPageHeaderV2);
     return pageHeader;
   }
 
@@ -686,7 +728,7 @@ public class ParquetMetadataConverter {
       int uncompressedSize, int compressedSize, int valueCount,
       parquet.column.Encoding valuesEncoding, OutputStream to) throws IOException {
     PageHeader pageHeader = new PageHeader(PageType.DICTIONARY_PAGE, uncompressedSize, compressedSize);
-    pageHeader.dictionary_page_header = new DictionaryPageHeader(valueCount, getEncoding(valuesEncoding));
+    pageHeader.setDictionary_page_header(new DictionaryPageHeader(valueCount, getEncoding(valuesEncoding)));
     writePageHeader(pageHeader, to);
   }
 

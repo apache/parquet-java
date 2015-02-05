@@ -1,17 +1,20 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.column.mem;
 
@@ -23,16 +26,14 @@ import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnReader;
 import parquet.column.ColumnWriter;
-import parquet.column.ParquetProperties;
 import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.impl.ColumnReadStoreImpl;
-import parquet.column.impl.ColumnWriteStoreImpl;
+import parquet.column.impl.ColumnWriteStoreV1;
 import parquet.column.page.mem.MemPageStore;
 import parquet.example.DummyRecordConverter;
 import parquet.io.api.Binary;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
-
 
 public class TestMemColumn {
   private static final Log LOG = Log.getLog(TestMemColumn.class);
@@ -42,9 +43,10 @@ public class TestMemColumn {
     MessageType schema = MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
     ColumnDescriptor path = schema.getColumnDescription(new String[] {"foo", "bar"});
     MemPageStore memPageStore = new MemPageStore(10);
-    ColumnWriter columnWriter = getColumnWriter(path, memPageStore);
+    ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
+    ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
     columnWriter.write(42l, 0, 0);
-    columnWriter.flush();
+    memColumnsStore.flush();
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, schema);
     for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
@@ -56,7 +58,7 @@ public class TestMemColumn {
   }
 
   private ColumnWriter getColumnWriter(ColumnDescriptor path, MemPageStore memPageStore) {
-    ColumnWriteStoreImpl memColumnsStore = newColumnWriteStoreImpl(memPageStore);
+    ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
     return columnWriter;
   }
@@ -75,13 +77,13 @@ public class TestMemColumn {
     String[] col = new String[]{"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore(10);
 
-    ColumnWriteStoreImpl memColumnsStore = newColumnWriteStoreImpl(memPageStore);
+    ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
     ColumnDescriptor path1 = mt.getColumnDescription(col);
     ColumnDescriptor path = path1;
 
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
     columnWriter.write(Binary.fromString("42"), 0, 0);
-    columnWriter.flush();
+    memColumnsStore.flush();
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
     for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
@@ -97,7 +99,7 @@ public class TestMemColumn {
     MessageType mt = MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
     String[] col = new String[]{"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore(10);
-    ColumnWriteStoreImpl memColumnsStore = newColumnWriteStoreImpl(memPageStore);
+    ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
     ColumnDescriptor path1 = mt.getColumnDescription(col);
     ColumnDescriptor path = path1;
 
@@ -105,7 +107,7 @@ public class TestMemColumn {
     for (int i = 0; i < 2000; i++) {
       columnWriter.write(42l, 0, 0);
     }
-    columnWriter.flush();
+    memColumnsStore.flush();
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
     for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
@@ -121,7 +123,7 @@ public class TestMemColumn {
     MessageType mt = MessageTypeParser.parseMessageType("message msg { repeated group foo { repeated int64 bar; } }");
     String[] col = new String[]{"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore(10);
-    ColumnWriteStoreImpl memColumnsStore = newColumnWriteStoreImpl(memPageStore);
+    ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
     ColumnDescriptor path1 = mt.getColumnDescription(col);
     ColumnDescriptor path = path1;
 
@@ -138,7 +140,7 @@ public class TestMemColumn {
         columnWriter.writeNull(r, d);
       }
     }
-    columnWriter.flush();
+    memColumnsStore.flush();
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
     int i = 0;
@@ -156,7 +158,7 @@ public class TestMemColumn {
     }
   }
 
-  private ColumnWriteStoreImpl newColumnWriteStoreImpl(MemPageStore memPageStore) {
-    return new ColumnWriteStoreImpl(memPageStore, 2048, 2048, 2048, false, WriterVersion.PARQUET_1_0);
+  private ColumnWriteStoreV1 newColumnWriteStoreImpl(MemPageStore memPageStore) {
+    return new ColumnWriteStoreV1(memPageStore, 2048, 2048, 2048, false, WriterVersion.PARQUET_1_0);
   }
 }

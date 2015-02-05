@@ -1,17 +1,20 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.column.impl;
 
@@ -37,8 +40,8 @@ import parquet.io.api.Binary;
  * @author Julien Le Dem
  *
  */
-final class ColumnWriterImpl implements ColumnWriter {
-  private static final Log LOG = Log.getLog(ColumnWriterImpl.class);
+final class ColumnWriterV1 implements ColumnWriter {
+  private static final Log LOG = Log.getLog(ColumnWriterV1.class);
   private static final boolean DEBUG = Log.DEBUG;
   private static final int INITIAL_COUNT_FOR_SIZE_CHECK = 100;
 
@@ -53,7 +56,7 @@ final class ColumnWriterImpl implements ColumnWriter {
 
   private Statistics statistics;
 
-  public ColumnWriterImpl(
+  public ColumnWriterV1(
       ColumnDescriptor path,
       PageWriter pageWriter,
       int pageSizeThreshold,
@@ -72,10 +75,6 @@ final class ColumnWriterImpl implements ColumnWriter {
     this.repetitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), initialSizePerCol);
     this.definitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), initialSizePerCol);
     this.dataColumn = parquetProps.getValuesWriter(path, initialSizePerCol);
-  }
-
-  private void initStatistics() {
-    this.statistics = Statistics.getStatsBasedOnType(this.path.getType());
   }
 
   private void log(Object value, int r, int d) {
@@ -230,7 +229,6 @@ final class ColumnWriterImpl implements ColumnWriter {
     accountForValueWritten();
   }
 
-  @Override
   public void flush() {
     if (valueCount > 0) {
       writePage();
@@ -247,7 +245,6 @@ final class ColumnWriterImpl implements ColumnWriter {
     }
   }
 
-  @Override
   public long getBufferedSizeInMemory() {
     return repetitionLevelColumn.getBufferedSize()
         + definitionLevelColumn.getBufferedSize()

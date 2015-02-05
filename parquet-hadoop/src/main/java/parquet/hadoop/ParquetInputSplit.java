@@ -1,17 +1,20 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.hadoop;
 
@@ -37,6 +40,9 @@ import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 
 import parquet.bytes.BytesUtils;
 import parquet.hadoop.metadata.BlockMetaData;
+import parquet.hadoop.metadata.ColumnChunkMetaData;
+import parquet.schema.MessageType;
+import parquet.schema.MessageTypeParser;
 
 /**
  * An input split for the Parquet format
@@ -88,21 +94,31 @@ public class ParquetInputSplit extends FileSplit implements Writable {
       Map<String, String> extraMetadata,
       Map<String, String> readSupportMetadata) {
     this(
-        path, start, length, end(blocks), hosts,
+        path, start, length, end(blocks, requestedSchema), hosts,
         offsets(blocks),
         requestedSchema, readSupportMetadata
         );
   }
 
-  private static long end(List<BlockMetaData> blocks) {
-    BlockMetaData last = blocks.get(blocks.size() - 1);
-    return last.getStartingPos() + last.getCompressedSize();
+  private static long end(List<BlockMetaData> blocks, String requestedSchema) {
+    MessageType requested = MessageTypeParser.parseMessageType(requestedSchema);
+    long length = 0;
+
+    for (BlockMetaData block : blocks) {
+      List<ColumnChunkMetaData> columns = block.getColumns();
+      for (ColumnChunkMetaData column : columns) {
+        if (requested.containsPath(column.getPath().toArray())) {
+          length += column.getTotalSize();
+        }
+      }
+    }
+    return length;
   }
 
   private static long[] offsets(List<BlockMetaData> blocks) {
     long[] offsets = new long[blocks.size()];
     for (int i = 0; i < offsets.length; i++) {
-      offsets[i] = blocks.get(0).getStartingPos();
+      offsets[i] = blocks.get(i).getStartingPos();
     }
     return offsets;
   }
@@ -132,28 +148,28 @@ public class ParquetInputSplit extends FileSplit implements Writable {
   /**
    * @return the requested schema
    */
-  String getRequestedSchema() {
+  public String getRequestedSchema() {
     return requestedSchema;
   }
 
   /**
    * @return the end offset of that split
    */
-  long getEnd() {
+  public long getEnd() {
     return end;
   }
 
   /**
    * @return app specific metadata provided by the read support in the init phase
    */
-  Map<String, String> getReadSupportMetadata() {
+  public Map<String, String> getReadSupportMetadata() {
     return readSupportMetadata;
   }
 
   /**
    * @return the offsets of the row group selected if this has been determined on the client side
    */
-  long[] getRowGroupOffsets() {
+  public long[] getRowGroupOffsets() {
     return rowGroupOffsets;
   }
 
@@ -183,7 +199,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    * {@inheritDoc}
    */
   @Override
-  final public void readFields(DataInput hin) throws IOException {
+  public void readFields(DataInput hin) throws IOException {
     byte[] bytes = readArray(hin);
     DataInputStream in = new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(bytes)));
     super.readFields(in);
@@ -203,7 +219,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    * {@inheritDoc}
    */
   @Override
-  final public void write(DataOutput hout) throws IOException {
+  public void write(DataOutput hout) throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     DataOutputStream out = new DataOutputStream(new GZIPOutputStream(baos));
     super.write(out);
