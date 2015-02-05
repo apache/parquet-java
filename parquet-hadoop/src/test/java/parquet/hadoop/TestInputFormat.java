@@ -35,7 +35,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -108,31 +107,9 @@ public class TestInputFormat {
   }
 
   @Test
-  public void testThrowExceptionWhenMaxSplitSizeIsSmallerThanMinSplitSizeTaskSide() throws IOException {
-    try {
-      generateTSSplitByMinMaxSize(50, 49);
-      fail("should throw exception when max split size is smaller than the min split size");
-    } catch (ParquetDecodingException e) {
-      assertEquals("maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = 49; minSplitSize is 50"
-              , e.getMessage());
-    }
-  }
-
-  @Test
   public void testThrowExceptionWhenMaxSplitSizeIsNegative() throws IOException {
     try {
       generateSplitByMinMaxSize(-100, -50);
-      fail("should throw exception when max split size is negative");
-    } catch (ParquetDecodingException e) {
-      assertEquals("maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = -50; minSplitSize is -100"
-              , e.getMessage());
-    }
-  }
-
-  @Test
-  public void testTSThrowExceptionWhenMaxSplitSizeIsNegative() throws IOException {
-    try {
-      generateTSSplitByMinMaxSize(-100, -50);
       fail("should throw exception when max split size is negative");
     } catch (ParquetDecodingException e) {
       assertEquals("maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = -50; minSplitSize is -100"
@@ -178,21 +155,6 @@ public class TestInputFormat {
   }
 
   @Test
-  public void testTSGenerateSplitsAlignedWithHDFSBlock() throws IOException {
-    withHDFSBlockSize(50, 50);
-    List<ParquetInputSplit> splits = generateTSSplitByMinMaxSize(50, 50);
-    shouldSplitStartBe(splits, 0, 50);
-    shouldSplitLocationBe(splits, 0, 1);
-    shouldSplitLengthBe(splits, 50, 50);
-
-    splits = generateSplitByMinMaxSize(0, Long.MAX_VALUE);
-    shouldSplitStartBe(splits, 0, 50);
-    shouldSplitLocationBe(splits, 0, 1);
-    shouldSplitLengthBe(splits, 50, 50);
-
-  }
-
-  @Test
   public void testRowGroupNotAlignToHDFSBlock() throws IOException {
     //Test HDFS blocks size(51) is not multiple of row group size(10)
     withHDFSBlockSize(51, 51);
@@ -221,32 +183,6 @@ public class TestInputFormat {
     shouldSplitLengthBe(splits, 40, 50, 10);
   }
 
-  @Test
-  public void testTSRowGroupNotAlignToHDFSBlock() throws IOException {
-    //Test HDFS blocks size(51) is not multiple of row group size(10)
-    withHDFSBlockSize(51, 51);
-    List<ParquetInputSplit> splits = generateTSSplitByMinMaxSize(50, 50);
-    shouldSplitStartBe(splits, 0, 50, 100);
-    shouldSplitLocationBe(splits, 0, 1, 1);
-    shouldSplitLengthBe(splits, 50, 50, 2);
-
-    //Test a rowgroup is greater than the hdfsBlock boundary
-    withHDFSBlockSize(49, 49);
-    splits = generateTSSplitByMinMaxSize(50, 50);
-    shouldSplitStartBe(splits, 0, 50);
-    shouldSplitLocationBe(splits, 1, 1);
-    shouldSplitLengthBe(splits, 50, 48);
-
-    /*
-    aaaa bbbbb c
-     */
-    withHDFSBlockSize(44,44,44);
-    splits = generateTSSplitByMinMaxSize(40, 50);
-    shouldSplitStartBe(splits, 0, 44, 88);
-    shouldSplitLocationBe(splits, 0, 1, 2);
-    shouldSplitLengthBe(splits, 44, 44, 44);
-  }
-
   /*
     when min size is 55, max size is 56, the first split will be generated with 6 row groups(size of 10 each), which satisfies split.size>min.size, but not split.size<max.size
     aaaaa abbbb
@@ -270,28 +206,6 @@ public class TestInputFormat {
     shouldSplitBlockSizeBe(splits, 6, 4);
     shouldSplitLocationBe(splits, 0, 1);
     shouldSplitLengthBe(splits, 60, 40);
-
-  }
-
-  @Test
-  public void testTSGenerateSplitsNotAlignedWithHDFSBlock() throws IOException, InterruptedException {
-    withHDFSBlockSize(50, 50);
-    List<ParquetInputSplit> splits = generateTSSplitByMinMaxSize(55, 56);
-    shouldSplitStartBe(splits, 0, 56);
-    shouldSplitLocationBe(splits, 1, 1);
-    shouldSplitLengthBe(splits, 56, 44);
-
-    withHDFSBlockSize(51, 51);
-    splits = generateTSSplitByMinMaxSize(55, 56);
-    shouldSplitStartBe(splits, 0, 56);
-    shouldSplitLocationBe(splits, 1, 1);
-    shouldSplitLengthBe(splits, 56, 46);
-
-    withHDFSBlockSize(49, 49, 49);
-    splits = generateTSSplitByMinMaxSize(55, 56);
-    shouldSplitStartBe(splits, 0, 56, 112);
-    shouldSplitLocationBe(splits, 1, 2, 2);
-    shouldSplitLengthBe(splits, 56, 56, 35);
 
   }
 
@@ -327,33 +241,6 @@ public class TestInputFormat {
     shouldSplitLengthBe(splits, 30, 20, 30, 20);
   }
 
-  @Test
-  public void testTSGenerateSplitsSmallerThanMaxSizeAndAlignToHDFS() throws Exception {
-    withHDFSBlockSize(50, 50);
-    List<ParquetInputSplit> splits = generateTSSplitByMinMaxSize(18, 30);
-    shouldSplitStartBe(splits, 0, 30, 50, 80);
-    shouldSplitLocationBe(splits, 0, 0, 1, 1);
-    shouldSplitLengthBe(splits, 30, 20, 30, 20);
-
-    /*
-    aaabb cccdd
-         */
-    withHDFSBlockSize(51, 51);
-    splits = generateTSSplitByMinMaxSize(18, 30);
-    shouldSplitStartBe(splits, 0, 30, 51, 81);
-    shouldSplitLocationBe(splits, 0, 0, 1, 1);
-    shouldSplitLengthBe(splits, 30, 21, 30, 21);
-
-    /*
-    aaabb cccdd
-     */
-    withHDFSBlockSize(49, 49, 49);
-    splits = generateTSSplitByMinMaxSize(18, 30);
-    shouldSplitStartBe(splits, 0, 30, 49, 79, 98, 128);
-    shouldSplitLocationBe(splits, 0, 0, 1, 1, 2, 2);
-    shouldSplitLengthBe(splits, 30, 19, 30, 19, 30, 19);
-  }
-
   /*
     when the min size is set to be 25, so the second split can not be aligned with the boundary of hdfs block, there for split of size 30 will be created as the 3rd split.
     aaabb bcccd
@@ -364,15 +251,6 @@ public class TestInputFormat {
     List<ParquetInputSplit> splits = generateSplitByMinMaxSize(25, 30);
     shouldSplitBlockSizeBe(splits, 3, 3, 3, 1);
     shouldSplitLocationBe(splits, 0, 0, 1, 1);
-    shouldSplitLengthBe(splits, 30, 30, 30, 10);
-  }
-
-  @Test
-  public void testTSGenerateSplitsCrossHDFSBlockBoundaryToSatisfyMinSize() throws Exception {
-    withHDFSBlockSize(50, 50);
-    List<ParquetInputSplit> splits = generateTSSplitByMinMaxSize(25, 30);
-    shouldSplitStartBe(splits, 0, 30, 60, 90);
-    shouldSplitLocationBe(splits, 0, 1, 1, 1);
     shouldSplitLengthBe(splits, 30, 30, 30, 10);
   }
 
@@ -409,37 +287,6 @@ public class TestInputFormat {
     shouldSplitBlockSizeBe(splits, 2, 2, 1, 2, 2, 1);
     shouldSplitLocationBe(splits, 0, 0, 0, 1, 1, 1);
     shouldSplitLengthBe(splits, 20, 20, 10, 20, 20, 10);
-  }
-
-  @Test
-  public void testTSMultipleRowGroupsInABlockToAlignHDFSBlock() throws Exception {
-    withHDFSBlockSize(50, 50);
-    List<ParquetInputSplit> splits = generateTSSplitByMinMaxSize(10, 18);
-    shouldSplitStartBe(splits, 0, 18, 36, 50, 68, 86);
-    shouldSplitLocationBe(splits, 0, 0, 0, 1, 1, 1);
-    shouldSplitLengthBe(splits, 18, 18, 14, 18, 18, 14);
-
-    /*
-    aabbc ddeef
-    notice the first byte of split d is in the first hdfs block:
-    when adding the 6th row group, although the first byte of it is in the first hdfs block
-    , but the mid point of the row group is in the second hdfs block, there for a new split(d) is created including that row group
-     */
-    withHDFSBlockSize(51, 51);
-    splits = generateTSSplitByMinMaxSize(10, 18);
-    shouldSplitStartBe(splits, 0, 18, 36, 51, 69, 87);
-    shouldSplitLocationBe(splits, 0, 0, 0, 1, 1, 1);
-    shouldSplitLengthBe(splits, 18, 18, 15, 18, 18, 15);
-
-    /*
-    aabbc ddeef
-    same as the case where block sizes are 50 50
-     */
-    withHDFSBlockSize(49, 49);
-    splits = generateTSSplitByMinMaxSize(10, 18);
-    shouldSplitStartBe(splits, 0, 18, 36, 49, 67, 85);
-    shouldSplitLocationBe(splits, 0, 0, 0, 1, 1, 1);
-    shouldSplitLengthBe(splits, 18, 18, 13, 18, 18, 13);
   }
 
   public static final class DummyUnboundRecordFilter implements UnboundRecordFilter {
@@ -564,15 +411,6 @@ public class TestInputFormat {
         min, max);
   }
 
-  private List<ParquetInputSplit> generateTSSplitByMinMaxSize(long min, long max) throws IOException {
-    return TaskSideMetadataSplitStrategy.generateTaskSideMDSplits(
-        hdfsBlocks,
-        fileStatus,
-        schema.toString(),
-        extramd,
-        min, max);
-  }
-
   private List<ParquetInputSplit> generateSplitByDeprecatedConstructor(long min, long max) throws
       IOException {
     List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
@@ -611,7 +449,6 @@ public class TestInputFormat {
     for (int i = 0; i < locations.length; i++) {
       int loc = locations[i];
       ParquetInputSplit split = splits.get(i);
-      assertEquals(message(splits) + i, "foo", split.getReadSupportMetadata().get("specific"));
       assertEquals(message(splits) + i, "[foo" + loc + ".datanode, bar" + loc + ".datanode]", Arrays.toString(split.getLocations()));
     }
   }
