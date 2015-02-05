@@ -40,7 +40,7 @@ import java.util.Map;
 public class MemoryManager {
   private static final Log LOG = Log.getLog(MemoryManager.class);
   static final float DEFAULT_MEMORY_POOL_RATIO = 0.95f;
-  static final long DEFAULT_MIN_MEMORY_ALLOCATION = ParquetWriter.DEFAULT_BLOCK_SIZE / 10;
+  static final long DEFAULT_MIN_MEMORY_ALLOCATION = ParquetWriter.DEFAULT_PAGE_SIZE;
   private final float memoryPoolRatio;
 
   private final long totalMemoryPool;
@@ -110,11 +110,17 @@ public class MemoryManager {
       scale = (double) totalMemoryPool / totalAllocations;
     }
 
+    int maxColCount = 0;
+    for (InternalParquetRecordWriter w : writerList.keySet()) {
+      maxColCount = Math.max(w.getSchema().getColumns().size(), maxColCount);
+    }
+
     for (Map.Entry<InternalParquetRecordWriter, Long> entry : writerList.entrySet()) {
       long newSize = (long) Math.floor(entry.getValue() * scale);
-      if(minMemoryAllocation > 0 && newSize < minMemoryAllocation) {
+      if(minMemoryAllocation > 0 && newSize/maxColCount < minMemoryAllocation) {
           throw new ParquetRuntimeException(String.format("New Memory allocation %d"+
-          " exceeds minimum allocation size %d", newSize, minMemoryAllocation)){};
+          " exceeds minimum allocation size %d with largest schema having %d columns",
+              newSize, minMemoryAllocation, maxColCount)){};
       }
       entry.getKey().setRowGroupSizeThreshold(newSize);
       LOG.debug(String.format("Adjust block size from %,d to %,d for writer: %s",
