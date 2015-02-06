@@ -134,6 +134,14 @@
               </artifactSet>
               <filters>
                 <filter>
+                  <!-- Exclude SLF4J's meta files, covered by LICENSE and NOTICE -->
+                  <artifact>org.slf4j:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/LICENSE.txt</exclude>
+                    <exclude>META-INF/NOTICE.txt</exclude>
+                  </excludes>
+                </filter>
+                <filter>
                   <!-- Sigh. The Thrift jar contains its source -->
                   <artifact>org.apache.thrift:libthrift</artifact>
                   <excludes>
