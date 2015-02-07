@@ -1,0 +1,10 @@
+{ "type": "record"
+, "name": "Foo"
+, "fields":
+  [
+    { "name": "field_1"
+    , "type": [ "null",  { "type": "string" } ]
+    , "default": null
+    }
+  ]
+}
