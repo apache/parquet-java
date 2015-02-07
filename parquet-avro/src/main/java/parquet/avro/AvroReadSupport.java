@@ -51,7 +51,7 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
 
   static final String AVRO_SCHEMA_METADATA_KEY = "avro.schema";
 
-  private static final String AVRO_READ_SCHEMA_METADATA_KEY = "avro.read.schema";
+  static final String AVRO_READ_SCHEMA_METADATA_KEY = "avro.read.schema";
 
   public static String AVRO_DATA_SUPPLIER = "parquet.avro.data.supplier";
 
@@ -179,11 +179,7 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
       return mergeKeyValueMetadata(context, readerSchema);
     // otherwise, do not attempt to perform schema resolution/evolution
     } else {
-      Map<String, String> metadata = context.getMergedKeyValueMetaData();
-      if (readerSchemaString != null) {
-        metadata.put(AVRO_READ_SCHEMA_METADATA_KEY, readerSchemaString);
-      }
-      return metadata;
+      return context.getMergedKeyValueMetaData();
     }
   }
 
@@ -192,8 +188,11 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
     MessageType fileSchema = context.getFileSchema();
     MessageType schema = fileSchema;
     Map<String, String> metadata = getMergedKeyValueMetadata(context);
-    // replace Parquet schema with one created from an Avro projection, iff one is supplied
     Configuration configuration = context.getConfiguration();
+    String readerSchemaString = configuration.get(AVRO_READ_SCHEMA);
+    if (readerSchemaString != null) {
+      metadata.put(AVRO_READ_SCHEMA_METADATA_KEY, readerSchemaString);
+    }
     String requestedProjectionString = configuration.get(AVRO_REQUESTED_PROJECTION);
     if (requestedProjectionString != null) {
       Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);

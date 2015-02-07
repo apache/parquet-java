@@ -19,22 +19,67 @@ public class TestAvroReadSupport {
   /* Avro Schemas */
 
   /* equivalent to message Foo { required binary field_1 (UTF8); } */
-  static final String RECORD_WITH_REQUIRED_STRING = "{\"type\":\"record\",\"name\":\"Foo\",\"fields\":[{\"name\":\"field_1\",\"type\":{\"type\":\"string\"}}]}";
+  static final String RECORD_WITH_REQUIRED_STRING =
+    "{\"type\":\"record\"," +
+    " \"name\":\"Foo\"," +
+    " \"fields\":[" +
+    "    {\"name\":\"field_1\"," +
+    "     \"type\":{\"type\":\"string\"}" +
+    "    }" +
+    "  ]" +
+    "}";
 
   /* equivalent to message Foo { optional binary field_1 (UTF8); } */
-  static final String RECORD_WITH_OPTIONAL_STRING = "{\"type\":\"record\",\"name\":\"Foo\",\"fields\":[{\"name\":\"field_1\",\"type\":[\"null\",{\"type\":\"string\"}],\"default\":null}]}";
+  static final String RECORD_WITH_OPTIONAL_STRING =
+    "{\"type\":\"record\"," +
+    " \"name\":\"Foo\"," +
+    " \"fields\":[" +
+    "    {\"name\":\"field_1\"," +
+    "     \"type\":[\"null\",{\"type\":\"string\"}]," +
+    "     \"default\":null" +
+    "    }" +
+    "  ]" +
+    "}";
 
   /* equivalent to message Foo { required int64 field_1; } */
-  static final String RECORD_WITH_REQUIRED_LONG = "{\"type\":\"record\",\"name\":\"Foo\",\"fields\":[{\"name\":\"field_1\",\"type\":{\"type\":\"long\"}}]}";
+  static final String RECORD_WITH_REQUIRED_LONG =
+    "{\"type\":\"record\"," +
+    " \"name\":\"Foo\"," +
+    " \"fields\":[" +
+    "    {\"name\":\"field_1\"," +
+    "     \"type\":{\"type\":\"long\"}" +
+    "    }" +
+    "  ]" +
+    "}";
 
   /* equivalent to message Foo { optional binary field_1 (UTF8); required binary field_2 (UTF8) = "foo"; } */
-  static final String RECORD_WITH_REQUIRED_AND_OPTIONAL_STRINGS = "{\"type\":\"record\",\"name\":\"Foo\",\"fields\":[{\"name\":\"field_1\",\"type\":[\"null\",{\"type\":\"string\"}],\"default\":null},{\"name\":\"field_2\",\"type\":{\"type\":\"string\"},\"default\":\"foo\"}]}";
+  static final String RECORD_WITH_REQUIRED_AND_OPTIONAL_STRINGS = 
+    "{\"type\":\"record\"," +
+    " \"name\":\"Foo\"," +
+    " \"fields\":[" +
+    "    {\"name\":\"field_1\"," +
+    "     \"type\":[\"null\",{\"type\":\"string\"}]," +
+    "     \"default\":null" +
+    "    }," +
+    "    {\"name\":\"field_2\"," +
+    "     \"type\":{\"type\":\"string\"}," +
+    "     \"default\":\"foo\"" +
+    "    }" +
+    "  ]" +
+    "}";
 
   /* Parquet Schemas */
 
-  static final String MESSAGE_WITH_REQUIRED_STRING = "message Foo { required binary field_1 (UTF8); }";
+  static final String MESSAGE_WITH_REQUIRED_STRING =
+    "message Foo {" +
+    "  required binary field_1 (UTF8);" +
+    "}";
 
-  static final String MESSAGE_WITH_REQUIRED_AND_OPTIONAL_STRINGS = "message Foo { optional binary field_1 (UTF8); required binary field_2 (UTF8); }";
+  static final String MESSAGE_WITH_REQUIRED_AND_OPTIONAL_STRINGS =
+    "message Foo {" +
+    "  optional binary field_1 (UTF8);" +
+    "  required binary field_2 (UTF8);" +
+    "}";
 
   /* Changing a field from required to optional is valid */
   @Test
