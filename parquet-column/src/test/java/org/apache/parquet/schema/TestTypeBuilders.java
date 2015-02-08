@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.schema;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -597,6 +599,479 @@ public class TestTypeBuilders {
                 .as(INTERVAL).named("interval");
           }
         });
+  }
+
+  @Test
+  public void testRequiredMap() {
+    List<Type> typeList = new ArrayList<Type>();
+    typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
+    typeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
+    GroupType expected = new GroupType(REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED,
+        "map",
+        typeList));
+    GroupType actual = Types.requiredMap()
+        .key(INT64)
+        .requiredValue(INT64)
+        .named("myMap");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testOptionalMap() {
+    List<Type> typeList = new ArrayList<Type>();
+    typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
+    typeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
+    GroupType expected = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED,
+        "map",
+        typeList));
+    GroupType actual = Types.optionalMap()
+        .key(INT64)
+        .requiredValue(INT64)
+        .named("myMap");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testMapWithInt64KeyAnnotations() {
+    List<Type> typeList = new ArrayList<Type>();
+    typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
+    typeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
+    GroupType map = new GroupType(REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+        typeList));
+    MessageType expected = new MessageType("mapParent", map);
+    GroupType actual = Types.buildMessage().requiredMap()
+        .key(INT64)
+        .requiredValue(INT64)
+        .named("myMap").named("mapParent");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testMapWithOptionalValue() {
+    List<Type> typeList = new ArrayList<Type>();
+    typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
+    typeList.add(new PrimitiveType(OPTIONAL, INT64, "value"));
+    GroupType map = new GroupType(REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+        typeList));
+    MessageType expected = new MessageType("mapParent", map);
+    GroupType actual = Types.buildMessage().requiredMap()
+        .key(INT64)
+        .optionalValue(INT64)
+        .named("myMap").named("mapParent");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testMapWithGroupKeyAndOptionalGroupValue() {
+    List<Type> typeList = new ArrayList<Type>();
+
+    List<Type> keyFields = new ArrayList<Type>();
+    keyFields.add(new PrimitiveType(OPTIONAL, INT64, "first"));
+    keyFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "second"));
+    typeList.add(new GroupType(REQUIRED, "key", keyFields));
+
+    List<Type> valueFields = new ArrayList<Type>();
+    valueFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "one"));
+    valueFields.add(new PrimitiveType(OPTIONAL, INT32, "two"));
+    typeList.add(new GroupType(OPTIONAL, "value", valueFields));
+
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+        typeList));
+
+    MessageType expected = new MessageType("mapParent", map);
+    GroupType actual =
+        Types.buildMessage().optionalMap()
+            .groupKey()
+            .optional(INT64).named("first")
+            .optional(DOUBLE).named("second")
+            .optionalGroupValue()
+            .optional(DOUBLE).named("one")
+            .optional(INT32).named("two")
+            .named("myMap")
+            .named("mapParent");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testMapWithGroupKeyAndRequiredGroupValue() {
+    List<Type> typeList = new ArrayList<Type>();
+
+    List<Type> keyFields = new ArrayList<Type>();
+    keyFields.add(new PrimitiveType(OPTIONAL, INT64, "first"));
+    keyFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "second"));
+    typeList.add(new GroupType(REQUIRED, "key", keyFields));
+
+    List<Type> valueFields = new ArrayList<Type>();
+    valueFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "one"));
+    valueFields.add(new PrimitiveType(OPTIONAL, INT32, "two"));
+    typeList.add(new GroupType(REQUIRED, "value", valueFields));
+
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+        typeList));
+
+    MessageType expected = new MessageType("mapParent", map);
+    GroupType actual =
+        Types.buildMessage().optionalMap()
+            .groupKey()
+            .optional(INT64).named("first")
+            .optional(DOUBLE).named("second")
+            .requiredGroupValue()
+            .optional(DOUBLE).named("one")
+            .optional(INT32).named("two")
+            .named("myMap")
+            .named("mapParent");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testMapWithGroupKeyAndOptionalValue() {
+    List<Type> typeList = new ArrayList<Type>();
+
+    List<Type> keyFields = new ArrayList<Type>();
+    keyFields.add(new PrimitiveType(OPTIONAL, INT64, "first"));
+    keyFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "second"));
+    typeList.add(new GroupType(REQUIRED, "key", keyFields));
+
+    typeList.add(new PrimitiveType(OPTIONAL, DOUBLE, "value"));
+
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+        typeList));
+
+    MessageType expected = new MessageType("mapParent", map);
+    GroupType actual =
+        Types.buildMessage().optionalMap()
+            .groupKey()
+            .optional(INT64).named("first")
+            .optional(DOUBLE).named("second")
+            .optionalValue(DOUBLE)
+            .named("myMap")
+            .named("mapParent");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testMapWithGroupKeyAndRequiredValue() {
+    List<Type> typeList = new ArrayList<Type>();
+
+    List<Type> keyFields = new ArrayList<Type>();
+    keyFields.add(new PrimitiveType(OPTIONAL, INT64, "first"));
+    keyFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "second"));
+    typeList.add(new GroupType(REQUIRED, "key", keyFields));
+
+    typeList.add(new PrimitiveType(REQUIRED, DOUBLE, "value"));
+
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+        typeList));
+
+    MessageType expected = new MessageType("mapParent", map);
+    GroupType actual =
+        Types.buildMessage().optionalMap()
+            .groupKey()
+            .optional(INT64).named("first")
+            .optional(DOUBLE).named("second")
+            .requiredValue(DOUBLE)
+            .named("myMap")
+            .named("mapParent");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testMapWithOptionalGroupValue() {
+    List<Type> typeList = new ArrayList<Type>();
+
+    List<Type> keyFields = new ArrayList<Type>();
+    keyFields.add(new PrimitiveType(OPTIONAL, INT64, "first"));
+    keyFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "second"));
+    typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
+
+    List<Type> valueFields = new ArrayList<Type>();
+    valueFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "one"));
+    valueFields.add(new PrimitiveType(OPTIONAL, INT32, "two"));
+    typeList.add(new GroupType(OPTIONAL, "value", valueFields));
+
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+        typeList));
+
+    MessageType expected = new MessageType("mapParent", map);
+    GroupType actual =
+        Types.buildMessage().optionalMap()
+            .key(INT64)
+            .optionalGroupValue()
+            .optional(DOUBLE).named("one")
+            .optional(INT32).named("two")
+            .named("myMap")
+            .named("mapParent");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testMapWithRequiredGroupValue() {
+    List<Type> typeList = new ArrayList<Type>();
+
+    List<Type> keyFields = new ArrayList<Type>();
+    keyFields.add(new PrimitiveType(OPTIONAL, INT64, "first"));
+    keyFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "second"));
+    typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
+
+    List<Type> valueFields = new ArrayList<Type>();
+    valueFields.add(new PrimitiveType(OPTIONAL, DOUBLE, "one"));
+    valueFields.add(new PrimitiveType(OPTIONAL, INT32, "two"));
+    typeList.add(new GroupType(REQUIRED, "value", valueFields));
+
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+        typeList));
+
+    MessageType expected = new MessageType("mapParent", map);
+    GroupType actual =
+        Types.buildMessage().optionalMap()
+            .key(INT64)
+            .requiredGroupValue()
+            .optional(DOUBLE).named("one")
+            .optional(INT32).named("two")
+            .named("myMap")
+            .named("mapParent");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testMapWithNestedGroupKeyAndNestedGroupValue() {
+    List<Type> typeList = new ArrayList<Type>();
+
+    List<Type> innerFields = new ArrayList<Type>();
+    innerFields.add(new PrimitiveType(REQUIRED, FLOAT, "inner_key_1"));
+    innerFields.add(new PrimitiveType(OPTIONAL, INT32, "inner_key_2"));
+
+    List<Type> keyFields = new ArrayList<Type>();
+    keyFields.add(new PrimitiveType(OPTIONAL, INT64, "first"));
+    keyFields.add(new GroupType(REQUIRED, "second", innerFields));
+    typeList.add(new GroupType(REQUIRED, "key", keyFields));
+
+    List<Type> valueFields = new ArrayList<Type>();
+    valueFields.add(new GroupType(OPTIONAL, "one", innerFields));
+    valueFields.add(new PrimitiveType(OPTIONAL, INT32, "two"));
+    typeList.add(new GroupType(OPTIONAL, "value", valueFields));
+
+    GroupType map = new GroupType(REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+        typeList));
+
+    MessageType expected = new MessageType("mapParent", map);
+    GroupType actual =
+        Types.buildMessage().requiredMap()
+            .groupKey()
+            .optional(INT64).named("first")
+            .requiredGroup()
+            .required(FLOAT).named("inner_key_1")
+            .optional(INT32).named("inner_key_2")
+            .named("second")
+            .optionalGroupValue()
+            .optionalGroup()
+            .required(FLOAT).named("inner_key_1")
+            .optional(INT32).named("inner_key_2")
+            .named("one")
+            .optional(INT32).named("two")
+            .named("myMap")
+            .named("mapParent");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testRequiredList() {
+    GroupType expected = new GroupType(REQUIRED, "myList", OriginalType.LIST,
+        new GroupType(REPEATED,
+            "list",
+            new PrimitiveType(OPTIONAL, INT64, "element")));
+    Type actual = Types.requiredList()
+        .optionalElement(INT64).named("element")
+        .named("myList");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testOptionalList() {
+    GroupType expected = new GroupType(OPTIONAL, "myList", OriginalType.LIST,
+        new GroupType(REPEATED,
+            "list",
+            new PrimitiveType(OPTIONAL, INT64, "element")));
+    Type actual = Types.optionalList()
+        .optionalElement(INT64).named("element")
+        .named("myList");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testListOfReqGroup() {
+    List<Type> fields = new ArrayList<Type>();
+    fields.add(new PrimitiveType(OPTIONAL, BOOLEAN, "field"));
+    GroupType expected = new GroupType(REQUIRED, "myList", OriginalType.LIST,
+        new GroupType(REPEATED,
+            "list",
+            new GroupType(REQUIRED, "element", fields)));
+    Type actual = Types.requiredList()
+        .requiredGroupElement()
+          .optional(BOOLEAN)
+          .named("field")
+        .named("element")
+        .named("myList");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testListOfOptionalGroup() {
+    List<Type> fields = new ArrayList<Type>();
+    fields.add(new PrimitiveType(OPTIONAL, BOOLEAN, "field"));
+    GroupType expected = new GroupType(REQUIRED, "myList", OriginalType.LIST,
+        new GroupType(REPEATED,
+            "list",
+            new GroupType(OPTIONAL, "element", fields)));
+    Type actual = Types.requiredList()
+          .optionalGroupElement()
+            .optional(BOOLEAN)
+            .named("field")
+          .named("element")
+        .named("myList");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testRequiredNestedList() {
+    List<Type> fields = new ArrayList<Type>();
+    fields.add(new GroupType(REQUIRED, "innerList", OriginalType.LIST,
+        new GroupType(REPEATED,
+            "list",
+            new PrimitiveType(OPTIONAL, DOUBLE, "innerElement"))));
+    GroupType expected = new GroupType(OPTIONAL, "myList", OriginalType.LIST,
+        new GroupType(REPEATED,
+            "list",
+            fields));
+
+    Type actual = Types.optionalList()
+        .requiredListElement()
+        .optionalElement(DOUBLE).named("innerElement")
+        .named("innerList")
+        .named("myList");
+
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testOptionalNestedList() {
+    List<Type> fields = new ArrayList<Type>();
+    fields.add(new GroupType(OPTIONAL, "innerList", OriginalType.LIST,
+        new GroupType(REPEATED,
+            "list",
+            new PrimitiveType(OPTIONAL, DOUBLE, "innerElement"))));
+    GroupType expected = new GroupType(OPTIONAL, "myList", OriginalType.LIST,
+        new GroupType(REPEATED,
+            "list",
+            fields));
+
+    Type actual = Types.optionalList()
+        .optionalListElement()
+        .optionalElement(DOUBLE).named("innerElement")
+        .named("innerList")
+        .named("myList");
+
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testRequiredListWithinGroup() {
+    List<Type> fields = new ArrayList<Type>();
+    fields.add(new GroupType(REQUIRED, "myList", OriginalType.LIST,
+        new GroupType(REPEATED,
+            "list",
+            new PrimitiveType(OPTIONAL, INT64, "element"))));
+    GroupType expected = new GroupType(REQUIRED, "topGroup", fields);
+    Type actual = Types.requiredGroup()
+          .requiredList()
+            .optionalElement(INT64).named("element")
+          .named("myList")
+        .named("topGroup");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testOptionalListWithinGroup() {
+    List<Type> fields = new ArrayList<Type>();
+    fields.add(new GroupType(OPTIONAL, "myList", OriginalType.LIST,
+        new GroupType(REPEATED,
+            "list",
+            new PrimitiveType(OPTIONAL, INT64, "element"))));
+    GroupType expected = new GroupType(REQUIRED, "topGroup", fields);
+    Type actual = Types.requiredGroup()
+        .optionalList()
+        .optionalElement(INT64).named("element")
+        .named("myList")
+        .named("topGroup");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testOptionalListWithinGroupWithReqElement() {
+    List<Type> fields = new ArrayList<Type>();
+    fields.add(new GroupType(OPTIONAL, "myList", OriginalType.LIST,
+        new GroupType(REPEATED,
+            "list",
+            new PrimitiveType(REQUIRED, INT64, "element"))));
+    GroupType expected = new GroupType(REQUIRED, "topGroup", fields);
+    Type actual = Types.requiredGroup()
+        .optionalList()
+        .requiredElement(INT64).named("element")
+        .named("myList")
+        .named("topGroup");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testRequiredMapWithinList() {
+    List<Type> innerFields = new ArrayList<Type>();
+    innerFields.add(new PrimitiveType(REQUIRED, DOUBLE, "key"));
+    innerFields.add(new PrimitiveType(REQUIRED, INT32, "value"));
+
+    List<Type> fields = new ArrayList<Type>();
+    fields.add(new GroupType(REQUIRED, "innerMap", OriginalType.MAP,
+        new GroupType(REPEATED,
+            "map",
+            innerFields)));
+    GroupType expected = new GroupType(OPTIONAL, "myList", OriginalType.LIST,
+        new GroupType(REPEATED,
+            "list",
+            fields));
+
+    Type actual = Types.optionalList()
+        .requiredMapElement()
+        .key(DOUBLE)
+        .requiredValue(INT32)
+        .named("innerMap")
+        .named("myList");
+
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testOptionalMapWithinList() {
+    List<Type> innerFields = new ArrayList<Type>();
+    innerFields.add(new PrimitiveType(REQUIRED, DOUBLE, "key"));
+    innerFields.add(new PrimitiveType(REQUIRED, INT32, "value"));
+
+    List<Type> fields = new ArrayList<Type>();
+    fields.add(new GroupType(OPTIONAL, "innerMap", OriginalType.MAP,
+        new GroupType(REPEATED,
+            "map",
+            innerFields)));
+    GroupType expected = new GroupType(OPTIONAL, "myList", OriginalType.LIST,
+        new GroupType(REPEATED,
+            "list",
+            fields));
+
+    Type actual = Types.optionalList()
+        .optionalMapElement()
+        .key(DOUBLE)
+        .requiredValue(INT32)
+        .named("innerMap")
+        .named("myList");
+
+    Assert.assertEquals(expected, actual);
   }
 
 
