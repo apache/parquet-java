@@ -180,4 +180,8 @@ class InternalParquetRecordWriter<T> {
   void setRowGroupSizeThreshold(long rowGroupSizeThreshold) {
     this.rowGroupSizeThreshold = rowGroupSizeThreshold;
   }
+
+  MessageType getSchema() {
+    return this.schema;
+  }
 }
