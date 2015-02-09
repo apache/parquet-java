@@ -231,6 +231,7 @@
                    <dumpDetails>true</dumpDetails>
                    <previousVersion>${previous.version}</previousVersion>
                    <excludes>
+                     <exclude>parquet/filter2/**</exclude>
                      <exclude>parquet/org/**</exclude>
                      <exclude>parquet/column/**</exclude>
                      <exclude>parquet/hadoop/ParquetInputSplit</exclude>
