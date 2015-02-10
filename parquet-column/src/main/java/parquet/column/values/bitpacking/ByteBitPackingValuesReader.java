@@ -43,7 +43,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
     this.bitWidth = BytesUtils.getWidthFromMaxInt(bound);
     this.packer = packer.newBytePacker(bitWidth);
   }
-  
+
   @Override
   public int readInteger() {
     ++ decodedPosition;
@@ -57,7 +57,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
         packer.unpack8Values(ByteBuffer.wrap(tempEncode), 0, decoded, 0);
       } else {
         packer.unpack8Values(encoded, encodedPos, decoded, 0);
-      }      
+      }
       encodedPos += bitWidth;
       decodedPosition = 0;
     }

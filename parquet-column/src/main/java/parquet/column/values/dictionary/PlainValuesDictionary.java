@@ -91,14 +91,28 @@ public abstract class PlainValuesDictionary extends Dictionary {
       binaryDictionaryContent = new Binary[dictionaryPage.getDictionarySize()];
       // dictionary values are stored in order: size (4 bytes LE) followed by {size} bytes
       int offset = dictionaryBytes.position();
-      for (int i = 0; i < binaryDictionaryContent.length; i++) {
-        int length = readIntLittleEndian(dictionaryBytes, offset);
-        // read the length
-        offset += 4;
-        // wrap the content in a binary
-        binaryDictionaryContent[i] = Binary.fromByteBuffer(dictionaryBytes, offset, length);
-        // increment to the next value
-        offset += length;
+      if (length == null) {
+        // dictionary values are stored in order: size (4 bytes LE) followed by {size} bytes
+        for (int i = 0; i < binaryDictionaryContent.length; i++) {
+          int len = readIntLittleEndian(dictionaryBytes, offset);
+          // read the length
+          offset += 4;
+          // wrap the content in a binary
+          binaryDictionaryContent[i] = Binary.fromByteBuffer(dictionaryBytes, offset, len);
+          // increment to the next value
+          offset += len;
+        }
+      } else {
+        // dictionary values are stored as fixed-length arrays
+        Preconditions.checkArgument(length > 0,
+            "Invalid byte array length: " + length);
+        for (int i = 0; i < binaryDictionaryContent.length; i++) {
+          // wrap the content in a Binary
+          binaryDictionaryContent[i] = Binary.fromByteBuffer(
+              dictionaryBytes, offset, length);
+          // increment to the next value
+          offset += length;
+        }
       }
     }
 

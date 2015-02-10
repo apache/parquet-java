@@ -21,15 +21,12 @@ package parquet.column.values.rle;
 import static parquet.Log.DEBUG;
 
 import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 
 import parquet.Log;
 import parquet.Preconditions;
 import parquet.bytes.ByteBufferInputStream;
-
 import parquet.bytes.BytesUtils;
 import parquet.column.values.bitpacking.BytePacker;
 import parquet.column.values.bitpacking.Packer;

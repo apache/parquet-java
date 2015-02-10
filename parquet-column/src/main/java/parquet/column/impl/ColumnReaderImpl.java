@@ -525,7 +525,7 @@ class ColumnReaderImpl implements ColumnReader {
     });
   }
 
-  private void initDataReader(Encoding dataEncoding, byte[] bytes, int offset, int valueCount) {
+  private void initDataReader(Encoding dataEncoding, ByteBuffer byteBuf, int offset, int valueCount) {
     this.pageValueCount = valueCount;
     this.endOfPageValueCount = readValues + pageValueCount;
     if (dataEncoding.usesDictionary()) {
@@ -543,7 +543,7 @@ class ColumnReaderImpl implements ColumnReader {
       bind(path.getType());
     }
     try {
-      dataColumn.initFromPage(pageValueCount, bytes, offset);
+      dataColumn.initFromPage(pageValueCount, byteBuf, offset);
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read page in col " + path, e);
     }
@@ -558,13 +558,13 @@ class ColumnReaderImpl implements ColumnReader {
       ByteBuffer byteBuf = page.getBytes().toByteBuffer();
       if (DEBUG) LOG.debug("page size " + page.getBytes().size() + " bytes and " + pageValueCount + " records");
       if (DEBUG) LOG.debug("reading repetition levels at 0");
-      repetitionLevelColumn.initFromPage(pageValueCount, byteBuf, 0);
-      int next = repetitionLevelColumn.getNextOffset();
+      rlReader.initFromPage(pageValueCount, byteBuf, 0);
+      int next = rlReader.getNextOffset();
       if (DEBUG) LOG.debug("reading definition levels at " + next);
-      definitionLevelColumn.initFromPage(pageValueCount, byteBuf, next);
-      next = definitionLevelColumn.getNextOffset();
+      dlReader.initFromPage(pageValueCount, byteBuf, next);
+      next = dlReader.getNextOffset();
       if (DEBUG) LOG.debug("reading data at " + next);
-      dataColumn.initFromPage(pageValueCount, byteBuf, next);
+      initDataReader(page.getValueEncoding(), byteBuf, next, page.getValueCount());
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read page " + page + " in col " + path, e);
     }
@@ -575,7 +575,7 @@ class ColumnReaderImpl implements ColumnReader {
     this.definitionLevelColumn = newRLEIterator(path.getMaxDefinitionLevel(), page.getDefinitionLevels());
     try {
       if (DEBUG) LOG.debug("page data size " + page.getData().size() + " bytes and " + pageValueCount + " records");
-      initDataReader(page.getDataEncoding(), page.getData().toByteArray(), 0, page.getValueCount());
+      initDataReader(page.getDataEncoding(), page.getData().toByteBuffer(), 0, page.getValueCount());
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read page " + page + " in col " + path, e);
     }

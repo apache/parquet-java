@@ -20,7 +20,6 @@ package parquet.column.values.plain;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-
 import parquet.Log;
 import parquet.column.values.ValuesReader;
 import parquet.io.ParquetDecodingException;

@@ -530,7 +530,7 @@ public class ParquetMetadataConverter {
     if (Log.DEBUG) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
     return parquetMetadata;
   }
-  
+
   public ParquetMetadata readParquetMetadata(FSDataInputStream from)
       throws IOException {
     FileMetaData fileMetaData = CompatibilityUtil.read(from, new FileMetaData());
