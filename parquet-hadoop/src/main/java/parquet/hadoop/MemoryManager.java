@@ -108,6 +108,10 @@ public class MemoryManager {
       scale = 1.0;
     } else {
       scale = (double) totalMemoryPool / totalAllocations;
+      LOG.warn(String.format(
+          "Total allocation exceeds %.2f%% (%,d bytes) of heap memory\n" +
+          "Scaling row group sizes to %.2f%% for %d writers",
+          100*memoryPoolRatio, totalMemoryPool, 100*scale, writerList.size()));
     }
 
     int maxColCount = 0;
