@@ -19,6 +19,7 @@
 package parquet.filter2.dsl
 
 import java.lang.{Boolean => JBoolean, Double => JDouble, Float => JFloat, Integer => JInt, Long => JLong}
+import java.io.Serializable
 
 import parquet.filter2.predicate.{FilterApi, FilterPredicate, Operators, UserDefinedPredicate}
 import parquet.io.api.Binary
@@ -48,6 +49,8 @@ object Dsl {
     val javaColumn: C
 
     def filterBy[U <: UserDefinedPredicate[T]](clazz: Class[U]) = FilterApi.userDefined(javaColumn, clazz)
+    
+    def filterBy[U <: UserDefinedPredicate[T] with Serializable](udp: U) = FilterApi.userDefined(javaColumn, udp)
 
     // this is not supported because it allows for easy mistakes. For example:
     // val pred = IntColumn("foo") == "hello"

@@ -20,10 +20,13 @@ package parquet.filter2.recordlevel;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -33,6 +36,7 @@ import parquet.filter2.compat.FilterCompat;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.filter2.predicate.Operators.BinaryColumn;
 import parquet.filter2.predicate.Operators.DoubleColumn;
+import parquet.filter2.predicate.Operators.LongColumn;
 import parquet.filter2.predicate.Statistics;
 import parquet.filter2.predicate.UserDefinedPredicate;
 import parquet.filter2.recordlevel.PhoneBookWriter.Location;
@@ -44,6 +48,7 @@ import static org.junit.Assert.assertEquals;
 import static parquet.filter2.predicate.FilterApi.and;
 import static parquet.filter2.predicate.FilterApi.binaryColumn;
 import static parquet.filter2.predicate.FilterApi.doubleColumn;
+import static parquet.filter2.predicate.FilterApi.longColumn;
 import static parquet.filter2.predicate.FilterApi.eq;
 import static parquet.filter2.predicate.FilterApi.gt;
 import static parquet.filter2.predicate.FilterApi.not;
@@ -178,6 +183,34 @@ public class TestRecordLevelFilters {
       return false;
     }
   }
+  
+  public static class SetInFilter extends UserDefinedPredicate<Long> implements Serializable {
+
+    private HashSet<Long> hSet;
+
+    public SetInFilter(HashSet<Long> phSet) {
+      hSet = phSet;
+    }
+
+    @Override
+    public boolean keep(Long value) {
+      if (value == null) {
+        return false;
+      }
+
+      return hSet.contains(value);
+    }
+
+    @Override
+    public boolean canDrop(Statistics<Long> statistics) {
+      return false;
+    }
+
+    @Override
+    public boolean inverseCanDrop(Statistics<Long> statistics) {
+      return false;
+    }
+  }
 
   @Test
   public void testNameNotStartWithP() throws Exception {
@@ -191,6 +224,27 @@ public class TestRecordLevelFilters {
       @Override
       public boolean keep(User u) {
         return u.getName() == null || !u.getName().startsWith("p");
+      }
+    });
+  }
+  
+  @Test
+  public void testUserDefinedByInstance() throws Exception {
+    LongColumn name = longColumn("id");
+
+    final HashSet<Long> h = new HashSet<Long>();
+    h.add(20L); 
+    h.add(27L);
+    h.add(28L);
+    
+    FilterPredicate pred = userDefined(name, new SetInFilter(h));
+
+    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
+
+    assertFilter(found, new UserFilter() {
+      @Override
+      public boolean keep(User u) {
+        return u != null && h.contains(u.getId());
       }
     });
   }
