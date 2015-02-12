@@ -43,6 +43,7 @@ import parquet.hadoop.api.WriteSupport.WriteContext;
 import parquet.hadoop.codec.CodecConfig;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.util.ConfigurationUtil;
+import parquet.hadoop.util.ContextUtil;
 
 /**
  * OutputFormat to write to a Parquet file
@@ -253,6 +254,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   @Override
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
+    ContextUtil.initMemoryManagerCounter(taskAttemptContext);
 
     final Configuration conf = getConfiguration(taskAttemptContext);
 
@@ -264,6 +266,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Path file)
       throws IOException, InterruptedException {
+    ContextUtil.initMemoryManagerCounter(taskAttemptContext);
+
     return getRecordWriter(getConfiguration(taskAttemptContext), file, getCodec(taskAttemptContext));
   }
 

@@ -278,6 +278,13 @@ public class TestInputOutputFormat {
     assertTrue(value(readJob, "parquet", "timeread") == 0L);
   }
 
+  @Test
+  public void testReadWriteWithMemoryManagerCounter() throws Exception {
+    conf.setLong("parquet.block.size", 1000000000l);
+    runMapReduceJob(CompressionCodecName.GZIP);
+    assertTrue(value(writeJob, "parquet", "blockdownsize") > 0L);
+  }
+
   private void waitForJob(Job job) throws InterruptedException, IOException {
     while (!job.isComplete()) {
       LOG.debug("waiting for job " + job.getJobName());

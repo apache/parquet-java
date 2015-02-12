@@ -20,6 +20,7 @@ package parquet.hadoop;
 
 import parquet.Log;
 import parquet.ParquetRuntimeException;
+import parquet.hadoop.util.counters.MemoryManagerCounter;
 
 import java.lang.management.ManagementFactory;
 import java.util.HashMap;
@@ -112,6 +113,7 @@ public class MemoryManager {
           "Total allocation exceeds %.2f%% (%,d bytes) of heap memory\n" +
           "Scaling row group sizes to %.2f%% for %d writers",
           100*memoryPoolRatio, totalMemoryPool, 100*scale, writerList.size()));
+      MemoryManagerCounter.incrementBlockDownsize(1);
     }
 
     int maxColCount = 0;

@@ -24,6 +24,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.Counter;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.JobContext;
@@ -36,6 +37,7 @@ import org.apache.hadoop.mapreduce.StatusReporter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
+import parquet.hadoop.util.counters.MemoryManagerCounter;
 
 /*
  * This is based on ContextFactory.java from hadoop-2.0.x sources.
@@ -63,10 +65,12 @@ public class ContextUtil {
   private static final Method GET_CONFIGURATION_METHOD;
   private static final Method GET_COUNTER_METHOD;
   private static final Method INCREMENT_COUNTER_METHOD;
+  private static final Method GET_REPORTER_METHOD;
 
   static {
     boolean v21 = true;
     final String PACKAGE = "org.apache.hadoop.mapreduce";
+    final String PACKAGE_MAPRED = "org.apache.hadoop.mapred";
     try {
       Class.forName(PACKAGE + ".task.JobContextImpl");
     } catch (ClassNotFoundException cnfe) {
@@ -80,6 +84,7 @@ public class ContextUtil {
     Class<?> mapContextCls;
     Class<?> innerMapContextCls;
     Class<?> genericCounterCls;
+    Class<?> taskContextClsForReporter;
     try {
       if (v21) {
         jobContextCls =
@@ -93,6 +98,7 @@ public class ContextUtil {
         innerMapContextCls =
             Class.forName(PACKAGE+".lib.map.WrappedMapper$Context");
         genericCounterCls = Class.forName(PACKAGE+".counters.GenericCounter");
+        taskContextClsForReporter = null;
       } else {
         jobContextCls =
             Class.forName(PACKAGE+".JobContext");
@@ -106,6 +112,7 @@ public class ContextUtil {
             Class.forName(PACKAGE+".Mapper$Context");
         genericCounterCls =
             Class.forName("org.apache.hadoop.mapred.Counters$Counter");
+        taskContextClsForReporter = Class.forName(PACKAGE_MAPRED + ".TaskAttemptContext");
       }
     } catch (ClassNotFoundException e) {
       throw new IllegalArgumentException("Can't find class", e);
@@ -149,6 +156,7 @@ public class ContextUtil {
                   String.class, String.class);
         }
         GET_COUNTER_METHOD=get_counter_method;
+        GET_REPORTER_METHOD = null;
       } else {
         MAP_CONTEXT_CONSTRUCTOR =
             innerMapContextCls.getConstructor(mapCls,
@@ -162,6 +170,7 @@ public class ContextUtil {
         MAP_CONTEXT_IMPL_CONSTRUCTOR = null;
         WRAPPED_CONTEXT_FIELD = null;
         GET_COUNTER_METHOD=taskIOContextCls.getMethod("getCounter", String.class, String.class);
+        GET_REPORTER_METHOD = taskContextClsForReporter.getMethod("getProgressible");
       }
       MAP_CONTEXT_CONSTRUCTOR.setAccessible(true);
       READER_FIELD = mapContextCls.getDeclaredField("reader");
@@ -256,6 +265,11 @@ public class ContextUtil {
     return (Counter) invoke(GET_COUNTER_METHOD, context, groupName, counterName);
   }
 
+  public static Counter getCounter(TaskAttemptContext context,
+                                   String groupName, String counterName) {
+    return (Counter) invoke(GET_COUNTER_METHOD, context, groupName, counterName);
+  }
+
   /**
    * Invokes a method and rethrows any exception as runtime exceptions.
    */
@@ -271,5 +285,17 @@ public class ContextUtil {
 
   public static void incrementCounter(Counter counter, long increment) {
     invoke(INCREMENT_COUNTER_METHOD, counter, increment);
+  }
+
+  public static void initMemoryManagerCounter(TaskAttemptContext taskAttemptContext) {
+    if (useV21) {
+      MemoryManagerCounter.initCounterFromContext(taskAttemptContext);
+    } else {
+      MemoryManagerCounter.initCounterFromReporter(getReporter(taskAttemptContext), getConfiguration(taskAttemptContext));
+    }
+  }
+
+  public static Reporter getReporter(TaskAttemptContext taskAttemptContext) {
+    return (Reporter) invoke(GET_REPORTER_METHOD, taskAttemptContext);
   }
 }
