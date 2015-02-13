@@ -113,7 +113,7 @@
     <scala.binary.version>2.10</scala.binary.version>
     <scala.maven.test.skip>false</scala.maven.test.skip>
     <pig.version>0.11.1</pig.version>
-    <pig.classifier></pig.classifier>
+    <pig.classifier>h2</pig.classifier>
   </properties>
 
   <modules>
