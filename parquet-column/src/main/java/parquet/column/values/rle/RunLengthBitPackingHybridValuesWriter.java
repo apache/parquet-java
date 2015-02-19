@@ -93,7 +93,7 @@ public class RunLengthBitPackingHybridValuesWriter extends ValuesWriter {
     try {
       length.close();
     } catch (IOException e) {
-      e.printStackTrace();
+      throw new ParquetEncodingException(e);
     }
   }
 

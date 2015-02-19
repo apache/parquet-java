@@ -646,11 +646,6 @@ final class ValidatingColumnWriteStore implements ColumnWriteStore {
       }
 
       @Override
-      public void flush() {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
       public void close() {
 
       }

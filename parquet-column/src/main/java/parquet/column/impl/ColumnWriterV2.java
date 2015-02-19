@@ -109,27 +109,7 @@ final class ColumnWriterV2 implements ColumnWriter {
   }
 
   @Override
-  public void flush() {
-//    if (valueCount > 0) {
-//      writePage();
-//    }
-//    final DictionaryPage dictionaryPage = dataColumn.createDictionaryPage();
-//    if (dictionaryPage != null) {
-//      if (DEBUG) LOG.debug("write dictionary");
-//      try {
-//        pageWriter.writeDictionaryPage(dictionaryPage);
-//      } catch (IOException e) {
-//        throw new ParquetEncodingException("could not write dictionary page for " + path, e);
-//      }
-//      dataColumn.resetDictionary();
-//    }
-    // I need to figure out what value to pass to writePage()
-    throw new NotImplementedException();
-  }
-
-  @Override
   public void close() {
-    flush();
     // Close the Values writers.
     repetitionLevelColumn.close();
     definitionLevelColumn.close();

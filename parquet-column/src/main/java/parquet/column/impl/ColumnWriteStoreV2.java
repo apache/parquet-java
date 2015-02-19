@@ -129,6 +129,7 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
 
   @Override
   public void close() {
+    flush(); // calling flush() here to keep it consistent with the behavior before merging with master
     for (ColumnWriterV2 memColumn : columns.values()) {
       memColumn.close();
     }

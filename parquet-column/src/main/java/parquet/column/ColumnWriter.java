@@ -83,12 +83,6 @@ public interface ColumnWriter {
    */
   void writeNull(int repetitionLevel, int definitionLevel);
 
-  /**
-   * Flushes the underlying store. This should be called when there are no
-   * remaining triplets to be written.
-   */
-  void flush();
-
  /**
   * Close the underlying store. This should be called when there are no
   * more data to be written.
