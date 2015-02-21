@@ -68,10 +68,6 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private ColumnChunkPageWriter(ColumnDescriptor path, BytesCompressor compressor, int pageSize) {
       this.path = path;
       this.compressor = compressor;
-
-      // this writer will write many pages, so we make the initial slab size 1 page size.
-      // It will then double over time until it reaches COLUMN_CHUNK_WRITER_MAX_SIZE_HINT at
-      // which point it will grow linearly.
       this.buf = new ConcatenatingByteArrayCollector();
       this.totalStatistics = getStatsBasedOnType(this.path.getType());
     }
