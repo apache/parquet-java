@@ -202,19 +202,20 @@ public class ParquetProperties {
 
   public ColumnWriteStore newColumnWriteStore(
       MessageType schema,
-      PageWriteStore pageStore, int pageSize,
-      int initialPageBufferSize) {
+      PageWriteStore pageStore,
+      int pageSize) {
     switch (writerVersion) {
     case PARQUET_1_0:
       return new ColumnWriteStoreV1(
           pageStore,
-          pageSize, initialPageBufferSize, dictionaryPageSizeThreshold,
+          pageSize,
+          dictionaryPageSizeThreshold,
           enableDictionary, writerVersion);
     case PARQUET_2_0:
       return new ColumnWriteStoreV2(
           schema,
           pageStore,
-          pageSize, initialPageBufferSize,
+          pageSize,
           new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary));
     default:
       throw new IllegalArgumentException("unknown version " + writerVersion);

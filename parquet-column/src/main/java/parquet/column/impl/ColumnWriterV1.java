@@ -31,6 +31,9 @@ import parquet.column.values.ValuesWriter;
 import parquet.io.ParquetEncodingException;
 import parquet.io.api.Binary;
 
+import static java.lang.Math.max;
+import static java.lang.Math.pow;
+
 /**
  * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
  *
@@ -41,6 +44,7 @@ final class ColumnWriterV1 implements ColumnWriter {
   private static final Log LOG = Log.getLog(ColumnWriterV1.class);
   private static final boolean DEBUG = Log.DEBUG;
   private static final int INITIAL_COUNT_FOR_SIZE_CHECK = 100;
+  private static final int MIN_SLAB_SIZE = 64;
 
   private final ColumnDescriptor path;
   private final PageWriter pageWriter;
@@ -57,7 +61,6 @@ final class ColumnWriterV1 implements ColumnWriter {
       ColumnDescriptor path,
       PageWriter pageWriter,
       int pageSizeThreshold,
-      int initialSizePerCol,
       int dictionaryPageSizeThreshold,
       boolean enableDictionary,
       WriterVersion writerVersion) {
@@ -69,9 +72,15 @@ final class ColumnWriterV1 implements ColumnWriter {
     resetStatistics();
 
     ParquetProperties parquetProps = new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary);
-    this.repetitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), initialSizePerCol, pageSizeThreshold);
-    this.definitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), initialSizePerCol, pageSizeThreshold);
-    this.dataColumn = parquetProps.getValuesWriter(path, initialSizePerCol, pageSizeThreshold);
+
+    this.repetitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), MIN_SLAB_SIZE, pageSizeThreshold);
+    this.definitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), MIN_SLAB_SIZE, pageSizeThreshold);
+
+    // initialSlabSize = (pageSize / (2^10)) means we double 10 times before reaching the pageSize
+    // eg for page size of 1MB we start at 1024 bytes.
+    // we also don't want to start too small, so we also apply a minimum.
+    int initialSlabSize = max(MIN_SLAB_SIZE, ((int) (pageSizeThreshold / pow(2, 10))));
+    this.dataColumn = parquetProps.getValuesWriter(path, initialSlabSize, pageSizeThreshold);
   }
 
   private void log(Object value, int r, int d) {
