@@ -143,7 +143,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     if (DEBUG) LOG.debug("max dic id " + maxDicId);
     int bitWidth = BytesUtils.getWidthFromMaxInt(maxDicId);
     // TODO: what is a good initialCapacity?
-    RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(bitWidth, 64 * 1024, maxDictionaryByteSize);
+    RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(bitWidth, 64, maxDictionaryByteSize);
     IntIterator iterator = encodedValues.iterator();
     try {
       while (iterator.hasNext()) {

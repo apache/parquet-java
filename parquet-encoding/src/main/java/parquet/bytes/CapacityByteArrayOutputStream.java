@@ -78,7 +78,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   public CapacityByteArrayOutputStream(int initialSlabSize, int maxCapacityHint) {
     checkArgument(initialSlabSize > 0, "initialSlabSize must be > 0");
     checkArgument(maxCapacityHint > 0, "maxCapacityHint must be > 0");
-    checkArgument(initialSlabSize <= maxCapacityHint, "maxCapacityHint can't be less than initialSlabSize");
+    checkArgument(maxCapacityHint >= initialSlabSize, String.format("maxCapacityHint can't be less than initialSlabSize %d %d", initialSlabSize, maxCapacityHint));
     this.initialSlabSize = initialSlabSize;
     this.maxCapacityHint = maxCapacityHint;
     reset();
@@ -154,7 +154,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   public void writeTo(OutputStream out) throws IOException {
     for (int i = 0; i < slabs.size() - 1; i++) {
       final byte[] slab = slabs.get(i);
-      out.write(slab, 0, slab.length);
+      out.write(slab);
     }
     out.write(currentSlab, 0, currentSlabIndex);
   }
