@@ -41,6 +41,7 @@ import parquet.schema.MessageType;
 
 class ColumnChunkPageWriteStore implements PageWriteStore {
   private static final Log LOG = Log.getLog(ColumnChunkPageWriteStore.class);
+  private static final int COLUMN_CHUNK_WRITER_MAX_SIZE_HINT = 64 * 1024;
 
   private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
@@ -61,10 +62,14 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
     private Statistics totalStatistics;
 
-    private ColumnChunkPageWriter(ColumnDescriptor path, BytesCompressor compressor, int initialSize, int pageSize) {
+    private ColumnChunkPageWriter(ColumnDescriptor path, BytesCompressor compressor, int pageSize) {
       this.path = path;
       this.compressor = compressor;
-      this.buf = new CapacityByteArrayOutputStream(initialSize, pageSize);
+
+      // this writer will write many pages, so we make the initial slab size 1 page size.
+      // It will then double over time until it reaches COLUMN_CHUNK_WRITER_MAX_SIZE_HINT at
+      // which point it will grow linearly.
+      this.buf = new CapacityByteArrayOutputStream(pageSize, COLUMN_CHUNK_WRITER_MAX_SIZE_HINT);
       this.totalStatistics = getStatsBasedOnType(this.path.getType());
     }
 
@@ -202,9 +207,9 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
 
   private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
 
-  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, int initialSize, int pageSize) {
+  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, int pageSize) {
     for (ColumnDescriptor path : schema.getColumns()) {
-      writers.put(path,  new ColumnChunkPageWriter(path, compressor, initialSize, pageSize));
+      writers.put(path,  new ColumnChunkPageWriter(path, compressor, pageSize));
     }
   }
 

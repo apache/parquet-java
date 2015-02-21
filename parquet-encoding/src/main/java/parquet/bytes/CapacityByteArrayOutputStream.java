@@ -78,6 +78,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   public CapacityByteArrayOutputStream(int initialSlabSize, int maxCapacityHint) {
     checkArgument(initialSlabSize > 0, "initialSlabSize must be > 0");
     checkArgument(maxCapacityHint > 0, "maxCapacityHint must be > 0");
+    checkArgument(initialSlabSize <= maxCapacityHint, "maxCapacityHint can't be less than initialSlabSize");
     this.initialSlabSize = initialSlabSize;
     this.maxCapacityHint = maxCapacityHint;
     reset();

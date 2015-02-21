@@ -105,7 +105,7 @@ class InternalParquetRecordWriter<T> {
     // therefore this size is cast to int, since allocating byte array in under layer needs to
     // limit the array size in an int scope.
     int initialBlockBufferSize = Ints.checkedCast(max(MINIMUM_BUFFER_SIZE, rowGroupSize / schema.getColumns().size() / 5));
-    pageStore = new ColumnChunkPageWriteStore(compressor, schema, initialBlockBufferSize, pageSize);
+    pageStore = new ColumnChunkPageWriteStore(compressor, schema, pageSize);
     // we don't want this number to be too small either
     // ideally, slightly bigger than the page size, but not bigger than the block buffer
     int initialPageBufferSize = max(MINIMUM_BUFFER_SIZE, min(pageSize + pageSize / 10, initialBlockBufferSize));
