@@ -20,6 +20,7 @@ import static parquet.bytes.BytesInput.concat;
 import java.io.IOException;
 
 import parquet.Log;
+import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
 import parquet.column.ParquetProperties;
@@ -76,10 +77,7 @@ final class ColumnWriterV1 implements ColumnWriter {
     this.repetitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), MIN_SLAB_SIZE, pageSizeThreshold);
     this.definitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), MIN_SLAB_SIZE, pageSizeThreshold);
 
-    // initialSlabSize = (pageSize / (2^10)) means we double 10 times before reaching the pageSize
-    // eg for page size of 1MB we start at 1024 bytes.
-    // we also don't want to start too small, so we also apply a minimum.
-    int initialSlabSize = max(MIN_SLAB_SIZE, ((int) (pageSizeThreshold / pow(2, 10))));
+    int initialSlabSize = CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
     this.dataColumn = parquetProps.getValuesWriter(path, initialSlabSize, pageSizeThreshold);
   }
 

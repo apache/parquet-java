@@ -24,6 +24,7 @@ import java.io.IOException;
 import parquet.Ints;
 import parquet.Log;
 import parquet.bytes.BytesInput;
+import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnWriter;
 import parquet.column.Encoding;
@@ -69,10 +70,7 @@ final class ColumnWriterV2 implements ColumnWriter {
     this.repetitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxRepetitionLevel()), MIN_SLAB_SIZE, pageSize);
     this.definitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxDefinitionLevel()), MIN_SLAB_SIZE, pageSize);
 
-    // initialSlabSize = (pageSize / (2^10)) means we double 10 times before reaching the pageSize
-    // eg for page size of 1MB we start at 1024 bytes.
-    // we also don't want to start too small, so we also apply a minimum.
-    int initialSlabSize = max(MIN_SLAB_SIZE, ((int) (pageSize / pow(2, 10))));
+    int initialSlabSize = CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSize, 10);
     this.dataColumn = parquetProps.getValuesWriter(path, initialSlabSize, pageSize);
   }
 
