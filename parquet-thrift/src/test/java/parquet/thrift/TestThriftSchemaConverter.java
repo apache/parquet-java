@@ -224,7 +224,7 @@ public class TestThriftSchemaConverter {
 
   @Test(expected = ThriftProjectionException.class)
   public void testProjectOnlyValueInMap() {
-    System.out.println(getFilteredSchema("name;names/value/**", TestStructInMap.class));
+    getFilteredSchema("name;names/value/**", TestStructInMap.class);
   }
 
   private void shouldGetProjectedSchema(String filterDesc, String expectedSchemaStr, Class<? extends TBase<?,?>> thriftClass) {
@@ -238,13 +238,11 @@ public class TestThriftSchemaConverter {
     return new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftClass);
   }
 
-
   @Test
   public void testToThriftType() throws Exception {
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final StructType converted = schemaConverter.toStructType(AddressBook.class);
     final String json = converted.toJSON();
-    System.out.println(json);
     final ThriftType fromJSON = StructType.fromJSON(json);
     assertEquals(json, fromJSON.toJSON());
   }
