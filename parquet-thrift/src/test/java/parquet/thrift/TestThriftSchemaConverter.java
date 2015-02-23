@@ -19,6 +19,7 @@
 package parquet.thrift;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static parquet.schema.MessageTypeParser.parseMessageType;
 
 import org.apache.thrift.TBase;
@@ -200,6 +201,17 @@ public class TestThriftSchemaConverter {
             "    }\n" +
             "  }\n" +
             "}",TestStructInMap.class);
+  }
+
+  @Test
+  public void testThrowWhenProjectionFilterMatchesNothing() {
+    try {
+      getFilteredSchema("non_existing_path", TestStructInMap.class);
+    } catch (ThriftProjectionException e) {
+      assertEquals("unmatched projection filters: [non_existing_path]", e.getMessage());
+      return;
+    }
+    fail("should throw projection exception when filter matches nothing");
   }
 
   @Test(expected = ThriftProjectionException.class)

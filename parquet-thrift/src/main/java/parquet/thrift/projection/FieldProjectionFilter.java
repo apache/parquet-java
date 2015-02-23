@@ -28,21 +28,42 @@ import java.util.List;
  */
 public class FieldProjectionFilter {
   public static final String PATTERN_SEPARATOR = ";";
-  List<PathGlobPattern> filterPatterns;
+  List<PathGlobPatternStatus> filterPatterns;
+
+  /**
+   * Class for remembering if a glob pattern has matched anything.
+   * If there is an invalid glob pattern that matches nothing, it should throw.
+   */
+  private class PathGlobPatternStatus{
+    PathGlobPattern pattern;
+    boolean hasMatchingPath = false;
+    PathGlobPatternStatus(String pattern){
+      this.pattern =new PathGlobPattern(pattern);
+    }
+
+    public boolean matches(FieldsPath path) {
+      if (this.pattern.matches(path.toString())) {
+        this.hasMatchingPath = true;
+        return true;
+      }else{
+        return false;
+      }
+    }
+  }
 
   public FieldProjectionFilter() {
-    filterPatterns = new LinkedList<PathGlobPattern>();
+    filterPatterns = new LinkedList<PathGlobPatternStatus>();
   }
 
   public FieldProjectionFilter(String filterDescStr) {
-    filterPatterns = new LinkedList<PathGlobPattern>();
+    filterPatterns = new LinkedList<PathGlobPatternStatus>();
 
     if (filterDescStr == null || filterDescStr.isEmpty())
       return;
 
     String[] rawPatterns = filterDescStr.split(PATTERN_SEPARATOR);
     for (String rawPattern : rawPatterns) {
-      filterPatterns.add(new PathGlobPattern(rawPattern));
+      filterPatterns.add(new PathGlobPatternStatus(rawPattern));
     }
   }
 
@@ -51,17 +72,21 @@ public class FieldProjectionFilter {
       return true;
 
     for (int i = 0; i < filterPatterns.size(); i++) {
-      if (matchPattern(path, filterPatterns.get(i)))
+
+      if (filterPatterns.get(i).matches(path))
         return true;
     }
     return false;
   }
 
-  private boolean matchPattern(FieldsPath path, PathGlobPattern filterPattern) {
-    if (filterPattern.matches(path.toString())) {
-      return true;
-    } else {
-      return false;
+  public List<PathGlobPattern> getUnMatchedPatterns() {
+    List<PathGlobPattern> unmatched = new LinkedList<PathGlobPattern>();
+    for(PathGlobPatternStatus p : filterPatterns) {
+      if (!p.hasMatchingPath) {
+        unmatched.add(p.pattern);
+      }
     }
+    return unmatched;
   }
+
 }
