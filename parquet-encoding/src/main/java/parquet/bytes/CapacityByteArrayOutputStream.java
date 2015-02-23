@@ -84,7 +84,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   }
 
   /**
-   * Construct a CapacityByteArrayOutputStream configured such that it's initial slab size is
+   * Construct a CapacityByteArrayOutputStream configured such that its initial slab size is
    * determined by {@link #initialSlabSizeHeuristic}, with targetCapacity == maxCapacityHint
    */
   public static CapacityByteArrayOutputStream withTargetNumSlabs(
