@@ -203,15 +203,23 @@ public class TestThriftSchemaConverter {
             "}",TestStructInMap.class);
   }
 
-  @Test
-  public void testThrowWhenProjectionFilterMatchesNothing() {
+
+  private void shouldThrowWhenProjectionFilterMatchesNothing(String filters, String unmatchedFilter, Class<? extends TBase<?, ?>> thriftClass) {
     try {
-      getFilteredSchema("non_existing_path", TestStructInMap.class);
+      getFilteredSchema(filters, thriftClass);
     } catch (ThriftProjectionException e) {
-      assertEquals("unmatched projection filters: [non_existing_path]", e.getMessage());
+      assertEquals("unmatched projection filters: [" + unmatchedFilter + "]", e.getMessage());
       return;
     }
     fail("should throw projection exception when filter matches nothing");
+  }
+
+  @Test
+  public void testThrowWhenProjectionFilterMatchesNothing() {
+    shouldThrowWhenProjectionFilterMatchesNothing("non_existing", "non_existing", TestStructInMap.class);
+    shouldThrowWhenProjectionFilterMatchesNothing("name;non_existing", "non_existing", TestStructInMap.class);
+    shouldThrowWhenProjectionFilterMatchesNothing("**;non_existing", "non_existing", TestStructInMap.class);
+    shouldThrowWhenProjectionFilterMatchesNothing("**;names/non_existing", "names/non_existing", TestStructInMap.class);
   }
 
   @Test(expected = ThriftProjectionException.class)
