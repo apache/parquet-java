@@ -42,7 +42,7 @@ import parquet.Log;
  * instead of equal to the total previous size of all slabs. This is useful because it prevents allocating roughly
  * twice the needed space when a new slab is added just before the stream is done being used.
  *
- * When reusing a this stream it will adjust the initial slab size based on the previous data size, aiming for fewer
+ * When reusing this stream it will adjust the initial slab size based on the previous data size, aiming for fewer
  * allocations, with the assumption that a similar amount of data will be written to this stream on re-use.
  * See ({@link CapacityByteArrayOutputStream#reset()}).
  *
@@ -73,7 +73,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
    *
    * @param minSlabSize no matter what we shouldn't make slabs any smaller than this
    * @param targetCapacity after we've allocated targetNumSlabs how much capacity should we have?
-   * @param targetNumSlabs how many slabs should it take to reach targetTotalSize?
+   * @param targetNumSlabs how many slabs should it take to reach targetCapacity?
    */
   public static int initialSlabSizeHeuristic(int minSlabSize, int targetCapacity, int targetNumSlabs) {
     // initialSlabSize = (targetCapacity / (2^targetNumSlabs)) means we double targetNumSlabs times
