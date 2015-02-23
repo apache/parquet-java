@@ -22,8 +22,7 @@ import com.twitter.elephantbird.thrift.TStructDescriptor;
 import com.twitter.elephantbird.thrift.TStructDescriptor.Field;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TEnum;
-import parquet.ParquetRuntimeException;
-import parquet.schema.*;
+import parquet.schema.MessageType;
 import parquet.thrift.projection.FieldProjectionFilter;
 import parquet.thrift.projection.PathGlobPattern;
 import parquet.thrift.projection.ThriftProjectionException;
@@ -65,9 +64,9 @@ public class ThriftSchemaConverter {
     return convertedMessageType;
   }
 
-  private void checkUnmatchedProjectionFilter(FieldProjectionFilter filter){
+  private void checkUnmatchedProjectionFilter(FieldProjectionFilter filter) {
     List<PathGlobPattern> unmatched = filter.getUnMatchedPatterns();
-    if (unmatched.size()!=0) {
+    if (unmatched.size() != 0) {
       throw new ThriftProjectionException("unmatched projection filters: " + unmatched.toString());
     }
   }

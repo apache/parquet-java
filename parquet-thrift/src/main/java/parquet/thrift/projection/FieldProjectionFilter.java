@@ -34,18 +34,19 @@ public class FieldProjectionFilter {
    * Class for remembering if a glob pattern has matched anything.
    * If there is an invalid glob pattern that matches nothing, it should throw.
    */
-  private class PathGlobPatternStatus{
+  private class PathGlobPatternStatus {
     PathGlobPattern pattern;
     boolean hasMatchingPath = false;
-    PathGlobPatternStatus(String pattern){
-      this.pattern =new PathGlobPattern(pattern);
+
+    PathGlobPatternStatus(String pattern) {
+      this.pattern = new PathGlobPattern(pattern);
     }
 
     public boolean matches(FieldsPath path) {
       if (this.pattern.matches(path.toString())) {
         this.hasMatchingPath = true;
         return true;
-      }else{
+      } else {
         return false;
       }
     }
@@ -81,7 +82,7 @@ public class FieldProjectionFilter {
 
   public List<PathGlobPattern> getUnMatchedPatterns() {
     List<PathGlobPattern> unmatched = new LinkedList<PathGlobPattern>();
-    for(PathGlobPatternStatus p : filterPatterns) {
+    for (PathGlobPatternStatus p : filterPatterns) {
       if (!p.hasMatchingPath) {
         unmatched.add(p.pattern);
       }
