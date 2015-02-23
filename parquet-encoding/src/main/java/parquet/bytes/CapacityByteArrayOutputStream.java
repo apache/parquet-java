@@ -128,7 +128,8 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   public void write(byte b[], int off, int len) {
     if ((off < 0) || (off > b.length) || (len < 0) ||
         ((off + len) - b.length > 0)) {
-      throw new IndexOutOfBoundsException(String.format("len: %d, off: %d", len, off));
+      throw new IndexOutOfBoundsException(
+          String.format("Given byte array of size %d, with requested length(%d) and offset(%d)", b.length, len, off));
     }
     if (currentSlabIndex + len >= currentSlab.length) {
       final int length1 = currentSlab.length - currentSlabIndex;
