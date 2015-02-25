@@ -89,13 +89,13 @@ abstract public class ReadSupport<T> {
 
   /**
    * called in {@link org.apache.hadoop.mapreduce.RecordReader#initialize(org.apache.hadoop.mapreduce.InputSplit, org.apache.hadoop.mapreduce.TaskAttemptContext)} in the back end
-   * the returned RecordConsumer will materialize the records and add them to the destination
+   * the returned RecordMaterializer will materialize the records and add them to the destination
    *
    * @param configuration    the job configuration
    * @param keyValueMetaData the app specific metadata from the file
    * @param fileSchema       the schema of the file
    * @param readContext      returned by the init method
-   * @return the recordConsumer that will receive the events
+   * @return the recordMaterializer that will materialize the records
    */
   abstract public RecordMaterializer<T> prepareForRead(
           Configuration configuration,
