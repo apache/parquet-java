@@ -28,7 +28,6 @@ import java.util.Set;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
-import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.bytes.ConcatenatingByteArrayCollector;
 import parquet.column.ColumnDescriptor;
 import parquet.column.Encoding;
@@ -102,14 +101,14 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
           dlEncoding,
           valuesEncoding,
           tempOutputStream);
-      buf.collect(tempOutputStream.toByteArray());
-      tempOutputStream.reset();
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
       this.pageCount += 1;
       this.totalStatistics.mergeStatistics(statistics);
-      buf.collect(compressedBytes);
+      // by concatenating before collecting instead of collecting twice,
+      // we only allocate one buffer to copy into instead of multiple.
+      buf.collect(BytesInput.concat(BytesInput.from(tempOutputStream), compressedBytes));
       encodings.add(rlEncoding);
       encodings.add(dlEncoding);
       encodings.add(valuesEncoding);
@@ -140,16 +139,21 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
           rlByteLength,
           dlByteLength,
           tempOutputStream);
-      buf.collect(tempOutputStream.toByteArray());
-      tempOutputStream.reset();
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
       this.pageCount += 1;
       this.totalStatistics.mergeStatistics(statistics);
-      buf.collect(repetitionLevels);
-      buf.collect(definitionLevels);
-      buf.collect(compressedData);
+
+      // by concatenating before collecting instead of collecting twice,
+      // we only allocate one buffer to copy into instead of multiple.
+      buf.collect(
+          BytesInput.concat(
+            BytesInput.from(tempOutputStream),
+            repetitionLevels,
+            definitionLevels,
+            compressedData)
+      );
       encodings.add(dataEncoding);
     }
 

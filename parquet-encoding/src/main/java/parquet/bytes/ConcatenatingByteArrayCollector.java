@@ -11,11 +11,8 @@ public class ConcatenatingByteArrayCollector extends BytesInput {
   private final List<byte[]> slabs = new ArrayList<byte[]>();
   private long size = 0;
 
-  public void collect(BytesInput bytes) throws IOException {
-    collect(bytes.toByteArray());
-  }
-
-  public void collect(byte[] bytes) {
+  public void collect(BytesInput bytesInput) throws IOException {
+    byte[] bytes = bytesInput.toByteArray();
     slabs.add(bytes);
     size += bytes.length;
   }
