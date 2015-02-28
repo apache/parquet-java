@@ -53,7 +53,7 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
   public ColumnWriteStoreV2(
       MessageType schema,
       PageWriteStore pageWriteStore,
-      int pageSizeThreshold, int initialSizePerCol,
+      int pageSizeThreshold,
       ParquetProperties parquetProps) {
     super();
     this.pageSizeThreshold = pageSizeThreshold;
@@ -61,7 +61,7 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
     Map<ColumnDescriptor, ColumnWriterV2> mcolumns = new TreeMap<ColumnDescriptor, ColumnWriterV2>();
     for (ColumnDescriptor path : schema.getColumns()) {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-      mcolumns.put(path, new ColumnWriterV2(path, pageWriter, initialSizePerCol, parquetProps, pageSizeThreshold));
+      mcolumns.put(path, new ColumnWriterV2(path, pageWriter, parquetProps, pageSizeThreshold));
     }
     this.columns = unmodifiableMap(mcolumns);
     this.writers = this.columns.values();
