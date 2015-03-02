@@ -9,7 +9,7 @@
 
   <groupId>com.twitter</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.6.0rc3-SNAPSHOT</version>
+  <version>1.6.0rc3-drill</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet MR (Incubating)</name>
@@ -221,7 +221,7 @@
          <executions>
            <execution>
              <id>check</id>
-             <phase>verify</phase>
+             <phase>none</phase>
              <goals>
                <goal>enforce</goal>
              </goals>
