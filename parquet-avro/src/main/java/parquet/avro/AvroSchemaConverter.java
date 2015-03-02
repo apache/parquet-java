@@ -22,6 +22,7 @@ import java.util.*;
 
 import org.apache.avro.Schema;
 
+import org.apache.hadoop.conf.Configuration;
 import org.codehaus.jackson.node.NullNode;
 import parquet.schema.ConversionPatterns;
 import parquet.schema.GroupType;
@@ -41,6 +42,21 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
  * </p>
  */
 public class AvroSchemaConverter {
+
+  static final String REPEATED_IS_LIST_ELEMENT =
+      "parquet.avro.repeated-is-list-element";
+  private static final boolean REPEATED_IS_LIST_ELEMENT_DEFAULT = true;
+
+  private final boolean assumeRepeatedIsListElement;
+
+  public AvroSchemaConverter() {
+    this.assumeRepeatedIsListElement = REPEATED_IS_LIST_ELEMENT_DEFAULT;
+  }
+
+  public AvroSchemaConverter(Configuration conf) {
+    this.assumeRepeatedIsListElement = conf.getBoolean(
+        REPEATED_IS_LIST_ELEMENT, REPEATED_IS_LIST_ELEMENT_DEFAULT);
+  }
 
   /**
    * Given a schema, check to see if it is a union of a null type and a regular schema,
@@ -67,7 +83,7 @@ public class AvroSchemaConverter {
       return schema;
     }
   }
-  
+
   public MessageType convert(Schema avroSchema) {
     if (!avroSchema.getType().equals(Schema.Type.RECORD)) {
       throw new IllegalArgumentException("Avro schema must be a record.");
@@ -189,11 +205,7 @@ public class AvroSchemaConverter {
       if (parquetType.isRepetition(Type.Repetition.REPEATED)) {
         throw new UnsupportedOperationException("REPEATED not supported outside LIST or MAP. Type: " + parquetType);
       } else if (parquetType.isRepetition(Type.Repetition.OPTIONAL)) {
-        List<Schema> types = new ArrayList<Schema>();
-        types.add(Schema.create(Schema.Type.NULL));
-        types.add(fieldSchema);
-        Schema optionalFieldSchema = Schema.createUnion(types);
-        fields.add(new Schema.Field(parquetType.getName(), optionalFieldSchema, null,
+        fields.add(new Schema.Field(parquetType.getName(), optional(fieldSchema), null,
             NullNode.getInstance()));
       } else { // REQUIRED
         fields.add(new Schema.Field(parquetType.getName(), fieldSchema, null, null));
@@ -258,11 +270,21 @@ public class AvroSchemaConverter {
             if (parquetGroupType.getFieldCount()!= 1) {
               throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
             }
-            Type elementType = parquetGroupType.getType(0);
-            if (!elementType.isRepetition(Type.Repetition.REPEATED)) {
+            Type repeatedType = parquetGroupType.getType(0);
+            if (!repeatedType.isRepetition(Type.Repetition.REPEATED)) {
               throw new UnsupportedOperationException("Invalid list type " + parquetGroupType);
             }
-            return Schema.createArray(convertField(elementType));
+            if (isElementType(repeatedType, parquetGroupType.getName())) {
+              // repeated element types are always required
+              return Schema.createArray(convertField(repeatedType));
+            } else {
+              Type elementType = repeatedType.asGroupType().getType(0);
+              if (elementType.isRepetition(Type.Repetition.OPTIONAL)) {
+                return Schema.createArray(optional(convertField(elementType)));
+              } else {
+                return Schema.createArray(convertField(elementType));
+              }
+            }
           case MAP:
             if (parquetGroupType.getFieldCount() != 1 || parquetGroupType.getType(0).isPrimitive()) {
               throw new UnsupportedOperationException("Invalid map type " + parquetGroupType);
@@ -281,7 +303,11 @@ public class AvroSchemaConverter {
                   + keyType);
             }
             Type valueType = mapKeyValType.getType(1);
-            return Schema.createMap(convertField(valueType));
+            if (valueType.isRepetition(Type.Repetition.OPTIONAL)) {
+              return Schema.createMap(optional(convertField(valueType)));
+            } else {
+              return Schema.createMap(convertField(valueType));
+            }
           case ENUM:
             return Schema.create(Schema.Type.STRING);
           case MAP_KEY_VALUE:
@@ -296,5 +322,34 @@ public class AvroSchemaConverter {
         return convertFields(parquetGroupType.getName(), parquetGroupType.getFields());
       }
     }
+  }
+
+  /**
+   * Implements the rules for interpreting existing data from the logical type
+   * spec for the LIST annotation. This is used to produce the expected schema.
+   * <p>
+   * The AvroArrayConverter will decide whether the repeated type is the array
+   * element type by testing whether the element schema and repeated type are
+   * the same. This ensures that the LIST rules are followed when there is no
+   * schema and that a schema can be provided to override the default behavior.
+   */
+  private boolean isElementType(Type repeatedType, String parentName) {
+    return (
+        // can't be a synthetic layer because it would be invalid
+        repeatedType.isPrimitive() ||
+        repeatedType.asGroupType().getFieldCount() > 1 ||
+        // known patterns without the synthetic layer
+        repeatedType.getName().equals("array") ||
+        repeatedType.getName().equals(parentName + "_tuple") ||
+        // default assumption
+        assumeRepeatedIsListElement
+    );
+  }
+
+  private static Schema optional(Schema original) {
+    // null is first in the union because Parquet's default is always null
+    return Schema.createUnion(Arrays.asList(
+        Schema.create(Schema.Type.NULL),
+        original));
   }
 }

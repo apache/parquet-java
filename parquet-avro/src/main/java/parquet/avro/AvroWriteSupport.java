@@ -19,16 +19,14 @@
 package parquet.avro;
 
 import java.nio.ByteBuffer;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.IndexedRecord;
-import org.apache.avro.specific.SpecificData;
-import org.apache.avro.specific.SpecificRecord;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import parquet.hadoop.api.WriteSupport;
@@ -45,7 +43,8 @@ import parquet.schema.Type;
  */
 public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
 
-  private static final String AVRO_SCHEMA = "parquet.avro.schema";
+  static final String AVRO_SCHEMA = "parquet.avro.schema";
+  private static final Schema MAP_KEY_SCHEMA = Schema.create(Schema.Type.STRING);
 
   private RecordConsumer recordConsumer;
   private MessageType rootSchema;
@@ -118,11 +117,11 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
       index++;
     }
   }
-  
+
   private <T> void writeArray(GroupType schema, Schema avroSchema,
-                              Iterable<T> array) {
+                              Collection<T> array) {
     recordConsumer.startGroup(); // group wrapper (original type LIST)
-    if (array.iterator().hasNext()) {
+    if (array.size() > 0) {
       recordConsumer.startField("array", 0);
       for (T elt : array) {
         writeValue(schema.getType(0), avroSchema.getElementType(), elt);
@@ -132,29 +131,31 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
     recordConsumer.endGroup();
   }
 
-  private <V> void writeMap(GroupType schema, Schema avroSchema, 
+  private <V> void writeMap(GroupType schema, Schema avroSchema,
                             Map<CharSequence, V> map) {
     GroupType innerGroup = schema.getType(0).asGroupType();
     Type keyType = innerGroup.getType(0);
     Type valueType = innerGroup.getType(1);
-    Schema keySchema = Schema.create(Schema.Type.STRING);
 
     recordConsumer.startGroup(); // group wrapper (original type MAP)
     if (map.size() > 0) {
-      recordConsumer.startField("map", 0);
-      recordConsumer.startGroup(); // "repeated" group wrapper
-      recordConsumer.startField("key", 0);
-      for (CharSequence key : map.keySet()) {
-        writeValue(keyType, keySchema, key);
+      recordConsumer.startField("key_value", 0);
+      for (Map.Entry<CharSequence, V> entry : map.entrySet()) {
+        recordConsumer.startGroup(); // repeated group key_value, middle layer
+        recordConsumer.startField("key", 0);
+        writeValue(keyType, MAP_KEY_SCHEMA, entry.getKey());
+        recordConsumer.endField("key", 0);
+        V value = entry.getValue();
+        if (value != null) {
+          recordConsumer.startField("value", 1);
+          writeValue(valueType, avroSchema.getValueType(), value);
+          recordConsumer.endField("value", 1);
+        } else if (!valueType.isRepetition(Type.Repetition.OPTIONAL)) {
+          throw new RuntimeException("Null map value for " + avroSchema.getName());
+        }
+        recordConsumer.endGroup();
       }
-      recordConsumer.endField("key", 0);
-      recordConsumer.startField("value", 1);
-      for (V value : map.values()) {
-        writeValue(valueType, avroSchema.getValueType(), value);
-      }
-      recordConsumer.endField("value", 1);
-      recordConsumer.endGroup();
-      recordConsumer.endField("map", 0);
+      recordConsumer.endField("key_value", 0);
     }
     recordConsumer.endGroup();
   }
@@ -163,7 +164,7 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
                           Object value) {
     recordConsumer.startGroup();
 
-    // ResolveUnion will tell us which of the union member types to 
+    // ResolveUnion will tell us which of the union member types to
     // deserialise.
     int avroIndex = GenericData.get().resolveUnion(avroSchema, value);
 
@@ -176,11 +177,11 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
       }
     }
 
-    // Sparsely populated method of encoding unions, each member has its own 
+    // Sparsely populated method of encoding unions, each member has its own
     // set of columns.
     String memberName = "member" + parquetIndex;
     recordConsumer.startField(memberName, parquetIndex);
-    writeValue(parquetGroup.getType(parquetIndex), 
+    writeValue(parquetGroup.getType(parquetIndex),
                avroSchema.getTypes().get(avroIndex), value);
     recordConsumer.endField(memberName, parquetIndex);
 
@@ -210,7 +211,7 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
     } else if (avroType.equals(Schema.Type.ENUM)) {
       recordConsumer.addBinary(Binary.fromString(value.toString()));
     } else if (avroType.equals(Schema.Type.ARRAY)) {
-      writeArray((GroupType) type, nonNullAvroSchema, (Iterable<?>) value);
+      writeArray((GroupType) type, nonNullAvroSchema, (Collection<?>) value);
     } else if (avroType.equals(Schema.Type.MAP)) {
       writeMap((GroupType) type, nonNullAvroSchema, (Map<CharSequence, ?>) value);
     } else if (avroType.equals(Schema.Type.UNION)) {

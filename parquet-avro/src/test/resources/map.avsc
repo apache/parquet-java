@@ -5,7 +5,7 @@
     "name": "mymap",
     "type": {
       "type": "map",
-      "values": "int"
+      "values": ["null", "int"]
     }
   } ]
 }
