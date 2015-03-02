@@ -249,7 +249,8 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
   }
 
   public void flushToFileWriter(ParquetFileWriter writer) throws IOException {
-    for (ColumnChunkPageWriter pageWriter : writers.values()) {
+    for (ColumnDescriptor path : schema.getColumns()) {
+      ColumnChunkPageWriter pageWriter = writers.get(path);
       pageWriter.writeToFileWriter(writer);
       pageWriter.reset();
     }

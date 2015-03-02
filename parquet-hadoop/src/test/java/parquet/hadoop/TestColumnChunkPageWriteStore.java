@@ -19,8 +19,19 @@
 package parquet.hadoop;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.inOrder;
+import static parquet.column.Encoding.PLAIN;
+import static parquet.column.Encoding.RLE;
 import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static parquet.hadoop.metadata.CompressionCodecName.GZIP;
+import static parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
+import static parquet.schema.OriginalType.UTF8;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -30,8 +41,11 @@ import java.util.HashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.junit.Before;
 import org.junit.Test;
 
+import org.mockito.InOrder;
+import org.mockito.Mockito;
 import parquet.bytes.BytesInput;
 import parquet.bytes.DirectByteBufferAllocator;
 import parquet.bytes.LittleEndianDataInputStream;
@@ -47,12 +61,21 @@ import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
+import parquet.schema.Types;
 
 public class TestColumnChunkPageWriteStore {
 
+  private int pageSize = 1024;
+  private int initialSize = 1024;
+  private Configuration conf;
+
+  @Before
+  public void initConfiguration() {
+    this.conf = new Configuration();
+  }
+
   @Test
   public void test() throws Exception {
-    Configuration conf = new Configuration();
     Path file = new Path("target/test/TestColumnChunkPageWriteStore/test.parquet");
     Path root = file.getParent();
     FileSystem fs = file.getFileSystem(conf);
@@ -60,12 +83,9 @@ public class TestColumnChunkPageWriteStore {
       fs.delete(root, true);
     }
     fs.mkdirs(root);
-    CodecFactory f = new CodecFactory(conf);
-    int pageSize = 1024;
-    int initialSize = 1024;
     MessageType schema = MessageTypeParser.parseMessageType("message test { repeated binary bar; }");
     ColumnDescriptor col = schema.getColumns().get(0);
-    Encoding dataEncoding = Encoding.PLAIN;
+    Encoding dataEncoding = PLAIN;
     int valueCount = 10;
     int d = 1;
     int r = 2;
@@ -76,14 +96,13 @@ public class TestColumnChunkPageWriteStore {
     BytesInput data = BytesInput.fromInt(v);
     int rowCount = 5;
     int nullCount = 1;
-    CompressionCodecName codec = GZIP;
 
     {
       ParquetFileWriter writer = new ParquetFileWriter(conf, schema, file);
       writer.start();
       writer.startBlock(rowCount);
       {
-        ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(f.getCompressor(codec, pageSize ), schema , initialSize, new DirectByteBufferAllocator());
+        ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(compressor(GZIP), schema , initialSize, new DirectByteBufferAllocator());
         PageWriter pageWriter = store.getPageWriter(col);
         pageWriter.writePageV2(
             rowCount, nullCount, valueCount,
@@ -123,4 +142,40 @@ public class TestColumnChunkPageWriteStore {
     return i;
   }
 
+  @Test
+  public void testColumnOrderV1() throws IOException {
+    ParquetFileWriter mockFileWriter = Mockito.mock(ParquetFileWriter.class);
+    InOrder inOrder = inOrder(mockFileWriter);
+    MessageType schema = Types.buildMessage()
+        .required(BINARY).as(UTF8).named("a_string")
+        .required(INT32).named("an_int")
+        .required(INT64).named("a_long")
+        .required(FLOAT).named("a_float")
+        .required(DOUBLE).named("a_double")
+        .named("order_test");
+
+    BytesInput fakeData = BytesInput.fromInt(34);
+    int fakeCount = 3;
+    BinaryStatistics fakeStats = new BinaryStatistics();
+
+    ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(
+        compressor(UNCOMPRESSED), schema, initialSize, new DirectByteBufferAllocator());
+
+    for (ColumnDescriptor col : schema.getColumns()) {
+      PageWriter pageWriter = store.getPageWriter(col);
+      pageWriter.writePage(fakeData, fakeCount, fakeStats, RLE, RLE, PLAIN);
+    }
+
+    // flush to the mock writer
+    store.flushToFileWriter(mockFileWriter);
+
+    for (ColumnDescriptor col : schema.getColumns()) {
+      inOrder.verify(mockFileWriter).startColumn(
+          eq(col), eq((long) fakeCount), eq(UNCOMPRESSED));
+    }
+  }
+
+  private CodecFactory.BytesCompressor compressor(CompressionCodecName codec) {
+    return new CodecFactory(conf).getCompressor(codec, pageSize);
+  }
 }
