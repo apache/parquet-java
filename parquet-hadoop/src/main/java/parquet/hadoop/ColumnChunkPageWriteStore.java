@@ -36,6 +36,7 @@ import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageWriteStore;
 import parquet.column.page.PageWriter;
 import parquet.column.statistics.Statistics;
+import parquet.format.ColumnChunk;
 import parquet.format.converter.ParquetMetadataConverter;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.io.ParquetEncodingException;
@@ -203,8 +204,10 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
   }
 
   private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
+  private final MessageType schema;
 
   public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, int initialSize) {
+    this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
       writers.put(path,  new ColumnChunkPageWriter(path, compressor, initialSize));
     }
@@ -216,7 +219,8 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
   }
 
   public void flushToFileWriter(ParquetFileWriter writer) throws IOException {
-    for (ColumnChunkPageWriter pageWriter : writers.values()) {
+    for (ColumnDescriptor path : schema.getColumns()) {
+      ColumnChunkPageWriter pageWriter = writers.get(path);
       pageWriter.writeToFileWriter(writer);
     }
   }
