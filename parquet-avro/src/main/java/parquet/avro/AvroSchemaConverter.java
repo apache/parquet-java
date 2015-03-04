@@ -189,11 +189,7 @@ public class AvroSchemaConverter {
       if (parquetType.isRepetition(Type.Repetition.REPEATED)) {
         throw new UnsupportedOperationException("REPEATED not supported outside LIST or MAP. Type: " + parquetType);
       } else if (parquetType.isRepetition(Type.Repetition.OPTIONAL)) {
-        List<Schema> types = new ArrayList<Schema>();
-        types.add(Schema.create(Schema.Type.NULL));
-        types.add(fieldSchema);
-        Schema optionalFieldSchema = Schema.createUnion(types);
-        fields.add(new Schema.Field(parquetType.getName(), optionalFieldSchema, null,
+        fields.add(new Schema.Field(parquetType.getName(), optional(fieldSchema), null,
             NullNode.getInstance()));
       } else { // REQUIRED
         fields.add(new Schema.Field(parquetType.getName(), fieldSchema, null, null));
@@ -281,7 +277,11 @@ public class AvroSchemaConverter {
                   + keyType);
             }
             Type valueType = mapKeyValType.getType(1);
-            return Schema.createMap(convertField(valueType));
+            if (valueType.isRepetition(Type.Repetition.OPTIONAL)) {
+              return Schema.createMap(optional(convertField(valueType)));
+            } else {
+              return Schema.createMap(convertField(valueType));
+            }
           case ENUM:
             return Schema.create(Schema.Type.STRING);
           case MAP_KEY_VALUE:
@@ -296,5 +296,12 @@ public class AvroSchemaConverter {
         return convertFields(parquetGroupType.getName(), parquetGroupType.getFields());
       }
     }
+  }
+
+  private static Schema optional(Schema original) {
+    // null is first in the union because Parquet's default is always null
+    return Schema.createUnion(Arrays.asList(
+        Schema.create(Schema.Type.NULL),
+        original));
   }
 }
