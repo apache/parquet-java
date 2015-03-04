@@ -164,13 +164,9 @@ class FlatSchemaRecordReaderImplementation<T> extends RecordReader<T> {
     }
      
     recordRootConverter.end();
-    T record = recordMaterializer.getFilteredCurrentRecord();
-    shouldSkipCurrentRecord = record == null;
-    if (shouldSkipCurrentRecord) {
-      recordMaterializer.skipCurrentRecord();
-    }
+    shouldSkipCurrentRecord = false;
      
-    return record;
+    return recordMaterializer.getFilteredCurrentRecord();
   }
 
   @Override

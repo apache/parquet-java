@@ -494,13 +494,9 @@ class OptFilteredRecordReaderImplementation<T> extends RecordReader<T> {
     }
 
     recordRootConverter.end();
-    T record = recordMaterializer.getFilteredCurrentRecord();
-    shouldSkipCurrentRecord = record == null;
-    if (shouldSkipCurrentRecord) {
-      recordMaterializer.skipCurrentRecord();
-    }
-
-    return record;
+    shouldSkipCurrentRecord = false;
+    
+    return recordMaterializer.getFilteredCurrentRecord();
   }
 
 
