@@ -64,6 +64,39 @@ public class TestParquetFileWriter {
   private String writeSchema;
 
   @Test
+  public void testWriteMode() throws Exception {
+    File testDir = new File("target/test/TestParquetFileWriter/");
+    testDir.mkdirs();
+    File testFile = new File(testDir, "testParquetFile");
+    testFile = testFile.getAbsoluteFile();
+    testFile.createNewFile();
+    MessageType schema = MessageTypeParser.parseMessageType(
+        "message m { required group a {required binary b;} required group "
+        + "c { required int64 d; }}");
+    Configuration conf = new Configuration();
+
+    ParquetFileWriter writer = null;
+    boolean exceptionThrown = false;
+    Path path = new Path(testFile.toURI());
+    try {
+      writer = new ParquetFileWriter(conf, schema, path,
+          ParquetFileWriter.CREATE);
+    } catch(IOException ioe1) {
+      exceptionThrown = true;
+    }
+    assertTrue(exceptionThrown);
+    exceptionThrown = false;
+    try {
+      writer = new ParquetFileWriter(conf, schema, path,
+          ParquetFileWriter.OVERWRITE);
+    } catch(IOException ioe2) {
+      exceptionThrown = true;
+    }
+    assertTrue(!exceptionThrown);
+    testFile.delete();
+  }
+
+  @Test
   public void testWriteRead() throws Exception {
 
     File testFile = new File("target/test/TestParquetFileWriter/testParquetFile").getAbsoluteFile();
