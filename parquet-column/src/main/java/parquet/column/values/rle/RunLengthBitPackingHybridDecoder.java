@@ -21,6 +21,7 @@ package parquet.column.values.rle;
 import static parquet.Log.DEBUG;
 
 import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -105,20 +106,14 @@ public class RunLengthBitPackingHybridDecoder {
       currentCount = numGroups * 8;
       if (DEBUG) LOG.debug("reading " + currentCount + " values BIT PACKED");
       currentBuffer = new int[currentCount]; // TODO: reuse a buffer
+      byte[] bytes = new byte[numGroups * bitWidth];
       // At the end of the file RLE data though, there might not be that many bytes left.
-      ByteBuffer buf = in.toByteBuffer();
       int bytesToRead = (int)Math.ceil(currentCount * bitWidth / 8.0);
-      bytesToRead = Math.min(bytesToRead, buf.remaining());
+      bytesToRead = Math.min(bytesToRead, in.available());
+      new DataInputStream(in).readFully(bytes, 0, bytesToRead);
       for (int valueIndex = 0, byteIndex = 0; valueIndex < currentCount; valueIndex += 8, byteIndex += bitWidth) {
-        if (byteIndex + bitWidth <= buf.remaining()) {
-          packer.unpack8Values(buf, byteIndex, currentBuffer, valueIndex);
-        } else {
-          byte[] bytes = new byte[bitWidth];
-          buf.get(bytes, byteIndex, buf.remaining() - byteIndex);
-          packer.unpack8Values(ByteBuffer.wrap(bytes), 0, currentBuffer, valueIndex);
-        }
+        packer.unpack8Values(ByteBuffer.wrap(bytes), byteIndex, currentBuffer, valueIndex);
       }
-      in.skip(bytesToRead);
       break;
     default:
       throw new ParquetDecodingException("not a valid mode " + mode);
