@@ -52,7 +52,7 @@ public class Main {
                                .create();
 
     Option debg = OptionBuilder.withLongOpt("debug")
-                               .withDescription("Disable color output even if supported")
+                               .withDescription("Enable debug output")
                                .create();
 
     OPTIONS.addOption(help);
@@ -95,7 +95,7 @@ public class Main {
     if (usage != null && usage.length >= 1) {
       ustr = ustr + " " + usage[0];
     }
-      
+
     format.printUsage(err, WIDTH, ustr);
     format.printWrapped(err, WIDTH, LEFT_PAD, "where option is one of:");
     format.printOptions(err, WIDTH, options, LEFT_PAD, DESC_PAD);

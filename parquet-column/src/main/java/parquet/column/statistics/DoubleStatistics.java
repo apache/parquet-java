@@ -24,7 +24,7 @@ public class DoubleStatistics extends Statistics<Double> {
 
   @Override
   public void updateStats(double value) {
-    if (this.isEmpty()) {
+    if (!this.hasNonNullValue()) {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
@@ -34,7 +34,7 @@ public class DoubleStatistics extends Statistics<Double> {
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
     DoubleStatistics doubleStats = (DoubleStatistics)stats;
-    if (this.isEmpty()) {
+    if (!this.hasNonNullValue()) {
       initializeStats(doubleStats.getMin(), doubleStats.getMax());
     } else {
       updateStats(doubleStats.getMin(), doubleStats.getMax());
@@ -60,8 +60,10 @@ public class DoubleStatistics extends Statistics<Double> {
 
   @Override
   public String toString() {
-    if(!this.isEmpty())
+    if(this.hasNonNullValue())
       return String.format("min: %.5f, max: %.5f, num_nulls: %d", min, max, this.getNumNulls());
+    else if (!this.isEmpty())
+      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
     else
       return "no stats for this column";
   }
