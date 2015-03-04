@@ -1,24 +1,31 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.hadoop;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
@@ -28,6 +35,7 @@ import parquet.column.page.PageReadStore;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.compat.FilterCompat;
 import parquet.filter2.compat.FilterCompat.Filter;
+import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.util.counters.BenchmarkCounter;
@@ -102,13 +110,16 @@ class InternalParquetRecordReader<T> {
   private void checkRead() throws IOException {
     if (current == totalCountLoadedSoFar) {
       if (current != 0) {
-        long timeAssembling = System.currentTimeMillis() - startedAssemblingCurrentBlockAt;
-        totalTimeSpentProcessingRecords += timeAssembling;
-        LOG.info("Assembled and processed " + totalCountLoadedSoFar + " records from " + columnCount + " columns in " + totalTimeSpentProcessingRecords + " ms: "+((float)totalCountLoadedSoFar / totalTimeSpentProcessingRecords) + " rec/ms, " + ((float)totalCountLoadedSoFar * columnCount / totalTimeSpentProcessingRecords) + " cell/ms");
-        long totalTime = totalTimeSpentProcessingRecords + totalTimeSpentReadingBytes;
-        long percentReading = 100 * totalTimeSpentReadingBytes / totalTime;
-        long percentProcessing = 100 * totalTimeSpentProcessingRecords / totalTime;
-        LOG.info("time spent so far " + percentReading + "% reading ("+totalTimeSpentReadingBytes+" ms) and " + percentProcessing + "% processing ("+totalTimeSpentProcessingRecords+" ms)");
+        totalTimeSpentProcessingRecords += (System.currentTimeMillis() - startedAssemblingCurrentBlockAt);
+        if (Log.INFO) {
+            LOG.info("Assembled and processed " + totalCountLoadedSoFar + " records from " + columnCount + " columns in " + totalTimeSpentProcessingRecords + " ms: "+((float)totalCountLoadedSoFar / totalTimeSpentProcessingRecords) + " rec/ms, " + ((float)totalCountLoadedSoFar * columnCount / totalTimeSpentProcessingRecords) + " cell/ms");
+            final long totalTime = totalTimeSpentProcessingRecords + totalTimeSpentReadingBytes;
+            if (totalTime != 0) {
+                final long percentReading = 100 * totalTimeSpentReadingBytes / totalTime;
+                final long percentProcessing = 100 * totalTimeSpentProcessingRecords / totalTime;
+                LOG.info("time spent so far " + percentReading + "% reading ("+totalTimeSpentReadingBytes+" ms) and " + percentProcessing + "% processing ("+totalTimeSpentProcessingRecords+" ms)");
+            }
+        }
       }
 
       LOG.info("at row " + current + ". reading next block");
@@ -120,7 +131,7 @@ class InternalParquetRecordReader<T> {
       long timeSpentReading = System.currentTimeMillis() - t0;
       totalTimeSpentReadingBytes += timeSpentReading;
       BenchmarkCounter.incrementTime(timeSpentReading);
-      LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
+      if (Log.INFO) LOG.info("block read in memory in " + timeSpentReading + " ms. row count = " + pages.getRowCount());
       if (Log.DEBUG) LOG.debug("initializing Record assembly with requested schema " + requestedSchema);
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema, strictTypeChecking);
       recordReader = columnIO.getRecordReader(pages, recordConverter, filter);
@@ -149,17 +160,19 @@ class InternalParquetRecordReader<T> {
     return (float) current / total;
   }
 
-  public void initialize(MessageType requestedSchema, MessageType fileSchema,
-      Map<String, String> extraMetadata, Map<String, String> readSupportMetadata,
+  public void initialize(MessageType fileSchema,
+      Map<String, String> fileMetadata,
       Path file, List<BlockMetaData> blocks, Configuration configuration)
       throws IOException {
-    this.requestedSchema = requestedSchema;
+    // initialize a ReadContext for this file
+    ReadSupport.ReadContext readContext = readSupport.init(new InitContext(
+        configuration, toSetMultiMap(fileMetadata), fileSchema));
+    this.requestedSchema = readContext.getRequestedSchema();
     this.fileSchema = fileSchema;
     this.file = file;
-    this.columnCount = this.requestedSchema.getPaths().size();
+    this.columnCount = requestedSchema.getPaths().size();
     this.recordConverter = readSupport.prepareForRead(
-        configuration, extraMetadata, fileSchema,
-        new ReadSupport.ReadContext(requestedSchema, readSupportMetadata));
+        configuration, fileMetadata, fileSchema, readContext);
     this.strictTypeChecking = configuration.getBoolean(STRICT_TYPE_CHECKING, true);
     List<ColumnDescriptor> columns = requestedSchema.getColumns();
     reader = new ParquetFileReader(configuration, file, blocks, columns);
@@ -217,4 +230,15 @@ class InternalParquetRecordReader<T> {
     }
     return true;
   }
+
+  private static <K, V> Map<K, Set<V>> toSetMultiMap(Map<K, V> map) {
+    Map<K, Set<V>> setMultiMap = new HashMap<K, Set<V>>();
+    for (Map.Entry<K, V> entry : map.entrySet()) {
+      Set<V> set = new HashSet<V>();
+      set.add(entry.getValue());
+      setMultiMap.put(entry.getKey(), Collections.unmodifiableSet(set));
+    }
+    return Collections.unmodifiableMap(setMultiMap);
+  }
+
 }

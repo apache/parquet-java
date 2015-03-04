@@ -1,4 +1,24 @@
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package parquet.filter2.predicate;
+
+import java.io.Serializable;
 
 import parquet.common.schema.ColumnPath;
 import parquet.filter2.predicate.Operators.And;
@@ -20,6 +40,8 @@ import parquet.filter2.predicate.Operators.Or;
 import parquet.filter2.predicate.Operators.SupportsEqNotEq;
 import parquet.filter2.predicate.Operators.SupportsLtGt;
 import parquet.filter2.predicate.Operators.UserDefined;
+import parquet.filter2.predicate.Operators.UserDefinedByClass;
+import parquet.filter2.predicate.Operators.UserDefinedByInstance;
 
 /**
  * The Filter API is expressed through these static methods.
@@ -144,10 +166,23 @@ public final class FilterApi {
 
   /**
    * Keeps records that pass the provided {@link UserDefinedPredicate}
+   *
+   * The provided class must have a default constructor. To use an instance
+   * of a UserDefinedPredicate instead, see {@link #userDefined(column, udp)} below.
    */
   public static <T extends Comparable<T>, U extends UserDefinedPredicate<T>>
     UserDefined<T, U> userDefined(Column<T> column, Class<U> clazz) {
-    return new UserDefined<T, U>(column, clazz);
+    return new UserDefinedByClass<T, U>(column, clazz);
+  }
+  
+  /**
+   * Keeps records that pass the provided {@link UserDefinedPredicate}
+   *
+   * The provided instance of UserDefinedPredicate must be serializable.
+   */
+  public static <T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable>
+    UserDefined<T, U> userDefined(Column<T> column, U udp) {
+    return new UserDefinedByInstance<T, U>(column, udp);
   }
 
   /**

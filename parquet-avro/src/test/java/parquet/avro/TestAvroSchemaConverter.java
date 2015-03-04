@@ -1,17 +1,20 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.avro;
 
@@ -145,6 +148,7 @@ public class TestAvroSchemaConverter {
   public void testAllTypesParquetToAvro() throws Exception {
     Schema schema = new Schema.Parser().parse(
         Resources.getResource("allFromParquet.avsc").openStream());
+    // Cannot use round-trip assertion because enum is lost
     testParquetToAvroConversion(schema, ALL_PARQUET_SCHEMA);
   }
 
@@ -170,10 +174,29 @@ public class TestAvroSchemaConverter {
     schema.setFields(Arrays.asList(
         new Schema.Field("myint", optionalInt, null, NullNode.getInstance())
     ));
-    testAvroToParquetConversion(
+    testRoundTripConversion(
         schema,
         "message record1 {\n" +
             "  optional int32 myint;\n" +
+            "}\n");
+  }
+
+  @Test
+  public void testOptionalMapValue() throws Exception {
+    Schema schema = Schema.createRecord("record1", null, null, false);
+    Schema optionalIntMap = Schema.createMap(optional(Schema.create(Schema.Type.INT)));
+    schema.setFields(Arrays.asList(
+        new Schema.Field("myintmap", optionalIntMap, null, null)
+    ));
+    testRoundTripConversion(
+        schema,
+        "message record1 {\n" +
+            "  required group myintmap (MAP) {\n" +
+            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "      required binary key (UTF8);\n" +
+            "      optional int32 value;\n" +
+            "    }\n" +
+            "  }\n" +
             "}\n");
   }
 
@@ -187,7 +210,8 @@ public class TestAvroSchemaConverter {
     schema.setFields(Arrays.asList(
         new Schema.Field("myunion", multipleTypes, null, NullNode.getInstance())));
 
-    // Avro union is modelled using optional data members of thw different types;
+    // Avro union is modelled using optional data members of the different
+    // types. This does not translate back into an Avro union
     testAvroToParquetConversion(
         schema,
         "message record2 {\n" +
@@ -213,6 +237,7 @@ public class TestAvroSchemaConverter {
     ));
     System.err.println("Avro schema: " + schema.toString(true));
 
+    // Cannot use round-trip assertion because InnerRecord optional is removed
     testAvroToParquetConversion(schema, "message HasArray {\n" +
         "  required group myarray (LIST) {\n" +
         "    repeated group array {\n" +
@@ -224,7 +249,8 @@ public class TestAvroSchemaConverter {
   }
 
   public static Schema optional(Schema original) {
-    return Schema.createUnion(Lists.newArrayList(original,
-        Schema.create(Schema.Type.NULL)));
+    return Schema.createUnion(Lists.newArrayList(
+        Schema.create(Schema.Type.NULL),
+        original));
   }
 }

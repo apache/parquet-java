@@ -1,3 +1,21 @@
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package parquet.filter2.predicate;
 
 import java.io.Serializable;
@@ -340,15 +358,33 @@ public final class Operators {
     }
   }
 
-  public static final class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
-    private final Column<T> column;
+  public static abstract class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
+    protected final Column<T> column;
+
+    UserDefined(Column<T> column) {
+      this.column = checkNotNull(column, "column");
+    }
+
+    public Column<T> getColumn() {
+      return column;
+    }
+
+    public abstract U getUserDefinedPredicate();
+
+    @Override
+    public <R> R accept(Visitor<R> visitor) {
+      return visitor.visit(this);
+    }
+  }
+    
+  public static final class UserDefinedByClass<T extends Comparable<T>, U extends UserDefinedPredicate<T>> extends UserDefined<T, U> {
     private final Class<U> udpClass;
     private final String toString;
     private static final String INSTANTIATION_ERROR_MESSAGE =
         "Could not instantiate custom filter: %s. User defined predicates must be static classes with a default constructor.";
 
-    UserDefined(Column<T> column, Class<U> udpClass) {
-      this.column = checkNotNull(column, "column");
+    UserDefinedByClass(Column<T> column, Class<U> udpClass) {
+      super(column);
       this.udpClass = checkNotNull(udpClass, "udpClass");
       String name = getClass().getSimpleName().toLowerCase();
       this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udpClass.getName() + ")";
@@ -357,14 +393,11 @@ public final class Operators {
       getUserDefinedPredicate();
     }
 
-    public Column<T> getColumn() {
-      return column;
-    }
-
     public Class<U> getUserDefinedPredicateClass() {
       return udpClass;
     }
 
+    @Override
     public U getUserDefinedPredicate() {
       try {
         return udpClass.newInstance();
@@ -373,11 +406,6 @@ public final class Operators {
       } catch (IllegalAccessException e) {
         throw new RuntimeException(String.format(INSTANTIATION_ERROR_MESSAGE, udpClass), e);
       }
-    }
-
-    @Override
-    public <R> R accept(Visitor<R> visitor) {
-      return visitor.visit(this);
     }
 
     @Override
@@ -390,7 +418,7 @@ public final class Operators {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
 
-      UserDefined that = (UserDefined) o;
+      UserDefinedByClass that = (UserDefinedByClass) o;
 
       if (!column.equals(that.column)) return false;
       if (!udpClass.equals(that.udpClass)) return false;
@@ -402,6 +430,49 @@ public final class Operators {
     public int hashCode() {
       int result = column.hashCode();
       result = 31 * result + udpClass.hashCode();
+      result = result * 31 + getClass().hashCode();
+      return result;
+    }
+  }
+  
+  public static final class UserDefinedByInstance<T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> extends UserDefined<T, U> {
+    private final String toString;
+    private final U udpInstance;
+
+    UserDefinedByInstance(Column<T> column, U udpInstance) {
+      super(column);
+      this.udpInstance = checkNotNull(udpInstance, "udpInstance");
+      String name = getClass().getSimpleName().toLowerCase();
+      this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udpInstance + ")";
+    }
+
+    @Override
+    public U getUserDefinedPredicate() {
+      return udpInstance;
+    }
+
+    @Override
+    public String toString() {
+      return toString;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      UserDefinedByInstance that = (UserDefinedByInstance) o;
+
+      if (!column.equals(that.column)) return false;
+      if (!udpInstance.equals(that.udpInstance)) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = column.hashCode();
+      result = 31 * result + udpInstance.hashCode();
       result = result * 31 + getClass().hashCode();
       return result;
     }

@@ -1,22 +1,26 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.avro;
 
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -97,6 +101,62 @@ public class TestReadWrite {
 
     assertNotNull(nextRecord);
     assertEquals(emptyMap, nextRecord.get("mymap"));
+  }
+
+  @Test
+  public void testMapWithNulls() throws Exception {
+    Schema schema = new Schema.Parser().parse(
+        Resources.getResource("map_with_nulls.avsc").openStream());
+
+    File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
+    tmp.deleteOnExit();
+    tmp.delete();
+    Path file = new Path(tmp.getPath());
+
+    AvroParquetWriter<GenericRecord> writer =
+        new AvroParquetWriter<GenericRecord>(file, schema);
+
+    // Write a record with a null value
+    Map<String, Integer> map = new HashMap<String, Integer>();
+    map.put("thirty-four", 34);
+    map.put("eleventy-one", null);
+    map.put("one-hundred", 100);
+
+    GenericData.Record record = new GenericRecordBuilder(schema)
+        .set("mymap", map).build();
+    writer.write(record);
+    writer.close();
+
+    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(file);
+    GenericRecord nextRecord = reader.read();
+
+    assertNotNull(nextRecord);
+    assertEquals(map, nextRecord.get("mymap"));
+  }
+
+  @Test(expected=RuntimeException.class)
+  public void testMapRequiredValueWithNull() throws Exception {
+    Schema schema = Schema.createRecord("record1", null, null, false);
+    schema.setFields(Lists.newArrayList(
+        new Schema.Field("mymap", Schema.createMap(Schema.create(Schema.Type.INT)), null, null)));
+
+    File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
+    tmp.deleteOnExit();
+    tmp.delete();
+    Path file = new Path(tmp.getPath());
+
+    AvroParquetWriter<GenericRecord> writer =
+        new AvroParquetWriter<GenericRecord>(file, schema);
+
+    // Write a record with a null value
+    Map<String, Integer> map = new HashMap<String, Integer>();
+    map.put("thirty-four", 34);
+    map.put("eleventy-one", null);
+    map.put("one-hundred", 100);
+
+    GenericData.Record record = new GenericRecordBuilder(schema)
+        .set("mymap", map).build();
+    writer.write(record);
   }
 
   @Test

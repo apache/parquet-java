@@ -1,20 +1,24 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.hadoop.mapred;
 
+import static java.lang.Boolean.TRUE;
 import static java.util.Arrays.asList;
 
 import java.io.DataInput;
@@ -22,6 +26,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
 
+import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
@@ -39,11 +44,15 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
   @Override
   public RecordReader<Void, Container<V>> getRecordReader(InputSplit split, JobConf job,
                   Reporter reporter) throws IOException {
-    return new RecordReaderWrapper<V>(realInputFormat, split, job, reporter);
+    return new RecordReaderWrapper<V>(split, job, reporter);
   }
 
   @Override
   public InputSplit[] getSplits(JobConf job, int numSplits) throws IOException {
+    if (isTaskSideMetaData(job)) {
+      return super.getSplits(job, numSplits);
+    }
+
     List<Footer> footers = getFooters(job);
     List<ParquetInputSplit> splits = realInputFormat.getSplits(job, footers);
     if (splits == null) {
@@ -71,18 +80,24 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
     private boolean firstRecord = false;
     private boolean eof = false;
 
-    public RecordReaderWrapper(ParquetInputFormat<V> newInputFormat,
-                               InputSplit oldSplit,
-                               JobConf oldJobConf,
-                               Reporter reporter) throws IOException {
-
+    public RecordReaderWrapper(
+        InputSplit oldSplit, JobConf oldJobConf, Reporter reporter)
+        throws IOException {
       splitLen = oldSplit.getLength();
 
       try {
-        realReader = new ParquetRecordReader<V>(newInputFormat.getReadSupport(oldJobConf),
+        realReader = new ParquetRecordReader<V>(
+            ParquetInputFormat.<V>getReadSupportInstance(oldJobConf),
             ParquetInputFormat.getFilter(oldJobConf));
 
-        realReader.initialize(((ParquetInputSplitWrapper)oldSplit).realSplit, oldJobConf, reporter);
+        if (oldSplit instanceof ParquetInputSplitWrapper) {
+          realReader.initialize(((ParquetInputSplitWrapper) oldSplit).realSplit, oldJobConf, reporter);
+        } else if (oldSplit instanceof FileSplit) {
+          realReader.initialize((FileSplit) oldSplit, oldJobConf, reporter);
+        } else {
+          throw new IllegalArgumentException(
+              "Invalid split (not a FileSplit or ParquetInputSplitWrapper): " + oldSplit);
+        }
 
         // read once to gain access to key and value objects
         if (realReader.nextKeyValue()) {
@@ -152,6 +167,10 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
       eof = true; // strictly not required, just for consistency
       return false;
     }
+  }
+
+  public static boolean isTaskSideMetaData(JobConf job) {
+    return job.getBoolean(ParquetInputFormat.TASK_SIDE_METADATA, TRUE);
   }
 
   private static class ParquetInputSplitWrapper implements InputSplit {

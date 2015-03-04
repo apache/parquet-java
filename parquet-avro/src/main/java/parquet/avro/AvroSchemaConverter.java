@@ -1,17 +1,20 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.avro;
 
@@ -186,11 +189,7 @@ public class AvroSchemaConverter {
       if (parquetType.isRepetition(Type.Repetition.REPEATED)) {
         throw new UnsupportedOperationException("REPEATED not supported outside LIST or MAP. Type: " + parquetType);
       } else if (parquetType.isRepetition(Type.Repetition.OPTIONAL)) {
-        List<Schema> types = new ArrayList<Schema>();
-        types.add(Schema.create(Schema.Type.NULL));
-        types.add(fieldSchema);
-        Schema optionalFieldSchema = Schema.createUnion(types);
-        fields.add(new Schema.Field(parquetType.getName(), optionalFieldSchema, null,
+        fields.add(new Schema.Field(parquetType.getName(), optional(fieldSchema), null,
             NullNode.getInstance()));
       } else { // REQUIRED
         fields.add(new Schema.Field(parquetType.getName(), fieldSchema, null, null));
@@ -278,7 +277,11 @@ public class AvroSchemaConverter {
                   + keyType);
             }
             Type valueType = mapKeyValType.getType(1);
-            return Schema.createMap(convertField(valueType));
+            if (valueType.isRepetition(Type.Repetition.OPTIONAL)) {
+              return Schema.createMap(optional(convertField(valueType)));
+            } else {
+              return Schema.createMap(convertField(valueType));
+            }
           case ENUM:
             return Schema.create(Schema.Type.STRING);
           case MAP_KEY_VALUE:
@@ -293,5 +296,12 @@ public class AvroSchemaConverter {
         return convertFields(parquetGroupType.getName(), parquetGroupType.getFields());
       }
     }
+  }
+
+  private static Schema optional(Schema original) {
+    // null is first in the union because Parquet's default is always null
+    return Schema.createUnion(Arrays.asList(
+        Schema.create(Schema.Type.NULL),
+        original));
   }
 }

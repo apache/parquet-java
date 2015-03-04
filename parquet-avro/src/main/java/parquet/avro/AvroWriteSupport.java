@@ -1,17 +1,20 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.avro;
 
@@ -20,12 +23,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.IndexedRecord;
-import org.apache.avro.specific.SpecificData;
-import org.apache.avro.specific.SpecificRecord;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import parquet.hadoop.api.WriteSupport;
@@ -43,6 +43,7 @@ import parquet.schema.Type;
 public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
 
   private static final String AVRO_SCHEMA = "parquet.avro.schema";
+  private static final Schema MAP_KEY_SCHEMA = Schema.create(Schema.Type.STRING);
 
   private RecordConsumer recordConsumer;
   private MessageType rootSchema;
@@ -129,28 +130,32 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
     recordConsumer.endGroup();
   }
 
-  private <V> void writeMap(GroupType schema, Schema avroSchema, 
+  private <V> void writeMap(GroupType schema, Schema avroSchema,
                             Map<CharSequence, V> map) {
     GroupType innerGroup = schema.getType(0).asGroupType();
     Type keyType = innerGroup.getType(0);
     Type valueType = innerGroup.getType(1);
-    Schema keySchema = Schema.create(Schema.Type.STRING);
 
     recordConsumer.startGroup(); // group wrapper (original type MAP)
     if (map.size() > 0) {
       recordConsumer.startField("map", 0);
-      recordConsumer.startGroup(); // "repeated" group wrapper
-      recordConsumer.startField("key", 0);
-      for (CharSequence key : map.keySet()) {
-        writeValue(keyType, keySchema, key);
+
+      for (Map.Entry<CharSequence, V> entry : map.entrySet()) {
+        recordConsumer.startGroup(); // "repeated" group wrapper
+        recordConsumer.startField("key", 0);
+        writeValue(keyType, MAP_KEY_SCHEMA, entry.getKey());
+        recordConsumer.endField("key", 0);
+        V value = entry.getValue();
+        if (value != null) {
+          recordConsumer.startField("value", 1);
+          writeValue(valueType, avroSchema.getValueType(), value);
+          recordConsumer.endField("value", 1);
+        } else if (!valueType.isRepetition(Type.Repetition.OPTIONAL)) {
+          throw new RuntimeException("Null map value for " + avroSchema.getName());
+        }
+        recordConsumer.endGroup();
       }
-      recordConsumer.endField("key", 0);
-      recordConsumer.startField("value", 1);
-      for (V value : map.values()) {
-        writeValue(valueType, avroSchema.getValueType(), value);
-      }
-      recordConsumer.endField("value", 1);
-      recordConsumer.endGroup();
+
       recordConsumer.endField("map", 0);
     }
     recordConsumer.endGroup();

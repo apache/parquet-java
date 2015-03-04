@@ -1,21 +1,25 @@
-/**
- * Copyright 2012 Twitter, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package parquet.hadoop;
 
 import parquet.Log;
+import parquet.ParquetRuntimeException;
 
 import java.lang.management.ManagementFactory;
 import java.util.HashMap;
@@ -36,16 +40,19 @@ import java.util.Map;
 public class MemoryManager {
   private static final Log LOG = Log.getLog(MemoryManager.class);
   static final float DEFAULT_MEMORY_POOL_RATIO = 0.95f;
+  static final long DEFAULT_MIN_MEMORY_ALLOCATION = ParquetWriter.DEFAULT_PAGE_SIZE;
   private final float memoryPoolRatio;
 
   private final long totalMemoryPool;
+  private final long minMemoryAllocation;
   private final Map<InternalParquetRecordWriter, Long> writerList = new
       HashMap<InternalParquetRecordWriter, Long>();
 
-  public MemoryManager(float ratio) {
+  public MemoryManager(float ratio, long minAllocation) {
     checkRatio(ratio);
 
     memoryPoolRatio = ratio;
+    minMemoryAllocation = minAllocation;
     totalMemoryPool = Math.round(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
         () * ratio);
     LOG.debug(String.format("Allocated total memory pool is: %,d", totalMemoryPool));
@@ -101,10 +108,24 @@ public class MemoryManager {
       scale = 1.0;
     } else {
       scale = (double) totalMemoryPool / totalAllocations;
+      LOG.warn(String.format(
+          "Total allocation exceeds %.2f%% (%,d bytes) of heap memory\n" +
+          "Scaling row group sizes to %.2f%% for %d writers",
+          100*memoryPoolRatio, totalMemoryPool, 100*scale, writerList.size()));
+    }
+
+    int maxColCount = 0;
+    for (InternalParquetRecordWriter w : writerList.keySet()) {
+      maxColCount = Math.max(w.getSchema().getColumns().size(), maxColCount);
     }
 
     for (Map.Entry<InternalParquetRecordWriter, Long> entry : writerList.entrySet()) {
       long newSize = (long) Math.floor(entry.getValue() * scale);
+      if(minMemoryAllocation > 0 && newSize/maxColCount < minMemoryAllocation) {
+          throw new ParquetRuntimeException(String.format("New Memory allocation %d"+
+          " exceeds minimum allocation size %d with largest schema having %d columns",
+              newSize, minMemoryAllocation, maxColCount)){};
+      }
       entry.getKey().setRowGroupSizeThreshold(newSize);
       LOG.debug(String.format("Adjust block size from %,d to %,d for writer: %s",
             entry.getValue(), newSize, entry.getKey()));
