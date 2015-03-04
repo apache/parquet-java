@@ -286,7 +286,7 @@ public class ScroogeStructConverter {
     Object cObject = companionObjectClass.getField("MODULE$").get(null);
     Method listMethod = companionObjectClass.getMethod("list", new Class[]{});
     Object result = listMethod.invoke(cObject, null);
-    return JavaConversions.asJavaList((Seq)result);
+    return JavaConversions.seqAsJavaList((Seq)result);
   }
 
   public ThriftType convertEnumTypeField(ThriftStructFieldInfo f) {
