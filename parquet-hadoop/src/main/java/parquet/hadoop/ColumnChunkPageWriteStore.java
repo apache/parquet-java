@@ -42,7 +42,6 @@ import parquet.schema.MessageType;
 
 class ColumnChunkPageWriteStore implements PageWriteStore {
   private static final Log LOG = Log.getLog(ColumnChunkPageWriteStore.class);
-  private static final int COLUMN_CHUNK_WRITER_MAX_SIZE_HINT = 64 * 1024;
 
   private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
