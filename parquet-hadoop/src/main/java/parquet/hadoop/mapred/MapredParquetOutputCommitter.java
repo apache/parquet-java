@@ -31,7 +31,7 @@ import java.io.IOException;
  *
  * @author Tianshuo Deng
  */
-public class DeprecatedParquetOutputCommitter extends FileOutputCommitter {
+public class MapredParquetOutputCommitter extends FileOutputCommitter {
 
   @Override
   public void commitJob(JobContext jobContext) throws IOException {

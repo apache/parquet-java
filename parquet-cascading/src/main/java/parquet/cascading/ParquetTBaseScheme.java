@@ -28,7 +28,6 @@ import cascading.tap.Tap;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
-import parquet.hadoop.mapred.DeprecatedParquetOutputCommitter;
 import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
 import parquet.hadoop.thrift.ThriftReadSupport;
 import parquet.hadoop.thrift.TBaseWriteSupport;
@@ -74,8 +73,7 @@ public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme
       throw new IllegalArgumentException("To use ParquetTBaseScheme as a sink, you must specify a thrift class in the constructor");
     }
 
-    jobConf.setOutputFormat(DeprecatedParquetOutputFormat.class);
-    jobConf.setOutputCommitter(DeprecatedParquetOutputCommitter.class);
+    DeprecatedParquetOutputFormat.setAsOutputFormat(jobConf);
     DeprecatedParquetOutputFormat.setWriteSupportClass(jobConf, TBaseWriteSupport.class);
     TBaseWriteSupport.<T>setThriftClass(jobConf, this.config.getKlass());
   }
