@@ -1,22 +1,25 @@
-/**
- * Copyright 2013 ARRIS, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/* 
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
+
 package parquet.tools.command;
 
 import java.io.PrintWriter;
-import java.util.List;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -36,6 +39,12 @@ public class SizeCommand extends ArgsOnlyCommand {
   private Configuration conf;
   private Path inputPath;
   private PrintWriter out;
+  private static final double ONE_KB = 1024;
+  private static final double ONE_MB = ONE_KB * 1024;
+  private static final double ONE_GB = ONE_MB * 1024;
+  private static final double ONE_TB = ONE_GB * 1024;
+  private static final double ONE_PB = ONE_TB * 1024;
+  
   public static final String[] USAGE = new String[] {
     "<input>",
     "where <input> is the parquet file to get size & human readable size to stdout"
@@ -49,12 +58,12 @@ public class SizeCommand extends ArgsOnlyCommand {
                                .create('p');
     OPTIONS.addOption(help);
     Option uncompressed = OptionBuilder.withLongOpt("uncompressed")
-    							.withDescription("Uncompressed size")
-    							.create('u');
+                                       .withDescription("Uncompressed size")
+                                       .create('u');
     OPTIONS.addOption(uncompressed);
     Option detailed = OptionBuilder.withLongOpt("detailed")
-    							   .withDescription("Detailed size of each matching file")
-    							   .create('d');
+                                   .withDescription("Detailed size of each matching file")
+                                   .create('d');
     OPTIONS.addOption(detailed);
   }
   
@@ -74,7 +83,7 @@ public class SizeCommand extends ArgsOnlyCommand {
 
   @Override
   public void execute(CommandLine options) throws Exception {
-	super.execute(options);
+    super.execute(options);
 
     String[] args = options.getArgs();
     String input = args[0];
@@ -84,50 +93,48 @@ public class SizeCommand extends ArgsOnlyCommand {
     inputFileStatuses = inputPath.getFileSystem(conf).globStatus(inputPath);
     long size = 0;
     for(FileStatus fs : inputFileStatuses){
-    	long fileSize = 0;
-    	for(Footer f : ParquetFileReader.readFooters(conf, fs, false)){
-    		for(BlockMetaData b : f.getParquetMetadata().getBlocks()){
-    			size += (options.hasOption('u') ? b.getTotalByteSize() : b.getCompressedSize());
-    			fileSize += (options.hasOption('u') ? b.getTotalByteSize() : b.getCompressedSize());
-        	}
-    	}
-    	if(options.hasOption('d')){
-    		if(options.hasOption('p')){ 
-    			out.format("%s: %s\n", fs.getPath().getName(), getPrettySize(fileSize));
-    		}
-    		else{
-    			out.format("%s: %d bytes\n", fs.getPath().getName(), fileSize);
-    		}
-    	}
+      long fileSize = 0;
+      for(Footer f : ParquetFileReader.readFooters(conf, fs, false)){
+        for(BlockMetaData b : f.getParquetMetadata().getBlocks()){
+          size += (options.hasOption('u') ? b.getTotalByteSize() : b.getCompressedSize());
+          fileSize += (options.hasOption('u') ? b.getTotalByteSize() : b.getCompressedSize());
+        }
+      }
+      if(options.hasOption('d')){
+        if(options.hasOption('p')){ 
+           out.format("%s: %s\n", fs.getPath().getName(), getPrettySize(fileSize));
+        }
+        else{
+          out.format("%s: %d bytes\n", fs.getPath().getName(), fileSize);
+        }
+      }
     }
     
     if(options.hasOption('p')){
-    	out.format("Total Size: %s", getPrettySize(size));
+      out.format("Total Size: %s", getPrettySize(size));
     }
     else{
-    	out.format("Total Size: %d bytes", size);
+      out.format("Total Size: %d bytes", size);
     }
     out.println();
   }
   
   public String getPrettySize(long bytes){
-		double oneKB = 1024;
-		double oneMB = oneKB * 1024;
-		double oneGB = oneMB * 1014;
-		double oneTB = oneGB * 1024;
-		double onePB = oneTB * 1024;
-		if (bytes/oneKB < 1){
-			return  String.format("%.3f", bytes) + " bytes";
-		}
-		if (bytes/oneMB < 1){
-			return String.format("%.3f", bytes/oneKB) + " KB";			
-		}
-		if (bytes/oneGB < 1){
-			return String.format("%.3f", bytes/oneMB) + " MB";			
-		}
-		if (bytes/oneTB < 1){
-			return String.format("%.3f", bytes/oneGB) + " GB";
-		}
-		return String.valueOf(bytes/onePB) + " PB";		
-	}
+    if (bytes/ONE_KB < 1){
+      return  String.format("%d", bytes) + " bytes";
+    }
+    if (bytes/ONE_MB < 1){
+      return String.format("%.3f", bytes/ONE_KB) + " KB";
+    }
+    if (bytes/ONE_GB < 1){
+      return String.format("%.3f", bytes/ONE_MB) + " MB";
+    }
+    if (bytes/ONE_TB < 1){
+      return String.format("%.3f", bytes/ONE_GB) + " GB";
+    }
+    if (bytes/ONE_PB < 1){
+      return String.format("%.3f", bytes/ONE_TB) + " TB";
+    }
+    return String.format("%.3f", bytes/ONE_PB) + " PB";		
+  }
 }
