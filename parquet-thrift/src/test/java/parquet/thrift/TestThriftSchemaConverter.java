@@ -19,6 +19,7 @@
 package parquet.thrift;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static parquet.schema.MessageTypeParser.parseMessageType;
 
 import org.apache.thrift.TBase;
@@ -202,9 +203,29 @@ public class TestThriftSchemaConverter {
             "}",TestStructInMap.class);
   }
 
+
+  private void shouldThrowWhenProjectionFilterMatchesNothing(String filters, String unmatchedFilter, Class<? extends TBase<?, ?>> thriftClass) {
+    try {
+      getFilteredSchema(filters, thriftClass);
+    } catch (ThriftProjectionException e) {
+      assertEquals("unmatched projection filters: [" + unmatchedFilter + "]", e.getMessage());
+      return;
+    }
+    fail("should throw projection exception when filter matches nothing");
+  }
+
+  @Test
+  public void testThrowWhenProjectionFilterMatchesNothing() {
+    shouldThrowWhenProjectionFilterMatchesNothing("non_existing", "non_existing", TestStructInMap.class);
+    shouldThrowWhenProjectionFilterMatchesNothing("name;non_existing", "non_existing", TestStructInMap.class);
+    shouldThrowWhenProjectionFilterMatchesNothing("**;non_existing", "non_existing", TestStructInMap.class);
+    shouldThrowWhenProjectionFilterMatchesNothing("**;names/non_existing", "names/non_existing", TestStructInMap.class);
+    shouldThrowWhenProjectionFilterMatchesNothing("**;names/non_existing;non_existing", "names/non_existing, non_existing", TestStructInMap.class);
+  }
+
   @Test(expected = ThriftProjectionException.class)
   public void testProjectOnlyValueInMap() {
-    System.out.println(getFilteredSchema("name;names/value/**", TestStructInMap.class));
+    getFilteredSchema("name;names/value/**", TestStructInMap.class);
   }
 
   private void shouldGetProjectedSchema(String filterDesc, String expectedSchemaStr, Class<? extends TBase<?,?>> thriftClass) {
@@ -218,13 +239,11 @@ public class TestThriftSchemaConverter {
     return new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftClass);
   }
 
-
   @Test
   public void testToThriftType() throws Exception {
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final StructType converted = schemaConverter.toStructType(AddressBook.class);
     final String json = converted.toJSON();
-    System.out.println(json);
     final ThriftType fromJSON = StructType.fromJSON(json);
     assertEquals(json, fromJSON.toJSON());
   }

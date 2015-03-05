@@ -18,38 +18,30 @@
  */
 package parquet.hadoop.thrift;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.ByteArrayOutputStream;
-import java.util.*;
-
+import com.twitter.data.proto.tutorial.thrift.AddressBook;
+import com.twitter.data.proto.tutorial.thrift.Name;
+import com.twitter.data.proto.tutorial.thrift.Person;
+import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
-import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.JobID;
-import org.apache.hadoop.mapreduce.RecordReader;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
-import org.apache.hadoop.mapreduce.TaskAttemptID;
-import org.apache.hadoop.mapreduce.TaskID;
+import org.apache.hadoop.mapreduce.*;
 import org.apache.thrift.TBase;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.junit.Test;
-
 import parquet.Log;
 import parquet.hadoop.api.ReadSupport;
 import parquet.hadoop.util.ContextUtil;
-
-import com.twitter.data.proto.tutorial.thrift.AddressBook;
-import com.twitter.data.proto.tutorial.thrift.Name;
-import com.twitter.data.proto.tutorial.thrift.Person;
-import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
 import parquet.thrift.test.*;
+
+import java.io.ByteArrayOutputStream;
+import java.util.*;
+
+import static org.junit.Assert.assertEquals;
 
 public class TestParquetToThriftReadWriteAndProjection {
 
@@ -71,7 +63,7 @@ public class TestParquetToThriftReadWriteAndProjection {
             "  }\n" +
             "}";
     conf.set(ReadSupport.PARQUET_READ_SCHEMA, readProjectionSchema);
-    TBase toWrite=new AddressBook(
+    TBase toWrite = new AddressBook(
             Arrays.asList(
                     new Person(
                             new Name("Bob", "Roberts"),
@@ -79,20 +71,20 @@ public class TestParquetToThriftReadWriteAndProjection {
                             "bob.roberts@example.com",
                             Arrays.asList(new PhoneNumber("1234567890")))));
 
-    TBase toRead=new AddressBook(
+    TBase toRead = new AddressBook(
             Arrays.asList(
                     new Person(
                             new Name("Bob", "Roberts"),
                             0,
                             null,
                             null)));
-    shouldDoProjection(conf,toWrite,toRead,AddressBook.class);
+    shouldDoProjection(conf, toWrite, toRead, AddressBook.class);
   }
 
   @Test
   public void testPullingInRequiredStructWithFilter() throws Exception {
     final String projectionFilterDesc = "persons/{id};persons/email";
-    TBase toWrite=new AddressBook(
+    TBase toWrite = new AddressBook(
             Arrays.asList(
                     new Person(
                             new Name("Bob", "Roberts"),
@@ -100,30 +92,34 @@ public class TestParquetToThriftReadWriteAndProjection {
                             "bob.roberts@example.com",
                             Arrays.asList(new PhoneNumber("1234567890")))));
 
-    TBase toRead=new AddressBook(
+    //Name is a required field, but is projected out. To make the thrift record pass validation, the name field is filled
+    //with empty string
+    TBase toRead = new AddressBook(
             Arrays.asList(
                     new Person(
                             new Name("", ""),
                             0,
                             "bob.roberts@example.com",
                             null)));
-    shouldDoProjectionWithThriftColumnFilter(projectionFilterDesc,toWrite,toRead,AddressBook.class);
+    shouldDoProjectionWithThriftColumnFilter(projectionFilterDesc, toWrite, toRead, AddressBook.class);
   }
 
   @Test
   public void testReorderdOptionalFields() throws Exception {
     final String projectionFilter = "**";
-    StructWithReorderedOptionalFields toWrite =  new StructWithReorderedOptionalFields();
+    StructWithReorderedOptionalFields toWrite = new StructWithReorderedOptionalFields();
     toWrite.setFieldOne(1);
     toWrite.setFieldTwo(2);
     toWrite.setFieldThree(3);
-    shouldDoProjectionWithThriftColumnFilter(projectionFilter,toWrite,toWrite,StructWithReorderedOptionalFields.class);
+    shouldDoProjectionWithThriftColumnFilter(projectionFilter, toWrite, toWrite, StructWithReorderedOptionalFields.class);
   }
 
   @Test
-  public void testNotPullInOptionalFields() throws Exception {
-    final String projectionFilterDesc = "nomatch";
-    TBase toWrite=new AddressBook(
+  public void testProjectOutOptionalFields() throws Exception {
+
+    final String projectionFilterDesc = "persons/name/*";
+
+    TBase toWrite = new AddressBook(
             Arrays.asList(
                     new Person(
                             new Name("Bob", "Roberts"),
@@ -131,73 +127,82 @@ public class TestParquetToThriftReadWriteAndProjection {
                             "bob.roberts@example.com",
                             Arrays.asList(new PhoneNumber("1234567890")))));
 
-    TBase toRead=new AddressBook();
-    shouldDoProjectionWithThriftColumnFilter(projectionFilterDesc, toWrite, toRead,AddressBook.class);
+    //emails and phones are optional fields that do not match the projection filter
+    TBase toRead = new AddressBook(
+            Arrays.asList(
+                    new Person(
+                            new Name("Bob", "Roberts"),
+                            0,
+                            null,
+                            null))
+    );
+
+    shouldDoProjectionWithThriftColumnFilter(projectionFilterDesc, toWrite, toRead, AddressBook.class);
   }
 
   @Test
-  public void testPullInRequiredMaps() throws Exception{
-    String filter="name";
+  public void testPullInRequiredMaps() throws Exception {
+    String filter = "name";
 
-    Map<String,String> mapValue=new HashMap<String,String>();
-    mapValue.put("a","1");
-    mapValue.put("b","2");
-    RequiredMapFixture toWrite= new RequiredMapFixture(mapValue);
+    Map<String, String> mapValue = new HashMap<String, String>();
+    mapValue.put("a", "1");
+    mapValue.put("b", "2");
+    RequiredMapFixture toWrite = new RequiredMapFixture(mapValue);
     toWrite.setName("testName");
 
-    RequiredMapFixture toRead=new RequiredMapFixture(new HashMap<String,String>());
+    RequiredMapFixture toRead = new RequiredMapFixture(new HashMap<String, String>());
     toRead.setName("testName");
 
-    shouldDoProjectionWithThriftColumnFilter(filter,toWrite,toRead,RequiredMapFixture.class);
+    shouldDoProjectionWithThriftColumnFilter(filter, toWrite, toRead, RequiredMapFixture.class);
   }
 
   @Test
-  public void testPullInRequiredLists() throws Exception{
-    String filter="info";
+  public void testPullInRequiredLists() throws Exception {
+    String filter = "info";
 
-    RequiredListFixture toWrite=new RequiredListFixture(Arrays.asList(new parquet.thrift.test.Name("first_name")));
+    RequiredListFixture toWrite = new RequiredListFixture(Arrays.asList(new parquet.thrift.test.Name("first_name")));
     toWrite.setInfo("test_info");
 
-    RequiredListFixture toRead=new RequiredListFixture(new ArrayList<parquet.thrift.test.Name>());
+    RequiredListFixture toRead = new RequiredListFixture(new ArrayList<parquet.thrift.test.Name>());
     toRead.setInfo("test_info");
 
-    shouldDoProjectionWithThriftColumnFilter(filter,toWrite,toRead,RequiredListFixture.class);
+    shouldDoProjectionWithThriftColumnFilter(filter, toWrite, toRead, RequiredListFixture.class);
   }
 
   @Test
-  public void testPullInRequiredSets() throws Exception{
-    String filter="info";
+  public void testPullInRequiredSets() throws Exception {
+    String filter = "info";
 
-    RequiredSetFixture toWrite=new RequiredSetFixture(new HashSet<parquet.thrift.test.Name>(Arrays.asList(new parquet.thrift.test.Name("first_name"))));
+    RequiredSetFixture toWrite = new RequiredSetFixture(new HashSet<parquet.thrift.test.Name>(Arrays.asList(new parquet.thrift.test.Name("first_name"))));
     toWrite.setInfo("test_info");
 
-    RequiredSetFixture toRead=new RequiredSetFixture(new HashSet<parquet.thrift.test.Name>());
+    RequiredSetFixture toRead = new RequiredSetFixture(new HashSet<parquet.thrift.test.Name>());
     toRead.setInfo("test_info");
 
-    shouldDoProjectionWithThriftColumnFilter(filter,toWrite,toRead,RequiredSetFixture.class);
+    shouldDoProjectionWithThriftColumnFilter(filter, toWrite, toRead, RequiredSetFixture.class);
   }
 
   @Test
-  public void testPullInPrimitiveValues() throws Exception{
-    String filter="info_string";
+  public void testPullInPrimitiveValues() throws Exception {
+    String filter = "info_string";
 
-    RequiredPrimitiveFixture toWrite= new RequiredPrimitiveFixture(true,(byte)2,(short)3,4,(long)5,(double)6.0,"7");
+    RequiredPrimitiveFixture toWrite = new RequiredPrimitiveFixture(true, (byte)2, (short)3, 4, (long)5, (double)6.0, "7");
     toWrite.setInfo_string("it's info");
 
-    RequiredPrimitiveFixture toRead= new RequiredPrimitiveFixture(false,(byte)0,(short)0,0,(long)0,(double)0.0,"");
+    RequiredPrimitiveFixture toRead = new RequiredPrimitiveFixture(false, (byte)0, (short)0, 0, (long)0, (double)0.0, "");
     toRead.setInfo_string("it's info");
 
-    shouldDoProjectionWithThriftColumnFilter(filter,toWrite,toRead,RequiredPrimitiveFixture.class);
+    shouldDoProjectionWithThriftColumnFilter(filter, toWrite, toRead, RequiredPrimitiveFixture.class);
   }
 
-  private void shouldDoProjectionWithThriftColumnFilter(String filterDesc,TBase toWrite, TBase toRead,Class<? extends TBase<?,?>> thriftClass) throws Exception {
+  private void shouldDoProjectionWithThriftColumnFilter(String filterDesc, TBase toWrite, TBase toRead, Class<? extends TBase<?, ?>> thriftClass) throws Exception {
     Configuration conf = new Configuration();
     conf.set(ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY, filterDesc);
-    shouldDoProjection(conf,toWrite,toRead,thriftClass);
+    shouldDoProjection(conf, toWrite, toRead, thriftClass);
   }
 
 
-  private <T extends TBase<?,?>> void shouldDoProjection(Configuration conf,T recordToWrite,T exptectedReadResult, Class<? extends TBase<?,?>> thriftClass) throws Exception {
+  private <T extends TBase<?, ?>> void shouldDoProjection(Configuration conf, T recordToWrite, T exptectedReadResult, Class<? extends TBase<?, ?>> thriftClass) throws Exception {
     final Path parquetFile = new Path("target/test/TestParquetToThriftReadWriteAndProjection/file.parquet");
     final FileSystem fs = parquetFile.getFileSystem(conf);
     if (fs.exists(parquetFile)) {
