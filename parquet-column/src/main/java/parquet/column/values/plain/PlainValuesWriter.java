@@ -44,8 +44,8 @@ public class PlainValuesWriter extends ValuesWriter {
   private CapacityByteArrayOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
 
-  public PlainValuesWriter(int initialSize) {
-    arrayOut = new CapacityByteArrayOutputStream(initialSize);
+  public PlainValuesWriter(int initialSize, int pageSize) {
+    arrayOut = new CapacityByteArrayOutputStream(initialSize, pageSize);
     out = new LittleEndianDataOutputStream(arrayOut);
   }
 

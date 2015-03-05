@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,7 +21,6 @@ package parquet.hadoop;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.verify;
 import static parquet.column.Encoding.PLAIN;
 import static parquet.column.Encoding.RLE;
 import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
@@ -44,11 +43,9 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.junit.Before;
 import org.junit.Test;
-
 import org.mockito.InOrder;
 import org.mockito.Mockito;
-import org.mockito.internal.verification.VerificationModeFactory;
-import org.mockito.verification.VerificationMode;
+
 import parquet.bytes.BytesInput;
 import parquet.bytes.LittleEndianDataInputStream;
 import parquet.column.ColumnDescriptor;
@@ -63,8 +60,6 @@ import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
-import parquet.schema.OriginalType;
-import parquet.schema.PrimitiveType;
 import parquet.schema.Types;
 
 public class TestColumnChunkPageWriteStore {

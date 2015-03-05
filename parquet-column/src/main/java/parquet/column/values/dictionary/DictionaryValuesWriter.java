@@ -42,6 +42,7 @@ import java.util.Iterator;
 import parquet.Log;
 import parquet.bytes.BytesInput;
 import parquet.bytes.BytesUtils;
+import parquet.bytes.CapacityByteArrayOutputStream;
 import parquet.column.Encoding;
 import parquet.column.page.DictionaryPage;
 import parquet.column.values.RequiresFallback;
@@ -65,6 +66,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
 
   /* max entries allowed for the dictionary will fail over to plain encoding if reached */
   private static final int MAX_DICTIONARY_ENTRIES = Integer.MAX_VALUE - 1;
+  private static final int MIN_INITIAL_SLAB_SIZE = 64;
 
   /* encoding to label the data page */
   private final Encoding encodingForDataPage;
@@ -145,8 +147,12 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     int maxDicId = getDictionarySize() - 1;
     if (DEBUG) LOG.debug("max dic id " + maxDicId);
     int bitWidth = BytesUtils.getWidthFromMaxInt(maxDicId);
-    // TODO: what is a good initialCapacity?
-    RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(bitWidth, 64 * 1024);
+
+    int initialSlabSize =
+        CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_INITIAL_SLAB_SIZE, maxDictionaryByteSize, 10);
+
+    RunLengthBitPackingHybridEncoder encoder =
+        new RunLengthBitPackingHybridEncoder(bitWidth, initialSlabSize, maxDictionaryByteSize);
     IntIterator iterator = encodedValues.iterator();
     try {
       while (iterator.hasNext()) {
@@ -240,7 +246,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     public DictionaryPage createDictionaryPage() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
-        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize);
+        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize);
         Iterator<Binary> binaryIterator = binaryDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
@@ -315,7 +321,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     public DictionaryPage createDictionaryPage() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
-        FixedLenByteArrayPlainValuesWriter dictionaryEncoder = new FixedLenByteArrayPlainValuesWriter(length, lastUsedDictionaryByteSize);
+        FixedLenByteArrayPlainValuesWriter dictionaryEncoder = new FixedLenByteArrayPlainValuesWriter(length, lastUsedDictionaryByteSize, maxDictionaryByteSize);
         Iterator<Binary> binaryIterator = binaryDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
@@ -360,7 +366,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     public DictionaryPage createDictionaryPage() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
-        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize);
+        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize);
         LongIterator longIterator = longDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
@@ -432,7 +438,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     public DictionaryPage createDictionaryPage() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
-        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize);
+        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize);
         DoubleIterator doubleIterator = doubleDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
@@ -504,7 +510,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     public DictionaryPage createDictionaryPage() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
-        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize);
+        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize);
         it.unimi.dsi.fastutil.ints.IntIterator intIterator = intDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
@@ -576,7 +582,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     public DictionaryPage createDictionaryPage() {
       if (lastUsedDictionarySize > 0) {
         // return a dictionary only if we actually used it
-        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize);
+        PlainValuesWriter dictionaryEncoder = new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize);
         FloatIterator floatIterator = floatDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {

@@ -45,7 +45,6 @@ import parquet.schema.MessageType;
 class InternalParquetRecordWriter<T> {
   private static final Log LOG = Log.getLog(InternalParquetRecordWriter.class);
 
-  private static final int MINIMUM_BUFFER_SIZE = 64 * 1024;
   private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
   private static final int MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
 
@@ -101,22 +100,11 @@ class InternalParquetRecordWriter<T> {
   }
 
   private void initStore() {
-    // we don't want this number to be too small
-    // ideally we divide the block equally across the columns
-    // it is unlikely all columns are going to be the same size.
-    // its value is likely below Integer.MAX_VALUE (2GB), although rowGroupSize is a long type.
-    // therefore this size is cast to int, since allocating byte array in under layer needs to
-    // limit the array size in an int scope.
-    int initialBlockBufferSize = Ints.checkedCast(max(MINIMUM_BUFFER_SIZE, rowGroupSize / schema.getColumns().size() / 5));
-    pageStore = new ColumnChunkPageWriteStore(compressor, schema, initialBlockBufferSize);
-    // we don't want this number to be too small either
-    // ideally, slightly bigger than the page size, but not bigger than the block buffer
-    int initialPageBufferSize = max(MINIMUM_BUFFER_SIZE, min(pageSize + pageSize / 10, initialBlockBufferSize));
+    pageStore = new ColumnChunkPageWriteStore(compressor, schema, pageSize);
     columnStore = parquetProperties.newColumnWriteStore(
         schema,
         pageStore,
-        pageSize,
-        initialPageBufferSize);
+        pageSize);
     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
     writeSupport.prepareForWrite(columnIO.getRecordWriter(columnStore));
   }
