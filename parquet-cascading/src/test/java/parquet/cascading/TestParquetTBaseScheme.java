@@ -78,6 +78,9 @@ public class TestParquetTBaseScheme {
     Flow flow  = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
 
     flow.complete();
+    assertTrue(fs.exists(new Path(parquetOutputPath)));
+    assertTrue(fs.exists(new Path(parquetOutputPath + "/_metadata")));
+    assertTrue(fs.exists(new Path(parquetOutputPath + "/_common_metadata")));
   }
 
   @Test
