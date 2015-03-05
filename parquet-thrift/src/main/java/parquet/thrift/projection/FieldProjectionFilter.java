@@ -34,7 +34,7 @@ public class FieldProjectionFilter {
    * Class for remembering if a glob pattern has matched anything.
    * If there is an invalid glob pattern that matches nothing, it should throw.
    */
-  private class PathGlobPatternStatus {
+  private static class PathGlobPatternStatus {
     PathGlobPattern pattern;
     boolean hasMatchingPath = false;
 
