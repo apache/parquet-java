@@ -35,6 +35,7 @@ public class MapredParquetOutputCommitter extends FileOutputCommitter {
 
   @Override
   public void commitJob(JobContext jobContext) throws IOException {
+    super.commitJob(jobContext);
     JobConf jobConf = jobContext.getJobConf();
     Path outputPath = FileOutputFormat.getOutputPath(jobConf);
     ParquetOutputCommitter.writeMetaDataFile(jobConf, outputPath);
