@@ -55,11 +55,6 @@ public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.F
     configuration.setBoolean(ParquetOutputFormat.ENABLE_DICTIONARY, enableDictionary);
   }
 
-  public static void setAsOutputFormat(JobConf jobConf) {
-    jobConf.setOutputFormat(DeprecatedParquetOutputFormat.class);
-    jobConf.setOutputCommitter(MapredParquetOutputCommitter.class);
-  }
-
   private CompressionCodecName getCodec(final JobConf conf) {
     return CodecConfig.from(conf).getCodec();
   }
