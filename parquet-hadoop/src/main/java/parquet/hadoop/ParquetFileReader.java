@@ -52,7 +52,6 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.PathFilter;
 
 import parquet.Log;
 import parquet.bytes.BytesInput;
@@ -75,6 +74,7 @@ import parquet.hadoop.ColumnChunkPageReadStore.ColumnChunkPageReader;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.hadoop.util.HiddenFileFilter;
 import parquet.hadoop.util.counters.BenchmarkCounter;
 import parquet.io.ParquetDecodingException;
 
@@ -299,12 +299,7 @@ public class ParquetFileReader implements Closeable {
   private static List<FileStatus> listFiles(Configuration conf, FileStatus fileStatus) throws IOException {
     if (fileStatus.isDir()) {
       FileSystem fs = fileStatus.getPath().getFileSystem(conf);
-      FileStatus[] list = fs.listStatus(fileStatus.getPath(), new PathFilter() {
-        @Override
-        public boolean accept(Path p) {
-          return !p.getName().startsWith("_") && !p.getName().startsWith(".");
-        }
-      });
+      FileStatus[] list = fs.listStatus(fileStatus.getPath(), new HiddenFileFilter());
       List<FileStatus> result = new ArrayList<FileStatus>();
       for (FileStatus sub : list) {
         result.addAll(listFiles(conf, sub));
