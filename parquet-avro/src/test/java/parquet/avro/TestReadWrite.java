@@ -36,7 +36,9 @@ import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.codehaus.jackson.node.NullNode;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import parquet.hadoop.ParquetWriter;
 import parquet.hadoop.api.WriteSupport;
 import parquet.io.api.Binary;
@@ -455,6 +457,58 @@ public class TestReadWrite {
     assertEquals(ImmutableMap.of("a", 1, "b", 2), nextRecord.get("mymap"));
     assertEquals(genericFixed, nextRecord.get("myfixed"));
 
+  }
+
+  @Rule
+  public TemporaryFolder dir = new TemporaryFolder();
+
+  /** FIXME test fails!
+   * potentially different underlying behavior than ParquetAvroInputFormat/ParquetInputFormat
+   * is it attempting to merge the parquet schemas as oppossed to just merging the avro ones?
+   * i would think:
+   *  read parquet file 1, extract avro record with schema 1 and migrate to schema 2
+   *  read parquet file 2, extract avro record with schema 2
+   * but potentially parquet schemas in all files are merged and the same logic is used
+   * for to extract all records, which isn't necessarily sound schema evolution...
+   */
+  @Test
+  public void testSchemaCompatibility() throws Exception {
+    // write to a file with schema 1
+    Schema schema1 = new Schema.Parser().parse(Resources.getResource("foo1.avsc").openStream());
+    File file1 = dir.newFile("foo1.avro.parquet");
+    Path path1 = new Path(file1.getPath());
+    file1.delete();
+    AvroParquetWriter<GenericRecord> writer1 = new AvroParquetWriter<GenericRecord>(path1, schema1);
+    GenericData.Record record1 = new GenericRecordBuilder(schema1)
+        .set("field_1", new Utf8("a"))
+      .build();
+    writer1.write(record1);
+    writer1.close();
+
+    // write to a different file with schema 2
+    Schema schema2 = new Schema.Parser().parse(Resources.getResource("foo2.avsc").openStream());
+    File file2 = dir.newFile("foo2.avro.parquet");
+    Path path2 = new Path(file2.getPath());
+    file2.delete();
+    AvroParquetWriter<GenericRecord> writer2 = new AvroParquetWriter<GenericRecord>(path2, schema2);
+    GenericData.Record record2 = new GenericRecordBuilder(schema2)
+        .set("field_1", new Utf8("b"))
+        .build();
+    writer2.write(record2);
+    writer2.close();
+
+    // read from both files, testing schema compatibility between schema1 and schema2
+    Path parent = new Path(dir.getRoot().getPath());
+    Configuration configuration = new Configuration(false);
+    AvroReadSupport.setAvroReadSchema(configuration, schema2);
+    AvroReadSupport.enableAvroSchemaCompatibilityCheck(configuration);
+    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(configuration, parent);
+    GenericRecord nextRecord1 = reader.read();
+    assertNotNull(nextRecord1);
+    assertEquals(nextRecord1.get("field_1"), "a");
+    GenericRecord nextRecord2 = reader.read();
+    assertNotNull(nextRecord2);
+    assertEquals(nextRecord2.get("field_1"), "b");
   }
 
 }
