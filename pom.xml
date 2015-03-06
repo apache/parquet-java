@@ -19,7 +19,7 @@
   <scm>
     <connection>scm:git:git@github.com:apache/incubator-parquet-mr.git</connection>
     <url>scm:git:git@github.com:apache/incubator-parquet-mr.git</url>
-    <developerConnection>scm:git:https://git-wip-us.apache.org/repos/asf/incubator-parquet-format.git</developerConnection>
+    <developerConnection>scm:git:https://git-wip-us.apache.org/repos/asf/incubator-parquet-mr.git</developerConnection>
   </scm>
 
   <licenses>
