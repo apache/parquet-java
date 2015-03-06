@@ -15,17 +15,18 @@
  */
 package parquet.tools.read;
 
+import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import com.google.common.base.Strings;
+import com.google.common.collect.Maps;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.node.BinaryNode;
 
 public class SimpleRecord {
   public static final int TAB_SIZE = 2;
-  private final List<NameValue> values;
+  protected final List<NameValue> values;
 
   public SimpleRecord() {
     this.values = new ArrayList<NameValue>();
@@ -62,7 +63,7 @@ public class SimpleRecord {
         out.print("<null>");
       } else if (byte[].class == val.getClass()) {
         out.print(" = ");
-        out.print(Arrays.toString((byte[])val));
+        out.print(new BinaryNode((byte[]) val).asText());
       } else if (short[].class == val.getClass()) {
         out.print(" = ");
         out.print(Arrays.toString((short[])val));
@@ -94,6 +95,29 @@ public class SimpleRecord {
       }
 
       out.println();
+    }
+  }
+
+  public void prettyPrintJson(PrintWriter out) throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    out.write(mapper.writeValueAsString(this.toJsonObject()));
+  }
+
+  protected Object toJsonObject() {
+    Map<String, Object> result = Maps.newLinkedHashMap();
+    for (NameValue value : values) {
+      result.put(value.getName(), toJsonValue(value.getValue()));
+    }
+    return result;
+  }
+
+  protected static Object toJsonValue(Object val) {
+    if (SimpleRecord.class.isAssignableFrom(val.getClass())) {
+      return ((SimpleRecord) val).toJsonObject();
+    } else if (byte[].class == val.getClass()) {
+      return new BinaryNode((byte[]) val);
+    } else {
+      return val;
     }
   }
 
