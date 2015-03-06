@@ -9,7 +9,7 @@
 
   <groupId>com.twitter</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.6.0rc3-SNAPSHOT</version>
+  <version>1.6.0rc5</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet MR (Incubating)</name>
@@ -113,7 +113,7 @@
     <scala.binary.version>2.10</scala.binary.version>
     <scala.maven.test.skip>false</scala.maven.test.skip>
     <pig.version>0.11.1</pig.version>
-    <pig.classifier></pig.classifier>
+    <pig.classifier />
   </properties>
 
   <modules>
