@@ -23,7 +23,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.PathFilter;
 import org.junit.Test;
 import parquet.Log;
 import parquet.bytes.BytesInput;
@@ -37,6 +36,7 @@ import parquet.column.statistics.BinaryStatistics;
 import parquet.column.statistics.LongStatistics;
 import parquet.format.Statistics;
 import parquet.hadoop.metadata.*;
+import parquet.hadoop.util.HiddenFileFilter;
 import parquet.io.api.Binary;
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
@@ -325,12 +325,7 @@ public class TestParquetFileWriter {
 
     validateFooters(metadata);
 
-    footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, Arrays.asList(fs.listStatus(testDirPath, new PathFilter() {
-      @Override
-      public boolean accept(Path p) {
-        return !p.getName().startsWith("_");
-      }
-    })), false);
+    footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(configuration, Arrays.asList(fs.listStatus(testDirPath, new HiddenFileFilter())), false);
     validateFooters(footers);
 
     fs.delete(metadataFile.getPath(), false);

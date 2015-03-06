@@ -65,6 +65,7 @@ import parquet.hadoop.metadata.GlobalMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
 import parquet.hadoop.util.ConfigurationUtil;
 import parquet.hadoop.util.ContextUtil;
+import parquet.hadoop.util.HiddenFileFilter;
 import parquet.hadoop.util.SerializationUtil;
 import parquet.io.ParquetDecodingException;
 import parquet.schema.MessageType;
@@ -346,7 +347,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       if (file.isDir()) {
         Path p = file.getPath();
         FileSystem fs = p.getFileSystem(conf);
-        staticAddInputPathRecursively(result, fs, p, hiddenFileFilter);
+        staticAddInputPathRecursively(result, fs, p, new HiddenFileFilter());
       } else {
         result.add(file);
       }
@@ -366,13 +367,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       }
     }
   }
-
-  private static final PathFilter hiddenFileFilter = new PathFilter(){
-    public boolean accept(Path p){
-      String name = p.getName();
-      return !name.startsWith("_") && !name.startsWith(".");
-    }
-  };
 
   /**
    * @param jobContext the current job context
