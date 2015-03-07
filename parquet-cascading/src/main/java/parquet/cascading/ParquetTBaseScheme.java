@@ -73,7 +73,7 @@ public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme
       throw new IllegalArgumentException("To use ParquetTBaseScheme as a sink, you must specify a thrift class in the constructor");
     }
 
-    DeprecatedParquetOutputFormat.setAsOutputFormat(jobConf);
+    jobConf.setOutputFormat(DeprecatedParquetOutputFormat.class);
     DeprecatedParquetOutputFormat.setWriteSupportClass(jobConf, TBaseWriteSupport.class);
     TBaseWriteSupport.<T>setThriftClass(jobConf, this.config.getKlass());
   }

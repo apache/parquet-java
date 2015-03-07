@@ -18,6 +18,8 @@
  */
 package parquet.scrooge;
 
+import java.io.IOException;
+
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.RecordReader;
@@ -25,6 +27,7 @@ import org.apache.hadoop.mapred.RecordReader;
 import com.twitter.scrooge.ThriftStruct;
 
 import cascading.flow.FlowProcess;
+import cascading.scheme.SinkCall;
 import cascading.tap.Tap;
 import parquet.cascading.ParquetValueScheme;
 import parquet.filter2.predicate.FilterPredicate;
@@ -53,7 +56,7 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
   @Override
   public void sinkConfInit(FlowProcess<JobConf> fp,
       Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
-    DeprecatedParquetOutputFormat.setAsOutputFormat(jobConf);
+    jobConf.setOutputFormat(DeprecatedParquetOutputFormat.class);
     ParquetOutputFormat.setWriteSupportClass(jobConf, ScroogeWriteSupport.class);
     ScroogeWriteSupport.setScroogeClass(jobConf, this.config.getKlass());
   }

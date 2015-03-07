@@ -45,10 +45,6 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
   public void commitJob(JobContext jobContext) throws IOException {
     super.commitJob(jobContext);
     Configuration configuration = ContextUtil.getConfiguration(jobContext);
-    writeMetaDataFile(configuration,outputPath);
-  }
-
-  public static void writeMetaDataFile(Configuration configuration, Path outputPath) {
     if (configuration.getBoolean(ParquetOutputFormat.ENABLE_JOB_SUMMARY, true)) {
       try {
         final FileSystem fileSystem = outputPath.getFileSystem(configuration);
