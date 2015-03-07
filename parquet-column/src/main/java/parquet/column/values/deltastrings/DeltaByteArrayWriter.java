@@ -30,7 +30,7 @@ import parquet.io.api.Binary;
  * <pre>
  *   {@code
  *   delta-length-byte-array : prefix-length* suffixes*
- *   } 
+ *   }
  * </pre>
  * @author Aniket Mokashi
  *
@@ -41,9 +41,9 @@ public class DeltaByteArrayWriter extends ValuesWriter{
   private ValuesWriter suffixWriter;
   private byte[] previous;
 
-  public DeltaByteArrayWriter(int initialCapacity) {
-    this.prefixLengthWriter = new DeltaBinaryPackingValuesWriter(128, 4, initialCapacity);
-    this.suffixWriter = new DeltaLengthByteArrayValuesWriter(initialCapacity);
+  public DeltaByteArrayWriter(int initialCapacity, int pageSize) {
+    this.prefixLengthWriter = new DeltaBinaryPackingValuesWriter(128, 4, initialCapacity, pageSize);
+    this.suffixWriter = new DeltaLengthByteArrayValuesWriter(initialCapacity, pageSize);
     this.previous = new byte[0];
   }
 

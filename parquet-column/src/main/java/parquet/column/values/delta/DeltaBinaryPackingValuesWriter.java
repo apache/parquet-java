@@ -55,9 +55,9 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
    * reused between flushes.
    */
   public static final int MAX_BITWIDTH = 32;
-  
+
   public static final int DEFAULT_NUM_BLOCK_VALUES = 128;
-  
+
   public static final int DEFAULT_NUM_MINIBLOCKS = 4;
 
   private final CapacityByteArrayOutputStream baos;
@@ -110,17 +110,17 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
    * it will be reset after each flush
    */
   private int minDeltaInCurrentBlock = Integer.MAX_VALUE;
-  
-  public DeltaBinaryPackingValuesWriter(int slabSize) {
-    this(DEFAULT_NUM_BLOCK_VALUES, DEFAULT_NUM_MINIBLOCKS, slabSize);
+
+  public DeltaBinaryPackingValuesWriter(int slabSize, int pageSize) {
+    this(DEFAULT_NUM_BLOCK_VALUES, DEFAULT_NUM_MINIBLOCKS, slabSize, pageSize);
   }
 
-  public DeltaBinaryPackingValuesWriter(int blockSizeInValues, int miniBlockNum, int slabSize) {
+  public DeltaBinaryPackingValuesWriter(int blockSizeInValues, int miniBlockNum, int slabSize, int pageSize) {
     this.config = new DeltaBinaryPackingConfig(blockSizeInValues, miniBlockNum);
     bitWidths = new int[config.miniBlockNumInABlock];
     deltaBlockBuffer = new int[blockSizeInValues];
     miniBlockByteBuffer = new byte[config.miniBlockSizeInValues * MAX_BITWIDTH];
-    baos = new CapacityByteArrayOutputStream(slabSize);
+    baos = new CapacityByteArrayOutputStream(slabSize, pageSize);
   }
 
   @Override

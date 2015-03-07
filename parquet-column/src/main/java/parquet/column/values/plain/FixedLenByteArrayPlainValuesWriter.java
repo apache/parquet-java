@@ -36,14 +36,14 @@ import parquet.io.api.Binary;
  */
 public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
   private static final Log LOG = Log.getLog(PlainValuesWriter.class);
-  
+
   private CapacityByteArrayOutputStream arrayOut;
   private LittleEndianDataOutputStream out;
   private int length;
-  
-  public FixedLenByteArrayPlainValuesWriter(int length, int initialSize) {
+
+  public FixedLenByteArrayPlainValuesWriter(int length, int initialSize, int pageSize) {
     this.length = length;
-    this.arrayOut = new CapacityByteArrayOutputStream(initialSize);
+    this.arrayOut = new CapacityByteArrayOutputStream(initialSize, pageSize);
     this.out = new LittleEndianDataOutputStream(arrayOut);
   }
 
@@ -59,7 +59,7 @@ public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
       throw new ParquetEncodingException("could not write fixed bytes", e);
     }
   }
-  
+
   @Override
   public long getBufferedSize() {
     return arrayOut.size();
@@ -75,7 +75,7 @@ public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
     if (Log.DEBUG) LOG.debug("writing a buffer of size " + arrayOut.size());
     return BytesInput.from(arrayOut);
   }
-  
+
   @Override
   public void reset() {
     arrayOut.reset();
@@ -85,7 +85,7 @@ public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
   public long getAllocatedSize() {
     return arrayOut.getCapacity();
   }
-  
+
   @Override
   public Encoding getEncoding() {
     return Encoding.PLAIN;

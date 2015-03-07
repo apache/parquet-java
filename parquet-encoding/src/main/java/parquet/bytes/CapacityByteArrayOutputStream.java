@@ -18,6 +18,12 @@
  */
 package parquet.bytes;
 
+import static java.lang.Math.max;
+import static java.lang.Math.pow;
+import static java.lang.String.format;
+import static java.lang.System.arraycopy;
+import static parquet.Preconditions.checkArgument;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -25,113 +31,155 @@ import java.util.ArrayList;
 import java.util.List;
 
 import parquet.Log;
-import parquet.Preconditions;
 
 /**
- * functionality of ByteArrayOutputStream without the memory and copy overhead
+ * Similar to a {@link ByteArrayOutputStream}, but uses a different strategy for growing that does not involve copying.
+ * Where ByteArrayOutputStream is backed by a single array that "grows" by copying into a new larger array, this output
+ * stream grows by allocating a new array (slab) and adding it to a list of previous arrays.
  *
- * It will linearly create a new slab of the initial size when needed (instead of creating a new buffer and copying the data).
- * After 10 slabs their size will increase exponentially (similar to {@link ByteArrayOutputStream} behavior) by making the new slab size the size of the existing data.
+ * Each new slab is allocated to be the same size as all the previous slabs combined, so these allocations become
+ * exponentially less frequent, just like ByteArrayOutputStream, with one difference. This output stream accepts a
+ * max capacity hint, which is a hint describing the max amount of data that will be written to this stream. As the
+ * total size of this stream nears this max, this stream starts to grow linearly instead of exponentially.
+ * So new slabs are allocated to be 1/5th of the max capacity hint,
+ * instead of equal to the total previous size of all slabs. This is useful because it prevents allocating roughly
+ * twice the needed space when a new slab is added just before the stream is done being used.
  *
- * When reusing a buffer it will adjust the slab size based on the previous data size ({@link CapacityByteArrayOutputStream#reset()})
+ * When reusing this stream it will adjust the initial slab size based on the previous data size, aiming for fewer
+ * allocations, with the assumption that a similar amount of data will be written to this stream on re-use.
+ * See ({@link CapacityByteArrayOutputStream#reset()}).
  *
  * @author Julien Le Dem
  *
  */
 public class CapacityByteArrayOutputStream extends OutputStream {
   private static final Log LOG = Log.getLog(CapacityByteArrayOutputStream.class);
+  private static final byte[] EMPTY_SLAB = new byte[0];
 
-  private static final int MINIMUM_SLAB_SIZE = 64 * 1024;
-  private static final int EXPONENTIAL_SLAB_SIZE_THRESHOLD = 10;
+  private int initialSlabSize;
+  private final int maxCapacityHint;
+  private final List<byte[]> slabs = new ArrayList<byte[]>();
 
-  private int slabSize;
-  private List<byte[]> slabs = new ArrayList<byte[]>();
   private byte[] currentSlab;
-  private int capacity;
   private int currentSlabIndex;
-  private int currentSlabPosition;
-  private int size;
+  private int bytesAllocated = 0;
+  private int bytesUsed = 0;
 
   /**
-   * @param initialSize the initialSize of the buffer (also slab size)
+   * Return an initial slab size such that a CapacityByteArrayOutputStream constructed with it
+   * will end up allocating targetNumSlabs in order to reach targetCapacity. This aims to be
+   * a balance between the overhead of creating new slabs and wasting memory by eagerly making
+   * initial slabs too big.
+   *
+   * Note that targetCapacity here need not match maxCapacityHint in the constructor of
+   * CapacityByteArrayOutputStream, though often that would make sense.
+   *
+   * @param minSlabSize no matter what we shouldn't make slabs any smaller than this
+   * @param targetCapacity after we've allocated targetNumSlabs how much capacity should we have?
+   * @param targetNumSlabs how many slabs should it take to reach targetCapacity?
    */
-  public CapacityByteArrayOutputStream(int initialSize) {
-    Preconditions.checkArgument(initialSize > 0, "initialSize must be > 0");
-    initSlabs(initialSize);
+  public static int initialSlabSizeHeuristic(int minSlabSize, int targetCapacity, int targetNumSlabs) {
+    // initialSlabSize = (targetCapacity / (2^targetNumSlabs)) means we double targetNumSlabs times
+    // before reaching the targetCapacity
+    // eg for page size of 1MB we start at 1024 bytes.
+    // we also don't want to start too small, so we also apply a minimum.
+    return max(minSlabSize, ((int) (targetCapacity / pow(2, targetNumSlabs))));
   }
 
-  private void initSlabs(int initialSize) {
-    if (Log.DEBUG) LOG.debug(String.format("initial slab of size %d", initialSize));
-    this.slabSize = initialSize;
-    this.slabs.clear();
-    this.capacity = initialSize;
-    this.currentSlab = new byte[slabSize];
-    this.slabs.add(currentSlab);
-    this.currentSlabIndex = 0;
-    this.currentSlabPosition = 0;
-    this.size = 0;
+  /**
+   * Construct a CapacityByteArrayOutputStream configured such that its initial slab size is
+   * determined by {@link #initialSlabSizeHeuristic}, with targetCapacity == maxCapacityHint
+   */
+  public static CapacityByteArrayOutputStream withTargetNumSlabs(
+      int minSlabSize, int maxCapacityHint, int targetNumSlabs) {
+
+    return new CapacityByteArrayOutputStream(
+        initialSlabSizeHeuristic(minSlabSize, maxCapacityHint, targetNumSlabs),
+        maxCapacityHint);
   }
 
+  /**
+   * Defaults maxCapacityHint to 1MB
+   * @param initialSlabSize
+   * @deprecated use {@link CapacityByteArrayOutputStream#CapacityByteArrayOutputStream(int, int)}
+   */
+  @Deprecated
+  public CapacityByteArrayOutputStream(int initialSlabSize) {
+    this(initialSlabSize, 1024 * 1024);
+  }
+
+  /**
+   * @param initialSlabSize the size to make the first slab
+   * @param maxCapacityHint a hint (not guarantee) of the max amount of data written to this stream
+   */
+  public CapacityByteArrayOutputStream(int initialSlabSize, int maxCapacityHint) {
+    checkArgument(initialSlabSize > 0, "initialSlabSize must be > 0");
+    checkArgument(maxCapacityHint > 0, "maxCapacityHint must be > 0");
+    checkArgument(maxCapacityHint >= initialSlabSize, String.format("maxCapacityHint can't be less than initialSlabSize %d %d", initialSlabSize, maxCapacityHint));
+    this.initialSlabSize = initialSlabSize;
+    this.maxCapacityHint = maxCapacityHint;
+    reset();
+  }
+
+  /**
+   * the new slab is guaranteed to be at least minimumSize
+   * @param minimumSize the size of the data we want to copy in the new slab
+   */
   private void addSlab(int minimumSize) {
-    this.currentSlabIndex += 1;
-    if (currentSlabIndex < this.slabs.size()) {
-      // reuse existing slab
-      this.currentSlab = this.slabs.get(currentSlabIndex);
-      if (Log.DEBUG) LOG.debug(String.format("reusing slab of size %d", currentSlab.length));
-      if (currentSlab.length < minimumSize) {
-        if (Log.DEBUG) LOG.debug(String.format("slab size %,d too small for value of size %,d. replacing slab", currentSlab.length, minimumSize));
-        byte[] newSlab = new byte[minimumSize];
-        capacity += minimumSize - currentSlab.length;
-        this.currentSlab = newSlab;
-        this.slabs.set(currentSlabIndex, newSlab);
-      }
+    int nextSlabSize;
+
+    if (bytesUsed == 0) {
+      nextSlabSize = initialSlabSize;
+    } else if (bytesUsed > maxCapacityHint / 5) {
+      // to avoid an overhead of up to twice the needed size, we get linear when approaching target page size
+      nextSlabSize = maxCapacityHint / 5;
     } else {
-      if (currentSlabIndex > EXPONENTIAL_SLAB_SIZE_THRESHOLD) {
-        // make slabs bigger in case we are creating too many of them
-        // double slab size every time.
-        this.slabSize = size;
-        if (Log.DEBUG) LOG.debug(String.format("used %d slabs, new slab size %d", currentSlabIndex, slabSize));
-      }
-      if (slabSize < minimumSize) {
-        if (Log.DEBUG) LOG.debug(String.format("slab size %,d too small for value of size %,d. Bumping up slab size", slabSize, minimumSize));
-        this.slabSize = minimumSize;
-      }
-      if (Log.DEBUG) LOG.debug(String.format("new slab of size %d", slabSize));
-      this.currentSlab = new byte[slabSize];
-      this.slabs.add(currentSlab);
-      this.capacity += slabSize;
+      // double the size every time
+      nextSlabSize = bytesUsed;
     }
-    this.currentSlabPosition = 0;
+
+    if (nextSlabSize < minimumSize) {
+      if (Log.DEBUG) LOG.debug(format("slab size %,d too small for value of size %,d. Bumping up slab size", nextSlabSize, minimumSize));
+      nextSlabSize = minimumSize;
+    }
+
+    if (Log.DEBUG) LOG.debug(format("used %d slabs, adding new slab of size %d", slabs.size(), nextSlabSize));
+
+    this.currentSlab = new byte[nextSlabSize];
+    this.slabs.add(currentSlab);
+    this.bytesAllocated += nextSlabSize;
+    this.currentSlabIndex = 0;
   }
 
   @Override
   public void write(int b) {
-    if (currentSlabPosition == currentSlab.length) {
+    if (currentSlabIndex == currentSlab.length) {
       addSlab(1);
     }
-    currentSlab[currentSlabPosition] = (byte) b;
-    currentSlabPosition += 1;
-    size += 1;
+    currentSlab[currentSlabIndex] = (byte) b;
+    currentSlabIndex += 1;
+    bytesUsed += 1;
   }
 
   @Override
   public void write(byte b[], int off, int len) {
     if ((off < 0) || (off > b.length) || (len < 0) ||
         ((off + len) - b.length > 0)) {
-      throw new IndexOutOfBoundsException();
+      throw new IndexOutOfBoundsException(
+          String.format("Given byte array of size %d, with requested length(%d) and offset(%d)", b.length, len, off));
     }
-    if (currentSlabPosition + len >= currentSlab.length) {
-      final int length1 = currentSlab.length - currentSlabPosition;
-      System.arraycopy(b, off, currentSlab, currentSlabPosition, length1);
+    if (currentSlabIndex + len >= currentSlab.length) {
+      final int length1 = currentSlab.length - currentSlabIndex;
+      arraycopy(b, off, currentSlab, currentSlabIndex, length1);
       final int length2 = len - length1;
       addSlab(length2);
-      System.arraycopy(b, off + length1, currentSlab, currentSlabPosition, length2);
-      currentSlabPosition = length2;
+      arraycopy(b, off + length1, currentSlab, currentSlabIndex, length2);
+      currentSlabIndex = length2;
     } else {
-      System.arraycopy(b, off, currentSlab, currentSlabPosition, len);
-      currentSlabPosition += len;
+      arraycopy(b, off, currentSlab, currentSlabIndex, len);
+      currentSlabIndex += len;
     }
-    size += len;
+    bytesUsed += len;
   }
 
   /**
@@ -142,71 +190,52 @@ public class CapacityByteArrayOutputStream extends OutputStream {
    * @exception  IOException  if an I/O error occurs.
    */
   public void writeTo(OutputStream out) throws IOException {
-    for (int i = 0; i < currentSlabIndex; i++) {
+    for (int i = 0; i < slabs.size() - 1; i++) {
       final byte[] slab = slabs.get(i);
-      out.write(slab, 0, slab.length);
+      out.write(slab);
     }
-    out.write(currentSlab, 0, currentSlabPosition);
+    out.write(currentSlab, 0, currentSlabIndex);
   }
 
   /**
-   * @return the size of the allocated buffer
+   * @return The total size in bytes of data written to this stream.
+   */
+  public long size() {
+    return bytesUsed;
+  }
+
+  /**
+   *
+   * @return The total size in bytes currently allocated for this stream.
    */
   public int getCapacity() {
-    return capacity;
+    return bytesAllocated;
   }
 
   /**
    * When re-using an instance with reset, it will adjust slab size based on previous data size.
    * The intent is to reuse the same instance for the same type of data (for example, the same column).
-   * The assumption is that the size in the buffer will be consistent. Otherwise we fall back to exponentialy double the slab size.
-   * <ul>
-   * <li>if we used less than half of the first slab (and it is above the minimum slab size), we will make the slab size smaller.
-   * <li>if we used more than the slab count threshold (10), we will re-adjust the slab size.
-   * </ul>
-   * if re-adjusting the slab size we will make it 1/5th of the previous used size in the buffer so that overhead of extra memory allocation is about 20%
-   * If we used less than the available slabs we free up the unused ones to reduce memory overhead.
+   * The assumption is that the size in the buffer will be consistent.
    */
   public void reset() {
-    // heuristics to adjust slab size
-    if (
-        // if we have only one slab, make sure it is not way too big (more than twice what we need). Except if the slab is already small
-        (currentSlabIndex == 0 && currentSlabPosition < currentSlab.length / 2 && currentSlab.length > MINIMUM_SLAB_SIZE)
-        ||
-        // we want to avoid generating too many slabs.
-        (currentSlabIndex > EXPONENTIAL_SLAB_SIZE_THRESHOLD)
-        ){
-      // readjust slab size
-      initSlabs(Math.max(size / 5, MINIMUM_SLAB_SIZE)); // should make overhead to about 20% without incurring many slabs
-      if (Log.DEBUG) LOG.debug(String.format("used %d slabs, new slab size %d", currentSlabIndex + 1, slabSize));
-    } else if (currentSlabIndex < slabs.size() - 1) {
-      // free up the slabs that we are not using. We want to minimize overhead
-      this.slabs = new ArrayList<byte[]>(slabs.subList(0, currentSlabIndex + 1));
-      this.capacity = 0;
-      for (byte[] slab : slabs) {
-        capacity += slab.length;
-      }
-    }
+    // readjust slab size.
+    // 7 = 2^3 - 1 so that doubling the initial size 3 times will get to the same size
+    this.initialSlabSize = max(bytesUsed / 7, initialSlabSize);
+    if (Log.DEBUG) LOG.debug(String.format("initial slab of size %d", initialSlabSize));
+    this.slabs.clear();
+    this.bytesAllocated = 0;
+    this.bytesUsed = 0;
+    this.currentSlab = EMPTY_SLAB;
     this.currentSlabIndex = 0;
-    this.currentSlabPosition = 0;
-    this.currentSlab = slabs.get(currentSlabIndex);
-    this.size = 0;
   }
 
   /**
-   * @return the size of the buffered data
-   */
-  public long size() {
-    return size;
-  }
-
-  /**
-   * @return the index of the last value being written to this stream, which
+   * @return the index of the last value written to this stream, which
    * can be passed to {@link #setByte(long, byte)} in order to change it
    */
   public long getCurrentIndex() {
-    Preconditions.checkArgument(size > 0, "This is an empty stream");
-    return size - 1;
+    checkArgument(bytesUsed > 0, "This is an empty stream");
+    return bytesUsed - 1;
   }
 
   /**
@@ -216,11 +245,10 @@ public class CapacityByteArrayOutputStream extends OutputStream {
    * @param value the value to replace it with
    */
   public void setByte(long index, byte value) {
-    Preconditions.checkArgument(index < size,
-      "Index: " + index + " is >= the current size of: " + size);
+    checkArgument(index < bytesUsed, "Index: " + index + " is >= the current size of: " + bytesUsed);
 
     long seen = 0;
-    for (int i = 0; i <=currentSlabIndex; i++) {
+    for (int i = 0; i < slabs.size(); i++) {
       byte[] slab = slabs.get(i);
       if (index < seen + slab.length) {
         // ok found index
@@ -236,11 +264,11 @@ public class CapacityByteArrayOutputStream extends OutputStream {
    * @return a text representation of the memory usage of this structure
    */
   public String memUsageString(String prefix) {
-    return String.format("%s %s %d slabs, %,d bytes", prefix, getClass().getSimpleName(), slabs.size(), getCapacity());
+    return format("%s %s %d slabs, %,d bytes", prefix, getClass().getSimpleName(), slabs.size(), getCapacity());
   }
 
   /**
-   * @return the total count of allocated slabs
+   * @return the total number of allocated slabs
    */
   int getSlabCount() {
     return slabs.size();

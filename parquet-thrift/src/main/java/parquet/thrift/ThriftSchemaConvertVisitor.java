@@ -56,6 +56,10 @@ import parquet.thrift.struct.ThriftType;
  */
 public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
 
+  public FieldProjectionFilter getFieldProjectionFilter() {
+    return fieldProjectionFilter;
+  }
+
   FieldProjectionFilter fieldProjectionFilter;
   Type currentType;
   FieldsPath currentFieldPath = new FieldsPath();

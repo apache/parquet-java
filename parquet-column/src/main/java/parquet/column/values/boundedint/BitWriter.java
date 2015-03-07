@@ -41,8 +41,8 @@ class BitWriter {
     }
   }
 
-  public BitWriter(int initialCapacity) {
-    this.baos = new CapacityByteArrayOutputStream(initialCapacity);
+  public BitWriter(int initialCapacity, int pageSize) {
+    this.baos = new CapacityByteArrayOutputStream(initialCapacity, pageSize);
   }
 
   public void writeBit(boolean bit) {

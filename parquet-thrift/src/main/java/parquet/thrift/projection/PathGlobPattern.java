@@ -170,6 +170,11 @@ public class PathGlobPattern {
     compiled = Pattern.compile(regex.toString());
   }
 
+  @Override
+  public String toString() {
+    return compiled.toString();
+  }
+
   /**
    * @return true if this is a wildcard pattern (with special chars)
    */
