@@ -69,6 +69,12 @@ public class ParquetFileWriter {
   public static final byte[] MAGIC = "PAR1".getBytes(Charset.forName("ASCII"));
   public static final int CURRENT_VERSION = 1;
 
+  // File creation modes
+  public static enum Mode {
+    CREATE,
+    OVERWRITE
+  }
+
   private static final ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter();
 
   private final MessageType schema;
@@ -144,17 +150,30 @@ public class ParquetFileWriter {
   private STATE state = STATE.NOT_STARTED;
 
   /**
-   *
+   * @param configuration Hadoop configuration
    * @param schema the schema of the data
-   * @param out the file to write to
-   * @param codec the codec to use to compress blocks
+   * @param file the file to write to
    * @throws IOException if the file can not be created
    */
-  public ParquetFileWriter(Configuration configuration, MessageType schema, Path file) throws IOException {
+  public ParquetFileWriter(Configuration configuration, MessageType schema,
+      Path file) throws IOException {
+    this(configuration, schema, file, Mode.CREATE);
+  }
+
+  /**
+   * @param configuration Hadoop configuration
+   * @param schema the schema of the data
+   * @param file the file to write to
+   * @param mode file creation mode
+   * @throws IOException if the file can not be created
+   */
+  public ParquetFileWriter(Configuration configuration, MessageType schema,
+      Path file, Mode mode) throws IOException {
     super();
     this.schema = schema;
     FileSystem fs = file.getFileSystem(configuration);
-    this.out = fs.create(file, false);
+    boolean overwriteFlag = (mode == Mode.OVERWRITE);
+    this.out = fs.create(file, overwriteFlag);
   }
 
   /**

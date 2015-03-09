@@ -41,24 +41,83 @@ public final class Preconditions {
   }
 
   /**
-   * @param valid whether the argument is valid
-   * @param message error message if the argument is not valid
-   * @throws IllegalArgumentException if !valid
+   * Precondition-style validation that throws {@link IllegalArgumentException}.
+   *
+   * @param isValid
+   *          {@code true} if valid, {@code false} if an exception should be
+   *          thrown
+   * @param message
+   *          A String message for the exception.
+   * @throws IllegalArgumentException if {@code isValid} is false
    */
-  public static void checkArgument(boolean valid, String message) throws IllegalArgumentException {
-    if (!valid) {
+  public static void checkArgument(boolean isValid, String message) throws IllegalArgumentException {
+    if (!isValid) {
       throw new IllegalArgumentException(message);
     }
   }
 
   /**
-   * @param valid whether the argument is valid
-   * @param message error message if the argument is not valid
-   * @throws IllegalStateException if !valid
+   * Precondition-style validation that throws {@link IllegalArgumentException}.
+   *
+   * @param isValid
+   *          {@code true} if valid, {@code false} if an exception should be
+   *          thrown
+   * @param message
+   *          A String message for the exception.
+   * @param args
+   *          Objects used to fill in {@code %s} placeholders in the message
+   * @throws IllegalArgumentException if {@code isValid} is false
    */
-  public static void checkState(boolean valid, String message) throws IllegalStateException {
-    if (!valid) {
+  public static void checkArgument(boolean isValid, String message, Object... args)
+      throws IllegalArgumentException {
+    if (!isValid) {
+      throw new IllegalArgumentException(
+          String.format(String.valueOf(message), strings(args)));
+    }
+  }
+
+  /**
+   * Precondition-style validation that throws {@link IllegalStateException}.
+   *
+   * @param isValid
+   *          {@code true} if valid, {@code false} if an exception should be
+   *          thrown
+   * @param message
+   *          A String message for the exception.
+   * @throws IllegalStateException if {@code isValid} is false
+   */
+  public static void checkState(boolean isValid, String message) throws IllegalStateException {
+    if (!isValid) {
       throw new IllegalStateException(message);
     }
   }
+
+  /**
+   * Precondition-style validation that throws {@link IllegalStateException}.
+   *
+   * @param isValid
+   *          {@code true} if valid, {@code false} if an exception should be
+   *          thrown
+   * @param message
+   *          A String message for the exception.
+   * @param args
+   *          Objects used to fill in {@code %s} placeholders in the message
+   * @throws IllegalStateException if {@code isValid} is false
+   */
+  public static void checkState(boolean isValid, String message, Object... args)
+      throws IllegalStateException {
+    if (!isValid) {
+      throw new IllegalStateException(
+          String.format(String.valueOf(message), strings(args)));
+    }
+  }
+
+  private static String[] strings(Object[] objects) {
+    String[] strings = new String[objects.length];
+    for (int i = 0; i < objects.length; i += 1) {
+      strings[i] = String.valueOf(objects[i]);
+    }
+    return strings;
+  }
+
 }
