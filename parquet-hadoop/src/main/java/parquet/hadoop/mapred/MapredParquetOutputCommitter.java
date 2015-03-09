@@ -19,9 +19,11 @@
 
 package parquet.hadoop.mapred;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.*;
 import parquet.hadoop.ParquetOutputCommitter;
+import parquet.hadoop.util.ContextUtil;
 
 import java.io.IOException;
 
@@ -35,8 +37,9 @@ public class MapredParquetOutputCommitter extends FileOutputCommitter {
 
   @Override
   public void commitJob(JobContext jobContext) throws IOException {
-    JobConf jobConf = jobContext.getJobConf();
-    Path outputPath = FileOutputFormat.getOutputPath(jobConf);
-    ParquetOutputCommitter.writeMetaDataFile(jobConf, outputPath);
+    super.commitJob(jobContext);
+    Configuration conf = ContextUtil.getConfiguration(jobContext);
+    Path outputPath = FileOutputFormat.getOutputPath(new JobConf(conf));
+    ParquetOutputCommitter.writeMetaDataFile(conf, outputPath);
   }
 }
