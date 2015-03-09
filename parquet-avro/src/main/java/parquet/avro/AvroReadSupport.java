@@ -81,7 +81,7 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
     }
     // use getSchemaForRead because it checks that the requested schema is a
     // subset of the columns in the file schema
-    return new ReadContext(getSchemaForRead(fileSchema, projection), metadata);
+    return new ReadContext(projection, metadata);
   }
 
   @Override
