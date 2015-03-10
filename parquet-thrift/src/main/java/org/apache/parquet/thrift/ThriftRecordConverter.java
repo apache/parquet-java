@@ -24,9 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.parquet.Log;
-import org.apache.parquet.Preconditions;
-import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.hadoop.conf.Configurable;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
 import org.apache.thrift.protocol.TList;
@@ -36,6 +35,9 @@ import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
 
+import org.apache.parquet.Log;
+import org.apache.parquet.Preconditions;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
@@ -63,9 +65,13 @@ import org.apache.parquet.thrift.struct.ThriftTypeID;
  *
  * @param <T>
  */
-public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
+public class ThriftRecordConverter<T> extends RecordMaterializer<T> implements Configurable {
 
   private static final Log LOG = Log.getLog(ThriftRecordConverter.class);
+
+  public static final String IGNORE_NULL_LIST_ELEMENTS =
+      "parquet.thrift.ignore-null-elements";
+  private static final boolean IGNORE_NULL_LIST_ELEMENTS_DEFAULT = false;
 
   final static ParquetProtocol readFieldEnd = new ParquetProtocol("readFieldEnd()") {
     @Override
@@ -476,7 +482,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  static class MapConverter extends GroupConverter {
+  class MapConverter extends GroupConverter {
 
     private final GroupCounter child;
     private final List<TProtocol> mapEvents = new ArrayList<TProtocol>();
@@ -538,7 +544,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  static class MapKeyValueConverter extends GroupConverter {
+  class MapKeyValueConverter extends GroupConverter {
 
     private Converter keyConverter;
     private Converter valueConverter;
@@ -576,7 +582,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  static class SetConverter extends CollectionConverter {
+  class SetConverter extends CollectionConverter {
 
     final ParquetProtocol readSetEnd = new ParquetProtocol("readSetEnd()") {
       @Override
@@ -613,7 +619,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  static class ListConverter extends CollectionConverter {
+  class ListConverter extends CollectionConverter {
 
     final ParquetProtocol readListEnd = new ParquetProtocol("readListEnd()") {
       @Override
@@ -650,7 +656,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  static abstract class CollectionConverter extends GroupConverter {
+  abstract class CollectionConverter extends GroupConverter {
 
     private ElementConverter elementConverter = null;
     private final Converter child;
@@ -717,7 +723,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   }
 
-  static class ElementConverter extends GroupConverter {
+  class ElementConverter extends GroupConverter {
 
     private Converter elementConverter;
     private List<TProtocol> listEvents;
@@ -730,8 +736,14 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
       this.elementEvents = new ArrayList<TProtocol>();
       Type elementType = repeatedType.getType(0);
       if (elementType.isRepetition(Type.Repetition.OPTIONAL)) {
-        LOG.warn("List " + listName +
-            " has optional elements: null elements are ignored.");
+        if (ignoreNullElements) {
+          LOG.warn("List " + listName +
+              " has optional elements: null elements are ignored.");
+        } else {
+          throw new ParquetDecodingException("Cannot read list " + listName +
+              " with optional elements: set " + IGNORE_NULL_LIST_ELEMENTS +
+              " to ignore nulls.");
+        }
       }
       elementConverter = newConverter(elementEvents, elementType, thriftElement);
     }
@@ -767,7 +779,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  static class StructConverter extends GroupConverter {
+  class StructConverter extends GroupConverter {
 
     private final int schemaSize;
 
@@ -849,9 +861,13 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   }
   private final ThriftReader<T> thriftReader;
   private final ParquetReadProtocol protocol;
-  private final GroupConverter structConverter;
+  private final MessageType requestedParquetSchema;
+  private final String name;
+  private GroupConverter structConverter;
   private List<TProtocol> rootEvents = new ArrayList<TProtocol>();
   private boolean missingRequiredFieldsInProjection = false;
+  private Configuration conf = null;
+  private boolean ignoreNullElements = IGNORE_NULL_LIST_ELEMENTS_DEFAULT;
 
   /**
    *
@@ -863,11 +879,31 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   public ThriftRecordConverter(ThriftReader<T> thriftReader, String name, MessageType requestedParquetSchema, ThriftType.StructType thriftType) {
     super();
     this.thriftReader = thriftReader;
+    this.name = name;
+    this.requestedParquetSchema = requestedParquetSchema;
     this.protocol = new ParquetReadProtocol();
     this.thriftType = thriftType;
+  }
+
+  public void initialize() {
     MessageType fullSchema = ThriftSchemaConverter.convertWithoutProjection(thriftType);
     missingRequiredFieldsInProjection = hasMissingRequiredFieldInGroupType(requestedParquetSchema, fullSchema);
     this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
+  }
+
+  @Override
+  public void setConf(Configuration configuration) {
+    this.conf = configuration;
+    if (conf != null) {
+      this.ignoreNullElements = conf.getBoolean(
+          IGNORE_NULL_LIST_ELEMENTS,
+          IGNORE_NULL_LIST_ELEMENTS_DEFAULT);
+    }
+  }
+
+  @Override
+  public Configuration getConf() {
+    return conf;
   }
 
   private boolean hasMissingRequiredFieldInGroupType(GroupType requested, GroupType fullSchema) {
@@ -934,7 +970,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     return structConverter;
   }
 
-  private static Converter newConverter(List<TProtocol> events, Type type, ThriftField field) {
+  private Converter newConverter(List<TProtocol> events, Type type, ThriftField field) {
     switch (field.getType().getType()) {
     case LIST:
       return new ListConverter(events, type.asGroupType(), field);

@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop.thrift;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.util.List;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.thrift.TBase;
 import org.junit.Assert;
@@ -30,12 +31,16 @@ import org.apache.parquet.DirectWriterTest;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.thrift.ThriftParquetReader;
+import org.apache.parquet.thrift.ThriftRecordConverter;
 import org.apache.parquet.thrift.test.compat.ListOfCounts;
 import org.apache.parquet.thrift.test.compat.ListOfInts;
 import org.apache.parquet.thrift.test.compat.ListOfLocations;
 import org.apache.parquet.thrift.test.compat.ListOfSingleElementGroups;
 import org.apache.parquet.thrift.test.compat.Location;
 import org.apache.parquet.thrift.test.compat.SingleElementGroup;
+
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TestArrayCompatibility extends DirectWriterTest {
 
@@ -134,24 +139,6 @@ public class TestArrayCompatibility extends DirectWriterTest {
     ListOfInts expected = new ListOfInts(Lists.newArrayList(34, 35,36));
     ListOfInts actual = reader(test, ListOfInts.class).read();
     Assert.assertEquals("Should read record correctly", expected, actual);
-  }
-
-  public <T extends TBase<?, ?>> ParquetReader<T> reader(
-      Path file, Class<T> thriftClass) throws IOException {
-    return ThriftParquetReader.<T>build(file)
-        .withThriftClass(thriftClass)
-        .build();
-  }
-
-  public <T> void assertReaderContains(ParquetReader<T> reader, T... expected)
-      throws IOException {
-    T record;
-    List<T> actual = Lists.newArrayList();
-    while ((record = reader.read()) != null) {
-      actual.add(record);
-    }
-    Assert.assertEquals("Should match exepected records",
-        Lists.newArrayList(expected), actual);
   }
 
   @Test
@@ -339,7 +326,15 @@ public class TestArrayCompatibility extends DirectWriterTest {
     //expected.addToLocations(null);
     expected.addToLocations(new Location(0.0, 180.0));
 
-    assertReaderContains(reader(test, ListOfLocations.class), expected);
+    try {
+      assertReaderContains(reader(test, ListOfLocations.class), expected);
+      fail("Should fail: locations are optional and not ignored");
+    } catch (RuntimeException e) {
+      // e is a RuntimeException wrapping the decoding exception
+      assertTrue(e.getCause().getMessage().contains("locations"));
+    }
+
+    assertReaderContains(readerIgnoreNulls(test, ListOfLocations.class), expected);
   }
 
   @Test
@@ -615,6 +610,42 @@ public class TestArrayCompatibility extends DirectWriterTest {
     expected.addToLocations(new Location(0.0, 180.0));
     expected.addToLocations(new Location(0.0, 0.0));
 
-    assertReaderContains(reader(test, ListOfLocations.class), expected);
+    try {
+      assertReaderContains(reader(test, ListOfLocations.class), expected);
+      fail("Should fail: locations are optional and not ignored");
+    } catch (RuntimeException e) {
+      // e is a RuntimeException wrapping the decoding exception
+      assertTrue(e.getCause().getMessage().contains("locations"));
+    }
+
+    assertReaderContains(readerIgnoreNulls(test, ListOfLocations.class), expected);
+  }
+
+  public <T extends TBase<?, ?>> ParquetReader<T> reader(
+      Path file, Class<T> thriftClass) throws IOException {
+    return ThriftParquetReader.<T>build(file)
+        .withThriftClass(thriftClass)
+        .build();
+  }
+
+  public <T extends TBase<?, ?>> ParquetReader<T> readerIgnoreNulls(
+      Path file, Class<T> thriftClass) throws IOException {
+    Configuration conf = new Configuration();
+    conf.setBoolean(ThriftRecordConverter.IGNORE_NULL_LIST_ELEMENTS, true);
+    return ThriftParquetReader.<T>build(file)
+        .withThriftClass(thriftClass)
+        .withConf(conf)
+        .build();
+  }
+
+  public <T> void assertReaderContains(ParquetReader<T> reader, T... expected)
+      throws IOException {
+    T record;
+    List<T> actual = Lists.newArrayList();
+    while ((record = reader.read()) != null) {
+      actual.add(record);
+    }
+    Assert.assertEquals("Should match exepected records",
+        Lists.newArrayList(expected), actual);
   }
 }
