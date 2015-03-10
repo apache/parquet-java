@@ -20,6 +20,7 @@ package org.apache.parquet.thrift;
 
 import com.twitter.elephantbird.thrift.TStructDescriptor;
 import com.twitter.elephantbird.thrift.TStructDescriptor.Field;
+import org.apache.parquet.schema.Type;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TEnum;
 import org.apache.thrift.TUnion;
@@ -82,6 +83,35 @@ public class ThriftSchemaConverter {
       children.add(toThriftField(field.getName(), field, req));
     }
     return new StructType(children, structOrUnionType(struct.getThriftClass()));
+  }
+
+  /**
+   * Returns whether the given type is the element type of a list or is a
+   * synthetic group with one field that is the element type. This is
+   * determined by checking whether the type can be a synthetic group and by
+   * checking whether a potential synthetic group matches the expected
+   * ThriftField.
+   * <p>
+   * This method never guesses because the expected ThriftField is known.
+   *
+   * @param repeatedType a type that may be the element type
+   * @param thriftElement the expected Schema for list elements
+   * @return {@code true} if the repeatedType is the element schema
+   */
+  static boolean isElementType(Type repeatedType, ThriftField thriftElement) {
+    if (repeatedType.isPrimitive() ||
+        (repeatedType.asGroupType().getFieldCount() != 1)) {
+      // The repeated type must be the element type because it is an invalid
+      // synthetic wrapper (must be a group with one field).
+      return true;
+    } else if (thriftElement != null && thriftElement.getType() instanceof StructType) {
+      List<ThriftField> fields = ((StructType) thriftElement.getType()).getChildren();
+      // If the repeated type matches the structure of the ThriftField, then it
+      // must be the element type.
+      return (fields.size() == 1 &&
+          fields.get(0).getName().equals(repeatedType.asGroupType().getFieldName(0)));
+    }
+    return false;
   }
 
   private static ThriftField toThriftField(String name, Field field, ThriftField.Requirement requirement) {
