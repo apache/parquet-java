@@ -203,17 +203,16 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
   }
 
   @SuppressWarnings("unchecked")
-  private void initThriftClass(Map<String, String> fileMetadata, Configuration conf) throws ClassNotFoundException {
+  private void initThriftClass(ThriftMetaData metadata, Configuration conf) throws ClassNotFoundException {
     if (thriftClass != null) {
       return;
     }
     String className = conf.get(THRIFT_READ_CLASS_KEY, null);
     if (className == null) {
-      final ThriftMetaData metaData = ThriftMetaData.fromExtraMetaData(fileMetadata);
-      if (metaData == null) {
+      if (metadata == null) {
         throw new ParquetDecodingException("Could not read file as the Thrift class is not provided and could not be resolved from the file");
       }
-      thriftClass = (Class<T>)metaData.getThriftClass();
+      thriftClass = (Class<T>)metadata.getThriftClass();
     } else {
       thriftClass = (Class<T>)Class.forName(className);
     }
@@ -225,7 +224,12 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
       org.apache.parquet.hadoop.api.ReadSupport.ReadContext readContext) {
     ThriftMetaData thriftMetaData = ThriftMetaData.fromExtraMetaData(keyValueMetaData);
     try {
-      initThriftClass(keyValueMetaData, configuration);
+      initThriftClass(thriftMetaData, configuration);
+
+      // if there was not metadata in the file, get it from requested class
+      if (thriftMetaData == null) {
+        thriftMetaData = ThriftMetaData.fromThriftClass(thriftClass);
+      }
 
       String converterClassName = configuration.get(RECORD_CONVERTER_CLASS_KEY, RECORD_CONVERTER_DEFAULT);
       @SuppressWarnings("unchecked")
