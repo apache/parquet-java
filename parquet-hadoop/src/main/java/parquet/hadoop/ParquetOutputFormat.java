@@ -43,7 +43,6 @@ import parquet.hadoop.api.WriteSupport.WriteContext;
 import parquet.hadoop.codec.CodecConfig;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.hadoop.util.ConfigurationUtil;
-import parquet.hadoop.util.ContextUtil;
 
 /**
  * OutputFormat to write to a Parquet file
@@ -254,24 +253,34 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   @Override
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext)
       throws IOException, InterruptedException {
-    ContextUtil.initMemoryManagerCounter(taskAttemptContext);
 
     final Configuration conf = getConfiguration(taskAttemptContext);
 
     CompressionCodecName codec = getCodec(taskAttemptContext);
     String extension = codec.getExtension() + ".parquet";
     Path file = getDefaultWorkFile(taskAttemptContext, extension);
-    return getRecordWriter(conf, file, codec);
+    return getRecordWriter(conf, file, codec, null);
   }
 
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Path file)
       throws IOException, InterruptedException {
-    ContextUtil.initMemoryManagerCounter(taskAttemptContext);
+    return getRecordWriter(taskAttemptContext, file, null);
+  }
 
-    return getRecordWriter(getConfiguration(taskAttemptContext), file, getCodec(taskAttemptContext));
+  public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Path file,
+                                               MemoryManager.CounterCallBack callBack)
+      throws IOException, InterruptedException {
+    return getRecordWriter(getConfiguration(taskAttemptContext), file,
+        getCodec(taskAttemptContext), callBack);
   }
 
   public RecordWriter<Void, T> getRecordWriter(Configuration conf, Path file, CompressionCodecName codec)
+      throws IOException, InterruptedException {
+    return getRecordWriter(conf, file, codec, null);
+  }
+
+  public RecordWriter<Void, T> getRecordWriter(Configuration conf, Path file,
+        CompressionCodecName codec, MemoryManager.CounterCallBack callBack)
         throws IOException, InterruptedException {
     final WriteSupport<T> writeSupport = getWriteSupport(conf);
 
@@ -303,6 +312,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOG.warn("The configuration " + MEMORY_POOL_RATIO + " has been set. It should not " +
           "be reset by the new value: " + maxLoad);
     }
+    memoryManager.registerCallBack(callBack);
 
     return new ParquetRecordWriter<T>(
         w,

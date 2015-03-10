@@ -20,11 +20,12 @@ package parquet.hadoop;
 
 import parquet.Log;
 import parquet.ParquetRuntimeException;
-import parquet.hadoop.util.counters.MemoryManagerCounter;
 
 import java.lang.management.ManagementFactory;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Implements a memory manager that keeps a global context of how many Parquet
@@ -48,6 +49,28 @@ public class MemoryManager {
   private final long minMemoryAllocation;
   private final Map<InternalParquetRecordWriter, Long> writerList = new
       HashMap<InternalParquetRecordWriter, Long>();
+  private final Set<CounterCallBack> counterCallBacks = new HashSet<CounterCallBack>();
+
+  /**
+   * A callback interface for upper layer, such as Hive, getting notified when memory usage changes
+   */
+  public static abstract class CounterCallBack {
+    private String name;
+
+    protected CounterCallBack(String name) {
+      this.name = name;
+    }
+
+    public abstract void update(int count);
+
+    @Override
+    public boolean equals(Object other) {
+      if (other instanceof CounterCallBack) {
+        return name.equals(((CounterCallBack) other).name);
+      }
+      return false;
+    }
+  }
 
   public MemoryManager(float ratio, long minAllocation) {
     checkRatio(ratio);
@@ -113,7 +136,9 @@ public class MemoryManager {
           "Total allocation exceeds %.2f%% (%,d bytes) of heap memory\n" +
           "Scaling row group sizes to %.2f%% for %d writers",
           100*memoryPoolRatio, totalMemoryPool, 100*scale, writerList.size()));
-      MemoryManagerCounter.incrementBlockDownsize(1);
+      for (CounterCallBack counterCallBack : counterCallBacks) {
+        counterCallBack.update(1);
+      }
     }
 
     int maxColCount = 0;
@@ -156,5 +181,31 @@ public class MemoryManager {
    */
   float getMemoryPoolRatio() {
     return memoryPoolRatio;
+  }
+
+  /**
+   * Register callback and deduplicate it if any.
+   * @param callBack the callback passed in from upper layer, such as Hive.
+   * @return
+   */
+  public boolean registerCallBack(CounterCallBack callBack) {
+    if (callBack == null) {
+      return false;
+    }
+
+    for(CounterCallBack counterCallBack : counterCallBacks) {
+      if (callBack.equals(counterCallBack)) {
+        return true;
+      }
+    }
+    return counterCallBacks.add(callBack);
+  }
+
+  /**
+   * Get the registered callbacks.
+   * @return
+   */
+  Set<CounterCallBack> getCounterCallBacks() {
+    return counterCallBacks;
   }
 }
