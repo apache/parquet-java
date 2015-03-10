@@ -237,6 +237,8 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
       Constructor<ThriftRecordConverter<T>> constructor =
           converterClass.getConstructor(Class.class, MessageType.class, StructType.class);
       ThriftRecordConverter<T> converter = constructor.newInstance(thriftClass, readContext.getRequestedSchema(), thriftMetaData.getDescriptor());
+      converter.setConf(configuration);
+      converter.initialize();
       return converter;
     } catch (Exception t) {
       throw new RuntimeException("Unable to create Thrift Converter for Thrift metadata " + thriftMetaData, t);
