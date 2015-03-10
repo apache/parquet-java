@@ -18,12 +18,10 @@
  */
 package org.apache.parquet.avro;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.IndexedRecord;
@@ -32,14 +30,9 @@ import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.apache.parquet.hadoop.ParquetWriter;
-import org.apache.parquet.hadoop.api.WriteSupport;
+import org.apache.parquet.DirectWriterTest;
 import org.apache.parquet.io.api.RecordConsumer;
-import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.MessageTypeParser;
 
 import static org.apache.parquet.avro.AvroTestUtil.array;
 import static org.apache.parquet.avro.AvroTestUtil.field;
@@ -49,10 +42,7 @@ import static org.apache.parquet.avro.AvroTestUtil.optionalField;
 import static org.apache.parquet.avro.AvroTestUtil.primitive;
 import static org.apache.parquet.avro.AvroTestUtil.record;
 
-public class TestArrayCompatibility {
-
-  @Rule
-  public final TemporaryFolder tempDir = new TemporaryFolder();
+public class TestArrayCompatibility extends DirectWriterTest {
 
   public static final Configuration NEW_BEHAVIOR_CONF = new Configuration();
 
@@ -907,68 +897,6 @@ public class TestArrayCompatibility {
             instance(location, "latitude", 0.0, "longitude", 0.0)));
 
     assertReaderContains(newBehaviorReader(test), newSchema, newRecord);
-  }
-
-  private interface DirectWriter {
-    public void write(RecordConsumer consumer);
-  }
-
-  private static class DirectWriteSupport extends WriteSupport<Void> {
-    private RecordConsumer recordConsumer;
-    private final MessageType type;
-    private final DirectWriter writer;
-    private final Map<String, String> metadata;
-
-    private DirectWriteSupport(MessageType type, DirectWriter writer,
-                               Map<String, String> metadata) {
-      this.type = type;
-      this.writer = writer;
-      this.metadata = metadata;
-    }
-
-    @Override
-    public WriteContext init(Configuration configuration) {
-      return new WriteContext(type, metadata);
-    }
-
-    @Override
-    public void prepareForWrite(RecordConsumer recordConsumer) {
-      this.recordConsumer = recordConsumer;
-    }
-
-    @Override
-    public void write(Void record) {
-      writer.write(recordConsumer);
-    }
-  }
-
-  private Path writeDirect(String type, DirectWriter writer) throws IOException {
-    return writeDirect(MessageTypeParser.parseMessageType(type), writer);
-  }
-
-  private Path writeDirect(String type, DirectWriter writer,
-                           Map<String, String> metadata) throws IOException {
-    return writeDirect(MessageTypeParser.parseMessageType(type), writer, metadata);
-  }
-
-  private Path writeDirect(MessageType type, DirectWriter writer) throws IOException {
-    return writeDirect(type, writer, new HashMap<String, String>());
-  }
-
-  private Path writeDirect(MessageType type, DirectWriter writer,
-                           Map<String, String> metadata) throws IOException {
-    File temp = tempDir.newFile(UUID.randomUUID().toString());
-    temp.deleteOnExit();
-    temp.delete();
-
-    Path path = new Path(temp.getPath());
-
-    ParquetWriter<Void> parquetWriter = new ParquetWriter<Void>(
-        path, new DirectWriteSupport(type, writer, metadata));
-    parquetWriter.write(null);
-    parquetWriter.close();
-
-    return path;
   }
 
   public <T extends IndexedRecord> AvroParquetReader<T> oldBehaviorReader(
