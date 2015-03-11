@@ -26,6 +26,7 @@ import parquet.schema.MessageType;
 import parquet.thrift.projection.FieldProjectionFilter;
 import parquet.thrift.projection.PathGlobPattern;
 import parquet.thrift.projection.ThriftProjectionException;
+import parquet.thrift.struct.TBaseUtil;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftField.Requirement;
 import parquet.thrift.struct.ThriftType;
@@ -93,7 +94,7 @@ public class ThriftSchemaConverter {
                         Requirement.fromType(field.getFieldMetaData().requirementType);
         children.add(toThriftField(field.getName(), field, req));
       }
-      return new StructType(children);
+      return new StructType(children, TBaseUtil.isUnion(struct.getThriftClass()));
     }
 
     private ThriftField toThriftField(String name, Field field, ThriftField.Requirement requirement) {

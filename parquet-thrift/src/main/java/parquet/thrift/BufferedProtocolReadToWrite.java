@@ -358,6 +358,15 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       final TField currentField = field;
       ThriftField expectedField;
       if ((expectedField = type.getChildById(field.id)) == null) {
+
+        if (type.isUnion()) {
+          // this is a union with an unrecognized member -- this is fatal for this record
+          // in the write path, because it will be unreadable in the read path.
+          // throwing here means we will skip this record entirely.
+          throw new DecodingSchemaMismatchException("Unrecognized union member with id: "
+              + field.id + " for struct:\n" + type);
+        }
+
         notifyIgnoredFieldsOfRecord(field);
         hasFieldsIgnored |= true;
         //read the value and ignore it, NullProtocol will do nothing

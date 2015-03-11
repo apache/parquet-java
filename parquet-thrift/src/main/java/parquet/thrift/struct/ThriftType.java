@@ -175,10 +175,13 @@ public abstract class ThriftType {
 
     private final ThriftField[] childById;
 
+    private final boolean isUnion;
+
     @JsonCreator
-    public StructType(@JsonProperty("children") List<ThriftField> children) {
+    public StructType(@JsonProperty("children") List<ThriftField> children, boolean isUnion) {
       super(STRUCT);
       this.children = children;
+      this.isUnion = isUnion;
       int maxId = 0;
       if (children != null) {
         for (ThriftField thriftField : children) {
@@ -204,6 +207,10 @@ public abstract class ThriftType {
       } else {
         return childById[id];
       }
+    }
+
+    public boolean isUnion() {
+      return isUnion;
     }
 
     @Override

@@ -80,7 +80,7 @@ public class ScroogeStructConverter {
     for (ThriftStructFieldInfo field : scroogeFields) {
       children.add(toThriftField(field));
     }
-    return new ThriftType.StructType(children);
+    return new ThriftType.StructType(children, isUnion(companionObject.getClass()));
   }
 
   private Iterable<ThriftStructFieldInfo> getFieldInfos(ThriftStructCodec c) {
