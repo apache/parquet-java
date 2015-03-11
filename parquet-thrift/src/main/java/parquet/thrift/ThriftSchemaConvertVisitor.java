@@ -34,7 +34,11 @@ import static parquet.schema.Types.primitive;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import parquet.Log;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
@@ -60,11 +64,16 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
     return fieldProjectionFilter;
   }
 
+    private static final Log logger = Log.getLog(ThriftSchemaConvertVisitor.class);
+
   FieldProjectionFilter fieldProjectionFilter;
   Type currentType;
   FieldsPath currentFieldPath = new FieldsPath();
   Type.Repetition currentRepetition = Type.Repetition.REPEATED;//MessageType is repeated GroupType
   String currentName = "ParquetSchema";
+
+    private final Stack<String> discardedFields = new Stack<String>();
+    private final Stack<String> projectedFields = new Stack<String>();
 
   public ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter) {
     this.fieldProjectionFilter = fieldProjectionFilter;
@@ -85,7 +94,12 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
     currentRepetition = REQUIRED;
     mapKeyField.getType().accept(this);
     Type keyType = currentType;//currentType is the already converted type
-    currentFieldPath.pop();
+      if (keyType == null) {
+          discardedFields.push(currentFieldPath.toString());
+      } else {
+          projectedFields.push(currentFieldPath.toString());
+      }
+      currentFieldPath.pop();
 
     //=========handle value
     currentFieldPath.push(mapValueField);
@@ -93,6 +107,11 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
     currentRepetition = OPTIONAL;
     mapValueField.getType().accept(this);
     Type valueType = currentType;
+      if (valueType == null) {
+          discardedFields.push(currentFieldPath.toString());
+      } else {
+          projectedFields.push(currentFieldPath.toString());
+      }
     currentFieldPath.pop();
 
     if (keyType == null && valueType == null) {
@@ -146,11 +165,23 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
 
   public MessageType getConvertedMessageType() {
     // the root should be a GroupType
-    if (currentType == null)
-      return new MessageType(currentName, new ArrayList<Type>());
+      final MessageType result;
+      if (currentType == null) {
+          result = new MessageType(currentName, new ArrayList<Type>());
+      } else {
+          GroupType rootType = currentType.asGroupType();
+          result = new MessageType(currentName, rootType.getFields());
+      }
+      logger.info("projected fields");
+      while (!projectedFields.empty()) {
+          logger.info(projectedFields.pop());
+      }
 
-    GroupType rootType = currentType.asGroupType();
-    return new MessageType(currentName, rootType.getFields());
+      logger.info("\n\ndiscarded fields");
+      while (!discardedFields.empty()) {
+          logger.info(discardedFields.pop());
+      }
+      return result;
   }
 
   @Override
@@ -181,8 +212,11 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
       currentFieldPath.push(field);
       field.getType().accept(this);
       if (currentType != null) {
+          projectedFields.push(currentFieldPath.toString());
         // currentType is converted with the currentName(fieldName)
         types.add(currentType.withId(field.getFieldId()));
+      } else {
+          discardedFields.push(currentFieldPath.toString());
       }
       currentFieldPath.pop();
     }
@@ -273,4 +307,12 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
         throw new IllegalArgumentException("unknown requirement type: " + thriftField.getRequirement());
     }
   }
+
+     Stack<String> getDiscardedFields() {
+        return discardedFields;
+    }
+
+     Stack<String> getProjectedFields() {
+        return projectedFields;
+    }
 }
