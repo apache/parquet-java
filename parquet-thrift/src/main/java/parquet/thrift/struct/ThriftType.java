@@ -39,12 +39,14 @@ import java.util.Map;
 
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonIgnore;
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
 import org.codehaus.jackson.annotate.JsonTypeInfo.As;
 import org.codehaus.jackson.annotate.JsonTypeInfo.Id;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
+import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
 import parquet.ParquetRuntimeException;
 
@@ -178,39 +180,35 @@ public abstract class ThriftType {
 
     private final ThriftField[] childById;
 
-    // is union is not always known, because it was not always
-    // written to the metadata files.
-    public enum IsUnion {
+  /**
+   * Whether a struct is a union is not always known, because it was not always
+   * written to the metadata files.
+   *
+   * We should always know this in the write path, but may not in the read path.
+   */
+   public enum IsUnion {
       YES,
       NO,
-      UNKNOWN;
-
-      public static IsUnion fromBoolean(Boolean b) {
-        if (b == null) {
-          return UNKNOWN;
-        }
-        return b ? YES : NO;
-      }
-
-      public Boolean toBoolean() {
-        switch (this) {
-          case YES:
-            return true;
-          case NO:
-            return false;
-          case UNKNOWN:
-            return null;
-          default:
-            throw new ParquetRuntimeException("This should never happen"){};
-        }
-      }
-    }
+      UNKNOWN
+   }
 
     private final IsUnion isUnion;
 
-    private StructType(List<ThriftField> children, IsUnion isUnion) {
+    @Deprecated
+    public StructType(List<ThriftField> children) {
+      this(children, null);
+    }
+
+    @JsonCreator
+    public StructType(@JsonProperty("children") List<ThriftField> children, @JsonProperty("isUnion") Boolean isUnion) {
       super(STRUCT);
-      this.isUnion = isUnion;
+
+      if (isUnion == null) {
+        this.isUnion = IsUnion.UNKNOWN;
+      } else {
+        this.isUnion = isUnion ? IsUnion.YES : IsUnion.NO;
+      }
+
       this.children = children;
       int maxId = 0;
       if (children != null) {
@@ -224,17 +222,6 @@ public abstract class ThriftType {
       } else {
         childById = null;
       }
-    }
-
-    @Deprecated
-    @JsonCreator
-    public StructType(@JsonProperty("children") List<ThriftField> children) {
-      this(children, IsUnion.UNKNOWN);
-    }
-
-    @JsonCreator
-    public StructType(@JsonProperty("children") List<ThriftField> children, @JsonProperty("isUnion") boolean isUnion) {
-      this(children, IsUnion.fromBoolean(isUnion));
     }
 
     public List<ThriftField> getChildren() {
@@ -251,19 +238,25 @@ public abstract class ThriftType {
     }
 
     /**
-     * isUnion is essentially optional because it has not
-     * always been present in this JSON schema. So for backwards
-     * compatibility we simply omit this field when it is unknown.
-     * This case should only happen when reading metadata files
-     * written before isUnion started being tracked.
+     * Only used for json serialization. Use {@link #isUnion()} instead.
      *
-     * This method should only be used by json serialization.
-     * {@link #isUnion()} should be used in favor of this method.
+     * For backwards compatibility, we don't write the
+     * isUnion field if it's unknown.
+     * Otherwise, it's serialized as a boolean.
      */
-    @JsonSerialize(include=JsonSerialize.Inclusion.NON_NULL)
+    @JsonSerialize(include = Inclusion.NON_NULL)
     @JsonProperty("isUnion")
     public Boolean jsonIsUnion() {
-      return this.isUnion.toBoolean();
+      switch (isUnion) {
+        case YES:
+          return true;
+        case NO:
+          return false;
+        case UNKNOWN:
+          return null;
+        default:
+          throw new ParquetRuntimeException("This should never happen"){};
+      }
     }
 
     public IsUnion isUnion() {
