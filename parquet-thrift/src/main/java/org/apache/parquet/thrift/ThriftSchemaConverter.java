@@ -20,11 +20,13 @@ package org.apache.parquet.thrift;
 
 import com.twitter.elephantbird.thrift.TStructDescriptor;
 import com.twitter.elephantbird.thrift.TStructDescriptor.Field;
-import org.apache.parquet.schema.Type;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TEnum;
 import org.apache.thrift.TUnion;
 
+import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.thrift.projection.FieldProjectionFilter;
 import org.apache.parquet.thrift.struct.ThriftField;
@@ -105,11 +107,13 @@ public class ThriftSchemaConverter {
       // synthetic wrapper (must be a group with one field).
       return true;
     } else if (thriftElement != null && thriftElement.getType() instanceof StructType) {
-      List<ThriftField> fields = ((StructType) thriftElement.getType()).getChildren();
-      // If the repeated type matches the structure of the ThriftField, then it
-      // must be the element type.
-      return (fields.size() == 1 &&
-          fields.get(0).getName().equals(repeatedType.asGroupType().getFieldName(0)));
+      Set<String> fieldNames = new HashSet<String>();
+      for (ThriftField field : ((StructType) thriftElement.getType()).getChildren()) {
+        fieldNames.add(field.getName());
+      }
+      // If the repeated type is a subset of the structure of the ThriftField,
+      // then it must be the element type.
+      return fieldNames.contains(repeatedType.asGroupType().getFieldName(0));
     }
     return false;
   }
