@@ -65,7 +65,7 @@ import org.apache.parquet.thrift.struct.ThriftTypeID;
  *
  * @param <T>
  */
-public class ThriftRecordConverter<T> extends RecordMaterializer<T> implements Configurable {
+public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   private static final Log LOG = Log.getLog(ThriftRecordConverter.class);
 
@@ -851,13 +851,19 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> implements C
   }
   private final ThriftReader<T> thriftReader;
   private final ParquetReadProtocol protocol;
-  private final MessageType requestedParquetSchema;
-  private final String name;
   private GroupConverter structConverter;
   private List<TProtocol> rootEvents = new ArrayList<TProtocol>();
   private boolean missingRequiredFieldsInProjection = false;
-  private Configuration conf = null;
   private boolean ignoreNullElements = IGNORE_NULL_LIST_ELEMENTS_DEFAULT;
+
+  /**
+   * This is for compatibility only.
+   * @deprecated will be removed in 2.x
+   */
+  @Deprecated
+  public ThriftRecordConverter(ThriftReader<T> thriftReader, String name, MessageType requestedParquetSchema, ThriftType.StructType thriftType) {
+    this(thriftReader, name, requestedParquetSchema, thriftType, null);
+  }
 
   /**
    *
@@ -865,35 +871,21 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> implements C
    * @param name the name of that type ( the thrift class simple name)
    * @param requestedParquetSchema the schema for the incoming columnar events
    * @param thriftType the thrift type descriptor
+   * @param conf a Configuration
    */
-  public ThriftRecordConverter(ThriftReader<T> thriftReader, String name, MessageType requestedParquetSchema, ThriftType.StructType thriftType) {
+  public ThriftRecordConverter(ThriftReader<T> thriftReader, String name, MessageType requestedParquetSchema, ThriftType.StructType thriftType, Configuration conf) {
     super();
     this.thriftReader = thriftReader;
-    this.name = name;
-    this.requestedParquetSchema = requestedParquetSchema;
     this.protocol = new ParquetReadProtocol();
     this.thriftType = thriftType;
-  }
-
-  public void initialize() {
-    MessageType fullSchema = new ThriftSchemaConverter().convert(thriftType);
-    missingRequiredFieldsInProjection = hasMissingRequiredFieldInGroupType(requestedParquetSchema, fullSchema);
-    this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
-  }
-
-  @Override
-  public void setConf(Configuration configuration) {
-    this.conf = configuration;
     if (conf != null) {
       this.ignoreNullElements = conf.getBoolean(
           IGNORE_NULL_LIST_ELEMENTS,
           IGNORE_NULL_LIST_ELEMENTS_DEFAULT);
     }
-  }
-
-  @Override
-  public Configuration getConf() {
-    return conf;
+    MessageType fullSchema = new ThriftSchemaConverter().convert(thriftType);
+    missingRequiredFieldsInProjection = hasMissingRequiredFieldInGroupType(requestedParquetSchema, fullSchema);
+    this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
   }
 
   private boolean hasMissingRequiredFieldInGroupType(GroupType requested, GroupType fullSchema) {
