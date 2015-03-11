@@ -44,6 +44,9 @@ import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
 import org.codehaus.jackson.annotate.JsonTypeInfo.As;
 import org.codehaus.jackson.annotate.JsonTypeInfo.Id;
+import org.codehaus.jackson.map.annotate.JsonSerialize;
+
+import parquet.ParquetRuntimeException;
 
 /**
  * Descriptor for a Thrift class.
@@ -175,13 +178,40 @@ public abstract class ThriftType {
 
     private final ThriftField[] childById;
 
-    private final boolean isUnion;
+    // is union is not always known, because it was not always
+    // written to the metadata files.
+    public enum IsUnion {
+      YES,
+      NO,
+      UNKNOWN;
 
-    @JsonCreator
-    public StructType(@JsonProperty("children") List<ThriftField> children, @JsonProperty("isUnion") boolean isUnion) {
+      public static IsUnion fromBoolean(Boolean b) {
+        if (b == null) {
+          return UNKNOWN;
+        }
+        return b ? YES : NO;
+      }
+
+      public Boolean toBoolean() {
+        switch (this) {
+          case YES:
+            return true;
+          case NO:
+            return false;
+          case UNKNOWN:
+            return null;
+          default:
+            throw new ParquetRuntimeException("This should never happen"){};
+        }
+      }
+    }
+
+    private final IsUnion isUnion;
+
+    private StructType(List<ThriftField> children, IsUnion isUnion) {
       super(STRUCT);
-      this.children = children;
       this.isUnion = isUnion;
+      this.children = children;
       int maxId = 0;
       if (children != null) {
         for (ThriftField thriftField : children) {
@@ -194,6 +224,17 @@ public abstract class ThriftType {
       } else {
         childById = null;
       }
+    }
+
+    @Deprecated
+    @JsonCreator
+    public StructType(@JsonProperty("children") List<ThriftField> children) {
+      this(children, IsUnion.UNKNOWN);
+    }
+
+    @JsonCreator
+    public StructType(@JsonProperty("children") List<ThriftField> children, @JsonProperty("isUnion") boolean isUnion) {
+      this(children, IsUnion.fromBoolean(isUnion));
     }
 
     public List<ThriftField> getChildren() {
@@ -209,9 +250,24 @@ public abstract class ThriftType {
       }
     }
 
+    /**
+     * isUnion is essentially optional because it has not
+     * always been present in this JSON schema. So for backwards
+     * compatibility we simply omit this field when it is unknown.
+     * This case should only happen when reading metadata files
+     * written before isUnion started being tracked.
+     *
+     * This method should only be used by json serialization.
+     * {@link #isUnion()} should be used in favor of this method.
+     */
+    @JsonSerialize(include=JsonSerialize.Inclusion.NON_NULL)
     @JsonProperty("isUnion")
-    public boolean isUnion() {
-      return isUnion;
+    public Boolean jsonIsUnion() {
+      return this.isUnion.toBoolean();
+    }
+
+    public IsUnion isUnion() {
+      return this.isUnion;
     }
 
     @Override
