@@ -331,7 +331,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
       fail("Should fail: locations are optional and not ignored");
     } catch (RuntimeException e) {
       // e is a RuntimeException wrapping the decoding exception
-      assertTrue(e.getCause().getMessage().contains("locations"));
+      assertTrue(e.getCause().getCause().getMessage().contains("locations"));
     }
 
     assertReaderContains(readerIgnoreNulls(test, ListOfLocations.class), expected);
@@ -615,7 +615,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
       fail("Should fail: locations are optional and not ignored");
     } catch (RuntimeException e) {
       // e is a RuntimeException wrapping the decoding exception
-      assertTrue(e.getCause().getMessage().contains("locations"));
+      assertTrue(e.getCause().getCause().getMessage().contains("locations"));
     }
 
     assertReaderContains(readerIgnoreNulls(test, ListOfLocations.class), expected);
