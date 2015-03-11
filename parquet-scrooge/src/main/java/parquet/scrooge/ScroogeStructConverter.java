@@ -22,6 +22,7 @@ import com.twitter.scrooge.ThriftStructCodec;
 import com.twitter.scrooge.ThriftStructFieldInfo;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
+import parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
 import parquet.thrift.struct.ThriftTypeID;
 import scala.collection.JavaConversions;
 import scala.collection.JavaConversions$;
@@ -80,7 +81,11 @@ public class ScroogeStructConverter {
     for (ThriftStructFieldInfo field : scroogeFields) {
       children.add(toThriftField(field));
     }
-    return new ThriftType.StructType(children, isUnion(companionObject.getClass()));
+
+    StructOrUnionType structOrUnionType =
+        isUnion(companionObject.getClass()) ? StructOrUnionType.UNION : StructOrUnionType.STRUCT;
+
+    return new ThriftType.StructType(children, structOrUnionType);
   }
 
   private Iterable<ThriftStructFieldInfo> getFieldInfos(ThriftStructCodec c) {

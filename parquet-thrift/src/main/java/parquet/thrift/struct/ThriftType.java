@@ -39,16 +39,11 @@ import java.util.Map;
 
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonIgnore;
-import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonSubTypes;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
 import org.codehaus.jackson.annotate.JsonTypeInfo.As;
 import org.codehaus.jackson.annotate.JsonTypeInfo.Id;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
-
-import parquet.ParquetRuntimeException;
 
 /**
  * Descriptor for a Thrift class.
@@ -181,18 +176,18 @@ public abstract class ThriftType {
     private final ThriftField[] childById;
 
   /**
-   * Whether a struct is a union is not always known, because it was not always
+   * Whether a struct is a union or a regular struct is not always known, because it was not always
    * written to the metadata files.
    *
    * We should always know this in the write path, but may not in the read path.
    */
-   public enum IsUnion {
-      YES,
-      NO,
+   public enum StructOrUnionType {
+      STRUCT,
+      UNION,
       UNKNOWN
    }
 
-    private final IsUnion isUnion;
+    private final StructOrUnionType structOrUnionType;
 
     @Deprecated
     public StructType(List<ThriftField> children) {
@@ -200,15 +195,10 @@ public abstract class ThriftType {
     }
 
     @JsonCreator
-    public StructType(@JsonProperty("children") List<ThriftField> children, @JsonProperty("isUnion") Boolean isUnion) {
+    public StructType(@JsonProperty("children") List<ThriftField> children,
+                      @JsonProperty("structOrUnionType") StructOrUnionType structOrUnionType) {
       super(STRUCT);
-
-      if (isUnion == null) {
-        this.isUnion = IsUnion.UNKNOWN;
-      } else {
-        this.isUnion = isUnion ? IsUnion.YES : IsUnion.NO;
-      }
-
+      this.structOrUnionType = structOrUnionType == null ? StructOrUnionType.UNKNOWN : structOrUnionType;
       this.children = children;
       int maxId = 0;
       if (children != null) {
@@ -237,30 +227,9 @@ public abstract class ThriftType {
       }
     }
 
-    /**
-     * Only used for json serialization. Use {@link #isUnion()} instead.
-     *
-     * For backwards compatibility, we don't write the
-     * isUnion field if it's unknown.
-     * Otherwise, it's serialized as a boolean.
-     */
-    @JsonSerialize(include = Inclusion.NON_NULL)
-    @JsonProperty("isUnion")
-    public Boolean jsonIsUnion() {
-      switch (isUnion) {
-        case YES:
-          return true;
-        case NO:
-          return false;
-        case UNKNOWN:
-          return null;
-        default:
-          throw new ParquetRuntimeException("This should never happen"){};
-      }
-    }
-
-    public IsUnion isUnion() {
-      return this.isUnion;
+    @JsonProperty("structOrUnionType")
+    public StructOrUnionType getStructOrUnionType() {
+      return structOrUnionType;
     }
 
     @Override

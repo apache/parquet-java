@@ -28,7 +28,6 @@ import parquet.thrift.struct.ThriftType.ListType;
 import parquet.thrift.struct.ThriftType.MapType;
 import parquet.thrift.struct.ThriftType.SetType;
 import parquet.thrift.struct.ThriftType.StructType;
-import parquet.thrift.struct.ThriftType.StructType.IsUnion;
 import parquet.thrift.struct.ThriftTypeID;
 
 import java.nio.ByteBuffer;
@@ -362,15 +361,15 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       ThriftField expectedField;
       if ((expectedField = type.getChildById(field.id)) == null) {
 
-        switch (type.isUnion()) {
-          case NO:
+        switch (type.getStructOrUnionType()) {
+          case STRUCT:
             // this is an unrecognized field in a struct, not a union
             notifyIgnoredFieldsOfRecord(field);
             hasFieldsIgnored |= true;
             //read the value and ignore it, NullProtocol will do nothing
             new ProtocolReadToWrite().readOneValue(in, new NullProtocol(), field.type);
             continue;
-          case YES:
+          case UNION:
             // this is a union with an unrecognized member -- this is fatal for this record
             // in the write path, because it will be unreadable in the read path.
             // throwing here means we will skip this record entirely.
