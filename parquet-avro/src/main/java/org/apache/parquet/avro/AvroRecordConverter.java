@@ -32,8 +32,10 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.reflect.ReflectData;
@@ -753,13 +755,14 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       // synthetic wrapper. Must be a group with one optional or required field
       return true;
     } else if (elementSchema != null &&
-        elementSchema.getType() == Schema.Type.RECORD &&
-        elementSchema.getFields().size() == 1 &&
-        elementSchema.getFields().get(0).name().equals(
-            repeatedType.asGroupType().getFieldName(0))) {
+        elementSchema.getType() == Schema.Type.RECORD) {
+      Set<String> fieldNames = new HashSet<String>();
+      for (Schema.Field field : elementSchema.getFields()) {
+        fieldNames.add(field.name());
+      }
       // The repeated type must be the element type because it matches the
       // structure of the Avro element's schema.
-      return true;
+      return fieldNames.contains(repeatedType.asGroupType().getFieldName(0));
     }
     return false;
   }
