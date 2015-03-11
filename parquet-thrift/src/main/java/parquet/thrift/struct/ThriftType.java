@@ -178,7 +178,7 @@ public abstract class ThriftType {
     private final boolean isUnion;
 
     @JsonCreator
-    public StructType(@JsonProperty("children") List<ThriftField> children, boolean isUnion) {
+    public StructType(@JsonProperty("children") List<ThriftField> children, @JsonProperty("isUnion") boolean isUnion) {
       super(STRUCT);
       this.children = children;
       this.isUnion = isUnion;
@@ -209,6 +209,7 @@ public abstract class ThriftType {
       }
     }
 
+    @JsonProperty("isUnion")
     public boolean isUnion() {
       return isUnion;
     }

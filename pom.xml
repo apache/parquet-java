@@ -235,6 +235,7 @@
                      <exclude>parquet/org/**</exclude>
                      <exclude>parquet/column/**</exclude>
                      <exclude>parquet/hadoop/ParquetInputSplit</exclude>
+                     <exclude>parquet/thrift/struct/**</exclude>
                    </excludes>
                  </requireBackwardCompatibility>
                </rules>

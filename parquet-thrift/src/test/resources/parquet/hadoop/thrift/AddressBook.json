@@ -1,5 +1,6 @@
 {
   "type" : "STRUCT",
+  "isUnion": false,
   "children" : [ {
     "name" : "persons",
     "fieldId" : 1,
@@ -12,12 +13,14 @@
         "requirement" : "OPTIONAL",
         "type" : {
           "type" : "STRUCT",
+          "isUnion": false,
           "children" : [ {
             "name" : "name",
             "fieldId" : 1,
             "requirement" : "OPTIONAL",
             "type" : {
               "type" : "STRUCT",
+              "isUnion": false,
               "children" : [ {
                 "name" : "first_name",
                 "fieldId" : 1,
@@ -60,6 +63,7 @@
                 "requirement" : "OPTIONAL",
                 "type" : {
                   "type" : "STRUCT",
+                  "isUnion": false,
                   "children" : [ {
                     "name" : "number",
                     "fieldId" : 1,
