@@ -108,10 +108,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String WRITER_VERSION       = "parquet.writer.version";
   public static final String ENABLE_JOB_SUMMARY   = "parquet.enable.summary-metadata";
   public static final String MEMORY_POOL_RATIO    = "parquet.memory.pool.ratio";
-  @Deprecated
   public static final String MIN_MEMORY_ALLOCATION = "parquet.memory.min.chunk.size";
-
-  public static final String MIN_MEMORY_MANAGER_SCALE = "parquet.memory.min.scale.size";
 
   public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
     getConfiguration(job).set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
@@ -294,17 +291,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
     float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO,
         MemoryManager.DEFAULT_MEMORY_POOL_RATIO);
-
-    long minAllocation = conf.getLong(ParquetOutputFormat.MIN_MEMORY_ALLOCATION, -1);
-
-    float minScale = conf.getFloat(ParquetOutputFormat.MIN_MEMORY_MANAGER_SCALE, MemoryManager.DEFAULT_MIN_SCALE);
-
+    long minAllocation = conf.getLong(ParquetOutputFormat.MIN_MEMORY_ALLOCATION,
+        MemoryManager.DEFAULT_MIN_MEMORY_ALLOCATION);
     if (memoryManager == null) {
-      if (minAllocation > 0) {
-        LOG.warn(ParquetOutputFormat.MIN_MEMORY_ALLOCATION + " is deprecated in favor of "
-            + ParquetOutputFormat.MIN_MEMORY_MANAGER_SCALE);
-      }
-      memoryManager = new MemoryManager(maxLoad, minAllocation, minScale);
+      memoryManager = new MemoryManager(maxLoad, minAllocation);
     } else if (memoryManager.getMemoryPoolRatio() != maxLoad) {
       LOG.warn("The configuration " + MEMORY_POOL_RATIO + " has been set. It should not " +
           "be reset by the new value: " + maxLoad);

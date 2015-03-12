@@ -40,39 +40,27 @@ import java.util.Map;
 public class MemoryManager {
   private static final Log LOG = Log.getLog(MemoryManager.class);
   static final float DEFAULT_MEMORY_POOL_RATIO = 0.95f;
-  static final float DEFAULT_MIN_SCALE = 0.25f;
+  static final long DEFAULT_MIN_MEMORY_ALLOCATION = ParquetWriter.DEFAULT_PAGE_SIZE;
   private final float memoryPoolRatio;
 
   private final long totalMemoryPool;
   private final long minMemoryAllocation;
-  private final float minScale;
   private final Map<InternalParquetRecordWriter, Long> writerList = new
       HashMap<InternalParquetRecordWriter, Long>();
 
-  public MemoryManager(float ratio, float minScale) {
-    this(ratio, -1, minScale);
-  }
-
-  @Deprecated
   public MemoryManager(float ratio, long minAllocation) {
-    this(ratio, minAllocation, DEFAULT_MIN_SCALE);
-  }
+    checkRatio(ratio);
 
-  @Deprecated
-  MemoryManager(float ratio, long minAllocation, float minScale) {
-    checkRatio(ratio, "memory pool ratio");
-    checkRatio(minScale, "min scale");
-
-    this.memoryPoolRatio = ratio;
-    this.minMemoryAllocation = minAllocation;
-    this.minScale = minScale;
-    totalMemoryPool = Math.round(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax() * ratio);
+    memoryPoolRatio = ratio;
+    minMemoryAllocation = minAllocation;
+    totalMemoryPool = Math.round(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
+        () * ratio);
     LOG.debug(String.format("Allocated total memory pool is: %,d", totalMemoryPool));
   }
 
-  private void checkRatio(float ratio, String name) {
+  private void checkRatio(float ratio) {
     if (ratio <= 0 || ratio > 1) {
-      throw new IllegalArgumentException("The configured " + name + " " + ratio + " is " +
+      throw new IllegalArgumentException("The configured memory pool ratio " + ratio + " is " +
           "not between 0 and 1.");
     }
   }
@@ -120,12 +108,6 @@ public class MemoryManager {
       scale = 1.0;
     } else {
       scale = (double) totalMemoryPool / totalAllocations;
-      if (scale < this.minScale) {
-        throw new ParquetRuntimeException(
-            "Attempting to scale column chunks to " + scale*100 + "% of their original size, which is less than"
-            + "the configured min scale of " + minScale*100 + "%"){};
-      }
-
       LOG.warn(String.format(
           "Total allocation exceeds %.2f%% (%,d bytes) of heap memory\n" +
           "Scaling row group sizes to %.2f%% for %d writers",
@@ -139,15 +121,10 @@ public class MemoryManager {
 
     for (Map.Entry<InternalParquetRecordWriter, Long> entry : writerList.entrySet()) {
       long newSize = (long) Math.floor(entry.getValue() * scale);
-
-      // This check is deprecated, and is only enabled when minMemoryAllocation > 0
-      // which only happens when the deprecated constructor is used.
-      // This heuristic is not valid for schemas with a large number of sparsely populated
-      // columns.
-      if(minMemoryAllocation > 0 && newSize/maxColCount < minMemoryAllocation) {
-          throw new ParquetRuntimeException(String.format("New Memory allocation %d"+
-          " exceeds minimum allocation size %d with largest schema having %d columns",
-              newSize, minMemoryAllocation, maxColCount)){};
+      if(scale < 1.0 && minMemoryAllocation > 0 && newSize < minMemoryAllocation) {
+          throw new ParquetRuntimeException(String.format("New Memory allocation %d" +
+          " is smaller than the minimum allocation size of %d",
+              newSize, minMemoryAllocation)){};
       }
       entry.getKey().setRowGroupSizeThreshold(newSize);
       LOG.debug(String.format("Adjust block size from %,d to %,d for writer: %s",
