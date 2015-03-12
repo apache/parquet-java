@@ -18,39 +18,27 @@
  */
 package parquet.thrift;
 
-import static parquet.schema.ConversionPatterns.listType;
-import static parquet.schema.ConversionPatterns.mapType;
-import static parquet.schema.OriginalType.ENUM;
-import static parquet.schema.OriginalType.UTF8;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static parquet.schema.Type.Repetition.OPTIONAL;
-import static parquet.schema.Type.Repetition.REPEATED;
-import static parquet.schema.Type.Repetition.REQUIRED;
-import static parquet.schema.Types.primitive;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Stack;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import parquet.Log;
-import parquet.schema.GroupType;
-import parquet.schema.MessageType;
-import parquet.schema.OriginalType;
-import parquet.schema.PrimitiveType;
+import parquet.schema.*;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
-import parquet.schema.Type;
 import parquet.schema.Types.PrimitiveBuilder;
 import parquet.thrift.projection.FieldProjectionFilter;
 import parquet.thrift.projection.FieldsPath;
 import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Stack;
+
+import static parquet.schema.ConversionPatterns.listType;
+import static parquet.schema.ConversionPatterns.mapType;
+import static parquet.schema.OriginalType.ENUM;
+import static parquet.schema.OriginalType.UTF8;
+import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
+import static parquet.schema.Type.Repetition.*;
+import static parquet.schema.Types.primitive;
 
 /**
  * Visitor Class for converting a thrift definiton to parquet message type.
