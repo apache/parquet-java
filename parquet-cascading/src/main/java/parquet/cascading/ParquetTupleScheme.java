@@ -171,7 +171,7 @@ public class ParquetTupleScheme extends Scheme<JobConf, RecordReader, OutputColl
   @Override
   public void sinkConfInit(FlowProcess<JobConf> fp,
           Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
-    jobConf.setOutputFormat(DeprecatedParquetOutputFormat.class);
+    DeprecatedParquetOutputFormat.setAsOutputFormat(jobConf);
     jobConf.set(TupleWriteSupport.PARQUET_CASCADING_SCHEMA, parquetSchema);
     ParquetOutputFormat.setWriteSupportClass(jobConf, TupleWriteSupport.class);
   }
