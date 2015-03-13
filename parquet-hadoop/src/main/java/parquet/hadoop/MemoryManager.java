@@ -40,7 +40,7 @@ import java.util.Map;
 public class MemoryManager {
   private static final Log LOG = Log.getLog(MemoryManager.class);
   static final float DEFAULT_MEMORY_POOL_RATIO = 0.95f;
-  static final long DEFAULT_MIN_MEMORY_ALLOCATION = ParquetWriter.DEFAULT_PAGE_SIZE;
+  static final long DEFAULT_MIN_MEMORY_ALLOCATION = 1 * 1024 * 1024; // 1MB
   private final float memoryPoolRatio;
 
   private final long totalMemoryPool;
