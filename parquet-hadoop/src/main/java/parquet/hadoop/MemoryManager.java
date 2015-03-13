@@ -122,8 +122,8 @@ public class MemoryManager {
     for (Map.Entry<InternalParquetRecordWriter, Long> entry : writerList.entrySet()) {
       long newSize = (long) Math.floor(entry.getValue() * scale);
       if(scale < 1.0 && minMemoryAllocation > 0 && newSize < minMemoryAllocation) {
-          throw new ParquetRuntimeException(String.format("New Memory allocation %d" +
-          " is smaller than the minimum allocation size of %d",
+          throw new ParquetRuntimeException(String.format("New Memory allocation %d bytes" +
+          " is smaller than the minimum allocation size of %d bytes.",
               newSize, minMemoryAllocation)){};
       }
       entry.getKey().setRowGroupSizeThreshold(newSize);
