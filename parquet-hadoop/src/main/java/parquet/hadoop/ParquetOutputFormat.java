@@ -259,28 +259,15 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     CompressionCodecName codec = getCodec(taskAttemptContext);
     String extension = codec.getExtension() + ".parquet";
     Path file = getDefaultWorkFile(taskAttemptContext, extension);
-    return getRecordWriter(conf, file, codec, null);
+    return getRecordWriter(conf, file, codec);
   }
 
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Path file)
       throws IOException, InterruptedException {
-    return getRecordWriter(taskAttemptContext, file, null);
-  }
-
-  public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Path file,
-                                               MemoryManager.CounterCallBack callBack)
-      throws IOException, InterruptedException {
-    return getRecordWriter(getConfiguration(taskAttemptContext), file,
-        getCodec(taskAttemptContext), callBack);
+    return getRecordWriter(getConfiguration(taskAttemptContext), file, getCodec(taskAttemptContext));
   }
 
   public RecordWriter<Void, T> getRecordWriter(Configuration conf, Path file, CompressionCodecName codec)
-      throws IOException, InterruptedException {
-    return getRecordWriter(conf, file, codec, null);
-  }
-
-  public RecordWriter<Void, T> getRecordWriter(Configuration conf, Path file,
-        CompressionCodecName codec, MemoryManager.CounterCallBack callBack)
         throws IOException, InterruptedException {
     final WriteSupport<T> writeSupport = getWriteSupport(conf);
 
@@ -312,7 +299,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOG.warn("The configuration " + MEMORY_POOL_RATIO + " has been set. It should not " +
           "be reset by the new value: " + maxLoad);
     }
-    memoryManager.registerCallBack(callBack);
 
     return new ParquetRecordWriter<T>(
         w,
@@ -361,7 +347,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
    */
   private static MemoryManager memoryManager;
 
-  static MemoryManager getMemoryManager() {
+  public static MemoryManager getMemoryManager() {
     return memoryManager;
   }
 }

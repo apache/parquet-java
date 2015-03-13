@@ -48,7 +48,7 @@ public class TestMemoryManager {
   int rowGroupSize;
   ParquetOutputFormat parquetOutputFormat;
   CompressionCodecName codec;
-  MemoryManager.CounterCallBack counterCallBack = new MyCounterCallBack("test");
+  int counter = 0;
 
   @Before
   public void setUp() {
@@ -90,16 +90,22 @@ public class TestMemoryManager {
         parquetOutputFormat.getMemoryManager().getTotalMemoryPool());
 
     //Verify Callback mechanism
-    Assert.assertEquals("counter calculated by callback is incorrect.", 1,
-        ((MyCounterCallBack) counterCallBack).getCounter());
+    Assert.assertEquals("counter calculated by callback is incorrect.", 1, counter);
     Assert.assertEquals("CallBack is duplicated.", 1, parquetOutputFormat.getMemoryManager()
-        .getCounterCallBacks().size());
+        .getScaleCallBacks().size());
   }
 
   private RecordWriter createWriter(int index) throws Exception{
     Path file = new Path("target/test/", "parquet" + index);
     parquetOutputFormat = new ParquetOutputFormat(new GroupWriteSupport());
-    return parquetOutputFormat.getRecordWriter(conf, file, codec, counterCallBack);
+    RecordWriter writer = parquetOutputFormat.getRecordWriter(conf, file, codec);
+    parquetOutputFormat.getMemoryManager().registerScaleCallBack("increment-test-counter", new Runnable() {
+      @Override
+      public void run() {
+        counter++;
+      }
+    });
+    return writer;
   }
 
   private void verifyRowGroupSize(int expectRowGroupSize) {
@@ -108,23 +114,6 @@ public class TestMemoryManager {
     for (InternalParquetRecordWriter writer : writers) {
       Assert.assertEquals("wrong rowGroupSize", expectRowGroupSize,
           writer.getRowGroupSizeThreshold(), 1);
-    }
-  }
-
-  class MyCounterCallBack extends MemoryManager.CounterCallBack {
-    private int counter = 0;
-
-    MyCounterCallBack(String name) {
-      super(name);
-    }
-
-    @Override
-    public void update(int count) {
-      counter++;
-    }
-
-    public int getCounter() {
-      return counter;
     }
   }
 }

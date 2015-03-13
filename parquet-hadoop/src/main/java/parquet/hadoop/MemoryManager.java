@@ -23,9 +23,7 @@ import parquet.ParquetRuntimeException;
 
 import java.lang.management.ManagementFactory;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Implements a memory manager that keeps a global context of how many Parquet
@@ -49,28 +47,7 @@ public class MemoryManager {
   private final long minMemoryAllocation;
   private final Map<InternalParquetRecordWriter, Long> writerList = new
       HashMap<InternalParquetRecordWriter, Long>();
-  private final Set<CounterCallBack> counterCallBacks = new HashSet<CounterCallBack>();
-
-  /**
-   * A callback interface for upper layer, such as Hive, getting notified when memory usage changes
-   */
-  public static abstract class CounterCallBack {
-    private String name;
-
-    protected CounterCallBack(String name) {
-      this.name = name;
-    }
-
-    public abstract void update(int count);
-
-    @Override
-    public boolean equals(Object other) {
-      if (other instanceof CounterCallBack) {
-        return name.equals(((CounterCallBack) other).name);
-      }
-      return false;
-    }
-  }
+  private final Map<String, Runnable> callBacks = new HashMap<String, Runnable>();
 
   public MemoryManager(float ratio, long minAllocation) {
     checkRatio(ratio);
@@ -136,8 +113,9 @@ public class MemoryManager {
           "Total allocation exceeds %.2f%% (%,d bytes) of heap memory\n" +
           "Scaling row group sizes to %.2f%% for %d writers",
           100*memoryPoolRatio, totalMemoryPool, 100*scale, writerList.size()));
-      for (CounterCallBack counterCallBack : counterCallBacks) {
-        counterCallBack.update(1);
+      for (Runnable callBack : callBacks.values()) {
+        // we do not really want to start a new thread here.
+        callBack.run();
       }
     }
 
@@ -185,27 +163,28 @@ public class MemoryManager {
 
   /**
    * Register callback and deduplicate it if any.
+   * @param callBackName the name of callback. It should be identical.
    * @param callBack the callback passed in from upper layer, such as Hive.
    * @return
    */
-  public boolean registerCallBack(CounterCallBack callBack) {
-    if (callBack == null) {
+  public boolean registerScaleCallBack(String callBackName, Runnable callBack) {
+    if (callBackName == null || callBack == null) {
       return false;
     }
 
-    for(CounterCallBack counterCallBack : counterCallBacks) {
-      if (callBack.equals(counterCallBack)) {
-        return true;
-      }
+    if (callBacks.containsKey(callBackName)) {
+      return true;
+    } else {
+      callBacks.put(callBackName, callBack);
+      return true;
     }
-    return counterCallBacks.add(callBack);
   }
 
   /**
    * Get the registered callbacks.
    * @return
    */
-  Set<CounterCallBack> getCounterCallBacks() {
-    return counterCallBacks;
+  Map<String, Runnable> getScaleCallBacks() {
+    return callBacks;
   }
 }
