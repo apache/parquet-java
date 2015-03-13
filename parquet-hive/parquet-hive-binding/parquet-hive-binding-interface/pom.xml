@@ -21,7 +21,7 @@
     <groupId>com.twitter</groupId>
     <artifactId>parquet-hive-binding</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.6.0rc7</version>
+    <version>1.6.0rc8-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
