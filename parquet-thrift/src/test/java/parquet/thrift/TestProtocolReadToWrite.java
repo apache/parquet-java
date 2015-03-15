@@ -41,6 +41,7 @@ import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TestProtocolReadToWrite {
 
@@ -118,12 +119,43 @@ public class TestProtocolReadToWrite {
             ByteBuffer.wrap("a".getBytes()), new ArrayList<Byte>(), new ArrayList<Short>(), new ArrayList<Long>());
     a.write(protocol(in));
     try {
-    p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
+      p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
+      fail("this should throw");
     } catch (SkippableException e) {
       Throwable cause = e.getCause();
       assertTrue(cause instanceof DecodingSchemaMismatchException);
       assertTrue(cause.getMessage().contains("the data type does not match the expected thrift structure"));
       assertTrue(cause.getMessage().contains("got BOOL"));
+    }
+    assertEquals(0, countingHandler.recordCountOfMissingFields);
+    assertEquals(0, countingHandler.fieldIgnoredCount);
+  }
+
+  @Test
+  public void testUnrecognizedUnionMemberSchema() throws Exception {
+    CountingErrorHandler countingHandler = new CountingErrorHandler();
+    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructWithUnionV1.class), countingHandler);
+    final ByteArrayOutputStream in = new ByteArrayOutputStream();
+    final ByteArrayOutputStream out = new ByteArrayOutputStream();
+    StructWithUnionV1 validUnion = new StructWithUnionV1("a valid struct", UnionV1.aLong(new ALong(17L)));
+    StructWithUnionV2 invalidUnion = new StructWithUnionV2("a struct with new union member",
+        UnionV2.aNewBool(new ABool(true)));
+
+    validUnion.write(protocol(in));
+    invalidUnion.write(protocol(in));
+
+    ByteArrayInputStream baos = new ByteArrayInputStream(in.toByteArray());
+
+    // first one should not throw
+    p.readOne(protocol(baos), protocol(out));
+
+    try {
+      p.readOne(protocol(baos), protocol(out));
+      fail("this should throw");
+    } catch (SkippableException e) {
+      Throwable cause = e.getCause();
+      assertEquals(DecodingSchemaMismatchException.class, cause.getClass());
+      assertTrue(cause.getMessage().startsWith("Unrecognized union member with id: 3 for struct:"));
     }
     assertEquals(0, countingHandler.recordCountOfMissingFields);
     assertEquals(0, countingHandler.fieldIgnoredCount);
@@ -144,11 +176,18 @@ public class TestProtocolReadToWrite {
     StructWithMoreEnum extraEnumDefinedInNewDefinition = new StructWithMoreEnum(NumberEnumWithMoreValue.FOUR);
     enumDefinedInOldDefinition.write(protocol(in));
     extraEnumDefinedInNewDefinition.write(protocol(in));
+
+    ByteArrayInputStream baos = new ByteArrayInputStream(in.toByteArray());
+
+    // first should not throw
+    p.readOne(protocol(baos), protocol(out));
+
     try {
-      p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
+      p.readOne(protocol(baos), protocol(out));
+      fail("this should throw");
     } catch (SkippableException e) {
       Throwable cause = e.getCause();
-      assertTrue(cause instanceof DecodingSchemaMismatchException);
+      assertEquals(DecodingSchemaMismatchException.class, cause.getClass());
       assertTrue(cause.getMessage().contains("can not find index 4 in enum"));
     }
     assertEquals(0, countingHandler.recordCountOfMissingFields);

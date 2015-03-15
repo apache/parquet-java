@@ -115,3 +115,36 @@ struct ListStructV1{
 struct ListStructV2{
   1: required list<StructV2> list1
 }
+
+struct AString {
+  1: required string s
+}
+
+struct ALong {
+  1: required i64 l
+}
+
+struct ABool {
+  1: required bool b
+}
+
+union UnionV1 {
+  1: AString aString,
+  2: ALong aLong
+}
+
+union UnionV2 {
+  1: AString aString,
+  2: ALong aLong,
+  3: ABool aNewBool
+}
+
+struct StructWithUnionV1 {  
+  1: required string name,
+  2: required UnionV1 aUnion
+}
+
+struct StructWithUnionV2 {  
+  1: required string name,
+  2: required UnionV2 aUnion
+}
