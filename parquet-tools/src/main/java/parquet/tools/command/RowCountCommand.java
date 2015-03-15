@@ -21,6 +21,9 @@ package parquet.tools.command;
 import java.io.PrintWriter;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Options;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
@@ -31,7 +34,7 @@ import parquet.hadoop.metadata.BlockMetaData;
 import parquet.tools.Main;
 
 public class RowCountCommand extends ArgsOnlyCommand {
-  private FileStatus inputFileStatus;
+  private FileStatus[] inputFileStatuses;
   private Configuration conf;
   private Path inputPath;
   private PrintWriter out;
@@ -40,11 +43,25 @@ public class RowCountCommand extends ArgsOnlyCommand {
     "where <input> is the parquet file to count rows to stdout"
   };
   
+  public static final Options OPTIONS;
+  static {
+    OPTIONS = new Options();
+    Option detailed = OptionBuilder.withLongOpt("detailed")
+                                   .withDescription("Detailed rowcount of each matching file")
+                                   .create('d');
+    OPTIONS.addOption(detailed);
+  }
+  
   public RowCountCommand() {
     super(1, 1);
   }
 
-  @Override
+ @Override
+  public Options getOptions() {
+    return OPTIONS;
+  }
+  
+ @Override
   public String[] getUsageDescription() {
     return USAGE;
   }
@@ -58,15 +75,23 @@ public class RowCountCommand extends ArgsOnlyCommand {
     out = new PrintWriter(Main.out, true);
     inputPath = new Path(input);
     conf = new Configuration();
-    inputFileStatus = inputPath.getFileSystem(conf).getFileStatus(inputPath);
+    inputFileStatuses = inputPath.getFileSystem(conf).globStatus(inputPath);
     long rowCount = 0;
         
-    for(Footer f : ParquetFileReader.readFooters(conf, inputFileStatus, false)){
-      for(BlockMetaData b : f.getParquetMetadata().getBlocks()){
-        rowCount += b.getRowCount();        
+    for(FileStatus fs : inputFileStatuses){
+      long fileRowCount=0;
+      for(Footer f : ParquetFileReader.readFooters(conf, fs, false)){
+        for(BlockMetaData b : f.getParquetMetadata().getBlocks()){
+          rowCount += b.getRowCount();
+          fileRowCount += b.getRowCount();
+        }
       }
+      if(options.hasOption('d')){
+        out.format("%s row count: %d\n", fs.getPath().getName(), fileRowCount);
+      }     
     }
-    out.format("RowCount: %d", rowCount);
+    
+    out.format("Total RowCount: %d", rowCount);
     out.println();
   }
 }
