@@ -20,6 +20,13 @@ package parquet.glob;
 
 import java.util.List;
 
+/**
+ * A GlobNode represents a tree structure for describing a parsed glob pattern.
+ *
+ * GlobNode uses the visitor pattern for tree traversal.
+ *
+ * See {@link parquet.Strings#expandGlob(String)}
+ */
 interface GlobNode {
   <R> R accept(Visitor<R> visitor);
 
@@ -29,7 +36,14 @@ interface GlobNode {
     T visit(GlobNodeSequence seq);
   }
 
-  // just wraps a string, the base case in a glob pattern
+  /**
+   * An Atom is just a String, it's a concrete String that is either part
+   * of the top-level pattern, or one of the choices in a OneOf clause, or an
+   * element in a GlobNodeSequence. In this sense it's the base case or leaf node
+   * of a GlobNode tree.
+   *
+   * For example, in pre{x,y{a,b}}post pre, x, y, z, b, and post are all Atoms.
+   */
   static class Atom implements GlobNode {
     private final String s;
 
@@ -63,8 +77,12 @@ interface GlobNode {
     }
   }
 
-  // represents a {} group in a glob pattern, which
-  // essentially means "one of the nodes in this group"
+  /**
+   * A OneOf represents a {} clause in a glob pattern, which means
+   * "one of the elements of this set must be satisfied", for example:
+   * in pre{x,y} {x,y} is a OneOf, and in  or pre{x, {a,b}}post both {x, {a,b}}
+   * and {a,b} are OneOfs.
+   */
   static class OneOf implements GlobNode {
     private final List<GlobNode> children;
 
@@ -98,11 +116,12 @@ interface GlobNode {
     }
   }
 
-  // A glob pattern is parsed into a GlobNodeSequence, an
-  // ordered collection of GlobNodes. While this class looks
-  // a lot like OneOf, it is logically interpreted differently.
-  // A GlobNodeSequence doesn't represent one of many choices,
-  // it represents many choices that come one after the other.
+  /**
+   * A GlobNodeSequence is an ordered collection of GlobNodes that must be satisfied in order,
+   * and represents structures like pre{x,y}post or {x,y}{a,b}. In {test, pre{x,y}post}, pre{x,y}post is a
+   * GlobNodeSequence. Unlike a OneOf, GlobNodeSequence's children have an ordering that is meaningful and
+   * the requirements of its children must each be satisfied.
+   */
   static class GlobNodeSequence implements GlobNode {
     private final List<GlobNode> children;
 

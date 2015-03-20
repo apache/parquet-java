@@ -31,6 +31,8 @@ final class GlobParser {
 
   /**
    * Parse a String into a {@link GlobNodeSequence}
+   *
+   * See {@link parquet.Strings#expandGlob(String)}
    */
   public static GlobNodeSequence parse(String pattern) {
     /*
