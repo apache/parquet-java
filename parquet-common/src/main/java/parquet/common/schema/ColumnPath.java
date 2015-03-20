@@ -22,6 +22,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Iterator;
 
+import parquet.Strings;
 import parquet.common.internal.Canonicalizer;
 
 import static parquet.Preconditions.checkNotNull;
@@ -68,15 +69,7 @@ public final class ColumnPath implements Iterable<String>, Serializable {
   }
 
   public String toDotString() {
-    Iterator<String> iter = Arrays.asList(p).iterator();
-    StringBuilder sb = new StringBuilder();
-    while (iter.hasNext()) {
-      sb.append(iter.next());
-      if (iter.hasNext()) {
-        sb.append('.');
-      }
-    }
-    return sb.toString();
+    return Strings.join(p, ".");
   }
 
   @Override

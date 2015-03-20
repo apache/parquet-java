@@ -35,6 +35,7 @@ import static parquet.schema.Types.primitive;
 import java.util.ArrayList;
 import java.util.List;
 
+import parquet.Preconditions;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
@@ -49,25 +50,21 @@ import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
 
 /**
- * Visitor Class for converting a thrift definiton to parquet message type.
+ * Visitor Class for converting a thrift definition to parquet message type.
  * Projection can be done by providing a {@link FieldProjectionFilter}
  *
  * @author Tianshuo Deng
  */
 public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
+  private final FieldProjectionFilter fieldProjectionFilter;
+  private final FieldsPath currentFieldPath = new FieldsPath();
 
-  public FieldProjectionFilter getFieldProjectionFilter() {
-    return fieldProjectionFilter;
-  }
-
-  FieldProjectionFilter fieldProjectionFilter;
-  Type currentType;
-  FieldsPath currentFieldPath = new FieldsPath();
-  Type.Repetition currentRepetition = Type.Repetition.REPEATED;//MessageType is repeated GroupType
-  String currentName = "ParquetSchema";
+  private Type currentType;
+  private Type.Repetition currentRepetition = Type.Repetition.REPEATED; // MessageType is repeated GroupType
+  private String currentName = "ParquetSchema"; // TODO: why?
 
   public ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter) {
-    this.fieldProjectionFilter = fieldProjectionFilter;
+    this.fieldProjectionFilter = Preconditions.checkNotNull(fieldProjectionFilter, "fieldProjectionFilter");
   }
 
   @Override
@@ -90,7 +87,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
     //=========handle value
     currentFieldPath.push(mapValueField);
     currentName = "value";
-    currentRepetition = OPTIONAL;
+    currentRepetition = OPTIONAL; // TODO: why?
     mapValueField.getType().accept(this);
     Type valueType = currentType;
     currentFieldPath.pop();
@@ -100,6 +97,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
       return;
     }
 
+    // TODO: this can never happen
     if (keyType == null && valueType != null)
       throw new ThriftProjectionException("key of map is not specified in projection: " + currentFieldPath);
 
@@ -120,9 +118,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
     currentRepetition = REPEATED;
     setElemField.getType().accept(this);
     //after conversion, currentType is the nested type
-    if (currentType == null) {
-      return;
-    } else {
+    if (currentType != null) {
       currentType = listType(setRepetition, setName, currentType);
     }
   }
@@ -136,12 +132,9 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
     currentRepetition = REPEATED;
     setElemField.getType().accept(this);
     //after conversion, currentType is the nested type
-    if (currentType == null) {
-      return;
-    } else {
+    if (currentType != null) {
       currentType = listType(listRepetition, listName, currentType);
     }
-
   }
 
   public MessageType getConvertedMessageType() {
@@ -173,10 +166,8 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
 
   private List<Type> getFieldsTypes(List<ThriftField> fields) {
     List<Type> types = new ArrayList<Type>();
-    for (int i = 0; i < fields.size(); i++) {
-      ThriftField field = fields.get(i);
-      Type.Repetition rep = getRepetition(field);
-      currentRepetition = rep;
+    for (ThriftField field : fields) {
+      currentRepetition = getRepetition(field);
       currentName = field.getName();
       currentFieldPath.push(field);
       field.getType().accept(this);
@@ -190,7 +181,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
   }
 
   private boolean isCurrentlyMatchedFilter(){
-     if(!fieldProjectionFilter.isMatched(currentFieldPath)){
+     if(!fieldProjectionFilter.matches(currentFieldPath)){
        currentType = null;
        return false;
      }

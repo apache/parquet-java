@@ -27,7 +27,7 @@ import org.junit.Test;
 
 import parquet.schema.MessageType;
 import parquet.schema.MessageTypeParser;
-import parquet.thrift.projection.FieldProjectionFilter;
+import parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter;
 import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftType;
 import parquet.thrift.struct.ThriftType.StructType;
@@ -207,11 +207,11 @@ public class TestThriftSchemaConverter {
   private void shouldThrowWhenProjectionFilterMatchesNothing(String filters, String unmatchedFilter, Class<? extends TBase<?, ?>> thriftClass) {
     try {
       getFilteredSchema(filters, thriftClass);
+      fail("should throw projection exception when filter matches nothing");
     } catch (ThriftProjectionException e) {
-      assertEquals("unmatched projection filters: [" + unmatchedFilter + "]", e.getMessage());
-      return;
+      assertEquals("The following projection patterns did not match any columns in this schema:\n"
+          + unmatchedFilter + "\n", e.getMessage());
     }
-    fail("should throw projection exception when filter matches nothing");
   }
 
   @Test
@@ -220,7 +220,7 @@ public class TestThriftSchemaConverter {
     shouldThrowWhenProjectionFilterMatchesNothing("name;non_existing", "non_existing", TestStructInMap.class);
     shouldThrowWhenProjectionFilterMatchesNothing("**;non_existing", "non_existing", TestStructInMap.class);
     shouldThrowWhenProjectionFilterMatchesNothing("**;names/non_existing", "names/non_existing", TestStructInMap.class);
-    shouldThrowWhenProjectionFilterMatchesNothing("**;names/non_existing;non_existing", "names/non_existing, non_existing", TestStructInMap.class);
+    shouldThrowWhenProjectionFilterMatchesNothing("**;names/non_existing;non_existing", "names/non_existing\nnon_existing", TestStructInMap.class);
   }
 
   @Test(expected = ThriftProjectionException.class)
@@ -235,7 +235,7 @@ public class TestThriftSchemaConverter {
   }
 
   private MessageType getFilteredSchema(String filterDesc, Class<? extends TBase<?,?>> thriftClass) {
-    FieldProjectionFilter fieldProjectionFilter = new FieldProjectionFilter(filterDesc);
+    DeprecatedFieldProjectionFilter fieldProjectionFilter = new DeprecatedFieldProjectionFilter(filterDesc);
     return new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftClass);
   }
 

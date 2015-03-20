@@ -16,21 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.thrift.projection;
 
-public interface FieldProjectionFilter {
-  boolean matches(FieldsPath path);
-  void assertNoUnmatchedPatterns() throws ThriftProjectionException;
+package parquet;
 
-  public static final FieldProjectionFilter ALL_COLUMNS = new FieldProjectionFilter() {
-    @Override
-    public boolean matches(FieldsPath path) {
-      return true;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+
+import parquet.glob.GlobExpander;
+
+public final class Strings {
+  private Strings() { }
+
+  public static String join(Iterable<String> s, String on) {
+    Iterator<String> iter = s.iterator();
+    StringBuilder sb = new StringBuilder();
+    while (iter.hasNext()) {
+      sb.append(iter.next());
+      if (iter.hasNext()) {
+        sb.append(on);
+      }
     }
+    return sb.toString();
+  }
 
-    @Override
-    public void assertNoUnmatchedPatterns() throws ThriftProjectionException {
+  public static String join(String[] s, String on) {
+    return join(Arrays.asList(s), on);
+  }
 
-    }
-  };
+  public static List<String> expandGlob(String globPattern) {
+    return GlobExpander.expand(globPattern);
+  }
+
+  public boolean isNullOrEmpty(String s) {
+    return s == null || s.isEmpty();
+  }
+
 }
