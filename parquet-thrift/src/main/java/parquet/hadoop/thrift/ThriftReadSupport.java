@@ -22,14 +22,13 @@ import java.lang.reflect.Constructor;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.common.base.Strings;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.thrift.TBase;
 import org.apache.thrift.protocol.TProtocol;
 
 import parquet.Log;
+import parquet.Strings;
 import parquet.hadoop.api.InitContext;
 import parquet.hadoop.api.ReadSupport;
 import parquet.io.ParquetDecodingException;
