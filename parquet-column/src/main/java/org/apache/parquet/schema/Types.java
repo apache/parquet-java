@@ -289,8 +289,8 @@ public class Types {
         // if the parent is a BaseGroupBuilder, add type to it
         if (BaseGroupBuilder.class.isAssignableFrom(parent.getClass())) {
           BaseGroupBuilder.class.cast(parent).addField(type);
-        } else if (parent instanceof ListBuilder) {
-          ((ListBuilder) parent).elementType = type;
+        } else if (parent instanceof BaseListBuilder) {
+          ((BaseListBuilder) parent).elementType = type;
         }
         return parent;
       } else {
@@ -302,12 +302,6 @@ public class Types {
 
   }
 
-  /**
-   * A builder for {@link PrimitiveType} objects.
-   *
-   * @param <P> The type that this builder will return from
-   *          {@link #named(String)} when the type is built.
-   */
   public abstract static class BasePrimitiveBuilder<P,
       Q extends BasePrimitiveBuilder<P, Q>> extends Builder<Q, P> {
     private static final long MAX_PRECISION_INT32 = maxPrecision(4);
@@ -679,54 +673,58 @@ public class Types {
     }
   }
 
-  public static class MapBuilder<P> extends Builder<MapBuilder<P>, P> {
+  public abstract static class BaseMapBuilder<P, Q extends BaseMapBuilder<P, Q>> extends
+      Builder<Q, P> {
     private static final Type STRING_KEY = Types
         .required(PrimitiveTypeName.BINARY).as(OriginalType.UTF8).named("key");
 
-    public static class MapKeyBuilder<P> extends BasePrimitiveBuilder<P, MapKeyBuilder<P>> {
-      private MapBuilder<P> parent = null;
+    public static class MapKeyBuilder<P, Q extends BaseMapBuilder<P, Q>> extends
+        BasePrimitiveBuilder<P,
+        MapKeyBuilder<P, Q>> {
+      private BaseMapBuilder<P, Q> parent = null;
 
-      public MapKeyBuilder(MapBuilder<P> parent, PrimitiveTypeName type) {
+      public MapKeyBuilder(BaseMapBuilder<P, Q> parent, PrimitiveTypeName type) {
         super(parent.parent, type);
         this.parent = parent;
         repetition(Type.Repetition.REQUIRED);
       }
 
-      public MapKeyBuilder(MapBuilder<P> parent, Class<P> returnType, PrimitiveTypeName type) {
+      public MapKeyBuilder(BaseMapBuilder<P, Q> parent, Class<P> returnType,
+                           PrimitiveTypeName type) {
         super(returnType, type);
         this.parent = parent;
         repetition(Type.Repetition.REQUIRED);
       }
 
-      public MapValueBuilder<P> value(PrimitiveTypeName type, Type.Repetition repetition) {
+      public MapValueBuilder<P, Q> value(PrimitiveTypeName type, Type.Repetition repetition) {
         parent.setKeyType(build("key"));
         if (parent.parent != null) {
-          return new MapValueBuilder<P>(parent,
+          return new MapValueBuilder<P, Q>(parent,
               type).repetition(repetition);
         } else {
-          return new MapValueBuilder<P>(parent,
+          return new MapValueBuilder<P, Q>(parent,
               parent.returnType, type).repetition(repetition);
         }
       }
 
-      public MapValueBuilder<P> requiredValue(PrimitiveTypeName type) {
+      public MapValueBuilder<P, Q> requiredValue(PrimitiveTypeName type) {
         return value(type, Type.Repetition.REQUIRED);
       }
 
-      public MapValueBuilder<P> optionalValue(PrimitiveTypeName type) {
+      public MapValueBuilder<P, Q> optionalValue(PrimitiveTypeName type) {
         return value(type, Type.Repetition.OPTIONAL);
       }
 
-      public MapGroupValueBuilder<P> groupValue(Type.Repetition repetition) {
-        ((MapBuilder)parent).setKeyType(build("key"));
-        return new MapGroupValueBuilder<P>(parent).repetition(repetition);
+      public MapGroupValueBuilder<P, Q> groupValue(Type.Repetition repetition) {
+        parent.setKeyType(build("key"));
+        return new MapGroupValueBuilder<P, Q>(parent).repetition(repetition);
       }
 
-      public MapGroupValueBuilder<P> requiredGroupValue() {
+      public MapGroupValueBuilder<P, Q> requiredGroupValue() {
         return groupValue(Type.Repetition.REQUIRED);
       }
 
-      public MapGroupValueBuilder<P> optionalGroupValue() {
+      public MapGroupValueBuilder<P, Q> optionalGroupValue() {
         return groupValue(Type.Repetition.OPTIONAL);
       }
 
@@ -736,20 +734,22 @@ public class Types {
       }
 
       @Override
-      protected MapKeyBuilder<P> self() {
+      protected MapKeyBuilder<P, Q> self() {
         return this;
       }
     }
 
-    public static class MapValueBuilder<P> extends BasePrimitiveBuilder<P, MapValueBuilder<P>> {
-      private final MapBuilder<P> parent;
+    public static class MapValueBuilder<P, Q extends BaseMapBuilder<P, Q>> extends
+        BasePrimitiveBuilder<P, MapValueBuilder<P, Q>> {
+      private final BaseMapBuilder<P, Q> parent;
 
-      public MapValueBuilder(MapBuilder<P> parent, PrimitiveTypeName type) {
+      public MapValueBuilder(BaseMapBuilder<P, Q> parent, PrimitiveTypeName type) {
         super(parent.parent, type);
         this.parent = parent;
       }
 
-      public MapValueBuilder(MapBuilder<P> parent, Class<P> returnType, PrimitiveTypeName type) {
+      public MapValueBuilder(BaseMapBuilder<P, Q> parent, Class<P> returnType,
+                             PrimitiveTypeName type) {
         super(returnType, type);
         this.parent = parent;
       }
@@ -760,64 +760,64 @@ public class Types {
       }
 
       @Override
-      protected MapValueBuilder<P> self() {
+      protected MapValueBuilder<P, Q> self() {
         return this;
       }
     }
 
-    public static class MapGroupKeyBuilder<P> extends BaseGroupBuilder<P,
-        MapGroupKeyBuilder<P>> {
-      private final MapBuilder<P> parent;
+    public static class MapGroupKeyBuilder<P, Q extends BaseMapBuilder<P, Q>> extends
+        BaseGroupBuilder<P, MapGroupKeyBuilder<P, Q>> {
+      private final BaseMapBuilder<P, Q> parent;
 
-      public MapGroupKeyBuilder(MapBuilder<P> parent) {
+      public MapGroupKeyBuilder(BaseMapBuilder<P, Q> parent) {
         super(parent.parent);
         this.parent = parent;
         repetition(Type.Repetition.REQUIRED);
       }
 
       @Override
-      protected MapGroupKeyBuilder<P> self() {
+      protected MapGroupKeyBuilder<P, Q> self() {
         return this;
       }
 
-      public MapValueBuilder<P> value(PrimitiveTypeName type, Type.Repetition repetition) {
+      public MapValueBuilder<P, Q> value(PrimitiveTypeName type, Type.Repetition repetition) {
         parent.setKeyType(build("key"));
         if (parent.parent != null) {
-          return new MapValueBuilder<P>(parent,
+          return new MapValueBuilder<P, Q>(parent,
               type).repetition(repetition);
         } else {
-          return new MapValueBuilder<P>(parent,
+          return new MapValueBuilder<P, Q>(parent,
               parent.returnType, type).repetition(repetition);
         }
       }
 
-      public MapValueBuilder<P> requiredValue(PrimitiveTypeName type) {
+      public MapValueBuilder<P, Q> requiredValue(PrimitiveTypeName type) {
         return value(type, Type.Repetition.REQUIRED);
       }
 
-      public MapValueBuilder<P> optionalValue(PrimitiveTypeName type) {
+      public MapValueBuilder<P, Q> optionalValue(PrimitiveTypeName type) {
         return value(type, Type.Repetition.OPTIONAL);
       }
 
-      public MapGroupValueBuilder<P> value(Type.Repetition repetition) {
-        ((MapBuilder)parent).setKeyType(build("key"));
-        return new MapGroupValueBuilder<P>(parent).repetition(repetition);
+      public MapGroupValueBuilder<P, Q> value(Type.Repetition repetition) {
+        parent.setKeyType(build("key"));
+        return new MapGroupValueBuilder<P, Q>(parent).repetition(repetition);
       }
 
-      public MapGroupValueBuilder<P> requiredGroupValue() {
+      public MapGroupValueBuilder<P, Q> requiredGroupValue() {
         return value(Type.Repetition.REQUIRED);
       }
 
-      public MapGroupValueBuilder<P> optionalGroupValue() {
+      public MapGroupValueBuilder<P, Q> optionalGroupValue() {
         return value(Type.Repetition.OPTIONAL);
       }
     }
 
-    public static class MapGroupValueBuilder<P> extends BaseGroupBuilder<P,
-        MapGroupValueBuilder<P>> {
-      private final MapBuilder<P> parent;
+    public static class MapGroupValueBuilder<P, Q extends BaseMapBuilder<P, Q>> extends
+        BaseGroupBuilder<P, MapGroupValueBuilder<P, Q>> {
+      private final BaseMapBuilder<P, Q> parent;
 
-      public MapGroupValueBuilder(MapBuilder<P> parent) {
+      public MapGroupValueBuilder(BaseMapBuilder<P, Q> parent) {
         super(parent.parent);
         this.parent = parent;
       }
@@ -828,7 +828,7 @@ public class Types {
       }
 
       @Override
-      protected MapGroupValueBuilder<P> self() {
+      protected MapGroupValueBuilder<P, Q> self() {
         return this;
       }
     }
@@ -845,30 +845,28 @@ public class Types {
     private Type valueType = null;
     private Class<P> returnType = null;
 
-    public MapBuilder(P parent) {
+    public BaseMapBuilder(P parent) {
       super(parent);
     }
 
-    private MapBuilder(Class<P> returnType) {
+    private BaseMapBuilder(Class<P> returnType) {
       super(returnType);
       this.returnType = returnType;
     }
 
     @Override
-    protected MapBuilder<P> self() {
-      return this;
-    }
+    protected abstract Q self();
 
-    public MapKeyBuilder<P> key(PrimitiveTypeName type) {
+    public MapKeyBuilder<P, Q> key(PrimitiveTypeName type) {
       if (parent != null) {
-        return new MapKeyBuilder<P>(this, type);
+        return new MapKeyBuilder<P, Q>(this, type);
       } else {
-        return new MapKeyBuilder<P>(this, returnType, type);
+        return new MapKeyBuilder<P, Q>(this, returnType, type);
       }
     }
 
-    public MapGroupKeyBuilder<P> groupKey() {
-      return new MapGroupKeyBuilder<P>(this);
+    public MapGroupKeyBuilder<P, Q> groupKey() {
+      return new MapGroupKeyBuilder<P, Q>(this);
     }
 
     @Override
@@ -879,8 +877,8 @@ public class Types {
       return buildGroup(repetition)
           .as(OriginalType.MAP)
           .repeatedGroup()
-              .addFields(keyType, valueType)
-              .named("map")
+          .addFields(keyType, valueType)
+          .named("map")
           .named(name);
     }
 
@@ -891,9 +889,249 @@ public class Types {
     }
   }
 
-  public static class ListBuilder<P> extends Builder<ListBuilder<P>, P> {
-    private Type elementType = null;
+  public static class MapBuilder<P> extends BaseMapBuilder<P, MapBuilder<P>> {
+    public MapBuilder(P parent) {
+      super(parent);
+    }
 
+    private MapBuilder(Class<P> returnType) {
+      super(returnType);
+    }
+
+    @Override
+    protected MapBuilder<P> self() {
+      return this;
+    }
+  }
+
+  public abstract static class BaseListBuilder<P, Q extends BaseListBuilder<P, Q>> extends
+      Builder<Q, P> {
+    private Type elementType = null;
+    private P parent;
+    private Class<P> returnType;
+
+    public BaseListBuilder(P parent) {
+      super(parent);
+      this.parent = parent;
+    }
+
+    public BaseListBuilder(Class<P> returnType) {
+      super(returnType);
+      this.returnType = returnType;
+    }
+
+    public void setElementType(Type elementType) {
+      this.elementType = elementType;
+    }
+
+
+    public static class ListElementBuilder<P, Q extends BaseListBuilder<P, Q>> extends
+        BasePrimitiveBuilder<P,
+        ListElementBuilder<P, Q>> {
+      private final BaseListBuilder<P, Q> parent;
+
+      public ListElementBuilder(BaseListBuilder<P, Q> parent, PrimitiveTypeName type) {
+        super(parent.parent, type);
+        this.parent = parent;
+      }
+
+      public ListElementBuilder(BaseListBuilder<P, Q> parent, Class<P> returnType, PrimitiveTypeName type) {
+        super(returnType, type);
+        this.parent = parent;
+      }
+
+      public P named(String name) {
+        parent.setElementType(build("element"));
+        return parent.named(name);
+      }
+
+      @Override
+      protected ListElementBuilder<P, Q> self() {
+        return this;
+      }
+    }
+
+    public static class ListGroupElementBuilder<P, Q extends BaseListBuilder<P, Q>> extends
+        BaseGroupBuilder<P, ListGroupElementBuilder<P, Q>> {
+      private final BaseListBuilder<P, Q> parent;
+
+      public ListGroupElementBuilder(BaseListBuilder<P, Q> parent) {
+        super(parent.parent);
+        this.parent = parent;
+      }
+
+      public ListGroupElementBuilder(BaseListBuilder<P, Q> parent, Class<P> returnType) {
+        super(returnType);
+        this.parent = parent;
+      }
+
+      public P named(String name) {
+        parent.setElementType(build("element"));
+        return parent.named(name);
+      }
+
+      @Override
+      protected ListGroupElementBuilder<P, Q> self() {
+        return this;
+      }
+    }
+
+    public static class ListMapElementBuilder<P, Q extends BaseListBuilder<P, Q>> extends BaseMapBuilder<P,
+        ListMapElementBuilder<P, Q>> {
+
+      BaseListBuilder<P, Q> parent;
+
+      public ListMapElementBuilder(BaseListBuilder<P, Q> parent) {
+        super(parent.parent);
+        this.parent = parent;
+      }
+
+      public ListMapElementBuilder(BaseListBuilder<P, Q> parent, Class<P> returnType) {
+        super(returnType);
+        this.parent = parent;
+      }
+
+      @Override
+      protected ListMapElementBuilder<P, Q> self() {
+        return this;
+      }
+
+      @Override
+      protected Type build(String name) {
+        parent.setElementType(super.build("element"));
+        return parent.build(name);
+      }
+    }
+
+    public static class ListListElementBuilder<P, Q extends BaseListBuilder<P, Q>> extends
+        BaseListBuilder<P, ListListElementBuilder<P, Q>> {
+
+      BaseListBuilder<P, Q> parent;
+
+      public ListListElementBuilder(BaseListBuilder<P, Q> parent) {
+        super(parent.parent);
+        this.parent = parent;
+      }
+
+      public ListListElementBuilder(BaseListBuilder<P, Q> parent, Class<P> returnType) {
+        super(returnType);
+        this.parent = parent;
+      }
+
+      @Override
+      protected ListListElementBuilder<P, Q> self() {
+        return this;
+      }
+
+      @Override
+      protected Type build(String name) {
+        parent.setElementType(super.build("element"));
+        return parent.build(name);
+      }
+    }
+
+    @Override
+    protected abstract Q self();
+
+    @Override
+    protected Type build(String name) {
+      Preconditions.checkNotNull(elementType, "List element type");
+      return buildGroup(repetition)
+          .as(OriginalType.LIST)
+          .repeatedGroup()
+          .addFields(elementType)
+          .named("list")
+          .named(name);
+    }
+
+    public P named(String name) {
+      Preconditions.checkState(originalType == null,
+          "LIST is already the logical type and can't be changed");
+      return super.named(name);
+    }
+
+    public ListGroupElementBuilder<P, Q> groupElement(Type.Repetition repetition) {
+      Preconditions
+          .checkState(elementType == null, "groupElement can be called just once on a ListBuilder");
+      if (parent != null) {
+        return new ListGroupElementBuilder<P, Q>(this).repetition
+            (repetition);
+      } else {
+        return new ListGroupElementBuilder<P, Q>(this, returnType).repetition
+            (repetition);
+      }
+    }
+
+    public ListGroupElementBuilder<P, Q> requiredGroupElement() {
+      return groupElement(Type.Repetition.REQUIRED);
+    }
+
+    public ListGroupElementBuilder<P, Q> optionalGroupElement() {
+      return groupElement(Type.Repetition.OPTIONAL);
+    }
+
+    public ListElementBuilder<P, Q> requiredElement(PrimitiveTypeName type) {
+      Preconditions
+          .checkState(elementType == null, "groupElement can be called just once on a ListBuilder");
+      if (parent != null) {
+        return new ListElementBuilder<P, Q>(this, type)
+            .repetition(Type.Repetition.REQUIRED);
+      } else {
+        return new ListElementBuilder<P, Q>(this, returnType, type)
+            .repetition(Type.Repetition.REQUIRED);
+      }
+    }
+
+    public ListElementBuilder<P, Q> optionalElement(PrimitiveTypeName type) {
+      Preconditions
+          .checkState(elementType == null, "groupElement can be called just once on a ListBuilder");
+      if (parent != null) {
+        return new ListElementBuilder<P, Q>(this, type)
+            .repetition(Type.Repetition.OPTIONAL);
+      } else {
+        return new ListElementBuilder<P, Q>(this, returnType, type)
+            .repetition(Type.Repetition.OPTIONAL);
+      }
+    }
+
+    public ListListElementBuilder<P, Q> listElement(Type.Repetition repetition) {
+      Preconditions
+          .checkState(elementType == null, "groupElement can be called just once on a ListBuilder");
+      if (parent != null) {
+        return new ListListElementBuilder<P, Q>(this).repetition(repetition);
+      } else {
+        return new ListListElementBuilder<P, Q>(this, returnType).repetition(repetition);
+      }
+    }
+
+    public ListListElementBuilder<P, Q> requiredListElement() {
+      return listElement(Type.Repetition.REQUIRED);
+    }
+
+    public ListListElementBuilder<P, Q> optionalListElement() {
+      return listElement(Type.Repetition.OPTIONAL);
+    }
+
+    public ListMapElementBuilder<P, Q> mapElement(Type.Repetition repetition) {
+      Preconditions
+          .checkState(elementType == null, "groupElement can be called just once on a ListBuilder");
+      if (parent != null) {
+        return new ListMapElementBuilder<P, Q>(this).repetition(repetition);
+      } else {
+        return new ListMapElementBuilder<P, Q>(this, returnType).repetition(repetition);
+      }
+    }
+
+    public ListMapElementBuilder<P, Q> requiredMapElement() {
+      return mapElement(Type.Repetition.REQUIRED);
+    }
+
+    public ListMapElementBuilder<P, Q> optionalMapElement() {
+      return mapElement(Type.Repetition.OPTIONAL);
+    }
+  }
+
+  public static class ListBuilder<P> extends BaseListBuilder<P, ListBuilder<P>> {
     public ListBuilder(P parent) {
       super(parent);
     }
@@ -905,80 +1143,6 @@ public class Types {
     @Override
     protected ListBuilder<P> self() {
       return this;
-    }
-
-    @Override
-    protected Type build(String name) {
-      Preconditions.checkNotNull(elementType, "List element type");
-      return buildGroup(repetition)
-          .as(OriginalType.LIST)
-          .repeatedGroup()
-              .addFields(elementType)
-              .named("list")
-          .named(name);
-    }
-
-    public P named(String name) {
-      Preconditions.checkState(originalType == null,
-          "LIST is already the logical type and can't be changed");
-      return super.named(name);
-    }
-
-    public GroupBuilder<ListBuilder<P>> groupElement(Type.Repetition repetition) {
-      Preconditions
-          .checkState(elementType == null, "groupElement can be called just once on a ListBuilder");
-      return new GroupBuilder<ListBuilder<P>>(this).repetition
-          (repetition);
-    }
-
-    public GroupBuilder<ListBuilder<P>> requiredGroupElement() {
-      return groupElement(Type.Repetition.REQUIRED);
-    }
-
-    public GroupBuilder<ListBuilder<P>> optionalGroupElement() {
-      return groupElement(Type.Repetition.OPTIONAL);
-    }
-
-    public PrimitiveBuilder<ListBuilder<P>> requiredElement(PrimitiveTypeName type) {
-      Preconditions
-          .checkState(elementType == null, "groupElement can be called just once on a ListBuilder");
-      return new PrimitiveBuilder<ListBuilder<P>>(this, type)
-          .repetition(Type.Repetition.REQUIRED);
-    }
-
-    public PrimitiveBuilder<ListBuilder<P>> optionalElement(PrimitiveTypeName type) {
-      Preconditions
-          .checkState(elementType == null, "groupElement can be called just once on a ListBuilder");
-      return new PrimitiveBuilder<ListBuilder<P>>(this, type)
-          .repetition(Type.Repetition.OPTIONAL);
-    }
-
-    public ListBuilder<ListBuilder<P>> listElement(Type.Repetition repetition) {
-      Preconditions
-          .checkState(elementType == null, "groupElement can be called just once on a ListBuilder");
-      return new ListBuilder<ListBuilder<P>>(this).repetition(repetition);
-    }
-
-    public ListBuilder<ListBuilder<P>> requiredListElement() {
-      return listElement(Type.Repetition.REQUIRED);
-    }
-
-    public ListBuilder<ListBuilder<P>> optionalListElement() {
-      return listElement(Type.Repetition.OPTIONAL);
-    }
-
-    public MapBuilder<ListBuilder<P>> mapElement(Type.Repetition repetition) {
-      Preconditions
-          .checkState(elementType == null, "groupElement can be called just once on a ListBuilder");
-      return new MapBuilder<ListBuilder<P>>(this).repetition(repetition);
-    }
-
-    public MapBuilder<ListBuilder<P>> requiredMapElement() {
-      return mapElement(Type.Repetition.REQUIRED);
-    }
-
-    public MapBuilder<ListBuilder<P>> optionalMapElement() {
-      return mapElement(Type.Repetition.OPTIONAL);
     }
   }
 

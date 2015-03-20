@@ -632,7 +632,7 @@ public class TestTypeBuilders {
   }
 
   @Test
-  public void testMapWithInt64KeyAnnotations() {
+  public void testMapWithRequiredValue() {
     List<Type> typeList = new ArrayList<Type>();
     typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
     typeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
@@ -680,14 +680,15 @@ public class TestTypeBuilders {
 
     MessageType expected = new MessageType("mapParent", map);
     GroupType actual =
-        Types.buildMessage().optionalMap()
-            .groupKey()
-            .optional(INT64).named("first")
-            .optional(DOUBLE).named("second")
-            .optionalGroupValue()
-            .optional(DOUBLE).named("one")
-            .optional(INT32).named("two")
-            .named("myMap")
+        Types.buildMessage()
+            .optionalMap()
+              .groupKey()
+                .optional(INT64).named("first")
+                .optional(DOUBLE).named("second")
+              .optionalGroupValue()
+                .optional(DOUBLE).named("one")
+                .optional(INT32).named("two")
+              .named("myMap")
             .named("mapParent");
     Assert.assertEquals(expected, actual);
   }
@@ -711,14 +712,15 @@ public class TestTypeBuilders {
 
     MessageType expected = new MessageType("mapParent", map);
     GroupType actual =
-        Types.buildMessage().optionalMap()
-            .groupKey()
-            .optional(INT64).named("first")
-            .optional(DOUBLE).named("second")
-            .requiredGroupValue()
-            .optional(DOUBLE).named("one")
-            .optional(INT32).named("two")
-            .named("myMap")
+        Types.buildMessage()
+            .optionalMap()
+              .groupKey()
+                .optional(INT64).named("first")
+                .optional(DOUBLE).named("second")
+              .requiredGroupValue()
+                .optional(DOUBLE).named("one")
+                .optional(INT32).named("two")
+              .named("myMap")
             .named("mapParent");
     Assert.assertEquals(expected, actual);
   }
@@ -739,12 +741,12 @@ public class TestTypeBuilders {
 
     MessageType expected = new MessageType("mapParent", map);
     GroupType actual =
-        Types.buildMessage().optionalMap()
-            .groupKey()
-            .optional(INT64).named("first")
-            .optional(DOUBLE).named("second")
-            .optionalValue(DOUBLE)
-            .named("myMap")
+        Types.buildMessage()
+            .optionalMap()
+              .groupKey()
+                .optional(INT64).named("first")
+                .optional(DOUBLE).named("second")
+              .optionalValue(DOUBLE).named("myMap")
             .named("mapParent");
     Assert.assertEquals(expected, actual);
   }
@@ -765,12 +767,12 @@ public class TestTypeBuilders {
 
     MessageType expected = new MessageType("mapParent", map);
     GroupType actual =
-        Types.buildMessage().optionalMap()
-            .groupKey()
-            .optional(INT64).named("first")
-            .optional(DOUBLE).named("second")
-            .requiredValue(DOUBLE)
-            .named("myMap")
+        Types.buildMessage()
+            .optionalMap()
+              .groupKey()
+                .optional(INT64).named("first")
+                .optional(DOUBLE).named("second")
+              .requiredValue(DOUBLE).named("myMap")
             .named("mapParent");
     Assert.assertEquals(expected, actual);
   }
@@ -794,12 +796,13 @@ public class TestTypeBuilders {
 
     MessageType expected = new MessageType("mapParent", map);
     GroupType actual =
-        Types.buildMessage().optionalMap()
-            .key(INT64)
-            .optionalGroupValue()
-            .optional(DOUBLE).named("one")
-            .optional(INT32).named("two")
-            .named("myMap")
+        Types.buildMessage()
+            .optionalMap()
+              .key(INT64)
+              .optionalGroupValue()
+                .optional(DOUBLE).named("one")
+                .optional(INT32).named("two")
+              .named("myMap")
             .named("mapParent");
     Assert.assertEquals(expected, actual);
   }
@@ -823,12 +826,13 @@ public class TestTypeBuilders {
 
     MessageType expected = new MessageType("mapParent", map);
     GroupType actual =
-        Types.buildMessage().optionalMap()
-            .key(INT64)
-            .requiredGroupValue()
-            .optional(DOUBLE).named("one")
-            .optional(INT32).named("two")
-            .named("myMap")
+        Types.buildMessage()
+            .optionalMap()
+              .key(INT64)
+              .requiredGroupValue()
+                .optional(DOUBLE).named("one")
+                .optional(INT32).named("two")
+              .named("myMap")
             .named("mapParent");
     Assert.assertEquals(expected, actual);
   }
@@ -856,20 +860,21 @@ public class TestTypeBuilders {
 
     MessageType expected = new MessageType("mapParent", map);
     GroupType actual =
-        Types.buildMessage().requiredMap()
-            .groupKey()
-            .optional(INT64).named("first")
-            .requiredGroup()
-            .required(FLOAT).named("inner_key_1")
-            .optional(INT32).named("inner_key_2")
-            .named("second")
-            .optionalGroupValue()
-            .optionalGroup()
-            .required(FLOAT).named("inner_key_1")
-            .optional(INT32).named("inner_key_2")
-            .named("one")
-            .optional(INT32).named("two")
-            .named("myMap")
+        Types.buildMessage()
+            .requiredMap()
+              .groupKey()
+                .optional(INT64).named("first")
+                .requiredGroup()
+                  .required(FLOAT).named("inner_key_1")
+                  .optional(INT32).named("inner_key_2")
+                .named("second")
+              .optionalGroupValue()
+                .optionalGroup()
+                  .required(FLOAT).named("inner_key_1")
+                  .optional(INT32).named("inner_key_2")
+                .named("one")
+                .optional(INT32).named("two")
+              .named("myMap")
             .named("mapParent");
     Assert.assertEquals(expected, actual);
   }
@@ -881,7 +886,7 @@ public class TestTypeBuilders {
             "list",
             new PrimitiveType(OPTIONAL, INT64, "element")));
     Type actual = Types.requiredList()
-        .optionalElement(INT64).named("element")
+        .optionalElement(INT64)
         .named("myList");
     Assert.assertEquals(expected, actual);
   }
@@ -893,7 +898,7 @@ public class TestTypeBuilders {
             "list",
             new PrimitiveType(OPTIONAL, INT64, "element")));
     Type actual = Types.optionalList()
-        .optionalElement(INT64).named("element")
+        .optionalElement(INT64)
         .named("myList");
     Assert.assertEquals(expected, actual);
   }
@@ -910,7 +915,6 @@ public class TestTypeBuilders {
         .requiredGroupElement()
           .optional(BOOLEAN)
           .named("field")
-        .named("element")
         .named("myList");
     Assert.assertEquals(expected, actual);
   }
@@ -927,7 +931,6 @@ public class TestTypeBuilders {
           .optionalGroupElement()
             .optional(BOOLEAN)
             .named("field")
-          .named("element")
         .named("myList");
     Assert.assertEquals(expected, actual);
   }
@@ -935,19 +938,19 @@ public class TestTypeBuilders {
   @Test
   public void testRequiredNestedList() {
     List<Type> fields = new ArrayList<Type>();
-    fields.add(new GroupType(REQUIRED, "innerList", OriginalType.LIST,
+    fields.add(new GroupType(REQUIRED, "element", OriginalType.LIST,
         new GroupType(REPEATED,
             "list",
-            new PrimitiveType(OPTIONAL, DOUBLE, "innerElement"))));
+            new PrimitiveType(OPTIONAL, DOUBLE, "element"))));
     GroupType expected = new GroupType(OPTIONAL, "myList", OriginalType.LIST,
         new GroupType(REPEATED,
             "list",
             fields));
 
-    Type actual = Types.optionalList()
-        .requiredListElement()
-        .optionalElement(DOUBLE).named("innerElement")
-        .named("innerList")
+    Type actual =
+        Types.optionalList()
+          .requiredListElement()
+            .optionalElement(DOUBLE)
         .named("myList");
 
     Assert.assertEquals(expected, actual);
@@ -956,19 +959,19 @@ public class TestTypeBuilders {
   @Test
   public void testOptionalNestedList() {
     List<Type> fields = new ArrayList<Type>();
-    fields.add(new GroupType(OPTIONAL, "innerList", OriginalType.LIST,
+    fields.add(new GroupType(OPTIONAL, "element", OriginalType.LIST,
         new GroupType(REPEATED,
             "list",
-            new PrimitiveType(OPTIONAL, DOUBLE, "innerElement"))));
+            new PrimitiveType(OPTIONAL, DOUBLE, "element"))));
     GroupType expected = new GroupType(OPTIONAL, "myList", OriginalType.LIST,
         new GroupType(REPEATED,
             "list",
             fields));
 
-    Type actual = Types.optionalList()
+    Type actual =
+        Types.optionalList()
         .optionalListElement()
-        .optionalElement(DOUBLE).named("innerElement")
-        .named("innerList")
+          .optionalElement(DOUBLE)
         .named("myList");
 
     Assert.assertEquals(expected, actual);
@@ -977,7 +980,7 @@ public class TestTypeBuilders {
   @Test
   public void testRequiredListWithinGroup() {
     List<Type> fields = new ArrayList<Type>();
-    fields.add(new GroupType(REQUIRED, "myList", OriginalType.LIST,
+    fields.add(new GroupType(REQUIRED, "element", OriginalType.LIST,
         new GroupType(REPEATED,
             "list",
             new PrimitiveType(OPTIONAL, INT64, "element"))));
@@ -985,7 +988,6 @@ public class TestTypeBuilders {
     Type actual = Types.requiredGroup()
           .requiredList()
             .optionalElement(INT64).named("element")
-          .named("myList")
         .named("topGroup");
     Assert.assertEquals(expected, actual);
   }
@@ -993,7 +995,7 @@ public class TestTypeBuilders {
   @Test
   public void testOptionalListWithinGroup() {
     List<Type> fields = new ArrayList<Type>();
-    fields.add(new GroupType(OPTIONAL, "myList", OriginalType.LIST,
+    fields.add(new GroupType(OPTIONAL, "element", OriginalType.LIST,
         new GroupType(REPEATED,
             "list",
             new PrimitiveType(OPTIONAL, INT64, "element"))));
@@ -1001,7 +1003,6 @@ public class TestTypeBuilders {
     Type actual = Types.requiredGroup()
         .optionalList()
         .optionalElement(INT64).named("element")
-        .named("myList")
         .named("topGroup");
     Assert.assertEquals(expected, actual);
   }
@@ -1009,16 +1010,16 @@ public class TestTypeBuilders {
   @Test
   public void testOptionalListWithinGroupWithReqElement() {
     List<Type> fields = new ArrayList<Type>();
-    fields.add(new GroupType(OPTIONAL, "myList", OriginalType.LIST,
+    fields.add(new GroupType(OPTIONAL, "element", OriginalType.LIST,
         new GroupType(REPEATED,
             "list",
             new PrimitiveType(REQUIRED, INT64, "element"))));
     GroupType expected = new GroupType(REQUIRED, "topGroup", fields);
-    Type actual = Types.requiredGroup()
-        .optionalList()
-        .requiredElement(INT64).named("element")
-        .named("myList")
-        .named("topGroup");
+    Type actual =
+        Types.requiredGroup()
+          .optionalList()
+            .requiredElement(INT64).named("element")
+          .named("topGroup");
     Assert.assertEquals(expected, actual);
   }
 
@@ -1029,7 +1030,7 @@ public class TestTypeBuilders {
     innerFields.add(new PrimitiveType(REQUIRED, INT32, "value"));
 
     List<Type> fields = new ArrayList<Type>();
-    fields.add(new GroupType(REQUIRED, "innerMap", OriginalType.MAP,
+    fields.add(new GroupType(REQUIRED, "element", OriginalType.MAP,
         new GroupType(REPEATED,
             "map",
             innerFields)));
@@ -1038,11 +1039,11 @@ public class TestTypeBuilders {
             "list",
             fields));
 
-    Type actual = Types.optionalList()
-        .requiredMapElement()
-        .key(DOUBLE)
-        .requiredValue(INT32)
-        .named("innerMap")
+    Type actual =
+        Types.optionalList()
+          .requiredMapElement()
+            .key(DOUBLE)
+            .requiredValue(INT32)
         .named("myList");
 
     Assert.assertEquals(expected, actual);
@@ -1055,7 +1056,7 @@ public class TestTypeBuilders {
     innerFields.add(new PrimitiveType(REQUIRED, INT32, "value"));
 
     List<Type> fields = new ArrayList<Type>();
-    fields.add(new GroupType(OPTIONAL, "innerMap", OriginalType.MAP,
+    fields.add(new GroupType(OPTIONAL, "element", OriginalType.MAP,
         new GroupType(REPEATED,
             "map",
             innerFields)));
@@ -1064,11 +1065,11 @@ public class TestTypeBuilders {
             "list",
             fields));
 
-    Type actual = Types.optionalList()
-        .optionalMapElement()
-        .key(DOUBLE)
-        .requiredValue(INT32)
-        .named("innerMap")
+    Type actual =
+        Types.optionalList()
+          .optionalMapElement()
+            .key(DOUBLE)
+            .requiredValue(INT32)
         .named("myList");
 
     Assert.assertEquals(expected, actual);
