@@ -19,11 +19,13 @@
 
 package parquet;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
 import parquet.glob.GlobExpander;
+import parquet.glob.WildcardPath;
 
 public final class Strings {
   private Strings() { }
@@ -91,4 +93,18 @@ public final class Strings {
     return GlobExpander.expand(globPattern);
   }
 
+  /**
+   * Expands a string according to {@link #expandGlob(String)}, and then constructs a {@link WildcardPath}
+   * for each expanded result which can be used to match strings as described in {@link WildcardPath}.
+   *
+   * @param globPattern a String to be passed to {@link #expandGlob(String)}
+   * @param delim the delimeter used by {@link WildcardPath}
+   */
+  public static List<WildcardPath> expandGlobToWildCardPaths(String globPattern, char delim) {
+    List<WildcardPath> ret = new ArrayList<WildcardPath>();
+    for (String expandedGlob : Strings.expandGlob(globPattern)) {
+      ret.add(new WildcardPath(globPattern, expandedGlob, delim));
+    }
+    return ret;
+  }
 }
