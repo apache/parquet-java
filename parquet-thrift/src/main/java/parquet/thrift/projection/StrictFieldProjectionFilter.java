@@ -116,6 +116,8 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
    * this object.
    */
   public static class WildcardPath {
+    private static final String STAR_REGEX = "(.*)";
+    private static final String MORE_NESTED_FIELDS_REGEX = "(\\..*)?";
     private final String parentGlobPath;
     private final String originalPattern;
     private final Pattern pattern;
@@ -124,21 +126,38 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
     public WildcardPath(String parentGlobPath, String wildcardPath) {
       this.parentGlobPath = Preconditions.checkNotNull(parentGlobPath, "parentGlobPath");
       this.originalPattern = Preconditions.checkNotNull(wildcardPath, "wildcardPath");
+      this.pattern = Pattern.compile(buildRegex(wildcardPath));
+    }
+
+    public static String buildRegex(String wildcardPath) {
       String[] splits = wildcardPath.split("\\*", -1); // -1 means keep trailing empty strings
       StringBuilder regex = new StringBuilder();
-      for (String s : splits) {
-        if (s.isEmpty()) {
-          // there was a * here, so add a regex wildcard
-          regex.append("(.*)");
-        } else {
-          // don't treat this part of the string as a regex, escape
-          // the entire thing
-          regex.append(Pattern.quote(s));
+
+      for (int i = 0; i < splits.length; i++) {
+        if ((i == 0 || i == splits.length - 1) && splits[i].isEmpty()) {
+          // there was a * at the beginning or end of the string, so add a regex wildcard
+          regex.append(STAR_REGEX);
+          continue;
+        }
+
+        if (splits[i].isEmpty()) {
+          // means there was a double asterisk, we've already
+          // handled this just keep going.
+          continue;
+        }
+
+        // don't treat this part of the string as a regex, escape
+        // the entire thing
+        regex.append(Pattern.quote(splits[i]));
+
+        if (i < splits.length - 1) {
+          // this isn't the last split, so add a *
+          regex.append(STAR_REGEX);
         }
       }
       // x.y.z should match "x.y.z" and also "x.y.z.foo.bar"
-      regex.append("(\\..*)?");
-      this.pattern = Pattern.compile(regex.toString());
+      regex.append(MORE_NESTED_FIELDS_REGEX);
+      return regex.toString();
     }
 
     public boolean matches(String path) {
