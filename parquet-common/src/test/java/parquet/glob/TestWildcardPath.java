@@ -20,7 +20,8 @@ package parquet.glob;
 
 import org.junit.Test;
 
-import static junit.framework.Assert.fail;
+import static org.junit.Assert.fail;
+
 
 public class TestWildcardPath {
 

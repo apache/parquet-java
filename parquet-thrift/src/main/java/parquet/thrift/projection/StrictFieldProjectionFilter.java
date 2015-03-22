@@ -33,7 +33,8 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
   // warn about it.
   private final List<WildcardPathStatus> columnsToKeep;
 
-  public static StrictFieldProjectionFilter fromSemicolonDelimitedString(String columnsToKeepGlobs) {
+  // visible for testing
+  static List<String> parseSemicolonDelimitedString(String columnsToKeepGlobs) {
     String[] splits = columnsToKeepGlobs.split(GLOB_SEPARATOR);
     List<String> globs = new ArrayList<String>();
     for (String s : splits) {
@@ -41,7 +42,17 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
         globs.add(s);
       }
     }
-    return new StrictFieldProjectionFilter(globs);
+
+    if (globs.isEmpty()) {
+      throw new ThriftProjectionException(String.format("Semicolon delimited string '%s' contains 0 glob strings",
+          columnsToKeepGlobs));
+    }
+
+    return globs;
+  }
+
+  public static StrictFieldProjectionFilter fromSemicolonDelimitedString(String columnsToKeepGlobs) {
+    return new StrictFieldProjectionFilter(parseSemicolonDelimitedString(columnsToKeepGlobs));
   }
 
   public StrictFieldProjectionFilter(List<String> columnsToKeepGlobs) {
@@ -55,6 +66,11 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
 
   @Override
   public boolean keep(FieldsPath path) {
+    return keep(path.toDelimitedString("."));
+  }
+
+  // visible for testing
+  boolean keep(String path) {
     WildcardPath match = null;
 
     // since we have a rule of every path must match at least one column,
@@ -64,12 +80,13 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
     // even though it looks like it should have (but didn't because of short circuiting).
     // This also allows us log a warning when more than one glob path matches.
     for (WildcardPathStatus wp : columnsToKeep) {
-      if (wp.matches(path.toDelimitedString("."))) {
+      if (wp.matches(path)) {
         if (match != null && !match.getParentGlobPath().equals(wp.getWildcardPath().getParentGlobPath())) {
           String message = "Field path: '%s' matched more than one glob path pattern. First match: " +
               "'%s' (when expanded to '%s') second match:'%s' (when expanded to '%s')";
-          LOG.warn(String.format(message,
-              path.toDelimitedString("."), match.getParentGlobPath(), match.getOriginalPattern(),
+
+          warn(String.format(message,
+              path, match.getParentGlobPath(), match.getOriginalPattern(),
               wp.getWildcardPath().getParentGlobPath(), wp.getWildcardPath().getOriginalPattern()));
         } else {
           match = wp.getWildcardPath();
@@ -78,6 +95,11 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
     }
 
     return match != null;
+  }
+
+  // visible for testing
+  protected void warn(String warning) {
+    LOG.warn(warning);
   }
 
   // visible for testing
