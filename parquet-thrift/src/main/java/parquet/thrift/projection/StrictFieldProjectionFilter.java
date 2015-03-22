@@ -25,6 +25,18 @@ import parquet.Log;
 import parquet.Strings;
 import parquet.glob.WildcardPath;
 
+/**
+ * Stricter Implementation of {@link FieldProjectionFilter}.
+ *
+ * See {@link parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter} for the previous
+ * syntax that allows for more powerful glob patterns, but has less error reporting and less strict requirements.
+ *
+ * This filter requires that every *possible* expansion of glob expressions (like '{x,y,z}') must match at least one
+ * column. Each expansion may match more than one if it contains wildcards ('*').
+ *
+ * Note that this class is stateful -- it keeps track of which expanded glob paths have matched a column, so that it can
+ * throw when {@link #assertNoUnmatchedPatterns()} is called.
+ */
 public class StrictFieldProjectionFilter implements FieldProjectionFilter {
   private static final Log LOG = Log.getLog(FieldProjectionFilter.class);
   private static final String GLOB_SEPARATOR = ";";
@@ -51,10 +63,22 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
     return globs;
   }
 
+  /**
+   * Construct a StrictFieldProjectionFilter from a single string.
+   *
+   * columnsToKeepGlobs should be a list of Strings in the format expected by
+   * {@link Strings#expandGlobToWildCardPaths(String, char)}, separated by ';'
+   * Should only be used for parsing values out of the hadoop config -- for APIs
+   * and programmatic access, use {@link StrictFieldProjectionFilter(List)}.
+   */
   public static StrictFieldProjectionFilter fromSemicolonDelimitedString(String columnsToKeepGlobs) {
     return new StrictFieldProjectionFilter(parseSemicolonDelimitedString(columnsToKeepGlobs));
   }
 
+  /**
+   * Construct a StrictFieldProjectionFilter from a list of Strings in the format expected by
+   * {@link Strings#expandGlobToWildCardPaths(String, char)}
+   */
   public StrictFieldProjectionFilter(List<String> columnsToKeepGlobs) {
     this.columnsToKeep = new ArrayList<WildcardPathStatus>();
     for (String glob : columnsToKeepGlobs) {
@@ -102,8 +126,7 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
     LOG.warn(warning);
   }
 
-  // visible for testing
-  List<WildcardPath> getUnmatchedPatterns() {
+  private List<WildcardPath> getUnmatchedPatterns() {
     List<WildcardPath> unmatched = new ArrayList<WildcardPath>();
     for (WildcardPathStatus wp : columnsToKeep) {
       if (!wp.hasMatched()) {
@@ -128,6 +151,10 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
     }
   }
 
+  /**
+   * Holds a WildcardPath and a boolean, used to track whether
+   * this path has ever matched anything.
+   */
   public static final class WildcardPathStatus {
     private final WildcardPath wildcardPath;
     private boolean hasMatched;
