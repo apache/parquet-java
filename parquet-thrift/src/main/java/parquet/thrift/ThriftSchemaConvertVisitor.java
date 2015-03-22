@@ -181,7 +181,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
   }
 
   private boolean isCurrentlyMatchedFilter(){
-     if(!fieldProjectionFilter.matches(currentFieldPath)){
+     if(!fieldProjectionFilter.keep(currentFieldPath)){
        currentType = null;
        return false;
      }

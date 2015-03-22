@@ -54,7 +54,7 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
   }
 
   @Override
-  public boolean matches(FieldsPath path) {
+  public boolean keep(FieldsPath path) {
     WildcardPath match = null;
 
     // since we have a rule of every path must match at least one column,

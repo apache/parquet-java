@@ -74,7 +74,7 @@ public class DeprecatedFieldProjectionFilter implements FieldProjectionFilter {
   }
 
   @Override
-  public boolean matches(FieldsPath path) {
+  public boolean keep(FieldsPath path) {
     if (filterPatterns.size() == 0)
       return true;
 

@@ -18,13 +18,38 @@
  */
 package parquet.thrift.projection;
 
+
+/**
+ * A field projection filter decides whether a thrift filed (column) should
+ * be included when reading thrift data. It is used to implement projection push down.
+ *
+ * See {@link StrictFieldProjectionFilter} and
+ * {@link parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter}
+ */
 public interface FieldProjectionFilter {
-  boolean matches(FieldsPath path);
+
+  /**
+   * Decide whether to keep the field (column) represented by path.
+   *
+   * @param path the path to the field (column)
+   * @return true to keep, false to discard (project out)
+   */
+  boolean keep(FieldsPath path);
+
+  /**
+   * Should throw a ThriftProjectionException if this FieldProjectionFilter has remaining patterns / columns
+   * that didn't match any of paths passed to {@link #keep(FieldsPath)}.
+   *
+   * Will be called once after all paths have been passed to {@link #keep(FieldsPath)}.
+   */
   void assertNoUnmatchedPatterns() throws ThriftProjectionException;
 
+  /**
+   * A filter that keeps all of the columns.
+   */
   public static final FieldProjectionFilter ALL_COLUMNS = new FieldProjectionFilter() {
     @Override
-    public boolean matches(FieldsPath path) {
+    public boolean keep(FieldsPath path) {
       return true;
     }
 
