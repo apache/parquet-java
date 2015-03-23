@@ -1,0 +1,8 @@
+@namespace("avrotestclasses")
+protocol AvroTest {
+    record Name {
+        string first_name;
+        // optional last name
+        union { null, string } last_name = null;
+    }
+}

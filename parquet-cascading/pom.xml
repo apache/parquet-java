@@ -55,6 +55,11 @@
         <artifactId>parquet-thrift</artifactId>
         <version>${project.version}</version>
     </dependency>
+      <dependency>
+          <groupId>com.twitter</groupId>
+          <artifactId>parquet-avro</artifactId>
+          <version>${project.version}</version>
+      </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>
@@ -113,6 +118,23 @@
             </goals>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro-maven-plugin</artifactId>
+        <version>1.7.6</version>
+        <executions>
+          <execution>
+            <phase>generate-test-sources</phase>
+            <goals>
+               <goal>idl-protocol</goal>
+            </goals>
+            <configuration>
+              <sourceDirectory>${project.basedir}/src/test/avro/</sourceDirectory>
+              <!-- <outputDirectory>${project.basedir}/src/test/java/</outputDirectory> -->
+      </configuration>
+    </execution>
+  </executions>
       </plugin>
     </plugins>
   </build>
