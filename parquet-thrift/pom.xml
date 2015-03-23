@@ -115,6 +115,25 @@
       <version>3.4</version>
       <scope>test</scope>
     </dependency>
+      <dependency>
+          <groupId>org.scala-lang</groupId>
+          <artifactId>scala-library</artifactId>
+          <version>${scala.version}</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.scalacheck</groupId>
+          <artifactId>scalacheck_2.10</artifactId>
+          <version>1.12.1</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.scalatest</groupId>
+          <artifactId>scalatest_2.10</artifactId>
+          <version>2.2.4</version>
+          <scope>test</scope>
+      </dependency>
+
 
   </dependencies>
 
@@ -150,5 +169,5 @@
         <artifactId>maven-shade-plugin</artifactId>
       </plugin>
     </plugins>
-  </build> 
+  </build>
 </project>

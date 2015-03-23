@@ -379,6 +379,7 @@
         </executions>
         <configuration>
           <excludes>
+            <exclude>**/.cache</exclude>
             <exclude>**/*.parquet</exclude>
             <exclude>**/*.avro</exclude>
             <exclude>**/*.json</exclude>
