@@ -25,6 +25,7 @@ import org.apache.thrift.TEnum;
 import parquet.schema.MessageType;
 import parquet.thrift.projection.FieldProjectionFilter;
 import parquet.thrift.projection.PathGlobPattern;
+import parquet.thrift.projection.ProjectionFilter;
 import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftField.Requirement;
@@ -64,7 +65,7 @@ public class ThriftSchemaConverter {
     return convertedMessageType;
   }
 
-  private void checkUnmatchedProjectionFilter(FieldProjectionFilter filter) {
+  private void checkUnmatchedProjectionFilter(ProjectionFilter filter) {
     List<PathGlobPattern> unmatched = filter.getUnMatchedPatterns();
     if (unmatched.size() != 0) {
       throw new ThriftProjectionException("unmatched projection filters: " + unmatched.toString());
@@ -75,7 +76,7 @@ public class ThriftSchemaConverter {
     return new ThriftStructConverter().toStructType(thriftClass);
   }
 
-  private static class ThriftStructConverter {
+  protected static class ThriftStructConverter {
 
     public ThriftType.StructType toStructType(Class<? extends TBase<?, ?>> thriftClass) {
       final TStructDescriptor struct = TStructDescriptor.getInstance(thriftClass);
