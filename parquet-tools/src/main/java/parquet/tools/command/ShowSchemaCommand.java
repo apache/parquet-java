@@ -25,10 +25,13 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.hadoop.util.HiddenFileFilter;
 import parquet.schema.MessageType;
 import parquet.tools.Main;
 import parquet.tools.util.MetadataUtils;
@@ -71,7 +74,21 @@ public class ShowSchemaCommand extends ArgsOnlyCommand {
     String input = args[0];
 
     Configuration conf = new Configuration();
-    ParquetMetadata metaData = ParquetFileReader.readFooter(conf, new Path(input));
+    ParquetMetadata metaData;
+
+    Path path = new Path(input);
+    FileSystem fs = path.getFileSystem(conf);
+    Path file;
+    if (fs.isDirectory(path)) {
+      FileStatus[] statuses = fs.listStatus(path, HiddenFileFilter.INSTANCE);
+      if (statuses.length == 0) {
+        throw new RuntimeException("Directory " + path.toString() + " is empty");
+      }
+      file = statuses[0].getPath();
+    } else {
+      file = path;
+    }
+    metaData = ParquetFileReader.readFooter(conf, file);
     MessageType schema = metaData.getFileMetaData().getSchema();
 
     Main.out.println(schema);

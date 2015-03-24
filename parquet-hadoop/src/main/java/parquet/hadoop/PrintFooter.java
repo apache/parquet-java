@@ -42,7 +42,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.PathFilter;
 
 import parquet.column.ColumnDescriptor;
 import parquet.column.Encoding;
@@ -50,6 +49,7 @@ import parquet.column.statistics.Statistics;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.ParquetMetadata;
+import parquet.hadoop.util.HiddenFileFilter;
 import parquet.io.ParquetDecodingException;
 import parquet.schema.MessageType;
 
@@ -82,12 +82,7 @@ public class PrintFooter {
       List<FileStatus> statuses;
       if (fileStatus.isDir()) {
         System.out.println("listing files in " + fileStatus.getPath());
-        statuses = Arrays.asList(fs.listStatus(fileStatus.getPath(), new PathFilter() {
-          @Override
-          public boolean accept(Path path) {
-            return !path.getName().startsWith("_");
-          }
-        }));
+        statuses = Arrays.asList(fs.listStatus(fileStatus.getPath(), HiddenFileFilter.INSTANCE));
       } else {
         statuses = new ArrayList<FileStatus>();
         statuses.add(fileStatus);
