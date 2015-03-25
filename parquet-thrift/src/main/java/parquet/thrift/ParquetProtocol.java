@@ -61,11 +61,11 @@ public abstract class ParquetProtocol extends TProtocol {
     this.name = name;
   }
 
-  private UnsupportedOperationException exception() {
+  private TException exception() {
     String message = name == null ?
         "in " + getClassInfo() :
         "when we expected " + name + " in " + getClassInfo();
-    return new UnsupportedOperationException(new Exception().getStackTrace()[1].getMethodName() + " was called " + message);
+    return new TException(new UnsupportedOperationException(new Exception().getStackTrace()[1].getMethodName() + " was called " + message));
   }
 
   /** WRITE */

@@ -24,8 +24,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-
 import java.util.Set;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
@@ -43,6 +43,7 @@ import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.RecordMaterializer;
+import parquet.io.api.RecordMaterializer.CorruptRecordException;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
@@ -80,6 +81,7 @@ class InternalParquetRecordReader<T> {
   private long totalCountLoadedSoFar = 0;
 
   private Path file;
+  private InputErrorTracker errorTracker;
 
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
@@ -167,6 +169,7 @@ class InternalParquetRecordReader<T> {
     // initialize a ReadContext for this file
     ReadSupport.ReadContext readContext = readSupport.init(new InitContext(
         configuration, toSetMultiMap(fileMetadata), fileSchema));
+    this.errorTracker = new InputErrorTracker(configuration);
     this.requestedSchema = readContext.getRequestedSchema();
     this.fileSchema = fileSchema;
     this.file = file;
@@ -202,12 +205,33 @@ class InternalParquetRecordReader<T> {
 
     while (!recordFound) {
       // no more records left
-      if (current >= total) { return false; }
+      if (current >= total) {
+        // this will throw if there were too many corrupt records
+        errorTracker.close();
+        return false;
+      }
 
       try {
         checkRead();
-        currentValue = recordReader.read();
+
+        errorTracker.incRecords();
+        boolean corrupt = false;
+
+        try {
+          currentValue = recordReader.read();
+        } catch (CorruptRecordException e) {
+          // this might throw, but it's fatal if it does.
+          errorTracker.incErrors(e);
+          corrupt = true;
+        }
+
         current ++;
+
+        if (corrupt) {
+          if (DEBUG) LOG.debug("skipping a corrupt record");
+          continue;
+        }
+
         if (recordReader.shouldSkipCurrentRecord()) {
           // this record is being filtered via the filter2 package
           if (DEBUG) LOG.debug("skipping record");

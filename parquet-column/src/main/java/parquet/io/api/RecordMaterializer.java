@@ -18,6 +18,8 @@
  */
 package parquet.io.api;
 
+import parquet.io.ParquetDecodingException;
+
 /**
  * Top-level class which should be implemented in order to materialize objects from
  * a stream of Parquet data.
@@ -33,6 +35,7 @@ abstract public class RecordMaterializer<T> {
 
   /**
    * @return the result of the conversion
+   * @throws CorruptRecordException to signal that a record is corrupt, but can be skipped
    */
   abstract public T getCurrentRecord();
 
@@ -45,4 +48,22 @@ abstract public class RecordMaterializer<T> {
    * @return the root converter for this tree
    */
   abstract public GroupConverter getRootConverter();
+
+  public static class CorruptRecordException extends ParquetDecodingException {
+    public CorruptRecordException() {
+      super();
+    }
+
+    public CorruptRecordException(String message, Throwable cause) {
+      super(message, cause);
+    }
+
+    public CorruptRecordException(String message) {
+      super(message);
+    }
+
+    public CorruptRecordException(Throwable cause) {
+      super(cause);
+    }
+  }
 }

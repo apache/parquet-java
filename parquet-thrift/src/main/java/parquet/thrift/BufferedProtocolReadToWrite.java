@@ -18,8 +18,19 @@
  */
 package parquet.thrift;
 
+import java.nio.ByteBuffer;
+import java.util.LinkedList;
+import java.util.List;
+
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.*;
+import org.apache.thrift.protocol.TField;
+import org.apache.thrift.protocol.TList;
+import org.apache.thrift.protocol.TMap;
+import org.apache.thrift.protocol.TMessage;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.protocol.TSet;
+import org.apache.thrift.protocol.TStruct;
+import org.apache.thrift.protocol.TType;
 
 import parquet.ParquetRuntimeException;
 import parquet.thrift.struct.ThriftField;
@@ -29,10 +40,6 @@ import parquet.thrift.struct.ThriftType.MapType;
 import parquet.thrift.struct.ThriftType.SetType;
 import parquet.thrift.struct.ThriftType.StructType;
 import parquet.thrift.struct.ThriftTypeID;
-
-import java.nio.ByteBuffer;
-import java.util.LinkedList;
-import java.util.List;
 
 /**
  * Class to read from one protocol in a buffer and then write to another one
@@ -356,6 +363,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     });
     TField field;
     boolean hasFieldsIgnored = false;
+    int childFieldsPresent = 0;
     while ((field = in.readFieldBegin()).type != TType.STOP) {
       final TField currentField = field;
       ThriftField expectedField;
@@ -381,6 +389,8 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
             // read path.
             throw new ParquetRuntimeException("This should never happen! "
                 + "Don't know if this field is a union, was the deprecated constructor of StructType used?\n" + type){};
+          default:
+            throw new ParquetRuntimeException("Unrecognized StructOrUnionType: " + type.getStructOrUnionType()){};
         }
       }
       buffer.add(new Action() {
@@ -394,10 +404,42 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
           return "f=" + currentField.id + "<t=" + typeName(currentField.type) + ">: ";
         }
       });
-      hasFieldsIgnored |= readOneValue(in, field.type, buffer, expectedField.getType());
+      boolean wasIgnored = readOneValue(in, field.type, buffer, expectedField.getType());
+      if (!wasIgnored) {
+        childFieldsPresent++;
+      }
+      hasFieldsIgnored |= wasIgnored;
       in.readFieldEnd();
       buffer.add(FIELD_END);
     }
+
+    // check that union had exactly 1 (no more no less) child fields.
+    switch (type.getStructOrUnionType()) {
+      case STRUCT:
+        // nothing to do
+        break;
+      case UNION:
+        // childFieldsPresent must == 1
+        if (childFieldsPresent != 1) {
+
+          if (childFieldsPresent == 0) {
+            throw new DecodingSchemaMismatchException("Cannot write a TUnion with no set value in :\n" + type);
+          } else {
+            throw new DecodingSchemaMismatchException("Cannot write a TUnion with more than 1 set value in :\n" + type);
+          }
+
+        }
+        break;
+      case UNKNOWN:
+        // we should never reach here in the write path -- this only happens if the
+        // deprecated constructor of StructType is used, which should only be used in the
+        // read path.
+        throw new ParquetRuntimeException("This should never happen! "
+            + "Don't know if this field is a union, was the deprecated constructor of StructType used?\n" + type){};
+      default:
+        throw new ParquetRuntimeException("Unrecognized StructOrUnionType: " + type.getStructOrUnionType()){};
+    }
+
     in.readStructEnd();
     buffer.add(STRUCT_END);
     return hasFieldsIgnored;

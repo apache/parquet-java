@@ -148,3 +148,14 @@ struct StructWithUnionV2 {
   1: required string name,
   2: required UnionV2 aUnion
 }
+
+struct AStructThatLooksLikeUnionV2 {
+  1: optional AString aString,
+  2: optional ALong aLong,
+  3: optional ABool aNewBool
+}
+
+struct StructWithAStructThatLooksLikeUnionV2 {  
+  1: required string name,
+  2: required AStructThatLooksLikeUnionV2 aNotQuiteUnion
+}

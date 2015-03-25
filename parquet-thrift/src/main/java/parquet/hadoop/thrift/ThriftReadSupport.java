@@ -73,6 +73,12 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     conf.set(RECORD_CONVERTER_CLASS_KEY, klass.getName());
   }
 
+  public static void setRecordConverterClass(Configuration conf,
+                                             Class<?> klass) {
+    conf.set(RECORD_CONVERTER_CLASS_KEY, klass.getName());
+  }
+
+
   /**
    * used from hadoop
    * the configuration must contain a "parquet.thrift.read.class" setting
