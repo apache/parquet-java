@@ -46,6 +46,24 @@ public class TestByteBitPacking {
       Assert.assertArrayEquals("width "+i, values, unpacked);
     }
   }
+  
+  @Test
+  public void testPackUnPackLong() {
+    LOG.debug("");
+    LOG.debug("testPackUnPackLong");
+    for (int i = 1; i < 64; i++) {
+      LOG.debug("Width: " + i);
+      long[] unpacked32 = new long[32];
+      long[] unpacked8 = new long[32];
+      long[] values = generateValuesLong(i);
+      packUnpack32(Packer.BIG_ENDIAN.newBytePackerForLong(i), values, unpacked32);
+      LOG.debug("Output 32: " + TestBitPacking.toString(unpacked32));
+      Assert.assertArrayEquals("width "+i, values, unpacked32);
+      packUnpack8(Packer.BIG_ENDIAN.newBytePackerForLong(i), values, unpacked8);
+      LOG.debug("Output 8: " + TestBitPacking.toString(unpacked8));
+      Assert.assertArrayEquals("width "+i, values, unpacked8);
+    }
+  }
 
   private void packUnpack(BytePacker packer, int[] values, int[] unpacked) {
     byte[] packed = new byte[packer.getBitWidth() * 4];
@@ -54,10 +72,38 @@ public class TestByteBitPacking {
     packer.unpack32Values(ByteBuffer.wrap(packed), 0, unpacked, 0);
   }
 
+  private void packUnpack32(BytePackerForLong packer, long[] values, long[] unpacked) {
+    byte[] packed = new byte[packer.getBitWidth() * 4];
+    packer.pack32Values(values, 0, packed, 0);
+    LOG.debug("packed: " + TestBitPacking.toString(packed));
+    packer.unpack32Values(packed, 0, unpacked, 0);
+  }
+
+  private void packUnpack8(BytePackerForLong packer, long[] values, long[] unpacked) {
+    byte[] packed = new byte[packer.getBitWidth() * 4];
+    for (int i = 0; i < 4; i++) {
+      packer.pack8Values(values,  8 * i, packed, packer.getBitWidth() * i);
+    }
+    LOG.debug("packed: " + TestBitPacking.toString(packed));
+    for (int i = 0; i < 4; i++) {
+      packer.unpack8Values(packed, packer.getBitWidth() * i, unpacked, 8 * i);
+    }
+  }
+
   private int[] generateValues(int bitWidth) {
     int[] values = new int[32];
     for (int j = 0; j < values.length; j++) {
       values[j] = (int)(Math.random() * 100000) % (int)Math.pow(2, bitWidth);
+    }
+    LOG.debug("Input:  " + TestBitPacking.toString(values));
+    return values;
+  }
+
+  private long[] generateValuesLong(int bitWidth) {
+    long[] values = new long[32];
+    for (int j = 0; j < values.length; j++) {
+      values[j] = ((long)(Math.random() * (1l<<32)) * (long)(Math.random() * (1l<<32))) &
+          ((1l << bitWidth) - 1l);
     }
     LOG.debug("Input:  " + TestBitPacking.toString(values));
     return values;

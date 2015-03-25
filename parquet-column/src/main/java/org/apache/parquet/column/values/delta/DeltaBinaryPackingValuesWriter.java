@@ -24,7 +24,7 @@ import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
-import org.apache.parquet.column.values.bitpacking.BytePacker;
+import org.apache.parquet.column.values.bitpacking.BytePackerForLong;
 import org.apache.parquet.column.values.bitpacking.Packer;
 import org.apache.parquet.io.ParquetEncodingException;
 
@@ -52,10 +52,15 @@ import java.io.IOException;
  */
 public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   /**
+   * Is the current column of type int (INT32)
+   */
+  private boolean isInt;
+
+  /**
    * max bitwidth for a mini block, it is used to allocate miniBlockByteBuffer which is
    * reused between flushes.
    */
-  public static final int MAX_BITWIDTH = 32;
+  public static final int MAX_BITWIDTH = 64;
 
   public static final int DEFAULT_NUM_BLOCK_VALUES = 128;
 
@@ -86,7 +91,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
    * stores delta values starting from the 2nd value written(1st value is stored in header).
    * It's reused between flushes
    */
-  private int[] deltaBlockBuffer;
+  private long[] deltaBlockBuffer;
 
   /**
    * bytes buffer for a mini block, it is reused for each mini block.
@@ -97,12 +102,12 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   /**
    * firstValue is written to the header of the page
    */
-  private int firstValue = 0;
+  private long firstValue = 0;
 
   /**
    * cache previous written value for calculating delta
    */
-  private int previousValue = 0;
+  private long previousValue = 0;
 
   /**
    * min delta is written to the beginning of each block.
@@ -110,7 +115,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
    * therefore are all positive
    * it will be reset after each flush
    */
-  private int minDeltaInCurrentBlock = Integer.MAX_VALUE;
+  private long minDeltaInCurrentBlock = Long.MAX_VALUE;
 
   public DeltaBinaryPackingValuesWriter(int slabSize, int pageSize, ByteBufferAllocator allocator) {
     this(DEFAULT_NUM_BLOCK_VALUES, DEFAULT_NUM_MINIBLOCKS, slabSize, pageSize, allocator);
@@ -119,7 +124,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   public DeltaBinaryPackingValuesWriter(int blockSizeInValues, int miniBlockNum, int slabSize, int pageSize, ByteBufferAllocator allocator) {
     this.config = new DeltaBinaryPackingConfig(blockSizeInValues, miniBlockNum);
     bitWidths = new int[config.miniBlockNumInABlock];
-    deltaBlockBuffer = new int[blockSizeInValues];
+    deltaBlockBuffer = new long[config.blockSizeInValues];
     miniBlockByteBuffer = new byte[config.miniBlockSizeInValues * MAX_BITWIDTH];
     baos = new CapacityByteArrayOutputStream(slabSize, pageSize, allocator);
   }
@@ -131,6 +136,21 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
   @Override
   public void writeInteger(int v) {
+    /*
+     * isInt is needed. Just calling internalWrite might result in a different binary representation.
+     * Example: [Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MAX_VALUE]
+     */
+    isInt = true;
+    internalWrite(v);
+  }
+
+  @Override
+  public void writeLong(long v) {
+    isInt = false;
+    internalWrite(v);
+  }
+
+  public void internalWrite(long v) {
     totalValueCount++;
 
     if (totalValueCount == 1) {
@@ -139,7 +159,10 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
       return;
     }
 
-    int delta = v - previousValue;//calculate delta
+    // Calculate delta. The possible overflow is accounted for. The algorithm is correct because
+    // Java long is working as a mudalar ring with base 2^64 and because of the plus and minus
+    // properties of a ring. http://en.wikipedia.org/wiki/Modular_arithmetic#Integers_modulo_n
+    long delta = v - previousValue;
     previousValue = v;
 
     deltaBlockBuffer[deltaValuesToFlush++] = delta;
@@ -159,6 +182,13 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
       deltaBlockBuffer[i] = deltaBlockBuffer[i] - minDeltaInCurrentBlock;
     }
 
+    if (isInt) {
+      minDeltaInCurrentBlock = (int) minDeltaInCurrentBlock;
+      for (int i = 0; i < deltaValuesToFlush; i++) {
+        deltaBlockBuffer[i] &= (1l << 32) - 1l;
+      }
+    }
+
     writeMinDelta();
     int miniBlocksToFlush = getMiniBlockCountToFlush(deltaValuesToFlush);
 
@@ -170,7 +200,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     for (int i = 0; i < miniBlocksToFlush; i++) {
       //writing i th miniblock
       int currentBitWidth = bitWidths[i];
-      BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(currentBitWidth);
+      BytePackerForLong packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(currentBitWidth);
       int miniBlockStart = i * config.miniBlockSizeInValues;
       for (int j = miniBlockStart; j < (i + 1) * config.miniBlockSizeInValues; j += 8) {//8 values per pack
         // mini block is atomic in terms of flushing
@@ -182,7 +212,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
       }
     }
 
-    minDeltaInCurrentBlock = Integer.MAX_VALUE;
+    minDeltaInCurrentBlock = Long.MAX_VALUE;
     deltaValuesToFlush = 0;
   }
 
@@ -196,7 +226,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
   private void writeMinDelta() {
     try {
-      BytesUtils.writeZigZagVarInt(minDeltaInCurrentBlock, baos);
+      BytesUtils.writeZigZagVarLong(minDeltaInCurrentBlock, baos);
     } catch (IOException e) {
       throw new ParquetEncodingException("can not write min delta for block", e);
     }
@@ -210,7 +240,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   private void calculateBitWidthsForDeltaBlockBuffer(int miniBlocksToFlush) {
     for (int miniBlockIndex = 0; miniBlockIndex < miniBlocksToFlush; miniBlockIndex++) {
 
-      int mask = 0;
+      long mask = 0;
       int miniStart = miniBlockIndex * config.miniBlockSizeInValues;
 
       //The end of current mini block could be the end of current block(deltaValuesToFlush) buffer when data is not aligned to mini block
@@ -219,7 +249,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
       for (int i = miniStart; i < miniEnd; i++) {
         mask |= deltaBlockBuffer[i];
       }
-      bitWidths[miniBlockIndex] = 32 - Integer.numberOfLeadingZeros(mask);
+      bitWidths[miniBlockIndex] = 64 - Long.numberOfLeadingZeros(mask);
     }
   }
 
@@ -241,7 +271,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     return BytesInput.concat(
             config.toBytesInput(),
             BytesInput.fromUnsignedVarInt(totalValueCount),
-            BytesInput.fromZigZagVarInt(firstValue),
+            BytesInput.fromZigZagVarLong(firstValue),
             BytesInput.from(baos));
   }
 
@@ -255,7 +285,7 @@ public class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     this.totalValueCount = 0;
     this.baos.reset();
     this.deltaValuesToFlush = 0;
-    this.minDeltaInCurrentBlock = Integer.MAX_VALUE;
+    this.minDeltaInCurrentBlock = Long.MAX_VALUE;
   }
 
   @Override

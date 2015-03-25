@@ -39,6 +39,10 @@ public enum Packer {
     public BytePacker newBytePacker(int width) {
       return beBytePackerFactory.newBytePacker(width);
     }
+    @Override
+    public BytePackerForLong newBytePackerForLong(int width) {
+      return beBytePackerForLongFactory.newBytePackerForLong(width);
+    }
   },
 
   /**
@@ -54,6 +58,10 @@ public enum Packer {
     public BytePacker newBytePacker(int width) {
       return leBytePackerFactory.newBytePacker(width);
     }
+    @Override
+    public BytePackerForLong newBytePackerForLong(int width) {
+      return leBytePackerForLongFactory.newBytePackerForLong(width);
+    }
   };
 
   private static IntPackerFactory getIntPackerFactory(String name) {
@@ -62,6 +70,10 @@ public enum Packer {
 
   private static BytePackerFactory getBytePackerFactory(String name) {
     return (BytePackerFactory)getStaticField("org.apache.parquet.column.values.bitpacking." + name, "factory");
+  }
+
+  private static BytePackerForLongFactory getBytePackerForLongFactory(String name) {
+    return (BytePackerForLongFactory)getStaticField("org.apache.parquet.column.values.bitpacking." + name, "factory");
   }
 
   private static Object getStaticField(String className, String fieldName) {
@@ -80,10 +92,12 @@ public enum Packer {
     }
   }
 
-  static BytePackerFactory beBytePackerFactory = getBytePackerFactory("ByteBitPackingBE");
   static IntPackerFactory beIntPackerFactory = getIntPackerFactory("LemireBitPackingBE");
-  static BytePackerFactory leBytePackerFactory = getBytePackerFactory("ByteBitPackingLE");
   static IntPackerFactory leIntPackerFactory = getIntPackerFactory("LemireBitPackingLE");
+  static BytePackerFactory beBytePackerFactory = getBytePackerFactory("ByteBitPackingBE");
+  static BytePackerFactory leBytePackerFactory = getBytePackerFactory("ByteBitPackingLE");
+  static BytePackerForLongFactory beBytePackerForLongFactory = getBytePackerForLongFactory("ByteBitPackingForLongBE");
+  static BytePackerForLongFactory leBytePackerForLongFactory = getBytePackerForLongFactory("ByteBitPackingForLongLE");
 
   /**
    * @param width the width in bits of the packed values
@@ -96,4 +110,10 @@ public enum Packer {
    * @return a byte based packer
    */
   public abstract BytePacker newBytePacker(int width);
+
+  /**
+   * @param width the width in bits of the packed values
+   * @return a byte based packer for INT64
+   */
+  public abstract BytePackerForLong newBytePackerForLong(int width);
 }
