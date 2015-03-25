@@ -32,7 +32,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import parquet.hadoop.InputErrorTracker;
+import parquet.hadoop.CorruptRecordCounter;
 import parquet.hadoop.ParquetWriter;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.thrift.ThriftParquetWriter;
@@ -48,7 +48,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static parquet.hadoop.thrift.TestInputOutputFormat.waitForJob;
 
-public class TestCorruptRecordsBase {
+public class TestCorruptThriftRecords {
 
   @Rule
   public final TemporaryFolder tempDir = new TemporaryFolder();
@@ -183,27 +183,10 @@ public class TestCorruptRecordsBase {
   }
 
   @Test
-  public void testDefaultsToNoToleranceOnlyCheckInClose() throws Exception {
-    Configuration conf = new Configuration();
-    conf.setBoolean(InputErrorTracker.BAD_RECORD_ONLY_CHECK_IN_CLOSE_CONF_KEY, true);
-    ArrayList<StructWithUnionV2> expected = new ArrayList<StructWithUnionV2>();
-    try {
-      readFile(writeFileWithCorruptRecords(1, expected), conf, "testDefaultsToNoTolerance");
-      fail("This should throw");
-    } catch (RuntimeException e) {
-      // still should have actually read all the valid records
-      assertEquals(200, ReadMapper.records.size());
-      assertEqualsExcepted(expected, ReadMapper.records);
-    }
-  }
-
-
-  @Test
   public void testCanTolerateBadRecords() throws Exception {
     Configuration conf = new Configuration();
-    conf.setInt(InputErrorTracker.BAD_RECORD_MIN_COUNT_CONF_KEY, 2);
-    conf.setFloat(InputErrorTracker.BAD_RECORD_THRESHOLD_CONF_KEY, 0.1f);
-    conf.setBoolean(InputErrorTracker.BAD_RECORD_ONLY_CHECK_IN_CLOSE_CONF_KEY, true);
+    conf.setInt(CorruptRecordCounter.BAD_RECORD_MIN_COUNT_CONF_KEY, 2);
+    conf.setFloat(CorruptRecordCounter.BAD_RECORD_THRESHOLD_CONF_KEY, 0.1f);
 
     List<StructWithUnionV2> expected = new ArrayList<StructWithUnionV2>();
 
@@ -215,9 +198,8 @@ public class TestCorruptRecordsBase {
   @Test
   public void testThrowsWhenTooManyBadRecords() throws Exception {
     Configuration conf = new Configuration();
-    conf.setInt(InputErrorTracker.BAD_RECORD_MIN_COUNT_CONF_KEY, 2);
-    conf.setFloat(InputErrorTracker.BAD_RECORD_THRESHOLD_CONF_KEY, 0.1f);
-    conf.setBoolean(InputErrorTracker.BAD_RECORD_ONLY_CHECK_IN_CLOSE_CONF_KEY, true);
+    conf.setInt(CorruptRecordCounter.BAD_RECORD_MIN_COUNT_CONF_KEY, 2);
+    conf.setFloat(CorruptRecordCounter.BAD_RECORD_THRESHOLD_CONF_KEY, 0.1f);
 
     ArrayList<StructWithUnionV2> expected = new ArrayList<StructWithUnionV2>();
 
@@ -226,8 +208,8 @@ public class TestCorruptRecordsBase {
       fail("This should throw");
     } catch (RuntimeException e) {
       // still should have actually read all the valid records
-      assertEquals(200, ReadMapper.records.size());
-      assertEqualsExcepted(expected, ReadMapper.records);
+      assertEquals(100, ReadMapper.records.size());
+      assertEqualsExcepted(expected.subList(0, 100), ReadMapper.records);
     }
   }
 }

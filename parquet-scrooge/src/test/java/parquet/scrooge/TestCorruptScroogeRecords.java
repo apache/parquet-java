@@ -31,14 +31,14 @@ import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
 
-import parquet.hadoop.thrift.TestCorruptRecordsBase;
+import parquet.hadoop.thrift.TestCorruptThriftRecords;
 import parquet.hadoop.thrift.ThriftReadSupport;
 import parquet.scrooge.test.StructWithUnionV2;
 import parquet.scrooge.test.StructWithUnionV2$;
 
 import static org.junit.Assert.assertEquals;
 
-public class TestCorruptRecordsScrooge extends TestCorruptRecordsBase {
+public class TestCorruptScroogeRecords extends TestCorruptThriftRecords {
 
   @Override
   public void setupJob(Job job, Path path) throws Exception {

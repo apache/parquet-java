@@ -81,7 +81,7 @@ class InternalParquetRecordReader<T> {
   private long totalCountLoadedSoFar = 0;
 
   private Path file;
-  private InputErrorTracker errorTracker;
+  private CorruptRecordCounter corruptRecordCounter;
 
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
@@ -169,7 +169,6 @@ class InternalParquetRecordReader<T> {
     // initialize a ReadContext for this file
     ReadSupport.ReadContext readContext = readSupport.init(new InitContext(
         configuration, toSetMultiMap(fileMetadata), fileSchema));
-    this.errorTracker = new InputErrorTracker(configuration);
     this.requestedSchema = readContext.getRequestedSchema();
     this.fileSchema = fileSchema;
     this.file = file;
@@ -182,6 +181,7 @@ class InternalParquetRecordReader<T> {
     for (BlockMetaData block : blocks) {
       total += block.getRowCount();
     }
+    this.corruptRecordCounter = new CorruptRecordCounter(configuration, total);
     LOG.info("RecordReader initialized will read a total of " + total + " records.");
   }
 
@@ -205,23 +205,19 @@ class InternalParquetRecordReader<T> {
 
     while (!recordFound) {
       // no more records left
-      if (current >= total) {
-        // this will throw if there were too many corrupt records
-        errorTracker.close();
-        return false;
-      }
+      if (current >= total) { return false;}
 
       try {
         checkRead();
 
-        errorTracker.incRecords();
+        corruptRecordCounter.incRecordsSeen();
         boolean corrupt = false;
 
         try {
           currentValue = recordReader.read();
         } catch (CorruptRecordException e) {
           // this might throw, but it's fatal if it does.
-          errorTracker.incErrors(e);
+          corruptRecordCounter.incErrorsSeen(e);
           corrupt = true;
         }
 
