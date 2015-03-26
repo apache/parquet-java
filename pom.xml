@@ -114,6 +114,7 @@
     <scala.maven.test.skip>false</scala.maven.test.skip>
     <pig.version>0.11.1</pig.version>
     <pig.classifier />
+    <thrift.version>0.7.0</thrift.version>
   </properties>
 
   <modules>
@@ -537,6 +538,12 @@
         <hadoop.version>2.3.0</hadoop.version>
         <pig.version>0.13.0</pig.version>
         <pig.classifier>h2</pig.classifier>
+      </properties>
+    </profile>
+    <profile>
+      <id>thrift9</id>
+      <properties>
+        <thrift.version>0.9.0</thrift.version>
       </properties>
     </profile>
   </profiles>
