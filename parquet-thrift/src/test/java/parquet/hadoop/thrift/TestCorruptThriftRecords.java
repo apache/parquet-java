@@ -32,7 +32,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import parquet.hadoop.CorruptRecordCounter;
+import parquet.hadoop.UnmaterializableRecordCounter;
 import parquet.hadoop.ParquetWriter;
 import parquet.hadoop.metadata.CompressionCodecName;
 import parquet.thrift.ThriftParquetWriter;
@@ -185,8 +185,7 @@ public class TestCorruptThriftRecords {
   @Test
   public void testCanTolerateBadRecords() throws Exception {
     Configuration conf = new Configuration();
-    conf.setInt(CorruptRecordCounter.BAD_RECORD_MIN_COUNT_CONF_KEY, 2);
-    conf.setFloat(CorruptRecordCounter.BAD_RECORD_THRESHOLD_CONF_KEY, 0.1f);
+    conf.setFloat(UnmaterializableRecordCounter.BAD_RECORD_THRESHOLD_CONF_KEY, 0.1f);
 
     List<StructWithUnionV2> expected = new ArrayList<StructWithUnionV2>();
 
@@ -198,8 +197,7 @@ public class TestCorruptThriftRecords {
   @Test
   public void testThrowsWhenTooManyBadRecords() throws Exception {
     Configuration conf = new Configuration();
-    conf.setInt(CorruptRecordCounter.BAD_RECORD_MIN_COUNT_CONF_KEY, 2);
-    conf.setFloat(CorruptRecordCounter.BAD_RECORD_THRESHOLD_CONF_KEY, 0.1f);
+    conf.setFloat(UnmaterializableRecordCounter.BAD_RECORD_THRESHOLD_CONF_KEY, 0.1f);
 
     ArrayList<StructWithUnionV2> expected = new ArrayList<StructWithUnionV2>();
 

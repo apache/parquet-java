@@ -43,7 +43,7 @@ import parquet.io.ColumnIOFactory;
 import parquet.io.MessageColumnIO;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.RecordMaterializer;
-import parquet.io.api.RecordMaterializer.CorruptRecordException;
+import parquet.io.api.RecordMaterializer.RecordMaterializationException;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.Type;
@@ -81,7 +81,7 @@ class InternalParquetRecordReader<T> {
   private long totalCountLoadedSoFar = 0;
 
   private Path file;
-  private CorruptRecordCounter corruptRecordCounter;
+  private UnmaterializableRecordCounter unmaterializableRecordCounter;
 
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
@@ -181,7 +181,7 @@ class InternalParquetRecordReader<T> {
     for (BlockMetaData block : blocks) {
       total += block.getRowCount();
     }
-    this.corruptRecordCounter = new CorruptRecordCounter(configuration, total);
+    this.unmaterializableRecordCounter = new UnmaterializableRecordCounter(configuration, total);
     LOG.info("RecordReader initialized will read a total of " + total + " records.");
   }
 
@@ -205,25 +205,17 @@ class InternalParquetRecordReader<T> {
 
     while (!recordFound) {
       // no more records left
-      if (current >= total) { return false;}
+      if (current >= total) { return false; }
 
       try {
         checkRead();
-
-        corruptRecordCounter.incRecordsSeen();
-        boolean corrupt = false;
+        current ++;
 
         try {
           currentValue = recordReader.read();
-        } catch (CorruptRecordException e) {
+        } catch (RecordMaterializationException e) {
           // this might throw, but it's fatal if it does.
-          corruptRecordCounter.incErrorsSeen(e);
-          corrupt = true;
-        }
-
-        current ++;
-
-        if (corrupt) {
+          unmaterializableRecordCounter.incErrors(e);
           if (DEBUG) LOG.debug("skipping a corrupt record");
           continue;
         }

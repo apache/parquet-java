@@ -35,7 +35,7 @@ abstract public class RecordMaterializer<T> {
 
   /**
    * @return the result of the conversion
-   * @throws CorruptRecordException to signal that a record is corrupt, but can be skipped
+   * @throws RecordMaterializationException to signal that a record cannot be materialized, but can be skipped
    */
   abstract public T getCurrentRecord();
 
@@ -49,20 +49,26 @@ abstract public class RecordMaterializer<T> {
    */
   abstract public GroupConverter getRootConverter();
 
-  public static class CorruptRecordException extends ParquetDecodingException {
-    public CorruptRecordException() {
+  /**
+   * This exception signals that the current record is cannot be converted from parquet columns to a materialized
+   * record, but can be skipped if requested. This exception should be used to signal errors like a union with no
+   * set values, or an error in converting parquet primitive values to a materialized record. It should not
+   * be used to signal unrecoverable errors, like a data column being corrupt or unreadable.
+   */
+  public static class RecordMaterializationException extends ParquetDecodingException {
+    public RecordMaterializationException() {
       super();
     }
 
-    public CorruptRecordException(String message, Throwable cause) {
+    public RecordMaterializationException(String message, Throwable cause) {
       super(message, cause);
     }
 
-    public CorruptRecordException(String message) {
+    public RecordMaterializationException(String message) {
       super(message);
     }
 
-    public CorruptRecordException(Throwable cause) {
+    public RecordMaterializationException(Throwable cause) {
       super(cause);
     }
   }
