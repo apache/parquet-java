@@ -33,6 +33,7 @@ import parquet.schema.MessageTypeParser;
 import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 /**
  * Verify MemoryManager could adjust its writers' allocated memory size.
@@ -49,6 +50,7 @@ public class TestMemoryManager {
   ParquetOutputFormat parquetOutputFormat;
   CompressionCodecName codec;
   int counter = 0;
+  boolean firstRegister = true;
 
   @Before
   public void setUp() {
@@ -99,12 +101,25 @@ public class TestMemoryManager {
     Path file = new Path("target/test/", "parquet" + index);
     parquetOutputFormat = new ParquetOutputFormat(new GroupWriteSupport());
     RecordWriter writer = parquetOutputFormat.getRecordWriter(conf, file, codec);
-    parquetOutputFormat.getMemoryManager().registerScaleCallBack("increment-test-counter", new Runnable() {
-      @Override
-      public void run() {
-        counter++;
+    try {
+      parquetOutputFormat.getMemoryManager().registerScaleCallBack("increment-test-counter",
+          new Callable<MemoryManager.MemoryManagerStats>() {
+            @Override
+            public MemoryManager.MemoryManagerStats call() {
+              counter++;
+              return parquetOutputFormat.getMemoryManager().getStats();
+            }
+          });
+      if (!firstRegister) {
+        Assert.fail("Duplicated registering callback should throw duplicates exception.");
       }
-    });
+      firstRegister = false;
+    } catch (IllegalArgumentException e) {
+      if (firstRegister) {
+        Assert.fail("Registering the same callback first time should succeed.");
+      }
+    }
+
     return writer;
   }
 

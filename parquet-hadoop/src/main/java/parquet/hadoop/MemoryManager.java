@@ -24,6 +24,7 @@ import parquet.ParquetRuntimeException;
 import java.lang.management.ManagementFactory;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 /**
  * Implements a memory manager that keeps a global context of how many Parquet
@@ -47,7 +48,16 @@ public class MemoryManager {
   private final long minMemoryAllocation;
   private final Map<InternalParquetRecordWriter, Long> writerList = new
       HashMap<InternalParquetRecordWriter, Long>();
-  private final Map<String, Runnable> callBacks = new HashMap<String, Runnable>();
+  private final Map<String, Callable<MemoryManagerStats>> callBacks = new HashMap<String,
+      Callable<MemoryManagerStats>>();
+  private final MemoryManagerStats stats;
+
+  /**
+   * The state of MemoryManager. We could add more attributes in the future.
+   */
+  public static class MemoryManagerStats {
+    public double scale = 1.0;
+  }
 
   public MemoryManager(float ratio, long minAllocation) {
     checkRatio(ratio);
@@ -56,6 +66,7 @@ public class MemoryManager {
     minMemoryAllocation = minAllocation;
     totalMemoryPool = Math.round(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
         () * ratio);
+    stats = new MemoryManagerStats();
     LOG.debug(String.format("Allocated total memory pool is: %,d", totalMemoryPool));
   }
 
@@ -101,21 +112,24 @@ public class MemoryManager {
    */
   private void updateAllocation() {
     long totalAllocations = 0;
-    double scale;
     for (Long allocation : writerList.values()) {
       totalAllocations += allocation;
     }
     if (totalAllocations <= totalMemoryPool) {
-      scale = 1.0;
+      stats.scale = 1.0;
     } else {
-      scale = (double) totalMemoryPool / totalAllocations;
+      stats.scale = (double) totalMemoryPool / totalAllocations;
       LOG.warn(String.format(
           "Total allocation exceeds %.2f%% (%,d bytes) of heap memory\n" +
           "Scaling row group sizes to %.2f%% for %d writers",
-          100*memoryPoolRatio, totalMemoryPool, 100*scale, writerList.size()));
-      for (Runnable callBack : callBacks.values()) {
+          100*memoryPoolRatio, totalMemoryPool, 100*stats.scale, writerList.size()));
+      for (Callable callBack : callBacks.values()) {
         // we do not really want to start a new thread here.
-        callBack.run();
+        try {
+          callBack.call();
+        } catch (Exception e) {
+          LOG.error("Error happens when executing CallBack in MemoryManager: " + callBack, e);
+        }
       }
     }
 
@@ -125,7 +139,7 @@ public class MemoryManager {
     }
 
     for (Map.Entry<InternalParquetRecordWriter, Long> entry : writerList.entrySet()) {
-      long newSize = (long) Math.floor(entry.getValue() * scale);
+      long newSize = (long) Math.floor(entry.getValue() * stats.scale);
       if(minMemoryAllocation > 0 && newSize/maxColCount < minMemoryAllocation) {
           throw new ParquetRuntimeException(String.format("New Memory allocation %d"+
           " exceeds minimum allocation size %d with largest schema having %d columns",
@@ -165,18 +179,15 @@ public class MemoryManager {
    * Register callback and deduplicate it if any.
    * @param callBackName the name of callback. It should be identical.
    * @param callBack the callback passed in from upper layer, such as Hive.
-   * @return
    */
-  public boolean registerScaleCallBack(String callBackName, Runnable callBack) {
-    if (callBackName == null || callBack == null) {
-      return false;
-    }
+  public void registerScaleCallBack(String callBackName, Callable callBack) {
+    assert (callBackName != null && callBack != null);
 
     if (callBacks.containsKey(callBackName)) {
-      return true;
+      throw new IllegalArgumentException("The callBackName " + callBackName +
+          " is duplicated and has been registered already.");
     } else {
       callBacks.put(callBackName, callBack);
-      return true;
     }
   }
 
@@ -184,7 +195,15 @@ public class MemoryManager {
    * Get the registered callbacks.
    * @return
    */
-  Map<String, Runnable> getScaleCallBacks() {
+  Map<String, Callable<MemoryManagerStats>> getScaleCallBacks() {
     return callBacks;
+  }
+
+  /**
+   * Get the internal state values of MemoryManger
+   * @return
+   */
+  MemoryManagerStats getStats() {
+    return stats;
   }
 }
