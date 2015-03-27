@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -39,6 +39,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -54,6 +55,8 @@ import parquet.thrift.test.Name;
 
 import java.io.File;
 import java.io.ByteArrayOutputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 public class TestParquetTBaseScheme {
   final String txtInputPath = "src/test/resources/names.txt";
@@ -64,7 +67,8 @@ public class TestParquetTBaseScheme {
   @Test
   public void testWrite() throws Exception {
     Path path = new Path(parquetOutputPath);
-    final FileSystem fs = path.getFileSystem(new Configuration());
+    JobConf jobConf = new JobConf();
+    final FileSystem fs = path.getFileSystem(jobConf);
     if (fs.exists(path)) fs.delete(path, true);
 
     Scheme sourceScheme = new TextLine( new Fields( "first", "last" ) );
@@ -75,9 +79,14 @@ public class TestParquetTBaseScheme {
 
     Pipe assembly = new Pipe( "namecp" );
     assembly = new Each(assembly, new PackThriftFunction());
-    Flow flow  = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
+    HadoopFlowConnector hadoopFlowConnector = new HadoopFlowConnector();
+    Flow flow  = hadoopFlowConnector.connect("namecp", source, sink, assembly);
 
     flow.complete();
+
+    assertTrue(fs.exists(new Path(parquetOutputPath)));
+    assertTrue(fs.exists(new Path(parquetOutputPath + "/_metadata")));
+    assertTrue(fs.exists(new Path(parquetOutputPath + "/_common_metadata")));
   }
 
   @Test

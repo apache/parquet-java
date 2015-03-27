@@ -175,9 +175,30 @@ public abstract class ThriftType {
 
     private final ThriftField[] childById;
 
+  /**
+   * Whether a struct is a union or a regular struct is not always known, because it was not always
+   * written to the metadata files.
+   *
+   * We should always know this in the write path, but may not in the read path.
+   */
+   public enum StructOrUnionType {
+      STRUCT,
+      UNION,
+      UNKNOWN
+   }
+
+    private final StructOrUnionType structOrUnionType;
+
+    @Deprecated
+    public StructType(List<ThriftField> children) {
+      this(children, null);
+    }
+
     @JsonCreator
-    public StructType(@JsonProperty("children") List<ThriftField> children) {
+    public StructType(@JsonProperty("children") List<ThriftField> children,
+                      @JsonProperty("structOrUnionType") StructOrUnionType structOrUnionType) {
       super(STRUCT);
+      this.structOrUnionType = structOrUnionType == null ? StructOrUnionType.UNKNOWN : structOrUnionType;
       this.children = children;
       int maxId = 0;
       if (children != null) {
@@ -204,6 +225,11 @@ public abstract class ThriftType {
       } else {
         return childById[id];
       }
+    }
+
+    @JsonProperty("structOrUnionType")
+    public StructOrUnionType getStructOrUnionType() {
+      return structOrUnionType;
     }
 
     @Override

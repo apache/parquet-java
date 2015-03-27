@@ -168,3 +168,7 @@ struct TestFieldOfEnum{
  2: optional Operation op2
 }
 
+struct StringAndBinary {
+  1: required string s;
+  2: required binary b;
+}

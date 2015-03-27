@@ -30,6 +30,7 @@ import parquet.scrooge.test.TestOptionalMap;
 import parquet.scrooge.test.TestPersonWithAllInformation;
 import parquet.scrooge.test.TestSetPrimitive;
 import parquet.scrooge.test.TestUnion;
+import parquet.scrooge.test.StringAndBinary;
 import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType;
 import static org.junit.Assert.assertEquals;
@@ -43,7 +44,13 @@ public class ScroogeStructConverterTest {
     ThriftType.StructType scroogeMap = new ScroogeStructConverter().convert(TestMapPrimitiveKey.class);
     ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestMapPrimitiveKey.class);
     assertEquals(expected,scroogeMap);
+  }
 
+  @Test
+  public void testBinary() throws Exception {
+    ThriftType.StructType scroogeBinary = new ScroogeStructConverter().convert(StringAndBinary.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.StringAndBinary.class);
+    assertEquals(expected, scroogeBinary);
   }
 
   @Test
