@@ -120,6 +120,7 @@
   <modules>
     <module>parquet-avro</module>
     <module>parquet-cascading</module>
+    <module>parquet-cascading-proto</module>
     <module>parquet-column</module>
     <module>parquet-common</module>
     <module>parquet-encoding</module>

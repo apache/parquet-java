@@ -22,7 +22,6 @@ import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import org.apache.hadoop.fs.Path;
 import parquet.hadoop.ParquetWriter;
-import parquet.hadoop.api.WriteSupport;
 import parquet.hadoop.metadata.CompressionCodecName;
 
 import java.io.IOException;
@@ -76,6 +75,11 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
   public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage) throws IOException {
     this(file, protoMessage, CompressionCodecName.UNCOMPRESSED,
             DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
+  }
+
+  @Override
+  public void write(T obj) throws IOException {
+    super.write(obj);
   }
 
 }
