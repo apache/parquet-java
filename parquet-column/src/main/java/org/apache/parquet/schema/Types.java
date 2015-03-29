@@ -679,8 +679,7 @@ public class Types {
         .required(PrimitiveTypeName.BINARY).as(OriginalType.UTF8).named("key");
 
     public static class MapKeyBuilder<P, Q extends BaseMapBuilder<P, Q>> extends
-        BasePrimitiveBuilder<P,
-        MapKeyBuilder<P, Q>> {
+        BasePrimitiveBuilder<P, MapKeyBuilder<P, Q>> {
       private BaseMapBuilder<P, Q> parent = null;
 
       public MapKeyBuilder(BaseMapBuilder<P, Q> parent, PrimitiveTypeName type) {
@@ -726,6 +725,32 @@ public class Types {
 
       public MapGroupValueBuilder<P, Q> optionalGroupValue() {
         return groupValue(Type.Repetition.OPTIONAL);
+      }
+
+      public MapMapValueBuilder<P, Q> mapValue(Type.Repetition repetition) {
+        parent.setKeyType(build("key"));
+        return new MapMapValueBuilder<P, Q>(parent).repetition(repetition);
+      }
+
+      public MapMapValueBuilder<P, Q> requiredMapValue() {
+        return mapValue(Type.Repetition.REQUIRED);
+      }
+
+      public MapMapValueBuilder<P, Q> optionalMapValue() {
+        return mapValue(Type.Repetition.OPTIONAL);
+      }
+
+      public MapListValueBuilder<P, Q> listValue(Type.Repetition repetition) {
+        parent.setKeyType(build("key"));
+        return new MapListValueBuilder<P, Q>(parent).repetition(repetition);
+      }
+
+      public MapListValueBuilder<P, Q> requiredListValue() {
+        return listValue(Type.Repetition.REQUIRED);
+      }
+
+      public MapListValueBuilder<P, Q> optionalListValue() {
+        return listValue(Type.Repetition.OPTIONAL);
       }
 
       @Override
@@ -799,17 +824,43 @@ public class Types {
         return value(type, Type.Repetition.OPTIONAL);
       }
 
-      public MapGroupValueBuilder<P, Q> value(Type.Repetition repetition) {
+      public MapGroupValueBuilder<P, Q> groupValue(Type.Repetition repetition) {
         parent.setKeyType(build("key"));
         return new MapGroupValueBuilder<P, Q>(parent).repetition(repetition);
       }
 
       public MapGroupValueBuilder<P, Q> requiredGroupValue() {
-        return value(Type.Repetition.REQUIRED);
+        return groupValue(Type.Repetition.REQUIRED);
       }
 
       public MapGroupValueBuilder<P, Q> optionalGroupValue() {
-        return value(Type.Repetition.OPTIONAL);
+        return groupValue(Type.Repetition.OPTIONAL);
+      }
+
+      public MapMapValueBuilder<P, Q> mapValue(Type.Repetition repetition) {
+        parent.setKeyType(build("key"));
+        return new MapMapValueBuilder<P, Q>(parent).repetition(repetition);
+      }
+
+      public MapMapValueBuilder<P, Q> requiredMapValue() {
+        return mapValue(Type.Repetition.REQUIRED);
+      }
+
+      public MapMapValueBuilder<P, Q> optionalMapValue() {
+        return mapValue(Type.Repetition.OPTIONAL);
+      }
+
+      public MapListValueBuilder<P, Q> listValue(Type.Repetition repetition) {
+        parent.setKeyType(build("key"));
+        return new MapListValueBuilder<P, Q>(parent).repetition(repetition);
+      }
+
+      public MapListValueBuilder<P, Q> requiredListValue() {
+        return listValue(Type.Repetition.REQUIRED);
+      }
+
+      public MapListValueBuilder<P, Q> optionalListValue() {
+        return listValue(Type.Repetition.OPTIONAL);
       }
     }
 
@@ -829,6 +880,46 @@ public class Types {
 
       @Override
       protected MapGroupValueBuilder<P, Q> self() {
+        return this;
+      }
+    }
+
+    public static class MapMapValueBuilder<P, Q extends BaseMapBuilder<P, Q>> extends
+        BaseMapBuilder<P, MapMapValueBuilder<P, Q>> {
+      private final BaseMapBuilder<P, Q> parent;
+
+      public MapMapValueBuilder(BaseMapBuilder<P, Q> parent) {
+        super(parent.parent);
+        this.parent = parent;
+      }
+
+      public P named(String name) {
+        parent.setValueType(build("value"));
+        return parent.named(name);
+      }
+
+      @Override
+      protected MapMapValueBuilder<P, Q> self() {
+        return this;
+      }
+    }
+
+    public static class MapListValueBuilder<P, Q extends BaseMapBuilder<P, Q>> extends
+        BaseListBuilder<P, MapListValueBuilder<P, Q>> {
+      private final BaseMapBuilder<P, Q> parent;
+
+      public MapListValueBuilder(BaseMapBuilder<P, Q> parent) {
+        super(parent.parent);
+        this.parent = parent;
+      }
+
+      public P named(String name) {
+        parent.setValueType(build("value"));
+        return parent.named(name);
+      }
+
+      @Override
+      protected MapListValueBuilder<P, Q> self() {
         return this;
       }
     }
@@ -867,6 +958,64 @@ public class Types {
 
     public MapGroupKeyBuilder<P, Q> groupKey() {
       return new MapGroupKeyBuilder<P, Q>(this);
+    }
+
+    public MapValueBuilder<P, Q> value(PrimitiveTypeName type, Type.Repetition repetition) {
+      setKeyType(build("key"));
+      if (parent != null) {
+        return new MapValueBuilder<P, Q>(this,
+            type).repetition(repetition);
+      } else {
+        return new MapValueBuilder<P, Q>(this,
+            returnType, type).repetition(repetition);
+      }
+    }
+
+    public MapValueBuilder<P, Q> requiredValue(PrimitiveTypeName type) {
+      return value(type, Type.Repetition.REQUIRED);
+    }
+
+    public MapValueBuilder<P, Q> optionalValue(PrimitiveTypeName type) {
+      return value(type, Type.Repetition.OPTIONAL);
+    }
+
+    public MapGroupValueBuilder<P, Q> groupValue(Type.Repetition repetition) {
+      setKeyType(build("key"));
+      return new MapGroupValueBuilder<P, Q>(this).repetition(repetition);
+    }
+
+    public MapGroupValueBuilder<P, Q> requiredGroupValue() {
+      return groupValue(Type.Repetition.REQUIRED);
+    }
+
+    public MapGroupValueBuilder<P, Q> optionalGroupValue() {
+      return groupValue(Type.Repetition.OPTIONAL);
+    }
+
+    public MapMapValueBuilder<P, Q> mapValue(Type.Repetition repetition) {
+      setKeyType(build("key"));
+      return new MapMapValueBuilder<P, Q>(this).repetition(repetition);
+    }
+
+    public MapMapValueBuilder<P, Q> requiredMapValue() {
+      return mapValue(Type.Repetition.REQUIRED);
+    }
+
+    public MapMapValueBuilder<P, Q> optionalMapValue() {
+      return mapValue(Type.Repetition.OPTIONAL);
+    }
+
+    public MapListValueBuilder<P, Q> listValue(Type.Repetition repetition) {
+      setKeyType(build("key"));
+      return new MapListValueBuilder<P, Q>(this).repetition(repetition);
+    }
+
+    public MapListValueBuilder<P, Q> requiredListValue() {
+      return listValue(Type.Repetition.REQUIRED);
+    }
+
+    public MapListValueBuilder<P, Q> optionalListValue() {
+      return listValue(Type.Repetition.OPTIONAL);
     }
 
     @Override
@@ -1070,28 +1219,24 @@ public class Types {
       return groupElement(Type.Repetition.OPTIONAL);
     }
 
-    public ListElementBuilder<P, Q> requiredElement(PrimitiveTypeName type) {
+    public ListElementBuilder<P, Q> element(PrimitiveTypeName type, Type.Repetition repetition) {
       Preconditions
           .checkState(elementType == null, "groupElement can be called just once on a ListBuilder");
       if (parent != null) {
         return new ListElementBuilder<P, Q>(this, type)
-            .repetition(Type.Repetition.REQUIRED);
+            .repetition(repetition);
       } else {
         return new ListElementBuilder<P, Q>(this, returnType, type)
-            .repetition(Type.Repetition.REQUIRED);
+            .repetition(repetition);
       }
     }
 
+    public ListElementBuilder<P, Q> requiredElement(PrimitiveTypeName type) {
+      return element(type, Type.Repetition.REQUIRED);
+    }
+
     public ListElementBuilder<P, Q> optionalElement(PrimitiveTypeName type) {
-      Preconditions
-          .checkState(elementType == null, "groupElement can be called just once on a ListBuilder");
-      if (parent != null) {
-        return new ListElementBuilder<P, Q>(this, type)
-            .repetition(Type.Repetition.OPTIONAL);
-      } else {
-        return new ListElementBuilder<P, Q>(this, returnType, type)
-            .repetition(Type.Repetition.OPTIONAL);
-      }
+      return element(type, Type.Repetition.OPTIONAL);
     }
 
     public ListListElementBuilder<P, Q> listElement(Type.Repetition repetition) {
