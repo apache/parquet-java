@@ -21,6 +21,9 @@ package parquet.tools.command;
 import java.io.PrintWriter;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Options;
 import org.apache.hadoop.fs.Path;
 
 import parquet.hadoop.ParquetReader;
@@ -34,6 +37,15 @@ public class CatCommand extends ArgsOnlyCommand {
     "where <input> is the parquet file to print to stdout"
   };
 
+  public static final Options OPTIONS;
+  static {
+    OPTIONS = new Options();
+    Option help = OptionBuilder.withLongOpt("json")
+                               .withDescription("Show records in JSON format.")
+                               .create('j');
+    OPTIONS.addOption(help);
+  }
+
   public CatCommand() {
     super(1, 1);
   }
@@ -41,6 +53,11 @@ public class CatCommand extends ArgsOnlyCommand {
   @Override
   public String[] getUsageDescription() {
     return USAGE;
+  }
+
+  @Override
+  public Options getOptions() {
+    return OPTIONS;
   }
 
   @Override
@@ -55,7 +72,11 @@ public class CatCommand extends ArgsOnlyCommand {
       PrintWriter writer = new PrintWriter(Main.out, true);
       reader = new ParquetReader<SimpleRecord>(new Path(input), new SimpleReadSupport());
       for (SimpleRecord value = reader.read(); value != null; value = reader.read()) {
-        value.prettyPrint(writer);
+        if (options.hasOption('j')) {
+          value.prettyPrintJson(writer);
+        } else {
+          value.prettyPrint(writer);
+        }
         writer.println();
       }
     } finally {
