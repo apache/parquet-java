@@ -381,6 +381,7 @@
           <excludes>
             <exclude>**/*.parquet</exclude>
             <exclude>**/*.avro</exclude>
+            <exclude>**/*.avdl</exclude>
             <exclude>**/*.json</exclude>
             <exclude>**/names.txt</exclude> <!-- parquet-cascading test data -->
             <exclude>**/*.avsc</exclude>
