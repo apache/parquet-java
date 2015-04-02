@@ -20,6 +20,7 @@ package parquet.filter2.recordlevel;
 
 import org.junit.Test;
 
+import parquet.column.Dictionary;
 import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.And;
 import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.Or;
 import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
@@ -41,6 +42,11 @@ public class TestIncrementallyUpdatedFilterPredicateEvaluator {
   public static ValueInspector intIsNull() {
     return new ValueInspector() {
       @Override
+      protected boolean evaluateFilterForDictionaryElement(Dictionary dictionary, int dictionaryId) {
+        return false;
+      }
+
+      @Override
       public void updateNull() {
         setResult(true);
       }
@@ -54,6 +60,12 @@ public class TestIncrementallyUpdatedFilterPredicateEvaluator {
 
   public static ValueInspector intIsEven() {
     return new ValueInspector() {
+
+      @Override
+      protected boolean evaluateFilterForDictionaryElement(Dictionary dictionary, int dictionaryId) {
+        return dictionary.decodeToInt(dictionaryId) % 2 == 0;
+      }
+
       @Override
       public void updateNull() {
         setResult(false);
@@ -68,6 +80,12 @@ public class TestIncrementallyUpdatedFilterPredicateEvaluator {
 
   public static ValueInspector doubleMoreThan10() {
     return new ValueInspector() {
+
+      @Override
+      protected boolean evaluateFilterForDictionaryElement(Dictionary dictionary, int dictionaryId) {
+        return dictionary.decodeToDouble(dictionaryId) > 10.0;
+      }
+
       @Override
       public void updateNull() {
         setResult(false);
@@ -178,6 +196,12 @@ public class TestIncrementallyUpdatedFilterPredicateEvaluator {
   @Test
   public void testShortCircuit() {
     ValueInspector neverCalled = new ValueInspector() {
+
+      @Override
+      protected boolean evaluateFilterForDictionaryElement(Dictionary dictionary, int dictionaryId) {
+        throw new UnsupportedOperationException();
+      }
+
       @Override
       public boolean accept(Visitor visitor) {
         throw new ShortCircuitException();

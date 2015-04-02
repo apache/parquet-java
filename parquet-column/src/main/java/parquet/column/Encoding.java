@@ -36,8 +36,10 @@ import parquet.column.values.deltastrings.DeltaByteArrayReader;
 import parquet.column.values.dictionary.DictionaryValuesReader;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainBinaryDictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainDoubleDictionary;
+import parquet.column.values.dictionary.PlainValuesDictionary.PlainFixedLenByteArrayDictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainFloatDictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainIntegerDictionary;
+import parquet.column.values.dictionary.PlainValuesDictionary.PlainInt96Dictionary;
 import parquet.column.values.dictionary.PlainValuesDictionary.PlainLongDictionary;
 import parquet.column.values.plain.BinaryPlainValuesReader;
 import parquet.column.values.plain.FixedLenByteArrayPlainValuesReader;
@@ -88,9 +90,9 @@ public enum Encoding {
       case BINARY:
         return new PlainBinaryDictionary(dictionaryPage);
       case FIXED_LEN_BYTE_ARRAY:
-        return new PlainBinaryDictionary(dictionaryPage, descriptor.getTypeLength());
+        return new PlainFixedLenByteArrayDictionary(dictionaryPage, descriptor.getTypeLength());
       case INT96:
-        return new PlainBinaryDictionary(dictionaryPage, 12);
+        return new PlainInt96Dictionary(dictionaryPage);
       case INT64:
         return new PlainLongDictionary(dictionaryPage);
       case DOUBLE:

@@ -41,6 +41,11 @@ public class PhoneBookWriter {
       "message user {\n"
           + "  required int64 id;\n"
           + "  optional binary name (UTF8);\n"
+          + "  optional float float1;\n"
+          + "  optional double double1;\n"
+          + "  optional int32 int1;\n"
+          + "  optional int64 long1;\n"
+          + "  optional boolean boolean1;\n"
           + "  optional group location {\n"
           + "    optional double lon;\n"
           + "    optional double lat;\n"
@@ -134,12 +139,22 @@ public class PhoneBookWriter {
   public static class User {
     private final long id;
     private final String name;
+    private final float float1;
+    private final double double1;
+    private final int int1;
+    private final long long1;
+    private final boolean boolean1;
     private final List<PhoneNumber> phoneNumbers;
     private final Location location;
 
-    public User(long id, String name, List<PhoneNumber> phoneNumbers, Location location) {
+    public User(long id, String name, float float1, double double1, int int1, long long1, boolean boolean1, List<PhoneNumber> phoneNumbers, Location location) {
       this.id = id;
       this.name = name;
+      this.float1 = float1;
+      this.double1 = double1;
+      this.int1 = int1;
+      this.long1 = long1;
+      this.boolean1 = boolean1;
       this.phoneNumbers = phoneNumbers;
       this.location = location;
     }
@@ -150,6 +165,26 @@ public class PhoneBookWriter {
 
     public String getName() {
       return name;
+    }
+
+    public float getFloat1() {
+      return float1;
+    }
+
+    public double getDouble1() {
+      return double1;
+    }
+
+    public int getInt1() {
+      return int1;
+    }
+
+    public long getLong1() {
+      return long1;
+    }
+
+    public boolean isBoolean1() {
+      return boolean1;
     }
 
     public List<PhoneNumber> getPhoneNumbers() {
@@ -167,7 +202,12 @@ public class PhoneBookWriter {
 
       User user = (User) o;
 
+      if (boolean1 != user.boolean1) return false;
+      if (Double.compare(user.double1, double1) != 0) return false;
+      if (Float.compare(user.float1, float1) != 0) return false;
       if (id != user.id) return false;
+      if (int1 != user.int1) return false;
+      if (long1 != user.long1) return false;
       if (location != null ? !location.equals(user.location) : user.location != null) return false;
       if (name != null ? !name.equals(user.name) : user.name != null) return false;
       if (phoneNumbers != null ? !phoneNumbers.equals(user.phoneNumbers) : user.phoneNumbers != null) return false;
@@ -177,8 +217,16 @@ public class PhoneBookWriter {
 
     @Override
     public int hashCode() {
-      int result = (int) (id ^ (id >>> 32));
+      int result;
+      long temp;
+      result = (int) (id ^ (id >>> 32));
       result = 31 * result + (name != null ? name.hashCode() : 0);
+      result = 31 * result + (float1 != +0.0f ? Float.floatToIntBits(float1) : 0);
+      temp = Double.doubleToLongBits(double1);
+      result = 31 * result + (int) (temp ^ (temp >>> 32));
+      result = 31 * result + int1;
+      result = 31 * result + (int) (long1 ^ (long1 >>> 32));
+      result = 31 * result + (boolean1 ? 1 : 0);
       result = 31 * result + (phoneNumbers != null ? phoneNumbers.hashCode() : 0);
       result = 31 * result + (location != null ? location.hashCode() : 0);
       return result;
@@ -192,6 +240,12 @@ public class PhoneBookWriter {
     if (user.getName() != null) {
       root.append("name", user.getName());
     }
+
+    root.append("float1", user.getFloat1());
+    root.append("double1", user.getDouble1());
+    root.append("int1", user.getInt1());
+    root.append("long1", user.getLong1());
+    root.append("boolean1", user.isBoolean1());
 
     if (user.getPhoneNumbers() != null) {
       Group phoneNumbers = root.addGroup("phoneNumbers");
