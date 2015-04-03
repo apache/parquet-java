@@ -18,14 +18,15 @@
  */
 package parquet.proto;
 
-import com.google.protobuf.Message;
-import com.google.protobuf.MessageOrBuilder;
+import java.io.IOException;
+
 import org.apache.hadoop.fs.Path;
+
 import parquet.hadoop.ParquetWriter;
-import parquet.hadoop.api.WriteSupport;
 import parquet.hadoop.metadata.CompressionCodecName;
 
-import java.io.IOException;
+import com.google.protobuf.Message;
+import com.google.protobuf.MessageOrBuilder;
 
 /**
  * Write Protobuf records to a Parquet file.
@@ -40,7 +41,9 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
    * @param blockSize
    * @param pageSize
    * @throws IOException
+   * @deprecated use {@link #builder(Class<? extends Message>, Path)}
    */
+  @Deprecated
   public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage,
                             CompressionCodecName compressionCodecName, int blockSize,
                             int pageSize) throws IOException {
@@ -58,7 +61,9 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
    * @param enableDictionary     Whether to use a dictionary to compress columns.
    * @param validating           to turn on validation using the schema
    * @throws IOException
+   * @deprecated use {@link #builder(Class<? extends Message>, Path)}
    */
+  @Deprecated
   public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage,
                             CompressionCodecName compressionCodecName, int blockSize,
                             int pageSize, boolean enableDictionary, boolean validating) throws IOException {
@@ -72,10 +77,20 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
    *
    * @param file The file name to write to.
    * @throws IOException
+   * @deprecated use {@link #builder(Class<? extends Message>, Path)}
    */
+  @Deprecated
   public ProtoParquetWriter(Path file, Class<? extends Message> protoMessage) throws IOException {
     this(file, protoMessage, CompressionCodecName.UNCOMPRESSED,
             DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
+  }
+  
+  /**
+   * Convenience method for getting a new builder for {@link ProtoParquetWriter}
+   */
+  public static <T extends MessageOrBuilder> Builder<T> builder(
+      Class<? extends Message> protoMessage, Path file) {
+    return new Builder<T>(new ProtoWriteSupport<T>(protoMessage), file);
   }
 
 }
