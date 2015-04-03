@@ -108,6 +108,7 @@
     <log4j.version>1.2.17</log4j.version>
     <previous.version>1.6.0rc1</previous.version>
     <thrift.executable>thrift</thrift.executable>
+    <avro.version>1.7.6</avro.version>
     <scala.version>2.10.4</scala.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
     <scala.binary.version>2.10</scala.binary.version>
@@ -119,6 +120,7 @@
   <modules>
     <module>parquet-avro</module>
     <module>parquet-cascading</module>
+    <module>parquet-cascading-avro</module>
     <module>parquet-column</module>
     <module>parquet-common</module>
     <module>parquet-encoding</module>

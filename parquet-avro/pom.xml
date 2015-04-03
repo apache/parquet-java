@@ -32,10 +32,6 @@
   <name>Apache Parquet Avro (Incubating)</name>
   <url>https://parquet.incubator.apache.org</url>
 
-  <properties>
-    <avro.version>1.7.6</avro.version>
-  </properties>
-
   <dependencies>
     <dependency>
       <groupId>com.twitter</groupId>
