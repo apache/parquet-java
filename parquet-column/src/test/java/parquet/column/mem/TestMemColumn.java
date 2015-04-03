@@ -26,6 +26,7 @@ import parquet.Log;
 import parquet.column.ColumnDescriptor;
 import parquet.column.ColumnReader;
 import parquet.column.ColumnWriter;
+import parquet.column.ParquetProperties;
 import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.impl.ColumnReadStoreImpl;
 import parquet.column.impl.ColumnWriteStoreV1;
@@ -159,6 +160,7 @@ public class TestMemColumn {
   }
 
   private ColumnWriteStoreV1 newColumnWriteStoreImpl(MemPageStore memPageStore) {
-    return new ColumnWriteStoreV1(memPageStore, 2048, 2048, false, WriterVersion.PARQUET_1_0);
+    return new ColumnWriteStoreV1(memPageStore, 2048, 2048, false, WriterVersion.PARQUET_1_0,
+        new ParquetProperties(2048, WriterVersion.PARQUET_1_0, false));
   }
 }

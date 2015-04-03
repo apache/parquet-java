@@ -187,7 +187,8 @@ public class ParquetWriter<T> implements Closeable {
       Configuration conf) throws IOException {
     this(file, ParquetFileWriter.Mode.CREATE, writeSupport,
         compressionCodecName, blockSize, pageSize, dictionaryPageSize,
-        enableDictionary, validating, writerVersion, conf);
+        enableDictionary, validating, writerVersion, conf,
+        new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary));
   }
   /**
    * Create a new ParquetWriter.
@@ -219,7 +220,8 @@ public class ParquetWriter<T> implements Closeable {
       boolean enableDictionary,
       boolean validating,
       WriterVersion writerVersion,
-      Configuration conf) throws IOException {
+      Configuration conf,
+      ParquetProperties parquetProps) throws IOException {
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
     MessageType schema = writeContext.getSchema();
@@ -241,7 +243,8 @@ public class ParquetWriter<T> implements Closeable {
         dictionaryPageSize,
         enableDictionary,
         validating,
-        writerVersion);
+        writerVersion,
+        parquetProps);
   }
 
   /**
@@ -290,6 +293,7 @@ public class ParquetWriter<T> implements Closeable {
     protected boolean enableValidation;
     protected WriterVersion writerVersion;
     protected Configuration conf;
+    protected ParquetProperties properties;
 
     /**
      * @param writeSupport the implementation to write a record to a RecordConsumer
@@ -307,6 +311,7 @@ public class ParquetWriter<T> implements Closeable {
       enableValidation = DEFAULT_IS_VALIDATING_ENABLED;
       writerVersion = DEFAULT_WRITER_VERSION;
       conf = new Configuration();
+      properties = null;
     }
 
     /**
@@ -384,12 +389,24 @@ public class ParquetWriter<T> implements Closeable {
     }
     
     /**
+     * @param properties Subclass of ParquetProperties which can control lots of the parquet parameters
+     */
+    public Builder<T> setProperties(ParquetProperties properties) {
+      this.properties = checkNotNull(properties, "properties");
+      return this;
+    }
+
+    /**
      * @return a new instance of {@link ParquetWriter<T>}
      * @throws IOException
      */
     public ParquetWriter<T> build() throws IOException {
+      if (properties == null) {
+        properties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary);
+      }
       return new ParquetWriter<T>(file, mode, writeSupport, compressionCodecName, blockSize,
-          pageSize, dictionaryPageSize, enableDictionary, enableValidation, writerVersion, conf);
+          pageSize, dictionaryPageSize, enableDictionary, enableValidation, writerVersion, conf,
+          properties);
     }
   }
   

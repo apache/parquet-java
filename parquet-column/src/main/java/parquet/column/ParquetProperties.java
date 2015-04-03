@@ -71,9 +71,9 @@ public class ParquetProperties {
       return WriterVersion.valueOf(name);
     }
   }
-  private final int dictionaryPageSizeThreshold;
-  private final WriterVersion writerVersion;
-  private final boolean enableDictionary;
+  protected final int dictionaryPageSizeThreshold;
+  protected final WriterVersion writerVersion;
+  protected final boolean enableDictionary;
 
   public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict) {
     this.dictionaryPageSizeThreshold = dictPageSize;
@@ -81,7 +81,7 @@ public class ParquetProperties {
     this.enableDictionary = enableDict;
   }
 
-  public static ValuesWriter getColumnDescriptorValuesWriter(int maxLevel, int initialSizePerCol, int pageSize) {
+  public ValuesWriter getColumnDescriptorValuesWriter(int maxLevel, int initialSizePerCol, int pageSize) {
     if (maxLevel == 0) {
       return new DevNullValuesWriter();
     } else {
@@ -206,18 +206,6 @@ public class ParquetProperties {
     }
   }
 
-  public int getDictionaryPageSizeThreshold() {
-    return dictionaryPageSizeThreshold;
-  }
-
-  public WriterVersion getWriterVersion() {
-    return writerVersion;
-  }
-
-  public boolean isEnableDictionary() {
-    return enableDictionary;
-  }
-
   public ColumnWriteStore newColumnWriteStore(
       MessageType schema,
       PageWriteStore pageStore,
@@ -228,13 +216,15 @@ public class ParquetProperties {
           pageStore,
           pageSize,
           dictionaryPageSizeThreshold,
-          enableDictionary, writerVersion);
+          enableDictionary,
+          writerVersion,
+          this);
     case PARQUET_2_0:
       return new ColumnWriteStoreV2(
           schema,
           pageStore,
           pageSize,
-          new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary));
+          this);
     default:
       throw new IllegalArgumentException("unknown version " + writerVersion);
     }

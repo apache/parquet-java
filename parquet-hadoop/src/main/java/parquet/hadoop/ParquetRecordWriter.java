@@ -20,14 +20,15 @@ package parquet.hadoop;
 
 import java.io.IOException;
 import java.util.Map;
+
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
+import parquet.column.ParquetProperties;
 import parquet.column.ParquetProperties.WriterVersion;
 import parquet.hadoop.CodecFactory.BytesCompressor;
 import parquet.hadoop.api.WriteSupport;
 import parquet.schema.MessageType;
-
 import static parquet.Preconditions.checkNotNull;
 
 /**
@@ -70,7 +71,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       WriterVersion writerVersion) {
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
         extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary,
-        validating, writerVersion);
+        validating, writerVersion, new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary));
   }
 
   /**
@@ -99,7 +100,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       MemoryManager memoryManager) {
     internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
         extraMetaData, blockSize, pageSize, compressor, dictionaryPageSize, enableDictionary,
-        validating, writerVersion);
+        validating, writerVersion, new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary));
     this.memoryManager = checkNotNull(memoryManager, "memoryManager");
     memoryManager.addWriter(internalWriter, blockSize);
   }
