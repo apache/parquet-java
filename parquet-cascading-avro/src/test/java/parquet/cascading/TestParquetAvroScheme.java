@@ -40,7 +40,10 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
 import org.junit.Test;
 import parquet.avro.AvroParquetWriter;
+import parquet.filter2.predicate.FilterPredicate;
+import parquet.filter2.predicate.FilterApi;
 import parquet.hadoop.metadata.CompressionCodecName;
+import parquet.io.api.Binary;
 
 import java.io.File;
 
@@ -95,6 +98,15 @@ public class TestParquetAvroScheme {
         doReadWithProjection(new ParquetAvroScheme(config));
     }
 
+    @Test
+    public void testReadWithFilter() throws Exception {
+        FilterPredicate filter = FilterApi.eq(FilterApi.binaryColumn("first"), Binary.fromString("Bob"));
+        ParquetValueScheme.Config<Name> config = new ParquetValueScheme.Config<Name>()
+                .withFilterPredicate(filter)
+                .withRecordClass(Name.class);
+        doReadWithFilter(new ParquetAvroScheme(config));
+    }
+
     /*@Test
     // TODO: make scheme work without requiring code generation
     public void testReadWithoutClass() throws Exception {
@@ -132,6 +144,13 @@ public class TestParquetAvroScheme {
         prepareRead(sourceScheme, fields);
         String result = FileUtils.readFileToString(new File(txtOutputPath + "/part-00000"));
         assertEquals("Alice\nBob\nCharlie\n", result);
+    }
+
+    private void doReadWithFilter(Scheme sourceScheme) throws Exception {
+        String[] fields = {"first", "last"};
+        prepareRead(sourceScheme, fields);
+        String result = FileUtils.readFileToString(new File(txtOutputPath + "/part-00000"));
+        assertEquals("Bob\tHope\n", result);
     }
 
     private void createFileForRead() throws Exception {

@@ -50,11 +50,11 @@
       <artifactId>parquet-hadoop</artifactId>
       <version>${project.version}</version>
     </dependency>
-      <dependency>
-          <groupId>com.twitter</groupId>
-          <artifactId>parquet-avro</artifactId>
-          <version>${project.version}</version>
-      </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-avro</artifactId>
+      <version>${project.version}</version>
+    </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>
@@ -73,6 +73,17 @@
       <version>${project.version}</version>
       <type>test-jar</type>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-cascading</artifactId>
+      <version>${project.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.twitter</groupId>
+          <artifactId>parquet-thrift</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
