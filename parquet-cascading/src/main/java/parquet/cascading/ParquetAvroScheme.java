@@ -64,7 +64,7 @@ public class ParquetAvroScheme<T extends IndexedRecord> extends ParquetValueSche
     super.sourceConfInit(fp, tap, jobConf);
     try {
         jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
-        IndexedRecord record = (IndexedRecord)config.getKlass().getConstructor(null).newInstance(null);
+        IndexedRecord record = config.getKlass().getConstructor(null).newInstance(null);
         ParquetInputFormat.setReadSupportClass(jobConf, AvroReadSupport.class);
         AvroReadSupport.setAvroReadSchema(jobConf, record.getSchema());
         AvroReadSupport.setRequestedProjection(jobConf, AvroProjection.createProjection(record.getSchema(), config.getProjectionString().split(";")));
@@ -88,7 +88,7 @@ public class ParquetAvroScheme<T extends IndexedRecord> extends ParquetValueSche
           DeprecatedParquetOutputFormat.setWriteSupportClass(jobConf, AvroWriteSupport.class);
           DeprecatedParquetOutputFormat.setCompressOutput(jobConf, true);
           DeprecatedParquetOutputFormat.setCompression(jobConf, CompressionCodecName.SNAPPY);
-          IndexedRecord record = (IndexedRecord)config.getKlass().getConstructor(null).newInstance(null);
+          IndexedRecord record = config.getKlass().getConstructor(null).newInstance(null);
           AvroWriteSupport.setSchema(jobConf, record.getSchema());
       } catch (Exception e) {
           System.err.println(e.toString());

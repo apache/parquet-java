@@ -87,13 +87,21 @@ public class TestParquetAvroScheme {
         doRead(new ParquetAvroScheme(Name.class));
     }
 
+    @Test
+    public void testReadWithProjection() throws Exception {
+        ParquetValueScheme.Config<Name> config = new ParquetValueScheme.Config<Name>()
+                .withProjectionString("first")
+                .withRecordClass(Name.class);
+        doReadWithProjection(new ParquetAvroScheme(config));
+    }
+
     /*@Test
     // TODO: make scheme work without requiring code generation
     public void testReadWithoutClass() throws Exception {
         doRead(new ParquetAvroScheme(GenericRecord.class));
     }*/
 
-    private void doRead(Scheme sourceScheme) throws Exception {
+    private void prepareRead(Scheme sourceScheme, String[] fieldNames) throws Exception {
         createFileForRead();
 
         Path path = new Path(txtOutputPath);
@@ -102,18 +110,29 @@ public class TestParquetAvroScheme {
 
         Tap source = new Hfs(sourceScheme, parquetInputPath);
 
-        Scheme sinkScheme = new TextLine(new Fields("first", "last"));
+        Scheme sinkScheme = new TextLine(new Fields(fieldNames));
         Tap sink = new Hfs(sinkScheme, txtOutputPath);
 
-        Pipe assembly = new Pipe( "namecp" );
+        Pipe assembly = new Pipe("namecp");
         assembly = new Each(assembly, new UnpackAvroFunction());
-        Flow flow  = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
+        Flow flow = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
 
         flow.complete();
+    }
+
+    private void doRead(Scheme sourceScheme) throws Exception {
+        String[] fields = {"first", "last"};
+        prepareRead(sourceScheme, fields);
         String result = FileUtils.readFileToString(new File(txtOutputPath + "/part-00000"));
         assertEquals("Alice\tPractice\nBob\tHope\nCharlie\tHorse\n", result);
     }
 
+    private void doReadWithProjection(Scheme sourceScheme) throws Exception {
+        String[] fields = {"first"};
+        prepareRead(sourceScheme, fields);
+        String result = FileUtils.readFileToString(new File(txtOutputPath + "/part-00000"));
+        assertEquals("Alice\nBob\nCharlie\n", result);
+    }
 
     private void createFileForRead() throws Exception {
         final Path fileToCreate = new Path(parquetInputPath+"/names.parquet");
