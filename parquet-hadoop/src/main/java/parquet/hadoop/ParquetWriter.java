@@ -279,7 +279,7 @@ public class ParquetWriter<T> implements Closeable {
    * Builder for the ParquetWriter class
    * It is meant to be inherited by the builders of ParquetWriter's subclasses
    */
-  protected static class Builder<T> {
+  public static class Builder<T> {
     // Maybe it will be wiser to make these private
     // and provide access to the subclasses through getters.
     protected Path file;
