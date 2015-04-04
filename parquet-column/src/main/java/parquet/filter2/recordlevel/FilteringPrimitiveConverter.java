@@ -117,8 +117,11 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
     delegate.addLong(value);
   }
 
-  abstract static class Binding {
-    abstract void writeValue(int dictionaryId);
+  /** Passes dictionary value to delegate, either using dictionary methods or add methods
+   * depending upon whether the delegate supports dictionaries
+   */
+  private interface Binding {
+    void writeValue(int dictionaryId);
   }
 
   /**
@@ -130,8 +133,7 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
 
     if (delegate.hasDictionarySupport()) {
       return new Binding() {
-        @Override
-        void writeValue(int dictionaryId) {
+        public void writeValue(int dictionaryId) {
           delegate.addValueFromDictionary(dictionaryId);
         }
       };
@@ -139,7 +141,7 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
       @Override
       public Binding convertFLOAT(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
-          void writeValue(int dictionaryId) {
+          public void writeValue(int dictionaryId) {
             delegate.addFloat(dictionary.decodeToFloat(dictionaryId));
           }
         };
@@ -148,7 +150,7 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
       @Override
       public Binding convertDOUBLE(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
-          void writeValue(int dictionaryId) {
+          public void writeValue(int dictionaryId) {
             delegate.addDouble(dictionary.decodeToDouble(dictionaryId));
           }
         };
@@ -157,7 +159,7 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
       @Override
       public Binding convertINT32(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
-          void writeValue(int dictionaryId) {
+          public void writeValue(int dictionaryId) {
             delegate.addInt(dictionary.decodeToInt(dictionaryId));
           }
         };
@@ -166,7 +168,7 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
       @Override
       public Binding convertINT64(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
-          void writeValue(int dictionaryId) {
+          public void writeValue(int dictionaryId) {
             delegate.addLong(dictionary.decodeToLong(dictionaryId));
           }
         };
@@ -175,7 +177,7 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
       @Override
       public Binding convertINT96(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
-          void writeValue(int dictionaryId) {
+          public void writeValue(int dictionaryId) {
             delegate.addBinary(dictionary.decodeToBinary(dictionaryId));
           }
         };
@@ -184,7 +186,7 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
       @Override
       public Binding convertFIXED_LEN_BYTE_ARRAY(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
-          void writeValue(int dictionaryId) {
+          public void writeValue(int dictionaryId) {
             delegate.addBinary(dictionary.decodeToBinary(dictionaryId));
           }
         };
@@ -193,7 +195,7 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
       @Override
       public Binding convertBOOLEAN(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
-          void writeValue(int dictionaryId) {
+          public void writeValue(int dictionaryId) {
             delegate.addBoolean(dictionary.decodeToBoolean(dictionaryId));
           }
         };
@@ -202,7 +204,7 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
       @Override
       public Binding convertBINARY(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
         return new Binding() {
-          void writeValue(int dictionaryId) {
+          public void writeValue(int dictionaryId) {
             delegate.addBinary(dictionary.decodeToBinary(dictionaryId));
           }
         };

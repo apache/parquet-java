@@ -69,6 +69,7 @@ public class TestFilteringPrimitiveConverter {
         Operators.FloatColumn floatColumn = floatColumn("a");
         Operators.DoubleColumn doubleColumn = doubleColumn("a");
 
+        /** Test data for each type - eq, gt and lt should be true, notEq should be false */
         return Arrays.asList(new Object[][]{
                 {PrimitiveType.PrimitiveTypeName.INT64, longVal,
                         eq(longColumn, longVal), notEq(longColumn, longVal), gt(longColumn, longVal - 1), lt(longColumn, longVal + 1)},
@@ -115,7 +116,7 @@ public class TestFilteringPrimitiveConverter {
     }
 
 
-    @Test public void equalityAndInequalityEvaluatedCorrectly() {
+    @Test public void operatorsEvaluatedCorrectly() {
 
         when(primitiveConverter.hasDictionarySupport()).thenReturn(true);
         when(dictionary.getMaxId()).thenReturn(DICT_INDEX);
