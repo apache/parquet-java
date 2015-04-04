@@ -300,8 +300,8 @@ public class ParquetWriter<T> implements Closeable {
      * @param file the file to create
      */
     public Builder(WriteSupport<T> writeSupport, Path file) {
-      writeSupport = checkNotNull(writeSupport, "writeSupport");
-      file = checkNotNull(file, "file");
+      this.writeSupport = checkNotNull(writeSupport, "writeSupport");
+      this.file = checkNotNull(file, "file");
       mode = ParquetFileWriter.Mode.CREATE;
       compressionCodecName = DEFAULT_COMPRESSION_CODEC_NAME;
       blockSize = DEFAULT_BLOCK_SIZE;
