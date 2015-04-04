@@ -33,6 +33,7 @@ import parquet.column.values.plain.PlainValuesReader.IntegerPlainValuesReader;
 import parquet.column.values.plain.PlainValuesReader.LongPlainValuesReader;
 import parquet.io.ParquetDecodingException;
 import parquet.io.api.Binary;
+import parquet.schema.PrimitiveType;
 
 /**
  * a simple implementation of dictionary for plain encoded values
@@ -129,11 +130,56 @@ public abstract class PlainValuesDictionary extends Dictionary {
     }
 
     @Override
+    public PrimitiveType.PrimitiveTypeName getPrimitiveTypeName() {
+      return PrimitiveType.PrimitiveTypeName.BINARY;
+    }
+
+    @Override
     public int getMaxId() {
       return binaryDictionaryContent.length - 1;
     }
 
   }
+
+  /**
+   * a simple implementation of dictionary for plain encoded fixed len byte arrays
+   */
+  public static class PlainFixedLenByteArrayDictionary extends PlainBinaryDictionary {
+
+    /**
+     * @param dictionaryPage a {@code DictionaryPage} of encoded fixed len byte arrays
+     * @throws IOException
+     */
+    public PlainFixedLenByteArrayDictionary(DictionaryPage dictionaryPage, Integer length) throws IOException {
+      super(dictionaryPage, length);
+    }
+
+    @Override
+    public PrimitiveType.PrimitiveTypeName getPrimitiveTypeName() {
+      return PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
+    }
+  }
+
+  /**
+   * a simple implementation of dictionary for plain encoded Int96 values
+   */
+  public static class PlainInt96Dictionary extends PlainBinaryDictionary {
+
+    /**
+     * @param dictionaryPage a {@code DictionaryPage} of encoded Int96 values
+     * @throws IOException
+     */
+    public PlainInt96Dictionary(DictionaryPage dictionaryPage) throws IOException {
+      super(dictionaryPage, 12);
+    }
+
+    @Override
+    public PrimitiveType.PrimitiveTypeName getPrimitiveTypeName() {
+      return PrimitiveType.PrimitiveTypeName.INT96;
+    }
+  }
+
+  /**
 
   /**
    * a simple implementation of dictionary for plain encoded long values
@@ -143,7 +189,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
     private long[] longDictionaryContent = null;
 
     /**
-     * @param dictionaryPage
+     * @param dictionaryPage a {@code DictionaryPage} of encoded long values
      * @throws IOException
      */
     public PlainLongDictionary(DictionaryPage dictionaryPage) throws IOException {
@@ -172,6 +218,11 @@ public abstract class PlainValuesDictionary extends Dictionary {
     }
 
     @Override
+    public PrimitiveType.PrimitiveTypeName getPrimitiveTypeName() {
+      return PrimitiveType.PrimitiveTypeName.INT64;
+    }
+
+    @Override
     public int getMaxId() {
       return longDictionaryContent.length - 1;
     }
@@ -186,7 +237,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
     private double[] doubleDictionaryContent = null;
 
     /**
-     * @param dictionaryPage
+     * @param dictionaryPage a {@code DictionaryPage} of encoded double values
      * @throws IOException
      */
     public PlainDoubleDictionary(DictionaryPage dictionaryPage) throws IOException {
@@ -215,6 +266,11 @@ public abstract class PlainValuesDictionary extends Dictionary {
     }
 
     @Override
+    public PrimitiveType.PrimitiveTypeName getPrimitiveTypeName() {
+      return PrimitiveType.PrimitiveTypeName.DOUBLE;
+    }
+
+    @Override
     public int getMaxId() {
       return doubleDictionaryContent.length - 1;
     }
@@ -229,7 +285,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
     private int[] intDictionaryContent = null;
 
     /**
-     * @param dictionaryPage
+     * @param dictionaryPage a {@code DictionaryPage} of encoded integer values
      * @throws IOException
      */
     public PlainIntegerDictionary(DictionaryPage dictionaryPage) throws IOException {
@@ -258,6 +314,11 @@ public abstract class PlainValuesDictionary extends Dictionary {
     }
 
     @Override
+    public PrimitiveType.PrimitiveTypeName getPrimitiveTypeName() {
+      return PrimitiveType.PrimitiveTypeName.INT32;
+    }
+
+    @Override
     public int getMaxId() {
       return intDictionaryContent.length - 1;
     }
@@ -272,7 +333,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
     private float[] floatDictionaryContent = null;
 
     /**
-     * @param dictionaryPage
+     * @param dictionaryPage  a {@code DictionaryPage} of encoded float values
      * @throws IOException
      */
     public PlainFloatDictionary(DictionaryPage dictionaryPage) throws IOException {
@@ -298,6 +359,11 @@ public abstract class PlainValuesDictionary extends Dictionary {
         sb.append(i).append(" => ").append(floatDictionaryContent[i]).append("\n");
       }
       return sb.append("}").toString();
+    }
+
+    @Override
+    public PrimitiveType.PrimitiveTypeName getPrimitiveTypeName() {
+      return PrimitiveType.PrimitiveTypeName.FLOAT;
     }
 
     @Override

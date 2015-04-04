@@ -22,6 +22,7 @@ import parquet.column.Dictionary;
 import parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
 import parquet.io.api.Binary;
 import parquet.io.api.PrimitiveConverter;
+import parquet.schema.PrimitiveType;
 
 import static parquet.Preconditions.checkNotNull;
 
@@ -34,29 +35,38 @@ import static parquet.Preconditions.checkNotNull;
 public class FilteringPrimitiveConverter extends PrimitiveConverter {
   private final PrimitiveConverter delegate;
   private final ValueInspector[] valueInspectors;
+  private Binding binding;
 
   public FilteringPrimitiveConverter(PrimitiveConverter delegate, ValueInspector[] valueInspectors) {
     this.delegate = checkNotNull(delegate, "delegate");
     this.valueInspectors = checkNotNull(valueInspectors, "valueInspectors");
   }
 
-  // TODO: this works, but
-  // TODO: essentially turns off the benefits of dictionary support
-  // TODO: even if the underlying delegate supports it.
-  // TODO: we should support it here. (https://issues.apache.org/jira/browse/PARQUET-36)
   @Override
   public boolean hasDictionarySupport() {
-    return false;
+    return true;
   }
 
   @Override
   public void setDictionary(Dictionary dictionary) {
-    throw new UnsupportedOperationException("FilteringPrimitiveConverter doesn't have dictionary support");
+    for (ValueInspector valueInspector : valueInspectors) {
+      valueInspector.setDictionary(dictionary);
+    }
+
+    if (delegate.hasDictionarySupport()) {
+      delegate.setDictionary(dictionary);
+    }
+
+    binding = createBinding(dictionary);
   }
+
 
   @Override
   public void addValueFromDictionary(int dictionaryId) {
-    throw new UnsupportedOperationException("FilteringPrimitiveConverter doesn't have dictionary support");
+    for (ValueInspector valueInspector : valueInspectors) {
+      valueInspector.updateFromDictionary(dictionaryId);
+    }
+    binding.writeValue(dictionaryId);
   }
 
   @Override
@@ -105,5 +115,100 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
       valueInspector.update(value);
     }
     delegate.addLong(value);
+  }
+
+  /** Passes dictionary value to delegate, either using dictionary methods or add methods
+   * depending upon whether the delegate supports dictionaries
+   */
+  private interface Binding {
+    void writeValue(int dictionaryId);
+  }
+
+  /**
+   * Create binding based on dictionary or on type
+   * @param dictionary Dictionary used in binding
+   * @return Binding that sets value on delegate
+   */
+  private Binding createBinding(final Dictionary dictionary) {
+
+    if (delegate.hasDictionarySupport()) {
+      return new Binding() {
+        public void writeValue(int dictionaryId) {
+          delegate.addValueFromDictionary(dictionaryId);
+        }
+      };
+    } else return dictionary.getPrimitiveTypeName().convert(new PrimitiveType.PrimitiveTypeNameConverter<Binding, RuntimeException>() {
+      @Override
+      public Binding convertFLOAT(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
+        return new Binding() {
+          public void writeValue(int dictionaryId) {
+            delegate.addFloat(dictionary.decodeToFloat(dictionaryId));
+          }
+        };
+      }
+
+      @Override
+      public Binding convertDOUBLE(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
+        return new Binding() {
+          public void writeValue(int dictionaryId) {
+            delegate.addDouble(dictionary.decodeToDouble(dictionaryId));
+          }
+        };
+      }
+
+      @Override
+      public Binding convertINT32(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
+        return new Binding() {
+          public void writeValue(int dictionaryId) {
+            delegate.addInt(dictionary.decodeToInt(dictionaryId));
+          }
+        };
+      }
+
+      @Override
+      public Binding convertINT64(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
+        return new Binding() {
+          public void writeValue(int dictionaryId) {
+            delegate.addLong(dictionary.decodeToLong(dictionaryId));
+          }
+        };
+      }
+
+      @Override
+      public Binding convertINT96(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
+        return new Binding() {
+          public void writeValue(int dictionaryId) {
+            delegate.addBinary(dictionary.decodeToBinary(dictionaryId));
+          }
+        };
+      }
+
+      @Override
+      public Binding convertFIXED_LEN_BYTE_ARRAY(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
+        return new Binding() {
+          public void writeValue(int dictionaryId) {
+            delegate.addBinary(dictionary.decodeToBinary(dictionaryId));
+          }
+        };
+      }
+
+      @Override
+      public Binding convertBOOLEAN(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
+        return new Binding() {
+          public void writeValue(int dictionaryId) {
+            delegate.addBoolean(dictionary.decodeToBoolean(dictionaryId));
+          }
+        };
+      }
+
+      @Override
+      public Binding convertBINARY(PrimitiveType.PrimitiveTypeName primitiveTypeName) throws RuntimeException {
+        return new Binding() {
+          public void writeValue(int dictionaryId) {
+            delegate.addBinary(dictionary.decodeToBinary(dictionaryId));
+          }
+        };
+      }
+    });
   }
 }

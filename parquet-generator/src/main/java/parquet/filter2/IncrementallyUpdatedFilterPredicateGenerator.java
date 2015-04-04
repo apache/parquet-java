@@ -68,6 +68,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
   public void run() throws IOException {
     add("package parquet.filter2.recordlevel;\n" +
         "\n" +
+        "import parquet.column.Dictionary;\n" +
         "import parquet.common.schema.ColumnPath;\n" +
         "import parquet.filter2.predicate.Operators.Eq;\n" +
         "import parquet.filter2.predicate.Operators.Gt;\n" +
@@ -177,6 +178,11 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         "          public void update(" + info.primitiveName + " value) {\n" +
         "            setResult(" + !isEq + ");\n" +
         "          }\n" +
+        "\n" +
+        "          @Override\n" +
+        "          protected boolean evaluateFilterForDictionaryElement(Dictionary dictionary, int dictionaryId) {\n" +
+        "            return " + !isEq + ";\n" +
+        "          }\n" +
         "        };\n" +
         "      } else {\n" +
         "        final " + info.primitiveName + " target = (" + info.className + ") (Object) pred.getValue();\n" +
@@ -197,6 +203,18 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     }
 
     add("          }\n" +
+        "\n" +
+        "          @Override\n" +
+        "          protected boolean evaluateFilterForDictionaryElement(Dictionary dictionary, int dictionaryId) {\n");
+
+    if (info.useComparable) {
+      add("            return " + compareEquality(dv(info), "target", isEq) + ";\n");
+    } else {
+      add("            return " + dv(info) + (isEq ? " == target" : " != target" )  + ";\n");
+    }
+
+    add("          }\n" +
+
         "        };\n" +
         "      }\n" +
         "    }\n\n");
@@ -227,6 +245,16 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     } else {
       add("          setResult(value " + op + " target);\n");
     }
+    add("          }\n" +
+        "\n" +
+        "        @Override\n" +
+        "        protected boolean evaluateFilterForDictionaryElement(Dictionary dictionary, int dictionaryId) {\n");
+
+    if (info.useComparable) {
+      add("          return " + dv(info) + ".compareTo(target) " + op + " 0;\n");
+    } else {
+      add("          return " + dv(info) + " " + op + " target;\n");
+    }
     add("        }\n" +
         "      };\n" +
         "    }\n\n");
@@ -255,8 +283,18 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         "        public void update(" + info.primitiveName + " value) {\n" +
         "          setResult(" + (invert ? "!" : "") + "udp.keep((T) (Object) value));\n" +
         "        }\n" +
+        "\n" +
+        "        @SuppressWarnings(\"unchecked\")\n" +
+        "        @Override\n" +
+        "        protected boolean evaluateFilterForDictionaryElement(Dictionary dictionary, int dictionaryId) {\n" +
+        "          return " + (invert ? "!" : "") + "udp.keep((T) (Object) " + dv(info) + ");\n" +
+        "        }\n" +
         "      };\n" +
         "    }\n\n");
+  }
+
+  private String dv(TypeInfo info) {
+      return "dictionary.decodeTo" + info.className.replace("Integer", "Int") + "(dictionaryId)";
   }
 
   private String compareEquality(String var, String target, boolean eq) {

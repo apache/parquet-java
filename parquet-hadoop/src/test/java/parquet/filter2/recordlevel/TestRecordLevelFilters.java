@@ -34,6 +34,7 @@ import org.junit.Test;
 import parquet.example.data.Group;
 import parquet.filter2.compat.FilterCompat;
 import parquet.filter2.predicate.FilterPredicate;
+import parquet.filter2.predicate.Operators;
 import parquet.filter2.predicate.Operators.BinaryColumn;
 import parquet.filter2.predicate.Operators.DoubleColumn;
 import parquet.filter2.predicate.Operators.LongColumn;
@@ -47,8 +48,12 @@ import parquet.io.api.Binary;
 import static org.junit.Assert.assertEquals;
 import static parquet.filter2.predicate.FilterApi.and;
 import static parquet.filter2.predicate.FilterApi.binaryColumn;
+import static parquet.filter2.predicate.FilterApi.floatColumn;
 import static parquet.filter2.predicate.FilterApi.doubleColumn;
 import static parquet.filter2.predicate.FilterApi.longColumn;
+import static parquet.filter2.predicate.FilterApi.intColumn;
+import static parquet.filter2.predicate.FilterApi.longColumn;
+import static parquet.filter2.predicate.FilterApi.booleanColumn;
 import static parquet.filter2.predicate.FilterApi.eq;
 import static parquet.filter2.predicate.FilterApi.gt;
 import static parquet.filter2.predicate.FilterApi.not;
@@ -57,29 +62,30 @@ import static parquet.filter2.predicate.FilterApi.or;
 import static parquet.filter2.predicate.FilterApi.userDefined;
 
 public class TestRecordLevelFilters {
+  private static int NUM_REPEATS = 100;
 
   public static List<User> makeUsers() {
     List<User> users = new ArrayList<User>();
 
-    users.add(new User(17, null, null, null));
+    users.add(new User(17, null, 17.0f, 17.0, 17, 17L, false, null, null));
 
-    users.add(new User(18, "bob", null, null));
+    users.add(new User(18, "bob", 18.0f, 18.0, 18, 18L, false, null, null));
 
-    users.add(new User(19, "alice", new ArrayList<PhoneNumber>(), null));
+    users.add(new User(19, "alice", 19.0f, 19.0, 19, 19L, false, new ArrayList<PhoneNumber>(), null));
 
-    users.add(new User(20, "thing1", Arrays.asList(new PhoneNumber(5555555555L, null)), null));
+    users.add(new User(20, "thing1", 20.0f, 20.0, 20, 20L, false, Arrays.asList(new PhoneNumber(5555555555L, null)), null));
 
-    users.add(new User(27, "thing2", Arrays.asList(new PhoneNumber(1111111111L, "home")), null));
+    users.add(new User(27, "thing2", 27.0f, 27.0, 27, 27L, false, Arrays.asList(new PhoneNumber(1111111111L, "home")), null));
 
-    users.add(new User(28, "popular", Arrays.asList(
+    users.add(new User(28, "popular", 28.0f, 28.0, 28, 28L, false, Arrays.asList(
         new PhoneNumber(1111111111L, "home"),
         new PhoneNumber(2222222222L, null),
         new PhoneNumber(3333333333L, "mobile")
     ), null));
 
-    users.add(new User(30, null, Arrays.asList(new PhoneNumber(1111111111L, "home")), null));
+    users.add(new User(30, null, 30.0f, 30.0, 30, 30L, false, Arrays.asList(new PhoneNumber(1111111111L, "home")), null));
 
-    for (int i = 100; i < 200; i++) {
+    for (int i = 100; i < 100 + NUM_REPEATS; i++) {
       Location location = null;
       if (i % 3 == 1) {
         location = new Location((double)i, (double)i*2);
@@ -87,7 +93,7 @@ public class TestRecordLevelFilters {
       if (i % 3 == 2) {
         location = new Location((double)i, null);
       }
-      users.add(new User(i, "p" + i, Arrays.asList(new PhoneNumber(i, "cell")), location));
+      users.add(new User(i, "repeats", 100.0f, 100.0, 100, 100L, true, Arrays.asList(new PhoneNumber(i, "cell")), location));
     }
 
     return users;
@@ -145,6 +151,26 @@ public class TestRecordLevelFilters {
 
     List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
     assertEquals(new ArrayList<Group>(), found);
+  }
+
+  @Test
+  public void testDictionaryFilter() throws Exception {
+    checkDictionaryFilter(binaryColumn("name"), Binary.fromString("repeats"));
+    checkDictionaryFilter(floatColumn("float1"), 100.0f);
+    checkDictionaryFilter(doubleColumn("double1"), 100.0);
+    checkDictionaryFilter(intColumn("int1"), 100);
+    checkDictionaryFilter(longColumn("long1"), 100L);
+    checkDictionaryFilter(booleanColumn("boolean1"), true);
+  }
+
+  private <T extends Comparable<T>, C extends Operators.Column<T> & Operators.SupportsEqNotEq> void checkDictionaryFilter(C column, T value) throws IOException {
+    FilterPredicate pred = eq(column, value);
+    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
+    assertEquals(NUM_REPEATS, found.size());
+
+    pred = notEq(column, value);
+    found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
+    assertEquals(users.size() - NUM_REPEATS, found.size());
   }
 
   @Test

@@ -18,7 +18,10 @@
  */
 package parquet.filter2.recordlevel;
 
+import parquet.column.Dictionary;
 import parquet.io.api.Binary;
+
+import java.util.BitSet;
 
 import static parquet.Preconditions.checkNotNull;
 
@@ -61,6 +64,24 @@ public interface IncrementallyUpdatedFilterPredicate {
 
     private boolean result = false;
     private boolean isKnown = false;
+    private BitSet dictionaryResults;
+
+    /** Populates array of BitSet based on whether values pass filter */
+    void setDictionary(Dictionary dictionary) {
+      dictionaryResults = new BitSet(dictionary.getMaxId()+1);
+      for (int i = 0; i <= dictionary.getMaxId(); i++) {
+        dictionaryResults.set(i, evaluateFilterForDictionaryElement(dictionary, i));
+      }
+    }
+
+    /** Update based on element from dictionary */
+    void updateFromDictionary(int dictionaryId) {
+      setResult(dictionaryResults.get(dictionaryId));
+    }
+
+    /** Does the element in the dictionary pass the filter */
+    abstract protected boolean evaluateFilterForDictionaryElement(Dictionary dictionary, int dictionaryId);
+
 
     // these methods signal what the value is
     public void updateNull() { throw new UnsupportedOperationException(); }

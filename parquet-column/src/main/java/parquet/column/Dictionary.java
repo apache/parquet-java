@@ -19,6 +19,7 @@
 package parquet.column;
 
 import parquet.io.api.Binary;
+import parquet.schema.PrimitiveType;
 
 /**
  * a dictionary to decode dictionary based encodings
@@ -33,6 +34,8 @@ public abstract class Dictionary {
   public Dictionary(Encoding encoding) {
     this.encoding = encoding;
   }
+
+  abstract public PrimitiveType.PrimitiveTypeName getPrimitiveTypeName();
 
   public Encoding getEncoding() {
     return encoding;
