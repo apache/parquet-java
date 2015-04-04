@@ -379,7 +379,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       return Collections.emptyList();
     }
     Configuration config = ContextUtil.getConfiguration(jobContext);
-    List<Footer> footers = new ArrayList<Footer>(statuses.size());
+    Map<FileStatusWrapper, Footer> footersMap = new HashMap<FileStatusWrapper, Footer>();
     Set<FileStatus> missingStatuses = new HashSet<FileStatus>();
     Map<Path, FileStatusWrapper> missingStatusesMap =
             new HashMap<Path, FileStatusWrapper>(missingStatuses.size());
@@ -397,33 +397,36 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
                 + " found for '" + status.getPath() + "'");
       }
       if (cacheEntry != null) {
-        footers.add(cacheEntry.getFooter());
+        footersMap.put(statusWrapper, cacheEntry.getFooter());
       } else {
         missingStatuses.add(status);
         missingStatusesMap.put(status.getPath(), statusWrapper);
       }
     }
     if (Log.DEBUG) {
-      LOG.debug("found " + footers.size() + " footers in cache and adding up "
+      LOG.debug("found " + footersMap.size() + " footers in cache and adding up "
               + "to " + missingStatuses.size() + " missing footers to the cache");
     }
 
-
-    if (missingStatuses.isEmpty()) {
-      return footers;
+    if (!missingStatuses.isEmpty()) {
+      List<Footer> newFooters = getFooters(config, missingStatuses);
+      for (Footer newFooter : newFooters) {
+        // Use the original file status objects to make sure we store a
+        // conservative (older) modification time (i.e. in case the files and
+        // footers were modified and it's not clear which version of the footers
+        // we have)
+        FileStatusWrapper fileStatus = missingStatusesMap.get(newFooter.getFile());
+        footersCache.put(fileStatus, new FootersCacheValue(fileStatus, newFooter));
+        footersMap.put(fileStatus, newFooter);
+      }
     }
 
-    List<Footer> newFooters = getFooters(config, missingStatuses);
-    for (Footer newFooter : newFooters) {
-      // Use the original file status objects to make sure we store a
-      // conservative (older) modification time (i.e. in case the files and
-      // footers were modified and it's not clear which version of the footers
-      // we have)
-      FileStatusWrapper fileStatus = missingStatusesMap.get(newFooter.getFile());
-      footersCache.put(fileStatus, new FootersCacheValue(fileStatus, newFooter));
+    List<Footer> footers = new ArrayList<Footer>(statuses.size());
+    for (FileStatus status : statuses) {
+      FileStatusWrapper fileStatusWrapper = new FileStatusWrapper(status);
+      footers.add(footersMap.get(fileStatusWrapper));
     }
 
-    footers.addAll(newFooters);
     return footers;
   }
 
