@@ -30,7 +30,7 @@ import org.apache.parquet.hadoop.ParquetReader;
 /**
  * Read Avro records from a Parquet file.
  */
-public class AvroParquetReader<T extends IndexedRecord> extends ParquetReader<T> {
+public class AvroParquetReader<T> extends ParquetReader<T> {
 
   public static <T extends IndexedRecord> Builder<T> builder(Path file) {
     return ParquetReader.builder(new AvroReadSupport<T>(), file);
