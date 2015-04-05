@@ -68,7 +68,7 @@ public class TestParquetAvroScheme {
     final FileSystem fs = path.getFileSystem(jobConf);
     if (fs.exists(path)) fs.delete(path, true);
 
-    Scheme sourceScheme = new TextLine( new Fields( "first", "last" ) );
+    Scheme sourceScheme = new TextLine( new Fields( "first_name", "last_name" ) );
     Tap source = new Hfs(sourceScheme, txtInputPath);
 
     Scheme sinkScheme = new ParquetAvroScheme(Name.class);
@@ -93,14 +93,14 @@ public class TestParquetAvroScheme {
   @Test
   public void testReadWithProjection() throws Exception {
     ParquetValueScheme.Config<Name> config = new ParquetValueScheme.Config<Name>()
-        .withProjectionString("first")
+        .withProjectionString("first_name")
         .withRecordClass(Name.class);
     doReadWithProjection(new ParquetAvroScheme(config));
   }
 
   @Test
   public void testReadWithFilter() throws Exception {
-    FilterPredicate filter = FilterApi.eq(FilterApi.binaryColumn("first"), Binary.fromString("Bob"));
+    FilterPredicate filter = FilterApi.eq(FilterApi.binaryColumn("first_name"), Binary.fromString("Bob"));
     ParquetValueScheme.Config<Name> config = new ParquetValueScheme.Config<Name>()
         .withFilterPredicate(filter)
         .withRecordClass(Name.class);
@@ -127,21 +127,21 @@ public class TestParquetAvroScheme {
   }
 
   private void doRead(Scheme sourceScheme) throws Exception {
-    String[] fields = {"first", "last"};
+    String[] fields = {"first_name", "last_name"};
     prepareRead(sourceScheme, fields);
     String result = FileUtils.readFileToString(new File(txtOutputPath + "/part-00000"));
     assertEquals("Alice\tPractice\nBob\tHope\nCharlie\tHorse\n", result);
   }
 
   private void doReadWithProjection(Scheme sourceScheme) throws Exception {
-    String[] fields = {"first"};
+    String[] fields = {"first_name"};
     prepareRead(sourceScheme, fields);
     String result = FileUtils.readFileToString(new File(txtOutputPath + "/part-00000"));
-    assertEquals("Alice\nBob\nCharlie\n", result);
+    assertEquals("Alice\tnull\nBob\tnull\nCharlie\tnull\n", result);
   }
 
   private void doReadWithFilter(Scheme sourceScheme) throws Exception {
-    String[] fields = {"first", "last"};
+    String[] fields = {"first_name", "last_name"};
     prepareRead(sourceScheme, fields);
     String result = FileUtils.readFileToString(new File(txtOutputPath + "/part-00000"));
     assertEquals("Bob\tHope\n", result);
