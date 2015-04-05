@@ -32,7 +32,6 @@ import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
-import parquet.hadoop.metadata.CompressionCodecName;
 
 public class ParquetAvroScheme<T extends IndexedRecord> extends ParquetValueScheme<T> {
 
@@ -60,39 +59,52 @@ public class ParquetAvroScheme<T extends IndexedRecord> extends ParquetValueSche
   @SuppressWarnings("rawtypes")
   @Override
   public void sourceConfInit(FlowProcess<JobConf> fp,
-      Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
+                             Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
     super.sourceConfInit(fp, tap, jobConf);
     try {
-        jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
-        IndexedRecord record = config.getKlass().getConstructor(null).newInstance(null);
-        ParquetInputFormat.setReadSupportClass(jobConf, AvroReadSupport.class);
-        AvroReadSupport.setAvroReadSchema(jobConf, record.getSchema());
-        AvroReadSupport.setRequestedProjection(jobConf, AvroProjection.createProjection(record.getSchema(), config.getProjectionString().split(";")));
-        ParquetInputFormat.setFilterPredicate(jobConf, config.getFilterPredicate());
+      jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
+      ParquetInputFormat.setReadSupportClass(jobConf, AvroReadSupport.class);
     } catch (Exception e) {
-        System.err.println(e.toString());
+      System.err.println(e.toString());
     }
   }
 
   @SuppressWarnings("rawtypes")
   @Override
   public void sinkConfInit(FlowProcess<JobConf> fp,
-      Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
+                           Tap<JobConf, RecordReader, OutputCollector> tap, JobConf jobConf) {
+    DeprecatedParquetOutputFormat.setAsOutputFormat(jobConf);
+    DeprecatedParquetOutputFormat.setWriteSupportClass(jobConf, AvroWriteSupport.class);
+    IndexedRecord record = createRecordInstance();
+    AvroWriteSupport.setSchema(jobConf, record.getSchema());
+  }
 
-      if (this.config.getKlass() == null) {
-          throw new IllegalArgumentException("To use ParquetAvroScheme as a sink, you must specify an avro class in the constructor");
-      }
+  @Override
+  protected void setRecordClass(JobConf jobConf) {
+    IndexedRecord record = createRecordInstance();
+    AvroReadSupport.setAvroReadSchema(jobConf, record.getSchema());
+  }
 
-      try {
-          jobConf.setOutputFormat(DeprecatedParquetOutputFormat.class);
-          DeprecatedParquetOutputFormat.setWriteSupportClass(jobConf, AvroWriteSupport.class);
-          DeprecatedParquetOutputFormat.setCompressOutput(jobConf, true);
-          DeprecatedParquetOutputFormat.setCompression(jobConf, CompressionCodecName.SNAPPY);
-          IndexedRecord record = config.getKlass().getConstructor(null).newInstance(null);
-          AvroWriteSupport.setSchema(jobConf, record.getSchema());
-      } catch (Exception e) {
-          System.err.println(e.toString());
-      }
+  @Override
+  protected void setProjectionPushdown(JobConf jobConf) {
+    if (this.config.getProjectionString() != null) {
+      IndexedRecord record = createRecordInstance();
+      AvroReadSupport.setRequestedProjection(
+          jobConf,
+          AvroProjection.createProjection(record.getSchema(), config.getProjectionString().split(";")));
+    }
+  }
+
+  private IndexedRecord createRecordInstance() {
+    if (config.getClass() == null) {
+      throw new IllegalArgumentException("Unable to create instance of unknown Avro record class");
+    }
+    try {
+      IndexedRecord record = config.getKlass().getConstructor(null).newInstance(null);
+      return record;
+    } catch (ReflectiveOperationException e) {
+      throw new RuntimeException("Unable to create Avro Record of class " + config.getKlass().getName(), e);
+    }
   }
 }
 

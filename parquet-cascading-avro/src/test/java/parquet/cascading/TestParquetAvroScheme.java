@@ -56,152 +56,146 @@ import avrotestclasses.Name;
  * Created by schuman on 23/03/15.
  */
 public class TestParquetAvroScheme {
-    final String txtInputPath = "src/test/resources/names.txt";
-    final String parquetInputPath = "target/test/ParquetAvroScheme/names-parquet-in";
-    final String parquetOutputPath = "target/test/ParquetAvroScheme/names-parquet-out";
-    final String txtOutputPath = "target/test/ParquetAvroScheme/names-txt-out";
+  final String txtInputPath = "src/test/resources/names.txt";
+  final String parquetInputPath = "target/test/ParquetAvroScheme/names-parquet-in";
+  final String parquetOutputPath = "target/test/ParquetAvroScheme/names-parquet-out";
+  final String txtOutputPath = "target/test/ParquetAvroScheme/names-txt-out";
 
-    @Test
-    public void testWrite() throws Exception {
-        Path path = new Path(parquetOutputPath);
-        JobConf jobConf = new JobConf();
-        final FileSystem fs = path.getFileSystem(jobConf);
-        if (fs.exists(path)) fs.delete(path, true);
+  @Test
+  public void testWrite() throws Exception {
+    Path path = new Path(parquetOutputPath);
+    JobConf jobConf = new JobConf();
+    final FileSystem fs = path.getFileSystem(jobConf);
+    if (fs.exists(path)) fs.delete(path, true);
 
-        Scheme sourceScheme = new TextLine( new Fields( "first", "last" ) );
-        Tap source = new Hfs(sourceScheme, txtInputPath);
+    Scheme sourceScheme = new TextLine( new Fields( "first", "last" ) );
+    Tap source = new Hfs(sourceScheme, txtInputPath);
 
-        Scheme sinkScheme = new ParquetAvroScheme(Name.class);
-        Tap sink = new Hfs(sinkScheme, parquetOutputPath);
+    Scheme sinkScheme = new ParquetAvroScheme(Name.class);
+    Tap sink = new Hfs(sinkScheme, parquetOutputPath);
 
-        Pipe assembly = new Pipe( "namecp" );
-        assembly = new Each(assembly, new PackAvroFunction());
-        HadoopFlowConnector hadoopFlowConnector = new HadoopFlowConnector();
-        Flow flow  = hadoopFlowConnector.connect("namecp", source, sink, assembly);
+    Pipe assembly = new Pipe( "namecp" );
+    assembly = new Each(assembly, new PackAvroFunction());
+    HadoopFlowConnector hadoopFlowConnector = new HadoopFlowConnector();
+    Flow flow  = hadoopFlowConnector.connect("namecp", source, sink, assembly);
 
-        flow.complete();
+    flow.complete();
 
-        assertTrue(fs.exists(new Path(parquetOutputPath)));
-        assertTrue(fs.exists(new Path(parquetOutputPath + "/_SUCCESS")));
+    assertTrue(fs.exists(new Path(parquetOutputPath)));
+    assertTrue(fs.exists(new Path(parquetOutputPath + "/_SUCCESS")));
+  }
+
+  @Test
+  public void testRead() throws Exception {
+    doRead(new ParquetAvroScheme(Name.class));
+  }
+
+  @Test
+  public void testReadWithProjection() throws Exception {
+    ParquetValueScheme.Config<Name> config = new ParquetValueScheme.Config<Name>()
+        .withProjectionString("first")
+        .withRecordClass(Name.class);
+    doReadWithProjection(new ParquetAvroScheme(config));
+  }
+
+  @Test
+  public void testReadWithFilter() throws Exception {
+    FilterPredicate filter = FilterApi.eq(FilterApi.binaryColumn("first"), Binary.fromString("Bob"));
+    ParquetValueScheme.Config<Name> config = new ParquetValueScheme.Config<Name>()
+        .withFilterPredicate(filter)
+        .withRecordClass(Name.class);
+    doReadWithFilter(new ParquetAvroScheme(config));
+  }
+
+  private void prepareRead(Scheme sourceScheme, String[] fieldNames) throws Exception {
+    createFileForRead();
+
+    Path path = new Path(txtOutputPath);
+    final FileSystem fs = path.getFileSystem(new Configuration());
+    if (fs.exists(path)) fs.delete(path, true);
+
+    Tap source = new Hfs(sourceScheme, parquetInputPath);
+
+    Scheme sinkScheme = new TextLine(new Fields(fieldNames));
+    Tap sink = new Hfs(sinkScheme, txtOutputPath);
+
+    Pipe assembly = new Pipe("namecp");
+    assembly = new Each(assembly, new UnpackAvroFunction());
+    Flow flow = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
+
+    flow.complete();
+  }
+
+  private void doRead(Scheme sourceScheme) throws Exception {
+    String[] fields = {"first", "last"};
+    prepareRead(sourceScheme, fields);
+    String result = FileUtils.readFileToString(new File(txtOutputPath + "/part-00000"));
+    assertEquals("Alice\tPractice\nBob\tHope\nCharlie\tHorse\n", result);
+  }
+
+  private void doReadWithProjection(Scheme sourceScheme) throws Exception {
+    String[] fields = {"first"};
+    prepareRead(sourceScheme, fields);
+    String result = FileUtils.readFileToString(new File(txtOutputPath + "/part-00000"));
+    assertEquals("Alice\nBob\nCharlie\n", result);
+  }
+
+  private void doReadWithFilter(Scheme sourceScheme) throws Exception {
+    String[] fields = {"first", "last"};
+    prepareRead(sourceScheme, fields);
+    String result = FileUtils.readFileToString(new File(txtOutputPath + "/part-00000"));
+    assertEquals("Bob\tHope\n", result);
+  }
+
+  private void createFileForRead() throws Exception {
+    final Path fileToCreate = new Path(parquetInputPath+"/names.parquet");
+
+    final Configuration conf = new Configuration();
+    final FileSystem fs = fileToCreate.getFileSystem(conf);
+    if (fs.exists(fileToCreate)) fs.delete(fileToCreate, true);
+
+    AvroParquetWriter writer = new AvroParquetWriter(fileToCreate, Name.getClassSchema(), CompressionCodecName.UNCOMPRESSED, 100, 100);
+    Name n1 = new Name();
+    n1.setFirstName("Alice");
+    n1.setLastName("Practice");
+    Name n2 = new Name();
+    n2.setFirstName("Bob");
+    n2.setLastName("Hope");
+    Name n3 = new Name();
+    n3.setFirstName("Charlie");
+    n3.setLastName("Horse");
+
+    writer.write(n1);
+    writer.write(n2);
+    writer.write(n3);
+    writer.close();
+  }
+
+  private static class PackAvroFunction extends BaseOperation implements Function {
+    @Override
+    public void operate(FlowProcess flowProcess, FunctionCall functionCall) {
+      TupleEntry arguments = functionCall.getArguments();
+      Tuple result = new Tuple();
+
+      Name name = new Name();
+      name.setFirstName(arguments.getString(0));
+      name.setLastName(arguments.getString(1));
+
+      result.add(name);
+      functionCall.getOutputCollector().add(result);
     }
+  }
 
-    @Test
-    public void testRead() throws Exception {
-        doRead(new ParquetAvroScheme(Name.class));
+  private static class UnpackAvroFunction extends BaseOperation implements Function {
+    @Override
+    public void operate(FlowProcess flowProcess, FunctionCall functionCall) {
+      TupleEntry arguments = functionCall.getArguments();
+      Tuple result = new Tuple();
+
+      Name name = (Name) arguments.get(0);
+      result.add(name.getFirstName());
+      result.add(name.getLastName());
+      functionCall.getOutputCollector().add(result);
     }
-
-    @Test
-    public void testReadWithProjection() throws Exception {
-        ParquetValueScheme.Config<Name> config = new ParquetValueScheme.Config<Name>()
-                .withProjectionString("first")
-                .withRecordClass(Name.class);
-        doReadWithProjection(new ParquetAvroScheme(config));
-    }
-
-    @Test
-    public void testReadWithFilter() throws Exception {
-        FilterPredicate filter = FilterApi.eq(FilterApi.binaryColumn("first"), Binary.fromString("Bob"));
-        ParquetValueScheme.Config<Name> config = new ParquetValueScheme.Config<Name>()
-                .withFilterPredicate(filter)
-                .withRecordClass(Name.class);
-        doReadWithFilter(new ParquetAvroScheme(config));
-    }
-
-    /*@Test
-    // TODO: make scheme work without requiring code generation
-    public void testReadWithoutClass() throws Exception {
-        doRead(new ParquetAvroScheme(GenericRecord.class));
-    }*/
-
-    private void prepareRead(Scheme sourceScheme, String[] fieldNames) throws Exception {
-        createFileForRead();
-
-        Path path = new Path(txtOutputPath);
-        final FileSystem fs = path.getFileSystem(new Configuration());
-        if (fs.exists(path)) fs.delete(path, true);
-
-        Tap source = new Hfs(sourceScheme, parquetInputPath);
-
-        Scheme sinkScheme = new TextLine(new Fields(fieldNames));
-        Tap sink = new Hfs(sinkScheme, txtOutputPath);
-
-        Pipe assembly = new Pipe("namecp");
-        assembly = new Each(assembly, new UnpackAvroFunction());
-        Flow flow = new HadoopFlowConnector().connect("namecp", source, sink, assembly);
-
-        flow.complete();
-    }
-
-    private void doRead(Scheme sourceScheme) throws Exception {
-        String[] fields = {"first", "last"};
-        prepareRead(sourceScheme, fields);
-        String result = FileUtils.readFileToString(new File(txtOutputPath + "/part-00000"));
-        assertEquals("Alice\tPractice\nBob\tHope\nCharlie\tHorse\n", result);
-    }
-
-    private void doReadWithProjection(Scheme sourceScheme) throws Exception {
-        String[] fields = {"first"};
-        prepareRead(sourceScheme, fields);
-        String result = FileUtils.readFileToString(new File(txtOutputPath + "/part-00000"));
-        assertEquals("Alice\nBob\nCharlie\n", result);
-    }
-
-    private void doReadWithFilter(Scheme sourceScheme) throws Exception {
-        String[] fields = {"first", "last"};
-        prepareRead(sourceScheme, fields);
-        String result = FileUtils.readFileToString(new File(txtOutputPath + "/part-00000"));
-        assertEquals("Bob\tHope\n", result);
-    }
-
-    private void createFileForRead() throws Exception {
-        final Path fileToCreate = new Path(parquetInputPath+"/names.parquet");
-
-        final Configuration conf = new Configuration();
-        final FileSystem fs = fileToCreate.getFileSystem(conf);
-        if (fs.exists(fileToCreate)) fs.delete(fileToCreate, true);
-
-        AvroParquetWriter writer = new AvroParquetWriter(fileToCreate, Name.getClassSchema(), CompressionCodecName.UNCOMPRESSED, 100, 100);
-        Name n1 = new Name();
-        n1.setFirstName("Alice");
-        n1.setLastName("Practice");
-        Name n2 = new Name();
-        n2.setFirstName("Bob");
-        n2.setLastName("Hope");
-        Name n3 = new Name();
-        n3.setFirstName("Charlie");
-        n3.setLastName("Horse");
-
-        writer.write(n1);
-        writer.write(n2);
-        writer.write(n3);
-        writer.close();
-    }
-
-    private static class PackAvroFunction extends BaseOperation implements Function {
-        @Override
-        public void operate(FlowProcess flowProcess, FunctionCall functionCall) {
-            TupleEntry arguments = functionCall.getArguments();
-            Tuple result = new Tuple();
-
-            Name name = new Name();
-            name.setFirstName(arguments.getString(0));
-            name.setLastName(arguments.getString(1));
-
-            result.add(name);
-            functionCall.getOutputCollector().add(result);
-        }
-    }
-
-    private static class UnpackAvroFunction extends BaseOperation implements Function {
-        @Override
-        public void operate(FlowProcess flowProcess, FunctionCall functionCall) {
-            TupleEntry arguments = functionCall.getArguments();
-            Tuple result = new Tuple();
-
-            Name name = (Name) arguments.get(0);
-            result.add(name.getFirstName());
-            result.add(name.getLastName());
-            functionCall.getOutputCollector().add(result);
-        }
-    }
+  }
 }

@@ -29,7 +29,7 @@
   <artifactId>parquet-cascading-avro</artifactId>
   <packaging>jar</packaging>
 
-  <name>Apache Parquet Cascading (Incubating)</name>
+  <name>Apache Parquet Cascading Avro (Incubating)</name>
   <url>https://parquet.incubator.apache.org</url>
 
   <repositories>

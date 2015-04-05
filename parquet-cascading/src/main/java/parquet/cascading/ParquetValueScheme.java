@@ -35,8 +35,6 @@ import cascading.tuple.TupleEntry;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.mapred.Container;
-import parquet.hadoop.thrift.ParquetThriftInputFormat;
-import parquet.hadoop.thrift.ThriftReadSupport;
 
 import static parquet.Preconditions.checkNotNull;
 
@@ -105,13 +103,9 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
     this.config = config;
   }
 
-  private void setProjectionPushdown(JobConf jobConf) {
-    if (this.config.projectionString!= null) {
-      ThriftReadSupport.setProjectionPushdown(jobConf, this.config.projectionString);
-    }
-  }
+  protected abstract void setProjectionPushdown(JobConf jobConf);
 
-  private void setPredicatePushdown(JobConf jobConf) {
+  protected void setPredicatePushdown(JobConf jobConf) {
     if (this.config.filterPredicate != null) {
       ParquetInputFormat.setFilterPredicate(jobConf, this.config.filterPredicate);
     }
@@ -123,11 +117,7 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
     setRecordClass(jobConf);
   }
 
-  private void setRecordClass(JobConf jobConf) {
-    if (config.klass != null) {
-      ParquetThriftInputFormat.setThriftClass(jobConf, config.klass);
-    }
-  }
+  protected abstract void setRecordClass(JobConf jobConf);
 
   @SuppressWarnings("unchecked")
   @Override
