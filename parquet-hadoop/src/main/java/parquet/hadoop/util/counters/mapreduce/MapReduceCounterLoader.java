@@ -18,6 +18,7 @@
  */
 package parquet.hadoop.util.counters.mapreduce;
 
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 import parquet.hadoop.util.ContextUtil;
 import parquet.hadoop.util.counters.BenchmarkCounter;
@@ -30,9 +31,21 @@ import parquet.hadoop.util.counters.ICounter;
  * @author Tianshuo Deng
  */
 public class MapReduceCounterLoader implements CounterLoader {
-  private TaskInputOutputContext<?, ?, ?, ?> context;
+  private TaskAttemptContext context;
 
+  /**
+   * This is for backward-compatibility.
+   *
+   * @deprecated
+   *          will be removed in 2.0.0; use
+   *          {@link MapReduceCounterLoader(TaskAttemptContext)} instead.
+   */
+  @Deprecated
   public MapReduceCounterLoader(TaskInputOutputContext<?, ?, ?, ?> context) {
+    this((TaskAttemptContext) context);
+  }
+
+  public MapReduceCounterLoader(TaskAttemptContext context) {
     this.context = context;
   }
 
