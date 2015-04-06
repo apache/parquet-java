@@ -38,8 +38,10 @@ import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
+import parquet.Log;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.compat.FilterCompat;
 import parquet.filter2.compat.FilterCompat.Filter;
@@ -61,6 +63,7 @@ import parquet.schema.MessageType;
  */
 public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
+  private static final Log LOG = Log.getLog(ParquetRecordReader.class);
   private final InternalParquetRecordReader<T> internalReader;
 
   /**
@@ -127,7 +130,12 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   @Override
   public void initialize(InputSplit inputSplit, TaskAttemptContext context)
       throws IOException, InterruptedException {
-    BenchmarkCounter.initCounterFromContext(context);
+    if (context instanceof TaskInputOutputContext<?, ?, ?, ?>) {
+      BenchmarkCounter.initCounterFromContext((TaskInputOutputContext<?, ?, ?, ?>) context);
+    } else {
+      LOG.error("Can not initialize counter due to context is not a instance of TaskInputOutputContext, but is "
+              + context.getClass().getCanonicalName());
+    }
 
     initializeInternalReader(toParquetSplit(inputSplit), ContextUtil.getConfiguration(context));
   }

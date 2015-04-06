@@ -35,6 +35,7 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.StatusReporter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
+import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 
 /*
  * This is based on ContextFactory.java from hadoop-2.0.x sources.
@@ -250,7 +251,7 @@ public class ContextUtil {
     }
   }
 
-  public static Counter getCounter(TaskAttemptContext context,
+  public static Counter getCounter(TaskInputOutputContext context,
                                    String groupName, String counterName) {
     return (Counter) invoke(GET_COUNTER_METHOD, context, groupName, counterName);
   }

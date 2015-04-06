@@ -20,7 +20,6 @@ package parquet.hadoop.util.counters;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.Reporter;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 import parquet.hadoop.util.counters.mapred.MapRedCounterLoader;
 import parquet.hadoop.util.counters.mapreduce.MapReduceCounterLoader;
@@ -45,23 +44,11 @@ public class BenchmarkCounter {
   private static CounterLoader counterLoader;
 
   /**
-   * This method is for backward compatibility.
-   *
-   * @deprecated
-   *          will be removed in 2.0.0; use
-   *          {@link #initCounterFromContext(TaskAttemptContext)} instead.
-   */
-  @Deprecated
-  public static void initCounterFromContext(TaskInputOutputContext<?, ?, ?, ?> context) {
-    initCounterFromContext((TaskAttemptContext) context);
-  }
-
-  /**
    * Init counters in hadoop's mapreduce API, support both 1.x and 2.x
    *
    * @param context
    */
-  public static void initCounterFromContext(TaskAttemptContext context) {
+  public static void initCounterFromContext(TaskInputOutputContext<?, ?, ?, ?> context) {
     counterLoader = new MapReduceCounterLoader(context);
     loadCounters();
   }
