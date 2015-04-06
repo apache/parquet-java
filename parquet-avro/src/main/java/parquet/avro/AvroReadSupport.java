@@ -61,7 +61,7 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
 
   public static void setAvroDataSupplier(Configuration configuration,
       Class<? extends AvroDataSupplier> clazz) {
-    configuration.set(AVRO_DATA_SUPPLIER, clazz.toString());
+    configuration.set(AVRO_DATA_SUPPLIER, clazz.getName());
   }
 
   @Override
