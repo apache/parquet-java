@@ -115,16 +115,12 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
       avroSchema = new AvroSchemaConverter(configuration).convert(parquetSchema);
     }
 
-    // determine the data model
-    Class<? extends AvroDataSupplier> suppClass = configuration.getClass(
-        AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
-    AvroDataSupplier supplier =ReflectionUtils.newInstance(suppClass, configuration);
-
+    GenericData model = getDataModel(configuration);
     String compatEnabled = metadata.get(AvroReadSupport.AVRO_COMPATIBILITY);
     if (compatEnabled != null && Boolean.valueOf(compatEnabled)) {
-      return newCompatMaterializer(parquetSchema, avroSchema, supplier.get());
+      return newCompatMaterializer(parquetSchema, avroSchema, model);
     }
-    return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, supplier.get());
+    return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, model);
   }
 
   @SuppressWarnings("unchecked")
@@ -132,5 +128,11 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
       MessageType parquetSchema, Schema avroSchema, GenericData model) {
     return (RecordMaterializer<T>) new AvroCompatRecordMaterializer(
         parquetSchema, avroSchema, model);
+  }
+
+  private static GenericData getDataModel(Configuration conf) {
+    Class<? extends AvroDataSupplier> suppClass = conf.getClass(
+        AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
+    return ReflectionUtils.newInstance(suppClass, conf).get();
   }
 }
