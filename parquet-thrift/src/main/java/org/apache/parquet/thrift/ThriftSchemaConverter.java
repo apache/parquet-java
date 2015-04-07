@@ -116,7 +116,8 @@ public class ThriftSchemaConverter {
    * @param thriftElement the expected Schema for list elements
    * @return {@code true} if the repeatedType is the element schema
    */
-  static boolean isElementType(Type repeatedType, ThriftField thriftElement) {
+  static boolean isListElementType(Type repeatedType,
+                                   ThriftField thriftElement) {
     if (repeatedType.isPrimitive() ||
         (repeatedType.asGroupType().getFieldCount() != 1) ||
         (repeatedType.asGroupType().getType(0).isRepetition(REPEATED))) {

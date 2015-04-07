@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
@@ -672,7 +671,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
       }
       Type repeatedType = parquetSchema.getType(0);
       valuesType = values.getType().getType();
-      if (ThriftSchemaConverter.isElementType(repeatedType, values)) {
+      if (ThriftSchemaConverter.isListElementType(repeatedType, values)) {
         if (repeatedType.isPrimitive()) {
           PrimitiveCounter counter = new PrimitiveCounter(newConverter(listEvents, repeatedType, values).asPrimitiveConverter());
           child = counter;
