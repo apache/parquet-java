@@ -237,6 +237,7 @@
                      <exclude>parquet/org/**</exclude>
                      <exclude>parquet/column/**</exclude>
                      <exclude>parquet/hadoop/ParquetInputSplit</exclude>
+                     <exclude>parquet/hadoop/util/ContextUtil</exclude>
                    </excludes>
                  </requireBackwardCompatibility>
                </rules>
