@@ -68,7 +68,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
   public void run() throws IOException {
     add("package parquet.filter2.recordlevel;\n" +
         "\n" +
-        "import parquet.common.schema.ColumnPath;\n" +
+        "import parquet.hadoop.metadata.ColumnPath;\n" +
         "import parquet.filter2.predicate.Operators.Eq;\n" +
         "import parquet.filter2.predicate.Operators.Gt;\n" +
         "import parquet.filter2.predicate.Operators.GtEq;\n" +

@@ -27,7 +27,7 @@ import org.junit.Test;
 import parquet.column.Encoding;
 import parquet.column.statistics.DoubleStatistics;
 import parquet.column.statistics.IntStatistics;
-import parquet.common.schema.ColumnPath;
+import parquet.hadoop.metadata.ColumnPath;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.filter2.predicate.LogicalInverseRewriter;
 import parquet.filter2.predicate.Operators.DoubleColumn;

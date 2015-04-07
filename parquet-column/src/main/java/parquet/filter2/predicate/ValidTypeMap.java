@@ -23,7 +23,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import parquet.common.schema.ColumnPath;
+import parquet.hadoop.metadata.ColumnPath;
 import parquet.filter2.predicate.Operators.Column;
 import parquet.io.api.Binary;
 import parquet.schema.OriginalType;

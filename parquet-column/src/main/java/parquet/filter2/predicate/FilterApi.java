@@ -20,7 +20,7 @@ package parquet.filter2.predicate;
 
 import java.io.Serializable;
 
-import parquet.common.schema.ColumnPath;
+import parquet.hadoop.metadata.ColumnPath;
 import parquet.filter2.predicate.Operators.And;
 import parquet.filter2.predicate.Operators.BinaryColumn;
 import parquet.filter2.predicate.Operators.BooleanColumn;

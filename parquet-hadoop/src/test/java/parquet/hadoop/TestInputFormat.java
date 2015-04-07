@@ -53,7 +53,7 @@ import parquet.column.ColumnReader;
 import parquet.column.Encoding;
 import parquet.column.statistics.BinaryStatistics;
 import parquet.column.statistics.IntStatistics;
-import parquet.common.schema.ColumnPath;
+import parquet.hadoop.metadata.ColumnPath;
 import parquet.filter.RecordFilter;
 import parquet.filter.UnboundRecordFilter;
 import parquet.filter2.compat.FilterCompat;

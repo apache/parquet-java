@@ -23,7 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import parquet.common.schema.ColumnPath;
+import parquet.hadoop.metadata.ColumnPath;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.filter2.predicate.FilterPredicate.Visitor;
 import parquet.filter2.predicate.Operators.And;
