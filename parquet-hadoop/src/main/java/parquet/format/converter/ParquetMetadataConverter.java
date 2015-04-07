@@ -36,7 +36,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import parquet.Log;
-import parquet.common.schema.ColumnPath;
+import parquet.hadoop.metadata.ColumnPath;
 import parquet.format.ColumnChunk;
 import parquet.format.ColumnMetaData;
 import parquet.format.ConvertedType;
