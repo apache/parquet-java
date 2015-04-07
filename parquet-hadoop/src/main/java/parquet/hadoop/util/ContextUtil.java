@@ -35,7 +35,8 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.StatusReporter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
-import org.apache.hadoop.mapreduce.TaskInputOutputContext;
+
+import parquet.Log;
 
 /*
  * This is based on ContextFactory.java from hadoop-2.0.x sources.
@@ -46,6 +47,8 @@ import org.apache.hadoop.mapreduce.TaskInputOutputContext;
  * MapReduce Context Objects API between hadoop-0.20 and later versions.
  */
 public class ContextUtil {
+
+  private static final Log LOG = Log.getLog(ContextUtil.class);
 
   private static final boolean useV21;
 
@@ -251,9 +254,19 @@ public class ContextUtil {
     }
   }
 
-  public static Counter getCounter(TaskInputOutputContext context,
+  public static Counter getCounter(TaskAttemptContext context,
                                    String groupName, String counterName) {
-    return (Counter) invoke(GET_COUNTER_METHOD, context, groupName, counterName);
+    try {
+      return (Counter) GET_COUNTER_METHOD.invoke(context, groupName, counterName);
+    } catch (IllegalArgumentException e) {
+      LOG.error("Can not initialize counter due to context class ("
+        + context.getClass().getCanonicalName() + ") does not have method " + GET_COUNTER_METHOD);
+      return null;
+    } catch (IllegalAccessException e) {
+      throw new IllegalArgumentException("Can't invoke method " + GET_COUNTER_METHOD, e);
+    } catch (InvocationTargetException e) {
+      throw new IllegalArgumentException("Can't invoke method " + GET_COUNTER_METHOD, e);
+    }
   }
 
   /**

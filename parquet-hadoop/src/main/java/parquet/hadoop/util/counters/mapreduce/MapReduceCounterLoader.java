@@ -18,7 +18,10 @@
  */
 package parquet.hadoop.util.counters.mapreduce;
 
+import org.apache.hadoop.mapreduce.Counter;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
+
 import parquet.hadoop.util.ContextUtil;
 import parquet.hadoop.util.counters.BenchmarkCounter;
 import parquet.hadoop.util.counters.CounterLoader;
@@ -30,18 +33,32 @@ import parquet.hadoop.util.counters.ICounter;
  * @author Tianshuo Deng
  */
 public class MapReduceCounterLoader implements CounterLoader {
-  private TaskInputOutputContext<?, ?, ?, ?> context;
+  private TaskAttemptContext context;
 
+  /**
+   * This is for backward-compatibility.
+   *
+   * @deprecated
+   *          will be removed in 2.0.0; use
+   *          {@link MapReduceCounterLoader(TaskAttemptContext)} instead.
+   */
+  @Deprecated
   public MapReduceCounterLoader(TaskInputOutputContext<?, ?, ?, ?> context) {
+    this((TaskAttemptContext) context);
+  }
+
+  public MapReduceCounterLoader(TaskAttemptContext context) {
     this.context = context;
   }
 
   @Override
   public ICounter getCounterByNameAndFlag(String groupName, String counterName, String counterFlag) {
     if (ContextUtil.getConfiguration(context).getBoolean(counterFlag, true)) {
-      return new MapReduceCounterAdapter(ContextUtil.getCounter(context, groupName, counterName));
-    } else {
-      return new BenchmarkCounter.NullCounter();
+      Counter counter = ContextUtil.getCounter(context, groupName, counterName);
+      if (counter != null) {
+        return new MapReduceCounterAdapter(counter);
+      }
     }
+    return new BenchmarkCounter.NullCounter();
   }
 }
