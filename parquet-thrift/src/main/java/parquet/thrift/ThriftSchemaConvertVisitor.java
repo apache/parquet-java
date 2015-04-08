@@ -97,7 +97,6 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
       return;
     }
 
-    // TODO: this can never happen
     if (keyType == null && valueType != null)
       throw new ThriftProjectionException("key of map is not specified in projection: " + currentFieldPath);
 

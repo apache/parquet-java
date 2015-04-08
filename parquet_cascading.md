@@ -84,44 +84,61 @@ One of the big benefit of using columnar format is to be able to read only a sub
 Parquet support projection pushdown for Thrift records and tuples.
 
 ### 2.1 Projection Pushdown with Thrift/Scrooge Records
-To read only a subset of attributes in a Thrift/Scrooge class, the columns of interest should be specified using glob syntax. For example, for a thrift class as follows:
+To read only a subset of columns in a Thrift/Scrooge class, the columns of interest should be specified using a glob syntax.
 
-    
-    struct Address{
-      1: string street
-      2: string zip
-    }
-    struct Person{
-      1: string name
-      2: int16 age
-      3: Address addr
+For example, imagine a Person struct defined as:
+
+    struct Person {
+      1: required string name
+      2: optional int16 age
+      3: optional Address primaryAddress
+      4: required map<string, Address> otherAddresses
     }
 
+    struct Address {
+      1: required string street
+      2: required string zip
+      3: required PhoneNumber primaryPhone
+      4: required PhoneNumber secondaryPhone
+      4: required list<PhoneNumber> otherPhones
+    }
 
-In the above example, when reading records of type Person, we can use following glob expression to specify the attributes we want to read:
+    struct PhoneNumber {
+      1: required i32 areaCode
+      2: required i32 number
+      3: required bool doNotCall
+    }
 
-- Exact match:
-"`name`" will only fetch the name attribute.
+A column is specified as the path from the root of the schema down to the field of interest, separated by `.`, just as you would access the field
+in java or scala code. For example: `primaryAddress.phone.doNotCall`. 
+This applies for repeated fields as well, for example `primaryAddress.otherPhones.number` selects all the `number`s from all the elements of `otherPhones`.
+Maps are a special case -- the map is split into two columns, the key and the value. All the columns in the key are required, but you can select a subset of the
+columns in the value (or skip the value entirely), for example: `otherAddresses.{key,value.street}` will select only the streets from the
+values of the map, but the entire key will be kept. To select an entire map, you can do: `otherAddresses.{key,value}`, 
+and to select only the keys: `otherAddresses.key`. When selecting a field that is a struct, for example `primaryAddress.primaryPhone`, 
+it will select the entire struct. So `primaryAddress.primaryPhone.*` is redundant.
 
-- Alternative match:
-"`address/{street,zip}`" will fetch both street and zip in the Address
+Columns can be specified concretely (like `primaryAddress.phone.doNotCall`), or a restricted glob syntax can be used.
+The glob syntax supports only wildcards (`*`) and glob expressions (`{}`).
 
-- Wildcard match:
-"`*`" will fetch name and age, but not address, since address is a nested structure
+For example:
 
-- Recursive match:
-"`**`" will recursively match all attributes defined in Person.
+  * `name` will select just the `name` from the Person
+  * `{name,age}` will select both the `name` and `age` from the Person
+  * `primaryAddress` will select the entire `primaryAddress` struct, including all of its children (recursively)
+  * `primaryAddress.*Phone` will select all of `primaryAddress.primaryPhone` and `primaryAddress.secondaryPhone`
+  * `primaryAddress.*Phone*` will select all of `primaryAddress.primaryPhone` and `primaryAddress.secondaryPhone` and `primaryAddress.otherPhones`
+  * `{name,age,primaryAddress.{*Phone,street}}` will select `name`, `age`, `primaryAddress.primaryPhone`, `primaryAddress.secondaryPhone`, and `primaryAddress.street`
 
-- Joined match:
-Multiple glob expression can be joined together separated by ";". eg. "name;address/street" will match only name and street in Address.
+Multiple Patterns:
+Multiple glob expression can be joined together separated by ";". eg. `name;primaryAddress.street` will match only name and street in Address.
+This is useful if you want to combine a list of patterns without making a giant `{}` group.
 
-To specify the glob filter for thrift/scrooge, simply set the conf with "parquet.thrift.column.filter" set to the glob expression string.
+Note: all possible glob patterns must match at least one column. For example, if you provide the glob: `a.b.{c,d,e}` but only columns `a.b.c` and `a.b.d` exist, an
+exception will be thrown.
 
-
-    Map<Object, Object> props=new HashMap<Object, Object>();
-    props.put("parquet.thrift.column.filter","name;address/street");
-    HadoopFlowConnector hadoopFlowConnector = new HadoopFlowConnector(props);
-
+You can provide your projection globs to parquet by setting `parquet.thrift.column.projection.globs` in the hadoop config, or using the methods in the
+scheme builder classes.
 
 ### 2.2 Projection Pushdown with Tuples
 When using ParquetTupleScheme, specifying projection pushdown is as simple as specifying fields as the parameter of the constructor of ParquetTupleScheme:

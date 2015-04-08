@@ -119,7 +119,6 @@ public abstract class ParquetValueScheme<T> extends Scheme<JobConf, RecordReader
     this.config = config;
   }
 
-  // TODO: Why is there thrift references in this file?
   @Deprecated
   private void setProjectionPushdown(JobConf jobConf) {
     if (this.config.deprecatedProjectionString != null) {
