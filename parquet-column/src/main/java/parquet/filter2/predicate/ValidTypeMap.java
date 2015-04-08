@@ -77,6 +77,9 @@ public class ValidTypeMap {
 
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, OriginalType.UTF8));
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, OriginalType.UTF8));
+
+    // Both of these int types are valid
+    add(Integer.class, new FullTypeDescriptor(PrimitiveTypeName.INT32, OriginalType.DATE));
   }
 
   /**
