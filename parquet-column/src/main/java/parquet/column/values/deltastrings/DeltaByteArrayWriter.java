@@ -66,6 +66,7 @@ public class DeltaByteArrayWriter extends ValuesWriter{
   public void reset() {
     prefixLengthWriter.reset();
     suffixWriter.reset();
+    previous = new byte[0];
   }
 
   @Override
