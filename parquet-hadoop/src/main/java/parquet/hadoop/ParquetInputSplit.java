@@ -26,6 +26,7 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
@@ -115,6 +116,16 @@ public class ParquetInputSplit extends FileSplit implements Writable {
   }
 
   /**
+   * @return the block meta data
+   * @deprecated the file footer is no longer read before creating input splits
+   */
+  @Deprecated
+  public List<BlockMetaData> getBlocks() {
+    throw new UnsupportedOperationException(
+        "Splits no longer have row group metadata, see PARQUET-234");
+  }
+
+  /**
    * Builds a {@code ParquetInputSplit} from a mapreduce {@link FileSplit}.
    *
    * @param split a mapreduce FileSplit
@@ -158,10 +169,49 @@ public class ParquetInputSplit extends FileSplit implements Writable {
   }
 
   /**
+   * @return the requested schema
+   * @deprecated the file footer is no longer read before creating input splits
+   */
+  @Deprecated
+  String getRequestedSchema() {
+    throw new UnsupportedOperationException(
+        "Splits no longer have the requested schema, see PARQUET-234");
+  }
+
+  /**
+   * @return the file schema
+   * @deprecated the file footer is no longer read before creating input splits
+   */
+  @Deprecated
+  public String getFileSchema() {
+    throw new UnsupportedOperationException(
+        "Splits no longer have the file schema, see PARQUET-234");
+  }
+
+  /**
    * @return the end offset of that split
    */
   public long getEnd() {
     return end;
+  }
+
+  /**
+   * @return app specific metadata from the file
+   * @deprecated the file footer is no longer read before creating input splits
+   */
+  @Deprecated
+  public Map<String, String> getExtraMetadata() {
+    throw new UnsupportedOperationException(
+        "Splits no longer have file metadata, see PARQUET-234");
+  }
+
+  /**
+   * @return app specific metadata provided by the read support in the init phase
+   */
+  @Deprecated
+  Map<String, String> getReadSupportMetadata() {
+    throw new UnsupportedOperationException(
+        "Splits no longer have read-support metadata, see PARQUET-234");
   }
 
   /**

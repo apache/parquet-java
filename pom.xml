@@ -9,7 +9,7 @@
 
   <groupId>com.twitter</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.6.0rc8-SNAPSHOT</version>
+  <version>1.6.0</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet MR (Incubating)</name>
@@ -106,7 +106,7 @@
     <cascading.version>2.5.3</cascading.version>
     <parquet.format.version>2.2.0-rc1</parquet.format.version>
     <log4j.version>1.2.17</log4j.version>
-    <previous.version>1.6.0rc1</previous.version>
+    <previous.version>1.5.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <scala.version>2.10.4</scala.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
@@ -119,6 +119,7 @@
 
   <modules>
     <module>parquet-avro</module>
+    <module>parquet-benchmarks</module>
     <module>parquet-cascading</module>
     <module>parquet-column</module>
     <module>parquet-common</module>
@@ -236,6 +237,10 @@
                      <exclude>parquet/org/**</exclude>
                      <exclude>parquet/column/**</exclude>
                      <exclude>parquet/hadoop/ParquetInputSplit</exclude>
+                     <!-- temporary rules -->
+                     <exclude>parquet/io/api/Binary</exclude> <!-- false positive, added interfaces -->
+                     <exclude>parquet/hadoop/metadata/Canonicalizer</exclude> <!-- moved to different module -->
+                     <exclude>parquet/hadoop/metadata/ColumnPath</exclude> <!-- moved to different module, added methods -->
                    </excludes>
                  </requireBackwardCompatibility>
                </rules>

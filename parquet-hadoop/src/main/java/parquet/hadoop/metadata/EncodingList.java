@@ -23,7 +23,6 @@ import java.util.Iterator;
 import java.util.List;
 
 import parquet.column.Encoding;
-import parquet.common.internal.Canonicalizer;
 
 public class EncodingList implements Iterable<Encoding> {
 

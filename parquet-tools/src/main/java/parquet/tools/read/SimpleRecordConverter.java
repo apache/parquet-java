@@ -18,12 +18,10 @@
  */
 package parquet.tools.read;
 
-import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 
-import parquet.column.Dictionary;
 import parquet.io.api.Binary;
 import parquet.io.api.Converter;
 import parquet.io.api.GroupConverter;
@@ -44,7 +42,7 @@ public class SimpleRecordConverter extends GroupConverter {
   private final Converter converters[];
   private final String name;
   private final SimpleRecordConverter parent;
-  private SimpleRecord record;
+  protected SimpleRecord record;
 
   public SimpleRecordConverter(GroupType schema) {
     this(schema, null, null);
@@ -62,8 +60,9 @@ public class SimpleRecordConverter extends GroupConverter {
   }
 
   private Converter createConverter(Type field) {
+    OriginalType otype = field.getOriginalType();
+
     if (field.isPrimitive()) {
-      OriginalType otype = field.getOriginalType();
       if (otype != null) {
         switch (otype) {
           case MAP: break;
@@ -77,7 +76,14 @@ public class SimpleRecordConverter extends GroupConverter {
       return new SimplePrimitiveConverter(field.getName());
     }
 
-    return new SimpleRecordConverter(field.asGroupType(), field.getName(), this);
+    GroupType groupType = field.asGroupType();
+    if (otype != null) {
+      switch (otype) {
+        case MAP: return new SimpleMapRecordConverter(groupType, field.getName(), this);
+        case LIST: return new SimpleListRecordConverter(groupType, field.getName(), this);
+      }
+    }
+    return new SimpleRecordConverter(groupType, field.getName(), this);
   }
 
   @Override
@@ -110,21 +116,6 @@ public class SimpleRecordConverter extends GroupConverter {
 
     @Override
     public void addBinary(Binary value) {
-      byte[] data = value.getBytes();
-      if (data == null) {
-        record.add(name, null);
-        return;
-      }
-
-      if (data != null) {
-        try {
-          CharBuffer buffer = UTF8_DECODER.decode(value.toByteBuffer());
-          record.add(name, buffer.toString());
-          return;
-        } catch (Throwable th) {
-        }
-      }
-
       record.add(name, value.getBytes());
     }
 

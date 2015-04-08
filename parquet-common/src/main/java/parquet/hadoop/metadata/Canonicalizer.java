@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.common.internal;
+package parquet.hadoop.metadata;
 
 import java.util.concurrent.ConcurrentHashMap;
 

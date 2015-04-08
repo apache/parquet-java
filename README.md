@@ -26,6 +26,45 @@ Parquet uses the [record shredding and assembly algorithm](https://github.com/Pa
 
 You can find some details about the format and intended use cases in our [Hadoop Summit 2013 presentation](http://www.slideshare.net/julienledem/parquet-hadoop-summit-2013)
 
+## Building
+
+Parquet-MR uses Maven to build and depends on both the thrift and protoc compilers.
+
+### Install Protobuf
+
+To build and install the protobuf compiler, run:
+
+```
+wget http://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz
+tar xzf protobuf-2.5.0.tar.gz
+cd  protobuf-2.5.0
+./configure
+make
+sudo make install
+sudo ldconfig
+```
+
+### Install Thrift
+
+To build and install the thrift compiler, run:
+
+```
+wget -nv http://archive.apache.org/dist/thrift/0.7.0/thrift-0.7.0.tar.gz
+tar xzf thrift-0.7.0.tar.gz
+cd thrift-0.7.0
+chmod +x ./configure
+./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang
+sudo make install
+```
+
+### Build Parquet with Maven
+
+Once protobuf and thrift are available in your path, you can build the project by running:
+
+```
+mvn clean install
+```
+
 ## Features
 
 Parquet is a very active project, and new features are being added quickly; below is the state as of June 2013.

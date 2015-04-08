@@ -25,7 +25,6 @@ import org.junit.Test;
 
 import parquet.column.Encoding;
 import parquet.column.statistics.BinaryStatistics;
-import parquet.common.schema.ColumnPath;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 import static org.junit.Assert.assertEquals;
