@@ -61,7 +61,7 @@ import parquet.column.page.DataPageV1;
 import parquet.column.page.DataPageV2;
 import parquet.column.page.DictionaryPage;
 import parquet.column.page.PageReadStore;
-import parquet.common.schema.ColumnPath;
+import parquet.hadoop.metadata.ColumnPath;
 import parquet.format.DataPageHeader;
 import parquet.format.DataPageHeaderV2;
 import parquet.format.DictionaryPageHeader;

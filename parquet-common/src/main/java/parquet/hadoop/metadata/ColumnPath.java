@@ -16,14 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.common.schema;
+package parquet.hadoop.metadata;
 
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Iterator;
 
 import parquet.Strings;
-import parquet.common.internal.Canonicalizer;
 
 import static parquet.Preconditions.checkNotNull;
 

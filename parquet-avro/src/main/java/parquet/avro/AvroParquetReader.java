@@ -32,7 +32,7 @@ import parquet.hadoop.ParquetReader;
  */
 public class AvroParquetReader<T extends IndexedRecord> extends ParquetReader<T> {
 
-  public Builder<T> builder(Path file) {
+  public static <T extends IndexedRecord> Builder<T> builder(Path file) {
     return ParquetReader.builder(new AvroReadSupport<T>(), file);
   }
 
