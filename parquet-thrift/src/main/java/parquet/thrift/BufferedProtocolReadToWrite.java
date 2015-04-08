@@ -410,6 +410,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         notifyIgnoredFieldsOfRecord(field);
         //read the value and ignore it, NullProtocol will do nothing
         new ProtocolReadToWrite().readOneValue(in, new NullProtocol(), field.type);
+        break;
       case UNION:
         // this is a union with an unrecognized member -- this is fatal for this record
         // in the write path, because it will be unreadable in the read path.
