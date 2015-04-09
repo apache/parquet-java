@@ -46,14 +46,21 @@ public class MetadataUtils {
   public static final double BAD_COMPRESSION_RATIO_CUTOFF = 0.97;
   public static final double GOOD_COMPRESSION_RATIO_CUTOFF = 1.2;
 
-  public static void showDetails(PrettyPrintWriter out, ParquetMetadata meta) {
+  public static void showDetails(PrettyPrintWriter out, ParquetMetadata meta, boolean humanReadable, boolean summary) {
     showDetails(out, meta.getFileMetaData());
+    out.println();
 
     long i = 1;
     for (BlockMetaData bmeta : meta.getBlocks()) {
-      out.println();
-      showDetails(out, bmeta, i++);
+      showDetails(out, bmeta, i++, humanReadable, summary);
+      if( !summary ){
+        out.println();
+      }
     }
+  }
+
+  public static void showDetails(PrettyPrintWriter out, ParquetMetadata meta) {
+    showDetails(out, meta, false, false);
   }
 
   public static void showDetails(PrettyPrintWriter out, FileMetaData meta) {
@@ -76,20 +83,28 @@ public class MetadataUtils {
   }
 
   public static void showDetails(PrettyPrintWriter out, BlockMetaData meta) {
-    showDetails(out, meta, null);
+    showDetails(out, meta, null, false, false);
   }
 
-  private static void showDetails(PrettyPrintWriter out, BlockMetaData meta, Long num) {
-    long rows = meta.getRowCount();
-    long tbs = meta.getTotalByteSize();
+  private static void showDetails(PrettyPrintWriter out, BlockMetaData meta, Long num, boolean humanReadable, boolean summary) {
+    long rows   = meta.getRowCount();
     long offset = meta.getStartingPos();
+    String tbs  = (humanReadable)
+                ? PrettyPrintWriter.humanReadableByteCount(meta.getTotalByteSize())
+                : Long.toString(meta.getTotalByteSize());
 
-    out.format("row group%s: RC:%d TS:%d OFFSET:%d%n", (num == null ? "" : " " + num), rows, tbs, offset);
-    out.rule('-');
-    showDetails(out, meta.getColumns());
+    out.format("row group%s: RC:%d TS:%s OFFSET:%d%n", (num == null ? "" : " " + num), rows, tbs, offset);
+    if( !summary ){
+      out.rule('-');
+      showDetails(out, meta.getColumns(), humanReadable);
+    }
   }
 
   public static void showDetails(PrettyPrintWriter out, List<ColumnChunkMetaData> ccmeta) {
+    showDetails(out, ccmeta, false);
+  }
+
+  public static void showDetails(PrettyPrintWriter out, List<ColumnChunkMetaData> ccmeta, boolean humanReadable) {
     Map<String,Object> chunks = new LinkedHashMap<String,Object>();
     for (ColumnChunkMetaData cmeta : ccmeta) {
       String[] path = cmeta.getPath().toArray();
@@ -107,29 +122,29 @@ public class MetadataUtils {
       current.put(path[path.length - 1], cmeta);
     }
 
-    showColumnChunkDetails(out, chunks, 0);
+    showColumnChunkDetails(out, chunks, 0, humanReadable);
   }
 
-  private static void showColumnChunkDetails(PrettyPrintWriter out, Map<String,Object> current, int depth) {
+  private static void showColumnChunkDetails(PrettyPrintWriter out, Map<String,Object> current, int depth, boolean humanReadable) {
     for (Map.Entry<String,Object> entry : current.entrySet()) {
       String name = Strings.repeat(".", depth) + entry.getKey();
       Object value = entry.getValue();
 
       if (value instanceof Map) {
         out.println(name + ": ");
-        showColumnChunkDetails(out, (Map<String,Object>)value, depth + 1);
+        showColumnChunkDetails(out, (Map<String,Object>)value, depth + 1, humanReadable);
       } else {
         out.print(name + ": ");
-        showDetails(out, (ColumnChunkMetaData)value, false);
+        showDetails(out, (ColumnChunkMetaData)value, false, humanReadable);
       }
     }
   }
 
   public static void showDetails(PrettyPrintWriter out, ColumnChunkMetaData meta) {
-    showDetails(out, meta, true);
+    showDetails(out, meta, true, false);
   }
 
-  private static void showDetails(PrettyPrintWriter out, ColumnChunkMetaData meta, boolean name) {
+  private static void showDetails(PrettyPrintWriter out, ColumnChunkMetaData meta, boolean name, boolean humanReadable) {
     long doff = meta.getDictionaryPageOffset();
     long foff = meta.getFirstDataPageOffset();
     long tsize = meta.getTotalSize();
@@ -147,7 +162,11 @@ public class MetadataUtils {
     out.format(" %s", meta.getCodec());
     out.format(" DO:%d", doff);
     out.format(" FPO:%d", foff);
-    out.format(" SZ:%d/%d/%.2f", tsize, usize, ratio);
+    if( humanReadable ) {
+      out.format(" SZ:%s/%s/%.2f", PrettyPrintWriter.humanReadableByteCount(tsize), PrettyPrintWriter.humanReadableByteCount(usize), ratio);
+    } else {
+      out.format(" SZ:%d/%d/%.2f", tsize, usize, ratio);
+    }
     out.format(" VC:%d", count);
     if (!encodings.isEmpty()) out.format(" ENC:%s", encodings);
     out.println();

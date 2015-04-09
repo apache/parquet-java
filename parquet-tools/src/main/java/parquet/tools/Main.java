@@ -153,7 +153,7 @@ public class Main {
       if (name != null && command != null) {
         showUsage(name, command);
       } else {
-        showUsage(name, command);
+        showUsage();
       }
     }
 
