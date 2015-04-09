@@ -61,7 +61,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
 
   private Type currentType;
   private Type.Repetition currentRepetition = Type.Repetition.REPEATED; // MessageType is repeated GroupType
-  private String currentName = "ParquetSchema"; // TODO: why?
+  private String currentName = "ParquetSchema";
 
   public ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter) {
     this.fieldProjectionFilter = Preconditions.checkNotNull(fieldProjectionFilter, "fieldProjectionFilter");
