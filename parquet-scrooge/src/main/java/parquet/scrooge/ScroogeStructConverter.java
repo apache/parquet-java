@@ -69,7 +69,7 @@ public class ScroogeStructConverter {
   }
 
   private ThriftType.StructType convertCompanionClassToStruct(Class<?> companionClass) {
-    ThriftStructCodec companionObject = null;
+    ThriftStructCodec<?> companionObject;
     try {
       companionObject = (ThriftStructCodec<?>)companionClass.getField("MODULE$").get(null);
     } catch (ReflectiveOperationException e) {
@@ -88,7 +88,7 @@ public class ScroogeStructConverter {
     return new ThriftType.StructType(children, structOrUnionType);
   }
 
-  private Iterable<ThriftStructFieldInfo> getFieldInfos(ThriftStructCodec c) {
+  private Iterable<ThriftStructFieldInfo> getFieldInfos(ThriftStructCodec<?> c) {
     Class<? extends ThriftStructCodec> klass = c.getClass();
     if (isUnion(klass)){
       // Union needs special treatment since currently scrooge does not generates the fieldInfos
@@ -98,8 +98,7 @@ public class ScroogeStructConverter {
       //each struct has a generated fieldInfos method to provide metadata to its fields
       try {
         Object r = klass.getMethod("fieldInfos").invoke(c);
-        Iterable<ThriftStructFieldInfo> a = JavaConversions$.MODULE$.asJavaIterable((scala.collection.Iterable<ThriftStructFieldInfo>)r);
-        return a;
+        return JavaConversions$.MODULE$.asJavaIterable((scala.collection.Iterable<ThriftStructFieldInfo>)r);
       } catch (ReflectiveOperationException e) {
         throw new ScroogeSchemaConversionException("can not get field Info from: " + c.toString(), e);
       }
@@ -125,38 +124,10 @@ public class ScroogeStructConverter {
     return fields;
   }
 
-  private boolean isUnion(Class klass){
-    for(Field f: klass.getDeclaredFields()) {
-         if (f.getName().equals("Union"))
-           return true;
-    }
-    return false;
-  }
 
-
-  private Requirement getRequirementType(ThriftStructFieldInfo f) {
-    if (f.isOptional() && !f.isRequired()) {
-      return OPTIONAL;
-    } else if (f.isRequired() && !f.isOptional()) {
-      return REQUIRED;
-    } else if (!f.isOptional() && !f.isRequired()) {
-      return DEFAULT;
-    } else {
-      throw new ScroogeSchemaConversionException("can not determine requirement type for : " + f.toString()
-              + ", isOptional=" + f.isOptional() + ", isRequired=" + f.isRequired());
-    }
-  }
 
   /**
-   * Convert thrift field in scrooge to ThriftField in parquet
-   * Use reflection to detect if a field is optional or required since scrooge does not provide requirement information
-   * in generated classes.
-   * This will not correctly recognize fields that are not specified with a requirement type eg.
-   * struct Address {
-   * 1: string street
-   * }
-   * street will be identified as "REQUIRED"
-   *
+   * Convert a field in scrooge to ThriftField in parquet
    * @param scroogeField
    * @return
    * @throws Exception
@@ -214,25 +185,38 @@ public class ScroogeStructConverter {
   }
 
   private ThriftType convertSetTypeField(ThriftStructFieldInfo f, Requirement requirement) {
-    ThriftType elementType = convertClassToThriftType(f.valueManifest().get().runtimeClass());
+    return convertSetTypeField(f.tfield().name, f.valueManifest().get(), requirement);
+  }
+
+  private ThriftType convertSetTypeField(String fieldName, Manifest<?> valueManifest, Requirement requirement) {
+    ThriftType elementType = convertClassToThriftType(fieldName + "_set_elem", requirement, valueManifest);
     //Set only has one sub-field as element field, therefore using hard-coded 1 as fieldId,
     //it's the same as the solution used in ElephantBird
-    ThriftField elementField = generateFieldWithoutId(f.tfield().name, requirement, elementType);
+    ThriftField elementField = generateFieldWithoutId(fixNestListOrSetName(fieldName), requirement, elementType);
     return new ThriftType.SetType(elementField);
   }
 
   private ThriftType convertListTypeField(ThriftStructFieldInfo f, Requirement requirement) {
-    ThriftType elementType = convertClassToThriftType(f.valueManifest().get().runtimeClass());
-    ThriftField elementField = generateFieldWithoutId(f.tfield().name, requirement, elementType);
+    return convertListTypeField(f.tfield().name, f.valueManifest().get(),requirement);
+  }
+
+  private ThriftType convertListTypeField(String fieldName, Manifest<?> valueManifest, Requirement requirement) {
+    ThriftType elementType = convertClassToThriftType(fieldName + "_list_elem", requirement, valueManifest);
+    ThriftField elementField = generateFieldWithoutId(fixNestListOrSetName(fieldName) , requirement, elementType);
     return new ThriftType.ListType(elementField);
   }
 
   private ThriftType convertMapTypeField(ThriftStructFieldInfo f, Requirement requirement) {
-    ThriftType keyType = convertClassToThriftType(f.keyManifest().get().runtimeClass());
-    ThriftField keyField = generateFieldWithoutId(f.tfield().name + "_map_key", requirement, keyType);
+    return convertMapTypeField(f.tfield().name,f.keyManifest().get(), f.valueManifest().get(),requirement);
+  }
 
-    ThriftType valueType = convertClassToThriftType(f.valueManifest().get().runtimeClass());
-    ThriftField valueField = generateFieldWithoutId(f.tfield().name + "_map_value", requirement, valueType);
+  private ThriftType convertMapTypeField(String fieldName, Manifest<?> keyManifest, Manifest<?> valueManifest, Requirement requirement) {
+
+    ThriftType keyType = convertClassToThriftType(fieldName + "_map_key", requirement, keyManifest);
+    ThriftField keyField = generateFieldWithoutId(fieldName + "_map_key", requirement, keyType);
+
+    ThriftType valueType = convertClassToThriftType(fieldName + "_map_value", requirement, valueManifest);
+    ThriftField valueField = generateFieldWithoutId(fieldName + "_map_value", requirement, valueType);
 
     return new ThriftType.MapType(keyField, valueField);
   }
@@ -254,12 +238,16 @@ public class ScroogeStructConverter {
    * In composite types,  such as the type of the key in a map, since we use reflection to get the type class, this method
    * does conversion based on the class provided.
    *
-   * @param typeClass
-   * @return
+   *
+   * @param name
+   * @param requirement
+   * @param typeManifest
+   * @return converted ThriftType
    * @throws Exception
    */
-  private ThriftType convertClassToThriftType(Class typeClass) {
-    if (typeClass == boolean.class) {
+  private ThriftType convertClassToThriftType(String name, Requirement requirement, Manifest<?> typeManifest) {
+    Class typeClass = typeManifest.runtimeClass();
+    if (typeManifest.runtimeClass() == boolean.class) {
       return new ThriftType.BoolType();
     } else if (typeClass == byte.class) {
       return new ThriftType.ByteType();
@@ -273,9 +261,39 @@ public class ScroogeStructConverter {
       return new ThriftType.I64Type();
     } else if (typeClass == String.class) {
       return new ThriftType.StringType();
+    } else if (typeClass == scala.collection.Seq.class){
+      Manifest<?> a = typeManifest.typeArguments().apply(0);
+      return convertListTypeField(name, a, requirement);
+    } else if (typeClass == scala.collection.Set.class){
+      Manifest<?> setElementManifest = typeManifest.typeArguments().apply(0);
+      return convertSetTypeField(name, setElementManifest, requirement);
+    } else if (typeClass == scala.collection.Map.class){
+      List<Manifest<?>> ms = JavaConversions.seqAsJavaList(typeManifest.typeArguments());
+      Manifest keyManifest = ms.get(0);
+      Manifest valueManifest = ms.get(1);
+      return convertMapTypeField(name, keyManifest, valueManifest, requirement);
+    } else if (com.twitter.scrooge.ThriftEnum.class.isAssignableFrom(typeClass)){
+      return convertEnumTypeField(typeClass, name);
     } else {
       return convertStructFromClass(typeClass);
     }
+  }
+
+  /**
+   * There is a bug/inconsistency in ThriftStructConverter:
+   * The field name of a nested list/set has the same name as its parent. for example:
+   *  1: required list<list<int>> lm
+   * the name of the inner list is lm, but is should be lm_list_elem.
+   *
+   * This bug/inconsistency does not affect the converted parquet schema because ThriftSchemaConverter ignores the name
+   * of inner list.
+   *
+   * Here in ScroogeStructConverter the same behavior is replicated to generate the same ThriftStruct with
+   * ThriftStructConverter
+   * @return
+   */
+  private String fixNestListOrSetName(String name) {
+    return name.replaceAll("_list_elem|_set_elem","");
   }
 
   private ThriftType convertStructTypeField(ThriftStructFieldInfo f) {
@@ -295,36 +313,56 @@ public class ScroogeStructConverter {
   }
 
   public ThriftType convertEnumTypeField(ThriftStructFieldInfo f) {
-    List<ThriftType.EnumValue> enumValues = new ArrayList<ThriftType.EnumValue>();
+    return convertEnumTypeField(f.manifest().runtimeClass(), f.tfield().name);
+  }
 
-    String enumName = f.manifest().runtimeClass().getName();
+  private ThriftType convertEnumTypeField(Class enumClass, String fieldName){
+    List<ThriftType.EnumValue> enumValues = new ArrayList<ThriftType.EnumValue>();
+    String enumName = enumClass.getName();
     try {
       List enumCollection = getEnumList(enumName);
       for (Object enumObj : enumCollection) {
-        ScroogeEnumDesc enumDesc = ScroogeEnumDesc.getEnumDesc(enumObj);
-        //be compatible with thrift generated enum which have capitalized name
+        ScroogeEnumDesc enumDesc = ScroogeEnumDesc.fromEnum(enumObj);
         enumValues.add(new ThriftType.EnumValue(enumDesc.id, enumDesc.originalName));
       }
       return new ThriftType.EnumType(enumValues);
-    } catch (ReflectiveOperationException e) {
-      throw new ScroogeSchemaConversionException("Can not convert enum field " + f, e);
+    } catch (Exception e) {
+      throw new ScroogeSchemaConversionException("Can not convert enum field " + fieldName, e);
     }
+  }
 
+  private boolean isUnion(Class klass){
+    for(Field f: klass.getDeclaredFields()) {
+      if (f.getName().equals("Union"))
+        return true;
+    }
+    return false;
+  }
+
+
+  private Requirement getRequirementType(ThriftStructFieldInfo f) {
+    if (f.isOptional() && !f.isRequired()) {
+      return OPTIONAL;
+    } else if (f.isRequired() && !f.isOptional()) {
+      return REQUIRED;
+    } else if (!f.isOptional() && !f.isRequired()) {
+      return DEFAULT;
+    } else {
+      throw new ScroogeSchemaConversionException("can not determine requirement type for : " + f.toString()
+              + ", isOptional=" + f.isOptional() + ", isRequired=" + f.isRequired());
+    }
   }
 
   private static class ScroogeEnumDesc {
     private int id;
-    private String name;
     private String originalName;
 
-    public static ScroogeEnumDesc getEnumDesc(Object rawScroogeEnum) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    public static ScroogeEnumDesc fromEnum(Object rawScroogeEnum) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
       Class enumClass = rawScroogeEnum.getClass();
       Method valueMethod = enumClass.getMethod("value", new Class[]{});
-      Method nameMethod = enumClass.getMethod("name", new Class[]{});
       Method originalNameMethod = enumClass.getMethod("originalName", new Class[]{});
       ScroogeEnumDesc result = new ScroogeEnumDesc();
       result.id = (Integer)valueMethod.invoke(rawScroogeEnum, null);
-      result.name = (String)nameMethod.invoke(rawScroogeEnum, null);
       result.originalName = (String)originalNameMethod.invoke(rawScroogeEnum, null);
       return result;
     }
