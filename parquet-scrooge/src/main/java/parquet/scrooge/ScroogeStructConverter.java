@@ -290,6 +290,10 @@ public class ScroogeStructConverter {
    *
    * Here in ScroogeStructConverter the same behavior is replicated to generate the same ThriftStruct with
    * ThriftStructConverter
+   *
+   * TODO: This fix might not be necessary since parquet mostly operates on MessageType, the ThriftStruct is an intermediate
+   * layer for generating MessageType from a thrift/scrooge class. The fix could be removed once we are confident it's
+   * safe for doing so.
    * @return
    */
   private String fixNestListOrSetName(String name) {
