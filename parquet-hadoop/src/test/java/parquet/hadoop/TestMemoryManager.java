@@ -33,7 +33,6 @@ import parquet.schema.MessageTypeParser;
 import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.util.Set;
-import java.util.concurrent.Callable;
 
 /**
  * Verify MemoryManager could adjust its writers' allocated memory size.
@@ -103,11 +102,10 @@ public class TestMemoryManager {
     RecordWriter writer = parquetOutputFormat.getRecordWriter(conf, file, codec);
     try {
       parquetOutputFormat.getMemoryManager().registerScaleCallBack("increment-test-counter",
-          new Callable<MemoryManager.MemoryManagerStats>() {
+          new Runnable() {
             @Override
-            public MemoryManager.MemoryManagerStats call() {
+            public void run() {
               counter++;
-              return parquetOutputFormat.getMemoryManager().getStats();
             }
           });
       if (!firstRegister) {

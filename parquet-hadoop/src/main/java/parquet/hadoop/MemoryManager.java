@@ -20,11 +20,11 @@ package parquet.hadoop;
 
 import parquet.Log;
 import parquet.ParquetRuntimeException;
+import parquet.Preconditions;
 
 import java.lang.management.ManagementFactory;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Callable;
 
 /**
  * Implements a memory manager that keeps a global context of how many Parquet
@@ -48,8 +48,7 @@ public class MemoryManager {
   private final long minMemoryAllocation;
   private final Map<InternalParquetRecordWriter, Long> writerList = new
       HashMap<InternalParquetRecordWriter, Long>();
-  private final Map<String, Callable<MemoryManagerStats>> callBacks = new HashMap<String,
-      Callable<MemoryManagerStats>>();
+  private final Map<String, Runnable> callBacks = new HashMap<String, Runnable>();
   private final MemoryManagerStats stats;
 
   /**
@@ -123,13 +122,9 @@ public class MemoryManager {
           "Total allocation exceeds %.2f%% (%,d bytes) of heap memory\n" +
           "Scaling row group sizes to %.2f%% for %d writers",
           100*memoryPoolRatio, totalMemoryPool, 100*stats.scale, writerList.size()));
-      for (Callable callBack : callBacks.values()) {
+      for (Runnable callBack : callBacks.values()) {
         // we do not really want to start a new thread here.
-        try {
-          callBack.call();
-        } catch (Exception e) {
-          LOG.error("Error happens when executing CallBack in MemoryManager: " + callBack, e);
-        }
+        callBack.run();
       }
     }
 
@@ -180,8 +175,9 @@ public class MemoryManager {
    * @param callBackName the name of callback. It should be identical.
    * @param callBack the callback passed in from upper layer, such as Hive.
    */
-  public void registerScaleCallBack(String callBackName, Callable callBack) {
-    assert (callBackName != null && callBack != null);
+  public void registerScaleCallBack(String callBackName, Runnable callBack) {
+    Preconditions.checkNotNull(callBackName, "callBackName");
+    Preconditions.checkNotNull(callBack, "callBack");
 
     if (callBacks.containsKey(callBackName)) {
       throw new IllegalArgumentException("The callBackName " + callBackName +
@@ -195,7 +191,7 @@ public class MemoryManager {
    * Get the registered callbacks.
    * @return
    */
-  Map<String, Callable<MemoryManagerStats>> getScaleCallBacks() {
+  Map<String, Runnable> getScaleCallBacks() {
     return callBacks;
   }
 
