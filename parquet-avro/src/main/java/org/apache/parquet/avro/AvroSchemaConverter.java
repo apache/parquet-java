@@ -237,7 +237,7 @@ public class AvroSchemaConverter {
             }
             @Override
             public Schema convertINT96(PrimitiveTypeName primitiveTypeName) {
-              throw new IllegalArgumentException("INT64 not yet implemented.");
+              throw new IllegalArgumentException("INT96 not yet implemented.");
             }
             @Override
             public Schema convertFLOAT(PrimitiveTypeName primitiveTypeName) {
