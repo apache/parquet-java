@@ -297,7 +297,7 @@ public class ScroogeStructConverter {
    * @return
    */
   private String fixNestListOrSetName(String name) {
-    return name.replaceAll("_list_elem|_set_elem","");
+    return name.replaceAll("_list_elem|_set_elem", "");
   }
 
   private ThriftType convertStructTypeField(ThriftStructFieldInfo f) {
@@ -330,11 +330,15 @@ public class ScroogeStructConverter {
         enumValues.add(new ThriftType.EnumValue(enumDesc.id, enumDesc.originalName));
       }
       return new ThriftType.EnumType(enumValues);
-    } catch (Exception e) {
+    } catch (ReflectiveOperationException e) {
+      throw new ScroogeSchemaConversionException("Can not convert enum field " + fieldName, e);
+    } catch (RuntimeException e) {
       throw new ScroogeSchemaConversionException("Can not convert enum field " + fieldName, e);
     }
+
   }
 
+  //In scrooge generated class, if a class is a union, then it must have a field called "Union"
   private boolean isUnion(Class klass){
     for(Field f: klass.getDeclaredFields()) {
       if (f.getName().equals("Union"))

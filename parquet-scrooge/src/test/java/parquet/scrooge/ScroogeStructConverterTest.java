@@ -20,13 +20,32 @@ package parquet.scrooge;
 
 import org.apache.thrift.TBase;
 import org.junit.Test;
+
 import parquet.schema.MessageType;
-import parquet.scrooge.test.*;
+import parquet.scrooge.test.AddressWithStreetWithDefaultRequirement;
+import parquet.scrooge.test.ListNestEnum;
+import parquet.scrooge.test.ListNestMap;
+import parquet.scrooge.test.ListNestSet;
+import parquet.scrooge.test.MapNestList;
+import parquet.scrooge.test.MapNestMap;
+import parquet.scrooge.test.MapNestSet;
+import parquet.scrooge.test.NestedList;
+import parquet.scrooge.test.SetNestList;
+import parquet.scrooge.test.SetNestMap;
+import parquet.scrooge.test.SetNestSet;
+import parquet.scrooge.test.StringAndBinary;
+import parquet.scrooge.test.TestFieldOfEnum;
+import parquet.scrooge.test.TestListPrimitive;
+import parquet.scrooge.test.TestMapComplex;
+import parquet.scrooge.test.TestMapPrimitiveKey;
+import parquet.scrooge.test.TestMapPrimitiveValue;
+import parquet.scrooge.test.TestOptionalMap;
+import parquet.scrooge.test.TestPersonWithAllInformation;
+import parquet.scrooge.test.TestSetPrimitive;
+import parquet.scrooge.test.TestUnion;
 import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType;
-
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 /**
  * Test convert scrooge schema to Parquet Schema
@@ -38,17 +57,13 @@ public class ScroogeStructConverterTest {
    * they are the same
    * @param scroogeClass
    */
-  private void shouldConvertConsistentlyWithThriftStructConverter(Class scroogeClass) {
-    try {
+  private void shouldConvertConsistentlyWithThriftStructConverter(Class scroogeClass) throws ClassNotFoundException {
       Class<? extends TBase<?, ?>> thriftClass = (Class<? extends TBase<?, ?>>)Class.forName(scroogeClass.getName().replaceFirst("parquet.scrooge.test", "parquet.thrift.test"));
       ThriftType.StructType structFromThriftSchemaConverter = new ThriftSchemaConverter().toStructType(thriftClass);
       ThriftType.StructType structFromScroogeSchemaConverter = new ScroogeStructConverter().convert(scroogeClass);
 
       assertEquals(structFromThriftSchemaConverter, structFromScroogeSchemaConverter);
       assertEquals(toParquetSchema(structFromThriftSchemaConverter), toParquetSchema(structFromScroogeSchemaConverter));
-    } catch (ClassNotFoundException e) {
-      fail("ClassNotFoundException: " + e.getMessage());
-    }
   }
 
   private MessageType toParquetSchema(ThriftType.StructType struct) {
