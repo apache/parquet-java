@@ -18,7 +18,7 @@
  */
 package parquet.hadoop.metadata;
 
-import parquet.format.CompressionCodec;
+import org.apache.parquet.format.CompressionCodec;
 import parquet.hadoop.codec.CompressionCodecNotSupportedException;
 
 public enum CompressionCodecName {

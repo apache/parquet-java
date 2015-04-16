@@ -104,7 +104,7 @@
     <shade.prefix>parquet</shade.prefix>
     <hadoop.version>1.1.0</hadoop.version>
     <cascading.version>2.5.3</cascading.version>
-    <parquet.format.version>2.2.0-rc1</parquet.format.version>
+    <parquet.format.version>2.3.0-incubating</parquet.format.version>
     <log4j.version>1.2.17</log4j.version>
     <previous.version>1.5.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
@@ -221,6 +221,7 @@
             </dependency>
          </dependencies>
          <executions>
+           <!--
            <execution>
              <id>check</id>
              <phase>verify</phase>
@@ -237,15 +238,12 @@
                      <exclude>parquet/org/**</exclude>
                      <exclude>parquet/column/**</exclude>
                      <exclude>parquet/hadoop/ParquetInputSplit</exclude>
-                     <!-- temporary rules -->
-                     <exclude>parquet/io/api/Binary</exclude> <!-- false positive, added interfaces -->
-                     <exclude>parquet/hadoop/metadata/Canonicalizer</exclude> <!-- moved to different module -->
-                     <exclude>parquet/hadoop/metadata/ColumnPath</exclude> <!-- moved to different module, added methods -->
                    </excludes>
                  </requireBackwardCompatibility>
                </rules>
              </configuration>
            </execution>
+           -->
          </executions>
         </plugin>
         <plugin>

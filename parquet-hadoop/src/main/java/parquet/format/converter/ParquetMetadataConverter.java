@@ -18,8 +18,8 @@
  */
 package parquet.format.converter;
 
-import static parquet.format.Util.readFileMetaData;
-import static parquet.format.Util.writePageHeader;
+import static org.apache.parquet.format.Util.readFileMetaData;
+import static org.apache.parquet.format.Util.writePageHeader;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,22 +37,22 @@ import java.util.Set;
 
 import parquet.Log;
 import parquet.hadoop.metadata.ColumnPath;
-import parquet.format.ColumnChunk;
-import parquet.format.ColumnMetaData;
-import parquet.format.ConvertedType;
-import parquet.format.DataPageHeader;
-import parquet.format.DataPageHeaderV2;
-import parquet.format.DictionaryPageHeader;
-import parquet.format.Encoding;
-import parquet.format.FieldRepetitionType;
-import parquet.format.FileMetaData;
-import parquet.format.KeyValue;
-import parquet.format.PageHeader;
-import parquet.format.PageType;
-import parquet.format.RowGroup;
-import parquet.format.SchemaElement;
-import parquet.format.Statistics;
-import parquet.format.Type;
+import org.apache.parquet.format.ColumnChunk;
+import org.apache.parquet.format.ColumnMetaData;
+import org.apache.parquet.format.ConvertedType;
+import org.apache.parquet.format.DataPageHeader;
+import org.apache.parquet.format.DataPageHeaderV2;
+import org.apache.parquet.format.DictionaryPageHeader;
+import org.apache.parquet.format.Encoding;
+import org.apache.parquet.format.FieldRepetitionType;
+import org.apache.parquet.format.FileMetaData;
+import org.apache.parquet.format.KeyValue;
+import org.apache.parquet.format.PageHeader;
+import org.apache.parquet.format.PageType;
+import org.apache.parquet.format.RowGroup;
+import org.apache.parquet.format.SchemaElement;
+import org.apache.parquet.format.Statistics;
+import org.apache.parquet.format.Type;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
 import parquet.hadoop.metadata.CompressionCodecName;
@@ -153,7 +153,7 @@ public class ParquetMetadataConverter {
     for (ColumnChunkMetaData columnMetaData : columns) {
       ColumnChunk columnChunk = new ColumnChunk(columnMetaData.getFirstDataPageOffset()); // verify this is the right offset
       columnChunk.file_path = block.getPath(); // they are in the same file for now
-      columnChunk.meta_data = new parquet.format.ColumnMetaData(
+      columnChunk.meta_data = new ColumnMetaData(
           getType(columnMetaData.getType()),
           toFormatEncodings(columnMetaData.getEncodings()),
           Arrays.asList(columnMetaData.getPath().toArray()),
@@ -545,7 +545,7 @@ public class ParquetMetadataConverter {
               || (filePath != null && !filePath.equals(columnChunk.getFile_path()))) {
             throw new ParquetDecodingException("all column chunks of the same row group must be in the same file for now");
           }
-          parquet.format.ColumnMetaData metaData = columnChunk.meta_data;
+          ColumnMetaData metaData = columnChunk.meta_data;
           ColumnPath path = getPath(metaData);
           ColumnChunkMetaData column = ColumnChunkMetaData.get(
               path,
@@ -579,7 +579,7 @@ public class ParquetMetadataConverter {
         blocks);
   }
 
-  private ColumnPath getPath(parquet.format.ColumnMetaData metaData) {
+  private ColumnPath getPath(ColumnMetaData metaData) {
     String[] path = metaData.path_in_schema.toArray(new String[metaData.path_in_schema.size()]);
     return ColumnPath.get(path);
   }

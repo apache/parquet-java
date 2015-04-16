@@ -21,10 +21,10 @@ package parquet.format.converter;
 import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
-import static parquet.format.CompressionCodec.UNCOMPRESSED;
-import static parquet.format.Type.INT32;
-import static parquet.format.Util.readPageHeader;
-import static parquet.format.Util.writePageHeader;
+import static org.apache.parquet.format.CompressionCodec.UNCOMPRESSED;
+import static org.apache.parquet.format.Type.INT32;
+import static org.apache.parquet.format.Util.readPageHeader;
+import static org.apache.parquet.format.Util.writePageHeader;
 import static parquet.format.converter.ParquetMetadataConverter.filterFileMetaData;
 import static parquet.format.converter.ParquetMetadataConverter.getOffset;
 
@@ -44,16 +44,16 @@ import org.junit.Test;
 
 import parquet.column.Encoding;
 import parquet.example.Paper;
-import parquet.format.ColumnChunk;
-import parquet.format.ColumnMetaData;
-import parquet.format.ConvertedType;
-import parquet.format.FieldRepetitionType;
-import parquet.format.FileMetaData;
-import parquet.format.PageHeader;
-import parquet.format.PageType;
-import parquet.format.RowGroup;
-import parquet.format.SchemaElement;
-import parquet.format.Type;
+import org.apache.parquet.format.ColumnChunk;
+import org.apache.parquet.format.ColumnMetaData;
+import org.apache.parquet.format.ConvertedType;
+import org.apache.parquet.format.FieldRepetitionType;
+import org.apache.parquet.format.FileMetaData;
+import org.apache.parquet.format.PageHeader;
+import org.apache.parquet.format.PageType;
+import org.apache.parquet.format.RowGroup;
+import org.apache.parquet.format.SchemaElement;
+import org.apache.parquet.format.Type;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
 import parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -120,7 +120,7 @@ public class TestParquetMetadataConverter {
     for (Encoding encoding : Encoding.values()) {
       assertEquals(encoding, c.getEncoding(c.getEncoding(encoding)));
     }
-    for (parquet.format.Encoding encoding : parquet.format.Encoding.values()) {
+    for (org.apache.parquet.format.Encoding encoding : org.apache.parquet.format.Encoding.values()) {
       assertEquals(encoding, c.getEncoding(c.getEncoding(encoding)));
     }
     for (Repetition repetition : Repetition.values()) {
@@ -151,7 +151,7 @@ public class TestParquetMetadataConverter {
       ColumnChunk columnChunk = new ColumnChunk(offset);
       columnChunk.setMeta_data(new ColumnMetaData(
           INT32,
-          Collections.<parquet.format.Encoding>emptyList(),
+          Collections.<org.apache.parquet.format.Encoding>emptyList(),
           Collections.<String>emptyList(),
           UNCOMPRESSED, 10l, size * 2, size, offset));
       rowGroups.add(new RowGroup(Arrays.asList(columnChunk), size, 1));

@@ -34,7 +34,7 @@ import parquet.column.page.PageReadStore;
 import parquet.column.page.PageReader;
 import parquet.column.statistics.BinaryStatistics;
 import parquet.column.statistics.LongStatistics;
-import parquet.format.Statistics;
+import org.apache.parquet.format.Statistics;
 import parquet.hadoop.metadata.*;
 import parquet.hadoop.util.HiddenFileFilter;
 import parquet.io.api.Binary;

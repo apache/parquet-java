@@ -19,7 +19,7 @@
 package parquet.hadoop;
 
 import static parquet.Log.DEBUG;
-import static parquet.format.Util.writeFileMetaData;
+import static org.apache.parquet.format.Util.writeFileMetaData;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -402,7 +402,7 @@ public class ParquetFileWriter {
 
   private static void serializeFooter(ParquetMetadata footer, FSDataOutputStream out) throws IOException {
     long footerIndex = out.getPos();
-    parquet.format.FileMetaData parquetMetadata = new ParquetMetadataConverter().toParquetMetadata(CURRENT_VERSION, footer);
+    org.apache.parquet.format.FileMetaData parquetMetadata = new ParquetMetadataConverter().toParquetMetadata(CURRENT_VERSION, footer);
     writeFileMetaData(parquetMetadata, out);
     if (DEBUG) LOG.debug(out.getPos() + ": footer length = " + (out.getPos() - footerIndex));
     BytesUtils.writeIntLittleEndian(out, (int)(out.getPos() - footerIndex));
