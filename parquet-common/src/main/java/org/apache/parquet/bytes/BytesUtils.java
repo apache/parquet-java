@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.bytes;
+package org.apache.parquet.bytes;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -24,7 +24,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 
-import parquet.Log;
+import org.apache.parquet.Log;
 
 /**
  * utility methods to deal with bytes

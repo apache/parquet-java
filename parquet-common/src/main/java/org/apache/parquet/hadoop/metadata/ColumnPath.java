@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.hadoop.metadata;
+package org.apache.parquet.hadoop.metadata;
 
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import static parquet.Preconditions.checkNotNull;
+import static org.apache.parquet.Preconditions.checkNotNull;
 
 public final class ColumnPath implements Iterable<String>, Serializable {
 

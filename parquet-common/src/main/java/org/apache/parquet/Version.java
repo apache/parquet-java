@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet;
+package org.apache.parquet;
 
 import java.io.IOException;
 import java.net.URL;

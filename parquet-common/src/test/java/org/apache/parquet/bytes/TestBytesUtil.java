@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.bytes;
+package org.apache.parquet.bytes;
 
 import static org.junit.Assert.assertEquals;
-import static parquet.bytes.BytesUtils.getWidthFromMaxInt;
+import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 
 import org.junit.Test;
 
