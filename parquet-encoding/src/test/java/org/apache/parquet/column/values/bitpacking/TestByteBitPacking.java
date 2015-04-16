@@ -16,19 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.column.values.bitpacking;
+package org.apache.parquet.column.values.bitpacking;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import parquet.Log;
-import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
-import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
+import org.apache.parquet.Log;
+import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingReader;
+import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
 public class TestByteBitPacking {
   private static final Log LOG = Log.getLog(TestByteBitPacking.class);

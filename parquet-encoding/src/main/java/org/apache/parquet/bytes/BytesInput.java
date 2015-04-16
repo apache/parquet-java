@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.bytes;
+package org.apache.parquet.bytes;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -26,7 +26,7 @@ import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.List;
 
-import parquet.Log;
+import org.apache.parquet.Log;
 
 
 /**

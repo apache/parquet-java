@@ -76,7 +76,7 @@
           </execution>
         </executions>
         <configuration>
-          <mainClass>parquet.encoding.Generator</mainClass>          
+          <mainClass>org.apache.parquet.encoding.Generator</mainClass>
           <arguments>
             <argument>${basedir}/target/generated-src</argument>
           </arguments>

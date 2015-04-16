@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.column.values.bitpacking;
+package org.apache.parquet.column.values.bitpacking;
 
 import static org.junit.Assert.assertArrayEquals;
 
@@ -27,9 +27,9 @@ import java.io.IOException;
 import org.junit.Assert;
 import org.junit.Test;
 
-import parquet.Log;
-import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
-import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
+import org.apache.parquet.Log;
+import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingReader;
+import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
 public class TestBitPacking {
   private static final Log LOG = Log.getLog(TestBitPacking.class);

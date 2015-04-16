@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.bytes;
+package org.apache.parquet.bytes;
 
 import static java.lang.Math.max;
 import static java.lang.Math.pow;
 import static java.lang.String.format;
 import static java.lang.System.arraycopy;
-import static parquet.Preconditions.checkArgument;
+import static org.apache.parquet.Preconditions.checkArgument;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -30,7 +30,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import parquet.Log;
+import org.apache.parquet.Log;
 
 /**
  * Similar to a {@link ByteArrayOutputStream}, but uses a different strategy for growing that does not involve copying.

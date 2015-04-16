@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.column.values.bitpacking;
+package org.apache.parquet.column.values.bitpacking;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import parquet.bytes.BytesUtils;
-import parquet.column.values.bitpacking.BitPacking.BitPackingReader;
-import parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
+import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingReader;
+import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
 // TODO: rework the whole thing. It does not need to use streams at all
 /**

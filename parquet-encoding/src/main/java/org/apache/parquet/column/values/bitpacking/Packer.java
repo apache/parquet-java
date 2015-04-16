@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.column.values.bitpacking;
+package org.apache.parquet.column.values.bitpacking;
 
 /**
  * Factory for packing implementations
@@ -57,11 +57,11 @@ public enum Packer {
   };
 
   private static IntPackerFactory getIntPackerFactory(String name) {
-    return (IntPackerFactory)getStaticField("parquet.column.values.bitpacking." + name, "factory");
+    return (IntPackerFactory)getStaticField("org.apache.parquet.column.values.bitpacking." + name, "factory");
   }
 
   private static BytePackerFactory getBytePackerFactory(String name) {
-    return (BytePackerFactory)getStaticField("parquet.column.values.bitpacking." + name, "factory");
+    return (BytePackerFactory)getStaticField("org.apache.parquet.column.values.bitpacking." + name, "factory");
   }
 
   private static Object getStaticField(String className, String fieldName) {
