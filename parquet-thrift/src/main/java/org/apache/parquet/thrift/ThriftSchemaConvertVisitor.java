@@ -18,9 +18,25 @@
  */
 package org.apache.parquet.thrift;
 
+import static org.apache.parquet.Preconditions.checkNotNull;
+import static org.apache.parquet.schema.ConversionPatterns.listType;
+import static org.apache.parquet.schema.ConversionPatterns.mapType;
+import static org.apache.parquet.schema.OriginalType.ENUM;
+import static org.apache.parquet.schema.OriginalType.UTF8;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.apache.parquet.schema.Types.primitive;
+
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.OriginalType;
@@ -46,21 +62,7 @@ import org.apache.parquet.thrift.struct.ThriftType.MapType;
 import org.apache.parquet.thrift.struct.ThriftType.SetType;
 import org.apache.parquet.thrift.struct.ThriftType.StringType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
-
-import static org.apache.parquet.Preconditions.checkNotNull;
-import static org.apache.parquet.schema.ConversionPatterns.listType;
-import static org.apache.parquet.schema.ConversionPatterns.mapType;
-import static org.apache.parquet.schema.OriginalType.ENUM;
-import static org.apache.parquet.schema.OriginalType.UTF8;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
-import static org.apache.parquet.schema.Type.Repetition.REPEATED;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.apache.parquet.schema.Types.primitive;
+import org.apache.parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
 
 /**
  * Visitor Class for converting a thrift definition to parquet message type.
@@ -81,12 +83,15 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     ConvertedField conv =
         struct.accept(new ThriftSchemaConvertVisitor(filter), state);
 
+    MessageType messageType;
+
     if (!conv.keep()) {
-      return new MessageType(state.name, new ArrayList<Type>());
+      messageType = new MessageType(state.name, new ArrayList<Type>());
+    } else {
+      messageType = new MessageType(state.name, conv.getType().asGroupType().getFields());
     }
 
-    GroupType rootType = conv.getType().asGroupType();
-    return new MessageType(state.name, rootType.getFields());
+    return messageType;
   }
 
   @Override
@@ -95,10 +100,10 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     ThriftField valueField = mapType.getValue();
 
     ConvertedField convKey = keyField.getType().accept(this,
-        new State(state.path.copyPush(keyField), REQUIRED, "key"));
+        new State(state.path.push(keyField), REQUIRED, "key"));
 
     ConvertedField convValue = valueField.getType().accept(this,
-        new State(state.path.copyPush(valueField), OPTIONAL, "value"));
+        new State(state.path.push(valueField), OPTIONAL, "value"));
 
     if (!convKey.keep()) {
       if (convValue.keep()) {
@@ -151,29 +156,79 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     return visitListLike(listType.getValues(), state);
   }
 
+  private static final class FirstPrimitiveFilter implements FieldProjectionFilter {
+    private boolean found = false;
+
+    @Override
+    public boolean keep(FieldsPath path) {
+      if (found) {
+        return false;
+      }
+
+      found = true;
+      return true;
+    }
+
+    @Override
+    public void assertNoUnmatchedPatterns() throws ThriftProjectionException { }
+  }
+
   @Override
   public ConvertedField visit(StructType structType, State state) {
+    boolean isUnion = isUnion(structType.getStructOrUnionType());
+
+    int convertedChildrenCount = 0;
+    int sentinelUnionColumns = 0;
 
     List<Type> convertedChildren = new ArrayList<Type>();
 
     for (ThriftField child : structType.getChildren()) {
 
-      ConvertedField conv = child.getType().accept(this,
-          new State(state.path.copyPush(child), getRepetition(child), child.getName()));
+      State childState = new State(state.path.push(child), getRepetition(child), child.getName());
+
+      ConvertedField conv = child.getType().accept(this, childState);
+
+      if (isUnion && !conv.keep()) {
+        // user is not keeping this "kind" of union, but we still need
+        // to keep at least one of the primitives of this union around.
+        // in order to know what "kind" of union each record is.
+        // TODO: in the future, we should just filter these records out instead
+
+        ConvertedField firstPrimitive = child.getType().accept(
+            new ThriftSchemaConvertVisitor(new FirstPrimitiveFilter()),childState);
+
+        convertedChildren.add(firstPrimitive.getType().withId(child.getFieldId()));
+        sentinelUnionColumns++;
+      }
+
+      if (conv.isSentinel()) {
+        // child field is a sentinel union that we should drop if possible
+        if (childState.repetition == REQUIRED) {
+          // but this field is required, so we may still need it
+          convertedChildren.add(conv.getType().withId(child.getFieldId()));
+          sentinelUnionColumns++;
+        }
+      }
 
       if (conv.keep()) {
         convertedChildren.add(conv.getType().withId(child.getFieldId()));
+        convertedChildrenCount++;
       }
 
     }
 
-    if (convertedChildren.isEmpty()) {
-      return ConvertedField.drop(state.path);
+    GroupType groupType = new GroupType(state.repetition, state.name, convertedChildren);
+
+    if (convertedChildrenCount == 0 && sentinelUnionColumns != 0) {
+      // this is a union, that we should drop *if we can*
+      return ConvertedField.sentinelKeep(groupType, state.path);
     }
 
-    return ConvertedField.keep(
-        new GroupType(state.repetition, state.name, convertedChildren),
-        state.path);
+    if (convertedChildrenCount != 0) {
+      return ConvertedField.keep(groupType, state.path);
+    } else {
+      return ConvertedField.drop(state.path);
+    }
   }
 
   private ConvertedField visitPrimitiveType(PrimitiveTypeName type, State state) {
@@ -231,6 +286,23 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
   @Override
   public ConvertedField visit(StringType stringType, State state) {
     return visitPrimitiveType(BINARY, UTF8, state);
+  }
+
+  private static boolean isUnion(ThriftType t) {
+    return t instanceof StructType && isUnion(((StructType) t).getStructOrUnionType());
+  }
+
+  private static boolean isUnion(StructOrUnionType s) {
+    switch (s) {
+      case STRUCT:
+        return false;
+      case UNION:
+        return true;
+      case UNKNOWN:
+        throw new ShouldNeverHappenException("Encountered UNKNOWN StructOrUnionType");
+      default:
+        throw new ShouldNeverHappenException("Unrecognized type: " + s);
+    }
   }
 
   private Type.Repetition getRepetition(ThriftField thriftField) {

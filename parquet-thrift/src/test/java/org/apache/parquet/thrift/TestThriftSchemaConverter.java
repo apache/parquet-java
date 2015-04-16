@@ -32,6 +32,7 @@ import org.apache.parquet.thrift.projection.deprecated.DeprecatedFieldProjection
 import org.apache.parquet.thrift.projection.ThriftProjectionException;
 import org.apache.parquet.thrift.struct.ThriftType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
+import org.apache.parquet.thrift.test.compat.StructWithNestedUnion;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Person;
@@ -212,16 +213,25 @@ public class TestThriftSchemaConverter {
     shouldThrowWhenProjectionFilterMatchesNothing("**;names/non_existing;non_existing", "names/non_existing\nnon_existing", TestStructInMap.class);
   }
 
+  @Test
   public void testProjectOnlyValueInMap() {
     try {
       getDeprecatedFilteredSchema("name;names/value/**", TestStructInMap.class);
       fail("this should throw");
     } catch (ThriftProjectionException e) {
-      assertEquals("", e.getMessage());
+      assertEquals("Cannot select only the values of a map, you must keep the keys as well: names", e.getMessage());
     }
+
+    try {
+      getStrictFilteredSchema("name;names.value", TestStructInMap.class);
+      fail("this should throw");
+    } catch (ThriftProjectionException e) {
+      assertEquals("Cannot select only the values of a map, you must keep the keys as well: names", e.getMessage());
+    }
+
   }
 
-  private void shouldGetProjectedSchema(String deprecatedFilterDesc, String strictFilterDesc, String expectedSchemaStr, Class<? extends TBase<?,?>> thriftClass) {
+  public static void shouldGetProjectedSchema(String deprecatedFilterDesc, String strictFilterDesc, String expectedSchemaStr, Class<? extends TBase<?,?>> thriftClass) {
     MessageType depRequestedSchema = getDeprecatedFilteredSchema(deprecatedFilterDesc, thriftClass);
     MessageType strictRequestedSchema = getStrictFilteredSchema(strictFilterDesc, thriftClass);
     MessageType expectedSchema = parseMessageType(expectedSchemaStr);
@@ -229,12 +239,12 @@ public class TestThriftSchemaConverter {
     assertEquals(expectedSchema, strictRequestedSchema);
   }
 
-  private MessageType getDeprecatedFilteredSchema(String filterDesc, Class<? extends TBase<?,?>> thriftClass) {
+  private static MessageType getDeprecatedFilteredSchema(String filterDesc, Class<? extends TBase<?,?>> thriftClass) {
     DeprecatedFieldProjectionFilter fieldProjectionFilter = new DeprecatedFieldProjectionFilter(filterDesc);
     return new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftClass);
   }
 
-  private MessageType getStrictFilteredSchema(String semicolonDelimitedString, Class<? extends TBase<?,?>> thriftClass) {
+  private static MessageType getStrictFilteredSchema(String semicolonDelimitedString, Class<? extends TBase<?,?>> thriftClass) {
     StrictFieldProjectionFilter fieldProjectionFilter = StrictFieldProjectionFilter.fromSemicolonDelimitedString(semicolonDelimitedString);
     return new ThriftSchemaConverter(fieldProjectionFilter).convert(thriftClass);
   }

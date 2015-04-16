@@ -69,9 +69,7 @@ public class TestFieldsPath {
 
   }
 
-  private static class PrimitivePathVisitor implements ThriftType.TypeVisitor<Void, Void> {
-    private List<String> paths = new ArrayList<String>();
-    private FieldsPath path = new FieldsPath();
+  private static class PrimitivePathVisitor implements ThriftType.TypeVisitor<List<String>, FieldsPath> {
     private String delim;
 
     private PrimitivePathVisitor(String delim) {
@@ -80,99 +78,85 @@ public class TestFieldsPath {
 
     public static List<String> visit(StructType s, String delim) {
       PrimitivePathVisitor v = new PrimitivePathVisitor(delim);
-      s.accept(v, null);
-      return v.getPaths();
-    }
-
-    public List<String> getPaths() {
-      return paths;
+      return s.accept(v, new FieldsPath());
     }
 
     @Override
-    public Void visit(MapType mapType, Void v) {
+    public List<String> visit(MapType mapType, FieldsPath path) {
+      List<String> ret = new ArrayList<String>();
+
       ThriftField key = mapType.getKey();
       ThriftField value = mapType.getValue();
-      path.push(key);
-      key.getType().accept(this, null);
-      path.pop();
-      path.push(value);
-      value.getType().accept(this, null);
-      path.pop();
-      return null;
+
+      ret.addAll(key.getType().accept(this, path.push(key)));
+      ret.addAll(value.getType().accept(this, path.push(value)));
+
+      return ret;
     }
 
     @Override
-    public Void visit(SetType setType, Void v) {
-      setType.getValues().getType().accept(this, null);
-      return null;
+    public List<String> visit(SetType setType, FieldsPath path) {
+      return setType.getValues().getType().accept(this, path);
     }
 
     @Override
-    public Void visit(ListType listType, Void v) {
-      listType.getValues().getType().accept(this, null);
-      return null;
+    public List<String> visit(ListType listType, FieldsPath path) {
+      return listType.getValues().getType().accept(this, path);
     }
 
     @Override
-    public Void visit(StructType structType, Void v) {
+    public List<String> visit(StructType structType, FieldsPath path) {
+      List<String> ret = new ArrayList<String>();
+
       for (ThriftField child : structType.getChildren()) {
-        path.push(child);
-        child.getType().accept(this, null);
-        path.pop();
+        ret.addAll(child.getType().accept(this, path.push(child)));
       }
-      return null;
+
+      return ret;
     }
 
-    private void visitPrimitive() {
-      paths.add(path.toDelimitedString(delim));
-    }
-
-    @Override
-    public Void visit(EnumType enumType, Void v) {
-      visitPrimitive();
-      return null;
+    private List<String> visitPrimitive(FieldsPath path) {
+      return Arrays.asList(path.toDelimitedString(delim));
     }
 
     @Override
-    public Void visit(BoolType boolType, Void v) {
-      visitPrimitive();
-      return null;
+    public List<String> visit(EnumType enumType, FieldsPath path) {
+      return visitPrimitive(path);
     }
 
     @Override
-    public Void visit(ByteType byteType, Void v) {
-      visitPrimitive();
-      return null;
+    public List<String> visit(BoolType boolType, FieldsPath path) {
+      return visitPrimitive(path);
     }
 
     @Override
-    public Void visit(DoubleType doubleType, Void v) {
-      visitPrimitive();
-      return null;
+    public List<String> visit(ByteType byteType, FieldsPath path) {
+      return visitPrimitive(path);
     }
 
     @Override
-    public Void visit(I16Type i16Type, Void v) {
-      visitPrimitive();
-      return null;
+    public List<String> visit(DoubleType doubleType, FieldsPath path) {
+      return visitPrimitive(path);
     }
 
     @Override
-    public Void visit(I32Type i32Type, Void v) {
-      visitPrimitive();
-      return null;
+    public List<String> visit(I16Type i16Type, FieldsPath path) {
+      return visitPrimitive(path);
     }
 
     @Override
-    public Void visit(I64Type i64Type, Void v) {
-      visitPrimitive();
-      return null;
+    public List<String> visit(I32Type i32Type, FieldsPath path) {
+      return visitPrimitive(path);
     }
 
     @Override
-    public Void visit(StringType stringType, Void v) {
-      visitPrimitive();
-      return null;
+    public List<String> visit(I64Type i64Type, FieldsPath path) {
+      return visitPrimitive(path);
+    }
+
+    @Override
+    public List<String> visit(StringType stringType, FieldsPath path) {
+      return visitPrimitive(path);
     }
   }
 }

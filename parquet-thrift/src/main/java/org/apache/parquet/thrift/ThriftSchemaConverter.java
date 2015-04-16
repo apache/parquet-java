@@ -74,8 +74,7 @@ public class ThriftSchemaConverter {
   private static StructType toStructType(TStructDescriptor struct) {
     List<Field> fields = struct.getFields();
     List<ThriftField> children = new ArrayList<ThriftField>(fields.size());
-    for (int i = 0; i < fields.size(); i++) {
-      Field field = fields.get(i);
+    for (Field field : fields) {
       Requirement req =
           field.getFieldMetaData() == null ?
               Requirement.OPTIONAL :

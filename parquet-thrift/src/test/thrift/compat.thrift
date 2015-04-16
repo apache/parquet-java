@@ -18,6 +18,7 @@
  */
 
 namespace java org.apache.parquet.thrift.test.compat
+
 struct StructV1 {
   1: required string name
 }
@@ -158,4 +159,70 @@ struct AStructThatLooksLikeUnionV2 {
 struct StructWithAStructThatLooksLikeUnionV2 {  
   1: required string name,
   2: required AStructThatLooksLikeUnionV2 aNotQuiteUnion
+}
+
+union UnionOfStructs {
+  1: StructV3 structV3,
+  2: StructV4WithExtracStructField structV4,
+  3: ABool aNewBool
+}
+
+struct StructWithUnionOfStructs {  
+  1: required string name,
+  2: required UnionOfStructs aUnion
+}
+
+struct StructWithOptionalUnionOfStructs {  
+  1: required string name,
+  2: optional UnionOfStructs aUnion
+}
+
+struct StructWithRequiredUnionOfStructs {  
+  1: required string name,
+  2: required UnionOfStructs aUnion
+}
+
+struct OptionalInsideRequired {
+  1: required string name,
+  2: required StructWithOptionalUnionOfStructs aStruct
+}
+
+struct RequiredInsideOptional {
+  1: required string name,
+  2: optional StructWithRequiredUnionOfStructs aStruct
+}
+
+union UnionStructUnion {
+  1: StructV3 structV3
+  2: StructWithUnionOfStructs structWithUnionOfStructs
+  3: ALong aLong 
+}
+
+union NestedUnion {
+  1: StructV3 structV3
+  2: UnionOfStructs unionOfStructs
+  3: ALong aLong 
+}
+
+union NestedNestedUnion {
+  1: NestedUnion nestedUnion
+  2: UnionV2 unionV2
+}
+
+struct StructWithNestedUnion {
+  1: optional UnionOfStructs optUnionOfStructs
+  2: required UnionOfStructs reqUnionOfStructs
+  3: UnionOfStructs unspecifiedUnionOfStructs
+  
+  4: optional NestedUnion optNestedUnion
+  5: required NestedUnion reqNestedUnion
+  6: NestedUnion unspecifiedNestedUnion
+  
+  7: optional StructWithUnionV2 optStructWithUnionV2
+  8: required StructWithUnionV2 reqStructWithUnionV2
+  9: StructWithUnionV2 unspecifiedStructWithUnionV2
+  
+  10: optional UnionStructUnion optUnionStructUnion
+  11: required UnionStructUnion reqUnionStructUnion
+  12: UnionStructUnion unspecifiedUnionStructUnion
 }

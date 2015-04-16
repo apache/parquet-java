@@ -22,14 +22,14 @@ package org.apache.parquet.thrift.struct;
 import java.util.ArrayList;
 import java.util.List;
 
-import parquet.thrift.struct.ThriftType.BoolType;
-import parquet.thrift.struct.ThriftType.ByteType;
-import parquet.thrift.struct.ThriftType.DoubleType;
-import parquet.thrift.struct.ThriftType.EnumType;
-import parquet.thrift.struct.ThriftType.I16Type;
-import parquet.thrift.struct.ThriftType.I32Type;
-import parquet.thrift.struct.ThriftType.I64Type;
-import parquet.thrift.struct.ThriftType.StringType;
+import org.apache.parquet.thrift.struct.ThriftType.BoolType;
+import org.apache.parquet.thrift.struct.ThriftType.ByteType;
+import org.apache.parquet.thrift.struct.ThriftType.DoubleType;
+import org.apache.parquet.thrift.struct.ThriftType.EnumType;
+import org.apache.parquet.thrift.struct.ThriftType.I16Type;
+import org.apache.parquet.thrift.struct.ThriftType.I32Type;
+import org.apache.parquet.thrift.struct.ThriftType.I64Type;
+import org.apache.parquet.thrift.struct.ThriftType.StringType;
 
 /**
  * A checker for thrift struct, returns compatibility report based on following rules:

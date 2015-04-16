@@ -39,28 +39,10 @@ public class FieldsPath {
     this.fields = fields;
   }
 
-  public FieldsPath copyPush(ThriftField f) {
-    FieldsPath copy = new FieldsPath(new ArrayList<ThriftField>(fields));
-    copy.push(f);
-    return copy;
-  }
-
-  public FieldsPath copyPop() {
-    FieldsPath copy = new FieldsPath(new ArrayList<ThriftField>(fields));
-    copy.pop();
-    return copy;
-  }
-
-  public void push(ThriftField f) {
-    this.fields.add(f);
-  }
-
-  public ThriftField pop() {
-    return this.fields.remove(fields.size() - 1);
-  }
-
-  public ArrayList<ThriftField> getFields() {
-    return fields;
+  public FieldsPath push(ThriftField f) {
+    ArrayList<ThriftField> copy = new ArrayList<ThriftField>(fields);
+    copy.add(f);
+    return new FieldsPath(copy);
   }
 
   public String toDelimitedString(String delim) {

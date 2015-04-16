@@ -235,6 +235,7 @@
                    <previousVersion>${previous.version}</previousVersion>
                    <excludes>
                      <exclude>parquet/hadoop/thrift/**</exclude>
+                     <exclude>parquet/thrift/**</exclude>
                      <exclude>parquet/thrift/projection/**</exclude>
                      <exclude>parquet/thrift/ThriftSchemaConverter</exclude>
                      <exclude>parquet/filter2/**</exclude>
