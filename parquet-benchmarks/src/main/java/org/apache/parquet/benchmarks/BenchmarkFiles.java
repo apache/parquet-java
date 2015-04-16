@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.benchmarks;
+package org.apache.parquet.benchmarks;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;

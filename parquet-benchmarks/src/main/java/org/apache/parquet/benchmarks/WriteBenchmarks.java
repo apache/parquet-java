@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.benchmarks;
+package org.apache.parquet.benchmarks;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
@@ -24,15 +24,15 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 
 import static org.openjdk.jmh.annotations.Scope.Thread;
-import static parquet.benchmarks.BenchmarkConstants.*;
-import static parquet.benchmarks.BenchmarkFiles.*;
+import static org.apache.parquet.benchmarks.BenchmarkConstants.*;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.*;
 
 import java.io.IOException;
 
-import static parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
-import static parquet.hadoop.metadata.CompressionCodecName.GZIP;
-import static parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
-import static parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 
 @State(Thread)
 public class WriteBenchmarks {

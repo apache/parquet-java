@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.benchmarks;
+package org.apache.parquet.benchmarks;
 
-import static parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
-import static parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
+import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
+import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
 
 public class BenchmarkConstants {
   public static final int ONE_K = 1000;

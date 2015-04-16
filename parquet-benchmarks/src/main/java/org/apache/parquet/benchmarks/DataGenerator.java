@@ -16,32 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.benchmarks;
+package org.apache.parquet.benchmarks;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import parquet.column.ParquetProperties;
-import parquet.example.data.Group;
-import parquet.example.data.simple.SimpleGroupFactory;
-import parquet.hadoop.ParquetWriter;
-import parquet.hadoop.example.GroupWriteSupport;
-import parquet.hadoop.metadata.CompressionCodecName;
-import parquet.io.api.Binary;
-import parquet.schema.MessageType;
+import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.example.GroupWriteSupport;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.MessageType;
 
 import java.io.IOException;
 import java.util.Arrays;
 
 import static java.util.UUID.randomUUID;
-import static parquet.benchmarks.BenchmarkUtils.deleteIfExists;
-import static parquet.benchmarks.BenchmarkUtils.exists;
-import static parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
-import static parquet.hadoop.metadata.CompressionCodecName.GZIP;
-import static parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
-import static parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
-import static parquet.schema.MessageTypeParser.parseMessageType;
-import static parquet.benchmarks.BenchmarkConstants.*;
-import static parquet.benchmarks.BenchmarkFiles.*;
+import static org.apache.parquet.benchmarks.BenchmarkUtils.deleteIfExists;
+import static org.apache.parquet.benchmarks.BenchmarkUtils.exists;
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
+import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
+import static org.apache.parquet.benchmarks.BenchmarkConstants.*;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.*;
 
 public class DataGenerator {
 

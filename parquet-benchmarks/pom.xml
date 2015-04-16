@@ -28,7 +28,7 @@
 
   <artifactId>parquet-benchmarks</artifactId>
   <packaging>jar</packaging>
-  <name>Parquet Benchmarks</name>
+  <name>Apache Parquet Benchmarks</name>
   <url>https://github.com/Parquet/parquet-mr</url>
 
   <properties>

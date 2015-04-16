@@ -16,16 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.benchmarks;
+package org.apache.parquet.benchmarks;
 
 import org.apache.hadoop.fs.Path;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.infra.Blackhole;
-import parquet.example.data.Group;
-import parquet.hadoop.ParquetReader;
-import parquet.hadoop.example.GroupReadSupport;
-import static parquet.benchmarks.BenchmarkConstants.*;
-import static parquet.benchmarks.BenchmarkFiles.*;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
+import static org.apache.parquet.benchmarks.BenchmarkConstants.*;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.*;
 
 import java.io.IOException;
 
