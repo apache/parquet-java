@@ -16,22 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.encoding;
-
-import parquet.encoding.bitpacking.ByteBasedBitPackingGenerator;
-import parquet.encoding.bitpacking.IntBasedBitPackingGenerator;
+package org.apache.parquet.filter2;
 
 /**
- * main class for code generation hook in build for encodings generation
- *
- * @author Julien Le Dem
- *
+ * main class for code generation hook in build for filter2 generation
  */
 public class Generator {
-
   public static void main(String[] args) throws Exception {
-    IntBasedBitPackingGenerator.main(args);
-    ByteBasedBitPackingGenerator.main(args);
+    IncrementallyUpdatedFilterPredicateGenerator.main(args);
   }
-
 }

@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.encoding.bitpacking;
+package org.apache.parquet.encoding.bitpacking;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-import parquet.bytes.BytesUtils;
+import org.apache.parquet.bytes.BytesUtils;
 
 /**
  *
@@ -46,12 +46,12 @@ public class ByteBasedBitPackingGenerator {
   }
 
   private static void generateScheme(String className, boolean msbFirst, String basePath) throws IOException {
-    final File file = new File(basePath + "/parquet/column/values/bitpacking/" + className + ".java").getAbsoluteFile();
+    final File file = new File(basePath + "/org/apache/parquet/column/values/bitpacking/" + className + ".java").getAbsoluteFile();
     if (!file.getParentFile().exists()) {
       file.getParentFile().mkdirs();
     }
     FileWriter fw = new FileWriter(file);
-    fw.append("package parquet.column.values.bitpacking;\n");
+    fw.append("package org.apache.parquet.column.values.bitpacking;\n");
     fw.append("\n");
     fw.append("/**\n");
     if (msbFirst) {
