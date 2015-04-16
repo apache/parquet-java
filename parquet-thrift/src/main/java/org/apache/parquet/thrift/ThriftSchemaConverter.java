@@ -56,12 +56,10 @@ public class ThriftSchemaConverter {
     return convert(toStructType(thriftClass));
   }
 
-  public MessageType convert(StructType thriftClass) {
-    ThriftSchemaConvertVisitor visitor = new ThriftSchemaConvertVisitor(fieldProjectionFilter);
-    thriftClass.accept(visitor);
-    MessageType convertedMessageType = visitor.getConvertedMessageType();
+  public MessageType convert(StructType struct) {
+    MessageType messageType = ThriftSchemaConvertVisitor.convert(struct, fieldProjectionFilter);
     fieldProjectionFilter.assertNoUnmatchedPatterns();
-    return convertedMessageType;
+    return messageType;
   }
 
   public static <T extends TBase<?,?>> StructOrUnionType structOrUnionType(Class<T> klass) {

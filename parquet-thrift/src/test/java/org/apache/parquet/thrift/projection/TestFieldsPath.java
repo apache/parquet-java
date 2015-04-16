@@ -69,7 +69,7 @@ public class TestFieldsPath {
 
   }
 
-  private static class PrimitivePathVisitor implements ThriftType.TypeVisitor {
+  private static class PrimitivePathVisitor implements ThriftType.TypeVisitor<Void, Void> {
     private List<String> paths = new ArrayList<String>();
     private FieldsPath path = new FieldsPath();
     private String delim;
@@ -80,7 +80,7 @@ public class TestFieldsPath {
 
     public static List<String> visit(StructType s, String delim) {
       PrimitivePathVisitor v = new PrimitivePathVisitor(delim);
-      s.accept(v);
+      s.accept(v, null);
       return v.getPaths();
     }
 
@@ -89,34 +89,38 @@ public class TestFieldsPath {
     }
 
     @Override
-    public void visit(MapType mapType) {
+    public Void visit(MapType mapType, Void v) {
       ThriftField key = mapType.getKey();
       ThriftField value = mapType.getValue();
       path.push(key);
-      key.getType().accept(this);
+      key.getType().accept(this, null);
       path.pop();
       path.push(value);
-      value.getType().accept(this);
+      value.getType().accept(this, null);
       path.pop();
+      return null;
     }
 
     @Override
-    public void visit(SetType setType) {
-      setType.getValues().getType().accept(this);
+    public Void visit(SetType setType, Void v) {
+      setType.getValues().getType().accept(this, null);
+      return null;
     }
 
     @Override
-    public void visit(ListType listType) {
-      listType.getValues().getType().accept(this);
+    public Void visit(ListType listType, Void v) {
+      listType.getValues().getType().accept(this, null);
+      return null;
     }
 
     @Override
-    public void visit(StructType structType) {
+    public Void visit(StructType structType, Void v) {
       for (ThriftField child : structType.getChildren()) {
         path.push(child);
-        child.getType().accept(this);
+        child.getType().accept(this, null);
         path.pop();
       }
+      return null;
     }
 
     private void visitPrimitive() {
@@ -124,43 +128,51 @@ public class TestFieldsPath {
     }
 
     @Override
-    public void visit(EnumType enumType) {
+    public Void visit(EnumType enumType, Void v) {
       visitPrimitive();
+      return null;
     }
 
     @Override
-    public void visit(BoolType boolType) {
+    public Void visit(BoolType boolType, Void v) {
       visitPrimitive();
+      return null;
     }
 
     @Override
-    public void visit(ByteType byteType) {
+    public Void visit(ByteType byteType, Void v) {
       visitPrimitive();
+      return null;
     }
 
     @Override
-    public void visit(DoubleType doubleType) {
+    public Void visit(DoubleType doubleType, Void v) {
       visitPrimitive();
+      return null;
     }
 
     @Override
-    public void visit(I16Type i16Type) {
+    public Void visit(I16Type i16Type, Void v) {
       visitPrimitive();
+      return null;
     }
 
     @Override
-    public void visit(I32Type i32Type) {
+    public Void visit(I32Type i32Type, Void v) {
       visitPrimitive();
+      return null;
     }
 
     @Override
-    public void visit(I64Type i64Type) {
+    public Void visit(I64Type i64Type, Void v) {
       visitPrimitive();
+      return null;
     }
 
     @Override
-    public void visit(StringType stringType) {
+    public Void visit(StringType stringType, Void v) {
       visitPrimitive();
+      return null;
     }
   }
 }

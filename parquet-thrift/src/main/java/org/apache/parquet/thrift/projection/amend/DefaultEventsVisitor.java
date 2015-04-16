@@ -34,10 +34,10 @@ import java.util.List;
 /**
  * Create a dummy events for all required fields according to thrift definition
  */
-class DefaultEventsVisitor implements ThriftType.TypeVisitor {
+class DefaultEventsVisitor implements ThriftType.TypeVisitor<Void, Void> {
   List<ParquetProtocol> dummyEvents= new ArrayList<ParquetProtocol>();
   @Override
-  public void visit(ThriftType.MapType mapType) {
+  public Void visit(ThriftType.MapType mapType, Void v) {
      dummyEvents.add(new ParquetProtocol("readMapBegin()") {
        @Override
        public TMap readMapBegin() throws TException {
@@ -50,11 +50,11 @@ class DefaultEventsVisitor implements ThriftType.TypeVisitor {
       public void readMapEnd() throws TException {
       }
     });
-
+    return null;
   }
 
   @Override
-  public void visit(final ThriftType.SetType setType) {
+  public Void visit(final ThriftType.SetType setType, Void v) {
     dummyEvents.add(new ParquetProtocol("readSetBegin()") {
       @Override
       public TSet readSetBegin() throws TException {
@@ -67,11 +67,13 @@ class DefaultEventsVisitor implements ThriftType.TypeVisitor {
       public void readSetEnd() throws TException {
       }
     });
+
+    return null;
   }
 
 
   @Override
-  public void visit(final ThriftType.ListType listType) {
+  public Void visit(final ThriftType.ListType listType, Void v) {
     dummyEvents.add(new ParquetProtocol("readListBegin()") {
       @Override
       public TList readListBegin() throws TException {
@@ -84,96 +86,107 @@ class DefaultEventsVisitor implements ThriftType.TypeVisitor {
       public void readListEnd() throws TException {
       }
     });
+
+    return null;
   }
 
   @Override
-  public void visit(ThriftType.StructType structType) {
+  public Void visit(ThriftType.StructType structType, Void v) {
     dummyEvents.add(new StructBeginProtocol("struct"));
     List<ThriftField> children = structType.getChildren();
     for (ThriftField child : children) {
       dummyEvents.add(new ReadFieldBeginProtocol(child));
-      child.getType().accept(this); //currently will create all the attributes in struct, it's safer
+      child.getType().accept(this, null); //currently will create all the attributes in struct, it's safer
       dummyEvents.add(DefaultProtocolEventsGenerator.READ_FIELD_END);
     }
     dummyEvents.add(DefaultProtocolEventsGenerator.READ_FIELD_STOP);
     dummyEvents.add(DefaultProtocolEventsGenerator.READ_STRUCT_END);
 
+    return null;
   }
 
   @Override
-  public void visit(ThriftType.EnumType enumType) {
+  public Void visit(ThriftType.EnumType enumType, Void v) {
     dummyEvents.add(new ParquetProtocol("readI32() enum") {
       @Override
       public int readI32() throws TException {
         return 0;
       }
     });
+    return null;
   }
 
   @Override
-  public void visit(ThriftType.BoolType boolType) {
+  public Void visit(ThriftType.BoolType boolType, Void v) {
     dummyEvents.add(new ParquetProtocol("readBool()") {
       @Override
       public boolean readBool() throws TException {
         return false;
       }
     });
+    return null;
   }
 
 
   @Override
-  public void visit(ThriftType.ByteType byteType) {
+  public Void visit(ThriftType.ByteType byteType, Void v) {
     dummyEvents.add(new ParquetProtocol("readByte() int") {
       @Override
       public byte readByte() throws TException {
         return (byte) 0;
       }
     });
+    return null;
   }
 
   @Override
-  public void visit(ThriftType.DoubleType doubleType) {
+  public Void visit(ThriftType.DoubleType doubleType, Void v) {
     dummyEvents.add(new ParquetProtocol("readDouble()") {
       @Override
       public double readDouble() throws TException {
         return 0.0;
       }
     });
+    return null;
   }
 
   @Override
-  public void visit(ThriftType.I16Type i16Type) {
+  public Void visit(ThriftType.I16Type i16Type, Void v) {
     dummyEvents.add(new ParquetProtocol("readI16()") {
       @Override
       public short readI16() throws TException {
         return (short) 0;
       }
     });
+    return null;
   }
 
   @Override
-  public void visit(ThriftType.I32Type i32Type) {
+  public Void visit(ThriftType.I32Type i32Type, Void v) {
     dummyEvents.add(new ParquetProtocol("readI32()") {
       @Override
       public int readI32() throws TException {
         return 0;
       }
     });
+    return null;
   }
 
   @Override
-  public void visit(ThriftType.I64Type i64Type) {
+  public Void visit(ThriftType.I64Type i64Type, Void v) {
     dummyEvents.add(new ParquetProtocol("readI64()") {
       @Override
       public long readI64() throws TException {
         return 0;
       }
     });
+    return null;
   }
 
   @Override
-  public void visit(ThriftType.StringType stringType) {
+  public Void visit(ThriftType.StringType stringType, Void v) {
     dummyEvents.add(new StringProtocol(""));
+    return null;
   }
 
   public List<ParquetProtocol> getEvents() {

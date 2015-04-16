@@ -29,7 +29,27 @@ import org.apache.parquet.thrift.struct.ThriftType;
  * @author Tianshuo Deng
  */
 public class FieldsPath {
-  private final ArrayList<ThriftField> fields = new ArrayList<ThriftField>();
+  private final ArrayList<ThriftField> fields;
+
+  public FieldsPath() {
+    this(new ArrayList<ThriftField>());
+  }
+
+  private FieldsPath(ArrayList<ThriftField> fields) {
+    this.fields = fields;
+  }
+
+  public FieldsPath copyPush(ThriftField f) {
+    FieldsPath copy = new FieldsPath(new ArrayList<ThriftField>(fields));
+    copy.push(f);
+    return copy;
+  }
+
+  public FieldsPath copyPop() {
+    FieldsPath copy = new FieldsPath(new ArrayList<ThriftField>(fields));
+    copy.pop();
+    return copy;
+  }
 
   public void push(ThriftField f) {
     this.fields.add(f);

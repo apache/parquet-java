@@ -18,6 +18,36 @@
  */
 package org.apache.parquet.thrift;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Type.Repetition;
+import org.apache.parquet.schema.Types.PrimitiveBuilder;
+import org.apache.parquet.thrift.projection.FieldProjectionFilter;
+import org.apache.parquet.thrift.projection.FieldsPath;
+import org.apache.parquet.thrift.projection.ThriftProjectionException;
+import org.apache.parquet.thrift.struct.ThriftField;
+import org.apache.parquet.thrift.struct.ThriftType;
+import org.apache.parquet.thrift.struct.ThriftType.BoolType;
+import org.apache.parquet.thrift.struct.ThriftType.ByteType;
+import org.apache.parquet.thrift.struct.ThriftType.DoubleType;
+import org.apache.parquet.thrift.struct.ThriftType.EnumType;
+import org.apache.parquet.thrift.struct.ThriftType.I16Type;
+import org.apache.parquet.thrift.struct.ThriftType.I32Type;
+import org.apache.parquet.thrift.struct.ThriftType.I64Type;
+import org.apache.parquet.thrift.struct.ThriftType.ListType;
+import org.apache.parquet.thrift.struct.ThriftType.MapType;
+import org.apache.parquet.thrift.struct.ThriftType.SetType;
+import org.apache.parquet.thrift.struct.ThriftType.StringType;
+import org.apache.parquet.thrift.struct.ThriftType.StructType;
+
+import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.schema.ConversionPatterns.listType;
 import static org.apache.parquet.schema.ConversionPatterns.mapType;
 import static org.apache.parquet.schema.OriginalType.ENUM;
@@ -32,226 +62,178 @@ import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.apache.parquet.schema.Types.primitive;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.parquet.Preconditions;
-import org.apache.parquet.schema.GroupType;
-import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.OriginalType;
-import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.apache.parquet.schema.Type;
-import org.apache.parquet.schema.Types.PrimitiveBuilder;
-import org.apache.parquet.thrift.projection.FieldProjectionFilter;
-import org.apache.parquet.thrift.projection.FieldsPath;
-import org.apache.parquet.thrift.projection.ThriftProjectionException;
-import org.apache.parquet.thrift.struct.ThriftField;
-import org.apache.parquet.thrift.struct.ThriftType;
-
 /**
  * Visitor Class for converting a thrift definition to parquet message type.
  * Projection can be done by providing a {@link FieldProjectionFilter}
  *
  * @author Tianshuo Deng
  */
-public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
+public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<ConvertedField, ThriftSchemaConvertVisitor.State> {
   private final FieldProjectionFilter fieldProjectionFilter;
-  private final FieldsPath currentFieldPath = new FieldsPath();
 
-  private Type currentType;
-  private Type.Repetition currentRepetition = Type.Repetition.REPEATED; // MessageType is repeated GroupType
-  private String currentName = "ParquetSchema";
-
-  public ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter) {
-    this.fieldProjectionFilter = Preconditions.checkNotNull(fieldProjectionFilter, "fieldProjectionFilter");
+  private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter) {
+    this.fieldProjectionFilter = checkNotNull(fieldProjectionFilter, "fieldProjectionFilter");
   }
 
-  @Override
-  public void visit(ThriftType.MapType mapType) {
-    final ThriftField mapKeyField = mapType.getKey();
-    final ThriftField mapValueField = mapType.getValue();
+  public static MessageType convert(StructType struct, FieldProjectionFilter filter) {
+    State state = new State(new FieldsPath(), REPEATED, "ParquetSchema");
 
-    //save env for map
-    String mapName = currentName;
-    Type.Repetition mapRepetition = currentRepetition;
+    ConvertedField conv =
+        struct.accept(new ThriftSchemaConvertVisitor(filter), state);
 
-    //=========handle key
-    currentFieldPath.push(mapKeyField);
-    currentName = "key";
-    currentRepetition = REQUIRED;
-    mapKeyField.getType().accept(this);
-    Type keyType = currentType;//currentType is the already converted type
-    currentFieldPath.pop();
-
-    //=========handle value
-    currentFieldPath.push(mapValueField);
-    currentName = "value";
-    currentRepetition = OPTIONAL;
-    mapValueField.getType().accept(this);
-    Type valueType = currentType;
-    currentFieldPath.pop();
-
-    if (keyType == null && valueType == null) {
-      currentType = null;
-      return;
+    if (!conv.keep()) {
+      return new MessageType(state.name, new ArrayList<Type>());
     }
 
-    if (keyType == null && valueType != null)
-      throw new ThriftProjectionException("key of map is not specified in projection: " + currentFieldPath);
-
-    //restore Env
-    currentName = mapName;
-    currentRepetition = mapRepetition;
-    currentType = mapType(currentRepetition, currentName,
-            keyType,
-            valueType);
+    GroupType rootType = conv.getType().asGroupType();
+    return new MessageType(state.name, rootType.getFields());
   }
 
   @Override
-  public void visit(ThriftType.SetType setType) {
-    final ThriftField setElemField = setType.getValues();
-    String setName = currentName;
-    Type.Repetition setRepetition = currentRepetition;
-    currentName = currentName + "_tuple";
-    currentRepetition = REPEATED;
-    setElemField.getType().accept(this);
-    //after conversion, currentType is the nested type
-    if (currentType != null) {
-      currentType = listType(setRepetition, setName, currentType);
-    }
-  }
+  public ConvertedField visit(MapType mapType, State state) {
+    ThriftField keyField = mapType.getKey();
+    ThriftField valueField = mapType.getValue();
 
-  @Override
-  public void visit(ThriftType.ListType listType) {
-    final ThriftField setElemField = listType.getValues();
-    String listName = currentName;
-    Type.Repetition listRepetition = currentRepetition;
-    currentName = currentName + "_tuple";
-    currentRepetition = REPEATED;
-    setElemField.getType().accept(this);
-    //after conversion, currentType is the nested type
-    if (currentType != null) {
-      currentType = listType(listRepetition, listName, currentType);
-    }
-  }
+    ConvertedField convKey = keyField.getType().accept(this,
+        new State(state.path.copyPush(keyField), REQUIRED, "key"));
 
-  public MessageType getConvertedMessageType() {
-    // the root should be a GroupType
-    if (currentType == null)
-      return new MessageType(currentName, new ArrayList<Type>());
+    ConvertedField convValue = valueField.getType().accept(this,
+        new State(state.path.copyPush(valueField), OPTIONAL, "value"));
 
-    GroupType rootType = currentType.asGroupType();
-    return new MessageType(currentName, rootType.getFields());
-  }
-
-  @Override
-  public void visit(ThriftType.StructType structType) {
-    List<ThriftField> fields = structType.getChildren();
-
-    String oldName = currentName;
-    Type.Repetition oldRepetition = currentRepetition;
-
-    List<Type> types = getFieldsTypes(fields);
-
-    currentName = oldName;
-    currentRepetition = oldRepetition;
-    if (types.size() > 0) {
-      currentType = new GroupType(currentRepetition, currentName, types);
+    if (!convKey.keep()) {
+      if (convValue.keep()) {
+        throw new ThriftProjectionException(
+            "Cannot select only the values of a map, you must keep the keys as well: " + state.path);
+      } else {
+        return ConvertedField.drop(state.path);
+      }
     } else {
-      currentType = null;
-    }
-  }
+      if (convValue.keep()) {
+        Type mapField = mapType(
+            state.repetition,
+            state.name,
+            convKey.getType(),
+            convValue.getType());
 
-  private List<Type> getFieldsTypes(List<ThriftField> fields) {
-    List<Type> types = new ArrayList<Type>();
-    for (ThriftField field : fields) {
-      currentRepetition = getRepetition(field);
-      currentName = field.getName();
-      currentFieldPath.push(field);
-      field.getType().accept(this);
-      if (currentType != null) {
-        // currentType is converted with the currentName(fieldName)
-        types.add(currentType.withId(field.getFieldId()));
+        return ConvertedField.keep(mapField, state.path);
+      } else {
+        Type mapField = mapType(
+            state.repetition,
+            state.name,
+            convKey.getType(),
+            null); // signals to mapType method to project the value
+
+        return ConvertedField.keep(mapField, state.path);
       }
-      currentFieldPath.pop();
     }
-    return types;
   }
 
-  private boolean isCurrentlyMatchedFilter(){
-     if(!fieldProjectionFilter.keep(currentFieldPath)){
-       currentType = null;
-       return false;
-     }
-    return true;
+  private ConvertedField visitListLike(ThriftField listLike, State state) {
+
+    ConvertedField conv = listLike
+        .getType()
+        .accept(this, new State(state.path, REPEATED, state.name + "_tuple"));
+
+    if (conv.keep()) {
+      return ConvertedField.keep(listType(state.repetition, state.name, conv.getType()), state.path);
+    }
+    return ConvertedField.drop(state.path);
   }
 
-  private void primitiveType(PrimitiveTypeName type) {
-    primitiveType(type, null);
+
+  @Override
+  public ConvertedField visit(SetType setType, State state) {
+    return visitListLike(setType.getValues(), state);
   }
 
-  private void primitiveType(PrimitiveTypeName type, OriginalType orig) {
-    if (isCurrentlyMatchedFilter()) {
-      PrimitiveBuilder<PrimitiveType> b = primitive(type, currentRepetition);
-      if (orig != null) {
-        b = b.as(orig);
+  @Override
+  public ConvertedField visit(ListType listType, State state) {
+    return visitListLike(listType.getValues(), state);
+  }
+
+  @Override
+  public ConvertedField visit(StructType structType, State state) {
+
+    List<Type> convertedChildren = new ArrayList<Type>();
+
+    for (ThriftField child : structType.getChildren()) {
+
+      ConvertedField conv = child.getType().accept(this,
+          new State(state.path.copyPush(child), getRepetition(child), child.getName()));
+
+      if (conv.keep()) {
+        convertedChildren.add(conv.getType().withId(child.getFieldId()));
       }
-      currentType = b.named(currentName);
+
+    }
+
+    if (convertedChildren.isEmpty()) {
+      return ConvertedField.drop(state.path);
+    }
+
+    return ConvertedField.keep(
+        new GroupType(state.repetition, state.name, convertedChildren),
+        state.path);
+  }
+
+  private ConvertedField visitPrimitiveType(PrimitiveTypeName type, State state) {
+    return visitPrimitiveType(type, null, state);
+  }
+
+  private ConvertedField visitPrimitiveType(PrimitiveTypeName type, OriginalType orig, State state) {
+    PrimitiveBuilder<PrimitiveType> b = primitive(type, state.repetition);
+    if (orig != null) {
+      b = b.as(orig);
+    }
+
+    if (fieldProjectionFilter.keep(state.path)) {
+      return ConvertedField.keep(b.named(state.name), state.path);
+    } else {
+      return ConvertedField.drop(state.path);
     }
   }
 
   @Override
-  public void visit(ThriftType.EnumType enumType) {
-    primitiveType(BINARY, ENUM);
+  public ConvertedField visit(EnumType enumType, State state) {
+    return visitPrimitiveType(BINARY, ENUM, state);
   }
 
   @Override
-  public void visit(ThriftType.BoolType boolType) {
-    primitiveType(BOOLEAN);
+  public ConvertedField visit(BoolType boolType, State state) {
+    return visitPrimitiveType(BOOLEAN, state);
   }
 
   @Override
-  public void visit(ThriftType.ByteType byteType) {
-    primitiveType(INT32);
+  public ConvertedField visit(ByteType byteType, State state) {
+    return visitPrimitiveType(INT32, state);
   }
 
   @Override
-  public void visit(ThriftType.DoubleType doubleType) {
-    primitiveType(DOUBLE);
+  public ConvertedField visit(DoubleType doubleType, State state) {
+    return visitPrimitiveType(DOUBLE, state);
   }
 
   @Override
-  public void visit(ThriftType.I16Type i16Type) {
-    primitiveType(INT32);
+  public ConvertedField visit(I16Type i16Type, State state) {
+    return visitPrimitiveType(INT32, state);
   }
 
   @Override
-  public void visit(ThriftType.I32Type i32Type) {
-    primitiveType(INT32);
+  public ConvertedField visit(I32Type i32Type, State state) {
+    return visitPrimitiveType(INT32, state);
   }
 
   @Override
-  public void visit(ThriftType.I64Type i64Type) {
-    primitiveType(INT64);
+  public ConvertedField visit(I64Type i64Type, State state) {
+    return visitPrimitiveType(INT64, state);
   }
 
   @Override
-  public void visit(ThriftType.StringType stringType) {
-    primitiveType(BINARY, UTF8);
+  public ConvertedField visit(StringType stringType, State state) {
+    return visitPrimitiveType(BINARY, UTF8, state);
   }
 
-  /**
-   * by default we can make everything optional
-   *
-   * @param thriftField
-   * @return
-   */
   private Type.Repetition getRepetition(ThriftField thriftField) {
-    if (thriftField == null) {
-      return OPTIONAL;
-    }
-
     switch (thriftField.getRequirement()) {
       case REQUIRED:
         return REQUIRED;
@@ -263,4 +245,17 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
         throw new IllegalArgumentException("unknown requirement type: " + thriftField.getRequirement());
     }
   }
+
+  public static final class State {
+    public final FieldsPath path;
+    public final Type.Repetition repetition;
+    public final String name;
+
+    public State(FieldsPath path, Repetition repetition, String name) {
+      this.path = path;
+      this.repetition = repetition;
+      this.name = name;
+    }
+  }
+
 }
