@@ -32,6 +32,7 @@ import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.ParquetOutputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
+import parquet.hadoop.thrift.ParquetThriftInputFormat;
 import parquet.hadoop.thrift.ThriftReadSupport;
 
 public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueScheme<T> {
@@ -65,5 +66,19 @@ public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueSc
     jobConf.setInputFormat(DeprecatedParquetInputFormat.class);
     ParquetInputFormat.setReadSupportClass(jobConf, ScroogeReadSupport.class);
     ThriftReadSupport.setRecordConverterClass(jobConf, ScroogeRecordConverter.class);
+  }
+
+  @Override
+  protected void setRecordClass(JobConf jobConf) {
+    if (config.getKlass() != null) {
+      ParquetThriftInputFormat.setThriftClass(jobConf, config.getKlass());
+    }
+  }
+
+  @Override
+  protected void setProjectionPushdown(JobConf jobConf) {
+    if (this.config.getProjectionString()!= null) {
+      ThriftReadSupport.setProjectionPushdown(jobConf, this.config.getProjectionString());
+    }
   }
 }

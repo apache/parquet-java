@@ -21,16 +21,23 @@
     <groupId>com.twitter</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.7.0-incubating-SNAPSHOT</version>
+    <version>1.6.0rc8-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>parquet-avro</artifactId>
+  <artifactId>parquet-cascading-avro</artifactId>
   <packaging>jar</packaging>
 
-  <name>Apache Parquet Avro (Incubating)</name>
+  <name>Apache Parquet Cascading Avro (Incubating)</name>
   <url>https://parquet.incubator.apache.org</url>
+
+  <repositories>
+    <repository>
+     <id>conjars.org</id>
+      <url>http://conjars.org/repo</url>
+    </repository>
+  </repositories>
 
   <dependencies>
     <dependency>
@@ -45,13 +52,8 @@
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>parquet-format</artifactId>
-      <version>${parquet.format.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.avro</groupId>
-      <artifactId>avro</artifactId>
-      <version>${avro.version}</version>
+      <artifactId>parquet-avro</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
@@ -60,10 +62,10 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>11.0</version>
-      <scope>test</scope>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+      <version>${log4j.version}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
@@ -71,6 +73,29 @@
       <version>${project.version}</version>
       <type>test-jar</type>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>parquet-cascading</artifactId>
+      <version>${project.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.twitter</groupId>
+          <artifactId>parquet-thrift</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-all</artifactId>
+      <version>1.9.5</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+       <groupId>cascading</groupId>
+       <artifactId>cascading-hadoop</artifactId>
+       <version>${cascading.version}</version>
+       <scope>provided</scope>
     </dependency>
   </dependencies>
 
@@ -88,40 +113,17 @@
         <artifactId>avro-maven-plugin</artifactId>
         <version>${avro.version}</version>
         <executions>
-            <execution>
-                <phase>generate-test-sources</phase>
-                <goals>
-                    <goal>idl-protocol</goal>
-                </goals>
-                <configuration>
-                    <sourceDirectory>${project.basedir}/src/test/resources</sourceDirectory>
-                    <outputDirectory>${project.build.directory}/generated-test-sources</outputDirectory>
-                    <stringType>String</stringType>
-                </configuration>
-            </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <!-- Ensure that the specific classes are available during test compile but not included in jar -->
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>build-helper-maven-plugin</artifactId>
-        <version>1.8</version>
-        <executions>
           <execution>
-            <id>add-test-sources</id>
             <phase>generate-test-sources</phase>
             <goals>
-              <goal>add-test-source</goal>
+               <goal>idl-protocol</goal>
             </goals>
             <configuration>
-              <sources>
-                <source>${project.build.directory}/generated-test-sources</source>
-              </sources>
+              <sourceDirectory>${project.basedir}/src/test/avro/</sourceDirectory>
             </configuration>
           </execution>
         </executions>
       </plugin>
     </plugins>
   </build>
-
 </project>

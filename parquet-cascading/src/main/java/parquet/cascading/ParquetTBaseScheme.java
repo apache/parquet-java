@@ -29,6 +29,7 @@ import parquet.filter2.predicate.FilterPredicate;
 import parquet.hadoop.ParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
 import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
+import parquet.hadoop.thrift.ParquetThriftInputFormat;
 import parquet.hadoop.thrift.ThriftReadSupport;
 import parquet.hadoop.thrift.TBaseWriteSupport;
 import parquet.thrift.TBaseRecordConverter;
@@ -76,5 +77,19 @@ public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme
     DeprecatedParquetOutputFormat.setAsOutputFormat(jobConf);
     DeprecatedParquetOutputFormat.setWriteSupportClass(jobConf, TBaseWriteSupport.class);
     TBaseWriteSupport.<T>setThriftClass(jobConf, this.config.getKlass());
+  }
+
+  @Override
+  protected void setRecordClass(JobConf jobConf) {
+    if (config.getKlass() != null) {
+      ParquetThriftInputFormat.setThriftClass(jobConf, config.getKlass());
+    }
+  }
+
+  @Override
+  protected void setProjectionPushdown(JobConf jobConf) {
+    if (this.config.getProjectionString()!= null) {
+      ThriftReadSupport.setProjectionPushdown(jobConf, this.config.getProjectionString());
+    }
   }
 }
