@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.avro;
+package org.apache.parquet.avro;
 
 import com.google.common.collect.Lists;
 import java.util.Arrays;

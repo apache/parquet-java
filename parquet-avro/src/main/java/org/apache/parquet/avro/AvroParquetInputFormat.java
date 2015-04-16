@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.avro;
+package org.apache.parquet.avro;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.mapreduce.Job;
-import parquet.hadoop.ParquetInputFormat;
-import parquet.hadoop.util.ContextUtil;
+import org.apache.parquet.hadoop.ParquetInputFormat;
+import org.apache.parquet.hadoop.util.ContextUtil;
 
 /**
  * A Hadoop {@link org.apache.hadoop.mapreduce.InputFormat} for Parquet files.
@@ -48,7 +48,7 @@ public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
    * @param job
    * @param requestedProjection
    * @see #setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
-   * @see parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
+   * @see org.apache.parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
   public static void setRequestedProjection(Job job, Schema requestedProjection) {
     AvroReadSupport.setRequestedProjection(ContextUtil.getConfiguration(job),
@@ -64,7 +64,7 @@ public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
    * @param job
    * @param avroReadSchema
    * @see #setRequestedProjection(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
-   * @see parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
+   * @see org.apache.parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
   public static void setAvroReadSchema(Job job, Schema avroReadSchema) {
     AvroReadSupport.setAvroReadSchema(ContextUtil.getConfiguration(job), avroReadSchema);

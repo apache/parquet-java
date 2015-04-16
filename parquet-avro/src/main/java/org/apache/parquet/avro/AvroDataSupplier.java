@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.avro;
+package org.apache.parquet.avro;
 
 import org.apache.avro.generic.GenericData;
 

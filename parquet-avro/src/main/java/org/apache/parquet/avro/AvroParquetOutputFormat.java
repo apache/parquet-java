@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.avro;
+package org.apache.parquet.avro;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.mapreduce.Job;
-import parquet.avro.AvroWriteSupport;
-import parquet.hadoop.ParquetOutputFormat;
-import parquet.hadoop.util.ContextUtil;
+import org.apache.parquet.avro.AvroWriteSupport;
+import org.apache.parquet.hadoop.ParquetOutputFormat;
+import org.apache.parquet.hadoop.util.ContextUtil;
 
 /**
  * A Hadoop {@link org.apache.hadoop.mapreduce.OutputFormat} for Parquet files.
@@ -37,7 +37,7 @@ public class AvroParquetOutputFormat extends ParquetOutputFormat<IndexedRecord> 
    * objects at read time without specifying a read schema.
    * @param job
    * @param schema
-   * @see parquet.avro.AvroParquetInputFormat#setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
+   * @see org.apache.parquet.avro.AvroParquetInputFormat#setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
   public static void setSchema(Job job, Schema schema) {
     AvroWriteSupport.setSchema(ContextUtil.getConfiguration(job), schema);

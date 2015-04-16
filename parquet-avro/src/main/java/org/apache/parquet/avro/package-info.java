@@ -168,4 +168,4 @@
  * are assumed to be strings.
  * </p>
  */
-package parquet.avro;
+package org.apache.parquet.avro;

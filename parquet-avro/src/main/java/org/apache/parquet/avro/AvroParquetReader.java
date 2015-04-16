@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.avro;
+package org.apache.parquet.avro;
 
 import java.io.IOException;
 
@@ -24,8 +24,8 @@ import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
-import parquet.filter.UnboundRecordFilter;
-import parquet.hadoop.ParquetReader;
+import org.apache.parquet.filter.UnboundRecordFilter;
+import org.apache.parquet.hadoop.ParquetReader;
 
 /**
  * Read Avro records from a Parquet file.

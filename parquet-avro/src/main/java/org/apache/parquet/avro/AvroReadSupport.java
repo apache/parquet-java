@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.avro;
+package org.apache.parquet.avro;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -24,9 +24,9 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ReflectionUtils;
-import parquet.hadoop.api.ReadSupport;
-import parquet.io.api.RecordMaterializer;
-import parquet.schema.MessageType;
+import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.schema.MessageType;
 
 /**
  * Avro implementation of {@link ReadSupport} for Avro {@link IndexedRecord}s which cover both Avro Specific and
@@ -46,14 +46,14 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
   public static String AVRO_DATA_SUPPLIER = "parquet.avro.data.supplier";
 
   /**
-   * @see parquet.avro.AvroParquetInputFormat#setRequestedProjection(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
+   * @see org.apache.parquet.avro.AvroParquetInputFormat#setRequestedProjection(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
   public static void setRequestedProjection(Configuration configuration, Schema requestedProjection) {
     configuration.set(AVRO_REQUESTED_PROJECTION, requestedProjection.toString());
   }
 
   /**
-   * @see parquet.avro.AvroParquetInputFormat#setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
+   * @see org.apache.parquet.avro.AvroParquetInputFormat#setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
   public static void setAvroReadSchema(Configuration configuration, Schema avroReadSchema) {
     configuration.set(AVRO_READ_SCHEMA, avroReadSchema.toString());

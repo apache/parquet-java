@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.avro;
+package org.apache.parquet.avro;
 
 import org.apache.avro.generic.GenericData;
 import org.apache.hadoop.conf.Configuration;
@@ -37,7 +37,7 @@ public class TestAvroDataSupplier {
     Configuration conf = new Configuration(false);
     AvroReadSupport.setAvroDataSupplier(conf, GenericDataSupplier.class);
     Assert.assertEquals("Should contain the class name",
-        "parquet.avro.TestAvroDataSupplier$GenericDataSupplier",
+        "org.apache.parquet.avro.TestAvroDataSupplier$GenericDataSupplier",
         conf.get(AvroReadSupport.AVRO_DATA_SUPPLIER));
   }
 }

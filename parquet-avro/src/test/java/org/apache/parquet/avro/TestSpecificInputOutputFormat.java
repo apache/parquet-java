@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.avro;
+package org.apache.parquet.avro;
 
 import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
@@ -39,12 +39,12 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import parquet.Log;
-import parquet.column.ColumnReader;
-import parquet.filter.ColumnPredicates;
-import parquet.filter.ColumnRecordFilter;
-import parquet.filter.RecordFilter;
-import parquet.filter.UnboundRecordFilter;
+import org.apache.parquet.Log;
+import org.apache.parquet.column.ColumnReader;
+import org.apache.parquet.filter.ColumnPredicates;
+import org.apache.parquet.filter.ColumnRecordFilter;
+import org.apache.parquet.filter.RecordFilter;
+import org.apache.parquet.filter.UnboundRecordFilter;
 
 public class TestSpecificInputOutputFormat {
   private static final Log LOG = Log.getLog(TestSpecificInputOutputFormat.class);
@@ -128,7 +128,7 @@ public class TestSpecificInputOutputFormat {
   }
 
   final Configuration conf = new Configuration();
-  final Path inputPath = new Path("src/test/java/parquet/avro/TestSpecificInputOutputFormat.java");
+  final Path inputPath = new Path("src/test/java/org/apache/parquet/avro/TestSpecificInputOutputFormat.java");
   final Path parquetPath = new Path("target/test/hadoop/TestSpecificInputOutputFormat/parquet");
   final Path outputPath = new Path("target/test/hadoop/TestSpecificInputOutputFormat/out");
 

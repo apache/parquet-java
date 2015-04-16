@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.avro;
+package org.apache.parquet.avro;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,19 +35,19 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import parquet.hadoop.ParquetWriter;
-import parquet.hadoop.api.WriteSupport;
-import parquet.io.api.RecordConsumer;
-import parquet.schema.MessageType;
-import parquet.schema.MessageTypeParser;
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.api.WriteSupport;
+import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 
-import static parquet.avro.AvroTestUtil.array;
-import static parquet.avro.AvroTestUtil.field;
-import static parquet.avro.AvroTestUtil.instance;
-import static parquet.avro.AvroTestUtil.optional;
-import static parquet.avro.AvroTestUtil.optionalField;
-import static parquet.avro.AvroTestUtil.primitive;
-import static parquet.avro.AvroTestUtil.record;
+import static org.apache.parquet.avro.AvroTestUtil.array;
+import static org.apache.parquet.avro.AvroTestUtil.field;
+import static org.apache.parquet.avro.AvroTestUtil.instance;
+import static org.apache.parquet.avro.AvroTestUtil.optional;
+import static org.apache.parquet.avro.AvroTestUtil.optionalField;
+import static org.apache.parquet.avro.AvroTestUtil.primitive;
+import static org.apache.parquet.avro.AvroTestUtil.record;
 
 public class TestArrayCompatibility {
 

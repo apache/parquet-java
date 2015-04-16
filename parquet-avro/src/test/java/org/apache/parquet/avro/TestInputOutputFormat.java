@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.avro;
+package org.apache.parquet.avro;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -36,7 +36,7 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.junit.Test;
-import parquet.Log;
+import org.apache.parquet.Log;
 
 import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
@@ -80,7 +80,7 @@ public class TestInputOutputFormat {
   public void testReadWrite() throws Exception {
 
     final Configuration conf = new Configuration();
-    final Path inputPath = new Path("src/test/java/parquet/avro/TestInputOutputFormat.java");
+    final Path inputPath = new Path("src/test/java/org/apache/parquet/avro/TestInputOutputFormat.java");
     final Path parquetPath = new Path("target/test/hadoop/TestInputOutputFormat/parquet");
     final Path outputPath = new Path("target/test/hadoop/TestInputOutputFormat/out");
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);

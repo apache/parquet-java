@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.avro;
+package org.apache.parquet.avro;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static parquet.filter.ColumnPredicates.equalTo;
-import static parquet.filter.ColumnRecordFilter.column;
-import static parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
-import static parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
+import static org.apache.parquet.filter.ColumnPredicates.equalTo;
+import static org.apache.parquet.filter.ColumnRecordFilter.column;
+import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
+import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
 
 import com.google.common.collect.ImmutableList;
 import java.io.File;
@@ -34,9 +34,9 @@ import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
-import parquet.hadoop.ParquetReader;
-import parquet.hadoop.ParquetWriter;
-import parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 /**
  * Other tests exercise the use of Avro Generic, a dynamic data representation. This class focuses

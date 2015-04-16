@@ -16,14 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.avro;
+package org.apache.parquet.avro;
 
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
-import org.apache.avro.specific.SpecificData;
+import org.apache.avro.generic.IndexedRecord;
+import org.apache.parquet.io.api.GroupConverter;
+import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.schema.MessageType;
 
-class SpecificDataSupplier implements AvroDataSupplier {
+class AvroRecordMaterializer<T extends IndexedRecord> extends RecordMaterializer<T> {
+
+  private AvroIndexedRecordConverter<T> root;
+
+  public AvroRecordMaterializer(MessageType requestedSchema, Schema avroSchema,
+      GenericData baseModel) {
+    this.root = new AvroIndexedRecordConverter<T>(requestedSchema, avroSchema, baseModel);
+  }
+
   @Override
-  public GenericData get() {
-    return SpecificData.get();
+  public T getCurrentRecord() {
+    return root.getCurrentRecord();
+  }
+
+  @Override
+  public GroupConverter getRootConverter() {
+    return root;
   }
 }

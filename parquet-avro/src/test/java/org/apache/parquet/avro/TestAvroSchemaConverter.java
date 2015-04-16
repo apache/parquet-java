@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.avro;
+package org.apache.parquet.avro;
 
 import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
@@ -24,15 +24,15 @@ import java.util.Arrays;
 import org.apache.avro.Schema;
 import org.codehaus.jackson.node.NullNode;
 import org.junit.Test;
-import parquet.schema.MessageType;
-import parquet.schema.MessageTypeParser;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 
 import static org.junit.Assert.assertEquals;
 
 public class TestAvroSchemaConverter {
 
     public static final String ALL_PARQUET_SCHEMA =
-      "message parquet.avro.myrecord {\n" +
+      "message org.apache.parquet.avro.myrecord {\n" +
       "  required boolean myboolean;\n" +
       "  required int32 myint;\n" +
       "  required int64 mylong;\n" +
@@ -106,7 +106,7 @@ public class TestAvroSchemaConverter {
         Resources.getResource("all.avsc").openStream());
     testAvroToParquetConversion(
         schema,
-        "message parquet.avro.myrecord {\n" +
+        "message org.apache.parquet.avro.myrecord {\n" +
             // Avro nulls are not encoded, unless they are null unions
             "  required boolean myboolean;\n" +
             "  required int32 myint;\n" +

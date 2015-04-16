@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.avro;
+package org.apache.parquet.avro;
 
 import java.util.*;
 
@@ -24,16 +24,16 @@ import org.apache.avro.Schema;
 
 import org.apache.hadoop.conf.Configuration;
 import org.codehaus.jackson.node.NullNode;
-import parquet.schema.ConversionPatterns;
-import parquet.schema.GroupType;
-import parquet.schema.MessageType;
-import parquet.schema.OriginalType;
-import parquet.schema.PrimitiveType;
-import parquet.schema.Type;
-import parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.ConversionPatterns;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
-import static parquet.schema.OriginalType.*;
-import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
+import static org.apache.parquet.schema.OriginalType.*;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 
 /**
  * <p>
