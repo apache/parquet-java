@@ -121,6 +121,6 @@ Acronym | Definition
 --------|-----------
 DO | Dictionary Page Offset
 FPO | First Data Page Offset
-SZ:{x}/{y}/{z} | x = Total (Compressed) Size, y = Total Uncompressed Size, z = y:x ratio
+SZ:{x}/{y}/{z} | Size in bytes. x = Compressed total, y = uncompressed total, z = y:x ratio
 VC | Value Count
 RLE | Run-Length Encoding
