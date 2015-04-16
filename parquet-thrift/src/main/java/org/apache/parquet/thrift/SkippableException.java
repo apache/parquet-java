@@ -1,4 +1,4 @@
-/**
+/* 
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,10 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.parquet.thrift;
 
-namespace java org.apache.parquet.thrift.test.binary
+import org.apache.parquet.ParquetRuntimeException;
 
-struct StringAndBinary {
-  1: required string s;
-  2: required binary b;
+/**
+ *
+ * Thrown when an error happened reading a thrift record
+ * Ignoring this exception will skip the bad record
+ *
+ * @author Julien Le Dem
+ *
+ */
+public class SkippableException extends ParquetRuntimeException {
+  private static final long serialVersionUID = 1L;
+
+  SkippableException() {
+    super();
+  }
+
+  SkippableException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  SkippableException(String message) {
+    super(message);
+  }
+
+  SkippableException(Throwable cause) {
+    super(cause);
+  }
+
 }
