@@ -107,7 +107,7 @@
               <relocations>
                 <relocation>
                   <pattern>it.unimi.dsi</pattern>
-                  <shadedPattern>parquet.it.unimi.dsi</shadedPattern>
+                  <shadedPattern>org.apache.parquet.it.unimi.dsi</shadedPattern>
                 </relocation>
               </relocations>
             </configuration>
@@ -127,7 +127,7 @@
           </execution>
         </executions>
         <configuration>
-          <mainClass>parquet.filter2.Generator</mainClass>          
+          <mainClass>org.apache.parquet.filter2.Generator</mainClass>
           <arguments>
             <argument>${basedir}/target/generated-src</argument>
           </arguments>
