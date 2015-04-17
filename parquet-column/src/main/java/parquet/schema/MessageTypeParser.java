@@ -43,7 +43,7 @@ public class MessageTypeParser {
     private StringBuffer currentLine = new StringBuffer();
 
     public Tokenizer(String schemaString, String string) {
-      st = new StringTokenizer(schemaString, " ,;{}()\n\t=", true);
+      st = new StringTokenizer(schemaString, " ,;{}()\n\t\r=", true);
     }
 
     public String nextToken() {
@@ -63,7 +63,7 @@ public class MessageTypeParser {
     }
 
     private boolean isWhitespace(String t) {
-      return t.equals(" ") || t.equals("\t") || t.equals("\n");
+      return t.equals(" ") || t.equals("\t") || t.equals("\n") || t.equals("\r");
     }
 
     public String getLocationString() {
@@ -83,7 +83,7 @@ public class MessageTypeParser {
   }
 
   private static MessageType parse(String schemaString) {
-    Tokenizer st = new Tokenizer(schemaString, " ;{}()\n\t");
+    Tokenizer st = new Tokenizer(schemaString, " ;{}()\n\t\r");
     Types.MessageTypeBuilder builder = Types.buildMessage();
 
     String t = st.nextToken();
