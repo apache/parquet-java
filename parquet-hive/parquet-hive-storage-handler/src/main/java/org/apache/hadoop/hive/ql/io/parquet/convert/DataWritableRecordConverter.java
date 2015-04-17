@@ -20,9 +20,9 @@ package org.apache.hadoop.hive.ql.io.parquet.convert;
 
 import org.apache.hadoop.io.ArrayWritable;
 
-import parquet.io.api.GroupConverter;
-import parquet.io.api.RecordMaterializer;
-import parquet.schema.GroupType;
+import org.apache.parquet.io.api.GroupConverter;
+import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.schema.GroupType;
 
 /**
  *

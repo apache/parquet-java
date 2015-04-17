@@ -16,27 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.hadoop.hive.ql.io.parquet;
+package org.apache.parquet.hive;
 
-import static org.mockito.Mockito.mock;
-
+import org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat;
 import org.apache.hadoop.io.ArrayWritable;
-import org.junit.Test;
+import org.apache.hadoop.mapreduce.OutputFormat;
 
-import org.apache.parquet.hadoop.ParquetInputFormat;
+/**
+ * Deprecated name of the parquet-hive output format. This class exists
+ * simply to provide backwards compatibility with users who specified
+ * this name in the Hive metastore. All users should now use
+ * STORED AS PARQUET
+ */
+@Deprecated
+public class DeprecatedParquetOutputFormat extends MapredParquetOutputFormat {
 
-public class TestMapredParquetInputFormat {
-  @Test
-  public void testDefaultConstructor() {
-    new MapredParquetInputFormat();
+  public DeprecatedParquetOutputFormat() {
+    super();
   }
 
-  @SuppressWarnings("unchecked")
-  @Test
-  public void testConstructorWithParquetInputFormat() {
-    new MapredParquetInputFormat(
-        (ParquetInputFormat<ArrayWritable>) mock(ParquetInputFormat.class)
-        );
+  public DeprecatedParquetOutputFormat(final OutputFormat<Void, ArrayWritable> mapreduceOutputFormat) {
+    super(mapreduceOutputFormat);
   }
-
 }

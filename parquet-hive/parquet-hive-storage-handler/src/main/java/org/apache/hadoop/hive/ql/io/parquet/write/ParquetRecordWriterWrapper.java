@@ -34,8 +34,8 @@ import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.util.Progressable;
 import org.apache.hadoop.hive.ql.exec.FileSinkOperator;
 
-import parquet.hadoop.ParquetOutputFormat;
-import parquet.hadoop.util.ContextUtil;
+import org.apache.parquet.hadoop.ParquetOutputFormat;
+import org.apache.parquet.hadoop.util.ContextUtil;
 
 public class ParquetRecordWriterWrapper implements RecordWriter<Void, ArrayWritable>,
   FileSinkOperator.RecordWriter {

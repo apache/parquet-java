@@ -26,7 +26,7 @@ import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.mapred.FileInputFormat;
 import org.apache.hadoop.mapred.RecordReader;
 
-import parquet.hadoop.ParquetInputFormat;
+import org.apache.parquet.hadoop.ParquetInputFormat;
 
 
 /**
