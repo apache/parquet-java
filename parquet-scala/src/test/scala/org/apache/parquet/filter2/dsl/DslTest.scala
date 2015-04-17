@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.filter2.dsl
+package org.apache.parquet.filter2.dsl
 
 import java.lang.{Double => JDouble, Integer => JInt}
 import java.io.Serializable
@@ -24,8 +24,8 @@ import java.io.Serializable
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-import parquet.filter2.predicate.Operators.{Or, UserDefined, UserDefinedByClass, DoubleColumn => JDoubleColumn, IntColumn => JIntColumn}
-import parquet.filter2.predicate.{FilterApi, Statistics, UserDefinedPredicate}
+import org.apache.parquet.filter2.predicate.Operators.{Or, UserDefined, UserDefinedByClass, DoubleColumn => JDoubleColumn, IntColumn => JIntColumn}
+import org.apache.parquet.filter2.predicate.{FilterApi, Statistics, UserDefinedPredicate}
 
 class DummyFilter extends UserDefinedPredicate[JInt] with Serializable {
   override def keep(value: JInt): Boolean = false
@@ -37,7 +37,7 @@ class DummyFilter extends UserDefinedPredicate[JInt] with Serializable {
 
 @RunWith(classOf[JUnitRunner])
 class DslTest extends FlatSpec{
-  import parquet.filter2.dsl.Dsl._
+  import org.apache.parquet.filter2.dsl.Dsl._
 
   "predicates" should "be correctly constructed using the dsl" in {
     val abc = IntColumn("a.b.c")

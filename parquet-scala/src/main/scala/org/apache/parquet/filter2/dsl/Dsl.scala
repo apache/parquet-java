@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.filter2.dsl
+package org.apache.parquet.filter2.dsl
 
 import java.lang.{Boolean => JBoolean, Double => JDouble, Float => JFloat, Integer => JInt, Long => JLong}
 import java.io.Serializable
 
-import parquet.filter2.predicate.{FilterApi, FilterPredicate, Operators, UserDefinedPredicate}
-import parquet.io.api.Binary
+import org.apache.parquet.filter2.predicate.{FilterApi, FilterPredicate, Operators, UserDefinedPredicate}
+import org.apache.parquet.io.api.Binary
 
 /**
  * Instead of using the methods in [[FilterApi]] directly in scala code,
