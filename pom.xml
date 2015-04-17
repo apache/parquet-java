@@ -101,7 +101,7 @@
     <jackson.groupId>org.codehaus.jackson</jackson.groupId>
     <jackson.version>1.9.11</jackson.version>
     <jackson.package>org.codehaus.jackson</jackson.package>
-    <shade.prefix>parquet</shade.prefix>
+    <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>1.1.0</hadoop.version>
     <cascading.version>2.5.3</cascading.version>
     <parquet.format.version>2.3.0-incubating</parquet.format.version>
@@ -193,7 +193,7 @@
           <aggregate>true</aggregate>
           <instrumentation>
             <ignores>
-              <ignore>parquet.Log.*</ignore>
+              <ignore>org.apache.parquet.Log.*</ignore>
               <ignore>java.lang.UnsupportedOperationException.*</ignore>
             </ignores>
             <excludes>
