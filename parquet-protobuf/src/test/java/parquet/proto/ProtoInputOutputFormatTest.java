@@ -19,18 +19,18 @@
 package parquet.proto;
 
 import com.google.protobuf.Message;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
 import parquet.Log;
+import parquet.proto.test.TestProtobuf;
+import parquet.proto.test.TestProtobuf.FirstCustomClassMessage;
+import parquet.proto.test.TestProtobuf.SecondCustomClassMessage;
 import parquet.proto.utils.ReadUsingMR;
 import parquet.proto.utils.WriteUsingMR;
-import parquet.proto.test.TestProtobuf;
 
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 
 public class ProtoInputOutputFormatTest {
@@ -93,6 +93,34 @@ public class ProtoInputOutputFormatTest {
     //test that only requested fields were deserialized
     assertTrue(readDocument.hasDocId());
     assertTrue("Found data outside projection.", readDocument.getNameCount() == 0);
+  }
+
+  /**
+   * When user specified protobuffer class in configuration,
+   * It should replace class specified in header.
+   * */
+  @Test
+  public void testCustomProtoClass() throws Exception {
+    FirstCustomClassMessage.Builder inputMessage;
+    inputMessage = FirstCustomClassMessage.newBuilder();
+    inputMessage.setString("writtenString");
+
+    Path outputPath = new WriteUsingMR().write(new Message[]{inputMessage.build()});
+    ReadUsingMR readUsingMR = new ReadUsingMR();
+    String customClass = SecondCustomClassMessage.class.getName();
+    ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
+    List<Message> result = readUsingMR.read(outputPath);
+
+    assertEquals(1, result.size());
+    Message msg = result.get(0);
+    assertFalse("Class from header returned.",
+            msg instanceof FirstCustomClassMessage);
+    assertTrue("Custom class was not used",
+            msg instanceof SecondCustomClassMessage);
+
+    String stringValue;
+    stringValue = ((SecondCustomClassMessage) msg).getString();
+    assertEquals("writtenString", stringValue);
   }
 
   /**

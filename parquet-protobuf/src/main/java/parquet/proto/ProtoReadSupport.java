@@ -46,6 +46,16 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
     configuration.set(PB_REQUESTED_PROJECTION, requestedProjection);
   }
 
+  /**
+   * Set name of protobuf class to be used for reading data.
+   * If no class is set, value from file header is used.
+   * Note that the value in header is present only if the file was written
+   * using parquet-protobuf project, it will fail otherwise.
+   * */
+  public static void setProtobufClass(Configuration configuration, String protobufClass) {
+    configuration.set(PB_CLASS, protobufClass);
+  }
+
   @Override
   public ReadContext init(InitContext context) {
     String requestedProjectionString = context.getConfiguration().get(PB_REQUESTED_PROJECTION);
@@ -63,16 +73,22 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
   @Override
   public RecordMaterializer<T> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema, ReadContext readContext) {
-    String strProtoClass = keyValueMetaData.get(PB_CLASS);
+    String headerProtoClass = keyValueMetaData.get(PB_CLASS);
+    String configuredProtoClass = configuration.get(PB_CLASS);
 
-    if (strProtoClass == null) {
+    if (configuredProtoClass != null) {
+      LOG.debug("Replacing class " + headerProtoClass + " by " + configuredProtoClass);
+      headerProtoClass = configuredProtoClass;
+    }
+
+    if (headerProtoClass == null) {
       throw new RuntimeException("I Need parameter " + PB_CLASS + " with Protocol Buffer class");
     }
 
-    LOG.debug("Reading data with Protocol Buffer class" + strProtoClass);
+    LOG.debug("Reading data with Protocol Buffer class " + headerProtoClass);
 
     MessageType requestedSchema = readContext.getRequestedSchema();
-    Class<? extends Message> protobufClass = Protobufs.getProtobufClass(strProtoClass);
+    Class<? extends Message> protobufClass = Protobufs.getProtobufClass(headerProtoClass);
     return new ProtoRecordMaterializer(requestedSchema, protobufClass);
   }
 
