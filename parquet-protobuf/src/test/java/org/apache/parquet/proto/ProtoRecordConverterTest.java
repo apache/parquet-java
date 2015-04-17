@@ -16,18 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.proto;
+package org.apache.parquet.proto;
 
 import com.google.protobuf.ByteString;
 import org.junit.Test;
-import parquet.proto.test.TestProtobuf;
+import org.apache.parquet.proto.test.TestProtobuf;
 
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static parquet.proto.TestUtils.testData;
-import static parquet.proto.test.TestProtobuf.SchemaConverterAllDatatypes;
+import static org.apache.parquet.proto.TestUtils.testData;
+import static org.apache.parquet.proto.test.TestProtobuf.SchemaConverterAllDatatypes;
 
 public class ProtoRecordConverterTest {
 

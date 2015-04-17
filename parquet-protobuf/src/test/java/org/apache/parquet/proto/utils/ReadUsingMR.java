@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.proto.utils;
+package org.apache.parquet.proto.utils;
 
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
@@ -26,7 +26,7 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
-import parquet.proto.ProtoParquetInputFormat;
+import org.apache.parquet.proto.ProtoParquetInputFormat;
 
 import java.io.IOException;
 import java.util.ArrayList;

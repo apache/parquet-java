@@ -16,16 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.proto;
+package org.apache.parquet.proto;
 
 import com.google.protobuf.Message;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
-import parquet.io.api.Binary;
-import parquet.io.api.RecordConsumer;
-import parquet.proto.test.TestProtobuf;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.proto.test.TestProtobuf;
 
 public class ProtoWriteSupportTest {
 

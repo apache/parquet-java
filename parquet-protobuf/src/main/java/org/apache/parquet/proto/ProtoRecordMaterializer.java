@@ -16,23 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.proto;
+package org.apache.parquet.proto;
 
+import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
-import org.apache.hadoop.mapreduce.Job;
-import parquet.hadoop.ParquetInputFormat;
-import parquet.hadoop.util.ContextUtil;
+import org.apache.parquet.io.api.GroupConverter;
+import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.schema.MessageType;
 
-/**
- * A Hadoop {@link org.apache.hadoop.mapreduce.InputFormat} for Parquet files.
- */
-public class ProtoParquetInputFormat<T extends MessageOrBuilder> extends ParquetInputFormat<T> {
-  public ProtoParquetInputFormat() {
-    super(ProtoReadSupport.class);
+class ProtoRecordMaterializer<T extends MessageOrBuilder> extends RecordMaterializer<T> {
+
+  private final ProtoRecordConverter<T> root;
+
+  public ProtoRecordMaterializer(MessageType requestedSchema, Class<? extends Message> protobufClass) {
+    this.root = new ProtoRecordConverter<T>(protobufClass, requestedSchema);
   }
 
-  public static void setRequestedProjection(Job job, String requestedProjection) {
-    ProtoReadSupport.setRequestedProjection(ContextUtil.getConfiguration(job), requestedProjection);
+  @Override
+  public T getCurrentRecord() {
+    return root.getCurrentRecord();
   }
 
+  @Override
+  public GroupConverter getRootConverter() {
+    return root;
+  }
 }

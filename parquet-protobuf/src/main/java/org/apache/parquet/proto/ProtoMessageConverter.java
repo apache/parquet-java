@@ -16,21 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.proto;
+package org.apache.parquet.proto;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
-import parquet.column.Dictionary;
-import parquet.io.InvalidRecordException;
-import parquet.io.api.Binary;
-import parquet.io.api.Converter;
-import parquet.io.api.GroupConverter;
-import parquet.io.api.PrimitiveConverter;
-import parquet.schema.GroupType;
-import parquet.schema.IncompatibleSchemaModificationException;
-import parquet.schema.Type;
+import org.apache.parquet.column.Dictionary;
+import org.apache.parquet.io.InvalidRecordException;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.Converter;
+import org.apache.parquet.io.api.GroupConverter;
+import org.apache.parquet.io.api.PrimitiveConverter;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.IncompatibleSchemaModificationException;
+import org.apache.parquet.schema.Type;
 
 import java.util.HashMap;
 import java.util.List;
@@ -201,7 +201,7 @@ class ProtoMessageConverter extends GroupConverter {
 
     /**
      * Translates given parquet enum value to protocol buffer enum value.
-     * @throws parquet.io.InvalidRecordException is there is no corresponding value.
+     * @throws org.apache.parquet.io.InvalidRecordException is there is no corresponding value.
      * */
     private Descriptors.EnumValueDescriptor translateEnumValue(Binary binaryValue) {
       Descriptors.EnumValueDescriptor protoValue = enumLookup.get(binaryValue);

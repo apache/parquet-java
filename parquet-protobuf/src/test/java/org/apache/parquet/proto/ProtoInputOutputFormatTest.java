@@ -16,16 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.proto;
+package org.apache.parquet.proto;
 
 import com.google.protobuf.Message;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
-import parquet.Log;
-import parquet.proto.utils.ReadUsingMR;
-import parquet.proto.utils.WriteUsingMR;
-import parquet.proto.test.TestProtobuf;
+import org.apache.parquet.Log;
+import org.apache.parquet.proto.utils.ReadUsingMR;
+import org.apache.parquet.proto.utils.WriteUsingMR;
+import org.apache.parquet.proto.test.TestProtobuf;
 
 import java.util.List;
 

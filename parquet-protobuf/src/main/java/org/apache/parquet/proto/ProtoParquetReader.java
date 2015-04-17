@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.proto;
+package org.apache.parquet.proto;
 
 import java.io.IOException;
 
@@ -24,8 +24,8 @@ import com.google.protobuf.MessageOrBuilder;
 
 import org.apache.hadoop.fs.Path;
 
-import parquet.filter.UnboundRecordFilter;
-import parquet.hadoop.ParquetReader;
+import org.apache.parquet.filter.UnboundRecordFilter;
+import org.apache.parquet.hadoop.ParquetReader;
 
 /**
  * Read Protobuf records from a Parquet file.

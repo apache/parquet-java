@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.proto;
+package org.apache.parquet.proto;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.DescriptorProtos;
@@ -26,16 +26,16 @@ import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.TextFormat;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
-import parquet.Log;
-import parquet.hadoop.BadConfigurationException;
-import parquet.hadoop.api.WriteSupport;
-import parquet.io.InvalidRecordException;
-import parquet.io.api.Binary;
-import parquet.io.api.RecordConsumer;
-import parquet.schema.GroupType;
-import parquet.schema.IncompatibleSchemaModificationException;
-import parquet.schema.MessageType;
-import parquet.schema.Type;
+import org.apache.parquet.Log;
+import org.apache.parquet.hadoop.BadConfigurationException;
+import org.apache.parquet.hadoop.api.WriteSupport;
+import org.apache.parquet.io.InvalidRecordException;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.IncompatibleSchemaModificationException;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.Type;
 
 import java.lang.reflect.Array;
 import java.util.HashMap;

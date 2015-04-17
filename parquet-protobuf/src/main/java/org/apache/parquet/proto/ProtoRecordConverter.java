@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.proto;
+package org.apache.parquet.proto;
 
 
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
-import parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageType;
 
 /**
  * Converts data content of root message from Protocol Buffer message to parquet message.
