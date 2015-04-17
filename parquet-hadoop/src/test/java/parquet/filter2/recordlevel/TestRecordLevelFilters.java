@@ -35,10 +35,12 @@ import parquet.example.data.Group;
 import parquet.filter2.compat.FilterCompat;
 import parquet.filter2.predicate.FilterPredicate;
 import parquet.filter2.predicate.Operators.BinaryColumn;
+import parquet.filter2.predicate.Operators.IntColumn;
 import parquet.filter2.predicate.Operators.DoubleColumn;
 import parquet.filter2.predicate.Operators.LongColumn;
 import parquet.filter2.predicate.Statistics;
 import parquet.filter2.predicate.UserDefinedPredicate;
+import parquet.filter2.recordlevel.FlatSchemaWriter.FlatSchema;
 import parquet.filter2.recordlevel.PhoneBookWriter.Location;
 import parquet.filter2.recordlevel.PhoneBookWriter.PhoneNumber;
 import parquet.filter2.recordlevel.PhoneBookWriter.User;
@@ -47,6 +49,7 @@ import parquet.io.api.Binary;
 import static org.junit.Assert.assertEquals;
 import static parquet.filter2.predicate.FilterApi.and;
 import static parquet.filter2.predicate.FilterApi.binaryColumn;
+import static parquet.filter2.predicate.FilterApi.intColumn;
 import static parquet.filter2.predicate.FilterApi.doubleColumn;
 import static parquet.filter2.predicate.FilterApi.longColumn;
 import static parquet.filter2.predicate.FilterApi.eq;
@@ -93,17 +96,41 @@ public class TestRecordLevelFilters {
     return users;
   }
 
+  public static List<FlatSchema> makeRecords() {
+    List<FlatSchema> records = new ArrayList<FlatSchema>();
+
+    records.add(new FlatSchema(17, 45, null, null, 89, 91.0, 78));
+
+    records.add(new FlatSchema(18, 87, "bob", "opera", 90, 12.0, 104));
+
+    records.add(new FlatSchema(19, 109, "test", "ie", 91, 45.7, 116));
+
+    records.add(new FlatSchema(20, 119, "test", "firefox", 92, 67.9, 119));
+
+    records.add(new FlatSchema(21, 127, "test", "chrome", 93, 89.2, 189));
+
+    return records;
+  }
+
   private static File phonebookFile;
+  private static File testBookFile;
   private static List<User> users;
+  private static List<FlatSchema> records;
 
   @BeforeClass
   public static void setup() throws IOException{
     users = makeUsers();
+    records = makeRecords();
     phonebookFile = PhoneBookWriter.writeToFile(users);
+    testBookFile = FlatSchemaWriter.writeToFile(records);
   }
 
   private static interface UserFilter {
     boolean keep(User u);
+  }
+
+  private static interface FlatSchemaFilter {
+    boolean keep(FlatSchema u);
   }
 
   private static List<Group> getExpected(UserFilter f) {
@@ -116,7 +143,27 @@ public class TestRecordLevelFilters {
     return expected;
   }
 
+  private static List<Group> getExpected(FlatSchemaFilter f) {
+    List<Group> expected = new ArrayList<Group>();
+    for (FlatSchema u : records) {
+      if (f.keep(u)) {
+        expected.add(FlatSchemaWriter.groupFromUser(u));
+      }
+    }
+    return expected;
+  }
+
   private static void assertFilter(List<Group> found, UserFilter f) {
+    List<Group> expected = getExpected(f);
+    assertEquals(expected.size(), found.size());
+    Iterator<Group> expectedIter = expected.iterator();
+    Iterator<Group> foundIter = found.iterator();
+    while(expectedIter.hasNext()) {
+      assertEquals(expectedIter.next().toString(), foundIter.next().toString());
+    }
+  }
+
+  private static void assertFilter(List<Group> found, FlatSchemaFilter f) {
     List<Group> expected = getExpected(f);
     assertEquals(expected.size(), found.size());
     Iterator<Group> expectedIter = expected.iterator();
@@ -271,6 +318,27 @@ public class TestRecordLevelFilters {
         }
 
         return (lon != null && lon > 150.0 && lat != null) || "alice".equals(name);
+      }
+    });
+  }
+
+  @Test
+  public void testComplexFlatRecords() throws Exception {
+    BinaryColumn col2 = binaryColumn("col2");
+    DoubleColumn col5 = doubleColumn("col5");
+    IntColumn col4 = intColumn("col4");
+
+    FilterPredicate pred = and(eq(col2, Binary.fromString("test")), or(eq(col5, 89.2), eq(col4, 92)));
+    List<Group> found = PhoneBookWriter.readFile(testBookFile, FilterCompat.get(pred));
+
+    assertFilter(found, new FlatSchemaFilter() {
+      @Override
+      public boolean keep(FlatSchema u) {
+        String col2 = u.getCol2();
+        Double col5 = u.col5();
+        long col4 = u.col4();
+
+        return (((col5 == 89.2)) || col4 == 92) && "test".equals(col2);
       }
     });
   }
