@@ -7,7 +7,7 @@
     <version>14</version>
   </parent>
 
-  <groupId>com.twitter</groupId>
+  <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
   <version>1.7.0-incubating-SNAPSHOT</version>
   <packaging>pom</packaging>
