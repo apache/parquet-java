@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.cascading;
+package org.apache.parquet.cascading;
 
 import java.util.Map;
 import java.io.IOException;
@@ -29,10 +29,10 @@ import cascading.tuple.Tuple;
 import cascading.tuple.Fields;
 import cascading.flow.hadoop.util.HadoopUtil;
 
-import parquet.hadoop.api.ReadSupport;
-import parquet.io.api.RecordMaterializer;
-import parquet.schema.MessageType;
-import parquet.cascading.convert.TupleRecordMaterializer;
+import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.cascading.convert.TupleRecordMaterializer;
 
 
 public class TupleReadSupport extends ReadSupport<Tuple> {

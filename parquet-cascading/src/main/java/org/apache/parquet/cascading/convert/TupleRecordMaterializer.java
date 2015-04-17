@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.cascading.convert;
+package org.apache.parquet.cascading.convert;
 
 import cascading.tuple.Tuple;
 import cascading.tuple.Fields;
 
-import parquet.io.api.GroupConverter;
-import parquet.io.api.RecordMaterializer;
-import parquet.schema.GroupType;
+import org.apache.parquet.io.api.GroupConverter;
+import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.schema.GroupType;
 
 public class TupleRecordMaterializer extends RecordMaterializer<Tuple> {
 

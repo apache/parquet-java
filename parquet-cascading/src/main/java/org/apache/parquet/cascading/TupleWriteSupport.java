@@ -16,19 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.cascading;
+package org.apache.parquet.cascading;
 
 import cascading.tuple.TupleEntry;
 import java.util.HashMap;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
-import parquet.hadoop.api.WriteSupport;
-import parquet.io.api.Binary;
-import parquet.io.api.RecordConsumer;
-import parquet.schema.MessageType;
-import parquet.schema.MessageTypeParser;
-import parquet.schema.PrimitiveType;
-import parquet.schema.Type;
+import org.apache.parquet.hadoop.api.WriteSupport;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
 
 /**
  *

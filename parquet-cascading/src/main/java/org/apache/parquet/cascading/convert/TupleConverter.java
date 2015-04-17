@@ -16,21 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.cascading.convert;
+package org.apache.parquet.cascading.convert;
 
 import cascading.tuple.Tuple;
 
-import parquet.io.ParquetDecodingException;
-import parquet.io.api.Binary;
-import parquet.io.api.Converter;
-import parquet.io.api.GroupConverter;
-import parquet.io.api.PrimitiveConverter;
-import parquet.pig.TupleConversionException;
-import parquet.schema.GroupType;
-import parquet.schema.OriginalType;
-import parquet.schema.PrimitiveType;
-import parquet.schema.Type;
-import parquet.schema.Type.Repetition;
+import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.Converter;
+import org.apache.parquet.io.api.GroupConverter;
+import org.apache.parquet.io.api.PrimitiveConverter;
+import org.apache.parquet.pig.TupleConversionException;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Type.Repetition;
 
 public class TupleConverter extends GroupConverter {
 

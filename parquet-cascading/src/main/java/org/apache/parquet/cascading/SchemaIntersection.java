@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.cascading;
+package org.apache.parquet.cascading;
 
-import parquet.schema.MessageType;
-import parquet.schema.Type;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.Type;
 
 import cascading.tuple.Fields;
 

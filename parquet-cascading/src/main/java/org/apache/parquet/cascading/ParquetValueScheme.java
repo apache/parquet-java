@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.cascading;
+package org.apache.parquet.cascading;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -32,13 +32,13 @@ import cascading.scheme.SourceCall;
 import cascading.tap.Tap;
 import cascading.tuple.Tuple;
 import cascading.tuple.TupleEntry;
-import parquet.filter2.predicate.FilterPredicate;
-import parquet.hadoop.ParquetInputFormat;
-import parquet.hadoop.mapred.Container;
-import parquet.hadoop.thrift.ParquetThriftInputFormat;
-import parquet.hadoop.thrift.ThriftReadSupport;
+import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.hadoop.ParquetInputFormat;
+import org.apache.parquet.hadoop.mapred.Container;
+import org.apache.parquet.hadoop.thrift.ParquetThriftInputFormat;
+import org.apache.parquet.hadoop.thrift.ThriftReadSupport;
 
-import static parquet.Preconditions.checkNotNull;
+import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
  * A Cascading Scheme that returns a simple Tuple with a single value, the "value" object

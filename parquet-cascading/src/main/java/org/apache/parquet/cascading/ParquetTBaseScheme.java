@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.cascading;
+package org.apache.parquet.cascading;
 
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
@@ -25,13 +25,13 @@ import org.apache.thrift.TBase;
 
 import cascading.flow.FlowProcess;
 import cascading.tap.Tap;
-import parquet.filter2.predicate.FilterPredicate;
-import parquet.hadoop.ParquetInputFormat;
-import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
-import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
-import parquet.hadoop.thrift.ThriftReadSupport;
-import parquet.hadoop.thrift.TBaseWriteSupport;
-import parquet.thrift.TBaseRecordConverter;
+import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.hadoop.ParquetInputFormat;
+import org.apache.parquet.hadoop.mapred.DeprecatedParquetInputFormat;
+import org.apache.parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
+import org.apache.parquet.hadoop.thrift.ThriftReadSupport;
+import org.apache.parquet.hadoop.thrift.TBaseWriteSupport;
+import org.apache.parquet.thrift.TBaseRecordConverter;
 
 public class ParquetTBaseScheme<T extends TBase<?,?>> extends ParquetValueScheme<T> {
 

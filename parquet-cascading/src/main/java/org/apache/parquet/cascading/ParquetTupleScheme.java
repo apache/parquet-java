@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
- package parquet.cascading;
+ package org.apache.parquet.cascading;
 
 import java.io.IOException;
 import java.util.List;
@@ -36,16 +36,16 @@ import cascading.tap.hadoop.Hfs;
 import cascading.tuple.Fields;
 import cascading.tuple.Tuple;
 import cascading.tuple.TupleEntry;
-import parquet.filter2.predicate.FilterPredicate;
-import parquet.hadoop.Footer;
-import parquet.hadoop.ParquetInputFormat;
-import parquet.hadoop.ParquetOutputFormat;
-import parquet.hadoop.mapred.Container;
-import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
-import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
-import parquet.schema.MessageType;
+import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.hadoop.Footer;
+import org.apache.parquet.hadoop.ParquetInputFormat;
+import org.apache.parquet.hadoop.ParquetOutputFormat;
+import org.apache.parquet.hadoop.mapred.Container;
+import org.apache.parquet.hadoop.mapred.DeprecatedParquetInputFormat;
+import org.apache.parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
+import org.apache.parquet.schema.MessageType;
 
-import static parquet.Preconditions.checkNotNull;
+import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
   * A Cascading Scheme that converts Parquet groups into Cascading tuples.
