@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.tools.command;
+package org.apache.parquet.tools.command;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -37,28 +37,28 @@ import org.apache.commons.cli.Options;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
-import parquet.column.ColumnDescriptor;
-import parquet.column.ColumnReader;
-import parquet.column.impl.ColumnReadStoreImpl;
-import parquet.column.page.DataPage;
-import parquet.column.page.DataPage.Visitor;
-import parquet.column.page.DataPageV1;
-import parquet.column.page.DataPageV2;
-import parquet.column.page.DictionaryPage;
-import parquet.column.page.PageReadStore;
-import parquet.column.page.PageReader;
-import parquet.hadoop.ParquetFileReader;
-import parquet.hadoop.metadata.BlockMetaData;
-import parquet.hadoop.metadata.ColumnChunkMetaData;
-import parquet.hadoop.metadata.ParquetMetadata;
-import parquet.io.api.Binary;
-import parquet.io.api.Converter;
-import parquet.io.api.GroupConverter;
-import parquet.io.api.PrimitiveConverter;
-import parquet.schema.MessageType;
-import parquet.tools.util.MetadataUtils;
-import parquet.tools.util.PrettyPrintWriter;
-import parquet.tools.util.PrettyPrintWriter.WhiteSpaceHandler;
+import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.ColumnReader;
+import org.apache.parquet.column.impl.ColumnReadStoreImpl;
+import org.apache.parquet.column.page.DataPage;
+import org.apache.parquet.column.page.DataPage.Visitor;
+import org.apache.parquet.column.page.DataPageV1;
+import org.apache.parquet.column.page.DataPageV2;
+import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.page.PageReadStore;
+import org.apache.parquet.column.page.PageReader;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.Converter;
+import org.apache.parquet.io.api.GroupConverter;
+import org.apache.parquet.io.api.PrimitiveConverter;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.tools.util.MetadataUtils;
+import org.apache.parquet.tools.util.PrettyPrintWriter;
+import org.apache.parquet.tools.util.PrettyPrintWriter.WhiteSpaceHandler;
 
 import com.google.common.base.Joiner;
 

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.tools;
+package org.apache.parquet.tools;
 
 import java.io.IOException;
 
@@ -36,8 +36,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
-import parquet.tools.command.Command;
-import parquet.tools.command.Registry;
+import org.apache.parquet.tools.command.Command;
+import org.apache.parquet.tools.command.Registry;
 
 public class Main {
   public static final Options OPTIONS;

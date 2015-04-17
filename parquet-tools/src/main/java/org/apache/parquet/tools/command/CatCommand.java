@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.tools.command;
+package org.apache.parquet.tools.command;
 
 import java.io.PrintWriter;
 
@@ -26,10 +26,10 @@ import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.hadoop.fs.Path;
 
-import parquet.hadoop.ParquetReader;
-import parquet.tools.Main;
-import parquet.tools.read.SimpleReadSupport;
-import parquet.tools.read.SimpleRecord;
+import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.tools.Main;
+import org.apache.parquet.tools.read.SimpleReadSupport;
+import org.apache.parquet.tools.read.SimpleRecord;
 
 public class CatCommand extends ArgsOnlyCommand {
   public static final String[] USAGE = new String[] {

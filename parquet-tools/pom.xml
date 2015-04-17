@@ -83,7 +83,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>parquet.tools.Main</mainClass>
+              <mainClass>org.apache.parquet.tools.Main</mainClass>
             </manifest>
           </archive>
         </configuration>

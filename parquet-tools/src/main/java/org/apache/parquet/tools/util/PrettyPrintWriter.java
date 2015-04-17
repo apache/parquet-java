@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.tools.util;
+package org.apache.parquet.tools.util;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -26,7 +26,7 @@ import java.util.Formatter;
 import java.util.List;
 import java.util.Locale;
 
-import parquet.tools.Main;
+import org.apache.parquet.tools.Main;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;

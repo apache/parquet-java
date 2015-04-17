@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,26 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.tools.read;
+package org.apache.parquet.tools.read;
+
+import com.google.common.collect.Maps;
 
 import java.util.Map;
 
-import org.apache.hadoop.conf.Configuration;
-
-import parquet.hadoop.api.InitContext;
-import parquet.hadoop.api.ReadSupport;
-import parquet.io.api.RecordMaterializer;
-import parquet.schema.MessageType;
-
-public class SimpleReadSupport extends ReadSupport<SimpleRecord> {
+public class SimpleMapRecord extends SimpleRecord {
   @Override
-  public RecordMaterializer<SimpleRecord> prepareForRead(Configuration conf, Map<String,String> metaData, MessageType schema, ReadContext context) {
-    return new SimpleRecordMaterializer(schema);
-  }
-
-  @Override
-  public ReadContext init(InitContext context) {
-    return new ReadContext(context.getFileSchema());
+  protected Object toJsonObject() {
+    Map<String, Object> result = Maps.newLinkedHashMap();
+    for (NameValue value : values) {
+      String key = null;
+      Object val = null;
+      for (NameValue kv : ((SimpleRecord) value.getValue()).values) {
+        if (kv.getName().equals("key")) {
+          key = (String) kv.getValue();
+        } else if (kv.getName().equals("value")) {
+          val = toJsonValue(kv.getValue());
+        }
+      }
+      result.put(key, val);
+    }
+    return result;
   }
 }
-

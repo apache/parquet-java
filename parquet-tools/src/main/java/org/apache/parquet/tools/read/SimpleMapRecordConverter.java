@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.tools.read;
+package org.apache.parquet.tools.read;
 
-import parquet.schema.GroupType;
+import org.apache.parquet.schema.GroupType;
 
 public class SimpleMapRecordConverter extends SimpleRecordConverter {
 

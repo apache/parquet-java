@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.tools.read;
+package org.apache.parquet.tools.read;
 
 import java.io.IOException;
 import java.io.PrintWriter;

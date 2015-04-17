@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.tools.command;
+package org.apache.parquet.tools.command;
 
 import java.text.DecimalFormat;
 
@@ -29,13 +29,13 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
-import parquet.hadoop.ParquetFileReader;
-import parquet.hadoop.metadata.ParquetMetadata;
-import parquet.hadoop.util.HiddenFileFilter;
-import parquet.schema.MessageType;
-import parquet.tools.Main;
-import parquet.tools.util.MetadataUtils;
-import parquet.tools.util.PrettyPrintWriter;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HiddenFileFilter;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.tools.Main;
+import org.apache.parquet.tools.util.MetadataUtils;
+import org.apache.parquet.tools.util.PrettyPrintWriter;
 
 public class ShowSchemaCommand extends ArgsOnlyCommand {
   public static final String[] USAGE = new String[] {

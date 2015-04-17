@@ -16,15 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.tools.command;
+package org.apache.parquet.tools.read;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.Options;
+import java.util.Map;
 
-public interface Command {
-  Options getOptions();
-  boolean supportsExtraArgs();
-  public String[] getUsageDescription();
+import org.apache.hadoop.conf.Configuration;
 
-  void execute(CommandLine options) throws Exception;
+import org.apache.parquet.hadoop.api.InitContext;
+import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.schema.MessageType;
+
+public class SimpleReadSupport extends ReadSupport<SimpleRecord> {
+  @Override
+  public RecordMaterializer<SimpleRecord> prepareForRead(Configuration conf, Map<String,String> metaData, MessageType schema, ReadContext context) {
+    return new SimpleRecordMaterializer(schema);
+  }
+
+  @Override
+  public ReadContext init(InitContext context) {
+    return new ReadContext(context.getFileSchema());
+  }
 }
+

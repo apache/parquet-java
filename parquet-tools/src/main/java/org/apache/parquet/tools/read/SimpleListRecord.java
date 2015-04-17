@@ -16,19 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.tools.read;
+package org.apache.parquet.tools.read;
 
-import parquet.schema.GroupType;
-
-public class SimpleListRecordConverter extends SimpleRecordConverter {
-
-  public SimpleListRecordConverter(GroupType schema, String name, SimpleRecordConverter parent) {
-    super(schema, name, parent);
-  }
-
+public class SimpleListRecord extends SimpleRecord {
   @Override
-  public void start() {
-    record = new SimpleListRecord();
+  protected Object toJsonObject() {
+    Object[] result = new Object[values.size()];
+    for (int i = 0; i < values.size(); i++) {
+      result[i] = toJsonValue(values.get(i).getValue());
+    }
+    return result;
   }
-
 }

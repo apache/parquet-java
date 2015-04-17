@@ -16,21 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.tools.command;
+package org.apache.parquet.tools.command;
 
-import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 
-import parquet.hadoop.Footer;
-import parquet.hadoop.ParquetFileReader;
-import parquet.hadoop.metadata.ParquetMetadata;
-import parquet.tools.util.MetadataUtils;
-import parquet.tools.util.PrettyPrintWriter;
-import parquet.tools.util.PrettyPrintWriter.WhiteSpaceHandler;
+import org.apache.parquet.hadoop.Footer;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.tools.util.MetadataUtils;
+import org.apache.parquet.tools.util.PrettyPrintWriter;
+import org.apache.parquet.tools.util.PrettyPrintWriter.WhiteSpaceHandler;
 
 import java.util.List;
 

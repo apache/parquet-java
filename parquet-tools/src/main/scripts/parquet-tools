@@ -95,4 +95,4 @@ if [ "${TERMOUT}" == "true" ]; then
 fi
 
 # Run the application
-exec ${JAVACMD} ${DEFAULT_JVM_OPTS} ${JAVA_OPTS} ${PARQUET_TOOLS_OPTS} -classpath "${APPPATH}:${APPPATH}/lib/*" parquet.tools.Main "$@"
+exec ${JAVACMD} ${DEFAULT_JVM_OPTS} ${JAVA_OPTS} ${PARQUET_TOOLS_OPTS} -classpath "${APPPATH}:${APPPATH}/lib/*" org.apache.parquet.tools.Main "$@"
