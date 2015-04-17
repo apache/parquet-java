@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.scrooge;
+package org.apache.parquet.scrooge;
 
 import com.twitter.scrooge.ThriftStructCodec;
 import com.twitter.scrooge.ThriftStructFieldInfo;
-import parquet.thrift.struct.ThriftField;
-import parquet.thrift.struct.ThriftType;
-import parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
-import parquet.thrift.struct.ThriftTypeID;
+import org.apache.parquet.thrift.struct.ThriftField;
+import org.apache.parquet.thrift.struct.ThriftType;
+import org.apache.parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
+import org.apache.parquet.thrift.struct.ThriftTypeID;
 import scala.collection.JavaConversions;
 import scala.collection.JavaConversions$;
 import scala.collection.Seq;
@@ -34,8 +34,8 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import static parquet.thrift.struct.ThriftField.Requirement;
-import static parquet.thrift.struct.ThriftField.Requirement.*;
+import static org.apache.parquet.thrift.struct.ThriftField.Requirement;
+import static org.apache.parquet.thrift.struct.ThriftField.Requirement.*;
 
 /**
  * Class to convert a scrooge generated class to {@link ThriftType.StructType}. {@link ScroogeReadSupport } uses this

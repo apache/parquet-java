@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.scrooge;
+package org.apache.parquet.scrooge;
 
 import cascading.flow.Flow;
 import cascading.flow.FlowProcess;
@@ -45,15 +45,15 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.junit.Test;
-import parquet.cascading.ParquetValueScheme.Config;
-import parquet.hadoop.thrift.ThriftToParquetFileWriter;
-import parquet.hadoop.util.ContextUtil;
-import parquet.scrooge.test.TestPersonWithAllInformation;
-import parquet.thrift.test.Address;
-import parquet.thrift.test.Phone;
-import parquet.thrift.test.RequiredPrimitiveFixture;
-import parquet.scrooge.test.Name;
-import parquet.scrooge.test.Name$;
+import org.apache.parquet.cascading.ParquetValueScheme.Config;
+import org.apache.parquet.hadoop.thrift.ThriftToParquetFileWriter;
+import org.apache.parquet.hadoop.util.ContextUtil;
+import org.apache.parquet.scrooge.test.TestPersonWithAllInformation;
+import org.apache.parquet.thrift.test.Address;
+import org.apache.parquet.thrift.test.Phone;
+import org.apache.parquet.thrift.test.RequiredPrimitiveFixture;
+import org.apache.parquet.scrooge.test.Name;
+import org.apache.parquet.scrooge.test.Name$;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -80,14 +80,14 @@ public class ParquetScroogeSchemeTest {
   public void testWritePrimitveThriftReadScrooge() throws Exception {
     RequiredPrimitiveFixture toWrite = new RequiredPrimitiveFixture(true, (byte)2, (short)3, 4, (long)5, 6.0, "7");
     toWrite.setInfo_string("it's info");
-    verifyScroogeRead(thriftRecords(toWrite), parquet.scrooge.test.RequiredPrimitiveFixture.class, "RequiredPrimitiveFixture(true,2,3,4,5,6.0,7,Some(it's info))\n", "**");
+    verifyScroogeRead(thriftRecords(toWrite), org.apache.parquet.scrooge.test.RequiredPrimitiveFixture.class, "RequiredPrimitiveFixture(true,2,3,4,5,6.0,7,Some(it's info))\n", "**");
   }
 
   @Test
   public void testNestedReadingInScrooge() throws Exception {
-    Map<String, parquet.thrift.test.Phone> phoneMap = new HashMap<String, Phone>();
-    phoneMap.put("key1", new parquet.thrift.test.Phone("111", "222"));
-    parquet.thrift.test.TestPersonWithAllInformation toWrite = new parquet.thrift.test.TestPersonWithAllInformation(new parquet.thrift.test.Name("first"), new Address("my_street", "my_zip"), phoneMap);
+    Map<String, org.apache.parquet.thrift.test.Phone> phoneMap = new HashMap<String, Phone>();
+    phoneMap.put("key1", new org.apache.parquet.thrift.test.Phone("111", "222"));
+    org.apache.parquet.thrift.test.TestPersonWithAllInformation toWrite = new org.apache.parquet.thrift.test.TestPersonWithAllInformation(new org.apache.parquet.thrift.test.Name("first"), new Address("my_street", "my_zip"), phoneMap);
     toWrite.setInfo("my_info");
 
     String expected = "TestPersonWithAllInformation(Name(first,None),None,Address(my_street,my_zip),None,Some(my_info),Map(key1 -> Phone(111,222)),None,None)\n";

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.scrooge;
+package org.apache.parquet.scrooge;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
@@ -24,10 +24,10 @@ import org.apache.thrift.protocol.TProtocol;
 import com.twitter.scrooge.ThriftStruct;
 import com.twitter.scrooge.ThriftStructCodec;
 
-import parquet.schema.MessageType;
-import parquet.thrift.ThriftReader;
-import parquet.thrift.ThriftRecordConverter;
-import parquet.thrift.struct.ThriftType.StructType;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.thrift.ThriftReader;
+import org.apache.parquet.thrift.ThriftRecordConverter;
+import org.apache.parquet.thrift.struct.ThriftType.StructType;
 
 public class ScroogeRecordConverter<T extends ThriftStruct> extends ThriftRecordConverter<T> {
 

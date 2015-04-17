@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.scrooge;
+package org.apache.parquet.scrooge;
 
-import parquet.hadoop.thrift.ParquetThriftInputFormat;
+import org.apache.parquet.hadoop.thrift.ParquetThriftInputFormat;
 
 /**
  * Use this class to read Scrooge records from parquet file

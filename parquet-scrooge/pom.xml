@@ -190,12 +190,12 @@
                 <outputDirectory>${project.build.directory}/generated-test-sources/scrooge</outputDirectory>
                 <thriftNamespaceMappings>
                     <thriftNamespaceMapping>
-                        <from>parquet.thrift.test</from>
-                        <to>parquet.scrooge.test</to>
+                        <from>org.apache.parquet.thrift.test</from>
+                        <to>org.apache.parquet.scrooge.test</to>
                     </thriftNamespaceMapping>
                     <thriftNamespaceMapping>
-                        <from>parquet.thrift.test.compat</from>
-                        <to>parquet.scrooge.test.compat</to>
+                        <from>org.apache.parquet.thrift.test.compat</from>
+                        <to>org.apache.parquet.scrooge.test.compat</to>
                     </thriftNamespaceMapping>
                 </thriftNamespaceMappings>
             </configuration>

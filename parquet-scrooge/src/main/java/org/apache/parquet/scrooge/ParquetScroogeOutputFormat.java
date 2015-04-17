@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.scrooge;
+package org.apache.parquet.scrooge;
 
 import com.twitter.scrooge.ThriftStruct;
 import org.apache.hadoop.conf.Configuration;
-import parquet.hadoop.ParquetOutputFormat;
+import org.apache.parquet.hadoop.ParquetOutputFormat;
 
 /**
  * Use this class to write Scrooge records to parquet

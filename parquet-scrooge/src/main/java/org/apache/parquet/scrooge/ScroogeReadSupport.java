@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.scrooge;
+package org.apache.parquet.scrooge;
 
-import parquet.hadoop.thrift.ThriftReadSupport;
-import parquet.schema.MessageType;
-import parquet.thrift.ThriftSchemaConverter;
-import parquet.thrift.projection.FieldProjectionFilter;
-import parquet.thrift.struct.ThriftType;
+import org.apache.parquet.hadoop.thrift.ThriftReadSupport;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.thrift.ThriftSchemaConverter;
+import org.apache.parquet.thrift.projection.FieldProjectionFilter;
+import org.apache.parquet.thrift.struct.ThriftType;
 
 /**
  * Read support for Scrooge

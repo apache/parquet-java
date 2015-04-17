@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.scrooge;
+package org.apache.parquet.scrooge;
 
-import parquet.ParquetRuntimeException;
+import org.apache.parquet.ParquetRuntimeException;
 
 /**
  * Throw this exception when there is an error converting a Scrooge class to

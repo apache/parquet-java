@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.scrooge;
+package org.apache.parquet.scrooge;
 
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -27,10 +27,10 @@ import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import parquet.hadoop.ParquetReader;
-import parquet.hadoop.ParquetWriter;
-import parquet.scrooge.test.StringAndBinary;
-import parquet.thrift.ThriftParquetReader;
+import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.scrooge.test.StringAndBinary;
+import org.apache.parquet.thrift.ThriftParquetReader;
 
 public class ScroogeBinaryTest {
   @Rule
@@ -53,11 +53,11 @@ public class ScroogeBinaryTest {
     writer.close();
 
     // read using the parquet-thrift version to isolate the write path
-    ParquetReader<parquet.thrift.test.binary.StringAndBinary> reader = ThriftParquetReader.<parquet.thrift.test.binary.StringAndBinary>
+    ParquetReader<org.apache.parquet.thrift.test.binary.StringAndBinary> reader = ThriftParquetReader.<org.apache.parquet.thrift.test.binary.StringAndBinary>
         build(path)
-        .withThriftClass(parquet.thrift.test.binary.StringAndBinary.class)
+        .withThriftClass(org.apache.parquet.thrift.test.binary.StringAndBinary.class)
         .build();
-    parquet.thrift.test.binary.StringAndBinary record = reader.read();
+    org.apache.parquet.thrift.test.binary.StringAndBinary record = reader.read();
     reader.close();
 
     Assert.assertEquals("String should match after serialization round trip",

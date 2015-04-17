@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package parquet.scrooge;
+package org.apache.parquet.scrooge;
 
 import com.twitter.scrooge.ThriftStruct;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.thrift.TException;
 
-import parquet.hadoop.thrift.AbstractThriftWriteSupport;
-import parquet.io.ParquetEncodingException;
-import parquet.thrift.struct.ThriftType.StructType;
+import org.apache.parquet.hadoop.thrift.AbstractThriftWriteSupport;
+import org.apache.parquet.io.ParquetEncodingException;
+import org.apache.parquet.thrift.struct.ThriftType.StructType;
 
 /**
  * Write support for Scrooge

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.scrooge;
+package org.apache.parquet.scrooge;
 
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputCollector;
@@ -26,13 +26,13 @@ import com.twitter.scrooge.ThriftStruct;
 
 import cascading.flow.FlowProcess;
 import cascading.tap.Tap;
-import parquet.cascading.ParquetValueScheme;
-import parquet.filter2.predicate.FilterPredicate;
-import parquet.hadoop.ParquetInputFormat;
-import parquet.hadoop.ParquetOutputFormat;
-import parquet.hadoop.mapred.DeprecatedParquetInputFormat;
-import parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
-import parquet.hadoop.thrift.ThriftReadSupport;
+import org.apache.parquet.cascading.ParquetValueScheme;
+import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.hadoop.ParquetInputFormat;
+import org.apache.parquet.hadoop.ParquetOutputFormat;
+import org.apache.parquet.hadoop.mapred.DeprecatedParquetInputFormat;
+import org.apache.parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
+import org.apache.parquet.hadoop.thrift.ThriftReadSupport;
 
 public class ParquetScroogeScheme<T extends ThriftStruct> extends ParquetValueScheme<T> {
 
