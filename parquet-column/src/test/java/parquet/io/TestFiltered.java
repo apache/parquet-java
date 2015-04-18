@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.junit.Test;
 
+import parquet.column.ParquetProperties;
 import parquet.column.ParquetProperties.WriterVersion;
 import parquet.column.impl.ColumnWriteStoreV1;
 import parquet.column.page.mem.MemPageStore;
@@ -33,7 +34,6 @@ import parquet.filter.ColumnPredicates.LongPredicateFunction;
 import parquet.filter.ColumnPredicates.PredicateFunction;
 import parquet.filter2.compat.FilterCompat;
 import parquet.io.api.RecordMaterializer;
-
 import static org.junit.Assert.assertEquals;
 import static parquet.example.Paper.r1;
 import static parquet.example.Paper.r2;
@@ -257,7 +257,9 @@ public class TestFiltered {
 
   private MemPageStore writeTestRecords(MessageColumnIO columnIO, int number) {
     MemPageStore memPageStore = new MemPageStore(number * 2);
-    ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(memPageStore, 800, 800, false, WriterVersion.PARQUET_1_0);
+    ColumnWriteStoreV1 columns =
+        new ColumnWriteStoreV1(memPageStore, 800, 800, false, WriterVersion.PARQUET_1_0,
+            new ParquetProperties(800, WriterVersion.PARQUET_1_0, false));
 
     GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
     for ( int i = 0; i < number; i++ ) {

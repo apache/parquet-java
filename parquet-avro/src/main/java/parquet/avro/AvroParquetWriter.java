@@ -19,12 +19,13 @@
 package parquet.avro;
 
 import java.io.IOException;
+
 import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+
 import parquet.hadoop.ParquetWriter;
-import parquet.hadoop.api.WriteSupport;
 import parquet.hadoop.metadata.CompressionCodecName;
 
 /**
@@ -41,11 +42,11 @@ public class AvroParquetWriter<T extends IndexedRecord> extends ParquetWriter<T>
    * @param pageSize
    * @throws IOException
    */
+  @Deprecated
   public AvroParquetWriter(Path file, Schema avroSchema,
       CompressionCodecName compressionCodecName, int blockSize,
       int pageSize) throws IOException {
-    super(file, AvroParquetWriter.<T>writeSupport(avroSchema),
-	      compressionCodecName, blockSize, pageSize);
+    this(file, avroSchema, compressionCodecName, blockSize, pageSize, DEFAULT_IS_DICTIONARY_ENABLED);
   }
 
   /** Create a new {@link AvroParquetWriter}.
@@ -58,12 +59,12 @@ public class AvroParquetWriter<T extends IndexedRecord> extends ParquetWriter<T>
    * @param enableDictionary Whether to use a dictionary to compress columns.
    * @throws IOException
    */
+  @Deprecated
   public AvroParquetWriter(Path file, Schema avroSchema,
                            CompressionCodecName compressionCodecName, int blockSize,
                            int pageSize, boolean enableDictionary) throws IOException {
-    super(file, AvroParquetWriter.<T>writeSupport(avroSchema),
-        compressionCodecName, blockSize, pageSize, enableDictionary,
-        DEFAULT_IS_VALIDATING_ENABLED);
+    this(file, avroSchema, compressionCodecName, blockSize, pageSize, enableDictionary,
+        new Configuration());
   }
 
   /** Create a new {@link AvroParquetWriter}. The default block size is 50 MB.The default
@@ -73,8 +74,9 @@ public class AvroParquetWriter<T extends IndexedRecord> extends ParquetWriter<T>
    * @param avroSchema The schema to write with.
    * @throws IOException
    */
+  @Deprecated
   public AvroParquetWriter(Path file, Schema avroSchema) throws IOException {
-    this(file, avroSchema, CompressionCodecName.UNCOMPRESSED,
+    this(file, avroSchema, DEFAULT_COMPRESSION_CODEC_NAME,
 	  DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
   }
 
@@ -89,18 +91,22 @@ public class AvroParquetWriter<T extends IndexedRecord> extends ParquetWriter<T>
    * @param conf The Configuration to use.
    * @throws IOException
    */
+  @Deprecated
   public AvroParquetWriter(Path file, Schema avroSchema,
                            CompressionCodecName compressionCodecName,
                            int blockSize, int pageSize, boolean enableDictionary,
                            Configuration conf) throws IOException {
-    super(file, AvroParquetWriter.<T>writeSupport(avroSchema),
+    
+    super(file, new AvroWriteSupport<T>(new AvroSchemaConverter().convert(avroSchema), avroSchema),
         compressionCodecName, blockSize, pageSize, pageSize, enableDictionary,
         DEFAULT_IS_VALIDATING_ENABLED, DEFAULT_WRITER_VERSION, conf);
   }
 
-  @SuppressWarnings("unchecked")
-  private static <T> WriteSupport<T> writeSupport(Schema avroSchema) {
-    return (WriteSupport<T>) new AvroWriteSupport(
-        new AvroSchemaConverter().convert(avroSchema), avroSchema);
+  /**
+   * Convenience method for getting a new builder
+   */
+  public static <T extends IndexedRecord> Builder<T> builder(Schema avroSchema, Path file) {
+    return new Builder<T>(new AvroWriteSupport<T>(new AvroSchemaConverter().convert(avroSchema),
+        avroSchema), file);
   }
 }

@@ -37,18 +37,37 @@ import parquet.hadoop.thrift.TBaseWriteSupport;
  */
 public class ThriftParquetWriter<T extends TBase<?,?>> extends ParquetWriter<T> {
 
+  /**
+   * @deprecated use {@link #builder(Class<T>, Path)}
+   */
+  @Deprecated
   public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName) throws IOException {
     super(file, new TBaseWriteSupport<T>(thriftClass), compressionCodecName, ParquetWriter.DEFAULT_BLOCK_SIZE, ParquetWriter.DEFAULT_PAGE_SIZE);
   }
 
+  /**
+   * @deprecated use {@link #builder(Class<T>, Path)}
+   */
+  @Deprecated
   public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName, int blockSize, int pageSize, boolean enableDictionary, boolean validating) throws IOException {
     super(file, new TBaseWriteSupport<T>(thriftClass), compressionCodecName, blockSize, pageSize, enableDictionary, validating);
   }
 
+  /**
+   * @deprecated use {@link #builder(Class<T>, Path)}
+   */
+  @Deprecated
   public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName, int blockSize, int pageSize, boolean enableDictionary, boolean validating, Configuration conf) throws IOException {
     super(file, new TBaseWriteSupport<T>(thriftClass), compressionCodecName,
         blockSize, pageSize, pageSize, enableDictionary, validating,
         DEFAULT_WRITER_VERSION, conf);
+  }
+  
+  /**
+   * Convenience method for getting a new builder for {@link ProtoParquetWriter}
+   */
+  public static <T extends TBase<?,?>> Builder<T> builder(Class<T> thriftClass, Path file) {
+    return new Builder<T>(new TBaseWriteSupport<T>(thriftClass), file);
   }
 
 }

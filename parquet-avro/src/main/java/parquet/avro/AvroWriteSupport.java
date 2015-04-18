@@ -41,7 +41,7 @@ import parquet.schema.Type;
  * Users should use {@link AvroParquetWriter} or {@link AvroParquetOutputFormat} rather than using
  * this class directly.
  */
-public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
+public class AvroWriteSupport<T extends IndexedRecord> extends WriteSupport<T> {
 
   static final String AVRO_SCHEMA = "parquet.avro.schema";
   private static final Schema MAP_KEY_SCHEMA = Schema.create(Schema.Type.STRING);
@@ -118,12 +118,12 @@ public class AvroWriteSupport extends WriteSupport<IndexedRecord> {
     }
   }
 
-  private <T> void writeArray(GroupType schema, Schema avroSchema,
-                              Collection<T> array) {
+  private <TT> void writeArray(GroupType schema, Schema avroSchema,
+                              Collection<TT> array) {
     recordConsumer.startGroup(); // group wrapper (original type LIST)
     if (array.size() > 0) {
       recordConsumer.startField("array", 0);
-      for (T elt : array) {
+      for (TT elt : array) {
         writeValue(schema.getType(0), avroSchema.getElementType(), elt);
       }
       recordConsumer.endField("array", 0);
