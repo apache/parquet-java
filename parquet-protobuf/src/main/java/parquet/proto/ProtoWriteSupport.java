@@ -24,6 +24,8 @@ import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.TextFormat;
+import com.google.protobuf.Descriptors.Descriptor;
+import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
 import parquet.Log;
@@ -210,13 +212,10 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
 
     private void writeAllFields(MessageOrBuilder pb) {
-      //returns changed fields with values. Map is ordered by id.
-      Map<Descriptors.FieldDescriptor, Object> changedPbFields = pb.getAllFields();
-
-      for (Map.Entry<Descriptors.FieldDescriptor, Object> entry : changedPbFields.entrySet()) {
-        Descriptors.FieldDescriptor fieldDescriptor = entry.getKey();
-        int fieldIndex = fieldDescriptor.getIndex();
-        fieldWriters[fieldIndex].writeField(entry.getValue());
+      Descriptor descriptor = pb.getDescriptorForType();
+      for (FieldDescriptor fd: descriptor.getFields()) {
+        int fieldIndex = fd.getIndex();
+        fieldWriters[fieldIndex].writeField(pb.getField(fd));
       }
     }
   }
