@@ -986,9 +986,9 @@ public class TestTypeBuilders {
   public void testMapWithGroupKeyAndRequiredListValue() {
     List<Type> typeList = new ArrayList<Type>();
 
-    typeList.add(new GroupType(REQUIRED, "key", new Type[]{ new PrimitiveType(REQUIRED, INT64,
+    typeList.add(new GroupType(REQUIRED, "key", new PrimitiveType(REQUIRED, INT64,
         "first"
-        )}));
+        )));
     typeList.add(new GroupType(REQUIRED, "value", OriginalType.LIST,
         new GroupType(REPEATED,
             "list",
@@ -1015,9 +1015,9 @@ public class TestTypeBuilders {
   public void testMapWithGroupKeyAndOptionalListValue() {
     List<Type> typeList = new ArrayList<Type>();
 
-    typeList.add(new GroupType(REQUIRED, "key", new Type[]{ new PrimitiveType(REQUIRED, INT64,
+    typeList.add(new GroupType(REQUIRED, "key", new PrimitiveType(REQUIRED, INT64,
         "first"
-    )}));
+    )));
     typeList.add(new GroupType(OPTIONAL, "value", OriginalType.LIST,
         new GroupType(REPEATED,
             "list",
@@ -1049,9 +1049,9 @@ public class TestTypeBuilders {
     innerMapTypeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
 
 
-    typeList.add(new GroupType(REQUIRED, "key", new Type[]{ new PrimitiveType(REQUIRED, INT64,
+    typeList.add(new GroupType(REQUIRED, "key", new PrimitiveType(REQUIRED, INT64,
         "first"
-    )}));
+    )));
     typeList.add(new GroupType(REQUIRED, "value", OriginalType.MAP,
         new GroupType(REPEATED, "map", innerMapTypeList)));
 
@@ -1082,9 +1082,9 @@ public class TestTypeBuilders {
     innerMapTypeList.add(new PrimitiveType(REQUIRED, INT64, "value"));
 
 
-    typeList.add(new GroupType(REQUIRED, "key", new Type[]{ new PrimitiveType(REQUIRED, INT64,
+    typeList.add(new GroupType(REQUIRED, "key", new PrimitiveType(REQUIRED, INT64,
         "first"
-    )}));
+    )));
     typeList.add(new GroupType(OPTIONAL, "value", OriginalType.MAP,
         new GroupType(REPEATED, "map", innerMapTypeList)));
 
@@ -1103,6 +1103,41 @@ public class TestTypeBuilders {
             .requiredValue(INT64)
         .named("myMap")
       .named("mapParent");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testMapWithNullValue() {
+    List<Type> typeList = new ArrayList<Type>();
+
+    typeList.add(new PrimitiveType(REQUIRED, INT64, "key"));
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+        typeList));
+
+    MessageType expected = new MessageType("mapParent", map);
+    GroupType actual =
+      Types.buildMessage()
+        .optionalMap()
+          .key(INT64)
+        .named("myMap")
+      .named("mapParent");
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testMapWithDefaultKeyAndNullValue() {
+    List<Type> typeList = new ArrayList<Type>();
+
+    typeList.add(new PrimitiveType(REQUIRED, BINARY, "key", OriginalType.UTF8));
+    GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
+        typeList));
+
+    MessageType expected = new MessageType("mapParent", map);
+    GroupType actual =
+        Types.buildMessage()
+          .optionalMap()
+          .named("myMap")
+        .named("mapParent");
     Assert.assertEquals(expected, actual);
   }
 

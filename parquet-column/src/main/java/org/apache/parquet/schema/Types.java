@@ -755,7 +755,8 @@ public class Types {
 
       @Override
       public P named(String name) {
-        throw new UnsupportedOperationException("Can not assign name on MapKeyBuilder");
+        parent.setKeyType(build("key"));
+        return parent.named(name);
       }
 
       @Override
@@ -965,12 +966,21 @@ public class Types {
       if (keyType == null) {
         keyType = STRING_KEY;
       }
-      return buildGroup(repetition)
-          .as(OriginalType.MAP)
-          .repeatedGroup()
-          .addFields(keyType, valueType)
-          .named("map")
-          .named(name);
+      if (valueType != null) {
+        return buildGroup(repetition)
+            .as(OriginalType.MAP)
+            .repeatedGroup()
+            .addFields(keyType, valueType)
+            .named("map")
+            .named(name);
+      } else {
+        return buildGroup(repetition)
+            .as(OriginalType.MAP)
+            .repeatedGroup()
+            .addFields(keyType)
+            .named("map")
+            .named(name);
+      }
     }
 
     public P named(String name) {
