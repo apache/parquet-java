@@ -954,6 +954,15 @@ public class PrettyPrintWriter extends PrintWriter {
     }
   }
 
+  // Taken from: http://stackoverflow.com/questions/3758606/how-to-convert-byte-size-into-human-readable-format-in-java
+  public static String humanReadableByteCount(long bytes) {
+    int unit = 1000;
+    if (bytes < unit) return bytes + " B";
+    int exp = (int) (Math.log(bytes) / Math.log(unit));
+    char pre = "KMGTPE".charAt(exp-1) ;
+    return String.format("%.1f %cB", bytes / Math.pow(unit, exp), pre);
+  }
+
   public static final class Span {
     private String span;
     private final String color;
