@@ -960,64 +960,6 @@ public class Types {
       return new MapGroupKeyBuilder<P, Q>(this);
     }
 
-    public MapValueBuilder<P, Q> value(PrimitiveTypeName type, Type.Repetition repetition) {
-      setKeyType(build("key"));
-      if (parent != null) {
-        return new MapValueBuilder<P, Q>(this,
-            type).repetition(repetition);
-      } else {
-        return new MapValueBuilder<P, Q>(this,
-            returnType, type).repetition(repetition);
-      }
-    }
-
-    public MapValueBuilder<P, Q> requiredValue(PrimitiveTypeName type) {
-      return value(type, Type.Repetition.REQUIRED);
-    }
-
-    public MapValueBuilder<P, Q> optionalValue(PrimitiveTypeName type) {
-      return value(type, Type.Repetition.OPTIONAL);
-    }
-
-    public MapGroupValueBuilder<P, Q> groupValue(Type.Repetition repetition) {
-      setKeyType(build("key"));
-      return new MapGroupValueBuilder<P, Q>(this).repetition(repetition);
-    }
-
-    public MapGroupValueBuilder<P, Q> requiredGroupValue() {
-      return groupValue(Type.Repetition.REQUIRED);
-    }
-
-    public MapGroupValueBuilder<P, Q> optionalGroupValue() {
-      return groupValue(Type.Repetition.OPTIONAL);
-    }
-
-    public MapMapValueBuilder<P, Q> mapValue(Type.Repetition repetition) {
-      setKeyType(build("key"));
-      return new MapMapValueBuilder<P, Q>(this).repetition(repetition);
-    }
-
-    public MapMapValueBuilder<P, Q> requiredMapValue() {
-      return mapValue(Type.Repetition.REQUIRED);
-    }
-
-    public MapMapValueBuilder<P, Q> optionalMapValue() {
-      return mapValue(Type.Repetition.OPTIONAL);
-    }
-
-    public MapListValueBuilder<P, Q> listValue(Type.Repetition repetition) {
-      setKeyType(build("key"));
-      return new MapListValueBuilder<P, Q>(this).repetition(repetition);
-    }
-
-    public MapListValueBuilder<P, Q> requiredListValue() {
-      return listValue(Type.Repetition.REQUIRED);
-    }
-
-    public MapListValueBuilder<P, Q> optionalListValue() {
-      return listValue(Type.Repetition.OPTIONAL);
-    }
-
     @Override
     protected Type build(String name) {
       if (keyType == null) {
