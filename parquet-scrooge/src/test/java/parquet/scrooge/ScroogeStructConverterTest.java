@@ -62,7 +62,6 @@ public class ScroogeStructConverterTest {
       ThriftType.StructType structFromThriftSchemaConverter = new ThriftSchemaConverter().toStructType(thriftClass);
       ThriftType.StructType structFromScroogeSchemaConverter = new ScroogeStructConverter().convert(scroogeClass);
 
-      assertEquals(structFromThriftSchemaConverter, structFromScroogeSchemaConverter);
       assertEquals(toParquetSchema(structFromThriftSchemaConverter), toParquetSchema(structFromScroogeSchemaConverter));
   }
 

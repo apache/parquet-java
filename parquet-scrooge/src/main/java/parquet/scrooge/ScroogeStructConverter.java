@@ -192,7 +192,7 @@ public class ScroogeStructConverter {
     ThriftType elementType = convertClassToThriftType(fieldName + "_set_elem", requirement, valueManifest);
     //Set only has one sub-field as element field, therefore using hard-coded 1 as fieldId,
     //it's the same as the solution used in ElephantBird
-    ThriftField elementField = generateFieldWithoutId(fixNestListOrSetName(fieldName), requirement, elementType);
+    ThriftField elementField = generateFieldWithoutId(fieldName, requirement, elementType);
     return new ThriftType.SetType(elementField);
   }
 
@@ -202,7 +202,7 @@ public class ScroogeStructConverter {
 
   private ThriftType convertListTypeField(String fieldName, Manifest<?> valueManifest, Requirement requirement) {
     ThriftType elementType = convertClassToThriftType(fieldName + "_list_elem", requirement, valueManifest);
-    ThriftField elementField = generateFieldWithoutId(fixNestListOrSetName(fieldName) , requirement, elementType);
+    ThriftField elementField = generateFieldWithoutId(fieldName , requirement, elementType);
     return new ThriftType.ListType(elementField);
   }
 
@@ -277,27 +277,6 @@ public class ScroogeStructConverter {
     } else {
       return convertStructFromClass(typeClass);
     }
-  }
-
-  /**
-   * There is a bug/inconsistency in ThriftStructConverter:
-   * The field name of a nested list/set has the same name as its parent. for example:
-   *  1: required list<list<int>> lm
-   * the name of the inner list is lm, but is should be lm_list_elem.
-   *
-   * This bug/inconsistency does not affect the converted parquet schema because ThriftSchemaConverter ignores the name
-   * of inner list.
-   *
-   * Here in ScroogeStructConverter the same behavior is replicated to generate the same ThriftStruct with
-   * ThriftStructConverter
-   *
-   * TODO: This fix might not be necessary since parquet mostly operates on MessageType, the ThriftStruct is an intermediate
-   * layer for generating MessageType from a thrift/scrooge class. The fix could be removed once we are confident it's
-   * safe for doing so.
-   * @return
-   */
-  private String fixNestListOrSetName(String name) {
-    return name.replaceAll("_list_elem|_set_elem", "");
   }
 
   private ThriftType convertStructTypeField(ThriftStructFieldInfo f) {
