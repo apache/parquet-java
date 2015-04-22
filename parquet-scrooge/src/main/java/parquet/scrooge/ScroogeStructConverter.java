@@ -101,6 +101,8 @@ public class ScroogeStructConverter {
         return JavaConversions$.MODULE$.asJavaIterable((scala.collection.Iterable<ThriftStructFieldInfo>)r);
       } catch (ReflectiveOperationException e) {
         throw new ScroogeSchemaConversionException("can not get field Info from: " + c.toString(), e);
+      } catch (ClassCastException e ) {
+        throw new ScroogeSchemaConversionException("can not get field Info from: " + c.toString(), e);
       }
     }
   }
