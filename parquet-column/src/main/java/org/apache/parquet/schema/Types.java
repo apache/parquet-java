@@ -925,6 +925,29 @@ public class Types {
       }
     }
 
+    public static class MapListKeyBuilder<P, Q extends BaseMapBuilder<P, Q>> extends
+        BaseListBuilder<P, MapListKeyBuilder<P, Q>> {
+      private final BaseMapBuilder<P, Q> parent;
+
+      public MapListKeyBuilder(BaseMapBuilder<P, Q> parent) {
+        super(parent.parent);
+        this.parent = parent;
+      }
+
+      public P named(String name) {
+        return super.named(name);
+      }
+
+      @Override
+      protected MapListKeyBuilder<P, Q> self() {
+        return this;
+      }
+
+      public void setKey(Type key) {
+        parent.setKeyType(key);
+      }
+    }
+
     protected void setKeyType(Type keyType) {
       this.keyType = keyType;
     }
@@ -959,6 +982,10 @@ public class Types {
 
     public MapGroupKeyBuilder<P, Q> groupKey() {
       return new MapGroupKeyBuilder<P, Q>(this);
+    }
+
+    public MapListKeyBuilder<P, Q> listKey() {
+      return new MapListKeyBuilder<P, Q>(this);
     }
 
     @Override
@@ -1024,7 +1051,6 @@ public class Types {
     public void setElementType(Type elementType) {
       this.elementType = elementType;
     }
-
 
     public static class ListElementBuilder<P, Q extends BaseListBuilder<P, Q>> extends
         BasePrimitiveBuilder<P,
@@ -1131,6 +1157,354 @@ public class Types {
       }
     }
 
+    public static class ListKeyElementBuilder<P, Q extends BaseListBuilder<P, Q>> extends
+        BasePrimitiveBuilder<P, ListKeyElementBuilder<P, Q>> {
+      private final BaseListBuilder<P, Q> parent; // this will be MapListKeyBuilder
+
+      public ListKeyElementBuilder(BaseListBuilder<P, Q> parent, PrimitiveTypeName type) {
+        super(((MapBuilder<P>) ((BaseMapBuilder.MapListKeyBuilder)parent).parent).parent,
+            type);
+        this.parent = parent;
+      }
+
+      public ListKeyElementBuilder(BaseListBuilder<P, Q> parent, Class<P> returnType, PrimitiveTypeName type) {
+        super(returnType, type);
+        this.parent = parent;
+      }
+
+      @Override
+      protected ListKeyElementBuilder<P, Q> self() {
+        return this;
+      }
+
+      public class ModPrimitiveBuilder<I> extends BasePrimitiveBuilder<I,
+          ModPrimitiveBuilder<I>> {
+
+        MapBuilder<I> parent;
+
+        public ModPrimitiveBuilder(MapBuilder<I> parent, PrimitiveTypeName type) {
+          super(parent.parent, type);
+          this.parent = parent;
+        }
+
+        @Override
+        protected ModPrimitiveBuilder<I> self() {
+          return this;
+        }
+
+        @Override
+        public I named(String name) {
+          parent.setValueType(build("value"));
+          return parent.named(name);
+        }
+      }
+
+      public ModPrimitiveBuilder<P> value(PrimitiveTypeName type, Type.Repetition repetition) {
+        parent.setElementType(super.build("element"));
+        parent.repetition(Type.Repetition.REQUIRED);
+        ((BaseMapBuilder.MapListKeyBuilder) parent).parent.setKeyType(parent.build("key"));
+        return new ModPrimitiveBuilder<P>(
+            (MapBuilder<P>)(((BaseMapBuilder.MapListKeyBuilder) parent).parent),
+            type).repetition(repetition);
+      }
+
+      public ModPrimitiveBuilder<P> requiredValue(PrimitiveTypeName type) {
+        return value(type, Type.Repetition.REQUIRED);
+      }
+
+      public ModPrimitiveBuilder<P> optionalValue(PrimitiveTypeName type) {
+        return value(type, Type.Repetition.OPTIONAL);
+      }
+
+      public class ModGroupBuilder<I> extends BaseGroupBuilder<I,
+          ModGroupBuilder<I>> {
+
+        MapBuilder<I> parent;
+
+        public ModGroupBuilder(MapBuilder<I> parent) {
+          super(parent.parent);
+          this.parent = parent;
+        }
+
+        @Override
+        protected ModGroupBuilder<I> self() {
+          return this;
+        }
+
+        @Override
+        public I named(String name) {
+          parent.setValueType(build("value"));
+          return parent.named(name);
+        }
+      }
+
+      public ModGroupBuilder<P> groupValue(Type.Repetition repetition) {
+        parent.setElementType(super.build("element"));
+        parent.repetition(Type.Repetition.REQUIRED);
+        ((BaseMapBuilder.MapListKeyBuilder) parent).parent.setKeyType(parent.build("key"));
+        return new ModGroupBuilder<P>(
+            (MapBuilder<P>)((BaseMapBuilder.MapListKeyBuilder) parent).parent)
+            .repetition(repetition);
+      }
+
+      public ModGroupBuilder<P> requiredGroupValue() {
+        return groupValue(Type.Repetition.REQUIRED);
+      }
+
+      public ModGroupBuilder<P> optionalGroupValue() {
+        return groupValue(Type.Repetition.OPTIONAL);
+      }
+
+      public class ModMapBuilder<I> extends BaseMapBuilder<I,
+          ModMapBuilder<I>> {
+
+        MapBuilder<I> parent;
+
+        public ModMapBuilder(MapBuilder<I> parent) {
+          super(parent.parent);
+          this.parent = parent;
+        }
+
+        @Override
+        protected ModMapBuilder<I> self() {
+          return this;
+        }
+
+        @Override
+        public I named(String name) {
+          parent.setValueType(build("value"));
+          return parent.named(name);
+        }
+      }
+
+      public ModMapBuilder<P> mapValue(Type.Repetition repetition) {
+        parent.setElementType(super.build("element"));
+        parent.repetition(Type.Repetition.REQUIRED);
+        ((BaseMapBuilder.MapListKeyBuilder) parent).parent.setKeyType(parent.build("key"));
+        return new ModMapBuilder<P>((MapBuilder<P>)(
+            (BaseMapBuilder.MapListKeyBuilder) parent).parent).repetition(repetition);
+      }
+
+      public ModMapBuilder<P> requiredMapValue() {
+        return mapValue(Type.Repetition.REQUIRED);
+      }
+
+      public ModMapBuilder<P> optionalMapValue() {
+        return mapValue(Type.Repetition.OPTIONAL);
+      }
+
+      public class ModListBuilder<I> extends BaseListBuilder<I,
+          ModListBuilder<I>> {
+
+        MapBuilder<I> parent;
+
+        public ModListBuilder(MapBuilder<I> parent) {
+          super(parent.parent);
+          this.parent = parent;
+        }
+
+        @Override
+        protected ModListBuilder<I> self() {
+          return this;
+        }
+
+        @Override
+        public I named(String name) {
+          parent.setValueType(build("value"));
+          return parent.named(name);
+        }
+      }
+
+      public ModListBuilder<P> listValue(Type.Repetition repetition) {
+        parent.setElementType(super.build("element"));
+        parent.repetition(Type.Repetition.REQUIRED);
+        ((BaseMapBuilder.MapListKeyBuilder) parent).parent.setKeyType(parent.build("key"));
+        return new ModListBuilder<P>((MapBuilder<P>)(
+            (BaseMapBuilder.MapListKeyBuilder) parent).parent).repetition(repetition);
+      }
+
+      public ModListBuilder<P> requiredListValue() {
+        return listValue(Type.Repetition.REQUIRED);
+      }
+
+      public ModListBuilder<P> optionalListValue() {
+        return listValue(Type.Repetition.OPTIONAL);
+      }
+    }
+
+    public static class ListKeyGroupElementBuilder<P, Q extends BaseListBuilder<P, Q>> extends
+        BaseGroupBuilder<P, ListKeyGroupElementBuilder<P, Q>> {
+      private final BaseListBuilder<P, Q> parent; // this will be MapListKeyBuilder
+
+      public
+      ListKeyGroupElementBuilder(BaseListBuilder<P, Q> parent) {
+        super(((MapBuilder<P>)((BaseMapBuilder.MapListKeyBuilder)parent).parent).parent);
+        this.parent = parent;
+      }
+
+      public ListKeyGroupElementBuilder(BaseListBuilder<P, Q> parent, Class<P> returnType) {
+        super(returnType);
+        this.parent = parent;
+      }
+
+      @Override
+      protected ListKeyGroupElementBuilder<P, Q> self() {
+        return this;
+      }
+
+      public class ModPrimitiveBuilder<I> extends BasePrimitiveBuilder<I,
+          ModPrimitiveBuilder<I>> {
+
+        MapBuilder<I> parent;
+
+        public ModPrimitiveBuilder(MapBuilder<I> parent, PrimitiveTypeName type) {
+          super(parent.parent, type);
+          this.parent = parent;
+        }
+
+        @Override
+        protected ModPrimitiveBuilder<I> self() {
+          return this;
+        }
+
+        @Override
+        public I named(String name) {
+          parent.setValueType(build("value"));
+          return parent.named(name);
+        }
+      }
+
+      public ModPrimitiveBuilder<P> value(PrimitiveTypeName type, Type.Repetition repetition) {
+        parent.setElementType(super.build("element"));
+        parent.repetition(Type.Repetition.REQUIRED);
+        ((BaseMapBuilder.MapListKeyBuilder) parent).parent.setKeyType(parent.build("key"));
+        return new ModPrimitiveBuilder<P>((MapBuilder<P>)(
+            (BaseMapBuilder.MapListKeyBuilder) parent).parent, type).repetition(repetition);
+      }
+
+      public ModPrimitiveBuilder<P> requiredValue(PrimitiveTypeName type) {
+        return value(type, Type.Repetition.REQUIRED);
+      }
+
+      public ModPrimitiveBuilder<P> optionalValue(PrimitiveTypeName type) {
+        return value(type, Type.Repetition.OPTIONAL);
+      }
+
+      public class ModGroupBuilder<I> extends BaseGroupBuilder<I,
+          ModGroupBuilder<I>> {
+
+        MapBuilder<I> parent;
+
+        public ModGroupBuilder(MapBuilder<I> parent) {
+          super(parent.parent);
+          this.parent = parent;
+        }
+
+        @Override
+        protected ModGroupBuilder<I> self() {
+          return this;
+        }
+
+        @Override
+        public I named(String name) {
+          parent.setValueType(build("value"));
+          return parent.named(name);
+        }
+      }
+
+      public ModGroupBuilder<P> groupValue(Type.Repetition repetition) {
+        parent.setElementType(super.build("element"));
+        parent.repetition(Type.Repetition.REQUIRED);
+        ((BaseMapBuilder.MapListKeyBuilder) parent).parent.setKeyType(parent.build("key"));
+        return new ModGroupBuilder<P>((MapBuilder<P>)(
+            (BaseMapBuilder.MapListKeyBuilder) parent).parent).repetition(repetition);
+      }
+
+      public ModGroupBuilder<P> requiredGroupValue() {
+        return groupValue(Type.Repetition.REQUIRED);
+      }
+
+      public ModGroupBuilder<P> optionalGroupValue() {
+        return groupValue(Type.Repetition.OPTIONAL);
+      }
+
+      public class ModMapBuilder<I> extends BaseMapBuilder<I,
+          ModMapBuilder<I>> {
+
+        MapBuilder<I> parent;
+
+        public ModMapBuilder(MapBuilder<I> parent) {
+          super(parent.parent);
+          this.parent = parent;
+        }
+
+        @Override
+        protected ModMapBuilder<I> self() {
+          return this;
+        }
+
+        @Override
+        public I named(String name) {
+          parent.setValueType(build("value"));
+          return parent.named(name);
+        }
+      }
+
+      public ModMapBuilder<P> mapValue(Type.Repetition repetition) {
+        parent.setElementType(super.build("element"));
+        parent.repetition(Type.Repetition.REQUIRED);
+        ((BaseMapBuilder.MapListKeyBuilder) parent).parent.setKeyType(parent.build("key"));
+        return new ModMapBuilder<P>((MapBuilder<P>)(
+            (BaseMapBuilder.MapListKeyBuilder) parent).parent).repetition(repetition);
+      }
+
+      public ModMapBuilder<P> requiredMapValue() {
+        return mapValue(Type.Repetition.REQUIRED);
+      }
+
+      public ModMapBuilder<P> optionalMapValue() {
+        return mapValue(Type.Repetition.OPTIONAL);
+      }
+
+      public class ModListBuilder<I> extends BaseListBuilder<I,
+          ModListBuilder<I>> {
+
+        MapBuilder<I> parent;
+
+        public ModListBuilder(MapBuilder<I> parent) {
+          super(parent.parent);
+          this.parent = parent;
+        }
+
+        @Override
+        protected ModListBuilder<I> self() {
+          return this;
+        }
+
+        @Override
+        public I named(String name) {
+          parent.setValueType(build("value"));
+          return parent.named(name);
+        }
+      }
+
+      public ModListBuilder<P> listValue(Type.Repetition repetition) {
+        parent.setElementType(super.build("element"));
+        parent.repetition(Type.Repetition.REQUIRED);
+        ((BaseMapBuilder.MapListKeyBuilder) parent).parent.setKeyType(parent.build("key"));
+        return new ModListBuilder<P>((MapBuilder<P>)(
+            (BaseMapBuilder.MapListKeyBuilder) parent).parent).repetition(repetition);
+      }
+
+      public ModListBuilder<P> requiredListValue() {
+        return listValue(Type.Repetition.REQUIRED);
+      }
+
+      public ModListBuilder<P> optionalListValue() {
+        return listValue(Type.Repetition.OPTIONAL);
+      }
+    }
+
     @Override
     protected abstract Q self();
 
@@ -1225,6 +1599,31 @@ public class Types {
 
     public ListMapElementBuilder<P, Q> optionalMapElement() {
       return mapElement(Type.Repetition.OPTIONAL);
+    }
+
+    public ListKeyElementBuilder<P, Q> keyElement(PrimitiveTypeName type,
+                                                Type.Repetition repetition) {
+      Preconditions
+          .checkState(elementType == null, "groupElement can be called just once on a ListBuilder");
+      if (parent != null) {
+        return new ListKeyElementBuilder<P, Q>(this, type)
+            .repetition(repetition);
+      } else {
+        return new ListKeyElementBuilder<P, Q>(this, returnType, type)
+            .repetition(repetition);
+      }
+    }
+
+    public ListKeyGroupElementBuilder<P, Q> keyGroupElement(Type.Repetition repetition) {
+      Preconditions
+          .checkState(elementType == null, "groupElement can be called just once on a ListBuilder");
+      if (parent != null) {
+        return new ListKeyGroupElementBuilder<P, Q>(this)
+            .repetition(repetition);
+      } else {
+        return new ListKeyGroupElementBuilder<P, Q>(this, returnType)
+            .repetition(repetition);
+      }
     }
   }
 
