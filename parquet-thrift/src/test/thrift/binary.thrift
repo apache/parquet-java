@@ -17,7 +17,7 @@
  * under the License.
  */
 
-namespace java parquet.thrift.test.binary
+namespace java org.apache.parquet.thrift.test.binary
 
 struct StringAndBinary {
   1: required string s;

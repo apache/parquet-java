@@ -17,7 +17,7 @@
  * under the License.
  */
 
-namespace java parquet.thrift.test.compat
+namespace java org.apache.parquet.thrift.test.compat
 struct StructV1 {
   1: required string name
 }

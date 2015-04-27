@@ -1,6 +1,6 @@
 {
   "name" : "myrecord",
-  "namespace": "parquet.avro",
+  "namespace": "org.apache.parquet.avro",
   "type" : "record",
   "fields" : [ {
     "name" : "myboolean",
