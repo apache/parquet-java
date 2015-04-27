@@ -35,6 +35,7 @@ import static parquet.schema.Types.primitive;
 import java.util.ArrayList;
 import java.util.List;
 
+import parquet.Log;
 import parquet.schema.GroupType;
 import parquet.schema.MessageType;
 import parquet.schema.OriginalType;
@@ -44,6 +45,7 @@ import parquet.schema.Type;
 import parquet.schema.Types.PrimitiveBuilder;
 import parquet.thrift.projection.FieldProjectionFilter;
 import parquet.thrift.projection.FieldsPath;
+import parquet.thrift.projection.ProjectionFilter;
 import parquet.thrift.projection.ThriftProjectionException;
 import parquet.thrift.struct.ThriftField;
 import parquet.thrift.struct.ThriftType;
@@ -56,17 +58,19 @@ import parquet.thrift.struct.ThriftType;
  */
 public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
 
-  public FieldProjectionFilter getFieldProjectionFilter() {
-    return fieldProjectionFilter;
-  }
+    private static final Log logger = Log.getLog(ThriftSchemaConvertVisitor.class);
 
-  FieldProjectionFilter fieldProjectionFilter;
+    public ProjectionFilter getFieldProjectionFilter() {
+        return fieldProjectionFilter;
+    }
+
+  ProjectionFilter fieldProjectionFilter;
   Type currentType;
   FieldsPath currentFieldPath = new FieldsPath();
   Type.Repetition currentRepetition = Type.Repetition.REPEATED;//MessageType is repeated GroupType
   String currentName = "ParquetSchema";
 
-  public ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter) {
+  public ThriftSchemaConvertVisitor(ProjectionFilter fieldProjectionFilter) {
     this.fieldProjectionFilter = fieldProjectionFilter;
   }
 
@@ -145,6 +149,15 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
   }
 
   public MessageType getConvertedMessageType() {
+    logger.info("project fields");
+    for (String path : fieldProjectionFilter.getMatchedPaths()) {
+      logger.info(path);
+    }
+
+    logger.info("\n\ndiscarded fields");
+    for (String path : fieldProjectionFilter.getUnmatchedPaths()) {
+      logger.info(path);
+    }
     // the root should be a GroupType
     if (currentType == null)
       return new MessageType(currentName, new ArrayList<Type>());

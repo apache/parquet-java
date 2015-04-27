@@ -18,17 +18,21 @@
  */
 package parquet.thrift.projection;
 
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Filter thrift attributes using glob syntax.
  *
  * @author Tianshuo Deng
  */
-public class FieldProjectionFilter {
+public class FieldProjectionFilter implements ProjectionFilter {
   public static final String PATTERN_SEPARATOR = ";";
   List<PathGlobPatternStatus> filterPatterns;
+    private final Set<String> matchedPaths = new HashSet<String>();
+    private final Set<String> unmatchedPaths = new HashSet<String>();
 
   /**
    * Class for remembering if a glob pattern has matched anything.
@@ -68,16 +72,26 @@ public class FieldProjectionFilter {
     }
   }
 
+    @Override
   public boolean isMatched(FieldsPath path) {
-    if (filterPatterns.size() == 0)
-      return true;
+        boolean result = false;
 
-    for (int i = 0; i < filterPatterns.size(); i++) {
+        if (filterPatterns.size() == 0) {
+            matchedPaths.add(path.toString());
+            result = true;
+        }
 
-      if (filterPatterns.get(i).matches(path))
-        return true;
-    }
-    return false;
+        for (PathGlobPatternStatus filterPattern : filterPatterns) {
+
+            if (filterPattern.matches(path)) {
+                matchedPaths.add(path.toString());
+                result = true;
+            }
+        }
+        if (!result) {
+            unmatchedPaths.add(path.toString());
+        }
+        return result;
   }
 
   public List<PathGlobPattern> getUnMatchedPatterns() {
@@ -90,4 +104,11 @@ public class FieldProjectionFilter {
     return unmatched;
   }
 
+    public Set<String> getMatchedPaths() {
+        return matchedPaths;
+    }
+
+    public Set<String> getUnmatchedPaths() {
+        return unmatchedPaths;
+    }
 }
