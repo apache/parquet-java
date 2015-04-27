@@ -18,22 +18,9 @@
  */
 package parquet.scrooge;
 
-import org.apache.thrift.TBase;
 import org.junit.Test;
 
-import parquet.schema.MessageType;
 import parquet.scrooge.test.AddressWithStreetWithDefaultRequirement;
-import parquet.scrooge.test.ListNestEnum;
-import parquet.scrooge.test.ListNestMap;
-import parquet.scrooge.test.ListNestSet;
-import parquet.scrooge.test.MapNestList;
-import parquet.scrooge.test.MapNestMap;
-import parquet.scrooge.test.MapNestSet;
-import parquet.scrooge.test.NestedList;
-import parquet.scrooge.test.SetNestList;
-import parquet.scrooge.test.SetNestMap;
-import parquet.scrooge.test.SetNestSet;
-import parquet.scrooge.test.StringAndBinary;
 import parquet.scrooge.test.TestFieldOfEnum;
 import parquet.scrooge.test.TestListPrimitive;
 import parquet.scrooge.test.TestMapComplex;
@@ -43,6 +30,7 @@ import parquet.scrooge.test.TestOptionalMap;
 import parquet.scrooge.test.TestPersonWithAllInformation;
 import parquet.scrooge.test.TestSetPrimitive;
 import parquet.scrooge.test.TestUnion;
+import parquet.scrooge.test.StringAndBinary;
 import parquet.thrift.ThriftSchemaConverter;
 import parquet.thrift.struct.ThriftType;
 import static org.junit.Assert.assertEquals;
@@ -51,128 +39,85 @@ import static org.junit.Assert.assertEquals;
  * Test convert scrooge schema to Parquet Schema
  */
 public class ScroogeStructConverterTest {
-
-  /**
-   * Convert ThriftStructs from a thrift class and a scrooge class, assert
-   * they are the same
-   * @param scroogeClass
-   */
-  private void shouldConvertConsistentlyWithThriftStructConverter(Class scroogeClass) throws ClassNotFoundException {
-      Class<? extends TBase<?, ?>> thriftClass = (Class<? extends TBase<?, ?>>)Class.forName(scroogeClass.getName().replaceFirst("parquet.scrooge.test", "parquet.thrift.test"));
-      ThriftType.StructType structFromThriftSchemaConverter = new ThriftSchemaConverter().toStructType(thriftClass);
-      ThriftType.StructType structFromScroogeSchemaConverter = new ScroogeStructConverter().convert(scroogeClass);
-
-      assertEquals(toParquetSchema(structFromThriftSchemaConverter), toParquetSchema(structFromScroogeSchemaConverter));
-  }
-
-  private MessageType toParquetSchema(ThriftType.StructType struct) {
-    ThriftSchemaConverter sc = new ThriftSchemaConverter();
-    return sc.convert(struct);
-  }
-
   @Test
-  public void testConvertPrimitiveMapKey() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(TestMapPrimitiveKey.class);
+  public void testConvertPrimitiveMapKey() throws Exception{
+    ThriftType.StructType scroogeMap = new ScroogeStructConverter().convert(TestMapPrimitiveKey.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestMapPrimitiveKey.class);
+    assertEquals(expected,scroogeMap);
   }
 
   @Test
   public void testBinary() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(StringAndBinary.class);
+    ThriftType.StructType scroogeBinary = new ScroogeStructConverter().convert(StringAndBinary.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.StringAndBinary.class);
+    assertEquals(expected, scroogeBinary);
   }
 
   @Test
   public void testUnion() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(TestUnion.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestUnion.class);
+    ThriftType.StructType scroogeUnion = new ScroogeStructConverter().convert(TestUnion.class);
+    assertEquals(expected, scroogeUnion);
   }
 
   @Test
-  public void testConvertPrimitiveMapValue() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(TestMapPrimitiveValue.class);
+  public void testConvertPrimitiveMapValue() throws Exception{
+    ThriftType.StructType scroogeMap = new ScroogeStructConverter().convert(TestMapPrimitiveValue.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestMapPrimitiveValue.class);
+    assertEquals(expected,scroogeMap);
   }
 
   @Test
-  public void testConvertPrimitiveList() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(TestListPrimitive.class);
+  public void testConvertPrimitiveList() throws Exception{
+    ThriftType.StructType scroogeList = new ScroogeStructConverter().convert(TestListPrimitive.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestListPrimitive.class);
+    assertEquals(expected, scroogeList);
   }
 
   @Test
-  public void testConvertPrimitiveSet() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(TestSetPrimitive.class);
+     public void testConvertPrimitiveSet() throws Exception{
+    ThriftType.StructType scroogeList = new ScroogeStructConverter().convert(TestSetPrimitive.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestSetPrimitive.class);
+    assertEquals(expected, scroogeList);
   }
 
   @Test
-  public void testConvertEnum() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(TestFieldOfEnum.class);
+  public void testConvertEnum() throws Exception{
+    ThriftType.StructType scroogeList = new ScroogeStructConverter().convert(TestFieldOfEnum.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestFieldOfEnum.class);
+    assertEquals(expected, scroogeList);
   }
 
   @Test
-  public void testMapComplex() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(TestMapComplex.class);
+  public void testMapComplex() throws Exception{
+    ThriftType.StructType scroogePerson = new ScroogeStructConverter().convert(TestMapComplex.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestMapComplex.class);
+    assertEquals(expected, scroogePerson);
   }
 
   @Test
-  public void testConvertStruct() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(TestPersonWithAllInformation.class);
+  public void testConvertStruct() throws Exception{
+    ThriftType.StructType scroogePerson = new ScroogeStructConverter().convert(TestPersonWithAllInformation.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestPersonWithAllInformation.class);
+    assertEquals(expected, scroogePerson);
+  }
+
+/**
+ * TODO: DEFAULT requirement can not be identified, since scrooge does not store the requirement type in generated class
+ * Current solution uses reflection based on following rules:
+ * if the getter returns option, then it's optional, otherwise it's required
+ */
+  @Test
+  public void testDefaultFields() throws Exception{
+    ThriftType.StructType scroogePerson = new ScroogeStructConverter().convert(AddressWithStreetWithDefaultRequirement.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.AddressWithStreetWithDefaultRequirement.class);
+    assertEquals(expected.toJSON(), scroogePerson.toJSON());
   }
 
   @Test
-  public void testDefaultFields() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(AddressWithStreetWithDefaultRequirement.class);
+  public void testConvertOptionalPrimitiveMap() throws Exception{
+    ThriftType.StructType scroogeMap = new ScroogeStructConverter().convert(TestOptionalMap.class);
+    ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(parquet.thrift.test.TestOptionalMap.class);
+    assertEquals(expected,scroogeMap);
   }
-
-  @Test
-  public void testConvertOptionalPrimitiveMap() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(TestOptionalMap.class);
-  }
-
-  @Test
-  public void testConvertNestedList() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(NestedList.class);
-  }
-
-  @Test
-  public void testConvertListNestMap() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(ListNestMap.class);
-  }
-
-  @Test
-  public void testConvertListNestEnum() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(ListNestEnum.class);
-  }
-
-  @Test
-  public void testConvertMapNestList() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(MapNestList.class);
-  }
-
-  @Test
-  public void testConvertMapNestMap() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(MapNestMap.class);
-  }
-
-  @Test
-  public void testConvertMapNestSet() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(MapNestSet.class);
-  }
-
-  @Test
-  public void testConvertListNestSet() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(ListNestSet.class);
-  }
-
-  @Test
-  public void testConvertSetNestSet() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(SetNestSet.class);
-  }
-
-  @Test
-  public void testConvertSetNestList() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(SetNestList.class);
-  }
-
-  @Test
-  public void testConvertSetNestMap() throws Exception {
-    shouldConvertConsistentlyWithThriftStructConverter(SetNestMap.class);
-  }
-
 }
