@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.hadoop.thrift;
+package org.apache.parquet.hadoop.thrift;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,21 +32,21 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import parquet.hadoop.UnmaterializableRecordCounter;
-import parquet.hadoop.ParquetWriter;
-import parquet.hadoop.metadata.CompressionCodecName;
-import parquet.thrift.ThriftParquetWriter;
-import parquet.thrift.test.compat.ABool;
-import parquet.thrift.test.compat.ALong;
-import parquet.thrift.test.compat.AString;
-import parquet.thrift.test.compat.AStructThatLooksLikeUnionV2;
-import parquet.thrift.test.compat.StructWithAStructThatLooksLikeUnionV2;
-import parquet.thrift.test.compat.StructWithUnionV2;
-import parquet.thrift.test.compat.UnionV2;
+import org.apache.parquet.hadoop.UnmaterializableRecordCounter;
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.thrift.ThriftParquetWriter;
+import org.apache.parquet.thrift.test.compat.ABool;
+import org.apache.parquet.thrift.test.compat.ALong;
+import org.apache.parquet.thrift.test.compat.AString;
+import org.apache.parquet.thrift.test.compat.AStructThatLooksLikeUnionV2;
+import org.apache.parquet.thrift.test.compat.StructWithAStructThatLooksLikeUnionV2;
+import org.apache.parquet.thrift.test.compat.StructWithUnionV2;
+import org.apache.parquet.thrift.test.compat.UnionV2;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
-import static parquet.hadoop.thrift.TestInputOutputFormat.waitForJob;
+import static org.apache.parquet.hadoop.thrift.TestInputOutputFormat.waitForJob;
 
 public class TestCorruptThriftRecords {
 

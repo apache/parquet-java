@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.io.api;
 
-import parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.ParquetDecodingException;
 
 /**
  * Top-level class which should be implemented in order to materialize objects from

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package parquet.scrooge;
+package org.apache.parquet.scrooge;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -31,10 +31,10 @@ import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
 
-import parquet.hadoop.thrift.TestCorruptThriftRecords;
-import parquet.hadoop.thrift.ThriftReadSupport;
-import parquet.scrooge.test.StructWithUnionV2;
-import parquet.scrooge.test.StructWithUnionV2$;
+import org.apache.parquet.hadoop.thrift.TestCorruptThriftRecords;
+import org.apache.parquet.hadoop.thrift.ThriftReadSupport;
+import org.apache.parquet.scrooge.test.StructWithUnionV2;
+import org.apache.parquet.scrooge.test.StructWithUnionV2$;
 
 import static org.junit.Assert.assertEquals;
 
@@ -55,9 +55,9 @@ public class TestCorruptScroogeRecords extends TestCorruptThriftRecords {
   }
 
   @Override
-  protected void assertEqualsExcepted(List<parquet.thrift.test.compat.StructWithUnionV2> expected, List<Object> found) throws Exception {
+  protected void assertEqualsExcepted(List<org.apache.parquet.thrift.test.compat.StructWithUnionV2> expected, List<Object> found) throws Exception {
     List<StructWithUnionV2> scroogeExpected = new ArrayList<StructWithUnionV2>();
-    for (parquet.thrift.test.compat.StructWithUnionV2 tbase : expected) {
+    for (org.apache.parquet.thrift.test.compat.StructWithUnionV2 tbase : expected) {
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       TProtocol out = new Factory().getProtocol(new TIOStreamTransport(baos));
       tbase.write(out);

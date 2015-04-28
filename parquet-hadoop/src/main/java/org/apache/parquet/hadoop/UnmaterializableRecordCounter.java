@@ -16,14 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.hadoop;
+package org.apache.parquet.hadoop;
 
 
 import org.apache.hadoop.conf.Configuration;
-
-import parquet.Log;
-import parquet.io.ParquetDecodingException;
-import parquet.io.api.RecordMaterializer.RecordMaterializationException;
+import org.apache.parquet.Log;
+import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.api.RecordMaterializer.RecordMaterializationException;
 
 // Essentially taken from:
 // https://github.com/twitter/elephant-bird/blob/master/core/src/main/java/com/twitter/elephantbird/mapreduce/input/LzoRecordReader.java#L124

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet;
+package org.apache.parquet;
 
 /**
  * Used in code blocks that should be unreachable, but the compiler does
