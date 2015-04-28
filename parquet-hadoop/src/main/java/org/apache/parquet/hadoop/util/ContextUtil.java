@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -36,6 +36,8 @@ import org.apache.hadoop.mapreduce.StatusReporter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
+
+import org.apache.parquet.ClassLoading;
 
 /*
  * This is based on ContextFactory.java from hadoop-2.0.x sources.
@@ -68,7 +70,7 @@ public class ContextUtil {
     boolean v21 = true;
     final String PACKAGE = "org.apache.hadoop.mapreduce";
     try {
-      Class.forName(PACKAGE + ".task.JobContextImpl");
+      ClassLoading.getClassByName(PACKAGE + ".task.JobContextImpl");
     } catch (ClassNotFoundException cnfe) {
       v21 = false;
     }
@@ -83,29 +85,29 @@ public class ContextUtil {
     try {
       if (v21) {
         jobContextCls =
-            Class.forName(PACKAGE+".task.JobContextImpl");
+            ClassLoading.getClassByName(PACKAGE+".task.JobContextImpl");
         taskContextCls =
-            Class.forName(PACKAGE+".task.TaskAttemptContextImpl");
+            ClassLoading.getClassByName(PACKAGE+".task.TaskAttemptContextImpl");
         taskIOContextCls =
-            Class.forName(PACKAGE+".task.TaskInputOutputContextImpl");
-        mapContextCls = Class.forName(PACKAGE + ".task.MapContextImpl");
-        mapCls = Class.forName(PACKAGE + ".lib.map.WrappedMapper");
+            ClassLoading.getClassByName(PACKAGE+".task.TaskInputOutputContextImpl");
+        mapContextCls = ClassLoading.getClassByName(PACKAGE + ".task.MapContextImpl");
+        mapCls = ClassLoading.getClassByName(PACKAGE + ".lib.map.WrappedMapper");
         innerMapContextCls =
-            Class.forName(PACKAGE+".lib.map.WrappedMapper$Context");
-        genericCounterCls = Class.forName(PACKAGE+".counters.GenericCounter");
+            ClassLoading.getClassByName(PACKAGE+".lib.map.WrappedMapper$Context");
+        genericCounterCls = ClassLoading.getClassByName(PACKAGE+".counters.GenericCounter");
       } else {
         jobContextCls =
-            Class.forName(PACKAGE+".JobContext");
+            ClassLoading.getClassByName(PACKAGE+".JobContext");
         taskContextCls =
-            Class.forName(PACKAGE+".TaskAttemptContext");
+            ClassLoading.getClassByName(PACKAGE+".TaskAttemptContext");
         taskIOContextCls =
-            Class.forName(PACKAGE+".TaskInputOutputContext");
-        mapContextCls = Class.forName(PACKAGE + ".MapContext");
-        mapCls = Class.forName(PACKAGE + ".Mapper");
+            ClassLoading.getClassByName(PACKAGE+".TaskInputOutputContext");
+        mapContextCls = ClassLoading.getClassByName(PACKAGE + ".MapContext");
+        mapCls = ClassLoading.getClassByName(PACKAGE + ".Mapper");
         innerMapContextCls =
-            Class.forName(PACKAGE+".Mapper$Context");
+            ClassLoading.getClassByName(PACKAGE+".Mapper$Context");
         genericCounterCls =
-            Class.forName("org.apache.hadoop.mapred.Counters$Counter");
+            ClassLoading.getClassByName("org.apache.hadoop.mapred.Counters$Counter");
       }
     } catch (ClassNotFoundException e) {
       throw new IllegalArgumentException("Can't find class", e);
@@ -142,10 +144,10 @@ public class ContextUtil {
         WRAPPED_CONTEXT_FIELD.setAccessible(true);
         Method get_counter_method;
         try {
-          get_counter_method = Class.forName(PACKAGE + ".TaskAttemptContext").getMethod("getCounter", String.class,
+          get_counter_method = ClassLoading.getClassByName(PACKAGE + ".TaskAttemptContext").getMethod("getCounter", String.class,
                   String.class);
         } catch (Exception e) {
-          get_counter_method = Class.forName(PACKAGE + ".TaskInputOutputContext").getMethod("getCounter",
+          get_counter_method = ClassLoading.getClassByName(PACKAGE + ".TaskInputOutputContext").getMethod("getCounter",
                   String.class, String.class);
         }
         GET_COUNTER_METHOD=get_counter_method;
@@ -170,9 +172,9 @@ public class ContextUtil {
       WRITER_FIELD.setAccessible(true);
       OUTER_MAP_FIELD = innerMapContextCls.getDeclaredField("this$0");
       OUTER_MAP_FIELD.setAccessible(true);
-      GET_CONFIGURATION_METHOD = Class.forName(PACKAGE+".JobContext")
+      GET_CONFIGURATION_METHOD = ClassLoading.getClassByName(PACKAGE+".JobContext")
           .getMethod("getConfiguration");
-      INCREMENT_COUNTER_METHOD = Class.forName(PACKAGE+".Counter")
+      INCREMENT_COUNTER_METHOD = ClassLoading.getClassByName(PACKAGE+".Counter")
               .getMethod("increment", Long.TYPE);
     } catch (SecurityException e) {
       throw new IllegalArgumentException("Can't run constructor ", e);
