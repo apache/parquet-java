@@ -17,7 +17,7 @@
  * under the License.
  */
 
-namespace java parquet.thrift.test
+namespace java org.apache.parquet.thrift.test
 
 struct Name {
   1: required string first_name,
