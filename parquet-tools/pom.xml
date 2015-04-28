@@ -29,8 +29,8 @@
   <artifactId>parquet-tools</artifactId>
   <packaging>jar</packaging>
 
-  <name>Apache Parquet Tools (Incubating)</name>
-  <url>https://parquet.incubator.apache.org</url>
+  <name>Apache Parquet Tools</name>
+  <url>https://parquet.apache.org</url>
 
   <properties>
       <hadoop.scope>provided</hadoop.scope>
