@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -134,7 +134,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
       }
       className = names.iterator().next();
     }
-    thriftClass = (Class<T>)Class.forName(className);
+    thriftClass = (Class<T>)conf.getClassByName(className);
   }
 
   @SuppressWarnings("unchecked")
@@ -150,7 +150,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
       }
       thriftClass = (Class<T>)metaData.getThriftClass();
     } else {
-      thriftClass = (Class<T>)Class.forName(className);
+      thriftClass = (Class<T>)conf.getClassByName(className);
     }
   }
 
@@ -164,7 +164,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
 
       String converterClassName = configuration.get(RECORD_CONVERTER_CLASS_KEY, RECORD_CONVERTER_DEFAULT);
       @SuppressWarnings("unchecked")
-      Class<ThriftRecordConverter<T>> converterClass = (Class<ThriftRecordConverter<T>>) Class.forName(converterClassName);
+      Class<ThriftRecordConverter<T>> converterClass = (Class<ThriftRecordConverter<T>>) configuration.getClassByName(converterClassName);
       Constructor<ThriftRecordConverter<T>> constructor =
           converterClass.getConstructor(Class.class, MessageType.class, StructType.class);
       ThriftRecordConverter<T> converter = constructor.newInstance(thriftClass, readContext.getRequestedSchema(), thriftMetaData.getDescriptor());

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,6 +20,7 @@ package org.apache.parquet.scrooge;
 
 import com.twitter.scrooge.ThriftStructCodec;
 import com.twitter.scrooge.ThriftStructFieldInfo;
+import org.apache.parquet.ClassLoading;
 import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
@@ -58,7 +59,7 @@ public class ScroogeStructConverter {
 
   private Class getCompanionClass(Class klass) {
     try {
-     return Class.forName(klass.getName() + "$");
+     return ClassLoading.getClassByName(klass.getName() + "$");
     } catch (ClassNotFoundException e) {
       throw new ScroogeSchemaConversionException("Can not find companion object for scrooge class " + klass, e);
     }
@@ -287,7 +288,7 @@ public class ScroogeStructConverter {
    */
   private List getEnumList(String enumName) throws ClassNotFoundException, IllegalAccessException, NoSuchFieldException, NoSuchMethodException, InvocationTargetException {
     enumName += "$";//In scala generated code, the actual class is ended with $
-    Class companionObjectClass = Class.forName(enumName);
+    Class companionObjectClass = ClassLoading.getClassByName(enumName);
     Object cObject = companionObjectClass.getField("MODULE$").get(null);
     Method listMethod = companionObjectClass.getMethod("list", new Class[]{});
     Object result = listMethod.invoke(cObject, null);

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -24,6 +24,7 @@ import org.apache.thrift.protocol.TProtocol;
 import com.twitter.scrooge.ThriftStruct;
 import com.twitter.scrooge.ThriftStructCodec;
 
+import org.apache.parquet.ClassLoading;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.thrift.ThriftReader;
 import org.apache.parquet.thrift.ThriftRecordConverter;
@@ -46,7 +47,7 @@ public class ScroogeRecordConverter<T extends ThriftStruct> extends ThriftRecord
   private static ThriftStructCodec<?> getCodec(Class<?> klass) {
     Class<?> companionClass;
     try {
-      companionClass = Class.forName(klass.getName() + "$");
+      companionClass = ClassLoading.getClassByName(klass.getName() + "$");
       Object companionObject = companionClass.getField("MODULE$").get(null);
       return (ThriftStructCodec<?>) companionObject;
     } catch (Exception t) {
