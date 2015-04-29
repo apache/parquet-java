@@ -28,17 +28,17 @@
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet-format</artifactId>
-  <version>2.3.1-incubating-SNAPSHOT</version>
+  <version>2.3.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <name>Apache Parquet Format (Incubating)</name>
-  <url>http://parquet.incubator.apache.org/</url>
+  <name>Apache Parquet Format</name>
+  <url>http://parquet.apache.org/</url>
   <description>Parquet is a columnar storage format that supports nested data. This provides all generated metadata code.</description>
 
   <scm>
-    <connection>scm:git:git@github.com:apache/incubator-parquet-format.git</connection>
-    <url>scm:git:git@github.com:apache/incubator-parquet-format.git</url>
-    <developerConnection>scm:git:https://git-wip-us.apache.org/repos/asf/incubator-parquet-format.git</developerConnection>
+    <connection>scm:git:git@github.com:apache/parquet-format.git</connection>
+    <url>scm:git:git@github.com:apache/parquet-format.git</url>
+    <developerConnection>scm:git:https://git-wip-us.apache.org/repos/asf/parquet-format.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
 
@@ -59,15 +59,15 @@
   <mailingLists>
     <mailingList>
       <name>Dev Mailing List</name>
-      <post>dev@parquet.incubator.apache.org</post>
-      <subscribe>dev-subscribe@parquet.incubator.apache.org</subscribe>
-      <unsubscribe>dev-unsubscribe@parquet.incubator.apache.org</unsubscribe>
+      <post>dev@parquet.apache.org</post>
+      <subscribe>dev-subscribe@parquet.apache.org</subscribe>
+      <unsubscribe>dev-unsubscribe@parquet.apache.org</unsubscribe>
     </mailingList>
     <mailingList>
       <name>Commits Mailing List</name>
-      <post>commits@parquet.incubator.apache.org</post>
-      <subscribe>commits-subscribe@parquet.incubator.apache.org</subscribe>
-      <unsubscribe>commits-unsubscribe@parquet.incubator.apache.org</unsubscribe>
+      <post>commits@parquet.apache.org</post>
+      <subscribe>commits-subscribe@parquet.apache.org</subscribe>
+      <unsubscribe>commits-unsubscribe@parquet.apache.org</unsubscribe>
     </mailingList>
   </mailingLists>
 
