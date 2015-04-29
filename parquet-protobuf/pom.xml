@@ -35,8 +35,8 @@
   </properties>
 
 
-  <name>Apache Parquet Protobuf (Incubating)</name>
-  <url>https://parquet.incubator.apache.org</url>
+  <name>Apache Parquet Protobuf</name>
+  <url>https://parquet.apache.org</url>
 
   <dependencies>
     <dependency>

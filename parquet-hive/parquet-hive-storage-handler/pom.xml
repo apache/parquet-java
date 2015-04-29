@@ -27,7 +27,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>parquet-hive-storage-handler</artifactId>
-  <name>Parquet Hive Storage Handler</name>
+  <name>Apache Parquet Hive Storage Handler</name>
   <packaging>jar</packaging>
 
   <repositories>
