@@ -28,10 +28,10 @@ import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 
-import parquet.column.Dictionary;
-import parquet.io.api.Binary;
-import parquet.io.api.Converter;
-import parquet.io.api.PrimitiveConverter;
+import org.apache.parquet.column.Dictionary;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.Converter;
+import org.apache.parquet.io.api.PrimitiveConverter;
 
 /**
  *

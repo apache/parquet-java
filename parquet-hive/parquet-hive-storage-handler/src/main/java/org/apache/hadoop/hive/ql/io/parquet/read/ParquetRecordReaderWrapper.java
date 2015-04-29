@@ -18,7 +18,7 @@
  */
 package org.apache.hadoop.hive.ql.io.parquet.read;
 
-import static parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
 
 import java.io.IOException;
 
@@ -36,16 +36,16 @@ import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 
-import parquet.hadoop.ParquetFileReader;
-import parquet.hadoop.ParquetInputFormat;
-import parquet.hadoop.ParquetInputSplit;
-import parquet.hadoop.api.ReadSupport.ReadContext;
-import parquet.hadoop.metadata.FileMetaData;
-import parquet.hadoop.metadata.ParquetMetadata;
-import parquet.hadoop.util.ContextUtil;
-import parquet.hive.HiveBinding;
-import parquet.hive.HiveBindingFactory;
-import parquet.schema.MessageTypeParser;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.ParquetInputFormat;
+import org.apache.parquet.hadoop.ParquetInputSplit;
+import org.apache.parquet.hadoop.api.ReadSupport.ReadContext;
+import org.apache.parquet.hadoop.metadata.FileMetaData;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.ContextUtil;
+import org.apache.parquet.hive.HiveBinding;
+import org.apache.parquet.hive.HiveBindingFactory;
+import org.apache.parquet.schema.MessageTypeParser;
 
 public class ParquetRecordReaderWrapper  implements RecordReader<Void, ArrayWritable> {
   public static final Log LOG = LogFactory.getLog(ParquetRecordReaderWrapper.class);

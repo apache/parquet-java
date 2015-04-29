@@ -18,10 +18,10 @@
   -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
-    <groupId>com.twitter</groupId>
+    <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.6.0</version>
+    <version>1.8.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -41,12 +41,12 @@
   
   <dependencies>
     <dependency>
-      <groupId>com.twitter</groupId>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-column</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.twitter</groupId>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -57,7 +57,7 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>com.twitter</groupId>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-jackson</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -73,19 +73,19 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>com.twitter</groupId>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-column</artifactId>
       <version>${project.version}</version>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.twitter</groupId>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-thrift</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.twitter</groupId>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-cascading</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -95,7 +95,7 @@
       <version>3.17.0</version>
     </dependency>
     <dependency>
-      <groupId>com.twitter</groupId>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-thrift</artifactId>
       <version>${project.version}</version>
       <type>test-jar</type>
@@ -190,12 +190,12 @@
                 <outputDirectory>${project.build.directory}/generated-test-sources/scrooge</outputDirectory>
                 <thriftNamespaceMappings>
                     <thriftNamespaceMapping>
-                        <from>parquet.thrift.test</from>
-                        <to>parquet.scrooge.test</to>
+                        <from>org.apache.parquet.thrift.test</from>
+                        <to>org.apache.parquet.scrooge.test</to>
                     </thriftNamespaceMapping>
                     <thriftNamespaceMapping>
-                        <from>parquet.thrift.test.compat</from>
-                        <to>parquet.scrooge.test.compat</to>
+                        <from>org.apache.parquet.thrift.test.compat</from>
+                        <to>org.apache.parquet.scrooge.test.compat</to>
                     </thriftNamespaceMapping>
                 </thriftNamespaceMappings>
             </configuration>
