@@ -74,12 +74,22 @@ public class ValidTypeMap {
     // Both of these binary types are valid
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, null));
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, null));
+    add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.INT96, null));
 
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, OriginalType.UTF8));
     add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, OriginalType.UTF8));
 
+    add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, OriginalType.DECIMAL));
+    add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, OriginalType.DECIMAL));
+
     // Both of these int types are valid
     add(Integer.class, new FullTypeDescriptor(PrimitiveTypeName.INT32, OriginalType.DATE));
+    add(Integer.class, new FullTypeDescriptor(PrimitiveTypeName.INT32, OriginalType.TIME_MILLIS));
+    add(Integer.class, new FullTypeDescriptor(PrimitiveTypeName.INT32, OriginalType.DECIMAL));
+
+    // Both of these long types are valid
+    add(Long.class, new FullTypeDescriptor(PrimitiveTypeName.INT64, OriginalType.TIMESTAMP_MILLIS));
+    add(Long.class, new FullTypeDescriptor(PrimitiveTypeName.INT64, OriginalType.DECIMAL));
   }
 
   /**
