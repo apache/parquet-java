@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.thrift.projection.deprecated;
+package org.apache.parquet.thrift.projection.deprecated;
 
 import org.apache.hadoop.fs.GlobPattern;
 

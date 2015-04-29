@@ -17,15 +17,15 @@
  * under the License.
  */
 
-package parquet;
+package org.apache.parquet;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-import parquet.glob.GlobExpander;
-import parquet.glob.WildcardPath;
+import org.apache.parquet.glob.GlobExpander;
+import org.apache.parquet.glob.WildcardPath;
 
 public final class Strings {
   private Strings() { }

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.glob;
+package org.apache.parquet.glob;
 
 import java.util.List;
 
@@ -25,7 +25,7 @@ import java.util.List;
  *
  * GlobNode uses the visitor pattern for tree traversal.
  *
- * See {@link parquet.Strings#expandGlob(String)}
+ * See {@link org.apache.parquet.Strings#expandGlob(String)}
  */
 interface GlobNode {
   <R> R accept(Visitor<R> visitor);

@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.thrift.projection.deprecated;
+package org.apache.parquet.thrift.projection.deprecated;
 
 import java.util.LinkedList;
 import java.util.List;
 
-import parquet.Preconditions;
-import parquet.thrift.projection.FieldsPath;
-import parquet.thrift.projection.FieldProjectionFilter;
-import parquet.thrift.projection.ThriftProjectionException;
+import org.apache.parquet.Preconditions;
+import org.apache.parquet.thrift.projection.FieldsPath;
+import org.apache.parquet.thrift.projection.FieldProjectionFilter;
+import org.apache.parquet.thrift.projection.ThriftProjectionException;
 
 /**
  * Filter thrift attributes using glob syntax.

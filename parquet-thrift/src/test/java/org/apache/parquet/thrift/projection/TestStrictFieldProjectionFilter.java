@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.thrift.projection;
+package org.apache.parquet.thrift.projection;
 
 import java.util.Arrays;
 import java.util.List;

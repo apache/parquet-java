@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.glob;
+package org.apache.parquet.glob;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import parquet.glob.GlobNode.Atom;
-import parquet.glob.GlobNode.GlobNodeSequence;
-import parquet.glob.GlobNode.OneOf;
+import org.apache.parquet.glob.GlobNode.Atom;
+import org.apache.parquet.glob.GlobNode.GlobNodeSequence;
+import org.apache.parquet.glob.GlobNode.OneOf;
 
 final class GlobParser {
   private GlobParser() { }
@@ -32,7 +32,7 @@ final class GlobParser {
   /**
    * Parse a String into a {@link GlobNodeSequence}
    *
-   * See {@link parquet.Strings#expandGlob(String)}
+   * See {@link org.apache.parquet.Strings#expandGlob(String)}
    */
   public static GlobNodeSequence parse(String pattern) {
     /*

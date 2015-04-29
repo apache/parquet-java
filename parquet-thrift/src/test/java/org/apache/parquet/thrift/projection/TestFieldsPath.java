@@ -16,32 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.thrift.projection;
+package org.apache.parquet.thrift.projection;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.parquet.thrift.ThriftSchemaConverter;
+import org.apache.parquet.thrift.struct.ThriftField;
+import org.apache.parquet.thrift.struct.ThriftType;
+import org.apache.parquet.thrift.struct.ThriftType.BoolType;
+import org.apache.parquet.thrift.struct.ThriftType.ByteType;
+import org.apache.parquet.thrift.struct.ThriftType.DoubleType;
+import org.apache.parquet.thrift.struct.ThriftType.EnumType;
+import org.apache.parquet.thrift.struct.ThriftType.I16Type;
+import org.apache.parquet.thrift.struct.ThriftType.I32Type;
+import org.apache.parquet.thrift.struct.ThriftType.I64Type;
+import org.apache.parquet.thrift.struct.ThriftType.ListType;
+import org.apache.parquet.thrift.struct.ThriftType.MapType;
+import org.apache.parquet.thrift.struct.ThriftType.SetType;
+import org.apache.parquet.thrift.struct.ThriftType.StringType;
+import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.junit.Test;
 
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.elephantbird.thrift.test.TestStructInMap;
-
-import parquet.thrift.ThriftSchemaConverter;
-import parquet.thrift.struct.ThriftField;
-import parquet.thrift.struct.ThriftType;
-import parquet.thrift.struct.ThriftType.BoolType;
-import parquet.thrift.struct.ThriftType.ByteType;
-import parquet.thrift.struct.ThriftType.DoubleType;
-import parquet.thrift.struct.ThriftType.EnumType;
-import parquet.thrift.struct.ThriftType.I16Type;
-import parquet.thrift.struct.ThriftType.I32Type;
-import parquet.thrift.struct.ThriftType.I64Type;
-import parquet.thrift.struct.ThriftType.ListType;
-import parquet.thrift.struct.ThriftType.MapType;
-import parquet.thrift.struct.ThriftType.SetType;
-import parquet.thrift.struct.ThriftType.StringType;
-import parquet.thrift.struct.ThriftType.StructType;
 
 import static org.junit.Assert.assertEquals;
 

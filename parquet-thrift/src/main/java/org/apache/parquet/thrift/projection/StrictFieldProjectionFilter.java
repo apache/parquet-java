@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.thrift.projection;
+package org.apache.parquet.thrift.projection;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import parquet.Log;
-import parquet.Strings;
-import parquet.glob.WildcardPath;
+import org.apache.parquet.Log;
+import org.apache.parquet.Strings;
+import org.apache.parquet.glob.WildcardPath;
 
 /**
  * Stricter Implementation of {@link FieldProjectionFilter}.

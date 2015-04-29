@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.glob;
+package org.apache.parquet.glob;
 
 import java.util.Arrays;
 
+import org.apache.parquet.Strings;
+import org.apache.parquet.glob.GlobParser.GlobParseException;
 import org.junit.Test;
 
 import junit.framework.Assert;
-import parquet.Strings;
-import parquet.glob.GlobParser.GlobParseException;
 
 import static junit.framework.Assert.fail;
 import static org.junit.Assert.assertEquals;

@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.glob;
+package org.apache.parquet.glob;
 
 import java.util.regex.Pattern;
 
-import parquet.Preconditions;
+import org.apache.parquet.Preconditions;
 
 /**
  * Holds a String with wildcards ('*'), and can answer whether a given string matches this WildcardPath.
@@ -45,12 +45,10 @@ public class WildcardPath {
   private final String parentGlobPath;
   private final String originalPattern;
   private final Pattern pattern;
-  private final char delim;
 
   public WildcardPath(String parentGlobPath, String wildcardPath, char delim) {
     this.parentGlobPath = Preconditions.checkNotNull(parentGlobPath, "parentGlobPath");
     this.originalPattern = Preconditions.checkNotNull(wildcardPath, "wildcardPath");
-    this.delim = delim;
     this.pattern = Pattern.compile(buildRegex(wildcardPath, delim));
   }
 

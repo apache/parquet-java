@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package parquet.glob;
+package org.apache.parquet.glob;
 
 import org.junit.Test;
 
