@@ -42,8 +42,6 @@ except ImportError:
 # Location of your Parquet git development area
 PARQUET_HOME = os.path.abspath(__file__).rsplit("/", 2)[0]
 PROJECT_NAME = PARQUET_HOME.rsplit("/", 1)[1]
-if PROJECT_NAME.find("incubator-") != 0:
-  PROJECT_NAME = "incubator-" + PROJECT_NAME
 print "PARQUET_HOME = " + PARQUET_HOME
 print "PROJECT_NAME = " + PROJECT_NAME
 
