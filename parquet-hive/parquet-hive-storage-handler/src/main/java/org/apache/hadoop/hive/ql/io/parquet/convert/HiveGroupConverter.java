@@ -20,10 +20,10 @@ package org.apache.hadoop.hive.ql.io.parquet.convert;
 
 import org.apache.hadoop.io.Writable;
 
-import parquet.io.api.Converter;
-import parquet.io.api.GroupConverter;
-import parquet.schema.Type;
-import parquet.schema.Type.Repetition;
+import org.apache.parquet.io.api.Converter;
+import org.apache.parquet.io.api.GroupConverter;
+import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Type.Repetition;
 
 public abstract class HiveGroupConverter extends GroupConverter {
 
