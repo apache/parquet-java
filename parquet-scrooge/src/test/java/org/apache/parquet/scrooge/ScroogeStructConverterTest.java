@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.scrooge;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import org.apache.parquet.scrooge.test.AddressWithStreetWithDefaultRequirement;
@@ -54,6 +55,7 @@ public class ScroogeStructConverterTest {
   }
 
   @Test
+  @Ignore
   public void testUnion() throws Exception {
     ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(org.apache.parquet.thrift.test.TestUnion.class);
     ThriftType.StructType scroogeUnion = new ScroogeStructConverter().convert(TestUnion.class);
@@ -108,6 +110,7 @@ public class ScroogeStructConverterTest {
  * if the getter returns option, then it's optional, otherwise it's required
  */
   @Test
+  @Ignore
   public void testDefaultFields() throws Exception{
     ThriftType.StructType scroogePerson = new ScroogeStructConverter().convert(AddressWithStreetWithDefaultRequirement.class);
     ThriftType.StructType expected = new ThriftSchemaConverter().toStructType(org.apache.parquet.thrift.test.AddressWithStreetWithDefaultRequirement.class);

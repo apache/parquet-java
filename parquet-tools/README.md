@@ -64,14 +64,14 @@ java jar ./parquet-tools-<VERSION>.jar <command> my_parquet_file.lzo.parquet
 To run it on hadoop, you should use "hadoop jar" instead of "java jar"
 
 ```sh
-usage: java jar ./parquet-tools-<VERSION>.jar cat [option...] <input>
+usage: java -jar ./parquet-tools-<VERSION>.jar cat [option...] <input>
 where option is one of:
        --debug     Disable color output even if supported
     -h,--help      Show this help string
        --no-color  Disable color output even if supported
 where <input> is the parquet file to print to stdout
 
-usage: java jar ./parquet-tools-<VERSION>.jar head [option...] <input>
+usage: java -jar ./parquet-tools-<VERSION>.jar head [option...] <input>
 where option is one of:
        --debug          Disable color output even if supported
     -h,--help           Show this help string
@@ -79,7 +79,7 @@ where option is one of:
        --no-color       Disable color output even if supported
 where <input> is the parquet file to print to stdout
 
-usage: java jar ./parquet-tools-<VERSION>.jar schema [option...] <input>
+usage: java -jar ./parquet-tools-<VERSION>.jar schema [option...] <input>
 where option is one of:
     -d,--detailed <arg>  Show detailed information about the schema.
        --debug           Disable color output even if supported
@@ -87,14 +87,14 @@ where option is one of:
        --no-color        Disable color output even if supported
 where <input> is the parquet file containing the schema to show
 
-usage: java jar ./parquet-tools-<VERSION>.jar meta [option...] <input>
+usage: java -jar ./parquet-tools-<VERSION>.jar meta [option...] <input>
 where option is one of:
        --debug     Disable color output even if supported
     -h,--help      Show this help string
        --no-color  Disable color output even if supported
 where <input> is the parquet file to print to stdout
 
-usage: java jar dump [option...] <input>
+usage: java -jar dump [option...] <input>
 where option is one of:
     -c,--column <arg>  Dump only the given column, can be specified more than
                        once
@@ -106,3 +106,21 @@ where option is one of:
 where <input> is the parquet file to print to stdout
 ```
 
+## Meta Legend
+
+### Row Group Totals
+
+Acronym | Definition
+--------|-----------
+RC | Row Count
+TS | Total Byte Size
+
+### Row Group Column Details
+
+Acronym | Definition
+--------|-----------
+DO | Dictionary Page Offset
+FPO | First Data Page Offset
+SZ:{x}/{y}/{z} | Size in bytes. x = Compressed total, y = uncompressed total, z = y:x ratio
+VC | Value Count
+RLE | Run-Length Encoding

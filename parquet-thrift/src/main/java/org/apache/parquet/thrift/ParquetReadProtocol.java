@@ -54,6 +54,10 @@ class ParquetReadProtocol extends ParquetProtocol {
     this.events.addAll(events);
   }
 
+  public void clear() {
+    this.events.clear();
+  }
+
   private TProtocol next() {
     return events.removeFirst();
   }

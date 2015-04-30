@@ -18,21 +18,30 @@
  */
 package org.apache.parquet.thrift;
 
+import java.nio.ByteBuffer;
+import java.util.LinkedList;
+import java.util.List;
+
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.*;
+import org.apache.thrift.protocol.TField;
+import org.apache.thrift.protocol.TList;
+import org.apache.thrift.protocol.TMap;
+import org.apache.thrift.protocol.TMessage;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.protocol.TSet;
+import org.apache.thrift.protocol.TStruct;
+import org.apache.thrift.protocol.TType;
 
 import org.apache.parquet.ParquetRuntimeException;
+import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
 import org.apache.parquet.thrift.struct.ThriftType.ListType;
 import org.apache.parquet.thrift.struct.ThriftType.MapType;
 import org.apache.parquet.thrift.struct.ThriftType.SetType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
+import org.apache.parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
 import org.apache.parquet.thrift.struct.ThriftTypeID;
-
-import java.nio.ByteBuffer;
-import java.util.LinkedList;
-import java.util.List;
 
 /**
  * Class to read from one protocol in a buffer and then write to another one
@@ -354,34 +363,17 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         return "(";
       }
     });
+
     TField field;
     boolean hasFieldsIgnored = false;
+    int childFieldsPresent = 0;
     while ((field = in.readFieldBegin()).type != TType.STOP) {
       final TField currentField = field;
       ThriftField expectedField;
       if ((expectedField = type.getChildById(field.id)) == null) {
-
-        switch (type.getStructOrUnionType()) {
-          case STRUCT:
-            // this is an unrecognized field in a struct, not a union
-            notifyIgnoredFieldsOfRecord(field);
-            hasFieldsIgnored |= true;
-            //read the value and ignore it, NullProtocol will do nothing
-            new ProtocolReadToWrite().readOneValue(in, new NullProtocol(), field.type);
-            continue;
-          case UNION:
-            // this is a union with an unrecognized member -- this is fatal for this record
-            // in the write path, because it will be unreadable in the read path.
-            // throwing here means we will either skip this record entirely, or fail completely.
-            throw new DecodingSchemaMismatchException("Unrecognized union member with id: "
-                + field.id + " for struct:\n" + type);
-          case UNKNOWN:
-            // we should never reach here in the write path -- this only happens if the
-            // deprecated constructor of StructType is used, which should only be used in the
-            // read path.
-            throw new ParquetRuntimeException("This should never happen! "
-                + "Don't know if this field is a union, was the deprecated constructor of StructType used?\n" + type){};
-        }
+        handleUnrecognizedField(field, type, in);
+        hasFieldsIgnored |= true;
+        continue;
       }
       buffer.add(new Action() {
         @Override
@@ -394,13 +386,78 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
           return "f=" + currentField.id + "<t=" + typeName(currentField.type) + ">: ";
         }
       });
-      hasFieldsIgnored |= readOneValue(in, field.type, buffer, expectedField.getType());
+      boolean wasIgnored = readOneValue(in, field.type, buffer, expectedField.getType());
+      if (!wasIgnored) {
+        childFieldsPresent++;
+      }
+      hasFieldsIgnored |= wasIgnored;
       in.readFieldEnd();
       buffer.add(FIELD_END);
     }
+
+    // check that union had exactly 1 (no more no less) child fields.
+    assertUnionHasExactlyOneChild(type, childFieldsPresent);
+
     in.readStructEnd();
     buffer.add(STRUCT_END);
     return hasFieldsIgnored;
+  }
+
+  private void handleUnrecognizedField(TField field, StructType type, TProtocol in) throws TException {
+    switch (type.getStructOrUnionType()) {
+      case STRUCT:
+        // this is an unrecognized field in a struct, not a union
+        notifyIgnoredFieldsOfRecord(field);
+        //read the value and ignore it, NullProtocol will do nothing
+        new ProtocolReadToWrite().readOneValue(in, new NullProtocol(), field.type);
+        break;
+      case UNION:
+        // this is a union with an unrecognized member -- this is fatal for this record
+        // in the write path, because it will be unreadable in the read path.
+        // throwing here means we will either skip this record entirely, or fail completely.
+        throw new DecodingSchemaMismatchException("Unrecognized union member with id: "
+            + field.id + " for struct:\n" + type);
+      case UNKNOWN:
+        throw unknownStructOrUnion(type);
+      default:
+        throw unrecognizedStructOrUnion(type.getStructOrUnionType());
+    }
+  }
+
+  private void assertUnionHasExactlyOneChild(StructType type, int childFieldsPresent) {
+    switch (type.getStructOrUnionType()) {
+      case STRUCT:
+        // nothing to do
+        break;
+      case UNION:
+        // childFieldsPresent must == 1
+        if (childFieldsPresent != 1) {
+
+          if (childFieldsPresent == 0) {
+            throw new DecodingSchemaMismatchException("Cannot write a TUnion with no set value in :\n" + type);
+          } else {
+            throw new DecodingSchemaMismatchException("Cannot write a TUnion with more than 1 set value in :\n" + type);
+          }
+
+        }
+        break;
+      case UNKNOWN:
+        throw unknownStructOrUnion(type);
+      default:
+        throw unrecognizedStructOrUnion(type.getStructOrUnionType());
+    }
+  }
+
+  private static ShouldNeverHappenException unrecognizedStructOrUnion(StructOrUnionType type) {
+    return new ShouldNeverHappenException("Unrecognized StructOrUnionType: " + type);
+  }
+
+  // we should never reach here in the write path -- this only happens if the
+  // deprecated constructor of StructType is used, which should only be used in the
+  // read path.
+  private static ShouldNeverHappenException unknownStructOrUnion(StructType type) {
+    return new ShouldNeverHappenException("This should never happen! "
+        + "Don't know if this field is a union, was the deprecated constructor of StructType used?\n" + type);
   }
 
   private boolean readOneMap(TProtocol in, List<Action> buffer, MapType mapType) throws TException {
