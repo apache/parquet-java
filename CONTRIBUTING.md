@@ -27,4 +27,4 @@ Here are a few tips to get your contribution in:
   4. Make sure that your code passes the unit tests. You can run the tests with `mvn test` in the root directory. 
   5. Add new unit tests for your code. 
 
-If you’d like to report a bug but don’t have time to fix it, you can still post it to our [issue tracker](https://issues.apache.org/jira/browse/PARQUET), or email the mailing list (dev@parquet.incubator.apache.org).
+If you’d like to report a bug but don’t have time to fix it, you can still post it to our [issue tracker](https://issues.apache.org/jira/browse/PARQUET), or email the mailing list (dev@parquet.apache.org).

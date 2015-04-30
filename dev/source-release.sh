@@ -28,7 +28,7 @@ if [ -z "$2" ]; then
   exit
 fi
 
-version=$1-incubating
+version=$1
 rc=$2
 
 if [ -d tmp/ ]; then
@@ -68,7 +68,7 @@ svn co --depth=empty https://dist.apache.org/repos/dist/dev/incubator/parquet tm
 mkdir -p tmp/$tagrc
 cp ${tarball}* tmp/$tagrc
 svn add tmp/$tagrc
-echo "svn ci -m 'Apache Parquet MR (Incubating) $version RC${rc}' tmp/$tagrc"
+echo "svn ci -m 'Apache Parquet MR $version RC${rc}' tmp/$tagrc"
 
 # clean up
 rm -rf tmp

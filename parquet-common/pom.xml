@@ -29,8 +29,8 @@
   <artifactId>parquet-common</artifactId>
   <packaging>jar</packaging>
 
-  <name>Apache Parquet Common (Incubating)</name>
-  <url>https://parquet.incubator.apache.org</url>
+  <name>Apache Parquet Common</name>
+  <url>https://parquet.apache.org</url>
 
   <properties>
   </properties>

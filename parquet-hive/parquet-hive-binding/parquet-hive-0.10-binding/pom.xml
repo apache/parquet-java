@@ -27,7 +27,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>parquet-hive-0.10-binding</artifactId>
-  <name>Apache Parquet Hive 0.10 Binding (Incubating)</name>
+  <name>Apache Parquet Hive 0.10 Binding</name>
   <packaging>jar</packaging>
 
   <properties>
