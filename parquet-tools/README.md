@@ -106,3 +106,21 @@ where option is one of:
 where <input> is the parquet file to print to stdout
 ```
 
+## Meta Legend
+
+### Row Group Totals
+
+Acronym | Definition
+--------|-----------
+RC | Row Count
+TS | Total Byte Size
+
+### Row Group Column Details
+
+Acronym | Definition
+--------|-----------
+DO | Dictionary Page Offset
+FPO | First Data Page Offset
+SZ:{x}/{y}/{z} | Size in bytes. x = Compressed total, y = uncompressed total, z = y:x ratio
+VC | Value Count
+RLE | Run-Length Encoding
