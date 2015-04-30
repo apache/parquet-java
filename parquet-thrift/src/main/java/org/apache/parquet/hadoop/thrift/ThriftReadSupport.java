@@ -67,11 +67,26 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
    * implementation creates standard Apache Thrift {@link TBase} objects; to support alternatives, such
    * as <a href="http://github.com/twitter/scrooge">Twiter's Scrooge</a>, a custom converter can be specified
    * (for example, ScroogeRecordConverter from parquet-scrooge).
+   *
+   * @deprecated use {@link #setRecordConverterClass(Configuration, Class)} below
    */
+  @Deprecated
   public static void setRecordConverterClass(JobConf conf,
       Class<?> klass) {
+    setRecordConverterClass((Configuration) conf, klass);
+  }
+
+  /**
+   * A {@link ThriftRecordConverter} builds an object by working with {@link TProtocol}. The default
+   * implementation creates standard Apache Thrift {@link TBase} objects; to support alternatives, such
+   * as <a href="http://github.com/twitter/scrooge">Twiter's Scrooge</a>, a custom converter can be specified
+   * (for example, ScroogeRecordConverter from parquet-scrooge).
+   */
+  public static void setRecordConverterClass(Configuration conf,
+                                             Class<?> klass) {
     conf.set(RECORD_CONVERTER_CLASS_KEY, klass.getName());
   }
+
 
   /**
    * used from hadoop

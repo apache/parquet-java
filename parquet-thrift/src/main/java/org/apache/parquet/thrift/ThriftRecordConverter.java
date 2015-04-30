@@ -33,7 +33,6 @@ import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
 
-import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
@@ -843,7 +842,9 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
       rootEvents.clear();
       return thriftReader.readOneRecord(protocol);
     } catch (TException e) {
-      throw new ParquetDecodingException("Could not read thrift object from protocol", e);
+      protocol.clear();
+      rootEvents.clear();
+      throw new RecordMaterializationException("Could not read thrift object from protocol", e);
     }
   }
 
