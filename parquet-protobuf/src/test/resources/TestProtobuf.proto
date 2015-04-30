@@ -126,4 +126,14 @@ message HighIndexMessage {
     repeated int32 repeatedInt = 50000;
 }
 
+//custom proto class - ProtoInputOutputFormatTest
+
+message FirstCustomClassMessage {
+    optional string string = 11;
+}
+
+message SecondCustomClassMessage {
+    optional string string = 11;
+}
+
 //please place your unit test Protocol Buffer definitions here.
