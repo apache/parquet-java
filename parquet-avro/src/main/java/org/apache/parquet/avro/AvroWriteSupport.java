@@ -49,7 +49,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
 
   public static void setAvroDataSupplier(
       Configuration configuration, Class<? extends AvroDataSupplier> suppClass) {
-    configuration.set(AVRO_DATA_SUPPLIER, suppClass.toString());
+    configuration.set(AVRO_DATA_SUPPLIER, suppClass.getName());
   }
 
   static final String AVRO_SCHEMA = "parquet.avro.schema";
