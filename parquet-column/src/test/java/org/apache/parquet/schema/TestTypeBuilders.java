@@ -1570,6 +1570,28 @@ public class TestTypeBuilders {
   }
 
   @Test
+  public void testMapWithPreBuiltKeyAndValueTypes() {
+    Type keyType = Types.required(INT64).named("key");
+    Type valueType = Types.required(BOOLEAN).named("value");
+
+    GroupType map = new GroupType(REQUIRED, "myMap", OriginalType.MAP,
+        new GroupType(REPEATED, "map", new Type[] {
+            keyType,
+            valueType
+        }));
+    MessageType expected = new MessageType("mapParent", map);
+
+    GroupType actual = Types.buildMessage()
+        .requiredMap()
+          .key(keyType)
+          .requiredValue(valueType)
+        .named("myMap")
+      .named("mapParent");
+
+    Assert.assertEquals(expected, actual);
+  }
+
+  @Test
   public void testRequiredList() {
     GroupType expected = new GroupType(REQUIRED, "myList", OriginalType.LIST,
         new GroupType(REPEATED,

@@ -753,6 +753,19 @@ public class Types {
         return listValue(Type.Repetition.OPTIONAL);
       }
 
+      public BaseMapBuilder<P, Q> value (Type type) {
+        parent.setValueType(type);
+        return this.parent;
+      }
+
+      public BaseMapBuilder<P, Q> requiredValue (Type type) {
+        return value(type);
+      }
+
+      public BaseMapBuilder<P, Q> optionalValue (Type type) {
+        return value(type);
+      }
+
       @Override
       public P named(String name) {
         parent.setKeyType(build("key"));
@@ -862,6 +875,19 @@ public class Types {
 
       public MapListValueBuilder<P, Q> optionalListValue() {
         return listValue(Type.Repetition.OPTIONAL);
+      }
+
+      public BaseMapBuilder<P, Q> value (Type type) {
+        parent.setValueType(type);
+        return this.parent;
+      }
+
+      public BaseMapBuilder<P, Q> requiredValue (Type type) {
+        return value(type);
+      }
+
+      public BaseMapBuilder<P, Q> optionalValue (Type type) {
+        return value(type);
       }
     }
 
@@ -980,12 +1006,87 @@ public class Types {
       }
     }
 
+    public Q key(Type type) {
+      setKeyType(type);
+      return self();
+    }
+
     public MapGroupKeyBuilder<P, Q> groupKey() {
       return new MapGroupKeyBuilder<P, Q>(this);
     }
 
     public MapListKeyBuilder<P, Q> listKey() {
       return new MapListKeyBuilder<P, Q>(this);
+    }
+
+    public MapValueBuilder<P, Q> value(PrimitiveTypeName type, Type.Repetition repetition) {
+      if (parent != null) {
+        return new MapValueBuilder<P, Q>(this,
+            type).repetition(repetition);
+      } else {
+        return new MapValueBuilder<P, Q>(this,
+            returnType, type).repetition(repetition);
+      }
+    }
+
+    public MapValueBuilder<P, Q> requiredValue(PrimitiveTypeName type) {
+      return value(type, Type.Repetition.REQUIRED);
+    }
+
+    public MapValueBuilder<P, Q> optionalValue(PrimitiveTypeName type) {
+      return value(type, Type.Repetition.OPTIONAL);
+    }
+
+    public MapGroupValueBuilder<P, Q> groupValue(Type.Repetition repetition) {
+      setKeyType(build("key"));
+      return new MapGroupValueBuilder<P, Q>(this).repetition(repetition);
+    }
+
+    public MapGroupValueBuilder<P, Q> requiredGroupValue() {
+      return groupValue(Type.Repetition.REQUIRED);
+    }
+
+    public MapGroupValueBuilder<P, Q> optionalGroupValue() {
+      return groupValue(Type.Repetition.OPTIONAL);
+    }
+
+    public MapMapValueBuilder<P, Q> mapValue(Type.Repetition repetition) {
+      setKeyType(build("key"));
+      return new MapMapValueBuilder<P, Q>(this).repetition(repetition);
+    }
+
+    public MapMapValueBuilder<P, Q> requiredMapValue() {
+      return mapValue(Type.Repetition.REQUIRED);
+    }
+
+    public MapMapValueBuilder<P, Q> optionalMapValue() {
+      return mapValue(Type.Repetition.OPTIONAL);
+    }
+
+    public MapListValueBuilder<P, Q> listValue(Type.Repetition repetition) {
+      setKeyType(build("key"));
+      return new MapListValueBuilder<P, Q>(this).repetition(repetition);
+    }
+
+    public MapListValueBuilder<P, Q> requiredListValue() {
+      return listValue(Type.Repetition.REQUIRED);
+    }
+
+    public MapListValueBuilder<P, Q> optionalListValue() {
+      return listValue(Type.Repetition.OPTIONAL);
+    }
+
+    public Q value (Type type) {
+      setValueType(type);
+      return self();
+    }
+
+    public Q requiredValue (Type type) {
+      return value(type);
+    }
+
+    public Q optionalValue (Type type) {
+      return value(type);
     }
 
     @Override
@@ -1111,11 +1212,19 @@ public class Types {
       public ListMapElementBuilder(BaseListBuilder<P, Q> parent) {
         super(parent.parent);
         this.parent = parent;
+
+        Preconditions.checkState(!(parent.parent instanceof MapListKeyBuilder),
+            "To add List of Maps as key of a Map, build the key and add it to map using key(Type " +
+                "type) method on MapBuilder");
       }
 
       public ListMapElementBuilder(BaseListBuilder<P, Q> parent, Class<P> returnType) {
         super(returnType);
         this.parent = parent;
+
+        Preconditions.checkState(!(parent.parent instanceof MapListKeyBuilder),
+            "To add List of Maps as key of a Map, build the key and add it to map using key(Type " +
+                "type) method on MapBuilder");
       }
 
       @Override
