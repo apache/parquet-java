@@ -26,8 +26,6 @@ import org.apache.thrift.TUnion;
 
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.thrift.projection.FieldProjectionFilter;
-import org.apache.parquet.thrift.projection.PathGlobPattern;
-import org.apache.parquet.thrift.projection.ThriftProjectionException;
 import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftField.Requirement;
 import org.apache.parquet.thrift.struct.ThriftType;
@@ -44,15 +42,10 @@ import java.util.List;
  * a {@link FieldProjectionFilter} can be specified for projection pushdown.
  */
 public class ThriftSchemaConverter {
-
   private final FieldProjectionFilter fieldProjectionFilter;
 
-  public static <T extends TBase<?,?>> StructOrUnionType structOrUnionType(Class<T> klass) {
-    return TUnion.class.isAssignableFrom(klass) ? StructOrUnionType.UNION : StructOrUnionType.STRUCT;
-  }
-
   public ThriftSchemaConverter() {
-    this(new FieldProjectionFilter());
+    this(FieldProjectionFilter.ALL_COLUMNS);
   }
 
   public ThriftSchemaConverter(FieldProjectionFilter fieldProjectionFilter) {
@@ -60,52 +53,43 @@ public class ThriftSchemaConverter {
   }
 
   public MessageType convert(Class<? extends TBase<?, ?>> thriftClass) {
-    return convert(new ThriftStructConverter().toStructType(thriftClass));
+    return convert(toStructType(thriftClass));
   }
 
   public MessageType convert(StructType thriftClass) {
     ThriftSchemaConvertVisitor visitor = new ThriftSchemaConvertVisitor(fieldProjectionFilter);
     thriftClass.accept(visitor);
     MessageType convertedMessageType = visitor.getConvertedMessageType();
-    checkUnmatchedProjectionFilter(visitor.getFieldProjectionFilter());
+    fieldProjectionFilter.assertNoUnmatchedPatterns();
     return convertedMessageType;
   }
 
-  private void checkUnmatchedProjectionFilter(FieldProjectionFilter filter) {
-    List<PathGlobPattern> unmatched = filter.getUnMatchedPatterns();
-    if (unmatched.size() != 0) {
-      throw new ThriftProjectionException("unmatched projection filters: " + unmatched.toString());
-    }
+  public static <T extends TBase<?,?>> StructOrUnionType structOrUnionType(Class<T> klass) {
+    return TUnion.class.isAssignableFrom(klass) ? StructOrUnionType.UNION : StructOrUnionType.STRUCT;
   }
 
-  public ThriftType.StructType toStructType(Class<? extends TBase<?, ?>> thriftClass) {
-    return new ThriftStructConverter().toStructType(thriftClass);
+  public static ThriftType.StructType toStructType(Class<? extends TBase<?, ?>> thriftClass) {
+    final TStructDescriptor struct = TStructDescriptor.getInstance(thriftClass);
+    return toStructType(struct);
   }
 
-  private static class ThriftStructConverter {
-
-    public ThriftType.StructType toStructType(Class<? extends TBase<?, ?>> thriftClass) {
-      final TStructDescriptor struct = TStructDescriptor.getInstance(thriftClass);
-      return toStructType(struct);
+  private static StructType toStructType(TStructDescriptor struct) {
+    List<Field> fields = struct.getFields();
+    List<ThriftField> children = new ArrayList<ThriftField>(fields.size());
+    for (int i = 0; i < fields.size(); i++) {
+      Field field = fields.get(i);
+      Requirement req =
+          field.getFieldMetaData() == null ?
+              Requirement.OPTIONAL :
+              Requirement.fromType(field.getFieldMetaData().requirementType);
+      children.add(toThriftField(field.getName(), field, req));
     }
+    return new StructType(children, structOrUnionType(struct.getThriftClass()));
+  }
 
-    private StructType toStructType(TStructDescriptor struct) {
-      List<Field> fields = struct.getFields();
-      List<ThriftField> children = new ArrayList<ThriftField>(fields.size());
-      for (int i = 0; i < fields.size(); i++) {
-        Field field = fields.get(i);
-        Requirement req =
-                field.getFieldMetaData() == null ?
-                        Requirement.OPTIONAL :
-                        Requirement.fromType(field.getFieldMetaData().requirementType);
-        children.add(toThriftField(field.getName(), field, req));
-      }
-      return new StructType(children, structOrUnionType(struct.getThriftClass()));
-    }
-
-    private ThriftField toThriftField(String name, Field field, ThriftField.Requirement requirement) {
-      ThriftType type;
-      switch (ThriftTypeID.fromByte(field.getType())) {
+  private static ThriftField toThriftField(String name, Field field, ThriftField.Requirement requirement) {
+    ThriftType type;
+    switch (ThriftTypeID.fromByte(field.getType())) {
       case STOP:
       case VOID:
       default:
@@ -138,8 +122,8 @@ public class ThriftSchemaConverter {
         final Field mapKeyField = field.getMapKeyField();
         final Field mapValueField = field.getMapValueField();
         type = new ThriftType.MapType(
-                toThriftField(mapKeyField.getName(), mapKeyField, requirement),
-                toThriftField(mapValueField.getName(), mapValueField, requirement));
+            toThriftField(mapKeyField.getName(), mapKeyField, requirement),
+            toThriftField(mapValueField.getName(), mapValueField, requirement));
         break;
       case SET:
         final Field setElemField = field.getSetElemField();
@@ -157,9 +141,8 @@ public class ThriftSchemaConverter {
         }
         type = new EnumType(values);
         break;
-      }
-      return new ThriftField(name, field.getId(), requirement, type);
     }
+    return new ThriftField(name, field.getId(), requirement, type);
   }
 }
 

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,76 +18,44 @@
  */
 package org.apache.parquet.thrift.projection;
 
-import java.util.LinkedList;
-import java.util.List;
 
 /**
- * Filter thrift attributes using glob syntax.
+ * A field projection filter decides whether a thrift field (column) should
+ * be included when reading thrift data. It is used to implement projection push down.
  *
- * @author Tianshuo Deng
+ * See {@link StrictFieldProjectionFilter} and
+ * {@link parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter}
  */
-public class FieldProjectionFilter {
-  public static final String PATTERN_SEPARATOR = ";";
-  List<PathGlobPatternStatus> filterPatterns;
+public interface FieldProjectionFilter {
 
   /**
-   * Class for remembering if a glob pattern has matched anything.
-   * If there is an invalid glob pattern that matches nothing, it should throw.
+   * Decide whether to keep the field (column) represented by path.
+   *
+   * @param path the path to the field (column)
+   * @return true to keep, false to discard (project out)
    */
-  private static class PathGlobPatternStatus {
-    PathGlobPattern pattern;
-    boolean hasMatchingPath = false;
+  boolean keep(FieldsPath path);
 
-    PathGlobPatternStatus(String pattern) {
-      this.pattern = new PathGlobPattern(pattern);
-    }
+  /**
+   * Should throw a ThriftProjectionException if this FieldProjectionFilter has remaining patterns / columns
+   * that didn't match any of paths passed to {@link #keep(FieldsPath)}.
+   *
+   * Will be called once after all paths have been passed to {@link #keep(FieldsPath)}.
+   */
+  void assertNoUnmatchedPatterns() throws ThriftProjectionException;
 
-    public boolean matches(FieldsPath path) {
-      if (this.pattern.matches(path.toString())) {
-        this.hasMatchingPath = true;
-        return true;
-      } else {
-        return false;
-      }
-    }
-  }
-
-  public FieldProjectionFilter() {
-    filterPatterns = new LinkedList<PathGlobPatternStatus>();
-  }
-
-  public FieldProjectionFilter(String filterDescStr) {
-    filterPatterns = new LinkedList<PathGlobPatternStatus>();
-
-    if (filterDescStr == null || filterDescStr.isEmpty())
-      return;
-
-    String[] rawPatterns = filterDescStr.split(PATTERN_SEPARATOR);
-    for (String rawPattern : rawPatterns) {
-      filterPatterns.add(new PathGlobPatternStatus(rawPattern));
-    }
-  }
-
-  public boolean isMatched(FieldsPath path) {
-    if (filterPatterns.size() == 0)
+  /**
+   * A filter that keeps all of the columns.
+   */
+  public static final FieldProjectionFilter ALL_COLUMNS = new FieldProjectionFilter() {
+    @Override
+    public boolean keep(FieldsPath path) {
       return true;
-
-    for (int i = 0; i < filterPatterns.size(); i++) {
-
-      if (filterPatterns.get(i).matches(path))
-        return true;
     }
-    return false;
-  }
 
-  public List<PathGlobPattern> getUnMatchedPatterns() {
-    List<PathGlobPattern> unmatched = new LinkedList<PathGlobPattern>();
-    for (PathGlobPatternStatus p : filterPatterns) {
-      if (!p.hasMatchingPath) {
-        unmatched.add(p.pattern);
-      }
+    @Override
+    public void assertNoUnmatchedPatterns() throws ThriftProjectionException {
+
     }
-    return unmatched;
-  }
-
+  };
 }
