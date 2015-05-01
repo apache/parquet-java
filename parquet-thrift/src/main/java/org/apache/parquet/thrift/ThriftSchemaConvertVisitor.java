@@ -87,7 +87,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
     //=========handle value
     currentFieldPath.push(mapValueField);
     currentName = "value";
-    currentRepetition = OPTIONAL; // TODO: why?
+    currentRepetition = OPTIONAL;
     mapValueField.getType().accept(this);
     Type valueType = currentType;
     currentFieldPath.pop();
