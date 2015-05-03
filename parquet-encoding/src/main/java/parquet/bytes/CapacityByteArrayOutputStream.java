@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -23,10 +23,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import parquet.bytes.ByteBufferAllocator;
 import parquet.Log;
 import parquet.Preconditions;
 
@@ -45,6 +43,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   private static final Log LOG = Log.getLog(CapacityByteArrayOutputStream.class);
 
   private static final int MINIMUM_SLAB_SIZE = 64 * 1024;
+  private static final int PREFERRED_MAX_SLAB_SIZE = 16 * 1024 * 1024;
   private static final int EXPONENTIAL_SLAB_SIZE_THRESHOLD = 10;
 
   private int slabSize;
@@ -74,7 +73,9 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   }
 
   private void initSlabs(int initialSize) {
-    if (Log.DEBUG) LOG.debug(String.format("initial slab of size %d", initialSize));
+    if (Log.DEBUG) {
+      LOG.debug(String.format("initial slab of size %d", initialSize));
+    }
     this.slabSize = initialSize;
     for (ByteBuffer slab : slabs) {
       allocator.release(slab);
@@ -93,9 +94,13 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     if (currentSlabIndex < this.slabs.size()) {
       // reuse existing slab
       this.currentSlab = this.slabs.get(currentSlabIndex);
-      if (Log.DEBUG) LOG.debug(String.format("reusing slab of size %d", currentSlab.capacity()));
+      if (Log.DEBUG) {
+        LOG.debug(String.format("reusing slab of size %d", currentSlab.capacity()));
+      }
       if (currentSlab.capacity() < minimumSize) {
-        if (Log.DEBUG) LOG.debug(String.format("slab size %,d too small for value of size %,d. replacing slab", currentSlab.capacity(), minimumSize));
+        if (Log.DEBUG) {
+          LOG.debug(String.format("slab size %,d too small for value of size %,d. replacing slab", currentSlab.capacity(), minimumSize));
+        }
         ByteBuffer newSlab = allocateSlab(minimumSize);
         capacity += minimumSize - currentSlab.capacity();
         this.currentSlab = newSlab;
@@ -105,14 +110,25 @@ public class CapacityByteArrayOutputStream extends OutputStream {
       if (currentSlabIndex > EXPONENTIAL_SLAB_SIZE_THRESHOLD) {
         // make slabs bigger in case we are creating too many of them
         // double slab size every time.
-        this.slabSize = size;
-        if (Log.DEBUG) LOG.debug(String.format("used %d slabs, new slab size %d", currentSlabIndex, slabSize));
+        if (size > PREFERRED_MAX_SLAB_SIZE) {
+          this.slabSize = Math.max(minimumSize, PREFERRED_MAX_SLAB_SIZE);
+        } else {
+          this.slabSize = size;
+        }
+
+        if (Log.DEBUG) {
+          LOG.debug(String.format("used %d slabs, new slab size %d", currentSlabIndex, slabSize));
+        }
       }
       if (slabSize < minimumSize) {
-        if (Log.DEBUG) LOG.debug(String.format("slab size %,d too small for value of size %,d. Bumping up slab size", slabSize, minimumSize));
+        if (Log.DEBUG) {
+          LOG.debug(String.format("slab size %,d too small for value of size %,d. Bumping up slab size", slabSize, minimumSize));
+        }
         this.slabSize = minimumSize;
       }
-      if (Log.DEBUG) LOG.debug(String.format("new slab of size %d", slabSize));
+      if (Log.DEBUG) {
+        LOG.debug(String.format("new slab of size %d", slabSize));
+      }
       this.currentSlab = allocateSlab(slabSize);
       this.slabs.add(currentSlab);
       this.capacity += slabSize;
@@ -212,7 +228,9 @@ public class CapacityByteArrayOutputStream extends OutputStream {
         ){
       // readjust slab size
       initSlabs(Math.max(size / 5, MINIMUM_SLAB_SIZE)); // should make overhead to about 20% without incurring many slabs
-      if (Log.DEBUG) LOG.debug(String.format("used %d slabs, new slab size %d", currentSlabIndex + 1, slabSize));
+      if (Log.DEBUG) {
+        LOG.debug(String.format("used %d slabs, new slab size %d", currentSlabIndex + 1, slabSize));
+      }
     } else if (currentSlabIndex < slabs.size() ) {
       // free up the slabs that we are not using. We want to minimize overhead
       for(int i = currentSlabIndex + 1; i < slabs.size(); i++) {
