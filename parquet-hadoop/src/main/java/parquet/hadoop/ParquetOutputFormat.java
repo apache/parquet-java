@@ -271,7 +271,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         throws IOException, InterruptedException {
     final WriteSupport<T> writeSupport = getWriteSupport(conf);
 
-    CodecFactory codecFactory = new CodecFactory(conf);
+    CodecFactory codecFactory = new HeapCodecFactory(conf);
     long blockSize = getLongBlockSize(conf);
     if (INFO) LOG.info("Parquet block size to " + blockSize);
     int pageSize = getPageSize(conf);

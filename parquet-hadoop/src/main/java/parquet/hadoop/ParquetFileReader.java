@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -23,16 +23,14 @@ import static parquet.bytes.BytesUtils.readIntLittleEndian;
 import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
 import static parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics;
-import static parquet.format.Util.readPageHeader;
 import static parquet.hadoop.ParquetFileWriter.MAGIC;
 import static parquet.hadoop.ParquetFileWriter.PARQUET_COMMON_METADATA_FILE;
 import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
-import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.io.SequenceInputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -55,12 +53,10 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
-import org.apache.hadoop.mapred.Utils;
 
 import parquet.Log;
 import parquet.bytes.ByteBufferInputStream;
 import parquet.bytes.BytesInput;
-import parquet.bytes.BytesUtils;
 import parquet.column.ColumnDescriptor;
 import parquet.column.page.DataPage;
 import parquet.column.page.DataPageV1;
@@ -190,7 +186,9 @@ public class ParquetFileReader implements Closeable {
 
     if (toRead.size() > 0) {
       // read the footers of the files that did not have a summary file
-      if (Log.INFO) LOG.info("reading another " + toRead.size() + " footers");
+      if (Log.INFO) {
+        LOG.info("reading another " + toRead.size() + " footers");
+      }
       result.addAll(readAllFootersInParallel(configuration, toRead, skipRowGroups));
     }
 
@@ -340,10 +338,14 @@ public class ParquetFileReader implements Closeable {
     FileSystem fileSystem = basePath.getFileSystem(configuration);
     if (skipRowGroups && fileSystem.exists(commonMetaDataFile)) {
       // reading the summary file that does not contain the row groups
-      if (Log.INFO) LOG.info("reading summary file: " + commonMetaDataFile);
+      if (Log.INFO) {
+        LOG.info("reading summary file: " + commonMetaDataFile);
+      }
       return readFooter(configuration, commonMetaDataFile, filter(skipRowGroups));
     } else if (fileSystem.exists(metadataFile)) {
-      if (Log.INFO) LOG.info("reading summary file: " + metadataFile);
+      if (Log.INFO) {
+        LOG.info("reading summary file: " + metadataFile);
+      }
       return readFooter(configuration, metadataFile, filter(skipRowGroups));
     } else {
       return null;
@@ -417,13 +419,17 @@ public class ParquetFileReader implements Closeable {
     FSDataInputStream f = fileSystem.open(file.getPath());
     try {
       long l = file.getLen();
-      if (Log.DEBUG) LOG.debug("File length " + l);
+      if (Log.DEBUG) {
+        LOG.debug("File length " + l);
+      }
       int FOOTER_LENGTH_SIZE = 4;
       if (l < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
         throw new RuntimeException(file.getPath() + " is not a Parquet file (too small)");
       }
       long footerLengthIndex = l - FOOTER_LENGTH_SIZE - MAGIC.length;
-      if (Log.DEBUG) LOG.debug("reading footer index at " + footerLengthIndex);
+      if (Log.DEBUG) {
+        LOG.debug("reading footer index at " + footerLengthIndex);
+      }
 
       f.seek(footerLengthIndex);
       int footerLength = readIntLittleEndian(f);
@@ -433,7 +439,9 @@ public class ParquetFileReader implements Closeable {
         throw new RuntimeException(file.getPath() + " is not a Parquet file. expected magic number at tail " + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
       }
       long footerIndex = footerLengthIndex - footerLength;
-      if (Log.DEBUG) LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
+      if (Log.DEBUG) {
+        LOG.debug("read footer length: " + footerLength + ", footer index: " + footerIndex);
+      }
       if (footerIndex < MAGIC.length || footerIndex >= footerLengthIndex) {
         throw new RuntimeException("corrupted file: the footer index is not within the file");
       }
@@ -466,7 +474,7 @@ public class ParquetFileReader implements Closeable {
     for (ColumnDescriptor col : columns) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
-    this.codecFactory = new CodecFactory(configuration);
+    this.codecFactory = new HeapCodecFactory(configuration);
   }
 
   /**
@@ -604,7 +612,9 @@ public class ParquetFileReader implements Closeable {
             valuesCountReadSoFar += dataHeaderV2.getNum_values();
             break;
           default:
-            if (DEBUG) LOG.debug("skipping page of type " + pageHeader.getType() + " of size " + compressedPageSize);
+            if (DEBUG) {
+              LOG.debug("skipping page of type " + pageHeader.getType() + " of size " + compressedPageSize);
+            }
             this.skip(compressedPageSize);
             break;
         }

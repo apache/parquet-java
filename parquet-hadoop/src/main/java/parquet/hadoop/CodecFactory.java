@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,169 +18,83 @@
  */
 package parquet.hadoop;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.io.compress.CompressionOutputStream;
-import org.apache.hadoop.io.compress.Compressor;
-import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.util.ReflectionUtils;
 
-import parquet.bytes.ByteBufferInputStream;
 import parquet.bytes.BytesInput;
+import parquet.hadoop.CodecFactory.BytesCompressor;
+import parquet.hadoop.CodecFactory.BytesDecompressor;
 import parquet.hadoop.metadata.CompressionCodecName;
 
-class CodecFactory {
+public abstract class CodecFactory<C extends BytesCompressor, D extends BytesDecompressor> {
 
-  public class BytesDecompressor {
+  protected static final Map<String, CompressionCodec> CODEC_BY_NAME = Collections
+      .synchronizedMap(new HashMap<String, CompressionCodec>());
 
-    private final CompressionCodec codec;
-    private final Decompressor decompressor;
+  private final Map<CompressionCodecName, C> compressors = new HashMap<CompressionCodecName, C>();
+  private final Map<CompressionCodecName, D> decompressors = new HashMap<CompressionCodecName, D>();
 
-    public BytesDecompressor(CompressionCodec codec) {
-      this.codec = codec;
-      if (codec != null) {
-        decompressor = CodecPool.getDecompressor(codec);
-      } else {
-        decompressor = null;
-      }
-    }
+  protected final Configuration configuration;
 
-    public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
-      final BytesInput decompressed;
-      if (codec != null) {
-        decompressor.reset();
-        InputStream is = codec.createInputStream(new ByteBufferInputStream(bytes.toByteBuffer()), decompressor);
-        decompressed = BytesInput.from(is, uncompressedSize);
-      } else {
-        decompressed = bytes;
-      }
-      return decompressed;
-    }
-
-    private void release() {
-      if (decompressor != null) {
-        CodecPool.returnDecompressor(decompressor);
-      }
-    }
-  }
-
-  /**
-   * Encapsulates the logic around hadoop compression
-   *
-   * @author Julien Le Dem
-   *
-   */
-  public static class BytesCompressor {
-
-    private final CompressionCodec codec;
-    private final Compressor compressor;
-    private final ByteArrayOutputStream compressedOutBuffer;
-    private final CompressionCodecName codecName;
-
-    public BytesCompressor(CompressionCodecName codecName, CompressionCodec codec, int pageSize) {
-      this.codecName = codecName;
-      this.codec = codec;
-      if (codec != null) {
-        this.compressor = CodecPool.getCompressor(codec);
-        this.compressedOutBuffer = new ByteArrayOutputStream(pageSize);
-      } else {
-        this.compressor = null;
-        this.compressedOutBuffer = null;
-      }
-    }
-
-    public BytesInput compress(BytesInput bytes) throws IOException {
-      final BytesInput compressedBytes;
-      if (codec == null) {
-        compressedBytes = bytes;
-      } else {
-        compressedOutBuffer.reset();
-        if (compressor != null) {
-          // null compressor for non-native gzip
-          compressor.reset();
-        }
-        CompressionOutputStream cos = codec.createOutputStream(compressedOutBuffer, compressor);
-        bytes.writeAllTo(cos);
-        cos.finish();
-        cos.close();
-        compressedBytes = BytesInput.from(compressedOutBuffer);
-      }
-      return compressedBytes;
-    }
-
-    private void release() {
-      if (compressor != null) {
-        CodecPool.returnCompressor(compressor);
-      }
-    }
-
-    public CompressionCodecName getCodecName() {
-      return codecName;
-    }
-
-  }
-
-  private final Map<CompressionCodecName, BytesCompressor> compressors = new HashMap<CompressionCodecName, BytesCompressor>();
-  private final Map<CompressionCodecName, BytesDecompressor> decompressors = new HashMap<CompressionCodecName, BytesDecompressor>();
-  private final Map<String, CompressionCodec> codecByName = new HashMap<String, CompressionCodec>();
-  private final Configuration configuration;
-
-  public CodecFactory(Configuration configuration) {
+  protected CodecFactory(Configuration configuration) {
     this.configuration = configuration;
   }
 
+  public C getCompressor(CompressionCodecName codecName, int pageSize) {
+    C comp = compressors.get(codecName);
+    if (comp == null) {
+
+      CompressionCodec codec = getCodec(codecName);
+      comp = createCompressor(codecName, codec, pageSize);
+      compressors.put(codecName, comp);
+    }
+    return comp;
+  }
+
+  public D getDecompressor(CompressionCodecName codecName) {
+    D decomp = decompressors.get(codecName);
+    if (decomp == null) {
+      CompressionCodec codec = getCodec(codecName);
+      decomp = createDecompressor(codec);
+      decompressors.put(codecName, decomp);
+    }
+    return decomp;
+  }
+
+  protected abstract C createCompressor(CompressionCodecName codecName, CompressionCodec codec, int pageSize);
+
+  protected abstract D createDecompressor(CompressionCodec codec);
+
   /**
    *
-   * @param codecName the requested codec
+   * @param codecName
+   *          the requested codec
    * @return the corresponding hadoop codec. null if UNCOMPRESSED
    */
-  private CompressionCodec getCodec(CompressionCodecName codecName) {
+  protected CompressionCodec getCodec(CompressionCodecName codecName) {
     String codecClassName = codecName.getHadoopCompressionCodecClassName();
     if (codecClassName == null) {
       return null;
     }
-    CompressionCodec codec = codecByName.get(codecClassName);
+    CompressionCodec codec = CODEC_BY_NAME.get(codecClassName);
     if (codec != null) {
       return codec;
     }
 
     try {
       Class<?> codecClass = Class.forName(codecClassName);
-      codec = (CompressionCodec)ReflectionUtils.newInstance(codecClass, configuration);
-      codecByName.put(codecClassName, codec);
+      codec = (CompressionCodec) ReflectionUtils.newInstance(codecClass, configuration);
+      CODEC_BY_NAME.put(codecClassName, codec);
       return codec;
     } catch (ClassNotFoundException e) {
       throw new BadConfigurationException("Class " + codecClassName + " was not found", e);
     }
-  }
-
-  public BytesCompressor getCompressor(CompressionCodecName codecName, int pageSize) {
-    BytesCompressor comp = compressors.get(codecName);
-    if (comp == null) {
-      CompressionCodec codec = getCodec(codecName);
-      comp = new BytesCompressor(codecName, codec, pageSize);
-      compressors.put(codecName, comp);
-    }
-    return comp;
-  }
-
-  public BytesDecompressor getDecompressor(CompressionCodecName codecName) {
-    BytesDecompressor decomp = decompressors.get(codecName);
-    if (decomp == null) {
-      CompressionCodec codec = getCodec(codecName);
-      decomp = new BytesDecompressor(codec);
-      decompressors.put(codecName, decomp);
-    }
-    return decomp;
   }
 
   public void release() {
@@ -192,5 +106,19 @@ class CodecFactory {
       decompressor.release();
     }
     decompressors.clear();
+  }
+
+  public static abstract class BytesCompressor {
+    public abstract BytesInput compress(BytesInput bytes) throws IOException;
+
+    public abstract CompressionCodecName getCodecName();
+
+    protected abstract void release();
+  }
+
+  public static abstract class BytesDecompressor {
+    public abstract BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException;
+
+    protected abstract void release();
   }
 }
