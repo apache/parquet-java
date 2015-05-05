@@ -86,10 +86,18 @@ public class ValidTypeMap {
     add(Integer.class, new FullTypeDescriptor(PrimitiveTypeName.INT32, OriginalType.DATE));
     add(Integer.class, new FullTypeDescriptor(PrimitiveTypeName.INT32, OriginalType.TIME_MILLIS));
     add(Integer.class, new FullTypeDescriptor(PrimitiveTypeName.INT32, OriginalType.DECIMAL));
+    add(Integer.class, new FullTypeDescriptor(PrimitiveTypeName.INT32, OriginalType.UINT_8));
+    add(Integer.class, new FullTypeDescriptor(PrimitiveTypeName.INT32, OriginalType.UINT_16));
+    add(Integer.class, new FullTypeDescriptor(PrimitiveTypeName.INT32, OriginalType.UINT_32));
+    add(Integer.class, new FullTypeDescriptor(PrimitiveTypeName.INT32, OriginalType.INT_8));
+    add(Integer.class, new FullTypeDescriptor(PrimitiveTypeName.INT32, OriginalType.INT_16));
+    add(Integer.class, new FullTypeDescriptor(PrimitiveTypeName.INT32, OriginalType.INT_32));
 
     // Both of these long types are valid
     add(Long.class, new FullTypeDescriptor(PrimitiveTypeName.INT64, OriginalType.TIMESTAMP_MILLIS));
     add(Long.class, new FullTypeDescriptor(PrimitiveTypeName.INT64, OriginalType.DECIMAL));
+    add(Long.class, new FullTypeDescriptor(PrimitiveTypeName.INT64, OriginalType.UINT_64));
+    add(Long.class, new FullTypeDescriptor(PrimitiveTypeName.INT64, OriginalType.INT_64));
   }
 
   /**
