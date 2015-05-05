@@ -384,6 +384,23 @@ public class TestStatistics {
   }
 
   @Test
+  public void testBinaryMinMaxForReusedBackingByteArray() {
+    BinaryStatistics stats = new BinaryStatistics();
+
+    byte[] bytes = new byte[] { 10 };
+    stats.updateStats(Binary.fromByteArray(bytes));
+
+    bytes[0] = 20;
+    stats.updateStats(Binary.fromByteArray(bytes));
+
+    bytes[0] = 15;
+    stats.updateStats(Binary.fromByteArray(bytes));
+
+    assertArrayEquals(new byte[] { 20 }, stats.getMaxBytes());
+    assertArrayEquals(new byte[] { 10 }, stats.getMinBytes());
+  }
+
+  @Test
   public void testMergingStatistics() {
     testMergingIntStats();
     testMergingLongStats();

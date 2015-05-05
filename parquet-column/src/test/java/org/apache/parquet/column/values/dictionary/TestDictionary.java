@@ -27,6 +27,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -512,12 +513,13 @@ public class TestDictionary {
     }
   }
 
-  private void writeRepeatedWithReuse(int COUNT, ValuesWriter cw, String prefix) {
-    Binary reused = Binary.fromString(prefix + "0");
+  private void writeRepeatedWithReuse(int COUNT, ValuesWriter cw,
+                                      String prefix) throws UnsupportedEncodingException {
+    byte[] reused = (prefix + "0").getBytes("UTF-8");
     for (int i = 0; i < COUNT; i++) {
       Binary content = Binary.fromString(prefix + i % 10);
-      System.arraycopy(content.getBytes(), 0, reused.getBytes(), 0, reused.length());
-      cw.writeBytes(reused);
+      System.arraycopy(content.getBytes(), 0, reused, 0, reused.length);
+      cw.writeBytes(Binary.fromByteArray(reused));
     }
   }
 

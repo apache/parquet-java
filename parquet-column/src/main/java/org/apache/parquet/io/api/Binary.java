@@ -185,7 +185,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public byte[] getBytes() {
-      return value;
+      return Arrays.copyOfRange(value, 0, value.length);
     }
 
     @Override

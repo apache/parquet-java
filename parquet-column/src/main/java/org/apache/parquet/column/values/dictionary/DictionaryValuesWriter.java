@@ -285,8 +285,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     }
 
     protected static Binary copy(Binary binary) {
-      return Binary.fromByteArray(
-          Arrays.copyOf(binary.getBytes(), binary.length()));
+      return Binary.fromByteArray(binary.getBytes());
     }
   }
 

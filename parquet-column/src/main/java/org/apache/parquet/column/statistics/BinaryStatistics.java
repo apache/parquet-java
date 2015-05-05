@@ -72,13 +72,13 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   public void updateStats(Binary min_value, Binary max_value) {
-    if (min.compareTo(min_value) > 0) { min = min_value; }
-    if (max.compareTo(max_value) < 0) { max = max_value; }
+    if (min.compareTo(min_value) > 0) { min = Binary.fromByteArray(min_value.getBytes()); }
+    if (max.compareTo(max_value) < 0) { max = Binary.fromByteArray(max_value.getBytes()); }
   }
 
   public void initializeStats(Binary min_value, Binary max_value) {
-      min = min_value;
-      max = max_value;
+      min = Binary.fromByteArray(min_value.getBytes());
+      max = Binary.fromByteArray(max_value.getBytes());
       this.markAsNotEmpty();
   }
 
