@@ -24,7 +24,7 @@ import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
 
 /**
- * Represents a column path as a sequence of fields.
+ * Represents an immutable column path as a sequence of fields.
  *
  * @author Tianshuo Deng
  */
