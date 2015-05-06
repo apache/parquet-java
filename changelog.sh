@@ -58,6 +58,6 @@ do
     JSON=`curl -H "$TOKEN_HEADER" -s https://api.github.com/repos/Parquet/parquet-mr/pulls/$PR | tr "\n" " "`
     DESC_RAW=$(echo $JSON |  grep -Eo '"title":.*?[^\\]",' | cut -d "\"" -f 4- | head -n 1 | sed -e "s/\\\\//g")
     DESC=$(echo ${DESC_RAW%\",})
-    echo "* ISSUE [$PR](https://github.com/Parquet/parquet-mr/pull/$PR): ${DESC}"
+    echo "* ISSUE [$PR](https://github.com/apache/parquet-mr/pull/$PR): ${DESC}"
   fi
 done

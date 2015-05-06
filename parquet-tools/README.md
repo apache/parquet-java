@@ -21,7 +21,7 @@ Parquet Tools
 ======
 
 Parquet-Tools contains java based command line tools that aid
-in the inspection of [Parquet files](https://github.com/Parquet).
+in the inspection of [Parquet files](https://github.com/apache).
 
 Currently these tools are available for UN*X systems.
 
