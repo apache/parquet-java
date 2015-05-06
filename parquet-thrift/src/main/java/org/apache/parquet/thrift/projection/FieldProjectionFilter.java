@@ -24,12 +24,13 @@ package org.apache.parquet.thrift.projection;
  * be included when reading thrift data. It is used to implement projection push down.
  *
  * See {@link StrictFieldProjectionFilter} and
- * {@link parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter}
+ * {@link org.apache.parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter}
  */
 public interface FieldProjectionFilter {
 
   /**
    * Decide whether to keep the field (column) represented by path.
+   * This path always represents a primitive (leaf node) path.
    *
    * @param path the path to the field (column)
    * @return true to keep, false to discard (project out)

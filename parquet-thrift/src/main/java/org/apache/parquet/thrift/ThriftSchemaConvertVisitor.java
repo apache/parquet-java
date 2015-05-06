@@ -80,12 +80,12 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
   public static MessageType convert(StructType struct, FieldProjectionFilter filter) {
     State state = new State(new FieldsPath(), REPEATED, "ParquetSchema");
 
-    ConvertedField conv =
-        struct.accept(new ThriftSchemaConvertVisitor(filter), state);
+    ConvertedField conv = struct.accept(new ThriftSchemaConvertVisitor(filter), state);
 
     MessageType messageType;
 
     if (!conv.keep()) {
+      // TODO: should this be fatal? Projecting away everything?
       messageType = new MessageType(state.name, new ArrayList<Type>());
     } else {
       messageType = new MessageType(state.name, conv.getType().asGroupType().getFields());
@@ -106,31 +106,39 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
         new State(state.path.push(valueField), OPTIONAL, "value"));
 
     if (!convKey.keep()) {
+
       if (convValue.keep()) {
         throw new ThriftProjectionException(
             "Cannot select only the values of a map, you must keep the keys as well: " + state.path);
-      } else {
-        return ConvertedField.drop(state.path);
       }
-    } else {
-      if (convValue.keep()) {
-        Type mapField = mapType(
-            state.repetition,
-            state.name,
-            convKey.getType(),
-            convValue.getType());
 
-        return ConvertedField.keep(mapField, state.path);
-      } else {
-        Type mapField = mapType(
-            state.repetition,
-            state.name,
-            convKey.getType(),
-            null); // signals to mapType method to project the value
-
-        return ConvertedField.keep(mapField, state.path);
-      }
+      // neither key nor value was requested
+      return ConvertedField.drop(state.path);
     }
+
+    // we are keeping the key, but how about the value?
+
+    if (convValue.keep()) {
+      // keep both key and value
+
+      Type mapField = mapType(
+          state.repetition,
+          state.name,
+          convKey.getType(),
+          convValue.getType());
+
+      return ConvertedField.keep(mapField, state.path);
+    }
+
+    // keep only the key, not the value
+
+    Type mapField = mapType(
+        state.repetition,
+        state.name,
+        convKey.getType(),
+        null); // signals to mapType method to project the value
+
+    return ConvertedField.keep(mapField, state.path);
   }
 
   private ConvertedField visitListLike(ThriftField listLike, State state) {
@@ -142,6 +150,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     if (conv.keep()) {
       return ConvertedField.keep(listType(state.repetition, state.name, conv.getType()), state.path);
     }
+
     return ConvertedField.drop(state.path);
   }
 
@@ -156,29 +165,16 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     return visitListLike(listType.getValues(), state);
   }
 
-  private static final class FirstPrimitiveFilter implements FieldProjectionFilter {
-    private boolean found = false;
-
-    @Override
-    public boolean keep(FieldsPath path) {
-      if (found) {
-        return false;
-      }
-
-      found = true;
-      return true;
-    }
-
-    @Override
-    public void assertNoUnmatchedPatterns() throws ThriftProjectionException { }
-  }
-
   @Override
   public ConvertedField visit(StructType structType, State state) {
-    boolean isUnion = isUnion(structType.getStructOrUnionType());
 
-    int convertedChildrenCount = 0;
-    int sentinelUnionColumns = 0;
+    // special care is taken when converting unions,
+    // because we are actually both converting + projecting in
+    // one pass, and unions need special handling when projecting.
+    final boolean isUnion = isUnion(structType.getStructOrUnionType());
+
+    boolean hasSentinelUnionColumns = false;
+    boolean hasNonSentinelUnionColumns = false;
 
     List<Type> convertedChildren = new ArrayList<Type>();
 
@@ -194,11 +190,13 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
         // in order to know what "kind" of union each record is.
         // TODO: in the future, we should just filter these records out instead
 
+        // re-do the recursion, with a new projection filter that keeps only
+        // the first primitive it encounters
         ConvertedField firstPrimitive = child.getType().accept(
-            new ThriftSchemaConvertVisitor(new FirstPrimitiveFilter()),childState);
+            new ThriftSchemaConvertVisitor(new KeepOnlyFirstPrimitiveFilter()), childState);
 
         convertedChildren.add(firstPrimitive.getType().withId(child.getFieldId()));
-        sentinelUnionColumns++;
+        hasSentinelUnionColumns = true;
       }
 
       if (conv.isSentinel()) {
@@ -206,27 +204,30 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
         if (childState.repetition == REQUIRED) {
           // but this field is required, so we may still need it
           convertedChildren.add(conv.getType().withId(child.getFieldId()));
-          sentinelUnionColumns++;
+          hasSentinelUnionColumns = true;
         }
-      }
-
-      if (conv.keep()) {
+      } else if (conv.keep()) {
+        // user has selected this column, so we keep it.
         convertedChildren.add(conv.getType().withId(child.getFieldId()));
-        convertedChildrenCount++;
+        hasNonSentinelUnionColumns = true;
       }
 
     }
 
     GroupType groupType = new GroupType(state.repetition, state.name, convertedChildren);
 
-    if (convertedChildrenCount == 0 && sentinelUnionColumns != 0) {
-      // this is a union, that we should drop *if we can*
+    if (!hasNonSentinelUnionColumns && hasSentinelUnionColumns) {
+      // this is a union, and user has not requested any of the children
+      // of this union. We should drop this union, if possible, but
+      // we may not be able to, so tag this as a sentinel.
       return ConvertedField.sentinelKeep(groupType, state.path);
     }
 
-    if (convertedChildrenCount != 0) {
+    if (hasNonSentinelUnionColumns) {
+      // user requested some of the fields of this struct, so we keep the struct
       return ConvertedField.keep(groupType, state.path);
     } else {
+      // user requested none of the fields of this struct, so we drop it
       return ConvertedField.drop(state.path);
     }
   }
@@ -237,6 +238,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
 
   private ConvertedField visitPrimitiveType(PrimitiveTypeName type, OriginalType orig, State state) {
     PrimitiveBuilder<PrimitiveType> b = primitive(type, state.repetition);
+
     if (orig != null) {
       b = b.as(orig);
     }
@@ -288,10 +290,6 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     return visitPrimitiveType(BINARY, UTF8, state);
   }
 
-  private static boolean isUnion(ThriftType t) {
-    return t instanceof StructType && isUnion(((StructType) t).getStructOrUnionType());
-  }
-
   private static boolean isUnion(StructOrUnionType s) {
     switch (s) {
       case STRUCT:
@@ -318,10 +316,13 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     }
   }
 
+  /**
+   * The state passed through the recursion as we traverse a thrift schema.
+   */
   public static final class State {
-    public final FieldsPath path;
-    public final Type.Repetition repetition;
-    public final String name;
+    public final FieldsPath path; // current field path
+    public final Type.Repetition repetition; // current repetition (no relation to parent's repetition)
+    public final String name; // name of the field located at path
 
     public State(FieldsPath path, Repetition repetition, String name) {
       this.path = path;
