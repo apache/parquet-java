@@ -213,7 +213,7 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, Void> {
     short oldMaxId = 0;
 
     if (newStruct.getChildren().size() == 0) {
-      report.emptyStruct("new struct has no child: " + path);
+      report.emptyStruct("new struct is an empty struct: " + path);
     }
 
     for (ThriftField oldField : currentOldType.getChildren()) {

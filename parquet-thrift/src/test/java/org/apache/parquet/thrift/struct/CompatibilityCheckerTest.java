@@ -111,7 +111,8 @@ public class CompatibilityCheckerTest {
   @Test
   public void testEmptyStruct() {
     CompatibilityReport report = getCompatibilityReport(NestedEmptyStruct.class, NestedEmptyStruct.class);
-    System.out.println(report.getMessages());
+    assertTrue(report.prettyMessages().contains("new struct is an empty struct: /required_empty/"));
+    assertTrue(report.prettyMessages().contains("new struct is an empty struct: /optional_empty/"));
     assertTrue(report.hasEmptyStruct());
   }
 
@@ -127,7 +128,6 @@ public class CompatibilityCheckerTest {
 
   private void verifyCompatible(Class oldClass, Class newClass, boolean expectCompatible) {
     CompatibilityReport report = getCompatibilityReport(oldClass, newClass);
-    System.out.println(report);
     assertEquals(expectCompatible, report.isCompatible());
   }
 }

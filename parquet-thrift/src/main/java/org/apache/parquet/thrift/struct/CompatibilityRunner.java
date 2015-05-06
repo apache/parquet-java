@@ -73,6 +73,13 @@ public class CompatibilityRunner {
       System.err.println(report.getMessages());
       System.exit(1);
     }
+
+    if (!report.hasEmptyStruct()) {
+      System.err.println("schema contains empty struct");
+      System.err.println(report.getMessages());
+      System.exit(1);
+    }
+
     System.out.println("[success] schema is compatible");
 
   }
