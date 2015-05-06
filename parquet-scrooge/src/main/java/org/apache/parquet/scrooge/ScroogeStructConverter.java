@@ -91,7 +91,9 @@ public class ScroogeStructConverter {
     ThriftStructCodec<?> companionObject;
     try {
       companionObject = (ThriftStructCodec<?>) companionClass.getField("MODULE$").get(null);
-    } catch (ReflectiveOperationException e) {
+    } catch (NoSuchFieldException e) {
+      throw new ScroogeSchemaConversionException("Can not get ThriftStructCodec from companion object of " + companionClass.getName(), e);
+    } catch (IllegalAccessException e) {
       throw new ScroogeSchemaConversionException("Can not get ThriftStructCodec from companion object of " + companionClass.getName(), e);
     }
 
@@ -141,8 +143,14 @@ public class ScroogeStructConverter {
           Object companionUnionObj = companionUnionClass.getField("MODULE$").get(null);
           ThriftStructFieldInfo info = (ThriftStructFieldInfo) companionUnionClass.getMethod("fieldInfo").invoke(companionUnionObj);
           fields.add(info);
-        } catch (ReflectiveOperationException e) {
-          throw new ScroogeSchemaConversionException("can not find fiedInfo for " + unionClass, e);
+        } catch (NoSuchFieldException e) {
+          throw new ScroogeSchemaConversionException("can not find fieldInfo for " + unionClass, e);
+        } catch (InvocationTargetException e) {
+          throw new ScroogeSchemaConversionException("can not find fieldInfo for " + unionClass, e);
+        } catch (NoSuchMethodException e) {
+          throw new ScroogeSchemaConversionException("can not find fieldInfo for " + unionClass, e);
+        } catch (IllegalAccessException e) {
+          throw new ScroogeSchemaConversionException("can not find fieldInfo for " + unionClass, e);
         }
       }
     }
@@ -324,9 +332,17 @@ public class ScroogeStructConverter {
         enumValues.add(new ThriftType.EnumValue(enumDesc.id, enumDesc.originalName));
       }
       return new ThriftType.EnumType(enumValues);
-    } catch (ReflectiveOperationException e) {
-      throw new ScroogeSchemaConversionException("Can not convert enum field " + fieldName, e);
     } catch (RuntimeException e) {
+      throw new ScroogeSchemaConversionException("Can not convert enum field " + fieldName, e);
+    } catch (NoSuchMethodException e) {
+      throw new ScroogeSchemaConversionException("Can not convert enum field " + fieldName, e);
+    } catch (IllegalAccessException e) {
+      throw new ScroogeSchemaConversionException("Can not convert enum field " + fieldName, e);
+    } catch (NoSuchFieldException e) {
+      throw new ScroogeSchemaConversionException("Can not convert enum field " + fieldName, e);
+    } catch (InvocationTargetException e) {
+      throw new ScroogeSchemaConversionException("Can not convert enum field " + fieldName, e);
+    } catch (ClassNotFoundException e) {
       throw new ScroogeSchemaConversionException("Can not convert enum field " + fieldName, e);
     }
 
