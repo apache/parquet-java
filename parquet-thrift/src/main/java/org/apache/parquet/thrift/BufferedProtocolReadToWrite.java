@@ -414,7 +414,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       case UNION:
         // this is a union with an unrecognized member -- this is fatal for this record
         // in the write path, because it will be unreadable in the read path.
-        // throwing here means we will either skip this record entirely, or fail completely.
+        // throwing here means we will either skip this record entirely, or incompatible completely.
         throw new DecodingSchemaMismatchException("Unrecognized union member with id: "
             + field.id + " for struct:\n" + type);
       case UNKNOWN:

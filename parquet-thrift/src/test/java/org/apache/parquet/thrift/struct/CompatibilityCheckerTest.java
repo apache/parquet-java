@@ -23,6 +23,7 @@ import org.apache.parquet.thrift.ThriftSchemaConverter;
 import org.apache.parquet.thrift.test.compat.*;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class CompatibilityCheckerTest {
 
@@ -107,14 +108,26 @@ public class CompatibilityCheckerTest {
     verifyCompatible(ListStructV1.class, ListStructV2.class, true);
   }
 
+  @Test
+  public void testEmptyStruct() {
+    CompatibilityReport report = getCompatibilityReport(NestedEmptyStruct.class, NestedEmptyStruct.class);
+    System.out.println(report.getMessages());
+    assertTrue(report.hasEmptyStruct());
+  }
+
   private ThriftType.StructType struct(Class thriftClass) {
     return new ThriftSchemaConverter().toStructType(thriftClass);
   }
 
-  private void verifyCompatible(Class oldClass, Class newClass, boolean expectCompatible) {
+  private CompatibilityReport getCompatibilityReport(Class oldClass, Class newClass) {
     CompatibilityChecker checker = new CompatibilityChecker();
     CompatibilityReport report = checker.checkCompatibility(struct(oldClass), struct(newClass));
-    System.out.println(report.messages);
+    return report;
+  }
+
+  private void verifyCompatible(Class oldClass, Class newClass, boolean expectCompatible) {
+    CompatibilityReport report = getCompatibilityReport(oldClass, newClass);
+    System.out.println(report);
     assertEquals(expectCompatible, report.isCompatible());
   }
 }

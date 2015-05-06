@@ -19,7 +19,10 @@
 package org.apache.parquet.thrift.struct;
 
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
 
 import org.apache.parquet.thrift.struct.ThriftType.BoolType;
@@ -32,7 +35,7 @@ import org.apache.parquet.thrift.struct.ThriftType.I64Type;
 import org.apache.parquet.thrift.struct.ThriftType.StringType;
 
 /**
- * A checker for thrift struct, returns compatibility report based on following rules:
+ * A checker for thrift struct to enforce its backward compatibility, returns compatibility report based on following rules:
  * 1. Should not add new REQUIRED field in new thrift struct. Adding optional field is OK
  * 2. Should not change field type for an existing field
  * 3. Should not delete existing field
@@ -52,10 +55,15 @@ public class CompatibilityChecker {
 
 class CompatibilityReport {
   boolean isCompatible = true;
+  boolean hasEmptyStruct = false;
   List<String> messages = new ArrayList<String>();
 
   public boolean isCompatible() {
     return isCompatible;
+  }
+
+  public boolean hasEmptyStruct() {
+    return hasEmptyStruct;
   }
 
   public void fail(String message) {
@@ -63,13 +71,65 @@ class CompatibilityReport {
     isCompatible = false;
   }
 
+  public void emptyStruct(String message) {
+    messages.add(message);
+    hasEmptyStruct = true;
+  }
+
   public List<String> getMessages() {
     return messages;
   }
+
+  public String prettyMessages() {
+    StringBuffer message = new StringBuffer();
+    for(String m: messages) {
+      message.append(m);
+      message.append("\n");
+    }
+    return message.toString();
+  }
+
+  @Override
+  public String toString() {
+    return "CompatibilityReport{" +
+        "isCompatible=" + isCompatible +
+        ", hasEmptyStruct=" + hasEmptyStruct +
+        ", messages=\n" + prettyMessages() +
+        '}';
+  }
 }
 
-class CompatibleCheckerVisitor implements ThriftType.TypeVisitor {
+
+class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, Void> {
+  /**
+   * log the path when a incompatible field is found, so it's easier to track down the incompatible field
+   */
+  private static class FieldPath {
+    Deque<String> path = new ArrayDeque<String>();
+
+    void push(String fieldName) {
+      path.push(fieldName);
+    }
+
+    String pop() {
+      return path.pop();
+    }
+
+    @Override
+    public String toString() {
+      StringBuffer buffer = new StringBuffer("/");
+      Iterator<String> it = path.descendingIterator();
+      while(it.hasNext()) {
+        buffer.append(it.next());
+        buffer.append('/');
+      }
+      return buffer.toString();
+    }
+  }
+
   ThriftType oldType;
+  FieldPath path = new FieldPath();
+
   CompatibilityReport report = new CompatibilityReport();
 
   CompatibleCheckerVisitor(ThriftType.StructType oldType) {
@@ -113,24 +173,24 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor {
     oldType = currentOldType;
   }
 
-  public void fail(String message) {
-    report.fail(message);
+  public void incompatible(String message) {
+    report.fail("at " + path + ":" +message);
   }
 
   private void checkField(ThriftField oldField, ThriftField newField) {
 
     if (!newField.getType().getType().equals(oldField.getType().getType())) {
-      fail("type is not compatible: " + oldField.getName() + " " + oldField.getType().getType() + " vs " + newField.getType().getType());
+      incompatible("type is not compatible: " + oldField.getType().getType() + " vs " + newField.getType().getType());
       return;
     }
 
     if (!newField.getName().equals(oldField.getName())) {
-      fail("field names are different: " + oldField.getName() + " vs " + newField.getName());
+      incompatible("field names are different: " + oldField.getName() + " vs " + newField.getName());
       return;
     }
 
     if (firstIsMoreRestirctive(newField.getRequirement(), oldField.getRequirement())) {
-      fail("new field is more restrictive: " + newField.getName());
+      incompatible("new field is more restrictive: " + newField.getName());
       return;
     }
 
@@ -151,6 +211,11 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor {
   public void visit(ThriftType.StructType newStruct) {
     ThriftType.StructType currentOldType = ((ThriftType.StructType) oldType);
     short oldMaxId = 0;
+
+    if (newStruct.getChildren().size() == 0) {
+      report.emptyStruct("new struct has no child: " + path);
+    }
+
     for (ThriftField oldField : currentOldType.getChildren()) {
       short fieldId = oldField.getFieldId();
       if (fieldId > oldMaxId) {
@@ -158,7 +223,7 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor {
       }
       ThriftField newField = newStruct.getChildById(fieldId);
       if (newField == null) {
-        fail("can not find index in new Struct: " + fieldId +" in " + newStruct);
+        incompatible("can not find index in new Struct: " + fieldId + " in " + newStruct);
         return;
       }
       checkField(oldField, newField);

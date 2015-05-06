@@ -36,7 +36,7 @@ import java.util.LinkedList;
  *
  * java CompatibilityRunner compare-json {old_json_path} {new_json_path}
  * The above command will succeed when the new schema is compatible with the old schema.
- * It will fail when they are not compatible. For compatibility rules: {@link CompatibilityChecker}
+ * It will incompatible when they are not compatible. For compatibility rules: {@link CompatibilityChecker}
  *
  * @author Tianshuo Deng
  */

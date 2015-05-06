@@ -253,3 +253,12 @@ struct ListOfUnions {
   1: optional list<UnionOfStructs> optListUnion
   2: required list<UnionOfStructs> reqListUnion
 }
+
+struct EmptyStruct {
+
+}
+
+struct NestedEmptyStruct {
+  1: required EmptyStruct required_empty
+  2: optional EmptyStruct optional_empty
+}
