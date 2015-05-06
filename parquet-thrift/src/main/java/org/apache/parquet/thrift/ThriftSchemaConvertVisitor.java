@@ -18,21 +18,6 @@
  */
 package org.apache.parquet.thrift;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
-import static org.apache.parquet.schema.ConversionPatterns.listType;
-import static org.apache.parquet.schema.ConversionPatterns.mapType;
-import static org.apache.parquet.schema.OriginalType.ENUM;
-import static org.apache.parquet.schema.OriginalType.UTF8;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
-import static org.apache.parquet.schema.Type.Repetition.REPEATED;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.apache.parquet.schema.Types.primitive;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,6 +30,9 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
 import org.apache.parquet.schema.Types.PrimitiveBuilder;
+import org.apache.parquet.thrift.ConvertedField.Drop;
+import org.apache.parquet.thrift.ConvertedField.Keep;
+import org.apache.parquet.thrift.ConvertedField.SentinelUnion;
 import org.apache.parquet.thrift.projection.FieldProjectionFilter;
 import org.apache.parquet.thrift.projection.FieldsPath;
 import org.apache.parquet.thrift.projection.ThriftProjectionException;
@@ -63,6 +51,21 @@ import org.apache.parquet.thrift.struct.ThriftType.SetType;
 import org.apache.parquet.thrift.struct.ThriftType.StringType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
+
+import static org.apache.parquet.Preconditions.checkNotNull;
+import static org.apache.parquet.schema.ConversionPatterns.listType;
+import static org.apache.parquet.schema.ConversionPatterns.mapType;
+import static org.apache.parquet.schema.OriginalType.ENUM;
+import static org.apache.parquet.schema.OriginalType.UTF8;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.apache.parquet.schema.Types.primitive;
 
 /**
  * Visitor Class for converting a thrift definition to parquet message type.
@@ -84,11 +87,11 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
 
     MessageType messageType;
 
-    if (!conv.keep()) {
+    if (!conv.isKeep()) {
       // TODO: should this be fatal? Projecting away everything?
       messageType = new MessageType(state.name, new ArrayList<Type>());
     } else {
-      messageType = new MessageType(state.name, conv.getType().asGroupType().getFields());
+      messageType = new MessageType(state.name, conv.asKeep().getType().asGroupType().getFields());
     }
 
     return messageType;
@@ -105,29 +108,29 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     ConvertedField convValue = valueField.getType().accept(this,
         new State(state.path.push(valueField), OPTIONAL, "value"));
 
-    if (!convKey.keep()) {
+    if (!convKey.isKeep()) {
 
-      if (convValue.keep()) {
+      if (convValue.isKeep()) {
         throw new ThriftProjectionException(
             "Cannot select only the values of a map, you must keep the keys as well: " + state.path);
       }
 
       // neither key nor value was requested
-      return ConvertedField.drop(state.path);
+      return new Drop(state.path);
     }
 
     // we are keeping the key, but how about the value?
 
-    if (convValue.keep()) {
+    if (convValue.isKeep()) {
       // keep both key and value
 
       Type mapField = mapType(
           state.repetition,
           state.name,
-          convKey.getType(),
-          convValue.getType());
+          convKey.asKeep().getType(),
+          convValue.asKeep().getType());
 
-      return ConvertedField.keep(mapField, state.path);
+      return new Keep(state.path, mapField);
     }
 
     // keep only the key, not the value
@@ -135,10 +138,10 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     Type mapField = mapType(
         state.repetition,
         state.name,
-        convKey.getType(),
+        convKey.asKeep().getType(),
         null); // signals to mapType method to project the value
 
-    return ConvertedField.keep(mapField, state.path);
+    return new Keep(state.path, mapField);
   }
 
   private ConvertedField visitListLike(ThriftField listLike, State state) {
@@ -147,13 +150,12 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
         .getType()
         .accept(this, new State(state.path, REPEATED, state.name + "_tuple"));
 
-    if (conv.keep()) {
-      return ConvertedField.keep(listType(state.repetition, state.name, conv.getType()), state.path);
+    if (conv.isKeep()) {
+      return new Keep(state.path, listType(state.repetition, state.name, conv.asKeep().getType()));
     }
 
-    return ConvertedField.drop(state.path);
+    return new Drop(state.path);
   }
-
 
   @Override
   public ConvertedField visit(SetType setType, State state) {
@@ -184,7 +186,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
 
       ConvertedField conv = child.getType().accept(this, childState);
 
-      if (isUnion && !conv.keep()) {
+      if (isUnion && !conv.isKeep()) {
         // user is not keeping this "kind" of union, but we still need
         // to keep at least one of the primitives of this union around.
         // in order to know what "kind" of union each record is.
@@ -195,20 +197,20 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
         ConvertedField firstPrimitive = child.getType().accept(
             new ThriftSchemaConvertVisitor(new KeepOnlyFirstPrimitiveFilter()), childState);
 
-        convertedChildren.add(firstPrimitive.getType().withId(child.getFieldId()));
+        convertedChildren.add(firstPrimitive.asKeep().getType().withId(child.getFieldId()));
         hasSentinelUnionColumns = true;
       }
 
-      if (conv.isSentinel()) {
+      if (conv.isSentinelUnion()) {
         // child field is a sentinel union that we should drop if possible
         if (childState.repetition == REQUIRED) {
           // but this field is required, so we may still need it
-          convertedChildren.add(conv.getType().withId(child.getFieldId()));
+          convertedChildren.add(conv.asSentinelUnion().getType().withId(child.getFieldId()));
           hasSentinelUnionColumns = true;
         }
-      } else if (conv.keep()) {
+      } else if (conv.isKeep()) {
         // user has selected this column, so we keep it.
-        convertedChildren.add(conv.getType().withId(child.getFieldId()));
+        convertedChildren.add(conv.asKeep().getType().withId(child.getFieldId()));
         hasNonSentinelUnionColumns = true;
       }
 
@@ -220,15 +222,15 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
       // this is a union, and user has not requested any of the children
       // of this union. We should drop this union, if possible, but
       // we may not be able to, so tag this as a sentinel.
-      return ConvertedField.sentinelKeep(groupType, state.path);
+      return new SentinelUnion(state.path, groupType);
     }
 
     if (hasNonSentinelUnionColumns) {
       // user requested some of the fields of this struct, so we keep the struct
-      return ConvertedField.keep(groupType, state.path);
+      return new Keep(state.path, groupType);
     } else {
       // user requested none of the fields of this struct, so we drop it
-      return ConvertedField.drop(state.path);
+      return new Drop(state.path);
     }
   }
 
@@ -244,9 +246,9 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     }
 
     if (fieldProjectionFilter.keep(state.path)) {
-      return ConvertedField.keep(b.named(state.name), state.path);
+      return new Keep(state.path, b.named(state.name));
     } else {
-      return ConvertedField.drop(state.path);
+      return new Drop(state.path);
     }
   }
 
