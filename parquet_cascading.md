@@ -110,7 +110,7 @@ For example, imagine a Person struct defined as:
     }
 
 A column is specified as the path from the root of the schema down to the field of interest, separated by `.`, just as you would access the field
-in java or scala code. For example: `primaryAddress.phone.doNotCall`. 
+in java or scala code. For example: `primaryAddress.primaryPhone.doNotCall`.
 This applies for repeated fields as well, for example `primaryAddress.otherPhones.number` selects all the `number`s from all the elements of `otherPhones`.
 Maps are a special case -- the map is split into two columns, the key and the value. All the columns in the key are required, but you can select a subset of the
 columns in the value (or skip the value entirely), for example: `otherAddresses.{key,value.street}` will select only the streets from the
@@ -118,7 +118,7 @@ values of the map, but the entire key will be kept. To select an entire map, you
 and to select only the keys: `otherAddresses.key`. When selecting a field that is a struct, for example `primaryAddress.primaryPhone`, 
 it will select the entire struct. So `primaryAddress.primaryPhone.*` is redundant.
 
-Columns can be specified concretely (like `primaryAddress.phone.doNotCall`), or a restricted glob syntax can be used.
+Columns can be specified concretely (like `primaryAddress.primaryPhone.doNotCall`), or a restricted glob syntax can be used.
 The glob syntax supports only wildcards (`*`) and glob expressions (`{}`).
 
 For example:
