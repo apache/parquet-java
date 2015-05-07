@@ -73,7 +73,7 @@ Parquet is a very active project, and new features are being added quickly; belo
 <table>
   <tr><th>Feature</th><th>In trunk</th><th>In dev</th><th>Planned</th><th>Expected release</th></tr>
   <tr><td>Type-specific encoding</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Hive integration</td><td>YES (<a href ="https://github.com/apache/parquet-mr/pull/28">28</a>)</td><td></td></td><td></td><td>1.0</td></tr>
+  <tr><td>Hive integration</td><td>YES (<a href ="https://github.com/Parquet/parquet-mr/pull/28">28</a>)</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Pig integration</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Cascading integration</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Crunch integration</td><td>YES (<a href ="https://issues.apache.org/jira/browse/CRUNCH-277">CRUNCH-277</a>)</td><td></td></td><td></td><td>1.0</td></tr>
@@ -86,7 +86,7 @@ Parquet is a very active project, and new features are being added quickly; belo
   <tr><td>RLE</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Bit Packing</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Adaptive dictionary encoding</td><td>YES</td><td></td></td><td></td><td>1.0</td></tr>
-  <tr><td>Predicate pushdown</td><td>YES (<a href ="https://github.com/apache/parquet-mr/pull/68">68</a>)</td><td></td></td><td></td><td>1.0</td></tr>
+  <tr><td>Predicate pushdown</td><td>YES (<a href ="https://github.com/Parquet/parquet-mr/pull/68">68</a>)</td><td></td></td><td></td><td>1.0</td></tr>
   <tr><td>Column stats</td><td>YES</td><td></td></td><td></td><td>2.0</td></tr>  
   <tr><td>Delta encoding</td><td>YES</td><td></td></td><td></td><td>2.0</td></tr>
   <tr><td>Native Protocol Buffers support</td><td>YES</td><td></td><td></td><td>1.0</td></tr>
