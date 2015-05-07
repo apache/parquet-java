@@ -95,7 +95,7 @@ Parquet is a very active project, and new features are being added quickly; belo
 
 ## Map/Reduce integration
 
-[Input](https://github.com/apache/parquet-mr/blob/master/parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputFormat.java) and [Output](https://github.com/apache/parquet-mr/blob/master/parquet-hadoop/src/main/java/parquet/hadoop/ParquetOutputFormat.java) formats.
+[Input](https://github.com/apache/parquet-mr/blob/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/ParquetInputFormat.java) and [Output](https://github.com/apache/parquet-mr/blob/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/ParquetOutputFormat.java) formats.
 Note that to use an Input or Output format, you need to implement a WriteSupport or ReadSupport class, which will implement the conversion of your object to and from a Parquet schema.
 
 We've implemented this for 2 popular data formats to provide a clean migration path as well:
@@ -115,7 +115,7 @@ See the APIs:
 * [Hadoop API](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/parquet/hadoop/api)
 
 ## Apache Pig integration
-A [Loader](https://github.com/apache/parquet-mr/blob/master/parquet-pig/src/main/java/parquet/pig/ParquetLoader.java) and a [Storer](https://github.com/apache/parquet-mr/blob/master/parquet-pig/src/main/java/parquet/pig/ParquetStorer.java) are provided to read and write Parquet files with Apache Pig
+A [Loader](https://github.com/apache/parquet-mr/blob/master/parquet-pig/src/main/java/org/apache/parquet/pig/ParquetLoader.java) and a [Storer](https://github.com/apache/parquet-mr/blob/master/parquet-pig/src/main/java/org/apache/parquet/pig/ParquetStorer.java) are provided to read and write Parquet files with Apache Pig
 
 Storing data into Parquet in Pig is simple:
 ```

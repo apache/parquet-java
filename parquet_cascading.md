@@ -30,7 +30,7 @@ In [parquet-cascading](https://github.com/apache/parquet-mr/tree/master/parquet-
 1.1 Thrift/TBase
 ------------
 ### Read Thrift Records from Parquet
-[ParquetTbaseScheme](https://github.com/apache/parquet-mr/blob/master/parquet-cascading/src/main/java/parquet/cascading/ParquetTBaseScheme.java) is the interface for reading thrift records in Parquet format. Providing a ParquetTbaseScheme as a parameter to the constructor of a source enables the program to read Thrift object(TBase), eg.
+[ParquetTbaseScheme](https://github.com/apache/parquet-mr/blob/master/parquet-cascading/src/main/java/org/apache/parquet/cascading/ParquetTBaseScheme.java) is the interface for reading thrift records in Parquet format. Providing a ParquetTbaseScheme as a parameter to the constructor of a source enables the program to read Thrift object(TBase), eg.
 
 `
 Scheme sourceScheme = new ParquetTBaseScheme(Name.class)
@@ -42,19 +42,19 @@ In the above example Name is a thrift class that extends TBase. Under the hood p
 The thrift class is actually *optional* to initialize a ParquetTBaseScheme when the data is written as Thrift records in Parquet. When writing thrift records to parquet format, the Thrift class of the records is stored as meta-data in the footer of the parquet file. Therefore when reading the file, if a thrift class is not explicitly provided, Parquet will use the class name stored in the footer as the thrift class. 
 
 ### Write Thrift Records to Parquet
-[ParquetTbaseScheme](https://github.com/apache/parquet-mr/blob/master/parquet-cascading/src/main/java/parquet/cascading/ParquetTBaseScheme.java) can also be used by a sink. When used as a sink, the Thrift class of the records being written must be *explicitly* provided.
+[ParquetTbaseScheme](https://github.com/apache/parquet-mr/blob/master/parquet-cascading/src/main/java/org/apache/parquet/cascading/ParquetTBaseScheme.java) can also be used by a sink. When used as a sink, the Thrift class of the records being written must be *explicitly* provided.
 
 `
 Scheme sinkScheme = new ParquetTBaseScheme(Name.class);
 Tap sink = new Hfs(sinkScheme, parquetOutputPath);
 `
 
-For more concrete examples please refer to [TestParquetTBaseScheme](https://github.com/apache/parquet-mr/blob/master/parquet-cascading/src/test/java/parquet/cascading/TestParquetTBaseScheme.java)
+For more concrete examples please refer to [TestParquetTBaseScheme](https://github.com/apache/parquet-mr/blob/master/parquet-cascading/src/test/java/org/apache/parquet/cascading/TestParquetTBaseScheme.java)
 
 1.2 Scrooge
 -----------
 ### Read Scrooge records from Parquet
-Scrooge support is defined in a separate module called [parquet-scrooge](https://github.com/apache/parquet-mr/tree/master/parquet-scrooge). With [ParquetScroogeScheme](https://github.com/apache/parquet-mr/blob/master/parquet-scrooge/src/main/java/parquet/scrooge/ParquetScroogeScheme.java), data can be read in the form of Scrooge objects which are more scala friendly.
+Scrooge support is defined in a separate module called [parquet-scrooge](https://github.com/apache/parquet-mr/tree/master/parquet-scrooge). With [ParquetScroogeScheme](https://github.com/apache/parquet-mr/blob/master/parquet-scrooge/src/main/java/org/apache/parquet/scrooge/ParquetScroogeScheme.java), data can be read in the form of Scrooge objects which are more scala friendly.
 
 `
 Scheme sinkScheme = new ParquetScroogeScheme(Name.class);
@@ -66,7 +66,7 @@ Tap sink = new Hfs(sinkScheme, parquetOutputPath);
 1.3 Tuples
 ----------
 ### Read Cascading Tuples from Parquet
-Currently, the support for reading tuples is mainly(but not limited) for data written from pig scripts as pig tuples. More comprehensive support will be added, but in the mean time, there are some limitations to notice: Nested structures are not supported. If the data is written as thrift objects which have nested structure, it can not be read at current time. *Data to read must be in flat structure*. To read data as tuples, simply use [ParquetTupleScheme](https://github.com/apache/parquet-mr/blob/master/parquet-cascading/src/main/java/parquet/cascading/ParquetTupleScheme.java):
+Currently, the support for reading tuples is mainly(but not limited) for data written from pig scripts as pig tuples. More comprehensive support will be added, but in the mean time, there are some limitations to notice: Nested structures are not supported. If the data is written as thrift objects which have nested structure, it can not be read at current time. *Data to read must be in flat structure*. To read data as tuples, simply use [ParquetTupleScheme](https://github.com/apache/parquet-mr/blob/master/parquet-cascading/src/main/java/org/apache/parquet/cascading/ParquetTupleScheme.java):
 
 `
 Scheme sourceScheme = new ParquetTupleScheme(new Fields("last_name"));
@@ -75,7 +75,7 @@ Tap source = new Hfs(sourceScheme, parquetInputPath);
 
 ### Write Cascading Tuples to Parquet(coming soon)
 
-For more examples please refer to [TestParquetTupleScheme](https://github.com/apache/parquet-mr/blob/master/parquet-cascading/src/test/java/parquet/cascading/TestParquetTupleScheme.java)
+For more examples please refer to [TestParquetTupleScheme](https://github.com/apache/parquet-mr/blob/master/parquet-cascading/src/test/java/org/apache/parquet/cascading/TestParquetTupleScheme.java)
 
 2. Projection Pushdown
 ======================
