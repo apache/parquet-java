@@ -226,3 +226,18 @@ struct StructWithNestedUnion {
   11: required UnionStructUnion reqUnionStructUnion
   12: UnionStructUnion unspecifiedUnionStructUnion
 }
+
+struct MapWithUnionKey {
+  1: optional map<UnionOfStructs, StructV3> optMapWithUnionKey
+  2: required map<UnionOfStructs, StructV3> reqMapWithUnionKey
+}
+
+struct MapWithUnionValue {
+  1: optional map<StructV3, UnionOfStructs> optMapWithUnionValue
+  2: required map<StructV3, UnionOfStructs> reqMapWithUnionValue
+}
+
+struct ListOfUnions {
+  1: optional list<UnionOfStructs> optListUnion
+  2: required list<UnionOfStructs> reqListUnion
+}

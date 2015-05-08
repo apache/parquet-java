@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.thrift;
 
+import org.apache.parquet.thrift.test.compat.ListOfUnions;
 import org.apache.parquet.thrift.test.compat.NestedNestedUnion;
 import org.apache.parquet.thrift.test.compat.NestedUnion;
 import org.apache.parquet.thrift.test.compat.OptionalInsideRequired;
@@ -246,6 +247,55 @@ public class TestThriftSchemaConverterProjectUnion {
             "    }\n" +
             "  }\n" +
             "}", NestedNestedUnion.class);
+
+  }
+
+  @Test
+  public void testListOfUnions() {
+
+    // selecting a field from an optional list of unions should also choose a sentinel field
+    // for the rest of the union members
+    // at the same time, this should also drop the required list of unions, because it is safe to
+    // drop even a required but repeated group
+    shouldGetProjectedSchema(
+      "optListUnion/structV3/age",
+      "optListUnion.structV3.age",
+      "message ParquetSchema {\n" +
+          "  optional group optListUnion (LIST) = 1 {\n" +
+          "    repeated group optListUnion_tuple {\n" +
+          "      optional group structV3 = 1 {\n" +
+          "        optional binary age (UTF8) = 2;\n" +
+          "      }\n" +
+          "      optional group structV4 = 2 {\n" +
+          "        required binary name (UTF8) = 1;\n" +
+          "      }\n" +
+          "      optional group aNewBool = 3 {\n" +
+          "        required boolean b = 1;\n" +
+          "      }\n" +
+          "    }\n" +
+          "  }\n" +
+          "}", ListOfUnions.class);
+
+    // same goes for selecting a field from a required list of unions
+    // and at the same time, the optional list of unions should be dropped too
+    shouldGetProjectedSchema(
+        "reqListUnion/structV3/age",
+        "reqListUnion.structV3.age",
+        "message ParquetSchema {\n" +
+            "  required group reqListUnion (LIST) = 2 {\n" +
+            "    repeated group reqListUnion_tuple {\n" +
+            "      optional group structV3 = 1 {\n" +
+            "        optional binary age (UTF8) = 2;\n" +
+            "      }\n" +
+            "      optional group structV4 = 2 {\n" +
+            "        required binary name (UTF8) = 1;\n" +
+            "      }\n" +
+            "      optional group aNewBool = 3 {\n" +
+            "        required boolean b = 1;\n" +
+            "      }\n" +
+            "    }\n" +
+            "  }\n" +
+            "}", ListOfUnions.class);
 
   }
 
