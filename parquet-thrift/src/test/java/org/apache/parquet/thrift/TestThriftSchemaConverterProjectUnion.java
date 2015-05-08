@@ -369,8 +369,6 @@ public class TestThriftSchemaConverterProjectUnion {
 
   @Test
   public void testMapWithUnionValue() {
-    System.out.println(new ThriftSchemaConverter().convert(MapWithUnionValue.class));
-
     shouldGetProjectedSchema(
         "optMapWithUnionValue/key/**;optMapWithUnionValue/value/structV4/addedStruct/gender",
         "optMapWithUnionValue.{key,value.structV4.addedStruct.gender}",
