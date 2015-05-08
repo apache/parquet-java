@@ -75,15 +75,17 @@ import static org.apache.parquet.schema.Types.primitive;
  */
 public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<ConvertedField, ThriftSchemaConvertVisitor.State> {
   private final FieldProjectionFilter fieldProjectionFilter;
+  private final boolean doProjection;
 
-  private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter) {
+  private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter, boolean doProjection) {
     this.fieldProjectionFilter = checkNotNull(fieldProjectionFilter, "fieldProjectionFilter");
+    this.doProjection = doProjection;
   }
 
   public static MessageType convert(StructType struct, FieldProjectionFilter filter) {
     State state = new State(new FieldsPath(), REPEATED, "ParquetSchema");
 
-    ConvertedField conv = struct.accept(new ThriftSchemaConvertVisitor(filter), state);
+    ConvertedField conv = struct.accept(new ThriftSchemaConvertVisitor(filter, true), state);
 
     MessageType messageType;
 
@@ -102,11 +104,11 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     ThriftField keyField = mapType.getKey();
     ThriftField valueField = mapType.getValue();
 
-    ConvertedField convKey = keyField.getType().accept(this,
-        new State(state.path.push(keyField), REQUIRED, "key"));
+    State keyState = new State(state.path.push(keyField), REQUIRED, "key");
+    State valueState = new State(state.path.push(valueField), OPTIONAL, "value");
 
-    ConvertedField convValue = valueField.getType().accept(this,
-        new State(state.path.push(valueField), OPTIONAL, "value"));
+    ConvertedField convKey = keyField.getType().accept(this, keyState);
+    ConvertedField convValue = valueField.getType().accept(this, valueState);
 
     if (!convKey.isKeep()) {
 
@@ -119,7 +121,22 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
       return new Drop(state.path);
     }
 
-    // we are keeping the key, but how about the value?
+    // we are keeping the key, but we do not allow partial projections on keys
+    // as that doesn't make sense when assembling back into a map.
+    // NOTE: doProjections prevents us from infinite recursion here.
+    if (doProjection) {
+      ConvertedField fullConvKey = keyField
+          .getType()
+          .accept(new ThriftSchemaConvertVisitor(FieldProjectionFilter.ALL_COLUMNS, false), keyState);
+
+      if (!fullConvKey.asKeep().getType().equals(convKey.asKeep().getType())) {
+        throw new ThriftProjectionException("Cannot select only a subset of the fields in a map key, " +
+            "for path " + state.path);
+      }
+
+    }
+
+    // now, are we keeping the value?
 
     if (convValue.isKeep()) {
       // keep both key and value
@@ -144,13 +161,23 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     return new Keep(state.path, mapField);
   }
 
-  private ConvertedField visitListLike(ThriftField listLike, State state) {
+  private ConvertedField visitListLike(ThriftField listLike, State state, boolean isSet) {
+    State childState = new State(state.path, REPEATED, state.name + "_tuple");
 
-    ConvertedField conv = listLike
-        .getType()
-        .accept(this, new State(state.path, REPEATED, state.name + "_tuple"));
+    ConvertedField conv = listLike.getType().accept(this, childState);
 
     if (conv.isKeep()) {
+      // doProjection prevents an infinite recursion here
+      if (isSet && doProjection) {
+        ConvertedField fullConv = listLike
+            .getType()
+            .accept(new ThriftSchemaConvertVisitor(FieldProjectionFilter.ALL_COLUMNS, false), childState);
+        if (!conv.asKeep().getType().equals(fullConv.asKeep().getType())) {
+          throw new ThriftProjectionException("Cannot select only a subset of the fields in a set, " +
+              "for path " + state.path);
+        }
+      }
+
       return new Keep(state.path, listType(state.repetition, state.name, conv.asKeep().getType()));
     }
 
@@ -159,12 +186,12 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
 
   @Override
   public ConvertedField visit(SetType setType, State state) {
-    return visitListLike(setType.getValues(), state);
+    return visitListLike(setType.getValues(), state, true);
   }
 
   @Override
   public ConvertedField visit(ListType listType, State state) {
-    return visitListLike(listType.getValues(), state);
+    return visitListLike(listType.getValues(), state, false);
   }
 
   @Override
@@ -195,7 +222,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
         // re-do the recursion, with a new projection filter that keeps only
         // the first primitive it encounters
         ConvertedField firstPrimitive = child.getType().accept(
-            new ThriftSchemaConvertVisitor(new KeepOnlyFirstPrimitiveFilter()), childState);
+            new ThriftSchemaConvertVisitor(new KeepOnlyFirstPrimitiveFilter(), true), childState);
 
         convertedChildren.add(firstPrimitive.asKeep().getType().withId(child.getFieldId()));
         hasSentinelUnionColumns = true;

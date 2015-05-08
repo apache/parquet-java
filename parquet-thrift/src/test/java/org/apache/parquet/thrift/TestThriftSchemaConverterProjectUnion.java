@@ -304,17 +304,26 @@ public class TestThriftSchemaConverterProjectUnion {
   @Test
   public void testMapWithUnionKey() {
     shouldGetProjectedSchema(
-        "optMapWithUnionKey/key/structV3/age",
-        "optMapWithUnionKey.key.structV3.age",
+        "optMapWithUnionKey/key/**",
+        "optMapWithUnionKey.key",
         "message ParquetSchema {\n" +
         "  optional group optMapWithUnionKey (MAP) = 1 {\n" +
         "    repeated group map (MAP_KEY_VALUE) {\n" +
         "      required group key {\n" +
         "        optional group structV3 = 1 {\n" +
+        "          required binary name (UTF8) = 1;\n" +
         "          optional binary age (UTF8) = 2;\n" +
+        "          optional binary gender (UTF8) = 3;\n" +
         "        }\n" +
         "        optional group structV4 = 2 {\n" +
         "          required binary name (UTF8) = 1;\n" +
+        "          optional binary age (UTF8) = 2;\n" +
+        "          optional binary gender (UTF8) = 3;\n" +
+        "          optional group addedStruct = 4 {\n" +
+        "            required binary name (UTF8) = 1;\n" +
+        "            optional binary age (UTF8) = 2;\n" +
+        "            optional binary gender (UTF8) = 3;\n" +
+        "          }\n" +
         "        }\n" +
         "        optional group aNewBool = 3 {\n" +
         "          required boolean b = 1;\n" +

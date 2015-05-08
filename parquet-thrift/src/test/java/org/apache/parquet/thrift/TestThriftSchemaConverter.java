@@ -18,25 +18,25 @@
  */
 package org.apache.parquet.thrift;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
-
-import org.apache.thrift.TBase;
-import org.junit.Test;
-
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.thrift.projection.StrictFieldProjectionFilter;
-import org.apache.parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter;
 import org.apache.parquet.thrift.projection.ThriftProjectionException;
+import org.apache.parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter;
 import org.apache.parquet.thrift.struct.ThriftType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
-import org.apache.parquet.thrift.test.compat.StructWithNestedUnion;
+import org.apache.parquet.thrift.test.compat.MapStructV2;
+import org.apache.parquet.thrift.test.compat.SetStructV2;
+import org.apache.thrift.TBase;
+import org.junit.Test;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.elephantbird.thrift.test.TestStructInMap;
+
+import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class TestThriftSchemaConverter {
 
@@ -229,6 +229,45 @@ public class TestThriftSchemaConverter {
       assertEquals("Cannot select only the values of a map, you must keep the keys as well: names", e.getMessage());
     }
 
+  }
+
+  private void doTestPartialKeyProjection(String deprecated, String strict) {
+    try {
+      getDeprecatedFilteredSchema(deprecated, MapStructV2.class);
+      fail("this should throw");
+    } catch (ThriftProjectionException e) {
+      assertEquals("Cannot select only a subset of the fields in a map key, for path map1", e.getMessage());
+    }
+
+    try {
+      getStrictFilteredSchema(strict, MapStructV2.class);
+      fail("this should throw");
+    } catch (ThriftProjectionException e) {
+      assertEquals("Cannot select only a subset of the fields in a map key, for path map1", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testPartialKeyProjection() {
+    doTestPartialKeyProjection("map1/key/age", "map1.key.age");
+    doTestPartialKeyProjection("map1/key/age;map1/value/**", "map1.{key.age,value}");
+  }
+
+  @Test
+  public void testSetPartialProjection() {
+    try {
+      getDeprecatedFilteredSchema("set1/age", SetStructV2.class);
+      fail("this should throw");
+    } catch (ThriftProjectionException e) {
+      assertEquals("Cannot select only a subset of the fields in a set, for path set1", e.getMessage());
+    }
+
+    try {
+      getStrictFilteredSchema("set1.age", SetStructV2.class);
+      fail("this should throw");
+    } catch (ThriftProjectionException e) {
+      assertEquals("Cannot select only a subset of the fields in a set, for path set1", e.getMessage());
+    }
   }
 
   public static void shouldGetProjectedSchema(String deprecatedFilterDesc, String strictFilterDesc, String expectedSchemaStr, Class<? extends TBase<?,?>> thriftClass) {
