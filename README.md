@@ -22,7 +22,7 @@ Parquet MR [![Build Status](https://travis-ci.org/apache/incubator-parquet-mr.sv
 
 Parquet-MR contains the java implementation of the [Parquet format](https://github.com/apache/parquet-format). 
 Parquet is a columnar storage format for Hadoop; it provides efficient storage and encoding of data.
-Parquet uses the [record shredding and assembly algorithm](https://github.com/apache/parquet-mr/wiki/The-striping-and-assembly-algorithms-from-the-Dremel-paper) described in the Dremel paper to represent nested structures.
+Parquet uses the [record shredding and assembly algorithm](https://github.com/Parquet/parquet-mr/wiki/The-striping-and-assembly-algorithms-from-the-Dremel-paper) described in the Dremel paper to represent nested structures.
 
 You can find some details about the format and intended use cases in our [Hadoop Summit 2013 presentation](http://www.slideshare.net/julienledem/parquet-hadoop-summit-2013)
 
