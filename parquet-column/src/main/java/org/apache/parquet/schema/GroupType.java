@@ -88,6 +88,9 @@ public class GroupType extends Type {
    */
   GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields, ID id) {
     super(name, repetition, originalType, id);
+    if (fields.size() == 0) {
+      throw new InvalidSchemaException("A group type can not be empty. Parquet does not support empty group without leaves. Empty group: " + name);
+    }
     this.fields = fields;
     this.indexByName = new HashMap<String, Integer>();
     for (int i = 0; i < fields.size(); i++) {
