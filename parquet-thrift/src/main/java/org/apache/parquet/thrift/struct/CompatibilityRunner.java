@@ -74,7 +74,7 @@ public class CompatibilityRunner {
       System.exit(1);
     }
 
-    if (!report.hasEmptyStruct()) {
+    if (report.hasEmptyStruct()) {
       System.err.println("schema contains empty struct");
       System.err.println(report.getMessages());
       System.exit(1);

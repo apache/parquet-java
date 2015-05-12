@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -33,6 +33,7 @@ import org.apache.parquet.thrift.struct.ThriftType.I16Type;
 import org.apache.parquet.thrift.struct.ThriftType.I32Type;
 import org.apache.parquet.thrift.struct.ThriftType.I64Type;
 import org.apache.parquet.thrift.struct.ThriftType.StringType;
+import org.apache.parquet.Strings;
 
 /**
  * A checker for thrift struct to enforce its backward compatibility, returns compatibility report based on following rules:
@@ -81,12 +82,8 @@ class CompatibilityReport {
   }
 
   public String prettyMessages() {
-    StringBuffer message = new StringBuffer();
-    for(String m: messages) {
-      message.append(m);
-      message.append("\n");
-    }
-    return message.toString();
+
+    return Strings.join(messages, "\n");
   }
 
   @Override
@@ -117,13 +114,7 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, Void> {
 
     @Override
     public String toString() {
-      StringBuffer buffer = new StringBuffer("/");
-      Iterator<String> it = path.descendingIterator();
-      while(it.hasNext()) {
-        buffer.append(it.next());
-        buffer.append('/');
-      }
-      return buffer.toString();
+     return Strings.join(path.descendingIterator(), "/");
     }
   }
 
@@ -212,8 +203,8 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, Void> {
     ThriftType.StructType currentOldType = ((ThriftType.StructType) oldType);
     short oldMaxId = 0;
 
-    if (newStruct.getChildren().size() == 0) {
-      report.emptyStruct("new struct is an empty struct: " + path);
+    if (newStruct.getChildren().isEmpty()) {
+      report.emptyStruct("encountered an empty struct: " + path);
     }
 
     for (ThriftField oldField : currentOldType.getChildren()) {
