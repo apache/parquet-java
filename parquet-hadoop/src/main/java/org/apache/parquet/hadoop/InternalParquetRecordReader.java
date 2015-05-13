@@ -48,6 +48,7 @@ import org.apache.parquet.io.api.RecordMaterializer.RecordMaterializationExcepti
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.vector.ColumnVector;
 
 import static java.lang.String.format;
 import static org.apache.parquet.Log.DEBUG;
@@ -142,6 +143,15 @@ class InternalParquetRecordReader<T> {
       totalCountLoadedSoFar += pages.getRowCount();
       ++ currentBlock;
     }
+  }
+
+  private void initializeVector(MessageType column) throws IOException {
+//    this.requestedSchema = column;
+//    this.columnCount = this.requestedSchema.getPaths().size();
+//    this.recordConverter = readSupport.prepareForRead(configuration, extraMetadata, fileSchema,
+//                                new ReadSupport.ReadContext(requestedSchema, readSupportMetadata));
+//    List<ColumnDescriptor> columns = requestedSchema.getColumns();
+//    this.reader = new ParquetFileReader(configuration, file, blocks, columns);
   }
 
   public void close() throws IOException {
@@ -254,6 +264,42 @@ class InternalParquetRecordReader<T> {
       setMultiMap.put(entry.getKey(), Collections.unmodifiableSet(set));
     }
     return Collections.unmodifiableMap(setMultiMap);
+  }
+
+  public boolean nextBatch(ColumnVector[] vectors, MessageType[] columns) throws IOException, InterruptedException {
+    boolean recordFound = false;
+
+    while (!recordFound) {
+      // no more records left
+      if (current >= total) { return false; }
+
+      try {
+        checkRead();
+        recordReader.readVectors(vectors, columns, current, totalCountLoadedSoFar);
+        //TODO is this OK?
+        current += vectors[0].size();
+        if (recordReader.shouldSkipCurrentRecord()) {
+          // this record is being filtered via the filter2 package
+          if (DEBUG) LOG.debug("skipping record");
+          continue;
+        }
+
+        //TODO how to handle this case?
+//        if (currentValue == null) {
+//          // only happens with FilteredRecordReader at end of block
+//          current = totalCountLoadedSoFar;
+//          if (DEBUG) LOG.debug("filtered record reader reached end of block");
+//          continue;
+//        }
+
+        recordFound = true;
+
+        if (DEBUG) LOG.debug("read value: " + currentValue);
+      } catch (RuntimeException e) {
+        throw new ParquetDecodingException(format("Can not read value at %d in block %d in file %s", current, currentBlock, file), e);
+      }
+    }
+    return true;
   }
 
 }

@@ -27,15 +27,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.parquet.Log;
+import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.impl.ColumnReadStoreImpl;
-import org.apache.parquet.io.api.Converter;
-import org.apache.parquet.io.api.GroupConverter;
-import org.apache.parquet.io.api.PrimitiveConverter;
-import org.apache.parquet.io.api.RecordConsumer;
-import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.io.api.*;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.vector.*;
 
 
 /**
@@ -422,6 +420,90 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       recordMaterializer.skipCurrentRecord();
     }
     return record;
+  }
+
+  private State getState(MessageType schema) {
+    for (State state : states) {
+        //FIXME state.fieldPath[0] only looks at the 0th level. May not work for complex types/nested stuff.
+        if (schema.containsField(state.fieldPath[0])) {
+          return state;
+        }
+    }
+    throw new IllegalArgumentException("Couldn't find state for schema " + schema);
+  }
+
+  private void setNumValuesInVectors(int valuesRead, ColumnVector... vectors) {
+    for (ColumnVector cv : vectors) {
+      cv.setNumberOfValues(valuesRead);
+    }
+  }
+
+  @Override
+  public void readVectors(ColumnVector[] vectors, MessageType[] columnSchemas, long current, long total) {
+      for (int i = 0 ; i < columnSchemas.length; i++) {
+        MessageType schema  = columnSchemas[i];
+        State state = getState(schema);
+        readVector(state.column, vectors[i], current, total);
+      }
+  }
+
+  private void readVector(ColumnReader reader, ColumnVector vector, long current, long total) {
+    ColumnDescriptor column = reader.getDescriptor();
+    int maxDefinitionLevel = column.getMaxDefinitionLevel();
+
+    int index = 0;
+    for ( ; index < ColumnVector.DEFAULT_VECTOR_LENGTH; index++, current++) {
+
+      //EOF
+      if (current >= total) {
+        setNumValuesInVectors(index, vector);
+        return;
+      }
+
+      if (reader.getCurrentDefinitionLevel() == maxDefinitionLevel) {
+        switch (column.getType()) {
+          case BOOLEAN:
+            BooleanColumnVector booleanColumnVector = (BooleanColumnVector) vector;
+            booleanColumnVector.values.put(reader.getBoolean() ? (byte) 1 : (byte) 0);
+            break;
+          case DOUBLE:
+            DoubleColumnVector doubleColumnVector = (DoubleColumnVector) vector;
+            doubleColumnVector.values.putDouble(reader.getDouble());
+            break;
+          case FLOAT:
+            FloatColumnVector floatColumnVector = (FloatColumnVector) vector;
+            floatColumnVector.values.putFloat(reader.getFloat());
+            break;
+          case INT32:
+            IntColumnVector intColumnVector = (IntColumnVector) vector;
+            intColumnVector.values.putInt(reader.getInteger());
+            break;
+          case INT64:
+            LongColumnVector longColumnVector = (LongColumnVector) vector;
+            longColumnVector.values.putLong(reader.getLong());
+            break;
+          case INT96:
+          case FIXED_LEN_BYTE_ARRAY:
+            ByteColumnVector fixedLenVector = (ByteColumnVector) vector;
+            Binary fixedLenBinary = reader.getBinary();
+            fixedLenVector.values.put(fixedLenBinary.getBytes());
+            break;
+          case BINARY:
+            ByteColumnVector variableLenVector = (ByteColumnVector) vector;
+            byte[] variableLenBinary = reader.getBinary().getBytes();
+            variableLenVector.ensureCapacity(variableLenBinary.length);
+            variableLenVector.values.put(variableLenBinary);
+            break;
+          default:
+            throw new IllegalArgumentException("Unhandled column type " + column.getType());
+        }
+        vector.isNull[index] = false;
+      } else {
+        vector.isNull[index] = true;
+      }
+      reader.consume();
+    }
+    setNumValuesInVectors(index, vector);
   }
 
   @Override
