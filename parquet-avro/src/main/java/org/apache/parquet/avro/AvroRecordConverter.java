@@ -37,6 +37,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.reflect.ReflectData;
 import org.apache.avro.specific.SpecificData;
+import org.apache.avro.util.ClassUtils;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.api.Binary;
@@ -58,6 +59,9 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
  * @param <T> a subclass of Avro's IndexedRecord
  */
 class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
+
+  private static final String STRINGABLE_PROP = "avro.java.string";
+  private static final String JAVA_CLASS_PROP = "java-class";
 
   protected T currentRecord;
   private final Converter[] converters;
@@ -163,7 +167,14 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       }
       return new AvroConverters.FieldByteBufferConverter(parent);
     } else if (schema.getType().equals(Schema.Type.STRING)) {
-      return new AvroConverters.FieldStringConverter(parent);
+      Class<?> stringableClass = getStringableClass(schema, model);
+      if (stringableClass == String.class) {
+        return new AvroConverters.FieldStringConverter(parent);
+      } else if (stringableClass == CharSequence.class) {
+        return new AvroConverters.FieldUTF8Converter(parent);
+      }
+      return new AvroConverters.FieldStringableConverter(
+          parent, stringableClass);
     } else if (schema.getType().equals(Schema.Type.RECORD)) {
       return new AvroRecordConverter(parent, type.asGroupType(), schema, model);
     } else if (schema.getType().equals(Schema.Type.ENUM)) {
@@ -186,6 +197,35 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     }
     throw new UnsupportedOperationException(String.format(
         "Cannot convert Avro type: %s to Parquet type: %s", schema, type));
+  }
+
+  private static Class<?> getStringableClass(Schema schema, GenericData model) {
+    if (model instanceof SpecificData) {
+      String stringableClass = schema.getProp(JAVA_CLASS_PROP);
+      if (stringableClass != null) {
+        try {
+          return ClassUtils.forName(model.getClassLoader(), stringableClass);
+        } catch (ClassNotFoundException e) {
+          // not available, use a String instead
+        }
+      }
+    }
+
+    if (model.getClass() != GenericData.class) {
+      return String.class;
+    }
+
+    String name = schema.getProp(STRINGABLE_PROP);
+    if (name == null) {
+      return String.class;
+    }
+
+    switch (GenericData.StringType.valueOf(name)) {
+      case String:
+        return String.class;
+      default:
+        return CharSequence.class; // will use Utf8
+    }
   }
 
   @SuppressWarnings("unchecked")
