@@ -186,6 +186,7 @@ public class AvroConverters {
 
   static final class FieldStringConverter extends AvroPrimitiveConverter {
     // TODO: dictionary support should be generic and provided by a parent
+    // TODO: this always produces strings, but should respect avro.java.string
     private String[] dict;
 
     public FieldStringConverter(ParentValueContainer parent) {

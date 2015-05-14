@@ -22,7 +22,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.hadoop.api.ReadSupport;
@@ -30,9 +29,9 @@ import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 
 /**
- * Avro implementation of {@link ReadSupport} for Avro {@link IndexedRecord}s which cover both Avro Specific and
- * Generic. Users should use {@link AvroParquetReader} or {@link AvroParquetInputFormat} rather than using
- * this class directly.
+ * Avro implementation of {@link ReadSupport} for avro generic, specific, and
+ * reflect models. Use {@link AvroParquetReader} or
+ * {@link AvroParquetInputFormat} rather than using this class directly.
  */
 public class AvroReadSupport<T> extends ReadSupport<T> {
 

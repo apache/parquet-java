@@ -49,6 +49,14 @@ import org.apache.parquet.schema.Type;
 
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 
+/**
+ * This {@link Converter} class materializes records for a given
+ * {@link GenericData Avro data model}. This replaces
+ * {@link AvroIndexedRecordConverter} and works with generic, specific, and
+ * reflect records.
+ *
+ * @param <T> a subclass of Avro's IndexedRecord
+ */
 class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
 
   protected T currentRecord;

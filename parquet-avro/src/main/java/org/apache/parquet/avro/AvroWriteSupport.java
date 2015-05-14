@@ -39,9 +39,9 @@ import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.Preconditions;
 
 /**
- * Avro implementation of {@link WriteSupport} for {@link IndexedRecord}s - both Avro Generic and Specific.
- * Users should use {@link AvroParquetWriter} or {@link AvroParquetOutputFormat} rather than using
- * this class directly.
+ * Avro implementation of {@link WriteSupport} for generic, specific, and
+ * reflect models. Use {@link AvroParquetWriter} or
+ * {@link AvroParquetOutputFormat} rather than using this class directly.
  */
 public class AvroWriteSupport<T> extends WriteSupport<T> {
 
@@ -349,7 +349,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
 
     // ResolveUnion will tell us which of the union member types to
     // deserialise.
-    int avroIndex = GenericData.get().resolveUnion(avroSchema, value);
+    int avroIndex = model.resolveUnion(avroSchema, value);
 
     // For parquet's schema we skip nulls
     GroupType parquetGroup = parquetSchema.asGroupType();

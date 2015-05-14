@@ -36,6 +36,13 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 
+/**
+ * This {@link Converter} class materializes records as Avro
+ * {@link IndexedRecord} instances. This is replaced by
+ * {@link AvroRecordConverter}, but is included for backward-compatibility.
+ *
+ * @param <T> a subclass of Avro's IndexedRecord
+ */
 class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter {
 
   private final ParentValueContainer parent;
