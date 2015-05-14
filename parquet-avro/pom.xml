@@ -29,8 +29,8 @@
   <artifactId>parquet-avro</artifactId>
   <packaging>jar</packaging>
 
-  <name>Apache Parquet Avro (Incubating)</name>
-  <url>https://parquet.incubator.apache.org</url>
+  <name>Apache Parquet Avro</name>
+  <url>https://parquet.apache.org</url>
 
   <properties>
     <avro.version>1.7.6</avro.version>

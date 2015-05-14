@@ -29,8 +29,8 @@
   <artifactId>parquet-encoding</artifactId>
   <packaging>jar</packaging>
 
-  <name>Apache Parquet Encodings (Incubating)</name>
-  <url>https://parquet.incubator.apache.org</url>
+  <name>Apache Parquet Encodings</name>
+  <url>https://parquet.apache.org</url>
 
   <properties>
   </properties>

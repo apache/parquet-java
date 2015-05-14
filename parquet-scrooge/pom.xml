@@ -29,8 +29,8 @@
   <artifactId>parquet-scrooge_${scala.binary.version}</artifactId>
   <packaging>jar</packaging>
 
-  <name>Apache Parquet Scrooge (Incubating)</name>
-  <url>https://parquet.incubator.apache.org</url>
+  <name>Apache Parquet Scrooge</name>
+  <url>https://parquet.apache.org</url>
 
   <repositories>
     <repository>
