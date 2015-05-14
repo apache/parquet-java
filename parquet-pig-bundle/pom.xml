@@ -29,8 +29,8 @@
   <artifactId>parquet-pig-bundle</artifactId>
   <packaging>jar</packaging>
 
-  <name>Apache Parquet Pig Bundle (Incubating)</name>
-  <url>https://parquet.incubator.apache.org</url>
+  <name>Apache Parquet Pig Bundle</name>
+  <url>https://parquet.apache.org</url>
 
   <properties>
   </properties>
