@@ -28,7 +28,7 @@ if [ -z "$2" ]; then
   exit
 fi
 
-version=$1-incubating
+version=$1
 rc=$2
 
 if [ -d tmp/ ]; then
@@ -36,7 +36,7 @@ if [ -d tmp/ ]; then
   exit
 fi
 
-tag=apache-parquet-mr-$version
+tag=apache-parquet-$version
 tagrc=${tag}-rc${rc}
 
 echo "Preparing source for $tagrc"
@@ -62,19 +62,19 @@ gpg --print-md MD5 $tarball > ${tarball}.md5
 shasum $tarball > ${tarball}.sha
 
 # check out the parquet RC folder
-svn co --depth=empty https://dist.apache.org/repos/dist/dev/incubator/parquet tmp
+svn co --depth=empty https://dist.apache.org/repos/dist/dev/parquet tmp
 
 # add the release candidate for the tag
 mkdir -p tmp/$tagrc
 cp ${tarball}* tmp/$tagrc
 svn add tmp/$tagrc
-echo "svn ci -m 'Apache Parquet MR (Incubating) $version RC${rc}' tmp/$tagrc"
+echo "svn ci -m 'Apache Parquet MR $version RC${rc}' tmp/$tagrc"
 
 # clean up
 rm -rf tmp
 
 echo "Success! The release candidate is available here:"
-echo "  https://dist.apache.org/repos/dist/dev/incubator/parquet/$tagrc"
+echo "  https://dist.apache.org/repos/dist/dev/parquet/$tagrc"
 echo ""
 echo "Commit SHA1: $release_hash"
 
