@@ -329,6 +329,9 @@ public class TestThriftSchemaConverterProjectUnion {
         "          required boolean b = 1;\n" +
         "        }\n" +
         "      }\n" +
+        "      optional group value {\n" +
+        "        required binary name (UTF8) = 1;\n" +
+        "      } " +
         "    }\n" +
         "  }\n" +
         "}", MapWithUnionKey.class);

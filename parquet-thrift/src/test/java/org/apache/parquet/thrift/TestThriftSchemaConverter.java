@@ -189,6 +189,11 @@ public class TestThriftSchemaConverter {
             "  optional group names (MAP) = 2 {\n" +
             "    repeated group map (MAP_KEY_VALUE) {\n" +
             "      required binary key (UTF8);\n" +
+            "      optional group value {\n" +
+            "        optional group name = 1 {\n" +
+            "          optional binary first_name (UTF8) = 1;\n" +
+            "        }\n" +
+            "      }" +
             "    }\n" +
             "  }\n" +
             "}",TestStructInMap.class);

@@ -106,8 +106,9 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
 
     State keyState = new State(state.path.push(keyField), REQUIRED, "key");
 
-    // TODO: This is a bug! this should be REQUIRED but we can't fix this
-    // TODO: in a backwards compatible way
+    // TODO: This is a bug! this should be REQUIRED but changing this will
+    // break the the schema compatibility check against old data
+    // Thrift does not support null / missing map values.
     State valueState = new State(state.path.push(valueField), OPTIONAL, "value");
 
     ConvertedField convKey = keyField.getType().accept(this, keyState);
