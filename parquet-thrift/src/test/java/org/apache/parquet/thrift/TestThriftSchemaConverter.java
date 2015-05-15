@@ -209,9 +209,22 @@ public class TestThriftSchemaConverter {
     }
   }
 
+  private void shouldThrowWhenNoColumnsAreSelected(String filters, Class<? extends TBase<?, ?>> thriftClass) {
+    try {
+      getDeprecatedFilteredSchema(filters, thriftClass);
+      fail("should throw projection exception when no columns are selected");
+    } catch (ThriftProjectionException e) {
+      assertEquals("No columns have been selected", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testThrowWhenNoColumnsAreSelected() {
+    shouldThrowWhenNoColumnsAreSelected("non_existing", TestStructInMap.class);
+  }
+
   @Test
   public void testThrowWhenProjectionFilterMatchesNothing() {
-    shouldThrowWhenProjectionFilterMatchesNothing("non_existing", "non_existing", TestStructInMap.class);
     shouldThrowWhenProjectionFilterMatchesNothing("name;non_existing", "non_existing", TestStructInMap.class);
     shouldThrowWhenProjectionFilterMatchesNothing("**;non_existing", "non_existing", TestStructInMap.class);
     shouldThrowWhenProjectionFilterMatchesNothing("**;names/non_existing", "names/non_existing", TestStructInMap.class);
