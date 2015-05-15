@@ -59,8 +59,8 @@ public class ThriftSchemaConverter {
   public MessageType convert(StructType thriftClass) {
     ThriftSchemaConvertVisitor visitor = new ThriftSchemaConvertVisitor(fieldProjectionFilter);
     thriftClass.accept(visitor);
-    MessageType convertedMessageType = visitor.getConvertedMessageType();
     fieldProjectionFilter.assertNoUnmatchedPatterns();
+    MessageType convertedMessageType = visitor.getConvertedMessageType();
     return convertedMessageType;
   }
 
