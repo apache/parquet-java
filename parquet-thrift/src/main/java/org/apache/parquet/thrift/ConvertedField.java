@@ -24,7 +24,19 @@ import org.apache.parquet.thrift.projection.FieldsPath;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 
+/**
+ * This is the return value for the recursion done in {@link ThriftSchemaConvertVisitor}
+ * It represents a field that has been converted from a {@link org.apache.parquet.thrift.struct.ThriftType}
+ * to a {@link org.apache.parquet.schema.MessageType}, as well as whether this field is being
+ * projected away, kept, or kept only because we cannot safely drop all of its fields.
+ *
+ * This interface is essentially a union of {keep, drop, sentinelUnion}
+ */
 public interface ConvertedField {
+
+  /**
+   * The path from the root of the schema to this field.
+   */
   FieldsPath path();
 
   boolean isKeep();

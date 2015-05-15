@@ -85,18 +85,13 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
   public static MessageType convert(StructType struct, FieldProjectionFilter filter) {
     State state = new State(new FieldsPath(), REPEATED, "ParquetSchema");
 
-    ConvertedField conv = struct.accept(new ThriftSchemaConvertVisitor(filter, true), state);
+    ConvertedField converted = struct.accept(new ThriftSchemaConvertVisitor(filter, true), state);
 
-    MessageType messageType;
-
-    if (!conv.isKeep()) {
-      // TODO: should this be fatal? Projecting away everything?
-      messageType = new MessageType(state.name, new ArrayList<Type>());
-    } else {
-      messageType = new MessageType(state.name, conv.asKeep().getType().asGroupType().getFields());
+    if (!converted.isKeep()) {
+      throw new ThriftProjectionException("No columns have been selected");
     }
 
-    return messageType;
+    return new MessageType(state.name, converted.asKeep().getType().asGroupType().getFields());
   }
 
   @Override
@@ -111,12 +106,12 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     // Thrift does not support null / missing map values.
     State valueState = new State(state.path.push(valueField), OPTIONAL, "value");
 
-    ConvertedField convKey = keyField.getType().accept(this, keyState);
-    ConvertedField convValue = valueField.getType().accept(this, valueState);
+    ConvertedField convertedKey = keyField.getType().accept(this, keyState);
+    ConvertedField convertedValue = valueField.getType().accept(this, valueState);
 
-    if (!convKey.isKeep()) {
+    if (!convertedKey.isKeep()) {
 
-      if (convValue.isKeep()) {
+      if (convertedValue.isKeep()) {
         throw new ThriftProjectionException(
             "Cannot select only the values of a map, you must keep the keys as well: " + state.path);
       }
@@ -133,7 +128,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
           .getType()
           .accept(new ThriftSchemaConvertVisitor(FieldProjectionFilter.ALL_COLUMNS, false), keyState);
 
-      if (!fullConvKey.asKeep().getType().equals(convKey.asKeep().getType())) {
+      if (!fullConvKey.asKeep().getType().equals(convertedKey.asKeep().getType())) {
         throw new ThriftProjectionException("Cannot select only a subset of the fields in a map key, " +
             "for path " + state.path);
       }
@@ -142,14 +137,14 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
 
     // now, are we keeping the value?
 
-    if (convValue.isKeep()) {
+    if (convertedValue.isKeep()) {
       // keep both key and value
 
       Type mapField = mapType(
           state.repetition,
           state.name,
-          convKey.asKeep().getType(),
-          convValue.asKeep().getType());
+          convertedKey.asKeep().getType(),
+          convertedValue.asKeep().getType());
 
       return new Keep(state.path, mapField);
     }
@@ -162,7 +157,7 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     Type mapField = mapType(
         state.repetition,
         state.name,
-        convKey.asKeep().getType(),
+        convertedKey.asKeep().getType(),
         sentinelValue.asKeep().getType()); // signals to mapType method to project the value
 
     return new Keep(state.path, mapField);
@@ -171,21 +166,21 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
   private ConvertedField visitListLike(ThriftField listLike, State state, boolean isSet) {
     State childState = new State(state.path, REPEATED, state.name + "_tuple");
 
-    ConvertedField conv = listLike.getType().accept(this, childState);
+    ConvertedField converted = listLike.getType().accept(this, childState);
 
-    if (conv.isKeep()) {
+    if (converted.isKeep()) {
       // doProjection prevents an infinite recursion here
       if (isSet && doProjection) {
         ConvertedField fullConv = listLike
             .getType()
             .accept(new ThriftSchemaConvertVisitor(FieldProjectionFilter.ALL_COLUMNS, false), childState);
-        if (!conv.asKeep().getType().equals(fullConv.asKeep().getType())) {
+        if (!converted.asKeep().getType().equals(fullConv.asKeep().getType())) {
           throw new ThriftProjectionException("Cannot select only a subset of the fields in a set, " +
               "for path " + state.path);
         }
       }
 
-      return new Keep(state.path, listType(state.repetition, state.name, conv.asKeep().getType()));
+      return new Keep(state.path, listType(state.repetition, state.name, converted.asKeep().getType()));
     }
 
     return new Drop(state.path);
@@ -218,9 +213,9 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
 
       State childState = new State(state.path.push(child), getRepetition(child), child.getName());
 
-      ConvertedField conv = child.getType().accept(this, childState);
+      ConvertedField converted = child.getType().accept(this, childState);
 
-      if (isUnion && !conv.isKeep()) {
+      if (isUnion && !converted.isKeep()) {
         // user is not keeping this "kind" of union, but we still need
         // to keep at least one of the primitives of this union around.
         // in order to know what "kind" of union each record is.
@@ -235,16 +230,16 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
         hasSentinelUnionColumns = true;
       }
 
-      if (conv.isSentinelUnion()) {
+      if (converted.isSentinelUnion()) {
         // child field is a sentinel union that we should drop if possible
         if (childState.repetition == REQUIRED) {
           // but this field is required, so we may still need it
-          convertedChildren.add(conv.asSentinelUnion().getType().withId(child.getFieldId()));
+          convertedChildren.add(converted.asSentinelUnion().getType().withId(child.getFieldId()));
           hasSentinelUnionColumns = true;
         }
-      } else if (conv.isKeep()) {
+      } else if (converted.isKeep()) {
         // user has selected this column, so we keep it.
-        convertedChildren.add(conv.asKeep().getType().withId(child.getFieldId()));
+        convertedChildren.add(converted.asKeep().getType().withId(child.getFieldId()));
         hasNonSentinelUnionColumns = true;
       }
 
