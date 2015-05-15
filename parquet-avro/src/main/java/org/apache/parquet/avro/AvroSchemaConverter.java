@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -37,8 +37,8 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 
 /**
  * <p>
- * Converts an Avro schema into a Parquet schema. See package documentation for details
- * of the mapping.
+ * Converts an Avro schema into a Parquet schema, or vice versa. See package
+ * documentation for details of the mapping.
  * </p>
  */
 public class AvroSchemaConverter {
@@ -61,7 +61,7 @@ public class AvroSchemaConverter {
   /**
    * Given a schema, check to see if it is a union of a null type and a regular schema,
    * and then return the non-null sub-schema. Otherwise, return the given schema.
-   * 
+   *
    * @param schema The schema to check
    * @return The non-null portion of a union schema, or the given schema
    */
@@ -176,7 +176,7 @@ public class AvroSchemaConverter {
     return convertField(field.name(), field.schema());
   }
 
-  private PrimitiveType primitive(String name, 
+  private PrimitiveType primitive(String name,
       PrimitiveType.PrimitiveTypeName primitive, Type.Repetition repetition,
       int typeLength, OriginalType originalType) {
     return new PrimitiveType(repetition, primitive, typeLength, name,
@@ -184,12 +184,12 @@ public class AvroSchemaConverter {
   }
 
   private PrimitiveType primitive(String name,
-      PrimitiveType.PrimitiveTypeName primitive, Type.Repetition repetition, 
+      PrimitiveType.PrimitiveTypeName primitive, Type.Repetition repetition,
       OriginalType originalType) {
     return new PrimitiveType(repetition, primitive, name, originalType);
   }
 
-  private PrimitiveType primitive(String name, 
+  private PrimitiveType primitive(String name,
       PrimitiveType.PrimitiveTypeName primitive, Type.Repetition repetition) {
     return new PrimitiveType(repetition, primitive, name, null);
   }
