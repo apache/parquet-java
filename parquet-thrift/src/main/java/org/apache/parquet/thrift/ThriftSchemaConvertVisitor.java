@@ -105,6 +105,9 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     ThriftField valueField = mapType.getValue();
 
     State keyState = new State(state.path.push(keyField), REQUIRED, "key");
+
+    // TODO: This is a bug! this should be REQUIRED but we can't fix this
+    // TODO: in a backwards compatible way
     State valueState = new State(state.path.push(valueField), OPTIONAL, "value");
 
     ConvertedField convKey = keyField.getType().accept(this, keyState);
@@ -152,11 +155,14 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
 
     // keep only the key, not the value
 
+    ConvertedField sentinelValue =
+        valueField.getType().accept(new ThriftSchemaConvertVisitor(new KeepOnlyFirstPrimitiveFilter(), true), valueState);
+
     Type mapField = mapType(
         state.repetition,
         state.name,
         convKey.asKeep().getType(),
-        null); // signals to mapType method to project the value
+        sentinelValue.asKeep().getType()); // signals to mapType method to project the value
 
     return new Keep(state.path, mapField);
   }

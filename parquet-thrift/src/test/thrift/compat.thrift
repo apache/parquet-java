@@ -101,6 +101,10 @@ struct MapAddRequiredStructV1{
   1: required map<AddRequiredStructV1,string> map1
 }
 
+struct MapWithStructValue {
+  1: required map<string, StructV4WithExtracStructField> reqMap
+}
+
 struct SetStructV1{
   1: required set<StructV1> set1
 }

@@ -27,6 +27,9 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.mapreduce.*;
+import org.apache.parquet.thrift.test.compat.MapWithStructValue;
+import org.apache.parquet.thrift.test.compat.StructV3;
+import org.apache.parquet.thrift.test.compat.StructV4WithExtracStructField;
 import org.apache.thrift.TBase;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -154,6 +157,67 @@ public class TestParquetToThriftReadWriteAndProjection {
     toRead.setName("testName");
 
     shouldDoProjectionWithThriftColumnFilter(filter, toWrite, toRead, RequiredMapFixture.class);
+  }
+
+  @Test
+  public void testDropMapValuePrimitive() throws Exception {
+    String filter = "mavalue/key";
+
+    Map<String, String> mapValue = new HashMap<String, String>();
+    mapValue.put("a", "1");
+    mapValue.put("b", "2");
+    RequiredMapFixture toWrite = new RequiredMapFixture(mapValue);
+    toWrite.setName("testName");
+
+    // for now we expect no value projection to happen
+    // because a sentinel value is selected from the value
+    Map<String, String> readValue = new HashMap<String, String>();
+    readValue.put("a", "1");
+    readValue.put("b", "2");
+
+    RequiredMapFixture toRead = new RequiredMapFixture(readValue);
+
+    shouldDoProjectionWithThriftColumnFilter(filter, toWrite, toRead, RequiredMapFixture.class);
+  }
+
+  @Test
+  public void testDropMapValueStruct() throws Exception {
+    String filter = "reqMap/key";
+
+    Map<String, StructV4WithExtracStructField> mapValue = new HashMap<String, StructV4WithExtracStructField>();
+
+    StructV4WithExtracStructField v1 = new StructV4WithExtracStructField();
+    StructV3 sv31 = new StructV3();
+    sv31.setAge("bar");
+    sv31.setGender("f");
+    sv31.setName("a name");
+    v1.setAge("foo");
+    v1.setAddedStruct(sv31);
+    v1.setGender("m");
+    v1.setName("outer name");
+
+    StructV4WithExtracStructField v2 = new StructV4WithExtracStructField();
+    StructV3 sv32 = new StructV3();
+    sv32.setAge("bar2");
+    sv32.setGender("f2");
+    sv32.setName("a name2");
+    v2.setAge("foo2");
+    v2.setAddedStruct(sv32);
+    v2.setGender("m2");
+    v2.setName("outer name2");
+
+    mapValue.put("key 1", v1);
+    mapValue.put("key 2", v2);
+    MapWithStructValue toWrite = new MapWithStructValue(mapValue);
+
+    // for now we expect a sentinel column to be kept
+    HashMap<String, StructV4WithExtracStructField> readValue = new HashMap<String, StructV4WithExtracStructField>();
+    readValue.put("key 1", new StructV4WithExtracStructField("outer name"));
+    readValue.put("key 2", new StructV4WithExtracStructField("outer name2"));
+
+    MapWithStructValue toRead = new MapWithStructValue(readValue);
+
+    shouldDoProjectionWithThriftColumnFilter(filter, toWrite, toRead, MapWithStructValue.class);
   }
 
   @Test
