@@ -105,6 +105,14 @@ struct MapWithStructValue {
   1: required map<string, StructV4WithExtracStructField> reqMap
 }
 
+struct MapWithPrimMapValue {
+  1: required map<string, map<string, string>> reqMap
+}
+
+struct MapWithStructMapValue {
+  1: required map<string, map<string, StructV4WithExtracStructField>> reqMap
+}
+
 struct SetStructV1{
   1: required set<StructV1> set1
 }

@@ -27,6 +27,8 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.mapreduce.*;
+import org.apache.parquet.thrift.test.compat.MapWithPrimMapValue;
+import org.apache.parquet.thrift.test.compat.MapWithStructMapValue;
 import org.apache.parquet.thrift.test.compat.MapWithStructValue;
 import org.apache.parquet.thrift.test.compat.StructV3;
 import org.apache.parquet.thrift.test.compat.StructV4WithExtracStructField;
@@ -180,31 +182,28 @@ public class TestParquetToThriftReadWriteAndProjection {
     shouldDoProjectionWithThriftColumnFilter(filter, toWrite, toRead, RequiredMapFixture.class);
   }
 
+  private StructV4WithExtracStructField makeStructV4WithExtracStructField(String id) {
+    StructV4WithExtracStructField sv4 = new StructV4WithExtracStructField();
+    StructV3 sv3 = new StructV3();
+    sv3.setAge("age " + id);
+    sv3.setGender("gender" + id);
+    sv3.setName("inner name " + id);
+    sv4.setAge("outer age " + id);
+    sv4.setAddedStruct(sv3);
+    sv4.setGender("outer gender " + id);
+    sv4.setName("outer name " + id);
+    return sv4;
+  }
+
+
   @Test
   public void testDropMapValueStruct() throws Exception {
     String filter = "reqMap/key";
 
     Map<String, StructV4WithExtracStructField> mapValue = new HashMap<String, StructV4WithExtracStructField>();
 
-    StructV4WithExtracStructField v1 = new StructV4WithExtracStructField();
-    StructV3 sv31 = new StructV3();
-    sv31.setAge("bar");
-    sv31.setGender("f");
-    sv31.setName("a name");
-    v1.setAge("foo");
-    v1.setAddedStruct(sv31);
-    v1.setGender("m");
-    v1.setName("outer name");
-
-    StructV4WithExtracStructField v2 = new StructV4WithExtracStructField();
-    StructV3 sv32 = new StructV3();
-    sv32.setAge("bar2");
-    sv32.setGender("f2");
-    sv32.setName("a name2");
-    v2.setAge("foo2");
-    v2.setAddedStruct(sv32);
-    v2.setGender("m2");
-    v2.setName("outer name2");
+    StructV4WithExtracStructField v1 = makeStructV4WithExtracStructField("1");
+    StructV4WithExtracStructField v2 = makeStructV4WithExtracStructField("2");
 
     mapValue.put("key 1", v1);
     mapValue.put("key 2", v2);
@@ -212,12 +211,89 @@ public class TestParquetToThriftReadWriteAndProjection {
 
     // for now we expect a sentinel column to be kept
     HashMap<String, StructV4WithExtracStructField> readValue = new HashMap<String, StructV4WithExtracStructField>();
-    readValue.put("key 1", new StructV4WithExtracStructField("outer name"));
-    readValue.put("key 2", new StructV4WithExtracStructField("outer name2"));
+    readValue.put("key 1", new StructV4WithExtracStructField("outer name 1"));
+    readValue.put("key 2", new StructV4WithExtracStructField("outer name 2"));
 
     MapWithStructValue toRead = new MapWithStructValue(readValue);
 
     shouldDoProjectionWithThriftColumnFilter(filter, toWrite, toRead, MapWithStructValue.class);
+  }
+
+  @Test
+  public void testDropMapValueNestedPrim() throws Exception {
+    String filter = "reqMap/key";
+
+    Map<String, Map<String, String>> mapValue =
+        new HashMap<String, Map<String, String>>();
+
+    Map<String, String> innerValue1 = new HashMap<String, String>();
+    innerValue1.put("inner key (1, 1)", "inner (1, 1)");
+    innerValue1.put("inner key (1, 2)", "inner (1, 2)");
+
+    Map<String, String> innerValue2 = new HashMap<String, String>();
+    innerValue2.put("inner key (2, 1)", "inner (2, 1)");
+    innerValue2.put("inner key (2, 2)", "inner (2, 2)");
+
+    mapValue.put("outer key 1", innerValue1);
+    mapValue.put("outer key 2", innerValue2);
+
+    MapWithPrimMapValue toWrite = new MapWithPrimMapValue(mapValue);
+
+    Map<String, Map<String, String>> expected = new HashMap<String, Map<String, String>>();
+
+    Map<String, String> expectedInnerValue1 = new HashMap<String, String>();
+    expectedInnerValue1.put("inner key (1, 1)", "inner (1, 1)");
+    expectedInnerValue1.put("inner key (1, 2)", "inner (1, 2)");
+
+    Map<String, String> expectedInnerValue2 = new HashMap<String, String>();
+    expectedInnerValue2.put("inner key (2, 1)", "inner (2, 1)");
+    expectedInnerValue2.put("inner key (2, 2)", "inner (2, 2)");
+
+    expected.put("outer key 1", expectedInnerValue1);
+    expected.put("outer key 2", expectedInnerValue2);
+
+    MapWithPrimMapValue toRead = new MapWithPrimMapValue(expected);
+
+    shouldDoProjectionWithThriftColumnFilter(filter, toWrite, toRead, MapWithPrimMapValue.class);
+  }
+
+
+  @Test
+  public void testDropMapValueNestedStruct() throws Exception {
+    String filter = "reqMap/key";
+
+    Map<String, Map<String, StructV4WithExtracStructField>> mapValue =
+        new HashMap<String, Map<String, StructV4WithExtracStructField>>();
+
+    Map<String, StructV4WithExtracStructField> innerValue1 = new HashMap<String, StructV4WithExtracStructField>();
+    innerValue1.put("inner key (1, 1)", makeStructV4WithExtracStructField("inner (1, 1)"));
+    innerValue1.put("inner key (1, 2)", makeStructV4WithExtracStructField("inner (1, 2)"));
+
+    Map<String, StructV4WithExtracStructField> innerValue2 = new HashMap<String, StructV4WithExtracStructField>();
+    innerValue2.put("inner key (2, 1)", makeStructV4WithExtracStructField("inner (2, 1)"));
+    innerValue2.put("inner key (2, 2)", makeStructV4WithExtracStructField("inner (2, 2)"));
+
+    mapValue.put("outer key 1", innerValue1);
+    mapValue.put("outer key 2", innerValue2);
+
+    MapWithStructMapValue toWrite = new MapWithStructMapValue(mapValue);
+
+    Map<String, Map<String, StructV4WithExtracStructField>> expected = new HashMap<String, Map<String, StructV4WithExtracStructField>>();
+
+    Map<String, StructV4WithExtracStructField> expectedInnerValue1 = new HashMap<String, StructV4WithExtracStructField>();
+    expectedInnerValue1.put("inner key (1, 1)", new StructV4WithExtracStructField("outer name inner (1, 1)"));
+    expectedInnerValue1.put("inner key (1, 2)", new StructV4WithExtracStructField("outer name inner (1, 2)"));
+
+    Map<String, StructV4WithExtracStructField> expectedInnerValue2 = new HashMap<String, StructV4WithExtracStructField>();
+    expectedInnerValue2.put("inner key (2, 1)", new StructV4WithExtracStructField("outer name inner (2, 1)"));
+    expectedInnerValue2.put("inner key (2, 2)", new StructV4WithExtracStructField("outer name inner (2, 2)"));
+
+    expected.put("outer key 1", expectedInnerValue1);
+    expected.put("outer key 2", expectedInnerValue2);
+
+    MapWithStructMapValue toRead = new MapWithStructMapValue(expected);
+
+    shouldDoProjectionWithThriftColumnFilter(filter, toWrite, toRead, MapWithStructMapValue.class);
   }
 
   @Test
