@@ -115,6 +115,7 @@
     <pig.version>0.11.1</pig.version>
     <pig.classifier />
     <thrift.version>0.7.0</thrift.version>
+    <fastutil.version>6.5.7</fastutil.version>
   </properties>
 
   <modules>

@@ -21,7 +21,7 @@ package org.apache.parquet.avro;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.apache.avro.Schema;
-import org.apache.avro.generic.IndexedRecord;
+import org.apache.avro.generic.GenericData;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.hadoop.api.ReadSupport;
@@ -29,11 +29,11 @@ import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 
 /**
- * Avro implementation of {@link ReadSupport} for Avro {@link IndexedRecord}s which cover both Avro Specific and
- * Generic. Users should use {@link AvroParquetReader} or {@link AvroParquetInputFormat} rather than using
- * this class directly.
+ * Avro implementation of {@link ReadSupport} for avro generic, specific, and
+ * reflect models. Use {@link AvroParquetReader} or
+ * {@link AvroParquetInputFormat} rather than using this class directly.
  */
-public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
+public class AvroReadSupport<T> extends ReadSupport<T> {
 
   public static String AVRO_REQUESTED_PROJECTION = "parquet.avro.projection";
   private static final String AVRO_READ_SCHEMA = "parquet.avro.read.schema";
@@ -43,7 +43,10 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
   static final String OLD_AVRO_SCHEMA_METADATA_KEY = "avro.schema";
   private static final String AVRO_READ_SCHEMA_METADATA_KEY = "avro.read.schema";
 
-  public static String AVRO_DATA_SUPPLIER = "parquet.avro.data.supplier";
+  public static final String AVRO_DATA_SUPPLIER = "parquet.avro.data.supplier";
+
+  public static final String AVRO_COMPATIBILITY = "parquet.avro.compatible";
+  public static final boolean AVRO_DEFAULT_COMPATIBILITY = true;
 
   /**
    * @see org.apache.parquet.avro.AvroParquetInputFormat#setRequestedProjection(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
@@ -69,18 +72,23 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
                           Map<String, String> keyValueMetaData,
                           MessageType fileSchema) {
     MessageType projection = fileSchema;
-    Map<String, String> metadata = null;
+    Map<String, String> metadata = new LinkedHashMap<String, String>();
 
     String requestedProjectionString = configuration.get(AVRO_REQUESTED_PROJECTION);
     if (requestedProjectionString != null) {
       Schema avroRequestedProjection = new Schema.Parser().parse(requestedProjectionString);
       projection = new AvroSchemaConverter(configuration).convert(avroRequestedProjection);
     }
+
     String avroReadSchema = configuration.get(AVRO_READ_SCHEMA);
     if (avroReadSchema != null) {
-      metadata = new LinkedHashMap<String, String>();
       metadata.put(AVRO_READ_SCHEMA_METADATA_KEY, avroReadSchema);
     }
+
+    if (configuration.getBoolean(AVRO_COMPATIBILITY, AVRO_DEFAULT_COMPATIBILITY)) {
+      metadata.put(AVRO_COMPATIBILITY, "true");
+    }
+
     return new ReadContext(projection, metadata);
   }
 
@@ -88,10 +96,11 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
   public RecordMaterializer<T> prepareForRead(
       Configuration configuration, Map<String, String> keyValueMetaData,
       MessageType fileSchema, ReadContext readContext) {
+    Map<String, String> metadata = readContext.getReadSupportMetadata();
     MessageType parquetSchema = readContext.getRequestedSchema();
     Schema avroSchema;
-    if (readContext.getReadSupportMetadata() != null &&
-        readContext.getReadSupportMetadata().get(AVRO_READ_SCHEMA_METADATA_KEY) != null) {
+
+    if (readContext.getReadSupportMetadata().get(AVRO_READ_SCHEMA_METADATA_KEY) != null) {
       // use the Avro read schema provided by the user
       avroSchema = new Schema.Parser().parse(readContext.getReadSupportMetadata().get(AVRO_READ_SCHEMA_METADATA_KEY));
     } else if (keyValueMetaData.get(AVRO_SCHEMA_METADATA_KEY) != null) {
@@ -104,10 +113,25 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
       // default to converting the Parquet schema into an Avro schema
       avroSchema = new AvroSchemaConverter(configuration).convert(parquetSchema);
     }
-    Class<? extends AvroDataSupplier> suppClass = configuration.getClass(AVRO_DATA_SUPPLIER,
-        SpecificDataSupplier.class,
-        AvroDataSupplier.class);
-    AvroDataSupplier supplier =ReflectionUtils.newInstance(suppClass, configuration);
-    return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, supplier.get());
+
+    GenericData model = getDataModel(configuration);
+    String compatEnabled = metadata.get(AvroReadSupport.AVRO_COMPATIBILITY);
+    if (compatEnabled != null && Boolean.valueOf(compatEnabled)) {
+      return newCompatMaterializer(parquetSchema, avroSchema, model);
+    }
+    return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, model);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <T> RecordMaterializer<T> newCompatMaterializer(
+      MessageType parquetSchema, Schema avroSchema, GenericData model) {
+    return (RecordMaterializer<T>) new AvroCompatRecordMaterializer(
+        parquetSchema, avroSchema, model);
+  }
+
+  private static GenericData getDataModel(Configuration conf) {
+    Class<? extends AvroDataSupplier> suppClass = conf.getClass(
+        AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
+    return ReflectionUtils.newInstance(suppClass, conf).get();
   }
 }

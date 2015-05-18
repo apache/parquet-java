@@ -28,26 +28,42 @@ import java.util.*;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericData.Fixed;
 import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.codehaus.jackson.node.NullNode;
 import org.junit.Test;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertNotNull;
 
+@RunWith(Parameterized.class)
 public class TestReadWrite {
+
+  @Parameterized.Parameters
+  public static Collection<Object[]> data() {
+    Object[][] data = new Object[][] {
+        { false },  // use the new converters
+        { true } }; // use the old converters
+    return Arrays.asList(data);
+  }
+
+  private final boolean compat;
+  private final Configuration testConf = new Configuration(false);
+
+  public TestReadWrite(boolean compat) {
+    this.compat = compat;
+    this.testConf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
+  }
 
   @Test
   public void testEmptyArray() throws Exception {
@@ -59,7 +75,7 @@ public class TestReadWrite {
     tmp.delete();
     Path file = new Path(tmp.getPath());
 
-    AvroParquetWriter<GenericRecord> writer = 
+    AvroParquetWriter<GenericRecord> writer =
         new AvroParquetWriter<GenericRecord>(file, schema);
 
     // Write a record with an empty array.
@@ -69,7 +85,7 @@ public class TestReadWrite {
     writer.write(record);
     writer.close();
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(file);
+    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
     GenericRecord nextRecord = reader.read();
 
     assertNotNull(nextRecord);
@@ -96,7 +112,7 @@ public class TestReadWrite {
     writer.write(record);
     writer.close();
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(file);
+    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
     GenericRecord nextRecord = reader.read();
 
     assertNotNull(nextRecord);
@@ -127,7 +143,7 @@ public class TestReadWrite {
     writer.write(record);
     writer.close();
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(file);
+    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
     GenericRecord nextRecord = reader.read();
 
     assertNotNull(nextRecord);
@@ -179,7 +195,7 @@ public class TestReadWrite {
     writer.write(record);
     writer.close();
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(file);
+    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
     GenericRecord nextRecord = reader.read();
 
     assertNotNull(nextRecord);
@@ -235,8 +251,11 @@ public class TestReadWrite {
     writer.write(record);
     writer.close();
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(file);
+    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
     GenericRecord nextRecord = reader.read();
+
+    Object expectedEnumSymbol = compat ? "a" :
+        new GenericData.EnumSymbol(schema.getField("myenum").schema(), "a");
 
     assertNotNull(nextRecord);
     assertEquals(null, nextRecord.get("mynull"));
@@ -247,7 +266,7 @@ public class TestReadWrite {
     assertEquals(4.1, nextRecord.get("mydouble"));
     assertEquals(ByteBuffer.wrap("hello".getBytes(Charsets.UTF_8)), nextRecord.get("mybytes"));
     assertEquals("hello", nextRecord.get("mystring"));
-    assertEquals("a", nextRecord.get("myenum"));
+    assertEquals(expectedEnumSymbol, nextRecord.get("myenum"));
     assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
     assertEquals(integerArray, nextRecord.get("myarray"));
     assertEquals(emptyArray, nextRecord.get("myemptyarray"));
@@ -437,7 +456,7 @@ public class TestReadWrite {
     GenericFixed genericFixed = new GenericData.Fixed(
         Schema.createFixed("fixed", null, null, 1), new byte[] { (byte) 65 });
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(file);
+    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
     GenericRecord nextRecord = reader.read();
     assertNotNull(nextRecord);
     assertEquals(true, nextRecord.get("myboolean"));

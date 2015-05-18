@@ -29,6 +29,8 @@ import com.google.common.collect.ImmutableList;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
@@ -37,17 +39,34 @@ import org.junit.Test;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 /**
  * Other tests exercise the use of Avro Generic, a dynamic data representation. This class focuses
  * on Avro Speific whose schemas are pre-compiled to POJOs with built in SerDe for faster serialization.
  */
+@RunWith(Parameterized.class)
 public class TestSpecificReadWrite {
 
+  @Parameterized.Parameters
+  public static Collection<Object[]> data() {
+    Object[][] data = new Object[][] {
+        { false },  // use the new converters
+        { true } }; // use the old converters
+    return Arrays.asList(data);
+  }
+
+  private final Configuration testConf = new Configuration(false);
+
+  public TestSpecificReadWrite(boolean compat) {
+    this.testConf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
+  }
+
   @Test
-  public void testReadWriteSpecific() throws IOException {
+  public void testCompatReadWriteSpecific() throws IOException {
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(path);
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path);
     for (int i = 0; i < 10; i++) {
       assertEquals(getVwPolo().toString(), reader.read().toString());
       assertEquals(getVwPassat().toString(), reader.read().toString());
@@ -59,7 +78,7 @@ public class TestSpecificReadWrite {
   @Test
   public void testReadWriteSpecificWithDictionary() throws IOException {
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, true);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(path);
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path);
     for (int i = 0; i < 10; i++) {
       assertEquals(getVwPolo().toString(), reader.read().toString());
       assertEquals(getVwPassat().toString(), reader.read().toString());
@@ -71,7 +90,7 @@ public class TestSpecificReadWrite {
   @Test
   public void testFilterMatchesMultiple() throws IOException {
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Volkswagen")));
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("make", equalTo("Volkswagen")));
     for (int i = 0; i < 10; i++) {
       assertEquals(getVwPolo().toString(), reader.read().toString());
       assertEquals(getVwPassat().toString(), reader.read().toString());
@@ -82,7 +101,7 @@ public class TestSpecificReadWrite {
   @Test
   public void testFilterMatchesMultipleBlocks() throws IOException {
     Path path = writeCarsToParquetFile(10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE/64, DEFAULT_PAGE_SIZE/64);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Volkswagen")));
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("make", equalTo("Volkswagen")));
     for (int i = 0; i < 10000; i++) {
       assertEquals(getVwPolo().toString(), reader.read().toString());
       assertEquals(getVwPassat().toString(), reader.read().toString());
@@ -93,7 +112,7 @@ public class TestSpecificReadWrite {
   @Test
   public void testFilterMatchesNoBlocks() throws IOException {
     Path path = writeCarsToParquetFile(10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE/64, DEFAULT_PAGE_SIZE/64);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Bogus")));
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("make", equalTo("Bogus")));
     assertNull(reader.read());
   }
 
@@ -119,7 +138,7 @@ public class TestSpecificReadWrite {
     writer.write(bmwMini); // only write BMW in last block
     writer.close();
 
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make",
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("make",
         equalTo("BMW")));
     assertEquals(getBmwMini().toString(), reader.read().toString());
     assertNull(reader.read());
@@ -128,7 +147,7 @@ public class TestSpecificReadWrite {
   @Test
   public void testFilterWithDictionary() throws IOException {
     Path path = writeCarsToParquetFile(1,CompressionCodecName.UNCOMPRESSED,true);
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("make", equalTo("Volkswagen")));
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("make", equalTo("Volkswagen")));
     assertEquals(getVwPolo().toString(), reader.read().toString());
     assertEquals(getVwPassat().toString(), reader.read().toString());
     assertNull(reader.read());
@@ -138,15 +157,15 @@ public class TestSpecificReadWrite {
   public void testFilterOnSubAttribute() throws IOException {
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
     
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(path, column("engine.type", equalTo(EngineType.DIESEL)));
+    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("engine.type", equalTo(EngineType.DIESEL)));
     assertEquals(reader.read().toString(), getVwPassat().toString());
     assertNull(reader.read());
 
-    reader = new AvroParquetReader<Car>(path, column("engine.capacity", equalTo(1.4f)));
+    reader = new AvroParquetReader<Car>(testConf, path, column("engine.capacity", equalTo(1.4f)));
     assertEquals(getVwPolo().toString(), reader.read().toString());
     assertNull(reader.read());
 
-    reader = new AvroParquetReader<Car>(path, column("engine.hasTurboCharger", equalTo(true)));
+    reader = new AvroParquetReader<Car>(testConf, path, column("engine.hasTurboCharger", equalTo(true)));
     assertEquals(getBmwMini().toString(), reader.read().toString());
     assertNull(reader.read());
   }
@@ -154,7 +173,7 @@ public class TestSpecificReadWrite {
   @Test
   public void testProjection() throws IOException {
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
-    Configuration conf = new Configuration();
+    Configuration conf = new Configuration(testConf);
 
     Schema schema = Car.getClassSchema();
     List<Schema.Field> fields = schema.getFields();
@@ -193,7 +212,7 @@ public class TestSpecificReadWrite {
   @Test
   public void testAvroReadSchema() throws IOException {
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
-    Configuration conf = new Configuration();
+    Configuration conf = new Configuration(testConf);
     AvroReadSupport.setAvroReadSchema(conf, NewCar.SCHEMA$);
 
     ParquetReader<NewCar> reader = new AvroParquetReader<NewCar>(conf, path);
