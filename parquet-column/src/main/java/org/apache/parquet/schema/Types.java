@@ -758,14 +758,6 @@ public class Types {
         return this.parent;
       }
 
-      public BaseMapBuilder<P, Q> requiredValue (Type type) {
-        return value(type);
-      }
-
-      public BaseMapBuilder<P, Q> optionalValue (Type type) {
-        return value(type);
-      }
-
       @Override
       public P named(String name) {
         parent.setKeyType(build("key"));
@@ -880,14 +872,6 @@ public class Types {
       public BaseMapBuilder<P, Q> value(Type type) {
         parent.setValueType(type);
         return this.parent;
-      }
-
-      public BaseMapBuilder<P, Q> requiredValue(Type type) {
-        return value(type);
-      }
-
-      public BaseMapBuilder<P, Q> optionalValue(Type type) {
-        return value(type);
       }
     }
 
@@ -1054,14 +1038,6 @@ public class Types {
     public Q value(Type type) {
       setValueType(type);
       return self();
-    }
-
-    public Q requiredValue(Type type) {
-      return value(type);
-    }
-
-    public Q optionalValue(Type type) {
-      return value(type);
     }
 
     @Override
@@ -1330,17 +1306,9 @@ public class Types {
       return listElement(Type.Repetition.OPTIONAL);
     }
 
-    public BaseListBuilder<P, Q> element(Type type, Type.Repetition repetition) {
+    public BaseListBuilder<P, Q> element(Type type) {
       this.setElementType(type);
       return self();
-    }
-
-    public BaseListBuilder<P, Q> requiredElement(Type type) {
-      return element(type, Type.Repetition.REQUIRED);
-    }
-
-    public BaseListBuilder<P, Q> optionalElement(Type type) {
-      return element(type, Type.Repetition.OPTIONAL);
     }
   }
 

@@ -1156,7 +1156,7 @@ public class TestTypeBuilders {
     GroupType actual = Types.buildMessage()
         .requiredMap()
           .key(keyType)
-          .requiredValue(valueType)
+          .value(valueType)
         .named("myMap")
       .named("mapParent");
 
@@ -1171,20 +1171,7 @@ public class TestTypeBuilders {
             new PrimitiveType(REQUIRED, INT64, "element")));
     Type element = Types.primitive(INT64, REQUIRED).named("element");
     Type actual = Types.requiredList()
-          .requiredElement(element)
-        .named("myList");
-    Assert.assertEquals(expected, actual);
-  }
-
-  @Test
-  public void testListWithOptionalPreBuiltElement() {
-    GroupType expected = new GroupType(REQUIRED, "myList", OriginalType.LIST,
-        new GroupType(REPEATED,
-            "list",
-            new PrimitiveType(OPTIONAL, INT64, "element")));
-    Type element = Types.primitive(INT64, OPTIONAL).named("element");
-    Type actual = Types.requiredList()
-        .optionalElement(element)
+          .element(element)
         .named("myList");
     Assert.assertEquals(expected, actual);
   }
