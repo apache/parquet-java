@@ -138,7 +138,7 @@ public class AvroSchemaConverter {
             convertField("array", schema.getElementType(), Type.Repetition.REPEATED));
       } else {
         return ConversionPatterns.listOfElements(repetition, fieldName,
-            convertField("element", schema.getElementType()));
+            convertField(AvroWriteSupport.LIST_ELEMENT_NAME, schema.getElementType()));
       }
     } else if (type.equals(Schema.Type.MAP)) {
       Type valType = convertField("value", schema.getValueType());

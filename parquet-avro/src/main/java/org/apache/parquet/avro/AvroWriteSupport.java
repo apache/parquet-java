@@ -63,7 +63,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   private static final String MAP_KEY_NAME = "key";
   private static final String MAP_VALUE_NAME = "value";
   private static final String LIST_REPEATED_NAME = "list";
-  private static final String LIST_ELEMENT_NAME = "element";
+  static final String LIST_ELEMENT_NAME = "element";
 
   private RecordConsumer recordConsumer;
   private MessageType rootSchema;

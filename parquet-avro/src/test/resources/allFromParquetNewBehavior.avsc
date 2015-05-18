@@ -51,6 +51,12 @@
     }],
     "default" : null
   }, {
+    "name" : "myarrayofoptional",
+    "type" : {
+       "type" : "array",
+       "items" : ["null", "int"]
+    }
+  }, {
     "name" : "myrecordarray",
     "type" : {
       "type" : "array",

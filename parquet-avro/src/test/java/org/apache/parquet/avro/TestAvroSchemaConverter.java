@@ -22,7 +22,9 @@ import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import java.util.Arrays;
 import org.apache.avro.Schema;
+import org.apache.hadoop.conf.Configuration;
 import org.codehaus.jackson.node.NullNode;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
@@ -31,7 +33,15 @@ import static org.junit.Assert.assertEquals;
 
 public class TestAvroSchemaConverter {
 
-    public static final String ALL_PARQUET_SCHEMA =
+  private static final Configuration NEW_BEHAVIOR = new Configuration(false);
+
+  @BeforeClass
+  public static void setupConf() {
+    NEW_BEHAVIOR.setBoolean("parquet.avro.add-list-element-records", false);
+    NEW_BEHAVIOR.setBoolean("parquet.avro.write-old-list-structure", false);
+  }
+
+  public static final String ALL_PARQUET_SCHEMA =
       "message org.apache.parquet.avro.myrecord {\n" +
       "  required boolean myboolean;\n" +
       "  required int32 myint;\n" +
@@ -50,6 +60,11 @@ public class TestAvroSchemaConverter {
       "  optional group myoptionalarray (LIST) {\n" +
       "    repeated int32 array;\n" +
       "  }\n" +
+      "  required group myarrayofoptional (LIST) {\n" +
+      "    repeated group list {\n" +
+      "      optional int32 element;\n" +
+      "    }\n" +
+      "  }\n" +
       "  required group myrecordarray (LIST) {\n" +
       "    repeated group array {\n" +
       "      required int32 a;\n" +
@@ -65,27 +80,45 @@ public class TestAvroSchemaConverter {
       "  required fixed_len_byte_array(1) myfixed;\n" +
       "}\n";
 
-  private void testAvroToParquetConversion(Schema avroSchema, String schemaString) throws
-      Exception {
-    AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter();
+  private void testAvroToParquetConversion(
+      Schema avroSchema, String schemaString) throws Exception {
+    testAvroToParquetConversion(new Configuration(false), avroSchema, schemaString);
+  }
+
+  private void testAvroToParquetConversion(
+      Configuration conf, Schema avroSchema, String schemaString)
+      throws Exception {
+    AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter(conf);
     MessageType schema = avroSchemaConverter.convert(avroSchema);
     MessageType expectedMT = MessageTypeParser.parseMessageType(schemaString);
     assertEquals("converting " + schema + " to " + schemaString, expectedMT.toString(),
         schema.toString());
   }
 
-  private void testParquetToAvroConversion(Schema avroSchema, String schemaString) throws
-      Exception {
-    AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter();
+  private void testParquetToAvroConversion(
+      Schema avroSchema, String schemaString) throws Exception {
+    testParquetToAvroConversion(new Configuration(false), avroSchema, schemaString);
+  }
+
+  private void testParquetToAvroConversion(
+      Configuration conf, Schema avroSchema, String schemaString)
+      throws Exception {
+    AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter(conf);
     Schema schema = avroSchemaConverter.convert(MessageTypeParser.parseMessageType
         (schemaString));
     assertEquals("converting " + schemaString + " to " + avroSchema, avroSchema.toString(),
         schema.toString());
   }
 
-  private void testRoundTripConversion(Schema avroSchema, String schemaString) throws
-      Exception {
-    AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter();
+  private void testRoundTripConversion(
+      Schema avroSchema, String schemaString) throws Exception {
+    testRoundTripConversion(new Configuration(), avroSchema, schemaString);
+  }
+
+  private void testRoundTripConversion(
+      Configuration conf, Schema avroSchema, String schemaString)
+      throws Exception {
+    AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter(conf);
     MessageType schema = avroSchemaConverter.convert(avroSchema);
     MessageType expectedMT = MessageTypeParser.parseMessageType(schemaString);
     assertEquals("converting " + schema + " to " + schemaString, expectedMT.toString(),
@@ -102,6 +135,61 @@ public class TestAvroSchemaConverter {
 
   @Test
   public void testAllTypes() throws Exception {
+    Schema schema = new Schema.Parser().parse(
+        Resources.getResource("all.avsc").openStream());
+    testAvroToParquetConversion(
+        NEW_BEHAVIOR, schema,
+        "message org.apache.parquet.avro.myrecord {\n" +
+            // Avro nulls are not encoded, unless they are null unions
+            "  required boolean myboolean;\n" +
+            "  required int32 myint;\n" +
+            "  required int64 mylong;\n" +
+            "  required float myfloat;\n" +
+            "  required double mydouble;\n" +
+            "  required binary mybytes;\n" +
+            "  required binary mystring (UTF8);\n" +
+            "  required group mynestedrecord {\n" +
+            "    required int32 mynestedint;\n" +
+            "  }\n" +
+            "  required binary myenum (ENUM);\n" +
+            "  required group myarray (LIST) {\n" +
+            "    repeated group list {\n" +
+            "      required int32 element;\n" +
+            "    }\n" +
+            "  }\n" +
+            "  required group myemptyarray (LIST) {\n" +
+            "    repeated group list {\n" +
+            "      required int32 element;\n" +
+            "    }\n" +
+            "  }\n" +
+            "  optional group myoptionalarray (LIST) {\n" +
+            "    repeated group list {\n" +
+            "      required int32 element;\n" +
+            "    }\n" +
+            "  }\n" +
+            "  required group myarrayofoptional (LIST) {\n" +
+            "    repeated group list {\n" +
+            "      optional int32 element;\n" +
+            "    }\n" +
+            "  }\n" +
+            "  required group mymap (MAP) {\n" +
+            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "      required binary key (UTF8);\n" +
+            "      required int32 value;\n" +
+            "    }\n" +
+            "  }\n" +
+            "  required group myemptymap (MAP) {\n" +
+            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "      required binary key (UTF8);\n" +
+            "      required int32 value;\n" +
+            "    }\n" +
+            "  }\n" +
+            "  required fixed_len_byte_array(1) myfixed;\n" +
+            "}\n");
+  }
+
+  @Test
+  public void testAllTypesOldListBehavior() throws Exception {
     Schema schema = new Schema.Parser().parse(
         Resources.getResource("all.avsc").openStream());
     testAvroToParquetConversion(
@@ -128,6 +216,9 @@ public class TestAvroSchemaConverter {
             "  optional group myoptionalarray (LIST) {\n" +
             "    repeated int32 array;\n" +
             "  }\n" +
+            "  required group myarrayofoptional (LIST) {\n" +
+            "    repeated int32 array;\n" +
+            "  }\n" +
             "  required group mymap (MAP) {\n" +
             "    repeated group map (MAP_KEY_VALUE) {\n" +
             "      required binary key (UTF8);\n" +
@@ -147,7 +238,15 @@ public class TestAvroSchemaConverter {
   @Test
   public void testAllTypesParquetToAvro() throws Exception {
     Schema schema = new Schema.Parser().parse(
-        Resources.getResource("allFromParquet.avsc").openStream());
+        Resources.getResource("allFromParquetNewBehavior.avsc").openStream());
+    // Cannot use round-trip assertion because enum is lost
+    testParquetToAvroConversion(NEW_BEHAVIOR, schema, ALL_PARQUET_SCHEMA);
+  }
+
+  @Test
+  public void testAllTypesParquetToAvroOldBehavior() throws Exception {
+    Schema schema = new Schema.Parser().parse(
+        Resources.getResource("allFromParquetOldBehavior.avsc").openStream());
     // Cannot use round-trip assertion because enum is lost
     testParquetToAvroConversion(schema, ALL_PARQUET_SCHEMA);
   }
@@ -155,14 +254,14 @@ public class TestAvroSchemaConverter {
   @Test(expected = IllegalArgumentException.class)
   public void testParquetMapWithNonStringKeyFails() throws Exception {
     MessageType parquetSchema = MessageTypeParser.parseMessageType(
-      "message myrecord {\n" +
-        "  required group mymap (MAP) {\n" +
-        "    repeated group map (MAP_KEY_VALUE) {\n" +
-        "      required int32 key;\n" +
-        "      required int32 value;\n" +
-        "    }\n" +
-        "  }\n" +
-        "}\n"
+        "message myrecord {\n" +
+            "  required group mymap (MAP) {\n" +
+            "    repeated group map (MAP_KEY_VALUE) {\n" +
+            "      required int32 key;\n" +
+            "      required int32 value;\n" +
+            "    }\n" +
+            "  }\n" +
+            "}\n"
     );
     new AvroSchemaConverter().convert(parquetSchema);
   }
@@ -201,10 +300,28 @@ public class TestAvroSchemaConverter {
   }
 
   @Test
+  public void testOptionalArrayElement() throws Exception {
+    Schema schema = Schema.createRecord("record1", null, null, false);
+    Schema optionalIntArray = Schema.createArray(optional(Schema.create(Schema.Type.INT)));
+    schema.setFields(Arrays.asList(
+        new Schema.Field("myintarray", optionalIntArray, null, null)
+    ));
+    testRoundTripConversion(
+        NEW_BEHAVIOR, schema,
+        "message record1 {\n" +
+            "  required group myintarray (LIST) {\n" +
+            "    repeated group list {\n" +
+            "      optional int32 element;\n" +
+            "    }\n" +
+            "  }\n" +
+            "}\n");
+  }
+
+  @Test
   public void testUnionOfTwoTypes() throws Exception {
     Schema schema = Schema.createRecord("record2", null, null, false);
     Schema multipleTypes = Schema.createUnion(Arrays.asList(Schema.create(Schema.Type
-        .NULL),
+            .NULL),
         Schema.create(Schema.Type.INT),
         Schema.create(Schema.Type.FLOAT)));
     schema.setFields(Arrays.asList(
@@ -224,6 +341,33 @@ public class TestAvroSchemaConverter {
 
   @Test
   public void testArrayOfOptionalRecords() throws Exception {
+    Schema innerRecord = Schema.createRecord("element", null, null, false);
+    Schema optionalString = optional(Schema.create(Schema.Type.STRING));
+    innerRecord.setFields(Lists.newArrayList(
+        new Schema.Field("s1", optionalString, null, NullNode.getInstance()),
+        new Schema.Field("s2", optionalString, null, NullNode.getInstance())
+    ));
+    Schema schema = Schema.createRecord("HasArray", null, null, false);
+    schema.setFields(Lists.newArrayList(
+        new Schema.Field("myarray", Schema.createArray(optional(innerRecord)),
+            null, null)
+    ));
+    System.err.println("Avro schema: " + schema.toString(true));
+
+    testRoundTripConversion(NEW_BEHAVIOR, schema, "message HasArray {\n" +
+        "  required group myarray (LIST) {\n" +
+        "    repeated group list {\n" +
+        "      optional group element {\n" +
+        "        optional binary s1 (UTF8);\n" +
+        "        optional binary s2 (UTF8);\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}\n");
+  }
+
+  @Test
+  public void testArrayOfOptionalRecordsOldBehavior() throws Exception {
     Schema innerRecord = Schema.createRecord("InnerRecord", null, null, false);
     Schema optionalString = optional(Schema.create(Schema.Type.STRING));
     innerRecord.setFields(Lists.newArrayList(
@@ -233,7 +377,7 @@ public class TestAvroSchemaConverter {
     Schema schema = Schema.createRecord("HasArray", null, null, false);
     schema.setFields(Lists.newArrayList(
         new Schema.Field("myarray", Schema.createArray(optional(innerRecord)),
-            null, NullNode.getInstance())
+            null, null)
     ));
     System.err.println("Avro schema: " + schema.toString(true));
 

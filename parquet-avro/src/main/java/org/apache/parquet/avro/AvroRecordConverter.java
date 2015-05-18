@@ -293,7 +293,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       this.parent = parent;
       this.avroSchema = avroSchema;
       this.containerClass = containerClass;
-      Schema elementSchema = this.avroSchema.getElementType();
+      Schema elementSchema = AvroSchemaConverter.getNonNull(avroSchema.getElementType());
       Type repeatedType = type.getType(0);
       // always determine whether the repeated type is the element type by
       // matching it against the element schema.
