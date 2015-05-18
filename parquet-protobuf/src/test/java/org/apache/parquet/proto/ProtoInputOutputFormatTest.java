@@ -19,23 +19,20 @@
 package org.apache.parquet.proto;
 
 import com.google.protobuf.Message;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.junit.Test;
-import org.apache.parquet.Log;
+import org.apache.parquet.proto.test.TestProtobuf;
+import org.apache.parquet.proto.test.TestProtobuf.FirstCustomClassMessage;
+import org.apache.parquet.proto.test.TestProtobuf.SecondCustomClassMessage;
 import org.apache.parquet.proto.utils.ReadUsingMR;
 import org.apache.parquet.proto.utils.WriteUsingMR;
-import org.apache.parquet.proto.test.TestProtobuf;
+import org.junit.Test;
 
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 
 public class ProtoInputOutputFormatTest {
-
-  private static final Log LOG = Log.getLog(ProtoInputOutputFormatTest.class);
 
   /**
    * Writes Protocol Buffer using first MR job, reads written file using
@@ -93,6 +90,34 @@ public class ProtoInputOutputFormatTest {
     //test that only requested fields were deserialized
     assertTrue(readDocument.hasDocId());
     assertTrue("Found data outside projection.", readDocument.getNameCount() == 0);
+  }
+
+  /**
+   * When user specified protobuffer class in configuration,
+   * It should replace class specified in header.
+   * */
+  @Test
+  public void testCustomProtoClass() throws Exception {
+    FirstCustomClassMessage.Builder inputMessage;
+    inputMessage = FirstCustomClassMessage.newBuilder();
+    inputMessage.setString("writtenString");
+
+    Path outputPath = new WriteUsingMR().write(new Message[]{inputMessage.build()});
+    ReadUsingMR readUsingMR = new ReadUsingMR();
+    String customClass = SecondCustomClassMessage.class.getName();
+    ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
+    List<Message> result = readUsingMR.read(outputPath);
+
+    assertEquals(1, result.size());
+    Message msg = result.get(0);
+    assertFalse("Class from header returned.",
+            msg instanceof FirstCustomClassMessage);
+    assertTrue("Custom class was not used",
+            msg instanceof SecondCustomClassMessage);
+
+    String stringValue;
+    stringValue = ((SecondCustomClassMessage) msg).getString();
+    assertEquals("writtenString", stringValue);
   }
 
   /**

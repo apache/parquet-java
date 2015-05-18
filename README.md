@@ -20,7 +20,7 @@
 Parquet MR [![Build Status](https://travis-ci.org/apache/incubator-parquet-mr.svg?branch=master)](http://travis-ci.org/apache/incubator-parquet-mr)
 ======
 
-Parquet-MR contains the java implementation of the [Parquet format](https://github.com/Parquet/parquet-format). 
+Parquet-MR contains the java implementation of the [Parquet format](https://github.com/apache/parquet-format). 
 Parquet is a columnar storage format for Hadoop; it provides efficient storage and encoding of data.
 Parquet uses the [record shredding and assembly algorithm](https://github.com/Parquet/parquet-mr/wiki/The-striping-and-assembly-algorithms-from-the-Dremel-paper) described in the Dremel paper to represent nested structures.
 
@@ -95,27 +95,27 @@ Parquet is a very active project, and new features are being added quickly; belo
 
 ## Map/Reduce integration
 
-[Input](https://github.com/Parquet/parquet-mr/blob/master/parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputFormat.java) and [Output](https://github.com/Parquet/parquet-mr/blob/master/parquet-hadoop/src/main/java/parquet/hadoop/ParquetOutputFormat.java) formats.
+[Input](https://github.com/apache/parquet-mr/blob/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/ParquetInputFormat.java) and [Output](https://github.com/apache/parquet-mr/blob/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/ParquetOutputFormat.java) formats.
 Note that to use an Input or Output format, you need to implement a WriteSupport or ReadSupport class, which will implement the conversion of your object to and from a Parquet schema.
 
 We've implemented this for 2 popular data formats to provide a clean migration path as well:
 
 ### Thrift
-Thrift integration is provided by the [parquet-thrift](https://github.com/Parquet/parquet-mr/tree/master/parquet-thrift) sub-project. If you are using Thrift through Scala, you may be using Twitter's [Scrooge](https://github.com/twitter/scrooge). If that's the case, not to worry -- we took care of the Scrooge/Apache Thrift glue for you in the [parquet-scrooge](https://github.com/Parquet/parquet-mr/tree/master/parquet-scrooge) sub-project.
+Thrift integration is provided by the [parquet-thrift](https://github.com/apache/parquet-mr/tree/master/parquet-thrift) sub-project. If you are using Thrift through Scala, you may be using Twitter's [Scrooge](https://github.com/twitter/scrooge). If that's the case, not to worry -- we took care of the Scrooge/Apache Thrift glue for you in the [parquet-scrooge](https://github.com/apache/parquet-mr/tree/master/parquet-scrooge) sub-project.
 
 ### Avro
-Avro conversion is implemented via the [parquet-avro](https://github.com/Parquet/parquet-mr/tree/master/parquet-avro) sub-project.
+Avro conversion is implemented via the [parquet-avro](https://github.com/apache/parquet-mr/tree/master/parquet-avro) sub-project.
 
 ### Create your own objects
 * The ParquetOutputFormat can be provided a WriteSupport to write your own objects to an event based RecordConsumer.
 * the ParquetInputFormat can be provided a ReadSupport to materialize your own objects by implementing a RecordMaterializer
 
 See the APIs:
-* [Record conversion API](https://github.com/Parquet/parquet-mr/tree/master/parquet-column/src/main/java/parquet/io/api)
-* [Hadoop API](https://github.com/Parquet/parquet-mr/tree/master/parquet-hadoop/src/main/java/parquet/hadoop/api)
+* [Record conversion API](https://github.com/apache/parquet-mr/tree/master/parquet-column/src/main/java/parquet/io/api)
+* [Hadoop API](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/parquet/hadoop/api)
 
 ## Apache Pig integration
-A [Loader](https://github.com/Parquet/parquet-mr/blob/master/parquet-pig/src/main/java/parquet/pig/ParquetLoader.java) and a [Storer](https://github.com/Parquet/parquet-mr/blob/master/parquet-pig/src/main/java/parquet/pig/ParquetStorer.java) are provided to read and write Parquet files with Apache Pig
+A [Loader](https://github.com/apache/parquet-mr/blob/master/parquet-pig/src/main/java/org/apache/parquet/pig/ParquetLoader.java) and a [Storer](https://github.com/apache/parquet-mr/blob/master/parquet-pig/src/main/java/org/apache/parquet/pig/ParquetStorer.java) are provided to read and write Parquet files with Apache Pig
 
 Storing data into Parquet in Pig is simple:
 ```
@@ -134,7 +134,7 @@ If the data was stored using Pig, things will "just work". If the data was store
 
 ## Hive integration
 
-Hive integration is provided via the [parquet-hive](https://github.com/Parquet/parquet-mr/tree/master/parquet-hive) sub-project.
+Hive integration is provided via the [parquet-hive](https://github.com/apache/parquet-mr/tree/master/parquet-hive) sub-project.
 
 ## Build
 
@@ -222,7 +222,7 @@ The build runs in [Travis CI](http://travis-ci.org/Parquet/parquet-mr):
 
 ### How To Contribute
 
-If you are looking for some ideas on what to contribute, check out GitHub issues for this project labeled ["Pick me up!"](https://github.com/Parquet/parquet-mr/issues?labels=pick+me+up%21&state=open).
+If you are looking for some ideas on what to contribute, check out GitHub issues for this project labeled ["Pick me up!"](https://github.com/apache/parquet-mr/issues?labels=pick+me+up%21&state=open).
 Comment on the issue and/or contact [the parquet-dev group](https://groups.google.com/d/forum/parquet-dev) with your questions and ideas.
 
 We tend to do fairly close readings of pull requests, and you may get a lot of comments. Some common issues that are not code structure related, but still important:
@@ -243,7 +243,7 @@ We tend to do fairly close readings of pull requests, and you may get a lot of c
 * Jonathan Coveney <http://twitter.com/jco>
 * Brock Noland <https://github.com/brockn>
 * Tianshuo Deng <https://github.com/tsdeng>
-* and many others -- see the [Contributor report]( https://github.com/Parquet/parquet-mr/contributors)
+* and many others -- see the [Contributor report]( https://github.com/apache/parquet-mr/contributors)
 
 ## Code of Conduct
 

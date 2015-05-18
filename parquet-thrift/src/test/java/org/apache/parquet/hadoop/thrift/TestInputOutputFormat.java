@@ -242,7 +242,7 @@ public class TestInputOutputFormat {
     waitForJob(job);
   }
 
-  private void waitForJob(Job job) throws Exception {
+  public static void waitForJob(Job job) throws Exception {
     job.submit();
     while (!job.isComplete()) {
       LOG.debug("waiting for job " + job.getJobName());

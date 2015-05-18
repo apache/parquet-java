@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.pig;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.junit.Assert.assertEquals;
 import static org.apache.parquet.pig.PigSchemaConverter.pigSchemaToString;
 import static org.apache.parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
@@ -28,6 +30,9 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Type;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.util.Utils;
 import org.junit.Test;
@@ -221,7 +226,7 @@ public class TestPigSchemaConverter {
     map.put("pig.schema", new LinkedHashSet<String>(Arrays.asList(
         "a:int, b:int, c:int, d:int, e:int, f:int",
         "aa:int, aaa:int, b:int, c:int, ee:int")));
-    Schema result = getPigSchemaFromMultipleFiles(new MessageType("empty"), map);
+    Schema result = getPigSchemaFromMultipleFiles(new MessageType("file_schema", new PrimitiveType(OPTIONAL, INT32,"a")), map);
     assertEquals("a: int,b: int,c: int,d: int,e: int,f: int,aa: int,aaa: int,ee: int", pigSchemaToString(result));
   }
 

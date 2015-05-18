@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.thrift.projection;
+package org.apache.parquet.thrift.projection.deprecated;
 
 import org.junit.Test;
 

@@ -161,6 +161,66 @@ public class TestProtocolReadToWrite {
     assertEquals(0, countingHandler.fieldIgnoredCount);
   }
 
+  @Test
+  public void testUnionWithExtraOrNoValues() throws Exception {
+    CountingErrorHandler countingHandler = new CountingErrorHandler();
+    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(new ThriftSchemaConverter().toStructType(StructWithUnionV2.class), countingHandler);
+    ByteArrayOutputStream in = new ByteArrayOutputStream();
+    final ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+    StructWithUnionV2 validUnion = new StructWithUnionV2("a valid struct", UnionV2.aLong(new ALong(17L)));
+
+    StructWithAStructThatLooksLikeUnionV2 allMissing = new StructWithAStructThatLooksLikeUnionV2("all missing",
+        new AStructThatLooksLikeUnionV2());
+
+    AStructThatLooksLikeUnionV2 extra = new AStructThatLooksLikeUnionV2();
+    extra.setALong(new ALong(18L));
+    extra.setANewBool(new ABool(false));
+
+    StructWithAStructThatLooksLikeUnionV2 hasExtra = new StructWithAStructThatLooksLikeUnionV2("has extra",
+        new AStructThatLooksLikeUnionV2(extra));
+
+    validUnion.write(protocol(in));
+    allMissing.write(protocol(in));
+
+    ByteArrayInputStream baos = new ByteArrayInputStream(in.toByteArray());
+
+    // first one should not throw
+    p.readOne(protocol(baos), protocol(out));
+
+    try {
+      p.readOne(protocol(baos), protocol(out));
+      fail("this should throw");
+    } catch (SkippableException e) {
+      Throwable cause = e.getCause();
+      assertEquals(DecodingSchemaMismatchException.class, cause.getClass());
+      assertTrue(cause.getMessage().startsWith("Cannot write a TUnion with no set value in"));
+    }
+    assertEquals(0, countingHandler.recordCountOfMissingFields);
+    assertEquals(0, countingHandler.fieldIgnoredCount);
+
+    in = new ByteArrayOutputStream();
+    validUnion.write(protocol(in));
+    hasExtra.write(protocol(in));
+
+    baos = new ByteArrayInputStream(in.toByteArray());
+
+    // first one should not throw
+    p.readOne(protocol(baos), protocol(out));
+
+    try {
+      p.readOne(protocol(baos), protocol(out));
+      fail("this should throw");
+    } catch (SkippableException e) {
+      Throwable cause = e.getCause();
+      assertEquals(DecodingSchemaMismatchException.class, cause.getClass());
+      assertTrue(cause.getMessage().startsWith("Cannot write a TUnion with more than 1 set value in"));
+    }
+    assertEquals(0, countingHandler.recordCountOfMissingFields);
+    assertEquals(0, countingHandler.fieldIgnoredCount);
+  }
+
+
   /**
    * When enum value in data has an undefined index, it's considered as corrupted record and will be skipped.
    *

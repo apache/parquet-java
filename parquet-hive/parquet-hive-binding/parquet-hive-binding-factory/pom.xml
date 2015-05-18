@@ -27,7 +27,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>parquet-hive-binding-factory</artifactId>
-  <name>Apache Parquet Hive Binding Factory (Incubating)</name>
+  <name>Apache Parquet Hive Binding Factory</name>
   <packaging>jar</packaging>
 
   <dependencies>
