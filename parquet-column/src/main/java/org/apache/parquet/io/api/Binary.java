@@ -48,6 +48,12 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   abstract public byte[] getBytes();
 
+  /**
+   * Variant of getBytes() that avoids copying backing data structure
+   * @return backing byte[] if possible, else returns result of getBytes()
+   */
+  abstract public byte[] getBytesUnsafe();
+
   abstract boolean equals(byte[] bytes, int offset, int length);
 
   abstract boolean equals(Binary other);
@@ -71,7 +77,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   @Override
   public String toString() {
-    return "Binary{" + length() + " bytes, " + Arrays.toString(getBytes()) + "}";
+    return "Binary{" + length() + " bytes, " + Arrays.toString(getBytesUnsafe()) + "}";
   }
 
   private static class ByteArraySliceBackedBinary extends Binary {
@@ -107,6 +113,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     public byte[] getBytes() {
       return Arrays.copyOfRange(value, offset, offset + length);
+    }
+
+    @Override
+    public byte[] getBytesUnsafe() {
+      return getBytes();
     }
 
     @Override
@@ -189,6 +200,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     }
 
     @Override
+    public byte[] getBytesUnsafe() {
+      return value;
+    }
+
+    @Override
     public int hashCode() {
       return Binary.hashCode(value, 0, value.length);
     }
@@ -249,7 +265,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     public void writeTo(OutputStream out) throws IOException {
       // TODO: should not have to materialize those bytes
-      out.write(getBytes());
+      out.write(getBytesUnsafe());
     }
 
     @Override
@@ -262,12 +278,17 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     }
 
     @Override
+    public byte[] getBytesUnsafe() {
+      return getBytes();
+    }
+
+    @Override
     public int hashCode() {
       if (value.hasArray()) {
         return Binary.hashCode(value.array(), value.arrayOffset() + value.position(),
             value.arrayOffset() + value.remaining());
       }
-      byte[] bytes = getBytes();
+      byte[] bytes = getBytesUnsafe();
       return Binary.hashCode(bytes, 0, bytes.length);
     }
 
@@ -277,7 +298,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
         return other.equals(value.array(), value.arrayOffset() + value.position(),
             value.arrayOffset() + value.remaining());
       }
-      byte[] bytes = getBytes();
+      byte[] bytes = getBytesUnsafe();
       return other.equals(bytes, 0, bytes.length);
     }
 
@@ -287,7 +308,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
         return Binary.equals(value.array(), value.arrayOffset() + value.position(),
             value.arrayOffset() + value.remaining(), other, otherOffset, otherLength);
       }
-      byte[] bytes = getBytes();
+      byte[] bytes = getBytesUnsafe();
       return Binary.equals(bytes, 0, bytes.length, other, otherOffset, otherLength);
     }
 
@@ -297,7 +318,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
         return other.compareTo(value.array(), value.arrayOffset() + value.position(),
             value.arrayOffset() + value.remaining());
       }
-      byte[] bytes = getBytes();
+      byte[] bytes = getBytesUnsafe();
       return other.compareTo(bytes, 0, bytes.length);
     }
 
@@ -307,7 +328,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
         return Binary.compareTwoByteArrays(value.array(), value.arrayOffset() + value.position(),
             value.arrayOffset() + value.remaining(), other, otherOffset, otherLength);
       }
-      byte[] bytes = getBytes();
+      byte[] bytes = getBytesUnsafe();
       return Binary.compareTwoByteArrays(bytes, 0, bytes.length, other, otherOffset, otherLength);
     }
 
@@ -319,11 +340,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     public void writeTo(DataOutput out) throws IOException {
       // TODO: should not have to materialize those bytes
-      out.write(getBytes());
+      out.write(getBytesUnsafe());
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws IOException {
-      byte[] bytes = getBytes();
+      byte[] bytes = getBytesUnsafe();
       out.writeInt(bytes.length);
       out.write(bytes);
     }

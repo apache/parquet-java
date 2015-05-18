@@ -83,7 +83,7 @@ public class DeltaByteArrayWriter extends ValuesWriter{
   @Override
   public void writeBytes(Binary v) {
     int i = 0;
-    byte[] vb = v.getBytes();
+    byte[] vb = v.getBytesUnsafe();
     int length = previous.length < vb.length ? previous.length : vb.length;
     for(i = 0; (i < length) && (previous[i] == vb[i]); i++);
     prefixLengthWriter.writeInteger(i);

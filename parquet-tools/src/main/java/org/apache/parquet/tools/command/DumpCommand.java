@@ -307,7 +307,7 @@ public class DumpCommand extends ArgsOnlyCommand {
     }
 
     public static String binaryToString(Binary value) {
-        byte[] data = value.getBytes();
+        byte[] data = value.getBytesUnsafe();
         if (data == null) return null;
 
         try {
@@ -320,7 +320,7 @@ public class DumpCommand extends ArgsOnlyCommand {
     }
 
     public static BigInteger binaryToBigInteger(Binary value) {
-        byte[] data = value.getBytes();
+        byte[] data = value.getBytesUnsafe();
         if (data == null) return null;
 
         return new BigInteger(data);
