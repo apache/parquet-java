@@ -23,6 +23,7 @@ import org.apache.parquet.ParquetRuntimeException;
 import org.apache.parquet.Preconditions;
 
 import java.lang.management.ManagementFactory;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -49,14 +50,7 @@ public class MemoryManager {
   private final Map<InternalParquetRecordWriter, Long> writerList = new
       HashMap<InternalParquetRecordWriter, Long>();
   private final Map<String, Runnable> callBacks = new HashMap<String, Runnable>();
-  private final MemoryManagerStats stats;
-
-  /**
-   * The state of MemoryManager. We could add more attributes in the future.
-   */
-  public static class MemoryManagerStats {
-    public double scale = 1.0;
-  }
+  private double scale = 1.0;
 
   public MemoryManager(float ratio, long minAllocation) {
     checkRatio(ratio);
@@ -65,7 +59,6 @@ public class MemoryManager {
     minMemoryAllocation = minAllocation;
     totalMemoryPool = Math.round(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
         () * ratio);
-    stats = new MemoryManagerStats();
     LOG.debug(String.format("Allocated total memory pool is: %,d", totalMemoryPool));
   }
 
@@ -115,13 +108,13 @@ public class MemoryManager {
       totalAllocations += allocation;
     }
     if (totalAllocations <= totalMemoryPool) {
-      stats.scale = 1.0;
+      scale = 1.0;
     } else {
-      stats.scale = (double) totalMemoryPool / totalAllocations;
+      scale = (double) totalMemoryPool / totalAllocations;
       LOG.warn(String.format(
           "Total allocation exceeds %.2f%% (%,d bytes) of heap memory\n" +
           "Scaling row group sizes to %.2f%% for %d writers",
-          100*memoryPoolRatio, totalMemoryPool, 100*stats.scale, writerList.size()));
+          100*memoryPoolRatio, totalMemoryPool, 100*scale, writerList.size()));
       for (Runnable callBack : callBacks.values()) {
         // we do not really want to start a new thread here.
         callBack.run();
@@ -134,8 +127,8 @@ public class MemoryManager {
     }
 
     for (Map.Entry<InternalParquetRecordWriter, Long> entry : writerList.entrySet()) {
-      long newSize = (long) Math.floor(entry.getValue() * stats.scale);
-      if(stats.scale < 1.0 && minMemoryAllocation > 0 && newSize < minMemoryAllocation) {
+      long newSize = (long) Math.floor(entry.getValue() * scale);
+      if(scale < 1.0 && minMemoryAllocation > 0 && newSize < minMemoryAllocation) {
           throw new ParquetRuntimeException(String.format("New Memory allocation %d bytes" +
           " is smaller than the minimum allocation size of %d bytes.",
               newSize, minMemoryAllocation)){};
@@ -192,14 +185,14 @@ public class MemoryManager {
    * @return
    */
   Map<String, Runnable> getScaleCallBacks() {
-    return callBacks;
+    return Collections.unmodifiableMap(callBacks);
   }
 
   /**
-   * Get the internal state values of MemoryManger
+   * Get the internal scale value of MemoryManger
    * @return
    */
-  MemoryManagerStats getStats() {
-    return stats;
+  double getScale() {
+    return scale;
   }
 }
