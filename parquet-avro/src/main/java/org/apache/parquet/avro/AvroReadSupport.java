@@ -43,7 +43,8 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   static final String OLD_AVRO_SCHEMA_METADATA_KEY = "avro.schema";
   private static final String AVRO_READ_SCHEMA_METADATA_KEY = "avro.read.schema";
 
-  public static final String AVRO_DATA_SUPPLIER = "parquet.avro.data.supplier";
+  // TODO: for 2.0.0, make this final (breaking change)
+  public static String AVRO_DATA_SUPPLIER = "parquet.avro.data.supplier";
 
   public static final String AVRO_COMPATIBILITY = "parquet.avro.compatible";
   public static final boolean AVRO_DEFAULT_COMPATIBILITY = true;

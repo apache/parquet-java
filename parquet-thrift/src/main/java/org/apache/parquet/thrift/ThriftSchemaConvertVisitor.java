@@ -67,6 +67,14 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor {
     this.fieldProjectionFilter = Preconditions.checkNotNull(fieldProjectionFilter, "fieldProjectionFilter");
   }
 
+  /**
+   * @deprecated this will be removed in 2.0.0.
+   */
+  @Deprecated
+  public FieldProjectionFilter getFieldProjectionFilter() {
+    return fieldProjectionFilter;
+  }
+
   @Override
   public void visit(ThriftType.MapType mapType) {
     final ThriftField mapKeyField = mapType.getKey();
