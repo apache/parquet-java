@@ -273,4 +273,162 @@ public class ParquetWriter<T> implements Closeable {
       throw new IOException(e);
     }
   }
+
+  /**
+   * An abstract builder class for ParquetWriter instances.
+   *
+   * Object models should extend this builder to provide writer configuration
+   * options.
+   *
+   * @param <T> The type of objects written by the constructed ParquetWriter.
+   * @param <SELF> The type of this builder that is returned by builder methods
+   */
+  public abstract static class Builder<T, SELF extends Builder<T, SELF>> {
+    private final Path file;
+    private Configuration conf = new Configuration();
+    private CompressionCodecName codecName = DEFAULT_COMPRESSION_CODEC_NAME;
+    private int blockSize = DEFAULT_BLOCK_SIZE;
+    private int pageSize = DEFAULT_PAGE_SIZE;
+    private int dictionaryPageSize = DEFAULT_PAGE_SIZE;
+    private boolean enableDictionary = DEFAULT_IS_DICTIONARY_ENABLED;
+    private boolean enableValidation = DEFAULT_IS_VALIDATING_ENABLED;
+    private WriterVersion writerVersion = DEFAULT_WRITER_VERSION;
+
+    protected Builder(Path file) {
+      this.file = file;
+    }
+
+    /**
+     * @return this as the correct subclass of ParquetWriter.Builder.
+     */
+    protected abstract SELF self();
+
+    /**
+     * @return an appropriate WriteSupport for the object model.
+     */
+    protected abstract WriteSupport<T> getWriteSupport(Configuration conf);
+
+    /**
+     * Set the {@link Configuration} used by the constructed writer.
+     *
+     * @param conf a {@code Configuration}
+     * @return this builder for method chaining.
+     */
+    public SELF withConf(Configuration conf) {
+      this.conf = conf;
+      return self();
+    }
+
+    /**
+     * Set the {@link CompressionCodecName compression codec} used by the
+     * constructed writer.
+     *
+     * @param codecName a {@code CompressionCodecName}
+     * @return this builder for method chaining.
+     */
+    public SELF withCompressionCodec(CompressionCodecName codecName) {
+      this.codecName = codecName;
+      return self();
+    }
+
+    /**
+     * Set the Parquet format row group size used by the constructed writer.
+     *
+     * @param rowGroupSize an integer size in bytes
+     * @return this builder for method chaining.
+     */
+    public SELF withRowGroupSize(int rowGroupSize) {
+      this.blockSize = rowGroupSize;
+      return self();
+    }
+
+    /**
+     * Set the Parquet format page size used by the constructed writer.
+     *
+     * @param pageSize an integer size in bytes
+     * @return this builder for method chaining.
+     */
+    public SELF withPageSize(int pageSize) {
+      this.pageSize = pageSize;
+      return self();
+    }
+
+    /**
+     * Set the Parquet format dictionary page size used by the constructed
+     * writer.
+     *
+     * @param dictionaryPageSize an integer size in bytes
+     * @return this builder for method chaining.
+     */
+    public SELF withDictionaryPageSize(int dictionaryPageSize) {
+      this.dictionaryPageSize = dictionaryPageSize;
+      return self();
+    }
+
+    /**
+     * Enables dictionary encoding for the constructed writer.
+     *
+     * @return this builder for method chaining.
+     */
+    public SELF enableDictionaryEncoding() {
+      this.enableDictionary = true;
+      return self();
+    }
+
+    /**
+     * Enable or disable dictionary encoding for the constructed writer.
+     *
+     * @param enableDictionary whether dictionary encoding should be enabled
+     * @return this builder for method chaining.
+     */
+    public SELF withDictionaryEncoding(boolean enableDictionary) {
+      this.enableDictionary = enableDictionary;
+      return self();
+    }
+
+    /**
+     * Enables validation for the constructed writer.
+     *
+     * @return this builder for method chaining.
+     */
+    public SELF enableValidation() {
+      this.enableValidation = true;
+      return self();
+    }
+
+    /**
+     * Enable or disable validation for the constructed writer.
+     *
+     * @param enableValidation whether validation should be enabled
+     * @return this builder for method chaining.
+     */
+    public SELF withValidation(boolean enableValidation) {
+      this.enableValidation = enableValidation;
+      return self();
+    }
+
+    /**
+     * Set the {@link WriterVersion format version} used by the constructed
+     * writer.
+     *
+     * @param version a {@code WriterVersion}
+     * @return this builder for method chaining.
+     */
+    public SELF withWriterVersion(WriterVersion version) {
+      this.writerVersion = version;
+      return self();
+    }
+
+    /**
+     * Build a {@link ParquetWriter} with the accumulated configuration.
+     *
+     * @return a configured {@code ParquetWriter} instance.
+     * @throws IOException
+     */
+    public ParquetWriter<T> build() throws IOException {
+      return new ParquetWriter<T>(file, getWriteSupport(conf), codecName,
+          blockSize, pageSize, dictionaryPageSize, enableDictionary,
+          enableValidation, writerVersion, conf);
+    }
+  }
 }
