@@ -94,6 +94,14 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
     return new MessageType(state.name, converted.asKeep().getType().asGroupType().getFields());
   }
 
+  /**
+   * @deprecated this will be removed in 2.0.0.
+   */
+  @Deprecated
+  public FieldProjectionFilter getFieldProjectionFilter() {
+    return fieldProjectionFilter;
+  }
+
   @Override
   public ConvertedField visit(MapType mapType, State state) {
     ThriftField keyField = mapType.getKey();

@@ -106,7 +106,7 @@
     <cascading.version>2.5.3</cascading.version>
     <parquet.format.version>2.3.0-incubating</parquet.format.version>
     <log4j.version>1.2.17</log4j.version>
-    <previous.version>1.5.0</previous.version>
+    <previous.version>1.7.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <scala.version>2.10.4</scala.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
@@ -222,7 +222,6 @@
             </dependency>
          </dependencies>
          <executions>
-           <!--
            <execution>
              <id>check</id>
              <phase>verify</phase>
@@ -235,19 +234,19 @@
                    <dumpDetails>true</dumpDetails>
                    <previousVersion>${previous.version}</previousVersion>
                    <excludes>
-                     <exclude>parquet/hadoop/thrift/**</exclude>
-                     <exclude>parquet/thrift/projection/**</exclude>
-                     <exclude>parquet/thrift/ThriftSchemaConverter</exclude>
-                     <exclude>parquet/filter2/**</exclude>
-                     <exclude>parquet/org/**</exclude>
-                     <exclude>parquet/column/**</exclude>
-                     <exclude>parquet/hadoop/ParquetInputSplit</exclude>
+                     <exclude>org/apache/parquet/hadoop/thrift/**</exclude>
+                     <exclude>org/apache/parquet/thrift/projection/**</exclude>
+                     <exclude>org/apache/parquet/thrift/ThriftSchemaConverter</exclude>
+                     <exclude>org/apache/parquet/filter2/**</exclude>
+                     <exclude>org/apache/parquet/column/**</exclude>
+                     <exclude>org/apache/parquet/hadoop/ParquetInputSplit</exclude>
+                     <exclude>shaded/**</exclude> <!-- shaded by parquet -->
+                     <exclude>parquet/**</exclude> <!-- shaded by parquet-format -->
                    </excludes>
                  </requireBackwardCompatibility>
                </rules>
              </configuration>
            </execution>
-           -->
          </executions>
         </plugin>
         <plugin>
