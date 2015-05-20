@@ -245,18 +245,16 @@ public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<Conver
 
     }
 
-    GroupType groupType = new GroupType(state.repetition, state.name, convertedChildren);
-
     if (!hasNonSentinelUnionColumns && hasSentinelUnionColumns) {
       // this is a union, and user has not requested any of the children
       // of this union. We should drop this union, if possible, but
       // we may not be able to, so tag this as a sentinel.
-      return new SentinelUnion(state.path, groupType);
+      return new SentinelUnion(state.path, new GroupType(state.repetition, state.name, convertedChildren));
     }
 
     if (hasNonSentinelUnionColumns) {
       // user requested some of the fields of this struct, so we keep the struct
-      return new Keep(state.path, groupType);
+      return new Keep(state.path, new GroupType(state.repetition, state.name, convertedChildren));
     } else {
       // user requested none of the fields of this struct, so we drop it
       return new Drop(state.path);
