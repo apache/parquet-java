@@ -98,75 +98,31 @@ public abstract class ThriftType {
     return toJSON();
   }
 
-  public interface TypeVisitor {
+  public interface TypeVisitor<R, S> {
 
-    void visit(MapType mapType);
+    R visit(MapType mapType, S state);
 
-    void visit(SetType setType);
+    R visit(SetType setType, S state);
 
-    void visit(ListType listType);
+    R visit(ListType listType, S state);
 
-    void visit(StructType structType);
+    R visit(StructType structType, S state);
 
-    void visit(EnumType enumType);
+    R visit(EnumType enumType, S state);
 
-    void visit(BoolType boolType);
+    R visit(BoolType boolType, S state);
 
-    void visit(ByteType byteType);
+    R visit(ByteType byteType, S state);
 
-    void visit(DoubleType doubleType);
+    R visit(DoubleType doubleType, S state);
 
-    void visit(I16Type i16Type);
+    R visit(I16Type i16Type, S state);
 
-    void visit(I32Type i32Type);
+    R visit(I32Type i32Type, S state);
 
-    void visit(I64Type i64Type);
+    R visit(I64Type i64Type, S state);
 
-    void visit(StringType stringType);
-
-  }
-
-  public static abstract class ComplexTypeVisitor implements TypeVisitor {
-
-    @Override
-    final public void visit(EnumType enumType) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
-
-    @Override
-    final public void visit(BoolType boolType) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
-
-    @Override
-    final public void visit(ByteType byteType) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
-
-    @Override
-    final public void visit(DoubleType doubleType) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
-
-    @Override
-    final public void visit(I16Type i16Type) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
-
-    @Override
-    final public void visit(I32Type i32Type) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
-
-    @Override
-    final public void visit(I64Type i64Type) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
-
-    @Override
-    final public void visit(StringType stringType) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
+    R visit(StringType stringType, S state);
 
   }
 
@@ -233,8 +189,8 @@ public abstract class ThriftType {
     }
 
     @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
+    public <R, S> R accept(TypeVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
     }
 
     @Override
@@ -276,8 +232,8 @@ public abstract class ThriftType {
     }
 
     @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
+    public <R, S> R accept(TypeVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
     }
 
     @Override
@@ -317,8 +273,8 @@ public abstract class ThriftType {
     }
 
     @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
+    public <R, S> R accept(TypeVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
     }
 
     @Override
@@ -356,8 +312,8 @@ public abstract class ThriftType {
     }
 
     @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
+    public <R, S> R accept(TypeVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
     }
 
     @Override
@@ -452,8 +408,8 @@ public abstract class ThriftType {
     }
 
     @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
+    public <R, S> R accept(TypeVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
     }
 
     @Override
@@ -484,8 +440,8 @@ public abstract class ThriftType {
       super(BOOL);
     }
     @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
+    public <R, S> R accept(TypeVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
     }
   }
 
@@ -496,8 +452,8 @@ public abstract class ThriftType {
       super(BYTE);
     }
     @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
+    public <R, S> R accept(TypeVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
     }
   }
 
@@ -508,8 +464,8 @@ public abstract class ThriftType {
       super(DOUBLE);
     }
     @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
+    public <R, S> R accept(TypeVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
     }
   }
 
@@ -520,8 +476,8 @@ public abstract class ThriftType {
       super(I16);
     }
     @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
+    public <R, S> R accept(TypeVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
     }
   }
 
@@ -532,8 +488,8 @@ public abstract class ThriftType {
       super(I32);
     }
     @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
+    public <R, S> R accept(TypeVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
     }
   }
 
@@ -544,9 +500,10 @@ public abstract class ThriftType {
       super(I64);
     }
     @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
+    public <R, S> R accept(TypeVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
     }
+
   }
 
   public static class StringType extends ThriftType {
@@ -556,8 +513,8 @@ public abstract class ThriftType {
       super(STRING);
     }
     @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
+    public <R, S> R accept(TypeVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
     }
   }
 
@@ -568,7 +525,7 @@ public abstract class ThriftType {
     this.type = type;
   }
 
-  public abstract void accept(TypeVisitor visitor);
+  public abstract <R, S> R accept(TypeVisitor<R, S> visitor, S state);
 
   @JsonIgnore
   public ThriftTypeID getType() {

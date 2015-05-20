@@ -24,23 +24,25 @@ import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
 
 /**
- * Represents a column path as a sequence of fields.
+ * Represents an immutable column path as a sequence of fields.
  *
  * @author Tianshuo Deng
  */
 public class FieldsPath {
-  private final ArrayList<ThriftField> fields = new ArrayList<ThriftField>();
+  private final ArrayList<ThriftField> fields;
 
-  public void push(ThriftField f) {
-    this.fields.add(f);
+  public FieldsPath() {
+    this(new ArrayList<ThriftField>());
   }
 
-  public ThriftField pop() {
-    return this.fields.remove(fields.size() - 1);
+  private FieldsPath(ArrayList<ThriftField> fields) {
+    this.fields = fields;
   }
 
-  public ArrayList<ThriftField> getFields() {
-    return fields;
+  public FieldsPath push(ThriftField f) {
+    ArrayList<ThriftField> copy = new ArrayList<ThriftField>(fields);
+    copy.add(f);
+    return new FieldsPath(copy);
   }
 
   public String toDelimitedString(String delim) {

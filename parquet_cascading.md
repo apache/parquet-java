@@ -115,7 +115,11 @@ This applies for repeated fields as well, for example `primaryAddress.otherPhone
 Maps are a special case -- the map is split into two columns, the key and the value. All the columns in the key are required, but you can select a subset of the
 columns in the value (or skip the value entirely), for example: `otherAddresses.{key,value.street}` will select only the streets from the
 values of the map, but the entire key will be kept. To select an entire map, you can do: `otherAddresses.{key,value}`, 
-and to select only the keys: `otherAddresses.key`. When selecting a field that is a struct, for example `primaryAddress.primaryPhone`, 
+and to select only the keys: `otherAddresses.key`. Similar to map keys, the values in a set cannot be partially projected,
+you must select all the columns of the items in the set, or none of them. This is because materializing the set wouldn't make much sense if the item's
+hashcode is dependent on the dropped columns (as with the key of a map).
+
+When selecting a field that is a struct, for example `primaryAddress.primaryPhone`, 
 it will select the entire struct. So `primaryAddress.primaryPhone.*` is redundant.
 
 Columns can be specified concretely (like `primaryAddress.primaryPhone.doNotCall`), or a restricted glob syntax can be used.

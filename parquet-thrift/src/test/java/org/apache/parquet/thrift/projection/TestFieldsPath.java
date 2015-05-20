@@ -69,9 +69,7 @@ public class TestFieldsPath {
 
   }
 
-  private static class PrimitivePathVisitor implements ThriftType.TypeVisitor {
-    private List<String> paths = new ArrayList<String>();
-    private FieldsPath path = new FieldsPath();
+  private static class PrimitivePathVisitor implements ThriftType.TypeVisitor<List<String>, FieldsPath> {
     private String delim;
 
     private PrimitivePathVisitor(String delim) {
@@ -80,87 +78,85 @@ public class TestFieldsPath {
 
     public static List<String> visit(StructType s, String delim) {
       PrimitivePathVisitor v = new PrimitivePathVisitor(delim);
-      s.accept(v);
-      return v.getPaths();
-    }
-
-    public List<String> getPaths() {
-      return paths;
+      return s.accept(v, new FieldsPath());
     }
 
     @Override
-    public void visit(MapType mapType) {
+    public List<String> visit(MapType mapType, FieldsPath path) {
+      List<String> ret = new ArrayList<String>();
+
       ThriftField key = mapType.getKey();
       ThriftField value = mapType.getValue();
-      path.push(key);
-      key.getType().accept(this);
-      path.pop();
-      path.push(value);
-      value.getType().accept(this);
-      path.pop();
+
+      ret.addAll(key.getType().accept(this, path.push(key)));
+      ret.addAll(value.getType().accept(this, path.push(value)));
+
+      return ret;
     }
 
     @Override
-    public void visit(SetType setType) {
-      setType.getValues().getType().accept(this);
+    public List<String> visit(SetType setType, FieldsPath path) {
+      return setType.getValues().getType().accept(this, path);
     }
 
     @Override
-    public void visit(ListType listType) {
-      listType.getValues().getType().accept(this);
+    public List<String> visit(ListType listType, FieldsPath path) {
+      return listType.getValues().getType().accept(this, path);
     }
 
     @Override
-    public void visit(StructType structType) {
+    public List<String> visit(StructType structType, FieldsPath path) {
+      List<String> ret = new ArrayList<String>();
+
       for (ThriftField child : structType.getChildren()) {
-        path.push(child);
-        child.getType().accept(this);
-        path.pop();
+        ret.addAll(child.getType().accept(this, path.push(child)));
       }
+
+      return ret;
     }
 
-    private void visitPrimitive() {
-      paths.add(path.toDelimitedString(delim));
-    }
-
-    @Override
-    public void visit(EnumType enumType) {
-      visitPrimitive();
+    private List<String> visitPrimitive(FieldsPath path) {
+      return Arrays.asList(path.toDelimitedString(delim));
     }
 
     @Override
-    public void visit(BoolType boolType) {
-      visitPrimitive();
+    public List<String> visit(EnumType enumType, FieldsPath path) {
+      return visitPrimitive(path);
     }
 
     @Override
-    public void visit(ByteType byteType) {
-      visitPrimitive();
+    public List<String> visit(BoolType boolType, FieldsPath path) {
+      return visitPrimitive(path);
     }
 
     @Override
-    public void visit(DoubleType doubleType) {
-      visitPrimitive();
+    public List<String> visit(ByteType byteType, FieldsPath path) {
+      return visitPrimitive(path);
     }
 
     @Override
-    public void visit(I16Type i16Type) {
-      visitPrimitive();
+    public List<String> visit(DoubleType doubleType, FieldsPath path) {
+      return visitPrimitive(path);
     }
 
     @Override
-    public void visit(I32Type i32Type) {
-      visitPrimitive();
+    public List<String> visit(I16Type i16Type, FieldsPath path) {
+      return visitPrimitive(path);
     }
 
     @Override
-    public void visit(I64Type i64Type) {
-      visitPrimitive();
+    public List<String> visit(I32Type i32Type, FieldsPath path) {
+      return visitPrimitive(path);
     }
 
     @Override
-    public void visit(StringType stringType) {
-      visitPrimitive();
+    public List<String> visit(I64Type i64Type, FieldsPath path) {
+      return visitPrimitive(path);
+    }
+
+    @Override
+    public List<String> visit(StringType stringType, FieldsPath path) {
+      return visitPrimitive(path);
     }
   }
 }

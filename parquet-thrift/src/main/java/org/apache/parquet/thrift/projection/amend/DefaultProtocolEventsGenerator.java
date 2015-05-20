@@ -59,7 +59,7 @@ class DefaultProtocolEventsGenerator {
     createdEvents.add(fieldBegin);
 
     DefaultEventsVisitor dummyCreatorvisitor = new DefaultEventsVisitor();
-    missingField.getType().accept(dummyCreatorvisitor);
+    missingField.getType().accept(dummyCreatorvisitor, null);
     createdEvents.addAll(dummyCreatorvisitor.getEvents());
     createdEvents.add(READ_FIELD_END);
     return createdEvents;
