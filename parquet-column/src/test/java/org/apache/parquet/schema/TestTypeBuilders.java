@@ -207,7 +207,7 @@ public class TestTypeBuilders {
     Type f4 = Types.required(FIXED_LEN_BYTE_ARRAY).length(4).named("f4");
     Type f8 = Types.required(FIXED_LEN_BYTE_ARRAY).length(8).named("f8");
     Assert.assertFalse("Types with different lengths should not be equal",
-            f4.equals(f8));
+        f4.equals(f8));
   }
 
   @Test
@@ -328,16 +328,16 @@ public class TestTypeBuilders {
           }
         });
     assertThrows("Should reject decimal annotation without precision",
-            IllegalArgumentException.class, new Callable<Type>() {
-                @Override
-                public Type call() throws Exception {
-                    return Types.buildMessage()
-                            .required(FIXED_LEN_BYTE_ARRAY).length(7)
-                            .as(DECIMAL).scale(2)
-                            .named("aDecimal")
-                            .named("DecimalMessage");
-                }
-            }
+        IllegalArgumentException.class, new Callable<Type>() {
+          @Override
+          public Type call() throws Exception {
+            return Types.buildMessage()
+                .required(FIXED_LEN_BYTE_ARRAY).length(7)
+                .as(DECIMAL).scale(2)
+                .named("aDecimal")
+                .named("DecimalMessage");
+          }
+        }
     );
   }
 
@@ -477,13 +477,13 @@ public class TestTypeBuilders {
             });
       }
       assertThrows("Should reject non-binary type: FIXED_LEN_BYTE_ARRAY",
-              IllegalStateException.class, new Callable<Type>() {
-                  @Override
-                  public Type call() throws Exception {
-                      return Types.required(FIXED_LEN_BYTE_ARRAY).length(1)
-                              .as(logicalType).named("col");
-                  }
-              });
+          IllegalStateException.class, new Callable<Type>() {
+            @Override
+            public Type call() throws Exception {
+              return Types.required(FIXED_LEN_BYTE_ARRAY).length(1)
+                  .as(logicalType).named("col");
+            }
+          });
     }
   }
 
@@ -516,13 +516,13 @@ public class TestTypeBuilders {
             });
       }
       assertThrows("Should reject non-int32 type: FIXED_LEN_BYTE_ARRAY",
-              IllegalStateException.class, new Callable<Type>() {
-                  @Override
-                  public Type call() throws Exception {
-                      return Types.required(FIXED_LEN_BYTE_ARRAY).length(1)
-                              .as(logicalType).named("col");
-                  }
-              });
+          IllegalStateException.class, new Callable<Type>() {
+            @Override
+            public Type call() throws Exception {
+              return Types.required(FIXED_LEN_BYTE_ARRAY).length(1)
+                  .as(logicalType).named("col");
+            }
+          });
     }
   }
 
@@ -555,13 +555,13 @@ public class TestTypeBuilders {
             });
       }
       assertThrows("Should reject non-int64 type: FIXED_LEN_BYTE_ARRAY",
-              IllegalStateException.class, new Callable<Type>() {
-                  @Override
-                  public Type call() throws Exception {
-                      return Types.required(FIXED_LEN_BYTE_ARRAY).length(1)
-                              .as(logicalType).named("col");
-                  }
-              });
+          IllegalStateException.class, new Callable<Type>() {
+            @Override
+            public Type call() throws Exception {
+              return Types.required(FIXED_LEN_BYTE_ARRAY).length(1)
+                  .as(logicalType).named("col");
+            }
+          });
     }
   }
 
