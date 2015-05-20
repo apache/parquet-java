@@ -347,7 +347,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
    */
   private static MemoryManager memoryManager;
 
-  static MemoryManager getMemoryManager() {
+  public static MemoryManager getMemoryManager() {
     return memoryManager;
   }
 }

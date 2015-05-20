@@ -48,6 +48,8 @@ public class TestMemoryManager {
   int rowGroupSize;
   ParquetOutputFormat parquetOutputFormat;
   CompressionCodecName codec;
+  int counter = 0;
+  boolean firstRegister = true;
 
   @Before
   public void setUp() {
@@ -87,12 +89,36 @@ public class TestMemoryManager {
     //Verify the memory pool
     Assert.assertEquals("memory pool size is incorrect.", expectPoolSize,
         parquetOutputFormat.getMemoryManager().getTotalMemoryPool());
+
+    //Verify Callback mechanism
+    Assert.assertEquals("counter calculated by callback is incorrect.", 1, counter);
+    Assert.assertEquals("CallBack is duplicated.", 1, parquetOutputFormat.getMemoryManager()
+        .getScaleCallBacks().size());
   }
 
   private RecordWriter createWriter(int index) throws Exception{
     Path file = new Path("target/test/", "parquet" + index);
     parquetOutputFormat = new ParquetOutputFormat(new GroupWriteSupport());
-    return parquetOutputFormat.getRecordWriter(conf, file, codec);
+    RecordWriter writer = parquetOutputFormat.getRecordWriter(conf, file, codec);
+    try {
+      parquetOutputFormat.getMemoryManager().registerScaleCallBack("increment-test-counter",
+          new Runnable() {
+            @Override
+            public void run() {
+              counter++;
+            }
+          });
+      if (!firstRegister) {
+        Assert.fail("Duplicated registering callback should throw duplicates exception.");
+      }
+      firstRegister = false;
+    } catch (IllegalArgumentException e) {
+      if (firstRegister) {
+        Assert.fail("Registering the same callback first time should succeed.");
+      }
+    }
+
+    return writer;
   }
 
   private void verifyRowGroupSize(int expectRowGroupSize) {

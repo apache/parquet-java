@@ -28,7 +28,7 @@ import org.apache.parquet.hadoop.util.ContextUtil;
 /**
  * A Hadoop {@link org.apache.hadoop.mapreduce.OutputFormat} for Parquet files.
  */
-public class AvroParquetOutputFormat extends ParquetOutputFormat<IndexedRecord> {
+public class AvroParquetOutputFormat<T> extends ParquetOutputFormat<T> {
 
   /**
    * Set the Avro schema to use for writing. The schema is translated into a Parquet
@@ -44,7 +44,20 @@ public class AvroParquetOutputFormat extends ParquetOutputFormat<IndexedRecord> 
   }
 
   public AvroParquetOutputFormat() {
-    super(new AvroWriteSupport());
+    super(new AvroWriteSupport<T>());
   }
 
+  /**
+   * Sets the {@link AvroDataSupplier} class that will be used. The data
+   * supplier provides instances of {@link org.apache.avro.generic.GenericData}
+   * that are used to deconstruct records.
+   *
+   * @param job a {@link Job} to configure
+   * @param supplierClass a supplier class
+   */
+  public static void setAvroDataSupplier(
+      Job job, Class<? extends AvroDataSupplier> supplierClass) {
+    AvroWriteSupport.setAvroDataSupplier(ContextUtil.getConfiguration(job),
+        supplierClass);
+  }
 }
