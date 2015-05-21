@@ -48,7 +48,7 @@ import org.apache.parquet.Strings;
 public class CompatibilityChecker {
 
   public CompatibilityReport checkCompatibility(ThriftType.StructType oldStruct, ThriftType.StructType newStruct) {
-    CompatibleCheckerVisitor visitor = new CompatibleCheckerVisitor(oldStruct);
+    CompatibleCheckerVisitor visitor = new CompatibleCheckerVisitor();
     newStruct.accept(visitor, new State(oldStruct,new FieldsPath()));
     return visitor.getReport();
   }
@@ -110,9 +110,6 @@ class State {
 class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, State> {
 
   CompatibilityReport report = new CompatibilityReport();
-
-  CompatibleCheckerVisitor(ThriftType.StructType oldType) {
-  }
 
   public CompatibilityReport getReport() {
     return report;
