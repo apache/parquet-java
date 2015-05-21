@@ -63,6 +63,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   private static final String MAP_KEY_NAME = "key";
   private static final String MAP_VALUE_NAME = "value";
   private static final String LIST_REPEATED_NAME = "list";
+  private static final String OLD_LIST_REPEATED_NAME = "array";
   static final String LIST_ELEMENT_NAME = "element";
 
   private RecordConsumer recordConsumer;
@@ -112,9 +113,9 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     boolean writeOldListStructure = configuration.getBoolean(
         WRITE_OLD_LIST_STRUCTURE, WRITE_OLD_LIST_STRUCTURE_DEFAULT);
     if (writeOldListStructure) {
-      this.listWriter = new TwoLevelWriter();
+      this.listWriter = new TwoLevelListWriter();
     } else {
-      this.listWriter = new ThreeLevelWriter();
+      this.listWriter = new ThreeLevelListWriter();
     }
 
     Map<String, String> extraMetaData = new HashMap<String, String>();
@@ -287,6 +288,17 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   }
 
   private abstract class ListWriter {
+
+    protected abstract void writeCollection(
+        GroupType type, Schema schema, Collection<?> collection);
+
+    protected abstract void writeObjectArray(
+        GroupType type, Schema schema, Object[] array);
+
+    protected abstract void startArray();
+
+    protected abstract void endArray();
+
     public void writeList(GroupType schema, Schema avroSchema, Object value) {
       recordConsumer.startGroup(); // group wrapper (original type LIST)
       if (value instanceof Collection) {
@@ -350,42 +362,100 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
       }
     }
 
-    protected abstract void writeCollection(
-        GroupType type, Schema schema, Collection<?> collection);
+    protected void writeBooleanArray(boolean[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (boolean element : array) {
+          recordConsumer.addBoolean(element);
+        }
+        endArray();
+      }
+    }
 
-    protected abstract void writeObjectArray(
-        GroupType type, Schema schema, Object[] array);
+    protected void writeByteArray(byte[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (byte element : array) {
+          recordConsumer.addInteger(element);
+        }
+        endArray();
+      }
+    }
 
-    protected abstract void writeBooleanArray(boolean[] array);
+    protected void writeShortArray(short[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (short element : array) {
+          recordConsumer.addInteger(element);
+        }
+        endArray();
+      }
+    }
 
-    protected abstract void writeByteArray(byte[] array);
+    protected void writeCharArray(char[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (char element : array) {
+          recordConsumer.addInteger(element);
+        }
+        endArray();
+      }
+    }
 
-    protected abstract void writeShortArray(short[] array);
+    protected void writeIntArray(int[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (int element : array) {
+          recordConsumer.addInteger(element);
+        }
+        endArray();
+      }
+    }
 
-    protected abstract void writeCharArray(char[] array);
+    protected void writeLongArray(long[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (long element : array) {
+          recordConsumer.addLong(element);
+        }
+        endArray();
+      }
+    }
 
-    protected abstract void writeIntArray(int[] array);
+    protected void writeFloatArray(float[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (float element : array) {
+          recordConsumer.addFloat(element);
+        }
+        endArray();
+      }
+    }
 
-    protected abstract void writeLongArray(long[] array);
-
-    protected abstract void writeFloatArray(float[] array);
-
-    protected abstract void writeDoubleArray(double[] array);
+    protected void writeDoubleArray(double[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (double element : array) {
+          recordConsumer.addDouble(element);
+        }
+        endArray();
+      }
+    }
   }
 
   /**
    * For backward-compatibility. This preserves how lists were written in 1.x.
    */
-  private class TwoLevelWriter extends ListWriter {
+  private class TwoLevelListWriter extends ListWriter {
     @Override
     public void writeCollection(GroupType schema, Schema avroSchema,
                                 Collection<?> array) {
       if (array.size() > 0) {
-        recordConsumer.startField("array", 0);
+        recordConsumer.startField(OLD_LIST_REPEATED_NAME, 0);
         for (Object elt : array) {
           writeValue(schema.getType(0), avroSchema.getElementType(), elt);
         }
-        recordConsumer.endField("array", 0);
+        recordConsumer.endField(OLD_LIST_REPEATED_NAME, 0);
       }
     }
 
@@ -393,104 +463,26 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     protected void writeObjectArray(GroupType type, Schema schema,
                                     Object[] array) {
       if (array.length > 0) {
-        recordConsumer.startField("array", 0);
+        recordConsumer.startField(OLD_LIST_REPEATED_NAME, 0);
         for (Object element : array) {
           writeValue(type.getType(0), schema.getElementType(), element);
         }
-        recordConsumer.endField("array", 0);
+        recordConsumer.endField(OLD_LIST_REPEATED_NAME, 0);
       }
     }
 
     @Override
-    protected void writeBooleanArray(boolean[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField("array", 0);
-        for (boolean element : array) {
-          recordConsumer.addBoolean(element);
-        }
-        recordConsumer.endField("array", 0);
-      }
+    protected void startArray() {
+      recordConsumer.startField(OLD_LIST_REPEATED_NAME, 0);
     }
 
     @Override
-    protected void writeByteArray(byte[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField("array", 0);
-        for (byte element : array) {
-          recordConsumer.addInteger(element);
-        }
-        recordConsumer.endField("array", 0);
-      }
-    }
-
-    @Override
-    protected void writeShortArray(short[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField("array", 0);
-        for (short element : array) {
-          recordConsumer.addInteger(element);
-        }
-        recordConsumer.endField("array", 0);
-      }
-    }
-
-    @Override
-    protected void writeCharArray(char[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField("array", 0);
-        for (char element : array) {
-          recordConsumer.addInteger(element);
-        }
-        recordConsumer.endField("array", 0);
-      }
-    }
-
-    @Override
-    protected void writeIntArray(int[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField("array", 0);
-        for (int element : array) {
-          recordConsumer.addInteger(element);
-        }
-        recordConsumer.endField("array", 0);
-      }
-    }
-
-    @Override
-    protected void writeLongArray(long[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField("array", 0);
-        for (long element : array) {
-          recordConsumer.addLong(element);
-        }
-        recordConsumer.endField("array", 0);
-      }
-    }
-
-    @Override
-    protected void writeFloatArray(float[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField("array", 0);
-        for (float element : array) {
-          recordConsumer.addFloat(element);
-        }
-        recordConsumer.endField("array", 0);
-      }
-    }
-
-    @Override
-    protected void writeDoubleArray(double[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField("array", 0);
-        for (double element : array) {
-          recordConsumer.addDouble(element);
-        }
-        recordConsumer.endField("array", 0);
-      }
+    protected void endArray() {
+      recordConsumer.endField(OLD_LIST_REPEATED_NAME, 0);
     }
   }
 
-  private class ThreeLevelWriter extends ListWriter {
+  private class ThreeLevelListWriter extends ListWriter {
     @Override
     protected void writeCollection(GroupType type, Schema schema, Collection<?> collection) {
       if (collection.size() > 0) {
@@ -537,123 +529,17 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     }
 
     @Override
-    protected void writeBooleanArray(boolean[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField(LIST_REPEATED_NAME, 0);
-        recordConsumer.startGroup(); // repeated group array, middle layer
-        recordConsumer.startField(LIST_ELEMENT_NAME, 0);
-        for (boolean element : array) {
-          recordConsumer.addBoolean(element);
-        }
-        recordConsumer.endField(LIST_ELEMENT_NAME, 0);
-        recordConsumer.endGroup();
-        recordConsumer.endField(LIST_REPEATED_NAME, 0);
-      }
+    protected void startArray() {
+      recordConsumer.startField(LIST_REPEATED_NAME, 0);
+      recordConsumer.startGroup(); // repeated group array, middle layer
+      recordConsumer.startField(LIST_ELEMENT_NAME, 0);
     }
 
     @Override
-    protected void writeByteArray(byte[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField(LIST_REPEATED_NAME, 0);
-        recordConsumer.startGroup(); // repeated group array, middle layer
-        recordConsumer.startField(LIST_ELEMENT_NAME, 0);
-        for (byte element : array) {
-          recordConsumer.addInteger(element);
-        }
-        recordConsumer.endField(LIST_ELEMENT_NAME, 0);
-        recordConsumer.endGroup();
-        recordConsumer.endField(LIST_REPEATED_NAME, 0);
-      }
-    }
-
-    @Override
-    protected void writeShortArray(short[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField("array", 0);
-        recordConsumer.startGroup(); // repeated group array, middle layer
-        recordConsumer.startField(LIST_ELEMENT_NAME, 0);
-        for (short element : array) {
-          recordConsumer.addInteger(element);
-        }
-        recordConsumer.endField(LIST_ELEMENT_NAME, 0);
-        recordConsumer.endGroup();
-        recordConsumer.endField("array", 0);
-      }
-    }
-
-    @Override
-    protected void writeCharArray(char[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField("array", 0);
-        recordConsumer.startGroup(); // repeated group array, middle layer
-        recordConsumer.startField(LIST_ELEMENT_NAME, 0);
-        for (char element : array) {
-          recordConsumer.addInteger(element);
-        }
-        recordConsumer.endField(LIST_ELEMENT_NAME, 0);
-        recordConsumer.endGroup();
-        recordConsumer.endField("array", 0);
-      }
-    }
-
-    @Override
-    protected void writeIntArray(int[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField("array", 0);
-        recordConsumer.startGroup(); // repeated group array, middle layer
-        recordConsumer.startField(LIST_ELEMENT_NAME, 0);
-        for (int element : array) {
-          recordConsumer.addInteger(element);
-        }
-        recordConsumer.endField(LIST_ELEMENT_NAME, 0);
-        recordConsumer.endGroup();
-        recordConsumer.endField("array", 0);
-      }
-    }
-
-    @Override
-    protected void writeLongArray(long[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField("array", 0);
-        recordConsumer.startGroup(); // repeated group array, middle layer
-        recordConsumer.startField(LIST_ELEMENT_NAME, 0);
-        for (long element : array) {
-          recordConsumer.addLong(element);
-        }
-        recordConsumer.endField(LIST_ELEMENT_NAME, 0);
-        recordConsumer.endGroup();
-        recordConsumer.endField("array", 0);
-      }
-    }
-
-    @Override
-    protected void writeFloatArray(float[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField("array", 0);
-        recordConsumer.startGroup(); // repeated group array, middle layer
-        recordConsumer.startField(LIST_ELEMENT_NAME, 0);
-        for (float element : array) {
-          recordConsumer.addFloat(element);
-        }
-        recordConsumer.endField(LIST_ELEMENT_NAME, 0);
-        recordConsumer.endGroup();
-        recordConsumer.endField("array", 0);
-      }
-    }
-
-    @Override
-    protected void writeDoubleArray(double[] array) {
-      if (array.length > 0) {
-        recordConsumer.startField("array", 0);
-        recordConsumer.startGroup(); // repeated group array, middle layer
-        recordConsumer.startField(LIST_ELEMENT_NAME, 0);
-        for (double element : array) {
-          recordConsumer.addDouble(element);
-        }
-        recordConsumer.endField(LIST_ELEMENT_NAME, 0);
-        recordConsumer.endGroup();
-        recordConsumer.endField("array", 0);
-      }
+    protected void endArray() {
+      recordConsumer.endField(LIST_ELEMENT_NAME, 0);
+      recordConsumer.endGroup();
+      recordConsumer.endField(LIST_REPEATED_NAME, 0);
     }
   }
 }
