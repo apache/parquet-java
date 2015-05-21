@@ -49,7 +49,7 @@ public class CompatibilityChecker {
 
   public CompatibilityReport checkCompatibility(ThriftType.StructType oldStruct, ThriftType.StructType newStruct) {
     CompatibleCheckerVisitor visitor = new CompatibleCheckerVisitor(oldStruct);
-    newStruct.accept(visitor, new FieldsPath());
+    newStruct.accept(visitor, new State(oldStruct,new FieldsPath()));
     return visitor.getReport();
   }
 
@@ -97,15 +97,21 @@ class CompatibilityReport {
   }
 }
 
-class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, FieldsPath> {
-
-
+class State {
+  FieldsPath path;
   ThriftType oldType;
+
+  public State(ThriftType oldType, FieldsPath fieldsPath) {
+    this.path = fieldsPath;
+    this.oldType = oldType;
+  }
+}
+
+class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, State> {
 
   CompatibilityReport report = new CompatibilityReport();
 
   CompatibleCheckerVisitor(ThriftType.StructType oldType) {
-    this.oldType = oldType;
   }
 
   public CompatibilityReport getReport() {
@@ -113,36 +119,37 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, FieldsPat
   }
 
   @Override
-  public Void visit(ThriftType.MapType mapType, FieldsPath path) {
-    ThriftType.MapType currentOldType = ((ThriftType.MapType) oldType);
-    ThriftField oldKeyField = currentOldType.getKey();
+  public Void visit(ThriftType.MapType mapType, State state) {
+    ThriftType.MapType oldMapType = ((ThriftType.MapType) state.oldType);
+    ThriftField oldKeyField = oldMapType.getKey();
     ThriftField newKeyField = mapType.getKey();
 
     ThriftField newValueField = mapType.getValue();
-    ThriftField oldValueField = currentOldType.getValue();
+    ThriftField oldValueField = oldMapType.getValue();
 
-    checkField(oldKeyField, newKeyField, path);
-    checkField(oldValueField, newValueField, path);
 
-    oldType = currentOldType;
+    checkField(oldKeyField, newKeyField, state.path);
+    checkField(oldValueField, newValueField, state.path);
+
+    return null;
   }
 
   @Override
-  public Void visit(ThriftType.SetType setType, FieldsPath path) {
-    ThriftType.SetType currentOldType = ((ThriftType.SetType) oldType);
-    ThriftField oldField = currentOldType.getValues();
+  public Void visit(ThriftType.SetType setType, State state) {
+    ThriftType.SetType oldSetType = ((ThriftType.SetType) state.oldType);
+    ThriftField oldField = oldSetType.getValues();
     ThriftField newField = setType.getValues();
-    checkField(oldField, newField, path);
-    oldType = currentOldType;
+    checkField(oldField, newField, state.path);
+    return null;
   }
 
   @Override
-  public Void visit(ThriftType.ListType listType, FieldsPath path) {
-    ThriftType.ListType currentOldType = ((ThriftType.ListType) oldType);
+  public Void visit(ThriftType.ListType listType, State state) {
+    ThriftType.ListType currentOldType = ((ThriftType.ListType) state.oldType);
     ThriftField oldField = currentOldType.getValues();
     ThriftField newField = listType.getValues();
-    checkField(oldField, newField, path);
-    oldType = currentOldType;
+    checkField(oldField, newField, state.path);
+    return null;
   }
 
   public void incompatible(String message, FieldsPath path) {
@@ -166,8 +173,7 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, FieldsPat
       return;
     }
 
-    oldType = oldField.getType();
-    newField.getType().accept(this, path.push(newField));
+    newField.getType().accept(this, new State(oldField.getType(),path.push(newField)));
   }
 
   private boolean firstIsMoreRestirctive(ThriftField.Requirement firstReq, ThriftField.Requirement secReq) {
@@ -180,25 +186,25 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, FieldsPat
   }
 
   @Override
-  public Void visit(ThriftType.StructType newStruct, FieldsPath path) {
-    ThriftType.StructType currentOldType = ((ThriftType.StructType) oldType);
+  public Void visit(ThriftType.StructType newStruct, State state) {
+    ThriftType.StructType oldStructType = ((ThriftType.StructType) state.oldType);
     short oldMaxId = 0;
 
     if (newStruct.getChildren().isEmpty()) {
-      report.emptyStruct("encountered an empty struct: " + path);
+      report.emptyStruct("encountered an empty struct: " + state.path);
     }
 
-    for (ThriftField oldField : currentOldType.getChildren()) {
+    for (ThriftField oldField : oldStructType.getChildren()) {
       short fieldId = oldField.getFieldId();
       if (fieldId > oldMaxId) {
         oldMaxId = fieldId;
       }
       ThriftField newField = newStruct.getChildById(fieldId);
       if (newField == null) {
-        incompatible("can not find index in new Struct: " + fieldId + " in " + newStruct, path);
+        incompatible("can not find index in new Struct: " + fieldId + " in " + newStruct, state.path);
         return null;
       }
-      checkField(oldField, newField, path);
+      checkField(oldField, newField, state.path);
     }
 
     //check for new added
@@ -209,57 +215,56 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, FieldsPat
 
       short newFieldId = newField.getFieldId();
       if (newFieldId > oldMaxId) {
-        incompatible("new required field " + newField.getName() + " is added", path);
+        incompatible("new required field " + newField.getName() + " is added", state.path);
         return null;
       }
-      if (newFieldId < oldMaxId && currentOldType.getChildById(newFieldId) == null) {
-        incompatible("new required field " + newField.getName() + " is added", path);
+      if (newFieldId < oldMaxId && oldStructType.getChildById(newFieldId) == null) {
+        incompatible("new required field " + newField.getName() + " is added", state.path);
         return null;
       }
 
     }
 
-    //restore
-    oldType = currentOldType;
-  }
-
-  @Override
-  public Void visit(EnumType enumType, FieldsPath path) {
     return null;
   }
 
   @Override
-  public Void visit(BoolType boolType, FieldsPath path) {
+  public Void visit(EnumType enumType, State state) {
     return null;
   }
 
   @Override
-  public Void visit(ByteType byteType, FieldsPath path) {
+  public Void visit(BoolType boolType, State state) {
     return null;
   }
 
   @Override
-  public Void visit(DoubleType doubleType, FieldsPath path) {
+  public Void visit(ByteType byteType, State state) {
     return null;
   }
 
   @Override
-  public Void visit(I16Type i16Type, FieldsPath path) {
+  public Void visit(DoubleType doubleType, State state) {
     return null;
   }
 
   @Override
-  public Void visit(I32Type i32Type, FieldsPath path) {
+  public Void visit(I16Type i16Type, State state) {
     return null;
   }
 
   @Override
-  public Void visit(I64Type i64Type, FieldsPath path) {
+  public Void visit(I32Type i32Type, State state) {
     return null;
   }
 
   @Override
-  public Void visit(StringType stringType, FieldsPath path) {
+  public Void visit(I64Type i64Type, State state) {
+    return null;
+  }
+
+  @Override
+  public Void visit(StringType stringType, State state) {
     return null;
   }
 }
