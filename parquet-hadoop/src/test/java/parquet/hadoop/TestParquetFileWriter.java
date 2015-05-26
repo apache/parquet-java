@@ -427,33 +427,33 @@ public class TestParquetFileWriter {
 
   @Test
   public void testMergeFooters() {
-    List<BlockMetaData> oneBlocks = new ArrayList<BlockMetaData>();
-    oneBlocks.add(new BlockMetaData());
-    oneBlocks.add(new BlockMetaData());
     List<BlockMetaData> twoBlocks = new ArrayList<BlockMetaData>();
     twoBlocks.add(new BlockMetaData());
+    twoBlocks.add(new BlockMetaData());
+    List<BlockMetaData> oneBlocks = new ArrayList<BlockMetaData>();
+    oneBlocks.add(new BlockMetaData());
     List<BlockMetaData> expected = new ArrayList<BlockMetaData>();
-    expected.addAll(oneBlocks);
     expected.addAll(twoBlocks);
+    expected.addAll(oneBlocks);
 
-    Footer one = new Footer(new Path("file:/tmp/output/one.parquet"),
+    Footer two = new Footer(new Path("file:/tmp/output/one.parquet"),
         new ParquetMetadata(new FileMetaData(
             new MessageType("root1",
                 new PrimitiveType(REPEATED, BINARY, "a"),
                 new PrimitiveType(OPTIONAL, BINARY, "b")),
             new HashMap<String, String>(), "test"),
-        oneBlocks));
+        twoBlocks));
 
-    Footer two = new Footer(new Path("/tmp/output/two.parquet"),
+    Footer one = new Footer(new Path("/tmp/output/two.parquet"),
         new ParquetMetadata(new FileMetaData(
             new MessageType("root2",
                 new PrimitiveType(REQUIRED, BINARY, "c")),
             new HashMap<String, String>(), "test2"),
-            twoBlocks));
+            oneBlocks));
 
     List<Footer> footers = new ArrayList<Footer>();
-    footers.add(one);
     footers.add(two);
+    footers.add(one);
 
     ParquetMetadata merged = ParquetFileWriter.mergeFooters(
         new Path("/tmp"), footers);
