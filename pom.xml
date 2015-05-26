@@ -230,6 +230,8 @@
                      <exclude>org/apache/parquet/Version</exclude>
                      <exclude>org/apache/parquet/schema/**</exclude> <!-- methods moved to new superclass -->
                      <exclude>org/apache/parquet/thrift/ThriftSchemaConvertVisitor</exclude> <!-- not public -->
+                     <exclude>org/apache/parquet/avro/AvroParquetReader</exclude> <!-- returns subclass of old return class -->
+                     <exclude>org/apache/parquet/avro/SpecificDataSupplier</exclude> <!-- made public -->
                    </excludes>
                  </requireBackwardCompatibility>
                </rules>
