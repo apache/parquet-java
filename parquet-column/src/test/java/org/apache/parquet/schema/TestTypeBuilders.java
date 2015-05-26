@@ -678,19 +678,15 @@ public class TestTypeBuilders {
     GroupType map = new GroupType(OPTIONAL, "myMap", OriginalType.MAP, new GroupType(REPEATED, "map",
         typeList));
 
-    MessageType expected = new MessageType("mapParent", map);
-    GroupType actual =
-        Types.buildMessage()
-            .optionalMap()
-              .groupKey()
-                .optional(INT64).named("first")
-                .optional(DOUBLE).named("second")
-              .optionalGroupValue()
-                .optional(DOUBLE).named("one")
-                .optional(INT32).named("two")
-              .named("myMap")
-            .named("mapParent");
-    Assert.assertEquals(expected, actual);
+    GroupType actual = Types.optionalMap()
+        .groupKey()
+          .optional(INT64).named("first")
+          .optional(DOUBLE).named("second")
+        .optionalGroupValue()
+          .optional(DOUBLE).named("one")
+          .optional(INT32).named("two")
+        .named("myMap");
+    Assert.assertEquals(map, actual);
   }
 
   @Test
