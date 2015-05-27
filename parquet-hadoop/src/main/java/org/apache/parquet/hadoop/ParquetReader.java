@@ -140,12 +140,10 @@ public class ParquetReader<T> implements Closeable {
     if (footersIterator.hasNext()) {
       Footer footer = footersIterator.next();
 
-      List<BlockMetaData> blocks = footer.getParquetMetadata().getBlocks();
-
       MessageType fileSchema = footer.getParquetMetadata().getFileMetaData().getSchema();
 
       List<BlockMetaData> filteredBlocks = RowGroupFilter.filterRowGroups(
-          filter, blocks, fileSchema);
+          filter, footer.getParquetMetadata(), fileSchema);
 
       reader = new InternalParquetRecordReader<T>(readSupport, filter);
       reader.initialize(fileSchema,

@@ -45,6 +45,7 @@ import org.apache.parquet.Log;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
+import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -157,7 +158,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       footer = readFooter(configuration, path, range(split.getStart(), split.getEnd()));
       MessageType fileSchema = footer.getFileMetaData().getSchema();
       Filter filter = getFilter(configuration);
-      filteredBlocks = filterRowGroups(filter, footer.getBlocks(), fileSchema);
+      filteredBlocks = filterRowGroups(filter, footer, fileSchema);
     } else {
       // otherwise we find the row groups that were selected on the client
       footer = readFooter(configuration, path, NO_FILTER);
