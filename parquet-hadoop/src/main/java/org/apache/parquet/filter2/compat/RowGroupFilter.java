@@ -58,9 +58,14 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
   }
 
   private static boolean shouldIgnoreStatistics(String createdBy) {
-    final String[] tokens = createdBy.split(" ");
-    final String app = tokens[0];
-    final String version = tokens[2].substring(0, 5).replaceAll("\\.", "");
+    final String[] versionTokens = createdBy.split(" ");
+
+    if (versionTokens.length < 3) {
+      return true;
+    }
+
+    final String app = versionTokens[0];
+    final String version = versionTokens[2].substring(0, 5).replaceAll("\\.", "");
 
     if (app.equalsIgnoreCase("parquet-mr")) {
       return Integer.parseInt(version) < STATISTICS_FIXED_VERSION;

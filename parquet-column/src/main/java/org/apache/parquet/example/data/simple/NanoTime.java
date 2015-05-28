@@ -61,7 +61,7 @@ public class NanoTime extends Primitive {
     buf.putLong(timeOfDayNanos);
     buf.putInt(julianDay);
     buf.flip();
-    return Binary.fromByteBuffer(buf);
+    return Binary.fromUnmodifiedByteBuffer(buf);
   }
 
   public Int96Value toInt96() {

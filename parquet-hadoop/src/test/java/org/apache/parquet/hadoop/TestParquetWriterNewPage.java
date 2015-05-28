@@ -99,7 +99,7 @@ public class TestParquetWriterNewPage {
               .append("float_field", 1.0f)
               .append("double_field", 2.0d)
               .append("flba_field", "foo")
-              .append("int96_field", Binary.fromByteArray(new byte[12])));
+              .append("int96_field", Binary.fromUnmodifiedByteArray(new byte[12])));
         }
         writer.close();
 
@@ -113,7 +113,8 @@ public class TestParquetWriterNewPage {
           assertEquals(1.0f, group.getFloat("float_field", 0), 0.001);
           assertEquals(2.0d, group.getDouble("double_field", 0), 0.001);
           assertEquals("foo", group.getBinary("flba_field", 0).toStringUsingUTF8());
-          assertEquals(Binary.fromByteArray(new byte[12]), group.getInt96("int96_field", 0));
+          assertEquals(Binary.fromUnmodifiedByteArray(new byte[12]), group.getInt96("int96_field",
+              0));
           assertEquals(0, group.getFieldRepetitionCount("null_field"));
         }
         reader.close();

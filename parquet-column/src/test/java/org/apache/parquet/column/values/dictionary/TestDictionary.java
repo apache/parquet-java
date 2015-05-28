@@ -519,7 +519,7 @@ public class TestDictionary {
     for (int i = 0; i < COUNT; i++) {
       Binary content = Binary.fromString(prefix + i % 10);
       System.arraycopy(content.getBytesUnsafe(), 0, reused, 0, reused.length);
-      cw.writeBytes(Binary.fromByteArray(reused));
+      cw.writeBytes(Binary.fromReusedByteArray(reused));
     }
   }
 

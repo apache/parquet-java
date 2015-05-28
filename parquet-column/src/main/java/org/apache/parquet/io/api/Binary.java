@@ -33,10 +33,12 @@ import static org.apache.parquet.bytes.BytesUtils.UTF8;
 
 abstract public class Binary implements Comparable<Binary>, Serializable {
 
+  private boolean isUnmodifiable;
+
   // this isn't really something others should extend
   private Binary() { }
 
-  public static final Binary EMPTY = fromByteArray(new byte[0]);
+  public static final Binary EMPTY = fromUnmodifiedByteArray(new byte[0]);
 
   abstract public String toStringUsingUTF8();
 
@@ -80,15 +82,28 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     return "Binary{" + length() + " bytes, " + Arrays.toString(getBytesUnsafe()) + "}";
   }
 
+  public Binary copy() {
+    if (isUnmodifiable) {
+      return this;
+    } else {
+      return Binary.fromReusedByteArray(getBytes());
+    }
+  }
+
+  protected void setUnmodifiable(boolean isUnmodifiable) {
+    this.isUnmodifiable = isUnmodifiable;
+  }
+
   private static class ByteArraySliceBackedBinary extends Binary {
     private final byte[] value;
     private final int offset;
     private final int length;
 
-    public ByteArraySliceBackedBinary(byte[] value, int offset, int length) {
+    public ByteArraySliceBackedBinary(byte[] value, int offset, int length, boolean isUnmodifiable) {
       this.value = value;
       this.offset = offset;
       this.length = length;
+      setUnmodifiable(isUnmodifiable);
     }
 
     @Override
@@ -159,7 +174,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   private static class FromStringBinary extends ByteArrayBackedBinary {
     public FromStringBinary(byte[] value) {
-      super(value);
+      super(value, true);
     }
 
     @Override
@@ -168,15 +183,26 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     }
   }
 
-  public static Binary fromByteArray(final byte[] value, final int offset, final int length) {
-    return new ByteArraySliceBackedBinary(value, offset, length);
+  private static Binary fromByteArray(final byte[] value, final int offset, final int length,
+                                      final boolean isUnmodifiable) {
+    return new ByteArraySliceBackedBinary(value, offset, length, isUnmodifiable);
+  }
+
+  public static Binary fromReusedByteArray(final byte[] value, final int offset, final int length) {
+    return fromByteArray(value, offset, length, false);
+  }
+
+  public static Binary fromUnmodifiedByteArray(final byte[] value, final int offset,
+                                               final int length) {
+    return fromByteArray(value, offset, length, true);
   }
 
   private static class ByteArrayBackedBinary extends Binary {
     private final byte[] value;
 
-    public ByteArrayBackedBinary(byte[] value) {
+    public ByteArrayBackedBinary(byte[] value, boolean isUnmodifiable) {
       this.value = value;
+      setUnmodifiable(isUnmodifiable);
     }
 
     @Override
@@ -241,15 +267,24 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   }
 
-  public static Binary fromByteArray(final byte[] value) {
-    return new ByteArrayBackedBinary(value);
+  private static Binary fromByteArray(final byte[] value, final boolean isUnmodifiable) {
+    return new ByteArrayBackedBinary(value, isUnmodifiable);
+  }
+
+  public static Binary fromReusedByteArray(final byte[] value) {
+    return fromByteArray(value, false);
+  }
+
+  public static Binary fromUnmodifiedByteArray(final byte[] value) {
+    return fromByteArray(value, true);
   }
 
   private static class ByteBufferBackedBinary extends Binary {
     private transient ByteBuffer value;
 
-    public ByteBufferBackedBinary(ByteBuffer value) {
+    public ByteBufferBackedBinary(ByteBuffer value, boolean isUnmodifiable) {
       this.value = value;
+      setUnmodifiable(isUnmodifiable);
     }
 
     @Override
@@ -362,8 +397,16 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   }
 
-  public static Binary fromByteBuffer(final ByteBuffer value) {
-    return new ByteBufferBackedBinary(value);
+  private static Binary fromByteBuffer(final ByteBuffer value, final boolean isUnmodifiable) {
+    return new ByteBufferBackedBinary(value, isUnmodifiable);
+  }
+
+  public static Binary fromReusedByteBuffer(final ByteBuffer value) {
+    return fromByteBuffer(value, false);
+  }
+
+  public static Binary fromUnmodifiedByteBuffer(final ByteBuffer value) {
+    return fromByteBuffer(value, true);
   }
 
   public static Binary fromString(final String value) {

@@ -59,7 +59,7 @@ public class DeltaLengthByteArrayValuesReader extends ValuesReader {
     int length = lengthReader.readInteger();
     int start = offset;
     offset = start + length;
-    return Binary.fromByteArray(in, start, length);
+    return Binary.fromUnmodifiedByteArray(in, start, length);
   }
 
   @Override

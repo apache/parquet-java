@@ -77,7 +77,8 @@ public class ParquetStringInspector extends JavaStringObjectInspector implements
 
   @Override
   public Object set(final Object o, final Text text) {
-    return new BinaryWritable(text == null ? null : Binary.fromByteArray(text.getBytes()));
+    return new BinaryWritable(text == null ? null : Binary.fromUnmodifiedByteArray(text.getBytes
+        ()));
   }
 
   @Override

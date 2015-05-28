@@ -172,7 +172,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
           } else {
             throw new UnsupportedOperationException("can not convert from " + DataType.findTypeName(pigType.type) + " to BINARY ");
           }
-          recordConsumer.addBinary(Binary.fromByteArray(bytes));
+          recordConsumer.addBinary(Binary.fromUnmodifiedByteArray(bytes));
           break;
         case BOOLEAN:
           recordConsumer.addBoolean((Boolean)t.get(i));

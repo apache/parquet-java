@@ -362,7 +362,8 @@ public class TestReadWrite {
         recordConsumer.endField("mydouble", index++);
 
         recordConsumer.startField("mybytes", index);
-        recordConsumer.addBinary(Binary.fromByteBuffer((ByteBuffer) record.get("mybytes")));
+        recordConsumer.addBinary(
+            Binary.fromUnmodifiedByteBuffer((ByteBuffer) record.get("mybytes")));
         recordConsumer.endField("mybytes", index++);
 
         recordConsumer.startField("mystring", index);
@@ -457,7 +458,7 @@ public class TestReadWrite {
         recordConsumer.endField("mymap", index++);
 
         recordConsumer.startField("myfixed", index);
-        recordConsumer.addBinary(Binary.fromByteArray((byte[]) record.get("myfixed")));
+        recordConsumer.addBinary(Binary.fromUnmodifiedByteArray((byte[]) record.get("myfixed")));
         recordConsumer.endField("myfixed", index++);
 
         recordConsumer.endMessage();

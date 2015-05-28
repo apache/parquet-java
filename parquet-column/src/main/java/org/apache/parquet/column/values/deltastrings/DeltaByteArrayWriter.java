@@ -87,7 +87,7 @@ public class DeltaByteArrayWriter extends ValuesWriter{
     int length = previous.length < vb.length ? previous.length : vb.length;
     for(i = 0; (i < length) && (previous[i] == vb[i]); i++);
     prefixLengthWriter.writeInteger(i);
-    suffixWriter.writeBytes(Binary.fromByteArray(vb, i, vb.length - i));
+    suffixWriter.writeBytes(Binary.fromUnmodifiedByteArray(vb, i, vb.length - i));
     previous = vb;
   }
 }
