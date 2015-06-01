@@ -54,6 +54,11 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
         final FileSystem fileSystem = outputPath.getFileSystem(configuration);
         FileStatus outputStatus = fileSystem.getFileStatus(outputPath);
         List<Footer> footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus);
+        // If there are no footers, _metadata file cannot be written since there is no way to determine schema!
+        // Onus of writing any summary files lies with the caller in this case.
+        if (footers.isEmpty()) {
+          return;
+        }
         try {
           ParquetFileWriter.writeMetadataFile(configuration, outputPath, footers);
         } catch (Exception e) {
