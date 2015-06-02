@@ -31,6 +31,7 @@ public final class Registry {
     registry.put("schema", ShowSchemaCommand.class);
     registry.put("meta", ShowMetaCommand.class);
     registry.put("dump", DumpCommand.class);
+    registry.put("fromavro", FromAvroCommand.class);
   }
 
   public static Map<String,Command> allCommands() {
