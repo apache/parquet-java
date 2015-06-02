@@ -46,13 +46,19 @@ import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import sun.net.www.content.text.Generic;
 
+import static org.apache.parquet.avro.AvroTestUtil.array;
 import static org.apache.parquet.avro.AvroTestUtil.optional;
+import static org.apache.parquet.avro.AvroTestUtil.optionalField;
+import static org.apache.parquet.avro.AvroTestUtil.primitive;
+import static org.apache.parquet.avro.AvroTestUtil.record;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 @RunWith(Parameterized.class)
-public class TestReadWrite {
+public class TestReadWriteOldBehavior {
 
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
@@ -63,13 +69,11 @@ public class TestReadWrite {
   }
 
   private final boolean compat;
-  private final Configuration testConf = new Configuration();
+  private final Configuration testConf = new Configuration(false);
 
-  public TestReadWrite(boolean compat) {
+  public TestReadWriteOldBehavior(boolean compat) {
     this.compat = compat;
     this.testConf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
-    testConf.setBoolean("parquet.avro.add-list-element-records", false);
-    testConf.setBoolean("parquet.avro.write-old-list-structure", false);
   }
 
   @Test
@@ -82,11 +86,8 @@ public class TestReadWrite {
     tmp.delete();
     Path file = new Path(tmp.getPath());
 
-    ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build();
+    AvroParquetWriter<GenericRecord> writer =
+        new AvroParquetWriter<GenericRecord>(file, schema);
 
     // Write a record with an empty array.
     List<Integer> emptyArray = new ArrayList<Integer>();
@@ -112,11 +113,8 @@ public class TestReadWrite {
     tmp.delete();
     Path file = new Path(tmp.getPath());
 
-    ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build();
+    AvroParquetWriter<GenericRecord> writer = 
+        new AvroParquetWriter<GenericRecord>(file, schema);
 
     // Write a record with an empty map.
     ImmutableMap emptyMap = new ImmutableMap.Builder<String, Integer>().build();
@@ -142,11 +140,8 @@ public class TestReadWrite {
     tmp.delete();
     Path file = new Path(tmp.getPath());
 
-    ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build();
+    AvroParquetWriter<GenericRecord> writer =
+        new AvroParquetWriter<GenericRecord>(file, schema);
 
     // Write a record with a null value
     Map<String, Integer> map = new HashMap<String, Integer>();
@@ -177,11 +172,8 @@ public class TestReadWrite {
     tmp.delete();
     Path file = new Path(tmp.getPath());
 
-    ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build();
+    AvroParquetWriter<GenericRecord> writer =
+        new AvroParquetWriter<GenericRecord>(file, schema);
 
     // Write a record with a null value
     Map<String, Integer> map = new HashMap<String, Integer>();
@@ -204,11 +196,8 @@ public class TestReadWrite {
     tmp.delete();
     Path file = new Path(tmp.getPath());
 
-    ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build();
+    AvroParquetWriter<GenericRecord> writer = 
+        new AvroParquetWriter<GenericRecord>(file, schema);
 
     // Write a record with a map with Utf8 keys.
     GenericData.Record record = new GenericRecordBuilder(schema)
@@ -234,15 +223,85 @@ public class TestReadWrite {
     tmp.delete();
     Path file = new Path(tmp.getPath());
     
-    ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build();
+    AvroParquetWriter<GenericRecord> writer = new
+        AvroParquetWriter<GenericRecord>(file, schema);
 
     GenericData.Record nestedRecord = new GenericRecordBuilder(
         schema.getField("mynestedrecord").schema())
             .set("mynestedint", 1).build();
+
+    List<Integer> integerArray = Arrays.asList(1, 2, 3);
+    GenericData.Array<Integer> genericIntegerArray = new GenericData.Array<Integer>(
+        Schema.createArray(Schema.create(Schema.Type.INT)), integerArray);
+
+    GenericFixed genericFixed = new GenericData.Fixed(
+        Schema.createFixed("fixed", null, null, 1), new byte[] { (byte) 65 });
+
+    List<Integer> emptyArray = new ArrayList<Integer>();
+    ImmutableMap emptyMap = new ImmutableMap.Builder<String, Integer>().build();
+
+    GenericData.Record record = new GenericRecordBuilder(schema)
+        .set("mynull", null)
+        .set("myboolean", true)
+        .set("myint", 1)
+        .set("mylong", 2L)
+        .set("myfloat", 3.1f)
+        .set("mydouble", 4.1)
+        .set("mybytes", ByteBuffer.wrap("hello".getBytes(Charsets.UTF_8)))
+        .set("mystring", "hello")
+        .set("mynestedrecord", nestedRecord)
+        .set("myenum", "a")
+        .set("myarray", genericIntegerArray)
+        .set("myemptyarray", emptyArray)
+        .set("myoptionalarray", genericIntegerArray)
+        .set("myarrayofoptional", genericIntegerArray)
+        .set("mymap", ImmutableMap.of("a", 1, "b", 2))
+        .set("myemptymap", emptyMap)
+        .set("myfixed", genericFixed)
+        .build();
+
+    writer.write(record);
+    writer.close();
+
+    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
+    GenericRecord nextRecord = reader.read();
+
+    Object expectedEnumSymbol = compat ? "a" :
+        new GenericData.EnumSymbol(schema.getField("myenum").schema(), "a");
+
+    assertNotNull(nextRecord);
+    assertEquals(null, nextRecord.get("mynull"));
+    assertEquals(true, nextRecord.get("myboolean"));
+    assertEquals(1, nextRecord.get("myint"));
+    assertEquals(2L, nextRecord.get("mylong"));
+    assertEquals(3.1f, nextRecord.get("myfloat"));
+    assertEquals(4.1, nextRecord.get("mydouble"));
+    assertEquals(ByteBuffer.wrap("hello".getBytes(Charsets.UTF_8)), nextRecord.get("mybytes"));
+    assertEquals("hello", nextRecord.get("mystring"));
+    assertEquals(expectedEnumSymbol, nextRecord.get("myenum"));
+    assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
+    assertEquals(integerArray, nextRecord.get("myarray"));
+    assertEquals(emptyArray, nextRecord.get("myemptyarray"));
+    assertEquals(integerArray, nextRecord.get("myoptionalarray"));
+    assertEquals(integerArray, nextRecord.get("myarrayofoptional"));
+    assertEquals(ImmutableMap.of("a", 1, "b", 2), nextRecord.get("mymap"));
+    assertEquals(emptyMap, nextRecord.get("myemptymap"));
+    assertEquals(genericFixed, nextRecord.get("myfixed"));
+  }
+
+  @Test
+  public void testArrayWithNullValues() throws Exception {
+    Schema schema = new Schema.Parser().parse(
+        Resources.getResource("all.avsc").openStream());
+
+    File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
+    tmp.deleteOnExit();
+    tmp.delete();
+    Path file = new Path(tmp.getPath());
+
+    GenericData.Record nestedRecord = new GenericRecordBuilder(
+        schema.getField("mynestedrecord").schema())
+        .set("mynestedint", 1).build();
 
     List<Integer> integerArray = Arrays.asList(1, 2, 3);
     GenericData.Array<Integer> genericIntegerArray = new GenericData.Array<Integer>(
@@ -281,33 +340,17 @@ public class TestReadWrite {
         .set("myfixed", genericFixed)
         .build();
 
-    writer.write(record);
-    writer.close();
+    final AvroParquetWriter<GenericRecord> writer =
+        new AvroParquetWriter<GenericRecord>(file, schema);
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
-    GenericRecord nextRecord = reader.read();
-
-    Object expectedEnumSymbol = compat ? "a" :
-        new GenericData.EnumSymbol(schema.getField("myenum").schema(), "a");
-
-    assertNotNull(nextRecord);
-    assertEquals(null, nextRecord.get("mynull"));
-    assertEquals(true, nextRecord.get("myboolean"));
-    assertEquals(1, nextRecord.get("myint"));
-    assertEquals(2L, nextRecord.get("mylong"));
-    assertEquals(3.1f, nextRecord.get("myfloat"));
-    assertEquals(4.1, nextRecord.get("mydouble"));
-    assertEquals(ByteBuffer.wrap("hello".getBytes(Charsets.UTF_8)), nextRecord.get("mybytes"));
-    assertEquals("hello", nextRecord.get("mystring"));
-    assertEquals(expectedEnumSymbol, nextRecord.get("myenum"));
-    assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
-    assertEquals(integerArray, nextRecord.get("myarray"));
-    assertEquals(emptyArray, nextRecord.get("myemptyarray"));
-    assertEquals(integerArray, nextRecord.get("myoptionalarray"));
-    assertEquals(genericIntegerArrayWithNulls, nextRecord.get("myarrayofoptional"));
-    assertEquals(ImmutableMap.of("a", 1, "b", 2), nextRecord.get("mymap"));
-    assertEquals(emptyMap, nextRecord.get("myemptymap"));
-    assertEquals(genericFixed, nextRecord.get("myfixed"));
+    try {
+      writer.write(record);
+      fail("Should not succeed writing an array with null values");
+    } catch (Exception e) {
+      // expected
+    } finally {
+      writer.close();
+    }
   }
 
   @Test
@@ -490,7 +533,6 @@ public class TestReadWrite {
         .set("mynestedint", 1).build();
 
     List<Integer> integerArray = Arrays.asList(1, 2, 3);
-    List<Integer> ingeterArrayWithNulls = Arrays.asList(1, null, 2, null, 3);
 
     Schema recordArraySchema = Schema.createRecord("array", null, null, false);
     recordArraySchema.setFields(Arrays.asList(
@@ -508,6 +550,20 @@ public class TestReadWrite {
     GenericFixed genericFixed = new GenericData.Fixed(
         Schema.createFixed("fixed", null, null, 1), new byte[] { (byte) 65 });
 
+    // 3-level lists are deserialized with the extra layer present
+    Schema elementSchema = record("list",
+        optionalField("element", primitive(Schema.Type.INT)));
+    GenericRecordBuilder elementBuilder = new GenericRecordBuilder(elementSchema);
+    GenericData.Array<GenericData.Record> genericRecordArrayWithNullIntegers =
+        new GenericData.Array<GenericData.Record>(array(elementSchema),
+            Arrays.asList(
+                elementBuilder.set("element", 1).build(),
+                elementBuilder.set("element", null).build(),
+                elementBuilder.set("element", 2).build(),
+                elementBuilder.set("element", null).build(),
+                elementBuilder.set("element", 3).build()
+            ));
+
     AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file);
     GenericRecord nextRecord = reader.read();
     assertNotNull(nextRecord);
@@ -522,7 +578,7 @@ public class TestReadWrite {
     assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
     assertEquals(integerArray, nextRecord.get("myarray"));
     assertEquals(integerArray, nextRecord.get("myoptionalarray"));
-    assertEquals(ingeterArrayWithNulls, nextRecord.get("myarrayofoptional"));
+    assertEquals(genericRecordArrayWithNullIntegers, nextRecord.get("myarrayofoptional"));
     assertEquals(genericRecordArray, nextRecord.get("myrecordarray"));
     assertEquals(ImmutableMap.of("a", 1, "b", 2), nextRecord.get("mymap"));
     assertEquals(genericFixed, nextRecord.get("myfixed"));

@@ -3,9 +3,6 @@
   "namespace": "org.apache.parquet.avro",
   "type" : "record",
   "fields" : [ {
-    "name" : "mynull",
-    "type" : "null"
-  }, {
     "name" : "myboolean",
     "type" : "boolean"
   }, {
@@ -30,7 +27,7 @@
     "name" : "mynestedrecord",
     "type" : {
       "type" : "record",
-      "name" : "ignored1",
+      "name" : "mynestedrecord",
       "namespace" : "",
       "fields" : [ {
         "name" : "mynestedint",
@@ -39,20 +36,9 @@
     }
   }, {
     "name" : "myenum",
-    "type" : {
-      "type" : "enum",
-      "name" : "ignored2",
-      "namespace" : "",
-      "symbols" : [ "a", "b" ]
-    }
+    "type" : "string"
   }, {
     "name" : "myarray",
-    "type" : {
-      "type" : "array",
-      "items" : "int"
-    }
-  }, {
-    "name" : "myemptyarray",
     "type" : {
       "type" : "array",
       "items" : "int"
@@ -62,12 +48,39 @@
     "type" : [ "null", {
        "type" : "array",
        "items" : "int"
-    }]
+    }],
+    "default" : null
   }, {
     "name" : "myarrayofoptional",
     "type" : {
        "type" : "array",
-       "items" : [ "null", "int" ]
+       "items" : {
+          "type": "record",
+          "name": "list",
+          "namespace": "",
+          "fields": [ {
+            "name": "element",
+            "type": ["null", "int"],
+            "default": null
+          } ]
+       }
+    }
+  }, {
+    "name" : "myrecordarray",
+    "type" : {
+      "type" : "array",
+      "items" : {
+        "type" : "record",
+        "name" : "array",
+        "namespace" : "",
+        "fields" : [ {
+           "name" : "a",
+           "type" : "int"
+        }, {
+           "name" : "b",
+           "type" : "int"
+        } ]
+      }
     }
   }, {
     "name" : "mymap",
@@ -76,16 +89,10 @@
       "values" : "int"
     }
   }, {
-    "name" : "myemptymap",
-    "type" : {
-      "type" : "map",
-      "values" : "int"
-    }
-  }, {
     "name" : "myfixed",
     "type" : {
       "type" : "fixed",
-      "name" : "ignored3",
+      "name" : "myfixed",
       "namespace" : "",
       "size" : 1
     }

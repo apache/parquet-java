@@ -32,6 +32,8 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
+import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE;
+import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE_DEFAULT;
 import static org.apache.parquet.schema.OriginalType.*;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 
@@ -43,19 +45,23 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
  */
 public class AvroSchemaConverter {
 
-  static final String ADD_LIST_ELEMENT_RECORDS =
+  public static final String ADD_LIST_ELEMENT_RECORDS =
       "parquet.avro.add-list-element-records";
   private static final boolean ADD_LIST_ELEMENT_RECORDS_DEFAULT = true;
 
   private final boolean assumeRepeatedIsListElement;
+  private final boolean writeOldListStructure;
 
   public AvroSchemaConverter() {
     this.assumeRepeatedIsListElement = ADD_LIST_ELEMENT_RECORDS_DEFAULT;
+    this.writeOldListStructure = WRITE_OLD_LIST_STRUCTURE_DEFAULT;
   }
 
   public AvroSchemaConverter(Configuration conf) {
     this.assumeRepeatedIsListElement = conf.getBoolean(
         ADD_LIST_ELEMENT_RECORDS, ADD_LIST_ELEMENT_RECORDS_DEFAULT);
+    this.writeOldListStructure = conf.getBoolean(
+        WRITE_OLD_LIST_STRUCTURE, WRITE_OLD_LIST_STRUCTURE_DEFAULT);
   }
 
   /**
@@ -127,8 +133,13 @@ public class AvroSchemaConverter {
     } else if (type.equals(Schema.Type.ENUM)) {
       return primitive(fieldName, BINARY, repetition, ENUM);
     } else if (type.equals(Schema.Type.ARRAY)) {
-      return ConversionPatterns.listType(repetition, fieldName,
-          convertField("array", schema.getElementType(), Type.Repetition.REPEATED));
+      if (writeOldListStructure) {
+        return ConversionPatterns.listType(repetition, fieldName,
+            convertField("array", schema.getElementType(), Type.Repetition.REPEATED));
+      } else {
+        return ConversionPatterns.listOfElements(repetition, fieldName,
+            convertField(AvroWriteSupport.LIST_ELEMENT_NAME, schema.getElementType()));
+      }
     } else if (type.equals(Schema.Type.MAP)) {
       Type valType = convertField("value", schema.getValueType());
       // avro map key type is always string

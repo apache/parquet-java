@@ -308,7 +308,8 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
         Schema avroSchema, GenericData model) {
       this.parent = parent;
       this.avroSchema = avroSchema;
-      Schema elementSchema = this.avroSchema.getElementType();
+      Schema elementSchema = AvroSchemaConverter
+          .getNonNull(avroSchema.getElementType());
       Type repeatedType = type.getType(0);
       // always determine whether the repeated type is the element type by
       // matching it against the element schema.

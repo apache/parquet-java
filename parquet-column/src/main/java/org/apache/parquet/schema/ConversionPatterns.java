@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.schema;
 
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 
@@ -28,6 +29,9 @@ import static org.apache.parquet.schema.OriginalType.*;
  * to equivalent Parquet types.
  */
 public abstract class ConversionPatterns {
+
+  private static final String ELEMENT_NAME = "element";
+
   /**
    * to preserve the difference between empty list and null when optional
    *
@@ -92,13 +96,37 @@ public abstract class ConversionPatterns {
    * @param alias      name of the field
    * @param nestedType
    * @return
+   * @deprecated use listOfElements instead
    */
+  @Deprecated
   public static GroupType listType(Repetition repetition, String alias, Type nestedType) {
     return listWrapper(
             repetition,
             alias,
             LIST,
             nestedType
+    );
+  }
+
+  /**
+   * Creates a 3-level list structure annotated with LIST with elements of the
+   * given elementType. The repeated level is inserted automatically and the
+   * elementType's repetition should be the correct repetition of the elements,
+   * required for non-null and optional for nullable.
+   *
+   * @param listRepetition the repetition of the entire list structure
+   * @param name the name of the list structure type
+   * @param elementType the type of elements contained by the list
+   * @return a GroupType that represents the list
+   */
+  public static GroupType listOfElements(Repetition listRepetition, String name, Type elementType) {
+    Preconditions.checkArgument(elementType.getName().equals(ELEMENT_NAME),
+        "List element type must be named 'element'");
+    return listWrapper(
+        listRepetition,
+        name,
+        LIST,
+        new GroupType(Repetition.REPEATED, "list", elementType)
     );
   }
 }

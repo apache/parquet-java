@@ -55,10 +55,22 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   static final String AVRO_SCHEMA = "parquet.avro.schema";
   private static final Schema MAP_KEY_SCHEMA = Schema.create(Schema.Type.STRING);
 
+  public static final String WRITE_OLD_LIST_STRUCTURE =
+      "parquet.avro.write-old-list-structure";
+  static final boolean WRITE_OLD_LIST_STRUCTURE_DEFAULT = true;
+
+  private static final String MAP_REPEATED_NAME = "key_value";
+  private static final String MAP_KEY_NAME = "key";
+  private static final String MAP_VALUE_NAME = "value";
+  private static final String LIST_REPEATED_NAME = "list";
+  private static final String OLD_LIST_REPEATED_NAME = "array";
+  static final String LIST_ELEMENT_NAME = "element";
+
   private RecordConsumer recordConsumer;
   private MessageType rootSchema;
   private Schema rootAvroSchema;
   private GenericData model;
+  private ListWriter listWriter;
 
   public AvroWriteSupport() {
   }
@@ -93,9 +105,19 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
       this.rootAvroSchema = new Schema.Parser().parse(configuration.get(AVRO_SCHEMA));
       this.rootSchema = new AvroSchemaConverter().convert(rootAvroSchema);
     }
+
     if (model == null) {
       this.model = getDataModel(configuration);
     }
+
+    boolean writeOldListStructure = configuration.getBoolean(
+        WRITE_OLD_LIST_STRUCTURE, WRITE_OLD_LIST_STRUCTURE_DEFAULT);
+    if (writeOldListStructure) {
+      this.listWriter = new TwoLevelListWriter();
+    } else {
+      this.listWriter = new ThreeLevelListWriter();
+    }
+
     Map<String, String> extraMetaData = new HashMap<String, String>();
     extraMetaData.put(AvroReadSupport.AVRO_SCHEMA_METADATA_KEY, rootAvroSchema.toString());
     return new WriteContext(rootSchema, extraMetaData);
@@ -151,167 +173,6 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     }
   }
 
-  private void writeArray(GroupType schema, Schema avroSchema, Object value) {
-    recordConsumer.startGroup(); // group wrapper (original type LIST)
-    if (value instanceof Collection) {
-      writeCollection(schema, avroSchema, (Collection) value);
-    } else {
-      Class<?> arrayClass = value.getClass();
-      Preconditions.checkArgument(arrayClass.isArray(),
-          "Cannot write unless collection or array: " + arrayClass.getName());
-      writeJavaArray(schema, avroSchema, arrayClass, value);
-    }
-    recordConsumer.endGroup();
-  }
-
-  private void writeJavaArray(GroupType schema, Schema avroSchema,
-                              Class<?> arrayClass, Object value) {
-    Class<?> elementClass = arrayClass.getComponentType();
-
-    if (!elementClass.isPrimitive()) {
-      Object[] array = (Object[]) value;
-      if (array.length > 0) {
-        recordConsumer.startField("array", 0);
-        for (Object element : array) {
-          writeValue(schema.getType(0), avroSchema.getElementType(), element);
-        }
-        recordConsumer.endField("array", 0);
-      }
-      return;
-    }
-
-    switch (avroSchema.getElementType().getType()) {
-      case BOOLEAN:
-        Preconditions.checkArgument(elementClass == boolean.class,
-            "Cannot write as boolean array: " + arrayClass.getName());
-        writeBooleanArray((boolean[]) value);
-        break;
-      case INT:
-        if (elementClass == byte.class) {
-          writeByteArray((byte[]) value);
-        } else if (elementClass == char.class) {
-          writeCharArray((char[]) value);
-        } else if (elementClass == short.class) {
-          writeShortArray((short[]) value);
-        } else if (elementClass == int.class) {
-          writeIntArray((int[]) value);
-        } else {
-          throw new IllegalArgumentException(
-              "Cannot write as an int array: " + arrayClass.getName());
-        }
-        break;
-      case LONG:
-        Preconditions.checkArgument(elementClass == long.class,
-            "Cannot write as long array: " + arrayClass.getName());
-        writeLongArray((long[]) value);
-        break;
-      case FLOAT:
-        Preconditions.checkArgument(elementClass == float.class,
-            "Cannot write as float array: " + arrayClass.getName());
-        writeFloatArray((float[]) value);
-        break;
-      case DOUBLE:
-        Preconditions.checkArgument(elementClass == double.class,
-            "Cannot write as double array: " + arrayClass.getName());
-        writeDoubleArray((double[]) value);
-        break;
-      default:
-        throw new IllegalArgumentException("Cannot write " +
-            avroSchema.getElementType() + " array: " + arrayClass.getName());
-    }
-  }
-
-  private void writeCollection(GroupType schema, Schema avroSchema,
-                               Collection<?> array) {
-    if (array.size() > 0) {
-      recordConsumer.startField("array", 0);
-      for (Object elt : array) {
-        writeValue(schema.getType(0), avroSchema.getElementType(), elt);
-      }
-      recordConsumer.endField("array", 0);
-    }
-  }
-
-  private void writeBooleanArray(boolean[] array) {
-    if (array.length > 0) {
-      recordConsumer.startField("array", 0);
-      for (boolean element : array) {
-        recordConsumer.addBoolean(element);
-      }
-      recordConsumer.endField("array", 0);
-    }
-  }
-
-  private void writeByteArray(byte[] array) {
-    if (array.length > 0) {
-      recordConsumer.startField("array", 0);
-      for (byte element : array) {
-        recordConsumer.addInteger(element);
-      }
-      recordConsumer.endField("array", 0);
-    }
-  }
-
-  private void writeShortArray(short[] array) {
-    if (array.length > 0) {
-      recordConsumer.startField("array", 0);
-      for (short element : array) {
-        recordConsumer.addInteger(element);
-      }
-      recordConsumer.endField("array", 0);
-    }
-  }
-
-  private void writeCharArray(char[] array) {
-    if (array.length > 0) {
-      recordConsumer.startField("array", 0);
-      for (char element : array) {
-        recordConsumer.addInteger(element);
-      }
-      recordConsumer.endField("array", 0);
-    }
-  }
-
-  private void writeIntArray(int[] array) {
-    if (array.length > 0) {
-      recordConsumer.startField("array", 0);
-      for (int element : array) {
-        recordConsumer.addInteger(element);
-      }
-      recordConsumer.endField("array", 0);
-    }
-  }
-
-  private void writeLongArray(long[] array) {
-    if (array.length > 0) {
-      recordConsumer.startField("array", 0);
-      for (long element : array) {
-        recordConsumer.addLong(element);
-      }
-      recordConsumer.endField("array", 0);
-    }
-  }
-
-  private void writeFloatArray(float[] array) {
-    if (array.length > 0) {
-      recordConsumer.startField("array", 0);
-      for (float element : array) {
-        recordConsumer.addFloat(element);
-      }
-      recordConsumer.endField("array", 0);
-    }
-  }
-
-  private void writeDoubleArray(double[] array) {
-    if (array.length > 0) {
-      recordConsumer.startField("array", 0);
-      for (double element : array) {
-        recordConsumer.addDouble(element);
-      }
-      recordConsumer.endField("array", 0);
-    }
-  }
-
   private <V> void writeMap(GroupType schema, Schema avroSchema,
                             Map<CharSequence, V> map) {
     GroupType innerGroup = schema.getType(0).asGroupType();
@@ -320,25 +181,25 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
 
     recordConsumer.startGroup(); // group wrapper (original type MAP)
     if (map.size() > 0) {
-      recordConsumer.startField("map", 0);
+      recordConsumer.startField(MAP_REPEATED_NAME, 0);
 
       for (Map.Entry<CharSequence, V> entry : map.entrySet()) {
         recordConsumer.startGroup(); // repeated group key_value, middle layer
-        recordConsumer.startField("key", 0);
+        recordConsumer.startField(MAP_KEY_NAME, 0);
         writeValue(keyType, MAP_KEY_SCHEMA, entry.getKey());
-        recordConsumer.endField("key", 0);
+        recordConsumer.endField(MAP_KEY_NAME, 0);
         V value = entry.getValue();
         if (value != null) {
-          recordConsumer.startField("value", 1);
+          recordConsumer.startField(MAP_VALUE_NAME, 1);
           writeValue(valueType, avroSchema.getValueType(), value);
-          recordConsumer.endField("value", 1);
+          recordConsumer.endField(MAP_VALUE_NAME, 1);
         } else if (!valueType.isRepetition(Type.Repetition.OPTIONAL)) {
           throw new RuntimeException("Null map value for " + avroSchema.getName());
         }
         recordConsumer.endGroup();
       }
 
-      recordConsumer.endField("map", 0);
+      recordConsumer.endField(MAP_REPEATED_NAME, 0);
     }
     recordConsumer.endGroup();
   }
@@ -402,7 +263,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     } else if (avroType.equals(Schema.Type.ENUM)) {
       recordConsumer.addBinary(Binary.fromString(value.toString()));
     } else if (avroType.equals(Schema.Type.ARRAY)) {
-      writeArray(type.asGroupType(), nonNullAvroSchema, value);
+      listWriter.writeList(type.asGroupType(), nonNullAvroSchema, value);
     } else if (avroType.equals(Schema.Type.MAP)) {
       writeMap(type.asGroupType(), nonNullAvroSchema, (Map<CharSequence, ?>) value);
     } else if (avroType.equals(Schema.Type.UNION)) {
@@ -424,5 +285,261 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     Class<? extends AvroDataSupplier> suppClass = conf.getClass(
         AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
     return ReflectionUtils.newInstance(suppClass, conf).get();
+  }
+
+  private abstract class ListWriter {
+
+    protected abstract void writeCollection(
+        GroupType type, Schema schema, Collection<?> collection);
+
+    protected abstract void writeObjectArray(
+        GroupType type, Schema schema, Object[] array);
+
+    protected abstract void startArray();
+
+    protected abstract void endArray();
+
+    public void writeList(GroupType schema, Schema avroSchema, Object value) {
+      recordConsumer.startGroup(); // group wrapper (original type LIST)
+      if (value instanceof Collection) {
+        writeCollection(schema, avroSchema, (Collection) value);
+      } else {
+        Class<?> arrayClass = value.getClass();
+        Preconditions.checkArgument(arrayClass.isArray(),
+            "Cannot write unless collection or array: " + arrayClass.getName());
+        writeJavaArray(schema, avroSchema, arrayClass, value);
+      }
+      recordConsumer.endGroup();
+    }
+
+    public void writeJavaArray(GroupType schema, Schema avroSchema,
+                               Class<?> arrayClass, Object value) {
+      Class<?> elementClass = arrayClass.getComponentType();
+
+      if (!elementClass.isPrimitive()) {
+        writeObjectArray(schema, avroSchema, (Object[]) value);
+        return;
+      }
+
+      switch (avroSchema.getElementType().getType()) {
+        case BOOLEAN:
+          Preconditions.checkArgument(elementClass == boolean.class,
+              "Cannot write as boolean array: " + arrayClass.getName());
+          writeBooleanArray((boolean[]) value);
+          break;
+        case INT:
+          if (elementClass == byte.class) {
+            writeByteArray((byte[]) value);
+          } else if (elementClass == char.class) {
+            writeCharArray((char[]) value);
+          } else if (elementClass == short.class) {
+            writeShortArray((short[]) value);
+          } else if (elementClass == int.class) {
+            writeIntArray((int[]) value);
+          } else {
+            throw new IllegalArgumentException(
+                "Cannot write as an int array: " + arrayClass.getName());
+          }
+          break;
+        case LONG:
+          Preconditions.checkArgument(elementClass == long.class,
+              "Cannot write as long array: " + arrayClass.getName());
+          writeLongArray((long[]) value);
+          break;
+        case FLOAT:
+          Preconditions.checkArgument(elementClass == float.class,
+              "Cannot write as float array: " + arrayClass.getName());
+          writeFloatArray((float[]) value);
+          break;
+        case DOUBLE:
+          Preconditions.checkArgument(elementClass == double.class,
+              "Cannot write as double array: " + arrayClass.getName());
+          writeDoubleArray((double[]) value);
+          break;
+        default:
+          throw new IllegalArgumentException("Cannot write " +
+              avroSchema.getElementType() + " array: " + arrayClass.getName());
+      }
+    }
+
+    protected void writeBooleanArray(boolean[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (boolean element : array) {
+          recordConsumer.addBoolean(element);
+        }
+        endArray();
+      }
+    }
+
+    protected void writeByteArray(byte[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (byte element : array) {
+          recordConsumer.addInteger(element);
+        }
+        endArray();
+      }
+    }
+
+    protected void writeShortArray(short[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (short element : array) {
+          recordConsumer.addInteger(element);
+        }
+        endArray();
+      }
+    }
+
+    protected void writeCharArray(char[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (char element : array) {
+          recordConsumer.addInteger(element);
+        }
+        endArray();
+      }
+    }
+
+    protected void writeIntArray(int[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (int element : array) {
+          recordConsumer.addInteger(element);
+        }
+        endArray();
+      }
+    }
+
+    protected void writeLongArray(long[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (long element : array) {
+          recordConsumer.addLong(element);
+        }
+        endArray();
+      }
+    }
+
+    protected void writeFloatArray(float[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (float element : array) {
+          recordConsumer.addFloat(element);
+        }
+        endArray();
+      }
+    }
+
+    protected void writeDoubleArray(double[] array) {
+      if (array.length > 0) {
+        startArray();
+        for (double element : array) {
+          recordConsumer.addDouble(element);
+        }
+        endArray();
+      }
+    }
+  }
+
+  /**
+   * For backward-compatibility. This preserves how lists were written in 1.x.
+   */
+  private class TwoLevelListWriter extends ListWriter {
+    @Override
+    public void writeCollection(GroupType schema, Schema avroSchema,
+                                Collection<?> array) {
+      if (array.size() > 0) {
+        recordConsumer.startField(OLD_LIST_REPEATED_NAME, 0);
+        for (Object elt : array) {
+          writeValue(schema.getType(0), avroSchema.getElementType(), elt);
+        }
+        recordConsumer.endField(OLD_LIST_REPEATED_NAME, 0);
+      }
+    }
+
+    @Override
+    protected void writeObjectArray(GroupType type, Schema schema,
+                                    Object[] array) {
+      if (array.length > 0) {
+        recordConsumer.startField(OLD_LIST_REPEATED_NAME, 0);
+        for (Object element : array) {
+          writeValue(type.getType(0), schema.getElementType(), element);
+        }
+        recordConsumer.endField(OLD_LIST_REPEATED_NAME, 0);
+      }
+    }
+
+    @Override
+    protected void startArray() {
+      recordConsumer.startField(OLD_LIST_REPEATED_NAME, 0);
+    }
+
+    @Override
+    protected void endArray() {
+      recordConsumer.endField(OLD_LIST_REPEATED_NAME, 0);
+    }
+  }
+
+  private class ThreeLevelListWriter extends ListWriter {
+    @Override
+    protected void writeCollection(GroupType type, Schema schema, Collection<?> collection) {
+      if (collection.size() > 0) {
+        recordConsumer.startField(LIST_REPEATED_NAME, 0);
+        GroupType repeatedType = type.getType(0).asGroupType();
+        Type elementType = repeatedType.getType(0);
+        for (Object element : collection) {
+          recordConsumer.startGroup(); // repeated group array, middle layer
+          if (element != null) {
+            recordConsumer.startField(LIST_ELEMENT_NAME, 0);
+            writeValue(elementType, schema.getElementType(), element);
+            recordConsumer.endField(LIST_ELEMENT_NAME, 0);
+          } else if (!elementType.isRepetition(Type.Repetition.OPTIONAL)) {
+            throw new RuntimeException(
+                "Null list element for " + schema.getName());
+          }
+          recordConsumer.endGroup();
+        }
+        recordConsumer.endField(LIST_REPEATED_NAME, 0);
+      }
+    }
+
+    @Override
+    protected void writeObjectArray(GroupType type, Schema schema,
+                                    Object[] array) {
+      if (array.length > 0) {
+        recordConsumer.startField(LIST_REPEATED_NAME, 0);
+        GroupType repeatedType = type.getType(0).asGroupType();
+        Type elementType = repeatedType.getType(0);
+        for (Object element : array) {
+          recordConsumer.startGroup(); // repeated group array, middle layer
+          if (element != null) {
+            recordConsumer.startField(LIST_ELEMENT_NAME, 0);
+            writeValue(elementType, schema.getElementType(), element);
+            recordConsumer.endField(LIST_ELEMENT_NAME, 0);
+          } else if (!elementType.isRepetition(Type.Repetition.OPTIONAL)) {
+            throw new RuntimeException(
+                "Null list element for " + schema.getName());
+          }
+          recordConsumer.endGroup();
+        }
+        recordConsumer.endField(LIST_REPEATED_NAME, 0);
+      }
+    }
+
+    @Override
+    protected void startArray() {
+      recordConsumer.startField(LIST_REPEATED_NAME, 0);
+      recordConsumer.startGroup(); // repeated group array, middle layer
+      recordConsumer.startField(LIST_ELEMENT_NAME, 0);
+    }
+
+    @Override
+    protected void endArray() {
+      recordConsumer.endField(LIST_ELEMENT_NAME, 0);
+      recordConsumer.endGroup();
+      recordConsumer.endField(LIST_REPEATED_NAME, 0);
+    }
   }
 }
