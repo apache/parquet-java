@@ -34,14 +34,16 @@ import java.util.jar.Manifest;
  */
 public class Version {
   private static final Log LOG = Log.getLog(Version.class);
-  
+
+  private static final String PARQUET_COLUMN_POM_RESOURCE = "META-INF/maven/org.apache.parquet/parquet-column/pom.properties";
+
   public static final String VERSION_NUMBER = readVersionNumber();
   public static final String FULL_VERSION = readFullVersion();
 
   private static String getJarPath() {
-    final URL versionClassBaseUrl = Version.class.getResource("");
-    if (versionClassBaseUrl.getProtocol().equals("jar")) {
-      String path = versionClassBaseUrl.getPath();
+    final URL baseUrl = Version.class.getResource("/" + PARQUET_COLUMN_POM_RESOURCE);
+    if (baseUrl != null && baseUrl.getProtocol().equals("jar")) {
+      String path = baseUrl.getPath();
       int jarEnd = path.indexOf("!");
       if (jarEnd != -1) {
         String jarPath = path.substring(0, jarEnd);
@@ -61,13 +63,13 @@ public class Version {
     }
     return null;
   }
-  
+
   private static String readVersionNumber() {
     String version = null;
     try {
       String jarPath = getJarPath();
       if (jarPath != null) {
-        URL pomPropertiesUrl = getResourceFromJar(jarPath, "META-INF/maven/com.twitter/parquet-column/pom.properties");
+        URL pomPropertiesUrl = getResourceFromJar(jarPath, PARQUET_COLUMN_POM_RESOURCE);
         if (pomPropertiesUrl != null) {
           Properties properties = new Properties();
           properties.load(pomPropertiesUrl.openStream());
@@ -75,7 +77,7 @@ public class Version {
         }
       }
     } catch (Exception e) {
-      LOG.warn("can't read from META-INF", e);
+      LOG.warn("can't read from " + PARQUET_COLUMN_POM_RESOURCE, e);
     }
     return version;
   }
