@@ -26,6 +26,7 @@ import it.unimi.dsi.fastutil.floats.FloatArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.shorts.ShortArrayList;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -36,14 +37,15 @@ import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.reflect.ReflectData;
+import org.apache.avro.reflect.Stringable;
 import org.apache.avro.specific.SpecificData;
 import org.apache.avro.util.ClassUtils;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.avro.AvroConverters.FieldStringConverter;
+import org.apache.parquet.avro.AvroConverters.FieldStringableConverter;
 import org.apache.parquet.io.InvalidRecordException;
-import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
-import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
@@ -62,6 +64,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
 
   private static final String STRINGABLE_PROP = "avro.java.string";
   private static final String JAVA_CLASS_PROP = "java-class";
+  private static final String JAVA_KEY_CLASS_PROP = "java-key-class";
 
   protected T currentRecord;
   private final Converter[] converters;
@@ -90,18 +93,40 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
         avroFieldIndexes.put(field.name(), avroFieldIndex++);
     }
 
+    Class<?> recordClass = null;
+    if (model instanceof ReflectData) {
+      recordClass = getDatumClass(avroSchema, model);
+    }
+
     int parquetFieldIndex = 0;
     for (Type parquetField: parquetSchema.getFields()) {
       final Schema.Field avroField = getAvroField(parquetField.getName());
       Schema nonNullSchema = AvroSchemaConverter.getNonNull(avroField.schema());
       final int finalAvroIndex = avroFieldIndexes.remove(avroField.name());
-      converters[parquetFieldIndex++] = newConverter(
-          nonNullSchema, parquetField, this.model, new ParentValueContainer() {
+      ParentValueContainer container = new ParentValueContainer() {
         @Override
         public void add(Object value) {
           AvroRecordConverter.this.set(avroField.name(), finalAvroIndex, value);
         }
-      });
+      };
+      converters[parquetFieldIndex] = newConverter(
+          nonNullSchema, parquetField, this.model, container);
+
+      // @Stringable doesn't affect the reflected schema; must be enforced here
+      if (recordClass != null &&
+          converters[parquetFieldIndex] instanceof FieldStringConverter) {
+        try {
+          Field field = recordClass.getDeclaredField(avroField.name());
+          if (field.isAnnotationPresent(Stringable.class)) {
+            converters[parquetFieldIndex] = new FieldStringableConverter(
+                container, field.getType());
+          }
+        } catch (NoSuchFieldException e) {
+          // must not be stringable
+        }
+      }
+
+      parquetFieldIndex += 1;
     }
 
     // store defaults for any new Avro fields from avroSchema that are not in
@@ -167,14 +192,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       }
       return new AvroConverters.FieldByteBufferConverter(parent);
     } else if (schema.getType().equals(Schema.Type.STRING)) {
-      Class<?> stringableClass = getStringableClass(schema, model);
-      if (stringableClass == String.class) {
-        return new AvroConverters.FieldStringConverter(parent);
-      } else if (stringableClass == CharSequence.class) {
-        return new AvroConverters.FieldUTF8Converter(parent);
-      }
-      return new AvroConverters.FieldStringableConverter(
-          parent, stringableClass);
+      return newStringConverter(schema, model, parent);
     } else if (schema.getType().equals(Schema.Type.RECORD)) {
       return new AvroRecordConverter(parent, type.asGroupType(), schema, model);
     } else if (schema.getType().equals(Schema.Type.ENUM)) {
@@ -199,9 +217,23 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
         "Cannot convert Avro type: %s to Parquet type: %s", schema, type));
   }
 
+  private static Converter newStringConverter(Schema schema, GenericData model,
+                                              ParentValueContainer parent) {
+    Class<?> stringableClass = getStringableClass(schema, model);
+    if (stringableClass == String.class) {
+      return new FieldStringConverter(parent);
+    } else if (stringableClass == CharSequence.class) {
+      return new AvroConverters.FieldUTF8Converter(parent);
+    }
+    return new FieldStringableConverter(parent, stringableClass);
+  }
+
   private static Class<?> getStringableClass(Schema schema, GenericData model) {
     if (model instanceof SpecificData) {
-      String stringableClass = schema.getProp(JAVA_CLASS_PROP);
+      // both specific and reflect (and any subclasses) use this logic
+      boolean isMap = (schema.getType() == Schema.Type.MAP);
+      String stringableClass = schema.getProp(
+          isMap ? JAVA_KEY_CLASS_PROP : JAVA_CLASS_PROP);
       if (stringableClass != null) {
         try {
           return ClassUtils.forName(model.getClassLoader(), stringableClass);
@@ -211,13 +243,15 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       }
     }
 
-    if (model.getClass() != GenericData.class) {
+    if (ReflectData.class.isAssignableFrom(model.getClass())) {
+      // reflect uses String, not Utf8
       return String.class;
     }
 
+    // generic and specific use the avro.java.string setting
     String name = schema.getProp(STRINGABLE_PROP);
     if (name == null) {
-      return String.class;
+      return CharSequence.class;
     }
 
     switch (GenericData.StringType.valueOf(name)) {
@@ -773,13 +807,13 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     }
   }
 
-  static final class MapConverter<V> extends GroupConverter {
+  static final class MapConverter<K, V> extends GroupConverter {
 
     private final ParentValueContainer parent;
     private final Converter keyValueConverter;
     private final Schema schema;
     private final Class<?> mapClass;
-    private Map<String, V> map;
+    private Map<K, V> map;
 
     public MapConverter(ParentValueContainer parent, GroupType mapType,
         Schema mapSchema, GenericData model) {
@@ -807,29 +841,31 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, V> newMap() {
+    private Map<K, V> newMap() {
       if (mapClass == null || mapClass.isAssignableFrom(HashMap.class)) {
-        return new HashMap<String, V>();
+        return new HashMap<K, V>();
       } else {
-        return (Map<String, V>) ReflectData.newInstance(mapClass, schema);
+        return (Map<K, V>) ReflectData.newInstance(mapClass, schema);
       }
     }
 
     final class MapKeyValueConverter extends GroupConverter {
 
-      private String key;
+      private K key;
       private V value;
       private final Converter keyConverter;
       private final Converter valueConverter;
 
       public MapKeyValueConverter(GroupType keyValueType, Schema mapSchema,
           GenericData model) {
-        keyConverter = new PrimitiveConverter() {
-          @Override
-          final public void addBinary(Binary value) {
-            key = value.toStringUsingUTF8();
-          }
-        };
+        keyConverter = newStringConverter(mapSchema, model,
+            new ParentValueContainer() {
+              @Override
+              @SuppressWarnings("unchecked")
+              public void add(Object value) {
+                MapKeyValueConverter.this.key = (K) value;
+              }
+            });
 
         Type valueType = keyValueType.getType(1);
         Schema nonNullValueSchema = AvroSchemaConverter.getNonNull(mapSchema.getValueType());

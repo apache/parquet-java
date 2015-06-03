@@ -21,6 +21,7 @@ package org.apache.parquet.avro;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
@@ -60,7 +61,7 @@ public class TestBackwardCompatibility {
     GenericRecord r;
     while ((r = reader.read()) != null) {
       Assert.assertTrue("Should read value into a String",
-          r.get("text") instanceof String);
+          r.get("text") instanceof Utf8);
     }
   }
 

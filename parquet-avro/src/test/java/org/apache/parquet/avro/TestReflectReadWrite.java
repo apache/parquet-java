@@ -30,6 +30,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.reflect.ReflectData;
+import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
@@ -65,14 +66,14 @@ public class TestReflectReadWrite {
 
     Path path = writePojosToParquetFile(2, CompressionCodecName.UNCOMPRESSED, false);
     ParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(conf, path);
-    GenericRecord object = getGenericPojo();
+    GenericRecord object = getGenericPojoUtf8();
     for (int i = 0; i < 2; i += 1) {
       assertEquals(object, reader.read());
     }
     assertNull(reader.read());
   }
 
-  private GenericRecord getGenericPojo() {
+  private GenericRecord getGenericPojoUtf8() {
     Schema schema = ReflectData.get().getSchema(Pojo.class);
     GenericData.Record record = new GenericData.Record(schema);
     record.put("myboolean", true);
@@ -83,21 +84,21 @@ public class TestReflectReadWrite {
     record.put("myfloat", 3.1f);
     record.put("mydouble", 4.1);
     record.put("mybytes", ByteBuffer.wrap(new byte[] { 1, 2, 3, 4 }));
-    record.put("mystring", "Hello");
+    record.put("mystring", new Utf8("Hello"));
     record.put("myenum", new GenericData.EnumSymbol(
         schema.getField("myenum").schema(), "A"));
-    Map<String, String> map = new HashMap<String, String>();
-    map.put("a", "1");
-    map.put("b", "2");
+    Map<CharSequence, CharSequence> map = new HashMap<CharSequence, CharSequence>();
+    map.put(new Utf8("a"), new Utf8("1"));
+    map.put(new Utf8("b"), new Utf8("2"));
     record.put("mymap", map);
     record.put("myshortarray", new GenericData.Array<Integer>(
         schema.getField("myshortarray").schema(), Lists.newArrayList(1, 2)));
     record.put("myintarray", new GenericData.Array<Integer>(
         schema.getField("myintarray").schema(), Lists.newArrayList(1, 2)));
-    record.put("mystringarray", new GenericData.Array<String>(
-        schema.getField("mystringarray").schema(), Lists.newArrayList("a", "b")));
-    record.put("mylist", new GenericData.Array<String>(
-        schema.getField("mylist").schema(), Lists.newArrayList("a", "b", "c")));
+    record.put("mystringarray", new GenericData.Array<Utf8>(
+        schema.getField("mystringarray").schema(), Lists.newArrayList(new Utf8("a"), new Utf8("b"))));
+    record.put("mylist", new GenericData.Array<Utf8>(
+        schema.getField("mylist").schema(), Lists.newArrayList(new Utf8("a"), new Utf8("b"), new Utf8("c"))));
     return record;
   }
 

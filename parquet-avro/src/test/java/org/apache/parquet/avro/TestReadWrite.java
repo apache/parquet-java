@@ -19,6 +19,7 @@
 package org.apache.parquet.avro;
 
 import com.google.common.base.Charsets;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
@@ -149,10 +150,10 @@ public class TestReadWrite {
         .build();
 
     // Write a record with a null value
-    Map<String, Integer> map = new HashMap<String, Integer>();
-    map.put("thirty-four", 34);
-    map.put("eleventy-one", null);
-    map.put("one-hundred", 100);
+    Map<CharSequence, Integer> map = new HashMap<CharSequence, Integer>();
+    map.put(str("thirty-four"), 34);
+    map.put(str("eleventy-one"), null);
+    map.put(str("one-hundred"), 100);
 
     GenericData.Record record = new GenericRecordBuilder(schema)
         .set("mymap", map).build();
@@ -221,7 +222,7 @@ public class TestReadWrite {
     GenericRecord nextRecord = reader.read();
 
     assertNotNull(nextRecord);
-    assertEquals(ImmutableMap.of("a", 1, "b", 2), nextRecord.get("mymap"));
+    assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
   }
 
   @Test
@@ -298,14 +299,14 @@ public class TestReadWrite {
     assertEquals(3.1f, nextRecord.get("myfloat"));
     assertEquals(4.1, nextRecord.get("mydouble"));
     assertEquals(ByteBuffer.wrap("hello".getBytes(Charsets.UTF_8)), nextRecord.get("mybytes"));
-    assertEquals("hello", nextRecord.get("mystring"));
+    assertEquals(str("hello"), nextRecord.get("mystring"));
     assertEquals(expectedEnumSymbol, nextRecord.get("myenum"));
     assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
     assertEquals(integerArray, nextRecord.get("myarray"));
     assertEquals(emptyArray, nextRecord.get("myemptyarray"));
     assertEquals(integerArray, nextRecord.get("myoptionalarray"));
     assertEquals(genericIntegerArrayWithNulls, nextRecord.get("myarrayofoptional"));
-    assertEquals(ImmutableMap.of("a", 1, "b", 2), nextRecord.get("mymap"));
+    assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
     assertEquals(emptyMap, nextRecord.get("myemptymap"));
     assertEquals(genericFixed, nextRecord.get("myfixed"));
   }
@@ -517,16 +518,22 @@ public class TestReadWrite {
     assertEquals(3.1f, nextRecord.get("myfloat"));
     assertEquals(4.1, nextRecord.get("mydouble"));
     assertEquals(ByteBuffer.wrap("hello".getBytes(Charsets.UTF_8)), nextRecord.get("mybytes"));
-    assertEquals("hello", nextRecord.get("mystring"));
-    assertEquals("a", nextRecord.get("myenum"));
+    assertEquals(str("hello"), nextRecord.get("mystring"));
+    assertEquals(str("a"), nextRecord.get("myenum")); // enum symbols are unknown
     assertEquals(nestedRecord, nextRecord.get("mynestedrecord"));
     assertEquals(integerArray, nextRecord.get("myarray"));
     assertEquals(integerArray, nextRecord.get("myoptionalarray"));
     assertEquals(ingeterArrayWithNulls, nextRecord.get("myarrayofoptional"));
     assertEquals(genericRecordArray, nextRecord.get("myrecordarray"));
-    assertEquals(ImmutableMap.of("a", 1, "b", 2), nextRecord.get("mymap"));
+    assertEquals(ImmutableMap.of(str("a"), 1, str("b"), 2), nextRecord.get("mymap"));
     assertEquals(genericFixed, nextRecord.get("myfixed"));
 
   }
 
+  /**
+   * Return a String or Utf8 depending on whether compatibility is on
+   */
+  public CharSequence str(String value) {
+    return compat ? value : new Utf8(value);
+  }
 }
