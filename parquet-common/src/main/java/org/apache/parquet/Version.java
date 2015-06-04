@@ -46,10 +46,10 @@ public class Version {
         versionNumber = props.getProperty("versionNumber");
         fullVersion = props.getProperty("fullVersion");
       } catch (Exception e) {
-        LOG.warn("can't read from version information", e);
+        LOG.warn("can't read version information", e);
       }
     } else {
-      LOG.warn("can't read from version information");
+      LOG.warn("can't read version information");
     }
 
     VERSION_NUMBER = versionNumber;
