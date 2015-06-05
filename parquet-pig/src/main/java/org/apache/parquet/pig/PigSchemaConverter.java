@@ -61,6 +61,7 @@ import org.apache.parquet.schema.Type.Repetition;
  */
 public class PigSchemaConverter {
   private static final Log LOG = Log.getLog(PigSchemaConverter.class);
+  static final String ARRAY_VALUE_NAME = "value";
   private ColumnAccess columnAccess;
 
   public PigSchemaConverter() {
@@ -288,8 +289,12 @@ public class PigSchemaConverter {
         s.getField(0).alias = null;
         return new FieldSchema(fieldName, s, DataType.MAP);
       case LIST:
-        if (parquetGroupType.getFieldCount()!= 1 || parquetGroupType.getType(0).isPrimitive()) {
-          throw new SchemaConversionException("Invalid list type " + parquetGroupType );
+        Type type = parquetGroupType.getType(0);
+        if (parquetGroupType.getFieldCount()!= 1 || type.isPrimitive()) {
+          // an array is effectively a bag
+          Schema primitiveSchema = new Schema(getSimpleFieldSchema(parquetGroupType.getFieldName(0), type));
+          Schema tupleSchema = new Schema(new FieldSchema(ARRAY_VALUE_NAME, primitiveSchema, DataType.TUPLE));
+          return new FieldSchema(fieldName, tupleSchema, DataType.BAG);
         }
         GroupType tupleType = parquetGroupType.getType(0).asGroupType();
         if (!tupleType.isRepetition(Repetition.REPEATED)) {
