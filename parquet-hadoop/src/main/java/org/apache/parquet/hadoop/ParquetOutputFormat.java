@@ -38,6 +38,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.codec.CodecConfig;
@@ -286,7 +287,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (INFO) LOG.info("Writer version is: " + writerVersion);
 
     WriteContext init = writeSupport.init(conf);
-    ParquetFileWriter w = new ParquetFileWriter(conf, init.getSchema(), file);
+    ParquetFileWriter w = new ParquetFileWriter(
+        conf, init.getSchema(), file, Mode.CREATE, blockSize);
     w.start();
 
     float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO,

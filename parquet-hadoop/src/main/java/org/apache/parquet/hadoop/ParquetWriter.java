@@ -209,7 +209,7 @@ public class ParquetWriter<T> implements Closeable {
     MessageType schema = writeContext.getSchema();
 
     ParquetFileWriter fileWriter = new ParquetFileWriter(conf, schema, file,
-        mode);
+        mode, blockSize);
     fileWriter.start();
 
     CodecFactory codecFactory = new CodecFactory(conf);

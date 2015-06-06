@@ -20,9 +20,12 @@ package org.apache.parquet.hadoop;
 
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.bytes.BytesUtils;
+import org.junit.Rule;
 import org.junit.Test;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
@@ -47,6 +50,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.junit.Assert.*;
 import static org.apache.parquet.column.Encoding.BIT_PACKED;
 import static org.apache.parquet.column.Encoding.PLAIN;
@@ -58,18 +62,43 @@ import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
+import org.junit.rules.TemporaryFolder;
 
 public class TestParquetFileWriter {
+
   private static final Log LOG = Log.getLog(TestParquetFileWriter.class);
+
+  private static final MessageType SCHEMA = MessageTypeParser.parseMessageType("" +
+      "message m {" +
+      "  required group a {" +
+      "    required binary b;" +
+      "  }" +
+      "  required group c {" +
+      "    required int64 d;" +
+      "  }" +
+      "}");
+  private static final String[] PATH1 = {"a", "b"};
+  private static final ColumnDescriptor C1 = SCHEMA.getColumnDescription(PATH1);
+  private static final String[] PATH2 = {"c", "d"};
+  private static final ColumnDescriptor C2 = SCHEMA.getColumnDescription(PATH2);
+
+  private static final byte[] BYTES1 = { 0, 1, 2, 3 };
+  private static final byte[] BYTES2 = { 1, 2, 3, 4 };
+  private static final byte[] BYTES3 = { 2, 3, 4, 5 };
+  private static final byte[] BYTES4 = { 3, 4, 5, 6 };
+  private static final CompressionCodecName CODEC = CompressionCodecName.UNCOMPRESSED;
+
+  private static final BinaryStatistics STATS1 = new BinaryStatistics();
+  private static final BinaryStatistics STATS2 = new BinaryStatistics();
+
   private String writeSchema;
+
+  @Rule
+  public final TemporaryFolder temp = new TemporaryFolder();
 
   @Test
   public void testWriteMode() throws Exception {
-    File testDir = new File("target/test/TestParquetFileWriter/");
-    testDir.mkdirs();
-    File testFile = new File(testDir, "testParquetFile");
-    testFile = testFile.getAbsoluteFile();
-    testFile.createNewFile();
+    File testFile = temp.newFile();
     MessageType schema = MessageTypeParser.parseMessageType(
         "message m { required group a {required binary b;} required group "
         + "c { required int64 d; }}");
@@ -88,7 +117,7 @@ public class TestParquetFileWriter {
     exceptionThrown = false;
     try {
       writer = new ParquetFileWriter(conf, schema, path,
-          ParquetFileWriter.Mode.OVERWRITE);
+          OVERWRITE);
     } catch(IOException ioe2) {
       exceptionThrown = true;
     }
@@ -98,51 +127,35 @@ public class TestParquetFileWriter {
 
   @Test
   public void testWriteRead() throws Exception {
-
-    File testFile = new File("target/test/TestParquetFileWriter/testParquetFile").getAbsoluteFile();
+    File testFile = temp.newFile();
     testFile.delete();
 
     Path path = new Path(testFile.toURI());
     Configuration configuration = new Configuration();
 
-    MessageType schema = MessageTypeParser.parseMessageType("message m { required group a {required binary b;} required group c { required int64 d; }}");
-    String[] path1 = {"a", "b"};
-    ColumnDescriptor c1 = schema.getColumnDescription(path1);
-    String[] path2 = {"c", "d"};
-    ColumnDescriptor c2 = schema.getColumnDescription(path2);
-
-    byte[] bytes1 = { 0, 1, 2, 3};
-    byte[] bytes2 = { 1, 2, 3, 4};
-    byte[] bytes3 = { 2, 3, 4, 5};
-    byte[] bytes4 = { 3, 4, 5, 6};
-    CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
-
-    BinaryStatistics stats1 = new BinaryStatistics();
-    BinaryStatistics stats2 = new BinaryStatistics();
-
-    ParquetFileWriter w = new ParquetFileWriter(configuration, schema, path);
+   ParquetFileWriter w = new ParquetFileWriter(configuration, SCHEMA, path);
     w.start();
     w.startBlock(3);
-    w.startColumn(c1, 5, codec);
+    w.startColumn(C1, 5, CODEC);
     long c1Starts = w.getPos();
-    w.writeDataPage(2, 4, BytesInput.from(bytes1), stats1, BIT_PACKED, BIT_PACKED, PLAIN);
-    w.writeDataPage(3, 4, BytesInput.from(bytes1), stats1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(2, 4, BytesInput.from(BYTES1), STATS1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(BYTES1), STATS1, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     long c1Ends = w.getPos();
-    w.startColumn(c2, 6, codec);
+    w.startColumn(C2, 6, CODEC);
     long c2Starts = w.getPos();
-    w.writeDataPage(2, 4, BytesInput.from(bytes2), stats2, BIT_PACKED, BIT_PACKED, PLAIN);
-    w.writeDataPage(3, 4, BytesInput.from(bytes2), stats2, BIT_PACKED, BIT_PACKED, PLAIN);
-    w.writeDataPage(1, 4, BytesInput.from(bytes2), stats2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(2, 4, BytesInput.from(BYTES2), STATS2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(BYTES2), STATS2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(1, 4, BytesInput.from(BYTES2), STATS2, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     long c2Ends = w.getPos();
     w.endBlock();
     w.startBlock(4);
-    w.startColumn(c1, 7, codec);
-    w.writeDataPage(7, 4, BytesInput.from(bytes3), stats1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.startColumn(C1, 7, CODEC);
+    w.writeDataPage(7, 4, BytesInput.from(BYTES3), STATS1, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
-    w.startColumn(c2, 8, codec);
-    w.writeDataPage(8, 4, BytesInput.from(bytes4), stats2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.startColumn(C2, 8, CODEC);
+    w.writeDataPage(8, 4, BytesInput.from(BYTES4), STATS2, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     w.endBlock();
     w.end(new HashMap<String, String>());
@@ -158,31 +171,237 @@ public class TestParquetFileWriter {
     assertEquals(expectedEncoding,readFooter.getBlocks().get(0).getColumns().get(0).getEncodings());
 
     { // read first block of col #1
-      ParquetFileReader r = new ParquetFileReader(configuration, path, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(path1)));
+      ParquetFileReader r = new ParquetFileReader(configuration, path, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(SCHEMA.getColumnDescription(PATH1)));
       PageReadStore pages = r.readNextRowGroup();
       assertEquals(3, pages.getRowCount());
-      validateContains(schema, pages, path1, 2, BytesInput.from(bytes1));
-      validateContains(schema, pages, path1, 3, BytesInput.from(bytes1));
+      validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
+      validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
       assertNull(r.readNextRowGroup());
     }
 
     { // read all blocks of col #1 and #2
 
-      ParquetFileReader r = new ParquetFileReader(configuration, path, readFooter.getBlocks(), Arrays.asList(schema.getColumnDescription(path1), schema.getColumnDescription(path2)));
+      ParquetFileReader r = new ParquetFileReader(configuration, path, readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)));
 
       PageReadStore pages = r.readNextRowGroup();
       assertEquals(3, pages.getRowCount());
-      validateContains(schema, pages, path1, 2, BytesInput.from(bytes1));
-      validateContains(schema, pages, path1, 3, BytesInput.from(bytes1));
-      validateContains(schema, pages, path2, 2, BytesInput.from(bytes2));
-      validateContains(schema, pages, path2, 3, BytesInput.from(bytes2));
-      validateContains(schema, pages, path2, 1, BytesInput.from(bytes2));
+      validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
+      validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
+      validateContains(SCHEMA, pages, PATH2, 2, BytesInput.from(BYTES2));
+      validateContains(SCHEMA, pages, PATH2, 3, BytesInput.from(BYTES2));
+      validateContains(SCHEMA, pages, PATH2, 1, BytesInput.from(BYTES2));
 
       pages = r.readNextRowGroup();
       assertEquals(4, pages.getRowCount());
 
-      validateContains(schema, pages, path1, 7, BytesInput.from(bytes3));
-      validateContains(schema, pages, path2, 8, BytesInput.from(bytes4));
+      validateContains(SCHEMA, pages, PATH1, 7, BytesInput.from(BYTES3));
+      validateContains(SCHEMA, pages, PATH2, 8, BytesInput.from(BYTES4));
+
+      assertNull(r.readNextRowGroup());
+    }
+    PrintFooter.main(new String[] {path.toString()});
+  }
+
+  @Test
+  public void testAlignmentWithPadding() throws Exception {
+    File testFile = temp.newFile();
+
+    Path path = new Path(testFile.toURI());
+    Configuration conf = new Configuration();
+
+    // uses the test constructor
+    ParquetFileWriter w = new ParquetFileWriter(conf, SCHEMA, path, 120);
+
+    w.start();
+    w.startBlock(3);
+    w.startColumn(C1, 5, CODEC);
+    long c1Starts = w.getPos();
+    w.writeDataPage(2, 4, BytesInput.from(BYTES1), STATS1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(BYTES1), STATS1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    long c1Ends = w.getPos();
+    w.startColumn(C2, 6, CODEC);
+    long c2Starts = w.getPos();
+    w.writeDataPage(2, 4, BytesInput.from(BYTES2), STATS2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(BYTES2), STATS2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(1, 4, BytesInput.from(BYTES2), STATS2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    long c2Ends = w.getPos();
+    w.endBlock();
+
+    long firstRowGroupEnds = w.getPos(); // should be 109
+
+    w.startBlock(4);
+    w.startColumn(C1, 7, CODEC);
+    w.writeDataPage(7, 4, BytesInput.from(BYTES3), STATS1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.startColumn(C2, 8, CODEC);
+    w.writeDataPage(8, 4, BytesInput.from(BYTES4), STATS2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.endBlock();
+
+    long secondRowGroupEnds = w.getPos();
+
+    w.end(new HashMap<String, String>());
+
+    FileSystem fs = path.getFileSystem(conf);
+    long fileLen = fs.getFileStatus(path).getLen();
+
+    FSDataInputStream data = fs.open(path);
+    data.seek(fileLen - 8); // 4-byte offset + "PAR1"
+    long footerLen = BytesUtils.readIntLittleEndian(data);
+    long startFooter = fileLen - footerLen - 8;
+
+    assertEquals("Footer should start after second row group without padding",
+        secondRowGroupEnds, startFooter);
+
+    ParquetMetadata readFooter = ParquetFileReader.readFooter(conf, path);
+    assertEquals("footer: "+ readFooter, 2, readFooter.getBlocks().size());
+    assertEquals(c1Ends - c1Starts, readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize());
+    assertEquals(c2Ends - c2Starts, readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize());
+    assertEquals(c2Ends - c1Starts, readFooter.getBlocks().get(0).getTotalByteSize());
+    HashSet<Encoding> expectedEncoding=new HashSet<Encoding>();
+    expectedEncoding.add(PLAIN);
+    expectedEncoding.add(BIT_PACKED);
+    assertEquals(expectedEncoding,readFooter.getBlocks().get(0).getColumns().get(0).getEncodings());
+
+    // verify block starting positions with padding
+    assertEquals("First row group should start after magic",
+        4, readFooter.getBlocks().get(0).getStartingPos());
+    assertTrue("First row group should end before the block size (120)",
+        firstRowGroupEnds < 120);
+    assertEquals("Second row group should start at the block size",
+        120, readFooter.getBlocks().get(1).getStartingPos());
+
+    { // read first block of col #1
+      ParquetFileReader r = new ParquetFileReader(conf, path, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(SCHEMA.getColumnDescription(PATH1)));
+      PageReadStore pages = r.readNextRowGroup();
+      assertEquals(3, pages.getRowCount());
+      validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
+      validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
+      assertNull(r.readNextRowGroup());
+    }
+
+    { // read all blocks of col #1 and #2
+
+      ParquetFileReader r = new ParquetFileReader(conf, path, readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)));
+
+      PageReadStore pages = r.readNextRowGroup();
+      assertEquals(3, pages.getRowCount());
+      validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
+      validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
+      validateContains(SCHEMA, pages, PATH2, 2, BytesInput.from(BYTES2));
+      validateContains(SCHEMA, pages, PATH2, 3, BytesInput.from(BYTES2));
+      validateContains(SCHEMA, pages, PATH2, 1, BytesInput.from(BYTES2));
+
+      pages = r.readNextRowGroup();
+      assertEquals(4, pages.getRowCount());
+
+      validateContains(SCHEMA, pages, PATH1, 7, BytesInput.from(BYTES3));
+      validateContains(SCHEMA, pages, PATH2, 8, BytesInput.from(BYTES4));
+
+      assertNull(r.readNextRowGroup());
+    }
+    PrintFooter.main(new String[] {path.toString()});
+  }
+
+  @Test
+  public void testAlignmentWithNoPaddingNeeded() throws Exception {
+    File testFile = temp.newFile();
+
+    Path path = new Path(testFile.toURI());
+    Configuration conf = new Configuration();
+
+    // uses the test constructor
+    ParquetFileWriter w = new ParquetFileWriter(conf, SCHEMA, path, 100);
+
+    w.start();
+    w.startBlock(3);
+    w.startColumn(C1, 5, CODEC);
+    long c1Starts = w.getPos();
+    w.writeDataPage(2, 4, BytesInput.from(BYTES1), STATS1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(BYTES1), STATS1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    long c1Ends = w.getPos();
+    w.startColumn(C2, 6, CODEC);
+    long c2Starts = w.getPos();
+    w.writeDataPage(2, 4, BytesInput.from(BYTES2), STATS2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(BYTES2), STATS2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(1, 4, BytesInput.from(BYTES2), STATS2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    long c2Ends = w.getPos();
+    w.endBlock();
+
+    long firstRowGroupEnds = w.getPos(); // should be 109
+
+    w.startBlock(4);
+    w.startColumn(C1, 7, CODEC);
+    w.writeDataPage(7, 4, BytesInput.from(BYTES3), STATS1, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.startColumn(C2, 8, CODEC);
+    w.writeDataPage(8, 4, BytesInput.from(BYTES4), STATS2, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.endBlock();
+
+    long secondRowGroupEnds = w.getPos();
+
+    w.end(new HashMap<String, String>());
+
+    FileSystem fs = path.getFileSystem(conf);
+    long fileLen = fs.getFileStatus(path).getLen();
+
+    FSDataInputStream data = fs.open(path);
+    data.seek(fileLen - 8); // 4-byte offset + "PAR1"
+    long footerLen = BytesUtils.readIntLittleEndian(data);
+    long startFooter = fileLen - footerLen - 8;
+
+    assertEquals("Footer should start after second row group without padding",
+        secondRowGroupEnds, startFooter);
+
+    ParquetMetadata readFooter = ParquetFileReader.readFooter(conf, path);
+    assertEquals("footer: "+ readFooter, 2, readFooter.getBlocks().size());
+    assertEquals(c1Ends - c1Starts, readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize());
+    assertEquals(c2Ends - c2Starts, readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize());
+    assertEquals(c2Ends - c1Starts, readFooter.getBlocks().get(0).getTotalByteSize());
+    HashSet<Encoding> expectedEncoding=new HashSet<Encoding>();
+    expectedEncoding.add(PLAIN);
+    expectedEncoding.add(BIT_PACKED);
+    assertEquals(expectedEncoding,readFooter.getBlocks().get(0).getColumns().get(0).getEncodings());
+
+    // verify block starting positions with padding
+    assertEquals("First row group should start after magic",
+        4, readFooter.getBlocks().get(0).getStartingPos());
+    assertTrue("First row group should end before the block size (120)",
+        firstRowGroupEnds > 100);
+    assertEquals("Second row group should start after no padding",
+        109, readFooter.getBlocks().get(1).getStartingPos());
+
+    { // read first block of col #1
+      ParquetFileReader r = new ParquetFileReader(conf, path, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(SCHEMA.getColumnDescription(PATH1)));
+      PageReadStore pages = r.readNextRowGroup();
+      assertEquals(3, pages.getRowCount());
+      validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
+      validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
+      assertNull(r.readNextRowGroup());
+    }
+
+    { // read all blocks of col #1 and #2
+
+      ParquetFileReader r = new ParquetFileReader(conf, path, readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)));
+
+      PageReadStore pages = r.readNextRowGroup();
+      assertEquals(3, pages.getRowCount());
+      validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
+      validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
+      validateContains(SCHEMA, pages, PATH2, 2, BytesInput.from(BYTES2));
+      validateContains(SCHEMA, pages, PATH2, 3, BytesInput.from(BYTES2));
+      validateContains(SCHEMA, pages, PATH2, 1, BytesInput.from(BYTES2));
+
+      pages = r.readNextRowGroup();
+      assertEquals(4, pages.getRowCount());
+
+      validateContains(SCHEMA, pages, PATH1, 7, BytesInput.from(BYTES3));
+      validateContains(SCHEMA, pages, PATH2, 8, BytesInput.from(BYTES4));
 
       assertNull(r.readNextRowGroup());
     }
@@ -207,8 +426,7 @@ public class TestParquetFileWriter {
 
   @Test
   public void testWriteReadStatistics() throws Exception {
-
-    File testFile = new File("target/test/TestParquetFileWriter/testParquetFile").getAbsoluteFile();
+    File testFile = temp.newFile();
     testFile.delete();
 
     Path path = new Path(testFile.toURI());
@@ -296,7 +514,7 @@ public class TestParquetFileWriter {
   @Test
   public void testMetaDataFile() throws Exception {
 
-    File testDir = new File("target/test/TestParquetFileWriter/testMetaDataFileDir").getAbsoluteFile();
+    File testDir = temp.newFolder();
 
     Path testDirPath = new Path(testDir.toURI());
     Configuration configuration = new Configuration();
@@ -338,8 +556,7 @@ public class TestParquetFileWriter {
 
   @Test
   public void testWriteReadStatisticsAllNulls() throws Exception {
-
-    File testFile = new File("target/test/TestParquetFileWriter/testParquetFile").getAbsoluteFile();
+    File testFile = temp.newFile();
     testFile.delete();
 
     writeSchema = "message example {\n" +
