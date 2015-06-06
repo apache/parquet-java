@@ -664,8 +664,8 @@ public class ParquetFileWriter {
 
       if (isPaddingNeeded(remaining)) {
         if (DEBUG) LOG.debug("Adding " + remaining + " bytes of padding (" +
-            "row group size=" + rowGroupSize + "," +
-            "block size=" + dfsBlockSize + ")");
+            "row group size=" + rowGroupSize + "B, " +
+            "block size=" + dfsBlockSize + "B)");
         for (; remaining > 0; remaining -= zeros.length) {
           out.write(zeros, 0, (int) Math.min((long) zeros.length, remaining));
         }
