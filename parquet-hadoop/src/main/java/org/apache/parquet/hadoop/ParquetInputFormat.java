@@ -114,6 +114,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public static final String FILTER_PREDICATE = "parquet.private.read.filter.predicate";
 
   /**
+   * key to configure case sensitivity
+   */
+  public static final String CASE_SENSITIVITY = "parquet.read.case.sensitivity";
+
+  /**
    * key to turn on or off task side metadata loading (default true)
    * if true then metadata is read on the task side and some tasks may finish immediately.
    * if false metadata is read on the client which is slower if there is a lot of metadata but tasks will only be spawn if there is work to do.
@@ -126,8 +131,16 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     ContextUtil.getConfiguration(job).setBoolean(TASK_SIDE_METADATA, taskSideMetadata);
   }
 
+  public static void setCaseSensitiveRead(Job job, boolean isCaseSensitive) {
+    ContextUtil.getConfiguration(job).setBoolean(CASE_SENSITIVITY, isCaseSensitive);
+  }
+
   public static boolean isTaskSideMetaData(Configuration configuration) {
     return configuration.getBoolean(TASK_SIDE_METADATA, TRUE);
+  }
+
+  public static boolean isCaseSensitiveRead(Configuration configuration) {
+    return configuration.getBoolean(CASE_SENSITIVITY, TRUE);
   }
 
   public static void setReadSupportClass(Job job,  Class<?> readSupportClass) {

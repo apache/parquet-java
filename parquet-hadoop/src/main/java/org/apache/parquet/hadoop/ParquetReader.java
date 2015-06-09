@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop;
 
+import static java.lang.Boolean.TRUE;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 import java.io.Closeable;
@@ -144,8 +145,9 @@ public class ParquetReader<T> implements Closeable {
 
       MessageType fileSchema = footer.getParquetMetadata().getFileMetaData().getSchema();
 
+      boolean isCaseSensitive = conf.getBoolean(ParquetInputFormat.CASE_SENSITIVITY, TRUE);
       List<BlockMetaData> filteredBlocks = RowGroupFilter.filterRowGroups(
-          filter, blocks, fileSchema);
+          filter, blocks, fileSchema, isCaseSensitive);
 
       reader = new InternalParquetRecordReader<T>(readSupport, filter);
       reader.initialize(fileSchema,
