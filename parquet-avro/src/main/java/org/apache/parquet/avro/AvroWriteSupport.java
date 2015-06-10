@@ -252,9 +252,9 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
       recordConsumer.addDouble(((Number) value).doubleValue());
     } else if (avroType.equals(Schema.Type.BYTES)) {
       if (value instanceof byte[]) {
-        recordConsumer.addBinary(Binary.fromUnmodifiedByteArray((byte[]) value));
+        recordConsumer.addBinary(Binary.fromConstantByteArray((byte[]) value));
       } else {
-        recordConsumer.addBinary(Binary.fromUnmodifiedByteBuffer((ByteBuffer) value));
+        recordConsumer.addBinary(Binary.fromConstantByteBuffer((ByteBuffer) value));
       }
     } else if (avroType.equals(Schema.Type.STRING)) {
       recordConsumer.addBinary(fromAvroString(value));
@@ -269,14 +269,14 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     } else if (avroType.equals(Schema.Type.UNION)) {
       writeUnion(type.asGroupType(), nonNullAvroSchema, value);
     } else if (avroType.equals(Schema.Type.FIXED)) {
-      recordConsumer.addBinary(Binary.fromUnmodifiedByteArray(((GenericFixed) value).bytes()));
+      recordConsumer.addBinary(Binary.fromConstantByteArray(((GenericFixed) value).bytes()));
     }
   }
 
   private Binary fromAvroString(Object value) {
     if (value instanceof Utf8) {
       Utf8 utf8 = (Utf8) value;
-      return Binary.fromUnmodifiedByteArray(utf8.getBytes(), 0, utf8.getByteLength());
+      return Binary.fromConstantByteArray(utf8.getBytes(), 0, utf8.getByteLength());
     }
     return Binary.fromString(value.toString());
   }

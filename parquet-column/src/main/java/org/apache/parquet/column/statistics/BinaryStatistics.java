@@ -46,8 +46,8 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    max = Binary.fromUnmodifiedByteArray(maxBytes);
-    min = Binary.fromUnmodifiedByteArray(minBytes);
+    max = Binary.fromConstantByteArray(maxBytes);
+    min = Binary.fromConstantByteArray(minBytes);
     this.markAsNotEmpty();
   }
 

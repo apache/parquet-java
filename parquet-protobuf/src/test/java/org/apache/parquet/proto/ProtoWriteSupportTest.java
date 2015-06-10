@@ -50,7 +50,7 @@ public class ProtoWriteSupportTest {
 
     inOrder.verify(readConsumerMock).startMessage();
     inOrder.verify(readConsumerMock).startField("one", 0);
-    inOrder.verify(readConsumerMock).addBinary(Binary.fromUnmodifiedByteArray("oneValue".getBytes()));
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("oneValue".getBytes()));
     inOrder.verify(readConsumerMock).endField("one", 0);
 
     inOrder.verify(readConsumerMock).endMessage();
@@ -95,10 +95,10 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).startField("inner", 0);
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("one", 0);
-    inOrder.verify(readConsumerMock).addBinary(Binary.fromUnmodifiedByteArray("one".getBytes()));
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("one".getBytes()));
     inOrder.verify(readConsumerMock).endField("one", 0);
     inOrder.verify(readConsumerMock).startField("two", 1);
-    inOrder.verify(readConsumerMock).addBinary(Binary.fromUnmodifiedByteArray("two".getBytes()));
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("two".getBytes()));
     inOrder.verify(readConsumerMock).endField("two", 1);
     inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("inner", 0);
@@ -124,14 +124,14 @@ public class ProtoWriteSupportTest {
     //first inner message
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("one", 0);
-    inOrder.verify(readConsumerMock).addBinary(Binary.fromUnmodifiedByteArray("one".getBytes()));
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("one".getBytes()));
     inOrder.verify(readConsumerMock).endField("one", 0);
     inOrder.verify(readConsumerMock).endGroup();
 
     //second inner message
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("two", 1);
-    inOrder.verify(readConsumerMock).addBinary(Binary.fromUnmodifiedByteArray("two".getBytes()));
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("two".getBytes()));
     inOrder.verify(readConsumerMock).endField("two", 1);
     inOrder.verify(readConsumerMock).endGroup();
 
@@ -157,7 +157,7 @@ public class ProtoWriteSupportTest {
 
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("one", 0);
-    inOrder.verify(readConsumerMock).addBinary(Binary.fromUnmodifiedByteArray("one".getBytes()));
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("one".getBytes()));
     inOrder.verify(readConsumerMock).endField("one", 0);
     inOrder.verify(readConsumerMock).endGroup();
 

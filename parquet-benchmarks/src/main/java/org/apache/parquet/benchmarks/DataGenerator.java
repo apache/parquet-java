@@ -107,7 +107,7 @@ public class DataGenerator {
           .append("float_field", 1.0f)
           .append("double_field", 2.0d)
           .append("flba_field", new String(chars))
-          .append("int96_field", Binary.fromUnmodifiedByteArray(new byte[12]))
+          .append("int96_field", Binary.fromConstantByteArray(new byte[12]))
       );
     }
     writer.close();

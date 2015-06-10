@@ -57,7 +57,7 @@ public class BinaryWritable implements Writable {
   public void readFields(DataInput input) throws IOException {
     byte[] bytes = new byte[input.readInt()];
     input.readFully(bytes);
-    binary = Binary.fromUnmodifiedByteArray(bytes);
+    binary = Binary.fromConstantByteArray(bytes);
   }
 
   @Override

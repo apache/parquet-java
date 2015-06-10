@@ -46,7 +46,7 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
     try {
       int start = offset;
       offset = start + length;
-      return Binary.fromUnmodifiedByteArray(in, start, length);
+      return Binary.fromConstantByteArray(in, start, length);
     } catch (RuntimeException e) {
       throw new ParquetDecodingException("could not read bytes at offset " + offset, e);
     }
