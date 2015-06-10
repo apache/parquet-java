@@ -77,6 +77,7 @@ public class ParquetMetadataConverter {
   public static final MetadataFilter SKIP_ROW_GROUPS = new SkipMetadataFilter();
 
   private static final Log LOG = Log.getLog(ParquetMetadataConverter.class);
+  private static final int STATISTICS_FIXED_VERSION = 161; // 1.6.1
 
   // NOTE: this cache is for memory savings, not cpu savings, and is used to de-duplicate
   // sets of encodings. It is important that all collections inserted to this cache be
@@ -181,7 +182,8 @@ public class ParquetMetadataConverter {
           columnMetaData.getFirstDataPageOffset());
       columnChunk.meta_data.dictionary_page_offset = columnMetaData.getDictionaryPageOffset();
       if (!columnMetaData.getStatistics().isEmpty()) {
-        columnChunk.meta_data.setStatistics(toParquetStatistics(columnMetaData.getStatistics()));
+        columnChunk.meta_data.setStatistics(
+            toParquetStatistics(columnMetaData.getStatistics()));
       }
 //      columnChunk.meta_data.index_page_offset = ;
 //      columnChunk.meta_data.key_value_metadata = ; // nothing yet
@@ -232,14 +234,15 @@ public class ParquetMetadataConverter {
     return Encoding.valueOf(encoding.name());
   }
 
-  public static Statistics toParquetStatistics(org.apache.parquet.column.statistics.Statistics statistics) {
+  public static Statistics toParquetStatistics(
+      org.apache.parquet.column.statistics.Statistics statistics) {
     Statistics stats = new Statistics();
     if (!statistics.isEmpty()) {
       stats.setNull_count(statistics.getNumNulls());
-      if(statistics.hasNonNullValue()) {
+      if (statistics.hasNonNullValue()) {
         stats.setMax(statistics.getMaxBytes());
         stats.setMin(statistics.getMinBytes());
-     }
+      }
     }
     return stats;
   }
@@ -517,10 +520,12 @@ public class ParquetMetadataConverter {
       public FileMetaData visit(NoFilter filter) throws IOException {
         return readFileMetaData(from);
       }
+
       @Override
       public FileMetaData visit(SkipMetadataFilter filter) throws IOException {
         return readFileMetaData(from, true);
       }
+
       @Override
       public FileMetaData visit(RangeMetadataFilter filter) throws IOException {
         return filterFileMetaData(readFileMetaData(from), filter);
@@ -672,7 +677,10 @@ public class ParquetMetadataConverter {
       org.apache.parquet.column.Encoding dlEncoding,
       org.apache.parquet.column.Encoding valuesEncoding,
       OutputStream to) throws IOException {
-    writePageHeader(newDataPageHeader(uncompressedSize, compressedSize, valueCount, statistics, rlEncoding, dlEncoding, valuesEncoding), to);
+    writePageHeader(
+        newDataPageHeader(uncompressedSize, compressedSize, valueCount, statistics,
+            rlEncoding, dlEncoding, valuesEncoding),
+        to);
   }
 
   private static PageHeader newDataPageHeader(
@@ -690,7 +698,8 @@ public class ParquetMetadataConverter {
         getEncoding(dlEncoding),
         getEncoding(rlEncoding)));
     if (!statistics.isEmpty()) {
-      pageHeader.getData_page_header().setStatistics(toParquetStatistics(statistics));
+      pageHeader.getData_page_header().setStatistics(
+          toParquetStatistics(statistics));
     }
     return pageHeader;
   }
@@ -723,7 +732,8 @@ public class ParquetMetadataConverter {
         getEncoding(dataEncoding),
         dlByteLength, rlByteLength);
     if (!statistics.isEmpty()) {
-      dataPageHeaderV2.setStatistics(toParquetStatistics(statistics));
+      dataPageHeaderV2.setStatistics(
+          toParquetStatistics(statistics));
     }
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE_V2, uncompressedSize, compressedSize);
     pageHeader.setData_page_header_v2(dataPageHeaderV2);
