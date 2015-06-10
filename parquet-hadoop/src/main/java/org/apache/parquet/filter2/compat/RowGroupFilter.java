@@ -28,7 +28,6 @@ import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.SchemaCompatibilityValidator;
 import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
-import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.MessageType;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
@@ -39,47 +38,21 @@ import static org.apache.parquet.Preconditions.checkNotNull;
  * no filtering will be performed.
  */
 public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
-  private static final int STATISTICS_FIXED_VERSION = 161; // 1.6.1
   private final List<BlockMetaData> blocks;
   private final MessageType schema;
-  private final Boolean skipStatisticsChecks;
 
-  public static List<BlockMetaData> filterRowGroups(Filter filter, ParquetMetadata footer,
-                                                    MessageType schema) {
+  public static List<BlockMetaData> filterRowGroups(Filter filter, List<BlockMetaData> blocks, MessageType schema) {
     checkNotNull(filter, "filter");
-    return filter.accept(new RowGroupFilter(footer, schema));
+    return filter.accept(new RowGroupFilter(blocks, schema));
   }
 
-  private RowGroupFilter(ParquetMetadata footer, MessageType schema) {
-    String createdBy = checkNotNull(footer.getFileMetaData().getCreatedBy(), "createdBy");
-    this.skipStatisticsChecks = shouldIgnoreStatistics(createdBy);
-    this.blocks = checkNotNull(footer.getBlocks(), "blocks");
+  private RowGroupFilter(List<BlockMetaData> blocks, MessageType schema) {
+    this.blocks = checkNotNull(blocks, "blocks");
     this.schema = checkNotNull(schema, "schema");
-  }
-
-  private static boolean shouldIgnoreStatistics(String createdBy) {
-    final String[] versionTokens = createdBy.split(" ");
-
-    if (versionTokens.length < 3) {
-      return true;
-    }
-
-    final String app = versionTokens[0];
-    final String version = versionTokens[2].substring(0, 5).replaceAll("\\.", "");
-
-    if (app.equalsIgnoreCase("parquet-mr")) {
-      return Integer.parseInt(version) < STATISTICS_FIXED_VERSION;
-    }
-
-    return true;
   }
 
   @Override
   public List<BlockMetaData> visit(FilterCompat.FilterPredicateCompat filterPredicateCompat) {
-    if (skipStatisticsChecks) {
-      return blocks;
-    }
-
     FilterPredicate filterPredicate = filterPredicateCompat.getFilterPredicate();
 
     // check that the schema of the filter matches the schema of the file
