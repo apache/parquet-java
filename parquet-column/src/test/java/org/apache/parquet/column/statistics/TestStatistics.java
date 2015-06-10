@@ -388,13 +388,14 @@ public class TestStatistics {
     BinaryStatistics stats = new BinaryStatistics();
 
     byte[] bytes = new byte[] { 10 };
-    stats.updateStats(Binary.fromReusedByteArray(bytes));
+    final Binary value = Binary.fromReusedByteArray(bytes);
+    stats.updateStats(value);
 
     bytes[0] = 20;
-    stats.updateStats(Binary.fromReusedByteArray(bytes));
+    stats.updateStats(value);
 
     bytes[0] = 15;
-    stats.updateStats(Binary.fromReusedByteArray(bytes));
+    stats.updateStats(value);
 
     assertArrayEquals(new byte[] { 20 }, stats.getMaxBytes());
     assertArrayEquals(new byte[] { 10 }, stats.getMinBytes());
