@@ -418,7 +418,7 @@ public class TestParquetFileWriter {
       parquetMRstats.updateStats(l);
     }
     final String createdBy =
-        "parquet-mr version 1.7.0rc3 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
+        "parquet-mr version 1.8.0rc3 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
     Statistics thriftStats =
         org.apache.parquet.format.converter.ParquetMetadataConverter.toParquetStatistics(
             createdBy, parquetMRstats);

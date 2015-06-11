@@ -276,7 +276,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   private Binary fromAvroString(Object value) {
     if (value instanceof Utf8) {
       Utf8 utf8 = (Utf8) value;
-      return Binary.fromConstantByteArray(utf8.getBytes(), 0, utf8.getByteLength());
+      return Binary.fromReusedByteArray(utf8.getBytes(), 0, utf8.getByteLength());
     }
     return Binary.fromString(value.toString());
   }

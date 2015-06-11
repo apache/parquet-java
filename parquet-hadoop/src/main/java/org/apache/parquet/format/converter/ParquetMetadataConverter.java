@@ -77,7 +77,7 @@ public class ParquetMetadataConverter {
   public static final MetadataFilter SKIP_ROW_GROUPS = new SkipMetadataFilter();
 
   private static final Log LOG = Log.getLog(ParquetMetadataConverter.class);
-  private static final int STATISTICS_FIXED_VERSION = 161; // 1.6.1
+  private static final int STATISTICS_FIXED_VERSION = 180; // 1.8.0
 
   // NOTE: this cache is for memory savings, not cpu savings, and is used to de-duplicate
   // sets of encodings. It is important that all collections inserted to this cache be
