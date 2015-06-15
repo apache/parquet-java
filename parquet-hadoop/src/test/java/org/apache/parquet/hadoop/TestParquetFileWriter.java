@@ -210,7 +210,7 @@ public class TestParquetFileWriter {
     Configuration conf = new Configuration();
 
     // uses the test constructor
-    ParquetFileWriter w = new ParquetFileWriter(conf, SCHEMA, path, 120);
+    ParquetFileWriter w = new ParquetFileWriter(conf, SCHEMA, path, 120, 60);
 
     w.start();
     w.startBlock(3);
@@ -313,7 +313,7 @@ public class TestParquetFileWriter {
     Configuration conf = new Configuration();
 
     // uses the test constructor
-    ParquetFileWriter w = new ParquetFileWriter(conf, SCHEMA, path, 100);
+    ParquetFileWriter w = new ParquetFileWriter(conf, SCHEMA, path, 100, 50);
 
     w.start();
     w.startBlock(3);

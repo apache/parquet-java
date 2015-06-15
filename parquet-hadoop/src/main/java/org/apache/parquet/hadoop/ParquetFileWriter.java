@@ -20,6 +20,8 @@ package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.Log.DEBUG;
 import static org.apache.parquet.format.Util.writeFileMetaData;
+import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
+import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -78,6 +80,8 @@ public class ParquetFileWriter {
   static final Set<String> BLOCK_FS_SCHEMES = new HashSet<String>();
   static {
     BLOCK_FS_SCHEMES.add("hdfs");
+    BLOCK_FS_SCHEMES.add("webhdfs");
+    BLOCK_FS_SCHEMES.add("viewfs");
   }
 
   private static boolean supportsBlockSize(FileSystem fs) {
@@ -172,7 +176,8 @@ public class ParquetFileWriter {
    */
   public ParquetFileWriter(Configuration configuration, MessageType schema,
       Path file) throws IOException {
-    this(configuration, schema, file, Mode.CREATE, ParquetWriter.DEFAULT_BLOCK_SIZE);
+    this(configuration, schema, file, Mode.CREATE, DEFAULT_BLOCK_SIZE,
+        MAX_PADDING_SIZE_DEFAULT);
   }
 
   /**
@@ -184,7 +189,8 @@ public class ParquetFileWriter {
    */
   public ParquetFileWriter(Configuration configuration, MessageType schema,
                            Path file, Mode mode) throws IOException {
-    this(configuration, schema, file, mode, ParquetWriter.DEFAULT_BLOCK_SIZE);
+    this(configuration, schema, file, mode, DEFAULT_BLOCK_SIZE,
+        MAX_PADDING_SIZE_DEFAULT);
   }
 
   /**
@@ -196,7 +202,9 @@ public class ParquetFileWriter {
    * @throws IOException if the file can not be created
    */
   public ParquetFileWriter(Configuration configuration, MessageType schema,
-      Path file, Mode mode, long rowGroupSize) throws IOException {
+                           Path file, Mode mode, long rowGroupSize,
+                           int maxPaddingSize)
+      throws IOException {
     this.schema = schema;
     FileSystem fs = file.getFileSystem(configuration);
     boolean overwriteFlag = (mode == Mode.OVERWRITE);
@@ -205,7 +213,8 @@ public class ParquetFileWriter {
       // use the default block size, unless row group size is larger
       long dfsBlockSize = Math.max(fs.getDefaultBlockSize(file), rowGroupSize);
 
-      this.alignment = PaddingAlignment.get(dfsBlockSize, rowGroupSize);
+      this.alignment = PaddingAlignment.get(
+          dfsBlockSize, rowGroupSize, maxPaddingSize);
       this.out = fs.create(file, overwriteFlag, DFS_BUFFER_SIZE_DEFAULT,
           fs.getDefaultReplication(file), dfsBlockSize);
 
@@ -225,11 +234,12 @@ public class ParquetFileWriter {
    * @throws IOException if the file can not be created
    */
   ParquetFileWriter(Configuration configuration, MessageType schema,
-                    Path file, long rowAndBlockSize)
+                    Path file, long rowAndBlockSize, int maxPaddingSize)
       throws IOException {
     FileSystem fs = file.getFileSystem(configuration);
     this.schema = schema;
-    this.alignment = PaddingAlignment.get(rowAndBlockSize, rowAndBlockSize);
+    this.alignment = PaddingAlignment.get(
+        rowAndBlockSize, rowAndBlockSize, maxPaddingSize);
     this.out = fs.create(file, true, DFS_BUFFER_SIZE_DEFAULT,
         fs.getDefaultReplication(file), rowAndBlockSize);
   }
@@ -264,7 +274,6 @@ public class ParquetFileWriter {
    * start a column inside a block
    * @param descriptor the column descriptor
    * @param valueCount the value count in this column
-   * @param statistics the statistics in this column
    * @param compressionCodecName
    * @throws IOException
    */
@@ -646,16 +655,20 @@ public class ParquetFileWriter {
   private static class PaddingAlignment implements AlignmentStrategy {
     private static final byte[] zeros = new byte[4096];
 
-    public static PaddingAlignment get(long dfsBlockSize, long rowGroupSize) {
-      return new PaddingAlignment(dfsBlockSize, rowGroupSize);
+    public static PaddingAlignment get(long dfsBlockSize, long rowGroupSize,
+                                       int maxPaddingSize) {
+      return new PaddingAlignment(dfsBlockSize, rowGroupSize, maxPaddingSize);
     }
 
     protected final long dfsBlockSize;
     protected final long rowGroupSize;
+    protected final float maxPaddingSize;
 
-    public PaddingAlignment(long dfsBlockSize, long rowGroupSize) {
+    private PaddingAlignment(long dfsBlockSize, long rowGroupSize,
+                            float maxPaddingSize) {
       this.dfsBlockSize = dfsBlockSize;
       this.rowGroupSize = rowGroupSize;
+      this.maxPaddingSize = maxPaddingSize;
     }
 
     @Override
@@ -684,7 +697,7 @@ public class ParquetFileWriter {
     }
 
     protected boolean isPaddingNeeded(long remaining) {
-      return (remaining < (rowGroupSize / 2));
+      return (remaining <= maxPaddingSize);
     }
   }
 }
