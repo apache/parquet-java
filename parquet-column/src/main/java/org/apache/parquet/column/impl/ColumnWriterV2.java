@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -34,6 +34,7 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -55,6 +56,7 @@ final class ColumnWriterV2 implements ColumnWriter {
   private RunLengthBitPackingHybridEncoder definitionLevelColumn;
   private ValuesWriter dataColumn;
   private int valueCount;
+  private BloomFilterOpts opts;
 
   private Statistics<?> statistics;
   private long rowsWrittenSoFar = 0;
@@ -70,6 +72,7 @@ final class ColumnWriterV2 implements ColumnWriter {
     this.repetitionLevelColumn = props.newRepetitionLevelEncoder(path);
     this.definitionLevelColumn = props.newDefinitionLevelEncoder(path);
     this.dataColumn = props.newValuesWriter(path);
+    this.opts = props.getBloomFilterOpts();
   }
 
   private void log(Object value, int r, int d) {
@@ -77,7 +80,7 @@ final class ColumnWriterV2 implements ColumnWriter {
   }
 
   private void resetStatistics() {
-    this.statistics = Statistics.getStatsBasedOnType(this.path.getType());
+    this.statistics = Statistics.getStatsBasedOnType(this.path.getType(), opts);
   }
 
   private void definitionLevel(int definitionLevel) {

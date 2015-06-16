@@ -19,6 +19,7 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.column.UnknownColumnTypeException;
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import java.util.Arrays;
@@ -44,10 +45,10 @@ public abstract class Statistics<T extends Comparable<T>> {
    * @param type PrimitiveTypeName type of the column
    * @return instance of a typed statistics class
    */
-  public static Statistics getStatsBasedOnType(PrimitiveTypeName type) {
+  public static Statistics getStatsBasedOnType(PrimitiveTypeName type, BloomFilterOpts opts) {
     switch(type) {
     case INT32:
-      return new IntStatistics();
+      return new IntStatistics(opts);
     case INT64:
       return new LongStatistics();
     case FLOAT:
@@ -159,6 +160,11 @@ public abstract class Statistics<T extends Comparable<T>> {
     } else {
       throw new StatisticsClassException(this.getClass().toString(), stats.getClass().toString());
     }
+    mergeBloomFilters(stats);
+  }
+
+  public void mergeBloomFilters(Statistics stats){
+    // Do nothing if it doesn't support bloom filter.
   }
 
   /**
@@ -194,7 +200,6 @@ public abstract class Statistics<T extends Comparable<T>> {
    * toString() to display min, max, num_nulls in a string
    */
   abstract public String toString();
-
 
   /**
    * Increments the null count by one

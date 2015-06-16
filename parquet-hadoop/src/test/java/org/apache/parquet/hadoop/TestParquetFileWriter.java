@@ -31,6 +31,9 @@ import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.junit.Assume;
 import org.junit.Rule;
+import org.apache.parquet.column.statistics.IntStatistics;
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOptBuilder;
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
 import org.junit.Test;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
@@ -443,6 +446,57 @@ public class TestParquetFileWriter {
   }
 
   @Test
+  public void testBloomFilterConverter() {
+    int v1 = 39;
+    int v2 = 99;
+    int v3 = 1000;
+    final String createdBy =
+        "parquet-mr version 1.8.0 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
+    BloomFilterOpts opts =
+        new BloomFilterOptBuilder().enable(true).expectedEntries(100).fpp(0.05).build();
+    IntStatistics parquetMRstats = new IntStatistics(opts);
+    parquetMRstats.updateStats(v1);
+
+    Statistics thriftStats = org.apache.parquet.format.converter.ParquetMetadataConverter
+        .toParquetStatistics(parquetMRstats);
+    IntStatistics convertedBackStats =
+        (IntStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter
+            .fromParquetStatistics(createdBy, thriftStats, PrimitiveTypeName.INT32);
+    assertTrue(parquetMRstats.test(v1));
+    assertTrue(convertedBackStats.test(v1));
+    assertFalse(parquetMRstats.test(v2));
+    assertFalse(convertedBackStats.test(v2));
+    assertFalse(parquetMRstats.test(v3));
+    assertFalse(convertedBackStats.test(v3));
+
+    parquetMRstats.updateStats(v2);
+    thriftStats = org.apache.parquet.format.converter.ParquetMetadataConverter
+        .toParquetStatistics(parquetMRstats);
+    convertedBackStats =
+        (IntStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter
+            .fromParquetStatistics(createdBy, thriftStats, PrimitiveTypeName.INT32);
+    assertTrue(parquetMRstats.test(v1));
+    assertTrue(convertedBackStats.test(v1));
+    assertTrue(parquetMRstats.test(v2));
+    assertTrue(convertedBackStats.test(v2));
+    assertFalse(parquetMRstats.test(v3));
+    assertFalse(convertedBackStats.test(v3));
+
+    parquetMRstats.updateStats(v3);
+    thriftStats = org.apache.parquet.format.converter.ParquetMetadataConverter
+        .toParquetStatistics(parquetMRstats);
+    convertedBackStats =
+        (IntStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter
+            .fromParquetStatistics(createdBy, thriftStats, PrimitiveTypeName.INT32);
+    assertTrue(parquetMRstats.test(v1));
+    assertTrue(convertedBackStats.test(v1));
+    assertTrue(parquetMRstats.test(v2));
+    assertTrue(convertedBackStats.test(v2));
+    assertTrue(parquetMRstats.test(v3));
+    assertTrue(convertedBackStats.test(v3));
+  }
+
+  @Test
   public void testWriteReadStatistics() throws Exception {
     // this test assumes statistics will be read
     Assume.assumeTrue(!shouldIgnoreStatistics(Version.FULL_VERSION, BINARY));
@@ -523,8 +577,12 @@ public class TestParquetFileWriter {
       String str = new String(bsout.getMaxBytes());
       String str2 = new String(bsout.getMinBytes());
 
-      assertTrue(((BinaryStatistics)readFooter.getBlocks().get(0).getColumns().get(0).getStatistics()).equals(bs1));
-      assertTrue(((LongStatistics)readFooter.getBlocks().get(0).getColumns().get(1).getStatistics()).equals(ls1));
+      assertTrue(
+          ((BinaryStatistics) readFooter.getBlocks().get(0).getColumns().get(0).getStatistics())
+              .equals(bs1));
+      assertTrue(
+          ((LongStatistics) readFooter.getBlocks().get(0).getColumns().get(1).getStatistics())
+              .equals(ls1));
     }
     { // assert stats are correct for the second block
       assertTrue(((BinaryStatistics)readFooter.getBlocks().get(1).getColumns().get(0).getStatistics()).equals(bs2));

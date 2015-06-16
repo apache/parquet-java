@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOptBuilder;
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
 import org.junit.Test;
 
 import org.apache.parquet.column.statistics.IntStatistics;
@@ -97,6 +99,47 @@ public class TestRowGroupFilter {
 
     filtered = RowGroupFilter.filterRowGroups(FilterCompat.get(eq(foo, 0)), blocks, schema);
     assertEquals(Arrays.asList(b6), filtered);
+  }
+
+  @Test
+  public void testApplyRowGroupFiltersWithBloomFilter() {
+
+    List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
+
+    BloomFilterOpts opts = new BloomFilterOptBuilder().enable(true).expectedEntries(1000).build();
+
+    IntStatistics stats1 = new IntStatistics(opts);
+    stats1.setMinMax(10, 100);
+    stats1.setNumNulls(4);
+    stats1.add(25);
+    stats1.add(30);
+    stats1.add(43);
+    BlockMetaData b1 = makeBlockFromStats(stats1, 301);
+    blocks.add(b1);
+
+    IntStatistics stats2 = new IntStatistics(opts);
+    stats2.setMinMax(8, 102);
+    stats2.setNumNulls(0);
+    stats2.add(12);
+    stats2.add(30);
+    stats2.add(90);
+    BlockMetaData b2 = makeBlockFromStats(stats2, 302);
+    blocks.add(b2);
+
+    IntStatistics stats3 = new IntStatistics(opts);
+    stats3.setMinMax(3, 90);
+    stats3.setNumNulls(12);
+    stats3.add(20);
+    stats1.add(40);
+    BlockMetaData b3 = makeBlockFromStats(stats3, 303);
+    blocks.add(b3);
+
+
+    MessageType schema = MessageTypeParser.parseMessageType("message Document { optional int32 foo; }");
+    IntColumn foo = intColumn("foo");
+
+    List<BlockMetaData> filtered = RowGroupFilter.filterRowGroups(FilterCompat.get(eq(foo, 30)), blocks, schema);
+    assertEquals(Arrays.asList(b1, b2), filtered);
   }
 
 }

@@ -102,7 +102,9 @@ public class TestColumnChunkPageWriteStore {
       writer.start();
       writer.startBlock(rowCount);
       {
-        ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(compressor(GZIP), schema , new HeapByteBufferAllocator());
+        ColumnChunkPageWriteStore store =
+            new ColumnChunkPageWriteStore(compressor(GZIP), schema, new HeapByteBufferAllocator(),
+                null);
         PageWriter pageWriter = store.getPageWriter(col);
         pageWriter.writePageV2(
             rowCount, nullCount, valueCount,
@@ -161,8 +163,9 @@ public class TestColumnChunkPageWriteStore {
 
     // TODO - look back at this, an allocator was being passed here in the ByteBuffer changes
     // see comment at this constructor
-    ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(
-        compressor(UNCOMPRESSED), schema, new HeapByteBufferAllocator());
+    ColumnChunkPageWriteStore store =
+        new ColumnChunkPageWriteStore(compressor(UNCOMPRESSED), schema,
+            new HeapByteBufferAllocator(), null);
 
     for (ColumnDescriptor col : schema.getColumns()) {
       PageWriter pageWriter = store.getPageWriter(col);

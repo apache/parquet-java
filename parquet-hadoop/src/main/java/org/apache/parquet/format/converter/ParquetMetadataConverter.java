@@ -38,7 +38,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.Log;
-import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilterStatistics;
+import org.apache.parquet.format.BloomFilterStats;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnMetaData;
 import org.apache.parquet.format.ConvertedType;
@@ -55,6 +57,7 @@ import org.apache.parquet.format.RowGroup;
 import org.apache.parquet.format.SchemaElement;
 import org.apache.parquet.format.Statistics;
 import org.apache.parquet.format.Type;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -240,31 +243,66 @@ public class ParquetMetadataConverter {
       if (statistics.hasNonNullValue()) {
         stats.setMax(statistics.getMaxBytes());
         stats.setMin(statistics.getMinBytes());
-      }
+        setBloomFilter(stats, statistics);
+     }
     }
     return stats;
   }
-  /**
-   * @deprecated Replaced by {@link #fromParquetStatistics(
-   * String createdBy, Statistics statistics, PrimitiveTypeName type)}
-   */
-  @Deprecated
-  public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics(Statistics statistics, PrimitiveTypeName type) {
-    return fromParquetStatistics(null, statistics, type);
+
+  private static void setBloomFilter(Statistics stats,
+      org.apache.parquet.column.statistics.Statistics statistics) {
+    if (!(statistics instanceof BloomFilterStatistics)) {
+      return;
+    }
+    BloomFilterStatistics bfStatistics = (BloomFilterStatistics) statistics;
+    if (!bfStatistics.isBloomFilterEnabled()) {
+      return;
+    } else {
+      stats.setBloom_filter_enabled(true);
+    }
+    BloomFilterStats bfStats = stats.getBloom_filter_stats();
+    if (bfStats == null) {
+      bfStats =
+          new BloomFilterStats(bfStatistics.getBitSet(), bfStatistics.getBloomFilter().getNumBits(),
+              bfStatistics.getBloomFilter().getNumHashFunctions());
+      stats.setBloom_filter_stats(bfStats);
+      return;
+    }
+
+    if (bfStats.getNumBits() != bfStatistics.getBloomFilter().getBitSize()
+        || bfStats.getNumHashFunctions() != bfStatistics.getBloomFilter().getNumHashFunctions()) {
+      throw new RuntimeException("Inconsistent configuration for bloom filter");
+    }
+
+    bfStats.setBitSet(bfStatistics.getBitSet());
   }
 
-  public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics
-      (String createdBy, Statistics statistics, PrimitiveTypeName type) {
-    // create stats object based on the column type
-    org.apache.parquet.column.statistics.Statistics stats = org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType(type);
+  public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
+      String createdBy,
+      Statistics statistics,
+      PrimitiveTypeName type) {
+    org.apache.parquet.column.statistics.Statistics stats;
     // If there was no statistics written to the footer, create an empty Statistics object and return
-
     // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
     if (statistics != null && !CorruptStatistics.shouldIgnoreStatistics(createdBy, type)) {
+      BloomFilterOpts opts = null;
+      if (statistics.isBloom_filter_enabled()) {
+        opts = new BloomFilterOpts(statistics.getBloom_filter_stats().getNumBits(),
+            statistics.getBloom_filter_stats().getNumHashFunctions());
+      }
+      // create stats object based on the column type
+      stats = org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType(type, opts);
+
       if (statistics.isSetMax() && statistics.isSetMin()) {
         stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
       }
+      if (statistics.isBloom_filter_enabled() && stats instanceof BloomFilterStatistics) {
+        BloomFilterStatistics bfStats = (BloomFilterStatistics) stats;
+        bfStats.setBitSet(statistics.getBloom_filter_stats().getBitSet());
+      }
       stats.setNumNulls(statistics.null_count);
+    } else {
+      stats = org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType(type, null);
     }
     return stats;
   }

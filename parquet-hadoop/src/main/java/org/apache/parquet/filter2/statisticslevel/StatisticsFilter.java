@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilterStatistics;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.And;
@@ -121,7 +122,16 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     // drop if value < min || value > max
-    return value.compareTo(stats.genericGetMin()) < 0 || value.compareTo(stats.genericGetMax()) > 0;
+    boolean isWithinRange =
+        value.compareTo(stats.genericGetMin()) < 0 || value.compareTo(stats.genericGetMax()) > 0;
+    // drop it if not hit the bloom filter
+    if (isWithinRange || stats instanceof BloomFilterStatistics) {
+      BloomFilterStatistics bfStats = (BloomFilterStatistics) stats;
+      if (bfStats.isBloomFilterEnabled()) {
+        return isWithinRange || !bfStats.test(value);
+      }
+    }
+    return isWithinRange;
   }
 
   @Override

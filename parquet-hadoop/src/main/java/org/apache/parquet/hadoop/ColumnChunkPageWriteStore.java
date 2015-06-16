@@ -38,6 +38,7 @@ import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -68,14 +69,16 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
     private Statistics totalStatistics;
     private final ByteBufferAllocator allocator;
 
-    private ColumnChunkPageWriter(ColumnDescriptor path,
-                                  BytesCompressor compressor,
-                                  ByteBufferAllocator allocator) {
+    private ColumnChunkPageWriter(
+        ColumnDescriptor path,
+        BytesCompressor compressor,
+        ByteBufferAllocator allocator,
+        BloomFilterOpts opts) {
       this.path = path;
       this.compressor = compressor;
       this.allocator = allocator;
       this.buf = new ConcatenatingByteArrayCollector();
-      this.totalStatistics = getStatsBasedOnType(this.path.getType());
+      this.totalStatistics = getStatsBasedOnType(this.path.getType(), opts);
     }
 
     @Override
@@ -226,10 +229,14 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
   private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
   private final MessageType schema;
 
-  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator) {
+  public ColumnChunkPageWriteStore(
+      BytesCompressor compressor,
+      MessageType schema,
+      ByteBufferAllocator allocator,
+      BloomFilterOpts opts) {
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
-      writers.put(path,  new ColumnChunkPageWriter(path, compressor, allocator));
+      writers.put(path, new ColumnChunkPageWriter(path, compressor, allocator, opts));
     }
   }
 

@@ -22,6 +22,10 @@ import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
 
+import junit.framework.Assert;
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilter;
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOptBuilder;
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
 import org.junit.Test;
 
 import org.apache.parquet.io.api.Binary;
@@ -50,6 +54,39 @@ public class TestStatistics {
 
     stats.setNumNulls(22);
     assertEquals(stats.getNumNulls(), 22);
+  }
+
+  @Test
+  public void testBloomFilterInt(){
+    BloomFilterOpts opts =
+        new BloomFilterOptBuilder().enable(true).expectedEntries(100).fpp(0.05).build();
+    IntStatistics statistics = new IntStatistics(opts);
+    int v1 = 1;
+    int v2 = 2;
+    int v3 = 3;
+    Assert.assertFalse(statistics.test(v1));
+    Assert.assertFalse(statistics.test(v2));
+    Assert.assertFalse(statistics.test(v3));
+    statistics.updateStats(v1);
+    Assert.assertEquals(v1, statistics.getMin());
+    Assert.assertEquals(v1, statistics.getMax());
+    Assert.assertTrue(statistics.test(v1));
+    Assert.assertFalse(statistics.test(v2));
+    Assert.assertFalse(statistics.test(v3));
+
+    statistics.updateStats(v2);
+    Assert.assertEquals(v1, statistics.getMin());
+    Assert.assertEquals(v2, statistics.getMax());
+    Assert.assertTrue(statistics.test(v1));
+    Assert.assertTrue(statistics.test(v2));
+    Assert.assertFalse(statistics.test(v3));
+
+    statistics.updateStats(v3);
+    Assert.assertEquals(v1, statistics.getMin());
+    Assert.assertEquals(v3, statistics.getMax());
+    Assert.assertTrue(statistics.test(v1));
+    Assert.assertTrue(statistics.test(v2));
+    Assert.assertTrue(statistics.test(v3));
   }
 
   @Test

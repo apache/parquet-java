@@ -19,11 +19,33 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilter;
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.bloomFilter.BloomFilterStatistics;
 
-public class IntStatistics extends Statistics<Integer> {
+import org.apache.commons.lang.ArrayUtils;
 
+import java.util.Arrays;
+import java.util.List;
+
+public class IntStatistics extends Statistics<Integer> implements BloomFilterStatistics<Integer> {
   private int max;
   private int min;
+  private BloomFilter bloomFilter;
+  private boolean isBloomFilterEnabled;
+
+  public IntStatistics(){
+  }
+
+  public IntStatistics(BloomFilterOpts opts) {
+    super();
+    if (opts != null && opts.isEnabled()) {
+      bloomFilter = new BloomFilter(opts.getNumBits(), opts.getNumHashFunctions());
+      isBloomFilterEnabled = true;
+    } else {
+      isBloomFilterEnabled = false;
+    }
+  }
 
   @Override
   public void updateStats(int value) {
@@ -31,6 +53,10 @@ public class IntStatistics extends Statistics<Integer> {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
+    }
+
+    if (isBloomFilterEnabled) {
+      add(value);
     }
   }
 
@@ -42,6 +68,16 @@ public class IntStatistics extends Statistics<Integer> {
     } else {
       updateStats(intStats.getMin(), intStats.getMax());
     }
+  }
+
+  @Override public void mergeBloomFilters(Statistics stats) {
+    if (isBloomFilterEnabled && stats instanceof BloomFilterStatistics) {
+      this.bloomFilter.merge(((BloomFilterStatistics) stats).getBloomFilter());
+    }
+  }
+
+  public void add(Integer value) {
+    bloomFilter.addLong(value);
   }
 
   @Override
@@ -90,6 +126,28 @@ public class IntStatistics extends Statistics<Integer> {
   @Override
   public Integer genericGetMax() {
     return max;
+  }
+
+
+
+  @Override public BloomFilter getBloomFilter() {
+    return bloomFilter;
+  }
+
+  @Override public boolean test(Integer value) {
+    return bloomFilter.testLong(value);
+  }
+
+  @Override public List<Long> getBitSet() {
+    return Arrays.asList(ArrayUtils.toObject(bloomFilter.getBitSet()));
+  }
+
+  @Override public void setBitSet(List<Long> list) {
+    bloomFilter.setBitSet(ArrayUtils.toPrimitive(list.toArray(new Long[] {})));
+  }
+
+  @Override public boolean isBloomFilterEnabled() {
+    return isBloomFilterEnabled;
   }
 
   public int getMax() {
