@@ -19,7 +19,7 @@
 
 package TestProtobuf;
 
-option java_package = "parquet.proto.test";
+option java_package = "org.apache.parquet.proto.test";
 
 // original Dremel paper structures: Original paper used groups, not internal
 // messages but groups were deprecated.
@@ -124,6 +124,16 @@ message RepeatedIntMessage {
 
 message HighIndexMessage {
     repeated int32 repeatedInt = 50000;
+}
+
+//custom proto class - ProtoInputOutputFormatTest
+
+message FirstCustomClassMessage {
+    optional string string = 11;
+}
+
+message SecondCustomClassMessage {
+    optional string string = 11;
 }
 
 //please place your unit test Protocol Buffer definitions here.
