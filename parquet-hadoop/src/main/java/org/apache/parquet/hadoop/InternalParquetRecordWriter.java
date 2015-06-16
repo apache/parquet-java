@@ -59,6 +59,7 @@ class InternalParquetRecordWriter<T> {
 
   private long recordCount = 0;
   private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
+  private long lastRowGroupEndPos = 0;
 
   private ColumnWriteStore columnStore;
   private ColumnChunkPageWriteStore pageStore;
@@ -122,6 +123,13 @@ class InternalParquetRecordWriter<T> {
     checkBlockSizeReached();
   }
 
+  /**
+   * @return the total size of data written to the file and buffered in memory
+   */
+  public long getDataSize() {
+    return lastRowGroupEndPos + columnStore.getBufferedSize();
+  }
+
   private void checkBlockSizeReached() throws IOException {
     if (recordCount >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it for every record.
       long memSize = columnStore.getBufferedSize();
@@ -133,6 +141,7 @@ class InternalParquetRecordWriter<T> {
         flushRowGroupToStore();
         initStore();
         recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
+        this.lastRowGroupEndPos = parquetFileWriter.getPos();
       } else {
         recordCountForNextMemCheck = min(
             max(MINIMUM_RECORD_COUNT_FOR_CHECK, (recordCount + (long)(nextRowGroupSize / ((float)recordSize))) / 2), // will check halfway

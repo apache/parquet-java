@@ -301,6 +301,13 @@ public class ParquetWriter<T> implements Closeable {
   }
 
   /**
+   * @return the total size of data written to the file and buffered in memory
+   */
+  public long getDataSize() {
+    return writer.getDataSize();
+  }
+
+  /**
    * An abstract builder class for ParquetWriter instances.
    *
    * Object models should extend this builder to provide writer configuration
