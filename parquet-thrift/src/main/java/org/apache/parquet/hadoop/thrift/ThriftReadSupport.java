@@ -22,6 +22,8 @@ import java.lang.reflect.Constructor;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.protobuf.Message;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.thrift.TBase;
@@ -111,7 +113,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     String strict = conf.get(STRICT_THRIFT_COLUMN_FILTER_KEY);
 
     if (Strings.isNullOrEmpty(deprecated) && Strings.isNullOrEmpty(strict)) {
-      return null;
+      return FieldProjectionFilter.ALL_COLUMNS;
     }
 
     if(!Strings.isNullOrEmpty(deprecated) && !Strings.isNullOrEmpty(strict)) {
@@ -149,13 +151,14 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     this.thriftClass = thriftClass;
   }
 
-  @Override
-  public org.apache.parquet.hadoop.api.ReadSupport.ReadContext init(InitContext context) {
+
+  private MessageType getRequestedSchema(InitContext context) {
     final Configuration configuration = context.getConfiguration();
     final MessageType fileMessageType = context.getFileSchema();
-    MessageType requestedProjection = fileMessageType;
+    MessageType requestedProjection;
     String partialSchemaString = configuration.get(ReadSupport.PARQUET_READ_SCHEMA);
-
+    // If user does not specify projection filter via configuration object, it gets ALL_COLUMNS filter
+    // which reads all columns
     FieldProjectionFilter projectionFilter = getFieldProjectionFilter(configuration);
 
     if (partialSchemaString != null && projectionFilter != null) {
@@ -165,10 +168,10 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
               PARQUET_READ_SCHEMA, STRICT_THRIFT_COLUMN_FILTER_KEY, DEPRECATED_THRIFT_COLUMN_FILTER_KEY));
     }
 
-    //set requestedProjections only when it's specified
+    //set requestedProjection
     if (partialSchemaString != null) {
       requestedProjection = getSchemaForRead(fileMessageType, partialSchemaString);
-    } else if (projectionFilter != null) {
+    } else {
       try {
         initThriftClassFromMultipleFiles(context.getKeyValueMetadata(), configuration);
         requestedProjection =  getProjectedSchema(projectionFilter);
@@ -177,6 +180,13 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
       }
     }
 
+    return requestedProjection;
+  }
+
+  @Override
+  public org.apache.parquet.hadoop.api.ReadSupport.ReadContext init(InitContext context) {
+    final MessageType fileMessageType = context.getFileSchema();
+    MessageType requestedProjection = getRequestedSchema(context);
     MessageType schemaForRead = getSchemaForRead(fileMessageType, requestedProjection);
     return new ReadContext(schemaForRead);
   }
