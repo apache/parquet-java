@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -144,6 +144,15 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.min";
   public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
+  public static final String ENABLE_BLOOM_FILTER  = "parquet.enable.bloom.filter";
+  public static final String EXPACTED_ENTRIES     = "parquet.expected.entries";
+  public static final String IS_FPP_PROVIDED      = "parquet.bloom.filter.fpp.provided";
+  public static final String FPP_VALUE            = "parquet.bloom.filter.value";
+  public static final String EXPECTED_ENTRIES     = "parquet.bloom.filter.expected.entries";
+  public static final String ENABLE_BLOOM_FILTER_COL_NAME =
+      "parquet.bloom.filter.enable.column.names";
+  public static final String FALSE_POSITIVE_PROBABILITY =
+      "parquet.bloom.filter.false.positive.probability";
 
   // default to no padding for now
   private static final int DEFAULT_MAX_PADDING_SIZE = 0;

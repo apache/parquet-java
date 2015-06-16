@@ -25,13 +25,17 @@ public class BooleanStatistics extends Statistics<Boolean> {
   private boolean max;
   private boolean min;
 
-  @Override
   public void updateStats(boolean value) {
     if (!this.hasNonNullValue()) {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
     }
+  }
+
+  @Override
+  void mergeBloomFilters(Statistics stats) {
+    // Do nothing
   }
 
   @Override

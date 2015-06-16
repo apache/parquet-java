@@ -384,6 +384,11 @@ public class ParquetFileReader implements Closeable {
     return result;
   }
 
+  public static final ParquetMetadata readFooterWithBF(Configuration configuration, Path file)
+      throws IOException {
+    return readFooter(configuration, file, NO_FILTER, true);
+  }
+
   /**
    * Reads the meta data block in the footer of the file
    * @param configuration
@@ -393,7 +398,7 @@ public class ParquetFileReader implements Closeable {
    */
   @Deprecated
   public static final ParquetMetadata readFooter(Configuration configuration, Path file) throws IOException {
-    return readFooter(configuration, file, NO_FILTER);
+    return readFooter(configuration, file, NO_FILTER, false);
   }
 
   /**
@@ -405,17 +410,36 @@ public class ParquetFileReader implements Closeable {
    * @return the metadata with row groups filtered.
    * @throws IOException  if an error occurs while reading the file
    */
-  public static ParquetMetadata readFooter(Configuration configuration, Path file, MetadataFilter filter) throws IOException {
+  public static ParquetMetadata readFooter(
+      Configuration configuration,
+      Path file,
+      MetadataFilter filter,
+      boolean includeBF) throws IOException {
     FileSystem fileSystem = file.getFileSystem(configuration);
-    return readFooter(configuration, fileSystem.getFileStatus(file), filter);
+    return readFooter(configuration, fileSystem.getFileStatus(file), filter, includeBF);
+  }
+
+  public static ParquetMetadata readFooter(
+      Configuration configuration,
+      Path file,
+      MetadataFilter filter) throws IOException {
+    return readFooter(configuration, file, filter, false);
+  }
+
+  public static final ParquetMetadata readFooter(
+      Configuration configuration,
+      FileStatus file,
+      MetadataFilter filter) throws IOException {
+    return readFooter(configuration, file, filter, false);
   }
 
   /**
-   * @deprecated use {@link ParquetFileReader#readFooter(Configuration, FileStatus, MetadataFilter)}
+   * @deprecated use {@link ParquetFileReader#readFooter(Configuration, FileStatus,
+   * MetadataFilter, includeBF)}
    */
   @Deprecated
   public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file) throws IOException {
-    return readFooter(configuration, file, NO_FILTER);
+    return readFooter(configuration, file, NO_FILTER, false);
   }
 
   /**
@@ -423,20 +447,26 @@ public class ParquetFileReader implements Closeable {
    * @param configuration
    * @param file the parquet File
    * @param filter the filter to apply to row groups
+   * @param includeBF whether to include bloom filter
    * @return the metadata blocks in the footer
    * @throws IOException if an error occurs while reading the file
    */
-  public static final ParquetMetadata readFooter(Configuration configuration, FileStatus file, MetadataFilter filter) throws IOException {
+  public static final ParquetMetadata readFooter(
+      Configuration configuration,
+      FileStatus file,
+      MetadataFilter filter,
+      boolean includeBF) throws IOException {
     FileSystem fileSystem = file.getPath().getFileSystem(configuration);
     FSDataInputStream in = fileSystem.open(file.getPath());
     try {
-      return readFooter(file, in, filter);
+      return readFooter(file, in, filter, includeBF);
     } finally {
       in.close();
     }
   }
 
-  private static final ParquetMetadata readFooter(FileStatus file, FSDataInputStream f, MetadataFilter filter) throws IOException {
+  private static final ParquetMetadata readFooter(FileStatus file, FSDataInputStream f, MetadataFilter filter,
+                                                  boolean includeBF) throws IOException {
     long l = file.getLen();
     if (Log.DEBUG) {
       LOG.debug("File length " + l);
@@ -465,7 +495,7 @@ public class ParquetFileReader implements Closeable {
       throw new RuntimeException("corrupted file: the footer index is not within the file");
     }
     f.seek(footerIndex);
-    return converter.readParquetMetadata(f, filter);
+    return converter.readParquetMetadata(f, filter, includeBF);
   }
 
   public static ParquetFileReader open(Configuration conf, Path file) throws IOException {
@@ -551,7 +581,7 @@ public class ParquetFileReader implements Closeable {
     FileSystem fs = file.getFileSystem(conf);
     this.fileStatus = fs.getFileStatus(file);
     this.f = fs.open(file);
-    this.footer = readFooter(fileStatus, f, filter);
+    this.footer = readFooter(fileStatus, f, filter, false);
     this.fileMetaData = footer.getFileMetaData();
     this.blocks = footer.getBlocks();
     for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
@@ -590,7 +620,7 @@ public class ParquetFileReader implements Closeable {
     if (footer == null) {
       try {
         // don't read the row groups because this.blocks is always set
-        this.footer = readFooter(fileStatus, f, SKIP_ROW_GROUPS);
+        this.footer = readFooter(fileStatus, f, SKIP_ROW_GROUPS, false);
       } catch (IOException e) {
         throw new ParquetDecodingException("Unable to read file footer", e);
       }

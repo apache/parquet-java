@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -17,7 +17,6 @@
  * under the License.
  */
 package org.apache.parquet.hadoop;
-
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -29,8 +28,13 @@ import org.apache.parquet.Version;
 import org.apache.parquet.VersionParser;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
+import org.apache.parquet.format.BloomFilterStrategy;
 import org.junit.Assume;
 import org.junit.Rule;
+import org.apache.parquet.column.statistics.IntStatistics;
+import org.apache.parquet.column.statistics.StatisticsOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOptBuilder;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
 import org.junit.Test;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
@@ -95,8 +99,8 @@ public class TestParquetFileWriter {
   private static final byte[] BYTES4 = { 3, 4, 5, 6 };
   private static final CompressionCodecName CODEC = CompressionCodecName.UNCOMPRESSED;
 
-  private static final BinaryStatistics STATS1 = new BinaryStatistics();
-  private static final BinaryStatistics STATS2 = new BinaryStatistics();
+  private static final BinaryStatistics STATS1 = new BinaryStatistics(null);
+  private static final BinaryStatistics STATS2 = new BinaryStatistics(null);
 
   private String writeSchema;
 
@@ -424,22 +428,78 @@ public class TestParquetFileWriter {
   @Test
   public void testConvertToThriftStatistics() throws Exception {
     long[] longArray = new long[] {39L, 99L, 12L, 1000L, 65L, 542L, 2533461316L, -253346131996L, Long.MAX_VALUE, Long.MIN_VALUE};
-    LongStatistics parquetMRstats = new LongStatistics();
+    LongStatistics parquetMRstats = new LongStatistics(null);
+    final String createdBy =
+        "parquet-mr version 1.8.0 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
 
     for (long l: longArray) {
       parquetMRstats.updateStats(l);
     }
-    final String createdBy =
-        "parquet-mr version 1.8.0 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
     Statistics thriftStats =
         org.apache.parquet.format.converter.ParquetMetadataConverter.toParquetStatistics(parquetMRstats);
     LongStatistics convertedBackStats =
-        (LongStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics(
-            createdBy, thriftStats, PrimitiveTypeName.INT64);
+        (LongStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter
+            .fromParquetStatistics(createdBy, thriftStats, PrimitiveTypeName.INT64);
 
     assertEquals(parquetMRstats.getMax(), convertedBackStats.getMax());
     assertEquals(parquetMRstats.getMin(), convertedBackStats.getMin());
     assertEquals(parquetMRstats.getNumNulls(), convertedBackStats.getNumNulls());
+  }
+
+  @Test
+  public void testBloomFilterConverter() {
+    int v1 = 39;
+    int v2 = 99;
+    int v3 = 1000;
+    final String createdBy =
+        "parquet-mr version 1.8.0 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
+    MessageType messageType =
+        MessageTypeParser.parseMessageType("Message messageType{optional int32 a;}");
+    BloomFilterOpts bloomFilterOpts =
+        new BloomFilterOptBuilder().enableCols("a").expectedEntries("100")
+            .falsePositiveProbabilities("0.05").build(messageType);
+    StatisticsOpts statisticsOpts = new StatisticsOpts(bloomFilterOpts);
+    IntStatistics parquetMRstats = new IntStatistics(
+        statisticsOpts.getStatistics(messageType.getColumnDescription(new String[] { "a" })));
+    parquetMRstats.updateStats(v1);
+
+    Statistics thriftStats = org.apache.parquet.format.converter.ParquetMetadataConverter
+        .toParquetStatistics(parquetMRstats);
+    IntStatistics convertedBackStats =
+        (IntStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter
+            .fromParquetStatisticsWithBF(createdBy, thriftStats, PrimitiveTypeName.INT32);
+    assertTrue(parquetMRstats.test(v1));
+    assertTrue(convertedBackStats.test(v1));
+    assertFalse(parquetMRstats.test(v2));
+    assertFalse(convertedBackStats.test(v2));
+    assertFalse(parquetMRstats.test(v3));
+    assertFalse(convertedBackStats.test(v3));
+
+    parquetMRstats.updateStats(v2);
+    thriftStats = org.apache.parquet.format.converter.ParquetMetadataConverter
+        .toParquetStatistics(parquetMRstats);
+    convertedBackStats =
+        (IntStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter
+            .fromParquetStatisticsWithBF(createdBy, thriftStats, PrimitiveTypeName.INT32);
+    assertTrue(parquetMRstats.test(v1));
+    assertTrue(convertedBackStats.test(v1));
+    assertTrue(parquetMRstats.test(v2));
+    assertTrue(convertedBackStats.test(v2));
+    assertFalse(parquetMRstats.test(v3));
+    assertFalse(convertedBackStats.test(v3));
+
+    parquetMRstats.updateStats(v3);
+    thriftStats = org.apache.parquet.format.converter.ParquetMetadataConverter
+        .toParquetStatistics(parquetMRstats);
+    convertedBackStats =
+        (IntStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter
+            .fromParquetStatisticsWithBF(createdBy, thriftStats, PrimitiveTypeName.INT32);
+    assertTrue(parquetMRstats.test(v1));
+    assertTrue(convertedBackStats.test(v1));
+    assertTrue(parquetMRstats.test(v2));
+    assertTrue(convertedBackStats.test(v2));
+    assertTrue(parquetMRstats.test(v3));
+    assertTrue(convertedBackStats.test(v3));
   }
 
   @Test
@@ -465,12 +525,12 @@ public class TestParquetFileWriter {
     byte[] bytes4 = { 3, 4, 5, 6};
     CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
 
-    BinaryStatistics statsB1C1P1 = new BinaryStatistics();
-    BinaryStatistics statsB1C1P2 = new BinaryStatistics();
-    LongStatistics statsB1C2P1 = new LongStatistics();
-    LongStatistics statsB1C2P2 = new LongStatistics();
-    BinaryStatistics statsB2C1P1 = new BinaryStatistics();
-    LongStatistics statsB2C2P1 = new LongStatistics();
+    BinaryStatistics statsB1C1P1 = new BinaryStatistics(null);
+    BinaryStatistics statsB1C1P2 = new BinaryStatistics(null);
+    LongStatistics statsB1C2P1 = new LongStatistics(null);
+    LongStatistics statsB1C2P2 = new LongStatistics(null);
+    BinaryStatistics statsB2C1P1 = new BinaryStatistics(null);
+    LongStatistics statsB2C2P1 = new LongStatistics(null);
     statsB1C1P1.setMinMax(Binary.fromString("s"), Binary.fromString("z"));
     statsB1C1P2.setMinMax(Binary.fromString("a"), Binary.fromString("b"));
     statsB1C2P1.setMinMax(2l, 10l);
@@ -508,14 +568,14 @@ public class TestParquetFileWriter {
       }
     }
     // correct statistics
-    BinaryStatistics bs1 = new BinaryStatistics();
+    BinaryStatistics bs1 = new BinaryStatistics(null);
     bs1.setMinMax(Binary.fromString("a"), Binary.fromString("z"));
-    LongStatistics ls1 = new LongStatistics();
+    LongStatistics ls1 = new LongStatistics(null);
     ls1.setMinMax(-6l, 10l);
 
-    BinaryStatistics bs2 = new BinaryStatistics();
+    BinaryStatistics bs2 = new BinaryStatistics(null);
     bs2.setMinMax(Binary.fromString("d"), Binary.fromString("e"));
-    LongStatistics ls2 = new LongStatistics();
+    LongStatistics ls2 = new LongStatistics(null);
     ls2.setMinMax(11l, 122l);
 
     { // assert stats are correct for the first block
@@ -523,8 +583,12 @@ public class TestParquetFileWriter {
       String str = new String(bsout.getMaxBytes());
       String str2 = new String(bsout.getMinBytes());
 
-      assertTrue(((BinaryStatistics)readFooter.getBlocks().get(0).getColumns().get(0).getStatistics()).equals(bs1));
-      assertTrue(((LongStatistics)readFooter.getBlocks().get(0).getColumns().get(1).getStatistics()).equals(ls1));
+      assertTrue(
+          ((BinaryStatistics) readFooter.getBlocks().get(0).getColumns().get(0).getStatistics())
+              .equals(bs1));
+      assertTrue(
+          ((LongStatistics) readFooter.getBlocks().get(0).getColumns().get(1).getStatistics())
+              .equals(ls1));
     }
     { // assert stats are correct for the second block
       assertTrue(((BinaryStatistics)readFooter.getBlocks().get(1).getColumns().get(0).getStatistics()).equals(bs2));
@@ -594,13 +658,13 @@ public class TestParquetFileWriter {
     GroupWriteSupport.setSchema(schema, configuration);
 
     ParquetWriter<Group> writer = new ParquetWriter<Group>(path, configuration, new GroupWriteSupport());
-   
+
     Group r1 = new SimpleGroup(schema);
     writer.write(r1);
     writer.close();
-    
+
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
-    
+
     // assert the statistics object is not empty
     assertTrue((readFooter.getBlocks().get(0).getColumns().get(0).getStatistics().isEmpty()) == false);
     // assert the number of nulls are correct for the first block
@@ -635,8 +699,8 @@ public class TestParquetFileWriter {
     byte[] bytes4 = { 3, 4, 5, 6};
     CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
 
-    BinaryStatistics stats1 = new BinaryStatistics();
-    BinaryStatistics stats2 = new BinaryStatistics();
+    BinaryStatistics stats1 = new BinaryStatistics(null);
+    BinaryStatistics stats2 = new BinaryStatistics(null);
 
     ParquetFileWriter w = new ParquetFileWriter(configuration, schema, path);
     w.start();

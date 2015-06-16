@@ -75,7 +75,7 @@ public class TestColumnChunkMetaData {
     PrimitiveTypeName t = BINARY;
     ColumnPath p = ColumnPath.get("foo");
     CompressionCodecName c = CompressionCodecName.GZIP;
-    BinaryStatistics s = new BinaryStatistics();
+    BinaryStatistics s = new BinaryStatistics(null);
     ColumnChunkMetaData md = ColumnChunkMetaData.get(p, t, c, e, s,
                                                      big, 0, 0, 0, 0);
     return md;

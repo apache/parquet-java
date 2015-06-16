@@ -423,7 +423,7 @@ public class TestInputFormat {
     byte[] bytes2 = { 2, 3, 4, 5};
     CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
 
-    BinaryStatistics stats = new BinaryStatistics();
+    BinaryStatistics stats = new BinaryStatistics(null);
 
     ParquetFileWriter w = new ParquetFileWriter(configuration, schema, path);
     w.start();
@@ -552,7 +552,7 @@ public class TestInputFormat {
                                                          PrimitiveTypeName.BINARY,
                                                          CompressionCodecName.GZIP,
                                                          new HashSet<Encoding>(Arrays.asList(Encoding.PLAIN)),
-                                                         new BinaryStatistics(),
+                                                         new BinaryStatistics(null),
                                                          start, 0l, 0l, compressedBlockSize, uncompressedSize);
     blockMetaData.addColumn(column);
     blockMetaData.setTotalByteSize(uncompressedSize);

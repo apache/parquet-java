@@ -18,12 +18,32 @@
  */
 package org.apache.parquet.column.statistics;
 
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilter;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterStatistics;
 import org.apache.parquet.io.api.Binary;
 
-public class BinaryStatistics extends Statistics<Binary> {
+public class BinaryStatistics extends Statistics<Binary> implements BloomFilterStatistics<Binary>{
 
   private Binary max;
   private Binary min;
+  private BloomFilter bloomFilter;
+  private boolean isBloomFilterEnabled = false;
+
+  public BinaryStatistics(ColumnStatisticsOpts columnStatisticsOpts) {
+    super();
+    if (columnStatisticsOpts != null) {
+      updateBloomFilterOptions(columnStatisticsOpts.getBloomFilterOpts());
+    }
+  }
+
+  private void updateBloomFilterOptions(BloomFilterOpts.BloomFilterEntry statisticsOpts) {
+    if (statisticsOpts != null) {
+      bloomFilter =
+          new BloomFilter(statisticsOpts.getNumBits(), statisticsOpts.getNumHashFunctions());
+      isBloomFilterEnabled = true;
+    }
+  }
 
   @Override
   public void updateStats(Binary value) {
@@ -31,6 +51,17 @@ public class BinaryStatistics extends Statistics<Binary> {
       initializeStats(value, value);
     } else {
       updateStats(value, value);
+    }
+
+    if (isBloomFilterEnabled) {
+      add(value);
+    }
+  }
+
+  @Override
+  void mergeBloomFilters(Statistics stats) {
+    if (isBloomFilterEnabled && stats instanceof BloomFilterStatistics) {
+      this.bloomFilter.merge(((BloomFilterStatistics) stats).getBloomFilter());
     }
   }
 
@@ -135,5 +166,25 @@ public class BinaryStatistics extends Statistics<Binary> {
     this.max = max;
     this.min = min;
     this.markAsNotEmpty();
+  }
+
+  @Override
+  public void add(Binary value) {
+    bloomFilter.addBinary(value);
+  }
+
+  @Override
+  public BloomFilter getBloomFilter() {
+    return bloomFilter;
+  }
+
+  @Override
+  public boolean test(Binary value) {
+    return bloomFilter.testBinary(value);
+  }
+
+  @Override
+  public boolean isBloomFilterEnabled() {
+    return isBloomFilterEnabled;
   }
 }

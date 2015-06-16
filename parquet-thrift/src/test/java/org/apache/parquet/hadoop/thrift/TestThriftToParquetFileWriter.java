@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -30,6 +30,7 @@ import java.util.Map;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.parquet.column.statistics.*;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.util.ContextUtil;
@@ -98,13 +99,13 @@ public class TestThriftToParquetFileWriter {
     @Test
     public void testWriteStatistics() throws Exception {
       //create correct stats small numbers
-      IntStatistics intStatsSmall = new IntStatistics();
+      IntStatistics intStatsSmall = new IntStatistics(new ColumnStatisticsOpts(null));
       intStatsSmall.setMinMax(2, 100);
-      LongStatistics longStatsSmall = new LongStatistics();
+      LongStatistics longStatsSmall = new LongStatistics(null);
       longStatsSmall.setMinMax(-17l,  287L);
-      DoubleStatistics doubleStatsSmall = new DoubleStatistics();
+      DoubleStatistics doubleStatsSmall = new DoubleStatistics(null);
       doubleStatsSmall.setMinMax(-15.55d, 9.63d);
-      BinaryStatistics binaryStatsSmall = new BinaryStatistics();
+      BinaryStatistics binaryStatsSmall = new BinaryStatistics(null);
       binaryStatsSmall.setMinMax(Binary.fromString("as"), Binary.fromString("world"));
       BooleanStatistics boolStats = new BooleanStatistics();
       boolStats.setMinMax(false, true);
@@ -141,13 +142,13 @@ public class TestThriftToParquetFileWriter {
         }
       }
       //create correct stats large numbers
-      IntStatistics intStatsLarge = new IntStatistics();
+      IntStatistics intStatsLarge = new IntStatistics(new ColumnStatisticsOpts(null));
       intStatsLarge.setMinMax(-Integer.MAX_VALUE, Integer.MAX_VALUE);
-      LongStatistics longStatsLarge = new LongStatistics();
+      LongStatistics longStatsLarge = new LongStatistics(null);
       longStatsLarge.setMinMax(-Long.MAX_VALUE, Long.MAX_VALUE);
-      DoubleStatistics doubleStatsLarge = new DoubleStatistics();
+      DoubleStatistics doubleStatsLarge = new DoubleStatistics(null);
       doubleStatsLarge.setMinMax(-Double.MAX_VALUE, Double.MAX_VALUE);
-      BinaryStatistics binaryStatsLarge = new BinaryStatistics();
+      BinaryStatistics binaryStatsLarge = new BinaryStatistics(null);
       binaryStatsLarge.setMinMax(Binary.fromString("some small string"),
                                  Binary.fromString("some very large string here to test in this function"));
       //write rows to a file

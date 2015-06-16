@@ -213,7 +213,7 @@ public class TestCorruptDeltaByteArrays {
 
     memWriter.writePage(BytesInput.concat(rd, rd, writer.getBytes()),
         10, /* number of values in the page */
-        new BinaryStatistics(),
+        new BinaryStatistics(null),
         rdValues.getEncoding(),
         rdValues.getEncoding(),
         writer.getEncoding());
@@ -229,7 +229,7 @@ public class TestCorruptDeltaByteArrays {
 
     memWriter.writePage(BytesInput.concat(rd, rd, writer.getBytes()),
         10, /* number of values in the page */
-        new BinaryStatistics(),
+        new BinaryStatistics(null),
         rdValues.getEncoding(),
         rdValues.getEncoding(),
         writer.getEncoding());

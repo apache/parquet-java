@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -324,12 +324,12 @@ public class TestParquetMetadataConverter {
     PrimitiveTypeName t = PrimitiveTypeName.BINARY;
     ColumnPath p = ColumnPath.get("foo");
     CompressionCodecName c = CompressionCodecName.GZIP;
-    BinaryStatistics s = new BinaryStatistics();
+    BinaryStatistics s = new BinaryStatistics(null);
     ColumnChunkMetaData md = ColumnChunkMetaData.get(p, t, c, e, s,
             0, 0, 0, 0, 0);
     return md;
   }
-  
+
   @Test
   public void testEncodingsCache() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
@@ -371,7 +371,7 @@ public class TestParquetMetadataConverter {
   @Test
   public void testBinaryStats() {
     // make fake stats and verify the size check
-    BinaryStatistics stats = new BinaryStatistics();
+    BinaryStatistics stats = new BinaryStatistics(null);
     stats.incrementNumNulls(3004);
     byte[] min = new byte[904];
     byte[] max = new byte[2388];
@@ -410,7 +410,7 @@ public class TestParquetMetadataConverter {
   @Test
   public void testIntegerStats() {
     // make fake stats and verify the size check
-    IntStatistics stats = new IntStatistics();
+    IntStatistics stats = new IntStatistics(null);
     stats.incrementNumNulls(3004);
     int min = Integer.MIN_VALUE;
     int max = Integer.MAX_VALUE;
@@ -431,7 +431,7 @@ public class TestParquetMetadataConverter {
   @Test
   public void testLongStats() {
     // make fake stats and verify the size check
-    LongStatistics stats = new LongStatistics();
+    LongStatistics stats = new LongStatistics(null);
     stats.incrementNumNulls(3004);
     long min = Long.MIN_VALUE;
     long max = Long.MAX_VALUE;
@@ -452,7 +452,7 @@ public class TestParquetMetadataConverter {
   @Test
   public void testFloatStats() {
     // make fake stats and verify the size check
-    FloatStatistics stats = new FloatStatistics();
+    FloatStatistics stats = new FloatStatistics(null);
     stats.incrementNumNulls(3004);
     float min = Float.MIN_VALUE;
     float max = Float.MAX_VALUE;
@@ -475,7 +475,7 @@ public class TestParquetMetadataConverter {
   @Test
   public void testDoubleStats() {
     // make fake stats and verify the size check
-    DoubleStatistics stats = new DoubleStatistics();
+    DoubleStatistics stats = new DoubleStatistics(null);
     stats.incrementNumNulls(3004);
     double min = Double.MIN_VALUE;
     double max = Double.MAX_VALUE;

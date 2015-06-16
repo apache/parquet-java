@@ -41,6 +41,7 @@ import java.util.HashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.column.statistics.StatisticsOpts;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -92,7 +93,7 @@ public class TestColumnChunkPageWriteStore {
     int v = 3;
     BytesInput definitionLevels = BytesInput.fromInt(d);
     BytesInput repetitionLevels = BytesInput.fromInt(r);
-    Statistics<?> statistics = new BinaryStatistics();
+    Statistics<?> statistics = new BinaryStatistics(null);
     BytesInput data = BytesInput.fromInt(v);
     int rowCount = 5;
     int nullCount = 1;
@@ -102,7 +103,9 @@ public class TestColumnChunkPageWriteStore {
       writer.start();
       writer.startBlock(rowCount);
       {
-        ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(compressor(GZIP), schema , new HeapByteBufferAllocator());
+        ColumnChunkPageWriteStore store =
+            new ColumnChunkPageWriteStore(compressor(GZIP), schema, new HeapByteBufferAllocator(),
+                new StatisticsOpts());
         PageWriter pageWriter = store.getPageWriter(col);
         pageWriter.writePageV2(
             rowCount, nullCount, valueCount,
@@ -157,12 +160,13 @@ public class TestColumnChunkPageWriteStore {
 
     BytesInput fakeData = BytesInput.fromInt(34);
     int fakeCount = 3;
-    BinaryStatistics fakeStats = new BinaryStatistics();
+    BinaryStatistics fakeStats = new BinaryStatistics(null);
 
     // TODO - look back at this, an allocator was being passed here in the ByteBuffer changes
     // see comment at this constructor
-    ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(
-        compressor(UNCOMPRESSED), schema, new HeapByteBufferAllocator());
+    ColumnChunkPageWriteStore store =
+        new ColumnChunkPageWriteStore(compressor(UNCOMPRESSED), schema,
+            new HeapByteBufferAllocator(), new StatisticsOpts());
 
     for (ColumnDescriptor col : schema.getColumns()) {
       PageWriter pageWriter = store.getPageWriter(col);
