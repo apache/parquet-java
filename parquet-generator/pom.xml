@@ -36,11 +36,6 @@
   </properties>
 
   <dependencies>
-    <dependency>
-      <groupId>org.apache.parquet</groupId>
-      <artifactId>parquet-common</artifactId>
-      <version>${project.version}</version>
-    </dependency>
   </dependencies>
 
   <build>

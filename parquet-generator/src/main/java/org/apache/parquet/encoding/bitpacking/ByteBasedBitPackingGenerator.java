@@ -22,8 +22,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-import org.apache.parquet.bytes.BytesUtils;
-
 /**
  *
  * This class generates bit packers that pack the most significant bit first.
@@ -214,7 +212,7 @@ public class ByteBasedBitPackingGenerator {
         fw.append("      out[" + align(valueIndex, 2) + " + outPos] =\n");
 
         int startIndex = valueIndex * bitWidth / 8;
-        int endIndex = BytesUtils.paddedByteCountFromBits((valueIndex + 1) * bitWidth);
+        int endIndex = paddedByteCountFromBits((valueIndex + 1) * bitWidth);
 
         for (int byteIndex = startIndex; byteIndex < endIndex; byteIndex++) {
           if (byteIndex == startIndex) {
@@ -255,5 +253,9 @@ public class ByteBasedBitPackingGenerator {
     }
     result.append(valueString);
     return result.toString();
+  }
+  
+  private static int paddedByteCountFromBits(int bitLength) {
+    return (bitLength + 7) / 8;
   }
 }
