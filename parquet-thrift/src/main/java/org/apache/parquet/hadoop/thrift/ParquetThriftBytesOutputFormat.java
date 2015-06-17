@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop.thrift;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.thrift.TBase;
@@ -57,13 +58,33 @@ public class ParquetThriftBytesOutputFormat extends ParquetOutputFormat<BytesWri
    *  when catching an exception the record can be discarded.
    *  The non-buffered implementation will stream field by field. Exceptions are unrecoverable and the file must be closed when an invalid record is written.
    *
+   * @param configuration configuration
    * @param protocolFactory the protocol factory to use to read the bytes
-   * @param thriftClass thriftClass the class to exctract the schema from
+   * @param thriftClass thriftClass the class to extract the schema from
    * @param buffered whether we should buffer each record
    * @param errorHandler handle record corruption and schema incompatible exception
    */
-  public ParquetThriftBytesOutputFormat(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass, boolean buffered, FieldIgnoredHandler errorHandler) {
-    super(new ThriftBytesWriteSupport(protocolFactory, thriftClass, buffered, errorHandler));
+  public ParquetThriftBytesOutputFormat(Configuration configuration,
+                                        TProtocolFactory protocolFactory,
+                                        Class<? extends TBase<?, ?>> thriftClass,
+                                        boolean buffered,
+                                        FieldIgnoredHandler errorHandler) {
+    super(new ThriftBytesWriteSupport(
+        configuration, protocolFactory, thriftClass, buffered, errorHandler));
+  }
+
+  @Deprecated
+  /**
+   * @deprecated Use @link{ParquetThriftBytesOutputFormat(
+   * Configuration configuration, TProtocolFactory protocolFactory,
+   * Class<? extends TBase<?, ?>> thriftClass, boolean buffered,
+   * FieldIgnoredHandler errorHandler)} instead
+   */
+  public ParquetThriftBytesOutputFormat(TProtocolFactory protocolFactory,
+                                        Class<? extends TBase<?, ?>> thriftClass,
+                                        boolean buffered,
+                                        FieldIgnoredHandler errorHandler) {
+    this(new Configuration(), protocolFactory, thriftClass, buffered, errorHandler);
   }
 
 }

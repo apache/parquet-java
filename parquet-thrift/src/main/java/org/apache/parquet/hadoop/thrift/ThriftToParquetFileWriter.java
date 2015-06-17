@@ -93,7 +93,9 @@ public class ThriftToParquetFileWriter implements Closeable {
       boolean buffered,
       FieldIgnoredHandler errorHandler) throws IOException, InterruptedException {
     this.taskAttemptContext = taskAttemptContext;
-    this.recordWriter = new ParquetThriftBytesOutputFormat(protocolFactory, thriftClass, buffered, errorHandler).getRecordWriter(taskAttemptContext, fileToCreate);
+    this.recordWriter = new ParquetThriftBytesOutputFormat(
+        taskAttemptContext.getConfiguration(), protocolFactory, thriftClass, buffered, errorHandler)
+        .getRecordWriter(taskAttemptContext, fileToCreate);
   }
 
   /**

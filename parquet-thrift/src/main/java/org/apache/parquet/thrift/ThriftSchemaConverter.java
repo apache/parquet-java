@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -22,6 +22,8 @@ import com.twitter.elephantbird.thrift.TStructDescriptor;
 import com.twitter.elephantbird.thrift.TStructDescriptor.Field;
 import java.util.HashSet;
 import java.util.Set;
+
+import org.apache.hadoop.conf.Configuration;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TEnum;
 import org.apache.thrift.TUnion;
@@ -50,8 +52,21 @@ import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 public class ThriftSchemaConverter {
   private final FieldProjectionFilter fieldProjectionFilter;
 
+  private Configuration conf;
+
   public ThriftSchemaConverter() {
     this(FieldProjectionFilter.ALL_COLUMNS);
+  }
+
+  public ThriftSchemaConverter(Configuration configuration) {
+    this();
+    conf = configuration;
+  }
+
+  public ThriftSchemaConverter(
+      Configuration configuration, FieldProjectionFilter fieldProjectionFilter) {
+    this(fieldProjectionFilter);
+    conf = configuration;
   }
 
   public ThriftSchemaConverter(FieldProjectionFilter fieldProjectionFilter) {
@@ -72,7 +87,7 @@ public class ThriftSchemaConverter {
    * @return the struct as a Parquet message type
    */
   public MessageType convert(StructType struct) {
-    MessageType messageType = ThriftSchemaConvertVisitor.convert(struct, fieldProjectionFilter, true);
+    MessageType messageType = ThriftSchemaConvertVisitor.convert(struct, fieldProjectionFilter, true, conf);
     fieldProjectionFilter.assertNoUnmatchedPatterns();
     return messageType;
   }
@@ -85,7 +100,7 @@ public class ThriftSchemaConverter {
    * @return the struct as a Parquet message type
    */
   public static MessageType convertWithoutProjection(StructType struct) {
-    return ThriftSchemaConvertVisitor.convert(struct, FieldProjectionFilter.ALL_COLUMNS, false);
+    return ThriftSchemaConvertVisitor.convert(struct, FieldProjectionFilter.ALL_COLUMNS, false, new Configuration());
   }
 
   public static <T extends TBase<?,?>> StructOrUnionType structOrUnionType(Class<T> klass) {

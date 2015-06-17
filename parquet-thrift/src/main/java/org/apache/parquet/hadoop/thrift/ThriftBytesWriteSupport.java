@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -79,14 +79,34 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
   private StructType thriftStruct;
   private ParquetWriteProtocol parquetWriteProtocol;
   private final FieldIgnoredHandler errorHandler;
+  private Configuration configuration;
 
   public ThriftBytesWriteSupport() {
     this.buffered = true;
     this.errorHandler = null;
   }
 
-  public ThriftBytesWriteSupport(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass, boolean buffered, FieldIgnoredHandler errorHandler) {
+  @Deprecated
+  /**
+   * @deprecated Use @link{ThriftBytesWriteSupport(Configuration configuration,
+   * TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass,
+   * boolean buffered, FieldIgnoredHandler errorHandler)} instead
+   */
+  public ThriftBytesWriteSupport(TProtocolFactory protocolFactory,
+                                 Class<? extends TBase<?, ?>> thriftClass,
+                                 boolean buffered,
+                                 FieldIgnoredHandler errorHandler) {
+    this(new Configuration(), protocolFactory, thriftClass, buffered, errorHandler);
+  }
+
+  public ThriftBytesWriteSupport(
+      Configuration configuration,
+      TProtocolFactory protocolFactory,
+      Class<? extends TBase<?, ?>> thriftClass,
+      boolean buffered,
+      FieldIgnoredHandler errorHandler) {
     super();
+    this.configuration = configuration;
     this.protocolFactory = protocolFactory;
     this.thriftClass = thriftClass;
     this.buffered = buffered;
@@ -103,6 +123,7 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
 
   @Override
   public WriteContext init(Configuration configuration) {
+    this.configuration = configuration;
     if (this.protocolFactory == null) {
       try {
         this.protocolFactory = getTProtocolFactoryClass(configuration).newInstance();
@@ -115,8 +136,9 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
     } else {
       thriftClass = TBaseWriteSupport.getThriftClass(configuration);
     }
-    this.thriftStruct = ThriftSchemaConverter.toStructType(thriftClass);
-    this.schema = ThriftSchemaConverter.convertWithoutProjection(thriftStruct);
+    ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter(this.configuration);
+    thriftStruct = thriftSchemaConverter.toStructType(thriftClass);
+    schema = thriftSchemaConverter.convert(thriftStruct);
     if (buffered) {
       readToWrite = new BufferedProtocolReadToWrite(thriftStruct, errorHandler);
     } else {
@@ -156,7 +178,8 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
   @Override
   public void prepareForWrite(RecordConsumer recordConsumer) {
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
-    this.parquetWriteProtocol = new ParquetWriteProtocol(recordConsumer, columnIO, thriftStruct);
+    parquetWriteProtocol = new ParquetWriteProtocol(
+        configuration, recordConsumer, columnIO, thriftStruct);
     thriftWriteSupport.prepareForWrite(recordConsumer);
   }
 
