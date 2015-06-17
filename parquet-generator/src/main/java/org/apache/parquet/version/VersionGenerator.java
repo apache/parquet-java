@@ -67,7 +67,11 @@ public class VersionGenerator {
 
     add("  public static final String FULL_VERSION = \"");
     add(props.getProperty("fullVersion"));
-    add("\";\n");
+    add("\";\n\n");
+
+    add("  public static void main(String[] args) {\n");
+    add("    System.out.println(FULL_VERSION);\n");
+    add("  }\n");
 
     add("}\n");
     writer.close();
