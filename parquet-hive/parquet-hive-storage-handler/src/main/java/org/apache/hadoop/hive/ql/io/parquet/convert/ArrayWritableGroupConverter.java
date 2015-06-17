@@ -21,9 +21,9 @@ package org.apache.hadoop.hive.ql.io.parquet.convert;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Writable;
 
-import parquet.io.ParquetDecodingException;
-import parquet.io.api.Converter;
-import parquet.schema.GroupType;
+import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.api.Converter;
+import org.apache.parquet.schema.GroupType;
 
 public class ArrayWritableGroupConverter extends HiveGroupConverter {
 

@@ -7,19 +7,19 @@
     <version>14</version>
   </parent>
 
-  <groupId>com.twitter</groupId>
+  <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.6.0rc8-SNAPSHOT</version>
+  <version>1.8.0rc2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>Apache Parquet MR (Incubating)</name>
-  <url>https://parquet.incubator.apache.org</url>
+  <name>Apache Parquet MR</name>
+  <url>https://parquet.apache.org</url>
   <description>Parquet is a columnar storage format that supports nested data. This provides the java implementation.</description>
 
   <scm>
-    <connection>scm:git:git@github.com:apache/incubator-parquet-mr.git</connection>
-    <url>scm:git:git@github.com:apache/incubator-parquet-mr.git</url>
-    <developerConnection>scm:git:https://git-wip-us.apache.org/repos/asf/incubator-parquet-mr.git</developerConnection>
+    <connection>scm:git:git@github.com:apache/parquet-mr.git</connection>
+    <url>scm:git:git@github.com:apache/parquet-mr.git</url>
+    <developerConnection>scm:git:https://git-wip-us.apache.org/repos/asf/parquet-mr.git</developerConnection>
   </scm>
 
   <licenses>
@@ -37,15 +37,15 @@
   <mailingLists>
     <mailingList>
       <name>Dev Mailing List</name>
-      <post>dev@parquet.incubator.apache.org</post>
-      <subscribe>dev-subscribe@parquet.incubator.apache.org</subscribe>
-      <unsubscribe>dev-unsubscribe@parquet.incubator.apache.org</unsubscribe>
+      <post>dev@parquet.apache.org</post>
+      <subscribe>dev-subscribe@parquet.apache.org</subscribe>
+      <unsubscribe>dev-unsubscribe@parquet.apache.org</unsubscribe>
     </mailingList>
     <mailingList>
       <name>Commits Mailing List</name>
-      <post>commits@parquet.incubator.apache.org</post>
-      <subscribe>commits-subscribe@parquet.incubator.apache.org</subscribe>
-      <unsubscribe>commits-unsubscribe@parquet.incubator.apache.org</unsubscribe>
+      <post>commits@parquet.apache.org</post>
+      <subscribe>commits-subscribe@parquet.apache.org</subscribe>
+      <unsubscribe>commits-unsubscribe@parquet.apache.org</unsubscribe>
     </mailingList>
   </mailingLists>
 
@@ -101,12 +101,12 @@
     <jackson.groupId>org.codehaus.jackson</jackson.groupId>
     <jackson.version>1.9.11</jackson.version>
     <jackson.package>org.codehaus.jackson</jackson.package>
-    <shade.prefix>parquet</shade.prefix>
+    <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>1.1.0</hadoop.version>
     <cascading.version>2.5.3</cascading.version>
-    <parquet.format.version>2.2.0-rc1</parquet.format.version>
+    <parquet.format.version>2.3.0-incubating</parquet.format.version>
     <log4j.version>1.2.17</log4j.version>
-    <previous.version>1.6.0rc1</previous.version>
+    <previous.version>1.7.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <scala.version>2.10.4</scala.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
@@ -115,6 +115,7 @@
     <pig.version>0.11.1</pig.version>
     <pig.classifier />
     <thrift.version>0.7.0</thrift.version>
+    <fastutil.version>6.5.7</fastutil.version>
   </properties>
 
   <modules>
@@ -193,7 +194,7 @@
           <aggregate>true</aggregate>
           <instrumentation>
             <ignores>
-              <ignore>parquet.Log.*</ignore>
+              <ignore>org.apache.parquet.Log.*</ignore>
               <ignore>java.lang.UnsupportedOperationException.*</ignore>
             </ignores>
             <excludes>
@@ -233,10 +234,14 @@
                    <dumpDetails>true</dumpDetails>
                    <previousVersion>${previous.version}</previousVersion>
                    <excludes>
-                     <exclude>parquet/filter2/**</exclude>
-                     <exclude>parquet/org/**</exclude>
-                     <exclude>parquet/column/**</exclude>
-                     <exclude>parquet/hadoop/ParquetInputSplit</exclude>
+                     <exclude>org/apache/parquet/hadoop/thrift/**</exclude>
+                     <exclude>org/apache/parquet/thrift/projection/**</exclude>
+                     <exclude>org/apache/parquet/thrift/ThriftSchemaConverter</exclude>
+                     <exclude>org/apache/parquet/filter2/**</exclude>
+                     <exclude>org/apache/parquet/column/**</exclude>
+                     <exclude>org/apache/parquet/hadoop/ParquetInputSplit</exclude>
+                     <exclude>shaded/**</exclude> <!-- shaded by parquet -->
+                     <exclude>parquet/**</exclude> <!-- shaded by parquet-format -->
                    </excludes>
                  </requireBackwardCompatibility>
                </rules>

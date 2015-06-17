@@ -1,6 +1,6 @@
 {
   "name" : "myrecord",
-  "namespace": "parquet.avro",
+  "namespace": "org.apache.parquet.avro",
   "type" : "record",
   "fields" : [ {
     "name" : "mynull",
@@ -63,6 +63,12 @@
        "type" : "array",
        "items" : "int"
     }]
+  }, {
+    "name" : "myarrayofoptional",
+    "type" : {
+       "type" : "array",
+       "items" : [ "null", "int" ]
+    }
   }, {
     "name" : "mymap",
     "type" : {

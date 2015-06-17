@@ -17,7 +17,7 @@
  * under the License.
  */
 
-@namespace("parquet.avro")
+@namespace("org.apache.parquet.avro")
 protocol Cars {
 
     record Service {

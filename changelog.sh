@@ -61,4 +61,3 @@ do
     echo "* ISSUE [$PR](https://github.com/Parquet/parquet-mr/pull/$PR): ${DESC}"
   fi
 done
-

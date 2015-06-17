@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-namespace java parquet.thrift.test
+namespace java org.apache.parquet.thrift.test
 struct TestListsInMap {
   1: string name,
   2: map<list<string>,list<string>> names,
@@ -169,6 +169,129 @@ struct TestFieldOfEnum{
 }
 
 struct StringAndBinary {
-  1: required string s;
-  2: required binary b;
+  1: required string s
+  2: required binary b
+}
+
+#fixture fox nested structures
+struct NestedList {
+  1: required list<list<Address>> rll
+  2: required list<list<list<Address>>> rlll
+  3: optional list<list<Address>> oll
+  4: optional list<list<list<Address>>> olll
+  5: list<list<Address>> ll
+  6: list<list<list<Address>>> lll
+}
+
+struct ListNestMap {
+  1: required list<map<Phone, Address>> rlm
+  2: required list<list<map<Phone, Address>>> rllm
+  3: optional list<map<Phone, Address>> olm
+  4: optional list<list<map<Phone, Address>>> ollm
+  5: list<map<Phone, Address>> lm
+  6: list<list<map<Phone, Address>>> llm
+}
+
+struct ListNestSet {
+   1: required list<set<Address>> rls
+   2: required list<list<set<Address>>> rlls
+   3: optional list<set<Address>> ols
+   4: optional list<list<set<Address>>> olls
+   5: list<set<Address>> ls
+   6: list<list<set<Address>>> lls
+}
+
+struct ListNestEnum {
+   1: required list<Operation> rle
+}
+
+struct MapNestMap {
+  1: required map<map<Phone, Address>, map<Address, Phone>> rmm
+  2: required map<map<map<Phone,Address>, Address>, map<Address, Phone>> rmmm
+  3: optional map<map<Phone, Address>, map<Address, Phone>> omm
+  4: optional map<map<map<Phone,Address>, Address>, map<Address, Phone>> ommm
+  5: map<map<Phone, Address>, map<Address, Phone>> mm
+  6: map<map<map<Phone,Address>, Address>, map<Address, Phone>> mmm
+}
+
+struct MapNestList {
+  1: required map<list<Phone>, list<Address>> rml
+  2: required map<list<list<Phone>>, list<list<Address>>> rmll
+  3: optional map<list<Phone>, list<Address>> oml
+  4: optional map<list<list<Phone>>, list<list<Address>>> omll
+  5: map<list<Phone>, list<Address>> ml
+  6: map<list<list<Phone>>, list<list<Address>>> mll
+}
+
+struct MapNestSet {
+  1: required map<set<Phone>, set<Address>> rms
+  2: required map<set<set<Phone>>, set<set<Address>>> rmss
+  3: optional map<set<Phone>, set<Address>> oms
+  4: optional map<set<set<Phone>>, set<set<Address>>> omss
+  5: map<set<Phone>, set<Address>> ms
+  6: map<set<set<Phone>>, set<set<Address>>> mss
+}
+
+struct SetNestSet {
+  1: required set<set<Address>> rss
+  2: required set<set<set<Address>>> rsss
+  3: optional set<set<Address>> oss
+  4: optional set<set<set<Address>>> osss
+  5: set<set<Address>> ss
+  6: set<set<set<Address>>> sss
+}
+
+struct SetNestList {
+   1: required set<list<Address>> rsl
+   2: required set<set<list<Address>>> rssl
+   3: optional set<list<Address>> osl
+   4: optional set<set<list<Address>>> ossl
+   5: set<list<Address>> sl
+   6: set<set<list<Address>>> ssl
+}
+
+struct SetNestMap {
+  1: required set<map<Phone, Address>> rsm
+  2: required set<set<map<Phone, Address>>> rssm
+  3: required set<set<list<list<map<Phone, Address>>>>> rssllm
+  4: optional set<map<Phone, Address>> osm
+  5: optional set<set<map<Phone, Address>>> ossm
+  6: optional set<set<list<list<map<Phone, Address>>>>> ossllm
+  7: set<map<Phone, Address>> sm
+  8: set<set<map<Phone, Address>>> ssm
+  9: set<set<list<list<map<Phone, Address>>>>> ssllm
+}
+
+struct AString {
+  1: required string s
+}
+
+struct ALong {
+  1: required i64 l
+}
+
+struct ABool {
+  1: required bool b
+}
+
+union UnionV2 {
+  1: AString aString,
+  2: ALong aLong,
+  3: ABool aNewBool
+}
+
+struct StructWithUnionV2 {  
+  1: required string name,
+  2: required UnionV2 aUnion
+}
+
+struct AStructThatLooksLikeUnionV2 {
+  1: optional AString aString,
+  2: optional ALong aLong,
+  3: optional ABool aNewBool
+}
+
+struct StructWithAStructThatLooksLikeUnionV2 {  
+  1: required string name,
+  2: required AStructThatLooksLikeUnionV2 aNotQuiteUnion
 }
