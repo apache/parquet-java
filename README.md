@@ -17,7 +17,7 @@
   ~ under the License.
   -->
 
-Parquet MR [![Build Status](https://travis-ci.org/apache/incubator-parquet-mr.svg?branch=master)](http://travis-ci.org/apache/incubator-parquet-mr)
+Parquet MR [![Build Status](https://travis-ci.org/apache/parquet-mr.svg?branch=master)](http://travis-ci.org/apache/parquet-mr)
 ======
 
 Parquet-MR contains the java implementation of the [Parquet format](https://github.com/apache/parquet-format). 
