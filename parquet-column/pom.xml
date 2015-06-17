@@ -118,6 +118,13 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <version>1.2.1</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-generator</artifactId>
+            <version>${project.version}</version>
+          </dependency>
+        </dependencies>
         <executions>
           <execution>
             <phase>generate-sources</phase>
@@ -128,6 +135,7 @@
         </executions>
         <configuration>
           <mainClass>org.apache.parquet.filter2.Generator</mainClass>
+          <includePluginDependencies>true</includePluginDependencies>
           <arguments>
             <argument>${basedir}/target/generated-src</argument>
           </arguments>
