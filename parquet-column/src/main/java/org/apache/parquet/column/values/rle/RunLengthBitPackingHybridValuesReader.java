@@ -41,7 +41,7 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCountL, byte[] page, int offset) throws IOException {
+  public void initFromPage(int valueCountL, byte[] page, int offset, byte[] previous) throws IOException {
     ByteArrayInputStream in = new ByteArrayInputStream(page, offset, page.length - offset);
     int length = BytesUtils.readIntLittleEndian(in);
 

@@ -63,7 +63,7 @@ public class TestBoundedColumns {
     byte[] byteArray = bicw.getBytes().toByteArray();
     assertEquals(concat(result), toBinaryString(byteArray, 4));
     BoundedIntValuesReader bicr = new BoundedIntValuesReader(bound);
-    bicr.initFromPage(1, byteArray, 0);
+    bicr.initFromPage(1, byteArray, 0, new byte[0]);
     String expected = "";
     String got = "";
     for (int i : ints) {
@@ -155,7 +155,7 @@ public class TestBoundedColumns {
       idx = 0;
       int offset = 0;
       for (int stripeNum = 0; stripeNum < valuesPerStripe.length; stripeNum++) {
-        bicr.initFromPage(1, input, offset);
+        bicr.initFromPage(1, input, offset, new byte[0]);
         offset = bicr.getNextOffset();
         for (int i = 0; i < valuesPerStripe[stripeNum]; i++) {
           int number = stream[idx++];

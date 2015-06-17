@@ -87,7 +87,7 @@ public class BitPackingPerfTest {
     System.out.print(" no gc <");
     for (int k = 0; k < N; k++) {
       long t2 = System.nanoTime();
-      r.initFromPage(result.length, bytes, 0);
+      r.initFromPage(result.length, bytes, 0, new byte[0]);
       for (int i = 0; i < result.length; i++) {
         result[i] = r.readInteger();
       }

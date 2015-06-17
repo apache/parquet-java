@@ -536,15 +536,24 @@ class ColumnReaderImpl implements ColumnReader {
     } else {
       this.dataColumn = dataEncoding.getValuesReader(path, VALUES);
     }
+
+    try {
+      // Here we pass the last value from the last page read in order to read files written with the
+      // issue mentioned on PARQUET-246 where the prefixLength for DELTA_BYTE_ARRAY encoding values
+      // was not resetted when a new page was started.
+      if (path.getType().equals(PrimitiveTypeName.BINARY) && binding != null && binding.getBinary() != null) {
+        dataColumn.initFromPage(pageValueCount, bytes, offset, binding.getBinary().getBytes());
+      } else {
+        dataColumn.initFromPage(pageValueCount, bytes, offset, new byte[0]);
+      }
+    } catch (IOException e) {
+      throw new ParquetDecodingException("could not read page in col " + path, e);
+    }
+
     if (dataEncoding.usesDictionary() && converter.hasDictionarySupport()) {
       bindToDictionary(dictionary);
     } else {
       bind(path.getType());
-    }
-    try {
-      dataColumn.initFromPage(pageValueCount, bytes, offset);
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not read page in col " + path, e);
     }
   }
 
@@ -557,10 +566,10 @@ class ColumnReaderImpl implements ColumnReader {
       byte[] bytes = page.getBytes().toByteArray();
       if (DEBUG) LOG.debug("page size " + bytes.length + " bytes and " + pageValueCount + " records");
       if (DEBUG) LOG.debug("reading repetition levels at 0");
-      rlReader.initFromPage(pageValueCount, bytes, 0);
+      rlReader.initFromPage(pageValueCount, bytes, 0, new byte[0]);
       int next = rlReader.getNextOffset();
       if (DEBUG) LOG.debug("reading definition levels at " + next);
-      dlReader.initFromPage(pageValueCount, bytes, next);
+      dlReader.initFromPage(pageValueCount, bytes, next, new byte[0]);
       next = dlReader.getNextOffset();
       if (DEBUG) LOG.debug("reading data at " + next);
       initDataReader(page.getValueEncoding(), bytes, next, page.getValueCount());

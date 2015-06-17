@@ -45,10 +45,10 @@ public class DeltaLengthByteArrayValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, byte[] in, int offset)
+  public void initFromPage(int valueCount, byte[] in, int offset, byte[] previous)
       throws IOException {
     if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));
-    lengthReader.initFromPage(valueCount, in, offset);
+    lengthReader.initFromPage(valueCount, in, offset, new  byte[2]);
     offset = lengthReader.getNextOffset();
     this.in = in;
     this.offset = offset;

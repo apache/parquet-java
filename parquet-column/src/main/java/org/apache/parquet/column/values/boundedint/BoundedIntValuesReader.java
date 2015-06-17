@@ -70,7 +70,7 @@ class BoundedIntValuesReader extends ValuesReader {
   // bytes would have to be serialized). This is the flip-side
   // to BoundedIntColumnWriter.writeData(BytesOutput)
   @Override
-  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
+  public void initFromPage(int valueCount, byte[] in, int offset, byte[] previous) throws IOException {
     if (DEBUG) LOG.debug("reading size at "+ offset + ": " + in[offset] + " " + in[offset + 1] + " " + in[offset + 2] + " " + in[offset + 3] + " ");
     int totalBytes = BytesUtils.readIntLittleEndian(in, offset);
     if (DEBUG) LOG.debug("will read "+ totalBytes + " bytes");

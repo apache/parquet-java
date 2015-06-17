@@ -69,7 +69,7 @@ public class BitPackingValuesReader extends ValuesReader {
    * @see org.apache.parquet.column.values.ValuesReader#initFromPage(long, byte[], int)
    */
   @Override
-  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
+  public void initFromPage(int valueCount, byte[] in, int offset, byte[] previous) throws IOException {
     int effectiveBitLength = valueCount * bitsPerValue;
     int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength);
     if (Log.DEBUG) LOG.debug("reading " + length + " bytes for " + valueCount + " values of size " + bitsPerValue + " bits." );

@@ -44,7 +44,7 @@ abstract public class PlainValuesReader extends ValuesReader {
    * @see org.apache.parquet.column.values.ValuesReader#initFromPage(byte[], int)
    */
   @Override
-  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
+  public void initFromPage(int valueCount, byte[] in, int offset, byte[] previous) throws IOException {
     if (DEBUG) LOG.debug("init from page at offset "+ offset + " for length " + (in.length - offset));
     this.in = new LittleEndianDataInputStream(new ByteArrayInputStream(in, offset, in.length - offset));
   }

@@ -36,7 +36,7 @@ public class ZeroIntegerValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, byte[] in, int offset) throws IOException {
+  public void initFromPage(int valueCount, byte[] in, int offset, byte[] previous) throws IOException {
     this.nextOffset = offset;
   }
   
