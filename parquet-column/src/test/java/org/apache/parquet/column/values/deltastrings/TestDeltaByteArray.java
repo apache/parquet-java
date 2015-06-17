@@ -34,29 +34,18 @@ public class TestDeltaByteArray {
   static String[] randvalues = Utils.getRandomStringSamples(10000, 32);
 
   @Test
-  public void testSerialization () throws IOException {
+  public void testSerialization () throws Exception {
     DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024);
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
 
-    Utils.writeData(writer, values);
-    Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), values.length);
-
-    for(int i =0; i< bin.length ; i++) {
-      Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
-    }
+    assertReadWrite(writer, reader, values);
   }
 
   @Test
-  public void testRandomStrings() throws IOException {
+  public void testRandomStrings() throws Exception {
     DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024);
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
-
-    Utils.writeData(writer, randvalues);
-    Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), randvalues.length);
-
-    for(int i =0; i< bin.length ; i++) {
-      Assert.assertEquals(Binary.fromString(randvalues[i]), bin[i]);
-    }
+    assertReadWrite(writer, reader, randvalues);
   }
 
   @Test
@@ -80,5 +69,25 @@ public class TestDeltaByteArray {
     Assert.assertEquals(10, bin[0]);
     Assert.assertEquals(0, bin[1]);
     Assert.assertEquals(7, bin[2]);
+  }
+
+  private void assertReadWrite(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals) throws Exception {
+    Utils.writeData(writer, vals);
+    Binary[] bin = Utils.readData(reader, writer.getBytes().toByteArray(), vals.length);
+
+    for(int i = 0; i< bin.length ; i++) {
+      Assert.assertEquals(Binary.fromString(vals[i]), bin[i]);
+    }
+  }
+
+  @Test
+  public void testWriterReset() throws Exception {
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024);
+
+    assertReadWrite(writer, new DeltaByteArrayReader(), values);
+
+    writer.reset();
+
+    assertReadWrite(writer, new DeltaByteArrayReader(), values);
   }
 }
