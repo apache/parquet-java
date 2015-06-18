@@ -148,89 +148,57 @@ The build runs in [Travis CI](http://travis-ci.org/Parquet/parquet-mr):
 [![Build Status](https://secure.travis-ci.org/Parquet/parquet-mr.png?branch=master)](http://travis-ci.org/Parquet/parquet-mr)
 
 ## Add Parquet as a dependency in Maven
-
-### Snapshot releases
-* [apis documentation](http://parquet.io/parquet-mr/site/1.0.0-SNAPSHOT/apidocs/index.html)
-* maven dependency:
-
-```xml
-  <repositories>
-    <repository>
-      <id>sonatype-nexus-snapshots</id>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-     </repository>
-  </repositories>
-  <dependencies>
-    <dependency>
-      <groupId>com.twitter</groupId>
-      <artifactId>parquet-common</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>com.twitter</groupId>
-      <artifactId>parquet-encoding</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>com.twitter</groupId>
-      <artifactId>parquet-column</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>com.twitter</groupId>
-      <artifactId>parquet-hadoop</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
-    </dependency>
-  </dependencies>
-```
-
-### Official releases
-#### 1.0.0
-* [apis documentation](http://parquet.io/parquet-mr/site/1.0.0/apidocs/index.html)
-* maven dependency:
+The current release is version `1.7.0`
 
 ```xml
   <dependencies>
     <dependency>
-      <groupId>com.twitter</groupId>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-common</artifactId>
-      <version>1.0.0</version>
+      <version>1.7.0</version>
     </dependency>
     <dependency>
-      <groupId>com.twitter</groupId>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-encoding</artifactId>
-      <version>1.0.0</version>
+      <version>1.7.0</version>
     </dependency>
     <dependency>
-      <groupId>com.twitter</groupId>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-column</artifactId>
-      <version>1.0.0</version>
+      <version>1.7.0</version>
     </dependency>
     <dependency>
-      <groupId>com.twitter</groupId>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
-      <version>1.0.0</version>
+      <version>1.7.0</version>
     </dependency>
   </dependencies>
 ```
 
 ### How To Contribute
 
+We prefer to receive contributions in the form of GitHub pull requests. Please send pull requests against the [github.com/apache/parquet-mr](https://github.com/apache/parquet-mr) repository. If you've previously forked Parquet from its old location, you will need to add a remote or update your origin remote to https://github.com/apache/parquet-mr.git
+
 If you are looking for some ideas on what to contribute, check out GitHub issues for this project labeled ["Pick me up!"](https://github.com/apache/parquet-mr/issues?labels=pick+me+up%21&state=open).
-Comment on the issue and/or contact [the parquet-dev group](https://groups.google.com/d/forum/parquet-dev) with your questions and ideas.
+Comment on the issue and/or contact [dev@parquet.apache.org](http://mail-archives.apache.org/mod_mbox/parquet-dev/) with your questions and ideas.
+
+If you’d like to report a bug but don’t have time to fix it, you can still post it to our [issue tracker](https://issues.apache.org/jira/browse/PARQUET), or email the mailing list [dev@parquet.apache.org](http://mail-archives.apache.org/mod_mbox/parquet-dev/)
+
+To contribute a patch:
+
+  1. Break your work into small, single-purpose patches if possible. It’s much harder to merge in a large change with a lot of disjoint features.
+  2. Create a JIRA for your patch on the [Parquet Project JIRA](https://issues.apache.org/jira/browse/PARQUET).
+  3. Submit the patch as a GitHub pull request against the master branch. For a tutorial, see the GitHub guides on forking a repo and sending a pull request. Prefix your pull request name with the JIRA name (ex: https://github.com/apache/parquet-mr/pull/117).
+  4. Make sure that your code passes the unit tests. You can run the tests with `mvn test` in the root directory. 
+  5. Add new unit tests for your code. 
 
 We tend to do fairly close readings of pull requests, and you may get a lot of comments. Some common issues that are not code structure related, but still important:
-* Please make sure to add the license headers to all new files. You can do this automatically by using the `mvn license:format` command.
-* Use 2 spaces for whitespace. Not tabs, not 4 spaces. The number of the spacing shall be 2.
-* Give your operators some room. Not `a+b` but `a + b` and not `foo(int a,int b)` but `foo(int a, int b)`.
-* Generally speaking, stick to the [Sun Java Code Conventions](http://www.oracle.com/technetwork/java/javase/documentation/codeconvtoc-136057.html)
-* Make sure tests pass!
+  * Use 2 spaces for whitespace. Not tabs, not 4 spaces. The number of the spacing shall be 2.
+  * Give your operators some room. Not `a+b` but `a + b` and not `foo(int a,int b)` but `foo(int a, int b)`.
+  * Generally speaking, stick to the [Sun Java Code Conventions](http://www.oracle.com/technetwork/java/javase/documentation/codeconvtoc-136057.html)
+  * Make sure tests pass!
+
+Thank you for getting involved!
 
 ## Authors and contributors
 
@@ -247,15 +215,17 @@ We tend to do fairly close readings of pull requests, and you may get a lot of c
 
 ## Code of Conduct
 
-We hold ourselves and the Parquet developer community to a code of conduct as described by [Twitter OSS](https://engineering.twitter.com/opensource): <https://github.com/twitter/code-of-conduct/blob/master/code-of-conduct.md>. 
+We hold ourselves and the Parquet developer community to two codes of conduct:
+  1. [The Apache Software Foundation Code of Conduct](https://www.apache.org/foundation/policies/conduct.html)
+  2. [The Twitter OSS Code of Conduct](https://github.com/twitter/code-of-conduct/blob/master/code-of-conduct.md)
 
 ## Discussions
-* google group https://groups.google.com/d/forum/parquet-dev
-* the group email address: parquet-dev@googlegroups.com
+* Mailing list: [dev@parquet.apache.org](http://mail-archives.apache.org/mod_mbox/parquet-dev/) 
+* Bug trackter: [jira](https://issues.apache.org/jira/browse/PARQUET)
+* Discussions also take place in github pull requests
 
 ## License
 
-Copyright 2012-2013 Twitter, Inc.
-
 Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
+See also: 
 
