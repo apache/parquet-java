@@ -19,19 +19,15 @@ package org.apache.parquet.vector;
 
 import org.apache.parquet.column.ColumnDescriptor;
 
-import java.nio.ByteBuffer;
-
 public abstract class ColumnVector
 {
   public static final int DEFAULT_VECTOR_LENGTH = 1024;
   protected Class valueType;
-  public ByteBuffer values;
   public boolean [] isNull;
   private int numValues;
 
-  ColumnVector(Class valueType, int sizeOfValue) {
+  ColumnVector(Class valueType) {
     this.valueType = valueType;
-    this.values = ByteBuffer.allocate(DEFAULT_VECTOR_LENGTH * sizeOfValue);
     this.isNull = new boolean[DEFAULT_VECTOR_LENGTH];
   }
 
@@ -54,7 +50,7 @@ public abstract class ColumnVector
     this.numValues = numValues;
   }
 
-  public static final ColumnVector newColumnVector(ColumnDescriptor descriptor) {
+  public static final ColumnVector from(ColumnDescriptor descriptor) {
     switch (descriptor.getType()) {
       case BOOLEAN:
         return new BooleanColumnVector();
@@ -69,7 +65,8 @@ public abstract class ColumnVector
       case BINARY:
         return new ByteColumnVector(1);
       case INT96:
-        return new ByteColumnVector(12); //TODO does this hold for all encodings?
+        //TODO does this hold for all encodings?
+        return new ByteColumnVector(12);
       case FIXED_LEN_BYTE_ARRAY:
         return new ByteColumnVector(descriptor.getTypeLength());
       default:
@@ -77,26 +74,7 @@ public abstract class ColumnVector
     }
   }
 
-  /**
-   * Ensure that the remaining capacity in the values byte buffer > requiredCapacity
-   */
-  public void ensureCapacity(int requiredCapacity) {
-    if (values.remaining() >= requiredCapacity) {
-      return;
-    }
-
-    int capacity = values.capacity();
-    int multiplier = 2;
-    while (capacity * multiplier - values.position() < requiredCapacity) {
-      multiplier++;
-    }
-
-    multiplier *= 1.25; // have some slack
-
-    ByteBuffer newBuffer = ByteBuffer.allocate(capacity * multiplier);
-    int currentPosition = values.position();
-    System.arraycopy(values.array(), 0, newBuffer.array(), 0, values.array().length);
-    newBuffer.position(currentPosition);
-    values = newBuffer;
+  public static final <T> ObjectColumnVector<T> from(Class<T> clazz) {
+    return new ObjectColumnVector<T>(clazz);
   }
 }

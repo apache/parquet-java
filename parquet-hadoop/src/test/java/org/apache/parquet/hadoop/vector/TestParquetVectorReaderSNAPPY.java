@@ -28,7 +28,6 @@ import java.io.IOException;
 
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
-import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 
 public class TestParquetVectorReaderSNAPPY extends TestParquetVectorReader
 {

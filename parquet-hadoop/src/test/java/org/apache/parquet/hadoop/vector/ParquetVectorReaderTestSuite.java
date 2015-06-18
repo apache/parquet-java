@@ -28,7 +28,8 @@ import org.junit.runners.Suite;
         TestParquetVectorReaderGZIP.class,
         TestParquetVectorReaderGZIPV2.class,
         TestParquetVectorReaderSNAPPY.class,
-        TestParquetVectorReaderSNAPPYV2.class
+        TestParquetVectorReaderSNAPPYV2.class,
+        TestParquetComplexTypeVectorReader.class,
 })
 public class ParquetVectorReaderTestSuite
 {

@@ -20,7 +20,10 @@ package org.apache.parquet.vector;
 
 public class IntColumnVector extends ColumnVector
 {
+  public int[] values;
+
   public IntColumnVector() {
-    super(int.class, Integer.BYTES);
+    super(int.class);
+    values = new int[DEFAULT_VECTOR_LENGTH];
   }
 }

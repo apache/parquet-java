@@ -20,10 +20,10 @@ package org.apache.parquet.vector;
 
 public class BooleanColumnVector extends ColumnVector
 {
-  //for simplicity store booleans as a single byte
-  private static final int SIZE_OF_BOOLEAN = 1;
+  public boolean[] values;
 
   public BooleanColumnVector() {
-    super(boolean.class, SIZE_OF_BOOLEAN);
+    super(boolean.class);
+    values = new boolean[DEFAULT_VECTOR_LENGTH];
   }
 }

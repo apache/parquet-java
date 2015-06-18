@@ -20,7 +20,10 @@ package org.apache.parquet.vector;
 
 public class FloatColumnVector extends ColumnVector
 {
+  public float[] values;
+
   public FloatColumnVector() {
-    super(float.class, Float.BYTES);
+    super(float.class);
+    values = new float[DEFAULT_VECTOR_LENGTH];
   }
 }

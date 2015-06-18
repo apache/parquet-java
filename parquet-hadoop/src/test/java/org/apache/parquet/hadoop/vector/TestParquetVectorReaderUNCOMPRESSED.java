@@ -27,7 +27,6 @@ import org.junit.BeforeClass;
 import java.io.IOException;
 
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
-import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 
 public class TestParquetVectorReaderUNCOMPRESSED extends TestParquetVectorReader

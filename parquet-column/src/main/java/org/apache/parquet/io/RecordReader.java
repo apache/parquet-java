@@ -18,9 +18,9 @@
  */
 package org.apache.parquet.io;
 
-import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.vector.ColumnVector;
+import org.apache.parquet.vector.ObjectColumnVector;
 
 /**
  * used to read reassembled records
@@ -45,12 +45,27 @@ public abstract class RecordReader<T> {
   }
 
   /**
-   * Reads a vector of pages into the given vectors
+   * Reads a vector of rows into the given vectors.
+   * This method is for reading Parquet primitive values and
+   * does not call the converters
    * @param vectors the vectors to fill
    * @param current number of loaded records so far
    * @param total total number of records in the row group
    */
   public void readVectors(ColumnVector[] vectors, MessageType[] columnSchemas, long current, long total) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Reads a vector of rows into the given vectors
+   * This method is used for reading complex types and arbitrary objects
+   * and calls the converters and materializer to materialize
+   * the actual record
+   * @param vector the vector to fill
+   * @param current number of loaded records so far
+   * @param total total number of records in the row group
+   */
+  public void readVector(ObjectColumnVector<T> vector, long current, long total) {
     throw new UnsupportedOperationException();
   }
 }

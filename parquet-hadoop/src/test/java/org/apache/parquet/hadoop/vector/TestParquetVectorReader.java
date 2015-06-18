@@ -28,24 +28,30 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.vector.*;
+import org.apache.parquet.vector.BooleanColumnVector;
+import org.apache.parquet.vector.ByteColumnVector;
+import org.apache.parquet.vector.DoubleColumnVector;
+import org.apache.parquet.vector.FloatColumnVector;
+import org.apache.parquet.vector.IntColumnVector;
+import org.apache.parquet.vector.LongColumnVector;
+import org.apache.parquet.vector.RowBatch;
 import org.junit.AfterClass;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.nio.CharBuffer;
 import java.util.Arrays;
 
-import static com.google.common.base.Charsets.UTF_8;
-import static java.lang.Boolean.FALSE;
-import static java.lang.Boolean.TRUE;
 import static org.apache.parquet.hadoop.api.ReadSupport.PARQUET_READ_SCHEMA;
+import static org.apache.parquet.hadoop.vector.ParquetVectorTestUtils.assertFixedLengthByteArrayReads;
+import static org.apache.parquet.hadoop.vector.ParquetVectorTestUtils.assertSingleColumnRead;
+import static org.apache.parquet.hadoop.vector.ParquetVectorTestUtils.assertVectorTypes;
+import static org.apache.parquet.hadoop.vector.ParquetVectorTestUtils.log;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public abstract class TestParquetVectorReader
 {
-  protected static boolean DEBUG = false;
   protected static final int nElements = 1236;
   protected static final Configuration conf = new Configuration();
   protected static final Path file = new Path("target/test/TestParquetVectorReader/testParquetFile");
@@ -85,7 +91,6 @@ public abstract class TestParquetVectorReader
         group.append("null_field", "test");
       }
       writer.write(group);
-      System.out.println("Written record " + i);
     }
     writer.close();
   }
@@ -125,8 +130,9 @@ public abstract class TestParquetVectorReader
         } else {
           assertVectorTypes(batch, 1, ByteColumnVector.class);
           ByteColumnVector byteVector = ByteColumnVector.class.cast(batch.getColumns()[0]);
-          byteVector.values.flip();
-          CharBuffer s = UTF_8.decode(byteVector.values);
+          //not all bytes are valid as the underlying array is reused across nextBatch() calls
+          int validBytes = byteVector.size();
+          String s = new String(Arrays.copyOfRange(byteVector.values, 0, validBytes));
           log(s);
           actual.append(s);
         }
@@ -156,9 +162,8 @@ public abstract class TestParquetVectorReader
         assertVectorTypes(batch, 1, IntColumnVector.class);
 
         IntColumnVector vector = IntColumnVector.class.cast(batch.getColumns()[0]);
-        vector.values.flip();
         for (int i = 0 ; i < vector.size(); i++) {
-          assertSingleColumnRead(vector, int.class, expected);
+          assertSingleColumnRead(vector, int.class, i, expected);
           expected++;
         }
       }
@@ -186,9 +191,8 @@ public abstract class TestParquetVectorReader
 
         assertVectorTypes(batch, 1, LongColumnVector.class);
         LongColumnVector vector = LongColumnVector.class.cast(batch.getColumns()[0]);
-        vector.values.flip();
         for (int i = 0 ; i < vector.size(); i++) {
-          assertSingleColumnRead(vector, long.class, expected * 2);
+          assertSingleColumnRead(vector, long.class, i, expected * 2);
           expected++;
         }
       }
@@ -215,9 +219,8 @@ public abstract class TestParquetVectorReader
 
         assertVectorTypes(batch, 1, ByteColumnVector.class);
         ByteColumnVector vector = ByteColumnVector.class.cast(batch.getColumns()[0]);
-        vector.values.flip();
-        for (int i = 0 ; i < vector.size(); i++) {
-          assertFixedLengthByteArrayReads(vector, 12, "999999999999".getBytes());
+        for (int i = 0, position = 0 ; i < vector.size(); i++, position += 12) {
+          assertFixedLengthByteArrayReads(vector, 12, "999999999999".getBytes(), position);
         }
       }
     } finally {
@@ -244,9 +247,8 @@ public abstract class TestParquetVectorReader
 
         assertVectorTypes(batch, 1, DoubleColumnVector.class);
         DoubleColumnVector vector = DoubleColumnVector.class.cast(batch.getColumns()[0]);
-        vector.values.flip();
         for (int i = 0 ; i < vector.size(); i++) {
-          assertSingleColumnRead(vector, double.class, expected * 1.0);
+          assertSingleColumnRead(vector, double.class, i, expected * 1.0);
           expected++;
         }
       }
@@ -274,9 +276,8 @@ public abstract class TestParquetVectorReader
 
         assertVectorTypes(batch, 1, FloatColumnVector.class);
         FloatColumnVector vector = FloatColumnVector.class.cast(batch.getColumns()[0]);
-        vector.values.flip();
         for (int i = 0 ; i < vector.size(); i++) {
-          assertSingleColumnRead(vector, float.class, (float) (expected * 2.0));
+          assertSingleColumnRead(vector, float.class, i, (float) (expected * 2.0));
           expected++;
         }
       }
@@ -304,9 +305,8 @@ public abstract class TestParquetVectorReader
 
         assertVectorTypes(batch, 1, BooleanColumnVector.class);
         BooleanColumnVector vector = BooleanColumnVector.class.cast(batch.getColumns()[0]);
-        vector.values.flip();
         for (int i = 0 ; i < vector.size(); i++) {
-          assertSingleColumnRead(vector, boolean.class, expected % 5 == 0);
+          assertSingleColumnRead(vector, boolean.class, i, expected % 5 == 0);
           expected++;
         }
 
@@ -333,9 +333,8 @@ public abstract class TestParquetVectorReader
         } else {
           assertVectorTypes(batch, 1, ByteColumnVector.class);
           ByteColumnVector vector = ByteColumnVector.class.cast(batch.getColumns()[0]);
-          vector.values.flip();
-          for (int i = 0; i < vector.size(); i++) {
-            assertFixedLengthByteArrayReads(vector, 3, "foo".getBytes());
+          for (int i = 0, position = 0; i < vector.size(); i++, position += 3) {
+            assertFixedLengthByteArrayReads(vector, 3, "foo".getBytes(), position);
           }
         }
       }
@@ -364,10 +363,10 @@ public abstract class TestParquetVectorReader
         assertVectorTypes(batch, 1, ByteColumnVector.class);
 
         ByteColumnVector vector = ByteColumnVector.class.cast(batch.getColumns()[0]);
-        vector.values.flip();
-        for (int i = 0 ; i < vector.size(); i++, expected++) {
+        for (int i = 0, position = 0 ; i < vector.size(); i++, expected++) {
           if (expected % 2 == 1) {
-            assertFixedLengthByteArrayReads(vector, 4, "test".getBytes());
+            assertFixedLengthByteArrayReads(vector, 4, "test".getBytes(), position);
+            position += 4;
           } else {
             assertTrue(vector.isNull[i]);
           }
@@ -398,12 +397,12 @@ public abstract class TestParquetVectorReader
         assertVectorTypes(batch, 1, ByteColumnVector.class);
 
         ByteColumnVector vector = ByteColumnVector.class.cast(batch.getColumns()[0]);
-        vector.values.flip();
-        for (int i = 0 ; i < vector.size(); i++, expected++) {
+        for (int i = 0, position = 0 ; i < vector.size(); i++, expected++) {
           char c  = (char) ((expected % 26) + 'a');
           char[] charArray = new char[expected + 1];
           Arrays.fill(charArray, c);
-          assertFixedLengthByteArrayReads(vector, expected + 1, new String(charArray).getBytes());
+          assertFixedLengthByteArrayReads(vector, expected + 1, new String(charArray).getBytes(), position);
+          position += (expected + 1);
         }
       }
     } finally {
@@ -433,11 +432,9 @@ public abstract class TestParquetVectorReader
         DoubleColumnVector doubleVector = DoubleColumnVector.class.cast(batch.getColumns()[0]);
         IntColumnVector intVector = IntColumnVector.class.cast(batch.getColumns()[1]);
 
-        doubleVector.values.flip();
-        intVector.values.flip();
         for (int i = 0 ; i < doubleVector.size(); i++) {
-          assertSingleColumnRead(doubleVector, double.class, expected * 1.0);
-          assertSingleColumnRead(intVector, int.class, expected);
+          assertSingleColumnRead(doubleVector, double.class, i, expected * 1.0);
+          assertSingleColumnRead(intVector, int.class, i, expected);
           expected++;
         }
       }
@@ -493,31 +490,33 @@ public abstract class TestParquetVectorReader
         ByteColumnVector null_field = ByteColumnVector.class.cast(batch.getColumns()[8]);
         ByteColumnVector var_len_binary_field = ByteColumnVector.class.cast(batch.getColumns()[9]);
 
-        binary_field.values.flip();
-        int32_field.values.flip();
-        int64_field.values.flip();
-        int96_field.values.flip();
-        double_field.values.flip();
-        float_field.values.flip();
-        boolean_field.values.flip();
-        flba_field.values.flip();
-        null_field.values.flip();
-        var_len_binary_field.values.flip();
-
-        CharBuffer s = UTF_8.decode(binary_field.values);
+        //not all bytes are valid as the underlying array is reused across nextBatch() calls
+        int validBytes = binary_field.size();
+        String s = new String(Arrays.copyOfRange(binary_field.values, 0, validBytes));
+        log(s);
         actual.append(s);
 
+        int flba_field_position = 0;
+        int null_field_position = 0;
+        int var_len_binary_field_position = 0;
+        int int96_field_position = 0;
         for (int i = 0 ; i < binary_field.size(); i++) {
-          assertSingleColumnRead(int32_field, int.class, expected);
-          assertSingleColumnRead(int64_field, long.class, (long) (expected * 2));
-          assertFixedLengthByteArrayReads(int96_field, 12, "999999999999".getBytes());
-          assertSingleColumnRead(double_field, double.class, expected * 1.0);
-          assertSingleColumnRead(float_field, float.class, (float) (expected * 2.0));
-          assertSingleColumnRead(boolean_field, boolean.class, expected % 5 == 0);
-          assertFixedLengthByteArrayReads(flba_field, 3, "foo".getBytes());
+          assertSingleColumnRead(int32_field, int.class, i, expected);
+          assertSingleColumnRead(int64_field, long.class, i, (long) (expected * 2));
+
+          assertFixedLengthByteArrayReads(int96_field, 12, "999999999999".getBytes(), int96_field_position);
+          int96_field_position += 12;
+
+          assertSingleColumnRead(double_field, double.class, i, expected * 1.0);
+          assertSingleColumnRead(float_field, float.class, i, (float) (expected * 2.0));
+          assertSingleColumnRead(boolean_field, boolean.class, i, expected % 5 == 0);
+
+          assertFixedLengthByteArrayReads(flba_field, 3, "foo".getBytes(), flba_field_position);
+          flba_field_position += 3;
 
           if (expected % 2 == 1) {
-            assertFixedLengthByteArrayReads(null_field, 4, "test".getBytes());
+            assertFixedLengthByteArrayReads(null_field, 4, "test".getBytes(), null_field_position);
+            null_field_position += 4;
           } else {
             assertTrue(null_field.isNull[i]);
           }
@@ -525,7 +524,8 @@ public abstract class TestParquetVectorReader
           char c  = (char) ((expected % 26) + 'a');
           char[] charArray = new char[expected + 1];
           Arrays.fill(charArray, c);
-          assertFixedLengthByteArrayReads(var_len_binary_field, expected + 1, new String(charArray).getBytes());
+          assertFixedLengthByteArrayReads(var_len_binary_field, expected + 1, new String(charArray).getBytes(), var_len_binary_field_position);
+          var_len_binary_field_position += (expected + 1);
 
           expected++;
         }
@@ -539,61 +539,18 @@ public abstract class TestParquetVectorReader
 
   @Test
   public void testEnsureCapacity() {
-    ColumnVector vector = new ByteColumnVector(4);
+    ByteColumnVector vector = new ByteColumnVector(4);
+    byte[] test = "test".getBytes();
+    int position = 0;
     for (int i = 0 ; i < 100; i++) {
-      vector.values.put("test".getBytes());
+      System.arraycopy(test, 0, vector.values, position, test.length);
+      position += test.length;
     }
     vector.ensureCapacity(600000);
-    vector.values.flip();
+    position = 0;
     for (int i = 0 ; i < 100; i++) {
-      assertFixedLengthByteArrayReads(vector, 4, "test".getBytes());
-    }
-  }
-
-  private <T> void assertVectorTypes(RowBatch batch, int expectedColumnCount, Class... vectorType) {
-    assertTrue("Must have a single column", batch.getColumns().length == expectedColumnCount);
-    for (int i = 0 ; i < expectedColumnCount ; i++) {
-      ColumnVector vector = batch.getColumns()[i];
-      assertTrue(vectorType[i].isInstance(vector));
-      log("Read " + vector.size() + " elements of type " + vectorType[i]);
-    }
-  }
-
-  private <T> void assertSingleColumnRead(ColumnVector vector, Class<T> elementType, T expectedValue) {
-    if (elementType == int.class) {
-      int read = vector.values.getInt();
-      log(read);
-      assertEquals(expectedValue, read);
-    } else if (elementType == long.class) {
-      long read = vector.values.getLong();
-      log(read);
-      assertEquals(expectedValue, read);
-    } else if (elementType == double.class) {
-      double read = vector.values.getDouble();
-      log(read);
-      assertEquals(Double.class.cast(expectedValue), read, 0.01);
-    } else if (elementType == float.class) {
-      float read = vector.values.getFloat();
-      log(read);
-      assertEquals(Float.class.cast(expectedValue), read, 0.01);
-    } else if (elementType == boolean.class) {
-      boolean read = vector.values.get() == 0 ? FALSE : TRUE;
-      log(read);
-      assertEquals(expectedValue, read);
-    }
-  }
-
-  private <T> void assertFixedLengthByteArrayReads(ColumnVector vector, int fixedLength, byte[] expectedValue) {
-    byte[] value = new byte[fixedLength];
-    vector.values.get(value);
-    String read = new String(value);
-    log(read);
-    assertArrayEquals(expectedValue, value);
-  }
-
-  private void log(Object message) {
-    if (DEBUG) {
-      System.out.println(message);
+      assertFixedLengthByteArrayReads(vector, 4, test, position);
+      position += test.length;
     }
   }
 }

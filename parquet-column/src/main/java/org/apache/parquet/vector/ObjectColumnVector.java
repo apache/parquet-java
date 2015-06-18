@@ -18,12 +18,17 @@
  */
 package org.apache.parquet.vector;
 
-public class DoubleColumnVector extends ColumnVector
-{
-  public double[] values;
+import static java.lang.reflect.Array.newInstance;
 
-  public DoubleColumnVector() {
-    super(double.class);
-    values = new double[DEFAULT_VECTOR_LENGTH];
+/**
+ * Vector for holding complex and application dependent types
+ */
+public class ObjectColumnVector<T> extends ColumnVector
+{
+  public T[] values;
+
+  public ObjectColumnVector(Class<T> clazz) {
+    super(clazz);
+    values = (T[]) newInstance(clazz, DEFAULT_VECTOR_LENGTH);
   }
 }

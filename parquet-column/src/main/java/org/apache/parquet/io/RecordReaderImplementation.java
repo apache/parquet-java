@@ -30,10 +30,21 @@ import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.impl.ColumnReadStoreImpl;
-import org.apache.parquet.io.api.*;
+import org.apache.parquet.io.api.Converter;
+import org.apache.parquet.io.api.GroupConverter;
+import org.apache.parquet.io.api.PrimitiveConverter;
+import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.apache.parquet.vector.*;
+import org.apache.parquet.vector.BooleanColumnVector;
+import org.apache.parquet.vector.ByteColumnVector;
+import org.apache.parquet.vector.ColumnVector;
+import org.apache.parquet.vector.DoubleColumnVector;
+import org.apache.parquet.vector.FloatColumnVector;
+import org.apache.parquet.vector.IntColumnVector;
+import org.apache.parquet.vector.LongColumnVector;
+import org.apache.parquet.vector.ObjectColumnVector;
 
 
 /**
@@ -424,7 +435,6 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
 
   private State getState(MessageType schema) {
     for (State state : states) {
-        //FIXME state.fieldPath[0] only looks at the 0th level. May not work for complex types/nested stuff.
         if (schema.containsField(state.fieldPath[0])) {
           return state;
         }
@@ -447,14 +457,36 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       }
   }
 
+  @Override
+  public void readVector(ObjectColumnVector<T> vector, long current, long total) {
+    int index = 0;
+    for ( ; index < ColumnVector.DEFAULT_VECTOR_LENGTH; index++, current++) {
+
+      if (current >= total) {
+        setNumValuesInVectors(index, vector);
+        return;
+      }
+
+      T record = read();
+      if (record == null) {
+        vector.isNull[index] = true;
+      }
+      vector.values[index] = record;
+    }
+
+    setNumValuesInVectors(index, vector);
+  }
+
   private void readVector(ColumnReader reader, ColumnVector vector, long current, long total) {
     ColumnDescriptor column = reader.getDescriptor();
     int maxDefinitionLevel = column.getMaxDefinitionLevel();
 
     int index = 0;
+    int fixedLenByteArrayPosition = 0;
+    int variableLenByteArrayPosition = 0;
+    int totalBytesCopied = 0;
     for ( ; index < ColumnVector.DEFAULT_VECTOR_LENGTH; index++, current++) {
 
-      //EOF
       if (current >= total) {
         setNumValuesInVectors(index, vector);
         return;
@@ -464,35 +496,44 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
         switch (column.getType()) {
           case BOOLEAN:
             BooleanColumnVector booleanColumnVector = (BooleanColumnVector) vector;
-            booleanColumnVector.values.put(reader.getBoolean() ? (byte) 1 : (byte) 0);
+            booleanColumnVector.values[index] = reader.getBoolean();
             break;
           case DOUBLE:
             DoubleColumnVector doubleColumnVector = (DoubleColumnVector) vector;
-            doubleColumnVector.values.putDouble(reader.getDouble());
+            doubleColumnVector.values[index] = reader.getDouble();
             break;
           case FLOAT:
             FloatColumnVector floatColumnVector = (FloatColumnVector) vector;
-            floatColumnVector.values.putFloat(reader.getFloat());
+            floatColumnVector.values[index] = reader.getFloat();
             break;
           case INT32:
             IntColumnVector intColumnVector = (IntColumnVector) vector;
-            intColumnVector.values.putInt(reader.getInteger());
+            intColumnVector.values[index] = reader.getInteger();
             break;
           case INT64:
             LongColumnVector longColumnVector = (LongColumnVector) vector;
-            longColumnVector.values.putLong(reader.getLong());
+            longColumnVector.values[index] = reader.getLong();
             break;
           case INT96:
           case FIXED_LEN_BYTE_ARRAY:
             ByteColumnVector fixedLenVector = (ByteColumnVector) vector;
-            Binary fixedLenBinary = reader.getBinary();
-            fixedLenVector.values.put(fixedLenBinary.getBytes());
+            byte[] fixedLenBinary = reader.getBinary().getBytes();
+            System.arraycopy(fixedLenBinary, 0, fixedLenVector.values, fixedLenByteArrayPosition, fixedLenBinary.length);
+            fixedLenByteArrayPosition += fixedLenBinary.length;
             break;
           case BINARY:
             ByteColumnVector variableLenVector = (ByteColumnVector) vector;
             byte[] variableLenBinary = reader.getBinary().getBytes();
-            variableLenVector.ensureCapacity(variableLenBinary.length);
-            variableLenVector.values.put(variableLenBinary);
+
+            if (variableLenBinary.length > variableLenVector.capacity) {
+              variableLenVector.ensureCapacity(variableLenBinary.length);
+            } else if (variableLenVector.capacity - totalBytesCopied <= variableLenBinary.length) {
+              variableLenVector.ensureCapacity(variableLenVector.capacity + variableLenBinary.length);
+            }
+
+            System.arraycopy(variableLenBinary, 0, variableLenVector.values, variableLenByteArrayPosition, variableLenBinary.length);
+            totalBytesCopied += variableLenBinary.length;
+            variableLenByteArrayPosition += variableLenBinary.length;
             break;
           default:
             throw new IllegalArgumentException("Unhandled column type " + column.getType());
