@@ -662,10 +662,10 @@ public class ParquetFileWriter {
 
     protected final long dfsBlockSize;
     protected final long rowGroupSize;
-    protected final float maxPaddingSize;
+    protected final int maxPaddingSize;
 
     private PaddingAlignment(long dfsBlockSize, long rowGroupSize,
-                            float maxPaddingSize) {
+                             int maxPaddingSize) {
       this.dfsBlockSize = dfsBlockSize;
       this.rowGroupSize = rowGroupSize;
       this.maxPaddingSize = maxPaddingSize;
