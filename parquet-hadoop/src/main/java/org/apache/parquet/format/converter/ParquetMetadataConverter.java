@@ -182,8 +182,7 @@ public class ParquetMetadataConverter {
           columnMetaData.getFirstDataPageOffset());
       columnChunk.meta_data.dictionary_page_offset = columnMetaData.getDictionaryPageOffset();
       if (!columnMetaData.getStatistics().isEmpty()) {
-        columnChunk.meta_data.setStatistics(
-            toParquetStatistics(columnMetaData.getStatistics()));
+        columnChunk.meta_data.setStatistics(toParquetStatistics(columnMetaData.getStatistics()));
       }
 //      columnChunk.meta_data.index_page_offset = ;
 //      columnChunk.meta_data.key_value_metadata = ; // nothing yet
@@ -246,18 +245,49 @@ public class ParquetMetadataConverter {
     }
     return stats;
   }
-
+  /**
+   * @deprecated Replaced by {@link #fromParquetStatistics(
+   * String createdBy, Statistics statistics, PrimitiveTypeName type)}
+   */
+  @Deprecated
   public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics(Statistics statistics, PrimitiveTypeName type) {
+    return fromParquetStatistics(null, statistics, type);
+  }
+
+  public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics
+      (String createdBy, Statistics statistics, PrimitiveTypeName type) {
     // create stats object based on the column type
     org.apache.parquet.column.statistics.Statistics stats = org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType(type);
     // If there was no statistics written to the footer, create an empty Statistics object and return
-    if (statistics != null) {
+    if (statistics != null && !shouldIgnoreStatistics(createdBy)) {
       if (statistics.isSetMax() && statistics.isSetMin()) {
         stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
       }
       stats.setNumNulls(statistics.null_count);
     }
     return stats;
+  }
+
+  private static boolean shouldIgnoreStatistics(String createdBy) {
+    if (createdBy == null || !createdBy.startsWith("parquet-mr")) {
+      return false; // Assume that other implementations got the statistics correct
+    }
+
+    return parseVersion(createdBy) < STATISTICS_FIXED_VERSION;
+  }
+
+  private static int parseVersion(String createdBy) {
+    final String[] versionTokens = createdBy.split(" ");
+
+    if (versionTokens.length < 3) {
+      return -1; // Ignore statistics
+    }
+
+    try {
+      return Integer.parseInt(versionTokens[2].substring(0, 5).replaceAll("\\.", ""));
+    } catch (NumberFormatException ex) {
+      return -1; // Ignore statistics
+    }
   }
 
   public static PrimitiveTypeName getPrimitive(Type type) {
@@ -560,7 +590,10 @@ public class ParquetMetadataConverter {
               messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName(),
               CompressionCodecName.fromParquet(metaData.codec),
               fromFormatEncodings(metaData.encodings),
-              fromParquetStatistics(metaData.statistics, messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName()),
+              fromParquetStatistics(
+                  parquetMetadata.getCreated_by(),
+                  metaData.statistics,
+                  messageType.getType(path.toArray()).asPrimitiveType().getPrimitiveTypeName()),
               metaData.data_page_offset,
               metaData.dictionary_page_offset,
               metaData.num_values,

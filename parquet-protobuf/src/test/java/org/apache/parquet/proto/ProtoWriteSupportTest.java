@@ -50,7 +50,7 @@ public class ProtoWriteSupportTest {
 
     inOrder.verify(readConsumerMock).startMessage();
     inOrder.verify(readConsumerMock).startField("one", 0);
-    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("oneValue".getBytes()));
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromString("oneValue"));
     inOrder.verify(readConsumerMock).endField("one", 0);
 
     inOrder.verify(readConsumerMock).endMessage();

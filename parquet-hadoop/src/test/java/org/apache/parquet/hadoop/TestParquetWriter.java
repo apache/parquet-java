@@ -107,8 +107,8 @@ public class TestParquetWriter {
           assertEquals(1.0f, group.getFloat("float_field", 0), 0.001);
           assertEquals(2.0d, group.getDouble("double_field", 0), 0.001);
           assertEquals("foo", group.getBinary("flba_field", 0).toStringUsingUTF8());
-          assertEquals(Binary.fromConstantByteArray(new byte[12]), group.getInt96("int96_field",
-              0));
+          assertEquals(Binary.fromConstantByteArray(new byte[12]),
+              group.getInt96("int96_field",0));
         }
         reader.close();
         ParquetMetadata footer = readFooter(conf, file, NO_FILTER);

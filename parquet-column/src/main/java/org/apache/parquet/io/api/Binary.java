@@ -51,8 +51,10 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   abstract public byte[] getBytes();
 
   /**
-   * Variant of getBytes() that avoids copying backing data structure
-   * @return backing byte[] if possible, else returns result of getBytes()
+   * Variant of getBytes() that avoids copying backing data structure by returning
+   * backing byte[] of the Binary. Do not modify backing byte[] unless you know what
+   * you are doing.
+   * @return backing byte[] of correct size, with an offset of 0, if possible, else returns result of getBytes()
    */
   abstract public byte[] getBytesUnsafe();
 
@@ -97,6 +99,10 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     }
   }
 
+  /**
+   * Signals if backing bytes are owned, and can be modified, by producer of the Binary
+   * @return if backing bytes are held on by producer of the Binary
+   */
   public boolean isReused() {
     return isReused;
   }
@@ -191,18 +197,15 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   private static class FromStringBinary extends ByteArrayBackedBinary {
     public FromStringBinary(String value) {
-      super(getBackingBytes(value), true);
+      super(encodeUTF8(value), true);
     }
 
-    private static byte[] getBackingBytes(String value) {
-      byte[] bytes;
+    private static byte[] encodeUTF8(String value) {
       try {
-        bytes = value.getBytes("UTF-8");
+        return value.getBytes("UTF-8");
       } catch (UnsupportedEncodingException e) {
         throw new ParquetEncodingException("UTF-8 not supported.", e);
       }
-
-      return bytes;
     }
 
     @Override
@@ -338,7 +341,9 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
       value.mark();
       value.get(bytes).reset();
-      cachedBytes = bytes;
+      if (!isReused) { // backing buffer might change
+        cachedBytes = bytes;
+      }
       return bytes;
     }
 

@@ -116,7 +116,8 @@ public class TestColumnChunkPageWriteStore {
 
     {
       ParquetMetadata footer = ParquetFileReader.readFooter(conf, file, NO_FILTER);
-      ParquetFileReader reader = new ParquetFileReader(conf, file, footer.getBlocks(), schema.getColumns());
+      ParquetFileReader reader = new ParquetFileReader(
+          conf, footer.getFileMetaData(), file, footer.getBlocks(), schema.getColumns());
       PageReadStore rowGroup = reader.readNextRowGroup();
       PageReader pageReader = rowGroup.getPageReader(col);
       DataPageV2 page = (DataPageV2)pageReader.readPage();
