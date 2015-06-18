@@ -65,7 +65,8 @@ public abstract class TestParquetVectorReader
                                                 + "required float float_field; "
                                                 + "required boolean boolean_field; "
                                                 + "required fixed_len_byte_array(3) flba_field; "
-                                                + "optional binary null_field; "
+                                                + "optional binary some_null_field; "
+                                                + "optional binary all_null_field; "
                                                 + "required binary var_len_binary_field; "
                                                 + "} ");
 
@@ -88,7 +89,7 @@ public abstract class TestParquetVectorReader
               .append("flba_field", "foo");
 
       if (i % 2 == 1) {
-        group.append("null_field", "test");
+        group.append("some_null_field", "test");
       }
       writer.write(group);
     }
@@ -346,7 +347,7 @@ public abstract class TestParquetVectorReader
 
   @Test
   public void testNullRead() throws Exception {
-    conf.set(PARQUET_READ_SCHEMA, "message test { optional binary null_field;}");
+    conf.set(PARQUET_READ_SCHEMA, "message test { optional binary some_null_field;}");
     ParquetReader<Group>reader = ParquetReader.builder(new GroupReadSupport(), file).withConf(conf).build();
 
     try {
@@ -371,6 +372,35 @@ public abstract class TestParquetVectorReader
             assertTrue(vector.isNull[i]);
           }
         }
+      }
+    } finally {
+      if (reader != null)
+        reader.close();
+    }
+  }
+
+  @Test
+  public void testAllNullRead() throws Exception {
+    conf.set(PARQUET_READ_SCHEMA, "message test { optional binary all_null_field;}");
+    ParquetReader<Group>reader = ParquetReader.builder(new GroupReadSupport(), file).withConf(conf).build();
+
+    try {
+      RowBatch batch = new RowBatch();
+      int expected = 0;
+      while(true) {
+        batch = reader.nextBatch(batch);
+
+        //EOF
+        if (batch == null) {
+          break;
+        }
+
+        assertVectorTypes(batch, 1, ByteColumnVector.class);
+
+        ByteColumnVector vector = ByteColumnVector.class.cast(batch.getColumns()[0]);
+        for (int i = 0, position = 0 ; i < vector.size(); i++, expected++) {
+            assertTrue(vector.isNull[i]);
+          }
       }
     } finally {
       if (reader != null)
@@ -475,9 +505,9 @@ public abstract class TestParquetVectorReader
           break;
         }
 
-        assertVectorTypes(batch, 10, ByteColumnVector.class, IntColumnVector.class, LongColumnVector.class,
+        assertVectorTypes(batch, 11, ByteColumnVector.class, IntColumnVector.class, LongColumnVector.class,
                 ByteColumnVector.class, DoubleColumnVector.class, FloatColumnVector.class, BooleanColumnVector.class,
-                ByteColumnVector.class, ByteColumnVector.class, ByteColumnVector.class);
+                ByteColumnVector.class, ByteColumnVector.class, ByteColumnVector.class, ByteColumnVector.class);
 
         ByteColumnVector binary_field = ByteColumnVector.class.cast(batch.getColumns()[0]);
         IntColumnVector int32_field = IntColumnVector.class.cast(batch.getColumns()[1]);
@@ -487,8 +517,9 @@ public abstract class TestParquetVectorReader
         FloatColumnVector float_field = FloatColumnVector.class.cast(batch.getColumns()[5]);
         BooleanColumnVector boolean_field = BooleanColumnVector.class.cast(batch.getColumns()[6]);
         ByteColumnVector flba_field = ByteColumnVector.class.cast(batch.getColumns()[7]);
-        ByteColumnVector null_field = ByteColumnVector.class.cast(batch.getColumns()[8]);
-        ByteColumnVector var_len_binary_field = ByteColumnVector.class.cast(batch.getColumns()[9]);
+        ByteColumnVector some_null_field = ByteColumnVector.class.cast(batch.getColumns()[8]);
+        ByteColumnVector all_null_field = ByteColumnVector.class.cast(batch.getColumns()[9]);
+        ByteColumnVector var_len_binary_field = ByteColumnVector.class.cast(batch.getColumns()[10]);
 
         //not all bytes are valid as the underlying array is reused across nextBatch() calls
         int validBytes = binary_field.size();
@@ -515,11 +546,13 @@ public abstract class TestParquetVectorReader
           flba_field_position += 3;
 
           if (expected % 2 == 1) {
-            assertFixedLengthByteArrayReads(null_field, 4, "test".getBytes(), null_field_position);
+            assertFixedLengthByteArrayReads(some_null_field, 4, "test".getBytes(), null_field_position);
             null_field_position += 4;
           } else {
-            assertTrue(null_field.isNull[i]);
+            assertTrue(some_null_field.isNull[i]);
           }
+
+          assertTrue(all_null_field.isNull[i]);
 
           char c  = (char) ((expected % 26) + 'a');
           char[] charArray = new char[expected + 1];
