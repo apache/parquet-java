@@ -254,7 +254,8 @@ public class ByteBasedBitPackingGenerator {
     result.append(valueString);
     return result.toString();
   }
-  
+
+  // duplicated from BytesUtils to avoid a circular dependency between parquet-common and parquet-generator
   private static int paddedByteCountFromBits(int bitLength) {
     return (bitLength + 7) / 8;
   }
