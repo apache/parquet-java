@@ -179,7 +179,7 @@ The current release is version `1.7.0`
 
 We prefer to receive contributions in the form of GitHub pull requests. Please send pull requests against the [github.com/apache/parquet-mr](https://github.com/apache/parquet-mr) repository. If you've previously forked Parquet from its old location, you will need to add a remote or update your origin remote to https://github.com/apache/parquet-mr.git
 
-If you are looking for some ideas on what to contribute, check out GitHub issues for this project labeled ["Pick me up!"](https://github.com/apache/parquet-mr/issues?labels=pick+me+up%21&state=open).
+If you are looking for some ideas on what to contribute, check out jira issues for this project labeled ["pick-me-up"](https://issues.apache.org/jira/browse/PARQUET-5?jql=project%20%3D%20PARQUET%20and%20labels%20%3D%20pick-me-up%20and%20status%20%3D%20open).
 Comment on the issue and/or contact [dev@parquet.apache.org](http://mail-archives.apache.org/mod_mbox/parquet-dev/) with your questions and ideas.
 
 If you’d like to report a bug but don’t have time to fix it, you can still post it to our [issue tracker](https://issues.apache.org/jira/browse/PARQUET), or email the mailing list [dev@parquet.apache.org](http://mail-archives.apache.org/mod_mbox/parquet-dev/)
