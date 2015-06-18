@@ -64,7 +64,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    * @throws IOException
    */
   @Override
-  public void initFromPage(int valueCount, byte[] page, int offset, byte[] previous) throws IOException {
+  public void initFromPage(int valueCount, byte[] page, int offset) throws IOException {
     in = new ByteArrayInputStream(page, offset, page.length - offset);
     this.config = DeltaBinaryPackingConfig.readConfig(in);
     this.page = page;

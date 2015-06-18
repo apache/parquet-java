@@ -43,13 +43,16 @@ public class DeltaByteArrayReader extends ValuesReader {
     this.previous = Binary.fromByteArray(new byte[0]);
   }
 
+  public void setPreviousBinary(Binary previous) {
+    this.previous = previous;
+  }
+
   @Override
-  public void initFromPage(int valueCount, byte[] page, int offset, byte[] previous)
+  public void initFromPage(int valueCount, byte[] page, int offset)
       throws IOException {
-    prefixLengthReader.initFromPage(valueCount, page, offset, previous);
+    prefixLengthReader.initFromPage(valueCount, page, offset);
     int next = prefixLengthReader.getNextOffset();
-    suffixReader.initFromPage(valueCount, page, next, previous);
-    this.previous = Binary.fromByteArray(previous);
+    suffixReader.initFromPage(valueCount, page, next);
   }
 
   @Override

@@ -41,6 +41,7 @@ import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.values.ValuesReader;
+import org.apache.parquet.column.values.deltastrings.DeltaByteArrayReader;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
@@ -541,10 +542,11 @@ class ColumnReaderImpl implements ColumnReader {
       // Here we pass the last value from the last page read in order to read files written with the
       // issue mentioned on PARQUET-246 where the prefixLength for DELTA_BYTE_ARRAY encoding values
       // was not resetted when a new page was started.
-      if (path.getType().equals(PrimitiveTypeName.BINARY) && binding != null && binding.getBinary() != null) {
-        dataColumn.initFromPage(pageValueCount, bytes, offset, binding.getBinary().getBytes());
-      } else {
-        dataColumn.initFromPage(pageValueCount, bytes, offset, new byte[0]);
+      dataColumn.initFromPage(pageValueCount, bytes, offset);
+      if (dataColumn instanceof DeltaByteArrayReader) {
+        if (binding != null) {
+          ((DeltaByteArrayReader) dataColumn).setPreviousBinary(binding.getBinary());
+        }
       }
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read page in col " + path, e);
@@ -566,10 +568,10 @@ class ColumnReaderImpl implements ColumnReader {
       byte[] bytes = page.getBytes().toByteArray();
       if (DEBUG) LOG.debug("page size " + bytes.length + " bytes and " + pageValueCount + " records");
       if (DEBUG) LOG.debug("reading repetition levels at 0");
-      rlReader.initFromPage(pageValueCount, bytes, 0, new byte[0]);
+      rlReader.initFromPage(pageValueCount, bytes, 0);
       int next = rlReader.getNextOffset();
       if (DEBUG) LOG.debug("reading definition levels at " + next);
-      dlReader.initFromPage(pageValueCount, bytes, next, new byte[0]);
+      dlReader.initFromPage(pageValueCount, bytes, next);
       next = dlReader.getNextOffset();
       if (DEBUG) LOG.debug("reading data at " + next);
       initDataReader(page.getValueEncoding(), bytes, next, page.getValueCount());

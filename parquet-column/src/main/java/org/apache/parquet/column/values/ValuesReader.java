@@ -58,7 +58,7 @@ public abstract class ValuesReader {
    *
    * @throws IOException
    */
-  public abstract void initFromPage(int valueCount, byte[] page, int offset, byte[] previous) throws IOException;
+  public abstract void initFromPage(int valueCount, byte[] page, int offset) throws IOException;
   
   /**
    * Called to return offset of the next section

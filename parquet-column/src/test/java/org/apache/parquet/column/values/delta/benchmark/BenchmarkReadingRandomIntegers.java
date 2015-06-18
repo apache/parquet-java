@@ -86,7 +86,7 @@ public class BenchmarkReadingRandomIntegers {
   }
 
   private void readData(ValuesReader reader, byte[] deltaBytes) throws IOException {
-    reader.initFromPage(data.length, deltaBytes, 0, new byte[0]);
+    reader.initFromPage(data.length, deltaBytes, 0);
     for (int i = 0; i < data.length; i++) {
       reader.readInteger();
     }

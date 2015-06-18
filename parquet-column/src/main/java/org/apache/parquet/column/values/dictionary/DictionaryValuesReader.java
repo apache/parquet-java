@@ -51,7 +51,7 @@ public class DictionaryValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, byte[] page, int offset, byte[] previous)
+  public void initFromPage(int valueCount, byte[] page, int offset)
       throws IOException {
     this.in = new ByteArrayInputStream(page, offset, page.length - offset);
     if (page.length - offset > 0) {

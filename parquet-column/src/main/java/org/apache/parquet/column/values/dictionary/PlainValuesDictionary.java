@@ -151,7 +151,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
       final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
       longDictionaryContent = new long[dictionaryPage.getDictionarySize()];
       LongPlainValuesReader longReader = new LongPlainValuesReader();
-      longReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0, new byte[0]);
+      longReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0);
       for (int i = 0; i < longDictionaryContent.length; i++) {
         longDictionaryContent[i] = longReader.readLong();
       }
@@ -194,7 +194,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
       final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
       doubleDictionaryContent = new double[dictionaryPage.getDictionarySize()];
       DoublePlainValuesReader doubleReader = new DoublePlainValuesReader();
-      doubleReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0, new byte[0]);
+      doubleReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0);
       for (int i = 0; i < doubleDictionaryContent.length; i++) {
         doubleDictionaryContent[i] = doubleReader.readDouble();
       }
@@ -237,7 +237,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
       final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
       intDictionaryContent = new int[dictionaryPage.getDictionarySize()];
       IntegerPlainValuesReader intReader = new IntegerPlainValuesReader();
-      intReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0, new byte[0]);
+      intReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0);
       for (int i = 0; i < intDictionaryContent.length; i++) {
         intDictionaryContent[i] = intReader.readInteger();
       }
@@ -280,7 +280,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
       final byte[] dictionaryBytes = dictionaryPage.getBytes().toByteArray();
       floatDictionaryContent = new float[dictionaryPage.getDictionarySize()];
       FloatPlainValuesReader floatReader = new FloatPlainValuesReader();
-      floatReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0, new byte[0]);
+      floatReader.initFromPage(dictionaryPage.getDictionarySize(), dictionaryBytes, 0);
       for (int i = 0; i < floatDictionaryContent.length; i++) {
         floatDictionaryContent[i] = floatReader.readFloat();
       }
