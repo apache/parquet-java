@@ -144,8 +144,8 @@ mvn test
 to build the jars:
 mvn package
 
-The build runs in [Travis CI](http://travis-ci.org/Parquet/parquet-mr):
-[![Build Status](https://secure.travis-ci.org/Parquet/parquet-mr.png?branch=master)](http://travis-ci.org/Parquet/parquet-mr)
+The build runs in [Travis CI](http://travis-ci.org/apache/parquet-mr):
+[![Build Status](https://travis-ci.org/apache/parquet-mr.svg?branch=master)](http://travis-ci.org/apache/parquet-mr)
 
 ## Add Parquet as a dependency in Maven
 The current release is version `1.7.0`
