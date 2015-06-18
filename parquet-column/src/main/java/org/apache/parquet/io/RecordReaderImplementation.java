@@ -442,12 +442,6 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     throw new IllegalArgumentException("Couldn't find state for schema " + schema);
   }
 
-  private void setNumValuesInVectors(int valuesRead, ColumnVector... vectors) {
-    for (ColumnVector cv : vectors) {
-      cv.setNumberOfValues(valuesRead);
-    }
-  }
-
   @Override
   public void readVectors(ColumnVector[] vectors, MessageType[] columnSchemas, long current, long total) {
       for (int i = 0 ; i < columnSchemas.length; i++) {
@@ -463,7 +457,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     for ( ; index < ColumnVector.DEFAULT_VECTOR_LENGTH; index++, current++) {
 
       if (current >= total) {
-        setNumValuesInVectors(index, vector);
+        vector.setNumberOfValues(index);
         return;
       }
 
@@ -474,7 +468,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       vector.values[index] = record;
     }
 
-    setNumValuesInVectors(index, vector);
+    vector.setNumberOfValues(index);
   }
 
   private void readVector(ColumnReader reader, ColumnVector vector, long current, long total) {
@@ -488,7 +482,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     for ( ; index < ColumnVector.DEFAULT_VECTOR_LENGTH; index++, current++) {
 
       if (current >= total) {
-        setNumValuesInVectors(index, vector);
+        vector.setNumberOfValues(index);
         return;
       }
 
@@ -544,7 +538,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       }
       reader.consume();
     }
-    setNumValuesInVectors(index, vector);
+    vector.setNumberOfValues(index);
   }
 
   @Override
