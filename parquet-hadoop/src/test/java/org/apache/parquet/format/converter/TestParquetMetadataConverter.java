@@ -78,16 +78,14 @@ public class TestParquetMetadataConverter {
 
   @Test
   public void testSchemaConverter() {
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(Paper.schema);
-    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema);
+    List<SchemaElement> parquetSchema = ParquetMetadataConverter.toParquetSchema(Paper.schema);
+    MessageType schema = ParquetMetadataConverter.fromParquetSchema(parquetSchema);
     assertEquals(Paper.schema, schema);
   }
 
   @Test
   public void testSchemaConverterDecimal() {
-    ParquetMetadataConverter converter = new ParquetMetadataConverter();
-    List<SchemaElement> schemaElements = converter.toParquetSchema(
+    List<SchemaElement> schemaElements = ParquetMetadataConverter.toParquetSchema(
         Types.buildMessage()
             .required(PrimitiveTypeName.BINARY)
                 .as(OriginalType.DECIMAL).precision(9).scale(2)
@@ -116,30 +114,29 @@ public class TestParquetMetadataConverter {
 
   @Test
   public void testEnumEquivalence() {
-    ParquetMetadataConverter c = new ParquetMetadataConverter();
     for (Encoding encoding : Encoding.values()) {
-      assertEquals(encoding, c.getEncoding(c.getEncoding(encoding)));
+      assertEquals(encoding, ParquetMetadataConverter.getEncoding(ParquetMetadataConverter.getEncoding(encoding)));
     }
     for (org.apache.parquet.format.Encoding encoding : org.apache.parquet.format.Encoding.values()) {
-      assertEquals(encoding, c.getEncoding(c.getEncoding(encoding)));
+      assertEquals(encoding, ParquetMetadataConverter.getEncoding(ParquetMetadataConverter.getEncoding(encoding)));
     }
     for (Repetition repetition : Repetition.values()) {
-      assertEquals(repetition, c.fromParquetRepetition(c.toParquetRepetition(repetition)));
+      assertEquals(repetition, ParquetMetadataConverter.fromParquetRepetition(ParquetMetadataConverter.toParquetRepetition(repetition)));
     }
     for (FieldRepetitionType repetition : FieldRepetitionType.values()) {
-      assertEquals(repetition, c.toParquetRepetition(c.fromParquetRepetition(repetition)));
+      assertEquals(repetition, ParquetMetadataConverter.toParquetRepetition(ParquetMetadataConverter.fromParquetRepetition(repetition)));
     }
     for (PrimitiveTypeName primitiveTypeName : PrimitiveTypeName.values()) {
-      assertEquals(primitiveTypeName, c.getPrimitive(c.getType(primitiveTypeName)));
+      assertEquals(primitiveTypeName, ParquetMetadataConverter.getPrimitive(ParquetMetadataConverter.getType(primitiveTypeName)));
     }
     for (Type type : Type.values()) {
-      assertEquals(type, c.getType(c.getPrimitive(type)));
+      assertEquals(type, ParquetMetadataConverter.getType(ParquetMetadataConverter.getPrimitive(type)));
     }
     for (OriginalType original : OriginalType.values()) {
-      assertEquals(original, c.getOriginalType(c.getConvertedType(original)));
+      assertEquals(original, ParquetMetadataConverter.getOriginalType(ParquetMetadataConverter.getConvertedType(original)));
     }
     for (ConvertedType converted : ConvertedType.values()) {
-      assertEquals(converted, c.getConvertedType(c.getOriginalType(converted)));
+      assertEquals(converted, ParquetMetadataConverter.getConvertedType(ParquetMetadataConverter.getOriginalType(converted)));
     }
   }
 
