@@ -33,7 +33,7 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.StatisticsOpts;
 
 public class ColumnWriteStoreV1 implements ColumnWriteStore {
 

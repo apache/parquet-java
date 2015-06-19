@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
+import org.apache.parquet.column.statistics.StatisticsOpts;
 import org.junit.Test;
 
 import org.apache.parquet.column.Encoding;
@@ -79,8 +80,8 @@ public class TestStatisticsFilter {
   private static final IntColumn intColumn = intColumn("int.column");
   private static final DoubleColumn doubleColumn = doubleColumn("double.column");
 
-  private static final IntStatistics intStats = new IntStatistics();
-  private static final IntStatistics nullIntStats = new IntStatistics();
+  private static final IntStatistics intStats = new IntStatistics(new StatisticsOpts(null));
+  private static final IntStatistics nullIntStats = new IntStatistics(new StatisticsOpts(null));
   private static final DoubleStatistics doubleStats = new DoubleStatistics();
 
   static {
@@ -113,11 +114,11 @@ public class TestStatisticsFilter {
 
   @Test
   public void testEqNull() {
-    IntStatistics statsNoNulls = new IntStatistics();
+    IntStatistics statsNoNulls = new IntStatistics(new StatisticsOpts(null));
     statsNoNulls.setMinMax(10, 100);
     statsNoNulls.setNumNulls(0);
 
-    IntStatistics statsSomeNulls = new IntStatistics();
+    IntStatistics statsSomeNulls = new IntStatistics(new StatisticsOpts(null));
     statsSomeNulls.setMinMax(10, 100);
     statsSomeNulls.setNumNulls(3);
 
@@ -138,7 +139,7 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(notEq(intColumn, 100), columnMetas));
     assertFalse(canDrop(notEq(intColumn, 101), columnMetas));
 
-    IntStatistics allSevens = new IntStatistics();
+    IntStatistics allSevens = new IntStatistics(new StatisticsOpts(null));
     allSevens.setMinMax(7, 7);
     assertTrue(canDrop(notEq(intColumn, 7), Arrays.asList(
         getIntColumnMeta(allSevens, 177L),
@@ -148,15 +149,15 @@ public class TestStatisticsFilter {
 
   @Test
   public void testNotEqNull() {
-    IntStatistics statsNoNulls = new IntStatistics();
+    IntStatistics statsNoNulls = new IntStatistics(new StatisticsOpts(null));
     statsNoNulls.setMinMax(10, 100);
     statsNoNulls.setNumNulls(0);
 
-    IntStatistics statsSomeNulls = new IntStatistics();
+    IntStatistics statsSomeNulls = new IntStatistics(new StatisticsOpts(null));
     statsSomeNulls.setMinMax(10, 100);
     statsSomeNulls.setNumNulls(3);
 
-    IntStatistics statsAllNulls = new IntStatistics();
+    IntStatistics statsAllNulls = new IntStatistics(new StatisticsOpts(null));
     statsAllNulls.setMinMax(0, 0);
     statsAllNulls.setNumNulls(177);
 
@@ -260,13 +261,13 @@ public class TestStatisticsFilter {
     FilterPredicate pred = userDefined(intColumn, SevensAndEightsUdp.class);
     FilterPredicate invPred = LogicalInverseRewriter.rewrite(not(userDefined(intColumn, SevensAndEightsUdp.class)));
 
-    IntStatistics seven = new IntStatistics();
+    IntStatistics seven = new IntStatistics(new StatisticsOpts(null));
     seven.setMinMax(7, 7);
 
-    IntStatistics eight = new IntStatistics();
+    IntStatistics eight = new IntStatistics(new StatisticsOpts(null));
     eight.setMinMax(8, 8);
 
-    IntStatistics neither = new IntStatistics();
+    IntStatistics neither = new IntStatistics(new StatisticsOpts(null));
     neither.setMinMax(1 , 2);
 
     assertTrue(canDrop(pred, Arrays.asList(
@@ -298,7 +299,7 @@ public class TestStatisticsFilter {
   public void testClearExceptionForNots() {
     List<ColumnChunkMetaData> columnMetas = Arrays.asList(
         getDoubleColumnMeta(new DoubleStatistics(), 0L),
-        getIntColumnMeta(new IntStatistics(), 0L));
+        getIntColumnMeta(new IntStatistics(null), 0L));
 
     FilterPredicate pred = and(not(eq(doubleColumn, 12.0)), eq(intColumn, 17));
 
@@ -313,7 +314,8 @@ public class TestStatisticsFilter {
 
   @Test
   public void testMissingColumn() {
-    List<ColumnChunkMetaData> columnMetas = Arrays.asList(getIntColumnMeta(new IntStatistics(), 0L));
+    List<ColumnChunkMetaData> columnMetas =
+        Arrays.asList(getIntColumnMeta(new IntStatistics(new StatisticsOpts(null)), 0L));
     try {
       canDrop(and(eq(doubleColumn, 12.0), eq(intColumn, 17)), columnMetas);
       fail("This should throw");

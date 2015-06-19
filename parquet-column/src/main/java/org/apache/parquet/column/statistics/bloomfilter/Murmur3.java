@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.parquet.column.statistics.bloomFilter;
+package org.apache.parquet.column.statistics.bloomfilter;
 
 /**
  * Murmur3 is successor to Murmur2 fast non-crytographic hash algorithms.

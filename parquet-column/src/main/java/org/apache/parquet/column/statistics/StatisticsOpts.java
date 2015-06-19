@@ -16,29 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.schema;
+package org.apache.parquet.column.statistics;
 
-public enum OriginalType {
-  MAP,
-  LIST,
-  UTF8,
-  MAP_KEY_VALUE,
-  ENUM,
-  DECIMAL,
-  DATE,
-  TIME_MILLIS,
-  TIME_MICROS,
-  TIMESTAMP_MILLIS,
-  TIMESTAMP_MICROS,
-  UINT_8,
-  UINT_16,
-  UINT_32,
-  UINT_64,
-  INT_8,
-  INT_16,
-  INT_32,
-  INT_64,
-  JSON,
-  BSON,
-  INTERVAL;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
+
+public class StatisticsOpts {
+  BloomFilterOpts bloomFilterOpts;
+
+  public StatisticsOpts(BloomFilterOpts bloomFilterOpts) {
+    this.bloomFilterOpts = bloomFilterOpts;
+  }
+
+  public BloomFilterOpts getBloomFilterOpts() {
+    return bloomFilterOpts;
+  }
 }

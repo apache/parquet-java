@@ -16,8 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.statistics.bloomFilter;
+package org.apache.parquet.column.statistics.bloomfilter;
 
+/**
+ * This class contains the otions required for constructing a bloom filter including the number of bits and the number of hash functions.
+ */
 public class BloomFilterOpts {
   private int numBits;
   private int numHashFunctions;
@@ -27,6 +30,10 @@ public class BloomFilterOpts {
     this.enabled = false;
   }
 
+  /**
+   * @param numBits          number of bits
+   * @param numHashFunctions num of hash functions
+   */
   public BloomFilterOpts(int numBits, int numHashFunctions) {
     this.numBits = numBits;
     this.numHashFunctions = numHashFunctions;
@@ -37,23 +44,11 @@ public class BloomFilterOpts {
     return numBits;
   }
 
-  public void setNumBits(int numBits) {
-    this.numBits = numBits;
-  }
-
   public int getNumHashFunctions() {
     return numHashFunctions;
   }
 
-  public void setNumHashFunctions(int numHashFunctions) {
-    this.numHashFunctions = numHashFunctions;
-  }
-
   public boolean isEnabled() {
     return enabled;
-  }
-
-  public void setEnabled(boolean enabled) {
-    this.enabled = enabled;
   }
 }

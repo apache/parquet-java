@@ -16,9 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.statistics.bloomFilter;
+package org.apache.parquet.column.statistics.bloomfilter;
+
+import org.apache.commons.lang.ArrayUtils;
 
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * BloomFilter is a probabilistic data structure for set membership check. BloomFilters are
@@ -39,7 +42,7 @@ import java.util.Arrays;
  * https://code.google.com/p/smhasher/wiki/MurmurHash2Flaw
  */
 public class BloomFilter {
-    public static final double DEFAULT_FPP = 0.05;
+    public static final double DEFAULT_FALSE_POSITIVE_PROBABILITY = 0.05;
     protected BitSet bitSet;
     protected int numBits;
     protected int numHashFunctions;
@@ -171,12 +174,12 @@ public class BloomFilter {
         return numHashFunctions;
     }
 
-    public long[] getBitSet() {
-        return bitSet.getData();
+    public List<Long> getBitSet() {
+        return Arrays.asList(ArrayUtils.toObject(bitSet.getData()));
     }
 
-    public void setBitSet(long[] data) {
-        bitSet = new BitSet(data);
+    public void setBitSet(List<Long> data) {
+        bitSet = new BitSet(ArrayUtils.toPrimitive(data.toArray(new Long[] {})));
     }
 
     public int getNumBits() {

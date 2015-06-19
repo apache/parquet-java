@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -22,8 +22,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOptBuilder;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.StatisticsOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOptBuilder;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
 import org.junit.Test;
 
 import org.apache.parquet.column.statistics.IntStatistics;
@@ -44,39 +45,39 @@ public class TestRowGroupFilter {
 
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
 
-    IntStatistics stats1 = new IntStatistics();
+    IntStatistics stats1 = new IntStatistics(new StatisticsOpts(null));
     stats1.setMinMax(10, 100);
     stats1.setNumNulls(4);
     BlockMetaData b1 = makeBlockFromStats(stats1, 301);
     blocks.add(b1);
 
-    IntStatistics stats2 = new IntStatistics();
+    IntStatistics stats2 = new IntStatistics(new StatisticsOpts(null));
     stats2.setMinMax(8, 102);
     stats2.setNumNulls(0);
     BlockMetaData b2 = makeBlockFromStats(stats2, 302);
     blocks.add(b2);
 
-    IntStatistics stats3 = new IntStatistics();
+    IntStatistics stats3 = new IntStatistics(new StatisticsOpts(null));
     stats3.setMinMax(100, 102);
     stats3.setNumNulls(12);
     BlockMetaData b3 = makeBlockFromStats(stats3, 303);
     blocks.add(b3);
 
 
-    IntStatistics stats4 = new IntStatistics();
+    IntStatistics stats4 = new IntStatistics(new StatisticsOpts(null));
     stats4.setMinMax(0, 0);
     stats4.setNumNulls(304);
     BlockMetaData b4 = makeBlockFromStats(stats4, 304);
     blocks.add(b4);
 
 
-    IntStatistics stats5 = new IntStatistics();
+    IntStatistics stats5 = new IntStatistics(new StatisticsOpts(null));
     stats5.setMinMax(50, 50);
     stats5.setNumNulls(7);
     BlockMetaData b5 = makeBlockFromStats(stats5, 305);
     blocks.add(b5);
 
-    IntStatistics stats6 = new IntStatistics();
+    IntStatistics stats6 = new IntStatistics(new StatisticsOpts(null));
     stats6.setMinMax(0, 0);
     stats6.setNumNulls(12);
     BlockMetaData b6 = makeBlockFromStats(stats6, 306);
@@ -108,7 +109,7 @@ public class TestRowGroupFilter {
 
     BloomFilterOpts opts = new BloomFilterOptBuilder().enable(true).expectedEntries(1000).build();
 
-    IntStatistics stats1 = new IntStatistics(opts);
+    IntStatistics stats1 = new IntStatistics(new StatisticsOpts(opts));
     stats1.setMinMax(10, 100);
     stats1.setNumNulls(4);
     stats1.add(25);
@@ -117,7 +118,7 @@ public class TestRowGroupFilter {
     BlockMetaData b1 = makeBlockFromStats(stats1, 301);
     blocks.add(b1);
 
-    IntStatistics stats2 = new IntStatistics(opts);
+    IntStatistics stats2 = new IntStatistics(new StatisticsOpts(opts));
     stats2.setMinMax(8, 102);
     stats2.setNumNulls(0);
     stats2.add(12);
@@ -126,7 +127,7 @@ public class TestRowGroupFilter {
     BlockMetaData b2 = makeBlockFromStats(stats2, 302);
     blocks.add(b2);
 
-    IntStatistics stats3 = new IntStatistics(opts);
+    IntStatistics stats3 = new IntStatistics(new StatisticsOpts(opts));
     stats3.setMinMax(3, 90);
     stats3.setNumNulls(12);
     stats3.add(20);

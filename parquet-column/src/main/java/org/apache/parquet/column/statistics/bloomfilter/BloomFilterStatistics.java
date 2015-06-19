@@ -16,9 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.statistics.bloomFilter;
-
-import org.apache.parquet.column.statistics.Statistics;
+package org.apache.parquet.column.statistics.bloomfilter;
 
 import java.util.List;
 
@@ -28,10 +26,6 @@ public interface BloomFilterStatistics<T> {
   BloomFilter getBloomFilter();
 
   boolean test(T value);
-
-  List<Long> getBitSet();
-
-  void setBitSet(List<Long> list);
 
   boolean isBloomFilterEnabled();
 }

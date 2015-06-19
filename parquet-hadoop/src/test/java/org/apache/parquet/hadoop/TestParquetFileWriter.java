@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -17,7 +17,6 @@
  * under the License.
  */
 package org.apache.parquet.hadoop;
-
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -32,8 +31,9 @@ import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.junit.Assume;
 import org.junit.Rule;
 import org.apache.parquet.column.statistics.IntStatistics;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOptBuilder;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.StatisticsOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOptBuilder;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
 import org.junit.Test;
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
@@ -452,9 +452,10 @@ public class TestParquetFileWriter {
     int v3 = 1000;
     final String createdBy =
         "parquet-mr version 1.8.0 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
-    BloomFilterOpts opts =
-        new BloomFilterOptBuilder().enable(true).expectedEntries(100).fpp(0.05).build();
-    IntStatistics parquetMRstats = new IntStatistics(opts);
+    BloomFilterOpts bloomFilterOpts =
+        new BloomFilterOptBuilder().enable(true).expectedEntries(100).falsePositiveProbability(0.05)
+            .build();
+    IntStatistics parquetMRstats = new IntStatistics(new StatisticsOpts(bloomFilterOpts));
     parquetMRstats.updateStats(v1);
 
     Statistics thriftStats = org.apache.parquet.format.converter.ParquetMetadataConverter
@@ -652,13 +653,13 @@ public class TestParquetFileWriter {
     GroupWriteSupport.setSchema(schema, configuration);
 
     ParquetWriter<Group> writer = new ParquetWriter<Group>(path, configuration, new GroupWriteSupport());
-   
+
     Group r1 = new SimpleGroup(schema);
     writer.write(r1);
     writer.close();
-    
+
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
-    
+
     // assert the statistics object is not empty
     assertTrue((readFooter.getBlocks().get(0).getColumns().get(0).getStatistics().isEmpty()) == false);
     // assert the number of nulls are correct for the first block

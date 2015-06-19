@@ -39,9 +39,6 @@ import org.apache.parquet.Log;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilter;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOptBuilder;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.codec.CodecConfig;
@@ -151,6 +148,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String EXPACTED_ENTRIES     = "parquet.expected.entries";
   public static final String IS_FPP_PROVIDED      = "parquet.bloom.filter.fpp.provided";
   public static final String FPP_VALUE            = "parquet.bloom.filter.value";
+  public static final String EXPECTED_ENTRIES = "parquet.bloom.filter.expected.entries";
+  public static final String FALSE_POSITIVE_PROBABILITY =
+      "parquet.bloom.filter.false.positive.probability";
 
   // default to no padding for now
   private static final int DEFAULT_MAX_PADDING_SIZE = 0;

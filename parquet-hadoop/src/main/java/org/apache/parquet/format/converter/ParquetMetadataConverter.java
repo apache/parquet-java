@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -38,9 +38,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.Log;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterStatistics;
-import org.apache.parquet.format.BloomFilterStats;
+import org.apache.parquet.column.statistics.StatisticsOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterStatistics;
+import org.apache.parquet.format.BloomFilter;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnMetaData;
 import org.apache.parquet.format.ConvertedType;
@@ -251,30 +252,16 @@ public class ParquetMetadataConverter {
 
   private static void setBloomFilter(Statistics stats,
       org.apache.parquet.column.statistics.Statistics statistics) {
-    if (!(statistics instanceof BloomFilterStatistics)) {
-      return;
-    }
-    BloomFilterStatistics bfStatistics = (BloomFilterStatistics) statistics;
-    if (!bfStatistics.isBloomFilterEnabled()) {
-      return;
+    if (!(statistics instanceof BloomFilterStatistics) || !((BloomFilterStatistics) statistics)
+        .isBloomFilterEnabled()) {
+      stats.setBloom_filter(null);
     } else {
-      stats.setBloom_filter_enabled(true);
-    }
-    BloomFilterStats bfStats = stats.getBloom_filter_stats();
-    if (bfStats == null) {
-      bfStats =
-          new BloomFilterStats(bfStatistics.getBitSet(), bfStatistics.getBloomFilter().getNumBits(),
+      BloomFilterStatistics bfStatistics = (BloomFilterStatistics) statistics;
+      BloomFilter bfStats =
+          new BloomFilter(bfStatistics.getBloomFilter().getBitSet(), bfStatistics.getBloomFilter().getNumBits(),
               bfStatistics.getBloomFilter().getNumHashFunctions());
-      stats.setBloom_filter_stats(bfStats);
-      return;
+      stats.setBloom_filter(bfStats);
     }
-
-    if (bfStats.getNumBits() != bfStatistics.getBloomFilter().getBitSize()
-        || bfStats.getNumHashFunctions() != bfStatistics.getBloomFilter().getNumHashFunctions()) {
-      throw new RuntimeException("Inconsistent configuration for bloom filter");
-    }
-
-    bfStats.setBitSet(bfStatistics.getBitSet());
   }
 
   public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
@@ -286,19 +273,22 @@ public class ParquetMetadataConverter {
     // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
     if (statistics != null && !CorruptStatistics.shouldIgnoreStatistics(createdBy, type)) {
       BloomFilterOpts opts = null;
-      if (statistics.isBloom_filter_enabled()) {
-        opts = new BloomFilterOpts(statistics.getBloom_filter_stats().getNumBits(),
-            statistics.getBloom_filter_stats().getNumHashFunctions());
+      if (statistics.getBloom_filter() != null) {
+        opts = new BloomFilterOpts(statistics.getBloom_filter().getNumBits(),
+            statistics.getBloom_filter().getNumHashFunctions());
       }
       // create stats object based on the column type
-      stats = org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType(type, opts);
+      stats = org.apache.parquet.column.statistics.Statistics
+          .getStatsBasedOnType(type, new StatisticsOpts(opts));
 
       if (statistics.isSetMax() && statistics.isSetMin()) {
         stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
       }
-      if (statistics.isBloom_filter_enabled() && stats instanceof BloomFilterStatistics) {
-        BloomFilterStatistics bfStats = (BloomFilterStatistics) stats;
-        bfStats.setBitSet(statistics.getBloom_filter_stats().getBitSet());
+      
+      // update data for bloom filter statistics
+      if (statistics.getBloom_filter()!=null && stats instanceof BloomFilterStatistics) {
+        ((BloomFilterStatistics) stats).getBloomFilter()
+            .setBitSet(statistics.getBloom_filter().getBitSet());
       }
       stats.setNumNulls(statistics.null_count);
     } else {
@@ -401,6 +391,8 @@ public class ParquetMetadataConverter {
         return OriginalType.JSON;
       case BSON:
         return OriginalType.BSON;
+      case TIMESTAMP_MICROS:
+        return OriginalType.TIMESTAMP_MICROS;
       default:
         throw new RuntimeException("Unknown converted type " + type);
     }

@@ -29,7 +29,7 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.StatisticsOpts;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
@@ -55,7 +55,7 @@ final class ColumnWriterV1 implements ColumnWriter {
   private ValuesWriter dataColumn;
   private int valueCount;
   private int valueCountForNextSizeCheck;
-  private BloomFilterOpts opts;
+  private StatisticsOpts statisticsOpts;
 
   private Statistics statistics;
 
@@ -73,7 +73,7 @@ final class ColumnWriterV1 implements ColumnWriter {
     this.repetitionLevelColumn = props.newRepetitionLevelWriter(path);
     this.definitionLevelColumn = props.newDefinitionLevelWriter(path);
     this.dataColumn = props.newValuesWriter(path);
-    this.opts = props.getBloomFilterOpts();
+    this.statisticsOpts = props.getStatisticsOpts();
   }
 
   private void log(Object value, int r, int d) {
@@ -81,7 +81,7 @@ final class ColumnWriterV1 implements ColumnWriter {
   }
 
   private void resetStatistics() {
-    this.statistics = Statistics.getStatsBasedOnType(this.path.getType(), opts);
+    this.statistics = Statistics.getStatsBasedOnType(this.path.getType(), statisticsOpts);
   }
 
   /**

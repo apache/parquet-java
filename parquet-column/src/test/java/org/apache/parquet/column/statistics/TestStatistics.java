@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -23,9 +23,8 @@ import static org.junit.Assert.*;
 import java.nio.ByteBuffer;
 
 import junit.framework.Assert;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilter;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOptBuilder;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOptBuilder;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
 import org.junit.Test;
 
 import org.apache.parquet.io.api.Binary;
@@ -40,7 +39,7 @@ public class TestStatistics {
 
   @Test
   public void testNumNulls() {
-    IntStatistics stats = new IntStatistics();
+    IntStatistics stats = new IntStatistics(new StatisticsOpts(null));
     assertEquals(stats.getNumNulls(), 0);
 
     stats.incrementNumNulls();
@@ -59,8 +58,10 @@ public class TestStatistics {
   @Test
   public void testBloomFilterInt(){
     BloomFilterOpts opts =
-        new BloomFilterOptBuilder().enable(true).expectedEntries(100).fpp(0.05).build();
-    IntStatistics statistics = new IntStatistics(opts);
+        new BloomFilterOptBuilder().enable(true).expectedEntries(100).falsePositiveProbability(0.05)
+            .build();
+    StatisticsOpts statisticsOpts = new StatisticsOpts(opts);
+    IntStatistics statistics = new IntStatistics(statisticsOpts);
     int v1 = 1;
     int v2 = 2;
     int v3 = 3;
@@ -93,7 +94,7 @@ public class TestStatistics {
   public void testIntMinMax() {
     // Test basic max/min
     integerArray = new int[] {1, 3, 14, 54, 66, 8, 0, 23, 54};
-    IntStatistics stats = new IntStatistics();
+    IntStatistics stats = new IntStatistics(new StatisticsOpts(null));
 
     for (int i: integerArray) {
       stats.updateStats(i);
@@ -103,7 +104,7 @@ public class TestStatistics {
 
     // Test negative values
     integerArray = new int[] {-11, 3, -14, 54, -66, 8, 0, -23, 54};
-    IntStatistics statsNeg = new IntStatistics();
+    IntStatistics statsNeg = new IntStatistics(new StatisticsOpts(null));
 
     for (int i: integerArray) {
       statsNeg.updateStats(i);
@@ -118,14 +119,14 @@ public class TestStatistics {
     assertEquals(ByteBuffer.wrap(intMaxBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(), 54);
     assertEquals(ByteBuffer.wrap(intMinBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(), -66);
 
-    IntStatistics statsFromBytes = new IntStatistics();
+    IntStatistics statsFromBytes = new IntStatistics(new StatisticsOpts(null));
     statsFromBytes.setMinMaxFromBytes(intMinBytes, intMaxBytes);
 
     assertEquals(statsFromBytes.getMax(), 54);
     assertEquals(statsFromBytes.getMin(), -66);
 
     integerArray = new int[] {Integer.MAX_VALUE, Integer.MIN_VALUE};
-    IntStatistics minMaxValues = new IntStatistics();
+    IntStatistics minMaxValues = new IntStatistics(new StatisticsOpts(null));
 
     for (int i: integerArray) {
       minMaxValues.updateStats(i);
@@ -140,7 +141,7 @@ public class TestStatistics {
     assertEquals(ByteBuffer.wrap(intMaxBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(), Integer.MAX_VALUE);
     assertEquals(ByteBuffer.wrap(intMinBytesMinMax).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(), Integer.MIN_VALUE);
 
-    IntStatistics statsFromBytesMinMax= new IntStatistics();
+    IntStatistics statsFromBytesMinMax= new IntStatistics(new StatisticsOpts(null));
     statsFromBytesMinMax.setMinMaxFromBytes(intMinBytesMinMax, intMaxBytesMinMax);
 
     assertEquals(statsFromBytesMinMax.getMax(), Integer.MAX_VALUE);
@@ -450,14 +451,14 @@ public class TestStatistics {
 
   private void testMergingIntStats() {
     integerArray = new int[] {1, 2, 3, 4, 5};
-    IntStatistics intStats = new IntStatistics();
+    IntStatistics intStats = new IntStatistics(new StatisticsOpts(null));
 
     for (int s: integerArray) {
       intStats.updateStats(s);
     }
 
     integerArray = new int[] {0, 3, 3};
-    IntStatistics intStats2 = new IntStatistics();
+    IntStatistics intStats2 = new IntStatistics(new StatisticsOpts(null));
 
     for (int s: integerArray) {
       intStats2.updateStats(s);
@@ -467,7 +468,7 @@ public class TestStatistics {
     assertEquals(intStats.getMin(), 0);
 
     integerArray = new int[] {-1, -100, 100};
-    IntStatistics intStats3 = new IntStatistics();
+    IntStatistics intStats3 = new IntStatistics(new StatisticsOpts(null));
     for (int s: integerArray) {
       intStats3.updateStats(s);
     }

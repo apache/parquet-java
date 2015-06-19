@@ -30,7 +30,8 @@ import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.impl.ColumnWriteStoreV2;
 import org.apache.parquet.column.page.PageWriteStore;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.StatisticsOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.boundedint.DevNullValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
@@ -97,12 +98,12 @@ public class ParquetProperties {
   private final int maxRowCountForPageSizeCheck;
   private final boolean estimateNextSizeCheck;
   private final ByteBufferAllocator allocator;
-  private final BloomFilterOpts bloomFilterOpts;
+  private final StatisticsOpts statisticsOpts;
 
   private final int initialSlabSize;
 
   private ParquetProperties(WriterVersion writerVersion, int pageSize, int dictPageSize, boolean enableDict, int minRowCountForPageSizeCheck,
-                            int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator, BloomFilterOpts bloomFilterOpts) {
+                            int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator, StatisticsOpts statisticsOpts) {
     this.pageSizeThreshold = pageSize;
     this.initialSlabSize = CapacityByteArrayOutputStream
         .initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
@@ -112,7 +113,7 @@ public class ParquetProperties {
     this.minRowCountForPageSizeCheck = minRowCountForPageSizeCheck;
     this.maxRowCountForPageSizeCheck = maxRowCountForPageSizeCheck;
     this.estimateNextSizeCheck = estimateNextSizeCheck;
-    this.bloomFilterOpts = bloomFilterOpts;
+    this.statisticsOpts = statisticsOpts;
     this.allocator = allocator;
   }
 
@@ -283,8 +284,8 @@ public class ParquetProperties {
     return allocator;
   }
 
-  public BloomFilterOpts getBloomFilterOpts(){
-    return bloomFilterOpts;
+  public StatisticsOpts getStatisticsOpts(){
+    return statisticsOpts;
   }
 
   public ColumnWriteStore newColumnWriteStore(MessageType schema,
@@ -328,7 +329,7 @@ public class ParquetProperties {
     private int maxRowCountForPageSizeCheck = DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK;
     private boolean estimateNextSizeCheck = DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
     private ByteBufferAllocator allocator = new HeapByteBufferAllocator();
-    private BloomFilterOpts bloomFilterOpts = new BloomFilterOpts();
+    private StatisticsOpts statisticsOpts = new StatisticsOpts(new BloomFilterOpts());
 
     private Builder() {
     }
@@ -341,7 +342,7 @@ public class ParquetProperties {
       this.maxRowCountForPageSizeCheck = toCopy.maxRowCountForPageSizeCheck;
       this.estimateNextSizeCheck = toCopy.estimateNextSizeCheck;
       this.allocator = toCopy.allocator;
-      this.bloomFilterOpts = toCopy.bloomFilterOpts;
+      this.statisticsOpts = toCopy.statisticsOpts;
     }
 
     /**
@@ -418,15 +419,15 @@ public class ParquetProperties {
       return this;
     }
 
-    public Builder withBloomFilterOpts(BloomFilterOpts bloomFilterOpts){
-      this.bloomFilterOpts = bloomFilterOpts;
+    public Builder withStatisticsOpts(StatisticsOpts statisticsOpts){
+      this.statisticsOpts = statisticsOpts;
       return this;
     }
 
     public ParquetProperties build() {
       return new ParquetProperties(writerVersion, pageSize, dictPageSize,
           enableDict, minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck,
-          estimateNextSizeCheck, allocator, bloomFilterOpts);
+          estimateNextSizeCheck, allocator, statisticsOpts);
     }
   }
 }

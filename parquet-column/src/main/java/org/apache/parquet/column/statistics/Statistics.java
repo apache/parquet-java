@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,7 +19,6 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.column.UnknownColumnTypeException;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import java.util.Arrays;
@@ -43,12 +42,14 @@ public abstract class Statistics<T extends Comparable<T>> {
   /**
    * Returns the typed statistics object based on the passed type parameter
    * @param type PrimitiveTypeName type of the column
+   * @param statisticsOpts the options for statistics filter
    * @return instance of a typed statistics class
    */
-  public static Statistics getStatsBasedOnType(PrimitiveTypeName type, BloomFilterOpts opts) {
+  public static Statistics getStatsBasedOnType(PrimitiveTypeName type,
+      StatisticsOpts statisticsOpts) {
     switch(type) {
     case INT32:
-      return new IntStatistics(opts);
+      return new IntStatistics(statisticsOpts);
     case INT64:
       return new LongStatistics();
     case FLOAT:
@@ -163,7 +164,7 @@ public abstract class Statistics<T extends Comparable<T>> {
     mergeBloomFilters(stats);
   }
 
-  public void mergeBloomFilters(Statistics stats){
+  protected void mergeBloomFilters(Statistics stats){
     // Do nothing if it doesn't support bloom filter.
   }
 
@@ -247,11 +248,11 @@ public abstract class Statistics<T extends Comparable<T>> {
   public boolean hasNonNullValue() {
     return hasNonNullValue;
   }
- 
+
   /**
    * Sets the page/column as having a valid non-null value
    * kind of misnomer here
-   */ 
+   */
   protected void markAsNotEmpty() {
     hasNonNullValue = true;
   }

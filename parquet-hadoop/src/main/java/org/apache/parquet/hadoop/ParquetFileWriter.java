@@ -52,9 +52,10 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilter;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOptBuilder;
-import org.apache.parquet.column.statistics.bloomFilter.BloomFilterOpts;
+import org.apache.parquet.column.statistics.StatisticsOpts;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilter;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOptBuilder;
+import org.apache.parquet.column.statistics.bloomfilter.BloomFilterOpts;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -125,7 +126,7 @@ public class ParquetFileWriter {
   private long uncompressedLength;
   private long compressedLength;
   private Statistics currentStatistics; // accumulated in writePage(s)
-  private BloomFilterOpts bloomFilterOpts;
+  private StatisticsOpts statisticsOpts;
 
   // column chunk data set at the start of a column
   private CompressionCodecName currentChunkCodec; // set in startColumn
@@ -263,25 +264,24 @@ public class ParquetFileWriter {
         rowAndBlockSize, rowAndBlockSize, maxPaddingSize);
     this.out = fs.create(file, true, DFS_BUFFER_SIZE_DEFAULT,
         fs.getDefaultReplication(file), rowAndBlockSize);
-    buildBloomFilter(configuration);
+    buildBloomFilterOpts(configuration);
   }
 
-  private void buildBloomFilter(Configuration conf) {
+  private void buildBloomFilterOpts(Configuration conf) {
     boolean enableBloomFilter = conf.getBoolean(ParquetOutputFormat.ENABLE_BLOOM_FILTER, false);
     //TODO: remove magic number before shipping
-    long expectedEntries = conf.getLong(ParquetOutputFormat.EXPACTED_ENTRIES, 1000);
-    boolean isFppProvided = conf.getBoolean(ParquetOutputFormat.IS_FPP_PROVIDED, false);
-    double fpp = Double
-        .valueOf(conf.get(ParquetOutputFormat.FPP_VALUE, String.valueOf(BloomFilter.DEFAULT_FPP)));
+    long expectedEntries = conf.getLong(ParquetOutputFormat.EXPECTED_ENTRIES, 1000);
+    double fpp = Double.valueOf(conf.get(ParquetOutputFormat.FALSE_POSITIVE_PROBABILITY,
+        String.valueOf(BloomFilter.DEFAULT_FALSE_POSITIVE_PROBABILITY)));
 
+    BloomFilterOpts bloomFilterOpts;
     if (enableBloomFilter) {
-      bloomFilterOpts =
-          isFppProvided ? new BloomFilterOptBuilder().enable(true).expectedEntries(expectedEntries)
-              .fpp(fpp).build() : new BloomFilterOptBuilder().enable(true)
-              .expectedEntries(expectedEntries).build();
+      bloomFilterOpts = new BloomFilterOptBuilder().enable(true).expectedEntries(expectedEntries)
+          .falsePositiveProbability(fpp).build();
     } else {
       bloomFilterOpts = new BloomFilterOptBuilder().enable(false).build();
     }
+    statisticsOpts = new StatisticsOpts(bloomFilterOpts);
   }
 
   /**
@@ -331,7 +331,7 @@ public class ParquetFileWriter {
     uncompressedLength = 0;
     // need to know what type of stats to initialize to
     // better way to do this?
-    currentStatistics = Statistics.getStatsBasedOnType(currentChunkType, bloomFilterOpts);
+    currentStatistics = Statistics.getStatsBasedOnType(currentChunkType, statisticsOpts);
   }
 
   /**
@@ -622,14 +622,16 @@ public class ParquetFileWriter {
   public void end(Map<String, String> extraMetaData) throws IOException {
     state = state.end();
     if (DEBUG) LOG.debug(out.getPos() + ": end");
-    ParquetMetadata footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
+    ParquetMetadata footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION),
+        blocks);
     serializeFooter(footer, out);
     out.close();
   }
 
   private static void serializeFooter(ParquetMetadata footer, FSDataOutputStream out) throws IOException {
     long footerIndex = out.getPos();
-    org.apache.parquet.format.FileMetaData parquetMetadata = new ParquetMetadataConverter().toParquetMetadata(
+    org.apache.parquet.format.FileMetaData parquetMetadata = new ParquetMetadataConverter()
+        .toParquetMetadata(
         CURRENT_VERSION, footer);
     writeFileMetaData(parquetMetadata, out);
     if (DEBUG) LOG.debug(out.getPos() + ": footer length = " + (out.getPos() - footerIndex));
@@ -749,10 +751,6 @@ public class ParquetFileWriter {
     return alignment.nextRowGroupSize(out);
   }
 
-  public BloomFilterOpts getBloomFilterOpts() {
-    return bloomFilterOpts;
-  }
-
   /**
    * Will merge the metadata of all the footers together
    * @param footers the list files footers to merge
@@ -769,6 +767,10 @@ public class ParquetFileWriter {
       fileMetaData = mergeInto(currentMetadata.getFileMetaData(), fileMetaData, strict);
     }
     return fileMetaData;
+  }
+
+  public StatisticsOpts getStatisticsOpts() {
+    return statisticsOpts;
   }
 
   /**
