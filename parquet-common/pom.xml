@@ -36,6 +36,12 @@
   </properties>
 
   <dependencies>
+    <dependency>
+        <groupId>org.semver</groupId>
+        <artifactId>api</artifactId>
+        <version>${semver.api.version}</version>
+        <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
