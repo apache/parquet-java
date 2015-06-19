@@ -53,12 +53,12 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public byte[] getMaxBytes() {
-    return max.getBytes();
+    return max == null ? null : max.getBytes();
   }
 
   @Override
   public byte[] getMinBytes() {
-    return min.getBytes();
+    return min == null ? null : min.getBytes();
   }
 
   @Override
