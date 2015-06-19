@@ -112,7 +112,7 @@ public class TestSchemaCompatibilityValidator {
       fail("this should throw");
     } catch (IllegalArgumentException e) {
       assertEquals("FilterPredicate column: x.bar's declared type (java.lang.Long) does not match the schema found in file metadata. "
-          + "Column x.bar is of type: FullTypeDescriptor(PrimitiveType: INT32, OriginalType: null)\n"
+          + "Column x.bar is of type: INT32\n"
           + "Valid types for this column are: [class java.lang.Integer]", e.getMessage());
     }
   }
