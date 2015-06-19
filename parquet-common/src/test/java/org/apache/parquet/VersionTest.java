@@ -55,8 +55,8 @@ public class VersionTest {
     Pattern pattern = Pattern.compile(regex);
     Matcher m = pattern.matcher(Version.FULL_VERSION);
     assertTrue(Version.FULL_VERSION + " did not match " + pattern, m.matches());
-    assertVersionValid(m.group(0));
-    assertEquals(Version.VERSION_NUMBER, m.group(0));
-    assertFalse(m.group(1).isEmpty());
+    assertVersionValid(m.group(1));
+    assertEquals(Version.VERSION_NUMBER, m.group(1));
+    assertFalse(m.group(2).isEmpty());
   }
 }
