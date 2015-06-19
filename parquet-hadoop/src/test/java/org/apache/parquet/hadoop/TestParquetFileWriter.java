@@ -418,16 +418,37 @@ public class TestParquetFileWriter {
       parquetMRstats.updateStats(l);
     }
     final String createdBy =
-        "parquet-mr version 1.8.0rc3 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
+        "parquet-mr version 1.8.0 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
     Statistics thriftStats =
         org.apache.parquet.format.converter.ParquetMetadataConverter.toParquetStatistics(parquetMRstats);
-    LongStatistics convertedBackStats = (LongStatistics) org.apache.parquet.format.converter
-        .ParquetMetadataConverter.fromParquetStatistics(
+    LongStatistics convertedBackStats =
+        (LongStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics(
             createdBy, thriftStats, PrimitiveTypeName.INT64);
 
     assertEquals(parquetMRstats.getMax(), convertedBackStats.getMax());
     assertEquals(parquetMRstats.getMin(), convertedBackStats.getMin());
     assertEquals(parquetMRstats.getNumNulls(), convertedBackStats.getNumNulls());
+  }
+
+  @Test
+  public void testStatisticsGettingIgnoredFor160Version() throws Exception {
+    long[] longArray = new long[] {39L, 99L, 12L, 1000L, 65L, 542L, 2533461316L, -253346131996L, Long.MAX_VALUE, Long.MIN_VALUE};
+    LongStatistics parquetMRstats = new LongStatistics();
+
+    for (long l: longArray) {
+      parquetMRstats.updateStats(l);
+    }
+    final String createdBy =
+        "parquet-mr version 1.6.0 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
+    Statistics thriftStats =
+        org.apache.parquet.format.converter.ParquetMetadataConverter.toParquetStatistics(parquetMRstats);
+    LongStatistics convertedBackStats =
+        (LongStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics(
+            createdBy, thriftStats, PrimitiveTypeName.INT64);
+
+    assertEquals(0, convertedBackStats.getMax());
+    assertEquals(0, convertedBackStats.getMin());
+    assertEquals(0, convertedBackStats.getNumNulls());
   }
 
   @Test
