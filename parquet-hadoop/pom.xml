@@ -92,17 +92,6 @@
       <version>1.9.5</version>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>org.semver</groupId>
-      <artifactId>api</artifactId>
-      <version>${semver.api.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>commons-lang</groupId>
-          <artifactId>commons-lang</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
   </dependencies>
 
   <build>
