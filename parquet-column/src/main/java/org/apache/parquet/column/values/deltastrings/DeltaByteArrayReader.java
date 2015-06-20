@@ -47,6 +47,10 @@ public class DeltaByteArrayReader extends ValuesReader {
     this.previous = previous;
   }
 
+  public Binary getPreviousBinary() {
+    return previous;
+  }
+
   @Override
   public void initFromPage(int valueCount, byte[] page, int offset)
       throws IOException {

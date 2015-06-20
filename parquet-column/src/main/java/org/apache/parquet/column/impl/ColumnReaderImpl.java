@@ -41,7 +41,6 @@ import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.values.ValuesReader;
-import org.apache.parquet.column.values.deltastrings.DeltaByteArrayReader;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
@@ -537,25 +536,15 @@ class ColumnReaderImpl implements ColumnReader {
     } else {
       this.dataColumn = dataEncoding.getValuesReader(path, VALUES);
     }
-
-    try {
-      // Here we pass the last value from the last page read in order to read files written with the
-      // issue mentioned on PARQUET-246 where the prefixLength for DELTA_BYTE_ARRAY encoding values
-      // was not resetted when a new page was started.
-      dataColumn.initFromPage(pageValueCount, bytes, offset);
-      if (dataColumn instanceof DeltaByteArrayReader) {
-        if (binding != null) {
-          ((DeltaByteArrayReader) dataColumn).setPreviousBinary(binding.getBinary());
-        }
-      }
-    } catch (IOException e) {
-      throw new ParquetDecodingException("could not read page in col " + path, e);
-    }
-
     if (dataEncoding.usesDictionary() && converter.hasDictionarySupport()) {
       bindToDictionary(dictionary);
     } else {
       bind(path.getType());
+    }
+    try {
+      dataColumn.initFromPage(pageValueCount, bytes, offset);
+    } catch (IOException e) {
+      throw new ParquetDecodingException("could not read page in col " + path, e);
     }
   }
 
