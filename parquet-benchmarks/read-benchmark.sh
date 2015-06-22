@@ -17,11 +17,27 @@
 # under the License.
 #
 
+
 # !/usr/bin/env bash
 
 set -e
 
 SCRIPT_PATH=$( cd "$(dirname "$0")" ; pwd -P )
 
-bash write-benchmark.sh "$@"
-bash read-benchmark.sh "$@"
+parquetVersion="v2"
+if echo $*|grep "parquetVersion"; then
+  parquetVersion=$(echo $* | grep -oh parquetVersion=.* | sed 's/=/ /' | awk '{print $2}')
+fi
+
+randomData=""
+if echo $*|grep "randomData"; then
+  randomData="-randomData"
+fi
+
+echo "Generating test data"
+java -cp ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.DataGenerator cleanup
+java -cp ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.DataGenerator generate $parquetVersion $randomData
+echo "Data generated, starting READ benchmarks"
+java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar p*Read* "$@"
+echo "Cleaning up generated data"
+java -cp ${SCRIPT_PATH}/target/parquet-benchmarks.jar org.apache.parquet.benchmarks.DataGenerator cleanup

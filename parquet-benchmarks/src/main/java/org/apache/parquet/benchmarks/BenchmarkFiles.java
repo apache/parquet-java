@@ -18,12 +18,9 @@
  */
 package org.apache.parquet.benchmarks;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
 public class BenchmarkFiles {
-  public static final Configuration configuration = new Configuration();
-
   public static final String TARGET_DIR = "target/tests/ParquetBenchmarks";
   public static final Path file_1M = new Path(TARGET_DIR + "/PARQUET-1M");
 

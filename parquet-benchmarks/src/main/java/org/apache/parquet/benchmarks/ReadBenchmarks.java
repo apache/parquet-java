@@ -18,23 +18,36 @@
  */
 package org.apache.parquet.benchmarks;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
-import static org.apache.parquet.benchmarks.BenchmarkConstants.*;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.*;
 
 import java.io.IOException;
 
+@State(Scope.Benchmark)
+@BenchmarkMode(Mode.AverageTime)
+@Fork(1)
 public class ReadBenchmarks {
-  private void read(Path parquetFile, int nRows, Blackhole blackhole) throws IOException
+  private Configuration configuration;
+  private GroupReadSupport groupReadSupport;
+
+  @Setup(Level.Trial)
+  public void setupBenchmark() throws IOException {
+    configuration = new Configuration();
+    groupReadSupport = new GroupReadSupport();
+  }
+
+  private void read(Path parquetFile, Blackhole blackhole) throws IOException
   {
-    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), parquetFile).withConf(configuration).build();
-    for (int i = 0; i < nRows; i++) {
-      Group group = reader.read();
+    ParquetReader<Group> reader = ParquetReader.builder(groupReadSupport, parquetFile).withConf(configuration).build();
+
+    Group group;
+    while ((group = reader.read()) != null) {
       blackhole.consume(group.getBinary("binary_field", 0));
       blackhole.consume(group.getInteger("int32_field", 0));
       blackhole.consume(group.getLong("int64_field", 0));
@@ -51,35 +64,35 @@ public class ReadBenchmarks {
   public void read1MRowsDefaultBlockAndPageSizeUncompressed(Blackhole blackhole)
           throws IOException
   {
-    read(file_1M, ONE_MILLION, blackhole);
+    read(file_1M, blackhole);
   }
 
   @Benchmark
   public void read1MRowsBS256MPS4MUncompressed(Blackhole blackhole)
           throws IOException
   {
-    read(file_1M_BS256M_PS4M, ONE_MILLION, blackhole);
+    read(file_1M_BS256M_PS4M, blackhole);
   }
 
   @Benchmark
   public void read1MRowsBS256MPS8MUncompressed(Blackhole blackhole)
           throws IOException
   {
-    read(file_1M_BS256M_PS8M, ONE_MILLION, blackhole);
+    read(file_1M_BS256M_PS8M, blackhole);
   }
 
   @Benchmark
   public void read1MRowsBS512MPS4MUncompressed(Blackhole blackhole)
           throws IOException
   {
-    read(file_1M_BS512M_PS4M, ONE_MILLION, blackhole);
+    read(file_1M_BS512M_PS4M, blackhole);
   }
 
   @Benchmark
   public void read1MRowsBS512MPS8MUncompressed(Blackhole blackhole)
           throws IOException
   {
-    read(file_1M_BS512M_PS8M, ONE_MILLION, blackhole);
+    read(file_1M_BS512M_PS8M, blackhole);
   }
 
   //TODO how to handle lzo jar?
@@ -87,20 +100,20 @@ public class ReadBenchmarks {
 //  public void read1MRowsDefaultBlockAndPageSizeLZO(Blackhole blackhole)
 //          throws IOException
 //  {
-//    read(parquetFile_1M_LZO, ONE_MILLION, blackhole);
+//    read(parquetFile_1M_LZO, blackhole);
 //  }
 
   @Benchmark
   public void read1MRowsDefaultBlockAndPageSizeSNAPPY(Blackhole blackhole)
           throws IOException
   {
-    read(file_1M_SNAPPY, ONE_MILLION, blackhole);
+    read(file_1M_SNAPPY, blackhole);
   }
 
   @Benchmark
   public void read1MRowsDefaultBlockAndPageSizeGZIP(Blackhole blackhole)
           throws IOException
   {
-    read(file_1M_GZIP, ONE_MILLION, blackhole);
+    read(file_1M_GZIP, blackhole);
   }
 }
