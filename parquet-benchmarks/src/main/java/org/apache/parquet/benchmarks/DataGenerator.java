@@ -163,7 +163,7 @@ public class DataGenerator {
     DataGenerator generator = new DataGenerator(new Configuration());
 
     if (args.length < 1) {
-      System.err.println("Please specify a command (generate VERSION|cleanup).");
+      System.err.println("Please specify a command (generate VERSION [-randomData]|cleanup).");
       System.exit(1);
     }
 
@@ -182,11 +182,13 @@ public class DataGenerator {
 
       String parquetVersion = args[1];
 
-      if (args.length == 3 && args[2].equalsIgnoreCase("-randomData")) {
-        generator.initializeRandomSampleData(RANDOM_SAMPLE_ROWS);
-      } else {
-        System.err.println("Unknown option: " + args[2]);
-        System.exit(1);
+      if (args.length == 3) {
+        if (args[2].equalsIgnoreCase("-randomData")) {
+          generator.initializeRandomSampleData(RANDOM_SAMPLE_ROWS);
+        } else {
+          System.err.println("Unknown option: " + args[2]);
+          System.exit(1);
+        }
       }
 
       generator.setWriterVersion(WriterVersion.fromString(parquetVersion));

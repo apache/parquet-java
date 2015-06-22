@@ -20,7 +20,14 @@ package org.apache.parquet.benchmarks;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetReader;
@@ -30,7 +37,7 @@ import static org.apache.parquet.benchmarks.BenchmarkFiles.*;
 import java.io.IOException;
 
 @State(Scope.Benchmark)
-@BenchmarkMode(Mode.AverageTime)
+@BenchmarkMode(Mode.All)
 @Fork(1)
 public class ReadBenchmarks {
   private Configuration configuration;

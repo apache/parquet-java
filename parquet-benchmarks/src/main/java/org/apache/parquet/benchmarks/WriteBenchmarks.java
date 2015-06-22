@@ -19,7 +19,14 @@
 package org.apache.parquet.benchmarks;
 
 import org.apache.hadoop.conf.Configuration;
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
 
 import static org.apache.parquet.column.ParquetProperties.WriterVersion;
 import static org.openjdk.jmh.annotations.Scope.Benchmark;
@@ -33,7 +40,7 @@ import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 
 @State(Benchmark)
-@BenchmarkMode(Mode.AverageTime)
+@BenchmarkMode(Mode.All)
 @Fork(1)
 public class WriteBenchmarks {
   private DataGenerator dataGenerator;

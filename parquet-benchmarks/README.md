@@ -25,10 +25,29 @@ First, build the ``parquet-benchmarks`` module
 mvn --projects parquet-benchmarks -amd -DskipTests -Denforcer.skip=true -P hadoop-2 clean package
 ```
 
-Then, you can run all the benchmarks with the following command
+Then, you can run all the benchmarks with the following command (use parquetVersion=vN to specify
+the parquet file format version)
 
 ```
- ./parquet-benchmarks/run.sh -wi 5 -i 5 -f 3 -bm all
+  ./parquet-benchmarks/run.sh -wi 5 -i 5 -f 3 -p parquetVersion=v1     # Run all benchmarks with PARQUET_1_0
+  ./parquet-benchmarks/run.sh -wi 5 -i 5 -f 3 -p parquetVersion=v2     # Run all benchmarks with PARQUET_2_0
+```
+
+Also, you can run only write or read benchmarks with the following command
+
+```
+ ./parquet-benchmarks/write-benchmarks.sh -wi 5 -i 5 -f 3 -p parquetVersion=v2
+ ./parquet-benchmarks/read-benchmarks.sh -wi 5 -i 5 -f 3 -p parquetVersion=v2
+```
+
+By default, all benchmarks write repeated rows to the file. This is useful to test how encodings are working,
+and how well they compress data. But if you need more random data, then you can specify a flag so that files
+are tested with random data. By default, a sample of 100k random rows is generated on memory before writing them
+to disk.
+
+```
+  # Run all benchmarks with PARQUET_2_0 and using random data
+  ./parquet-benchmarks/run.sh -wi 5 -i 5 -f 3 -p parquetVersion=v2 -p randomData=true
 ```
 
 To understand what each command line argument means and for more arguments please see
