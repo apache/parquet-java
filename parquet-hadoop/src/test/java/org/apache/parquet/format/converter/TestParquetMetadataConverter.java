@@ -19,6 +19,7 @@
 package org.apache.parquet.format.converter;
 
 import static java.util.Collections.emptyList;
+import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.apache.parquet.format.CompressionCodec.UNCOMPRESSED;
@@ -34,11 +35,19 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.apache.parquet.column.statistics.BinaryStatistics;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -252,4 +261,26 @@ public class TestParquetMetadataConverter {
     }
   }
 
+  @Test
+  public void testNullFieldMetadataDebugLogging() throws NoSuchFieldException, IllegalAccessException, IOException {
+    MessageType schema = parseMessageType("message test { optional binary some_null_field; }");
+    org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData = new org.apache.parquet.hadoop.metadata.FileMetaData(schema, new HashMap<String, String>(), null);
+    List<BlockMetaData> blockMetaDataList = new ArrayList<BlockMetaData>();
+    BlockMetaData blockMetaData = new BlockMetaData();
+    blockMetaData.addColumn(createColumnChunkMetaData());
+    blockMetaDataList.add(blockMetaData);
+    ParquetMetadata metadata = new ParquetMetadata(fileMetaData, blockMetaDataList);
+    ParquetMetadata.toJSON(metadata);
+  }
+
+  private ColumnChunkMetaData createColumnChunkMetaData() {
+    Set<Encoding> e = new HashSet<Encoding>();
+    PrimitiveTypeName t = PrimitiveTypeName.BINARY;
+    ColumnPath p = ColumnPath.get("foo");
+    CompressionCodecName c = CompressionCodecName.GZIP;
+    BinaryStatistics s = new BinaryStatistics();
+    ColumnChunkMetaData md = ColumnChunkMetaData.get(p, t, c, e, s,
+            0, 0, 0, 0, 0);
+    return md;
+  }
 }
