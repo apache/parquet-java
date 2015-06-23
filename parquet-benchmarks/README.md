@@ -25,7 +25,7 @@ First, build the ``parquet-benchmarks`` module
 mvn --projects parquet-benchmarks -amd -DskipTests -Denforcer.skip=true clean package
 ```
 
-Then, you can run all the benchmarks with the following command (use parquetVersion=vN to specify
+Then, you can run all the benchmarks with the following commands (use parquetVersion=vN to specify
 the parquet file format version)
 
 ```
@@ -33,7 +33,7 @@ the parquet file format version)
   ./parquet-benchmarks/run.sh -wi 5 -i 5 -f 3 -p parquetVersion=v2     # Run all benchmarks with PARQUET_2_0
 ```
 
-Also, you can run only write or read benchmarks with the following command
+Also, you can run only write or read benchmarks with the following commands
 
 ```
  ./parquet-benchmarks/write-benchmark.sh -wi 5 -i 5 -f 3 -p parquetVersion=v2
@@ -46,7 +46,7 @@ this test file you can specify `randomData=true` -- with this flag 100K random r
 are generated and used repeatedly while creating the test file.
 
 ```
-  # Run all benchmarks with PARQUET_2_0 and using random data
+  # Run all benchmarks with PARQUET_2_0 and use random data
   ./parquet-benchmarks/run.sh -wi 5 -i 5 -f 3 -p parquetVersion=v2 -p randomData=true
 ```
 
