@@ -23,5 +23,5 @@ set -e
 
 SCRIPT_PATH=$( cd "$(dirname "$0")" ; pwd -P )
 
-bash write-benchmark.sh "$@"
-bash read-benchmark.sh "$@"
+bash ${SCRIPT_PATH}/write-benchmark.sh "$@"
+bash ${SCRIPT_PATH}/read-benchmark.sh "$@"
