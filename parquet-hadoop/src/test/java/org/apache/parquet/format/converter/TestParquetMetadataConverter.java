@@ -271,7 +271,7 @@ public class TestParquetMetadataConverter {
   }
 
   private ColumnChunkMetaData createColumnChunkMetaData() {
-    Set<Encoding> e = new HashSet<Encoding>();
+    Set<org.apache.parquet.column.Encoding> e = new HashSet<org.apache.parquet.column.Encoding>();
     PrimitiveTypeName t = PrimitiveTypeName.BINARY;
     ColumnPath p = ColumnPath.get("foo");
     CompressionCodecName c = CompressionCodecName.GZIP;
