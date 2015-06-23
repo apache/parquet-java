@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.format.converter;
 
+import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.format.Util.readFileMetaData;
 import static org.apache.parquet.format.Util.writePageHeader;
 
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -76,6 +78,14 @@ public class ParquetMetadataConverter {
   public static final MetadataFilter SKIP_ROW_GROUPS = new SkipMetadataFilter();
 
   private static final Log LOG = Log.getLog(ParquetMetadataConverter.class);
+
+  // NOTE: this cache is for memory savings, not cpu savings, and is used to de-duplicate
+  // sets of encodings. It is important that all collections inserted to this cache be
+  // immutable and have thread-safe read-only access. This can be achieved by wrapping
+  // an unsynchronized collection in Collections.unmodifiable*(), and making sure to not
+  // keep any references to the original collection.
+  private static final ConcurrentHashMap<Set<org.apache.parquet.column.Encoding>, Set<org.apache.parquet.column.Encoding>>
+      cachedEncodingSets = new ConcurrentHashMap<Set<org.apache.parquet.column.Encoding>, Set<org.apache.parquet.column.Encoding>>();
 
   public static FileMetaData toParquetMetadata(int currentVersion, ParquetMetadata parquetMetadata) {
     List<BlockMetaData> blocks = parquetMetadata.getBlocks();
@@ -191,14 +201,28 @@ public class ParquetMetadataConverter {
     return converted;
   }
 
-  private static Set<org.apache.parquet.column.Encoding> fromFormatEncodings(List<Encoding> encodings) {
+  // Visible for testing
+  static Set<org.apache.parquet.column.Encoding> fromFormatEncodings(List<Encoding> encodings) {
     Set<org.apache.parquet.column.Encoding> converted = new HashSet<org.apache.parquet.column.Encoding>();
 
     for (Encoding encoding : encodings) {
       converted.add(getEncoding(encoding));
     }
 
-    return Collections.unmodifiableSet(converted);
+    // make converted unmodifiable, drop reference to modifiable copy
+    converted = Collections.unmodifiableSet(converted);
+
+    // atomically update the cache
+    Set<org.apache.parquet.column.Encoding> cached = cachedEncodingSets.putIfAbsent(converted, converted);
+
+    if (cached == null) {
+      // cached == null signifies that converted was *not* in the cache previously
+      // so we can return converted instead of throwing it away, it has now
+      // been cached
+      cached = converted;
+    }
+
+    return cached;
   }
 
   public static org.apache.parquet.column.Encoding getEncoding(Encoding encoding) {
