@@ -59,9 +59,13 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Void> {
 
   public static void validate(FilterPredicate predicate, MessageType schema) {
+   validate(predicate, schema, true);
+  }
+
+  public static void validate(FilterPredicate predicate, MessageType schema, boolean isCaseSensitive) {
     checkNotNull(predicate, "predicate");
     checkNotNull(schema, "schema");
-    predicate.accept(new SchemaCompatibilityValidator(schema));
+    predicate.accept(new SchemaCompatibilityValidator(schema, isCaseSensitive));
   }
 
   // A map of column name to the type the user supplied for this column.
@@ -76,11 +80,14 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
   // the original type of a column, keyed by path
   private final Map<ColumnPath, OriginalType> originalTypes = new HashMap<ColumnPath, OriginalType>();
 
-  private SchemaCompatibilityValidator(MessageType schema) {
+  private boolean isCaseSensitive = true;
 
+  private SchemaCompatibilityValidator(MessageType schema, boolean isCaseSensitive) {
+
+    this.isCaseSensitive = isCaseSensitive;
     for (ColumnDescriptor cd : schema.getColumns()) {
-      ColumnPath columnPath = ColumnPath.get(cd.getPath());
-      columnsAccordingToSchema.put(columnPath, cd);
+      ColumnPath columnPath = isCaseSensitive? ColumnPath.get(cd.getPath()):ColumnPath.getLowerCase(cd.getPath());
+        columnsAccordingToSchema.put(columnPath, cd);
 
       OriginalType ot = schema.getType(cd.getPath()).getOriginalType();
       if (ot != null) {
@@ -186,7 +193,8 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
   }
 
   private ColumnDescriptor getColumnDescriptor(ColumnPath columnPath) {
-    ColumnDescriptor cd = columnsAccordingToSchema.get(columnPath);
+    ColumnDescriptor cd = isCaseSensitive ? columnsAccordingToSchema.get(columnPath):
+      columnsAccordingToSchema.get(ColumnPath.getLowerCase(columnPath.toArray()));
     checkArgument(cd != null, "Column " + columnPath + " was not found in schema!");
     return cd;
   }

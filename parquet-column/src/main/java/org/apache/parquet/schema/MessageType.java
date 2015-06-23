@@ -50,6 +50,13 @@ public final class MessageType extends GroupType {
    super(Repetition.REPEATED, name, fields);
  }
 
+ public MessageType(String name, List<Type> fields, boolean isCaseSensitive) {
+     super(Repetition.REPEATED, name, fields, isCaseSensitive);
+ }
+
+ public MessageType(MessageType base, boolean isCaseSensitive) {
+     super(Repetition.REPEATED, base.getName(), base.getFields(), isCaseSensitive);
+ }
   /**
    * {@inheritDoc}
    */

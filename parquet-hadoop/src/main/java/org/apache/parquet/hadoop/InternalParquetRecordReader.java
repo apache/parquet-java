@@ -169,13 +169,23 @@ class InternalParquetRecordReader<T> {
     // initialize a ReadContext for this file
     ReadSupport.ReadContext readContext = readSupport.init(new InitContext(
         configuration, toSetMultiMap(fileMetadata), fileSchema));
-    this.requestedSchema = readContext.getRequestedSchema();
+    MessageType request = readContext.getRequestedSchema();
+    boolean isCaseSensitive = configuration.getBoolean(ParquetInputFormat.CASE_SENSITIVITY, true);
+
+    if (!isCaseSensitive) {
+      MessageType base = new MessageType(request, false);
+      this.requestedSchema = new MessageType(request.getName(), fileSchema.getContainedFields(base));
+    } else {
+      this.requestedSchema = request;
+    }
+
     this.fileSchema = fileSchema;
     this.file = file;
     this.columnCount = requestedSchema.getPaths().size();
     this.recordConverter = readSupport.prepareForRead(
         configuration, fileMetadata, fileSchema, readContext);
     this.strictTypeChecking = configuration.getBoolean(STRICT_TYPE_CHECKING, true);
+
     List<ColumnDescriptor> columns = requestedSchema.getColumns();
     reader = new ParquetFileReader(configuration, file, blocks, columns);
     for (BlockMetaData block : blocks) {

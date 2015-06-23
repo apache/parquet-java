@@ -39,6 +39,17 @@ public final class ColumnPath implements Iterable<String>, Serializable {
     }
   };
 
+  private static Canonicalizer<ColumnPath> pathsLowerCase = new Canonicalizer<ColumnPath>() {
+    @Override
+    protected ColumnPath toCanonical(ColumnPath value) {
+      String[] path = new String[value.p.length];
+      for (int i = 0; i < value.p.length; i++) {
+        path[i] = value.p[i].toLowerCase().intern();
+      }
+      return new ColumnPath(path);
+    }
+  };
+
   public static ColumnPath fromDotString(String path) {
     checkNotNull(path, "path");
     return get(path.split("\\."));
@@ -46,6 +57,10 @@ public final class ColumnPath implements Iterable<String>, Serializable {
 
   public static ColumnPath get(String... path){
     return paths.canonicalize(new ColumnPath(path));
+  }
+
+  public static ColumnPath getLowerCase(String... path){
+    return pathsLowerCase.canonicalize(new ColumnPath(path));
   }
 
   private final String[] p;

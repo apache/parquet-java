@@ -40,15 +40,26 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
   private final List<BlockMetaData> blocks;
   private final MessageType schema;
+  private final boolean isCaseSensitive;
 
   public static List<BlockMetaData> filterRowGroups(Filter filter, List<BlockMetaData> blocks, MessageType schema) {
+   return filterRowGroups(filter, blocks, schema, true);
+  }
+
+  public static List<BlockMetaData> filterRowGroups(Filter filter, List<BlockMetaData> blocks, MessageType schema,
+                                                    boolean isCaseSensitive) {
     checkNotNull(filter, "filter");
-    return filter.accept(new RowGroupFilter(blocks, schema));
+    return filter.accept(new RowGroupFilter(blocks, schema, isCaseSensitive));
   }
 
   private RowGroupFilter(List<BlockMetaData> blocks, MessageType schema) {
+   this(blocks, schema, true);
+  }
+
+  private RowGroupFilter(List<BlockMetaData> blocks, MessageType schema, boolean isCaseSensitive) {
     this.blocks = checkNotNull(blocks, "blocks");
     this.schema = checkNotNull(schema, "schema");
+    this.isCaseSensitive = isCaseSensitive;
   }
 
   @Override
@@ -56,7 +67,7 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
     FilterPredicate filterPredicate = filterPredicateCompat.getFilterPredicate();
 
     // check that the schema of the filter matches the schema of the file
-    SchemaCompatibilityValidator.validate(filterPredicate, schema);
+    SchemaCompatibilityValidator.validate(filterPredicate, schema, isCaseSensitive);
 
     List<BlockMetaData> filteredBlocks = new ArrayList<BlockMetaData>();
 

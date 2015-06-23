@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.apache.parquet.io.InvalidRecordException;
 
@@ -38,7 +39,6 @@ public class GroupType extends Type {
 
   private final List<Type> fields;
   private final Map<String, Integer> indexByName;
-
   /**
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    * @param name the name of the field
@@ -46,6 +46,10 @@ public class GroupType extends Type {
    */
   public GroupType(Repetition repetition, String name, List<Type> fields) {
     this(repetition, name, null, fields, null);
+  }
+
+  public GroupType(Repetition repetition, String name, List<Type> fields, boolean isCaseSensitive) {
+    this(repetition, name, null, fields, null, isCaseSensitive);
   }
 
   /**
@@ -87,12 +91,17 @@ public class GroupType extends Type {
    * @param id the id of the field
    */
   GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields, ID id) {
+    this(repetition, name, originalType, fields, id, true);
+  }
+
+  GroupType(Repetition repetition, String name, OriginalType originalType, List<Type> fields, ID id, boolean isCaseSensitive) {
     super(name, repetition, originalType, id);
     if (fields.isEmpty()) {
       throw new InvalidSchemaException("A group type can not be empty. Parquet does not support empty group without leaves. Empty group: " + name);
     }
+
     this.fields = fields;
-    this.indexByName = new HashMap<String, Integer>();
+    this.indexByName = isCaseSensitive? new HashMap<String, Integer>() : new TreeMap<String, Integer>(String.CASE_INSENSITIVE_ORDER);
     for (int i = 0; i < fields.size(); i++) {
       indexByName.put(fields.get(i).getName(), i);
     }
@@ -391,4 +400,16 @@ public class GroupType extends Type {
     }
     return newFields;
   }
+
+  public List<Type> getContainedFields(GroupType base) {
+    List<Type> newFields = new ArrayList<Type>();
+    List<Type> baseFields = base.getFields();
+    for (Type type : this.getFields()) {
+      if (base.containsField(type.getName())) {
+        newFields.add(type);
+      }
+    }
+    return newFields;
+  }
+
 }
