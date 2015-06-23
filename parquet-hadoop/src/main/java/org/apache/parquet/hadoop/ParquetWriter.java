@@ -44,6 +44,9 @@ public class ParquetWriter<T> implements Closeable {
   public static final WriterVersion DEFAULT_WRITER_VERSION =
       WriterVersion.PARQUET_1_0;
 
+  // max size (bytes) to write as padding and the min size of a row group
+  public static final int MAX_PADDING_SIZE_DEFAULT = 0;
+
   private final InternalParquetRecordWriter<T> writer;
 
   /**
@@ -208,8 +211,9 @@ public class ParquetWriter<T> implements Closeable {
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
     MessageType schema = writeContext.getSchema();
 
+    // TODO: in a follow-up issue, add max padding to the builder
     ParquetFileWriter fileWriter = new ParquetFileWriter(conf, schema, file,
-        mode);
+        mode, blockSize, MAX_PADDING_SIZE_DEFAULT);
     fileWriter.start();
 
     CodecFactory codecFactory = new CodecFactory(conf);
