@@ -33,7 +33,7 @@ import static org.apache.parquet.bytes.BytesUtils.UTF8;
 
 abstract public class Binary implements Comparable<Binary>, Serializable {
 
-  protected boolean isReused;
+  protected boolean isBackingBytesReused;
 
   // this isn't really something others should extend
   private Binary() { }
@@ -85,14 +85,14 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   public String toString() {
     return "Binary{" +
         length() +
-        (isReused ? " reused": " constant") +
+        (isBackingBytesReused ? " reused": " constant") +
         " bytes, " +
         Arrays.toString(getBytesUnsafe())
         + "}";
   }
 
   public Binary copy() {
-    if (isReused) {
+    if (isBackingBytesReused) {
       return Binary.fromConstantByteArray(getBytes());
     } else {
       return this;
@@ -103,8 +103,8 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
    * Signals if backing bytes are owned, and can be modified, by producer of the Binary
    * @return if backing bytes are held on by producer of the Binary
    */
-  public boolean isReused() {
-    return isReused;
+  public boolean isBackingBytesReused() {
+    return isBackingBytesReused;
   }
 
   private static class ByteArraySliceBackedBinary extends Binary {
@@ -112,11 +112,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     private final int offset;
     private final int length;
 
-    public ByteArraySliceBackedBinary(byte[] value, int offset, int length, boolean isReused) {
+    public ByteArraySliceBackedBinary(byte[] value, int offset, int length, boolean isBackingBytesReused) {
       this.value = value;
       this.offset = offset;
       this.length = length;
-      this.isReused = isReused;
+      this.isBackingBytesReused = isBackingBytesReused;
     }
 
     @Override
@@ -151,7 +151,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public Binary slice(int start, int length) {
-      if (isReused) {
+      if (isBackingBytesReused) {
         return Binary.fromReusedByteArray(value, offset + start, length);
       } else {
         return Binary.fromConstantByteArray(value, offset + start, length);
@@ -226,9 +226,9 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   private static class ByteArrayBackedBinary extends Binary {
     private final byte[] value;
 
-    public ByteArrayBackedBinary(byte[] value, boolean isReused) {
+    public ByteArrayBackedBinary(byte[] value, boolean isBackingBytesReused) {
       this.value = value;
-      this.isReused = isReused;
+      this.isBackingBytesReused = isBackingBytesReused;
     }
 
     @Override
@@ -258,7 +258,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public Binary slice(int start, int length) {
-      if (isReused) {
+      if (isBackingBytesReused) {
         return Binary.fromReusedByteArray(value, start, length);
       } else {
         return Binary.fromConstantByteArray(value, start, length);
@@ -314,9 +314,9 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     private transient ByteBuffer value;
     private transient byte[] cachedBytes;
 
-    public ByteBufferBackedBinary(ByteBuffer value, boolean isReused) {
+    public ByteBufferBackedBinary(ByteBuffer value, boolean isBackingBytesReused) {
       this.value = value;
-      this.isReused = isReused;
+      this.isBackingBytesReused = isBackingBytesReused;
     }
 
     @Override
@@ -341,7 +341,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
       value.mark();
       value.get(bytes).reset();
-      if (!isReused) { // backing buffer might change
+      if (!isBackingBytesReused) { // backing buffer might change
         cachedBytes = bytes;
       }
       return bytes;
