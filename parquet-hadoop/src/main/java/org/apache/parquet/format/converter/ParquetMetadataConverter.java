@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.format.converter;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
 import static org.apache.parquet.format.Util.readFileMetaData;
 import static org.apache.parquet.format.Util.writePageHeader;
 
