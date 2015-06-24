@@ -268,11 +268,15 @@ class InternalParquetRecordReader<T> {
         checkRead();
         recordReader.readVector(vector, current, totalCountLoadedSoFar);
         current += vector.size();
-        if (recordReader.shouldSkipCurrentRecord()) {
-          // this record is being filtered via the filter2 package
-          if (DEBUG) LOG.debug("skipping record");
-          continue;
-        }
+
+        //TODO filtering records while batch reading
+        //TODO how to handle this case?
+//        if (currentValue == null) {
+//          // only happens with FilteredRecordReader at end of block
+//          current = totalCountLoadedSoFar;
+//          if (DEBUG) LOG.debug("filtered record reader reached end of block");
+//          continue;
+//        }
 
         recordFound = true;
 
@@ -295,12 +299,8 @@ class InternalParquetRecordReader<T> {
         checkRead();
         recordReader.readVectors(vectors, columns, current, totalCountLoadedSoFar);
         current += vectors[0].size();
-        if (recordReader.shouldSkipCurrentRecord()) {
-          // this record is being filtered via the filter2 package
-          if (DEBUG) LOG.debug("skipping record");
-          continue;
-        }
 
+        //TODO filtering records while batch reading
         //TODO how to handle this case?
 //        if (currentValue == null) {
 //          // only happens with FilteredRecordReader at end of block

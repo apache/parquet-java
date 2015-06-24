@@ -462,7 +462,9 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
       }
 
       T record = read();
-      if (record == null) {
+
+      if (shouldSkipCurrentRecord) {
+        LOG.debug("skipping record");
         vector.isNull[index] = true;
       }
       vector.values[index] = record;
