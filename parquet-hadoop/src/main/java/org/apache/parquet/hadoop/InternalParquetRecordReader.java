@@ -257,7 +257,7 @@ class InternalParquetRecordReader<T> {
     return Collections.unmodifiableMap(setMultiMap);
   }
 
-  public boolean nextBatch(ObjectColumnVector<T> vector) throws IOException, InterruptedException {
+  public boolean nextBatch(ObjectColumnVector<T> vector) throws IOException {
     boolean recordFound = false;
 
     while (!recordFound) {
@@ -288,7 +288,7 @@ class InternalParquetRecordReader<T> {
     return true;
   }
 
-  public boolean nextBatch(ColumnVector[] vectors, MessageType[] columns) throws IOException, InterruptedException {
+  public boolean nextBatch(ColumnVector[] vectors, MessageType[] columns) throws IOException {
     boolean recordFound = false;
 
     while (!recordFound) {

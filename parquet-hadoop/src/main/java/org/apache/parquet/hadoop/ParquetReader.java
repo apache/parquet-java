@@ -150,36 +150,28 @@ public class ParquetReader<T> implements Closeable {
   }
 
   private boolean readVectors(ColumnVector[] vectors, MessageType[] columns) throws IOException {
-    try {
-      if (reader != null && reader.nextBatch(vectors, columns)) {
-        return true;
+    if (reader != null && reader.nextBatch(vectors, columns)) {
+      return true;
+    } else {
+      initReader();
+      if (reader == null) {
+        return false;
       } else {
-        initReader();
-        if (reader == null) {
-          return false;
-        } else {
-          return readVectors(vectors, columns);
-        }
+        return readVectors(vectors, columns);
       }
-    } catch (InterruptedException e) {
-      throw new IOException(e);
     }
   }
 
   private boolean readVector(ObjectColumnVector<T> vector) throws IOException {
-    try {
-      if (reader != null && reader.nextBatch(vector)) {
-        return true;
+    if (reader != null && reader.nextBatch(vector)) {
+      return true;
+    } else {
+      initReader();
+      if (reader == null) {
+        return false;
       } else {
-        initReader();
-        if (reader == null) {
-          return false;
-        } else {
-          return readVector(vector);
-        }
+        return readVector(vector);
       }
-    } catch (InterruptedException e) {
-      throw new IOException(e);
     }
   }
 
