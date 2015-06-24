@@ -27,6 +27,7 @@ import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.map.ObjectWriter;
 import org.codehaus.jackson.map.SerializationConfig.Feature;
 
 /**
@@ -38,11 +39,7 @@ import org.codehaus.jackson.map.SerializationConfig.Feature;
  */
 public class ParquetMetadata {
 
-  private static ObjectMapper objectMapper = new ObjectMapper();
-  private static ObjectMapper prettyObjectMapper = new ObjectMapper();
-  static {
-    prettyObjectMapper.configure(Feature.INDENT_OUTPUT, true);
-  }
+  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   /**
    *
@@ -50,7 +47,7 @@ public class ParquetMetadata {
    * @return the json representation
    */
   public static String toJSON(ParquetMetadata parquetMetaData) {
-    return toJSON(parquetMetaData, objectMapper);
+    return toJSON(parquetMetaData, false);
   }
 
   /**
@@ -59,13 +56,17 @@ public class ParquetMetadata {
    * @return the pretty printed json representation
    */
   public static String toPrettyJSON(ParquetMetadata parquetMetaData) {
-    return toJSON(parquetMetaData, prettyObjectMapper);
+    return toJSON(parquetMetaData, true);
   }
 
-  private static String toJSON(ParquetMetadata parquetMetaData, ObjectMapper mapper) {
+  private static String toJSON(ParquetMetadata parquetMetaData, boolean isPrettyPrint) {
     StringWriter stringWriter = new StringWriter();
     try {
-      mapper.writeValue(stringWriter, parquetMetaData);
+      if (isPrettyPrint) {
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(stringWriter, parquetMetaData);
+      } else {
+        objectMapper.writeValue(stringWriter, parquetMetaData);
+      }
     } catch (JsonGenerationException e) {
       throw new RuntimeException(e);
     } catch (JsonMappingException e) {
