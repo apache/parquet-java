@@ -61,26 +61,25 @@ public class TestValidTypeMap {
 
   @Test
   public void testValidTypes() {
-    assertTypeValid(intColumn, PrimitiveTypeName.INT32, null);
-    assertTypeValid(longColumn, PrimitiveTypeName.INT64, null);
-    assertTypeValid(floatColumn, PrimitiveTypeName.FLOAT, null);
-    assertTypeValid(doubleColumn, PrimitiveTypeName.DOUBLE, null);
-    assertTypeValid(booleanColumn, PrimitiveTypeName.BOOLEAN, null);
-    assertTypeValid(binaryColumn, PrimitiveTypeName.BINARY, null);
-    assertTypeValid(binaryColumn, PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, null);
-    assertTypeValid(binaryColumn, PrimitiveTypeName.BINARY, OriginalType.UTF8);
-    assertTypeValid(binaryColumn, PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, OriginalType.UTF8);
+    assertTypeValid(intColumn, PrimitiveTypeName.INT32);
+    assertTypeValid(longColumn, PrimitiveTypeName.INT64);
+    assertTypeValid(floatColumn, PrimitiveTypeName.FLOAT);
+    assertTypeValid(doubleColumn, PrimitiveTypeName.DOUBLE);
+    assertTypeValid(booleanColumn, PrimitiveTypeName.BOOLEAN);
+    assertTypeValid(binaryColumn, PrimitiveTypeName.BINARY);
+    assertTypeValid(binaryColumn, PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY);
+    assertTypeValid(binaryColumn, PrimitiveTypeName.INT96);
   }
 
   @Test
   public void testMismatchedTypes() {
     try {
-      assertTypeValid(intColumn, PrimitiveTypeName.DOUBLE, null);
+      assertTypeValid(intColumn, PrimitiveTypeName.DOUBLE);
       fail("This should throw!");
     } catch (IllegalArgumentException e) {
       assertEquals("FilterPredicate column: int.column's declared type (java.lang.Integer) does not match the "
           + "schema found in file metadata. Column int.column is of type: "
-          + "FullTypeDescriptor(PrimitiveType: DOUBLE, OriginalType: null)\n"
+          + "DOUBLE\n"
           + "Valid types for this column are: [class java.lang.Double]", e.getMessage());
     }
   }
@@ -88,24 +87,13 @@ public class TestValidTypeMap {
   @Test
   public void testUnsupportedType() {
     try {
-      assertTypeValid(invalidColumn, PrimitiveTypeName.INT32, null);
+      assertTypeValid(invalidColumn, PrimitiveTypeName.INT32);
       fail("This should throw!");
     } catch (IllegalArgumentException e) {
       assertEquals("Column invalid.column was declared as type: "
           + "org.apache.parquet.filter2.predicate.TestValidTypeMap$InvalidColumnType which is not supported "
           + "in FilterPredicates. Supported types for this column are: [class java.lang.Integer]", e.getMessage());
     }
-
-    try {
-      assertTypeValid(invalidColumn, PrimitiveTypeName.INT32, OriginalType.UTF8);
-      fail("This should throw!");
-    } catch (IllegalArgumentException e) {
-      assertEquals("Column invalid.column was declared as type: "
-          + "org.apache.parquet.filter2.predicate.TestValidTypeMap$InvalidColumnType which is not supported "
-          + "in FilterPredicates. There are no supported types for columns of FullTypeDescriptor(PrimitiveType: INT32, OriginalType: UTF8)",
-          e.getMessage());
-    }
-
   }
 
 }
