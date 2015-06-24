@@ -117,19 +117,26 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * Equality comparison method to compare two statistics objects.
-   * @param stats Statistics object to compare against
+   * @param other Object to compare against
    * @return true if objects are equal, false otherwise
    */
-  public boolean equals(Statistics stats) {
+  @Override
+  public boolean equals(Object other) {
+    if (other == this)
+      return true;
+    if (!(other instanceof Statistics))
+      return false;
+    Statistics stats = (Statistics) other;
     return Arrays.equals(stats.getMaxBytes(), this.getMaxBytes()) &&
-           Arrays.equals(stats.getMinBytes(), this.getMinBytes()) &&
-           stats.getNumNulls() == this.getNumNulls();
+            Arrays.equals(stats.getMinBytes(), this.getMinBytes()) &&
+            stats.getNumNulls() == this.getNumNulls();
   }
 
   /**
    * Hash code for the statistics object
    * @return hash code int
    */
+  @Override
   public int hashCode() {
     return 31 * Arrays.hashCode(getMaxBytes()) + 17 * Arrays.hashCode(getMinBytes()) + Long.valueOf(this.getNumNulls()).hashCode();
   }
