@@ -21,6 +21,7 @@ package org.apache.parquet.format.converter;
 import static java.util.Collections.emptyList;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 import static org.apache.parquet.format.CompressionCodec.UNCOMPRESSED;
 import static org.apache.parquet.format.Type.INT32;
@@ -51,7 +52,6 @@ import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.junit.Assert;
 import org.junit.Test;
 
-import org.apache.parquet.column.Encoding;
 import org.apache.parquet.example.Paper;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnMetaData;
@@ -87,16 +87,14 @@ public class TestParquetMetadataConverter {
 
   @Test
   public void testSchemaConverter() {
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(Paper.schema);
-    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema);
+    List<SchemaElement> parquetSchema = ParquetMetadataConverter.toParquetSchema(Paper.schema);
+    MessageType schema = ParquetMetadataConverter.fromParquetSchema(parquetSchema);
     assertEquals(Paper.schema, schema);
   }
 
   @Test
   public void testSchemaConverterDecimal() {
-    ParquetMetadataConverter converter = new ParquetMetadataConverter();
-    List<SchemaElement> schemaElements = converter.toParquetSchema(
+    List<SchemaElement> schemaElements = ParquetMetadataConverter.toParquetSchema(
         Types.buildMessage()
             .required(PrimitiveTypeName.BINARY)
                 .as(OriginalType.DECIMAL).precision(9).scale(2)
@@ -125,30 +123,29 @@ public class TestParquetMetadataConverter {
 
   @Test
   public void testEnumEquivalence() {
-    ParquetMetadataConverter c = new ParquetMetadataConverter();
-    for (Encoding encoding : Encoding.values()) {
-      assertEquals(encoding, c.getEncoding(c.getEncoding(encoding)));
+    for (org.apache.parquet.column.Encoding encoding : org.apache.parquet.column.Encoding.values()) {
+      assertEquals(encoding, ParquetMetadataConverter.getEncoding(ParquetMetadataConverter.getEncoding(encoding)));
     }
     for (org.apache.parquet.format.Encoding encoding : org.apache.parquet.format.Encoding.values()) {
-      assertEquals(encoding, c.getEncoding(c.getEncoding(encoding)));
+      assertEquals(encoding, ParquetMetadataConverter.getEncoding(ParquetMetadataConverter.getEncoding(encoding)));
     }
     for (Repetition repetition : Repetition.values()) {
-      assertEquals(repetition, c.fromParquetRepetition(c.toParquetRepetition(repetition)));
+      assertEquals(repetition, ParquetMetadataConverter.fromParquetRepetition(ParquetMetadataConverter.toParquetRepetition(repetition)));
     }
     for (FieldRepetitionType repetition : FieldRepetitionType.values()) {
-      assertEquals(repetition, c.toParquetRepetition(c.fromParquetRepetition(repetition)));
+      assertEquals(repetition, ParquetMetadataConverter.toParquetRepetition(ParquetMetadataConverter.fromParquetRepetition(repetition)));
     }
     for (PrimitiveTypeName primitiveTypeName : PrimitiveTypeName.values()) {
-      assertEquals(primitiveTypeName, c.getPrimitive(c.getType(primitiveTypeName)));
+      assertEquals(primitiveTypeName, ParquetMetadataConverter.getPrimitive(ParquetMetadataConverter.getType(primitiveTypeName)));
     }
     for (Type type : Type.values()) {
-      assertEquals(type, c.getType(c.getPrimitive(type)));
+      assertEquals(type, ParquetMetadataConverter.getType(ParquetMetadataConverter.getPrimitive(type)));
     }
     for (OriginalType original : OriginalType.values()) {
-      assertEquals(original, c.getOriginalType(c.getConvertedType(original)));
+      assertEquals(original, ParquetMetadataConverter.getOriginalType(ParquetMetadataConverter.getConvertedType(original)));
     }
     for (ConvertedType converted : ConvertedType.values()) {
-      assertEquals(converted, c.getConvertedType(c.getOriginalType(converted)));
+      assertEquals(converted, ParquetMetadataConverter.getConvertedType(ParquetMetadataConverter.getOriginalType(converted)));
     }
   }
 
@@ -274,7 +271,7 @@ public class TestParquetMetadataConverter {
   }
 
   private ColumnChunkMetaData createColumnChunkMetaData() {
-    Set<Encoding> e = new HashSet<Encoding>();
+    Set<org.apache.parquet.column.Encoding> e = new HashSet<org.apache.parquet.column.Encoding>();
     PrimitiveTypeName t = PrimitiveTypeName.BINARY;
     ColumnPath p = ColumnPath.get("foo");
     CompressionCodecName c = CompressionCodecName.GZIP;
@@ -283,4 +280,40 @@ public class TestParquetMetadataConverter {
             0, 0, 0, 0, 0);
     return md;
   }
+  
+  @Test
+  public void testEncodingsCache() {
+    List<org.apache.parquet.format.Encoding> formatEncodingsCopy1 =
+        Arrays.asList(org.apache.parquet.format.Encoding.BIT_PACKED,
+                      org.apache.parquet.format.Encoding.RLE_DICTIONARY,
+                      org.apache.parquet.format.Encoding.DELTA_LENGTH_BYTE_ARRAY);
+
+    List<org.apache.parquet.format.Encoding> formatEncodingsCopy2 =
+        Arrays.asList(org.apache.parquet.format.Encoding.BIT_PACKED,
+            org.apache.parquet.format.Encoding.RLE_DICTIONARY,
+            org.apache.parquet.format.Encoding.DELTA_LENGTH_BYTE_ARRAY);
+
+    Set<org.apache.parquet.column.Encoding> expected = new HashSet<org.apache.parquet.column.Encoding>();
+    expected.add(org.apache.parquet.column.Encoding.BIT_PACKED);
+    expected.add(org.apache.parquet.column.Encoding.RLE_DICTIONARY);
+    expected.add(org.apache.parquet.column.Encoding.DELTA_LENGTH_BYTE_ARRAY);
+
+    Set<org.apache.parquet.column.Encoding> res1 = ParquetMetadataConverter.fromFormatEncodings(formatEncodingsCopy1);
+    Set<org.apache.parquet.column.Encoding> res2 = ParquetMetadataConverter.fromFormatEncodings(formatEncodingsCopy1);
+    Set<org.apache.parquet.column.Encoding> res3 = ParquetMetadataConverter.fromFormatEncodings(formatEncodingsCopy2);
+
+    // make sure they are all semantically equal
+    assertEquals(expected, res1);
+    assertEquals(expected, res2);
+    assertEquals(expected, res3);
+
+    // make sure res1, res2, and res3 are actually the same cached object
+    assertSame(res1, res2);
+    assertSame(res1, res3);
+
+    // make sure they are all unmodifiable (UnmodifiableSet is not public, so we have to compare on class name)
+    assertEquals("java.util.Collections$UnmodifiableSet", res1.getClass().getName());
+    assertEquals("java.util.Collections$UnmodifiableSet", res2.getClass().getName());
+    assertEquals("java.util.Collections$UnmodifiableSet", res3.getClass().getName());
+  }  
 }
