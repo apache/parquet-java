@@ -88,9 +88,7 @@ public class ParquetFileReader implements Closeable {
 
   private static final Log LOG = Log.getLog(ParquetFileReader.class);
 
-  public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
-
-  private static ParquetMetadataConverter converter = new ParquetMetadataConverter();
+  public static final String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
 
   /**
    * for files provided, check if there's a summary file.
@@ -427,7 +425,7 @@ public class ParquetFileReader implements Closeable {
         throw new RuntimeException("corrupted file: the footer index is not within the file");
       }
       f.seek(footerIndex);
-      return converter.readParquetMetadata(f, filter);
+      return ParquetMetadataConverter.readParquetMetadata(f, filter);
     } finally {
       f.close();
     }
@@ -558,7 +556,7 @@ public class ParquetFileReader implements Closeable {
                     this.readAsBytesInput(compressedPageSize),
                     uncompressedPageSize,
                     dicHeader.getNum_values(),
-                    converter.getEncoding(dicHeader.getEncoding())
+                    ParquetMetadataConverter.getEncoding(dicHeader.getEncoding())
                     );
             break;
           case DATA_PAGE:
@@ -569,9 +567,9 @@ public class ParquetFileReader implements Closeable {
                     dataHeaderV1.getNum_values(),
                     uncompressedPageSize,
                     fromParquetStatistics(dataHeaderV1.getStatistics(), descriptor.col.getType()),
-                    converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
-                    converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
-                    converter.getEncoding(dataHeaderV1.getEncoding())
+                    ParquetMetadataConverter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
+                    ParquetMetadataConverter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
+                    ParquetMetadataConverter.getEncoding(dataHeaderV1.getEncoding())
                     ));
             valuesCountReadSoFar += dataHeaderV1.getNum_values();
             break;
@@ -585,7 +583,7 @@ public class ParquetFileReader implements Closeable {
                     dataHeaderV2.getNum_values(),
                     this.readAsBytesInput(dataHeaderV2.getRepetition_levels_byte_length()),
                     this.readAsBytesInput(dataHeaderV2.getDefinition_levels_byte_length()),
-                    converter.getEncoding(dataHeaderV2.getEncoding()),
+                    ParquetMetadataConverter.getEncoding(dataHeaderV2.getEncoding()),
                     this.readAsBytesInput(dataSize),
                     uncompressedPageSize,
                     fromParquetStatistics(dataHeaderV2.getStatistics(), descriptor.col.getType()),

@@ -94,8 +94,6 @@ public class ParquetFileWriter {
     OVERWRITE
   }
 
-  private static final ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter();
-
   private final MessageType schema;
   private final FSDataOutputStream out;
   private final AlignmentStrategy alignment;
@@ -304,7 +302,7 @@ public class ParquetFileWriter {
     currentChunkDictionaryPageOffset = out.getPos();
     int uncompressedSize = dictionaryPage.getUncompressedSize();
     int compressedPageSize = (int)dictionaryPage.getBytes().size(); // TODO: fix casts
-    metadataConverter.writeDictionaryPageHeader(
+    ParquetMetadataConverter.writeDictionaryPageHeader(
         uncompressedSize,
         compressedPageSize,
         dictionaryPage.getDictionarySize(),
@@ -339,7 +337,7 @@ public class ParquetFileWriter {
     long beforeHeader = out.getPos();
     if (DEBUG) LOG.debug(beforeHeader + ": write data page: " + valueCount + " values");
     int compressedPageSize = (int)bytes.size();
-    metadataConverter.writeDataPageHeader(
+    ParquetMetadataConverter.writeDataPageHeader(
         uncompressedPageSize, compressedPageSize,
         valueCount,
         rlEncoding,
@@ -376,7 +374,7 @@ public class ParquetFileWriter {
     long beforeHeader = out.getPos();
     if (DEBUG) LOG.debug(beforeHeader + ": write data page: " + valueCount + " values");
     int compressedPageSize = (int)bytes.size();
-    metadataConverter.writeDataPageHeader(
+    ParquetMetadataConverter.writeDataPageHeader(
         uncompressedPageSize, compressedPageSize,
         valueCount,
         statistics,
@@ -469,7 +467,7 @@ public class ParquetFileWriter {
 
   private static void serializeFooter(ParquetMetadata footer, FSDataOutputStream out) throws IOException {
     long footerIndex = out.getPos();
-    org.apache.parquet.format.FileMetaData parquetMetadata = new ParquetMetadataConverter().toParquetMetadata(CURRENT_VERSION, footer);
+    org.apache.parquet.format.FileMetaData parquetMetadata = ParquetMetadataConverter.toParquetMetadata(CURRENT_VERSION, footer);
     writeFileMetaData(parquetMetadata, out);
     if (DEBUG) LOG.debug(out.getPos() + ": footer length = " + (out.getPos() - footerIndex));
     BytesUtils.writeIntLittleEndian(out, (int)(out.getPos() - footerIndex));
