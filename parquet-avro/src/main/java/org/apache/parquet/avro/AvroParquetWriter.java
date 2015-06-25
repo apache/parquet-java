@@ -145,67 +145,12 @@ public class AvroParquetWriter<T> extends ParquetWriter<T> {
         new AvroSchemaConverter(conf).convert(avroSchema), avroSchema, model);
   }
 
-  public static class Builder<T> {
-    private final Path file;
-    private Configuration conf = new Configuration();
-    private CompressionCodecName codecName = DEFAULT_COMPRESSION_CODEC_NAME;
-    private int blockSize = DEFAULT_BLOCK_SIZE;
-    private int pageSize = DEFAULT_PAGE_SIZE;
-    private boolean enableDictionary = DEFAULT_IS_DICTIONARY_ENABLED;
-    private boolean enableValidation = DEFAULT_IS_VALIDATING_ENABLED;
-    private WriterVersion writerVersion = DEFAULT_WRITER_VERSION;
-
-    // avro-specific
+  public static class Builder<T> extends ParquetWriter.Builder<T, Builder<T>> {
     private Schema schema = null;
     private GenericData model = SpecificData.get();
 
     private Builder(Path file) {
-      this.file = file;
-    }
-
-    public Builder<T> withConf(Configuration conf) {
-      this.conf = conf;
-      return this;
-    }
-
-    public Builder<T> withCompressionCodec(CompressionCodecName codecName) {
-      this.codecName = codecName;
-      return this;
-    }
-
-    public Builder<T> withBlockSize(int blockSize) {
-      this.blockSize = blockSize;
-      return this;
-    }
-
-    public Builder<T> withPageSize(int pageSize) {
-      this.pageSize = pageSize;
-      return this;
-    }
-
-    public Builder<T> enableDictionaryEncoding() {
-      this.enableDictionary = true;
-      return this;
-    }
-
-    public Builder<T> withDictionaryEncoding(boolean enableDictionary) {
-      this.enableDictionary = enableDictionary;
-      return this;
-    }
-
-    public Builder<T> enableValidation() {
-      this.enableValidation = true;
-      return this;
-    }
-
-    public Builder<T> withValidation(boolean enableValidation) {
-      this.enableValidation = enableValidation;
-      return this;
-    }
-
-    public Builder<T> withWriterVersion(WriterVersion version) {
-      this.writerVersion = version;
-      return this;
+      super(file);
     }
 
     public Builder<T> withSchema(Schema schema) {
@@ -218,14 +163,14 @@ public class AvroParquetWriter<T> extends ParquetWriter<T> {
       return this;
     }
 
-    private WriteSupport<T> getWriteSupport() {
-      return AvroParquetWriter.<T>writeSupport(conf, schema, model);
+    @Override
+    protected Builder<T> self() {
+      return this;
     }
 
-    public ParquetWriter<T> build() throws IOException {
-      return new AvroParquetWriter<T>(file, getWriteSupport(), codecName,
-          blockSize, pageSize, enableDictionary, enableValidation,
-          writerVersion, conf);
+    @Override
+    protected WriteSupport<T> getWriteSupport(Configuration conf) {
+      return AvroParquetWriter.writeSupport(conf, schema, model);
     }
   }
 }
