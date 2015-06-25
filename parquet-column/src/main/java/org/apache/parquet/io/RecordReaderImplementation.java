@@ -479,8 +479,6 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
 
     int index = 0;
     int fixedLenByteArrayPosition = 0;
-    int variableLenByteArrayPosition = 0;
-    int totalBytesCopied = 0;
     for ( ; index < ColumnVector.DEFAULT_VECTOR_LENGTH; index++, current++) {
 
       if (current >= total) {
@@ -516,20 +514,6 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
             byte[] fixedLenBinary = reader.getBinary().getBytes();
             System.arraycopy(fixedLenBinary, 0, fixedLenVector.values, fixedLenByteArrayPosition, fixedLenBinary.length);
             fixedLenByteArrayPosition += fixedLenBinary.length;
-            break;
-          case BINARY:
-            ByteColumnVector variableLenVector = (ByteColumnVector) vector;
-            byte[] variableLenBinary = reader.getBinary().getBytes();
-
-            if (variableLenBinary.length > variableLenVector.capacity) {
-              variableLenVector.ensureCapacity(variableLenBinary.length);
-            } else if (variableLenVector.capacity - totalBytesCopied <= variableLenBinary.length) {
-              variableLenVector.ensureCapacity(variableLenVector.capacity + variableLenBinary.length);
-            }
-
-            System.arraycopy(variableLenBinary, 0, variableLenVector.values, variableLenByteArrayPosition, variableLenBinary.length);
-            totalBytesCopied += variableLenBinary.length;
-            variableLenByteArrayPosition += variableLenBinary.length;
             break;
           default:
             throw new IllegalArgumentException("Unhandled column type " + column.getType());

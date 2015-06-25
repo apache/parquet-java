@@ -26,7 +26,7 @@ import org.junit.BeforeClass;
 
 import java.io.IOException;
 
-import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 
 public class TestParquetVectorReaderGZIPV2 extends TestParquetVectorReader
@@ -44,7 +44,7 @@ public class TestParquetVectorReaderGZIPV2 extends TestParquetVectorReader
             file,
             new GroupWriteSupport(),
             GZIP, 1024*1024, 1024, 1024*1024,
-            dictionaryEnabled, validating, PARQUET_2_0, conf);
+            dictionaryEnabled, validating, PARQUET_1_0, conf);
     writeData(f, writer);
   }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop.vector;
 
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.ParquetWriter;
@@ -26,7 +27,7 @@ import org.junit.BeforeClass;
 
 import java.io.IOException;
 
-import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
 
 public class TestParquetVectorReaderSNAPPYV2 extends TestParquetVectorReader
@@ -43,7 +44,7 @@ public class TestParquetVectorReaderSNAPPYV2 extends TestParquetVectorReader
             file,
             new GroupWriteSupport(),
             SNAPPY, 1024*1024, 1024, 1024*1024,
-            dictionaryEnabled, validating, PARQUET_2_0, conf);
+            dictionaryEnabled, validating, PARQUET_1_0, conf);
     writeData(f, writer);
   }
 }
