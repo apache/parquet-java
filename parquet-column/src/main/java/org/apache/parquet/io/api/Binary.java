@@ -197,7 +197,10 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   private static class FromStringBinary extends ByteArrayBackedBinary {
     public FromStringBinary(String value) {
-      super(encodeUTF8(value), true);
+      // reused is false, because we do not
+      // hold on to the underlying bytes,
+      // and nobody else has a handle to them
+      super(encodeUTF8(value), false);
     }
 
     private static byte[] encodeUTF8(String value) {
