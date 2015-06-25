@@ -23,15 +23,21 @@ import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.junit.BeforeClass;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.io.IOException;
 
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 
+@RunWith(Parameterized.class)
 public class TestParquetVectorReaderGZIPV2 extends TestParquetVectorReader
 {
-  
+  public TestParquetVectorReaderGZIPV2(ReaderType type) {
+    super(type);
+  }
+
   @BeforeClass
   public static void prepareFile() throws IOException {
     cleanup();

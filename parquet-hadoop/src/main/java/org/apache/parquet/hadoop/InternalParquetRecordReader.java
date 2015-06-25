@@ -247,7 +247,7 @@ class InternalParquetRecordReader<T> {
     return true;
   }
 
-  private static <K, V> Map<K, Set<V>> toSetMultiMap(Map<K, V> map) {
+  protected static <K, V> Map<K, Set<V>> toSetMultiMap(Map<K, V> map) {
     Map<K, Set<V>> setMultiMap = new HashMap<K, Set<V>>();
     for (Map.Entry<K, V> entry : map.entrySet()) {
       Set<V> set = new HashSet<V>();
