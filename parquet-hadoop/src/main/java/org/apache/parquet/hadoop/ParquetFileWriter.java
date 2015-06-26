@@ -484,10 +484,9 @@ public class ParquetFileWriter {
    * @throws IOException
    */
   public static void writeMetadataFile(Configuration configuration, Path outputPath, List<Footer> footers) throws IOException {
-    Path qualifiedPath = FileSystem.get(configuration).makeQualified(outputPath);
-    ParquetMetadata metadataFooter = mergeFooters(qualifiedPath, footers);
     FileSystem fs = outputPath.getFileSystem(configuration);
     outputPath = outputPath.makeQualified(fs);
+    ParquetMetadata metadataFooter = mergeFooters(outputPath, footers);
     writeMetadataFile(outputPath, metadataFooter, fs, PARQUET_METADATA_FILE);
     metadataFooter.getBlocks().clear();
     writeMetadataFile(outputPath, metadataFooter, fs, PARQUET_COMMON_METADATA_FILE);
