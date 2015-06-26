@@ -35,8 +35,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
+import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.Log;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.format.ColumnChunk;
@@ -78,9 +78,6 @@ public class ParquetMetadataConverter {
   public static final MetadataFilter SKIP_ROW_GROUPS = new SkipMetadataFilter();
 
   private static final Log LOG = Log.getLog(ParquetMetadataConverter.class);
-  private static final int STATISTICS_FIXED_VERSION_MAJOR = 1;
-  private static final int STATISTICS_FIXED_VERSION_MINOR = 8;
-  private static final int STATISTICS_FIXED_VERSION_BUILD = 0;
 
   // NOTE: this cache is for memory savings, not cpu savings, and is used to de-duplicate
   // sets of encodings. It is important that all collections inserted to this cache be
@@ -262,55 +259,15 @@ public class ParquetMetadataConverter {
     // create stats object based on the column type
     org.apache.parquet.column.statistics.Statistics stats = org.apache.parquet.column.statistics.Statistics.getStatsBasedOnType(type);
     // If there was no statistics written to the footer, create an empty Statistics object and return
-    if (statistics != null && !shouldIgnoreStatistics(createdBy)) {
+
+    // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
+    if (statistics != null && !CorruptStatistics.shouldIgnoreStatistics(createdBy)) {
       if (statistics.isSetMax() && statistics.isSetMin()) {
         stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
       }
       stats.setNumNulls(statistics.null_count);
     }
     return stats;
-  }
-
-  private static boolean shouldIgnoreStatistics(String createdBy) {
-    if (createdBy == null || !createdBy.startsWith("parquet-mr")) {
-      return false; // Assume that other implementations got the statistics correct
-    }
-
-    final String[] versionTokens = createdBy.split(" ");
-
-    if (versionTokens.length < 3) {
-      return true; // Ignore statistics
-    }
-
-    try {
-      return isVersionPriorToStatsFixedVersion(versionTokens[2]);
-    } catch (NumberFormatException ex) {
-      return true; // Ignore statistics
-    } catch (IllegalArgumentException ex) {
-      return true; // Ignore statistics
-    }
-  }
-
-  private static boolean isVersionPriorToStatsFixedVersion(String version)
-      throws IllegalArgumentException {
-    int major;
-    int minor;
-    int build;
-
-    Pattern pattern = Pattern.compile("^(\\d+).(\\d+).(\\d+)(rc)?(\\d+)?(\\-|\\w)*$");
-    Matcher matcher = pattern.matcher(version);
-    if (matcher.find()) {
-      major = Integer.parseInt(matcher.group(1));
-      minor = Integer.parseInt(matcher.group(2));
-      build = Integer.parseInt(matcher.group(3));
-    } else {
-      throw new IllegalArgumentException(version + " is not a proper version string");
-    }
-
-    return (major < STATISTICS_FIXED_VERSION_MAJOR) ||
-        (major == STATISTICS_FIXED_VERSION_MAJOR && minor < STATISTICS_FIXED_VERSION_MINOR) ||
-        (major == STATISTICS_FIXED_VERSION_MAJOR && minor == STATISTICS_FIXED_VERSION_MINOR &&
-            build < STATISTICS_FIXED_VERSION_BUILD);
   }
 
   public static PrimitiveTypeName getPrimitive(Type type) {
