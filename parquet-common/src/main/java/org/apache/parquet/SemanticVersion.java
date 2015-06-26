@@ -47,14 +47,29 @@ public final class SemanticVersion implements Comparable<SemanticVersion> {
     this.patch = patch;
   }
 
-  public static SemanticVersion parse(String version) {
+  public static SemanticVersion parse(String version) throws SemanticVersionParseException {
     Matcher matcher = PATTERN.matcher(version);
 
-    Preconditions.checkArgument(matcher.matches(), "" + version + " does not match format " + FORMAT);
+    if (!matcher.matches()) {
+      throw new SemanticVersionParseException("" + version + " does not match format " + FORMAT);
+    }
 
-    int major = Integer.valueOf(matcher.group(1));
-    int minor = Integer.valueOf(matcher.group(2));
-    int patch = Integer.valueOf(matcher.group(3));
+    final int major;
+    final int minor;
+    final int patch;
+
+    try {
+      major = Integer.valueOf(matcher.group(1));
+      minor = Integer.valueOf(matcher.group(2));
+      patch = Integer.valueOf(matcher.group(3));
+    } catch (NumberFormatException e) {
+      throw new SemanticVersionParseException(e);
+    }
+
+    if (major < 0 || minor < 0 || patch < 0) {
+      throw new SemanticVersionParseException(
+          String.format("major(%d), minor(%d), and patch(%d) must all be >= 0", major, minor, patch));
+    }
 
     return new SemanticVersion(major, minor, patch);
   }
@@ -96,5 +111,23 @@ public final class SemanticVersion implements Comparable<SemanticVersion> {
   @Override
   public String toString() {
     return major + "." + minor + "." + patch;
+  }
+
+  public static class SemanticVersionParseException extends Exception {
+    public SemanticVersionParseException() {
+      super();
+    }
+
+    public SemanticVersionParseException(String message) {
+      super(message);
+    }
+
+    public SemanticVersionParseException(String message, Throwable cause) {
+      super(message, cause);
+    }
+
+    public SemanticVersionParseException(Throwable cause) {
+      super(cause);
+    }
   }
 }

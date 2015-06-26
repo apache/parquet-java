@@ -18,7 +18,10 @@
  */
 package org.apache.parquet;
 
+import org.apache.parquet.SemanticVersion.SemanticVersionParseException;
 import org.apache.parquet.VersionParser.ParsedVersion;
+import org.apache.parquet.VersionParser.VersionParseException;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * There was a bug (PARQUET-251) that caused the statistics metadata
@@ -39,7 +42,12 @@ public class CorruptStatistics {
    * Decides if the statistics from a file created by createdBy (the created_by field from parquet format)
    * should be ignored because they are potentially corrupt.
    */
-  public static boolean shouldIgnoreStatistics(String createdBy) {
+  public static boolean shouldIgnoreStatistics(String createdBy, PrimitiveTypeName columnType) {
+
+    if (columnType != PrimitiveTypeName.BINARY && columnType != PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
+      // the bug only applies to binary columns
+      return false;
+    }
 
     if (Strings.isNullOrEmpty(createdBy)) {
       // created_by is not populated, which could have been caused by
@@ -56,7 +64,13 @@ public class CorruptStatistics {
         return false;
       }
 
+      if (Strings.isNullOrEmpty(version.semver)) {
+        LOG.warn("Ignoring statistics because created_by did not contain a semver (see PARQUET-251): " + createdBy);
+        return true;
+      }
+
       SemanticVersion semver = SemanticVersion.parse(version.semver);
+
       if (semver.compareTo(PARQUET_251_FIXED_VERSION) < 0) {
         LOG.info("Ignoring statistics because this file was created prior to "
             + PARQUET_251_FIXED_VERSION
@@ -69,8 +83,22 @@ public class CorruptStatistics {
     } catch (RuntimeException e) {
       // couldn't parse the created_by field, log what went wrong, don't trust the stats,
       // but don't make this fatal.
-      LOG.warn("Ignoring statistics because created_by could not be parsed (see PARQUET-251): " + createdBy, e);
+      warnParseError(createdBy, e);
+      return true;
+    } catch (SemanticVersionParseException e) {
+      // couldn't parse the created_by field, log what went wrong, don't trust the stats,
+      // but don't make this fatal.
+      warnParseError(createdBy, e);
+      return true;
+    } catch (VersionParseException e) {
+      // couldn't parse the created_by field, log what went wrong, don't trust the stats,
+      // but don't make this fatal.
+      warnParseError(createdBy, e);
       return true;
     }
+  }
+
+  private static void warnParseError(String createdBy, Throwable e) {
+    LOG.warn("Ignoring statistics because created_by could not be parsed (see PARQUET-251): " + createdBy, e);
   }
 }

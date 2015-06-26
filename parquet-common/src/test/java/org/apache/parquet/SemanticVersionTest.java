@@ -44,7 +44,7 @@ public class SemanticVersionTest {
   }
 
   @Test
-  public void testParse() {
+  public void testParse() throws Exception {
     assertEquals(new SemanticVersion(1, 8, 0), SemanticVersion.parse("1.8.0"));
     assertEquals(new SemanticVersion(1, 8, 0), SemanticVersion.parse("1.8.0rc3"));
     assertEquals(new SemanticVersion(1, 8, 0), SemanticVersion.parse("1.8.0rc3-SNAPSHOT"));

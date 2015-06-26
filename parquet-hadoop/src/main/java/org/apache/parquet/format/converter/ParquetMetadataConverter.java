@@ -261,7 +261,7 @@ public class ParquetMetadataConverter {
     // If there was no statistics written to the footer, create an empty Statistics object and return
 
     // NOTE: See docs in CorruptStatistics for explanation of why this check is needed
-    if (statistics != null && !CorruptStatistics.shouldIgnoreStatistics(createdBy)) {
+    if (statistics != null && !CorruptStatistics.shouldIgnoreStatistics(createdBy, type)) {
       if (statistics.isSetMax() && statistics.isSetMin()) {
         stats.setMinMaxFromBytes(statistics.min.array(), statistics.max.array());
       }
