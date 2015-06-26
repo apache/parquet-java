@@ -32,19 +32,20 @@ public abstract class ColumnVector
   }
 
   /**
-   * @return the type of this vector
+   * @return the type of the elements in this vector
    */
   public Class getType(){
     return valueType;
   }
 
   /**
-   * @return the number of values in this column vector
+   * @return the number of values in this vector
    */
   public int size() {
     return numValues;
   }
 
+  //TODO shouldn't be public
   public void setNumberOfValues(int numValues)
   {
     this.numValues = numValues;
@@ -65,7 +66,7 @@ public abstract class ColumnVector
       case BINARY:
         return new ByteColumnVector(1);
       case INT96:
-        //TODO does this hold for all encodings?
+        //TODO does this always hold
         return new ByteColumnVector(12);
       case FIXED_LEN_BYTE_ARRAY:
         return new ByteColumnVector(descriptor.getTypeLength());

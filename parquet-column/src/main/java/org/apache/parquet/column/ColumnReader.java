@@ -19,7 +19,6 @@
 package org.apache.parquet.column;
 
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.vector.ColumnVector;
 
 /**
  * Reader for (repetition level, definition level, values) triplets.

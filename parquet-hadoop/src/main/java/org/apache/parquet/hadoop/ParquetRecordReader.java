@@ -212,7 +212,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> implements Vec
         .toSetMultiMap(fileMetaData), fileSchema));
 
     internalReader.initialize(
-        fileSchema, fileMetaData, path, filteredBlocks, configuration);
+        fileSchema, footer.getFileMetaData(), path, filteredBlocks, configuration);
   }
 
   private void checkDeltaByteArrayProblem(FileMetaData meta, Configuration conf, BlockMetaData block) {

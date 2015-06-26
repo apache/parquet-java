@@ -18,8 +18,17 @@
  */
 package org.apache.parquet.hadoop;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+
 import org.apache.parquet.Log;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.PageReadStore;
@@ -41,14 +50,6 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.vector.ColumnVector;
 import org.apache.parquet.vector.ObjectColumnVector;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import static java.lang.String.format;
 import static org.apache.parquet.Log.DEBUG;
@@ -257,6 +258,7 @@ class InternalParquetRecordReader<T> {
     return Collections.unmodifiableMap(setMultiMap);
   }
 
+  //TODO maintain unmaterializableRecordCounter properly
   public boolean nextBatch(ObjectColumnVector<T> vector) throws IOException {
     boolean recordFound = false;
 
@@ -288,6 +290,7 @@ class InternalParquetRecordReader<T> {
     return true;
   }
 
+  //TODO maintain unmaterializableRecordCounter properly
   public boolean nextBatch(ColumnVector[] vectors, MessageType[] columns) throws IOException {
     boolean recordFound = false;
 

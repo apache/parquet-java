@@ -60,10 +60,10 @@ public class ParquetReader<T> implements VectorizedReader<T> {
 
   private final ReadSupport<T> readSupport;
   private final Configuration conf;
-  private final ReadContext readContext;
   private final Iterator<Footer> footersIterator;
-  private final GlobalMetaData globalMetaData;
   private final Filter filter;
+  private final GlobalMetaData globalMetaData;
+  private final ReadContext readContext;
 
   private InternalParquetRecordReader<T> reader;
 
