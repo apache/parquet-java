@@ -1,10 +1,3 @@
-package org.apache.parquet;
-
-import org.junit.Test;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -23,6 +16,13 @@ import static org.junit.Assert.assertTrue;
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.parquet;
+
+import org.junit.Test;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 public class CorruptStatisticsTest {
   @Test
   public void testCorruptStatistics() {
