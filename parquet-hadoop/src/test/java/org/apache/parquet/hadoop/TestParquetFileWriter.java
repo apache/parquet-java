@@ -63,6 +63,7 @@ import org.apache.parquet.example.data.simple.SimpleGroup;
 
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.junit.rules.TemporaryFolder;
+import org.mockito.Mockito;
 
 public class TestParquetFileWriter {
 
@@ -711,6 +712,32 @@ public class TestParquetFileWriter {
         merged.getFileMetaData().getSchema());
 
     assertEquals("Should have all blocks", expected, merged.getBlocks());
+  }
+
+  /**
+   * {@link ParquetFileWriter#mergeFooters(Path, List)} expects a fully-qualified
+   * path for the root and crashes if a relative one is provided.
+   */
+  @Test
+  public void testWriteMetadataFileWithRelativeOutputPath() throws IOException {
+    Configuration conf = new Configuration();
+    FileSystem fs = FileSystem.get(conf);
+    Path relativeRoot = new Path("target/_test_relative");
+    Path qualifiedRoot = fs.makeQualified(relativeRoot);
+
+    ParquetMetadata mock = Mockito.mock(ParquetMetadata.class);
+    FileMetaData fileMetaData = new FileMetaData(
+            new MessageType("root1",
+                new PrimitiveType(REPEATED, BINARY, "a")),
+            new HashMap<String, String>(), "test");
+    Mockito.when(mock.getFileMetaData()).thenReturn(fileMetaData);
+
+    List<Footer> footers = new ArrayList<Footer>();
+    Footer footer = new Footer(new Path(qualifiedRoot, "one"), mock);
+    footers.add(footer);
+
+    // This should not throw an exception
+    ParquetFileWriter.writeMetadataFile(conf, relativeRoot, footers);
   }
 
 }
