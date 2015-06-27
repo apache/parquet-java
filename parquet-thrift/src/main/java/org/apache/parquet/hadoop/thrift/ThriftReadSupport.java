@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop.thrift;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.Set;
 
@@ -203,17 +204,16 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
   }
 
   @SuppressWarnings("unchecked")
-  private void initThriftClass(Map<String, String> fileMetadata, Configuration conf) throws ClassNotFoundException {
+  private void initThriftClass(ThriftMetaData metadata, Configuration conf) throws ClassNotFoundException {
     if (thriftClass != null) {
       return;
     }
     String className = conf.get(THRIFT_READ_CLASS_KEY, null);
     if (className == null) {
-      final ThriftMetaData metaData = ThriftMetaData.fromExtraMetaData(fileMetadata);
-      if (metaData == null) {
+      if (metadata == null) {
         throw new ParquetDecodingException("Could not read file as the Thrift class is not provided and could not be resolved from the file");
       }
-      thriftClass = (Class<T>)metaData.getThriftClass();
+      thriftClass = (Class<T>)metadata.getThriftClass();
     } else {
       thriftClass = (Class<T>)Class.forName(className);
     }
@@ -225,17 +225,56 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
       org.apache.parquet.hadoop.api.ReadSupport.ReadContext readContext) {
     ThriftMetaData thriftMetaData = ThriftMetaData.fromExtraMetaData(keyValueMetaData);
     try {
-      initThriftClass(keyValueMetaData, configuration);
+      initThriftClass(thriftMetaData, configuration);
+    } catch (ClassNotFoundException e) {
+      throw new RuntimeException("Cannot find Thrift object class for metadata: " + thriftMetaData, e);
+    }
 
-      String converterClassName = configuration.get(RECORD_CONVERTER_CLASS_KEY, RECORD_CONVERTER_DEFAULT);
-      @SuppressWarnings("unchecked")
-      Class<ThriftRecordConverter<T>> converterClass = (Class<ThriftRecordConverter<T>>) Class.forName(converterClassName);
+    // if there was not metadata in the file, get it from requested class
+    if (thriftMetaData == null) {
+      thriftMetaData = ThriftMetaData.fromThriftClass(thriftClass);
+    }
+
+    String converterClassName = configuration.get(RECORD_CONVERTER_CLASS_KEY, RECORD_CONVERTER_DEFAULT);
+    return getRecordConverterInstance(converterClassName, thriftClass,
+        readContext.getRequestedSchema(), thriftMetaData.getDescriptor(),
+        configuration);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <T> ThriftRecordConverter<T> getRecordConverterInstance(
+      String converterClassName, Class<T> thriftClass,
+      MessageType requestedSchema, StructType descriptor, Configuration conf) {
+    Class<ThriftRecordConverter<T>> converterClass;
+    try {
+      converterClass = (Class<ThriftRecordConverter<T>>) Class.forName(converterClassName);
+    } catch (ClassNotFoundException e) {
+      throw new RuntimeException("Cannot find Thrift converter class: " + converterClassName, e);
+    }
+
+    try {
+      // first try the new version that accepts a Configuration
+      try {
+        Constructor<ThriftRecordConverter<T>> constructor =
+            converterClass.getConstructor(Class.class, MessageType.class, StructType.class, Configuration.class);
+        return constructor.newInstance(thriftClass, requestedSchema, descriptor, conf);
+      } catch (IllegalAccessException e) {
+        // try the other constructor pattern
+      } catch (NoSuchMethodException e) {
+        // try to find the other constructor pattern
+      }
+
       Constructor<ThriftRecordConverter<T>> constructor =
           converterClass.getConstructor(Class.class, MessageType.class, StructType.class);
-      ThriftRecordConverter<T> converter = constructor.newInstance(thriftClass, readContext.getRequestedSchema(), thriftMetaData.getDescriptor());
-      return converter;
-    } catch (Exception t) {
-      throw new RuntimeException("Unable to create Thrift Converter for Thrift metadata " + thriftMetaData, t);
+      return constructor.newInstance(thriftClass, requestedSchema, descriptor);
+    } catch (InstantiationException e) {
+      throw new RuntimeException("Failed to construct Thrift converter class: " + converterClassName, e);
+    } catch (InvocationTargetException e) {
+      throw new RuntimeException("Failed to construct Thrift converter class: " + converterClassName, e);
+    } catch (IllegalAccessException e) {
+      throw new RuntimeException("Cannot access constructor for Thrift converter class: " + converterClassName, e);
+    } catch (NoSuchMethodException e) {
+      throw new RuntimeException("Cannot find constructor for Thrift converter class: " + converterClassName, e);
     }
   }
 }

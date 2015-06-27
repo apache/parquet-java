@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
 import org.apache.thrift.protocol.TList;
@@ -33,6 +34,9 @@ import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
 import org.apache.thrift.protocol.TType;
 
+import org.apache.parquet.Log;
+import org.apache.parquet.Preconditions;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
@@ -61,6 +65,12 @@ import org.apache.parquet.thrift.struct.ThriftTypeID;
  * @param <T>
  */
 public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
+
+  private static final Log LOG = Log.getLog(ThriftRecordConverter.class);
+
+  public static final String IGNORE_NULL_LIST_ELEMENTS =
+      "parquet.thrift.ignore-null-elements";
+  private static final boolean IGNORE_NULL_LIST_ELEMENTS_DEFAULT = false;
 
   final ParquetProtocol readFieldEnd = new ParquetProtocol("readFieldEnd()") {
     @Override
@@ -637,26 +647,34 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    */
   abstract class CollectionConverter extends GroupConverter {
 
+    private ElementConverter elementConverter = null;
     private final Converter child;
     private final Counter childCounter;
     private List<TProtocol> listEvents = new ArrayList<TProtocol>();
     private final List<TProtocol> parentEvents;
     private ThriftTypeID valuesType;
-    private final Type nestedType;
 
     CollectionConverter(List<TProtocol> parentEvents, GroupType parquetSchema, ThriftField values) {
       this.parentEvents = parentEvents;
       if (parquetSchema.getFieldCount() != 1) {
         throw new IllegalArgumentException("lists have only one field. " + parquetSchema + " size = " + parquetSchema.getFieldCount());
       }
-      nestedType = parquetSchema.getType(0);
+      Type repeatedType = parquetSchema.getType(0);
       valuesType = values.getType().getType();
-      if (nestedType.isPrimitive()) {
-        PrimitiveCounter counter = new PrimitiveCounter(newConverter(listEvents, nestedType, values).asPrimitiveConverter());
-        child = counter;
-        childCounter = counter;
+      if (ThriftSchemaConverter.isListElementType(repeatedType, values)) {
+        if (repeatedType.isPrimitive()) {
+          PrimitiveCounter counter = new PrimitiveCounter(newConverter(listEvents, repeatedType, values).asPrimitiveConverter());
+          child = counter;
+          childCounter = counter;
+        } else {
+          GroupCounter counter = new GroupCounter(newConverter(listEvents, repeatedType, values).asGroupConverter());
+          child = counter;
+          childCounter = counter;
+        }
       } else {
-        GroupCounter counter = new GroupCounter(newConverter(listEvents, nestedType, values).asGroupConverter());
+        this.elementConverter = new ElementConverter(parquetSchema.getName(),
+            listEvents, repeatedType.asGroupType(), values);
+        GroupCounter counter = new GroupCounter(elementConverter);
         child = counter;
         childCounter = counter;
       }
@@ -678,7 +696,10 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
     @Override
     public void end() {
-      final int count = childCounter.getCount();
+      int count = childCounter.getCount();
+      if (elementConverter != null) {
+        count -= elementConverter.getNullElementCount();
+      }
       collectionStart(count, valuesType.getThriftType());
       parentEvents.addAll(listEvents);
       listEvents.clear();
@@ -689,6 +710,57 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
     abstract void collectionEnd();
 
+  }
+
+  class ElementConverter extends GroupConverter {
+
+    private Converter elementConverter;
+    private List<TProtocol> listEvents;
+    private List<TProtocol> elementEvents;
+    private int nullElementCount;
+
+    public ElementConverter(String listName, List<TProtocol> listEvents,
+                            GroupType repeatedType, ThriftField thriftElement) {
+      this.listEvents = listEvents;
+      this.elementEvents = new ArrayList<TProtocol>();
+      Type elementType = repeatedType.getType(0);
+      if (elementType.isRepetition(Type.Repetition.OPTIONAL)) {
+        if (ignoreNullElements) {
+          LOG.warn("List " + listName +
+              " has optional elements: null elements are ignored.");
+        } else {
+          throw new ParquetDecodingException("Cannot read list " + listName +
+              " with optional elements: set " + IGNORE_NULL_LIST_ELEMENTS +
+              " to ignore nulls.");
+        }
+      }
+      elementConverter = newConverter(elementEvents, elementType, thriftElement);
+    }
+
+    @Override
+    public Converter getConverter(int fieldIndex) {
+      Preconditions.checkArgument(
+          fieldIndex == 0, "Illegal field index: %s", fieldIndex);
+      return elementConverter;
+    }
+
+    @Override
+    public void start() {
+      elementEvents.clear();
+    }
+
+    @Override
+    public void end() {
+      if (elementEvents.size() > 0) {
+        listEvents.addAll(elementEvents);
+      } else {
+        nullElementCount += 1;
+      }
+    }
+
+    public int getNullElementCount() {
+      return nullElementCount;
+    }
   }
 
   /**
@@ -778,9 +850,19 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   }
   private final ThriftReader<T> thriftReader;
   private final ParquetReadProtocol protocol;
-  private final GroupConverter structConverter;
+  private GroupConverter structConverter;
   private List<TProtocol> rootEvents = new ArrayList<TProtocol>();
   private boolean missingRequiredFieldsInProjection = false;
+  private boolean ignoreNullElements = IGNORE_NULL_LIST_ELEMENTS_DEFAULT;
+
+  /**
+   * This is for compatibility only.
+   * @deprecated will be removed in 2.x
+   */
+  @Deprecated
+  public ThriftRecordConverter(ThriftReader<T> thriftReader, String name, MessageType requestedParquetSchema, ThriftType.StructType thriftType) {
+    this(thriftReader, name, requestedParquetSchema, thriftType, null);
+  }
 
   /**
    *
@@ -788,12 +870,18 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @param name the name of that type ( the thrift class simple name)
    * @param requestedParquetSchema the schema for the incoming columnar events
    * @param thriftType the thrift type descriptor
+   * @param conf a Configuration
    */
-  public ThriftRecordConverter(ThriftReader<T> thriftReader, String name, MessageType requestedParquetSchema, ThriftType.StructType thriftType) {
+  public ThriftRecordConverter(ThriftReader<T> thriftReader, String name, MessageType requestedParquetSchema, ThriftType.StructType thriftType, Configuration conf) {
     super();
     this.thriftReader = thriftReader;
     this.protocol = new ParquetReadProtocol();
     this.thriftType = thriftType;
+    if (conf != null) {
+      this.ignoreNullElements = conf.getBoolean(
+          IGNORE_NULL_LIST_ELEMENTS,
+          IGNORE_NULL_LIST_ELEMENTS_DEFAULT);
+    }
     MessageType fullSchema = new ThriftSchemaConverter().convert(thriftType);
     missingRequiredFieldsInProjection = hasMissingRequiredFieldInGroupType(requestedParquetSchema, fullSchema);
     this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));

@@ -20,7 +20,9 @@ package org.apache.parquet.avro;
 
 import java.lang.reflect.Constructor;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericData;
@@ -363,13 +365,14 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
         // synthetic wrapper (must be a group with one field).
         return true;
       } else if (elementSchema != null &&
-          elementSchema.getType() == Schema.Type.RECORD &&
-          elementSchema.getFields().size() == 1 &&
-          elementSchema.getFields().get(0).name().equals(
-              repeatedType.asGroupType().getFieldName(0))) {
+          elementSchema.getType() == Schema.Type.RECORD) {
+        Set<String> fieldNames = new HashSet<String>();
+        for (Schema.Field field : elementSchema.getFields()) {
+          fieldNames.add(field.name());
+        }
         // The repeated type must be the element type because it matches the
         // structure of the Avro element's schema.
-        return true;
+        return fieldNames.contains(repeatedType.asGroupType().getFieldName(0));
       }
       return false;
     }
