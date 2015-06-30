@@ -44,6 +44,12 @@ public class BinaryStatistics extends Statistics<Binary> {
     }
   }
 
+  /**
+   * Sets min and max values, re-uses the byte[] passed in.
+   * Any changes made to byte[] will be reflected in min and max values as well.
+   * @param minBytes byte array to set the min value to
+   * @param maxBytes byte array to set the max value to
+   */
   @Override
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
     max = Binary.fromReusedByteArray(maxBytes);
