@@ -112,15 +112,6 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     private final int offset;
     private final int length;
 
-    @Deprecated
-    /**
-     * @deprecated Use @link{ByteArraySliceBackedBinary(
-     * byte[] value, int offset, int length, boolean isBackingBytesReused)} instead
-     */
-    public ByteArraySliceBackedBinary(byte[] value, int offset, int length) {
-      this(value, offset, length, true); // Assume producer intends to reuse byte[]
-    }
-
     public ByteArraySliceBackedBinary(byte[] value, int offset, int length, boolean isBackingBytesReused) {
       this.value = value;
       this.offset = offset;
@@ -212,14 +203,6 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       super(encodeUTF8(value), false);
     }
 
-    @Deprecated
-    /**
-     * @deprecated Use @link{FromStringBinary(String value)} instead
-     */
-    public FromStringBinary(byte[] value) {
-      super(value, true); // Assume producer intends to reuse byte[]
-    }
-
     private static byte[] encodeUTF8(String value) {
       try {
         return value.getBytes("UTF-8");
@@ -253,15 +236,6 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   private static class ByteArrayBackedBinary extends Binary {
     private final byte[] value;
-
-    @Deprecated
-    /**
-     * @deprecated Use @link{ByteArrayBackedBinary(byte[] value, boolean isBackingBytesReused)}
-     * instead
-     */
-    public ByteArrayBackedBinary(byte[] value) {
-      this(value, true); // Assume producer intends to reuse byte[]
-    }
 
     public ByteArrayBackedBinary(byte[] value, boolean isBackingBytesReused) {
       this.value = value;
@@ -358,15 +332,6 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   private static class ByteBufferBackedBinary extends Binary {
     private transient ByteBuffer value;
     private transient byte[] cachedBytes;
-
-    @Deprecated
-    /**
-     * @deprecated Use @link{ByteBufferBackedBinary(ByteBuffer value, boolean isBackingBytesReused)}
-     * instead
-     */
-    public ByteBufferBackedBinary(ByteBuffer value) {
-      this(value, true); // Assume producer intends to reuse ByteBuffer
-    }
 
     public ByteBufferBackedBinary(ByteBuffer value, boolean isBackingBytesReused) {
       this.value = value;
@@ -504,7 +469,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
    * @deprecated Use @link{fromReusedByteBuffer} or @link{fromConstantByteBuffer} instead
    */
   public static Binary fromByteBuffer(final ByteBuffer value) {
-    return new ByteBufferBackedBinary(value);
+    return fromReusedByteBuffer(value); // Assume producer intends to reuse byte[]
   }
 
   public static Binary fromString(final String value) {
