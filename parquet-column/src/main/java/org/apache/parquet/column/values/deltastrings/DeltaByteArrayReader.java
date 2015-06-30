@@ -63,7 +63,14 @@ public class DeltaByteArrayReader extends ValuesReader {
     // This does not copy bytes
     Binary suffix = suffixReader.readBytes();
     int length = prefixLength + suffix.length();
-    
+
+    // NOTE: due to PARQUET-246, it is important that we
+    // respect prefixLength which was read from prefixLengthReader,
+    // even for the *first* value of a page. Even though the first
+    // value of the page should have an empty prefix, it may not
+    // because of PARQUET-246. See org.apache.parquet.column.Encoding.newCrossPageStateRepairer()
+    // for more details.
+
     // We have to do this to materialize the output
     if(prefixLength != 0) {
       byte[] out = new byte[length];
@@ -74,5 +81,17 @@ public class DeltaByteArrayReader extends ValuesReader {
       previous = suffix;
     }
     return previous;
+  }
+
+  // NOTE, this is exposed because of PARQUET-246
+  // See org.apache.parquet.column.Encoding.newCrossPageStateRepairer()
+  public Binary getPrevious() {
+    return previous;
+  }
+
+  // NOTE, this is exposed because of PARQUET-246
+  // See org.apache.parquet.column.Encoding.newCrossPageStateRepairer()
+  public void setPrevious(Binary previous) {
+    this.previous = previous;
   }
 }

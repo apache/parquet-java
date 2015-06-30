@@ -27,6 +27,8 @@ import static org.apache.parquet.column.ValuesType.VALUES;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.bytes.BytesInput;
@@ -35,6 +37,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.Encoding.CrossPageStateRepairer;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
@@ -134,6 +137,9 @@ class ColumnReaderImpl implements ColumnReader {
   private final long totalValueCount;
   private final PageReader pageReader;
   private final Dictionary dictionary;
+
+  private final Map<Encoding, CrossPageStateRepairer> crossPageStateRepairers =
+      new HashMap<Encoding, CrossPageStateRepairer>();
 
   private IntIterator repetitionLevelColumn;
   private IntIterator definitionLevelColumn;
@@ -525,8 +531,11 @@ class ColumnReaderImpl implements ColumnReader {
   }
 
   private void initDataReader(Encoding dataEncoding, byte[] bytes, int offset, int valueCount) {
+    ValuesReader previousReader = this.dataColumn;
+
     this.pageValueCount = valueCount;
     this.endOfPageValueCount = readValues + pageValueCount;
+
     if (dataEncoding.usesDictionary()) {
       if (dictionary == null) {
         throw new ParquetDecodingException(
@@ -545,6 +554,20 @@ class ColumnReaderImpl implements ColumnReader {
       dataColumn.initFromPage(pageValueCount, bytes, offset);
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read page in col " + path, e);
+    }
+
+    addRepairerIfAbsent(dataEncoding);
+
+    for (CrossPageStateRepairer repairer : crossPageStateRepairers.values()) {
+      repairer.onBeginReadNewPage(previousReader, dataColumn);
+    }
+  }
+
+  private void addRepairerIfAbsent(Encoding encoding) {
+    CrossPageStateRepairer repairer = crossPageStateRepairers.get(encoding);
+    if (repairer == null) {
+      repairer = encoding.newCrossPageStateRepairer();
+      crossPageStateRepairers.put(encoding, repairer);
     }
   }
 
