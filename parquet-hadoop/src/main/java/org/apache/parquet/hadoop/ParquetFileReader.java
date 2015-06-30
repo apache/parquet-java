@@ -437,9 +437,10 @@ public class ParquetFileReader implements Closeable {
   private final FSDataInputStream f;
   private final Path filePath;
   private final Map<ColumnPath, ColumnDescriptor> paths = new HashMap<ColumnPath, ColumnDescriptor>();
+  private final FileMetaData fileMetaData;
+  private final String createdBy;
 
   private int currentBlock = 0;
-  private FileMetaData fileMetaData;
 
   /**
    * @deprecated use @link{ParquetFileReader(Configuration configuration, FileMetaData fileMetaData,
@@ -461,6 +462,7 @@ public class ParquetFileReader implements Closeable {
       Path filePath, List<BlockMetaData> blocks, List<ColumnDescriptor> columns) throws IOException {
     this.filePath = filePath;
     this.fileMetaData = fileMetaData;
+    this.createdBy = fileMetaData == null ? null : fileMetaData.getCreatedBy();
     FileSystem fs = filePath.getFileSystem(configuration);
     this.f = fs.open(filePath);
     this.blocks = blocks;
@@ -582,7 +584,7 @@ public class ParquetFileReader implements Closeable {
                     dataHeaderV1.getNum_values(),
                     uncompressedPageSize,
                     fromParquetStatistics(
-                        fileMetaData.getCreatedBy(),
+                        createdBy,
                         dataHeaderV1.getStatistics(),
                         descriptor.col.getType()),
                     ParquetMetadataConverter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
@@ -605,7 +607,7 @@ public class ParquetFileReader implements Closeable {
                     this.readAsBytesInput(dataSize),
                     uncompressedPageSize,
                     fromParquetStatistics(
-                        fileMetaData.getCreatedBy(),
+                        createdBy,
                         dataHeaderV2.getStatistics(),
                         descriptor.col.getType()),
                     dataHeaderV2.isIs_compressed()

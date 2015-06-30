@@ -51,7 +51,6 @@ public class ParquetReader<T> implements Closeable {
   private final Iterator<Footer> footersIterator;
   private final Filter filter;
 
-  private String createdBy;
   private InternalParquetRecordReader<T> reader;
 
   /**
@@ -140,8 +139,6 @@ public class ParquetReader<T> implements Closeable {
     }
     if (footersIterator.hasNext()) {
       Footer footer = footersIterator.next();
-
-      createdBy = footer.getParquetMetadata().getFileMetaData().getCreatedBy();
 
       List<BlockMetaData> blocks = footer.getParquetMetadata().getBlocks();
 
