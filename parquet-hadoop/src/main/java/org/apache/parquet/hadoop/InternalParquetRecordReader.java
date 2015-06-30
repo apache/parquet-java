@@ -83,7 +83,6 @@ class InternalParquetRecordReader<T> {
 
   private Path file;
   private UnmaterializableRecordCounter unmaterializableRecordCounter;
-  private  FileMetaData parquetFileMetaData;
 
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
@@ -172,7 +171,6 @@ class InternalParquetRecordReader<T> {
     Map<String, String> fileMetadata = parquetFileMetadata.getKeyValueMetaData();
     ReadSupport.ReadContext readContext = readSupport.init(new InitContext(
         configuration, toSetMultiMap(fileMetadata), fileSchema));
-    this.parquetFileMetaData = parquetFileMetadata;
     this.requestedSchema = readContext.getRequestedSchema();
     this.fileSchema = fileSchema;
     this.file = file;
