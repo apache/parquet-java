@@ -73,7 +73,7 @@ import static org.apache.parquet.schema.Types.primitive;
  *
  * @author Tianshuo Deng
  */
-public class ThriftSchemaConvertVisitor implements ThriftType.TypeVisitor<ConvertedField, ThriftSchemaConvertVisitor.State> {
+class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedField, ThriftSchemaConvertVisitor.State> {
   private final FieldProjectionFilter fieldProjectionFilter;
   private final boolean doProjection;
 

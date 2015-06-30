@@ -229,6 +229,7 @@
                      <!-- temporary exclusions for false-positives -->
                      <exclude>org/apache/parquet/Version</exclude>
                      <exclude>org/apache/parquet/schema/**</exclude> <!-- methods moved to new superclass -->
+                     <exclude>org/apache/parquet/thrift/ThriftSchemaConvertVisitor</exclude> <!-- not public -->
                    </excludes>
                  </requireBackwardCompatibility>
                </rules>
