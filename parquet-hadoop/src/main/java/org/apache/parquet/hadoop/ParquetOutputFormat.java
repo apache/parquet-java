@@ -116,9 +116,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MIN_MEMORY_ALLOCATION = "parquet.memory.min.chunk.size";
   public static final String MAX_PADDING_BYTES    = "parquet.writer.max-padding";
 
-  // default to no padding for now
-  private static final int DEFAULT_MAX_PADDING_SIZE = 0;
-
   public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
     getConfiguration(job).set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
   }
@@ -244,7 +241,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   private static int getMaxPaddingSize(Configuration conf) {
     // default to no padding, 0% of the row group size
-    return conf.getInt(MAX_PADDING_BYTES, DEFAULT_MAX_PADDING_SIZE);
+    return conf.getInt(MAX_PADDING_BYTES, ParquetWriter.MAX_PADDING_SIZE_DEFAULT);
   }
 
 
