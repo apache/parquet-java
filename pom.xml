@@ -66,8 +66,8 @@
   </pluginRepositories>
 
   <properties>
-    <targetJavaVersion>1.6</targetJavaVersion>
-    <maven.compiler.source>1.6</maven.compiler.source>
+    <targetJavaVersion>1.7</targetJavaVersion>
+    <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>${targetJavaVersion}</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <github.global.server>github</github.global.server>
