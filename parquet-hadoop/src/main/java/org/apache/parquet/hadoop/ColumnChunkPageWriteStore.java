@@ -46,6 +46,8 @@ import org.apache.parquet.schema.MessageType;
 class ColumnChunkPageWriteStore implements PageWriteStore {
   private static final Log LOG = Log.getLog(ColumnChunkPageWriteStore.class);
 
+  private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+
   private static final class ColumnChunkPageWriter implements PageWriter {
 
     private final ColumnDescriptor path;
@@ -92,7 +94,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
             + compressedSize);
       }
       tempOutputStream.reset();
-      ParquetMetadataConverter.writeDataPageHeader(
+      parquetMetadataConverter.writeDataPageHeader(
           (int)uncompressedSize,
           (int)compressedSize,
           valueCount,
@@ -131,7 +133,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
           compressedData.size() + repetitionLevels.size() + definitionLevels.size()
       );
       tempOutputStream.reset();
-      ParquetMetadataConverter.writeDataPageV2Header(
+      parquetMetadataConverter.writeDataPageV2Header(
           uncompressedSize, compressedSize,
           valueCount, nullCount, rowCount,
           statistics,
