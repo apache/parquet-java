@@ -687,6 +687,10 @@ public class ParquetFileWriter {
 
     @Override
     public long nextRowGroupSize(FSDataOutputStream out) throws IOException {
+      if (maxPaddingSize <= 0) {
+        return rowGroupSize;
+      }
+
       long remaining = dfsBlockSize - (out.getPos() % dfsBlockSize);
 
       if (isPaddingNeeded(remaining)) {
