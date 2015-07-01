@@ -90,7 +90,7 @@ public class ParquetMetadataConverter {
   public static FileMetaData toParquetMetadata(int currentVersion, ParquetMetadata parquetMetadata) {
     List<BlockMetaData> blocks = parquetMetadata.getBlocks();
     List<RowGroup> rowGroups = new ArrayList<RowGroup>();
-    int numRows = 0;
+    long numRows = 0;
     for (BlockMetaData block : blocks) {
       numRows += block.getRowCount();
       addRowGroup(parquetMetadata, rowGroups, block);
