@@ -44,7 +44,7 @@ public class CompatibilityChecker {
 
   public CompatibilityReport checkCompatibility(ThriftType.StructType oldStruct, ThriftType.StructType newStruct) {
     CompatibleCheckerVisitor visitor = new CompatibleCheckerVisitor(oldStruct);
-    newStruct.accept(visitor, null);
+    newStruct.accept(visitor);
     return visitor.getReport();
   }
 
@@ -68,7 +68,7 @@ class CompatibilityReport {
   }
 }
 
-class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, Void> {
+class CompatibleCheckerVisitor implements ThriftType.TypeVisitor {
   ThriftType oldType;
   CompatibilityReport report = new CompatibilityReport();
 
@@ -81,7 +81,7 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, Void> {
   }
 
   @Override
-  public Void visit(ThriftType.MapType mapType, Void v) {
+  public void visit(ThriftType.MapType mapType) {
     ThriftType.MapType currentOldType = ((ThriftType.MapType) oldType);
     ThriftField oldKeyField = currentOldType.getKey();
     ThriftField newKeyField = mapType.getKey();
@@ -93,27 +93,24 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, Void> {
     checkField(oldValueField, newValueField);
 
     oldType = currentOldType;
-    return null;
   }
 
   @Override
-  public Void visit(ThriftType.SetType setType, Void v) {
+  public void visit(ThriftType.SetType setType) {
     ThriftType.SetType currentOldType = ((ThriftType.SetType) oldType);
     ThriftField oldField = currentOldType.getValues();
     ThriftField newField = setType.getValues();
     checkField(oldField, newField);
     oldType = currentOldType;
-    return null;
   }
 
   @Override
-  public Void visit(ThriftType.ListType listType, Void v) {
+  public void visit(ThriftType.ListType listType) {
     ThriftType.ListType currentOldType = ((ThriftType.ListType) oldType);
     ThriftField oldField = currentOldType.getValues();
     ThriftField newField = listType.getValues();
     checkField(oldField, newField);
     oldType = currentOldType;
-    return null;
   }
 
   public void fail(String message) {
@@ -138,7 +135,7 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, Void> {
     }
 
     oldType = oldField.getType();
-    newField.getType().accept(this, null);
+    newField.getType().accept(this);
   }
 
   private boolean firstIsMoreRestirctive(ThriftField.Requirement firstReq, ThriftField.Requirement secReq) {
@@ -151,7 +148,7 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, Void> {
   }
 
   @Override
-  public Void visit(ThriftType.StructType newStruct, Void v) {
+  public void visit(ThriftType.StructType newStruct) {
     ThriftType.StructType currentOldType = ((ThriftType.StructType) oldType);
     short oldMaxId = 0;
     for (ThriftField oldField : currentOldType.getChildren()) {
@@ -162,7 +159,7 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, Void> {
       ThriftField newField = newStruct.getChildById(fieldId);
       if (newField == null) {
         fail("can not find index in new Struct: " + fieldId +" in " + newStruct);
-        return null;
+        return;
       }
       checkField(oldField, newField);
     }
@@ -176,58 +173,49 @@ class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, Void> {
       short newFieldId = newField.getFieldId();
       if (newFieldId > oldMaxId) {
         fail("new required field " + newField.getName() + " is added");
-        return null;
+        return;
       }
       if (newFieldId < oldMaxId && currentOldType.getChildById(newFieldId) == null) {
         fail("new required field " + newField.getName() + " is added");
-        return null;
+        return;
       }
 
     }
 
     //restore
     oldType = currentOldType;
-    return null;
   }
 
   @Override
-  public Void visit(EnumType enumType, Void v) {
-    return null;
+  public void visit(EnumType enumType) {
   }
 
   @Override
-  public Void visit(BoolType boolType, Void v) {
-    return null;
+  public void visit(BoolType boolType) {
   }
 
   @Override
-  public Void visit(ByteType byteType, Void v) {
-    return null;
+  public void visit(ByteType byteType) {
   }
 
   @Override
-  public Void visit(DoubleType doubleType, Void v) {
-    return null;
+  public void visit(DoubleType doubleType) {
   }
 
   @Override
-  public Void visit(I16Type i16Type, Void v) {
-    return null;
+  public void visit(I16Type i16Type) {
   }
 
   @Override
-  public Void visit(I32Type i32Type, Void v) {
-    return null;
+  public void visit(I32Type i32Type) {
   }
 
   @Override
-  public Void visit(I64Type i64Type, Void v) {
-    return null;
+  public void visit(I64Type i64Type) {
   }
 
   @Override
-  public Void visit(StringType stringType, Void v) {
-    return null;
+  public void visit(StringType stringType) {
   }
 }
 
