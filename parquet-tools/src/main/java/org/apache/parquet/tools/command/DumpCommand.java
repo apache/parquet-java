@@ -178,7 +178,8 @@ public class DumpCommand extends ArgsOnlyCommand {
                     MetadataUtils.showDetails(out, ccmds);
 
                     List<BlockMetaData> rblocks = Collections.singletonList(block);
-                    freader = new ParquetFileReader(conf, inpath, rblocks, columns);
+                    freader = new ParquetFileReader(
+                        conf, meta.getFileMetaData(), inpath, rblocks, columns);
                     PageReadStore store = freader.readNextRowGroup();
                     while (store != null) {
                         out.incrementTabLevel();
@@ -211,7 +212,8 @@ public class DumpCommand extends ArgsOnlyCommand {
                     long page = 1;
                     long total = blocks.size();
                     long offset = 1;
-                    freader = new ParquetFileReader(conf, inpath, blocks, Collections.singletonList(column));
+                    freader = new ParquetFileReader(
+                        conf, meta.getFileMetaData(), inpath, blocks, Collections.singletonList(column));
                     PageReadStore store = freader.readNextRowGroup();
                     while (store != null) {
                         ColumnReadStoreImpl crstore = new ColumnReadStoreImpl(store, new DumpGroupConverter(), schema);
@@ -307,7 +309,7 @@ public class DumpCommand extends ArgsOnlyCommand {
     }
 
     public static String binaryToString(Binary value) {
-        byte[] data = value.getBytes();
+        byte[] data = value.getBytesUnsafe();
         if (data == null) return null;
 
         try {
@@ -320,7 +322,7 @@ public class DumpCommand extends ArgsOnlyCommand {
     }
 
     public static BigInteger binaryToBigInteger(Binary value) {
-        byte[] data = value.getBytes();
+        byte[] data = value.getBytesUnsafe();
         if (data == null) return null;
 
         return new BigInteger(data);

@@ -188,9 +188,8 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       }
     }
     MessageType fileSchema = footer.getFileMetaData().getSchema();
-    Map<String, String> fileMetaData = footer.getFileMetaData().getKeyValueMetaData();
     internalReader.initialize(
-        fileSchema, fileMetaData, path, filteredBlocks, configuration);
+        fileSchema, footer.getFileMetaData(), path, filteredBlocks, configuration);
   }
 
   /**
