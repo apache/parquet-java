@@ -149,7 +149,7 @@ public class ParquetReader<T> implements Closeable {
 
       reader = new InternalParquetRecordReader<T>(readSupport, filter);
       reader.initialize(fileSchema,
-          footer.getParquetMetadata().getFileMetaData().getKeyValueMetaData(),
+          footer.getParquetMetadata().getFileMetaData(),
           footer.getFile(), filteredBlocks, conf);
     }
   }

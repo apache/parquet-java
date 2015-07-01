@@ -172,7 +172,8 @@ public class TestParquetFileWriter {
     assertEquals(expectedEncoding,readFooter.getBlocks().get(0).getColumns().get(0).getEncodings());
 
     { // read first block of col #1
-      ParquetFileReader r = new ParquetFileReader(configuration, path, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(SCHEMA.getColumnDescription(PATH1)));
+      ParquetFileReader r = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
+          Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(SCHEMA.getColumnDescription(PATH1)));
       PageReadStore pages = r.readNextRowGroup();
       assertEquals(3, pages.getRowCount());
       validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
@@ -182,7 +183,8 @@ public class TestParquetFileWriter {
 
     { // read all blocks of col #1 and #2
 
-      ParquetFileReader r = new ParquetFileReader(configuration, path, readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)));
+      ParquetFileReader r = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
+          readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)));
 
       PageReadStore pages = r.readNextRowGroup();
       assertEquals(3, pages.getRowCount());
@@ -275,7 +277,8 @@ public class TestParquetFileWriter {
         120, readFooter.getBlocks().get(1).getStartingPos());
 
     { // read first block of col #1
-      ParquetFileReader r = new ParquetFileReader(conf, path, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(SCHEMA.getColumnDescription(PATH1)));
+      ParquetFileReader r = new ParquetFileReader(conf, readFooter.getFileMetaData(), path,
+          Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(SCHEMA.getColumnDescription(PATH1)));
       PageReadStore pages = r.readNextRowGroup();
       assertEquals(3, pages.getRowCount());
       validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
@@ -285,7 +288,8 @@ public class TestParquetFileWriter {
 
     { // read all blocks of col #1 and #2
 
-      ParquetFileReader r = new ParquetFileReader(conf, path, readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)));
+      ParquetFileReader r = new ParquetFileReader(conf, readFooter.getFileMetaData(), path,
+          readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)));
 
       PageReadStore pages = r.readNextRowGroup();
       assertEquals(3, pages.getRowCount());
@@ -378,7 +382,8 @@ public class TestParquetFileWriter {
         109, readFooter.getBlocks().get(1).getStartingPos());
 
     { // read first block of col #1
-      ParquetFileReader r = new ParquetFileReader(conf, path, Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(SCHEMA.getColumnDescription(PATH1)));
+      ParquetFileReader r = new ParquetFileReader(conf, readFooter.getFileMetaData(), path,
+          Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(SCHEMA.getColumnDescription(PATH1)));
       PageReadStore pages = r.readNextRowGroup();
       assertEquals(3, pages.getRowCount());
       validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
@@ -388,7 +393,8 @@ public class TestParquetFileWriter {
 
     { // read all blocks of col #1 and #2
 
-      ParquetFileReader r = new ParquetFileReader(conf, path, readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)));
+      ParquetFileReader r = new ParquetFileReader(conf, readFooter.getFileMetaData(), path,
+          readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)));
 
       PageReadStore pages = r.readNextRowGroup();
       assertEquals(3, pages.getRowCount());
@@ -417,8 +423,13 @@ public class TestParquetFileWriter {
     for (long l: longArray) {
       parquetMRstats.updateStats(l);
     }
-    Statistics thriftStats = org.apache.parquet.format.converter.ParquetMetadataConverter.toParquetStatistics(parquetMRstats);
-    LongStatistics convertedBackStats = (LongStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics(thriftStats, PrimitiveTypeName.INT64);
+    final String createdBy =
+        "parquet-mr version 1.8.0 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
+    Statistics thriftStats =
+        org.apache.parquet.format.converter.ParquetMetadataConverter.toParquetStatistics(parquetMRstats);
+    LongStatistics convertedBackStats =
+        (LongStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics(
+            createdBy, thriftStats, PrimitiveTypeName.INT64);
 
     assertEquals(parquetMRstats.getMax(), convertedBackStats.getMax());
     assertEquals(parquetMRstats.getMin(), convertedBackStats.getMin());

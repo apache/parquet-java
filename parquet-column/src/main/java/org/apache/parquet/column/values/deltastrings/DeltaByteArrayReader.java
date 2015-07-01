@@ -40,7 +40,7 @@ public class DeltaByteArrayReader extends ValuesReader {
   public DeltaByteArrayReader() {
     this.prefixLengthReader = new DeltaBinaryPackingValuesReader();
     this.suffixReader = new DeltaLengthByteArrayValuesReader();
-    this.previous = Binary.fromByteArray(new byte[0]);
+    this.previous = Binary.fromConstantByteArray(new byte[0]);
   }
 
   public void setPreviousBinary(Binary previous) {
@@ -75,9 +75,9 @@ public class DeltaByteArrayReader extends ValuesReader {
     // We have to do this to materialize the output
     if(prefixLength != 0) {
       byte[] out = new byte[length];
-      System.arraycopy(previous.getBytes(), 0, out, 0, prefixLength);
-      System.arraycopy(suffix.getBytes(), 0, out, prefixLength, suffix.length());
-      previous =  Binary.fromByteArray(out);
+      System.arraycopy(previous.getBytesUnsafe(), 0, out, 0, prefixLength);
+      System.arraycopy(suffix.getBytesUnsafe(), 0, out, prefixLength, suffix.length());
+      previous =  Binary.fromConstantByteArray(out);
     } else {
       previous = suffix;
     }
