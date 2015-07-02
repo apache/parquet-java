@@ -26,6 +26,9 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 
 import java.io.IOException;
 
+import org.apache.parquet.CorruptDeltaByteArrays;
+import org.apache.parquet.VersionParser;
+import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.values.ValuesReader;
@@ -49,6 +52,7 @@ import org.apache.parquet.column.values.plain.PlainValuesReader.IntegerPlainValu
 import org.apache.parquet.column.values.plain.PlainValuesReader.LongPlainValuesReader;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.api.Binary;
 
 /**
  * encoding of the data
@@ -198,6 +202,12 @@ public enum Encoding {
       }
       return new DeltaByteArrayReader();
     }
+
+    @Override
+    public boolean requiresSequentialReads(ParsedVersion version) {
+      return CorruptDeltaByteArrays.requireSequentialReads(version);
+    }
+
   },
 
   /**
@@ -289,4 +299,7 @@ public enum Encoding {
     throw new UnsupportedOperationException(this.name() + " is not dictionary based");
   }
 
+  public boolean requiresSequentialReads(ParsedVersion version) {
+    return false;
+  }
 }

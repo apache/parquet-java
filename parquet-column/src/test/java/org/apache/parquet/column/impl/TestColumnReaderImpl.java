@@ -23,6 +23,8 @@ import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_
 
 import java.util.List;
 
+import org.apache.parquet.Version;
+import org.apache.parquet.VersionParser;
 import org.junit.Test;
 
 import org.apache.parquet.column.ColumnDescriptor;
@@ -52,7 +54,7 @@ public class TestColumnReaderImpl {
   }
 
   @Test
-  public void test() {
+  public void test() throws Exception {
     MessageType schema = MessageTypeParser.parseMessageType("message test { required binary foo; }");
     ColumnDescriptor col = schema.getColumns().get(0);
     MemPageWriter pageWriter = new MemPageWriter();
@@ -76,7 +78,7 @@ public class TestColumnReaderImpl {
     assertEquals(rows, valueCount);
     MemPageReader pageReader = new MemPageReader((long)rows, pages.iterator(), pageWriter.getDictionaryPage());
     ValidatingConverter converter = new ValidatingConverter();
-    ColumnReader columnReader = new ColumnReaderImpl(col, pageReader, converter);
+    ColumnReader columnReader = new ColumnReaderImpl(col, pageReader, converter, VersionParser.parse(Version.FULL_VERSION));
     for (int i = 0; i < rows; i++) {
       assertEquals(0, columnReader.getCurrentRepetitionLevel());
       assertEquals(0, columnReader.getCurrentDefinitionLevel());
@@ -87,7 +89,7 @@ public class TestColumnReaderImpl {
   }
 
   @Test
-  public void testOptional() {
+  public void testOptional() throws Exception {
     MessageType schema = MessageTypeParser.parseMessageType("message test { optional binary foo; }");
     ColumnDescriptor col = schema.getColumns().get(0);
     MemPageWriter pageWriter = new MemPageWriter();
@@ -111,7 +113,7 @@ public class TestColumnReaderImpl {
     assertEquals(rows, valueCount);
     MemPageReader pageReader = new MemPageReader((long)rows, pages.iterator(), pageWriter.getDictionaryPage());
     ValidatingConverter converter = new ValidatingConverter();
-    ColumnReader columnReader = new ColumnReaderImpl(col, pageReader, converter);
+    ColumnReader columnReader = new ColumnReaderImpl(col, pageReader, converter, VersionParser.parse(Version.FULL_VERSION));
     for (int i = 0; i < rows; i++) {
       assertEquals(0, columnReader.getCurrentRepetitionLevel());
       assertEquals(0, columnReader.getCurrentDefinitionLevel());

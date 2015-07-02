@@ -216,7 +216,9 @@ public class DumpCommand extends ArgsOnlyCommand {
                         conf, meta.getFileMetaData(), inpath, blocks, Collections.singletonList(column));
                     PageReadStore store = freader.readNextRowGroup();
                     while (store != null) {
-                        ColumnReadStoreImpl crstore = new ColumnReadStoreImpl(store, new DumpGroupConverter(), schema);
+                        ColumnReadStoreImpl crstore = new ColumnReadStoreImpl(
+                            store, new DumpGroupConverter(), schema,
+                            meta.getFileMetaData().getCreatedBy());
                         dump(out, crstore, column, page++, total, offset);
 
                         offset += store.getRowCount();

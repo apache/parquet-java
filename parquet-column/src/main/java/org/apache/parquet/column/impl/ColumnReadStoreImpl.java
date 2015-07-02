@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.column.impl;
 
+import org.apache.parquet.VersionParser;
+import org.apache.parquet.VersionParser.ParsedVersion;
+import org.apache.parquet.VersionParser.VersionParseException;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReadStore;
 import org.apache.parquet.column.ColumnReader;
@@ -43,17 +46,30 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
   private final PageReadStore pageReadStore;
   private final GroupConverter recordConverter;
   private final MessageType schema;
+  private final ParsedVersion writerVersion;
 
   /**
-   * @param pageReadStore uderlying page storage
+   * @param pageReadStore underlying page storage
    * @param recordConverter the user provided converter to materialize records
    * @param schema the schema we are reading
    */
-  public ColumnReadStoreImpl(PageReadStore pageReadStore, GroupConverter recordConverter, MessageType schema) {
+  public ColumnReadStoreImpl(PageReadStore pageReadStore,
+                             GroupConverter recordConverter,
+                             MessageType schema, String createdBy) {
     super();
     this.pageReadStore = pageReadStore;
     this.recordConverter = recordConverter;
     this.schema = schema;
+
+    ParsedVersion version;
+    try {
+      version = VersionParser.parse(createdBy);
+    } catch (RuntimeException e) {
+      version = null;
+    } catch (VersionParseException e) {
+      version = null;
+    }
+    this.writerVersion = version;
   }
 
   @Override
@@ -63,7 +79,7 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
 
   private ColumnReaderImpl newMemColumnReader(ColumnDescriptor path, PageReader pageReader) {
     PrimitiveConverter converter = getPrimitiveConverter(path);
-    return new ColumnReaderImpl(path, pageReader, converter);
+    return new ColumnReaderImpl(path, pageReader, converter, writerVersion);
   }
 
   private PrimitiveConverter getPrimitiveConverter(ColumnDescriptor path) {
