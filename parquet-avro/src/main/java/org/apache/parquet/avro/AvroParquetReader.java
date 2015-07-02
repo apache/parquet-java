@@ -20,11 +20,14 @@ package org.apache.parquet.avro;
 
 import java.io.IOException;
 
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.specific.SpecificData;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.api.ReadSupport;
 
 /**
  * Read Avro records from a Parquet file.
@@ -32,7 +35,7 @@ import org.apache.parquet.hadoop.ParquetReader;
 public class AvroParquetReader<T> extends ParquetReader<T> {
 
   public static <T> Builder<T> builder(Path file) {
-    return ParquetReader.builder(new AvroReadSupport<T>(), file);
+    return new Builder<T>(file);
   }
 
   /**
@@ -65,5 +68,48 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
   @Deprecated
   public AvroParquetReader(Configuration conf, Path file, UnboundRecordFilter unboundRecordFilter) throws IOException {
     super(conf, file, new AvroReadSupport<T>(), unboundRecordFilter);
+  }
+
+  public static class Builder<T> extends ParquetReader.Builder {
+
+    private GenericData model = null;
+    private boolean enableCompatibility = true;
+    private boolean isReflect = true;
+
+    private Builder(Path path) {
+      super(path);
+    }
+
+    public Builder<T> withDataModel(GenericData model) {
+      this.model = model;
+
+      // only generic and specific are supported by AvroIndexedRecordConverter
+      if (model.getClass() != GenericData.class &&
+          model.getClass() != SpecificData.class) {
+        isReflect = true;
+      }
+
+      return this;
+    }
+
+    public Builder<T> disableCompatibility() {
+      this.enableCompatibility = false;
+      return this;
+    }
+
+    public Builder<T> withCompatibility(boolean enableCompatibility) {
+      this.enableCompatibility = enableCompatibility;
+      return this;
+    }
+
+    @Override
+    protected ReadSupport<T> getReadSupport() {
+      if (isReflect) {
+        conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
+      } else {
+        conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, enableCompatibility);
+      }
+      return new AvroReadSupport<T>(model);
+    }
   }
 }
