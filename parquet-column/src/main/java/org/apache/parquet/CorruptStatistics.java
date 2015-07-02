@@ -64,12 +64,12 @@ public class CorruptStatistics {
         return false;
       }
 
-      if (Strings.isNullOrEmpty(version.semver)) {
+      if (Strings.isNullOrEmpty(version.version)) {
         LOG.warn("Ignoring statistics because created_by did not contain a semver (see PARQUET-251): " + createdBy);
         return true;
       }
 
-      SemanticVersion semver = SemanticVersion.parse(version.semver);
+      SemanticVersion semver = SemanticVersion.parse(version.version);
 
       if (semver.compareTo(PARQUET_251_FIXED_VERSION) < 0) {
         LOG.info("Ignoring statistics because this file was created prior to "
