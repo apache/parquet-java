@@ -41,13 +41,17 @@ public class SemanticVersionTest {
     assertTrue(new SemanticVersion(2, 0, 0).compareTo(new SemanticVersion(1, 0, 0)) > 0);
 
     assertTrue(new SemanticVersion(1, 8, 100).compareTo(new SemanticVersion(1, 9, 0)) < 0);
+
+    assertTrue(new SemanticVersion(1, 8, 0).compareTo(new SemanticVersion(1, 8, 0, true)) > 0);
+    assertTrue(new SemanticVersion(1, 8, 0, true).compareTo(new SemanticVersion(1, 8, 0, true)) == 0);
+    assertTrue(new SemanticVersion(1, 8, 0, true).compareTo(new SemanticVersion(1, 8, 0)) < 0);
   }
 
   @Test
   public void testParse() throws Exception {
     assertEquals(new SemanticVersion(1, 8, 0), SemanticVersion.parse("1.8.0"));
-    assertEquals(new SemanticVersion(1, 8, 0), SemanticVersion.parse("1.8.0rc3"));
-    assertEquals(new SemanticVersion(1, 8, 0), SemanticVersion.parse("1.8.0rc3-SNAPSHOT"));
-    assertEquals(new SemanticVersion(1, 8, 0), SemanticVersion.parse("1.8.0-SNAPSHOT"));
+    assertEquals(new SemanticVersion(1, 8, 0, true), SemanticVersion.parse("1.8.0rc3"));
+    assertEquals(new SemanticVersion(1, 8, 0, true), SemanticVersion.parse("1.8.0rc3-SNAPSHOT"));
+    assertEquals(new SemanticVersion(1, 8, 0, true), SemanticVersion.parse("1.8.0-SNAPSHOT"));
   }
 }
