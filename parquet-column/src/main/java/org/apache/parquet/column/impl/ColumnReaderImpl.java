@@ -141,6 +141,7 @@ class ColumnReaderImpl implements ColumnReader {
   private IntIterator repetitionLevelColumn;
   private IntIterator definitionLevelColumn;
   protected ValuesReader dataColumn;
+  private Encoding currentEncoding;
 
   private int repetitionLevel;
   private int definitionLevel;
@@ -463,10 +464,28 @@ class ColumnReaderImpl implements ColumnReader {
         valueRead = true;
       }
     } catch (RuntimeException e) {
+      if (currentEncoding.requiresSequentialReads(writerVersion) &&
+          e instanceof ArrayIndexOutOfBoundsException) {
+        // this is probably PARQUET-246, which may happen if reading data with
+        // MR because this can't be detected without reading all footers
+        throw new ParquetDecodingException("Read failure possibly due to " +
+            "PARQUET-246: try setting parquet.split.files to false",
+            new ParquetDecodingException(
+                format("Can't read value in column %s at value %d out of %d, " +
+                        "%d out of %d in currentPage. repetition level: " +
+                        "%d, definition level: %d",
+                    path, readValues, totalValueCount,
+                    readValues - (endOfPageValueCount - pageValueCount),
+                    pageValueCount, repetitionLevel, definitionLevel),
+                e));
+      }
       throw new ParquetDecodingException(
-          format(
-              "Can't read value in column %s at value %d out of %d, %d out of %d in currentPage. repetition level: %d, definition level: %d",
-              path, readValues, totalValueCount, readValues - (endOfPageValueCount - pageValueCount), pageValueCount, repetitionLevel, definitionLevel),
+          format("Can't read value in column %s at value %d out of %d, " +
+                  "%d out of %d in currentPage. repetition level: " +
+                  "%d, definition level: %d",
+              path, readValues, totalValueCount,
+              readValues - (endOfPageValueCount - pageValueCount),
+              pageValueCount, repetitionLevel, definitionLevel),
           e);
     }
   }
@@ -531,6 +550,7 @@ class ColumnReaderImpl implements ColumnReader {
   private void initDataReader(Encoding dataEncoding, byte[] bytes, int offset, int valueCount) {
     ValuesReader previousReader = this.dataColumn;
 
+    this.currentEncoding = dataEncoding;
     this.pageValueCount = valueCount;
     this.endOfPageValueCount = readValues + pageValueCount;
 

@@ -120,6 +120,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    */
   public static final String TASK_SIDE_METADATA = "parquet.task.side.metadata";
 
+  /**
+   * key to turn off file splitting. See PARQUET-246.
+   */
+  public static final String SPLIT_FILES = "parquet.split.files";
+
   private static final int MIN_FOOTER_CACHE_SIZE = 100;
 
   public static void setTaskSideMetaData(Job job,  boolean taskSideMetadata) {
@@ -278,6 +283,11 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     } catch (IllegalAccessException e) {
       throw new BadConfigurationException("could not instantiate read support class", e);
     }
+  }
+
+  @Override
+  protected boolean isSplitable(JobContext context, Path filename) {
+    return ContextUtil.getConfiguration(context).getBoolean(SPLIT_FILES, true);
   }
 
   /**
