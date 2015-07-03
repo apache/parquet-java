@@ -49,6 +49,7 @@ import org.apache.parquet.column.values.plain.PlainValuesReader.IntegerPlainValu
 import org.apache.parquet.column.values.plain.PlainValuesReader.LongPlainValuesReader;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.api.Binary;
 
 /**
  * encoding of the data
@@ -198,6 +199,59 @@ public enum Encoding {
       }
       return new DeltaByteArrayReader();
     }
+
+    /**
+     * There was a bug (PARQUET-246) in which DeltaByteArrayWriter's reset() method did not
+     * clear the previous value state that it tracks internally. This resulted in the first
+     * value of all pages (except for the first page) to be a delta from the last value of the
+     * previous page. In order to read corrupted files written with this bug, when reading a
+     * new page we need to pass the previous page's last value to the DeltaByteArrayReader so
+     * it can use it (if needed) to read the first value.
+     *
+     * The DeltaByteArrayReader can determine from the data it is reading whether this bug was
+     * in effect when the data was written. So it is safe to always pass along the previous
+     * page's last value to a new reader, and let the reader decide for itself whether or not
+     * to use it.
+     */
+    @Override
+    public CrossPageStateRepairer newCrossPageStateRepairer() {
+      return new CrossPageStateRepairer() {
+
+        // here we track the last value of the last page to be written
+        // with delta byte array encoding. (there could, in theory, be
+        // pages in between that were written with a different encoding,
+        // such as dictionary encoding, but we only care about the last
+        // delta byte array encoded value to be read.
+        private Binary previousDeltaByteArrayPagesLastValue = null;
+
+        @Override
+        public void onBeginReadNewPage(ValuesReader previousReader, ValuesReader newReader) {
+          if (previousReader == null) {
+            // this is the first page, so this page is not
+            // corrupted even if written with the buggy version of parquet
+            return;
+          }
+
+          if (previousReader instanceof DeltaByteArrayReader) {
+            // we only want to track the previous values of delta byte array encoded
+            // pages, so we skip over pages that don't use this encoding.
+
+            // TODO: should be getPrevious().copy() once the updates to Binary are merged
+            // as is, this is safe because previous is in DeltaByteArrayReader does not use
+            // a re-used byte array
+            previousDeltaByteArrayPagesLastValue = ((DeltaByteArrayReader) previousReader).getPrevious();
+          }
+
+          if (newReader instanceof DeltaByteArrayReader && previousDeltaByteArrayPagesLastValue != null) {
+            // the new page is a delta byte array encoded page, and we have previously seen a
+            // delta byte array encoded page, so we cary the previous value over.
+            // There may have been pages of different encodings between, but that's OK because
+            // we did not update previousDeltaByteArrayPagesLastValue when we saw them.
+            ((DeltaByteArrayReader) newReader).setPrevious(previousDeltaByteArrayPagesLastValue);
+          }
+        }
+      };
+    }
   },
 
   /**
@@ -289,4 +343,26 @@ public enum Encoding {
     throw new UnsupportedOperationException(this.name() + " is not dictionary based");
   }
 
+  public CrossPageStateRepairer newCrossPageStateRepairer() {
+    // default is to do nothing
+    return CrossPageStateRepairer.NONE;
+  }
+
+  /**
+   * This defines a callback to be called every time a {@link ColumnReader}
+   * begins reading a new page, within the same row-group, allowing us to carry state over from
+   * one page to the next. This is used to fix a bug where state was not
+   * cleared between pages in the write path (PARQUET-246).
+   * see DELTA_BYTE_ARRAY#newCrossPageStateRepairer for more details.
+   */
+  public static interface CrossPageStateRepairer {
+
+    // default is to do nothing
+    public static final CrossPageStateRepairer NONE = new CrossPageStateRepairer() {
+      @Override
+      public void onBeginReadNewPage(ValuesReader previousReader, ValuesReader newReader) { }
+    };
+
+    void onBeginReadNewPage(ValuesReader previousReader, ValuesReader newReader);
+  }
 }
