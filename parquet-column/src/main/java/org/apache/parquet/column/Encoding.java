@@ -19,6 +19,7 @@
 package org.apache.parquet.column;
 
 import static org.apache.parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
@@ -194,8 +195,8 @@ public enum Encoding {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor,
         ValuesType valuesType) {
-      if (descriptor.getType() != BINARY) {
-        throw new ParquetDecodingException("Encoding DELTA_BYTE_ARRAY is only supported for type BINARY");
+      if (descriptor.getType() != BINARY && descriptor.getType() != FIXED_LEN_BYTE_ARRAY) {
+        throw new ParquetDecodingException("Encoding DELTA_BYTE_ARRAY is only supported for type BINARY and FIXED_LEN_BYTE_ARRAY");
       }
 
       DeltaByteArrayReader current = new DeltaByteArrayReader();
