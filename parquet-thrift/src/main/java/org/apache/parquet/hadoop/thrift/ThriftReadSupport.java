@@ -22,8 +22,6 @@ import java.lang.reflect.Constructor;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.protobuf.Message;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.thrift.TBase;
@@ -108,13 +106,17 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     conf.set(STRICT_THRIFT_COLUMN_FILTER_KEY, semicolonDelimitedGlobs);
   }
 
+  private static boolean hasFilter(Configuration conf) {
+      return !Strings.isNullOrEmpty(conf.get(DEPRECATED_THRIFT_COLUMN_FILTER_KEY)) ||
+          !Strings.isNullOrEmpty(conf.get(STRICT_THRIFT_COLUMN_FILTER_KEY));
+  }
   public static FieldProjectionFilter getFieldProjectionFilter(Configuration conf) {
-    String deprecated = conf.get(DEPRECATED_THRIFT_COLUMN_FILTER_KEY);
-    String strict = conf.get(STRICT_THRIFT_COLUMN_FILTER_KEY);
-
-    if (Strings.isNullOrEmpty(deprecated) && Strings.isNullOrEmpty(strict)) {
+    if (!hasFilter(conf)) {
       return FieldProjectionFilter.ALL_COLUMNS;
     }
+
+    String deprecated = conf.get(DEPRECATED_THRIFT_COLUMN_FILTER_KEY);
+    String strict = conf.get(STRICT_THRIFT_COLUMN_FILTER_KEY);
 
     if(!Strings.isNullOrEmpty(deprecated) && !Strings.isNullOrEmpty(strict)) {
       throw new ThriftProjectionException(
@@ -161,7 +163,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     // which reads all columns
     FieldProjectionFilter projectionFilter = getFieldProjectionFilter(configuration);
 
-    if (partialSchemaString != null && projectionFilter != null) {
+    if (partialSchemaString != null &&  hasFilter(configuration)) {
       throw new ThriftProjectionException(
           String.format("You cannot provide both a partial schema and field projection filter."
                   + "Only one of (%s, %s, %s) should be set.",
