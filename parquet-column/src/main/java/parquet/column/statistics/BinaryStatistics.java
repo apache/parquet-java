@@ -18,6 +18,7 @@
  */
 package parquet.column.statistics;
 
+import java.util.Arrays;
 import parquet.io.api.Binary;
 
 public class BinaryStatistics extends Statistics<Binary> {
@@ -72,13 +73,13 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   public void updateStats(Binary min_value, Binary max_value) {
-    if (min.compareTo(min_value) > 0) { min = min_value; }
-    if (max.compareTo(max_value) < 0) { max = max_value; }
+    if (min.compareTo(min_value) > 0) { min = copy(min_value); }
+    if (max.compareTo(max_value) < 0) { max = copy(max_value); }
   }
 
   public void initializeStats(Binary min_value, Binary max_value) {
-      min = min_value;
-      max = max_value;
+      min = copy(min_value);
+      max = copy(max_value);
       this.markAsNotEmpty();
   }
 
@@ -101,8 +102,12 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   public void setMinMax(Binary min, Binary max) {
-    this.max = max;
-    this.min = min;
+    this.max = copy(max);
+    this.min = copy(min);
     this.markAsNotEmpty();
+  }
+
+  protected static Binary copy(Binary binary) {
+    return Binary.fromByteArray(Arrays.copyOf(binary.getBytes(), binary.length()));
   }
 }

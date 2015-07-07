@@ -20,6 +20,7 @@ package parquet.column.statistics;
 
 import static org.junit.Assert.*;
 
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
 import org.junit.Test;
@@ -345,16 +346,19 @@ public class TestStatistics {
   }
 
   @Test
-  public void testBinaryMinMax() {
+  public void testBinaryMinMax() throws UnsupportedEncodingException {
     //Test basic max/min
     stringArray = new String[] {"hello", "world", "this", "is", "a", "test", "of", "the", "stats", "class"};
     BinaryStatistics stats = new BinaryStatistics();
 
+    // use a shared byte array to test the case where buffer is reused (e.g. in MapReduce)
+    byte[] shared = new byte[5];
     for (String s: stringArray) {
-      stats.updateStats(Binary.fromString(s));
+      System.arraycopy(s.getBytes("UTF-8"), 0, shared, 0, s.length());
+      stats.updateStats(Binary.fromByteArray(shared, 0, s.length()));
     }
-    assertEquals(stats.getMax(), Binary.fromString("world"));
-    assertEquals(stats.getMin(), Binary.fromString("a"));
+    assertEquals(stats.getMax().toStringUsingUTF8(), "world");
+    assertEquals(stats.getMin().toStringUsingUTF8(), "a");
 
     // Test empty string
     stringArray = new String[] {"", "", "", "", ""};
