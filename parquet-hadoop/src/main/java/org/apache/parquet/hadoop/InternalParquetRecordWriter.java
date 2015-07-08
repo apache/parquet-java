@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.parquet.Log;
-import org.apache.parquet.Version;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;

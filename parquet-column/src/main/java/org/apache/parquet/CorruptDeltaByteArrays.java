@@ -19,6 +19,7 @@
 package org.apache.parquet;
 
 import org.apache.parquet.VersionParser.ParsedVersion;
+import org.apache.parquet.column.Encoding;
 
 public class CorruptDeltaByteArrays {
   private static final Log LOG = Log.getLog(CorruptStatistics.class);
@@ -26,7 +27,11 @@ public class CorruptDeltaByteArrays {
   private static final SemanticVersion PARQUET_246_FIXED_VERSION =
       new SemanticVersion(1, 8, 0);
 
-  public static boolean requireSequentialReads(ParsedVersion version) {
+  public static boolean requiresSequentialReads(ParsedVersion version, Encoding encoding) {
+    if (encoding != Encoding.DELTA_BYTE_ARRAY) {
+      return false;
+    }
+
     if (version == null) {
       return true;
     }
@@ -42,10 +47,14 @@ public class CorruptDeltaByteArrays {
       return true;
     }
 
-    return requireSequentialReads(version.getSemanticVersion());
+    return requiresSequentialReads(version.getSemanticVersion(), encoding);
   }
 
-  public static boolean requireSequentialReads(SemanticVersion semver) {
+  public static boolean requiresSequentialReads(SemanticVersion semver, Encoding encoding) {
+    if (encoding != Encoding.DELTA_BYTE_ARRAY) {
+      return false;
+    }
+
     if (semver == null) {
       return true;
     }
@@ -60,7 +69,11 @@ public class CorruptDeltaByteArrays {
     return false;
   }
 
-  public static boolean requireSequentialReads(String createdBy) {
+  public static boolean requiresSequentialReads(String createdBy, Encoding encoding) {
+    if (encoding != Encoding.DELTA_BYTE_ARRAY) {
+      return false;
+    }
+
     if (Strings.isNullOrEmpty(createdBy)) {
       LOG.info("Requiring sequential reads because file version is empty. " +
           "See PARQUET-246");
@@ -68,7 +81,7 @@ public class CorruptDeltaByteArrays {
     }
 
     try {
-      return requireSequentialReads(VersionParser.parse(createdBy));
+      return requiresSequentialReads(VersionParser.parse(createdBy), encoding);
 
     } catch (RuntimeException e) {
       warnParseError(createdBy, e);

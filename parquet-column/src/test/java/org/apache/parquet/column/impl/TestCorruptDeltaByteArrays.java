@@ -49,22 +49,29 @@ import static org.junit.Assert.fail;
 public class TestCorruptDeltaByteArrays {
   @Test
   public void testCorruptDeltaByteArrayVerisons() {
-    assertTrue(CorruptDeltaByteArrays.requireSequentialReads("parquet-mr version 1.6.0 (build abcd)"));
-    assertTrue(CorruptDeltaByteArrays.requireSequentialReads((String) null));
-    assertTrue(CorruptDeltaByteArrays.requireSequentialReads((ParsedVersion) null));
-    assertTrue(CorruptDeltaByteArrays.requireSequentialReads((SemanticVersion) null));
-    assertTrue(CorruptDeltaByteArrays.requireSequentialReads("parquet-mr version 1.8.0-SNAPSHOT (build abcd)"));
-    assertFalse(CorruptDeltaByteArrays.requireSequentialReads("parquet-mr version 1.8.0 (build abcd)"));
+    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.6.0 (build abcd)", Encoding.DELTA_BYTE_ARRAY));
+    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads((String) null, Encoding.DELTA_BYTE_ARRAY));
+    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads((ParsedVersion) null, Encoding.DELTA_BYTE_ARRAY));
+    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads((SemanticVersion) null, Encoding.DELTA_BYTE_ARRAY));
+    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.DELTA_BYTE_ARRAY));
+    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.6.0 (build abcd)", Encoding.DELTA_BINARY_PACKED));
+    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads((String) null, Encoding.DELTA_LENGTH_BYTE_ARRAY));
+    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads((ParsedVersion) null, Encoding.PLAIN));
+    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads((SemanticVersion) null, Encoding.RLE));
+    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.RLE_DICTIONARY));
+    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.PLAIN_DICTIONARY));
+    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.8.0-SNAPSHOT (build abcd)", Encoding.BIT_PACKED));
+    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads("parquet-mr version 1.8.0 (build abcd)", Encoding.DELTA_BYTE_ARRAY));
   }
 
   @Test
   public void testEncodingRequiresSequentailRead() {
     ParsedVersion impala = new ParsedVersion("impala", "1.2.0", "abcd");
-    assertFalse(Encoding.DELTA_BYTE_ARRAY.requiresSequentialReads(impala));
+    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads(impala, Encoding.DELTA_BYTE_ARRAY));
     ParsedVersion broken = new ParsedVersion("parquet-mr", "1.8.0-SNAPSHOT", "abcd");
-    assertTrue(Encoding.DELTA_BYTE_ARRAY.requiresSequentialReads(broken));
+    assertTrue(CorruptDeltaByteArrays.requiresSequentialReads(broken, Encoding.DELTA_BYTE_ARRAY));
     ParsedVersion fixed = new ParsedVersion("parquet-mr", "1.8.0", "abcd");
-    assertFalse(Encoding.DELTA_BYTE_ARRAY.requiresSequentialReads(fixed));
+    assertFalse(CorruptDeltaByteArrays.requiresSequentialReads(fixed, Encoding.DELTA_BYTE_ARRAY));
   }
 
   @Test

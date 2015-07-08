@@ -28,6 +28,7 @@ import static org.apache.parquet.column.ValuesType.VALUES;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
+import org.apache.parquet.CorruptDeltaByteArrays;
 import org.apache.parquet.Log;
 import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.bytes.BytesInput;
@@ -464,7 +465,7 @@ class ColumnReaderImpl implements ColumnReader {
         valueRead = true;
       }
     } catch (RuntimeException e) {
-      if (currentEncoding.requiresSequentialReads(writerVersion) &&
+      if (CorruptDeltaByteArrays.requiresSequentialReads(writerVersion, currentEncoding) &&
           e instanceof ArrayIndexOutOfBoundsException) {
         // this is probably PARQUET-246, which may happen if reading data with
         // MR because this can't be detected without reading all footers
@@ -574,7 +575,8 @@ class ColumnReaderImpl implements ColumnReader {
       throw new ParquetDecodingException("could not read page in col " + path, e);
     }
 
-    if (dataEncoding.requiresSequentialReads(writerVersion) && previousReader != null) {
+    if (CorruptDeltaByteArrays.requiresSequentialReads(writerVersion, dataEncoding) &&
+        previousReader != null && previousReader instanceof RequiresPreviousReader) {
       // previous reader can only be set if reading sequentially
       ((RequiresPreviousReader) dataColumn).setPreviousReader(previousReader);
     }

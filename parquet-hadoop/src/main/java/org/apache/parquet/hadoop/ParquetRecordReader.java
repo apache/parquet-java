@@ -201,17 +201,18 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   }
 
   private void checkDeltaByteArrayProblem(FileMetaData meta, Configuration conf, BlockMetaData block) {
-    // splitting files but required to read sequentially?
-    if (CorruptDeltaByteArrays.requireSequentialReads(meta.getCreatedBy()) &&
-        conf.getBoolean(ParquetInputFormat.SPLIT_FILES, true)) {
-      // this is okay if not using DELTA_BYTE_ARRAY
+    // splitting files?
+    if (conf.getBoolean(ParquetInputFormat.SPLIT_FILES, true)) {
+      // this is okay if not using DELTA_BYTE_ARRAY with the bug
       Set<Encoding> encodings = new HashSet<Encoding>();
       for (ColumnChunkMetaData column : block.getColumns()) {
         encodings.addAll(column.getEncodings());
       }
-      if (encodings.contains(Encoding.DELTA_BYTE_ARRAY)) {
-        throw new ParquetDecodingException("Cannot read data due to " +
-            "PARQUET-246: to read safely, set " + SPLIT_FILES + " to false");
+      for (Encoding encoding : encodings) {
+        if (CorruptDeltaByteArrays.requiresSequentialReads(meta.getCreatedBy(), encoding)) {
+          throw new ParquetDecodingException("Cannot read data due to " +
+              "PARQUET-246: to read safely, set " + SPLIT_FILES + " to false");
+        }
       }
     }
   }
