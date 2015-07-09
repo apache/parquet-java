@@ -27,7 +27,7 @@ import java.util.regex.PatternSyntaxException;
  * Enhanced version of GlobPattern class that is defined in hadoop with extra capability of matching
  * full path separated by '/', and double star matching
  *
- * This is used for parsing values assigned to ThriftReadSupport.DEPRECATED_THRIFT_COLUMN_FILTER_KEY
+ * This is used for parsing values assigned to ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY
  *
  * @author Tianshuo Deng
  */

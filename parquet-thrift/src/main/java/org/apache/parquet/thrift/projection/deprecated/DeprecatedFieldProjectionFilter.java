@@ -28,7 +28,7 @@ import org.apache.parquet.thrift.projection.ThriftProjectionException;
 
 /**
  * Filter thrift attributes using glob syntax.
- * This is used for parsing values assigned to ThriftReadSupport.DEPRECATED_THRIFT_COLUMN_FILTER_KEY
+ * This is used for parsing values assigned to ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY
  * @author Tianshuo Deng
  */
 @Deprecated
