@@ -24,7 +24,11 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.CorruptStatistics;
+import org.apache.parquet.Version;
+import org.apache.parquet.VersionParser;
 import org.apache.parquet.bytes.BytesUtils;
+import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
 import org.apache.parquet.Log;
@@ -50,6 +54,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+import static org.apache.parquet.CorruptStatistics.shouldIgnoreStatistics;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.junit.Assert.*;
 import static org.apache.parquet.column.Encoding.BIT_PACKED;
@@ -438,6 +443,9 @@ public class TestParquetFileWriter {
 
   @Test
   public void testWriteReadStatistics() throws Exception {
+    // this test assumes statistics will be read
+    Assume.assumeTrue(!shouldIgnoreStatistics(Version.FULL_VERSION, BINARY));
+
     File testFile = temp.newFile();
     testFile.delete();
 
@@ -568,6 +576,9 @@ public class TestParquetFileWriter {
 
   @Test
   public void testWriteReadStatisticsAllNulls() throws Exception {
+    // this test assumes statistics will be read
+    Assume.assumeTrue(!shouldIgnoreStatistics(Version.FULL_VERSION, BINARY));
+
     File testFile = temp.newFile();
     testFile.delete();
 

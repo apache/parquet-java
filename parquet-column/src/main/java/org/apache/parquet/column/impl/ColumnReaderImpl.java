@@ -28,7 +28,9 @@ import static org.apache.parquet.column.ValuesType.VALUES;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
+import org.apache.parquet.CorruptDeltaByteArrays;
 import org.apache.parquet.Log;
+import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -40,6 +42,7 @@ import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReader;
+import org.apache.parquet.column.values.RequiresPreviousReader;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
 import org.apache.parquet.io.ParquetDecodingException;
@@ -130,6 +133,7 @@ class ColumnReaderImpl implements ColumnReader {
     }
   }
 
+  private final ParsedVersion writerVersion;
   private final ColumnDescriptor path;
   private final long totalValueCount;
   private final PageReader pageReader;
@@ -138,6 +142,7 @@ class ColumnReaderImpl implements ColumnReader {
   private IntIterator repetitionLevelColumn;
   private IntIterator definitionLevelColumn;
   protected ValuesReader dataColumn;
+  private Encoding currentEncoding;
 
   private int repetitionLevel;
   private int definitionLevel;
@@ -327,10 +332,11 @@ class ColumnReaderImpl implements ColumnReader {
    * @param path the descriptor for the corresponding column
    * @param pageReader the underlying store to read from
    */
-  public ColumnReaderImpl(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter) {
+  public ColumnReaderImpl(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter, ParsedVersion writerVersion) {
     this.path = checkNotNull(path, "path");
     this.pageReader = checkNotNull(pageReader, "pageReader");
     this.converter = checkNotNull(converter, "converter");
+    this.writerVersion = writerVersion;
     DictionaryPage dictionaryPage = pageReader.readDictionaryPage();
     if (dictionaryPage != null) {
       try {
@@ -459,10 +465,28 @@ class ColumnReaderImpl implements ColumnReader {
         valueRead = true;
       }
     } catch (RuntimeException e) {
+      if (CorruptDeltaByteArrays.requiresSequentialReads(writerVersion, currentEncoding) &&
+          e instanceof ArrayIndexOutOfBoundsException) {
+        // this is probably PARQUET-246, which may happen if reading data with
+        // MR because this can't be detected without reading all footers
+        throw new ParquetDecodingException("Read failure possibly due to " +
+            "PARQUET-246: try setting parquet.split.files to false",
+            new ParquetDecodingException(
+                format("Can't read value in column %s at value %d out of %d, " +
+                        "%d out of %d in currentPage. repetition level: " +
+                        "%d, definition level: %d",
+                    path, readValues, totalValueCount,
+                    readValues - (endOfPageValueCount - pageValueCount),
+                    pageValueCount, repetitionLevel, definitionLevel),
+                e));
+      }
       throw new ParquetDecodingException(
-          format(
-              "Can't read value in column %s at value %d out of %d, %d out of %d in currentPage. repetition level: %d, definition level: %d",
-              path, readValues, totalValueCount, readValues - (endOfPageValueCount - pageValueCount), pageValueCount, repetitionLevel, definitionLevel),
+          format("Can't read value in column %s at value %d out of %d, " +
+                  "%d out of %d in currentPage. repetition level: " +
+                  "%d, definition level: %d",
+              path, readValues, totalValueCount,
+              readValues - (endOfPageValueCount - pageValueCount),
+              pageValueCount, repetitionLevel, definitionLevel),
           e);
     }
   }
@@ -525,8 +549,12 @@ class ColumnReaderImpl implements ColumnReader {
   }
 
   private void initDataReader(Encoding dataEncoding, byte[] bytes, int offset, int valueCount) {
+    ValuesReader previousReader = this.dataColumn;
+
+    this.currentEncoding = dataEncoding;
     this.pageValueCount = valueCount;
     this.endOfPageValueCount = readValues + pageValueCount;
+
     if (dataEncoding.usesDictionary()) {
       if (dictionary == null) {
         throw new ParquetDecodingException(
@@ -545,6 +573,12 @@ class ColumnReaderImpl implements ColumnReader {
       dataColumn.initFromPage(pageValueCount, bytes, offset);
     } catch (IOException e) {
       throw new ParquetDecodingException("could not read page in col " + path, e);
+    }
+
+    if (CorruptDeltaByteArrays.requiresSequentialReads(writerVersion, dataEncoding) &&
+        previousReader != null && previousReader instanceof RequiresPreviousReader) {
+      // previous reader can only be set if reading sequentially
+      ((RequiresPreviousReader) dataColumn).setPreviousReader(previousReader);
     }
   }
 

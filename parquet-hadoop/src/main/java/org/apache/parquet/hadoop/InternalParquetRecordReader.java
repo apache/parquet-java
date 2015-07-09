@@ -57,7 +57,7 @@ import static org.apache.parquet.hadoop.ParquetInputFormat.STRICT_TYPE_CHECKING;
 class InternalParquetRecordReader<T> {
   private static final Log LOG = Log.getLog(InternalParquetRecordReader.class);
 
-  private final ColumnIOFactory columnIOFactory = new ColumnIOFactory();
+  private ColumnIOFactory columnIOFactory = null;
   private final Filter filter;
 
   private MessageType requestedSchema;
@@ -171,6 +171,7 @@ class InternalParquetRecordReader<T> {
     Map<String, String> fileMetadata = parquetFileMetadata.getKeyValueMetaData();
     ReadSupport.ReadContext readContext = readSupport.init(new InitContext(
         configuration, toSetMultiMap(fileMetadata), fileSchema));
+    this.columnIOFactory = new ColumnIOFactory(parquetFileMetadata.getCreatedBy());
     this.requestedSchema = readContext.getRequestedSchema();
     this.fileSchema = fileSchema;
     this.file = file;

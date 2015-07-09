@@ -26,7 +26,8 @@ import java.util.regex.Pattern;
  * Attempts to do a little bit of validation that the version string is valid, but
  * is not a full implementation of the semver spec.
  *
- * NOTE: compareTo only respects major, minor, and patch (ignores rc numbers, SNAPSHOT, etc)
+ * NOTE: compareTo only respects major, minor, patch, and whether this is a
+ * prerelease version. All prerelease versions are considered equivalent.
  */
 public final class SemanticVersion implements Comparable<SemanticVersion> {
   // (major).(minor).(patch)[(rc)(rcnum)]?(-(SNAPSHOT))?
@@ -36,6 +37,7 @@ public final class SemanticVersion implements Comparable<SemanticVersion> {
   public final int major;
   public final int minor;
   public final int patch;
+  public final boolean prerelease;
 
   public SemanticVersion(int major, int minor, int patch) {
     Preconditions.checkArgument(major >= 0, "major must be >= 0");
@@ -45,6 +47,18 @@ public final class SemanticVersion implements Comparable<SemanticVersion> {
     this.major = major;
     this.minor = minor;
     this.patch = patch;
+    this.prerelease = false;
+  }
+
+  public SemanticVersion(int major, int minor, int patch, boolean isPrerelease) {
+    Preconditions.checkArgument(major >= 0, "major must be >= 0");
+    Preconditions.checkArgument(minor >= 0, "minor must be >= 0");
+    Preconditions.checkArgument(patch >= 0, "patch must be >= 0");
+
+    this.major = major;
+    this.minor = minor;
+    this.patch = patch;
+    this.prerelease = isPrerelease;
   }
 
   public static SemanticVersion parse(String version) throws SemanticVersionParseException {
@@ -57,11 +71,15 @@ public final class SemanticVersion implements Comparable<SemanticVersion> {
     final int major;
     final int minor;
     final int patch;
+    boolean prerelease = false;
 
     try {
       major = Integer.valueOf(matcher.group(1));
       minor = Integer.valueOf(matcher.group(2));
       patch = Integer.valueOf(matcher.group(3));
+      for (int g = 4; g <= matcher.groupCount(); g += 1) {
+        prerelease |= (matcher.group(g) != null);
+      }
     } catch (NumberFormatException e) {
       throw new SemanticVersionParseException(e);
     }
@@ -71,7 +89,7 @@ public final class SemanticVersion implements Comparable<SemanticVersion> {
           String.format("major(%d), minor(%d), and patch(%d) must all be >= 0", major, minor, patch));
     }
 
-    return new SemanticVersion(major, minor, patch);
+    return new SemanticVersion(major, minor, patch, prerelease);
   }
 
   @Override
@@ -88,7 +106,12 @@ public final class SemanticVersion implements Comparable<SemanticVersion> {
       return cmp;
     }
 
-    return Integer.compare(patch, o.patch);
+    cmp = Integer.compare(patch, o.patch);
+    if (cmp != 0) {
+      return cmp;
+    }
+
+    return Boolean.compare(o.prerelease, prerelease);
   }
 
   @Override

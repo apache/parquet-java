@@ -60,10 +60,12 @@ public class MessageColumnIO extends GroupColumnIO {
   private List<PrimitiveColumnIO> leaves;
 
   private final boolean validating;
+  private final String createdBy;
 
-  MessageColumnIO(MessageType messageType, boolean validating) {
+  MessageColumnIO(MessageType messageType, boolean validating, String createdBy) {
     super(messageType, null, 0);
     this.validating = validating;
+    this.createdBy = createdBy;
   }
 
   public List<String[]> getColumnNames() {
@@ -113,7 +115,7 @@ public class MessageColumnIO extends GroupColumnIO {
             MessageColumnIO.this,
             filteringRecordMaterializer,
             validating,
-            new ColumnReadStoreImpl(columns, filteringRecordMaterializer.getRootConverter(), getType()));
+            new ColumnReadStoreImpl(columns, filteringRecordMaterializer.getRootConverter(), getType(), createdBy));
       }
 
       @Override
@@ -122,11 +124,10 @@ public class MessageColumnIO extends GroupColumnIO {
             MessageColumnIO.this,
             recordMaterializer,
             validating,
-            new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType()),
+            new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType(), createdBy),
             unboundRecordFilterCompat.getUnboundRecordFilter(),
             columns.getRowCount()
         );
-
       }
 
       @Override
@@ -135,7 +136,7 @@ public class MessageColumnIO extends GroupColumnIO {
             MessageColumnIO.this,
             recordMaterializer,
             validating,
-            new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType()));
+            new ColumnReadStoreImpl(columns, recordMaterializer.getRootConverter(), getType(), createdBy));
       }
     });
   }
