@@ -23,9 +23,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.filter2.predicate.Operators.Column;
-import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -43,40 +42,36 @@ public class ValidTypeMap {
   private ValidTypeMap() { }
 
   // classToParquetType and parquetTypeToClass are used as a bi-directional map
-  private static final Map<Class<?>, Set<FullTypeDescriptor>> classToParquetType = new HashMap<Class<?>, Set<FullTypeDescriptor>>();
-  private static final Map<FullTypeDescriptor, Set<Class<?>>> parquetTypeToClass = new HashMap<FullTypeDescriptor, Set<Class<?>>>();
+  private static final Map<Class<?>, Set<PrimitiveTypeName>> classToParquetType = new HashMap<Class<?>, Set<PrimitiveTypeName>>();
+  private static final Map<PrimitiveTypeName, Set<Class<?>>> parquetTypeToClass = new HashMap<PrimitiveTypeName, Set<Class<?>>>();
 
   // set up the mapping in both directions
-  private static void add(Class<?> c, FullTypeDescriptor f) {
-    Set<FullTypeDescriptor> descriptors = classToParquetType.get(c);
+  private static void add(Class<?> c, PrimitiveTypeName p) {
+    Set<PrimitiveTypeName> descriptors = classToParquetType.get(c);
     if (descriptors == null) {
-      descriptors = new HashSet<FullTypeDescriptor>();
+      descriptors = new HashSet<PrimitiveTypeName>();
       classToParquetType.put(c, descriptors);
     }
-    descriptors.add(f);
+    descriptors.add(p);
 
-    Set<Class<?>> classes = parquetTypeToClass.get(f);
+    Set<Class<?>> classes = parquetTypeToClass.get(p);
     if (classes == null) {
       classes = new HashSet<Class<?>>();
-      parquetTypeToClass.put(f, classes);
+      parquetTypeToClass.put(p, classes);
     }
     classes.add(c);
   }
 
   static {
-    // basic primitive columns
-    add(Integer.class, new FullTypeDescriptor(PrimitiveTypeName.INT32, null));
-    add(Long.class, new FullTypeDescriptor(PrimitiveTypeName.INT64, null));
-    add(Float.class, new FullTypeDescriptor(PrimitiveTypeName.FLOAT, null));
-    add(Double.class, new FullTypeDescriptor(PrimitiveTypeName.DOUBLE, null));
-    add(Boolean.class, new FullTypeDescriptor(PrimitiveTypeName.BOOLEAN, null));
+    for (PrimitiveTypeName t: PrimitiveTypeName.values()) {
+      Class<?> c = t.javaType;
 
-    // Both of these binary types are valid
-    add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, null));
-    add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, null));
+      if (c.isPrimitive()) {
+        c = PrimitiveToBoxedClass.get(c);
+      }
 
-    add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.BINARY, OriginalType.UTF8));
-    add(Binary.class, new FullTypeDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, OriginalType.UTF8));
+      add(c, t);
+    }
   }
 
   /**
@@ -87,14 +82,12 @@ public class ValidTypeMap {
    *
    * @param foundColumn the column as declared by the user
    * @param primitiveType the primitive type according to the schema
-   * @param originalType the original type according to the schema
    */
-  public static <T extends Comparable<T>> void assertTypeValid(Column<T> foundColumn, PrimitiveTypeName primitiveType, OriginalType originalType) {
+  public static <T extends Comparable<T>> void assertTypeValid(Column<T> foundColumn, PrimitiveTypeName primitiveType) {
     Class<T> foundColumnType = foundColumn.getColumnType();
     ColumnPath columnPath = foundColumn.getColumnPath();
 
-    Set<FullTypeDescriptor> validTypeDescriptors = classToParquetType.get(foundColumnType);
-    FullTypeDescriptor typeInFileMetaData = new FullTypeDescriptor(primitiveType, originalType);
+    Set<PrimitiveTypeName> validTypeDescriptors = classToParquetType.get(foundColumnType);
 
     if (validTypeDescriptors == null) {
       StringBuilder message = new StringBuilder();
@@ -105,18 +98,18 @@ public class ValidTypeMap {
           .append(foundColumnType.getName())
           .append(" which is not supported in FilterPredicates.");
 
-      Set<Class<?>> supportedTypes = parquetTypeToClass.get(typeInFileMetaData);
+      Set<Class<?>> supportedTypes = parquetTypeToClass.get(primitiveType);
       if (supportedTypes != null) {
         message
           .append(" Supported types for this column are: ")
           .append(supportedTypes);
       } else {
-        message.append(" There are no supported types for columns of " + typeInFileMetaData);
+        message.append(" There are no supported types for columns of " + primitiveType);
       }
       throw new IllegalArgumentException(message.toString());
     }
 
-    if (!validTypeDescriptors.contains(typeInFileMetaData)) {
+    if (!validTypeDescriptors.contains(primitiveType)) {
       StringBuilder message = new StringBuilder();
       message
           .append("FilterPredicate column: ")
@@ -126,53 +119,10 @@ public class ValidTypeMap {
           .append(") does not match the schema found in file metadata. Column ")
           .append(columnPath.toDotString())
           .append(" is of type: ")
-          .append(typeInFileMetaData)
+          .append(primitiveType)
           .append("\nValid types for this column are: ")
-          .append(parquetTypeToClass.get(typeInFileMetaData));
+          .append(parquetTypeToClass.get(primitiveType));
       throw new IllegalArgumentException(message.toString());
-    }
-  }
-
-  private static final class FullTypeDescriptor {
-    private final PrimitiveTypeName primitiveType;
-    private final OriginalType originalType;
-
-    private FullTypeDescriptor(PrimitiveTypeName primitiveType, OriginalType originalType) {
-      this.primitiveType = primitiveType;
-      this.originalType = originalType;
-    }
-
-    public PrimitiveTypeName getPrimitiveType() {
-      return primitiveType;
-    }
-
-    public OriginalType getOriginalType() {
-      return originalType;
-    }
-
-    @Override
-    public String toString() {
-      return "FullTypeDescriptor(" + "PrimitiveType: " + primitiveType + ", OriginalType: " + originalType + ')';
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-
-      FullTypeDescriptor that = (FullTypeDescriptor) o;
-
-      if (originalType != that.originalType) return false;
-      if (primitiveType != that.primitiveType) return false;
-
-      return true;
-    }
-
-    @Override
-    public int hashCode() {
-      int result = primitiveType != null ? primitiveType.hashCode() : 0;
-      result = 31 * result + (originalType != null ? originalType.hashCode() : 0);
-      return result;
     }
   }
 }

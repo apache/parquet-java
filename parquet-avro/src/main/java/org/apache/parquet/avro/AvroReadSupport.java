@@ -68,6 +68,15 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
     configuration.set(AVRO_DATA_SUPPLIER, clazz.getName());
   }
 
+  private GenericData model = null;
+
+  public AvroReadSupport() {
+  }
+
+  public AvroReadSupport(GenericData model) {
+    this.model = model;
+  }
+
   @Override
   public ReadContext init(Configuration configuration,
                           Map<String, String> keyValueMetaData,
@@ -130,7 +139,10 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
         parquetSchema, avroSchema, model);
   }
 
-  private static GenericData getDataModel(Configuration conf) {
+  private GenericData getDataModel(Configuration conf) {
+    if (model != null) {
+      return model;
+    }
     Class<? extends AvroDataSupplier> suppClass = conf.getClass(
         AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
     return ReflectionUtils.newInstance(suppClass, conf).get();

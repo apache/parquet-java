@@ -645,7 +645,8 @@ public class ParquetWriteProtocol extends ParquetProtocol {
   }
 
   private void writeBinaryToRecordConsumer(ByteBuffer buf) {
-    recordConsumer.addBinary(Binary.fromByteArray(buf.array(), buf.position(), buf.limit() - buf.position()));
+    recordConsumer.addBinary(Binary.fromReusedByteArray(buf.array(), buf.position(),
+        buf.limit() - buf.position()));
   }
 
   private void writeStringToRecordConsumer(String str) {

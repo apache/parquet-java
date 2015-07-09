@@ -33,10 +33,12 @@ import static org.apache.parquet.bytes.BytesUtils.UTF8;
 
 abstract public class Binary implements Comparable<Binary>, Serializable {
 
+  protected boolean isBackingBytesReused;
+
   // this isn't really something others should extend
   private Binary() { }
 
-  public static final Binary EMPTY = fromByteArray(new byte[0]);
+  public static final Binary EMPTY = fromConstantByteArray(new byte[0]);
 
   abstract public String toStringUsingUTF8();
 
@@ -47,6 +49,16 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   abstract public void writeTo(DataOutput out) throws IOException;
 
   abstract public byte[] getBytes();
+
+  /**
+   * Variant of getBytes() that avoids copying backing data structure by returning
+   * backing byte[] of the Binary. Do not modify backing byte[] unless you know what
+   * you are doing.
+   * @return backing byte[] of correct size, with an offset of 0, if possible, else returns result of getBytes()
+   */
+  abstract public byte[] getBytesUnsafe();
+
+  abstract public Binary slice(int start, int length);
 
   abstract boolean equals(byte[] bytes, int offset, int length);
 
@@ -71,7 +83,28 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   @Override
   public String toString() {
-    return "Binary{" + length() + " bytes, " + Arrays.toString(getBytes()) + "}";
+    return "Binary{" +
+        length() +
+        (isBackingBytesReused ? " reused": " constant") +
+        " bytes, " +
+        Arrays.toString(getBytesUnsafe())
+        + "}";
+  }
+
+  public Binary copy() {
+    if (isBackingBytesReused) {
+      return Binary.fromConstantByteArray(getBytes());
+    } else {
+      return this;
+    }
+  }
+
+  /**
+   * Signals if backing bytes are owned, and can be modified, by producer of the Binary
+   * @return if backing bytes are held on by producer of the Binary
+   */
+  public boolean isBackingBytesReused() {
+    return isBackingBytesReused;
   }
 
   private static class ByteArraySliceBackedBinary extends Binary {
@@ -79,10 +112,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     private final int offset;
     private final int length;
 
-    public ByteArraySliceBackedBinary(byte[] value, int offset, int length) {
+    public ByteArraySliceBackedBinary(byte[] value, int offset, int length, boolean isBackingBytesReused) {
       this.value = value;
       this.offset = offset;
       this.length = length;
+      this.isBackingBytesReused = isBackingBytesReused;
     }
 
     @Override
@@ -107,6 +141,21 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     public byte[] getBytes() {
       return Arrays.copyOfRange(value, offset, offset + length);
+    }
+
+    @Override
+    public byte[] getBytesUnsafe() {
+      // Backing array is larger than the slice used for this Binary.
+      return getBytes();
+    }
+
+    @Override
+    public Binary slice(int start, int length) {
+      if (isBackingBytesReused) {
+        return Binary.fromReusedByteArray(value, offset + start, length);
+      } else {
+        return Binary.fromConstantByteArray(value, offset + start, length);
+      }
     }
 
     @Override
@@ -147,8 +196,19 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   }
 
   private static class FromStringBinary extends ByteArrayBackedBinary {
-    public FromStringBinary(byte[] value) {
-      super(value);
+    public FromStringBinary(String value) {
+      // reused is false, because we do not
+      // hold on to the underlying bytes,
+      // and nobody else has a handle to them
+      super(encodeUTF8(value), false);
+    }
+
+    private static byte[] encodeUTF8(String value) {
+      try {
+        return value.getBytes("UTF-8");
+      } catch (UnsupportedEncodingException e) {
+        throw new ParquetEncodingException("UTF-8 not supported.", e);
+      }
     }
 
     @Override
@@ -157,15 +217,29 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     }
   }
 
+  public static Binary fromReusedByteArray(final byte[] value, final int offset, final int length) {
+    return new ByteArraySliceBackedBinary(value, offset, length, true);
+  }
+
+  public static Binary fromConstantByteArray(final byte[] value, final int offset,
+                                             final int length) {
+    return new ByteArraySliceBackedBinary(value, offset, length, false);
+  }
+
+  @Deprecated
+  /**
+   * @deprecated Use @link{fromReusedByteArray} or @link{fromConstantByteArray} instead
+   */
   public static Binary fromByteArray(final byte[] value, final int offset, final int length) {
-    return new ByteArraySliceBackedBinary(value, offset, length);
+    return fromReusedByteArray(value, offset, length); // Assume producer intends to reuse byte[]
   }
 
   private static class ByteArrayBackedBinary extends Binary {
     private final byte[] value;
 
-    public ByteArrayBackedBinary(byte[] value) {
+    public ByteArrayBackedBinary(byte[] value, boolean isBackingBytesReused) {
       this.value = value;
+      this.isBackingBytesReused = isBackingBytesReused;
     }
 
     @Override
@@ -185,7 +259,21 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public byte[] getBytes() {
+      return Arrays.copyOfRange(value, 0, value.length);
+    }
+
+    @Override
+    public byte[] getBytesUnsafe() {
       return value;
+    }
+
+    @Override
+    public Binary slice(int start, int length) {
+      if (isBackingBytesReused) {
+        return Binary.fromReusedByteArray(value, start, length);
+      } else {
+        return Binary.fromConstantByteArray(value, start, length);
+      }
     }
 
     @Override
@@ -225,15 +313,29 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   }
 
+  public static Binary fromReusedByteArray(final byte[] value) {
+    return new ByteArrayBackedBinary(value, true);
+  }
+
+  public static Binary fromConstantByteArray(final byte[] value) {
+    return new ByteArrayBackedBinary(value, false);
+  }
+
+  @Deprecated
+  /**
+   * @deprecated Use @link{fromReusedByteArray} or @link{fromConstantByteArray} instead
+   */
   public static Binary fromByteArray(final byte[] value) {
-    return new ByteArrayBackedBinary(value);
+    return fromReusedByteArray(value); // Assume producer intends to reuse byte[]
   }
 
   private static class ByteBufferBackedBinary extends Binary {
     private transient ByteBuffer value;
+    private transient byte[] cachedBytes;
 
-    public ByteBufferBackedBinary(ByteBuffer value) {
+    public ByteBufferBackedBinary(ByteBuffer value, boolean isBackingBytesReused) {
       this.value = value;
+      this.isBackingBytesReused = isBackingBytesReused;
     }
 
     @Override
@@ -249,7 +351,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     public void writeTo(OutputStream out) throws IOException {
       // TODO: should not have to materialize those bytes
-      out.write(getBytes());
+      out.write(getBytesUnsafe());
     }
 
     @Override
@@ -258,7 +360,20 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
       value.mark();
       value.get(bytes).reset();
+      if (!isBackingBytesReused) { // backing buffer might change
+        cachedBytes = bytes;
+      }
       return bytes;
+    }
+
+    @Override
+    public byte[] getBytesUnsafe() {
+      return cachedBytes != null ? cachedBytes : getBytes();
+    }
+
+    @Override
+    public Binary slice(int start, int length) {
+      return Binary.fromConstantByteArray(getBytesUnsafe(), start, length);
     }
 
     @Override
@@ -267,7 +382,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
         return Binary.hashCode(value.array(), value.arrayOffset() + value.position(),
             value.arrayOffset() + value.remaining());
       }
-      byte[] bytes = getBytes();
+      byte[] bytes = getBytesUnsafe();
       return Binary.hashCode(bytes, 0, bytes.length);
     }
 
@@ -277,7 +392,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
         return other.equals(value.array(), value.arrayOffset() + value.position(),
             value.arrayOffset() + value.remaining());
       }
-      byte[] bytes = getBytes();
+      byte[] bytes = getBytesUnsafe();
       return other.equals(bytes, 0, bytes.length);
     }
 
@@ -287,7 +402,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
         return Binary.equals(value.array(), value.arrayOffset() + value.position(),
             value.arrayOffset() + value.remaining(), other, otherOffset, otherLength);
       }
-      byte[] bytes = getBytes();
+      byte[] bytes = getBytesUnsafe();
       return Binary.equals(bytes, 0, bytes.length, other, otherOffset, otherLength);
     }
 
@@ -297,7 +412,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
         return other.compareTo(value.array(), value.arrayOffset() + value.position(),
             value.arrayOffset() + value.remaining());
       }
-      byte[] bytes = getBytes();
+      byte[] bytes = getBytesUnsafe();
       return other.compareTo(bytes, 0, bytes.length);
     }
 
@@ -307,7 +422,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
         return Binary.compareTwoByteArrays(value.array(), value.arrayOffset() + value.position(),
             value.arrayOffset() + value.remaining(), other, otherOffset, otherLength);
       }
-      byte[] bytes = getBytes();
+      byte[] bytes = getBytesUnsafe();
       return Binary.compareTwoByteArrays(bytes, 0, bytes.length, other, otherOffset, otherLength);
     }
 
@@ -319,11 +434,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     public void writeTo(DataOutput out) throws IOException {
       // TODO: should not have to materialize those bytes
-      out.write(getBytes());
+      out.write(getBytesUnsafe());
     }
 
     private void writeObject(java.io.ObjectOutputStream out) throws IOException {
-      byte[] bytes = getBytes();
+      byte[] bytes = getBytesUnsafe();
       out.writeInt(bytes.length);
       out.write(bytes);
     }
@@ -341,16 +456,24 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   }
 
+  public static Binary fromReusedByteBuffer(final ByteBuffer value) {
+    return new ByteBufferBackedBinary(value, true);
+  }
+
+  public static Binary fromConstantByteBuffer(final ByteBuffer value) {
+    return new ByteBufferBackedBinary(value, false);
+  }
+
+  @Deprecated
+  /**
+   * @deprecated Use @link{fromReusedByteBuffer} or @link{fromConstantByteBuffer} instead
+   */
   public static Binary fromByteBuffer(final ByteBuffer value) {
-    return new ByteBufferBackedBinary(value);
+    return fromReusedByteBuffer(value); // Assume producer intends to reuse byte[]
   }
 
   public static Binary fromString(final String value) {
-    try {
-      return new FromStringBinary(value.getBytes("UTF-8"));
-    } catch (UnsupportedEncodingException e) {
-      throw new ParquetEncodingException("UTF-8 not supported.", e);
-    }
+    return new FromStringBinary(value);
   }
 
   /**

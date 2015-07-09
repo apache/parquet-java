@@ -69,7 +69,7 @@ public class TestFieldsPath {
 
   }
 
-  private static class PrimitivePathVisitor implements ThriftType.TypeVisitor<List<String>, FieldsPath> {
+  private static class PrimitivePathVisitor implements ThriftType.StateVisitor<List<String>, FieldsPath> {
     private String delim;
 
     private PrimitivePathVisitor(String delim) {

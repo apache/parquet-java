@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
-    <version>14</version>
+    <version>16</version>
   </parent>
 
   <groupId>org.apache.parquet</groupId>
@@ -56,32 +56,6 @@
     </developer>
   </developers>
 
-  <distributionManagement>
-    <snapshotRepository>
-      <id>sonatype-nexus-snapshots</id>
-      <name>Sonatype OSS</name>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-    </snapshotRepository>
-    <repository>
-      <id>sonatype-nexus-staging</id>
-      <name>Nexus Release Repository</name>
-      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-    </repository>
-  </distributionManagement>
-
-  <repositories>
-    <repository>
-      <id>sonatype-nexus-snapshots</id>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-     </repository>
-  </repositories>
-
   <!-- this is needed for maven-thrift-plugin, would like to remove this.
    see: https://issues.apache.org/jira/browse/THRIFT-1536  -->
   <pluginRepositories>
@@ -116,6 +90,7 @@
     <pig.classifier />
     <thrift.version>0.7.0</thrift.version>
     <fastutil.version>6.5.7</fastutil.version>
+    <semver.api.version>0.9.33</semver.api.version>
   </properties>
 
   <modules>
@@ -212,6 +187,16 @@
     <pluginManagement>
       <plugins>
         <plugin>
+          <!-- Disable the source artifact from ASF parent -->
+          <artifactId>maven-assembly-plugin</artifactId>
+          <executions>
+            <execution>
+              <id>source-release-assembly</id>
+              <phase>none</phase>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
           <artifactId>maven-enforcer-plugin</artifactId>
           <version>1.3.1</version>
           <dependencies>
@@ -241,23 +226,18 @@
                      <exclude>org/apache/parquet/column/**</exclude>
                      <exclude>org/apache/parquet/hadoop/ParquetInputSplit</exclude>
                      <exclude>shaded/**</exclude> <!-- shaded by parquet -->
-                     <exclude>parquet/**</exclude> <!-- shaded by parquet-format -->
+                     <!-- temporary exclusions for false-positives -->
+                     <exclude>org/apache/parquet/Version</exclude>
+                     <exclude>org/apache/parquet/schema/**</exclude> <!-- methods moved to new superclass -->
+                     <exclude>org/apache/parquet/thrift/ThriftSchemaConvertVisitor</exclude> <!-- not public -->
+                     <exclude>org/apache/parquet/avro/AvroParquetReader</exclude> <!-- returns subclass of old return class -->
+                     <exclude>org/apache/parquet/avro/SpecificDataSupplier</exclude> <!-- made public -->
                    </excludes>
                  </requireBackwardCompatibility>
                </rules>
              </configuration>
            </execution>
          </executions>
-        </plugin>
-        <plugin>
-         <groupId>org.apache.maven.plugins</groupId>
-         <artifactId>maven-release-plugin</artifactId>
-         <version>2.1</version>
-         <configuration>
-          <mavenExecutorId>forked-path</mavenExecutorId>
-          <useReleaseProfile>false</useReleaseProfile>
-          <arguments>-Psonatype-oss-release</arguments>
-         </configuration>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -473,53 +453,6 @@
                   <goal>site</goal>
                 </goals>
                 <phase>site-deploy</phase>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-    <profile>
-      <id>sonatype-oss-release</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-source-plugin</artifactId>
-            <version>2.1.2</version>
-            <executions>
-              <execution>
-                <id>attach-sources</id>
-                <goals>
-                  <goal>jar-no-fork</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-javadoc-plugin</artifactId>
-            <version>2.7</version>
-            <executions>
-              <execution>
-                <id>attach-javadocs</id>
-                <goals>
-                  <goal>jar</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <version>1.1</version>
-            <executions>
-              <execution>
-                <id>sign-artifacts</id>
-                <phase>verify</phase>
-                <goals>
-                  <goal>sign</goal>
-                </goals>
               </execution>
             </executions>
           </plugin>

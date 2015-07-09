@@ -235,7 +235,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
       int id = binaryDictionaryContent.getInt(v);
       if (id == -1) {
         id = binaryDictionaryContent.size();
-        binaryDictionaryContent.put(copy(v), id);
+        binaryDictionaryContent.put(v.copy(), id);
         // length as int (4 bytes) + actual bytes
         dictionaryByteSize += 4 + v.length();
       }
@@ -283,11 +283,6 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         writer.writeBytes(reverseDictionary[id]);
       }
     }
-
-    protected static Binary copy(Binary binary) {
-      return Binary.fromByteArray(
-          Arrays.copyOf(binary.getBytes(), binary.length()));
-    }
   }
 
   /**
@@ -311,7 +306,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
       int id = binaryDictionaryContent.getInt(value);
       if (id == -1) {
         id = binaryDictionaryContent.size();
-        binaryDictionaryContent.put(copy(value), id);
+        binaryDictionaryContent.put(value.copy(), id);
         dictionaryByteSize += length;
       }
       encodedValues.add(id);

@@ -38,6 +38,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.codec.CodecConfig;
@@ -80,6 +81,10 @@ import org.apache.parquet.hadoop.util.ConfigurationUtil;
  * # To enable/disable summary metadata aggregation at the end of a MR job
  * # The default is true (enabled)
  * parquet.enable.summary-metadata=true # false to disable summary aggregation
+ *
+ * # Maximum size (in bytes) allowed as padding to align row groups
+ * # This is also the minimum size of a row group. Default: 0
+ * parquet.writer.max-padding=2097152 # 2 MB
  * </pre>
  *
  * If parquet.compression is not set, the following properties are checked (FileOutputFormat behavior).
@@ -109,6 +114,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String ENABLE_JOB_SUMMARY   = "parquet.enable.summary-metadata";
   public static final String MEMORY_POOL_RATIO    = "parquet.memory.pool.ratio";
   public static final String MIN_MEMORY_ALLOCATION = "parquet.memory.min.chunk.size";
+  public static final String MAX_PADDING_BYTES    = "parquet.writer.max-padding";
+
+  // default to no padding for now
+  private static final int DEFAULT_MAX_PADDING_SIZE = 0;
 
   public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
     getConfiguration(job).set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
@@ -225,6 +234,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return CodecConfig.from(taskAttemptContext).getCodec();
   }
 
+  public static void setMaxPaddingSize(JobContext jobContext, int maxPaddingSize) {
+    setMaxPaddingSize(getConfiguration(jobContext), maxPaddingSize);
+  }
+
+  public static void setMaxPaddingSize(Configuration conf, int maxPaddingSize) {
+    conf.setInt(MAX_PADDING_BYTES, maxPaddingSize);
+  }
+
+  private static int getMaxPaddingSize(Configuration conf) {
+    // default to no padding, 0% of the row group size
+    return conf.getInt(MAX_PADDING_BYTES, DEFAULT_MAX_PADDING_SIZE);
+  }
 
 
   private WriteSupport<T> writeSupport;
@@ -284,9 +305,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (INFO) LOG.info("Validation is " + (validating ? "on" : "off"));
     WriterVersion writerVersion = getWriterVersion(conf);
     if (INFO) LOG.info("Writer version is: " + writerVersion);
+    int maxPaddingSize = getMaxPaddingSize(conf);
+    if (INFO) LOG.info("Maximum row group padding size is " + maxPaddingSize + " bytes");
 
     WriteContext init = writeSupport.init(conf);
-    ParquetFileWriter w = new ParquetFileWriter(conf, init.getSchema(), file);
+    ParquetFileWriter w = new ParquetFileWriter(
+        conf, init.getSchema(), file, Mode.CREATE, blockSize, maxPaddingSize);
     w.start();
 
     float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO,

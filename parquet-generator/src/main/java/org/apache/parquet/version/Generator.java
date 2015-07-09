@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,14 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.avro;
+package org.apache.parquet.version;
 
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.specific.SpecificData;
-
-public class SpecificDataSupplier implements AvroDataSupplier {
-  @Override
-  public GenericData get() {
-    return SpecificData.get();
+/**
+ * main class for code generation hook in build for version generation
+ */
+public class Generator {
+  public static void main(String[] args) throws Exception {
+    VersionGenerator.main(args);
   }
 }
