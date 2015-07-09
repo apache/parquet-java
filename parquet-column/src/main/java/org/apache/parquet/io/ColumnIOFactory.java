@@ -35,30 +35,28 @@ import org.apache.parquet.schema.TypeVisitor;
  */
 public class ColumnIOFactory {
 
-  public class ColumnIOCreatorVisitor implements TypeVisitor {
+  private class ColumnIOCreatorVisitor implements TypeVisitor {
 
     private MessageColumnIO columnIO;
     private GroupColumnIO current;
     private List<PrimitiveColumnIO> leaves = new ArrayList<PrimitiveColumnIO>();
     private final boolean validating;
     private final MessageType requestedSchema;
+    private final String createdBy;
     private int currentRequestedIndex;
     private Type currentRequestedType;
     private boolean strictTypeChecking;
-
-    public ColumnIOCreatorVisitor(boolean validating, MessageType requestedSchema) {
-      this(validating, requestedSchema, true);
-    }
     
-    public ColumnIOCreatorVisitor(boolean validating, MessageType requestedSchema, boolean strictTypeChecking) {
+    private ColumnIOCreatorVisitor(boolean validating, MessageType requestedSchema, String createdBy, boolean strictTypeChecking) {
       this.validating = validating;
       this.requestedSchema = requestedSchema;
+      this.createdBy = createdBy;
       this.strictTypeChecking = strictTypeChecking;
     }
 
     @Override
     public void visit(MessageType messageType) {
-      columnIO = new MessageColumnIO(requestedSchema, validating);
+      columnIO = new MessageColumnIO(requestedSchema, validating, createdBy);
       visitChildren(columnIO, messageType, requestedSchema);
       columnIO.setLevels();
       columnIO.setLeaves(leaves);
@@ -112,25 +110,43 @@ public class ColumnIOFactory {
 
   }
 
+  private final String createdBy;
   private final boolean validating;
 
   /**
    * validation is off by default
    */
   public ColumnIOFactory() {
-    this(false);
+    this(null, false);
+  }
+
+  /**
+   * validation is off by default
+   * @param createdBy createdBy string for readers
+   */
+  public ColumnIOFactory(String createdBy) {
+    this(createdBy, false);
   }
 
   /**
    * @param validating to turn validation on
    */
   public ColumnIOFactory(boolean validating) {
+    this(null, validating);
+  }
+
+  /**
+   * @param createdBy createdBy string for readers
+   * @param validating to turn validation on
+   */
+  public ColumnIOFactory(String createdBy, boolean validating) {
     super();
+    this.createdBy = createdBy;
     this.validating = validating;
   }
 
   /**
-   * @param schema the requestedSchema we want to read/write
+   * @param requestedSchema the requestedSchema we want to read/write
    * @param fileSchema the file schema (when reading it can be different from the requested schema)
    * @return the corresponding serializing/deserializing structure
    */
@@ -139,13 +155,13 @@ public class ColumnIOFactory {
   }
   
   /**
-   * @param schema the requestedSchema we want to read/write
+   * @param requestedSchema the requestedSchema we want to read/write
    * @param fileSchema the file schema (when reading it can be different from the requested schema)
    * @param strict should file type and requested primitive types match
    * @return the corresponding serializing/deserializing structure
    */
   public MessageColumnIO getColumnIO(MessageType requestedSchema, MessageType fileSchema, boolean strict) {
-    ColumnIOCreatorVisitor visitor = new ColumnIOCreatorVisitor(validating, requestedSchema, strict);
+    ColumnIOCreatorVisitor visitor = new ColumnIOCreatorVisitor(validating, requestedSchema, createdBy, strict);
     fileSchema.accept(visitor);
     return visitor.getColumnIO();
   }

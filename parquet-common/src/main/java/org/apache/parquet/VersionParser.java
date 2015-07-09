@@ -18,6 +18,7 @@
  */
 package org.apache.parquet;
 
+import org.apache.parquet.SemanticVersion.SemanticVersionParseException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,14 +36,40 @@ public class VersionParser {
 
   public static class ParsedVersion {
     public final String application;
-    public final String semver;
+    public final String version;
     public final String appBuildHash;
 
-    public ParsedVersion(String application, String semver, String appBuildHash) {
+    private final boolean hasSemver;
+    private final SemanticVersion semver;
+
+    public ParsedVersion(String application, String version, String appBuildHash) {
       checkArgument(!Strings.isNullOrEmpty(application), "application cannot be null or empty");
       this.application = application;
-      this.semver = Strings.isNullOrEmpty(semver) ? null : semver;
+      this.version = Strings.isNullOrEmpty(version) ? null : version;
       this.appBuildHash = Strings.isNullOrEmpty(appBuildHash) ? null : appBuildHash;
+
+      SemanticVersion sv;
+      boolean hasSemver;
+      try {
+        sv = SemanticVersion.parse(version);
+        hasSemver = true;
+      } catch (RuntimeException e) {
+        sv = null;
+        hasSemver = false;
+      } catch (SemanticVersionParseException e) {
+        sv = null;
+        hasSemver = false;
+      }
+      this.semver = sv;
+      this.hasSemver = hasSemver;
+    }
+
+    public boolean hasSemanticVersion() {
+      return hasSemver;
+    }
+
+    public SemanticVersion getSemanticVersion() {
+      return semver;
     }
 
     @Override
@@ -55,7 +82,7 @@ public class VersionParser {
       if (appBuildHash != null ? !appBuildHash.equals(version.appBuildHash) : version.appBuildHash != null)
         return false;
       if (application != null ? !application.equals(version.application) : version.application != null) return false;
-      if (semver != null ? !semver.equals(version.semver) : version.semver != null) return false;
+      if (this.version != null ? !this.version.equals(version.version) : version.version != null) return false;
 
       return true;
     }
@@ -63,7 +90,7 @@ public class VersionParser {
     @Override
     public int hashCode() {
       int result = application != null ? application.hashCode() : 0;
-      result = 31 * result + (semver != null ? semver.hashCode() : 0);
+      result = 31 * result + (version != null ? version.hashCode() : 0);
       result = 31 * result + (appBuildHash != null ? appBuildHash.hashCode() : 0);
       return result;
     }
@@ -72,7 +99,7 @@ public class VersionParser {
     public String toString() {
       return "ParsedVersion(" +
           "application=" + application +
-          ", semver=" + semver +
+          ", semver=" + version +
           ", appBuildHash=" + appBuildHash +
           ')';
     }

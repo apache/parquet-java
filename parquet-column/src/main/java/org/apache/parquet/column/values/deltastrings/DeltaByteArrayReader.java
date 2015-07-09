@@ -20,6 +20,7 @@ package org.apache.parquet.column.values.deltastrings;
 
 import java.io.IOException;
 
+import org.apache.parquet.column.values.RequiresPreviousReader;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesReader;
@@ -31,7 +32,7 @@ import org.apache.parquet.io.api.Binary;
  * @author Aniket Mokashi
  *
  */
-public class DeltaByteArrayReader extends ValuesReader {
+public class DeltaByteArrayReader extends ValuesReader implements RequiresPreviousReader {
   private ValuesReader prefixLengthReader;
   private ValuesReader suffixReader;
 
@@ -63,7 +64,13 @@ public class DeltaByteArrayReader extends ValuesReader {
     // This does not copy bytes
     Binary suffix = suffixReader.readBytes();
     int length = prefixLength + suffix.length();
-    
+
+    // NOTE: due to PARQUET-246, it is important that we
+    // respect prefixLength which was read from prefixLengthReader,
+    // even for the *first* value of a page. Even though the first
+    // value of the page should have an empty prefix, it may not
+    // because of PARQUET-246.
+
     // We have to do this to materialize the output
     if(prefixLength != 0) {
       byte[] out = new byte[length];
@@ -74,5 +81,19 @@ public class DeltaByteArrayReader extends ValuesReader {
       previous = suffix;
     }
     return previous;
+  }
+
+  /**
+   * There was a bug (PARQUET-246) in which DeltaByteArrayWriter's reset() method did not
+   * clear the previous value state that it tracks internally. This resulted in the first
+   * value of all pages (except for the first page) to be a delta from the last value of the
+   * previous page. In order to read corrupted files written with this bug, when reading a
+   * new page we need to recover the previous page's last value to use it (if needed) to
+   * read the first value.
+   */
+  public void setPreviousReader(ValuesReader reader) {
+    if (reader != null) {
+      this.previous = ((DeltaByteArrayReader) reader).previous;
+    }
   }
 }
