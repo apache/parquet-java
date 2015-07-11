@@ -52,7 +52,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
    * Accepts a ";" delimited list of globs in the syntax implemented by {@link DeprecatedFieldProjectionFilter}
    */
   @Deprecated
-  public static final String DEPRECATED_THRIFT_COLUMN_FILTER_KEY = "parquet.thrift.column.filter";
+  public static final String THRIFT_COLUMN_FILTER_KEY = "parquet.thrift.column.filter";
 
   /**
    * Accepts a ";" delimited list of glob paths, in the syntax implemented by {@link StrictFieldProjectionFilter}
@@ -99,7 +99,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
 
   @Deprecated
   public static void setProjectionPushdown(JobConf jobConf, String projectionString) {
-    jobConf.set(DEPRECATED_THRIFT_COLUMN_FILTER_KEY, projectionString);
+    jobConf.set(THRIFT_COLUMN_FILTER_KEY, projectionString);
   }
 
   public static void setStrictFieldProjectionFilter(Configuration conf, String semicolonDelimitedGlobs) {
@@ -107,7 +107,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
   }
 
   public static FieldProjectionFilter getFieldProjectionFilter(Configuration conf) {
-    String deprecated = conf.get(DEPRECATED_THRIFT_COLUMN_FILTER_KEY);
+    String deprecated = conf.get(THRIFT_COLUMN_FILTER_KEY);
     String strict = conf.get(STRICT_THRIFT_COLUMN_FILTER_KEY);
 
     if (Strings.isNullOrEmpty(deprecated) && Strings.isNullOrEmpty(strict)) {
@@ -117,18 +117,18 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     if(!Strings.isNullOrEmpty(deprecated) && !Strings.isNullOrEmpty(strict)) {
       throw new ThriftProjectionException(
           "You cannot provide both "
-              + DEPRECATED_THRIFT_COLUMN_FILTER_KEY
+              + THRIFT_COLUMN_FILTER_KEY
               + " and "
               + STRICT_THRIFT_COLUMN_FILTER_KEY
               +"! "
-              + DEPRECATED_THRIFT_COLUMN_FILTER_KEY
+              + THRIFT_COLUMN_FILTER_KEY
               + " is deprecated."
       );
     }
 
     if (!Strings.isNullOrEmpty(deprecated)) {
       LOG.warn(String.format("Using %s is deprecated. Please see the docs for %s!",
-          DEPRECATED_THRIFT_COLUMN_FILTER_KEY, STRICT_THRIFT_COLUMN_FILTER_KEY));
+          THRIFT_COLUMN_FILTER_KEY, STRICT_THRIFT_COLUMN_FILTER_KEY));
       return new DeprecatedFieldProjectionFilter(deprecated);
     }
 
@@ -162,7 +162,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
       throw new ThriftProjectionException(
           String.format("You cannot provide both a partial schema and field projection filter."
                   + "Only one of (%s, %s, %s) should be set.",
-              PARQUET_READ_SCHEMA, STRICT_THRIFT_COLUMN_FILTER_KEY, DEPRECATED_THRIFT_COLUMN_FILTER_KEY));
+              PARQUET_READ_SCHEMA, STRICT_THRIFT_COLUMN_FILTER_KEY, THRIFT_COLUMN_FILTER_KEY));
     }
 
     //set requestedProjections only when it's specified
