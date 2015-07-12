@@ -106,13 +106,17 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     conf.set(STRICT_THRIFT_COLUMN_FILTER_KEY, semicolonDelimitedGlobs);
   }
 
+  private static boolean hasFilter(Configuration conf) {
+      return !Strings.isNullOrEmpty(conf.get(DEPRECATED_THRIFT_COLUMN_FILTER_KEY)) ||
+          !Strings.isNullOrEmpty(conf.get(STRICT_THRIFT_COLUMN_FILTER_KEY));
+  }
   public static FieldProjectionFilter getFieldProjectionFilter(Configuration conf) {
+    if (!hasFilter(conf)) {
+      return FieldProjectionFilter.ALL_COLUMNS;
+    }
+
     String deprecated = conf.get(DEPRECATED_THRIFT_COLUMN_FILTER_KEY);
     String strict = conf.get(STRICT_THRIFT_COLUMN_FILTER_KEY);
-
-    if (Strings.isNullOrEmpty(deprecated) && Strings.isNullOrEmpty(strict)) {
-      return null;
-    }
 
     if(!Strings.isNullOrEmpty(deprecated) && !Strings.isNullOrEmpty(strict)) {
       throw new ThriftProjectionException(
@@ -149,26 +153,27 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     this.thriftClass = thriftClass;
   }
 
-  @Override
-  public org.apache.parquet.hadoop.api.ReadSupport.ReadContext init(InitContext context) {
+
+  private MessageType getRequestedSchema(InitContext context) {
     final Configuration configuration = context.getConfiguration();
     final MessageType fileMessageType = context.getFileSchema();
-    MessageType requestedProjection = fileMessageType;
+    MessageType requestedProjection;
     String partialSchemaString = configuration.get(ReadSupport.PARQUET_READ_SCHEMA);
-
+    // If user does not specify projection filter via configuration object, it gets ALL_COLUMNS filter
+    // which reads all columns
     FieldProjectionFilter projectionFilter = getFieldProjectionFilter(configuration);
 
-    if (partialSchemaString != null && projectionFilter != null) {
+    if (partialSchemaString != null &&  hasFilter(configuration)) {
       throw new ThriftProjectionException(
           String.format("You cannot provide both a partial schema and field projection filter."
                   + "Only one of (%s, %s, %s) should be set.",
               PARQUET_READ_SCHEMA, STRICT_THRIFT_COLUMN_FILTER_KEY, DEPRECATED_THRIFT_COLUMN_FILTER_KEY));
     }
 
-    //set requestedProjections only when it's specified
+    //set requestedProjection
     if (partialSchemaString != null) {
       requestedProjection = getSchemaForRead(fileMessageType, partialSchemaString);
-    } else if (projectionFilter != null) {
+    } else {
       try {
         initThriftClassFromMultipleFiles(context.getKeyValueMetadata(), configuration);
         requestedProjection =  getProjectedSchema(projectionFilter);
@@ -177,6 +182,13 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
       }
     }
 
+    return requestedProjection;
+  }
+
+  @Override
+  public org.apache.parquet.hadoop.api.ReadSupport.ReadContext init(InitContext context) {
+    final MessageType fileMessageType = context.getFileSchema();
+    MessageType requestedProjection = getRequestedSchema(context);
     MessageType schemaForRead = getSchemaForRead(fileMessageType, requestedProjection);
     return new ReadContext(schemaForRead);
   }
