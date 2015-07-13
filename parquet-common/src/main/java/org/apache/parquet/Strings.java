@@ -40,7 +40,19 @@ public final class Strings {
    * @return a single joined string
    */
   public static String join(Iterable<String> s, String on) {
-    Iterator<String> iter = s.iterator();
+    return join(s.iterator(), on);
+  }
+
+  /**
+   * Join an Iterator of Strings into a single string with a delimiter.
+   * For example, join(Arrays.asList("foo","","bar","x"), "|") would return
+   * "foo||bar|x"
+   *
+   * @param iter an iterator of strings
+   * @param on the delimiter
+   * @return a single joined string
+   */
+  public static String join(Iterator<String> iter, String on) {
     StringBuilder sb = new StringBuilder();
     while (iter.hasNext()) {
       sb.append(iter.next());
