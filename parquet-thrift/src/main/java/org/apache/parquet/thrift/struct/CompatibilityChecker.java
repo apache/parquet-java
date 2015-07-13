@@ -107,7 +107,7 @@ class State {
   }
 }
 
-class CompatibleCheckerVisitor implements ThriftType.TypeVisitor<Void, State> {
+class CompatibleCheckerVisitor implements ThriftType.StateVisitor<Void, State> {
 
   CompatibilityReport report = new CompatibilityReport();
 
