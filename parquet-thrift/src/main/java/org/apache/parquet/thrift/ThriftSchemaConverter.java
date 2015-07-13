@@ -124,11 +124,11 @@ public class ThriftSchemaConverter {
         break;
       case SET:
         final Field setElemField = field.getSetElemField();
-        type = new ThriftType.SetType(toThriftField(name, setElemField, requirement));
+        type = new ThriftType.SetType(toThriftField(setElemField.getName(), setElemField, requirement));
         break;
       case LIST:
         final Field listElemField = field.getListElemField();
-        type = new ThriftType.ListType(toThriftField(name, listElemField, requirement));
+        type = new ThriftType.ListType(toThriftField(listElemField.getName(), listElemField, requirement));
         break;
       case ENUM:
         Collection<TEnum> enumValues = field.getEnumValues();
