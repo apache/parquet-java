@@ -28,8 +28,12 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -44,6 +48,8 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.parquet.Strings;
+import org.apache.parquet.filter2.predicate.FilterApi;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -138,8 +144,6 @@ public class TestInputOutputFormat {
     protected void setup(org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, Void, Group>.Context context) throws java.io.IOException, InterruptedException {
       factory = new SimpleGroupFactory(GroupWriteSupport.getSchema(ContextUtil.getConfiguration(context)));
     }
-
-    ;
 
     protected void map(LongWritable key, Text value, Mapper<LongWritable, Text, Void, Group>.Context context) throws java.io.IOException, InterruptedException {
       Group group = factory.newGroup()
@@ -236,6 +240,69 @@ public class TestInputOutputFormat {
   @Test
   public void testReadWriteTaskSideMD() throws IOException, ClassNotFoundException, InterruptedException {
     testReadWrite(CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {{ put("parquet.task.side.metadata", "true"); }});
+  }
+
+  /**
+   * Uses a filter that drops all records to test handling of tasks (mappers) that need to do no work at all
+   */
+  @Test
+  public void testReadWriteTaskSideMDAggressiveFilter() throws IOException, ClassNotFoundException, InterruptedException {
+    Configuration conf = new Configuration();
+
+    // this filter predicate should trigger row group filtering that drops all row-groups
+    ParquetInputFormat.setFilterPredicate(conf, FilterApi.eq(FilterApi.intColumn("line"), -1000));
+    final String fpString = conf.get(ParquetInputFormat.FILTER_PREDICATE);
+
+    runMapReduceJob(CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {{
+      put("parquet.task.side.metadata", "true");
+      put(ParquetInputFormat.FILTER_PREDICATE, fpString);
+    }});
+
+    List<String> lines = Files.readAllLines(new File(outputPath.toString(), "part-m-00000").toPath(), Charset.forName("UTF-8"));
+    assertTrue(lines.isEmpty());
+  }
+
+  @Test
+  public void testReadWriteFilter() throws IOException, ClassNotFoundException, InterruptedException {
+    Configuration conf = new Configuration();
+
+    // this filter predicate should keep some records but not all (first 500 characters)
+    // "line" is actually position in the file...
+    ParquetInputFormat.setFilterPredicate(conf, FilterApi.lt(FilterApi.intColumn("line"), 500));
+    final String fpString = conf.get(ParquetInputFormat.FILTER_PREDICATE);
+
+    runMapReduceJob(CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {{
+      put("parquet.task.side.metadata", "true");
+      put(ParquetInputFormat.FILTER_PREDICATE, fpString);
+    }});
+
+    List<String> expected = Files.readAllLines(new File(inputPath.toString()).toPath(), Charset.forName("UTF-8"));
+
+    // grab the lines that contain the first 500 characters (including the rest of the line past 500 characters)
+    int size = 0;
+    Iterator<String> iter = expected.iterator();
+    while(iter.hasNext()) {
+      String next = iter.next();
+
+      if (size < 500) {
+        size += next.length();
+        continue;
+      }
+
+      iter.remove();
+    }
+
+    // put the output back into it's original format (remove the character counts / tabs)
+    List<String> found = Files.readAllLines(new File(outputPath.toString(), "part-m-00000").toPath(), Charset.forName("UTF-8"));
+    StringBuilder sbFound = new StringBuilder();
+    for (String line : found) {
+      sbFound.append(line.split("\t", -1)[1]);
+      sbFound.append("\n");
+    }
+
+    sbFound.deleteCharAt(sbFound.length() - 1);
+
+    assertEquals(Strings.join(expected, "\n"), sbFound.toString());
   }
 
   @Test
