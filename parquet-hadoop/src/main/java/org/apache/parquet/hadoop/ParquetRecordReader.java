@@ -193,7 +193,9 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       }
     }
 
-    checkDeltaByteArrayProblem(footer.getFileMetaData(), configuration, filteredBlocks.get(0));
+    if (!filteredBlocks.isEmpty()) {
+      checkDeltaByteArrayProblem(footer.getFileMetaData(), configuration, filteredBlocks.get(0));
+    }
 
     MessageType fileSchema = footer.getFileMetaData().getSchema();
     internalReader.initialize(
