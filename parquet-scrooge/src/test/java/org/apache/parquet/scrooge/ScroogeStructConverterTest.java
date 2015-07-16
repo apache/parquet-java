@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -36,6 +36,7 @@ import org.apache.parquet.scrooge.test.SetNestSet;
 import org.apache.parquet.scrooge.test.StringAndBinary;
 import org.apache.parquet.scrooge.test.TestFieldOfEnum;
 import org.apache.parquet.scrooge.test.TestListPrimitive;
+import org.apache.parquet.scrooge.test.TestMapBinary;
 import org.apache.parquet.scrooge.test.TestMapComplex;
 import org.apache.parquet.scrooge.test.TestMapPrimitiveKey;
 import org.apache.parquet.scrooge.test.TestMapPrimitiveValue;
@@ -104,6 +105,11 @@ public class ScroogeStructConverterTest {
   @Test
   public void testConvertEnum() throws Exception {
     shouldConvertConsistentlyWithThriftStructConverter(TestFieldOfEnum.class);
+  }
+
+  @Test
+  public void testMapBinary() throws Exception {
+    shouldConvertConsistentlyWithThriftStructConverter(TestMapBinary.class);
   }
 
   @Test
