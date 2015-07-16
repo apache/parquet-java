@@ -101,6 +101,10 @@ struct TestMapComplex{
   1: required map<Phone,Address> phone_address_map
 }
 
+struct TestMapBinary{
+  1: required map<string,binary> string_binary_map
+}
+
 struct TestMapPrimitiveKey {
   1: required map<i16,string> short_map,
   2: required map<i32,string> int_map,
