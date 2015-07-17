@@ -57,7 +57,7 @@ public class MemoryManager {
 
     memoryPoolRatio = ratio;
     minMemoryAllocation = minAllocation;
-    totalMemoryPool = Math.round(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
+    totalMemoryPool = Math.round((double) ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
         () * ratio);
     LOG.debug(String.format("Allocated total memory pool is: %,d", totalMemoryPool));
   }
