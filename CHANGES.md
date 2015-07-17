@@ -19,6 +19,23 @@
 
 # Parquet #
 
+### Version 1.8.1 ###
+
+#### Bug
+
+*   [[PARQUET-331](https://issues.apache.org/jira/browse/PARQUET-331)] - Merge script doesn't surface stderr from failed sub processes
+*   [[PARQUET-336](https://issues.apache.org/jira/browse/PARQUET-336)] - ArrayIndexOutOfBounds in checkDeltaByteArrayProblem
+*   [[PARQUET-337](https://issues.apache.org/jira/browse/PARQUET-337)] - binary fields inside map/set/list are not handled in parquet-scrooge
+*   [[PARQUET-338](https://issues.apache.org/jira/browse/PARQUET-338)] - Readme references wrong format of pull request title
+
+#### Improvement
+
+*   [[PARQUET-279](https://issues.apache.org/jira/browse/PARQUET-279)] - Check empty struct in the CompatibilityChecker util
+
+#### Task
+
+*   [[PARQUET-339](https://issues.apache.org/jira/browse/PARQUET-339)] - Add Alex Levenson to KEYS file
+
 ### Version 1.8.0 ###
 
 #### Bug
