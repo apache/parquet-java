@@ -30,7 +30,6 @@ import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.impl.ColumnReadStoreImpl;
 import org.apache.parquet.column.page.PageReadStore;
-import org.apache.parquet.example.data.simple.Primitive;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
@@ -179,6 +178,16 @@ public class MessageColumnIO extends GroupColumnIO {
     /** maintain a map of a group and all the leaf nodes underneath it. It's used to optimize writing null for a group node
      * all the leaves can be called directly without traversing the sub tree of the group node */
     private Map<GroupColumnIO, List<ColumnWriter>>  groupToLeafWriter = new HashMap<GroupColumnIO, List<ColumnWriter>>();
+    class NullValue {
+      int r;
+      int d;
+
+      public NullValue(int r, int d) {
+        this.r = r;
+        this.d = d;
+      }
+    }
+    private Map<GroupColumnIO, List<NullValue>> groupPreviousNullCount = new HashMap<GroupColumnIO, List<NullValue>>();
     private final ColumnWriteStore columns;
     private boolean emptyField = true;
 
@@ -298,13 +307,26 @@ public class MessageColumnIO extends GroupColumnIO {
         columnWriter[((PrimitiveColumnIO)undefinedField).getId()].writeNull(r, d);
       } else {
         GroupColumnIO groupColumnIO = (GroupColumnIO)undefinedField;
-        writeNullToLeaves(groupColumnIO, r, d);
+        increaseGroupNullCount(groupColumnIO,r,d);
       }
     }
 
-    private void writeNullToLeaves(GroupColumnIO group, int r, int d) {
+    private void increaseGroupNullCount(GroupColumnIO group, int r, int d) {
+      if (!groupPreviousNullCount.containsKey(group)){
+        groupPreviousNullCount.put(group,new ArrayList<NullValue>());
+      }
+      groupPreviousNullCount.get(group).add(new NullValue(r,d));
+    }
+
+    private void writeNullForGroupChildren(GroupColumnIO group) {
+      List<NullValue> nullValues = groupPreviousNullCount.get(group);
+      if (nullValues == null || nullValues.isEmpty())
+        return;
+
       for(ColumnWriter leafWriter: groupToLeafWriter.get(group)) {
-        leafWriter.writeNull(r,d);
+        for(NullValue n:groupPreviousNullCount.get(group)) {
+          leafWriter.writeNull(n.r, n.d);
+        }
       }
     }
 
@@ -316,7 +338,7 @@ public class MessageColumnIO extends GroupColumnIO {
     @Override
     public void startGroup() {
       if (DEBUG) log("startGroup()");
-
+      flushNullForGroup((GroupColumnIO)currentColumnIO);
       ++ currentLevel;
       r[currentLevel] = r[currentLevel - 1];
 
@@ -324,6 +346,25 @@ public class MessageColumnIO extends GroupColumnIO {
       fieldsWritten[currentLevel].reset(fieldsCount);
       if (DEBUG) printState();
     }
+
+
+
+    private void flushNullForGroup(GroupColumnIO group) {
+
+
+      //flush children first
+      for(int i=0;i<group.getChildrenCount(); i++) {
+        ColumnIO child = group.getChild(i);
+        if (child instanceof  GroupColumnIO) {
+          flushNullForGroup((GroupColumnIO)child);
+        }
+      }
+
+      //then flush myself
+      writeNullForGroupChildren(group);
+      //reset to 0
+      groupPreviousNullCount.put(group, new ArrayList<NullValue>());
+    }//TODO:need to flush
 
     @Override
     public void endGroup() {
@@ -398,6 +439,26 @@ public class MessageColumnIO extends GroupColumnIO {
 
       setRepetitionLevel();
       if (DEBUG) printState();
+    }
+
+
+    //should flush null for all groups
+    @Override
+    public void flush() {
+        flushGroup(MessageColumnIO.this);
+    }
+
+    public void flushGroup(ColumnIO maybeGroup) {
+      if (maybeGroup instanceof GroupColumnIO) {
+        GroupColumnIO group = (GroupColumnIO)maybeGroup;
+        int childrenCount = group.getChildrenCount();
+        for (int i=0;i<childrenCount;i++) {
+          flushGroup(group.getChild(i));
+        }
+        writeNullForGroupChildren(group);
+      } else {
+        return;
+      }
     }
 
   }

@@ -154,6 +154,7 @@ public class TestParquetReadProtocol {
     ParquetWriteProtocol parquetWriteProtocol = new ParquetWriteProtocol(recordWriter, columnIO, thriftType);
 
     expected.write(parquetWriteProtocol);
+    recordWriter.flush();
     columns.flush();
 
     ThriftRecordConverter<T> converter = new TBaseRecordConverter<T>(thriftClass, schema, thriftType);

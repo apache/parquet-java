@@ -125,4 +125,10 @@ abstract public class RecordConsumer {
    */
   abstract public void addDouble(double value);
 
+  /**
+   * no op by default
+   */
+  public void flush() {
+  }
+
 }
