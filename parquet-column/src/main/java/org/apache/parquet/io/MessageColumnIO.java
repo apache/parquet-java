@@ -318,6 +318,13 @@ public class MessageColumnIO extends GroupColumnIO {
       groupPreviousNullCount.get(group).add(new NullValue(r,d));
     }
 
+    private List<NullValue> nullListFor(GroupColumnIO group) {
+      if (!groupPreviousNullCount.containsKey(group)){
+        groupPreviousNullCount.put(group,new LinkedList<NullValue>());
+      }
+      return groupPreviousNullCount.get(group);
+    }
+
     private void writeNullForGroupChildren(GroupColumnIO group) {
       List<NullValue> nullValues = groupPreviousNullCount.get(group);
       if (nullValues == null || nullValues.isEmpty())
@@ -338,7 +345,8 @@ public class MessageColumnIO extends GroupColumnIO {
     @Override
     public void startGroup() {
       if (DEBUG) log("startGroup()");
-      flushNullForGroup((GroupColumnIO)currentColumnIO);
+      if (!nullListFor((GroupColumnIO)currentColumnIO).isEmpty())
+        flushNullForGroup((GroupColumnIO)currentColumnIO);
       ++ currentLevel;
       r[currentLevel] = r[currentLevel - 1];
 
