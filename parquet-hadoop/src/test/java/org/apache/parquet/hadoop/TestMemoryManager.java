@@ -54,7 +54,7 @@ public class TestMemoryManager {
   @Before
   public void setUp() {
     GroupWriteSupport.setSchema(MessageTypeParser.parseMessageType(writeSchema),conf);
-    expectPoolSize = Math.round(ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
+    expectPoolSize = Math.round((double) ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax
         () * MemoryManager.DEFAULT_MEMORY_POOL_RATIO);
     rowGroupSize = (int) Math.floor(expectPoolSize / 2);
     conf.setInt(ParquetOutputFormat.BLOCK_SIZE, rowGroupSize);
