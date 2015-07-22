@@ -320,7 +320,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
     private List<NullValue> nullListFor(GroupColumnIO group) {
       if (!groupPreviousNullCount.containsKey(group)){
-        groupPreviousNullCount.put(group,new LinkedList<NullValue>());
+        groupPreviousNullCount.put(group,new ArrayList<NullValue>());
       }
       return groupPreviousNullCount.get(group);
     }
