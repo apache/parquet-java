@@ -74,6 +74,41 @@ class InternalParquetRecordWriter<T> {
    * @param compressor the codec used to compress
    */
   public InternalParquetRecordWriter(
+          ParquetFileWriter parquetFileWriter,
+          WriteSupport<T> writeSupport,
+          MessageType schema,
+          Map<String, String> extraMetaData,
+          long rowGroupSize,
+          int pageSize,
+          BytesCompressor compressor,
+          int dictionaryPageSize,
+          boolean enableDictionary,
+          boolean validating,
+          WriterVersion writerVersion) {
+    this(parquetFileWriter,
+         writeSupport,
+         schema,
+         extraMetaData,
+         rowGroupSize,
+         pageSize,
+         compressor,
+         dictionaryPageSize,
+         enableDictionary,
+         ParquetProperties.INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
+         false,
+         validating,
+         writerVersion);
+  }
+
+  /**
+   * @param parquetFileWriter the file to write to
+   * @param writeSupport the class to convert incoming records
+   * @param schema the schema of the records
+   * @param extraMetaData extra meta data to write in the footer of the file
+   * @param rowGroupSize the size of a block in the file (this will be approximate)
+   * @param compressor the codec used to compress
+   */
+  public InternalParquetRecordWriter(
       ParquetFileWriter parquetFileWriter,
       WriteSupport<T> writeSupport,
       MessageType schema,
@@ -83,6 +118,8 @@ class InternalParquetRecordWriter<T> {
       BytesCompressor compressor,
       int dictionaryPageSize,
       boolean enableDictionary,
+      int initialRowCountForSizeCheck,
+      boolean constantNextSizeCheck,
       boolean validating,
       WriterVersion writerVersion) {
     this.parquetFileWriter = parquetFileWriter;
@@ -95,7 +132,7 @@ class InternalParquetRecordWriter<T> {
     this.pageSize = pageSize;
     this.compressor = compressor;
     this.validating = validating;
-    this.parquetProperties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary);
+    this.parquetProperties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary, initialRowCountForSizeCheck, constantNextSizeCheck);
     initStore();
   }
 

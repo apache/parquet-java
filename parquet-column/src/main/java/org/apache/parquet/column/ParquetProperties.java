@@ -51,6 +51,9 @@ import org.apache.parquet.schema.MessageType;
  */
 public class ParquetProperties {
 
+  public static final int INITIAL_ROW_COUNT_FOR_PAGE_SIZE_CHECK = 100;
+  public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
+
   public enum WriterVersion {
     PARQUET_1_0 ("v1"),
     PARQUET_2_0 ("v2");
@@ -74,11 +77,15 @@ public class ParquetProperties {
   private final int dictionaryPageSizeThreshold;
   private final WriterVersion writerVersion;
   private final boolean enableDictionary;
+  private final int initialRowCountForSizeCheck;
+  private final boolean estimateNextSizeCheck;
 
-  public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict) {
+  public ParquetProperties(int dictPageSize, WriterVersion writerVersion, boolean enableDict, int initialRowCountForSizeCheck, boolean estimateNextSizeCheck) {
     this.dictionaryPageSizeThreshold = dictPageSize;
     this.writerVersion = writerVersion;
     this.enableDictionary = enableDict;
+    this.initialRowCountForSizeCheck = initialRowCountForSizeCheck;
+    this.estimateNextSizeCheck = estimateNextSizeCheck;
   }
 
   public static ValuesWriter getColumnDescriptorValuesWriter(int maxLevel, int initialSizePerCol, int pageSize) {
@@ -228,13 +235,16 @@ public class ParquetProperties {
           pageStore,
           pageSize,
           dictionaryPageSizeThreshold,
-          enableDictionary, writerVersion);
+          enableDictionary,
+          initialRowCountForSizeCheck,
+          estimateNextSizeCheck,
+          writerVersion);
     case PARQUET_2_0:
       return new ColumnWriteStoreV2(
           schema,
           pageStore,
           pageSize,
-          new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary));
+          new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary, initialRowCountForSizeCheck, estimateNextSizeCheck));
     default:
       throw new IllegalArgumentException("unknown version " + writerVersion);
     }
