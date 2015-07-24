@@ -190,7 +190,11 @@ public class MessageColumnIO extends GroupColumnIO {
       }
     }
 
-    private Map<GroupColumnIO, IntArrayList> groupPreviousNullCount = new HashMap<GroupColumnIO, IntArrayList>();
+    /**
+     * cache the nulls for a group node. It only stores the repetition level, since the definition level
+     * should always be the definition level of the parent node
+     */
+    private Map<GroupColumnIO, IntArrayList> groupNullCache = new HashMap<GroupColumnIO, IntArrayList>();
     private final ColumnWriteStore columns;
     private boolean emptyField = true;
 
@@ -310,36 +314,30 @@ public class MessageColumnIO extends GroupColumnIO {
         columnWriter[((PrimitiveColumnIO) undefinedField).getId()].writeNull(r, d);
       } else {
         GroupColumnIO groupColumnIO = (GroupColumnIO) undefinedField;
-        increaseGroupNullCount(groupColumnIO, r, d);
+        // only cache the repetition level, the definition level should always be the definition level of the parent node
+        cacheNullForGroup(groupColumnIO, r);
       }
     }
 
-    private void increaseGroupNullCount(GroupColumnIO group, int r, int d) {
-      if (!groupPreviousNullCount.containsKey(group)) {
-        groupPreviousNullCount.put(group, new IntArrayList());
+    private void cacheNullForGroup(GroupColumnIO group, int r) {
+      if (!groupNullCache.containsKey(group)) {
+        groupNullCache.put(group, new IntArrayList());
       }
-      groupPreviousNullCount.get(group).add(r);
-    }
-
-    private IntArrayList nullListFor(GroupColumnIO group) {
-      if (!groupPreviousNullCount.containsKey(group)) {
-        groupPreviousNullCount.put(group, new IntArrayList());
-      }
-      return groupPreviousNullCount.get(group);
+      groupNullCache.get(group).add(r);
     }
 
     private void writeNullToLeaves(GroupColumnIO group) {
-      IntArrayList nullValues = groupPreviousNullCount.get(group);
-      if (nullValues == null || nullValues.isEmpty())
+      IntArrayList nullCache = groupNullCache.get(group);
+      if (nullCache == null || nullCache.isEmpty())
         return;
 
       int parentDefinitionLevel = group.getParent().getDefinitionLevel();
       for (ColumnWriter leafWriter : groupToLeafWriter.get(group)) {
-        for (int n : groupPreviousNullCount.get(group)) {
-          leafWriter.writeNull(n, parentDefinitionLevel);
+        for (int repetitionLevel : groupNullCache.get(group)) {
+          leafWriter.writeNull(repetitionLevel, parentDefinitionLevel);
         }
       }
-      nullValues.clear();
+      nullCache.clear();
     }
 
     private void setRepetitionLevel() {
@@ -351,8 +349,10 @@ public class MessageColumnIO extends GroupColumnIO {
     public void startGroup() {
       if (DEBUG) log("startGroup()");
       GroupColumnIO group = (GroupColumnIO) currentColumnIO;
-      if (hasCachedNull(group))
+      // current group is not null, need to flush all the nulls that were cached before
+      if (hasNullCache(group))
         flushCachedNulls(group);
+
       ++currentLevel;
       r[currentLevel] = r[currentLevel - 1];
 
@@ -361,8 +361,8 @@ public class MessageColumnIO extends GroupColumnIO {
       if (DEBUG) printState();
     }
 
-    private boolean hasCachedNull(GroupColumnIO group) {
-      IntArrayList nulls = groupPreviousNullCount.get(group);
+    private boolean hasNullCache(GroupColumnIO group) {
+      IntArrayList nulls = groupNullCache.get(group);
       return nulls != null && !nulls.isEmpty();
     }
 
