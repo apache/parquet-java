@@ -46,6 +46,7 @@ import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import static org.apache.parquet.Preconditions.checkNotNull;
 
 /**
@@ -187,7 +188,7 @@ public class MessageColumnIO extends GroupColumnIO {
         this.d = d;
       }
     }
-    private Map<GroupColumnIO, List<NullValue>> groupPreviousNullCount = new HashMap<GroupColumnIO, List<NullValue>>();
+    private Map<GroupColumnIO, IntArrayList> groupPreviousNullCount = new HashMap<GroupColumnIO, IntArrayList>();
     private final ColumnWriteStore columns;
     private boolean emptyField = true;
 
@@ -313,26 +314,26 @@ public class MessageColumnIO extends GroupColumnIO {
 
     private void increaseGroupNullCount(GroupColumnIO group, int r, int d) {
       if (!groupPreviousNullCount.containsKey(group)){
-        groupPreviousNullCount.put(group,new ArrayList<NullValue>());
+        groupPreviousNullCount.put(group,new IntArrayList());
       }
-      groupPreviousNullCount.get(group).add(new NullValue(r,d));
+      groupPreviousNullCount.get(group).add(r);
     }
 
-    private List<NullValue> nullListFor(GroupColumnIO group) {
+    private IntArrayList nullListFor(GroupColumnIO group) {
       if (!groupPreviousNullCount.containsKey(group)){
-        groupPreviousNullCount.put(group,new ArrayList<NullValue>());
+        groupPreviousNullCount.put(group,new IntArrayList());
       }
       return groupPreviousNullCount.get(group);
     }
 
     private void writeNullForGroupChildren(GroupColumnIO group) {
-      List<NullValue> nullValues = groupPreviousNullCount.get(group);
+      IntArrayList nullValues = groupPreviousNullCount.get(group);
       if (nullValues == null || nullValues.isEmpty())
         return;
 
       for(ColumnWriter leafWriter: groupToLeafWriter.get(group)) {
-        for(NullValue n:groupPreviousNullCount.get(group)) {
-          leafWriter.writeNull(n.r, n.d);
+        for(int n:groupPreviousNullCount.get(group)) {
+          leafWriter.writeNull(n, group.getDefinitionLevel());
         }
       }
     }
@@ -371,7 +372,7 @@ public class MessageColumnIO extends GroupColumnIO {
       //then flush myself
       writeNullForGroupChildren(group);
       //reset to 0
-      groupPreviousNullCount.put(group, new ArrayList<NullValue>());
+      groupPreviousNullCount.put(group, new IntArrayList());
     }//TODO:need to flush
 
     @Override
