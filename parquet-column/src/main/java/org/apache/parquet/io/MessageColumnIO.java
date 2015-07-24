@@ -52,9 +52,7 @@ import static org.apache.parquet.Preconditions.checkNotNull;
 /**
  * Message level of the IO structure
  *
- *
  * @author Julien Le Dem
- *
  */
 public class MessageColumnIO extends GroupColumnIO {
   private static final Log logger = Log.getLog(MessageColumnIO.class);
@@ -484,6 +482,6 @@ public class MessageColumnIO extends GroupColumnIO {
 
   @Override
   public MessageType getType() {
-    return (MessageType)super.getType();
+    return (MessageType) super.getType();
   }
 }
