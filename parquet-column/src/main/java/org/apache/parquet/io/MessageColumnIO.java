@@ -331,9 +331,10 @@ public class MessageColumnIO extends GroupColumnIO {
       if (nullValues == null || nullValues.isEmpty())
         return;
 
+      int parentDefinitionLevel = group.getParent().getDefinitionLevel();
       for(ColumnWriter leafWriter: groupToLeafWriter.get(group)) {
         for(int n:groupPreviousNullCount.get(group)) {
-          leafWriter.writeNull(n, group.getDefinitionLevel());
+          leafWriter.writeNull(n, parentDefinitionLevel);
         }
       }
     }
