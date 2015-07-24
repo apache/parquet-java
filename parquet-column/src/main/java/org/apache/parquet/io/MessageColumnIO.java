@@ -330,7 +330,7 @@ public class MessageColumnIO extends GroupColumnIO {
       return groupPreviousNullCount.get(group);
     }
 
-    private void writeNullForGroupChildren(GroupColumnIO group) {
+    private void writeNullToLeaves(GroupColumnIO group) {
       IntArrayList nullValues = groupPreviousNullCount.get(group);
       if (nullValues == null || nullValues.isEmpty())
         return;
@@ -341,6 +341,7 @@ public class MessageColumnIO extends GroupColumnIO {
           leafWriter.writeNull(n, parentDefinitionLevel);
         }
       }
+      nullValues.clear();
     }
 
     private void setRepetitionLevel() {
@@ -351,8 +352,9 @@ public class MessageColumnIO extends GroupColumnIO {
     @Override
     public void startGroup() {
       if (DEBUG) log("startGroup()");
-      if (!nullListFor((GroupColumnIO) currentColumnIO).isEmpty())
-        flushNullForGroup((GroupColumnIO) currentColumnIO);
+      GroupColumnIO group = (GroupColumnIO) currentColumnIO;
+      if (hasCachedNull(group))
+        flushCachedNulls(group);
       ++currentLevel;
       r[currentLevel] = r[currentLevel - 1];
 
@@ -361,23 +363,23 @@ public class MessageColumnIO extends GroupColumnIO {
       if (DEBUG) printState();
     }
 
+    private boolean hasCachedNull(GroupColumnIO group) {
+      IntArrayList nulls = groupPreviousNullCount.get(group);
+      return nulls != null && !nulls.isEmpty();
+    }
 
-    private void flushNullForGroup(GroupColumnIO group) {
 
-
+    private void flushCachedNulls(GroupColumnIO group) {
       //flush children first
       for (int i = 0; i < group.getChildrenCount(); i++) {
         ColumnIO child = group.getChild(i);
         if (child instanceof GroupColumnIO) {
-          flushNullForGroup((GroupColumnIO) child);
+          flushCachedNulls((GroupColumnIO) child);
         }
       }
-
-      //then flush myself
-      writeNullForGroupChildren(group);
-      //reset to 0
-      groupPreviousNullCount.put(group, new IntArrayList());
-    }//TODO:need to flush
+      //then flush itself
+      writeNullToLeaves(group);
+    }
 
     @Override
     public void endGroup() {
@@ -458,7 +460,7 @@ public class MessageColumnIO extends GroupColumnIO {
     //should flush null for all groups
     @Override
     public void flush() {
-      flushNullForGroup(MessageColumnIO.this);
+      flushCachedNulls(MessageColumnIO.this);
     }
   }
 
