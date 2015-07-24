@@ -114,11 +114,11 @@ final class ColumnWriterV1 implements ColumnWriter {
           + dataColumn.getBufferedSize();
       if (memSize > pageSizeThreshold) {
         // we will write the current page and check again the size at the predicted middle of next page
-        if(!estimateNextSizeCheck) {
+        if(estimateNextSizeCheck) {
           valueCountForNextSizeCheck = valueCount / 2;
         }
         writePage();
-      } else if (!estimateNextSizeCheck) {
+      } else if (estimateNextSizeCheck) {
         // not reached the threshold, will check again midway
         valueCountForNextSizeCheck = (int)(valueCount + ((float)valueCount * pageSizeThreshold / memSize)) / 2 + 1;
       }
