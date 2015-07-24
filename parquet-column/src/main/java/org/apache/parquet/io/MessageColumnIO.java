@@ -185,14 +185,17 @@ public class MessageColumnIO extends GroupColumnIO {
       GroupColumnIO  parent = primitive.getParent();
       do {
         getLeafWriters(parent).add(writer);
-      } while ((parent = parent.getParent()) != null);
+        parent = parent.getParent();
+      } while (parent != null);
     }
 
     private List<ColumnWriter> getLeafWriters(GroupColumnIO group) {
-      if (!groupToLeafWriter.containsKey(group)) {
-        groupToLeafWriter.put(group, new ArrayList<ColumnWriter>());
+      List<ColumnWriter> writers = groupToLeafWriter.get(group);
+      if (writers == null) {
+        writers = new ArrayList<ColumnWriter>();
+        groupToLeafWriter.put(group, writers);
       }
-      return groupToLeafWriter.get(group);
+      return writers;
     }
 
     public MessageColumnIORecordConsumer(ColumnWriteStore columns) {
