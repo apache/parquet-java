@@ -155,8 +155,8 @@ public class MessageColumnIO extends GroupColumnIO {
       @Override
       public String toString() {
         return "VistedIndex{" +
-                "vistedIndexes=" + vistedIndexes +
-                '}';
+            "vistedIndexes=" + vistedIndexes +
+            '}';
       }
 
       public void reset(int fieldsCount) {
@@ -176,9 +176,12 @@ public class MessageColumnIO extends GroupColumnIO {
     private final FieldsMarker[] fieldsWritten;
     private final int[] r;
     private final ColumnWriter[] columnWriter;
-    /** maintain a map of a group and all the leaf nodes underneath it. It's used to optimize writing null for a group node
-     * all the leaves can be called directly without traversing the sub tree of the group node */
-    private Map<GroupColumnIO, List<ColumnWriter>>  groupToLeafWriter = new HashMap<GroupColumnIO, List<ColumnWriter>>();
+    /**
+     * maintain a map of a group and all the leaf nodes underneath it. It's used to optimize writing null for a group node
+     * all the leaves can be called directly without traversing the sub tree of the group node
+     */
+    private Map<GroupColumnIO, List<ColumnWriter>> groupToLeafWriter = new HashMap<GroupColumnIO, List<ColumnWriter>>();
+
     class NullValue {
       int r;
       int d;
@@ -188,12 +191,13 @@ public class MessageColumnIO extends GroupColumnIO {
         this.d = d;
       }
     }
+
     private Map<GroupColumnIO, IntArrayList> groupPreviousNullCount = new HashMap<GroupColumnIO, IntArrayList>();
     private final ColumnWriteStore columns;
     private boolean emptyField = true;
 
     private void buildGroupToLeafWriterMap(PrimitiveColumnIO primitive, ColumnWriter writer) {
-      GroupColumnIO  parent = primitive.getParent();
+      GroupColumnIO parent = primitive.getParent();
       do {
         getLeafWriters(parent).add(writer);
         parent = parent.getParent();
@@ -238,7 +242,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
     private void log(Object m) {
       String indent = "";
-      for (int i = 0; i<currentLevel; ++i) {
+      for (int i = 0; i < currentLevel; ++i) {
         indent += "  ";
       }
       logger.debug(indent + m);
@@ -249,7 +253,7 @@ public class MessageColumnIO extends GroupColumnIO {
       if (DEBUG) log("< MESSAGE START >");
       currentColumnIO = MessageColumnIO.this;
       r[0] = 0;
-      int numberOfFieldsToVisit = ((GroupColumnIO)currentColumnIO).getChildrenCount();
+      int numberOfFieldsToVisit = ((GroupColumnIO) currentColumnIO).getChildrenCount();
       fieldsWritten[0].reset(numberOfFieldsToVisit);
       if (DEBUG) printState();
     }
@@ -266,7 +270,7 @@ public class MessageColumnIO extends GroupColumnIO {
     public void startField(String field, int index) {
       try {
         if (DEBUG) log("startField(" + field + ", " + index + ")");
-        currentColumnIO = ((GroupColumnIO)currentColumnIO).getChild(index);
+        currentColumnIO = ((GroupColumnIO) currentColumnIO).getChild(index);
         emptyField = true;
         if (DEBUG) printState();
       } catch (RuntimeException e) {
@@ -287,11 +291,11 @@ public class MessageColumnIO extends GroupColumnIO {
     }
 
     private void writeNullForMissingFieldsAtCurrentLevel() {
-      int currentFieldsCount = ((GroupColumnIO)currentColumnIO).getChildrenCount();
+      int currentFieldsCount = ((GroupColumnIO) currentColumnIO).getChildrenCount();
       for (int i = 0; i < currentFieldsCount; i++) {
         if (!fieldsWritten[currentLevel].isWritten(i)) {
           try {
-            ColumnIO undefinedField = ((GroupColumnIO)currentColumnIO).getChild(i);
+            ColumnIO undefinedField = ((GroupColumnIO) currentColumnIO).getChild(i);
             int d = currentColumnIO.getDefinitionLevel();
             if (DEBUG)
               log(Arrays.toString(undefinedField.getFieldPath()) + ".writeNull(" + r[currentLevel] + "," + d + ")");
@@ -305,23 +309,23 @@ public class MessageColumnIO extends GroupColumnIO {
 
     private void writeNull(ColumnIO undefinedField, int r, int d) {
       if (undefinedField.getType().isPrimitive()) {
-        columnWriter[((PrimitiveColumnIO)undefinedField).getId()].writeNull(r, d);
+        columnWriter[((PrimitiveColumnIO) undefinedField).getId()].writeNull(r, d);
       } else {
-        GroupColumnIO groupColumnIO = (GroupColumnIO)undefinedField;
-        increaseGroupNullCount(groupColumnIO,r,d);
+        GroupColumnIO groupColumnIO = (GroupColumnIO) undefinedField;
+        increaseGroupNullCount(groupColumnIO, r, d);
       }
     }
 
     private void increaseGroupNullCount(GroupColumnIO group, int r, int d) {
-      if (!groupPreviousNullCount.containsKey(group)){
-        groupPreviousNullCount.put(group,new IntArrayList());
+      if (!groupPreviousNullCount.containsKey(group)) {
+        groupPreviousNullCount.put(group, new IntArrayList());
       }
       groupPreviousNullCount.get(group).add(r);
     }
 
     private IntArrayList nullListFor(GroupColumnIO group) {
-      if (!groupPreviousNullCount.containsKey(group)){
-        groupPreviousNullCount.put(group,new IntArrayList());
+      if (!groupPreviousNullCount.containsKey(group)) {
+        groupPreviousNullCount.put(group, new IntArrayList());
       }
       return groupPreviousNullCount.get(group);
     }
@@ -332,8 +336,8 @@ public class MessageColumnIO extends GroupColumnIO {
         return;
 
       int parentDefinitionLevel = group.getParent().getDefinitionLevel();
-      for(ColumnWriter leafWriter: groupToLeafWriter.get(group)) {
-        for(int n:groupPreviousNullCount.get(group)) {
+      for (ColumnWriter leafWriter : groupToLeafWriter.get(group)) {
+        for (int n : groupPreviousNullCount.get(group)) {
           leafWriter.writeNull(n, parentDefinitionLevel);
         }
       }
@@ -347,26 +351,25 @@ public class MessageColumnIO extends GroupColumnIO {
     @Override
     public void startGroup() {
       if (DEBUG) log("startGroup()");
-      if (!nullListFor((GroupColumnIO)currentColumnIO).isEmpty())
-        flushNullForGroup((GroupColumnIO)currentColumnIO);
-      ++ currentLevel;
+      if (!nullListFor((GroupColumnIO) currentColumnIO).isEmpty())
+        flushNullForGroup((GroupColumnIO) currentColumnIO);
+      ++currentLevel;
       r[currentLevel] = r[currentLevel - 1];
 
-      int fieldsCount = ((GroupColumnIO)currentColumnIO).getChildrenCount();
+      int fieldsCount = ((GroupColumnIO) currentColumnIO).getChildrenCount();
       fieldsWritten[currentLevel].reset(fieldsCount);
       if (DEBUG) printState();
     }
-
 
 
     private void flushNullForGroup(GroupColumnIO group) {
 
 
       //flush children first
-      for(int i=0;i<group.getChildrenCount(); i++) {
+      for (int i = 0; i < group.getChildrenCount(); i++) {
         ColumnIO child = group.getChild(i);
-        if (child instanceof  GroupColumnIO) {
-          flushNullForGroup((GroupColumnIO)child);
+        if (child instanceof GroupColumnIO) {
+          flushNullForGroup((GroupColumnIO) child);
         }
       }
 
@@ -381,14 +384,14 @@ public class MessageColumnIO extends GroupColumnIO {
       if (DEBUG) log("endGroup()");
       emptyField = false;
       writeNullForMissingFieldsAtCurrentLevel();
-      -- currentLevel;
+      --currentLevel;
 
       setRepetitionLevel();
       if (DEBUG) printState();
     }
 
     private ColumnWriter getColumnWriter() {
-      return columnWriter[((PrimitiveColumnIO)currentColumnIO).getId()];
+      return columnWriter[((PrimitiveColumnIO) currentColumnIO).getId()];
     }
 
     @Override
@@ -455,22 +458,8 @@ public class MessageColumnIO extends GroupColumnIO {
     //should flush null for all groups
     @Override
     public void flush() {
-        flushGroup(MessageColumnIO.this);
+      flushNullForGroup(MessageColumnIO.this);
     }
-
-    public void flushGroup(ColumnIO maybeGroup) {
-      if (maybeGroup instanceof GroupColumnIO) {
-        GroupColumnIO group = (GroupColumnIO)maybeGroup;
-        int childrenCount = group.getChildrenCount();
-        for (int i=0;i<childrenCount;i++) {
-          flushGroup(group.getChild(i));
-        }
-        writeNullForGroupChildren(group);
-      } else {
-        return;
-      }
-    }
-
   }
 
   public RecordConsumer getRecordWriter(ColumnWriteStore columns) {
