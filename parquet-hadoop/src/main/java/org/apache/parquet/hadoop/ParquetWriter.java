@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -43,6 +43,7 @@ public class ParquetWriter<T> implements Closeable {
   public static final boolean DEFAULT_IS_VALIDATING_ENABLED = false;
   public static final WriterVersion DEFAULT_WRITER_VERSION =
       WriterVersion.PARQUET_1_0;
+  public static final long DEFAULT_MAX_ROW_COUNT = (long)Double.POSITIVE_INFINITY;
 
   // max size (bytes) to write as padding and the min size of a row group
   public static final int MAX_PADDING_SIZE_DEFAULT = 0;
@@ -216,7 +217,7 @@ public class ParquetWriter<T> implements Closeable {
       Configuration conf) throws IOException {
     this(file, mode, writeSupport, compressionCodecName, blockSize, pageSize,
         dictionaryPageSize, enableDictionary, validating, writerVersion, conf,
-        MAX_PADDING_SIZE_DEFAULT);
+        MAX_PADDING_SIZE_DEFAULT, DEFAULT_MAX_ROW_COUNT);
   }
 
   /**
@@ -258,7 +259,8 @@ public class ParquetWriter<T> implements Closeable {
       boolean validating,
       WriterVersion writerVersion,
       Configuration conf,
-      int maxPaddingSize) throws IOException {
+      int maxPaddingSize,
+      long maxRowCount) throws IOException {
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
     MessageType schema = writeContext.getSchema();
@@ -280,7 +282,8 @@ public class ParquetWriter<T> implements Closeable {
         dictionaryPageSize,
         enableDictionary,
         validating,
-        writerVersion);
+        writerVersion,
+        maxRowCount);
   }
 
   public void write(T object) throws IOException {
@@ -325,6 +328,7 @@ public class ParquetWriter<T> implements Closeable {
     private int pageSize = DEFAULT_PAGE_SIZE;
     private int dictionaryPageSize = DEFAULT_PAGE_SIZE;
     private int maxPaddingSize = MAX_PADDING_SIZE_DEFAULT;
+    private long maxRowCount = DEFAULT_MAX_ROW_COUNT;
     private boolean enableDictionary = DEFAULT_IS_DICTIONARY_ENABLED;
     private boolean enableValidation = DEFAULT_IS_VALIDATING_ENABLED;
     private WriterVersion writerVersion = DEFAULT_WRITER_VERSION;
@@ -480,6 +484,17 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+    * Set the maximum number of rows per row group
+    *
+    * @param maxPaddingSize a long (number of rows)
+    * @return this builder for method chaining.
+     */
+    public SELF withMaxRowCount(long maxRowCount) {
+      this.maxRowCount = maxRowCount;
+      return self();
+    }
+
+    /**
      * Build a {@link ParquetWriter} with the accumulated configuration.
      *
      * @return a configured {@code ParquetWriter} instance.
@@ -488,7 +503,7 @@ public class ParquetWriter<T> implements Closeable {
     public ParquetWriter<T> build() throws IOException {
       return new ParquetWriter<T>(file, mode, getWriteSupport(conf), codecName,
           rowGroupSize, pageSize, dictionaryPageSize, enableDictionary,
-          enableValidation, writerVersion, conf, maxPaddingSize);
+          enableValidation, writerVersion, conf, maxPaddingSize, maxRowCount);
     }
   }
 }
