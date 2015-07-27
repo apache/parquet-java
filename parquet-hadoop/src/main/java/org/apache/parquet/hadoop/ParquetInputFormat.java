@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -91,7 +91,8 @@ import org.apache.parquet.schema.MessageTypeParser;
  */
 public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
-  private static final Log LOG = Log.getLog(ParquetInputFormat.class);
+  // private static Log LOG = Log.getLog(ParquetInputFormat.class);
+  private static org.apache.commons.logging.Log LOG = org.apache.commons.logging.LogFactory.getLog(ParquetInputFormat.class);
 
   /**
    * key to configure the ReadSupport implementation
@@ -126,6 +127,16 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public static final String SPLIT_FILES = "parquet.split.files";
 
   private static final int MIN_FOOTER_CACHE_SIZE = 100;
+
+  /**
+   * set the maximum number of rows in a split
+   */
+  private static final String MAX_SPLIT_RECORD_COUNT = "parquet.max.split.record.count";
+  public static final long DEFAULT_MAX_SPLIT_RECORD_COUNT = (long)Double.POSITIVE_INFINITY;
+
+  public static long getMaxSplitRecordCount(Configuration configuration) {
+    return configuration.getLong(MAX_SPLIT_RECORD_COUNT, DEFAULT_MAX_SPLIT_RECORD_COUNT);
+  }
 
   public static void setTaskSideMetaData(Job job,  boolean taskSideMetadata) {
     ContextUtil.getConfiguration(job).setBoolean(TASK_SIDE_METADATA, taskSideMetadata);
@@ -362,7 +373,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         result.add(file);
       }
     }
-    LOG.info("Total input paths to process : " + result.size());
     return result;
   }
 
@@ -604,6 +614,7 @@ class ClientSideMetadataSplitStrategy {
     List<BlockMetaData> rowGroups = new ArrayList<BlockMetaData>();
     BlockLocation hdfsBlock;
     long compressedByteSize = 0L;
+    long rowCount = 0L;
 
     public SplitInfo(BlockLocation currentBlock) {
       this.hdfsBlock = currentBlock;
@@ -612,10 +623,15 @@ class ClientSideMetadataSplitStrategy {
     private void addRowGroup(BlockMetaData rowGroup) {
       this.rowGroups.add(rowGroup);
       this.compressedByteSize += rowGroup.getCompressedSize();
+      this.rowCount += rowGroup.getRowCount();
     }
 
     public long getCompressedByteSize() {
       return compressedByteSize;
+    }
+
+    public long getRowCount() {
+      return rowCount;
     }
 
     public List<BlockMetaData> getRowGroups() {
@@ -665,6 +681,7 @@ class ClientSideMetadataSplitStrategy {
       throws IOException {
     List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
     Filter filter = ParquetInputFormat.getFilter(configuration);
+    Long maxSplitRecordCount = ParquetInputFormat.getMaxSplitRecordCount(configuration);
 
     long rowGroupsDropped = 0;
     long totalRowGroups = 0;
@@ -696,7 +713,8 @@ class ClientSideMetadataSplitStrategy {
               readContext.getRequestedSchema().toString(),
               readContext.getReadSupportMetadata(),
               minSplitSize,
-              maxSplitSize)
+              maxSplitSize,
+              maxSplitRecordCount)
           );
     }
 
@@ -719,6 +737,7 @@ class ClientSideMetadataSplitStrategy {
    * @param readSupportMetadata the metadata provided by the readSupport implementation in init
    * @param minSplitSize        the mapred.min.split.size
    * @param maxSplitSize        the mapred.max.split.size
+   * @param maxSplitRecordCount the parquet.max.split.record.count
    * @return the splits (one per HDFS block)
    * @throws IOException If hosts can't be retrieved for the HDFS block
    */
@@ -727,10 +746,13 @@ class ClientSideMetadataSplitStrategy {
           BlockLocation[] hdfsBlocksArray,
           FileStatus fileStatus,
           String requestedSchema,
-          Map<String, String> readSupportMetadata, long minSplitSize, long maxSplitSize) throws IOException {
+          Map<String, String> readSupportMetadata,
+          long minSplitSize,
+          long maxSplitSize,
+          long maxSplitRecordCount) throws IOException {
 
     List<SplitInfo> splitRowGroups =
-        generateSplitInfo(rowGroupBlocks, hdfsBlocksArray, minSplitSize, maxSplitSize);
+        generateSplitInfo(rowGroupBlocks, hdfsBlocksArray, minSplitSize, maxSplitSize, maxSplitRecordCount);
 
     //generate splits from rowGroups of each split
     List<ParquetInputSplit> resultSplits = new ArrayList<ParquetInputSplit>();
@@ -744,11 +766,11 @@ class ClientSideMetadataSplitStrategy {
   static List<SplitInfo> generateSplitInfo(
       List<BlockMetaData> rowGroupBlocks,
       BlockLocation[] hdfsBlocksArray,
-      long minSplitSize, long maxSplitSize) {
+      long minSplitSize, long maxSplitSize, long maxSplitRecordCount) {
     List<SplitInfo> splitRowGroups;
 
-    if (maxSplitSize < minSplitSize || maxSplitSize < 0 || minSplitSize < 0) {
-      throw new ParquetDecodingException("maxSplitSize and minSplitSize should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = " + maxSplitSize + "; minSplitSize is " + minSplitSize);
+    if (maxSplitSize < minSplitSize || maxSplitSize < 0 || minSplitSize < 0 || maxSplitRecordCount < 0) {
+      throw new ParquetDecodingException("maxSplitSize, minSplitSize and maxSplitRecordCount should be positive and max should be greater or equal to the minSplitSize: maxSplitSize = " + maxSplitSize + "; minSplitSize is " + minSplitSize);
     }
     HDFSBlocks hdfsBlocks = new HDFSBlocks(hdfsBlocksArray);
     hdfsBlocks.checkBelongingToANewHDFSBlock(rowGroupBlocks.get(0));
@@ -761,7 +783,8 @@ class ClientSideMetadataSplitStrategy {
       if ((hdfsBlocks.checkBelongingToANewHDFSBlock(rowGroupMetadata)
              && currentSplit.getCompressedByteSize() >= minSplitSize
              && currentSplit.getCompressedByteSize() > 0)
-           || currentSplit.getCompressedByteSize() >= maxSplitSize) {
+           || currentSplit.getCompressedByteSize() >= maxSplitSize
+           || currentSplit.getRowCount() >= maxSplitRecordCount) {
         //create a new split
         splitRowGroups.add(currentSplit);//finish previous split
         currentSplit = new SplitInfo(hdfsBlocks.getCurrentBlock());
