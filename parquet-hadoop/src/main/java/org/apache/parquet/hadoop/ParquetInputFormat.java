@@ -91,8 +91,7 @@ import org.apache.parquet.schema.MessageTypeParser;
  */
 public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
-  // private static Log LOG = Log.getLog(ParquetInputFormat.class);
-  private static org.apache.commons.logging.Log LOG = org.apache.commons.logging.LogFactory.getLog(ParquetInputFormat.class);
+  private static Log LOG = Log.getLog(ParquetInputFormat.class);
 
   /**
    * key to configure the ReadSupport implementation
@@ -373,6 +372,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
         result.add(file);
       }
     }
+    LOG.info("Total input paths to process : " + result.size());
     return result;
   }
 

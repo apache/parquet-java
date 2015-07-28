@@ -486,7 +486,7 @@ public class ParquetWriter<T> implements Closeable {
     /**
     * Set the maximum number of rows per row group
     *
-    * @param maxPaddingSize a long (number of rows)
+    * @param maxRowCount a long (number of rows)
     * @return this builder for method chaining.
      */
     public SELF withMaxRowCount(long maxRowCount) {
