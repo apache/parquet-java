@@ -96,22 +96,30 @@ public final class SemanticVersion implements Comparable<SemanticVersion> {
   public int compareTo(SemanticVersion o) {
     int cmp;
 
-    cmp = Integer.compare(major, o.major);
+    cmp = compareIntegers(major, o.major);
     if (cmp != 0) {
       return cmp;
     }
 
-    cmp = Integer.compare(minor, o.minor);
+    cmp = compareIntegers(minor, o.minor);
     if (cmp != 0) {
       return cmp;
     }
 
-    cmp = Integer.compare(patch, o.patch);
+    cmp = compareIntegers(patch, o.patch);
     if (cmp != 0) {
       return cmp;
     }
 
-    return Boolean.compare(o.prerelease, prerelease);
+    return compareBooleans(o.prerelease, prerelease);
+  }
+
+  int compareIntegers(int x, int y) {
+    return (x < y) ? -1 : ((x == y) ? 0 : 1);
+  }
+
+  int compareBooleans(boolean x, boolean y) {
+    return (x == y) ? 0 : (x ? 1 : -1);
   }
 
   @Override
