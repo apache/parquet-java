@@ -18,14 +18,14 @@
  */
 package org.apache.parquet.hadoop.vector;
 
-import org.apache.parquet.vector.BooleanColumnVector;
-import org.apache.parquet.vector.ByteColumnVector;
-import org.apache.parquet.vector.ColumnVector;
-import org.apache.parquet.vector.DoubleColumnVector;
-import org.apache.parquet.vector.FloatColumnVector;
-import org.apache.parquet.vector.IntColumnVector;
-import org.apache.parquet.vector.LongColumnVector;
-import org.apache.parquet.vector.RowBatch;
+import org.apache.parquet.io.ColumnVector;
+import org.apache.parquet.io.vector.BooleanColumnVector;
+import org.apache.parquet.io.vector.ByteColumnVector;
+import org.apache.parquet.io.vector.DoubleColumnVector;
+import org.apache.parquet.io.vector.FloatColumnVector;
+import org.apache.parquet.io.vector.IntColumnVector;
+import org.apache.parquet.io.vector.LongColumnVector;
+import org.apache.parquet.io.vector.RowBatch;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -36,7 +36,7 @@ public class ParquetVectorTestUtils {
 
   public static boolean DEBUG = false;
 
-  public static <T> void assertVectorTypes(RowBatch batch, int expectedColumnCount, Class... vectorType) {
+  public static void assertVectorTypes(RowBatch batch, int expectedColumnCount, Class... vectorType) {
     assertTrue("Must have a single column", batch.getColumns().length == expectedColumnCount);
     for (int i = 0 ; i < expectedColumnCount ; i++) {
       ColumnVector vector = batch.getColumns()[i];
@@ -69,7 +69,7 @@ public class ParquetVectorTestUtils {
     }
   }
 
-  public static <T> void assertFixedLengthByteArrayReads(ByteColumnVector vector, int fixedLength, byte[] expectedValue, int position) {
+  public static void assertFixedLengthByteArrayReads(ByteColumnVector vector, int fixedLength, byte[] expectedValue, int position) {
     byte[] value = new byte[fixedLength];
     System.arraycopy(vector.values, position, value, 0, fixedLength);
     String read = new String(value);

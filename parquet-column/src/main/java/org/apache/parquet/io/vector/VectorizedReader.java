@@ -16,19 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.vector;
+package org.apache.parquet.io.vector;
 
 import java.io.Closeable;
 import java.io.IOException;
 
 public interface VectorizedReader<T> extends Closeable {
-
-  /**
-   * check if there is more batch of rows to read.
-   * @return true if there is batch to read, and false if there is no batch.
-   */
-  //TODO should we use this to check EOF?
-  //boolean hasNext();
 
   /**
    * Reads the next batch of rows. This method is used for reading primitive types
@@ -43,9 +36,10 @@ public interface VectorizedReader<T> extends Closeable {
    * Reads the next batch of rows. This method is used for reading complex types
    * or arbitrary objects and calls the converters eventually to materialize the record.
    * @param previous a row batch object to be reused by the reader if possible
-   * @param clazz the class of the record type that will be filled into the column vector
+   * @param clazz the type of the record that will be filled into the column vectors of previous
    * @return the row batch that was read
    * @throws java.io.IOException
    */
+  //TODO what if different columns of previous have different complex types
   RowBatch nextBatch(RowBatch previous, Class<T> clazz) throws IOException;
 }

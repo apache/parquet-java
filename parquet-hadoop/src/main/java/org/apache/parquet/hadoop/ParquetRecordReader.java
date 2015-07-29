@@ -57,11 +57,11 @@ import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
+import org.apache.parquet.io.ColumnVector;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.vector.ColumnVector;
-import org.apache.parquet.vector.RowBatch;
-import org.apache.parquet.vector.VectorizedReader;
+import org.apache.parquet.io.vector.RowBatch;
+import org.apache.parquet.io.vector.VectorizedReader;
 
 /**
  * Reads the records from a block of a Parquet file

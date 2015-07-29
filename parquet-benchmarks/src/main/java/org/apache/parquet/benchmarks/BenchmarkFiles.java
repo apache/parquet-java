@@ -67,4 +67,5 @@ public class BenchmarkFiles {
 //  public final Path parquetFile_1M_LZO = new Path("target/tests/ParquetBenchmarks/PARQUET-1M-LZO");
   public static final Path file_1M_SNAPPY = new Path(TARGET_DIR + "/PARQUET-1M-SNAPPY");
   public static final Path file_1M_GZIP = new Path(TARGET_DIR + "/PARQUET-1M-GZIP");
+  public static final Path file_10M_GZIP = new Path(TARGET_DIR + "/PARQUET-10M-GZIP");
 }

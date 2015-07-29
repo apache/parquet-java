@@ -16,14 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.vector;
+package org.apache.parquet.io.vector;
 
-public class LongColumnVector extends ColumnVector
+import org.apache.parquet.io.ColumnVector;
+
+public class IntColumnVector extends ColumnVector
 {
-  public long[] values;
+  public final int[] values;
 
-  public LongColumnVector() {
-    super(long.class);
-    values = new long[DEFAULT_VECTOR_LENGTH];
+  public IntColumnVector() {
+    this.valueType = int.class;
+    values = new int[DEFAULT_VECTOR_LENGTH];
   }
 }

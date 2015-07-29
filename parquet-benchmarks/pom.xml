@@ -32,7 +32,7 @@
   <url>https://parquet.apache.org</url>
 
   <properties>
-    <jmh.version>1.3.4</jmh.version>
+    <jmh.version>1.10.3</jmh.version>
     <uberjar.name>parquet-benchmarks</uberjar.name>
   </properties>
 

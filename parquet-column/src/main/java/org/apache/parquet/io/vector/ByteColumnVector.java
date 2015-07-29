@@ -16,40 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.vector;
+package org.apache.parquet.io.vector;
+
+import org.apache.parquet.io.ColumnVector;
 
 public class ByteColumnVector extends ColumnVector
 {
-  public byte[] values;
-  public int capacity;
+  public final byte[] values;
+  private final int capacity;
   /**
    * For fixed len byte array type sizeOfValues can be > 1
    * @param sizeOfValues
    */
   public ByteColumnVector(int sizeOfValues) {
-    super(byte.class);
+    this.valueType = byte.class;
     capacity = DEFAULT_VECTOR_LENGTH * sizeOfValues;
     values = new byte[capacity];
-  }
-
-  /**
-   * Ensure that the vector can hold requiredCapacity bytes
-   */
-  public void ensureCapacity(int requiredCapacity) {
-    if (capacity >= requiredCapacity) {
-      return;
-    }
-
-    int multiplier = 2;
-    while (capacity * multiplier < requiredCapacity) {
-      multiplier++;
-    }
-
-    multiplier *= 1.25; // have some slack
-
-    byte[] newBuffer = new byte[capacity * multiplier];
-    System.arraycopy(values, 0, newBuffer, 0, values.length);
-    values = newBuffer;
-    capacity = capacity * multiplier;
   }
 }

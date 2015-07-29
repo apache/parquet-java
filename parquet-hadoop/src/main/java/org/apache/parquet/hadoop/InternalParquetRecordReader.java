@@ -41,6 +41,7 @@ import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ColumnIOFactory;
+import org.apache.parquet.io.ColumnVector;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.RecordMaterializer;
@@ -48,8 +49,7 @@ import org.apache.parquet.io.api.RecordMaterializer.RecordMaterializationExcepti
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
-import org.apache.parquet.vector.ColumnVector;
-import org.apache.parquet.vector.ObjectColumnVector;
+import org.apache.parquet.io.vector.ObjectColumnVector;
 
 import static java.lang.String.format;
 import static org.apache.parquet.Log.DEBUG;
@@ -281,8 +281,6 @@ class InternalParquetRecordReader<T> {
 //        }
 
         recordFound = true;
-
-        if (DEBUG) LOG.debug("read value: " + currentValue);
       } catch (RuntimeException e) {
         throw new ParquetDecodingException(format("Can not read value at %d in block %d in file %s", current, currentBlock, file), e);
       }
@@ -313,8 +311,6 @@ class InternalParquetRecordReader<T> {
 //        }
 
         recordFound = true;
-
-        if (DEBUG) LOG.debug("read value: " + currentValue);
       } catch (RuntimeException e) {
         throw new ParquetDecodingException(format("Can not read value at %d in block %d in file %s", current, currentBlock, file), e);
       }

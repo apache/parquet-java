@@ -37,14 +37,15 @@ import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.apache.parquet.vector.BooleanColumnVector;
-import org.apache.parquet.vector.ByteColumnVector;
-import org.apache.parquet.vector.ColumnVector;
-import org.apache.parquet.vector.DoubleColumnVector;
-import org.apache.parquet.vector.FloatColumnVector;
-import org.apache.parquet.vector.IntColumnVector;
-import org.apache.parquet.vector.LongColumnVector;
-import org.apache.parquet.vector.ObjectColumnVector;
+import org.apache.parquet.io.vector.BooleanColumnVector;
+import org.apache.parquet.io.vector.ByteColumnVector;
+import org.apache.parquet.io.vector.DoubleColumnVector;
+import org.apache.parquet.io.vector.FloatColumnVector;
+import org.apache.parquet.io.vector.IntColumnVector;
+import org.apache.parquet.io.vector.LongColumnVector;
+import org.apache.parquet.io.vector.ObjectColumnVector;
+
+import static org.apache.parquet.Log.DEBUG;
 
 
 /**
@@ -385,7 +386,7 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
   }
 
   private RecordConsumer wrap(RecordConsumer recordConsumer) {
-    if (Log.DEBUG) {
+    if (DEBUG) {
       return new RecordConsumerLoggingWrapper(recordConsumer);
     }
     return recordConsumer;
@@ -457,20 +458,22 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
     for ( ; index < ColumnVector.DEFAULT_VECTOR_LENGTH; index++, current++) {
 
       if (current >= total) {
-        vector.setNumberOfValues(index);
+        ((ColumnVector) vector).setNumberOfValues(index);
         return;
       }
 
       T record = read();
 
       if (shouldSkipCurrentRecord) {
-        LOG.debug("skipping record");
+        if (DEBUG) {
+          LOG.debug("skipping record");
+        }
         vector.isNull[index] = true;
       }
       vector.values[index] = record;
     }
 
-    vector.setNumberOfValues(index);
+    ((ColumnVector) vector).setNumberOfValues(index);
   }
 
   private void readVector(ColumnReader reader, ColumnVector vector, long current, long total) {
@@ -530,10 +533,6 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
   @Override
   public boolean shouldSkipCurrentRecord() {
     return shouldSkipCurrentRecord;
-  }
-
-  private static void log(String string) {
-    LOG.debug(string);
   }
 
   int getNextReader(int current, int nextRepetitionLevel) {

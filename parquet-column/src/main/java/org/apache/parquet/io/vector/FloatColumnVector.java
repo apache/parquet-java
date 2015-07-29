@@ -16,19 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.vector;
+package org.apache.parquet.io.vector;
 
-import static java.lang.reflect.Array.newInstance;
+import org.apache.parquet.io.ColumnVector;
 
-/**
- * Vector for holding complex and application dependent types
- */
-public class ObjectColumnVector<T> extends ColumnVector
+public class FloatColumnVector extends ColumnVector
 {
-  public T[] values;
+  public final float[] values;
 
-  public ObjectColumnVector(Class<T> clazz) {
-    super(clazz);
-    values = (T[]) newInstance(clazz, DEFAULT_VECTOR_LENGTH);
+  public FloatColumnVector() {
+    this.valueType = float.class;
+    values = new float[DEFAULT_VECTOR_LENGTH];
   }
 }

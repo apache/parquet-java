@@ -15,19 +15,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.parquet.vector;
+package org.apache.parquet.io;
 
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.io.vector.BooleanColumnVector;
+import org.apache.parquet.io.vector.ByteColumnVector;
+import org.apache.parquet.io.vector.DoubleColumnVector;
+import org.apache.parquet.io.vector.FloatColumnVector;
+import org.apache.parquet.io.vector.IntColumnVector;
+import org.apache.parquet.io.vector.LongColumnVector;
+import org.apache.parquet.io.vector.ObjectColumnVector;
 
 public abstract class ColumnVector
 {
   public static final int DEFAULT_VECTOR_LENGTH = 1024;
   protected Class valueType;
-  public boolean [] isNull;
+  public final boolean [] isNull;
   private int numValues;
 
-  ColumnVector(Class valueType) {
-    this.valueType = valueType;
+  public ColumnVector() {
     this.isNull = new boolean[DEFAULT_VECTOR_LENGTH];
   }
 
@@ -45,13 +51,12 @@ public abstract class ColumnVector
     return numValues;
   }
 
-  //TODO shouldn't be public
-  public void setNumberOfValues(int numValues)
+  void setNumberOfValues(int numValues)
   {
     this.numValues = numValues;
   }
 
-  public static final ColumnVector from(ColumnDescriptor descriptor) {
+  public static ColumnVector from(ColumnDescriptor descriptor) {
     switch (descriptor.getType()) {
       case BOOLEAN:
         return new BooleanColumnVector();
@@ -75,7 +80,7 @@ public abstract class ColumnVector
     }
   }
 
-  public static final <T> ObjectColumnVector<T> from(Class<T> clazz) {
+  public static <T> ObjectColumnVector<T> ofType(Class<T> clazz) {
     return new ObjectColumnVector<T>(clazz);
   }
 }

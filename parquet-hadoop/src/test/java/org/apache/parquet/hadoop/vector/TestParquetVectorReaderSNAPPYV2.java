@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.hadoop.vector;
 
-import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.ParquetWriter;

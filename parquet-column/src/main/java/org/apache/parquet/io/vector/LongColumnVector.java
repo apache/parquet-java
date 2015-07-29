@@ -16,14 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.vector;
+package org.apache.parquet.io.vector;
 
-public class BooleanColumnVector extends ColumnVector
+import org.apache.parquet.io.ColumnVector;
+
+public class LongColumnVector extends ColumnVector
 {
-  public boolean[] values;
+  public final long[] values;
 
-  public BooleanColumnVector() {
-    super(boolean.class);
-    values = new boolean[DEFAULT_VECTOR_LENGTH];
+  public LongColumnVector() {
+    this.valueType = long.class;
+    values = new long[DEFAULT_VECTOR_LENGTH];
   }
 }

@@ -24,8 +24,8 @@ import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
-import org.apache.parquet.vector.ObjectColumnVector;
-import org.apache.parquet.vector.RowBatch;
+import org.apache.parquet.io.vector.ObjectColumnVector;
+import org.apache.parquet.io.vector.RowBatch;
 import org.junit.Test;
 
 import java.io.IOException;

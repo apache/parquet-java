@@ -20,7 +20,6 @@ package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -46,11 +45,11 @@ import org.apache.parquet.hadoop.api.ReadSupport.ReadContext;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.GlobalMetaData;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
+import org.apache.parquet.io.ColumnVector;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.vector.ColumnVector;
-import org.apache.parquet.vector.ObjectColumnVector;
-import org.apache.parquet.vector.RowBatch;
-import org.apache.parquet.vector.VectorizedReader;
+import org.apache.parquet.io.vector.ObjectColumnVector;
+import org.apache.parquet.io.vector.RowBatch;
+import org.apache.parquet.io.vector.VectorizedReader;
 
 /**
  * Read records from a Parquet file.
@@ -193,14 +192,13 @@ public class ParquetReader<T> implements VectorizedReader<T> {
 
     ObjectColumnVector<T> columnVector;
     if (rowBatch.getColumns() == null) {
-      columnVector = ColumnVector.from(clazz);
+      columnVector = ColumnVector.ofType(clazz);
       rowBatch.setColumns(new ColumnVector[] { columnVector });
     } else {
       columnVector = (ObjectColumnVector<T>) rowBatch.getColumns()[0];
     }
 
-    boolean hasMoreRecords = readVector(columnVector);
-    return hasMoreRecords ? rowBatch : null;
+    return readVector(columnVector) ? rowBatch : null;
   }
 
   /**
@@ -241,8 +239,7 @@ public class ParquetReader<T> implements VectorizedReader<T> {
        rowBatch.getColumns()[i] = columnVector;
      }
 
-     boolean hasMoreRecords = readVectors(rowBatch.getColumns(), columnSchemas);
-     return hasMoreRecords ? rowBatch : null;
+     return readVectors(rowBatch.getColumns(), columnSchemas) ? rowBatch : null;
    }
 
   private void initReader() throws IOException {

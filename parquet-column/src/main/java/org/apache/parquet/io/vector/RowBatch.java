@@ -15,7 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.parquet.vector;
+package org.apache.parquet.io.vector;
+
+import org.apache.parquet.io.ColumnVector;
 
 import static org.apache.parquet.Preconditions.checkNotNull;
 

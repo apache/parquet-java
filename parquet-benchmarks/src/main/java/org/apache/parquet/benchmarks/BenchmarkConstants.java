@@ -27,6 +27,7 @@ public class BenchmarkConstants {
   public static final int TEN_K = 2 * FIVE_K;
   public static final int HUNDRED_K = 10 * TEN_K;
   public static final int ONE_MILLION = 10 * HUNDRED_K;
+  public static final int TEN_MILLION = 10 * ONE_MILLION;
 
   public static final int FIXED_LEN_BYTEARRAY_SIZE = 1024;
 

@@ -16,14 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.vector;
+package org.apache.parquet.io.vector;
 
-public class FloatColumnVector extends ColumnVector
+import org.apache.parquet.io.ColumnVector;
+
+public class DoubleColumnVector extends ColumnVector
 {
-  public float[] values;
+  public final double[] values;
 
-  public FloatColumnVector() {
-    super(float.class);
-    values = new float[DEFAULT_VECTOR_LENGTH];
+  public DoubleColumnVector() {
+    this.valueType = double.class;
+    values = new double[DEFAULT_VECTOR_LENGTH];
   }
 }

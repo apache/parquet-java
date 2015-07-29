@@ -34,14 +34,14 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.vector.BooleanColumnVector;
-import org.apache.parquet.vector.ByteColumnVector;
-import org.apache.parquet.vector.DoubleColumnVector;
-import org.apache.parquet.vector.FloatColumnVector;
-import org.apache.parquet.vector.IntColumnVector;
-import org.apache.parquet.vector.LongColumnVector;
-import org.apache.parquet.vector.RowBatch;
-import org.apache.parquet.vector.VectorizedReader;
+import org.apache.parquet.io.vector.BooleanColumnVector;
+import org.apache.parquet.io.vector.ByteColumnVector;
+import org.apache.parquet.io.vector.DoubleColumnVector;
+import org.apache.parquet.io.vector.FloatColumnVector;
+import org.apache.parquet.io.vector.IntColumnVector;
+import org.apache.parquet.io.vector.LongColumnVector;
+import org.apache.parquet.io.vector.RowBatch;
+import org.apache.parquet.io.vector.VectorizedReader;
 import org.junit.AfterClass;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
@@ -100,7 +100,7 @@ public abstract class TestParquetVectorReader
       Group group = f.newGroup()
               .append("int32_field", i)
               .append("int64_field", (long) 2 * i)
-              .append("int96_field", Binary.fromByteArray("999999999999".getBytes()))
+              .append("int96_field", Binary.fromReusedByteArray("999999999999".getBytes()))
               .append("double_field", i * 1.0)
               .append("float_field", ((float) (i * 2.0)))
               .append("boolean_field", i % 5 == 0)
@@ -382,23 +382,6 @@ public abstract class TestParquetVectorReader
       }
     } finally {
       reader.close();
-    }
-  }
-
-  @Test
-  public void testEnsureCapacity() {
-    ByteColumnVector vector = new ByteColumnVector(4);
-    byte[] test = "test".getBytes();
-    int position = 0;
-    for (int i = 0 ; i < 100; i++) {
-      System.arraycopy(test, 0, vector.values, position, test.length);
-      position += test.length;
-    }
-    vector.ensureCapacity(600000);
-    position = 0;
-    for (int i = 0 ; i < 100; i++) {
-      assertFixedLengthByteArrayReads(vector, 4, test, position);
-      position += test.length;
     }
   }
 }

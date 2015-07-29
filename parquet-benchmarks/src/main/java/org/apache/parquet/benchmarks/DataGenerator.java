@@ -47,7 +47,6 @@ public class DataGenerator {
 
   public void generateAll() {
     try {
-      //PARQUET_2_0 causes some problems, see PARQUET-246 and PARQUET-152
       generateData(file_1M, defaultConfiguration, PARQUET_1_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, UNCOMPRESSED, ONE_MILLION);
 
       //generate data for different block and page sizes
@@ -61,6 +60,7 @@ public class DataGenerator {
 
       generateData(file_1M_SNAPPY, defaultConfiguration, PARQUET_1_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, SNAPPY, ONE_MILLION);
       generateData(file_1M_GZIP, defaultConfiguration, PARQUET_1_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, GZIP, ONE_MILLION);
+      generateData(file_10M_GZIP, defaultConfiguration, PARQUET_1_0, BLOCK_SIZE_DEFAULT, PAGE_SIZE_DEFAULT, GZIP, TEN_MILLION);
     }
     catch (IOException e) {
       throw new RuntimeException(e);
@@ -125,6 +125,7 @@ public class DataGenerator {
 //    deleteIfExists(defaultConfiguration, parquetFile_1M_LZO);
     deleteIfExists(defaultConfiguration, file_1M_SNAPPY);
     deleteIfExists(defaultConfiguration, file_1M_GZIP);
+    deleteIfExists(defaultConfiguration, file_10M_GZIP);
   }
 
   public static void main(String[] args) {
