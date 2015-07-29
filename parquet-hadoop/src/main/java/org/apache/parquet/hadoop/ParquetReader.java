@@ -210,7 +210,7 @@ public class ParquetReader<T> implements VectorizedReader<T> {
    * @return the row batch that was read
    * @throws java.io.IOException
    */
-  @Override
+   @Override
    public RowBatch nextBatch(RowBatch previous) throws IOException {
      MessageType requestedSchema = readContext.getRequestedSchema();
      List<ColumnDescriptor> columns = requestedSchema.getColumns();
