@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
 import org.apache.thrift.protocol.TList;
@@ -432,11 +433,12 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   class FieldEnumConverter extends PrimitiveConverter {
 
     private final List<TProtocol> events;
-
-    private Map<Binary, Integer> enumLookup = new HashMap<Binary, Integer>();
+    private final Map<Binary, Integer> enumLookup = new HashMap<Binary, Integer>();
+    private final ThriftField field;
 
     public FieldEnumConverter(List<TProtocol> events, ThriftField field) {
       this.events = events;
+      this.field = field;
       final Iterable<EnumValue> values = ((EnumType)field.getType()).getValues();
       for (EnumValue enumValue : values) {
         enumLookup.put(Binary.fromString(enumValue.getName()), enumValue.getId());
@@ -445,7 +447,16 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
     @Override
     public void addBinary(final Binary value) {
-      final int id = enumLookup.get(value);
+      final Integer id = enumLookup.get(value);
+
+      if (id == null) {
+        throw new ParquetDecodingException("Unrecognized enum value: "
+            + value.toStringUsingUTF8()
+            + " known values: "
+            + enumLookup
+            + " in " + this.field);
+      }
+
       events.add(new ParquetProtocol("readI32() enum") {
         @Override
         public int readI32() throws TException {
@@ -794,7 +805,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     this.thriftReader = thriftReader;
     this.protocol = new ParquetReadProtocol();
     this.thriftType = thriftType;
-    MessageType fullSchema = new ThriftSchemaConverter().convert(thriftType);
+    MessageType fullSchema = new ThriftSchemaConverter().convertWithoutProjection(thriftType);
     missingRequiredFieldsInProjection = hasMissingRequiredFieldInGroupType(requestedParquetSchema, fullSchema);
     this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
   }

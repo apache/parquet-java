@@ -62,6 +62,12 @@ public class ThriftSchemaConverter {
     return messageType;
   }
 
+  public MessageType convertWithoutProjection(StructType struct) {
+    MessageType messageType = ThriftSchemaConvertVisitor.convert(struct, FieldProjectionFilter.ALL_COLUMNS, false);
+    fieldProjectionFilter.assertNoUnmatchedPatterns();
+    return messageType;
+  }
+
   public static <T extends TBase<?,?>> StructOrUnionType structOrUnionType(Class<T> klass) {
     return TUnion.class.isAssignableFrom(klass) ? StructOrUnionType.UNION : StructOrUnionType.STRUCT;
   }
