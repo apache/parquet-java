@@ -128,6 +128,6 @@ public class ThriftMetaData {
 
   @Override
   public String toString() {
-    return String.format("ThriftMetaData(thriftClassName: %s, descriptor: %s", thriftClassName, descriptor.toJSON());
+    return String.format("ThriftMetaData(thriftClassName: %s, descriptor: %s)", thriftClassName, descriptor);
   }
 }

@@ -63,7 +63,7 @@ import org.apache.parquet.thrift.struct.ThriftTypeID;
  */
 public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
-  final ParquetProtocol readFieldEnd = new ParquetProtocol("readFieldEnd()") {
+  final static ParquetProtocol readFieldEnd = new ParquetProtocol("readFieldEnd()") {
     @Override
     public void readFieldEnd() throws TException {
     }
@@ -76,7 +76,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  class PrimitiveFieldHandler extends PrimitiveConverter {
+  static class PrimitiveFieldHandler extends PrimitiveConverter {
 
     private final PrimitiveConverter delegate;
     private final List<TProtocol> events;
@@ -155,7 +155,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  class GroupFieldhandler extends GroupConverter {
+  static class GroupFieldhandler extends GroupConverter {
 
     private final GroupConverter delegate;
     private final List<TProtocol> events;
@@ -204,7 +204,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  class GroupCounter extends GroupConverter implements Counter {
+  static class GroupCounter extends GroupConverter implements Counter {
 
     private final GroupConverter delegate;
     private int count;
@@ -247,7 +247,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  class PrimitiveCounter extends PrimitiveConverter implements Counter {
+  static class PrimitiveCounter extends PrimitiveConverter implements Counter {
 
     private final PrimitiveConverter delegate;
     private int count;
@@ -310,7 +310,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  class FieldPrimitiveConverter extends PrimitiveConverter {
+  static class FieldPrimitiveConverter extends PrimitiveConverter {
 
     private final List<TProtocol> events;
     private ThriftTypeID type;
@@ -401,7 +401,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  class FieldStringConverter extends PrimitiveConverter {
+  static class FieldStringConverter extends PrimitiveConverter {
 
     private final List<TProtocol> events;
 
@@ -430,7 +430,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  class FieldEnumConverter extends PrimitiveConverter {
+   static class FieldEnumConverter extends PrimitiveConverter {
 
     private final List<TProtocol> events;
     private final Map<Binary, Integer> enumLookup = new HashMap<Binary, Integer>();
@@ -472,7 +472,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  class MapConverter extends GroupConverter {
+  static class MapConverter extends GroupConverter {
 
     private final GroupCounter child;
     private final List<TProtocol> mapEvents = new ArrayList<TProtocol>();
@@ -534,7 +534,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  class MapKeyValueConverter extends GroupConverter {
+  static class MapKeyValueConverter extends GroupConverter {
 
     private Converter keyConverter;
     private Converter valueConverter;
@@ -572,7 +572,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  class SetConverter extends CollectionConverter {
+  static class SetConverter extends CollectionConverter {
 
     final ParquetProtocol readSetEnd = new ParquetProtocol("readSetEnd()") {
       @Override
@@ -609,7 +609,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  class ListConverter extends CollectionConverter {
+  static class ListConverter extends CollectionConverter {
 
     final ParquetProtocol readListEnd = new ParquetProtocol("readListEnd()") {
       @Override
@@ -646,7 +646,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  abstract class CollectionConverter extends GroupConverter {
+  static abstract class CollectionConverter extends GroupConverter {
 
     private final Converter child;
     private final Counter childCounter;
@@ -707,7 +707,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
    * @author Julien Le Dem
    *
    */
-  class StructConverter extends GroupConverter {
+  static class StructConverter extends GroupConverter {
 
     private final int schemaSize;
 
@@ -874,7 +874,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     return structConverter;
   }
 
-  private Converter newConverter(List<TProtocol> events, Type type, ThriftField field) {
+  private static Converter newConverter(List<TProtocol> events, Type type, ThriftField field) {
     switch (field.getType().getType()) {
     case LIST:
       return new ListConverter(events, type.asGroupType(), field);

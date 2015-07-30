@@ -57,7 +57,7 @@ public class ThriftSchemaConverter {
   }
 
   public MessageType convert(StructType struct) {
-    MessageType messageType = ThriftSchemaConvertVisitor.convert(struct, fieldProjectionFilter);
+    MessageType messageType = ThriftSchemaConvertVisitor.convert(struct, fieldProjectionFilter, true);
     fieldProjectionFilter.assertNoUnmatchedPatterns();
     return messageType;
   }
