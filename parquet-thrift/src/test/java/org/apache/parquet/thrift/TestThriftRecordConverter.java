@@ -80,7 +80,7 @@ public class TestThriftRecordConverter {
   public void constructorDoesNotRequireStructOrUnionTypeMeta() throws Exception {
     String jsonWithNoStructOrUnionMeta = Strings.join(
         Files.readAllLines(
-            new File("parquet-thrift/src/test/resources/org/apache/parquet/thrift/StructWithUnionV1NoStructOrUnionMeta.json"),
+            new File("src/test/resources/org/apache/parquet/thrift/StructWithUnionV1NoStructOrUnionMeta.json"),
             Charset.forName("UTF-8")), "\n");
 
     StructType noStructOrUnionMeta  = (StructType) ThriftType.fromJSON(jsonWithNoStructOrUnionMeta);
