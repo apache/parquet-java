@@ -76,16 +76,23 @@ import static org.apache.parquet.schema.Types.primitive;
 class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedField, ThriftSchemaConvertVisitor.State> {
   private final FieldProjectionFilter fieldProjectionFilter;
   private final boolean doProjection;
+  private final boolean keepOneOfEachUnion;
 
-  private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter, boolean doProjection) {
+  private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter, boolean doProjection, boolean keepOneOfEachUnion) {
     this.fieldProjectionFilter = checkNotNull(fieldProjectionFilter, "fieldProjectionFilter");
     this.doProjection = doProjection;
+    this.keepOneOfEachUnion = keepOneOfEachUnion;
   }
 
+  @Deprecated
   public static MessageType convert(StructType struct, FieldProjectionFilter filter) {
+    return convert(struct, filter, true);
+  }
+
+  public static MessageType convert(StructType struct, FieldProjectionFilter filter, boolean keepOneOfEachUnion) {
     State state = new State(new FieldsPath(), REPEATED, "ParquetSchema");
 
-    ConvertedField converted = struct.accept(new ThriftSchemaConvertVisitor(filter, true), state);
+    ConvertedField converted = struct.accept(new ThriftSchemaConvertVisitor(filter, true, keepOneOfEachUnion), state);
 
     if (!converted.isKeep()) {
       throw new ThriftProjectionException("No columns have been selected");
@@ -134,7 +141,7 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
     if (doProjection) {
       ConvertedField fullConvKey = keyField
           .getType()
-          .accept(new ThriftSchemaConvertVisitor(FieldProjectionFilter.ALL_COLUMNS, false), keyState);
+          .accept(new ThriftSchemaConvertVisitor(FieldProjectionFilter.ALL_COLUMNS, false, keepOneOfEachUnion), keyState);
 
       if (!fullConvKey.asKeep().getType().equals(convertedKey.asKeep().getType())) {
         throw new ThriftProjectionException("Cannot select only a subset of the fields in a map key, " +
@@ -160,7 +167,7 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
     // keep only the key, not the value
 
     ConvertedField sentinelValue =
-        valueField.getType().accept(new ThriftSchemaConvertVisitor(new KeepOnlyFirstPrimitiveFilter(), true), valueState);
+        valueField.getType().accept(new ThriftSchemaConvertVisitor(new KeepOnlyFirstPrimitiveFilter(), true, keepOneOfEachUnion), valueState);
 
     Type mapField = mapType(
         state.repetition,
@@ -181,7 +188,7 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
       if (isSet && doProjection) {
         ConvertedField fullConv = listLike
             .getType()
-            .accept(new ThriftSchemaConvertVisitor(FieldProjectionFilter.ALL_COLUMNS, false), childState);
+            .accept(new ThriftSchemaConvertVisitor(FieldProjectionFilter.ALL_COLUMNS, false, keepOneOfEachUnion), childState);
         if (!converted.asKeep().getType().equals(fullConv.asKeep().getType())) {
           throw new ThriftProjectionException("Cannot select only a subset of the fields in a set, " +
               "for path " + state.path);
@@ -210,7 +217,7 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
     // special care is taken when converting unions,
     // because we are actually both converting + projecting in
     // one pass, and unions need special handling when projecting.
-    final boolean isUnion = isUnion(structType.getStructOrUnionType());
+    final boolean needsToKeepOneOfEachUnion = keepOneOfEachUnion && isUnion(structType.getStructOrUnionType());
 
     boolean hasSentinelUnionColumns = false;
     boolean hasNonSentinelUnionColumns = false;
@@ -223,7 +230,7 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
 
       ConvertedField converted = child.getType().accept(this, childState);
 
-      if (isUnion && !converted.isKeep()) {
+      if (!converted.isKeep() && needsToKeepOneOfEachUnion) {
         // user is not keeping this "kind" of union, but we still need
         // to keep at least one of the primitives of this union around.
         // in order to know what "kind" of union each record is.
@@ -232,7 +239,7 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
         // re-do the recursion, with a new projection filter that keeps only
         // the first primitive it encounters
         ConvertedField firstPrimitive = child.getType().accept(
-            new ThriftSchemaConvertVisitor(new KeepOnlyFirstPrimitiveFilter(), true), childState);
+            new ThriftSchemaConvertVisitor(new KeepOnlyFirstPrimitiveFilter(), true, keepOneOfEachUnion), childState);
 
         convertedChildren.add(firstPrimitive.asKeep().getType().withId(child.getFieldId()));
         hasSentinelUnionColumns = true;
