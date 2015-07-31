@@ -84,8 +84,7 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
     this.thriftClass = thriftClass;
     this.thriftStruct = getThriftStruct();
 
-    ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter();
-    this.schema = thriftSchemaConverter.convert(thriftStruct);
+    this.schema = ThriftSchemaConverter.convertWithoutProjection(thriftStruct);
 
     final Map<String, String> extraMetaData = new ThriftMetaData(thriftClass.getName(), thriftStruct).toExtraMetaData();
     // adding the Pig schema as it would have been mapped from thrift

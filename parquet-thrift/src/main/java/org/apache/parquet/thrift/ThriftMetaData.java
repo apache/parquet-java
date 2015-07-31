@@ -128,7 +128,6 @@ public class ThriftMetaData {
 
   @Override
   public String toString() {
-    return "ThriftMetaData" + toExtraMetaData();
+    return String.format("ThriftMetaData(thriftClassName: %s, descriptor: %s)", thriftClassName, descriptor);
   }
-
 }
