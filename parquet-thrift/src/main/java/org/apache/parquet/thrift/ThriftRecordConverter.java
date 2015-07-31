@@ -805,7 +805,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
     this.thriftReader = thriftReader;
     this.protocol = new ParquetReadProtocol();
     this.thriftType = thriftType;
-    MessageType fullSchema = new ThriftSchemaConverter().convertWithoutProjection(thriftType);
+    MessageType fullSchema = ThriftSchemaConverter.convertWithoutProjection(thriftType);
     missingRequiredFieldsInProjection = hasMissingRequiredFieldInGroupType(requestedParquetSchema, fullSchema);
     this.structConverter = new StructConverter(rootEvents, requestedParquetSchema, new ThriftField(name, (short)0, Requirement.REQUIRED, thriftType));
   }
