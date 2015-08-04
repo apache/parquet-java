@@ -72,8 +72,12 @@ public class ProtoWriteSupportTest {
 
     inOrder.verify(readConsumerMock).startMessage();
     inOrder.verify(readConsumerMock).startField("repeatedInt", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("array", 0);
     inOrder.verify(readConsumerMock).addInteger(1323);
     inOrder.verify(readConsumerMock).addInteger(54469);
+    inOrder.verify(readConsumerMock).endField("array", 0);
+    inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("repeatedInt", 0);
     inOrder.verify(readConsumerMock).endMessage();
     Mockito.verifyNoMoreInteractions(readConsumerMock);
@@ -94,12 +98,16 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).startMessage();
     inOrder.verify(readConsumerMock).startField("inner", 0);
     inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("array", 0);
+    inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("one", 0);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromByteArray("one".getBytes()));
     inOrder.verify(readConsumerMock).endField("one", 0);
     inOrder.verify(readConsumerMock).startField("two", 1);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromByteArray("two".getBytes()));
     inOrder.verify(readConsumerMock).endField("two", 1);
+    inOrder.verify(readConsumerMock).endGroup();
+    inOrder.verify(readConsumerMock).endField("array", 0);
     inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("inner", 0);
     inOrder.verify(readConsumerMock).endMessage();
@@ -121,6 +129,9 @@ public class ProtoWriteSupportTest {
 
     inOrder.verify(readConsumerMock).startMessage();
     inOrder.verify(readConsumerMock).startField("inner", 0);
+    inOrder.verify(readConsumerMock).startGroup();
+    inOrder.verify(readConsumerMock).startField("array", 0);
+
     //first inner message
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("one", 0);
@@ -135,6 +146,8 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).endField("two", 1);
     inOrder.verify(readConsumerMock).endGroup();
 
+    inOrder.verify(readConsumerMock).endField("array", 0);
+    inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("inner", 0);
     inOrder.verify(readConsumerMock).endMessage();
     Mockito.verifyNoMoreInteractions(readConsumerMock);

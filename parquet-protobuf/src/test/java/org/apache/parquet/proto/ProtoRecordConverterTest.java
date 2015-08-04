@@ -19,11 +19,16 @@
 package org.apache.parquet.proto;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.MessageOrBuilder;
+import org.apache.hadoop.fs.Path;
 import org.junit.Test;
 import org.apache.parquet.proto.test.TestProtobuf;
 
+import java.net.URL;
 import java.util.List;
 
+import static org.apache.parquet.proto.TestUtils.asMessage;
+import static org.apache.parquet.proto.TestUtils.readMessages;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.apache.parquet.proto.TestUtils.testData;
@@ -195,6 +200,29 @@ public class ProtoRecordConverterTest {
     assertFalse(third.hasTwo());
   }
 
+  @Test
+  public void shouldReadOldRepeatedMessage() throws Exception {
+    URL resource = getClass().getResource("/old-repeated-message.parquet");
+    TestProtobuf.TopMessage result = (TestProtobuf.TopMessage) asMessage(readMessages(new Path(resource.toURI())).get(0));
+    assertEquals(3, result.getInnerCount());
+
+    TestProtobuf.InnerMessage first = result.getInner(0);
+    TestProtobuf.InnerMessage second = result.getInner(1);
+    TestProtobuf.InnerMessage third = result.getInner(2);
+
+    assertEquals("First inner", first.getOne());
+    assertFalse(first.hasTwo());
+    assertFalse(first.hasThree());
+
+    assertEquals("Second inner", second.getTwo());
+    assertFalse(second.hasOne());
+    assertFalse(second.hasThree());
+
+    assertEquals("Third inner", third.getThree());
+    assertFalse(third.hasOne());
+    assertFalse(third.hasTwo());
+  }
+
 
   @Test
   public void testRepeatedInt() throws Exception {
@@ -211,6 +239,18 @@ public class ProtoRecordConverterTest {
     assertEquals(1, result.getRepeatedInt(0));
     assertEquals(2, result.getRepeatedInt(1));
     assertEquals(3, result.getRepeatedInt(2));
+  }
+
+  @Test
+  public void shouldReadOldRepeatedIntPbufMessage() throws Exception {
+    URL resource = getClass().getResource("/old-repeated.parquet");
+    TestProtobuf.RepeatedIntMessage result = (TestProtobuf.RepeatedIntMessage) asMessage(readMessages(new Path(resource.toURI())).get(0));
+    assertEquals(3, result.getRepeatedIntCount());
+
+    assertEquals(1, result.getRepeatedInt(0));
+    assertEquals(2, result.getRepeatedInt(1));
+    assertEquals(3, result.getRepeatedInt(2));
+
   }
 
   @Test

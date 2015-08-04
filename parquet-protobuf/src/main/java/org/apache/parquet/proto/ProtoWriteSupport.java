@@ -35,6 +35,7 @@ import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.IncompatibleSchemaModificationException;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.Type;
 
 import java.lang.reflect.Array;
@@ -152,6 +153,9 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       fieldWriters = (FieldWriter[]) Array.newInstance(FieldWriter.class, fields.size());
 
       int i = 0;
+      if(schema.getOriginalType() == OriginalType.LIST) {
+        schema = schema.getType("array").asGroupType();
+      }
       for (Descriptors.FieldDescriptor fieldDescriptor: fields) {
         String name = fieldDescriptor.getName();
         Type type = schema.getType(name);
@@ -235,13 +239,17 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
     @Override
     final void writeField(Object value) {
-      recordConsumer.startField(fieldName, index);
+      recordConsumer.startField(fieldName,index);
+      recordConsumer.startGroup();
+      recordConsumer.startField("array", 0);
       List<?> list = (List<?>) value;
 
       for (Object listEntry: list) {
         fieldWriter.writeRawValue(listEntry);
       }
 
+      recordConsumer.endField("array", 0);
+      recordConsumer.endGroup();
       recordConsumer.endField(fieldName, index);
     }
   }

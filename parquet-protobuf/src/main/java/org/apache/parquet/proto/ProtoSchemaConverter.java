@@ -30,7 +30,9 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import java.util.List;
 
 import org.apache.parquet.Log;
+import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.apache.parquet.schema.Types.Builder;
@@ -64,10 +66,17 @@ public class ProtoSchemaConverter {
   /* Iterates over list of fields. **/
   private <T> GroupBuilder<T> convertFields(GroupBuilder<T> groupBuilder, List<Descriptors.FieldDescriptor> fieldDescriptors) {
     for (Descriptors.FieldDescriptor fieldDescriptor : fieldDescriptors) {
-      groupBuilder =
-          addField(fieldDescriptor, groupBuilder)
-          .id(fieldDescriptor.getNumber())
-          .named(fieldDescriptor.getName());
+      if(fieldDescriptor.isRepeated()) {
+        GroupBuilder list  = Types.optionalGroup().as(OriginalType.LIST).withName(fieldDescriptor.getName());
+        addField(fieldDescriptor, list).id(fieldDescriptor.getNumber()).named("array");
+        groupBuilder.addField(list.build());
+      } else {
+        groupBuilder =
+                addField(fieldDescriptor, groupBuilder)
+                        .id(fieldDescriptor.getNumber())
+                        .named(fieldDescriptor.getName());
+      }
+
     }
     return groupBuilder;
   }

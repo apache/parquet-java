@@ -139,6 +139,7 @@ public class Types {
     protected OriginalType originalType = null;
     protected Type.ID id = null;
     private boolean repetitionAlreadySet = false;
+    private String name;
 
     /**
      * Construct a type builder that returns a "parent" object when the builder
@@ -210,6 +211,14 @@ public class Types {
 
     abstract protected Type build(String name);
 
+    public Type build() {
+      return build(name);
+    }
+
+    public T withName(String name) {
+      this.name = name;
+      return self();
+    }
     /**
      * Builds a {@link Type} and returns the parent builder, if given, or the
      * {@code Type} that was built. If returning a parent object that is a
@@ -548,6 +557,7 @@ public class Types {
       }
       return this;
     }
+
 
     @Override
     protected GroupType build(String name) {
