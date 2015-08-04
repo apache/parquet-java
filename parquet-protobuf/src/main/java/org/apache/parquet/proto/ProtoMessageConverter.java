@@ -30,6 +30,7 @@ import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.IncompatibleSchemaModificationException;
+import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.Type;
 
 import java.util.HashMap;
@@ -57,10 +58,36 @@ class ProtoMessageConverter extends GroupConverter {
     this(pvc, Protobufs.getMessageBuilder(protoClass), parquetSchema);
   }
 
+  public static class ParquetProtoListConverter extends GroupConverter {
+
+    private final Converter underlying;
+
+    public ParquetProtoListConverter(Converter underlying) {
+      this.underlying = underlying;
+    }
+
+    @Override
+    public Converter getConverter(int fieldIndex) {
+      return underlying;
+    }
+
+    @Override
+    public void start() {
+
+    }
+
+    @Override
+    public void end() {
+
+    }
+  }
 
   // For usage in message arrays
   ProtoMessageConverter(ParentValueContainer pvc, Message.Builder builder, GroupType parquetSchema) {
 
+    if(parquetSchema.getOriginalType() == OriginalType.LIST) {
+      parquetSchema = parquetSchema.getType("array").asGroupType();
+    }
     int schemaSize = parquetSchema.getFieldCount();
     converters = new Converter[schemaSize];
 
@@ -76,18 +103,28 @@ class ProtoMessageConverter extends GroupConverter {
     Descriptors.Descriptor protoDescriptor = builder.getDescriptorForType();
 
     for (Type parquetField : parquetSchema.getFields()) {
-      Descriptors.FieldDescriptor protoField = protoDescriptor.findFieldByName(parquetField.getName());
-
-      if (protoField == null) {
-        String description = "Scheme mismatch \n\"" + parquetField + "\"" +
-                "\n proto descriptor:\n" + protoDescriptor.toProto();
-        throw new IncompatibleSchemaModificationException("Cant find \"" + parquetField.getName() + "\" " + description);
+      Converter converter;
+      if(parquetField.getOriginalType() == OriginalType.LIST) {
+        converter = new ParquetProtoListConverter(getConverter(protoDescriptor,parquetField));
+      } else  {
+        converter = getConverter(protoDescriptor, parquetField);
       }
-
-      converters[parquetFieldIndex - 1] = newMessageConverter(myBuilder, protoField, parquetField);
+      converters[parquetFieldIndex - 1] = converter;
 
       parquetFieldIndex++;
     }
+  }
+
+  private Converter getConverter(Descriptors.Descriptor protoDescriptor, Type parquetField) {
+    Descriptors.FieldDescriptor protoField = protoDescriptor.findFieldByName(parquetField.getName());
+
+    if (protoField == null) {
+      String description = "Scheme mismatch \n\"" + parquetField + "\"" +
+              "\n proto descriptor:\n" + protoDescriptor.toProto();
+      throw new IncompatibleSchemaModificationException("Cant find \"" + parquetField.getName() + "\" " + description);
+    }
+
+    return newMessageConverter(myBuilder, protoField, parquetField);
   }
 
 
